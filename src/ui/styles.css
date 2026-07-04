@@ -1,0 +1,1048 @@
+/*
+ * Warband — global theme + all UI class definitions.
+ *
+ * One cohesive dark-fantasy skin shared by the menu/lobby/result screens,
+ * the App shell and the in-game HUD overlay. Screens are centered panels over
+ * a subtle vignette; the game canvas fills the viewport with the HUD floating
+ * above it. Custom properties drive colors so classes stay consistent.
+ */
+
+:root {
+  /* Surfaces */
+  --bg: #0e0e14;
+  --bg-2: #14141d;
+  --panel: #1b1b27;
+  --panel-2: #22222f;
+  --surface: #2a2a38;
+  --surface-2: #33334420;
+  --border: #3a3a4a;
+  --border-soft: #2c2c3a;
+
+  /* Text */
+  --text: #ece9f5;
+  --text-dim: #a3a1b4;
+  --text-faint: #6f6d80;
+
+  /* Accents */
+  --gold: #f2c14e;
+  --gold-deep: #c99a2e;
+  --accent: #f2c14e; /* default card accent; overridden per-card */
+  --danger: #d9463e;
+  --danger-deep: #a2332d;
+  --success: #4caf50;
+
+  /* Class colors */
+  --cls-knight: #4a90d9;
+  --cls-ranger: #4caf50;
+  --cls-mage: #9c5cf0;
+  --cls-cleric: #f2c14e;
+
+  /* Outcome */
+  --victory: #f2c14e;
+  --defeat: #d9463e;
+
+  /* Shape */
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.4);
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root,
+.wb-app {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* --------------------------------------------------------------------------
+ * Screen shell (menu / setup / lobby / result)
+ * ------------------------------------------------------------------------ */
+
+.wb-screen {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background:
+    radial-gradient(120% 90% at 50% -10%, #201a2e 0%, transparent 60%),
+    radial-gradient(90% 80% at 50% 120%, #16121f 0%, transparent 55%),
+    var(--bg);
+}
+
+.wb-panel {
+  width: 100%;
+  max-width: 520px;
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.wb-setup-panel {
+  max-width: 640px;
+}
+
+.wb-lobby-panel {
+  max-width: 900px;
+}
+
+.wb-result-panel {
+  max-width: 760px;
+}
+
+.wb-menu-panel {
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+}
+
+/* --------------------------------------------------------------------------
+ * Typography
+ * ------------------------------------------------------------------------ */
+
+.wb-title {
+  margin: 0;
+  font-size: 3.2rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  background: linear-gradient(180deg, #ffe7a3 0%, var(--gold) 55%, var(--gold-deep) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 2px 22px rgba(242, 193, 78, 0.25);
+}
+
+.wb-title-sm {
+  font-size: 2rem;
+  letter-spacing: 0.06em;
+  text-align: left;
+}
+
+.wb-tagline {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 1.05rem;
+}
+
+.wb-subtitle {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.wb-blurb {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  max-width: 44ch;
+}
+
+.wb-blurb strong {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+ * Buttons
+ * ------------------------------------------------------------------------ */
+
+.wb-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.98rem;
+  font-weight: 600;
+  padding: 11px 20px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.wb-btn:hover {
+  background: var(--panel-2);
+  border-color: var(--gold-deep);
+}
+
+.wb-btn:active {
+  transform: translateY(1px);
+}
+
+.wb-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(242, 193, 78, 0.45);
+}
+
+.wb-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.wb-btn-primary {
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+  border-color: var(--gold-deep);
+  color: #241c05;
+  box-shadow: var(--shadow-sm);
+}
+
+.wb-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffd873 0%, var(--gold) 100%);
+  border-color: var(--gold);
+}
+
+.wb-btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+
+.wb-btn-ghost:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.wb-btn-ghost.is-ready {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.wb-btn-lg {
+  font-size: 1.1rem;
+  padding: 14px 28px;
+}
+
+.wb-btn-start {
+  background: linear-gradient(180deg, #ff7a52 0%, var(--danger) 100%);
+  border-color: var(--danger-deep);
+  color: #fff;
+}
+
+.wb-btn-start:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ff9070 0%, #e2544b 100%);
+}
+
+.wb-btn-chip {
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.wb-btn-chip.selected {
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+  color: #241c05;
+  border-color: var(--gold);
+}
+
+.wb-menu-actions {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.wb-menu-actions .wb-btn {
+  min-width: 170px;
+}
+
+.wb-mute-toggle {
+  font-size: 0.85rem;
+  padding: 8px 16px;
+}
+
+/* --------------------------------------------------------------------------
+ * Forms
+ * ------------------------------------------------------------------------ */
+
+.wb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wb-field-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+.wb-input {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 11px 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wb-input::placeholder {
+  color: var(--text-faint);
+}
+
+.wb-input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(242, 193, 78, 0.2);
+}
+
+.wb-input-code {
+  text-transform: uppercase;
+  letter-spacing: 0.35em;
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.wb-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.wb-actions-row {
+  justify-content: flex-end;
+}
+
+/* --------------------------------------------------------------------------
+ * Cards (monster + class pickers)
+ * ------------------------------------------------------------------------ */
+
+.wb-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  cursor: pointer;
+  color: var(--text);
+  font-family: inherit;
+  transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.wb-card:hover {
+  background: var(--panel-2);
+  transform: translateY(-2px);
+}
+
+.wb-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(242, 193, 78, 0.4);
+}
+
+.wb-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.wb-card-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.wb-card-role {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wb-card-blurb {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+
+.wb-card-meta {
+  margin-top: 4px;
+  display: flex;
+  gap: 6px;
+}
+
+/* Class cards take their accent from the data-cls attribute. */
+.wb-class-card[data-cls='knight'] {
+  --accent: var(--cls-knight);
+}
+.wb-class-card[data-cls='ranger'] {
+  --accent: var(--cls-ranger);
+}
+.wb-class-card[data-cls='mage'] {
+  --accent: var(--cls-mage);
+}
+.wb-class-card[data-cls='cleric'] {
+  --accent: var(--cls-cleric);
+}
+
+.wb-class-card .wb-card-name {
+  color: var(--accent);
+}
+
+.wb-monster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.wb-monster-card {
+  padding-left: 20px;
+}
+
+.wb-monster-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.wb-class-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+/* --------------------------------------------------------------------------
+ * Badges
+ * ------------------------------------------------------------------------ */
+
+.wb-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.wb-badge-diff {
+  color: var(--gold);
+  border-color: var(--gold-deep);
+}
+
+.wb-badge-host {
+  color: #241c05;
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+  border-color: var(--gold-deep);
+}
+
+.wb-badge-mvp {
+  margin-left: 8px;
+  color: #241c05;
+  background: linear-gradient(180deg, #ffe08a 0%, var(--gold) 100%);
+  border-color: var(--gold-deep);
+}
+
+/* --------------------------------------------------------------------------
+ * Lobby
+ * ------------------------------------------------------------------------ */
+
+.wb-lobby-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.wb-roomcode-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wb-roomcode {
+  font-size: 2.4rem;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.wb-share-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+  max-width: 320px;
+}
+
+.wb-share-link {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  background: var(--bg-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  padding: 4px 8px;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-lobby-monster {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+.wb-monster-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.wb-monster-sub {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.wb-monster-switch {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.wb-lobby-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.wb-lobby-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.wb-section-title {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.wb-player-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wb-player-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+.wb-player-name {
+  font-weight: 700;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-player-class {
+  font-size: 0.82rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.wb-player-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wb-ready {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-weight: 700;
+  color: var(--text-faint);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.wb-ready.is-ready {
+  color: #0e2a10;
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.wb-player-empty {
+  color: var(--text-faint);
+  font-style: italic;
+  justify-content: center;
+}
+
+.wb-lobby-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------------------------
+ * Result screen
+ * ------------------------------------------------------------------------ */
+
+.wb-banner {
+  text-align: center;
+  font-size: 2.8rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  padding: 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.wb-victory {
+  color: var(--victory);
+  background: radial-gradient(120% 140% at 50% 0%, rgba(242, 193, 78, 0.18), transparent 70%);
+  border-color: var(--gold-deep);
+  text-shadow: 0 0 26px rgba(242, 193, 78, 0.5);
+}
+
+.wb-defeat {
+  color: var(--defeat);
+  background: radial-gradient(120% 140% at 50% 0%, rgba(217, 70, 62, 0.18), transparent 70%);
+  border-color: var(--danger-deep);
+  text-shadow: 0 0 26px rgba(217, 70, 62, 0.45);
+}
+
+.wb-result-time {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.wb-time-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.wb-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.wb-stat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.wb-stat-table th,
+.wb-stat-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-soft);
+  white-space: nowrap;
+}
+
+.wb-stat-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-weight: 700;
+}
+
+.wb-stat-table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.wb-cell-name {
+  font-weight: 700;
+}
+
+.wb-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.wb-mvp {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+ * Class color helpers (text + background accents)
+ * ------------------------------------------------------------------------ */
+
+.cls-knight {
+  color: var(--cls-knight);
+}
+.cls-ranger {
+  color: var(--cls-ranger);
+}
+.cls-mage {
+  color: var(--cls-mage);
+}
+.cls-cleric {
+  color: var(--cls-cleric);
+}
+
+.cls-bg-knight {
+  background: rgba(74, 144, 217, 0.16);
+}
+.cls-bg-ranger {
+  background: rgba(76, 175, 80, 0.16);
+}
+.cls-bg-mage {
+  background: rgba(156, 92, 240, 0.16);
+}
+.cls-bg-cleric {
+  background: rgba(242, 193, 78, 0.16);
+}
+
+/* --------------------------------------------------------------------------
+ * Feedback
+ * ------------------------------------------------------------------------ */
+
+.wb-error {
+  background: rgba(217, 70, 62, 0.14);
+  border: 1px solid var(--danger-deep);
+  color: #ffb3ad;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.9rem;
+}
+
+/* --------------------------------------------------------------------------
+ * Game canvas + HUD overlay
+ * ------------------------------------------------------------------------ */
+
+.wb-game-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.wb-game-root canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The HUD floats over the canvas; only interactive bits capture pointer input. */
+.hud-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  font-family: var(--font);
+  color: var(--text);
+}
+
+.hud-root button,
+.hud-mute,
+.hud-abilities,
+.hud-ability {
+  pointer-events: auto;
+}
+
+/* Boss bar — top center */
+.hud-bossbar {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, 78vw);
+  height: 26px;
+  background: rgba(10, 10, 16, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.hud-bossbar-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ff8a5c 0%, var(--danger) 100%);
+  transition: width 0.15s linear;
+}
+
+.hud-bossbar.enraged {
+  border-color: var(--danger);
+  box-shadow: 0 0 18px rgba(217, 70, 62, 0.6);
+  animation: hud-enrage-pulse 1s ease-in-out infinite;
+}
+
+.hud-bossbar.enraged .hud-bossbar-fill {
+  background: linear-gradient(90deg, #ff5252 0%, #b21f1f 100%);
+}
+
+@keyframes hud-enrage-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 12px rgba(217, 70, 62, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(217, 70, 62, 0.85);
+  }
+}
+
+.hud-bossbar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+/* Local health bar — bottom center, above abilities */
+.hud-healthbar {
+  position: absolute;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(320px, 60vw);
+  height: 16px;
+  background: rgba(10, 10, 16, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.hud-healthbar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #59c95d 0%, var(--success) 100%);
+  transition: width 0.12s linear;
+}
+
+/* Ability bar — bottom center */
+.hud-abilities {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+}
+
+.hud-ability {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--text);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Cooldown sweep: a scaling overlay child; set height 0..100% from JS. */
+.hud-cd {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  background: rgba(8, 8, 14, 0.72);
+  pointer-events: none;
+  transition: height 0.1s linear;
+}
+
+.hud-ability-key {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--gold);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  z-index: 1;
+}
+
+/* Teammate widgets — top left */
+.hud-teammates {
+  position: absolute;
+  top: 60px;
+  left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hud-teammate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  min-width: 150px;
+  background: rgba(10, 10, 16, 0.68);
+  border: 1px solid var(--border-soft);
+  border-left: 4px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.hud-teammate.downed {
+  border-left-color: var(--gold);
+  opacity: 0.9;
+}
+
+.hud-teammate.dead {
+  border-left-color: var(--danger);
+  opacity: 0.55;
+  filter: grayscale(0.6);
+}
+
+/* Contextual hint + downed note */
+.hud-hint {
+  position: absolute;
+  bottom: 150px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  background: rgba(10, 10, 16, 0.7);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.hud-downed-note {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  padding: 16px 26px;
+  background: rgba(10, 10, 16, 0.78);
+  border: 1px solid var(--danger-deep);
+  border-radius: var(--radius);
+  color: #ffb3ad;
+  font-size: 1.05rem;
+  font-weight: 700;
+  box-shadow: var(--shadow);
+}
+
+/* Mute toggle — top right */
+.hud-mute {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  pointer-events: auto;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  background: rgba(10, 10, 16, 0.7);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.hud-mute:hover {
+  color: var(--text);
+  border-color: var(--gold-deep);
+}
+
+/* --------------------------------------------------------------------------
+ * Responsive
+ * ------------------------------------------------------------------------ */
+
+@media (max-width: 700px) {
+  .wb-panel {
+    padding: 22px;
+  }
+  .wb-title {
+    font-size: 2.4rem;
+  }
+  .wb-lobby-cols,
+  .wb-class-grid {
+    grid-template-columns: 1fr;
+  }
+  .wb-lobby-head {
+    flex-direction: column;
+  }
+  .wb-share-block {
+    align-items: flex-start;
+  }
+}

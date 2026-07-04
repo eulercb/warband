@@ -1,0 +1,280 @@
+/* Warband — in-game layout + HUD overlay styling (owned by GameView/HUD). */
+
+.game-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #0e0e14;
+}
+.game-canvas {
+  position: absolute;
+  inset: 0;
+}
+.game-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hud-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: #eaeaf2;
+  user-select: none;
+}
+
+/* Boss bar (top center) */
+.hud-bossbar {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, 84vw);
+  text-align: center;
+}
+.hud-bossbar-label {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 6px #000;
+  margin-bottom: 4px;
+}
+.hud-enrage-tag {
+  margin-left: 10px;
+  color: #ff5a4d;
+  font-size: 12px;
+  animation: hud-pulse 0.8s infinite alternate;
+}
+.hud-bossbar-track {
+  height: 18px;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.hud-bossbar-fill {
+  height: 100%;
+  background: linear-gradient(180deg, #ff7a6e, #d9463e);
+  transition: width 0.12s linear;
+}
+.hud-bossbar-fill.enraged {
+  background: linear-gradient(180deg, #ff9d3a, #ff3a2a);
+  box-shadow: 0 0 14px #ff5a4d inset;
+}
+.hud-bossbar-num {
+  font-size: 11px;
+  opacity: 0.85;
+  margin-top: 2px;
+  text-shadow: 0 1px 3px #000;
+}
+
+/* Teammate frames (top left) */
+.hud-teammates {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 180px;
+}
+.hud-teammate {
+  background: rgba(10, 10, 18, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left-width: 4px;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.hud-teammate.local {
+  box-shadow: 0 0 0 1px rgba(242, 193, 78, 0.6);
+}
+.hud-teammate.downed {
+  opacity: 0.7;
+  border-left-color: #ff9d3a !important;
+}
+.hud-teammate.dead {
+  opacity: 0.4;
+}
+.hud-teammate-name {
+  font-weight: 600;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Health bars */
+.hud-healthbar {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.hud-healthbar.small {
+  height: 7px;
+  border-radius: 4px;
+}
+.hud-healthbar-fill {
+  height: 100%;
+  background: linear-gradient(180deg, #5ee06a, #37a744);
+  transition: width 0.12s linear;
+}
+.hud-healthbar-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px #000;
+}
+
+/* Bottom cluster: self HP + abilities */
+.hud-bottom {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.hud-selfhp {
+  width: 320px;
+}
+.hud-abilities {
+  display: flex;
+  gap: 10px;
+}
+.hud-ability {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  border-radius: 10px;
+  background: rgba(16, 16, 26, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+.hud-ability.ready {
+  border-color: rgba(242, 193, 78, 0.7);
+}
+.hud-ability-key {
+  font-size: 11px;
+  font-weight: 800;
+  color: #f2c14e;
+  letter-spacing: 0.04em;
+}
+.hud-ability-name {
+  font-size: 9px;
+  line-height: 1.05;
+  padding: 0 3px;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+.hud-cd {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  transition: height 0.08s linear;
+  pointer-events: none;
+}
+.hud-cd-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  text-shadow: 0 1px 3px #000;
+}
+
+/* Downed / dead center note */
+.hud-downed-note {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  background: rgba(10, 10, 18, 0.6);
+  border: 1px solid rgba(255, 90, 77, 0.5);
+  padding: 12px 22px;
+  border-radius: 10px;
+}
+.hud-downed-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ff5a4d;
+  text-shadow: 0 2px 6px #000;
+}
+.hud-downed-sub {
+  font-size: 13px;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+/* Controls hint + mute */
+.hud-hint {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  opacity: 0.5;
+  white-space: nowrap;
+}
+.hud-mute {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  pointer-events: auto;
+  background: rgba(16, 16, 26, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #eaeaf2;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  cursor: pointer;
+}
+.hud-mute:hover {
+  border-color: rgba(242, 193, 78, 0.7);
+}
+
+/* class accent colors for teammate frames */
+.hud-teammate.cls-knight { border-left-color: #4a90d9; }
+.hud-teammate.cls-ranger { border-left-color: #4caf50; }
+.hud-teammate.cls-mage { border-left-color: #9c5cf0; }
+.hud-teammate.cls-cleric { border-left-color: #f2c14e; }
+.hud-selfhp.cls-knight .hud-healthbar { border-color: #4a90d9; }
+.hud-selfhp.cls-ranger .hud-healthbar { border-color: #4caf50; }
+.hud-selfhp.cls-mage .hud-healthbar { border-color: #9c5cf0; }
+.hud-selfhp.cls-cleric .hud-healthbar { border-color: #f2c14e; }
+
+@keyframes hud-pulse {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 640px) {
+  .hud-selfhp { width: 220px; }
+  .hud-ability { width: 52px; height: 52px; }
+  .hud-teammates { width: 130px; }
+}
