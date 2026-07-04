@@ -12,7 +12,7 @@ Warband is a browser-hosted, peer-to-peer co-op boss fight game. One player host
 - **Player-count scaling** — boss health and pressure scale to the size of your warband.
 - **Gamepad + keyboard/mouse** — play with either; the last-used device wins seamlessly.
 - **PWA** — installable and offline-capable app shell.
-- **GitHub Pages deploy** — ships as a static site via GitHub Actions.
+- **GitHub Pages deploy** — ships as a static site via GitHub Actions to [warband.zen.dev.br](https://warband.zen.dev.br).
 
 ## Run locally
 
@@ -103,7 +103,9 @@ Only the **host** runs the full simulation. Clients send their inputs to the hos
 
 ## Deploy
 
-Pushing to `main` triggers the GitHub Pages workflow (`.github/workflows/deploy.yml`), which builds the site and publishes it. To enable it, set repo **Settings → Pages → Source = GitHub Actions**. The build derives its base path from the repository name so assets resolve under `https://<user>.github.io/<repo>/`.
+Pushing to `main` triggers the GitHub Pages workflow (`.github/workflows/deploy.yml`), which builds the site and publishes it. To enable it, set repo **Settings → Pages → Source = GitHub Actions**.
+
+The site is served from the custom domain **[warband.zen.dev.br](https://warband.zen.dev.br)**. The domain is configured by the `public/CNAME` file, which Vite copies into the build output so GitHub Pages picks it up on every deploy. Because the app is served from the domain root, the build uses a base path of `/` (no `BASE_PATH` override). Point a DNS `CNAME` record for `warband.zen.dev.br` at `<user>.github.io` to complete the setup.
 
 For a local static preview of the production build:
 
