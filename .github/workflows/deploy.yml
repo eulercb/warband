@@ -34,11 +34,11 @@ jobs:
         run: npm ci
 
       - name: Build
+        # Served from the root of the custom domain (warband.zen.dev.br), so the
+        # default base path of '/' is correct — no BASE_PATH override needed. The
+        # custom domain is published via the CNAME file in public/, which Vite
+        # copies into the build output.
         run: npm run build
-        env:
-          # Serve the app from https://<user>.github.io/<repo>/ by deriving the
-          # base path from the repository name at build time.
-          BASE_PATH: /${{ github.event.repository.name }}/
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

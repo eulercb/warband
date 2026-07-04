@@ -3,8 +3,9 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// Set base to the repo path for GitHub Pages project sites (e.g. '/radius/').
-// Override at build time with BASE_PATH; defaults to '/' for local dev/preview.
+// The site is served from the root of the custom domain (warband.zen.dev.br),
+// so the base path is '/'. BASE_PATH can still override it at build time (e.g.
+// for a project site under '/<repo>/'); defaults to '/' for local dev/preview.
 const base = process.env.BASE_PATH ?? '/';
 
 export default defineConfig({
