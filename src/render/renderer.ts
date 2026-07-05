@@ -19,7 +19,8 @@
 import { Application, Assets, Container, Graphics, Text, TextStyle } from 'pixi.js';
 import type { Spritesheet } from 'pixi.js';
 import type { RenderState, Vec2 } from '../engine/types';
-import { PLAYER_RADIUS, CLASS_COLORS } from '../engine/constants';
+import { PLAYER_RADIUS, CLASS_COLORS, ARENA_W, ARENA_H } from '../engine/constants';
+import { nearestCopy, wrapPos } from '../engine/torus';
 import { getMonster } from '../engine/monsters';
 import { getClass } from '../engine/classes';
 import { Camera } from './camera';
@@ -32,6 +33,7 @@ import {
   drawProjectile,
   drawZone,
   drawTerrain,
+  drawObstacle,
   drawPlayerOverlay,
   drawBossOverlay,
   drawAddOverlay,
@@ -50,6 +52,7 @@ export class Renderer {
 
   private readonly floorLayer = new Graphics();
   private readonly terrainLayer = new Graphics();
+  private readonly obstaclesLayer = new Graphics();
   private readonly zonesLayer = new Graphics();
   private readonly telegraphLayer = new Graphics();
   private readonly aimLayer = new Graphics();
@@ -87,6 +90,7 @@ export class Renderer {
     this.root.addChild(
       this.floorLayer,
       this.terrainLayer, // static per-run hazards, under the action
+      this.obstaclesLayer, // solid cover, above terrain
       this.zonesLayer,
       this.telegraphLayer,
       this.aimLayer, // local player's subtle aim/attack-area preview
@@ -138,8 +142,10 @@ export class Renderer {
     const dtMs = this.lastRenderMs === 0 ? 16 : Math.min(100, now - this.lastRenderMs);
     this.lastRenderMs = now;
 
-    // Keep the camera fit to the current canvas size (cheap for our arena).
+    // Keep the camera fit to the current canvas size, then follow the party's
+    // average across the wrap-around arena.
     this.camera.fit(this.app.screen.width, this.app.screen.height);
+    this.camera.follow(partyCenter(state), dtMs);
     this.camera.update(dtMs);
     // Bake screen shake into the root container so world<->screen stays camera-only.
     this.root.position.set(this.camera.shakeOffset.x, this.camera.shakeOffset.y);
@@ -153,12 +159,13 @@ export class Renderer {
 
     this.drawFloor(state.arena);
     this.drawTerrain(state, now);
+    this.drawObstacles(state);
     this.drawZones(state);
     this.drawTelegraph(state);
     this.drawAimPreview(state);
-    this.drawEntities(state); // geometry for flag-off actors
+    this.drawEntities(state, now); // geometry for flag-off actors
     this.sprites.update(state, this.camera, now, dtMs); // sprites for flag-on actors
-    this.drawOverlays(state); // vector bars/rings for flag-on actors
+    this.drawOverlays(state, now); // vector bars/rings for flag-on actors
     this.drawProjectiles(state); // geometry for flag-off projectiles
 
     this.fx.update(dtMs);
@@ -195,37 +202,55 @@ export class Renderer {
 
   private drawFloor(arena: { w: number; h: number }): void {
     const g = this.floorLayer;
+    const cam = this.camera;
     g.clear();
 
-    const tl = this.camera.worldToScreen({ x: 0, y: 0 });
-    const br = this.camera.worldToScreen({ x: arena.w, y: arena.h });
-    const w = br.x - tl.x;
-    const h = br.y - tl.y;
+    const { x: vw, y: vh } = cam.viewSize;
+    // The torus has no walls: fill the whole viewport, then draw an endlessly
+    // scrolling grid so the ground visibly rolls over as the party marches.
+    g.rect(0, 0, vw, vh).fill({ color: 0x14141c });
 
-    // Arena base.
-    g.rect(tl.x, tl.y, w, h).fill({ color: 0x14141c });
-
-    // Grid.
-    for (let gx = 0; gx <= arena.w; gx += GRID_STEP) {
-      const sx = tl.x + gx * this.camera.scale;
-      g.moveTo(sx, tl.y).lineTo(sx, br.y);
+    const halfW = vw / 2 / cam.scale;
+    const halfH = vh / 2 / cam.scale;
+    const left = cam.center.x - halfW;
+    const right = cam.center.x + halfW;
+    const top = cam.center.y - halfH;
+    const bottom = cam.center.y + halfH;
+    for (let gx = Math.floor(left / GRID_STEP) * GRID_STEP; gx <= right; gx += GRID_STEP) {
+      const sx = cam.toScreen({ x: gx, y: 0 }).x;
+      g.moveTo(sx, 0).lineTo(sx, vh);
     }
-    for (let gy = 0; gy <= arena.h; gy += GRID_STEP) {
-      const sy = tl.y + gy * this.camera.scale;
-      g.moveTo(tl.x, sy).lineTo(br.x, sy);
+    for (let gy = Math.floor(top / GRID_STEP) * GRID_STEP; gy <= bottom; gy += GRID_STEP) {
+      const sy = cam.toScreen({ x: 0, y: gy }).y;
+      g.moveTo(0, sy).lineTo(vw, sy);
     }
     g.stroke({ width: 1, color: 0x24242f, alpha: 0.7 });
 
-    // Subtle decorative pillars.
-    const pr = 26 * this.camera.scale;
+    // Decorative pillars, tiled so they recur as the arena wraps.
+    const pr = 26 * cam.scale;
     for (const p of PILLARS) {
-      const s = this.camera.worldToScreen({ x: p.x * arena.w, y: p.y * arena.h });
-      g.circle(s.x, s.y, pr).fill({ color: 0x1b1b26 });
-      g.circle(s.x, s.y, pr).stroke({ width: 2, color: 0x2c2c3a, alpha: 0.9 });
+      this.drawTiled({ x: p.x * arena.w, y: p.y * arena.h }, 26, (s) => {
+        g.circle(s.x, s.y, pr).fill({ color: 0x1b1b26 });
+        g.circle(s.x, s.y, pr).stroke({ width: 2, color: 0x2c2c3a, alpha: 0.9 });
+      });
     }
+  }
 
-    // Border.
-    g.rect(tl.x, tl.y, w, h).stroke({ width: 2, color: 0x3a3a4e, alpha: 0.95 });
+  /**
+   * Invoke `cb(screen)` for each on-screen torus copy of a static world position
+   * (the current tile plus its ±ARENA neighbours), so tiled ground features
+   * repeat seamlessly across the wrapping view. Off-screen copies are culled.
+   */
+  private drawTiled(pos: Vec2, worldRadius: number, cb: (screen: Vec2) => void): void {
+    const rScr = worldRadius * this.camera.scale + 4;
+    const { x: vw, y: vh } = this.camera.viewSize;
+    for (let i = -1; i <= 1; i++) {
+      for (let j = -1; j <= 1; j++) {
+        const s = this.camera.toScreen({ x: pos.x + i * ARENA_W, y: pos.y + j * ARENA_H });
+        if (s.x < -rScr || s.y < -rScr || s.x > vw + rScr || s.y > vh + rScr) continue;
+        cb(s);
+      }
+    }
   }
 
   private drawTerrain(state: RenderState, nowMs: number): void {
@@ -234,7 +259,16 @@ export class Renderer {
     if (state.terrain.length === 0) return;
     const timeSec = nowMs / 1000;
     for (const t of state.terrain) {
-      drawTerrain(g, t, this.camera.worldToScreen(t.pos), this.camera.scale, timeSec);
+      this.drawTiled(t.pos, t.radius, (s) => drawTerrain(g, t, s, this.camera.scale, timeSec));
+    }
+  }
+
+  private drawObstacles(state: RenderState): void {
+    const g = this.obstaclesLayer;
+    g.clear();
+    if (state.obstacles.length === 0) return;
+    for (const o of state.obstacles) {
+      this.drawTiled(o.pos, o.radius, (s) => drawObstacle(g, o, s, this.camera.scale));
     }
   }
 
@@ -292,19 +326,20 @@ export class Renderer {
     }
   }
 
-  private drawEntities(state: RenderState): void {
+  private drawEntities(state: RenderState, nowMs: number): void {
     const g = this.entitiesLayer;
     g.clear();
     const scale = this.camera.scale;
+    const timeSec = nowMs / 1000;
 
     if (!SPRITE_FLAGS.add) {
       for (const a of state.adds) {
-        drawAdd(g, a, this.camera.worldToScreen(a.pos), scale, this.fx.flashAmount(a.id));
+        drawAdd(g, a, this.camera.worldToScreen(a.pos), scale, this.fx.flashAmount(a.id), timeSec);
       }
     }
     // Boss below players so downed/standing players stay readable on top of it.
     if (!SPRITE_FLAGS.boss && state.boss) {
-      drawBoss(g, state.boss, this.camera.worldToScreen(state.boss.pos), scale, this.fx.flashAmount(state.boss.id));
+      drawBoss(g, state.boss, this.camera.worldToScreen(state.boss.pos), scale, this.fx.flashAmount(state.boss.id), timeSec);
     }
     if (!SPRITE_FLAGS.player) {
       for (const p of state.players) {
@@ -315,24 +350,26 @@ export class Renderer {
           scale,
           p.id === state.localPlayerId,
           this.fx.flashAmount(p.id),
+          timeSec,
         );
       }
     }
   }
 
   /** Crisp vector overlays (HP bars, rings, facing) for sprite-driven actors. */
-  private drawOverlays(state: RenderState): void {
+  private drawOverlays(state: RenderState, nowMs: number): void {
     const g = this.overlayLayer;
     g.clear();
     const scale = this.camera.scale;
+    const timeSec = nowMs / 1000;
 
     if (SPRITE_FLAGS.add) {
       for (const a of state.adds) {
-        drawAddOverlay(g, a, this.camera.worldToScreen(a.pos), scale);
+        drawAddOverlay(g, a, this.camera.worldToScreen(a.pos), scale, timeSec);
       }
     }
     if (SPRITE_FLAGS.boss && state.boss) {
-      drawBossOverlay(g, state.boss, this.camera.worldToScreen(state.boss.pos), scale);
+      drawBossOverlay(g, state.boss, this.camera.worldToScreen(state.boss.pos), scale, timeSec);
     }
     if (SPRITE_FLAGS.player) {
       for (const p of state.players) {
@@ -342,6 +379,7 @@ export class Renderer {
           this.camera.worldToScreen(p.pos),
           scale,
           p.id === state.localPlayerId,
+          timeSec,
         );
       }
     }
@@ -412,3 +450,24 @@ const PILLARS: ReadonlyArray<{ x: number; y: number }> = [
   { x: 0.25, y: 0.72 },
   { x: 0.75, y: 0.72 },
 ];
+
+/**
+ * The world point the camera should follow: the torus-average of the living
+ * party (all players if everyone is down), or the arena center if empty. Uses a
+ * nearest-copy average so the center doesn't jump when the party straddles the
+ * wrap seam.
+ */
+function partyCenter(state: RenderState): Vec2 {
+  const alive = state.players.filter((p) => p.state !== 'dead');
+  const pts = alive.length > 0 ? alive : state.players;
+  if (pts.length === 0) return { x: ARENA_W / 2, y: ARENA_H / 2 };
+  const base = pts[0].pos;
+  let sx = 0;
+  let sy = 0;
+  for (const p of pts) {
+    const c = nearestCopy(p.pos, base);
+    sx += c.x;
+    sy += c.y;
+  }
+  return wrapPos({ x: sx / pts.length, y: sy / pts.length });
+}

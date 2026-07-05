@@ -15,12 +15,39 @@ import { useStore } from './store';
 import { netLog } from '../net/log';
 import { Sfx } from '../audio/sfx';
 import type { ClassId } from '../engine/types';
+import type { UpgradeId } from '../engine/upgrades';
 
 /** Shared audio engine (used here for stings + by GameView for event SFX). */
 export const sfx = new Sfx();
 
-// Keep the audio muted flag synced with the store.
-useStore.subscribe((s) => sfx.setMuted(s.muted));
+// Keep the audio engine synced with the store's mute flag + volume, now and on
+// every change. Seed from the persisted initial state so it's right on load.
+sfx.setVolume(useStore.getState().volume);
+sfx.setMuted(useStore.getState().muted);
+useStore.subscribe((s) => {
+  sfx.setMuted(s.muted);
+  sfx.setVolume(s.volume);
+});
+
+type StoreState = ReturnType<typeof useStore.getState>;
+
+/** Mirror an incoming shared pause state (host or client) into the store. */
+function applyPauseState(
+  paused: boolean,
+  info: { byName?: string; countdown: number | null },
+): void {
+  const s = useStore.getState();
+  s.setPaused(paused);
+  s.setPausedBy(paused ? info.byName ?? null : null);
+  s.setResumeCountdown(info.countdown);
+}
+
+/** Clear all pause/countdown UI (fight start, result, leave). */
+function resetPauseState(s: StoreState): void {
+  s.setPaused(false);
+  s.setPausedBy(null);
+  s.setResumeCountdown(null);
+}
 
 /** How long a client waits for the host before showing a connectivity hint. */
 const HOST_SEARCH_TIMEOUT_MS = 15000;
@@ -82,14 +109,16 @@ export async function hostGame(): Promise<void> {
     onStart: (info) => {
       const s = useStore.getState();
       s.setResult(null);
-      s.setPaused(false);
+      resetPauseState(s);
       s.setRun({ index: info.runIndex, total: info.runTotal });
+      if (info.runIndex === 0) s.clearMyUpgrades(); // fresh run
       s.setPhase('game');
     },
+    onPause: applyPauseState,
     onResult: (result) => {
       const s = useStore.getState();
       s.setResult(result);
-      s.setPaused(false);
+      resetPauseState(s);
       s.setPhase('result');
       sfx.resume();
       sfx.play(result.outcome === 'victory' ? 'victory' : 'defeat');
@@ -127,15 +156,16 @@ export async function joinGame(code: string): Promise<void> {
     onStart: (msg) => {
       const s = useStore.getState();
       s.setResult(null);
-      s.setPaused(false);
+      resetPauseState(s);
       s.setRun({ index: msg.runIndex, total: msg.runTotal });
+      if (msg.runIndex === 0) s.clearMyUpgrades(); // fresh run
       s.setPhase('game');
     },
-    onPause: (paused) => useStore.getState().setPaused(paused),
+    onPause: applyPauseState,
     onResult: (result) => {
       const s = useStore.getState();
       s.setResult(result);
-      s.setPaused(false);
+      resetPauseState(s);
       s.setPhase('result');
       sfx.resume();
       sfx.play(result.outcome === 'victory' ? 'victory' : 'defeat');
@@ -238,8 +268,9 @@ export function returnToLobby(): void {
   const s = useStore.getState();
   s.setResult(null);
   s.setLocalReady(false);
-  s.setPaused(false);
+  resetPauseState(s);
   s.setRun(null);
+  s.clearMyUpgrades();
   if (s.isHost && s.session instanceof Host) {
     // Host: reset the world + tell clients; then transition our own UI.
     s.session.returnToLobby();
@@ -280,21 +311,20 @@ export function setBotClass(peerId: string, classId: ClassId): void {
 
 // --- Pause menu ------------------------------------------------------------
 
-/** Host: freeze the shared sim (also mirrors into our own store). */
-export function pauseGame(): void {
-  const s = useStore.getState();
-  if (s.isHost && s.session instanceof Host) {
-    s.session.pause();
-    s.setPaused(true);
-  }
+/**
+ * Request the shared sim pause (true) or resume (false). Any player may do this:
+ * the host acts on it directly, a client relays it, and the authoritative pause
+ * state comes back through `onPause` for everyone (so all peers show the menu).
+ */
+export function requestPause(paused: boolean): void {
+  useStore.getState().session?.requestPause(paused);
 }
 
-export function resumeGame(): void {
+/** Submit this player's between-boss upgrade pick (records it locally + relays). */
+export function chooseUpgrade(id: UpgradeId): void {
   const s = useStore.getState();
-  if (s.isHost && s.session instanceof Host) {
-    s.session.resume();
-    s.setPaused(false);
-  }
+  s.session?.chooseUpgrade(id);
+  s.addMyUpgrade(id);
 }
 
 /** Host: end the current fight immediately as a defeat (pause-menu "End Run"). */

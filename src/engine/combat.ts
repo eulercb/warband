@@ -79,7 +79,7 @@ export function damageBoss(
   boss: Boss,
   baseDamage: number,
 ): number {
-  const outgoing = baseDamage * buffMult(source, 'damageDealt');
+  const outgoing = baseDamage * buffMult(source, 'damageDealt') * source.damageMult;
   const before = boss.hp;
   boss.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(boss.hp, 0));
@@ -102,7 +102,7 @@ export function damageAdd(
   add: Add,
   baseDamage: number,
 ): number {
-  const outgoing = baseDamage * buffMult(source, 'damageDealt');
+  const outgoing = baseDamage * buffMult(source, 'damageDealt') * source.damageMult;
   const before = add.hp;
   add.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(add.hp, 0));
@@ -132,7 +132,7 @@ export function damagePlayer(
     sink.events.push({ t: 'dodge', id: target.id, pos: { ...target.pos } });
     return 0;
   }
-  const dmg = base * buffMult(target, 'damageTaken');
+  const dmg = base * buffMult(target, 'damageTaken') * target.damageTakenMult;
   target.hp -= dmg;
   sink.events.push({
     t: 'hit',

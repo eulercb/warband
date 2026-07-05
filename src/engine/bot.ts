@@ -17,17 +17,14 @@ import type { World } from './world';
 import { abilityById } from './monsters';
 import {
   add as vadd,
-  sub,
   scale as vscale,
   normalize,
   fromAngle,
   angleOf,
-  dist,
   len,
-  pointInCircle,
-  pointInCone,
-  pointInSegment,
 } from './math';
+// Toroidal geometry so bot AI navigates/aims the short way across the wrap seam.
+import { sub, dist, pointInCircle, pointInCone, pointInSegment } from './torus';
 import {
   BOT_RANGED_STANDOFF,
   BOT_MELEE_RANGE,

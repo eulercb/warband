@@ -7,16 +7,21 @@ Warband is a browser-hosted, peer-to-peer co-op boss fight game. One player host
 - **4 classes** — Knight, Ranger, Mage, and Cleric, each with a distinct role and ability kit.
 - **3 bosses** — the Ancient Dragon, the Forest Troll, and the Lich, each with themed mechanics.
 - **Gauntlet runs** — the host can chain the bosses into one run: beat the Dragon and jump straight to the Troll, then the Lich.
+- **Between-boss upgrades** — survive a gauntlet boss and every hero picks one of three random upgrades (swifter, tankier, faster cooldowns/casts, terrain resistance, more damage, regen…) that carry through the run.
 - **Bot band members** — short a player? The host can add AI teammates of any class to fill the warband.
-- **Themed terrain hazards** — each fight seeds random hazards themed to the boss (a dragon's magma pools, a troll's swamp, a lich's cursed ice) that slow and burn anyone standing in them.
-- **Telegraphed attacks** — cones, circles, and lines wind up before they land, so danger is readable and dodgeable — and now your own abilities flash their effect area too.
+- **Wrap-around arena** — the battlefield is a torus with no walls: march off one edge and you reappear on the other, and the camera follows the party's centre as the ground scrolls and repeats endlessly.
+- **Themed terrain hazards** — each fight seeds random hazards themed to the boss (a dragon's magma pools, a troll's swamp, a lich's cursed ice) that slow and burn anyone standing in them; a pause-menu legend explains each one.
+- **Cover obstacles** — seeded rubble blocks ranged attacks, so you can break line of sight and take cover behind it.
+- **Telegraphed attacks** — cones, circles, and lines wind up before they land, so danger is readable and dodgeable — and now your own abilities flash their effect area too, including the Fireball's blast.
+- **Buff / debuff glows** — a coloured aura around any creature reads out what's affecting it: slowed, stunned, shielded, empowered, hastened.
 - **Speech balloons** — a bubble pops over whoever is casting so the band can read what everyone (and the boss) is doing.
 - **Aggro / threat** — enemies pick targets based on accumulated threat; tanks hold aggro, healers and DPS manage theirs.
 - **Downed / revive** — fall to zero HP and you go down with a bleedout timer; a teammate can hold revive to bring you back.
-- **Pause menu & retry** — pause the fight (host freezes it for everyone), end a run early, or retry a wipe without going back to the lobby.
-- **Remappable controls** — rebind every keyboard key and gamepad button for movement and abilities from the Controls screen; the HUD labels follow your bindings and the device you're using.
+- **Shared pause** — any player can freeze the fight for everyone; the pause menu (with the map legend) shows for all, and resuming runs a 3-2-1 countdown so nobody is caught off guard. End a run early or retry a wipe without going back to the lobby.
+- **Remappable controls** — rebind every keyboard key and gamepad button for movement and abilities from the Controls screen; binding a key already in use clears its old owner, and the HUD labels follow your bindings and the device you're using. Optional hold-to-auto-fire repeats an ability while its button is held.
 - **Player-count scaling** — boss health and pressure scale to the size of your warband (bots included).
 - **Gamepad + keyboard/mouse** — play with either; the last-used device wins seamlessly, and the HUD shows the matching button glyphs.
+- **Volume control** — a real master-volume slider (not just mute), remembered between sessions along with your hero name.
 - **PWA** — installable and offline-capable app shell.
 - **GitHub Pages deploy** — ships as a static site via GitHub Actions to [warband.zen.dev.br](https://warband.zen.dev.br).
 

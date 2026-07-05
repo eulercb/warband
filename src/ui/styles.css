@@ -1156,8 +1156,10 @@ body {
 }
 
 .wb-pause-panel {
-  max-width: 420px;
+  max-width: 460px;
   width: 100%;
+  max-height: min(88vh, 720px);
+  overflow-y: auto;
   text-align: center;
 }
 .wb-pause-actions {
@@ -1263,7 +1265,75 @@ body {
   display: flex;
   gap: 10px;
   justify-content: center;
+  align-items: center;
   margin-top: 6px;
+}
+
+/* --------------------------------------------------------------------------
+ * Volume control (shared: main menu + in-fight HUD)
+ * ------------------------------------------------------------------------ */
+
+.wb-volume {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+}
+.wb-volume-mute {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.wb-volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 120px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--surface);
+  outline: none;
+  cursor: pointer;
+}
+.wb-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 1px solid var(--gold-deep);
+  cursor: pointer;
+}
+.wb-volume-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--gold-deep);
+  border-radius: 50%;
+  background: var(--gold);
+  cursor: pointer;
+}
+.wb-volume-num {
+  font-size: 11px;
+  color: var(--text-dim);
+  min-width: 34px;
+  text-align: right;
+}
+.wb-volume.compact {
+  padding: 4px 8px;
+  gap: 6px;
+}
+.wb-volume.compact .wb-volume-slider {
+  width: 84px;
+}
+.wb-volume.compact .wb-volume-mute {
+  font-size: 16px;
 }
 
 /* --------------------------------------------------------------------------
@@ -1417,4 +1487,190 @@ body {
   .wb-controls-cols {
     grid-template-columns: 1fr;
   }
+}
+
+/* --------------------------------------------------------------------------
+ * Between-boss upgrade picker (result screen)
+ * ------------------------------------------------------------------------ */
+
+.wb-upgrades {
+  margin: 6px auto 4px;
+  width: 100%;
+  max-width: 640px;
+}
+.wb-upgrades-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gold);
+  margin: 0 0 10px;
+}
+.wb-upgrade-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.wb-upgrade-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  color: var(--text);
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.12s, transform 0.08s, background 0.12s;
+}
+.wb-upgrade-card:hover:not(:disabled) {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+.wb-upgrade-card:disabled {
+  cursor: default;
+}
+.wb-upgrade-card.picked {
+  border-color: var(--gold);
+  background: rgba(242, 193, 78, 0.12);
+  box-shadow: 0 0 0 1px var(--gold) inset;
+}
+.wb-upgrade-card.dimmed {
+  opacity: 0.4;
+}
+.wb-upgrade-icon {
+  font-size: 1.7rem;
+  line-height: 1;
+}
+.wb-upgrade-name {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.wb-upgrade-desc {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  line-height: 1.25;
+}
+.wb-upgrade-tick {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  color: var(--gold);
+  font-weight: 900;
+}
+.wb-upgrade-owned {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+}
+.wb-upgrade-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.wb-upgrade-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(242, 193, 78, 0.14);
+  border: 1px solid rgba(242, 193, 78, 0.4);
+  color: var(--gold);
+  font-size: 0.76rem;
+}
+
+@media (max-width: 560px) {
+  .wb-upgrade-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Pause-menu map legend (terrain + obstacles)
+ * ------------------------------------------------------------------------ */
+
+.wb-legend {
+  margin-top: 18px;
+  text-align: left;
+  border-top: 1px solid var(--border-soft);
+  padding-top: 12px;
+}
+.wb-legend-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 8px;
+}
+.wb-legend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.wb-legend-row {
+  display: grid;
+  grid-template-columns: 16px 78px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.wb-legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.wb-legend-name {
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+.wb-legend-effect {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.2;
+}
+
+/* --------------------------------------------------------------------------
+ * Resume countdown overlay
+ * ------------------------------------------------------------------------ */
+
+.wb-resume-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(6, 6, 10, 0.55);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+.wb-resume-label {
+  font-size: 1.1rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.wb-resume-count {
+  font-size: 6rem;
+  font-weight: 900;
+  color: var(--gold);
+  line-height: 1;
+  text-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+  animation: wb-resume-pop 0.9s ease-out;
+}
+.wb-resume-sub {
+  font-size: 0.95rem;
+  color: var(--text-dim);
+}
+@keyframes wb-resume-pop {
+  0% { transform: scale(1.5); opacity: 0.2; }
+  35% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#161622"/>
+      <stop offset="1" stop-color="#0a0a10"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="url(#bg)"/>
+  <!-- gold ring -->
+  <circle cx="32" cy="32" r="21.5" fill="none" stroke="#f2c14e" stroke-width="3.2"/>
+  <!-- shield -->
+  <path d="M32 13 L47 19 V33 C47 43 40 49 32 52 C24 49 17 43 17 33 V19 Z"
+        fill="#1c1c2e" stroke="#f2c14e" stroke-width="1.4"/>
+  <!-- dragon fang -->
+  <path d="M32 20 L40 43 H24 Z" fill="#d9463e"/>
+</svg>

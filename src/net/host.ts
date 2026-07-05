@@ -17,18 +17,24 @@ import type {
   ReadyMsg,
   ResultMsg,
   PauseMsg,
+  PauseReqMsg,
+  UpgradeMsg,
   ByeMsg,
   NetSession,
 } from './protocol';
 import { World } from '../engine/world';
+import type { WorldPlayerInit } from '../engine/world';
 import {
   SIM_DT,
   MAX_PLAYERS,
   GAUNTLET_ORDER,
   GAUNTLET_INTERSTITIAL_S,
+  RESUME_COUNTDOWN_S,
 } from '../engine/constants';
 import { computeBotInput, BOT_PEER_PREFIX } from '../engine/bot';
 import { CLASSES } from '../engine/classes';
+import { isUpgradeId } from '../engine/upgrades';
+import type { UpgradeId } from '../engine/upgrades';
 import type {
   MonsterId,
   ClassId,
@@ -78,6 +84,8 @@ export interface HostOpts {
   onStart?: (info: { runIndex: number; runTotal: number }) => void;
   /** Called once when the fight ends. */
   onResult: (result: FightResult) => void;
+  /** Mirror shared pause state into the host UI (paused, who paused, countdown). */
+  onPause?: (paused: boolean, info: { byName?: string; countdown: number | null }) => void;
   /** Called with the current count of connected peers whenever it changes. */
   onPeers?: (count: number) => void;
   onError?: (err: string) => void;
@@ -110,6 +118,8 @@ export class Host implements NetSession {
   private readonly resultAction: NetAction<ResultMsg>;
   private readonly returnLobbyAction: NetAction<number>;
   private readonly pauseAction: NetAction<PauseMsg>;
+  private readonly pauseReqAction: NetAction<PauseReqMsg>;
+  private readonly upgradeAction: NetAction<UpgradeMsg>;
   private readonly byeAction: NetAction<ByeMsg>;
 
   // Lobby / host-own state.
@@ -133,6 +143,13 @@ export class Host implements NetSession {
   private pendingEvents: GameEvent[] = [];
   private resultSent = false;
   private paused = false;
+  private pausedByName: string | undefined;
+  /** Resume countdown (seconds left) while un-pausing, else null. */
+  private resumeCountdown: number | null = null;
+  private resumeTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** Accumulated between-boss upgrade picks per peerId (host + clients). */
+  private readonly upgrades = new Map<string, UpgradeId[]>();
 
   // Gauntlet (sequence run) state.
   private runOrder: MonsterId[] = [];
@@ -180,6 +197,8 @@ export class Host implements NetSession {
     this.resultAction = this.action(ACTIONS.result);
     this.returnLobbyAction = this.action(ACTIONS.returnLobby);
     this.pauseAction = this.action(ACTIONS.pause);
+    this.pauseReqAction = this.action(ACTIONS.pauseReq);
+    this.upgradeAction = this.action(ACTIONS.upgrade);
     this.byeAction = this.action(ACTIONS.bye);
 
     // --- Client -> host lobby messages ---
@@ -207,6 +226,18 @@ export class Host implements NetSession {
         this.latestInput.set(ctx.peerId, data);
         this.lastSeq.set(ctx.peerId, data.seq);
       }
+    };
+
+    // --- Client -> host pause requests (any player may pause/resume) ---
+    this.pauseReqAction.onMessage = (data, ctx) => {
+      netLog('host', `recv pause request → ${data.paused} from ${ctx.peerId.slice(0, 6)}`);
+      if (data.paused) this.pause(this.lobby.get(ctx.peerId)?.name ?? 'A player');
+      else this.resume();
+    };
+
+    // --- Client -> host between-boss upgrade picks ---
+    this.upgradeAction.onMessage = (data, ctx) => {
+      this.recordUpgrade(ctx.peerId, data.upgradeId);
     };
 
     // --- Peer presence ---
@@ -378,6 +409,7 @@ export class Host implements NetSession {
     }
     this.runOrder = this.buildRunOrder();
     this.runIndex = 0;
+    this.upgrades.clear(); // fresh run — nobody carries upgrades into boss 1
     this.beginFight();
   }
 
@@ -401,17 +433,22 @@ export class Host implements NetSession {
   /** Spin up a fresh World for `runOrder[runIndex]` and start the sim loop. */
   private beginFight(): void {
     this.clearAdvanceTimer();
+    this.clearResumeCountdown();
     const monsterId = this.runOrder[this.runIndex] ?? this.monsterId;
 
-    const roster: Array<{ peerId: string; name: string; classId: ClassId }> = [
-      { peerId: selfId, name: this.hostName, classId: this.hostClass },
+    // World roster carries each hero's accumulated upgrades (host-authoritative);
+    // bots earn none.
+    const roster: WorldPlayerInit[] = [
+      { peerId: selfId, name: this.hostName, classId: this.hostClass, upgrades: this.upgrades.get(selfId) },
     ];
     for (const [peerId, e] of this.lobby) {
-      roster.push({ peerId, name: e.name, classId: e.classId });
+      roster.push({ peerId, name: e.name, classId: e.classId, upgrades: this.upgrades.get(peerId) });
     }
     for (const b of this.bots) {
       roster.push({ peerId: b.peerId, name: b.name, classId: b.classId });
     }
+    // Clients only render snapshots, so the wire roster omits the upgrade lists.
+    const wireRoster = roster.map(({ peerId, name, classId }) => ({ peerId, name, classId }));
 
     const playerCount = roster.length;
     const seed = (Math.random() * 2 ** 31) | 0;
@@ -422,6 +459,7 @@ export class Host implements NetSession {
     this.pendingEvents = [];
     this.resultSent = false;
     this.paused = false;
+    this.pausedByName = undefined;
 
     this.world = new World({ monsterId, seed, players: roster });
     this.localPlayerId = this.world.playerIdByPeer(selfId);
@@ -430,7 +468,7 @@ export class Host implements NetSession {
       seed,
       playerCount,
       monsterId,
-      roster,
+      roster: wireRoster,
       gauntlet: this.gauntlet,
       runIndex: this.runIndex,
       runTotal: this.runOrder.length,
@@ -452,30 +490,102 @@ export class Host implements NetSession {
   // Pause / concede (pause menu)
   // -------------------------------------------------------------------------
 
-  /** Freeze the shared sim and tell clients. Host-authoritative. */
-  pause(): void {
-    if (this.paused || this.phase !== 'inFight') return;
+  /**
+   * Freeze the shared sim and tell everyone. Any player can trigger this (the
+   * host acts directly; clients relay via `pauseReq`). `byName` names whoever
+   * paused, for the overlay. Cancels any in-flight resume countdown.
+   */
+  pause(byName?: string): void {
+    if (this.phase !== 'inFight') return;
+    // Cancelling an in-flight resume countdown is itself a state change that must
+    // reach clients (otherwise they'd stay stuck on the last countdown number),
+    // so re-broadcast even when we were already "paused" mid-countdown.
+    const wasCountingDown = this.resumeTimer !== null;
+    this.clearResumeCountdown();
+    if (this.paused && !wasCountingDown) return;
     this.paused = true;
-    this.pauseAction.send({ paused: true });
+    this.pausedByName = byName ?? this.pausedByName;
+    this.broadcastPause();
   }
 
+  /**
+   * Begin resuming: keep the sim frozen but run a shared N-second countdown so
+   * every player gets a heads-up before control returns. The final tick actually
+   * un-freezes the sim.
+   */
   resume(): void {
-    if (!this.paused) return;
-    this.paused = false;
-    // Reset the clock so the accumulator doesn't fast-forward the paused span.
-    this.lastTime = performance.now();
-    this.acc = 0;
-    this.pauseAction.send({ paused: false });
+    if (!this.paused || this.phase !== 'inFight') return;
+    if (this.resumeTimer !== null) return; // already counting down
+    this.resumeCountdown = RESUME_COUNTDOWN_S;
+    this.broadcastPause();
+    this.resumeTimer = setInterval(() => {
+      const next = (this.resumeCountdown ?? 0) - 1;
+      if (next > 0) {
+        this.resumeCountdown = next;
+        this.broadcastPause();
+      } else {
+        this.clearResumeCountdown();
+        this.paused = false;
+        this.pausedByName = undefined;
+        // Reset the clock so the accumulator doesn't fast-forward the paused span.
+        this.lastTime = performance.now();
+        this.acc = 0;
+        this.broadcastPause();
+      }
+    }, 1000);
+  }
+
+  /** Send the current pause state to clients AND mirror it into the host UI. */
+  private broadcastPause(): void {
+    const msg: PauseMsg = {
+      paused: this.paused,
+      byName: this.pausedByName,
+      countdown: this.resumeCountdown,
+    };
+    this.pauseAction.send(msg);
+    this.opts.onPause?.(this.paused, { byName: this.pausedByName, countdown: this.resumeCountdown });
+  }
+
+  private clearResumeCountdown(): void {
+    if (this.resumeTimer !== null) {
+      clearInterval(this.resumeTimer);
+      this.resumeTimer = null;
+    }
+    this.resumeCountdown = null;
   }
 
   /** End the current fight immediately with `outcome` (pause-menu "End Run"). */
   endRun(outcome: Outcome): void {
     const world = this.world;
     if (!world || this.phase !== 'inFight') return;
+    this.clearResumeCountdown();
     this.paused = false;
-    this.pauseAction.send({ paused: false });
+    this.pausedByName = undefined;
+    this.broadcastPause();
     world.forceFinish(outcome);
     this.finishFight();
+  }
+
+  // --- NetSession pause + upgrade surface ----------------------------------
+
+  /** NetSession: host acts on its own pause/resume request directly. */
+  requestPause(paused: boolean): void {
+    if (paused) this.pause(this.hostName);
+    else this.resume();
+  }
+
+  /** NetSession: record the host's own between-boss upgrade pick. */
+  chooseUpgrade(upgradeId: UpgradeId): void {
+    this.recordUpgrade(selfId, upgradeId);
+  }
+
+  /** Accumulate a validated upgrade pick for a peer (ignores junk ids). */
+  private recordUpgrade(peerId: string, upgradeId: unknown): void {
+    if (!isUpgradeId(upgradeId)) return;
+    const arr = this.upgrades.get(peerId) ?? [];
+    arr.push(upgradeId);
+    this.upgrades.set(peerId, arr);
+    netLog('host', `upgrade "${upgradeId}" for ${peerId.slice(0, 6)}`, { total: arr.length });
   }
 
   getRenderState(_nowMs: number): RenderState | null {
@@ -488,14 +598,17 @@ export class Host implements NetSession {
   returnToLobby(): void {
     this.stopLoop();
     this.clearAdvanceTimer();
+    this.clearResumeCountdown();
     this.world = null;
     this.localPlayerId = null;
     this.phase = 'lobby';
     this.hostReady = false;
     this.resultSent = false;
     this.paused = false;
+    this.pausedByName = undefined;
     this.runOrder = [];
     this.runIndex = 0;
+    this.upgrades.clear();
     this.pendingEvents = [];
     this.latestInput.clear();
     this.lastSeq.clear();
@@ -509,6 +622,7 @@ export class Host implements NetSession {
     this.byeAction.send({ reason: 'hostLeft' });
     this.stopLoop();
     this.clearAdvanceTimer();
+    this.clearResumeCountdown();
     this.stopDiag();
     this.room.leave();
   }
@@ -590,7 +704,9 @@ export class Host implements NetSession {
     const world = this.world;
     if (!world) return;
     this.resultSent = true;
+    this.clearResumeCountdown();
     this.paused = false;
+    this.pausedByName = undefined;
     // Stop stepping but keep `world` so the host can render the final frame.
     this.stopLoop();
 

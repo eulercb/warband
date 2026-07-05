@@ -17,12 +17,14 @@ import type {
   ProjectileView,
   ZoneView,
   TerrainView,
+  ObstacleView,
   RenderState,
   GameEvent,
   Vec2,
   EntityId,
 } from '../engine/types';
 import { INTERP_DELAY_MS } from '../engine/constants';
+import { nearestCopy, wrapPos } from '../engine/torus';
 
 interface Buffered {
   snap: Snapshot;
@@ -118,9 +120,10 @@ export class SnapshotInterpolator {
     const adds = this.lerpAdds(from, carry, t);
     const projectiles = this.lerpProjectiles(from, carry, t);
 
-    // Zones + terrain + events come from the carry (newer) snapshot / buffer.
+    // Zones + terrain + obstacles + events come from the carry (newer) snapshot.
     const groundZones: ZoneView[] = carry.groundZones.map((z) => ({ ...z }));
     const terrain: TerrainView[] = carry.terrain.map((t) => ({ ...t }));
+    const obstacles: ObstacleView[] = carry.obstacles.map((o) => ({ ...o }));
     const events = this.collectEvents();
 
     // Client-side prediction override for the local player.
@@ -141,6 +144,7 @@ export class SnapshotInterpolator {
       projectiles,
       groundZones,
       terrain,
+      obstacles,
       events,
       localPlayerId: opts.localPlayerId,
       arena: opts.arena,
@@ -156,7 +160,11 @@ export class SnapshotInterpolator {
 
   private lerpVec(a: Vec2 | undefined, b: Vec2, t: number): Vec2 {
     if (!a) return { x: b.x, y: b.y };
-    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    // Interpolate the SHORT way across the torus seam: an entity that wrapped
+    // from one edge to the other between snapshots must slide across the seam,
+    // not the whole arena.
+    const nb = nearestCopy(b, a);
+    return wrapPos({ x: a.x + (nb.x - a.x) * t, y: a.y + (nb.y - a.y) * t });
   }
 
   private lerpPlayers(from: Snapshot | null, carry: Snapshot, t: number): PlayerView[] {

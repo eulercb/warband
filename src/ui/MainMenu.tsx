@@ -6,12 +6,11 @@
 import './styles.css';
 import { useStore } from './store';
 import { playUiSound, openControls } from './session';
+import VolumeControl from './VolumeControl';
 
 export function MainMenu() {
   const error = useStore((s) => s.error);
-  const muted = useStore((s) => s.muted);
   const setPhase = useStore((s) => s.setPhase);
-  const toggleMute = useStore((s) => s.toggleMute);
 
   const goHost = (): void => {
     playUiSound('uiClick');
@@ -61,15 +60,7 @@ export function MainMenu() {
           >
             Controls
           </button>
-          <button
-            type="button"
-            className="wb-btn wb-btn-ghost wb-mute-toggle"
-            onClick={toggleMute}
-            aria-pressed={muted}
-            aria-label={muted ? 'Unmute sound' : 'Mute sound'}
-          >
-            {muted ? 'Sound: Off' : 'Sound: On'}
-          </button>
+          <VolumeControl />
         </div>
 
         <p className="wb-blurb">

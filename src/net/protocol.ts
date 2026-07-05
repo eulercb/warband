@@ -9,6 +9,7 @@ import type {
   Snapshot,
   FightResult,
 } from '../engine/types';
+import type { UpgradeId } from '../engine/upgrades';
 
 /** Trystero action ids (kept short; must match across peers). */
 export const ACTIONS = {
@@ -22,6 +23,8 @@ export const ACTIONS = {
   result: 'res', // host -> clients
   returnLobby: 'rtl', // host -> clients
   pause: 'pau', // host -> clients (sim frozen / resumed)
+  pauseReq: 'prq', // client -> host (request pause / resume of the shared sim)
+  upgrade: 'upg', // client -> host (between-boss upgrade pick)
   bye: 'bye', // either -> either (graceful leave, esp. host)
 } as const;
 
@@ -71,9 +74,27 @@ export interface StartMsg {
   runTotal: number; // total bosses in the run (1 for a single fight)
 }
 
-/** Host -> clients: the shared sim was paused or resumed. */
+/**
+ * Host -> clients: shared-sim pause state.
+ *  - `paused` true  + `countdown` null/absent  → frozen, pause menu shown.
+ *  - `paused` true  + `countdown` > 0          → resuming; N-second countdown.
+ *  - `paused` false                            → running.
+ * `byName` names whoever triggered the pause (for the overlay), when known.
+ */
 export interface PauseMsg {
   paused: boolean;
+  byName?: string;
+  countdown?: number | null;
+}
+
+/** Client -> host: request to pause or resume the shared sim (any player may). */
+export interface PauseReqMsg {
+  paused: boolean;
+}
+
+/** Client -> host: the player's between-boss upgrade choice. */
+export interface UpgradeMsg {
+  upgradeId: UpgradeId;
 }
 
 // --- Fight ---
@@ -101,5 +122,9 @@ export interface NetSession {
   /** Lobby controls (implemented by both Host and Client). */
   setSelection(classId: ClassId): void;
   setReady(ready: boolean): void;
+  /** Request the shared sim pause/resume (host acts directly; client asks host). */
+  requestPause(paused: boolean): void;
+  /** Submit a between-boss upgrade pick (host records it; client relays it). */
+  chooseUpgrade(upgradeId: UpgradeId): void;
   leave(): void;
 }

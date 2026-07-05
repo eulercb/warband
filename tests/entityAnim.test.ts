@@ -50,6 +50,7 @@ function boss(over: Partial<BossView> = {}): BossView {
     maxHp: 100,
     phase: 'normal',
     telegraph: null,
+    buffs: [],
     action: 'idle',
     abilityId: null,
     ...over,
@@ -192,7 +193,7 @@ describe('bossAnim: action → clip mapping', () => {
 
 describe('addAnim / projectileAnim', () => {
   it('add walks vs idles on the derived moving flag, side-facing', () => {
-    const a = { id: 3, pos: { x: 0, y: 0 }, hp: 10, maxHp: 60 };
+    const a = { id: 3, pos: { x: 0, y: 0 }, hp: 10, maxHp: 60, buffs: [] };
     expect(addAnim(a, true).clip).toBe('walk');
     expect(addAnim(a, false).clip).toBe('idle');
     expect(addAnim(a, true).dir).toBe('side');

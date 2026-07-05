@@ -51,6 +51,17 @@ export interface Buff {
   source: string;
 }
 
+/**
+ * Wire/render projection of a buff. `mult` is carried so the renderer can tell a
+ * slow (moveSpeed < 1) from a haste, or mitigation (damageTaken < 1) from a
+ * vulnerability, and pick the matching glow color per effect (§ visual-cues).
+ */
+export interface BuffView {
+  kind: BuffKind;
+  remaining: number;
+  mult: number;
+}
+
 // ---------------------------------------------------------------------------
 // Cooldowns
 // ---------------------------------------------------------------------------
@@ -99,6 +110,15 @@ export interface Player {
   castTimer: number; // > 0 while rooted mid-cast (e.g. Fireball)
   castSlot: AbilitySlot | null;
   buffs: Buff[];
+
+  // Persistent per-run upgrade modifiers (see engine/upgrades.ts). Applied once
+  // at spawn; all default to their neutral value for an un-upgraded hero.
+  cooldownMult: number; // ability cooldown multiplier (1 = normal, <1 = faster)
+  castMult: number; // cast-time multiplier (1 = normal, <1 = faster)
+  damageMult: number; // outgoing damage multiplier (1 = normal)
+  damageTakenMult: number; // incoming damage multiplier (1 = normal, <1 = tankier)
+  terrainResist: number; // 0 = full terrain effect, 1 = immune to slow + burn
+  regenPerSec: number; // passive HP regenerated per second while alive
 
   threat: number; // cached threat contribution (mirror of boss table)
   stats: PlayerStats;
@@ -216,6 +236,24 @@ export interface TerrainView {
   radius: number;
 }
 
+/**
+ * A solid cover obstacle (rubble / pillar) laid out once per run (seeded). It
+ * blocks ranged attacks — projectiles crossing it are absorbed — so players can
+ * break line of sight and take cover. It does not block movement.
+ */
+export interface Obstacle {
+  id: EntityId;
+  pos: Vec2;
+  radius: number;
+}
+
+/** Wire/render view of a cover obstacle (static; carried verbatim). */
+export interface ObstacleView {
+  id: EntityId;
+  pos: Vec2;
+  radius: number;
+}
+
 export interface GroundZone {
   id: EntityId;
   kind: ZoneKind;
@@ -256,6 +294,13 @@ export interface InputCommand {
   move: Vec2;
   aim: Vec2;
   buttons: ButtonState;
+  /**
+   * Auto-fire ("hold to repeat") preference. When true, the host treats a HELD
+   * ability button as a repeated press (firing whenever the ability is off
+   * cooldown) instead of requiring a fresh press each time. Absent/false keeps
+   * the classic edge-triggered behavior. Only affects ability slots, not revive.
+   */
+  autofire?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -344,7 +389,7 @@ export interface PlayerView {
   maxHp: number;
   state: PlayerState;
   cooldowns: Cooldowns;
-  buffs: Array<{ kind: BuffKind; remaining: number }>;
+  buffs: BuffView[];
   downedTimer: number;
   reviveProgress: number;
   castSlot: AbilitySlot | null;
@@ -360,6 +405,7 @@ export interface BossView {
   maxHp: number;
   phase: BossPhase;
   telegraph: Telegraph | null;
+  buffs: BuffView[];
   // Presentation-only: drives boss animation clip selection (see render/sprites).
   // Carried verbatim over the wire (JSON) and never interpolated.
   action: BossActionKind; // 'idle' | 'windup' | 'channel' | 'recover'
@@ -371,6 +417,7 @@ export interface AddView {
   pos: Vec2;
   hp: number;
   maxHp: number;
+  buffs: BuffView[];
 }
 
 export interface ProjectileView {
@@ -400,6 +447,8 @@ export interface Snapshot {
   groundZones: ZoneView[];
   /** Static per-run terrain hazards (never move; carried verbatim). */
   terrain: TerrainView[];
+  /** Static per-run cover obstacles that block ranged attacks. */
+  obstacles: ObstacleView[];
   events: GameEvent[];
 }
 
@@ -416,6 +465,7 @@ export interface RenderState {
   projectiles: ProjectileView[];
   groundZones: ZoneView[];
   terrain: TerrainView[];
+  obstacles: ObstacleView[];
   events: GameEvent[];
   localPlayerId: EntityId | null;
   arena: { w: number; h: number };

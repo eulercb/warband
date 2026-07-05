@@ -4,6 +4,7 @@
  */
 import { useHudStore } from './hudStore';
 import { useStore } from './store';
+import VolumeControl from './VolumeControl';
 import { CLASSES } from '../engine/classes';
 import {
   useBindings,
@@ -58,8 +59,6 @@ function AbilityIcon({
 
 export default function HUD() {
   const hud = useHudStore();
-  const muted = useStore((s) => s.muted);
-  const toggleMute = useStore((s) => s.toggleMute);
   const run = useStore((s) => s.run);
   const source = hud.inputSource;
 
@@ -104,13 +103,25 @@ export default function HUD() {
               t.state === 'downed' ? ' downed' : t.state === 'dead' ? ' dead' : ''
             }${t.isLocal ? ' local' : ''}`}
           >
-            <div className="hud-teammate-name">
-              {t.name}
-              {t.state === 'downed' && ' ⤓'}
-              {t.state === 'dead' && ' ✕'}
+            <div className="hud-teammate-top">
+              <span className="hud-teammate-name" title={t.name || 'Hero'}>
+                {t.name || 'Hero'}
+                {t.isLocal && <span className="hud-teammate-you"> (you)</span>}
+              </span>
+              <span className="hud-teammate-class">{CLASSES[t.classId].name}</span>
             </div>
-            <div className="hud-healthbar small">
-              <div className="hud-healthbar-fill" style={{ width: `${pct(t.hp, t.maxHp)}%` }} />
+            <div className="hud-healthbar hud-teammate-hp">
+              <div
+                className="hud-healthbar-fill"
+                style={{ width: `${t.state === 'dead' ? 0 : pct(t.hp, t.maxHp)}%` }}
+              />
+              <span className="hud-healthbar-num">
+                {t.state === 'downed'
+                  ? 'DOWNED'
+                  : t.state === 'dead'
+                    ? 'DEAD'
+                    : `${Math.round(t.hp)} / ${Math.round(t.maxHp)}`}
+              </span>
             </div>
           </div>
         ))}
@@ -162,16 +173,11 @@ export default function HUD() {
         )}
       </div>
 
-      {/* Controls hint + mute */}
+      {/* Controls hint + volume */}
       <div className="hud-hint">{hint}</div>
-      <button
-        className="hud-mute"
-        onClick={toggleMute}
-        aria-label={muted ? 'Unmute' : 'Mute'}
-        title={muted ? 'Unmute' : 'Mute'}
-      >
-        {muted ? '🔇' : '🔊'}
-      </button>
+      <div className="hud-volume">
+        <VolumeControl compact />
+      </div>
     </div>
   );
 }

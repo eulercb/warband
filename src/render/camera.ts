@@ -1,24 +1,40 @@
 /**
  * Warband — render camera.
  *
- * Maps world-space (the fixed ARENA_W x ARENA_H arena) to screen pixels with a
- * uniform, letterboxed fit, and owns a decaying screen-shake energy that the
- * renderer bakes into the root container each frame.
+ * A follow camera for the toroidal (wrap-around) arena. It centers on a world
+ * point (`center`, the smoothed average of the party) at a fixed zoom, and
+ * projects world → screen. Because the world wraps, `worldToScreen` draws each
+ * entity at the copy NEAREST the camera center (so the boss/party never jump to
+ * the far edge); static tiled layers (ground, terrain, obstacles) instead use
+ * `toScreen` directly at explicit ±ARENA offsets so they repeat across the view.
  *
- *   screen = world * scale + offset
+ * It also owns a decaying screen-shake energy the renderer bakes into the root
+ * container each frame.
  */
 import type { Vec2 } from '../engine/types';
+import { nearestCopy, wrapPos } from '../engine/torus';
+import { lerp } from '../engine/math';
 
 /** Maximum accumulated shake energy (in screen pixels of jitter amplitude). */
 const MAX_SHAKE = 24;
 /** Exponential decay rate of shake energy, per second. */
 const SHAKE_DECAY = 7;
+/**
+ * How much to zoom in past a whole-arena letterbox fit. >1 shows only a window
+ * of the world so there is room for the camera to follow the party and for the
+ * ground to visibly scroll and wrap.
+ */
+const ZOOM = 1.5;
+/** Camera follow smoothing (higher = snappier); per second. */
+const FOLLOW_RATE = 6;
 
 export class Camera {
+  /** World point the view is centered on (follows the party). */
+  center: Vec2;
   /** Uniform world->screen scale factor. */
   scale = 1;
-  /** Screen-space translation applied after scaling (letterbox centering). */
-  offset: Vec2 = { x: 0, y: 0 };
+  /** Screen-space point the `center` maps to (viewport middle). */
+  screenCenter: Vec2 = { x: 0, y: 0 };
   /** Current per-frame shake jitter; the renderer applies it to the root container. */
   shakeOffset: Vec2 = { x: 0, y: 0 };
 
@@ -27,39 +43,57 @@ export class Camera {
   private viewW = 0;
   private viewH = 0;
   private shakeEnergy = 0;
+  private seeded = false;
 
   constructor(arenaW: number, arenaH: number) {
     this.arenaW = arenaW;
     this.arenaH = arenaH;
+    this.center = { x: arenaW / 2, y: arenaH / 2 };
   }
 
-  /**
-   * Recompute scale + offset for a new viewport size. Uniform scale keeps the
-   * arena aspect ratio; the arena is centered (letterboxed) in the view.
-   */
+  /** Recompute scale + screen center for a new viewport size (zoomed-in follow). */
   fit(viewW: number, viewH: number): void {
     this.viewW = viewW;
     this.viewH = viewH;
-    const s = Math.min(viewW / this.arenaW, viewH / this.arenaH);
-    this.scale = s;
-    this.offset = {
-      x: (viewW - this.arenaW * s) / 2,
-      y: (viewH - this.arenaH * s) / 2,
+    const fitScale = Math.min(viewW / this.arenaW, viewH / this.arenaH);
+    this.scale = fitScale * ZOOM;
+    this.screenCenter = { x: viewW / 2, y: viewH / 2 };
+  }
+
+  /** Smoothly follow a world target (the party average) across the torus. */
+  follow(target: Vec2, dtMs: number): void {
+    if (!this.seeded) {
+      this.center = wrapPos(target);
+      this.seeded = true;
+      return;
+    }
+    const k = 1 - Math.exp((-FOLLOW_RATE * dtMs) / 1000);
+    const near = nearestCopy(target, this.center); // shortest path across the seam
+    this.center = wrapPos({
+      x: lerp(this.center.x, near.x, k),
+      y: lerp(this.center.y, near.y, k),
+    });
+  }
+
+  /** Raw center-relative projection (no wrap) — used for tiled static layers. */
+  toScreen(v: Vec2): Vec2 {
+    return {
+      x: (v.x - this.center.x) * this.scale + this.screenCenter.x,
+      y: (v.y - this.center.y) * this.scale + this.screenCenter.y,
     };
   }
 
+  /** Project a world point, drawing it at the torus copy nearest the camera. */
   worldToScreen(v: Vec2): Vec2 {
-    return {
-      x: v.x * this.scale + this.offset.x,
-      y: v.y * this.scale + this.offset.y,
-    };
+    return this.toScreen(nearestCopy(v, this.center));
   }
 
+  /** Inverse of `worldToScreen` (wrapped back into the canonical tile). */
   screenToWorld(v: Vec2): Vec2 {
-    return {
-      x: (v.x - this.offset.x) / this.scale,
-      y: (v.y - this.offset.y) / this.scale,
-    };
+    return wrapPos({
+      x: (v.x - this.screenCenter.x) / this.scale + this.center.x,
+      y: (v.y - this.screenCenter.y) / this.scale + this.center.y,
+    });
   }
 
   /** Add shake energy (clamped). Bigger events add more. */

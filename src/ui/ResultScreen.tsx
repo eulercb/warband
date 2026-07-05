@@ -12,11 +12,13 @@ import {
   retryFight,
   advanceGauntlet,
   leaveToMenu,
+  chooseUpgrade,
   playUiSound,
 } from './session';
 import { CLASSES } from '../engine/classes';
 import { MONSTERS } from '../engine/monsters';
 import { GAUNTLET_INTERSTITIAL_S } from '../engine/constants';
+import { UPGRADES, rollUpgradeChoices, type UpgradeId } from '../engine/upgrades';
 
 /** Format milliseconds as `m:ss.mmm` (>= 1 min) or `s.d`s (under a minute). */
 function formatTime(ms: number): string {
@@ -39,7 +41,11 @@ export function ResultScreen() {
 
   const nextMonsterId = result?.nextMonsterId ?? null;
   const advancing = !!nextMonsterId;
+  const myUpgrades = useStore((s) => s.myUpgrades);
   const [countdown, setCountdown] = useState(GAUNTLET_INTERSTITIAL_S);
+  // Three random upgrades offered this round, and which one this player picked.
+  const [offers, setOffers] = useState<UpgradeId[]>([]);
+  const [picked, setPicked] = useState<UpgradeId | null>(null);
 
   // Cosmetic countdown while the gauntlet auto-advances (the host drives the
   // actual transition; clients just watch the timer tick down).
@@ -51,6 +57,20 @@ export function ResultScreen() {
     }, 1000);
     return () => clearInterval(t);
   }, [advancing, result]);
+
+  // Roll a fresh set of upgrade offers each time a new "advancing" result lands.
+  useEffect(() => {
+    if (!advancing) return;
+    setOffers(rollUpgradeChoices(3, Math.random));
+    setPicked(null);
+  }, [advancing, result]);
+
+  const onPickUpgrade = (id: UpgradeId): void => {
+    if (picked) return; // one pick per round
+    playUiSound('uiConfirm');
+    setPicked(id);
+    chooseUpgrade(id);
+  };
 
   const onReturn = (): void => {
     playUiSound('uiClick');
@@ -123,6 +143,48 @@ export function ResultScreen() {
             <span className="wb-advance-sub">
               Advancing in {countdown}s…
             </span>
+          </div>
+        ) : null}
+
+        {advancing ? (
+          <div className="wb-upgrades">
+            <h3 className="wb-upgrades-title">
+              {picked ? 'Upgrade chosen' : 'Choose an upgrade for the next boss'}
+            </h3>
+            <div className="wb-upgrade-cards">
+              {offers.map((id) => {
+                const u = UPGRADES[id];
+                const isPicked = picked === id;
+                const dimmed = picked && !isPicked;
+                return (
+                  <button
+                    type="button"
+                    key={id}
+                    className={`wb-upgrade-card${isPicked ? ' picked' : ''}${dimmed ? ' dimmed' : ''}`}
+                    onClick={() => onPickUpgrade(id)}
+                    disabled={!!picked}
+                    aria-pressed={isPicked}
+                  >
+                    <span className="wb-upgrade-icon" aria-hidden="true">{u.icon}</span>
+                    <span className="wb-upgrade-name">{u.name}</span>
+                    <span className="wb-upgrade-desc">{u.desc}</span>
+                    {isPicked ? <span className="wb-upgrade-tick" aria-hidden="true">✓</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+            {myUpgrades.length > 0 ? (
+              <div className="wb-upgrade-owned">
+                <span className="wb-field-label">Your upgrades</span>
+                <span className="wb-upgrade-badges">
+                  {myUpgrades.map((id, i) => (
+                    <span key={`${id}-${i}`} className="wb-upgrade-badge" title={UPGRADES[id].desc}>
+                      {UPGRADES[id].icon} {UPGRADES[id].name}
+                    </span>
+                  ))}
+                </span>
+              </div>
+            ) : null}
           </div>
         ) : null}
 

@@ -10,6 +10,8 @@ import type {
   GroundZone,
   TerrainPatch,
   TerrainView,
+  Obstacle,
+  ObstacleView,
   InputCommand,
   GameEvent,
   Snapshot,
@@ -48,21 +50,24 @@ import {
   PLAYER_RADIUS,
 } from './constants';
 import { generateTerrain } from './terrain';
+import { generateObstacles } from './obstacles';
 import {
   Rng,
   vec,
   add as vadd,
-  sub,
   scale as vscale,
   normalize,
   clampLength,
   fromAngle,
   angleOf,
-  clamp,
-  dist,
-  distSq,
 } from './math';
+// Toroidal (wrap-around) geometry — drop-in replacements for the Euclidean
+// sub/dist/distSq/pointInSegment so combat measures the shortest path on the
+// torus. `wrapPos` canonicalises positions after they move (see §infinite-map).
+import { sub, dist, distSq, pointInSegment, wrapPos } from './torus';
 import { getClass } from './classes';
+import { applyUpgrades } from './upgrades';
+import type { UpgradeId } from './upgrades';
 import { getMonster, abilityById } from './monsters';
 import type { MonsterDef } from './monsters';
 import { computeScaling } from './scaling';
@@ -86,6 +91,11 @@ import {
 
 const SLOTS: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
 
+/** Blast-flash color for projectiles that detonate in an area on impact. */
+const PROJECTILE_IMPACT_COLOR: Partial<Record<import('./types').ProjectileKind, number>> = {
+  fireball: 0xff8a3d,
+};
+
 const ZERO_INPUT: InputCommand = {
   seq: 0,
   move: { x: 0, y: 0 },
@@ -97,6 +107,8 @@ export interface WorldPlayerInit {
   peerId: string;
   name: string;
   classId: ClassId;
+  /** Persistent upgrades this hero has earned this run (applied at spawn). */
+  upgrades?: UpgradeId[];
 }
 
 export interface WorldInit {
@@ -112,6 +124,7 @@ export class World {
   projectiles: Projectile[] = [];
   groundZones: GroundZone[] = [];
   terrain: TerrainPatch[] = [];
+  obstacles: Obstacle[] = [];
   events: GameEvent[] = [];
 
   rng: Rng;
@@ -138,6 +151,12 @@ export class World {
     this.spawnPlayers(init.players);
     this.spawnBoss();
     this.terrain = generateTerrain(init.monsterId, init.seed, () => this.allocId());
+    // Cover obstacles avoid the terrain patches so cover stays readable.
+    this.obstacles = generateObstacles(
+      init.seed,
+      () => this.allocId(),
+      this.terrain.map((t) => ({ pos: t.pos, radius: t.radius })),
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -174,11 +193,20 @@ export class World {
         castTimer: 0,
         castSlot: null,
         buffs: [],
+        cooldownMult: 1,
+        castMult: 1,
+        damageMult: 1,
+        damageTakenMult: 1,
+        terrainResist: 0,
+        regenPerSec: 0,
         threat: 0,
         stats: { damageDealt: 0, healingDone: 0, revives: 0, deaths: 0 },
         prevButtons: { basic: false, a1: false, a2: false, a3: false, revive: false },
         lastSeq: -1,
       };
+      // Apply this hero's accumulated run upgrades (may raise maxHp, so do it
+      // before the player is considered "at full health").
+      applyUpgrades(player, pi.upgrades);
       this.players.push(player);
     });
   }
@@ -274,6 +302,10 @@ export class World {
   private tickTimers(dt: number): void {
     for (const p of this.players) {
       tickBuffs(p, dt);
+      // Passive regeneration (Renewal upgrade) — only while up and fighting.
+      if (p.regenPerSec > 0 && p.state === 'alive' && p.hp > 0) {
+        p.hp = Math.min(p.maxHp, p.hp + p.regenPerSec * dt);
+      }
       p.cooldowns.basic = Math.max(0, p.cooldowns.basic - dt);
       p.cooldowns.a1 = Math.max(0, p.cooldowns.a1 - dt);
       p.cooldowns.a2 = Math.max(0, p.cooldowns.a2 - dt);
@@ -322,8 +354,11 @@ export class World {
 
         const moveDir = normalize(move);
         for (const slot of SLOTS) {
-          const pressed = cmd.buttons[slot] && !p.prevButtons[slot];
-          if (pressed) this.tryUseAbility(p, slot, moveDir);
+          // Edge-triggered by default; with auto-fire, a held button repeats
+          // (tryUseAbility still gates on cooldown, so it fires at cadence).
+          const held = cmd.buttons[slot];
+          const fired = cmd.autofire ? held : held && !p.prevButtons[slot];
+          if (fired) this.tryUseAbility(p, slot, moveDir);
         }
       }
 
@@ -337,9 +372,9 @@ export class World {
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
 
     if (ab.castTime && ab.castTime > 0) {
-      p.castTimer = ab.castTime;
+      p.castTimer = ab.castTime * p.castMult;
       p.castSlot = slot;
-      p.cooldowns[slot] = ab.cooldown;
+      p.cooldowns[slot] = ab.cooldown * p.cooldownMult;
       this.events.push({
         t: 'cast',
         ability: `${ab.name} (cast)`,
@@ -350,7 +385,7 @@ export class World {
       });
     } else {
       resolvePlayerAbility(this, p, slot, moveDir);
-      p.cooldowns[slot] = ab.cooldown;
+      p.cooldowns[slot] = ab.cooldown * p.cooldownMult;
     }
   }
 
@@ -393,23 +428,33 @@ export class World {
   private updateProjectiles(dt: number): void {
     const keep: Projectile[] = [];
     for (const proj of this.projectiles) {
+      const prev = { x: proj.pos.x, y: proj.pos.y };
       proj.pos = vadd(proj.pos, vscale(proj.vel, dt));
       proj.lifetime -= dt;
 
-      const oob =
-        proj.pos.x < -40 ||
-        proj.pos.y < -40 ||
-        proj.pos.x > this.arena.w + 40 ||
-        proj.pos.y > this.arena.h + 40;
-
-      const consumed =
-        proj.side === 'player'
+      // Cover obstacles absorb any ranged attack whose path crosses them
+      // (segment test avoids fast projectiles tunneling through) — no damage.
+      const consumed = this.projectileHitsObstacle(prev, proj)
+        ? true
+        : proj.side === 'player'
           ? this.resolvePlayerProjectile(proj)
           : this.resolveBossProjectile(proj);
 
-      if (!consumed && !oob && proj.lifetime > 0) keep.push(proj);
+      if (!consumed && proj.lifetime > 0) {
+        // Projectiles wrap around the torus too (rather than flying off-map).
+        proj.pos = wrapPos(proj.pos);
+        keep.push(proj);
+      }
     }
     this.projectiles = keep;
+  }
+
+  /** True if this projectile's step crossed any cover obstacle (blocks ranged). */
+  private projectileHitsObstacle(prev: Vec2, proj: Projectile): boolean {
+    for (const o of this.obstacles) {
+      if (pointInSegment(o.pos, prev, proj.pos, o.radius, proj.hitRadius)) return true;
+    }
+    return false;
   }
 
   private resolvePlayerProjectile(proj: Projectile): boolean {
@@ -444,7 +489,22 @@ export class World {
           else a.hp -= proj.damage;
         }
       }
-      this.events.push({ t: 'telegraph', pos: { ...center }, shape: 'circle' });
+      // Flash the blast radius so the on-impact AoE is actually visible (it used
+      // to emit a no-op telegraph). Colored to match the projectile (fireball).
+      this.events.push({
+        t: 'skillArea',
+        sourceId: proj.ownerId,
+        side: 'player',
+        color: PROJECTILE_IMPACT_COLOR[proj.kind] ?? 0xff8a3d,
+        area: {
+          kind: 'circle',
+          origin: { ...center },
+          angle: 0,
+          range: 0,
+          radius: proj.impactRadius,
+          halfAngle: 0,
+        },
+      });
     } else if (hitBoss) {
       this.applyProjDamageBoss(owner, proj.damage);
     } else if (hitAdd) {
@@ -561,7 +621,8 @@ export class World {
   private updateTerrain(dt: number): void {
     if (this.terrain.length === 0) return;
 
-    // Slow: strongest (lowest mult) patch a player is standing in wins.
+    // Slow: strongest (lowest mult) patch a player is standing in wins. The
+    // Surefooted upgrade eases the slow back toward 1 (no effect at resist=1).
     for (const p of this.players) {
       if (p.state !== 'alive') continue;
       let slowest = 1;
@@ -574,11 +635,12 @@ export class World {
         }
       }
       if (slowest < 1) {
-        applyBuff(p, makeBuff('moveSpeed', slowest, slowDur, 'terrain'));
+        const resisted = 1 - (1 - slowest) * (1 - p.terrainResist);
+        if (resisted < 1) applyBuff(p, makeBuff('moveSpeed', resisted, slowDur, 'terrain'));
       }
     }
 
-    // Damage: per patch, on the shared ground-tick cadence.
+    // Damage: per patch, on the shared ground-tick cadence (scaled by resist).
     for (const t of this.terrain) {
       if (t.damagePerTick <= 0) continue;
       t.tickAccum += dt;
@@ -587,7 +649,8 @@ export class World {
         for (const p of this.players) {
           if (p.state !== 'alive') continue;
           if (dist(t.pos, p.pos) <= t.radius + p.radius) {
-            damagePlayer(this, p, t.damagePerTick);
+            const dmg = t.damagePerTick * (1 - p.terrainResist);
+            if (dmg > 0) damagePlayer(this, p, dmg);
           }
         }
       }
@@ -728,10 +791,10 @@ export class World {
     let dir = normalize(sub(boss.pos, nearest.pos));
     if (dir.x === 0 && dir.y === 0) dir = fromAngle(this.rng.range(0, Math.PI * 2));
     const from = { ...boss.pos };
-    const to = {
-      x: clamp(boss.pos.x + dir.x * def.blink.range, boss.radius, this.arena.w - boss.radius),
-      y: clamp(boss.pos.y + dir.y * def.blink.range, boss.radius, this.arena.h - boss.radius),
-    };
+    const to = wrapPos({
+      x: boss.pos.x + dir.x * def.blink.range,
+      y: boss.pos.y + dir.y * def.blink.range,
+    });
     boss.pos = to;
     boss.blinkTimer = def.blink.internalCd;
     this.events.push({ t: 'blink', id: boss.id, from, to });
@@ -877,36 +940,28 @@ export class World {
         for (const m of movers) this.pushOutOfBoss(m);
       }
     }
-    // clamp to arena
-    for (const p of this.players) {
-      p.pos.x = clamp(p.pos.x, p.radius, this.arena.w - p.radius);
-      p.pos.y = clamp(p.pos.y, p.radius, this.arena.h - p.radius);
-    }
-    for (const a of this.adds) {
-      a.pos.x = clamp(a.pos.x, a.radius, this.arena.w - a.radius);
-      a.pos.y = clamp(a.pos.y, a.radius, this.arena.h - a.radius);
-    }
-    if (this.boss) {
-      this.boss.pos.x = clamp(this.boss.pos.x, this.boss.radius, this.arena.w - this.boss.radius);
-      this.boss.pos.y = clamp(this.boss.pos.y, this.boss.radius, this.arena.h - this.boss.radius);
-    }
+    // Wrap around the torus instead of clamping to walls: an entity that walks
+    // off one edge reappears on the opposite edge (infinite scrolling arena).
+    for (const p of this.players) p.pos = wrapPos(p.pos);
+    for (const a of this.adds) a.pos = wrapPos(a.pos);
+    if (this.boss) this.boss.pos = wrapPos(this.boss.pos);
   }
 
   private separatePair(a: Player | Add, b: Player | Add): void {
     const min = a.radius + b.radius;
-    const dx = b.pos.x - a.pos.x;
-    const dy = b.pos.y - a.pos.y;
+    // Shortest torus delta so pairs near opposite edges are handled correctly.
+    const delta = sub(b.pos, a.pos);
+    const dx = delta.x;
+    const dy = delta.y;
     const d = Math.sqrt(dx * dx + dy * dy);
-    if (d >= min || d === 0) {
-      if (d === 0) {
-        // nudge apart deterministically
-        b.pos.x += 0.5;
-      }
-      if (d >= min) return;
+    if (d === 0) {
+      b.pos.x += 0.5; // nudge apart deterministically
+      return;
     }
+    if (d >= min) return;
     const overlap = (min - d) / 2;
-    const nx = d > 0 ? dx / d : 1;
-    const ny = d > 0 ? dy / d : 0;
+    const nx = dx / d;
+    const ny = dy / d;
     a.pos.x -= nx * overlap;
     a.pos.y -= ny * overlap;
     b.pos.x += nx * overlap;
@@ -916,8 +971,9 @@ export class World {
   private pushOutOfBoss(m: Player | Add): void {
     const boss = this.boss!;
     const min = m.radius + boss.radius;
-    const dx = m.pos.x - boss.pos.x;
-    const dy = m.pos.y - boss.pos.y;
+    const delta = sub(m.pos, boss.pos);
+    const dx = delta.x;
+    const dy = delta.y;
     const d = Math.sqrt(dx * dx + dy * dy);
     if (d >= min) return;
     const nx = d > 0 ? dx / d : 1;
@@ -1053,7 +1109,7 @@ export class World {
       maxHp: p.maxHp,
       state: p.state,
       cooldowns: { ...p.cooldowns },
-      buffs: p.buffs.map((b) => ({ kind: b.kind, remaining: b.remaining })),
+      buffs: p.buffs.map((b) => ({ kind: b.kind, remaining: b.remaining, mult: b.mult })),
       downedTimer: p.downedTimer,
       reviveProgress: p.reviveProgress,
       castSlot: p.castSlot,
@@ -1073,6 +1129,7 @@ export class World {
       maxHp: b.maxHp,
       phase: b.phase,
       telegraph: this.buildTelegraph(),
+      buffs: b.buffs.map((bf) => ({ kind: bf.kind, remaining: bf.remaining, mult: bf.mult })),
       action: b.action.kind,
       abilityId: b.action.abilityId,
     };
@@ -1088,6 +1145,7 @@ export class World {
         pos: { ...a.pos },
         hp: Math.max(0, Math.round(a.hp)),
         maxHp: a.maxHp,
+        buffs: a.buffs.map((b) => ({ kind: b.kind, remaining: b.remaining, mult: b.mult })),
       })) as AddView[],
       projectiles: this.projectiles.map((p) => ({
         id: p.id,
@@ -1110,6 +1168,11 @@ export class World {
         pos: { ...t.pos },
         radius: t.radius,
       })) as TerrainView[],
+      obstacles: this.obstacles.map((o) => ({
+        id: o.id,
+        pos: { ...o.pos },
+        radius: o.radius,
+      })) as ObstacleView[],
       events: this.events.slice(),
     };
   }
