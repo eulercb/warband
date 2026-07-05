@@ -100,6 +100,8 @@ export class Client implements NetSession {
   // Local identity / selection (echoed to the host).
   private readonly ownName: string;
   private ownClass: ClassId = 'knight';
+  /** Authoritative base move speed of our hero (class + upgrades), from snapshots. */
+  private ownMoveSpeed = CLASSES.knight.moveSpeed;
   private ownReady = false;
 
   // Input send throttle.
@@ -259,6 +261,7 @@ export class Client implements NetSession {
 
     this.localPlayerId = own.id;
     this.ownClass = own.classId;
+    this.ownMoveSpeed = own.moveSpeed; // includes persistent upgrades (e.g. swift)
 
     const authPos: Vec2 = { x: own.pos.x, y: own.pos.y };
     if (this.predicted == null) {
@@ -312,7 +315,9 @@ export class Client implements NetSession {
     const dt = clamp((nowMs - this.lastPredictMs) / 1000, 0, 0.05);
     this.lastPredictMs = nowMs;
     if (this.predicted && this.latestInput && this.localPlayerId != null) {
-      const speed = CLASSES[this.ownClass].moveSpeed;
+      // Predict with the AUTHORITATIVE speed (class + upgrades like swift), not
+      // the base class speed, so an upgraded hero doesn't trail its own snapshots.
+      const speed = this.ownMoveSpeed;
       // Torus: wrap the predicted position instead of clamping to walls.
       this.predicted = wrapPos({
         x: this.predicted.x + this.latestInput.move.x * speed * dt,

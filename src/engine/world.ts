@@ -1107,6 +1107,7 @@ export class World {
       aim: { ...p.aim },
       hp: Math.max(0, Math.round(p.hp)),
       maxHp: p.maxHp,
+      moveSpeed: p.moveSpeed,
       state: p.state,
       cooldowns: { ...p.cooldowns },
       buffs: p.buffs.map((b) => ({ kind: b.kind, remaining: b.remaining, mult: b.mult })),

@@ -25,6 +25,7 @@ function player(over: Partial<PlayerView> = {}): PlayerView {
     aim: { x: 1, y: 0 }, // east
     hp: 100,
     maxHp: 100,
+    moveSpeed: 190,
     state: 'alive',
     cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 },
     buffs: [],

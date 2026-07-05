@@ -150,6 +150,8 @@ export class Host implements NetSession {
 
   /** Accumulated between-boss upgrade picks per peerId (host + clients). */
   private readonly upgrades = new Map<string, UpgradeId[]>();
+  /** Peers that have already picked during the current interstitial (1 per round). */
+  private readonly roundPickers = new Set<string>();
 
   // Gauntlet (sequence run) state.
   private runOrder: MonsterId[] = [];
@@ -410,6 +412,7 @@ export class Host implements NetSession {
     this.runOrder = this.buildRunOrder();
     this.runIndex = 0;
     this.upgrades.clear(); // fresh run — nobody carries upgrades into boss 1
+    this.roundPickers.clear();
     this.beginFight();
   }
 
@@ -579,9 +582,15 @@ export class Host implements NetSession {
     this.recordUpgrade(selfId, upgradeId);
   }
 
-  /** Accumulate a validated upgrade pick for a peer (ignores junk ids). */
+  /**
+   * Accumulate a validated upgrade pick for a peer. Host-authoritative: ignores
+   * junk ids AND caps each peer to one pick per interstitial, so a misbehaving or
+   * looping client can't stack an upgrade dozens of times.
+   */
   private recordUpgrade(peerId: string, upgradeId: unknown): void {
     if (!isUpgradeId(upgradeId)) return;
+    if (this.roundPickers.has(peerId)) return; // already picked this round
+    this.roundPickers.add(peerId);
     const arr = this.upgrades.get(peerId) ?? [];
     arr.push(upgradeId);
     this.upgrades.set(peerId, arr);
@@ -609,6 +618,7 @@ export class Host implements NetSession {
     this.runOrder = [];
     this.runIndex = 0;
     this.upgrades.clear();
+    this.roundPickers.clear();
     this.pendingEvents = [];
     this.latestInput.clear();
     this.lastSeq.clear();
@@ -707,6 +717,8 @@ export class Host implements NetSession {
     this.clearResumeCountdown();
     this.paused = false;
     this.pausedByName = undefined;
+    // A fresh between-boss upgrade window opens now — reset who has picked.
+    this.roundPickers.clear();
     // Stop stepping but keep `world` so the host can render the final frame.
     this.stopLoop();
 

@@ -387,6 +387,9 @@ export interface PlayerView {
   aim: Vec2;
   hp: number;
   maxHp: number;
+  /** Authoritative base move speed (class + persistent upgrades); the client
+   * predicts its own position with this so upgraded heroes don't rubber-band. */
+  moveSpeed: number;
   state: PlayerState;
   cooldowns: Cooldowns;
   buffs: BuffView[];
