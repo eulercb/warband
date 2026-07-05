@@ -16,7 +16,10 @@
  *      common reason multiplayer "works on one machine but not over the internet."
  *
  * Trystero already ships Google + Cloudflare STUN. This module ADDS TURN (with an
- * env-configurable override for your own relay) and widens the tracker pool.
+ * env-configurable override for your own relay), widens the tracker pool, and —
+ * critically for the "can't even join in two tabs on ONE machine" case — decides
+ * whether to rewrite same-machine mDNS host candidates to loopback (see
+ * `rewriteMdnsToLoopback`).
  */
 
 /** Structural match for Trystero's `TurnServerConfig` (also valid `RTCIceServer`). */
@@ -65,6 +68,12 @@ export interface RtcEnv {
   VITE_NO_DEFAULT_TURN?: string;
   /** Extra WebTorrent tracker URLs (comma/space separated) to widen the pool. */
   VITE_TRACKER_URLS?: string;
+  /**
+   * Truthy → DON'T rewrite same-machine mDNS (`*.local`) host candidates to
+   * loopback. Off by default (i.e. the rewrite is ON) — see
+   * `rewriteMdnsToLoopback`.
+   */
+  VITE_NO_RTC_LOOPBACK?: string;
 }
 
 function truthy(v: string | undefined): boolean {
@@ -101,6 +110,39 @@ export function buildTurnConfig(env: RtcEnv): TurnServer[] {
   }
 
   return servers;
+}
+
+/**
+ * Whether to rewrite obfuscated mDNS (`*.local`) host ICE candidates to
+ * `127.0.0.1`, so two peers on the SAME machine (the "two tabs / two windows"
+ * case) can always form a direct loopback connection. **On by default**; set
+ * `VITE_NO_RTC_LOOPBACK` truthy to opt out.
+ *
+ * Why this is needed — the reported "can't join even in two tabs on one browser"
+ * bug: for privacy, modern browsers replace local-IP host candidates with
+ * randomized `*.local` mDNS hostnames. Turning those back into a routable address
+ * needs an mDNS multicast responder that is frequently *unavailable* — blocked by
+ * corporate security software, disabled by a privacy extension, or namespaced
+ * apart across browser profiles / incognito windows. When it is, even two tabs on
+ * ONE machine end up with NO usable host candidate; they fall back to STUN (which
+ * needs NAT hairpinning) or the bundled public TURN relay (best-effort and often
+ * overloaded), and when both fail the peers sit in the lobby forever after
+ * exchanging SDP — exactly the symptom in the bug report. Rewriting `*.local`
+ * host candidates to `127.0.0.1` sidesteps the whole mess: on one machine the
+ * loopback pair connects directly, with no mDNS resolver, no hairpinning, no TURN.
+ *
+ * Cross-internet play is unaffected. The rewrite only touches `typ host`
+ * `*.local` lines; server-reflexive (STUN) and relay (TURN) candidates carry real
+ * routable addresses and are left alone, so peers on different machines still
+ * connect through those exactly as before. A rewritten loopback candidate is
+ * simply useless — and harmless — to a remote peer: its connectivity check fails
+ * and ICE moves on to the srflx/relay pairs. The one thing it gives up is a
+ * *direct* same-LAN link between two DIFFERENT machines (their host candidates
+ * become loopback too), which then falls back to hairpin-STUN/TURN; disable the
+ * rewrite with `VITE_NO_RTC_LOOPBACK` if you specifically need that path.
+ */
+export function rewriteMdnsToLoopback(env: RtcEnv): boolean {
+  return !truthy(env.VITE_NO_RTC_LOOPBACK);
 }
 
 /** Extra tracker URLs from `VITE_TRACKER_URLS` (comma/space separated). */
