@@ -17,13 +17,17 @@ import type {
   ReadyMsg,
   ResultMsg,
   PauseMsg,
+  PauseReqMsg,
+  UpgradeMsg,
   ByeMsg,
   NetSession,
 } from './protocol';
+import type { UpgradeId } from '../engine/upgrades';
 import { CLASSES } from '../engine/classes';
 import { SnapshotInterpolator } from '../render/interpolate';
-import { ARENA_W, ARENA_H, PLAYER_RADIUS, INPUT_SEND_RATE } from '../engine/constants';
+import { ARENA_W, ARENA_H, INPUT_SEND_RATE } from '../engine/constants';
 import { clamp, lerp } from '../engine/math';
+import { nearestCopy, wrapPos } from '../engine/torus';
 import type {
   ClassId,
   InputCommand,
@@ -47,8 +51,8 @@ export interface ClientOpts {
   onStart: (msg: StartMsg) => void;
   onResult: (result: FightResult) => void;
   onReturnLobby: () => void;
-  /** Host paused / resumed the shared sim. */
-  onPause?: (paused: boolean) => void;
+  /** Host paused / resumed the shared sim (with who paused + resume countdown). */
+  onPause?: (paused: boolean, info: { byName?: string; countdown: number | null }) => void;
   onHostLeft: () => void;
   /**
    * Host reachability, as a 0/1 count: 1 once we've actually received a message
@@ -87,6 +91,8 @@ export class Client implements NetSession {
   private readonly resultAction: NetAction<ResultMsg>;
   private readonly returnLobbyAction: NetAction<number>;
   private readonly pauseAction: NetAction<PauseMsg>;
+  private readonly pauseReqAction: NetAction<PauseReqMsg>;
+  private readonly upgradeAction: NetAction<UpgradeMsg>;
   private readonly byeAction: NetAction<ByeMsg>;
 
   private readonly interpolator = new SnapshotInterpolator();
@@ -94,6 +100,8 @@ export class Client implements NetSession {
   // Local identity / selection (echoed to the host).
   private readonly ownName: string;
   private ownClass: ClassId = 'knight';
+  /** Authoritative base move speed of our hero (class + upgrades), from snapshots. */
+  private ownMoveSpeed = CLASSES.knight.moveSpeed;
   private ownReady = false;
 
   // Input send throttle.
@@ -141,6 +149,8 @@ export class Client implements NetSession {
     this.resultAction = this.action(ACTIONS.result);
     this.returnLobbyAction = this.action(ACTIONS.returnLobby);
     this.pauseAction = this.action(ACTIONS.pause);
+    this.pauseReqAction = this.action(ACTIONS.pauseReq);
+    this.upgradeAction = this.action(ACTIONS.upgrade);
     this.byeAction = this.action(ACTIONS.bye);
 
     // --- Host -> client messages ---
@@ -178,8 +188,11 @@ export class Client implements NetSession {
     };
     this.pauseAction.onMessage = (msg, ctx) => {
       this.markHostReached(ctx.peerId);
-      netLog('client', `recv pause → ${msg.paused}`);
-      this.opts.onPause?.(msg.paused);
+      netLog('client', `recv pause → ${msg.paused}`, { countdown: msg.countdown ?? null });
+      this.opts.onPause?.(msg.paused, {
+        byName: msg.byName,
+        countdown: msg.countdown ?? null,
+      });
     };
     this.byeAction.onMessage = (msg) => {
       // NB: a leaving *client* also sends bye, so this channel is not a
@@ -248,15 +261,18 @@ export class Client implements NetSession {
 
     this.localPlayerId = own.id;
     this.ownClass = own.classId;
+    this.ownMoveSpeed = own.moveSpeed; // includes persistent upgrades (e.g. swift)
 
     const authPos: Vec2 = { x: own.pos.x, y: own.pos.y };
     if (this.predicted == null) {
       this.predicted = authPos;
     } else {
-      this.predicted = {
-        x: lerp(this.predicted.x, authPos.x, 0.2),
-        y: lerp(this.predicted.y, authPos.y, 0.2),
-      };
+      // Reconcile toward the server truth the short way across the torus seam.
+      const near = nearestCopy(authPos, this.predicted);
+      this.predicted = wrapPos({
+        x: lerp(this.predicted.x, near.x, 0.2),
+        y: lerp(this.predicted.y, near.y, 0.2),
+      });
     }
   }
 
@@ -284,24 +300,29 @@ export class Client implements NetSession {
     }
   }
 
+  /** NetSession: ask the host to pause/resume the shared sim (host is authoritative). */
+  requestPause(paused: boolean): void {
+    this.pauseReqAction.send({ paused });
+  }
+
+  /** NetSession: relay this player's between-boss upgrade pick to the host. */
+  chooseUpgrade(upgradeId: UpgradeId): void {
+    this.upgradeAction.send({ upgradeId });
+  }
+
   getRenderState(nowMs: number): RenderState | null {
     // Advance the predicted local position by the held input this frame.
     const dt = clamp((nowMs - this.lastPredictMs) / 1000, 0, 0.05);
     this.lastPredictMs = nowMs;
     if (this.predicted && this.latestInput && this.localPlayerId != null) {
-      const speed = CLASSES[this.ownClass].moveSpeed;
-      this.predicted = {
-        x: clamp(
-          this.predicted.x + this.latestInput.move.x * speed * dt,
-          PLAYER_RADIUS,
-          ARENA_W - PLAYER_RADIUS,
-        ),
-        y: clamp(
-          this.predicted.y + this.latestInput.move.y * speed * dt,
-          PLAYER_RADIUS,
-          ARENA_H - PLAYER_RADIUS,
-        ),
-      };
+      // Predict with the AUTHORITATIVE speed (class + upgrades like swift), not
+      // the base class speed, so an upgraded hero doesn't trail its own snapshots.
+      const speed = this.ownMoveSpeed;
+      // Torus: wrap the predicted position instead of clamping to walls.
+      this.predicted = wrapPos({
+        x: this.predicted.x + this.latestInput.move.x * speed * dt,
+        y: this.predicted.y + this.latestInput.move.y * speed * dt,
+      });
     }
 
     return this.interpolator.sample(nowMs, {

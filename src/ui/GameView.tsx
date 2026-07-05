@@ -7,12 +7,13 @@
  * opens a local overlay; the host additionally freezes the shared sim while it
  * is open. Input is neutralised while the menu is open so nobody keeps acting.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useStore } from './store';
 import { hudSet, useHudStore } from './hudStore';
-import { sfx, pauseGame, resumeGame } from './session';
+import { sfx, requestPause } from './session';
 import HUD from './HUD';
 import PauseMenu from './PauseMenu';
+import ResumeCountdown from './ResumeCountdown';
 import { Renderer } from '../render/renderer';
 import { InputManager } from '../input/input';
 import { getMonster } from '../engine/monsters';
@@ -58,19 +59,33 @@ function pushHud(state: RenderState, source: InputSource): void {
 
 const NEUTRAL_BUTTONS = { basic: false, a1: false, a2: false, a3: false, revive: false };
 
+/**
+ * Is the shared sim currently frozen for the local player? True while paused OR
+ * during the resume countdown — input is neutralised the whole time so nobody
+ * keeps acting on a frozen arena and rubber-bands on resume.
+ */
+function isFrozen(): boolean {
+  const s = useStore.getState();
+  return s.paused || s.resumeCountdown != null;
+}
+
+/**
+ * Toggle the shared pause. Running → pause; paused → begin the resume countdown;
+ * mid-countdown → re-pause (cancel the countdown), so a mis-click doesn't force
+ * everyone to wait out the 3 seconds.
+ */
+function togglePause(): void {
+  const s = useStore.getState();
+  if (s.resumeCountdown != null) requestPause(true); // cancel the countdown
+  else requestPause(!s.paused);
+}
+
 export default function GameView() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuOpenRef = useRef(false);
+  // Shared pause state (authoritative from the host) drives the overlays for
+  // EVERY player — not just whoever opened the menu.
   const paused = useStore((s) => s.paused);
-
-  const setMenu = (open: boolean): void => {
-    menuOpenRef.current = open;
-    setMenuOpen(open);
-    // Host also freezes/unfreezes the shared sim while the menu is up.
-    if (open) pauseGame();
-    else resumeGame();
-  };
+  const resumeCountdown = useStore((s) => s.resumeCountdown);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -83,16 +98,17 @@ export default function GameView() {
     let seq = 0;
     let lastHud = 0;
     let padMenuPrev = false;
+    let legendInited = false; // set the pause-menu map legend once per fight
 
     const session = useStore.getState().session;
 
-    // Esc toggles the pause menu — but if the Controls overlay is stacked on
-    // top, let it handle Esc (close itself) instead of closing the pause menu.
+    // Esc toggles the shared pause — but if the Controls overlay is stacked on
+    // top, let it handle Esc (close itself) instead of toggling pause.
     const onKey = (e: KeyboardEvent): void => {
       if (e.code === 'Escape') {
         if (useStore.getState().showControls) return;
         e.preventDefault();
-        setMenu(!menuOpenRef.current);
+        togglePause();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -113,6 +129,14 @@ export default function GameView() {
         const state = session?.getRenderState(now) ?? null;
         if (!state) return;
 
+        // Terrain + obstacles are static per fight — snapshot the legend once (on
+        // the first real frame) so the pause menu can describe every hazard.
+        if (!legendInited) {
+          legendInited = true;
+          const kinds = [...new Set(state.terrain.map((t) => t.kind))];
+          hudSet({ terrainKinds: kinds, hasObstacles: state.obstacles.length > 0 });
+        }
+
         // Local player's screen position, for mouse-relative aim.
         const localId = state.localPlayerId;
         const lp = localId != null ? state.players.find((p) => p.id === localId) : null;
@@ -122,22 +146,21 @@ export default function GameView() {
 
         const sampled: InputState = input.sample(localScreen);
 
-        // Gamepad Options/Start edge toggles the menu.
+        // Gamepad Options/Start edge toggles the shared pause.
         const padMenu = padMenuPressed();
-        if (padMenu && !padMenuPrev) setMenu(!menuOpenRef.current);
+        if (padMenu && !padMenuPrev) togglePause();
         padMenuPrev = padMenu;
 
         seq += 1;
-        // Freeze input while our own menu is open OR the host has paused the
-        // shared sim (store.paused) — the latter stops a remote client from
-        // walking its predicted hero around a frozen arena and rubber-banding
-        // on resume.
-        const frozen = menuOpenRef.current || useStore.getState().paused;
+        // Freeze input while the shared sim is paused OR counting down to resume,
+        // so nobody walks a predicted hero around a frozen arena.
+        const frozen = isFrozen();
         const cmd: InputCommand = {
           seq,
           move: frozen ? { x: 0, y: 0 } : sampled.move,
           aim: sampled.aim,
           buttons: frozen ? { ...NEUTRAL_BUTTONS } : sampled.buttons,
+          autofire: frozen ? false : useStore.getState().autofire,
         };
         session?.setLocalInput(cmd);
 
@@ -169,12 +192,10 @@ export default function GameView() {
     <div className="game-root">
       <div ref={containerRef} className="game-canvas" />
       <HUD />
-      {menuOpen ? (
-        <PauseMenu onResume={() => setMenu(false)} />
+      {resumeCountdown != null ? (
+        <ResumeCountdown count={resumeCountdown} />
       ) : paused ? (
-        <div className="wb-pause-banner" role="status">
-          <span>⏸ Host paused the game</span>
-        </div>
+        <PauseMenu onResume={() => requestPause(false)} />
       ) : null}
     </div>
   );

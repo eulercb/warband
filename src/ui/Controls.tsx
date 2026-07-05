@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from 'react';
 import { closeControls, playUiSound } from './session';
+import { useStore } from './store';
 import {
   useBindings,
   MOVE_ACTIONS,
@@ -43,6 +44,8 @@ export default function Controls() {
   const setKey = useBindings((s) => s.setKey);
   const setPad = useBindings((s) => s.setPad);
   const reset = useBindings((s) => s.reset);
+  const autofire = useStore((s) => s.autofire);
+  const setAutofire = useStore((s) => s.setAutofire);
   const [capture, setCapture] = useState<Capture>(null);
 
   // Capture a keyboard key for the pending key-rebind.
@@ -163,6 +166,28 @@ export default function Controls() {
         <div className="wb-controls-hint" aria-hidden="true">
           Movement keys: {MOVE_ACTIONS.map((a) => codeToLabel(bindings.keys[a][0])).join(' · ')}
         </div>
+
+        <button
+          type="button"
+          className={`wb-gauntlet-toggle${autofire ? ' on' : ''}`}
+          onClick={() => {
+            playUiSound('uiClick');
+            setAutofire(!autofire);
+          }}
+          aria-pressed={autofire}
+        >
+          <span className="wb-gauntlet-check" aria-hidden="true">
+            {autofire ? '✓' : ''}
+          </span>
+          <span className="wb-gauntlet-text">
+            <span className="wb-gauntlet-title">Hold to auto-fire</span>
+            <span className="wb-gauntlet-sub">
+              {autofire
+                ? 'Holding an ability button repeats it automatically (fires as soon as it comes off cooldown).'
+                : 'Off: tap each ability button to use it. On: hold to keep firing.'}
+            </span>
+          </span>
+        </button>
 
         <div className="wb-row wb-actions-row">
           <button

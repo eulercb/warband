@@ -63,4 +63,18 @@ describe('bindings: store + live labels', () => {
     useBindings.getState().setPad('basic', 0, 3);
     expect(padLabelFor('basic')).toBe('△');
   });
+
+  it('rebinding a key already used by another action clears the old owner', () => {
+    // 'KeyQ' is the default primary for a1. Bind it to a2 and a1 must lose it.
+    useBindings.getState().setKey('a2', 0, 'KeyQ');
+    expect(getBindings().keys.a2[0]).toBe('KeyQ');
+    expect(getBindings().keys.a1.includes('KeyQ')).toBe(false);
+  });
+
+  it('rebinding a pad button already in use clears the old owner', () => {
+    // Button 0 is the default for basic. Bind it to a1 and basic must lose it.
+    useBindings.getState().setPad('a1', 0, 0);
+    expect(getBindings().pad.a1[0]).toBe(0);
+    expect(getBindings().pad.basic.includes(0)).toBe(false);
+  });
 });

@@ -4,7 +4,7 @@
  * React re-renders of menus/lobby.
  */
 import { create } from 'zustand';
-import type { ClassId, PlayerState, AbilitySlot } from '../engine/types';
+import type { ClassId, PlayerState, AbilitySlot, TerrainKind } from '../engine/types';
 import type { InputSource } from '../input/input';
 
 export interface HudTeammate {
@@ -38,6 +38,11 @@ export interface HudState {
 
   teammates: HudTeammate[];
 
+  /** Distinct terrain hazard kinds present this fight (for the pause legend). */
+  terrainKinds: TerrainKind[];
+  /** Whether the arena has cover obstacles this fight (for the pause legend). */
+  hasObstacles: boolean;
+
   /** 0..1 while being revived (downed local player). */
   reviveProgress: number;
   downedTimer: number;
@@ -61,6 +66,8 @@ const INITIAL: Omit<HudState, 'set' | 'resetHud'> = {
   bossMaxHp: 1,
   bossPhase: 'normal',
   teammates: [],
+  terrainKinds: [],
+  hasObstacles: false,
   reviveProgress: 0,
   downedTimer: 0,
 };

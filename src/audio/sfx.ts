@@ -54,6 +54,8 @@ export class Sfx {
   private noiseBuffer: AudioBuffer | null = null;
 
   private _muted = false;
+  /** User volume 0..1 (scaled by MASTER_VOLUME for headroom). 1 = full. */
+  private _volume = 1;
   private disposed = false;
 
   /** Count of voices currently scheduled/playing (for the concurrency cap). */
@@ -89,20 +91,47 @@ export class Sfx {
   /** Mute (gain 0) or unmute the master bus. Cheap; no context needed to store. */
   setMuted(m: boolean): void {
     this._muted = m;
-    if (this.disposed) return;
-    this.safe(() => {
-      if (!this.ctx || !this.master) return;
-      const target = m ? 0 : MASTER_VOLUME;
-      const t = this.ctx.currentTime;
-      // Short linear ramp avoids an audible click on toggle.
-      this.master.gain.cancelScheduledValues(t);
-      this.master.gain.setValueAtTime(this.master.gain.value, t);
-      this.master.gain.linearRampToValueAtTime(target, t + 0.02);
-    });
+    this.applyGain();
+  }
+
+  /**
+   * Set the master volume (0..1). 0 is silence; 1 is full (within MASTER_VOLUME
+   * headroom). Independent of the mute flag — a muted bus stays silent until
+   * unmuted. Safe to call before the context exists (value is applied lazily).
+   */
+  setVolume(v: number): void {
+    this._volume = v < 0 ? 0 : v > 1 ? 1 : v;
+    this.applyGain();
   }
 
   get muted(): boolean {
     return this._muted;
+  }
+
+  get volume(): number {
+    return this._volume;
+  }
+
+  /** Effective master gain target given mute + volume (0 when silent). */
+  private targetGain(): number {
+    return this._muted || this._volume <= 0 ? 0 : this._volume * MASTER_VOLUME;
+  }
+
+  /** True when nothing would be audible — used to skip scheduling work. */
+  private silent(): boolean {
+    return this._muted || this._volume <= 0;
+  }
+
+  /** Ramp the master bus toward the current mute/volume target (click-free). */
+  private applyGain(): void {
+    if (this.disposed) return;
+    this.safe(() => {
+      if (!this.ctx || !this.master) return;
+      const t = this.ctx.currentTime;
+      this.master.gain.cancelScheduledValues(t);
+      this.master.gain.setValueAtTime(this.master.gain.value, t);
+      this.master.gain.linearRampToValueAtTime(this.targetGain(), t + 0.02);
+    });
   }
 
   /**
@@ -110,7 +139,7 @@ export class Sfx {
    * kinds are ignored. Never throws.
    */
   handleEvents(events: GameEvent[]): void {
-    if (this.disposed || this._muted || !events || events.length === 0) return;
+    if (this.disposed || this.silent() || !events || events.length === 0) return;
     // Bail early if we cannot obtain a running context — cheaper than per-event.
     if (!this.ensureCtx()) return;
 
@@ -121,7 +150,7 @@ export class Sfx {
 
   /** UI-triggered stings (menus / result screen). Never throws. */
   play(name: 'victory' | 'defeat' | 'uiClick' | 'uiConfirm'): void {
-    if (this.disposed || this._muted) return;
+    if (this.disposed || this.silent()) return;
     this.safe(() => {
       if (!this.ensureCtx()) return;
       switch (name) {
@@ -420,7 +449,7 @@ export class Sfx {
 
       const ctx = new Ctor();
       const master = ctx.createGain();
-      master.gain.value = this._muted ? 0 : MASTER_VOLUME;
+      master.gain.value = this.targetGain();
       master.connect(ctx.destination);
 
       this.ctx = ctx;

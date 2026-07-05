@@ -5,9 +5,78 @@
  */
 import { create } from 'zustand';
 import type { ClassId, MonsterId, FightResult } from '../engine/types';
+import type { UpgradeId } from '../engine/upgrades';
 import type { LobbyPlayer, NetSession } from '../net/protocol';
 import { DEFAULT_CLASS } from '../engine/classes';
 import { DEFAULT_MONSTER } from '../engine/monsters';
+
+// --- Persisted local preferences (survive reloads / future runs) -----------
+const NAME_KEY = 'warband.heroName.v1';
+const VOLUME_KEY = 'warband.volume.v1';
+const AUTOFIRE_KEY = 'warband.autofire.v1';
+
+/** Load the last hero name the player used (empty string if none / unavailable). */
+function loadName(): string {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      return (localStorage.getItem(NAME_KEY) ?? '').slice(0, 16);
+    }
+  } catch {
+    /* privacy mode / unavailable storage — no persisted name */
+  }
+  return '';
+}
+
+/** Persist the hero name so the player never has to retype it. */
+function persistName(name: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(NAME_KEY, name);
+  } catch {
+    /* ignore quota / privacy-mode failures */
+  }
+}
+
+/** Load the persisted master volume (0..1), defaulting to full. */
+function loadVolume(): number {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(VOLUME_KEY);
+      if (raw != null) {
+        const v = Number(raw);
+        if (Number.isFinite(v)) return Math.max(0, Math.min(1, v));
+      }
+    }
+  } catch {
+    /* privacy mode / unavailable storage — use default */
+  }
+  return 1;
+}
+
+function persistVolume(v: number): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(VOLUME_KEY, String(v));
+  } catch {
+    /* ignore quota / privacy-mode failures */
+  }
+}
+
+/** Load the persisted hold-to-autofire preference (default off). */
+function loadAutofire(): boolean {
+  try {
+    if (typeof localStorage !== 'undefined') return localStorage.getItem(AUTOFIRE_KEY) === '1';
+  } catch {
+    /* privacy mode / unavailable storage — default off */
+  }
+  return false;
+}
+
+function persistAutofire(on: boolean): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(AUTOFIRE_KEY, on ? '1' : '0');
+  } catch {
+    /* ignore quota / privacy-mode failures */
+  }
+}
 
 export type Phase =
   | 'menu'
@@ -49,16 +118,26 @@ export interface AppState {
   localReady: boolean;
 
   // fight / run
-  /** Sim frozen by the host (pause menu). */
+  /** Shared sim frozen (any player may pause; host is authoritative). */
   paused: boolean;
+  /** Display name of whoever paused (for the shared overlay), or null. */
+  pausedBy: string | null;
+  /** Resume countdown (seconds left) while un-pausing, else null. */
+  resumeCountdown: number | null;
   /** Gauntlet progress for the current fight (index/total), or null. */
   run: { index: number; total: number } | null;
+  /** Upgrades this local hero has picked so far this run (for display). */
+  myUpgrades: UpgradeId[];
 
   // result
   result: FightResult | null;
 
   // options
   muted: boolean;
+  /** Master volume 0..1 (persisted). Independent of the mute flag. */
+  volume: number;
+  /** Hold-to-autofire: held ability buttons repeat instead of edge-triggering. */
+  autofire: boolean;
   /** Whether the Controls (rebinding) overlay is open. */
   showControls: boolean;
 
@@ -82,9 +161,15 @@ export interface AppState {
   setLocalClass: (c: ClassId) => void;
   setLocalReady: (r: boolean) => void;
   setPaused: (p: boolean) => void;
+  setPausedBy: (name: string | null) => void;
+  setResumeCountdown: (n: number | null) => void;
   setRun: (run: { index: number; total: number } | null) => void;
+  addMyUpgrade: (id: UpgradeId) => void;
+  clearMyUpgrades: () => void;
   setResult: (r: FightResult | null) => void;
   toggleMute: () => void;
+  setVolume: (v: number) => void;
+  setAutofire: (on: boolean) => void;
   setShowControls: (v: boolean) => void;
   /** Tear the session down and return to the main menu. */
   reset: () => void;
@@ -106,15 +191,20 @@ export const useStore = create<AppState>((set, get) => ({
   lobbyPhase: 'lobby',
   gauntlet: false,
 
-  localName: '',
+  localName: loadName(),
   localClass: DEFAULT_CLASS,
   localReady: false,
 
   paused: false,
+  pausedBy: null,
+  resumeCountdown: null,
   run: null,
+  myUpgrades: [],
 
   result: null,
   muted: false,
+  volume: loadVolume(),
+  autofire: loadAutofire(),
   showControls: false,
 
   // Navigating always dismisses the transient Controls modal so it can't get
@@ -130,13 +220,30 @@ export const useStore = create<AppState>((set, get) => ({
   setGauntlet: (gauntlet) => set({ gauntlet }),
   setLobby: (players, monsterId, lobbyPhase, gauntlet) =>
     set({ players, monsterId, lobbyPhase, gauntlet }),
-  setLocalName: (localName) => set({ localName }),
+  setLocalName: (localName) => {
+    persistName(localName);
+    set({ localName });
+  },
   setLocalClass: (localClass) => set({ localClass }),
   setLocalReady: (localReady) => set({ localReady }),
   setPaused: (paused) => set({ paused }),
+  setPausedBy: (pausedBy) => set({ pausedBy }),
+  setResumeCountdown: (resumeCountdown) => set({ resumeCountdown }),
   setRun: (run) => set({ run }),
+  addMyUpgrade: (id) => set({ myUpgrades: [...get().myUpgrades, id] }),
+  clearMyUpgrades: () => set({ myUpgrades: [] }),
   setResult: (result) => set({ result }),
   toggleMute: () => set({ muted: !get().muted }),
+  setVolume: (volume) => {
+    const v = Math.max(0, Math.min(1, volume));
+    persistVolume(v);
+    // Nudging the slider off zero also lifts an explicit mute (intuitive UX).
+    set({ volume: v, muted: v <= 0 ? get().muted : false });
+  },
+  setAutofire: (autofire) => {
+    persistAutofire(autofire);
+    set({ autofire });
+  },
   setShowControls: (showControls) => set({ showControls }),
 
   reset: () => {
@@ -159,7 +266,10 @@ export const useStore = create<AppState>((set, get) => ({
       lobbyPhase: 'lobby',
       localReady: false,
       paused: false,
+      pausedBy: null,
+      resumeCountdown: null,
       run: null,
+      myUpgrades: [],
       result: null,
       showControls: false,
     });

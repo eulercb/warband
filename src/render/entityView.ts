@@ -17,6 +17,9 @@ import type {
   ZoneView,
   TerrainView,
   TerrainKind,
+  ObstacleView,
+  BuffView,
+  BuffKind,
   Vec2,
   ProjectileKind,
   ZoneKind,
@@ -33,6 +36,69 @@ import { getMonster } from '../engine/monsters';
 import { clamp } from '../engine/math';
 
 const OUTLINE = 0x0a0a12;
+
+// ---------------------------------------------------------------------------
+// Buff / debuff glows — a distinct colored aura per active effect so players
+// can read, at a glance, what is boosting or hindering any creature. Slows,
+// mitigation, stuns and empowers each get their own hue.
+// ---------------------------------------------------------------------------
+
+export interface BuffGlow {
+  color: number;
+  /** True for helpful effects (drawn a touch brighter), false for debuffs. */
+  good: boolean;
+}
+
+/** Map one buff/debuff to a glow color, or null if it shouldn't glow. */
+export function buffGlow(kind: BuffKind, mult: number): BuffGlow | null {
+  switch (kind) {
+    case 'stun':
+      return { color: 0xffe14d, good: false }; // yellow — crowd-controlled
+    case 'invuln':
+      return { color: 0xbfe9ff, good: true }; // pale cyan — untouchable
+    case 'moveSpeed':
+      return mult < 1
+        ? { color: 0x59a0ff, good: false } // icy blue — slowed
+        : { color: 0x7dffa0, good: true }; // green — hastened
+    case 'damageDealt':
+      return mult >= 1
+        ? { color: 0xff9a3d, good: true } // orange — empowered
+        : { color: 0x9a7dff, good: false }; // violet — weakened
+    case 'damageTaken':
+      return mult <= 1
+        ? { color: 0x59d9ff, good: true } // cyan — shielded / mitigated
+        : { color: 0xff5a5a, good: false }; // red — vulnerable
+    default:
+      return null;
+  }
+}
+
+/**
+ * Draw a stacked ring of colored auras around an entity, one per active effect.
+ * Rings sit just outside the body radius and pulse gently so an ongoing effect
+ * reads as "live". Drawn under the body so the silhouette stays crisp.
+ */
+export function drawBuffGlows(
+  g: Graphics,
+  x: number,
+  y: number,
+  bodyR: number,
+  buffs: BuffView[] | undefined,
+  timeSec: number,
+): void {
+  if (!buffs || buffs.length === 0) return;
+  let i = 0;
+  for (const b of buffs) {
+    const glow = buffGlow(b.kind, b.mult);
+    if (!glow) continue;
+    const pulse = 0.5 + 0.5 * Math.sin(timeSec * 4 + i * 1.7);
+    const ringR = bodyR + 3 + i * 3.5;
+    const baseA = glow.good ? 0.5 : 0.42;
+    g.circle(x, y, ringR + 2).fill({ color: glow.color, alpha: 0.05 + 0.05 * pulse });
+    g.circle(x, y, ringR).stroke({ width: 2, color: glow.color, alpha: baseA + 0.35 * pulse });
+    if (++i >= 4) break; // cap the stack so a buff pile doesn't smother the body
+  }
+}
 
 const PROJECTILE_COLORS: Record<ProjectileKind, number> = {
   arrow: 0x76e34a, // green
@@ -69,6 +135,7 @@ export function drawPlayer(
   scale: number,
   isLocal: boolean,
   flash: number,
+  timeSec = 0,
 ): void {
   const r = PLAYER_RADIUS * scale;
   const { x, y } = screen;
@@ -83,6 +150,9 @@ export function drawPlayer(
 
   const downed = p.state === 'downed';
   const bodyColor = downed ? 0x808088 : classColor;
+
+  // Active buff/debuff auras (under the body so the silhouette stays crisp).
+  if (!downed) drawBuffGlows(g, x, y, r, p.buffs, timeSec);
 
   // Grounding shadow.
   g.ellipse(x, y + r * 0.55, r * 0.95, r * 0.42).fill({ color: 0x000000, alpha: 0.22 });
@@ -147,11 +217,14 @@ export function drawPlayerOverlay(
   screen: Vec2,
   scale: number,
   isLocal: boolean,
+  timeSec = 0,
 ): void {
   if (p.state === 'dead') return; // ghost body only, no bar/rings
   const r = PLAYER_RADIUS * scale;
   const { x, y } = screen;
   const downed = p.state === 'downed';
+
+  if (!downed) drawBuffGlows(g, x, y, r, p.buffs, timeSec);
 
   if (downed) {
     const frac = clamp(p.reviveProgress / REVIVE_TIME, 0, 1);
@@ -183,12 +256,16 @@ export function drawBoss(
   screen: Vec2,
   scale: number,
   flash: number,
+  timeSec = 0,
 ): void {
   const def = getMonster(b.monsterId);
   const r = def.radius * scale;
   const color = def.color;
   const { x, y } = screen;
   const enraged = b.phase === 'enraged';
+
+  // Active buff/debuff auras (e.g. stunned by Shield Bash, slowed by Frost Nova).
+  drawBuffGlows(g, x, y, r, b.buffs, timeSec);
 
   // Grounding shadow.
   g.ellipse(x, y + r * 0.5, r * 1.0, r * 0.45).fill({ color: 0x000000, alpha: 0.28 });
@@ -246,10 +323,18 @@ export function drawBoss(
  * troll "blob", lich "diamond" silhouettes stay in `drawBoss` for the geometry
  * fallback path.)
  */
-export function drawBossOverlay(g: Graphics, b: BossView, screen: Vec2, scale: number): void {
+export function drawBossOverlay(
+  g: Graphics,
+  b: BossView,
+  screen: Vec2,
+  scale: number,
+  timeSec = 0,
+): void {
   const def = getMonster(b.monsterId);
   const r = def.radius * scale;
   const { x, y } = screen;
+
+  drawBuffGlows(g, x, y, r, b.buffs, timeSec);
 
   const fx = x + Math.cos(b.facing) * r;
   const fy = y + Math.sin(b.facing) * r;
@@ -272,9 +357,12 @@ export function drawAdd(
   screen: Vec2,
   scale: number,
   flash: number,
+  timeSec = 0,
 ): void {
   const r = ADD_RADIUS * scale;
   const { x, y } = screen;
+
+  drawBuffGlows(g, x, y, r, a.buffs, timeSec);
 
   g.ellipse(x, y + r * 0.5, r * 0.9, r * 0.35).fill({ color: 0x000000, alpha: 0.2 });
   g.circle(x, y, r).fill({ color: 0xbfc4cc });
@@ -288,10 +376,17 @@ export function drawAdd(
   drawBar(g, x, y - r - 6, Math.max(14, r * 2), 3, hpFrac, 0xcc5555);
 }
 
-/** Vector overlay (floating HP bar) for an add whose body is a sprite. */
-export function drawAddOverlay(g: Graphics, a: AddView, screen: Vec2, scale: number): void {
+/** Vector overlay (floating HP bar + buff glows) for an add whose body is a sprite. */
+export function drawAddOverlay(
+  g: Graphics,
+  a: AddView,
+  screen: Vec2,
+  scale: number,
+  timeSec = 0,
+): void {
   const r = ADD_RADIUS * scale;
   const { x, y } = screen;
+  drawBuffGlows(g, x, y, r, a.buffs, timeSec);
   const hpFrac = clamp(a.hp / a.maxHp, 0, 1);
   drawBar(g, x, y - r - 6, Math.max(14, r * 2), 3, hpFrac, 0xcc5555);
 }
@@ -382,6 +477,44 @@ export function drawTerrain(
     const by = y + Math.sin(a) * rr * 0.6;
     g.circle(bx, by, r * 0.22).fill({ color: pal.edge, alpha: 0.1 + pulse * 0.3 });
   }
+}
+
+// ---------------------------------------------------------------------------
+// Obstacles (static per-run cover that blocks ranged attacks)
+// ---------------------------------------------------------------------------
+
+/**
+ * Draw one solid cover obstacle — an opaque rubble mound with a rim light, so it
+ * reads as a physical blocker (unlike the translucent terrain hazard pools). A
+ * couple of deterministic facets (seeded off the id) keep it from looking like a
+ * flat disc.
+ */
+export function drawObstacle(g: Graphics, o: ObstacleView, screen: Vec2, scale: number): void {
+  const r = o.radius * scale;
+  const { x, y } = screen;
+
+  // Grounding shadow.
+  g.ellipse(x, y + r * 0.35, r * 1.05, r * 0.5).fill({ color: 0x000000, alpha: 0.34 });
+
+  // Body + rim.
+  g.circle(x, y, r).fill({ color: 0x40444d });
+  g.circle(x, y, r).stroke({ width: 2, color: 0x1a1c22, alpha: 0.9 });
+
+  // Lit cap (top-left) so it reads as raised.
+  g.circle(x - r * 0.22, y - r * 0.24, r * 0.62).fill({ color: 0x565b66, alpha: 0.9 });
+
+  // Deterministic facets for texture.
+  const phase = (o.id % 5) * 1.3;
+  for (let i = 0; i < 3; i++) {
+    const a = phase + (i * Math.PI * 2) / 3;
+    const rr = r * 0.45;
+    const bx = x + Math.cos(a) * rr * 0.5;
+    const by = y + Math.sin(a) * rr * 0.5;
+    g.circle(bx, by, r * 0.2).fill({ color: 0x33363e, alpha: 0.55 });
+  }
+
+  // Bright top edge highlight.
+  g.circle(x - r * 0.3, y - r * 0.35, r * 0.18).fill({ color: 0x6f7480, alpha: 0.85 });
 }
 
 /**

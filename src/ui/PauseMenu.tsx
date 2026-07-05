@@ -1,13 +1,16 @@
 /**
- * Warband — in-fight pause menu overlay. Rendered by GameView while the local
- * menu is open. The host sees an "End Run" control to finish the fight early;
- * every player can open Controls (rebinding) or leave to the main menu.
+ * Warband — in-fight pause menu overlay. Shown to EVERY player while the shared
+ * sim is paused (any player may pause; the host is authoritative). Anyone can
+ * hit Resume, which starts a shared countdown before control returns. The host
+ * additionally sees an "End Run" control to finish the fight early.
  */
 import { useStore } from './store';
 import { endRun, leaveToMenu, openControls, playUiSound } from './session';
+import TerrainLegend from './TerrainLegend';
 
 export default function PauseMenu({ onResume }: { onResume: () => void }) {
   const isHost = useStore((s) => s.isHost);
+  const pausedBy = useStore((s) => s.pausedBy);
 
   const onResumeClick = (): void => {
     playUiSound('uiClick');
@@ -34,9 +37,9 @@ export default function PauseMenu({ onResume }: { onResume: () => void }) {
       <div className="wb-panel wb-pause-panel">
         <h2 className="wb-title wb-title-sm">Paused</h2>
         <p className="wb-subtitle">
-          {isHost
-            ? 'The fight is frozen for everyone while this menu is open.'
-            : 'Your hero holds position while this menu is open.'}
+          {pausedBy
+            ? `${pausedBy} paused the fight — it's frozen for everyone. Anyone can resume.`
+            : 'The fight is frozen for everyone. Anyone can resume.'}
         </p>
 
         <div className="wb-pause-actions">
@@ -55,6 +58,8 @@ export default function PauseMenu({ onResume }: { onResume: () => void }) {
             Leave to Menu
           </button>
         </div>
+
+        <TerrainLegend />
       </div>
     </div>
   );

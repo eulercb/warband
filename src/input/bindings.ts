@@ -121,7 +121,14 @@ export const useBindings = create<BindingsStore>((set, get) => ({
   bindings: load(),
   setKey: (action, slot, code) => {
     const next = clone(get().bindings);
+    // A key can only ever drive ONE action: strip this code from every action
+    // (including other slots of the target) before assigning it, so re-binding a
+    // key already in use clears its previous owner instead of double-binding it.
+    for (const a of Object.keys(next.keys) as KeyAction[]) {
+      next.keys[a] = next.keys[a].filter((c) => c !== code);
+    }
     const arr = next.keys[action];
+    while (arr.length <= slot) arr.push('');
     arr[slot] = code;
     // Keep the array compact (drop an empty alternate slot).
     next.keys[action] = arr.filter((c, i) => c !== '' || i === 0);
@@ -130,7 +137,13 @@ export const useBindings = create<BindingsStore>((set, get) => ({
   },
   setPad: (action, slot, buttonIndex) => {
     const next = clone(get().bindings);
+    // Same single-owner rule for gamepad buttons: clear the button from any other
+    // action first so the newest binding wins and the old one is released.
+    for (const a of Object.keys(next.pad) as ButtonAction[]) {
+      next.pad[a] = next.pad[a].filter((v) => v !== buttonIndex);
+    }
     const arr = next.pad[action];
+    while (arr.length <= slot) arr.push(-1);
     arr[slot] = buttonIndex;
     next.pad[action] = arr.filter((v, i) => v >= 0 || i === 0);
     persist(next);

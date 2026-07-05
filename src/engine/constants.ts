@@ -58,12 +58,31 @@ export const TERRAIN_MAX_RADIUS = 180;
 /** Keep terrain away from the party's spawn strip and the boss's opening spot. */
 export const TERRAIN_SPAWN_CLEARANCE = 220; // u around player spawn / boss center
 
+// --- Obstacles (static per-run cover that blocks ranged attacks) ---
+// Solid rubble/pillars generated once from the run seed. Projectiles crossing
+// one are absorbed, so players can break line of sight and take cover. They do
+// not block movement.
+export const OBSTACLE_MIN_COUNT = 2;
+export const OBSTACLE_MAX_COUNT = 4;
+export const OBSTACLE_MIN_RADIUS = 40; // world units
+export const OBSTACLE_MAX_RADIUS = 74;
+/** Keep obstacles clear of the spawn strip and the boss's opening spot. */
+export const OBSTACLE_SPAWN_CLEARANCE = 170; // u
+
 // --- Gauntlet (sequence run) ---
 // Order the bosses are fought in when the host enables a gauntlet run. A run
 // starts at the host's chosen boss and proceeds through the rest of this list.
 export const GAUNTLET_ORDER: MonsterId[] = ['dragon', 'troll', 'lich'];
-/** Seconds the victory interstitial lingers before the next gauntlet fight. */
-export const GAUNTLET_INTERSTITIAL_S = 5;
+/**
+ * Seconds the victory interstitial lingers before the next gauntlet fight. This
+ * doubles as the window in which each hero picks a between-boss upgrade, so it
+ * is generous enough for everyone to choose (host can skip with "Continue now").
+ */
+export const GAUNTLET_INTERSTITIAL_S = 12;
+
+// --- Pause / resume ---
+/** Countdown (seconds) shown to everyone before the shared sim resumes. */
+export const RESUME_COUNTDOWN_S = 3;
 
 // --- Bots (host-simulated AI party members) ---
 export const BOT_NAME_PREFIX = 'Bot';

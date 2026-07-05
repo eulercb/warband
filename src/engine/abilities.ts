@@ -18,18 +18,15 @@ import type { BossAbilityDef } from './monsters';
 import { getClass } from './classes';
 import {
   add as vadd,
-  sub,
   scale as vscale,
   normalize,
   fromAngle,
   angleOf,
-  clamp,
-  dist,
-  pointInCircle,
-  pointInCone,
-  pointInSegment,
   withLength,
 } from './math';
+// Toroidal geometry (drop-in for the Euclidean sub/dist/point-in-shape helpers)
+// so abilities resolve correctly across the wrap-around seam. See engine/torus.
+import { sub, dist, pointInCircle, pointInCone, pointInSegment, wrapCoord } from './torus';
 import {
   damageBoss,
   damageAdd,
@@ -54,10 +51,13 @@ import type { SkillAreaKind } from './types';
 // Small helpers
 // ---------------------------------------------------------------------------
 
-function clampToArena(world: World, pos: Vec2, radius: number): Vec2 {
+// Torus arena: wrap placements/dashes/blinks around the edges instead of
+// clamping to walls. `_radius` is kept for call-site compatibility (unused now
+// that there are no walls to inset from).
+function clampToArena(world: World, pos: Vec2, _radius = 0): Vec2 {
   return {
-    x: clamp(pos.x, radius, world.arena.w - radius),
-    y: clamp(pos.y, radius, world.arena.h - radius),
+    x: wrapCoord(pos.x, world.arena.w),
+    y: wrapCoord(pos.y, world.arena.h),
   };
 }
 
