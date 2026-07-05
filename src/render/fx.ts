@@ -105,7 +105,14 @@ export class Fx {
     for (let i = 0; i < AREA_FLASH_CAP; i++) {
       this.areaFlashes.push({
         active: false,
-        area: { kind: 'circle', origin: { x: 0, y: 0 }, angle: 0, range: 0, radius: 0, halfAngle: 0 },
+        area: {
+          kind: 'circle',
+          origin: { x: 0, y: 0 },
+          angle: 0,
+          range: 0,
+          radius: 0,
+          halfAngle: 0,
+        },
         color: 0xffffff,
         age: 0,
       });
@@ -512,8 +519,14 @@ export class Fx {
       const R = area.range * s;
       const a0 = area.angle - area.halfAngle;
       const a1 = area.angle + area.halfAngle;
-      g.moveTo(o.x, o.y).arc(o.x, o.y, R, a0, a1).lineTo(o.x, o.y).fill({ color, alpha: fillAlpha });
-      g.moveTo(o.x, o.y).arc(o.x, o.y, R, a0, a1).lineTo(o.x, o.y).stroke({ width: 2, color, alpha: strokeAlpha });
+      g.moveTo(o.x, o.y)
+        .arc(o.x, o.y, R, a0, a1)
+        .lineTo(o.x, o.y)
+        .fill({ color, alpha: fillAlpha });
+      g.moveTo(o.x, o.y)
+        .arc(o.x, o.y, R, a0, a1)
+        .lineTo(o.x, o.y)
+        .stroke({ width: 2, color, alpha: strokeAlpha });
     } else {
       // line: capsule from origin along angle for `range`, half-width `radius`.
       const o = camera.worldToScreen(area.origin);

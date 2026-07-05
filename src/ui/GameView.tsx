@@ -26,7 +26,7 @@ const PAD_MENU_BUTTON = 9;
 
 function pushHud(state: RenderState, source: InputSource): void {
   const localId = state.localPlayerId;
-  const lp = localId != null ? state.players.find((p) => p.id === localId) ?? null : null;
+  const lp = localId != null ? (state.players.find((p) => p.id === localId) ?? null) : null;
   const boss = state.boss;
   hudSet({
     active: true,
@@ -57,8 +57,7 @@ function pushHud(state: RenderState, source: InputSource): void {
       buffs: p.buffs,
       score: p.score,
     })),
-    reviveProgress:
-      lp && lp.state === 'downed' ? Math.min(1, lp.reviveProgress / REVIVE_TIME) : 0,
+    reviveProgress: lp && lp.state === 'downed' ? Math.min(1, lp.reviveProgress / REVIVE_TIME) : 0,
     downedTimer: lp?.downedTimer ?? 0,
   });
 }
@@ -82,7 +81,8 @@ function isFrozen(): boolean {
  */
 function togglePause(): void {
   const s = useStore.getState();
-  if (s.resumeCountdown != null) requestPause(true); // cancel the countdown
+  if (s.resumeCountdown != null)
+    requestPause(true); // cancel the countdown
   else requestPause(!s.paused);
 }
 

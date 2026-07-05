@@ -39,7 +39,14 @@ function player(over: Partial<PlayerView> = {}): PlayerView {
 }
 
 function ctx(over: Partial<PlayerAnimCtx> = {}): PlayerAnimCtx {
-  return { dirMode: '8dir', moving: false, attack: null, attackClipMs: 320, castTotalMs: null, ...over };
+  return {
+    dirMode: '8dir',
+    moving: false,
+    attack: null,
+    attackClipMs: 320,
+    castTotalMs: null,
+    ...over,
+  };
 }
 
 function boss(over: Partial<BossView> = {}): BossView {
@@ -117,15 +124,24 @@ describe('playerAnim: priority order (dead > downed > rooted-cast > attack > wal
   });
 
   it('instant attack plays while young, one-shot', () => {
-    const sel = playerAnim(player(), ctx({ attack: { slot: 'a2', ageMs: 100 }, attackClipMs: 320 }));
+    const sel = playerAnim(
+      player(),
+      ctx({ attack: { slot: 'a2', ageMs: 100 }, attackClipMs: 320 }),
+    );
     expect(sel.clip).toBe('attack_a2');
     expect(sel.loop).toBe(false);
   });
 
   it('attack older than its clip falls through to locomotion', () => {
-    const walk = playerAnim(player(), ctx({ moving: true, attack: { slot: 'a2', ageMs: 999 }, attackClipMs: 320 }));
+    const walk = playerAnim(
+      player(),
+      ctx({ moving: true, attack: { slot: 'a2', ageMs: 999 }, attackClipMs: 320 }),
+    );
     expect(walk.clip).toBe('walk');
-    const idle = playerAnim(player(), ctx({ moving: false, attack: { slot: 'a2', ageMs: 999 }, attackClipMs: 320 }));
+    const idle = playerAnim(
+      player(),
+      ctx({ moving: false, attack: { slot: 'a2', ageMs: 999 }, attackClipMs: 320 }),
+    );
     expect(idle.clip).toBe('idle');
   });
 
@@ -151,14 +167,20 @@ describe('playerAnim: priority order (dead > downed > rooted-cast > attack > wal
 
 describe('bossAnim: action → clip mapping', () => {
   it('windup is telegraph-progress-driven, one-shot, per-ability clip', () => {
-    const sel = bossAnim(boss({ action: 'windup', abilityId: 'groundSlam', telegraph: tel(0.5, 1) }), '4dir');
+    const sel = bossAnim(
+      boss({ action: 'windup', abilityId: 'groundSlam', telegraph: tel(0.5, 1) }),
+      '4dir',
+    );
     expect(sel.clip).toBe('windup_groundSlam');
     expect(sel.progress).toBeCloseTo(0.5); // 1 - 0.5/1
     expect(sel.loop).toBe(false);
   });
 
   it('windup progress reaches 1 exactly as the telegraph fills', () => {
-    const sel = bossAnim(boss({ action: 'windup', abilityId: 'smash', telegraph: tel(0, 1) }), '4dir');
+    const sel = bossAnim(
+      boss({ action: 'windup', abilityId: 'smash', telegraph: tel(0, 1) }),
+      '4dir',
+    );
     expect(sel.progress).toBeCloseTo(1);
   });
 
@@ -202,7 +224,13 @@ describe('addAnim / projectileAnim', () => {
   });
 
   it('projectile just spins (rotation is applied by SpriteLayer)', () => {
-    const pr = { id: 4, kind: 'arrow' as const, side: 'player' as const, pos: { x: 0, y: 0 }, vel: { x: 1, y: 0 } };
+    const pr = {
+      id: 4,
+      kind: 'arrow' as const,
+      side: 'player' as const,
+      pos: { x: 0, y: 0 },
+      vel: { x: 1, y: 0 },
+    };
     const sel = projectileAnim(pr);
     expect(sel.clip).toBe('spin');
     expect(sel.dir).toBeNull();

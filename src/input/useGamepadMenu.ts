@@ -12,8 +12,7 @@ import { useEffect, useRef, type RefObject } from 'react';
 import { pushNavHandler, type NavDir } from './gamepadNav';
 
 const FOCUS_CLASS = 'wb-gp-focus';
-const SELECTOR =
-  'button, a[href], input:not([type="hidden"]), select, textarea, [tabindex]';
+const SELECTOR = 'button, a[href], input:not([type="hidden"]), select, textarea, [tabindex]';
 
 function focusables(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(SELECTOR)).filter(

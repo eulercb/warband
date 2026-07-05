@@ -103,11 +103,7 @@ export function Lobby() {
             <span className="wb-roomcode">{roomCode ?? '——————'}</span>
           </div>
           <div className="wb-share-block">
-            <button
-              type="button"
-              className="wb-btn wb-btn-ghost wb-share-btn"
-              onClick={onCopy}
-            >
+            <button type="button" className="wb-btn wb-btn-ghost wb-share-btn" onClick={onCopy}>
               {copied ? 'Copied!' : 'Copy share link'}
             </button>
             <code className="wb-share-link" title={link}>
@@ -197,25 +193,17 @@ export function Lobby() {
 
         <div className="wb-lobby-cols">
           <section className="wb-lobby-col">
-            <h3 className="wb-section-title">
-              Warband ({players.length})
-            </h3>
+            <h3 className="wb-section-title">Warband ({players.length})</h3>
             <ul className="wb-player-list">
               {players.map((p) => (
                 <li key={p.peerId} className="wb-player-row">
-                  <span className={`wb-player-name cls-${p.classId}`}>
-                    {p.name || 'Hero'}
-                  </span>
+                  <span className={`wb-player-name cls-${p.classId}`}>{p.name || 'Hero'}</span>
                   <span className={`wb-player-class cls-${p.classId}`}>
                     {CLASSES[p.classId].name}
                   </span>
                   <span className="wb-player-tags">
-                    {p.isHost ? (
-                      <span className="wb-badge wb-badge-host">Host</span>
-                    ) : null}
-                    {p.isBot ? (
-                      <span className="wb-badge wb-badge-bot">Bot</span>
-                    ) : null}
+                    {p.isHost ? <span className="wb-badge wb-badge-host">Host</span> : null}
+                    {p.isBot ? <span className="wb-badge wb-badge-bot">Bot</span> : null}
                     {isHost && p.isBot ? (
                       <>
                         <button
@@ -250,9 +238,7 @@ export function Lobby() {
                 </li>
               ))}
               {players.length === 0 ? (
-                <li className="wb-player-row wb-player-empty">
-                  Waiting for heroes…
-                </li>
+                <li className="wb-player-row wb-player-empty">Waiting for heroes…</li>
               ) : null}
             </ul>
           </section>

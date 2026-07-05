@@ -78,8 +78,7 @@ export function sampleGamepad(): { state: InputState; connected: boolean; active
   // {0,0} = "no new aim" (the InputManager keeps the last reticle direction).
   const aimVec = applyDeadzone(rawRx, rawRy);
   const aimLen = Math.hypot(aimVec.x, aimVec.y);
-  const aim: Vec2 =
-    aimLen > 0 ? { x: aimVec.x / aimLen, y: aimVec.y / aimLen } : { x: 0, y: 0 };
+  const aim: Vec2 = aimLen > 0 ? { x: aimVec.x / aimLen, y: aimVec.y / aimLen } : { x: 0, y: 0 };
 
   const pressed = (i: number): boolean => pad.buttons[i]?.pressed === true;
   const anyPressed = (indices: number[]): boolean => indices.some(pressed);
@@ -94,8 +93,7 @@ export function sampleGamepad(): { state: InputState; connected: boolean; active
     revive: anyPressed(padB.revive),
   };
 
-  const anyButton =
-    buttons.basic || buttons.a1 || buttons.a2 || buttons.a3 || buttons.revive;
+  const anyButton = buttons.basic || buttons.a1 || buttons.a2 || buttons.a3 || buttons.revive;
   const active = moveLen > 0 || aimLen > 0 || anyButton;
 
   const state: InputState = { move, aim, buttons };
@@ -113,14 +111,13 @@ export function rumble(intensity = 0.5, durationMs = 120): void {
     const pad = firstConnectedPad();
     if (!pad) return;
 
-    const actuator = (pad as Gamepad & {
-      vibrationActuator?: {
-        playEffect?: (
-          type: string,
-          params: Record<string, number>,
-        ) => Promise<unknown>;
-      };
-    }).vibrationActuator;
+    const actuator = (
+      pad as Gamepad & {
+        vibrationActuator?: {
+          playEffect?: (type: string, params: Record<string, number>) => Promise<unknown>;
+        };
+      }
+    ).vibrationActuator;
 
     const magnitude = Math.max(0, Math.min(1, intensity));
     void actuator?.playEffect?.('dual-rumble', {

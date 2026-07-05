@@ -92,5 +92,4 @@ export const useHudStore = create<HudState>((set) => ({
 }));
 
 /** Non-reactive setter for the render loop (avoids hook subscription cost). */
-export const hudSet = (patch: Partial<HudState>): void =>
-  useHudStore.getState().set(patch);
+export const hudSet = (patch: Partial<HudState>): void => useHudStore.getState().set(patch);

@@ -17,9 +17,7 @@ export function JoinScreen() {
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Prefill from a room code the URL-hash handler may have written to the store.
-  const [code, setCode] = useState<string>(
-    () => useStore.getState().roomCode ?? '',
-  );
+  const [code, setCode] = useState<string>(() => useStore.getState().roomCode ?? '');
   const [joining, setJoining] = useState(false);
 
   const canJoin = code.trim().length >= 4 && !joining;
@@ -83,12 +81,7 @@ export function JoinScreen() {
         </label>
 
         <div className="wb-row wb-actions-row">
-          <button
-            type="button"
-            className="wb-btn wb-btn-ghost"
-            onClick={onBack}
-            disabled={joining}
-          >
+          <button type="button" className="wb-btn wb-btn-ghost" onClick={onBack} disabled={joining}>
             Back
           </button>
           <button

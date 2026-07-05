@@ -6,13 +6,7 @@
  * Particles augment (do not replace) the geometric bursts in `Fx`: the bursts
  * read as clean shockwaves, particles add the grit. Both are cheap and bounded.
  */
-import {
-  Container,
-  Graphics,
-  Sprite,
-  type Renderer as PixiRenderer,
-  type Texture,
-} from 'pixi.js';
+import { Container, Graphics, Sprite, type Renderer as PixiRenderer, type Texture } from 'pixi.js';
 import type { GameEvent, Vec2, ProjectileKind } from '../../engine/types';
 import type { Camera } from '../camera';
 
@@ -157,7 +151,13 @@ export class Particles {
 
   /** Live-projectile trail; call each frame per projectile (brief §8). */
   trail(pos: Vec2, kind: ProjectileKind): void {
-    this.burst(pos, 1, { color: TRAIL_COLORS[kind] ?? 0xffffff, spd: 18, ttl: 0.25, s0: 2, s1: 0.4 });
+    this.burst(pos, 1, {
+      color: TRAIL_COLORS[kind] ?? 0xffffff,
+      spd: 18,
+      ttl: 0.25,
+      s0: 2,
+      s1: 0.4,
+    });
   }
 
   update(dtMs: number): void {

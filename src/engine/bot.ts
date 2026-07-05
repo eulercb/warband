@@ -15,21 +15,10 @@
 import type { Player, InputCommand, ButtonState, Vec2 } from './types';
 import type { World } from './world';
 import { abilityById } from './monsters';
-import {
-  add as vadd,
-  scale as vscale,
-  normalize,
-  fromAngle,
-  angleOf,
-  len,
-} from './math';
+import { add as vadd, scale as vscale, normalize, fromAngle, angleOf, len } from './math';
 // Toroidal geometry so bot AI navigates/aims the short way across the wrap seam.
 import { sub, dist, pointInCircle, pointInCone, pointInSegment } from './torus';
-import {
-  BOT_RANGED_STANDOFF,
-  BOT_MELEE_RANGE,
-  BOT_REVIVE_RANGE,
-} from './constants';
+import { BOT_RANGED_STANDOFF, BOT_MELEE_RANGE, BOT_REVIVE_RANGE } from './constants';
 
 /** peerId prefix that marks a roster entry as a bot (never a real Trystero id). */
 export const BOT_PEER_PREFIX = 'bot:';
@@ -206,7 +195,16 @@ function telegraphFlee(world: World, bot: Player): Vec2 | null {
       return null;
     }
     case 'cone':
-      if (pointInCone(bot.pos, boss.pos, a.aimAngle, ab.range ?? 300, ((ab.halfAngleDeg ?? 30) * Math.PI) / 180, r)) {
+      if (
+        pointInCone(
+          bot.pos,
+          boss.pos,
+          a.aimAngle,
+          ab.range ?? 300,
+          ((ab.halfAngleDeg ?? 30) * Math.PI) / 180,
+          r,
+        )
+      ) {
         // Step sideways out of the cone.
         return fromAngle(a.aimAngle + Math.PI / 2);
       }
@@ -271,9 +269,12 @@ function decideAbilities(
     case 'cleric': {
       const wounded = mostWounded(world);
       const needHeal = wounded ? wounded.hp / wounded.maxHp < 0.65 : false;
-      if (needHeal && cd.a1 <= 0) want.a1 = true; // Heal
-      else if (cd.a2 <= 0 && woundedCount(world) >= 2) want.a2 = true; // Sanctuary
-      else if (cd.a3 <= 0) want.a3 = true; // Blessing on cooldown
+      if (needHeal && cd.a1 <= 0)
+        want.a1 = true; // Heal
+      else if (cd.a2 <= 0 && woundedCount(world) >= 2)
+        want.a2 = true; // Sanctuary
+      else if (cd.a3 <= 0)
+        want.a3 = true; // Blessing on cooldown
       else if (hasTarget && cd.basic <= 0) want.basic = true; // Smite when idle
       break;
     }
@@ -294,9 +295,12 @@ function decideAbilities(
     case 'paladin': {
       const wounded = mostWounded(world);
       const needHeal = wounded ? wounded.hp / wounded.maxHp < 0.6 : false;
-      if (cd.a3 <= 0 && (hpFrac < 0.5 || inDanger)) want.a3 = true; // Divine Shield
-      else if (needHeal && cd.a2 <= 0) want.a2 = true; // Lay on Hands
-      else if (cd.a1 <= 0 && distBoss <= 170) want.a1 = true; // Consecration
+      if (cd.a3 <= 0 && (hpFrac < 0.5 || inDanger))
+        want.a3 = true; // Divine Shield
+      else if (needHeal && cd.a2 <= 0)
+        want.a2 = true; // Lay on Hands
+      else if (cd.a1 <= 0 && distBoss <= 170)
+        want.a1 = true; // Consecration
       else if (hasTarget && cd.basic <= 0) want.basic = true; // Holy Strike
       break;
     }

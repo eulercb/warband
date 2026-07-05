@@ -10,14 +10,7 @@
 import type { Player } from './types';
 
 export type UpgradeId =
-  | 'swift'
-  | 'vigor'
-  | 'haste'
-  | 'focus'
-  | 'surefooted'
-  | 'mighty'
-  | 'bulwark'
-  | 'renewal';
+  'swift' | 'vigor' | 'haste' | 'focus' | 'surefooted' | 'mighty' | 'bulwark' | 'renewal';
 
 export interface UpgradeDef {
   id: UpgradeId;

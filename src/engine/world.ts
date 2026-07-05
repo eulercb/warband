@@ -87,11 +87,7 @@ import {
   damagePlayer,
 } from './combat';
 import { decayThreat, highestThreatTarget } from './threat';
-import {
-  resolvePlayerAbility,
-  resolveBossAbility,
-  beamTick,
-} from './abilities';
+import { resolvePlayerAbility, resolveBossAbility, beamTick } from './abilities';
 
 const SLOTS: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
 
@@ -510,7 +506,11 @@ export class World {
     if (proj.impactRadius > 0) {
       // AoE on impact
       const center = proj.pos;
-      if (this.boss && this.boss.hp > 0 && dist(center, this.boss.pos) <= proj.impactRadius + this.boss.radius) {
+      if (
+        this.boss &&
+        this.boss.hp > 0 &&
+        dist(center, this.boss.pos) <= proj.impactRadius + this.boss.radius
+      ) {
         this.applyProjDamageBoss(owner, proj.damage);
         this.applyProjRiders(this.boss, proj);
       }
@@ -627,9 +627,14 @@ export class World {
     const owner = this.players.find((p) => p.id === z.ownerId) ?? null;
     const slows = z.slowMult < 1;
     if (z.damagePerTick > 0 || slows) {
-      if (this.boss && this.boss.hp > 0 && dist(z.pos, this.boss.pos) <= z.radius + this.boss.radius) {
+      if (
+        this.boss &&
+        this.boss.hp > 0 &&
+        dist(z.pos, this.boss.pos) <= z.radius + this.boss.radius
+      ) {
         if (z.damagePerTick > 0) this.applyProjDamageBoss(owner, z.damagePerTick);
-        if (slows) applyBuff(this.boss, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
+        if (slows)
+          applyBuff(this.boss, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
       }
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
@@ -812,7 +817,8 @@ export class World {
         break;
       case 'ember':
         for (const p of this.players) {
-          if (p.state === 'alive' && dist(p.pos, boss.pos) <= 250) damagePlayer(this, p, 16 * scalar);
+          if (p.state === 'alive' && dist(p.pos, boss.pos) <= 250)
+            damagePlayer(this, p, 16 * scalar);
         }
         this.events.push({ t: 'telegraph', pos: { ...boss.pos }, shape: 'circle' });
         break;
@@ -928,7 +934,15 @@ export class World {
       if (ab.minHpFrac != null && hpFrac > ab.minHpFrac) return false;
       return true;
     };
-    const choice = def.decide({ boss, hpFrac, target, distToTarget, anyInMelee, usable, rng: this.rng });
+    const choice = def.decide({
+      boss,
+      hpFrac,
+      target,
+      distToTarget,
+      anyInMelee,
+      usable,
+      rng: this.rng,
+    });
     if (!choice) return;
     const ab = abilityById(def, choice);
     if (!ab) return;

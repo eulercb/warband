@@ -1,0 +1,16 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+dist-ssr
+dev-dist
+.vite
+
+# Test coverage
+coverage
+
+# Generated / vendored assets — not hand-authored, don't reformat
+package-lock.json
+public
+LICENSE

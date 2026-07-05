@@ -15,8 +15,7 @@ import { tmpdir } from 'node:os';
 
 const URL = process.env.SMOKE_URL || 'http://localhost:4173/';
 const SHOT_DIR = process.env.SHOT_DIR || tmpdir();
-const EXEC =
-  process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXEC = process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
 // Trystero tracker/WebRTC failures are expected in this sandbox — ignore them.
 const IGNORE = [
@@ -88,7 +87,8 @@ await step('start fight -> game renders', async () => {
     const c = document.querySelector('canvas');
     return c ? { w: c.width, h: c.height } : null;
   });
-  if (!size || size.w < 10 || size.h < 10) throw new Error(`canvas missing/too small: ${JSON.stringify(size)}`);
+  if (!size || size.w < 10 || size.h < 10)
+    throw new Error(`canvas missing/too small: ${JSON.stringify(size)}`);
   // assert the in-game HUD is present (boss bar + ability icons)
   const hud = await page.evaluate(() => ({
     bossBar: !!document.querySelector('.hud-bossbar'),

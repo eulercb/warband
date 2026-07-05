@@ -26,12 +26,7 @@ import type {
 } from './protocol';
 import { World } from '../engine/world';
 import type { WorldPlayerInit } from '../engine/world';
-import {
-  SIM_DT,
-  MAX_PLAYERS,
-  RESUME_COUNTDOWN_S,
-  SCORE_BOSS_CLEAR,
-} from '../engine/constants';
+import { SIM_DT, MAX_PLAYERS, RESUME_COUNTDOWN_S, SCORE_BOSS_CLEAR } from '../engine/constants';
 import { computeBotInput, BOT_PEER_PREFIX } from '../engine/bot';
 import { CLASSES } from '../engine/classes';
 import { buildRun, modifierForCycle } from '../engine/monsters';
@@ -246,7 +241,12 @@ export class Host implements NetSession {
 
     // --- Client -> host inputs (drop out-of-order commands) ---
     this.inputAction.onMessage = (data, ctx) => {
-      netLogOnce(this.loggedOnce, 'input:' + ctx.peerId, 'host', `first input from ${ctx.peerId.slice(0, 6)}`);
+      netLogOnce(
+        this.loggedOnce,
+        'input:' + ctx.peerId,
+        'host',
+        `first input from ${ctx.peerId.slice(0, 6)}`,
+      );
       const last = this.lastSeq.get(ctx.peerId) ?? -1;
       if (data.seq >= last) {
         this.latestInput.set(ctx.peerId, data);
@@ -495,9 +495,7 @@ export class Host implements NetSession {
 
     // World roster carries each hero's accumulated upgrades + carried score
     // (host-authoritative); bots earn no upgrades and no score.
-    const roster: WorldPlayerInit[] = [
-      this.rosterEntry(selfId, this.hostName, this.hostClass),
-    ];
+    const roster: WorldPlayerInit[] = [this.rosterEntry(selfId, this.hostName, this.hostClass)];
     for (const [peerId, e] of this.lobby) {
       roster.push(this.rosterEntry(peerId, e.name, e.classId));
     }
@@ -620,7 +618,10 @@ export class Host implements NetSession {
       countdown: this.resumeCountdown,
     };
     this.pauseAction.send(msg);
-    this.opts.onPause?.(this.paused, { byName: this.pausedByName, countdown: this.resumeCountdown });
+    this.opts.onPause?.(this.paused, {
+      byName: this.pausedByName,
+      countdown: this.resumeCountdown,
+    });
   }
 
   private clearResumeCountdown(): void {

@@ -5,12 +5,7 @@
  */
 import { Host } from '../net/host';
 import { Client } from '../net/client';
-import {
-  generateRoomCode,
-  writeRoomToHash,
-  shareLinkFor,
-  selfId,
-} from '../net/room';
+import { generateRoomCode, writeRoomToHash, shareLinkFor, selfId } from '../net/room';
 import { useStore } from './store';
 import { netLog } from '../net/log';
 import { Sfx } from '../audio/sfx';
@@ -48,7 +43,7 @@ function applyPauseState(
 ): void {
   const s = useStore.getState();
   s.setPaused(paused);
-  s.setPausedBy(paused ? info.byName ?? null : null);
+  s.setPausedBy(paused ? (info.byName ?? null) : null);
   s.setResumeCountdown(info.countdown);
 }
 

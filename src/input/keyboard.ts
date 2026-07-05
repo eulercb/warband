@@ -97,8 +97,7 @@ export class KeyboardMouse {
    */
   sample(localScreenPos: Vec2): InputState {
     const keys = getBindings().keys;
-    const down = (action: KeyAction): boolean =>
-      keys[action].some((code) => this.held.has(code));
+    const down = (action: KeyAction): boolean => keys[action].some((code) => this.held.has(code));
 
     // --- Movement (bound keys), magnitude clamped to 1 ---
     let mx = 0;

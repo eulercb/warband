@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { World } from '../src/engine/world';
-import {
-  computeBotInput,
-  isBotPeerId,
-  BOT_PEER_PREFIX,
-} from '../src/engine/bot';
+import { computeBotInput, isBotPeerId, BOT_PEER_PREFIX } from '../src/engine/bot';
 import type { InputCommand } from '../src/engine/types';
 
 function botMap(w: World): Map<string, InputCommand> {

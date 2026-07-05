@@ -78,14 +78,7 @@ function persistAutofire(on: boolean): void {
   }
 }
 
-export type Phase =
-  | 'menu'
-  | 'hostSetup'
-  | 'join'
-  | 'lobby'
-  | 'game'
-  | 'result'
-  | 'waiting'; // late-join holding state: "fight in progress"
+export type Phase = 'menu' | 'hostSetup' | 'join' | 'lobby' | 'game' | 'result' | 'waiting'; // late-join holding state: "fight in progress"
 
 export interface AppState {
   phase: Phase;

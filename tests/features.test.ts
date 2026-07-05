@@ -31,7 +31,7 @@ describe('forceFinish (pause-menu End Run)', () => {
 });
 
 describe('skill-area cues', () => {
-  it("a Knight cleave emits a cone skillArea + a slotted cast", () => {
+  it('a Knight cleave emits a cone skillArea + a slotted cast', () => {
     const w = new World({
       monsterId: 'dragon',
       seed: 2,

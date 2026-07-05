@@ -38,7 +38,9 @@ function BuffChips({ buffs }: { buffs: BuffView[] }) {
           title={`${b.label} · ${b.secs}s`}
           style={{ borderColor: `#${b.color.toString(16).padStart(6, '0')}` }}
         >
-          <span className="hud-buff-glyph" aria-hidden="true">{b.glyph}</span>
+          <span className="hud-buff-glyph" aria-hidden="true">
+            {b.glyph}
+          </span>
           <span className="hud-buff-secs">{b.secs}</span>
         </span>
       ))}
@@ -105,7 +107,9 @@ export default function HUD() {
         <div className="hud-bossbar">
           <div className="hud-bossbar-label">
             {run && run.total > 1 && (
-              <span className="hud-run-tag">Boss {run.index + 1}/{run.total}</span>
+              <span className="hud-run-tag">
+                Boss {run.index + 1}/{run.total}
+              </span>
             )}
             {cycle > 0 && <span className="hud-cycle-tag">Cycle {cycle + 1}</span>}
             {bossLabel}
@@ -187,7 +191,9 @@ export default function HUD() {
         <div className={`hud-selfhp cls-${hud.classId ?? 'knight'}`}>
           <div className="hud-self-row">
             <BuffChips buffs={hud.buffs} />
-            <span className="hud-score" title="Your run score">★ {hud.score}</span>
+            <span className="hud-score" title="Your run score">
+              ★ {hud.score}
+            </span>
           </div>
           <div className="hud-healthbar">
             <div className="hud-healthbar-fill" style={{ width: `${hpPct}%` }} />

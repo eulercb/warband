@@ -3,15 +3,7 @@
  * Pure functions operating on entities + an event sink. No world import (to
  * keep this decoupled and trivially unit-testable).
  */
-import type {
-  Player,
-  Boss,
-  Add,
-  Buff,
-  BuffKind,
-  GameEvent,
-  Side,
-} from './types';
+import type { Player, Boss, Add, Buff, BuffKind, GameEvent, Side } from './types';
 import { getClass } from './classes';
 import { HEAL_THREAT_FACTOR } from './constants';
 
@@ -82,7 +74,10 @@ export function damageBoss(
   // Honor the boss's own damage-taken buffs (Brace / Petrify / Regrow / Aegis…),
   // so a boss defensive cooldown actually mitigates incoming damage.
   const outgoing =
-    baseDamage * buffMult(source, 'damageDealt') * source.damageMult * buffMult(boss, 'damageTaken');
+    baseDamage *
+    buffMult(source, 'damageDealt') *
+    source.damageMult *
+    buffMult(boss, 'damageTaken');
   const before = boss.hp;
   boss.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(boss.hp, 0));
@@ -99,12 +94,7 @@ export function damageBoss(
 }
 
 /** Player deals damage to an add (no boss threat). Returns outgoing damage. */
-export function damageAdd(
-  sink: EventSink,
-  source: Player,
-  add: Add,
-  baseDamage: number,
-): number {
+export function damageAdd(sink: EventSink, source: Player, add: Add, baseDamage: number): number {
   const outgoing = baseDamage * buffMult(source, 'damageDealt') * source.damageMult;
   const before = add.hp;
   add.hp -= outgoing;
@@ -125,11 +115,7 @@ export function damageAdd(
  * damage scaling + soft-enrage. Honors i-frames and damage-taken buffs.
  * Returns damage actually dealt (0 if dodged). Downed/dead take no damage.
  */
-export function damagePlayer(
-  sink: EventSink,
-  target: Player,
-  base: number,
-): number {
+export function damagePlayer(sink: EventSink, target: Player, base: number): number {
   if (target.state !== 'alive') return 0;
   if (hasBuff(target, 'invuln')) {
     sink.events.push({ t: 'dodge', id: target.id, pos: { ...target.pos } });
@@ -183,12 +169,7 @@ export function healBoss(boss: Boss, amount: number): void {
 // Buff constructors (shared)
 // ---------------------------------------------------------------------------
 
-export function makeBuff(
-  kind: BuffKind,
-  mult: number,
-  duration: number,
-  source: string,
-): Buff {
+export function makeBuff(kind: BuffKind, mult: number, duration: number, source: string): Buff {
   return { kind, mult, remaining: duration, source };
 }
 

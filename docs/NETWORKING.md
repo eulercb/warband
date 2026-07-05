@@ -17,11 +17,11 @@ what happens under the hood when someone opens your `#room=CODE` link:
    "topic". Both the host and the joiner announce that topic to a set of public
    **WebTorrent trackers** (`wss://…` WebSocket servers). The trackers act purely
    as a matchmaking blackboard: "who else is interested in this topic?" Because
-   the host and joiner derive the *same* topic from the *same* code, the trackers
+   the host and joiner derive the _same_ topic from the _same_ code, the trackers
    introduce them to each other. **The code is the rendezvous key.** No IP
    address, no account, no server of ours is involved.
 
-2. **Signaling.** Once introduced, the two browsers exchange WebRTC *signaling*
+2. **Signaling.** Once introduced, the two browsers exchange WebRTC _signaling_
    messages (SDP offers/answers and ICE candidates) through the trackers. This is
    a tiny, one-time handshake to agree on how to talk directly.
 
@@ -29,7 +29,7 @@ what happens under the hood when someone opens your `#room=CODE` link:
    peer-to-peer connection and, from that point on, the trackers are no longer
    used — game traffic flows straight between the players.
 
-So the short code is not a shortcut or a partial address; it *is* the full
+So the short code is not a shortcut or a partial address; it _is_ the full
 coordinate the matchmaking layer needs. What it does **not** do is guarantee that
 step 3 succeeds — and that is where "it works on my machine but not over the
 internet" comes from.
@@ -56,25 +56,25 @@ from the pool in `src/net/rtc.ts` (`sanitizeTrackerUrls` / `BLOCKED_TRACKER_HOST
 Even after a successful introduction, two browsers on the open internet are
 usually behind home routers doing **NAT**. To punch a direct path they use:
 
-- **STUN** — a lightweight server that just tells each peer *"here is how the
-  outside world sees your address."* Trystero ships Google + Cloudflare STUN.
+- **STUN** — a lightweight server that just tells each peer _"here is how the
+  outside world sees your address."_ Trystero ships Google + Cloudflare STUN.
   STUN is enough for most home networks.
-- **TURN** — a **relay** server. When a direct path is impossible — *symmetric*
+- **TURN** — a **relay** server. When a direct path is impossible — _symmetric_
   NATs, strict corporate/campus firewalls, and many mobile carriers — the only
   way through is to bounce the encrypted traffic off a neutral relay both peers
-  *can* reach. Without a TURN server, those players will never connect, no matter
+  _can_ reach. Without a TURN server, those players will never connect, no matter
   how correct the code and trackers are.
 
 When you test with **two tabs / two windows on the same computer**, there is no
-NAT between them at all, so it *should* be the easy case — which is exactly why
+NAT between them at all, so it _should_ be the easy case — which is exactly why
 local testing usually looks fine while a real cross-internet game hangs in the
 lobby. **Missing TURN is the single most common cause of that.** (For the one way
-same-machine play can *also* break — mDNS host-candidate hiding — and how Warband
+same-machine play can _also_ break — mDNS host-candidate hiding — and how Warband
 fixes it, see the next section.)
 
 ### Same machine, but still stuck? mDNS host candidates
 
-Two tabs on one machine can *still* fail to connect, with the exact same "SDP
+Two tabs on one machine can _still_ fail to connect, with the exact same "SDP
 exchanged, 0 active peers" symptom, and the cause is **not** NAT/TURN. For
 privacy, modern browsers no longer expose your real local IP as a host ICE
 candidate — they replace it with a randomized `*.local` **mDNS** hostname. Turning
@@ -90,8 +90,8 @@ same-machine peers connect directly over loopback, with no mDNS resolver and no
 TURN. It is **on by default**. It is safe for real games: only same-host
 `typ host` candidate lines are rewritten, so server-reflexive (STUN) and relay
 (TURN) candidates — the ones that carry play between different machines — are left
-untouched. The only thing it trades away is a *direct* same-LAN link between two
-*different* machines (their host candidates become loopback too, falling back to
+untouched. The only thing it trades away is a _direct_ same-LAN link between two
+_different_ machines (their host candidates become loopback too, falling back to
 hairpin-STUN/TURN); set `VITE_NO_RTC_LOOPBACK=true` if you need that path.
 
 Warband bundles a free, best-effort public TURN relay so cross-network games have
@@ -154,7 +154,7 @@ VITE_TRACKER_URLS=wss://tracker.example.com,wss://tracker2.example.com
 Multiplayer failures are often **silent** — two peers sit in the lobby forever
 with a clean console and an idle Network tab, because "nothing happened" is not an
 error anyone throws. Warband ships a verbose logging mode that narrates the whole
-connection lifecycle so you can see *where* it stalls.
+connection lifecycle so you can see _where_ it stalls.
 
 **Turning it on:**
 
@@ -167,7 +167,7 @@ connection lifecycle so you can see *where* it stalls.
   - **Build-time:** set `VITE_NET_DEBUG=true` (see `.env.example`) and rebuild.
 - Run `warband.diagnose()` any time for a one-shot snapshot. It works even with
   verbose logging **off**, and prints four things:
-  1. the **room identity** (`appId / code`) — open `diagnose()` on the host *and*
+  1. the **room identity** (`appId / code`) — open `diagnose()` on the host _and_
      the joiner and confirm both print the **same** line. If they differ, the two
      tabs derived different rendezvous topics and can never find each other (wrong
      code) — that is the whole bug, stop here.
@@ -181,12 +181,12 @@ connection lifecycle so you can see *where* it stalls.
      `N signaling` **has** relayed a peer's SDP to you — proof matchmaking worked.
   4. a plain-English **verdict** naming the stage that failed and its fix. The
      verdict hinges on the **signaling** count when you are stuck at `0 active
-     peers`, because `getPeers()` only counts peers past the WebRTC handshake — a
+peers`, because `getPeers()` only counts peers past the WebRTC handshake — a
      peer stuck in ICE reads as `0` too. So:
-     - `0 active peers` **and `0 signaling`** → the *matchmaking* stage: nobody has
+     - `0 active peers` **and `0 signaling`** → the _matchmaking_ stage: nobody has
        been introduced. Check the room code / host tab / trackers — **not** TURN.
      - `0 active peers` **but `N signaling`** (offers/answers were relayed) → you
-       *were* introduced and exchanged SDP; the direct connection just never
+       _were_ introduced and exchanged SDP; the direct connection just never
        formed. That is the **NAT-traversal** stage — **configure TURN**
        (`VITE_TURN_URL`). This is the case the reported "stuck in the lobby" bug
        falls into, and the verdict now says so instead of blaming the trackers.
@@ -205,24 +205,24 @@ All lines are prefixed `[warband:net]` with a `+Ns` timestamp and a scope
 [warband:net] +2.15s [client] recv lobby { players: 2, phase: 'lobby' }
 ```
 
-**Reading a failure** — find the last step that *did* happen:
+**Reading a failure** — find the last step that _did_ happen:
 
-| Last thing you see | What it means | Where to look |
-| --- | --- | --- |
-| `connectivity: … 0 open` (sockets never open) or a `join error` | Trackers unreachable — matchmaking can't even start | Firewall/proxy/captive portal; try another network or add `VITE_TRACKER_URLS` |
-| Trackers open, `0 active peers`, and `diagnose()` shows **`0 signaling`** on every tracker | Matchmaking hasn't paired you — nobody has been introduced | Confirm both tabs use the *exact* same room code; check the host tab is open; re-test in two tabs on one machine to isolate the trackers |
-| Trackers open, `0 active peers`, but `diagnose()` shows **`N signaling`** (offers/answers were relayed) | You *were* introduced and exchanged SDP, but the WebRTC connection never formed — **NAT traversal**, not matchmaking | Configure TURN — `VITE_TURN_URL` (above). The in-app hint says the same. This is the classic "works on one machine, not over the internet". (Trystero also logs a `join error: could not connect … after exchanging SDP` a few seconds later.) |
-| `peer appeared` / peer state reaches `checking` or `failed` but **never `connected`**, and no `HOST REACHED` | Direct WebRTC path can't form (NAT) | You need TURN — configure `VITE_TURN_URL` (above) |
-| `HOST REACHED` then later `reachability lost` | Connection formed then dropped | Flaky network / carrier-grade NAT — TURN relay for that player |
+| Last thing you see                                                                                           | What it means                                                                                                        | Where to look                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `connectivity: … 0 open` (sockets never open) or a `join error`                                              | Trackers unreachable — matchmaking can't even start                                                                  | Firewall/proxy/captive portal; try another network or add `VITE_TRACKER_URLS`                                                                                                                                                                  |
+| Trackers open, `0 active peers`, and `diagnose()` shows **`0 signaling`** on every tracker                   | Matchmaking hasn't paired you — nobody has been introduced                                                           | Confirm both tabs use the _exact_ same room code; check the host tab is open; re-test in two tabs on one machine to isolate the trackers                                                                                                       |
+| Trackers open, `0 active peers`, but `diagnose()` shows **`N signaling`** (offers/answers were relayed)      | You _were_ introduced and exchanged SDP, but the WebRTC connection never formed — **NAT traversal**, not matchmaking | Configure TURN — `VITE_TURN_URL` (above). The in-app hint says the same. This is the classic "works on one machine, not over the internet". (Trystero also logs a `join error: could not connect … after exchanging SDP` a few seconds later.) |
+| `peer appeared` / peer state reaches `checking` or `failed` but **never `connected`**, and no `HOST REACHED` | Direct WebRTC path can't form (NAT)                                                                                  | You need TURN — configure `VITE_TURN_URL` (above)                                                                                                                                                                                              |
+| `HOST REACHED` then later `reachability lost`                                                                | Connection formed then dropped                                                                                       | Flaky network / carrier-grade NAT — TURN relay for that player                                                                                                                                                                                 |
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Fix |
-| --- | --- | --- |
-| Joiner stuck on "Connecting to the host…" | Wrong code, or host tab closed | Re-check the code; make sure the host's tab is still open |
-| Works between two tabs, fails across the internet | No usable NAT-traversal path (needs TURN) | Configure `VITE_TURN_URL` (see above) |
+| Symptom                                                              | Likely cause                                            | Fix                                                                    |
+| -------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Joiner stuck on "Connecting to the host…"                            | Wrong code, or host tab closed                          | Re-check the code; make sure the host's tab is still open              |
+| Works between two tabs, fails across the internet                    | No usable NAT-traversal path (needs TURN)               | Configure `VITE_TURN_URL` (see above)                                  |
 | Both peers hang immediately; console shows tracker `wss://` failures | Trackers blocked/down (firewall, proxy, captive portal) | Try another network, or add reachable trackers via `VITE_TRACKER_URLS` |
-| Connects then drops on one player's mobile/hotspot | Carrier-grade NAT | TURN relay is required for that player |
+| Connects then drops on one player's mobile/hotspot                   | Carrier-grade NAT                                       | TURN relay is required for that player                                 |
 
 Open your browser devtools console during a connection attempt and enable verbose
 logs (above). Warband logs tracker/join errors there (`[warband:net] … join

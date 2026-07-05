@@ -192,10 +192,16 @@ export function ResultScreen() {
                     disabled={!!pickedGen}
                     aria-pressed={isPicked}
                   >
-                    <span className="wb-upgrade-icon" aria-hidden="true">{u.icon}</span>
+                    <span className="wb-upgrade-icon" aria-hidden="true">
+                      {u.icon}
+                    </span>
                     <span className="wb-upgrade-name">{u.name}</span>
                     <span className="wb-upgrade-desc">{u.desc}</span>
-                    {isPicked ? <span className="wb-upgrade-tick" aria-hidden="true">✓</span> : null}
+                    {isPicked ? (
+                      <span className="wb-upgrade-tick" aria-hidden="true">
+                        ✓
+                      </span>
+                    ) : null}
                   </button>
                 );
               })}
@@ -221,27 +227,41 @@ export function ResultScreen() {
                     disabled={!!pickedChar}
                     aria-pressed={isPicked}
                   >
-                    <span className="wb-upgrade-icon" aria-hidden="true">{u.icon}</span>
+                    <span className="wb-upgrade-icon" aria-hidden="true">
+                      {u.icon}
+                    </span>
                     <span className="wb-upgrade-name">{u.name}</span>
                     <span className="wb-upgrade-desc">{u.desc}</span>
-                    {isPicked ? <span className="wb-upgrade-tick" aria-hidden="true">✓</span> : null}
+                    {isPicked ? (
+                      <span className="wb-upgrade-tick" aria-hidden="true">
+                        ✓
+                      </span>
+                    ) : null}
                   </button>
                 );
               })}
             </div>
 
-            {(myUpgrades.length > 0 || myCharUpgrades.length > 0) ? (
+            {myUpgrades.length > 0 || myCharUpgrades.length > 0 ? (
               <div className="wb-upgrade-owned">
                 <span className="wb-field-label">Your upgrades</span>
                 <span className="wb-upgrade-badges">
                   {myUpgrades.map((id, i) => (
-                    <span key={`g-${id}-${i}`} className="wb-upgrade-badge" title={UPGRADES[id].desc}>
+                    <span
+                      key={`g-${id}-${i}`}
+                      className="wb-upgrade-badge"
+                      title={UPGRADES[id].desc}
+                    >
                       {UPGRADES[id].icon} {UPGRADES[id].name}
                     </span>
                   ))}
                   {myCharUpgrades.map((id, i) =>
                     CHAR_UPGRADES[id] ? (
-                      <span key={`c-${id}-${i}`} className="wb-upgrade-badge wb-badge-char" title={CHAR_UPGRADES[id].desc}>
+                      <span
+                        key={`c-${id}-${i}`}
+                        className="wb-upgrade-badge wb-badge-char"
+                        title={CHAR_UPGRADES[id].desc}
+                      >
                         {CHAR_UPGRADES[id].icon} {CHAR_UPGRADES[id].name}
                       </span>
                     ) : null,
@@ -263,11 +283,21 @@ export function ResultScreen() {
               <tr>
                 <th scope="col">Hero</th>
                 <th scope="col">Class</th>
-                <th scope="col" className="wb-num">Damage</th>
-                <th scope="col" className="wb-num">Healing</th>
-                <th scope="col" className="wb-num">Revives</th>
-                <th scope="col" className="wb-num">Deaths</th>
-                <th scope="col" className="wb-num">Score</th>
+                <th scope="col" className="wb-num">
+                  Damage
+                </th>
+                <th scope="col" className="wb-num">
+                  Healing
+                </th>
+                <th scope="col" className="wb-num">
+                  Revives
+                </th>
+                <th scope="col" className="wb-num">
+                  Deaths
+                </th>
+                <th scope="col" className="wb-num">
+                  Score
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -301,7 +331,9 @@ export function ResultScreen() {
               })}
               {stats.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="wb-player-empty">No combatants recorded.</td>
+                  <td colSpan={7} className="wb-player-empty">
+                    No combatants recorded.
+                  </td>
                 </tr>
               ) : null}
             </tbody>

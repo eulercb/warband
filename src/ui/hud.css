@@ -20,7 +20,11 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
   color: #eaeaf2;
   user-select: none;
 }
@@ -274,25 +278,54 @@
 }
 
 /* class accent colors for teammate frames */
-.hud-teammate.cls-knight { border-left-color: #4a90d9; }
-.hud-teammate.cls-ranger { border-left-color: #4caf50; }
-.hud-teammate.cls-mage { border-left-color: #9c5cf0; }
-.hud-teammate.cls-cleric { border-left-color: #f2c14e; }
-.hud-selfhp.cls-knight .hud-healthbar { border-color: #4a90d9; }
-.hud-selfhp.cls-ranger .hud-healthbar { border-color: #4caf50; }
-.hud-selfhp.cls-mage .hud-healthbar { border-color: #9c5cf0; }
-.hud-selfhp.cls-cleric .hud-healthbar { border-color: #f2c14e; }
+.hud-teammate.cls-knight {
+  border-left-color: #4a90d9;
+}
+.hud-teammate.cls-ranger {
+  border-left-color: #4caf50;
+}
+.hud-teammate.cls-mage {
+  border-left-color: #9c5cf0;
+}
+.hud-teammate.cls-cleric {
+  border-left-color: #f2c14e;
+}
+.hud-selfhp.cls-knight .hud-healthbar {
+  border-color: #4a90d9;
+}
+.hud-selfhp.cls-ranger .hud-healthbar {
+  border-color: #4caf50;
+}
+.hud-selfhp.cls-mage .hud-healthbar {
+  border-color: #9c5cf0;
+}
+.hud-selfhp.cls-cleric .hud-healthbar {
+  border-color: #f2c14e;
+}
 
 @keyframes hud-pulse {
-  from { opacity: 0.5; }
-  to { opacity: 1; }
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 640px) {
-  .hud-selfhp { width: 220px; }
-  .hud-ability { width: 52px; height: 52px; }
-  .hud-teammates { width: 168px; }
-  .hud-teammate-class { display: none; }
+  .hud-selfhp {
+    width: 220px;
+  }
+  .hud-ability {
+    width: 52px;
+    height: 52px;
+  }
+  .hud-teammates {
+    width: 168px;
+  }
+  .hud-teammate-class {
+    display: none;
+  }
 }
 
 /* Gauntlet run tag on the boss bar. */

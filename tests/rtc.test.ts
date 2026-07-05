@@ -128,7 +128,9 @@ describe('sanitizeTrackerUrls', () => {
   it('also strips a blocked tracker that arrived via env extras', () => {
     const merged = mergeTrackerUrls(
       ['wss://tracker.webtorrent.dev'],
-      extraTrackerUrls({ VITE_TRACKER_URLS: 'wss://tracker.files.fm:7073/announce, wss://ok.example' }),
+      extraTrackerUrls({
+        VITE_TRACKER_URLS: 'wss://tracker.files.fm:7073/announce, wss://ok.example',
+      }),
     );
     expect(sanitizeTrackerUrls(merged)).toEqual([
       'wss://tracker.webtorrent.dev',
