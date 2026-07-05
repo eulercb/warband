@@ -781,6 +781,89 @@ body {
   font-size: 0.9rem;
 }
 
+/* Connection status banner (lobby). */
+.wb-conn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-2);
+  color: var(--text-dim);
+}
+
+.wb-conn.is-connected {
+  border-color: rgba(76, 175, 80, 0.5);
+  background: rgba(76, 175, 80, 0.12);
+  color: #b6e6b8;
+}
+
+.wb-conn.is-connected .wb-conn-msg::before {
+  content: '✓ ';
+  color: var(--success);
+  font-weight: 700;
+}
+
+.wb-conn.is-searching {
+  border-color: rgba(242, 193, 78, 0.5);
+  background: rgba(242, 193, 78, 0.1);
+  color: #f3dca0;
+}
+
+.wb-conn-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.wb-conn-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+  animation: wb-conn-pulse 1.1s ease-in-out infinite;
+}
+
+.wb-conn-dots i:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.wb-conn-dots i:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+@keyframes wb-conn-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-conn-dots i {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+.wb-conn-hint {
+  margin-top: -4px;
+  padding: 9px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-soft);
+  background: var(--bg-2);
+  color: var(--text-faint);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
 /* --------------------------------------------------------------------------
  * Game canvas + HUD overlay
  * ------------------------------------------------------------------------ */

@@ -188,7 +188,8 @@ export interface GroundZone {
   ownerId: EntityId;
   damagePerTick: number; // applied to the opposing side
   healPerTick: number; // applied to the owning side
-  remaining: number; // seconds
+  duration: number; // seconds — full lifetime, used for the render fade envelope
+  remaining: number; // seconds — counts down; zone is removed at <= 0
   tickAccum: number; // accumulates toward ZONE_TICK_INTERVAL
 }
 
@@ -310,6 +311,7 @@ export interface ZoneView {
   kind: ZoneKind;
   pos: Vec2;
   radius: number;
+  duration: number;
   remaining: number;
 }
 

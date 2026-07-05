@@ -27,10 +27,21 @@ Then open the URL printed in your terminal (typically `http://localhost:5173`).
 
 1. One player clicks **Host** and picks a monster.
 2. That player shares the generated `#room=CODE` link with friends.
-3. Friends open the link, pick a class, and press **Ready**.
+3. Friends open the link, pick a class, and press **Ready**. The lobby shows a live connection banner — **"Connecting to the host…"** while it searches, then **"Connected to the host"** once the peer link is up.
 4. When everyone is ready, the host presses **Start**.
 
 **Same-machine two-window test:** you can try multiplayer with just one computer. Open the dev URL (`http://localhost:5173`) in two browser windows. In the first window click **Host** and copy the room code (or the full `#room=CODE` link). In the second window paste the code/link, pick a class, and press **Ready** — then Start from the host window. Peer-to-peer signaling works across two tabs on the same machine.
+
+> **Note:** the same-machine test always connects because there is no NAT between two tabs. Connecting over the *internet* has an extra requirement (a TURN relay for restrictive networks) — see **Multiplayer & connectivity** below.
+
+## Multiplayer & connectivity
+
+Warband has no game server: the host's tab runs the simulation and peers connect directly over WebRTC. Two things are worth knowing:
+
+- **Yes, sharing the room code is enough to find the host.** The code (plus the app id) is hashed into a shared topic that both browsers announce to public WebTorrent trackers; the trackers introduce the peers and relay the one-time WebRTC handshake. No IP addresses or accounts are involved.
+- **Internet play may need a TURN relay.** After matchmaking, the browsers try to open a *direct* connection. On many real networks (symmetric NATs, mobile carriers, corporate/campus firewalls) a direct path is impossible and the traffic must bounce off a **TURN relay**. Warband bundles a free best-effort public relay so cross-network games can connect out of the box, but for dependable play you should point it at your own TURN server via environment variables. Copy `.env.example` to `.env.local` and set `VITE_TURN_URL` / `VITE_TURN_USERNAME` / `VITE_TURN_CREDENTIAL`, then rebuild.
+
+For the full explanation — how the rendezvous works, a step-by-step "connect with someone over the internet" guide, TURN options, and troubleshooting — see **[docs/NETWORKING.md](docs/NETWORKING.md)**.
 
 ## Controls
 
@@ -94,7 +105,7 @@ npm test
 The codebase is organized around a clean split between simulation, networking, and presentation:
 
 - **`engine/`** — pure, deterministic, host-authoritative simulation. No DOM, no network, no rendering — just game logic, so it can be unit-tested in isolation.
-- **`net/`** — networking over Trystero (WebRTC) in a star topology, with snapshot interpolation and client-side prediction.
+- **`net/`** — networking over Trystero (WebRTC) in a star topology, with snapshot interpolation and client-side prediction. ICE/TURN and tracker configuration lives in `net/rtc.ts` (env-overridable); see [docs/NETWORKING.md](docs/NETWORKING.md).
 - **`render/`** — PixiJS rendering of the interpolated render state.
 - **`input/`** — keyboard/mouse and gamepad input, normalized into a single input command.
 - **`ui/`** — React + Zustand for menus, lobby, HUD, and results.

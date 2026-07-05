@@ -8,6 +8,8 @@ dev-dist
 
 # Local/env files
 *.local
+.env
+!.env.example
 
 # OS files
 .DS_Store

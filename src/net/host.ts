@@ -57,6 +57,8 @@ export interface HostOpts {
   onLobby: (msg: LobbyMsg) => void;
   /** Called once when the fight ends. */
   onResult: (result: FightResult) => void;
+  /** Called with the current count of connected peers whenever it changes. */
+  onPeers?: (count: number) => void;
   onError?: (err: string) => void;
 }
 
@@ -87,6 +89,8 @@ export class Host implements NetSession {
   private hostReady = false;
   private phase: 'lobby' | 'inFight' = 'lobby';
   private readonly lobby = new Map<string, PeerEntry>();
+  /** Peers with a live WebRTC connection (may exceed the lobby during handshakes). */
+  private readonly connectedPeers = new Set<string>();
 
   // Fight state.
   private readonly latestInput = new Map<string, InputCommand>();
@@ -107,7 +111,9 @@ export class Host implements NetSession {
     this.hostName = opts.name;
     this.hostClass = opts.classId;
 
-    this.room = openRoom(opts.code);
+    this.room = openRoom(opts.code, (msg) =>
+      console.warn('[warband] host room join error:', msg),
+    );
 
     this.helloAction = this.action(ACTIONS.hello);
     this.selectAction = this.action(ACTIONS.select);
@@ -145,12 +151,16 @@ export class Host implements NetSession {
 
     // --- Peer presence ---
     this.room.onPeerJoin = (peerId: string) => {
+      this.connectedPeers.add(peerId);
+      this.opts.onPeers?.(this.connectedPeers.size);
       this.ensurePeer(peerId);
       // Newcomers simply receive the current lobby; if a fight is in progress
       // the phase is 'inFight' and they wait for the next lobby.
       this.broadcastLobby();
     };
     this.room.onPeerLeave = (peerId: string) => {
+      this.connectedPeers.delete(peerId);
+      this.opts.onPeers?.(this.connectedPeers.size);
       this.lobby.delete(peerId);
       this.latestInput.delete(peerId);
       this.lastSeq.delete(peerId);

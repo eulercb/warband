@@ -1,0 +1,73 @@
+import { describe, it, expect } from 'vitest';
+import {
+  buildTurnConfig,
+  extraTrackerUrls,
+  mergeTrackerUrls,
+  DEFAULT_TURN,
+  type RtcEnv,
+} from '../src/net/rtc';
+
+describe('buildTurnConfig', () => {
+  it('returns the bundled public TURN by default', () => {
+    expect(buildTurnConfig({})).toEqual(DEFAULT_TURN);
+  });
+
+  it('prepends a custom TURN server from env, keeping the default relays', () => {
+    const env: RtcEnv = {
+      VITE_TURN_URL: 'turn:my.relay:3478',
+      VITE_TURN_USERNAME: 'user',
+      VITE_TURN_CREDENTIAL: 'pass',
+    };
+    const out = buildTurnConfig(env);
+    expect(out[0]).toEqual({
+      urls: 'turn:my.relay:3478',
+      username: 'user',
+      credential: 'pass',
+    });
+    expect(out.length).toBe(1 + DEFAULT_TURN.length);
+  });
+
+  it('uses only the custom relay when the default is disabled', () => {
+    const env: RtcEnv = {
+      VITE_TURN_URL: 'turn:my.relay:3478',
+      VITE_TURN_USERNAME: 'user',
+      VITE_TURN_CREDENTIAL: 'pass',
+      VITE_NO_DEFAULT_TURN: 'true',
+    };
+    expect(buildTurnConfig(env)).toEqual([
+      { urls: 'turn:my.relay:3478', username: 'user', credential: 'pass' },
+    ]);
+  });
+
+  it('supports multiple comma-separated TURN urls', () => {
+    const env: RtcEnv = {
+      VITE_TURN_URL: 'turn:a:3478, turn:b:3478',
+      VITE_NO_DEFAULT_TURN: '1',
+    };
+    const out = buildTurnConfig(env);
+    expect(out).toEqual([{ urls: ['turn:a:3478', 'turn:b:3478'] }]);
+  });
+
+  it('returns nothing when no TURN is configured and the default is disabled', () => {
+    expect(buildTurnConfig({ VITE_NO_DEFAULT_TURN: 'yes' })).toEqual([]);
+  });
+});
+
+describe('tracker url helpers', () => {
+  it('parses comma/space separated extra trackers', () => {
+    expect(extraTrackerUrls({ VITE_TRACKER_URLS: 'wss://a, wss://b\nwss://c' })).toEqual([
+      'wss://a',
+      'wss://b',
+      'wss://c',
+    ]);
+    expect(extraTrackerUrls({})).toEqual([]);
+  });
+
+  it('merges defaults with extras and de-dupes', () => {
+    expect(mergeTrackerUrls(['wss://a', 'wss://b'], ['wss://b', 'wss://c'])).toEqual([
+      'wss://a',
+      'wss://b',
+      'wss://c',
+    ]);
+  });
+});

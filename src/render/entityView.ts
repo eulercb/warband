@@ -19,7 +19,14 @@ import type {
   ProjectileKind,
   ZoneKind,
 } from '../engine/types';
-import { PLAYER_RADIUS, CLASS_COLORS, ADD_RADIUS, REVIVE_TIME } from '../engine/constants';
+import {
+  PLAYER_RADIUS,
+  CLASS_COLORS,
+  ADD_RADIUS,
+  REVIVE_TIME,
+  ZONE_FADE_IN,
+  ZONE_FADE_OUT,
+} from '../engine/constants';
 import { getMonster } from '../engine/monsters';
 import { clamp } from '../engine/math';
 
@@ -246,10 +253,29 @@ export function drawZone(g: Graphics, z: ZoneView, screen: Vec2, scale: number):
   const r = z.radius * scale;
   const { x, y } = screen;
 
+  // Ease the whole zone in on spawn and out near expiry so it visibly appears
+  // and then disappears after a while rather than popping.
+  const fade = zoneFadeAlpha(z.remaining, z.duration);
+  if (fade <= 0) return;
+
   // Gentle alpha pulse driven by the zone's own countdown.
   const pulse = 0.13 + 0.06 * (0.5 + 0.5 * Math.sin(z.remaining * 6));
-  g.circle(x, y, r).fill({ color, alpha: pulse });
-  g.circle(x, y, r).stroke({ width: 2, color, alpha: 0.55 });
+  g.circle(x, y, r).fill({ color, alpha: pulse * fade });
+  g.circle(x, y, r).stroke({ width: 2, color, alpha: 0.55 * fade });
+}
+
+/**
+ * Opacity multiplier (0..1) for a ground zone's fade envelope: ramps up over
+ * the first `ZONE_FADE_IN` seconds of its life and back down over the last
+ * `ZONE_FADE_OUT` seconds before it expires. Pure so it can be unit-tested
+ * without a renderer. `remaining` is seconds left; `duration` its full lifetime.
+ */
+export function zoneFadeAlpha(remaining: number, duration: number): number {
+  if (remaining <= 0) return 0;
+  const age = duration - remaining;
+  const fadeIn = ZONE_FADE_IN > 0 ? clamp(age / ZONE_FADE_IN, 0, 1) : 1;
+  const fadeOut = ZONE_FADE_OUT > 0 ? clamp(remaining / ZONE_FADE_OUT, 0, 1) : 1;
+  return Math.min(fadeIn, fadeOut);
 }
 
 // ---------------------------------------------------------------------------

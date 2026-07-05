@@ -303,6 +303,7 @@ function spawnZone(world: World, o: SpawnZoneOpts): void {
     ownerId: o.ownerId,
     damagePerTick: o.damagePerTick,
     healPerTick: o.healPerTick,
+    duration: o.duration,
     remaining: o.duration,
     tickAccum: 0,
   };

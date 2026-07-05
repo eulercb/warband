@@ -27,6 +27,14 @@ export interface AppState {
   roomCode: string | null;
   isHost: boolean;
   session: NetSession | null;
+  /**
+   * Connectivity gauge. On the host: the number of connected players. On a
+   * client: host reachability as 0/1 (1 once the host link is proven by an
+   * actual host message — not a raw mesh peer count).
+   */
+  peerCount: number;
+  /** Soft connectivity hint shown while a client is still trying to reach the host. */
+  netHint: string | null;
 
   // lobby (mirror of host authority)
   monsterId: MonsterId;
@@ -50,6 +58,8 @@ export interface AppState {
   setHostLeft: (v: boolean) => void;
   setRoom: (code: string | null, isHost: boolean) => void;
   setSession: (s: NetSession | null) => void;
+  setPeerCount: (n: number) => void;
+  setNetHint: (h: string | null) => void;
   setMonster: (id: MonsterId) => void;
   setLobby: (
     players: LobbyPlayer[],
@@ -73,6 +83,8 @@ export const useStore = create<AppState>((set, get) => ({
   roomCode: null,
   isHost: false,
   session: null,
+  peerCount: 0,
+  netHint: null,
 
   monsterId: DEFAULT_MONSTER,
   players: [],
@@ -90,6 +102,8 @@ export const useStore = create<AppState>((set, get) => ({
   setHostLeft: (hostLeft) => set({ hostLeft }),
   setRoom: (roomCode, isHost) => set({ roomCode, isHost }),
   setSession: (session) => set({ session }),
+  setPeerCount: (peerCount) => set({ peerCount }),
+  setNetHint: (netHint) => set({ netHint }),
   setMonster: (monsterId) => set({ monsterId }),
   setLobby: (players, monsterId, lobbyPhase) => set({ players, monsterId, lobbyPhase }),
   setLocalName: (localName) => set({ localName }),
@@ -112,6 +126,8 @@ export const useStore = create<AppState>((set, get) => ({
       roomCode: null,
       isHost: false,
       session: null,
+      peerCount: 0,
+      netHint: null,
       players: [],
       lobbyPhase: 'lobby',
       localReady: false,

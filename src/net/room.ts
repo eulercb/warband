@@ -9,8 +9,9 @@
 // subpath is now a runtime-throwing deprecation stub, so import the real
 // torrent strategy directly. (Swap to @trystero-p2p/nostr or /mqtt if tracker
 // connectivity is flaky — a one-line change.)
-import { joinRoom } from '@trystero-p2p/torrent';
+import { joinRoom, defaultRelayUrls } from '@trystero-p2p/torrent';
 import { APP_ID } from './protocol';
+import { buildTurnConfig, extraTrackerUrls, mergeTrackerUrls, type RtcEnv } from './rtc';
 
 /** This peer's stable, module-level id (from Trystero). Re-exported for callers. */
 export { selfId } from '@trystero-p2p/torrent';
@@ -54,7 +55,34 @@ export function shareLinkFor(code: string): string {
   return window.location.origin + window.location.pathname + '#room=' + code;
 }
 
-/** Join (or create) the Trystero room for `code` under the shared app id. */
-export function openRoom(code: string): Room {
-  return joinRoom({ appId: APP_ID }, code);
+// Connectivity config, resolved once from build-time env (see rtc.ts + .env.example).
+const rtcEnv = import.meta.env as unknown as RtcEnv;
+const TURN_CONFIG = buildTurnConfig(rtcEnv);
+// Use every tracker we know about at once (built-in pool + any extras) so a
+// single dead/overloaded tracker can't stop two peers from finding each other.
+const TRACKER_URLS = mergeTrackerUrls(defaultRelayUrls, extraTrackerUrls(rtcEnv));
+
+/**
+ * Join (or create) the Trystero room for `code` under the shared app id.
+ *
+ * `onJoinError` surfaces transport-level join failures (e.g. every tracker
+ * unreachable) so the UI can hint at connectivity problems instead of hanging.
+ */
+export function openRoom(code: string, onJoinError?: (msg: string) => void): Room {
+  return joinRoom(
+    {
+      appId: APP_ID,
+      // Adds TURN relays on top of Trystero's built-in Google/Cloudflare STUN so
+      // peers behind restrictive NATs can still connect over the internet.
+      turnConfig: TURN_CONFIG,
+      relayConfig: { urls: TRACKER_URLS, redundancy: TRACKER_URLS.length },
+    },
+    code,
+    onJoinError
+      ? {
+          onJoinError: (d) =>
+            onJoinError(typeof d?.error === 'string' ? d.error : 'connection error'),
+        }
+      : undefined,
+  );
 }

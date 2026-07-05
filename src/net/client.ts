@@ -46,6 +46,13 @@ export interface ClientOpts {
   onResult: (result: FightResult) => void;
   onReturnLobby: () => void;
   onHostLeft: () => void;
+  /**
+   * Host reachability, as a 0/1 count: 1 once we've actually received a message
+   * from the host, 0 before that (and again if the host link drops). NOT a raw
+   * peer count — Trystero forms a full mesh, so a plain peer tally would also
+   * count other clients, which is not what "connected to the host" means.
+   */
+  onPeers?: (count: number) => void;
   onError?: (err: string) => void;
 }
 
@@ -83,11 +90,21 @@ export class Client implements NetSession {
   private predicted: Vec2 | null = null;
   private lastPredictMs = 0;
 
+  /**
+   * The host's transport peer id, learned from the first host-originated message
+   * (only the host sends the lobby/start/snapshot/etc. channels). Used to report
+   * host reachability distinctly from the full WebRTC mesh, and to detect the
+   * host specifically dropping out.
+   */
+  private hostPeerId: string | null = null;
+
   constructor(opts: ClientOpts) {
     this.opts = opts;
     this.ownName = opts.name;
 
-    this.room = openRoom(opts.code);
+    this.room = openRoom(opts.code, (msg) =>
+      console.warn('[warband] client room join error:', msg),
+    );
 
     this.helloAction = this.action(ACTIONS.hello);
     this.selectAction = this.action(ACTIONS.select);
@@ -101,26 +118,36 @@ export class Client implements NetSession {
     this.byeAction = this.action(ACTIONS.bye);
 
     // --- Host -> client messages ---
-    this.lobbyAction.onMessage = (msg) => {
+    // Every one of these channels is host-originated, so receiving any of them
+    // proves the host link is live — that (not the raw mesh peer count) is our
+    // "connected to the host" signal.
+    this.lobbyAction.onMessage = (msg, ctx) => {
+      this.markHostReached(ctx.peerId);
       this.opts.onLobby(msg);
     };
-    this.startAction.onMessage = (msg) => {
+    this.startAction.onMessage = (msg, ctx) => {
+      this.markHostReached(ctx.peerId);
       this.interpolator.reset();
       this.resetPrediction();
       this.opts.onStart(msg);
     };
-    this.snapshotAction.onMessage = (snap) => {
+    this.snapshotAction.onMessage = (snap, ctx) => {
+      this.markHostReached(ctx.peerId);
       this.onSnapshot(snap);
     };
-    this.resultAction.onMessage = (msg) => {
+    this.resultAction.onMessage = (msg, ctx) => {
+      this.markHostReached(ctx.peerId);
       this.opts.onResult(msg.result);
     };
-    this.returnLobbyAction.onMessage = () => {
+    this.returnLobbyAction.onMessage = (_data, ctx) => {
+      this.markHostReached(ctx.peerId);
       this.interpolator.reset();
       this.resetPrediction();
       this.opts.onReturnLobby();
     };
     this.byeAction.onMessage = (msg) => {
+      // NB: a leaving *client* also sends bye, so this channel is not a
+      // host-reachability signal — only act on the host's own departure.
       if (msg.reason === 'hostLeft') this.opts.onHostLeft();
     };
 
@@ -128,10 +155,28 @@ export class Client implements NetSession {
     // our identity + current selection/ready whenever a new peer appears.
     this.sendHello();
     this.room.onPeerJoin = () => {
+      // A peer connected — but in a full mesh that may be the host OR another
+      // client, so we don't treat this as "host reached". Re-announce ourselves
+      // so the host (whenever it is the one that just connected) learns our
+      // identity + current selection.
       this.sendHello();
       this.selectAction.send({ classId: this.ownClass });
       this.readyAction.send({ ready: this.ownReady });
     };
+    this.room.onPeerLeave = (peerId: string) => {
+      // Only the host leaving affects our reachability signal.
+      if (peerId === this.hostPeerId) {
+        this.hostPeerId = null;
+        this.opts.onPeers?.(0);
+      }
+    };
+  }
+
+  /** Record first contact with the host and report reachability (idempotent). */
+  private markHostReached(peerId: string): void {
+    if (this.hostPeerId === peerId) return;
+    this.hostPeerId = peerId;
+    this.opts.onPeers?.(1);
   }
 
   private action<T>(id: string): NetAction<T> {
