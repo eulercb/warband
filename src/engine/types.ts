@@ -289,6 +289,10 @@ export interface BossView {
   maxHp: number;
   phase: BossPhase;
   telegraph: Telegraph | null;
+  // Presentation-only: drives boss animation clip selection (see render/sprites).
+  // Carried verbatim over the wire (JSON) and never interpolated.
+  action: BossActionKind; // 'idle' | 'windup' | 'channel' | 'recover'
+  abilityId: string | null; // e.g. 'groundSlam', 'fireBreath'; null when idle
 }
 
 export interface AddView {

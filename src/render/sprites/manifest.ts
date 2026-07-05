@@ -1,0 +1,181 @@
+/**
+ * Warband — sprite atlas manifest + per-actor animation config.
+ *
+ * PixiJS v8 `Spritesheet` exposes `sheet.animations: Record<string, Texture[]>`
+ * when the atlas JSON declares animation groups (Aseprite tags / TexturePacker
+ * "animations"). We name each group `${actor}__${clip}__${dir}` (dir omitted for
+ * `flip`/`single` actors) — see `animKey`.
+ *
+ * No PixiJS runtime is imported here beyond the two texture *types*, so this
+ * module is pure config and safe to import from tests.
+ */
+import type { Texture, Spritesheet } from 'pixi.js';
+import { CLASS_COLORS, MONSTER_COLORS, ADD_RADIUS } from '../../engine/constants';
+
+export type DirMode = '8dir' | '4dir' | 'flip' | 'single';
+export type DirToken = 'e' | 'se' | 's' | 'sw' | 'w' | 'nw' | 'n' | 'ne' | 'side';
+
+/** Logical actor keys in the atlas. Palette-swapped classes share a base name. */
+export type ActorKey =
+  | 'knight'
+  | 'ranger'
+  | 'mage'
+  | 'cleric'
+  | 'dragon'
+  | 'troll'
+  | 'lich'
+  | 'skeleton'
+  | 'arrow'
+  | 'arcaneBolt'
+  | 'fireball'
+  | 'shadowBolt'
+  | 'smite';
+
+/** Which drawable categories are sprite-driven. Everything else keeps the
+ * immediate-mode geometry in entityView. All default OFF so the shipped game is
+ * pixel-for-pixel unchanged until real art is dropped in (see §1 migration flag).
+ * Flip a flag true to route that category through `SpriteLayer`; with no atlas
+ * present it renders procedural placeholder silhouettes (Phase 0). */
+export type SpriteCategory = 'player' | 'boss' | 'add' | 'projectile';
+export const SPRITE_FLAGS: Record<SpriteCategory, boolean> = {
+  player: false,
+  boss: false,
+  add: false,
+  projectile: false,
+};
+
+/**
+ * Atlas URL served from `public/`. `null` = no atlas shipped yet, so the loader
+ * is skipped entirely (no 404 noise) and `SpriteLayer` uses placeholders. Point
+ * this at a real `Assets.load`-able atlas JSON once art exists.
+ */
+export const SPRITE_ATLAS_URL: string | null = null;
+
+/**
+ * Tint applied to each actor's (white) placeholder silhouette, and to real art
+ * as a base for the hit-flash lerp toward white. For already-coloured pixel art
+ * set these to `0xffffff` so tint is an identity multiply.
+ */
+export const ACTOR_PALETTE: Record<ActorKey, number> = {
+  knight: CLASS_COLORS.knight,
+  ranger: CLASS_COLORS.ranger,
+  mage: CLASS_COLORS.mage,
+  cleric: CLASS_COLORS.cleric,
+  dragon: MONSTER_COLORS.dragon,
+  troll: MONSTER_COLORS.troll,
+  lich: 0x8a6cff, // lich body reads as its violet glow, not the near-black fill
+  skeleton: 0xbfc4cc,
+  arrow: 0x76e34a,
+  arcaneBolt: 0x9c5cf0,
+  fireball: 0xff8a3d,
+  shadowBolt: 0x8a3ff0,
+  smite: 0xf2c14e,
+};
+
+export interface ActorConfig {
+  dirMode: DirMode;
+  /** Author-space radius of the body in the art, in world units. The sprite is
+   * scaled so its drawn body ≈ `targetRadiusPx * camera.scale` on screen. */
+  targetRadiusPx: number;
+  anchor: { x: number; y: number }; // usually feet-ish, e.g. { x: 0.5, y: 0.78 }
+  defaultFps: number;
+  /** Clips that loop; everything else plays once. */
+  loopClips: ReadonlySet<string>;
+  /** Clips whose frame is driven by gameplay progress (see brief §6). */
+  progressClips: ReadonlySet<string>;
+}
+
+export type Manifest = Record<ActorKey, ActorConfig>;
+
+/** Build the atlas animation-group key from a semantic selection. */
+export function animKey(actor: ActorKey, clip: string, dir: DirToken | null): string {
+  return dir && dir !== 'side' ? `${actor}__${clip}__${dir}` : `${actor}__${clip}`;
+}
+
+/** Resolve textures for a key, falling back through dir → non-dir → idle. */
+export function resolveTextures(
+  sheet: Spritesheet,
+  actor: ActorKey,
+  clip: string,
+  dir: DirToken | null,
+): Texture[] | null {
+  const a = sheet.animations;
+  return (
+    a[animKey(actor, clip, dir)] ??
+    a[animKey(actor, clip, null)] ??
+    a[animKey(actor, 'idle', dir)] ??
+    a[animKey(actor, 'idle', null)] ??
+    null
+  );
+}
+
+// --- Config presets ---------------------------------------------------------
+
+function humanoid(): ActorConfig {
+  return {
+    dirMode: '8dir',
+    targetRadiusPx: 16, // == PLAYER_RADIUS
+    anchor: { x: 0.5, y: 0.78 },
+    defaultFps: 10,
+    loopClips: new Set(['idle', 'walk', 'downed', 'cast']),
+    progressClips: new Set(['cast', 'cast_basic', 'cast_a1', 'cast_a2', 'cast_a3']),
+  };
+}
+
+function boss(dirMode: DirMode, r: number): ActorConfig {
+  return {
+    dirMode,
+    targetRadiusPx: r,
+    anchor: { x: 0.5, y: 0.72 },
+    defaultFps: 9,
+    loopClips: new Set(['idle', 'move', 'idle_enraged', 'channel']),
+    progressClips: new Set([
+      // windups sync to the telegraph fill
+      'windup_fireBreath',
+      'windup_fireball',
+      'windup_tailSweep',
+      'windup_wingGust',
+      'windup_smash',
+      'windup_charge',
+      'windup_groundSlam',
+      'windup_shadowBolt',
+      'windup_summonSkeletons',
+      'windup_voidZone',
+      'windup_lifeDrain',
+    ]),
+  };
+}
+
+function proj(): ActorConfig {
+  return {
+    dirMode: 'single',
+    targetRadiusPx: 6,
+    anchor: { x: 0.5, y: 0.5 },
+    defaultFps: 14,
+    loopClips: new Set(['spin', 'idle']),
+    progressClips: new Set(),
+  };
+}
+
+export const MANIFEST: Manifest = {
+  knight: humanoid(),
+  ranger: humanoid(),
+  mage: humanoid(),
+  cleric: humanoid(),
+  dragon: boss('4dir', 96),
+  troll: boss('4dir', 88),
+  lich: boss('flip', 80),
+  skeleton: {
+    dirMode: 'flip',
+    targetRadiusPx: ADD_RADIUS,
+    anchor: { x: 0.5, y: 0.8 },
+    defaultFps: 8,
+    loopClips: new Set(['idle', 'walk']),
+    progressClips: new Set(),
+  },
+  arrow: proj(),
+  arcaneBolt: proj(),
+  fireball: proj(),
+  shadowBolt: proj(),
+  smite: proj(),
+};

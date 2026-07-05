@@ -1000,6 +1000,8 @@ export class World {
       maxHp: b.maxHp,
       phase: b.phase,
       telegraph: this.buildTelegraph(),
+      action: b.action.kind,
+      abilityId: b.action.abilityId,
     };
   }
 
