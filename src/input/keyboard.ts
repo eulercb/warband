@@ -4,31 +4,23 @@
  * Produces a unified `InputState`. Buttons are HELD state only; the HOST does
  * edge detection per sim tick — never here.
  *
- * FINAL BUTTON MAPPING
- * --------------------------------------------------------------------------
- *   Move   : W / A / S / D   or   Arrow keys        (normalized, |move| <= 1)
- *   Aim    : mouse cursor (unit vector from the local player to the cursor)
- *   basic  : LEFT MOUSE CLICK   or   SPACE
- *   a1     : Q                  (alias: 1)
- *   a2     : E                  (alias: 2)
- *   a3     : R                  (alias: 3)
- *   revive : F                  (hold)
- * --------------------------------------------------------------------------
+ * The key→action map is player-configurable (see `input/bindings.ts`); this
+ * module reads the live bindings every sample and every keydown. Aim is always
+ * the mouse cursor (a unit vector from the local player), and left-mouse always
+ * counts as the basic attack regardless of the keyboard `basic` binding.
  */
 
 import type { InputState, Vec2 } from '../engine/types';
+import { getBindings, type KeyAction } from './bindings';
 
-/**
- * Every keyboard `KeyboardEvent.code` we care about. Used both to filter which
- * keys we track and which keys we `preventDefault()` (so Space/Arrows don't
- * scroll the page) without swallowing browser shortcuts like F5.
- */
-const RELEVANT_CODES: ReadonlySet<string> = new Set<string>([
-  'KeyW', 'KeyA', 'KeyS', 'KeyD',
-  'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-  'Space', 'KeyQ', 'KeyE', 'KeyR', 'KeyF',
-  'Digit1', 'Digit2', 'Digit3',
-]);
+/** Whether `code` is currently bound to any action (drives track + preventDefault). */
+function isBoundCode(code: string): boolean {
+  const keys = getBindings().keys;
+  for (const action of Object.keys(keys) as KeyAction[]) {
+    if (keys[action].includes(code)) return true;
+  }
+  return false;
+}
 
 export class KeyboardMouse {
   /** Latest mouse position in CSS px relative to the target element. */
@@ -54,7 +46,7 @@ export class KeyboardMouse {
     this.target = target;
 
     this.onKeyDown = (e) => {
-      if (!RELEVANT_CODES.has(e.code)) return;
+      if (!isBoundCode(e.code)) return;
       this.held.add(e.code);
       this.lastActivityMs = performance.now();
       e.preventDefault(); // stop Space/Arrows from scrolling the page
@@ -104,13 +96,17 @@ export class KeyboardMouse {
    * to derive the aim direction.
    */
   sample(localScreenPos: Vec2): InputState {
-    // --- Movement (WASD + arrows), magnitude clamped to 1 ---
+    const keys = getBindings().keys;
+    const down = (action: KeyAction): boolean =>
+      keys[action].some((code) => this.held.has(code));
+
+    // --- Movement (bound keys), magnitude clamped to 1 ---
     let mx = 0;
     let my = 0;
-    if (this.held.has('KeyA') || this.held.has('ArrowLeft')) mx -= 1;
-    if (this.held.has('KeyD') || this.held.has('ArrowRight')) mx += 1;
-    if (this.held.has('KeyW') || this.held.has('ArrowUp')) my -= 1;
-    if (this.held.has('KeyS') || this.held.has('ArrowDown')) my += 1;
+    if (down('left')) mx -= 1;
+    if (down('right')) mx += 1;
+    if (down('up')) my -= 1;
+    if (down('down')) my += 1;
     const moveLen = Math.hypot(mx, my);
     if (moveLen > 1) {
       mx /= moveLen;
@@ -131,13 +127,14 @@ export class KeyboardMouse {
       aim = { x: this.lastAim.x, y: this.lastAim.y };
     }
 
-    // --- Buttons (held state; edges detected host-side) ---
+    // --- Buttons (held state; edges detected host-side). Left mouse always
+    // counts as basic, in addition to the bound basic key. ---
     const buttons = {
-      basic: this.mouseLeftDown || this.held.has('Space'),
-      a1: this.held.has('KeyQ') || this.held.has('Digit1'),
-      a2: this.held.has('KeyE') || this.held.has('Digit2'),
-      a3: this.held.has('KeyR') || this.held.has('Digit3'),
-      revive: this.held.has('KeyF'),
+      basic: this.mouseLeftDown || down('basic'),
+      a1: down('a1'),
+      a2: down('a2'),
+      a3: down('a3'),
+      revive: down('revive'),
     };
 
     return { move, aim, buttons };

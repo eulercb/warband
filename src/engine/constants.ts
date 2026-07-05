@@ -2,6 +2,7 @@
  * Warband — ALL tunable numbers live here (plus classes.ts / monsters.ts which
  * import from here). Everything is a starting balance point meant to be nudged.
  */
+import type { MonsterId } from './types';
 
 // --- Simulation ---
 export const SIM_TICK_RATE = 20; // Hz
@@ -44,6 +45,34 @@ export const ZONE_TICK_INTERVAL = 0.5; // s
 // the zone's full duration for ticks/hit-tests; only the drawn opacity fades.
 export const ZONE_FADE_IN = 0.2; // s
 export const ZONE_FADE_OUT = 0.6; // s
+
+// --- Terrain (static per-run environmental hazards) ---
+// Terrain patches are generated once at fight start from the run seed (so host
+// and clients agree) and themed by the boss. They slow and/or damage players
+// who stand in them. Damage ticks at this cadence (matches ground zones).
+export const TERRAIN_TICK_INTERVAL = 0.5; // s
+export const TERRAIN_MIN_PATCHES = 3;
+export const TERRAIN_MAX_PATCHES = 5;
+export const TERRAIN_MIN_RADIUS = 90; // world units
+export const TERRAIN_MAX_RADIUS = 180;
+/** Keep terrain away from the party's spawn strip and the boss's opening spot. */
+export const TERRAIN_SPAWN_CLEARANCE = 220; // u around player spawn / boss center
+
+// --- Gauntlet (sequence run) ---
+// Order the bosses are fought in when the host enables a gauntlet run. A run
+// starts at the host's chosen boss and proceeds through the rest of this list.
+export const GAUNTLET_ORDER: MonsterId[] = ['dragon', 'troll', 'lich'];
+/** Seconds the victory interstitial lingers before the next gauntlet fight. */
+export const GAUNTLET_INTERSTITIAL_S = 5;
+
+// --- Bots (host-simulated AI party members) ---
+export const BOT_NAME_PREFIX = 'Bot';
+/** Ranged bots try to hold roughly this distance from the boss. */
+export const BOT_RANGED_STANDOFF = 340; // u
+/** Melee (knight) bots close to within this distance of the boss. */
+export const BOT_MELEE_RANGE = 120; // u
+/** A bot reacts to a downed ally within this distance to res them. */
+export const BOT_REVIVE_RANGE = 340; // u
 
 // --- Stalemate breaker ---
 export const SOFT_ENRAGE_TIME = 300; // s — after this, escalating boss damage

@@ -5,7 +5,7 @@
  */
 import './styles.css';
 import { useStore } from './store';
-import { playUiSound } from './session';
+import { playUiSound, openControls } from './session';
 
 export function MainMenu() {
   const error = useStore((s) => s.error);
@@ -21,6 +21,11 @@ export function MainMenu() {
   const goJoin = (): void => {
     playUiSound('uiClick');
     setPhase('join');
+  };
+
+  const goControls = (): void => {
+    playUiSound('uiClick');
+    openControls();
   };
 
   return (
@@ -48,15 +53,24 @@ export function MainMenu() {
           </button>
         </div>
 
-        <button
-          type="button"
-          className="wb-btn wb-btn-ghost wb-mute-toggle"
-          onClick={toggleMute}
-          aria-pressed={muted}
-          aria-label={muted ? 'Unmute sound' : 'Mute sound'}
-        >
-          {muted ? 'Sound: Off' : 'Sound: On'}
-        </button>
+        <div className="wb-menu-secondary">
+          <button
+            type="button"
+            className="wb-btn wb-btn-ghost"
+            onClick={goControls}
+          >
+            Controls
+          </button>
+          <button
+            type="button"
+            className="wb-btn wb-btn-ghost wb-mute-toggle"
+            onClick={toggleMute}
+            aria-pressed={muted}
+            aria-label={muted ? 'Unmute sound' : 'Mute sound'}
+          >
+            {muted ? 'Sound: Off' : 'Sound: On'}
+          </button>
+        </div>
 
         <p className="wb-blurb">
           Warband is a cooperative boss fight that runs entirely in your browser.

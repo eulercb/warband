@@ -119,6 +119,7 @@ describe('world: downed / revive / wipe', () => {
       ],
     });
     w.boss = null; // isolate co-op mechanics from boss interference
+    w.terrain = []; // ...and from static terrain hazards (slow/damage)
     const p1 = w.players[0];
     const p2 = w.players[1];
 

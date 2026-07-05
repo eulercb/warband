@@ -21,6 +21,7 @@ export const ACTIONS = {
   snapshot: 'snp', // host -> clients
   result: 'res', // host -> clients
   returnLobby: 'rtl', // host -> clients
+  pause: 'pau', // host -> clients (sim frozen / resumed)
   bye: 'bye', // either -> either (graceful leave, esp. host)
 } as const;
 
@@ -46,12 +47,16 @@ export interface LobbyPlayer {
   classId: ClassId;
   ready: boolean;
   isHost: boolean;
+  /** Host-simulated AI band member (never a real peer). Always "ready". */
+  isBot: boolean;
 }
 
 export interface LobbyMsg {
   monsterId: MonsterId;
   players: LobbyPlayer[];
   phase: 'lobby' | 'inFight';
+  /** Whether the host has enabled a sequence run (gauntlet). */
+  gauntlet: boolean;
 }
 
 export interface StartMsg {
@@ -60,6 +65,15 @@ export interface StartMsg {
   monsterId: MonsterId;
   /** Ordered roster used to build the world; peerId order must match host. */
   roster: Array<{ peerId: string; name: string; classId: ClassId }>;
+  /** Gauntlet/run context so clients can show "Boss 2 of 3", etc. */
+  gauntlet: boolean;
+  runIndex: number; // 0-based boss index in the run
+  runTotal: number; // total bosses in the run (1 for a single fight)
+}
+
+/** Host -> clients: the shared sim was paused or resumed. */
+export interface PauseMsg {
+  paused: boolean;
 }
 
 // --- Fight ---

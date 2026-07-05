@@ -19,16 +19,19 @@
 import { Application, Assets, Container, Graphics, Text, TextStyle } from 'pixi.js';
 import type { Spritesheet } from 'pixi.js';
 import type { RenderState, Vec2 } from '../engine/types';
-import { PLAYER_RADIUS } from '../engine/constants';
+import { PLAYER_RADIUS, CLASS_COLORS } from '../engine/constants';
 import { getMonster } from '../engine/monsters';
+import { getClass } from '../engine/classes';
 import { Camera } from './camera';
 import { Fx } from './fx';
+import { Balloons } from './balloons';
 import {
   drawPlayer,
   drawBoss,
   drawAdd,
   drawProjectile,
   drawZone,
+  drawTerrain,
   drawPlayerOverlay,
   drawBossOverlay,
   drawAddOverlay,
@@ -46,8 +49,10 @@ export class Renderer {
   private readonly root: Container;
 
   private readonly floorLayer = new Graphics();
+  private readonly terrainLayer = new Graphics();
   private readonly zonesLayer = new Graphics();
   private readonly telegraphLayer = new Graphics();
+  private readonly aimLayer = new Graphics();
   private readonly entitiesLayer = new Graphics();
   private readonly overlayLayer = new Graphics();
   private readonly projectilesLayer = new Graphics();
@@ -56,6 +61,7 @@ export class Renderer {
   private readonly labelLayer = new Container();
 
   private readonly fx: Fx;
+  private readonly balloons: Balloons;
   private readonly sprites: SpriteLayer;
   private readonly particles: Particles;
   private readonly labels: Text[] = [];
@@ -74,13 +80,16 @@ export class Renderer {
     app.stage.addChild(this.root);
 
     this.fx = new Fx(this.fxTextLayer);
+    this.balloons = new Balloons();
     this.sprites = new SpriteLayer(sheet, this.fx, app.renderer);
     this.particles = new Particles(app.renderer);
 
     this.root.addChild(
       this.floorLayer,
+      this.terrainLayer, // static per-run hazards, under the action
       this.zonesLayer,
       this.telegraphLayer,
+      this.aimLayer, // local player's subtle aim/attack-area preview
       this.entitiesLayer, // geometry bodies (flag-off actors)
       this.sprites.container, // retained sprite bodies (flag-on actors)
       this.overlayLayer, // vector bars/rings for sprite-driven actors
@@ -89,6 +98,7 @@ export class Renderer {
       this.particles.container,
       this.fxTextLayer,
       this.labelLayer,
+      this.balloons.container, // ability speech balloons, above everything
     );
 
     this.camera.fit(app.screen.width, app.screen.height);
@@ -139,10 +149,13 @@ export class Renderer {
     this.fx.processEvents(state.events, this.camera);
     this.sprites.ingestEvents(state.events, now);
     this.particles.processEvents(state.events);
+    this.balloons.ingest(state.events);
 
     this.drawFloor(state.arena);
+    this.drawTerrain(state, now);
     this.drawZones(state);
     this.drawTelegraph(state);
+    this.drawAimPreview(state);
     this.drawEntities(state); // geometry for flag-off actors
     this.sprites.update(state, this.camera, now, dtMs); // sprites for flag-on actors
     this.drawOverlays(state); // vector bars/rings for flag-on actors
@@ -150,6 +163,7 @@ export class Renderer {
 
     this.fx.update(dtMs);
     this.fx.draw(this.fxLayer, this.camera);
+    this.balloons.update(state, this.camera, dtMs);
 
     // Live-projectile particle trails, then advance + draw the particle pool.
     if (state.projectiles.length > 0) {
@@ -173,6 +187,7 @@ export class Renderer {
   dispose(): void {
     this.sprites.destroy();
     this.particles.destroy();
+    this.balloons.destroy();
     this.app.destroy(true);
   }
 
@@ -213,11 +228,59 @@ export class Renderer {
     g.rect(tl.x, tl.y, w, h).stroke({ width: 2, color: 0x3a3a4e, alpha: 0.95 });
   }
 
+  private drawTerrain(state: RenderState, nowMs: number): void {
+    const g = this.terrainLayer;
+    g.clear();
+    if (state.terrain.length === 0) return;
+    const timeSec = nowMs / 1000;
+    for (const t of state.terrain) {
+      drawTerrain(g, t, this.camera.worldToScreen(t.pos), this.camera.scale, timeSec);
+    }
+  }
+
   private drawZones(state: RenderState): void {
     const g = this.zonesLayer;
     g.clear();
     for (const z of state.groundZones) {
       drawZone(g, z, this.camera.worldToScreen(z.pos), this.camera.scale);
+    }
+  }
+
+  /**
+   * Subtle, local-only preview of the local player's basic attack area: a faint
+   * cone for melee cleaves, a short reticle line for ranged shots. Helps the
+   * player read where their attack lands without cluttering the shared field.
+   */
+  private drawAimPreview(state: RenderState): void {
+    const g = this.aimLayer;
+    g.clear();
+    const localId = state.localPlayerId;
+    if (localId == null) return;
+    const p = state.players.find((pl) => pl.id === localId);
+    if (!p || p.state !== 'alive') return;
+
+    const ab = getClass(p.classId).abilities.basic;
+    const s = this.camera.scale;
+    const scr = this.camera.worldToScreen(p.pos);
+    const ang = Math.atan2(p.aim.y, p.aim.x);
+    const color = CLASS_COLORS[p.classId] ?? 0xffffff;
+
+    if (ab.kind === 'meleeCone') {
+      const R = (ab.range ?? 70) * s;
+      const half = ((ab.halfAngleDeg ?? 45) * Math.PI) / 180;
+      g.moveTo(scr.x, scr.y)
+        .arc(scr.x, scr.y, R, ang - half, ang + half)
+        .lineTo(scr.x, scr.y)
+        .stroke({ width: 1.5, color, alpha: 0.28 });
+    } else if (ab.kind === 'projectile') {
+      const R = 130 * s;
+      const startR = PLAYER_RADIUS * s * 1.6;
+      const sx = scr.x + Math.cos(ang) * startR;
+      const sy = scr.y + Math.sin(ang) * startR;
+      const ex = scr.x + Math.cos(ang) * R;
+      const ey = scr.y + Math.sin(ang) * R;
+      g.moveTo(sx, sy).lineTo(ex, ey).stroke({ width: 1.5, color, alpha: 0.22 });
+      g.circle(ex, ey, 3).fill({ color, alpha: 0.3 });
     }
   }
 

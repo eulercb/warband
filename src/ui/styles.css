@@ -1129,3 +1129,292 @@ body {
     align-items: flex-start;
   }
 }
+
+/* --------------------------------------------------------------------------
+ * Extra button variant + modal overlays (pause menu / controls)
+ * ------------------------------------------------------------------------ */
+
+.wb-btn-danger {
+  background: linear-gradient(180deg, var(--danger) 0%, var(--danger-deep) 100%);
+  border-color: var(--danger-deep);
+  color: #fff;
+}
+.wb-btn-danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.wb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(6, 6, 10, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.wb-pause-panel {
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+}
+.wb-pause-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.wb-pause-banner {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: rgba(20, 20, 28, 0.85);
+  border: 1px solid var(--border);
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* --------------------------------------------------------------------------
+ * Controls (rebinding)
+ * ------------------------------------------------------------------------ */
+
+.wb-controls-panel {
+  max-width: 640px;
+  width: 100%;
+}
+.wb-controls-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  margin-top: 12px;
+}
+.wb-controls-col {
+  min-width: 0;
+}
+.wb-controls-note {
+  font-size: 0.82rem;
+  color: var(--text-faint);
+  margin: 0 0 8px;
+}
+.wb-bind-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wb-bind-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+}
+.wb-bind-label {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+.wb-bind-key {
+  min-width: 88px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.wb-bind-key:hover {
+  border-color: var(--gold-deep);
+}
+.wb-bind-key.listening {
+  border-color: var(--gold);
+  background: rgba(242, 193, 78, 0.12);
+  color: var(--gold);
+  animation: wb-pulse 1s ease-in-out infinite;
+}
+.wb-controls-hint {
+  margin-top: 14px;
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  text-align: center;
+}
+@keyframes wb-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* --------------------------------------------------------------------------
+ * Main menu secondary row
+ * ------------------------------------------------------------------------ */
+
+.wb-menu-secondary {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+/* --------------------------------------------------------------------------
+ * Host setup gauntlet toggle + lobby host options + bots
+ * ------------------------------------------------------------------------ */
+
+.wb-gauntlet-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  margin-top: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.wb-gauntlet-toggle:hover {
+  border-color: var(--gold-deep);
+}
+.wb-gauntlet-toggle.on {
+  border-color: var(--gold);
+  background: rgba(242, 193, 78, 0.08);
+}
+.wb-gauntlet-check {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  display: grid;
+  place-items: center;
+  color: var(--gold);
+  font-weight: 800;
+}
+.wb-gauntlet-toggle.on .wb-gauntlet-check {
+  border-color: var(--gold);
+}
+.wb-gauntlet-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wb-gauntlet-title {
+  font-weight: 700;
+}
+.wb-gauntlet-sub {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.wb-host-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.wb-addbot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.wb-addbot-label {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+.wb-addbot-full {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+
+.wb-badge-bot {
+  color: var(--cls-mage);
+  border-color: var(--cls-mage);
+}
+.wb-badge-gauntlet {
+  color: var(--gold);
+  border-color: var(--gold-deep);
+  margin-top: 6px;
+}
+
+.wb-bot-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+  line-height: 1;
+}
+.wb-bot-btn:hover {
+  border-color: var(--gold-deep);
+  color: var(--text);
+}
+.wb-bot-remove:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.wb-start-hint {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-faint);
+}
+
+/* --------------------------------------------------------------------------
+ * Result: run progress + gauntlet advance interstitial
+ * ------------------------------------------------------------------------ */
+
+.wb-run-progress {
+  text-align: center;
+  color: var(--text-dim);
+  font-weight: 600;
+  margin: 6px 0 0;
+}
+.wb-advance-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 12px auto 0;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  background: rgba(242, 193, 78, 0.08);
+  border: 1px solid var(--gold-deep);
+}
+.wb-advance-title {
+  font-weight: 800;
+  color: var(--gold);
+}
+.wb-advance-sub {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.wb-await-host {
+  color: var(--text-faint);
+  font-size: 0.88rem;
+  align-self: center;
+}
+
+@media (max-width: 700px) {
+  .wb-controls-cols {
+    grid-template-columns: 1fr;
+  }
+}

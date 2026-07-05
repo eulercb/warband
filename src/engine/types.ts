@@ -179,6 +179,43 @@ export interface Projectile {
 
 export type ZoneKind = 'voidZone' | 'rainOfArrows' | 'sanctuary';
 
+// ---------------------------------------------------------------------------
+// Terrain (static, per-run environmental hazards)
+// ---------------------------------------------------------------------------
+
+/**
+ * A themed environmental hazard laid out once at fight start (seeded, so host
+ * and clients agree). Terrain never moves or expires; it slows and/or damages
+ * players standing inside. Themed by the boss (magma in the dragon's lair,
+ * swamp in the troll's forest, cursed ice in the lich's crypt).
+ */
+export type TerrainKind =
+  | 'magma' // dragon: burns (damage) + brief scorch slow
+  | 'ember' // dragon: light heat slow, no damage (cosmetic-ish)
+  | 'swamp' // troll: heavy slow + light poison
+  | 'bog' // troll: heavy slow, no damage
+  | 'ice' // lich: strong slow, no damage (slippery)
+  | 'deathfog'; // lich: creeping damage + mild slow
+
+export interface TerrainPatch {
+  id: EntityId;
+  kind: TerrainKind;
+  pos: Vec2;
+  radius: number;
+  damagePerTick: number; // applied to players inside, per TERRAIN_TICK_INTERVAL
+  slowMult: number; // moveSpeed multiplier while inside (1 = no slow)
+  slowDuration: number; // s the slow lingers after leaving
+  tickAccum: number; // accumulates toward TERRAIN_TICK_INTERVAL
+}
+
+/** Wire/render view of a terrain patch (static, so no interpolation needed). */
+export interface TerrainView {
+  id: EntityId;
+  kind: TerrainKind;
+  pos: Vec2;
+  radius: number;
+}
+
 export interface GroundZone {
   id: EntityId;
   kind: ZoneKind;
@@ -225,11 +262,45 @@ export interface InputCommand {
 // Events (one-shot, for VFX / SFX only)
 // ---------------------------------------------------------------------------
 
+/**
+ * Geometry of a player/boss ability's effect area, emitted with a `skillArea`
+ * event so the renderer can flash the exact region an ability just affected
+ * (the Knight's cleave cone, the Cleric's heal range, etc.). Purely cosmetic.
+ */
+export type SkillAreaKind = 'cone' | 'circle' | 'line';
+
+export interface SkillArea {
+  kind: SkillAreaKind;
+  origin: Vec2; // cone/line emanation point, or circle center
+  angle: number; // radians — cone/line facing (unused for circle)
+  range: number; // cone range / line length
+  radius: number; // circle radius / line half-width
+  halfAngle: number; // cone half-angle (radians)
+}
+
 export type GameEvent =
   | { t: 'hit'; pos: Vec2; amount: number; targetId: EntityId; side: Side }
   | { t: 'heal'; pos: Vec2; amount: number; targetId: EntityId }
-  | { t: 'cast'; ability: string; sourceId: EntityId; pos: Vec2; side: Side }
+  | {
+      t: 'cast';
+      ability: string;
+      sourceId: EntityId;
+      pos: Vec2;
+      side: Side;
+      /** Slot the cast came from (players); absent for boss casts. */
+      slot?: AbilitySlot;
+    }
+  | {
+      // A player/boss ability resolved — carries its effect geometry so the
+      // renderer can flash the exact area (§ visual-cues). Cosmetic only.
+      t: 'skillArea';
+      sourceId: EntityId;
+      side: Side;
+      color: number; // packed 0xRRGGBB (class color / boss red)
+      area: SkillArea;
+    }
   | { t: 'death'; id: EntityId; kind: 'player' | 'add' | 'boss'; pos: Vec2 }
+  | { t: 'spawn'; id: EntityId; kind: 'add'; pos: Vec2 }
   | { t: 'revive'; id: EntityId; pos: Vec2 }
   | { t: 'downed'; id: EntityId; pos: Vec2 }
   | { t: 'dodge'; id: EntityId; pos: Vec2 }
@@ -327,6 +398,8 @@ export interface Snapshot {
   adds: AddView[];
   projectiles: ProjectileView[];
   groundZones: ZoneView[];
+  /** Static per-run terrain hazards (never move; carried verbatim). */
+  terrain: TerrainView[];
   events: GameEvent[];
 }
 
@@ -342,6 +415,7 @@ export interface RenderState {
   adds: AddView[];
   projectiles: ProjectileView[];
   groundZones: ZoneView[];
+  terrain: TerrainView[];
   events: GameEvent[];
   localPlayerId: EntityId | null;
   arena: { w: number; h: number };
@@ -367,4 +441,15 @@ export interface FightResult {
   outcome: Outcome;
   timeMs: number;
   stats: ResultPlayerStat[];
+  /** Which boss this result is for. */
+  monsterId: MonsterId;
+  /**
+   * Gauntlet/run context. When a gauntlet fight is won and another boss
+   * remains, `nextMonsterId` names it (the host auto-advances). `runIndex` /
+   * `runTotal` describe progress through the run (0-based). All null/absent for
+   * a plain single-boss fight.
+   */
+  nextMonsterId?: MonsterId | null;
+  runIndex?: number;
+  runTotal?: number;
 }

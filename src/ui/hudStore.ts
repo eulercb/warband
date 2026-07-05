@@ -5,6 +5,7 @@
  */
 import { create } from 'zustand';
 import type { ClassId, PlayerState, AbilitySlot } from '../engine/types';
+import type { InputSource } from '../input/input';
 
 export interface HudTeammate {
   id: number;
@@ -26,6 +27,8 @@ export interface HudState {
   cooldowns: Record<AbilitySlot, number>;
   /** Whether the local player is currently casting (rooted). */
   casting: boolean;
+  /** Which device the local player last used (drives HUD button labels). */
+  inputSource: InputSource;
 
   bossPresent: boolean;
   bossName: string;
@@ -51,6 +54,7 @@ const INITIAL: Omit<HudState, 'set' | 'resetHud'> = {
   state: 'alive',
   cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 },
   casting: false,
+  inputSource: 'keyboard',
   bossPresent: false,
   bossName: '',
   bossHp: 0,

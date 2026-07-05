@@ -16,6 +16,7 @@ import type {
   SelectMsg,
   ReadyMsg,
   ResultMsg,
+  PauseMsg,
   ByeMsg,
   NetSession,
 } from './protocol';
@@ -46,6 +47,8 @@ export interface ClientOpts {
   onStart: (msg: StartMsg) => void;
   onResult: (result: FightResult) => void;
   onReturnLobby: () => void;
+  /** Host paused / resumed the shared sim. */
+  onPause?: (paused: boolean) => void;
   onHostLeft: () => void;
   /**
    * Host reachability, as a 0/1 count: 1 once we've actually received a message
@@ -83,6 +86,7 @@ export class Client implements NetSession {
   private readonly snapshotAction: NetAction<Snapshot>;
   private readonly resultAction: NetAction<ResultMsg>;
   private readonly returnLobbyAction: NetAction<number>;
+  private readonly pauseAction: NetAction<PauseMsg>;
   private readonly byeAction: NetAction<ByeMsg>;
 
   private readonly interpolator = new SnapshotInterpolator();
@@ -136,6 +140,7 @@ export class Client implements NetSession {
     this.snapshotAction = this.action(ACTIONS.snapshot);
     this.resultAction = this.action(ACTIONS.result);
     this.returnLobbyAction = this.action(ACTIONS.returnLobby);
+    this.pauseAction = this.action(ACTIONS.pause);
     this.byeAction = this.action(ACTIONS.bye);
 
     // --- Host -> client messages ---
@@ -170,6 +175,11 @@ export class Client implements NetSession {
       this.interpolator.reset();
       this.resetPrediction();
       this.opts.onReturnLobby();
+    };
+    this.pauseAction.onMessage = (msg, ctx) => {
+      this.markHostReached(ctx.peerId);
+      netLog('client', `recv pause → ${msg.paused}`);
+      this.opts.onPause?.(msg.paused);
     };
     this.byeAction.onMessage = (msg) => {
       // NB: a leaving *client* also sends bye, so this channel is not a

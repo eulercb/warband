@@ -1,11 +1,22 @@
 /**
  * Warband — post-fight results. Renders the victory/defeat banner, time-to-kill
- * and a per-player stats table with MVP callouts. Rendering only; the win/lose
- * audio sting is played by the game/session layer.
+ * and a per-player stats table with MVP callouts. In a gauntlet run a win that
+ * still has bosses left shows an "advancing to next boss" interstitial (the host
+ * auto-starts the next fight); a loss offers a one-click Retry. Rendering only;
+ * the win/lose audio sting is played by the game/session layer.
  */
+import { useEffect, useState } from 'react';
 import { useStore } from './store';
-import { returnToLobby, leaveToMenu, playUiSound } from './session';
+import {
+  returnToLobby,
+  retryFight,
+  advanceGauntlet,
+  leaveToMenu,
+  playUiSound,
+} from './session';
 import { CLASSES } from '../engine/classes';
+import { MONSTERS } from '../engine/monsters';
+import { GAUNTLET_INTERSTITIAL_S } from '../engine/constants';
 
 /** Format milliseconds as `m:ss.mmm` (>= 1 min) or `s.d`s (under a minute). */
 function formatTime(ms: number): string {
@@ -26,6 +37,21 @@ export function ResultScreen() {
   const result = useStore((s) => s.result);
   const isHost = useStore((s) => s.isHost);
 
+  const nextMonsterId = result?.nextMonsterId ?? null;
+  const advancing = !!nextMonsterId;
+  const [countdown, setCountdown] = useState(GAUNTLET_INTERSTITIAL_S);
+
+  // Cosmetic countdown while the gauntlet auto-advances (the host drives the
+  // actual transition; clients just watch the timer tick down).
+  useEffect(() => {
+    if (!advancing) return;
+    setCountdown(GAUNTLET_INTERSTITIAL_S);
+    const t = setInterval(() => {
+      setCountdown((c) => Math.max(0, c - 1));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [advancing, result]);
+
   const onReturn = (): void => {
     playUiSound('uiClick');
     returnToLobby();
@@ -34,6 +60,16 @@ export function ResultScreen() {
   const onMenu = (): void => {
     playUiSound('uiClick');
     leaveToMenu();
+  };
+
+  const onRetry = (): void => {
+    playUiSound('uiConfirm');
+    retryFight();
+  };
+
+  const onContinue = (): void => {
+    playUiSound('uiConfirm');
+    advanceGauntlet();
   };
 
   if (!result) {
@@ -53,6 +89,9 @@ export function ResultScreen() {
 
   const stats = result.stats;
   const victory = result.outcome === 'victory';
+  const runTotal = result.runTotal ?? 1;
+  const runIndex = result.runIndex ?? 0;
+  const isGauntlet = runTotal > 1;
 
   // MVP thresholds. Math.max over an empty list would be -Infinity, so seed 0
   // and only treat a positive maximum as a real MVP (avoids badging all-zeros).
@@ -69,6 +108,23 @@ export function ResultScreen() {
         >
           {victory ? 'VICTORY' : 'DEFEAT'}
         </div>
+
+        {isGauntlet ? (
+          <p className="wb-run-progress">
+            {MONSTERS[result.monsterId].name} — Boss {runIndex + 1} of {runTotal}
+          </p>
+        ) : null}
+
+        {advancing ? (
+          <div className="wb-advance-note" role="status">
+            <span className="wb-advance-title">
+              Next up: {MONSTERS[nextMonsterId].name}
+            </span>
+            <span className="wb-advance-sub">
+              Advancing in {countdown}s…
+            </span>
+          </div>
+        ) : null}
 
         <p className="wb-result-time">
           <span className="wb-field-label">Time to kill</span>
@@ -135,13 +191,30 @@ export function ResultScreen() {
           <button type="button" className="wb-btn wb-btn-ghost" onClick={onMenu}>
             Main Menu
           </button>
-          <button
-            type="button"
-            className="wb-btn wb-btn-primary"
-            onClick={onReturn}
-          >
-            {isHost ? 'Return to Lobby' : 'Back to Lobby'}
-          </button>
+          {advancing ? (
+            isHost ? (
+              <button type="button" className="wb-btn wb-btn-primary" onClick={onContinue}>
+                Continue now →
+              </button>
+            ) : (
+              <span className="wb-await-host">Waiting for the next boss…</span>
+            )
+          ) : (
+            <>
+              {isHost ? (
+                <button type="button" className="wb-btn wb-btn-danger" onClick={onRetry}>
+                  {victory ? 'Play Again' : 'Retry'}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="wb-btn wb-btn-primary"
+                onClick={onReturn}
+              >
+                {isHost ? 'Return to Lobby' : 'Back to Lobby'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

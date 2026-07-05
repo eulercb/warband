@@ -12,6 +12,7 @@ import JoinScreen from './JoinScreen';
 import Lobby from './Lobby';
 import GameView from './GameView';
 import ResultScreen from './ResultScreen';
+import Controls from './Controls';
 import './styles.css';
 
 function Waiting() {
@@ -32,22 +33,7 @@ function Waiting() {
   );
 }
 
-export default function App() {
-  const phase = useStore((s) => s.phase);
-
-  useEffect(() => {
-    const code = readRoomFromHash();
-    if (code) {
-      const s = useStore.getState();
-      s.setRoom(code, false);
-      s.setPhase('join');
-    }
-    // Unlock the audio context on the first user gesture.
-    const unlock = () => sfx.resume();
-    window.addEventListener('pointerdown', unlock, { once: true });
-    return () => window.removeEventListener('pointerdown', unlock);
-  }, []);
-
+function Screen({ phase }: { phase: ReturnType<typeof useStore.getState>['phase'] }) {
   switch (phase) {
     case 'menu':
       return <MainMenu />;
@@ -66,4 +52,29 @@ export default function App() {
     default:
       return <MainMenu />;
   }
+}
+
+export default function App() {
+  const phase = useStore((s) => s.phase);
+  const showControls = useStore((s) => s.showControls);
+
+  useEffect(() => {
+    const code = readRoomFromHash();
+    if (code) {
+      const s = useStore.getState();
+      s.setRoom(code, false);
+      s.setPhase('join');
+    }
+    // Unlock the audio context on the first user gesture.
+    const unlock = () => sfx.resume();
+    window.addEventListener('pointerdown', unlock, { once: true });
+    return () => window.removeEventListener('pointerdown', unlock);
+  }, []);
+
+  return (
+    <>
+      <Screen phase={phase} />
+      {showControls ? <Controls /> : null}
+    </>
+  );
 }

@@ -4,8 +4,9 @@
  */
 import { useState } from 'react';
 import { useStore } from './store';
-import { hostGame, playUiSound } from './session';
+import { hostGame, playUiSound, setGauntlet } from './session';
 import { MONSTER_IDS, MONSTERS } from '../engine/monsters';
+import { GAUNTLET_ORDER } from '../engine/constants';
 
 /** Convert a PixiJS numeric color (0xRRGGBB) to a CSS hex string. */
 function toHex(n: number): string {
@@ -15,11 +16,17 @@ function toHex(n: number): string {
 export function HostSetup() {
   const monsterId = useStore((s) => s.monsterId);
   const localName = useStore((s) => s.localName);
+  const gauntlet = useStore((s) => s.gauntlet);
   const error = useStore((s) => s.error);
   const setMonster = useStore((s) => s.setMonster);
   const setLocalName = useStore((s) => s.setLocalName);
   const setPhase = useStore((s) => s.setPhase);
   const setError = useStore((s) => s.setError);
+
+  // In a gauntlet the run continues through the remaining bosses in order.
+  const startIdx = GAUNTLET_ORDER.indexOf(monsterId);
+  const gauntletRun =
+    startIdx >= 0 ? GAUNTLET_ORDER.slice(startIdx) : [monsterId];
 
   const [creating, setCreating] = useState(false);
 
@@ -82,6 +89,30 @@ export function HostSetup() {
             );
           })}
         </div>
+
+        <button
+          type="button"
+          className={`wb-gauntlet-toggle${gauntlet ? ' on' : ''}`}
+          onClick={() => {
+            playUiSound('uiClick');
+            setGauntlet(!gauntlet);
+          }}
+          aria-pressed={gauntlet}
+        >
+          <span className="wb-gauntlet-check" aria-hidden="true">
+            {gauntlet ? '✓' : ''}
+          </span>
+          <span className="wb-gauntlet-text">
+            <span className="wb-gauntlet-title">Gauntlet run (sequence)</span>
+            <span className="wb-gauntlet-sub">
+              {gauntlet
+                ? `Fight in order: ${gauntletRun
+                    .map((id) => MONSTERS[id].name)
+                    .join(' → ')}`
+                : 'Beat one boss, then jump straight to the next. Off: single fight.'}
+            </span>
+          </span>
+        </button>
 
         <label className="wb-field">
           <span className="wb-field-label">Your name</span>
