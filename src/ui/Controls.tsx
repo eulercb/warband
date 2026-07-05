@@ -52,9 +52,10 @@ export default function Controls() {
   const setAutofire = useStore((s) => s.setAutofire);
   const [capture, setCapture] = useState<Capture>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  // Controller nav is off while a rebind capture is pending (so pressing a button
-  // to rebind doesn't also fire the menu's confirm/back).
-  useGamepadMenu(panelRef, { onBack: closeControls, enabled: capture === null });
+  // While a rebind capture is pending, SUSPEND (don't disable) controller nav: the
+  // handler stays topmost and swallows the assignment press so it can't leak down
+  // to the pause menu / main menu beneath this overlay.
+  useGamepadMenu(panelRef, { onBack: closeControls, suspended: capture !== null });
 
   // Capture a keyboard key for the pending key-rebind.
   useEffect(() => {

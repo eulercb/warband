@@ -8,7 +8,7 @@
  * Focus is mirrored with a `.wb-gp-focus` class for a clear, reliable ring even
  * when the browser wouldn't show `:focus-visible` for programmatic focus.
  */
-import { useEffect, type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { pushNavHandler, type NavDir } from './gamepadNav';
 
 const FOCUS_CLASS = 'wb-gp-focus';
@@ -45,13 +45,24 @@ export interface GamepadMenuOpts {
   onBack?: () => void;
   /** Whether the hook is active (e.g. only when an overlay is open). Default true. */
   enabled?: boolean;
+  /**
+   * Temporarily swallow input while staying on the nav stack. Use this (not
+   * `enabled: false`) for transient states like a pending key/pad rebind: the
+   * handler must remain topmost so the capture press is consumed here and never
+   * leaks down to the screen beneath this overlay.
+   */
+  suspended?: boolean;
 }
 
 export function useGamepadMenu(
   containerRef: RefObject<HTMLElement | null>,
   opts: GamepadMenuOpts = {},
 ): void {
-  const { onBack, enabled = true } = opts;
+  const { onBack, enabled = true, suspended = false } = opts;
+  // Read `suspended` through a ref so toggling it doesn't unsubscribe/resubscribe
+  // the handler (which would pop it off the stack and expose the parent screen).
+  const suspendedRef = useRef(suspended);
+  suspendedRef.current = suspended;
 
   useEffect(() => {
     if (!enabled) return;
@@ -63,6 +74,7 @@ export function useGamepadMenu(
     // never see it. The first nav/confirm press selects the first control.
 
     const navigate = (dir: NavDir): void => {
+      if (suspendedRef.current) return; // swallow while a rebind capture is pending
       const els = focusables(container);
       if (els.length === 0) return;
       const active = document.activeElement as HTMLElement | null;
@@ -103,6 +115,7 @@ export function useGamepadMenu(
     };
 
     const confirm = (): void => {
+      if (suspendedRef.current) return; // swallow while a rebind capture is pending
       const active = document.activeElement as HTMLElement | null;
       if (active && container.contains(active)) active.click();
       else {
@@ -114,7 +127,10 @@ export function useGamepadMenu(
     const unsub = pushNavHandler({
       onNav: navigate,
       onConfirm: confirm,
-      onBack: () => onBack?.(),
+      onBack: () => {
+        if (suspendedRef.current) return; // swallow while a rebind capture is pending
+        onBack?.();
+      },
     });
     return () => {
       unsub();
