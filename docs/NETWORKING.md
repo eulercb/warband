@@ -148,15 +148,24 @@ connection lifecycle so you can see *where* it stalls.
      tabs derived different rendezvous topics and can never find each other (wrong
      code) — that is the whole bug, stop here.
   2. the socket + peer summary (`3 tracker sockets (3 open) | 0 active peers`).
-  3. a **per-tracker** readout — each tracker's state **and how many inbound
-     frames it has sent you**. A socket being `open` only means the WebSocket
+  3. a **per-tracker** readout — each tracker's state, **how many inbound frames
+     it has sent you**, and **how many of those carried WebRTC signaling** (a
+     relayed offer/answer). A socket being `open` only means the WebSocket
      handshake succeeded; it does **not** mean the tracker is doing any
      matchmaking. A tracker shown as `open, silent — 0 frames in` is a black hole:
-     connected but mute, and can never introduce a peer.
-  4. a plain-English **verdict** naming the stage that failed and its fix — e.g.
-     "tracker sockets are OPEN but you were never introduced to a peer … this is
-     the matchmaking stage, NOT NAT/TURN." Use it to avoid chasing TURN when the
-     trackers are the problem (or vice-versa).
+     connected but mute, and can never introduce a peer. A tracker showing
+     `N signaling` **has** relayed a peer's SDP to you — proof matchmaking worked.
+  4. a plain-English **verdict** naming the stage that failed and its fix. The
+     verdict hinges on the **signaling** count when you are stuck at `0 active
+     peers`, because `getPeers()` only counts peers past the WebRTC handshake — a
+     peer stuck in ICE reads as `0` too. So:
+     - `0 active peers` **and `0 signaling`** → the *matchmaking* stage: nobody has
+       been introduced. Check the room code / host tab / trackers — **not** TURN.
+     - `0 active peers` **but `N signaling`** (offers/answers were relayed) → you
+       *were* introduced and exchanged SDP; the direct connection just never
+       formed. That is the **NAT-traversal** stage — **configure TURN**
+       (`VITE_TURN_URL`). This is the case the reported "stuck in the lobby" bug
+       falls into, and the verdict now says so instead of blaming the trackers.
 
 All lines are prefixed `[warband:net]` with a `+Ns` timestamp and a scope
 (`room` / `host` / `client`), so you can filter the console on `warband:net`.
@@ -177,8 +186,9 @@ All lines are prefixed `[warband:net]` with a `+Ns` timestamp and a scope
 | Last thing you see | What it means | Where to look |
 | --- | --- | --- |
 | `connectivity: … 0 open` (sockets never open) or a `join error` | Trackers unreachable — matchmaking can't even start | Firewall/proxy/captive portal; try another network or add `VITE_TRACKER_URLS` |
-| Trackers open, but **no `peer appeared`** on either side and peers stay `0 active` | Signaling/matchmaking not pairing you | Confirm both tabs use the *exact* same room code; check the host tab is open |
-| `peer appeared` / peer state reaches `checking` or `failed` but **never `connected`**, and no `HOST REACHED` | Direct WebRTC path can't form (NAT) | You need TURN — configure `VITE_TURN_URL` (above). This is the classic "works on one machine, not over the internet" |
+| Trackers open, `0 active peers`, and `diagnose()` shows **`0 signaling`** on every tracker | Matchmaking hasn't paired you — nobody has been introduced | Confirm both tabs use the *exact* same room code; check the host tab is open; re-test in two tabs on one machine to isolate the trackers |
+| Trackers open, `0 active peers`, but `diagnose()` shows **`N signaling`** (offers/answers were relayed) | You *were* introduced and exchanged SDP, but the WebRTC connection never formed — **NAT traversal**, not matchmaking | Configure TURN — `VITE_TURN_URL` (above). The in-app hint says the same. This is the classic "works on one machine, not over the internet". (Trystero also logs a `join error: could not connect … after exchanging SDP` a few seconds later.) |
+| `peer appeared` / peer state reaches `checking` or `failed` but **never `connected`**, and no `HOST REACHED` | Direct WebRTC path can't form (NAT) | You need TURN — configure `VITE_TURN_URL` (above) |
 | `HOST REACHED` then later `reachability lost` | Connection formed then dropped | Flaky network / carrier-grade NAT — TURN relay for that player |
 
 ## Troubleshooting
