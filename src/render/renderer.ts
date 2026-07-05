@@ -6,16 +6,36 @@
  * correct model. The renderer owns the camera, the FX system, and pooled `Text`
  * for entity name/boss labels. It knows nothing about net / input / UI.
  *
+ * Bodies can migrate from immediate-mode geometry to retained sprites per actor
+ * category (see `SpriteLayer` + `SPRITE_FLAGS`); a category whose flag is off
+ * keeps drawing into `entitiesLayer`, one whose flag is on is drawn by
+ * `SpriteLayer` with its crisp vector overlay (bars/rings) in `overlayLayer`.
+ * Particle VFX augment the geometric `Fx` bursts.
+ *
  * Layer z-order (back -> front):
- *   floor -> zones -> telegraph -> entities -> projectiles -> fx -> fxText -> labels
+ *   floor -> zones -> telegraph -> entities(geometry) -> sprites -> overlay ->
+ *   projectiles -> fx -> particles -> fxText -> labels
  */
-import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { Application, Assets, Container, Graphics, Text, TextStyle } from 'pixi.js';
+import type { Spritesheet } from 'pixi.js';
 import type { RenderState, Vec2 } from '../engine/types';
 import { PLAYER_RADIUS } from '../engine/constants';
 import { getMonster } from '../engine/monsters';
 import { Camera } from './camera';
 import { Fx } from './fx';
-import { drawPlayer, drawBoss, drawAdd, drawProjectile, drawZone } from './entityView';
+import {
+  drawPlayer,
+  drawBoss,
+  drawAdd,
+  drawProjectile,
+  drawZone,
+  drawPlayerOverlay,
+  drawBossOverlay,
+  drawAddOverlay,
+} from './entityView';
+import { SpriteLayer } from './sprites/spriteLayer';
+import { Particles } from './sprites/particles';
+import { SPRITE_FLAGS, SPRITE_ATLAS_URL } from './sprites/manifest';
 
 const GRID_STEP = 100; // world units between grid lines
 
@@ -29,34 +49,48 @@ export class Renderer {
   private readonly zonesLayer = new Graphics();
   private readonly telegraphLayer = new Graphics();
   private readonly entitiesLayer = new Graphics();
+  private readonly overlayLayer = new Graphics();
   private readonly projectilesLayer = new Graphics();
   private readonly fxLayer = new Graphics();
   private readonly fxTextLayer = new Container();
   private readonly labelLayer = new Container();
 
   private readonly fx: Fx;
+  private readonly sprites: SpriteLayer;
+  private readonly particles: Particles;
   private readonly labels: Text[] = [];
 
   private lastRenderMs = 0;
 
-  private constructor(app: Application, arena: { w: number; h: number }) {
+  private constructor(
+    app: Application,
+    arena: { w: number; h: number },
+    sheet: Spritesheet | null,
+  ) {
     this.app = app;
     this.camera = new Camera(arena.w, arena.h);
 
     this.root = new Container();
     app.stage.addChild(this.root);
+
+    this.fx = new Fx(this.fxTextLayer);
+    this.sprites = new SpriteLayer(sheet, this.fx, app.renderer);
+    this.particles = new Particles(app.renderer);
+
     this.root.addChild(
       this.floorLayer,
       this.zonesLayer,
       this.telegraphLayer,
-      this.entitiesLayer,
+      this.entitiesLayer, // geometry bodies (flag-off actors)
+      this.sprites.container, // retained sprite bodies (flag-on actors)
+      this.overlayLayer, // vector bars/rings for sprite-driven actors
       this.projectilesLayer,
       this.fxLayer,
+      this.particles.container,
       this.fxTextLayer,
       this.labelLayer,
     );
 
-    this.fx = new Fx(this.fxTextLayer);
     this.camera.fit(app.screen.width, app.screen.height);
   }
 
@@ -73,7 +107,19 @@ export class Renderer {
       autoDensity: true,
     });
     container.appendChild(app.canvas);
-    return new Renderer(app, arena);
+
+    // Load the sprite atlas if one is configured; otherwise SpriteLayer renders
+    // procedural placeholder silhouettes. Failure is non-fatal (placeholders).
+    let sheet: Spritesheet | null = null;
+    if (SPRITE_ATLAS_URL) {
+      try {
+        sheet = await Assets.load<Spritesheet>(SPRITE_ATLAS_URL);
+      } catch (err) {
+        console.warn('[warband] sprite atlas failed to load; using placeholders', err);
+      }
+    }
+
+    return new Renderer(app, arena, sheet);
   }
 
   /** Draw one frame from the given render state. Caller drives the cadence. */
@@ -88,17 +134,29 @@ export class Renderer {
     // Bake screen shake into the root container so world<->screen stays camera-only.
     this.root.position.set(this.camera.shakeOffset.x, this.camera.shakeOffset.y);
 
-    // Spawn floaters / bursts / flashes + shake BEFORE drawing this frame.
+    // Spawn floaters / bursts / flashes + shake, and feed the same event stream
+    // to the sprite attack triggers and the particle emitter, BEFORE drawing.
     this.fx.processEvents(state.events, this.camera);
+    this.sprites.ingestEvents(state.events, now);
+    this.particles.processEvents(state.events);
 
     this.drawFloor(state.arena);
     this.drawZones(state);
     this.drawTelegraph(state);
-    this.drawEntities(state);
-    this.drawProjectiles(state);
+    this.drawEntities(state); // geometry for flag-off actors
+    this.sprites.update(state, this.camera, now, dtMs); // sprites for flag-on actors
+    this.drawOverlays(state); // vector bars/rings for flag-on actors
+    this.drawProjectiles(state); // geometry for flag-off projectiles
 
     this.fx.update(dtMs);
     this.fx.draw(this.fxLayer, this.camera);
+
+    // Live-projectile particle trails, then advance + draw the particle pool.
+    if (state.projectiles.length > 0) {
+      for (const pr of state.projectiles) this.particles.trail(pr.pos, pr.kind);
+    }
+    this.particles.update(dtMs);
+    this.particles.draw(this.camera);
 
     this.updateLabels(state);
   }
@@ -113,6 +171,8 @@ export class Renderer {
   }
 
   dispose(): void {
+    this.sprites.destroy();
+    this.particles.destroy();
     this.app.destroy(true);
   }
 
@@ -174,28 +234,60 @@ export class Renderer {
     g.clear();
     const scale = this.camera.scale;
 
-    for (const a of state.adds) {
-      drawAdd(g, a, this.camera.worldToScreen(a.pos), scale, this.fx.flashAmount(a.id));
+    if (!SPRITE_FLAGS.add) {
+      for (const a of state.adds) {
+        drawAdd(g, a, this.camera.worldToScreen(a.pos), scale, this.fx.flashAmount(a.id));
+      }
     }
     // Boss below players so downed/standing players stay readable on top of it.
-    if (state.boss) {
+    if (!SPRITE_FLAGS.boss && state.boss) {
       drawBoss(g, state.boss, this.camera.worldToScreen(state.boss.pos), scale, this.fx.flashAmount(state.boss.id));
     }
-    for (const p of state.players) {
-      drawPlayer(
-        g,
-        p,
-        this.camera.worldToScreen(p.pos),
-        scale,
-        p.id === state.localPlayerId,
-        this.fx.flashAmount(p.id),
-      );
+    if (!SPRITE_FLAGS.player) {
+      for (const p of state.players) {
+        drawPlayer(
+          g,
+          p,
+          this.camera.worldToScreen(p.pos),
+          scale,
+          p.id === state.localPlayerId,
+          this.fx.flashAmount(p.id),
+        );
+      }
+    }
+  }
+
+  /** Crisp vector overlays (HP bars, rings, facing) for sprite-driven actors. */
+  private drawOverlays(state: RenderState): void {
+    const g = this.overlayLayer;
+    g.clear();
+    const scale = this.camera.scale;
+
+    if (SPRITE_FLAGS.add) {
+      for (const a of state.adds) {
+        drawAddOverlay(g, a, this.camera.worldToScreen(a.pos), scale);
+      }
+    }
+    if (SPRITE_FLAGS.boss && state.boss) {
+      drawBossOverlay(g, state.boss, this.camera.worldToScreen(state.boss.pos), scale);
+    }
+    if (SPRITE_FLAGS.player) {
+      for (const p of state.players) {
+        drawPlayerOverlay(
+          g,
+          p,
+          this.camera.worldToScreen(p.pos),
+          scale,
+          p.id === state.localPlayerId,
+        );
+      }
     }
   }
 
   private drawProjectiles(state: RenderState): void {
     const g = this.projectilesLayer;
     g.clear();
+    if (SPRITE_FLAGS.projectile) return; // SpriteLayer draws projectiles
     for (const pr of state.projectiles) {
       drawProjectile(g, pr, this.camera.worldToScreen(pr.pos), this.camera.scale);
     }

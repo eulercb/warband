@@ -123,6 +123,44 @@ export function drawPlayer(
   drawBar(g, x, y - r - 9, Math.max(22, r * 2), 4, hpFrac, downed ? 0x9a9a9a : hpColor(hpFrac));
 }
 
+/**
+ * Vector overlay for a player whose *body* is drawn by `SpriteLayer`: the local
+ * highlight ring, the downed revive-progress ring and the floating HP bar. Kept
+ * as crisp Graphics (brief §1) even when the body is a sprite. The prone-X, aim
+ * notch and hit-flash live on the sprite, so they are intentionally absent here.
+ */
+export function drawPlayerOverlay(
+  g: Graphics,
+  p: PlayerView,
+  screen: Vec2,
+  scale: number,
+  isLocal: boolean,
+): void {
+  if (p.state === 'dead') return; // ghost body only, no bar/rings
+  const r = PLAYER_RADIUS * scale;
+  const { x, y } = screen;
+  const downed = p.state === 'downed';
+
+  if (downed) {
+    const frac = clamp(p.reviveProgress / REVIVE_TIME, 0, 1);
+    if (frac > 0) {
+      const start = -Math.PI / 2;
+      const end = start + frac * Math.PI * 2;
+      const ringR = r + 4;
+      g.moveTo(x + Math.cos(start) * ringR, y + Math.sin(start) * ringR)
+        .arc(x, y, ringR, start, end)
+        .stroke({ width: 3, color: 0x66ff88, alpha: 0.95 });
+    }
+  }
+
+  if (isLocal) {
+    g.circle(x, y, r + 3).stroke({ width: 2, color: 0xffffff, alpha: 0.85 });
+  }
+
+  const hpFrac = clamp(p.hp / p.maxHp, 0, 1);
+  drawBar(g, x, y - r - 9, Math.max(22, r * 2), 4, hpFrac, downed ? 0x9a9a9a : hpColor(hpFrac));
+}
+
 // ---------------------------------------------------------------------------
 // Boss
 // ---------------------------------------------------------------------------
@@ -190,6 +228,28 @@ export function drawBoss(
   }
 }
 
+/**
+ * Vector overlay for a boss whose body is a sprite: the facing indicator and the
+ * enrage rings. The body fill/flash live on the sprite. (The dragon "star",
+ * troll "blob", lich "diamond" silhouettes stay in `drawBoss` for the geometry
+ * fallback path.)
+ */
+export function drawBossOverlay(g: Graphics, b: BossView, screen: Vec2, scale: number): void {
+  const def = getMonster(b.monsterId);
+  const r = def.radius * scale;
+  const { x, y } = screen;
+
+  const fx = x + Math.cos(b.facing) * r;
+  const fy = y + Math.sin(b.facing) * r;
+  g.moveTo(x, y).lineTo(fx, fy).stroke({ width: 3, color: 0xffffff, alpha: 0.45 });
+  g.circle(fx, fy, Math.max(3, r * 0.12)).fill({ color: 0xffffff, alpha: 0.7 });
+
+  if (b.phase === 'enraged') {
+    g.circle(x, y, r + 6).stroke({ width: 3, color: 0xff3b30, alpha: 0.85 });
+    g.circle(x, y, r + 12).stroke({ width: 2, color: 0xff3b30, alpha: 0.3 });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Adds (skeletons)
 // ---------------------------------------------------------------------------
@@ -212,6 +272,14 @@ export function drawAdd(
     g.circle(x, y, r).fill({ color: 0xffffff, alpha: clamp(flash, 0, 1) * 0.7 });
   }
 
+  const hpFrac = clamp(a.hp / a.maxHp, 0, 1);
+  drawBar(g, x, y - r - 6, Math.max(14, r * 2), 3, hpFrac, 0xcc5555);
+}
+
+/** Vector overlay (floating HP bar) for an add whose body is a sprite. */
+export function drawAddOverlay(g: Graphics, a: AddView, screen: Vec2, scale: number): void {
+  const r = ADD_RADIUS * scale;
+  const { x, y } = screen;
   const hpFrac = clamp(a.hp / a.maxHp, 0, 1);
   drawBar(g, x, y - r - 6, Math.max(14, r * 2), 3, hpFrac, 0xcc5555);
 }
