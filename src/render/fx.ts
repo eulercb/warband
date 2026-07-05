@@ -321,6 +321,12 @@ export class Fx {
 
   /** Render bursts to `g` and position/fade the pooled damage-number `Text`. */
   draw(g: Graphics, camera: Camera): void {
+    // PixiJS Graphics is retained-mode: every circle/fill below APPENDS geometry.
+    // Clear first so we fully redraw the live bursts each frame — otherwise every
+    // frame's circles pile up forever and each attack leaves a permanent ring on
+    // the ground (the fx layer, unlike the others, is only cleared here).
+    g.clear();
+
     // Bursts.
     for (const b of this.bursts) {
       if (!b.active) continue;
