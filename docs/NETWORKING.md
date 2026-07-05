@@ -125,6 +125,48 @@ You can also widen the tracker pool for more reliable matchmaking:
 VITE_TRACKER_URLS=wss://tracker.example.com,wss://tracker2.example.com
 ```
 
+## Debugging with verbose logs
+
+Multiplayer failures are often **silent** — two peers sit in the lobby forever
+with a clean console and an idle Network tab, because "nothing happened" is not an
+error anyone throws. Warband ships a verbose logging mode that narrates the whole
+connection lifecycle so you can see *where* it stalls.
+
+**Turning it on:**
+
+- It is **on automatically** under `npm run dev`, so the common two-tab test logs
+  out of the box — just open devtools.
+- On a **production build** it is off by default. Enable it two ways:
+  - **No rebuild:** open the browser console and run `warband.netDebug(true)`,
+    then reload. It persists in `localStorage`, so it survives reloads until you
+    run `warband.netDebug(false)`. Great for debugging the live site.
+  - **Build-time:** set `VITE_NET_DEBUG=true` (see `.env.example`) and rebuild.
+- Run `warband.diagnose()` any time for a one-shot snapshot of tracker sockets and
+  peer connections.
+
+All lines are prefixed `[warband:net]` with a `+Ns` timestamp and a scope
+(`room` / `host` / `client`), so you can filter the console on `warband:net`.
+
+**A healthy join looks like this** (client tab):
+
+```
+[warband:net] +0.01s [client] joining room "ABC234" as 7f3a9c { name: … }
+[warband:net] +0.30s [client] connectivity: 4 tracker sockets (4 open) | 0 active peers
+[warband:net] +1.90s [client] peer appeared d41c22 — re-announcing hello/selection
+[warband:net] +2.10s [client] peer d41c22 → connected (ice completed)
+[warband:net] +2.15s [client] HOST REACHED via d41c22 — first host message received
+[warband:net] +2.15s [client] recv lobby { players: 2, phase: 'lobby' }
+```
+
+**Reading a failure** — find the last step that *did* happen:
+
+| Last thing you see | What it means | Where to look |
+| --- | --- | --- |
+| `connectivity: … 0 open` (sockets never open) or a `join error` | Trackers unreachable — matchmaking can't even start | Firewall/proxy/captive portal; try another network or add `VITE_TRACKER_URLS` |
+| Trackers open, but **no `peer appeared`** on either side and peers stay `0 active` | Signaling/matchmaking not pairing you | Confirm both tabs use the *exact* same room code; check the host tab is open |
+| `peer appeared` / peer state reaches `checking` or `failed` but **never `connected`**, and no `HOST REACHED` | Direct WebRTC path can't form (NAT) | You need TURN — configure `VITE_TURN_URL` (above). This is the classic "works on one machine, not over the internet" |
+| `HOST REACHED` then later `reachability lost` | Connection formed then dropped | Flaky network / carrier-grade NAT — TURN relay for that player |
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
@@ -134,9 +176,10 @@ VITE_TRACKER_URLS=wss://tracker.example.com,wss://tracker2.example.com
 | Both peers hang immediately; console shows tracker `wss://` failures | Trackers blocked/down (firewall, proxy, captive portal) | Try another network, or add reachable trackers via `VITE_TRACKER_URLS` |
 | Connects then drops on one player's mobile/hotspot | Carrier-grade NAT | TURN relay is required for that player |
 
-Open your browser devtools console during a connection attempt — Warband logs
-tracker/join errors there (`[warband] … join error`), which tells you whether the
-problem is matchmaking (trackers) or the direct connection (NAT/TURN).
+Open your browser devtools console during a connection attempt and enable verbose
+logs (above). Warband logs tracker/join errors there (`[warband:net] … join
+error`) plus the full handshake, which tells you whether the problem is
+matchmaking (trackers) or the direct connection (NAT/TURN).
 
 ## Where this lives in the code
 
@@ -146,5 +189,8 @@ problem is matchmaking (trackers) or the direct connection (NAT/TURN).
   known-broken-tracker deny-list (`sanitizeTrackerUrls`).
 - `src/net/host.ts` / `src/net/client.ts` — the star-topology host and clients;
   they report connected-peer counts up to the UI.
+- `src/net/log.ts` — verbose connection logging + live diagnostics (the
+  `[warband:net]` logs and `warband.netDebug()` / `warband.diagnose()` console
+  helpers described in "Debugging with verbose logs" above).
 - `src/ui/session.ts` — wires peer counts into the store and drives the
   "still connecting" hint; `src/ui/Lobby.tsx` renders the connection banner.

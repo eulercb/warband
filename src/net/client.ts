@@ -6,7 +6,8 @@
  * player feeling responsive, its own movement is predicted forward each frame
  * and gently reconciled toward the authoritative position from snapshots.
  */
-import { openRoom, selfId } from './room';
+import { openRoom, selfId, getTrackerSockets } from './room';
+import { netLog, netLogOnce, startNetDiagnostics } from './log';
 import { ACTIONS } from './protocol';
 import type {
   LobbyMsg,
@@ -98,13 +99,23 @@ export class Client implements NetSession {
    */
   private hostPeerId: string | null = null;
 
+  // Debug: keys already logged once (first snapshot received, …).
+  private readonly loggedOnce = new Set<string>();
+  private stopDiag: () => void = () => {};
+
   constructor(opts: ClientOpts) {
     this.opts = opts;
     this.ownName = opts.name;
 
-    this.room = openRoom(opts.code, (msg) =>
-      console.warn('[warband] client room join error:', msg),
-    );
+    this.room = openRoom(opts.code);
+    netLog('client', `joining room "${opts.code}" as ${selfId.slice(0, 6)}`, { name: opts.name });
+    // Watch tracker sockets + peer connections so a stalled handshake is visible:
+    // this is exactly the "stuck on Connecting to the host…" case to debug.
+    this.stopDiag = startNetDiagnostics({
+      scope: 'client',
+      getSockets: getTrackerSockets,
+      getPeers: () => this.room.getPeers(),
+    });
 
     this.helloAction = this.action(ACTIONS.hello);
     this.selectAction = this.action(ACTIONS.select);
@@ -123,24 +134,29 @@ export class Client implements NetSession {
     // "connected to the host" signal.
     this.lobbyAction.onMessage = (msg, ctx) => {
       this.markHostReached(ctx.peerId);
+      netLog('client', `recv lobby`, { players: msg.players.length, phase: msg.phase });
       this.opts.onLobby(msg);
     };
     this.startAction.onMessage = (msg, ctx) => {
       this.markHostReached(ctx.peerId);
+      netLog('client', 'recv START', { players: msg.playerCount, monster: msg.monsterId });
       this.interpolator.reset();
       this.resetPrediction();
       this.opts.onStart(msg);
     };
     this.snapshotAction.onMessage = (snap, ctx) => {
       this.markHostReached(ctx.peerId);
+      netLogOnce(this.loggedOnce, 'snapshot', 'client', 'receiving snapshots');
       this.onSnapshot(snap);
     };
     this.resultAction.onMessage = (msg, ctx) => {
       this.markHostReached(ctx.peerId);
+      netLog('client', `recv result → ${msg.result.outcome}`);
       this.opts.onResult(msg.result);
     };
     this.returnLobbyAction.onMessage = (_data, ctx) => {
       this.markHostReached(ctx.peerId);
+      netLog('client', 'recv return-to-lobby');
       this.interpolator.reset();
       this.resetPrediction();
       this.opts.onReturnLobby();
@@ -148,17 +164,21 @@ export class Client implements NetSession {
     this.byeAction.onMessage = (msg) => {
       // NB: a leaving *client* also sends bye, so this channel is not a
       // host-reachability signal — only act on the host's own departure.
-      if (msg.reason === 'hostLeft') this.opts.onHostLeft();
+      if (msg.reason === 'hostLeft') {
+        netLog('client', 'host sent bye → host left');
+        this.opts.onHostLeft();
+      }
     };
 
     // Announce ourselves. The host may connect slightly later, so re-announce
     // our identity + current selection/ready whenever a new peer appears.
     this.sendHello();
-    this.room.onPeerJoin = () => {
+    this.room.onPeerJoin = (peerId: string) => {
       // A peer connected — but in a full mesh that may be the host OR another
       // client, so we don't treat this as "host reached". Re-announce ourselves
       // so the host (whenever it is the one that just connected) learns our
       // identity + current selection.
+      netLog('client', `peer appeared ${peerId.slice(0, 6)} — re-announcing hello/selection`);
       this.sendHello();
       this.selectAction.send({ classId: this.ownClass });
       this.readyAction.send({ ready: this.ownReady });
@@ -166,8 +186,11 @@ export class Client implements NetSession {
     this.room.onPeerLeave = (peerId: string) => {
       // Only the host leaving affects our reachability signal.
       if (peerId === this.hostPeerId) {
+        netLog('client', `host peer ${peerId.slice(0, 6)} left — reachability lost`);
         this.hostPeerId = null;
         this.opts.onPeers?.(0);
+      } else {
+        netLog('client', `peer ${peerId.slice(0, 6)} left (not the host)`);
       }
     };
   }
@@ -175,6 +198,7 @@ export class Client implements NetSession {
   /** Record first contact with the host and report reachability (idempotent). */
   private markHostReached(peerId: string): void {
     if (this.hostPeerId === peerId) return;
+    netLog('client', `HOST REACHED via ${peerId.slice(0, 6)} — first host message received`);
     this.hostPeerId = peerId;
     this.opts.onPeers?.(1);
   }
@@ -268,7 +292,9 @@ export class Client implements NetSession {
   }
 
   leave(): void {
+    netLog('client', 'leaving room (client)');
     this.byeAction.send({ reason: 'left' });
+    this.stopDiag();
     this.room.leave();
   }
 }

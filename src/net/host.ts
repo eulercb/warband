@@ -5,7 +5,8 @@
  * as the star-topology hub: it collects inputs from every client, steps the sim
  * at a fixed timestep, and broadcasts snapshots. It also owns lobby state.
  */
-import { openRoom, selfId } from './room';
+import { openRoom, selfId, getTrackerSockets } from './room';
+import { netLog, netLogOnce, startNetDiagnostics } from './log';
 import { ACTIONS } from './protocol';
 import type {
   LobbyMsg,
@@ -105,15 +106,28 @@ export class Host implements NetSession {
   private lastTime = 0;
   private acc = 0;
 
+  // Debug: keys already logged once (first-input-per-peer, first snapshot, …).
+  private readonly loggedOnce = new Set<string>();
+  private stopDiag: () => void = () => {};
+
   constructor(opts: HostOpts) {
     this.opts = opts;
     this.monsterId = opts.monsterId;
     this.hostName = opts.name;
     this.hostClass = opts.classId;
 
-    this.room = openRoom(opts.code, (msg) =>
-      console.warn('[warband] host room join error:', msg),
-    );
+    this.room = openRoom(opts.code);
+    netLog('host', `hosting room "${opts.code}" as ${selfId.slice(0, 6)}`, {
+      monster: opts.monsterId,
+      name: opts.name,
+      classId: opts.classId,
+    });
+    // Watch tracker sockets + peer connections so a stalled handshake is visible.
+    this.stopDiag = startNetDiagnostics({
+      scope: 'host',
+      getSockets: getTrackerSockets,
+      getPeers: () => this.room.getPeers(),
+    });
 
     this.helloAction = this.action(ACTIONS.hello);
     this.selectAction = this.action(ACTIONS.select);
@@ -128,20 +142,24 @@ export class Host implements NetSession {
 
     // --- Client -> host lobby messages ---
     this.helloAction.onMessage = (data, ctx) => {
+      netLog('host', `recv hello from ${ctx.peerId.slice(0, 6)}`, { name: data.name });
       this.ensurePeer(ctx.peerId).name = data.name;
       this.broadcastLobby();
     };
     this.selectAction.onMessage = (data, ctx) => {
+      netLog('host', `recv select from ${ctx.peerId.slice(0, 6)}`, { classId: data.classId });
       this.ensurePeer(ctx.peerId).classId = data.classId;
       this.broadcastLobby();
     };
     this.readyAction.onMessage = (data, ctx) => {
+      netLog('host', `recv ready from ${ctx.peerId.slice(0, 6)}`, { ready: data.ready });
       this.ensurePeer(ctx.peerId).ready = data.ready;
       this.broadcastLobby();
     };
 
     // --- Client -> host inputs (drop out-of-order commands) ---
     this.inputAction.onMessage = (data, ctx) => {
+      netLogOnce(this.loggedOnce, 'input:' + ctx.peerId, 'host', `first input from ${ctx.peerId.slice(0, 6)}`);
       const last = this.lastSeq.get(ctx.peerId) ?? -1;
       if (data.seq >= last) {
         this.latestInput.set(ctx.peerId, data);
@@ -152,6 +170,7 @@ export class Host implements NetSession {
     // --- Peer presence ---
     this.room.onPeerJoin = (peerId: string) => {
       this.connectedPeers.add(peerId);
+      netLog('host', `peer JOINED ${peerId.slice(0, 6)}`, { connected: this.connectedPeers.size });
       this.opts.onPeers?.(this.connectedPeers.size);
       this.ensurePeer(peerId);
       // Newcomers simply receive the current lobby; if a fight is in progress
@@ -160,6 +179,7 @@ export class Host implements NetSession {
     };
     this.room.onPeerLeave = (peerId: string) => {
       this.connectedPeers.delete(peerId);
+      netLog('host', `peer LEFT ${peerId.slice(0, 6)}`, { connected: this.connectedPeers.size });
       this.opts.onPeers?.(this.connectedPeers.size);
       this.lobby.delete(peerId);
       this.latestInput.delete(peerId);
@@ -265,6 +285,7 @@ export class Host implements NetSession {
     this.localPlayerId = this.world.playerIdByPeer(selfId);
 
     const startMsg: StartMsg = { seed, playerCount, monsterId: this.monsterId, roster };
+    netLog('host', `starting fight → ${playerCount} player(s)`, { seed, monster: this.monsterId });
     this.startAction.send(startMsg);
 
     this.phase = 'inFight';
@@ -295,8 +316,10 @@ export class Host implements NetSession {
   }
 
   leave(): void {
+    netLog('host', 'leaving room (host)');
     this.byeAction.send({ reason: 'hostLeft' });
     this.stopLoop();
+    this.stopDiag();
     this.room.leave();
   }
 
@@ -336,6 +359,9 @@ export class Host implements NetSession {
     while (this.acc >= SIM_DT && !world.finished) {
       world.step(SIM_DT, this.latestInput);
       this.pendingEvents.push(...world.events);
+      // Snapshots stream at the sim rate — log only that the stream started, so
+      // the console shows the host is broadcasting without drowning in per-tick lines.
+      netLogOnce(this.loggedOnce, 'snapshot', 'host', 'broadcasting snapshots');
       this.snapshotAction.send(world.serialize());
       this.acc -= SIM_DT;
     }
@@ -351,6 +377,7 @@ export class Host implements NetSession {
     // Stop stepping but keep `world` so the host can render the final frame.
     this.stopLoop();
     const result = world.result();
+    netLog('host', `fight finished → ${result.outcome}`);
     this.resultAction.send({ result });
     this.opts.onResult(result);
   }
