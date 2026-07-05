@@ -8,7 +8,7 @@
  */
 import { openRoom, selfId, getTrackerSockets } from './room';
 import { netLog, netLogOnce, startNetDiagnostics } from './log';
-import { ACTIONS } from './protocol';
+import { ACTIONS, APP_ID } from './protocol';
 import type {
   LobbyMsg,
   StartMsg,
@@ -113,6 +113,7 @@ export class Client implements NetSession {
     // this is exactly the "stuck on Connecting to the host…" case to debug.
     this.stopDiag = startNetDiagnostics({
       scope: 'client',
+      roomLabel: `${APP_ID} / ${opts.code}`,
       getSockets: getTrackerSockets,
       getPeers: () => this.room.getPeers(),
     });

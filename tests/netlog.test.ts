@@ -4,6 +4,9 @@ import {
   summarizeSockets,
   summarizePeers,
   summarizeIceServers,
+  isSignalingFrame,
+  summarizeTrackerDetail,
+  diagnosisVerdict,
 } from '../src/net/log';
 
 describe('resolveNetDebug', () => {
@@ -87,5 +90,81 @@ describe('summarizeIceServers', () => {
     expect(out).toBe('4 url(s): 1 STUN, 3 TURN');
     expect(out).not.toContain('secretuser');
     expect(out).not.toContain('secretpass');
+  });
+});
+
+describe('isSignalingFrame', () => {
+  it('flags a relayed offer/answer frame', () => {
+    expect(isSignalingFrame('{"action":"announce","offer":{"type":"offer","sdp":"…"}}')).toBe(true);
+    expect(isSignalingFrame('{"action":"announce","answer":{"type":"answer"}}')).toBe(true);
+  });
+
+  it('does NOT flag a plain announce response (no match relayed)', () => {
+    expect(isSignalingFrame('{"action":"announce","interval":120,"complete":0,"incomplete":1}')).toBe(
+      false,
+    );
+  });
+
+  it('ignores non-string frames (Blob/ArrayBuffer)', () => {
+    expect(isSignalingFrame(new ArrayBuffer(8))).toBe(false);
+    expect(isSignalingFrame(undefined)).toBe(false);
+  });
+});
+
+describe('summarizeTrackerDetail', () => {
+  it('reports nothing before any socket exists', () => {
+    expect(summarizeTrackerDetail({})).toBe('  (no tracker sockets yet)');
+  });
+
+  it('calls out an open-but-mute tracker (the black-hole case)', () => {
+    const out = summarizeTrackerDetail({
+      'wss://mute': { readyState: 1, frames: 0, signaling: 0 },
+    });
+    expect(out).toContain('wss://mute — open');
+    expect(out).toContain('silent — 0 frames in (mute: cannot introduce peers)');
+  });
+
+  it('shows inbound frame + signaling counts for a live tracker', () => {
+    const out = summarizeTrackerDetail({
+      'wss://live': { readyState: 1, frames: 4, signaling: 1 },
+    });
+    expect(out).toBe('  wss://live — open, 4 frames in, 1 signaling');
+  });
+});
+
+describe('diagnosisVerdict', () => {
+  const base = {
+    socketsOpen: 3,
+    socketsTotal: 3,
+    peersTotal: 0,
+    peersConnected: 0,
+    signalingFrames: 0,
+  };
+
+  it('blames matchmaking (NOT NAT/TURN) when sockets are open but 0 peers appeared', () => {
+    const out = diagnosisVerdict(base);
+    expect(out).toContain('never introduced to a peer');
+    expect(out).toContain('NOT NAT/TURN');
+  });
+
+  it('points at TURN only once a peer was introduced but never connected', () => {
+    const out = diagnosisVerdict({ ...base, peersTotal: 1 });
+    expect(out).toContain('TURN');
+    expect(out).toContain('WebRTC path is not completing');
+  });
+
+  it('blames unreachable trackers when no socket is open', () => {
+    const out = diagnosisVerdict({ ...base, socketsOpen: 0 });
+    expect(out).toContain('matchmaking cannot even start');
+  });
+
+  it('reports a healthy transport when a peer is connected', () => {
+    const out = diagnosisVerdict({ ...base, peersTotal: 1, peersConnected: 1 });
+    expect(out).toContain('transport is up');
+  });
+
+  it('notes partial matchmaking when signaling was relayed but no peer formed', () => {
+    const out = diagnosisVerdict({ ...base, signalingFrames: 2 });
+    expect(out).toContain('partially worked');
   });
 });

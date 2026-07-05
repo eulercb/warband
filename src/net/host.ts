@@ -7,7 +7,7 @@
  */
 import { openRoom, selfId, getTrackerSockets } from './room';
 import { netLog, netLogOnce, startNetDiagnostics } from './log';
-import { ACTIONS } from './protocol';
+import { ACTIONS, APP_ID } from './protocol';
 import type {
   LobbyMsg,
   LobbyPlayer,
@@ -125,6 +125,7 @@ export class Host implements NetSession {
     // Watch tracker sockets + peer connections so a stalled handshake is visible.
     this.stopDiag = startNetDiagnostics({
       scope: 'host',
+      roomLabel: `${APP_ID} / ${opts.code}`,
       getSockets: getTrackerSockets,
       getPeers: () => this.room.getPeers(),
     });
