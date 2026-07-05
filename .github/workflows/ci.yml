@@ -63,9 +63,6 @@ jobs:
   smoke:
     name: Smoke (headless browser)
     runs-on: ubuntu-latest
-    env:
-      # Collect the smoke screenshots somewhere we can upload them on failure.
-      SHOT_DIR: ${{ runner.temp }}/smoke-shots
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -89,6 +86,10 @@ jobs:
 
       - name: Run smoke test
         run: |
+          # Collect the smoke screenshots somewhere we can upload on failure.
+          # ($RUNNER_TEMP is always exported to step shells; the `runner`
+          # context is not available in job-level `env:`.)
+          export SHOT_DIR="$RUNNER_TEMP/smoke-shots"
           mkdir -p "$SHOT_DIR"
           # Serve the production build in the background (vite preview -> :4173).
           npm run preview &
