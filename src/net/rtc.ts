@@ -117,3 +117,37 @@ export function extraTrackerUrls(env: RtcEnv): string[] {
 export function mergeTrackerUrls(defaults: readonly string[], extra: readonly string[]): string[] {
   return [...new Set([...defaults, ...extra])];
 }
+
+/**
+ * WebTorrent trackers known to reject Trystero's `wss://…/announce` handshake
+ * with an HTTP 403 Forbidden. `tracker.files.fm` ships in Trystero's
+ * `defaultRelayUrls` but no longer accepts general WebTorrent WebSocket clients,
+ * so it can only ever produce a "forbidden" join error — never a match. Keeping
+ * it in the pool wastes a redundancy slot and spams the console with failures,
+ * so we strip it out. Matched by host, so any port/path variant is caught.
+ */
+export const BLOCKED_TRACKER_HOSTS: readonly string[] = ['tracker.files.fm'];
+
+/** Lowercased host (without port) of a `wss://host:port/path` tracker URL. */
+function trackerHost(url: string): string {
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    // Best-effort parse for anything `URL` can't handle: strip scheme, then
+    // take the authority up to the first `/`, and drop any `:port` suffix.
+    return url
+      .replace(/^[a-z][a-z0-9+.-]*:\/\//i, '')
+      .split('/')[0]
+      .split(':')[0]
+      .toLowerCase();
+  }
+}
+
+/**
+ * Drop trackers whose host is on the known-broken deny-list (see
+ * `BLOCKED_TRACKER_HOSTS`). Applied to the whole pool — including env-supplied
+ * extras — since a forbidden tracker is dead weight wherever it comes from.
+ */
+export function sanitizeTrackerUrls(urls: readonly string[]): string[] {
+  return urls.filter((u) => !BLOCKED_TRACKER_HOSTS.includes(trackerHost(u)));
+}
