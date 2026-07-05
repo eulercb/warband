@@ -141,13 +141,29 @@ describe('diagnosisVerdict', () => {
     signalingFrames: 0,
   };
 
-  it('blames matchmaking (NOT NAT/TURN) when sockets are open but 0 peers appeared', () => {
+  it('blames matchmaking (NOT NAT/TURN) only when sockets are open AND no signaling was relayed', () => {
     const out = diagnosisVerdict(base);
-    expect(out).toContain('never introduced to a peer');
+    expect(out).toContain('no peer has been introduced yet');
+    expect(out).toContain('matchmaking stage');
     expect(out).toContain('NOT NAT/TURN');
+    // With zero relayed signaling, TURN is genuinely not the fix yet.
+    expect(out).not.toContain('Matchmaking WORKED');
   });
 
-  it('points at TURN only once a peer was introduced but never connected', () => {
+  it('points at TURN once signaling was relayed but no peer became active (SDP exchanged, no connection)', () => {
+    // This is the reported bug: trackers open, offers/answers relayed both ways,
+    // yet 0 active peers. `getPeers()` only counts post-handshake peers, so an
+    // ICE/NAT stall reads as 0 too — and the verdict must call it what it is.
+    const out = diagnosisVerdict({ ...base, signalingFrames: 8 });
+    expect(out).toContain('Matchmaking WORKED');
+    expect(out).toContain('NAT-traversal stage');
+    expect(out).toContain('TURN');
+    expect(out).toContain('8 offer/answer frame(s)');
+    // It must NOT repeat the old, backwards "matchmaking, TURN won't help" advice.
+    expect(out).not.toContain('matchmaking stage');
+  });
+
+  it('points at TURN once a peer was introduced (active) but never connected', () => {
     const out = diagnosisVerdict({ ...base, peersTotal: 1 });
     expect(out).toContain('TURN');
     expect(out).toContain('WebRTC path is not completing');
@@ -161,10 +177,5 @@ describe('diagnosisVerdict', () => {
   it('reports a healthy transport when a peer is connected', () => {
     const out = diagnosisVerdict({ ...base, peersTotal: 1, peersConnected: 1 });
     expect(out).toContain('transport is up');
-  });
-
-  it('notes partial matchmaking when signaling was relayed but no peer formed', () => {
-    const out = diagnosisVerdict({ ...base, signalingFrames: 2 });
-    expect(out).toContain('partially worked');
   });
 });

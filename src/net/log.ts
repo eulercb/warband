@@ -250,6 +250,17 @@ export interface DiagnosisInput {
  * failed and the fix for it — so `warband.diagnose()` stops reading as a healthy
  * "3 open | 0 peers" and instead says where the connection actually died. The
  * branches mirror the failure table in docs/NETWORKING.md.
+ *
+ * The subtle branch is "tracker sockets open, 0 ACTIVE peers". `getPeers()` only
+ * returns peers that have finished the WebRTC handshake, so a peer stuck in ICE
+ * — SDP exchanged, but no direct/relayed path ever formed — also reads as 0
+ * peers, indistinguishable from "never introduced" by the peer count alone. The
+ * tiebreaker is whether a tracker RELAYED SIGNALING to us: a relayed offer/answer
+ * proves a peer WAS introduced and we exchanged SDP, so the failure is NAT
+ * traversal (needs TURN), NOT matchmaking. Only with *zero* relayed signaling is
+ * it genuinely the matchmaking/pairing stage. Getting this split wrong is what
+ * sends you chasing trackers when you actually need TURN — so the two cases give
+ * opposite advice on purpose.
  */
 export function diagnosisVerdict(d: DiagnosisInput): string {
   if (d.peersConnected > 0) {
@@ -272,20 +283,34 @@ export function diagnosisVerdict(d: DiagnosisInput): string {
       'reachable trackers via VITE_TRACKER_URLS.'
     );
   }
-  // Sockets open, zero peers: never introduced. This is NOT a NAT/TURN problem —
-  // ICE never runs without a peer, so configuring TURN would change nothing.
-  const relayed =
-    d.signalingFrames > 0
-      ? ' (a tracker DID relay signaling to you, so matchmaking partially worked — retry; the handshake may be racing).'
-      : '';
+  if (d.signalingFrames > 0) {
+    // Sockets open, 0 ACTIVE peers, but a peer relayed offer/answer SDP to us. We
+    // WERE introduced and exchanged signaling — matchmaking worked — the direct
+    // connection just never came up. `getPeers()` reports 0 because it only counts
+    // peers past the handshake, and this one never got there. This is the NAT case:
+    // configuring TURN is exactly what helps (the opposite of the 0-signaling case).
+    return (
+      `tracker sockets are OPEN and a peer relayed WebRTC signaling to you (${d.signalingFrames} ` +
+      'offer/answer frame(s) — SDP was exchanged), but the connection never completed: 0 active ' +
+      'peers. Matchmaking WORKED — this is the NAT-traversal stage, and configuring TURN is ' +
+      'exactly what helps here. The two browsers cannot open a direct path and need a TURN relay ' +
+      'to bounce traffic between them; point VITE_TURN_URL at a relay you control (the bundled ' +
+      'public one is best-effort and often overloaded). This is the classic "connects in two tabs ' +
+      'on ONE machine, fails over the internet". If it ALSO fails in two tabs on one machine, then ' +
+      'WebRTC itself is being blocked locally (privacy extension / enterprise policy).'
+    );
+  }
+  // Sockets open, 0 peers, and NO signaling has been relayed: nobody has been
+  // introduced yet. This is the matchmaking stage — NOT NAT/TURN (ICE never runs
+  // without a peer, so configuring TURN would change nothing at this point).
   return (
-    'tracker sockets are OPEN but you were never introduced to a peer (0 peers). This ' +
-    'is the matchmaking stage, NOT NAT/TURN — configuring TURN would not help. Check, in order: ' +
-    '(1) both tabs show the SAME room id above; (2) the host tab is still open; ' +
-    '(3) re-test in two tabs on ONE machine — if it still fails, the public trackers are not ' +
-    'pairing you (switch trackers via VITE_TRACKER_URLS, or the nostr/mqtt strategy) or WebRTC ' +
-    'is blocked in this browser (privacy extension / enterprise policy).' +
-    relayed
+    'tracker sockets are OPEN but no peer has been introduced yet — 0 peers and 0 relayed ' +
+    'signaling. This is the matchmaking stage, NOT NAT/TURN (ICE never runs without a peer, so ' +
+    'TURN would not help yet). Check, in order: (1) both tabs show the SAME room id above; ' +
+    '(2) the host tab is still open; (3) give it a few more seconds — the first introduction can ' +
+    'lag. If it stays at 0 signaling, the public trackers are not pairing you: switch trackers via ' +
+    'VITE_TRACKER_URLS, or the nostr/mqtt strategy. (Re-testing in two tabs on ONE machine isolates ' +
+    'trackers from your network.)'
   );
 }
 

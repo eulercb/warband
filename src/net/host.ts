@@ -61,6 +61,14 @@ export interface HostOpts {
   /** Called with the current count of connected peers whenever it changes. */
   onPeers?: (count: number) => void;
   onError?: (err: string) => void;
+  /**
+   * Transport-level join faults from Trystero (see `openRoom`). The important one
+   * is the post-SDP connection failure ("could not connect … after exchanging
+   * SDP; check … TURN") — a peer was reached and signaling exchanged, but no
+   * WebRTC path formed. Surfaced separately from `onError` because it is a
+   * connectivity *hint*, not necessarily a fatal error (another peer may be fine).
+   */
+  onJoinError?: (msg: string) => void;
 }
 
 export class Host implements NetSession {
@@ -116,7 +124,7 @@ export class Host implements NetSession {
     this.hostName = opts.name;
     this.hostClass = opts.classId;
 
-    this.room = openRoom(opts.code);
+    this.room = openRoom(opts.code, opts.onJoinError);
     netLog('host', `hosting room "${opts.code}" as ${selfId.slice(0, 6)}`, {
       monster: opts.monsterId,
       name: opts.name,

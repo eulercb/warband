@@ -55,6 +55,15 @@ export interface ClientOpts {
    */
   onPeers?: (count: number) => void;
   onError?: (err: string) => void;
+  /**
+   * Transport-level join faults from Trystero (see `openRoom`). The important one
+   * for a joiner is the post-SDP connection failure ("could not connect … after
+   * exchanging SDP; check … TURN"): the host's signaling was reached but no direct
+   * WebRTC path formed — i.e. a NAT/firewall that needs a TURN relay. Surfaced
+   * separately from `onError` so the UI can show an actionable connectivity hint
+   * rather than a fatal error (the attempt may still recover).
+   */
+  onJoinError?: (msg: string) => void;
 }
 
 export class Client implements NetSession {
@@ -107,7 +116,7 @@ export class Client implements NetSession {
     this.opts = opts;
     this.ownName = opts.name;
 
-    this.room = openRoom(opts.code);
+    this.room = openRoom(opts.code, opts.onJoinError);
     netLog('client', `joining room "${opts.code}" as ${selfId.slice(0, 6)}`, { name: opts.name });
     // Watch tracker sockets + peer connections so a stalled handshake is visible:
     // this is exactly the "stuck on Connecting to the host…" case to debug.

@@ -38,6 +38,34 @@ function nameOrDefault(): string {
   return n || `Hero-${selfId.slice(0, 4)}`;
 }
 
+/**
+ * Handle a Trystero transport-level join fault (from `openRoom`'s `onJoinError`).
+ *
+ * The one players hit is the post-SDP connection failure: we reached the other
+ * peer and exchanged WebRTC signaling, but no direct/relayed path formed — a NAT
+ * or firewall that needs a TURN relay. Trystero's message contains "after
+ * exchanging SDP" / "TURN". When we see it and we are still unconnected, replace
+ * the vague "still reaching the host" hint with a specific, actionable one — this
+ * is the message that has been missing, since `warband.diagnose()` used to blame
+ * matchmaking instead. Never escalate to a hard error: another peer or a retry
+ * may still succeed.
+ */
+function handleJoinError(msg: string): void {
+  netLog('room', `join error surfaced to UI: ${msg}`);
+  const s = useStore.getState();
+  if (s.peerCount > 0) return; // already connected — ignore a stray per-peer fault
+  if (/exchang\w* SDP|TURN/i.test(msg)) {
+    clearHostSearchTimer();
+    s.setNetHint(
+      "Reached the other player's signaling, but couldn't open a direct connection — one of you " +
+        'is behind a NAT or firewall that blocks peer-to-peer. This is NOT the room code or the ' +
+        'trackers: it needs a TURN relay. Set VITE_TURN_URL to a relay you control (see the ' +
+        'connectivity notes in the README); the bundled public relay is best-effort and may be ' +
+        'overloaded.',
+    );
+  }
+}
+
 export async function hostGame(): Promise<void> {
   const st = useStore.getState();
   const code = generateRoomCode();
@@ -59,6 +87,7 @@ export async function hostGame(): Promise<void> {
     },
     onPeers: (n) => useStore.getState().setPeerCount(n),
     onError: (e) => useStore.getState().setError(e),
+    onJoinError: handleJoinError,
   });
 
   const s = useStore.getState();
@@ -125,6 +154,7 @@ export async function joinGame(code: string): Promise<void> {
       }
     },
     onError: (e) => useStore.getState().setError(e),
+    onJoinError: handleJoinError,
   });
 
   const s = useStore.getState();
