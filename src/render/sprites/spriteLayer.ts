@@ -253,14 +253,19 @@ function castMs(classId: ClassId, slot: AbilitySlot | null): number | null {
   return sec > 0 ? sec * 1000 : null;
 }
 
-/** Map a `cast` event's ability *name* back to its slot for the owning class. */
+/** Map a `cast` event's ability *name* back to its slot for the owning class.
+ * Rooted casts emit `${name} (cast)` at cast-start (world.ts), so match the
+ * base name; falls back to null (→ 'basic') when the name isn't recognised. */
 function slotForAbilityName(classId: ClassId, name: string): AbilitySlot | null {
   const ab = getClass(classId)?.abilities;
   if (!ab) return null;
+  const base = name.endsWith(CAST_SUFFIX) ? name.slice(0, -CAST_SUFFIX.length) : name;
   const slots: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
-  for (const slot of slots) if (ab[slot].name === name) return slot;
+  for (const slot of slots) if (ab[slot].name === base) return slot;
   return null;
 }
+
+const CAST_SUFFIX = ' (cast)';
 
 /** Actor palette tint, lerped toward white by `flash` (0..1); enraged bosses
  * read red before the flash is applied. Placeholder silhouettes are white, so
