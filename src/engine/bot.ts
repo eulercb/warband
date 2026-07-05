@@ -82,7 +82,7 @@ export function computeBotInput(world: World, bot: Player, seq: number): InputCo
   if (inDanger) {
     move = clampMove(danger);
   } else {
-    move = clampMove(positioning(bot, boss ? boss.pos : focus));
+    move = clampMove(avoidObstacles(world, bot, positioning(bot, boss ? boss.pos : focus)));
   }
 
   // --- Ability desires per class (gated later by cooldown-aware edge). ---
@@ -95,6 +95,9 @@ export function computeBotInput(world: World, bot: Player, seq: number): InputCo
 // Positioning
 // ---------------------------------------------------------------------------
 
+/** Melee-role classes close the distance; the rest hold a ranged standoff. */
+const MELEE_CLASSES = new Set(['knight', 'barbarian', 'rogue', 'paladin']);
+
 /** Desired movement vector for the bot's role (not yet normalized). */
 function positioning(bot: Player, focus: Vec2 | null): Vec2 {
   if (!focus) return { x: 0, y: 0 };
@@ -102,7 +105,7 @@ function positioning(bot: Player, focus: Vec2 | null): Vec2 {
   const d = len(toFocus);
   const dir = safeDir(toFocus, { x: 0, y: -1 });
 
-  if (bot.classId === 'knight') {
+  if (MELEE_CLASSES.has(bot.classId)) {
     // Melee: close to the boss and stay in its face.
     if (d > BOT_MELEE_RANGE) return dir;
     return { x: 0, y: 0 };
@@ -114,6 +117,29 @@ function positioning(bot: Player, focus: Vec2 | null): Vec2 {
   if (d > standoff + 40) return dir; // too far — close in
   // In the band: strafe a little so the bot isn't a static target.
   return vscale({ x: -dir.y, y: dir.x }, 0.4);
+}
+
+/**
+ * Nudge a desired move so the bot slides around solid cover instead of grinding
+ * into it (obstacles now block movement — see world.separateAndClamp). Adds a
+ * perpendicular component when heading into a nearby obstacle.
+ */
+function avoidObstacles(world: World, bot: Player, move: Vec2): Vec2 {
+  if (world.obstacles.length === 0) return move;
+  let out = move;
+  for (const o of world.obstacles) {
+    const toObs = sub(o.pos, bot.pos);
+    const d = len(toObs);
+    const clearance = o.radius + bot.radius + 40;
+    if (d > clearance || d < 1e-3) continue;
+    const dir = safeDir(toObs, { x: 1, y: 0 });
+    // Only steer if we're actually heading toward it.
+    if (dir.x * out.x + dir.y * out.y <= 0) continue;
+    const perp = { x: -dir.y, y: dir.x };
+    // Push away + sideways so we round the obstacle.
+    out = vadd(out, vadd(vscale(dir, -0.8), vscale(perp, 0.8)));
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -249,6 +275,38 @@ function decideAbilities(
       else if (cd.a2 <= 0 && woundedCount(world) >= 2) want.a2 = true; // Sanctuary
       else if (cd.a3 <= 0) want.a3 = true; // Blessing on cooldown
       else if (hasTarget && cd.basic <= 0) want.basic = true; // Smite when idle
+      break;
+    }
+    case 'barbarian': {
+      if (hasTarget && cd.basic <= 0) want.basic = true; // Reckless Swing
+      if (cd.a1 <= 0 && (hpFrac < 0.7 || distBoss <= BOT_MELEE_RANGE + 60)) want.a1 = true; // Rage
+      if (bossPos && cd.a2 <= 0 && (inDanger || distBoss > 220)) want.a2 = true; // Leap
+      if (cd.a3 <= 0 && distBoss <= 150) want.a3 = true; // Whirlwind
+      break;
+    }
+    case 'rogue': {
+      if (hasTarget && cd.basic <= 0) want.basic = true; // Slash
+      if (bossPos && cd.a1 <= 0 && distBoss <= BOT_MELEE_RANGE + 20) want.a1 = true; // Backstab
+      if (cd.a2 <= 0 && inDanger) want.a2 = true; // Shadowstep out
+      if (bossPos && cd.a3 <= 0) want.a3 = true; // Poison Vial toward boss
+      break;
+    }
+    case 'paladin': {
+      const wounded = mostWounded(world);
+      const needHeal = wounded ? wounded.hp / wounded.maxHp < 0.6 : false;
+      if (cd.a3 <= 0 && (hpFrac < 0.5 || inDanger)) want.a3 = true; // Divine Shield
+      else if (needHeal && cd.a2 <= 0) want.a2 = true; // Lay on Hands
+      else if (cd.a1 <= 0 && distBoss <= 170) want.a1 = true; // Consecration
+      else if (hasTarget && cd.basic <= 0) want.basic = true; // Holy Strike
+      break;
+    }
+    case 'druid': {
+      const wounded = mostWounded(world);
+      const needHeal = wounded ? wounded.hp / wounded.maxHp < 0.6 : false;
+      if (needHeal && cd.a2 <= 0) want.a2 = true; // Regrowth
+      if (bossPos && cd.a1 <= 0) want.a1 = true; // Entangle toward boss
+      if (cd.a3 <= 0 && distBoss <= 170) want.a3 = true; // Cyclone
+      if (hasTarget && cd.basic <= 0) want.basic = true; // Thornlash
       break;
     }
   }

@@ -41,12 +41,53 @@ const PROFILES: Record<TerrainKind, TerrainProfile> = {
   deathfog: { kind: 'deathfog', damagePerTick: 6, slowMult: 0.85, slowDuration: 1.0, weight: 2 },
 };
 
-/** Which terrain kinds each boss's arena is themed with. */
-const THEMES: Record<MonsterId, TerrainKind[]> = {
+/**
+ * Which terrain kinds each boss's arena is themed with. Fiery brutes get magma,
+ * forest/swamp beasts get bog, and undead/cold things get ice + death-fog. Any
+ * boss without an explicit theme falls back to a varied mix.
+ */
+const THEMES: Partial<Record<MonsterId, TerrainKind[]>> = {
+  // Fire / infernal
   dragon: ['magma', 'ember'],
+  kobold: ['magma', 'ember'],
+  demon: ['magma', 'ember'],
+  wisp: ['ember', 'magma'],
+  manticore: ['ember', 'magma'],
+  // Forest / swamp / venom
   troll: ['swamp', 'bog'],
+  treant: ['swamp', 'bog'],
+  spider: ['swamp', 'bog'],
+  gnoll: ['swamp', 'bog'],
+  owlbear: ['swamp', 'bog'],
+  basilisk: ['swamp', 'bog'],
+  mudGolem: ['swamp', 'bog'],
+  goblin: ['bog', 'ember'],
+  bandit: ['bog', 'swamp'],
+  direwolf: ['bog', 'swamp'],
+  minotaur: ['swamp', 'bog'],
+  fae: ['swamp', 'ember'],
+  kraken: ['bog', 'swamp'],
+  // Frost / undead
   lich: ['ice', 'deathfog'],
+  archlich: ['ice', 'deathfog'],
+  wraith: ['ice', 'deathfog'],
+  zombie: ['deathfog', 'bog'],
+  vampire: ['deathfog', 'ice'],
+  deathknight: ['ice', 'deathfog'],
+  frostGiant: ['ice', 'ember'],
+  mindflayer: ['deathfog', 'ice'],
+  // Stone / construct
+  animatedArmor: ['ember', 'ice'],
+  gargoyle: ['ember', 'ice'],
+  cyclops: ['ember', 'bog'],
+  ettin: ['bog', 'ember'],
+  orc: ['ember', 'bog'],
+  beholder: ['deathfog', 'ember'],
+  harpy: ['ember', 'bog'],
 };
+
+/** A varied mix used when a boss has no explicit terrain theme. */
+const DEFAULT_THEME: TerrainKind[] = ['ember', 'bog', 'ice'];
 
 /** Weighted pick of a terrain kind from a theme list. */
 function pickKind(rng: Rng, kinds: TerrainKind[]): TerrainKind {
@@ -73,7 +114,7 @@ export function generateTerrain(
   // Dedicated RNG derived from the run seed so terrain layout is reproducible
   // on clients and does NOT perturb the world's own RNG stream.
   const rng = new Rng((seed ^ 0x9e3779b9) >>> 0);
-  const kinds = THEMES[monsterId];
+  const kinds = THEMES[monsterId] ?? DEFAULT_THEME;
   const count = rng.int(TERRAIN_MIN_PATCHES, TERRAIN_MAX_PATCHES);
 
   // Reserved keep-clear anchors: party spawn strip (bottom center) + boss start.

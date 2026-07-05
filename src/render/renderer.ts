@@ -41,6 +41,7 @@ import {
 import { SpriteLayer } from './sprites/spriteLayer';
 import { Particles } from './sprites/particles';
 import { SPRITE_FLAGS, SPRITE_ATLAS_URL } from './sprites/manifest';
+import { buffLabel } from './buffGlyphs';
 
 const GRID_STEP = 100; // world units between grid lines
 
@@ -142,10 +143,13 @@ export class Renderer {
     const dtMs = this.lastRenderMs === 0 ? 16 : Math.min(100, now - this.lastRenderMs);
     this.lastRenderMs = now;
 
-    // Keep the camera fit to the current canvas size, then follow the party's
-    // average across the wrap-around arena.
+    // Keep the camera fit to the current canvas size, then follow the centre of
+    // the action (party + boss) across the wrap-around arena, zooming out when
+    // they spread apart so nobody drops off the edge into "nowhere".
     this.camera.fit(this.app.screen.width, this.app.screen.height);
-    this.camera.follow(partyCenter(state), dtMs);
+    const frame = frameOf(state);
+    this.camera.follow(frame.center, dtMs);
+    this.camera.frameGroup(frame.halfSpan);
     this.camera.update(dtMs);
     // Bake screen shake into the root container so world<->screen stays camera-only.
     this.root.position.set(this.camera.shakeOffset.x, this.camera.shakeOffset.y);
@@ -423,7 +427,9 @@ export class Renderer {
     for (const p of state.players) {
       const t = this.labels[i++];
       t.visible = true;
-      t.text = p.name;
+      // Name, with a compact buff/debuff readout (glyph + seconds) beneath it.
+      const badges = p.state === 'alive' ? buffLabel(p.buffs) : '';
+      t.text = badges ? `${p.name}\n${badges}` : p.name;
       const s = this.camera.worldToScreen(p.pos);
       t.position.set(s.x, s.y - PLAYER_RADIUS * scale - 12);
       t.alpha = p.state === 'dead' ? 0.4 : 1;
@@ -433,7 +439,9 @@ export class Renderer {
       const def = getMonster(state.boss.monsterId);
       const t = this.labels[i++];
       t.visible = true;
-      t.text = def.name;
+      const name = state.boss.modName ? `${state.boss.modName} ${def.name}` : def.name;
+      const badges = buffLabel(state.boss.buffs);
+      t.text = badges ? `${name}\n${badges}` : name;
       const s = this.camera.worldToScreen(state.boss.pos);
       t.position.set(s.x, s.y - def.radius * scale - 10);
       t.alpha = 1;
@@ -452,22 +460,32 @@ const PILLARS: ReadonlyArray<{ x: number; y: number }> = [
 ];
 
 /**
- * The world point the camera should follow: the torus-average of the living
- * party (all players if everyone is down), or the arena center if empty. Uses a
- * nearest-copy average so the center doesn't jump when the party straddles the
- * wrap seam.
+ * The world point the camera should follow and how far the framed group spreads.
+ * The centre is the torus-average of the living party AND the boss (so the enemy
+ * stays in frame, not just the host), computed with nearest-copy so it doesn't
+ * jump across the wrap seam. `halfSpan` is the farthest framed point from that
+ * centre, which drives the dynamic zoom-out.
  */
-function partyCenter(state: RenderState): Vec2 {
+function frameOf(state: RenderState): { center: Vec2; halfSpan: number } {
   const alive = state.players.filter((p) => p.state !== 'dead');
-  const pts = alive.length > 0 ? alive : state.players;
-  if (pts.length === 0) return { x: ARENA_W / 2, y: ARENA_H / 2 };
-  const base = pts[0].pos;
+  const pts: Vec2[] = (alive.length > 0 ? alive : state.players).map((p) => p.pos);
+  if (state.boss) pts.push(state.boss.pos);
+  if (pts.length === 0) return { center: { x: ARENA_W / 2, y: ARENA_H / 2 }, halfSpan: 0 };
+
+  const base = pts[0];
   let sx = 0;
   let sy = 0;
-  for (const p of pts) {
-    const c = nearestCopy(p.pos, base);
+  const copies = pts.map((p) => {
+    const c = nearestCopy(p, base);
     sx += c.x;
     sy += c.y;
+    return c;
+  });
+  const avg = { x: sx / copies.length, y: sy / copies.length };
+  let halfSpan = 0;
+  for (const c of copies) {
+    const d = Math.hypot(c.x - avg.x, c.y - avg.y);
+    if (d > halfSpan) halfSpan = d;
   }
-  return wrapPos({ x: sx / pts.length, y: sy / pts.length });
+  return { center: wrapPos(avg), halfSpan };
 }

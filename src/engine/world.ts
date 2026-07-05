@@ -48,6 +48,9 @@ import {
   ADD_ATTACK_CD,
   SEPARATION_ITERATIONS,
   PLAYER_RADIUS,
+  SCORE_HEAL_FACTOR,
+  SCORE_PER_REVIVE,
+  SCORE_PER_DEATH,
 } from './constants';
 import { generateTerrain } from './terrain';
 import { generateObstacles } from './obstacles';
@@ -65,11 +68,12 @@ import {
 // sub/dist/distSq/pointInSegment so combat measures the shortest path on the
 // torus. `wrapPos` canonicalises positions after they move (see §infinite-map).
 import { sub, dist, distSq, pointInSegment, wrapPos } from './torus';
-import { getClass } from './classes';
+import { getClass, cloneAbilities } from './classes';
 import { applyUpgrades } from './upgrades';
 import type { UpgradeId } from './upgrades';
+import { applyCharUpgrades } from './charUpgrades';
 import { getMonster, abilityById } from './monsters';
-import type { MonsterDef } from './monsters';
+import type { MonsterDef, BossModifier } from './monsters';
 import { computeScaling } from './scaling';
 import type { ScalingResult } from './scaling';
 import {
@@ -107,15 +111,26 @@ export interface WorldPlayerInit {
   peerId: string;
   name: string;
   classId: ClassId;
-  /** Persistent upgrades this hero has earned this run (applied at spawn). */
+  /** Persistent generic upgrades this hero has earned this run (applied at spawn). */
   upgrades?: UpgradeId[];
+  /** Persistent character (class) upgrades this hero has earned this run. */
+  charUpgrades?: string[];
+  /** Score carried in from prior bosses this run (endless accumulates it). */
+  baseScore?: number;
 }
 
 export interface WorldInit {
   monsterId: MonsterId;
   seed: number;
   players: WorldPlayerInit[];
+  /** Endless cycle (0 = first run) — scales boss HP/damage (scaling.ts). */
+  cycle?: number;
+  /** Endless "type" modifier layered on the boss (Frost, Dark, …). */
+  modifier?: BossModifier | null;
 }
+
+/** Interval (s) at which an endless "type" modifier's aura fires. */
+const MOD_AURA_INTERVAL = 3.5;
 
 export class World {
   players: Player[] = [];
@@ -134,6 +149,7 @@ export class World {
 
   scaling: ScalingResult;
   monsterDef: MonsterDef;
+  modifier: BossModifier | null;
 
   tauntTargetId: EntityId | null = null;
   tauntTimer = 0;
@@ -146,8 +162,9 @@ export class World {
 
   constructor(init: WorldInit) {
     this.rng = new Rng(init.seed);
-    this.scaling = computeScaling(init.players.length);
+    this.scaling = computeScaling(init.players.length, init.cycle ?? 0);
     this.monsterDef = getMonster(init.monsterId);
+    this.modifier = init.modifier ?? null;
     this.spawnPlayers(init.players);
     this.spawnBoss();
     this.terrain = generateTerrain(init.monsterId, init.seed, () => this.allocId());
@@ -201,12 +218,19 @@ export class World {
         regenPerSec: 0,
         threat: 0,
         stats: { damageDealt: 0, healingDone: 0, revives: 0, deaths: 0 },
+        // Private ability table so character upgrades can retune this hero's kit
+        // without mutating the shared class data.
+        abilities: cloneAbilities(cls.abilities),
+        baseScore: pi.baseScore ?? 0,
         prevButtons: { basic: false, a1: false, a2: false, a3: false, revive: false },
         lastSeq: -1,
       };
       // Apply this hero's accumulated run upgrades (may raise maxHp, so do it
-      // before the player is considered "at full health").
+      // before the player is considered "at full health"). Generic first, then
+      // the class-specific character upgrades that retune the ability table.
       applyUpgrades(player, pi.upgrades);
+      applyCharUpgrades(player, pi.charUpgrades);
+      player.hp = player.maxHp;
       this.players.push(player);
     });
   }
@@ -241,6 +265,9 @@ export class World {
       regen: def.regen,
       blinkTimer: def.blink ? def.blink.internalCd : 0,
       buffs: [],
+      modAura: this.modifier?.aura,
+      modColor: this.modifier?.color,
+      modAuraTimer: 0,
     };
   }
 
@@ -367,7 +394,7 @@ export class World {
   }
 
   private tryUseAbility(p: Player, slot: AbilitySlot, moveDir: Vec2): void {
-    const ab = getClass(p.classId).abilities[slot];
+    const ab = (p.abilities ?? getClass(p.classId).abilities)[slot];
     if (p.cooldowns[slot] > 0) return;
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
 
@@ -429,8 +456,12 @@ export class World {
     const keep: Projectile[] = [];
     for (const proj of this.projectiles) {
       const prev = { x: proj.pos.x, y: proj.pos.y };
-      proj.pos = vadd(proj.pos, vscale(proj.vel, dt));
+      const step = vscale(proj.vel, dt);
+      proj.pos = vadd(proj.pos, step);
       proj.lifetime -= dt;
+      // Hard travel cap: a ranged shot fizzles once its range budget is spent, so
+      // no projectile can lap the torus forever and hit the caster from behind.
+      proj.rangeLeft -= Math.hypot(step.x, step.y);
 
       // Cover obstacles absorb any ranged attack whose path crosses them
       // (segment test avoids fast projectiles tunneling through) — no damage.
@@ -440,7 +471,7 @@ export class World {
           ? this.resolvePlayerProjectile(proj)
           : this.resolveBossProjectile(proj);
 
-      if (!consumed && proj.lifetime > 0) {
+      if (!consumed && proj.lifetime > 0 && proj.rangeLeft > 0) {
         // Projectiles wrap around the torus too (rather than flying off-map).
         proj.pos = wrapPos(proj.pos);
         keep.push(proj);
@@ -481,12 +512,14 @@ export class World {
       const center = proj.pos;
       if (this.boss && this.boss.hp > 0 && dist(center, this.boss.pos) <= proj.impactRadius + this.boss.radius) {
         this.applyProjDamageBoss(owner, proj.damage);
+        this.applyProjRiders(this.boss, proj);
       }
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
         if (dist(center, a.pos) <= proj.impactRadius + a.radius) {
           if (owner) damageAdd(this, owner, a, proj.damage);
           else a.hp -= proj.damage;
+          this.applyProjRiders(a, proj);
         }
       }
       // Flash the blast radius so the on-impact AoE is actually visible (it used
@@ -507,11 +540,23 @@ export class World {
       });
     } else if (hitBoss) {
       this.applyProjDamageBoss(owner, proj.damage);
+      if (this.boss) this.applyProjRiders(this.boss, proj);
     } else if (hitAdd) {
       if (owner) damageAdd(this, owner, hitAdd, proj.damage);
       else hitAdd.hp -= proj.damage;
+      this.applyProjRiders(hitAdd, proj);
     }
     return true;
+  }
+
+  /** Apply a hostile projectile's on-hit riders (frost slow, freeze) to a target. */
+  private applyProjRiders(target: { buffs: import('./types').Buff[] }, proj: Projectile): void {
+    if (proj.slowMult != null && proj.slowMult < 1) {
+      applyBuff(target, makeBuff('moveSpeed', proj.slowMult, proj.slowDuration ?? 2, 'slow'));
+    }
+    if (proj.freeze != null && proj.freeze > 0) {
+      applyBuff(target, makeBuff('stun', 0, proj.freeze, 'freeze'));
+    }
   }
 
   private applyProjDamageBoss(owner: Player | null, base: number): void {
@@ -519,11 +564,13 @@ export class World {
     if (owner) {
       damageBoss(this, owner, this.boss, base);
     } else {
-      this.boss.hp -= base;
+      // Ownerless (disconnected caster): still honor the boss's mitigation buffs.
+      const dealt = base * buffMult(this.boss, 'damageTaken');
+      this.boss.hp -= dealt;
       this.events.push({
         t: 'hit',
         pos: { ...this.boss.pos },
-        amount: base,
+        amount: dealt,
         targetId: this.boss.id,
         side: 'boss',
       });
@@ -535,6 +582,10 @@ export class World {
       if (p.state !== 'alive') continue;
       if (dist(proj.pos, p.pos) <= proj.hitRadius + p.radius) {
         damagePlayer(this, p, proj.damage);
+        // Frost bosses' bolts chill whoever they strike.
+        if (proj.slowMult != null && proj.slowMult < 1) {
+          applyBuff(p, makeBuff('moveSpeed', proj.slowMult, proj.slowDuration ?? 2, 'bossSlow'));
+        }
         return true;
       }
     }
@@ -561,23 +612,33 @@ export class World {
 
   private applyZoneTick(z: GroundZone): void {
     if (z.side === 'boss') {
+      const slows = z.slowMult < 1;
       for (const p of this.players) {
         if (p.state !== 'alive') continue;
-        if (dist(z.pos, p.pos) <= z.radius + p.radius) damagePlayer(this, p, z.damagePerTick);
+        if (dist(z.pos, p.pos) <= z.radius + p.radius) {
+          if (z.damagePerTick > 0) damagePlayer(this, p, z.damagePerTick);
+          // Snare zones (Web Snare, Grasping Roots, Thorn Field…) also mire the party.
+          if (slows) applyBuff(p, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
+        }
       }
       return;
     }
     // player-side zone
     const owner = this.players.find((p) => p.id === z.ownerId) ?? null;
-    if (z.damagePerTick > 0) {
+    const slows = z.slowMult < 1;
+    if (z.damagePerTick > 0 || slows) {
       if (this.boss && this.boss.hp > 0 && dist(z.pos, this.boss.pos) <= z.radius + this.boss.radius) {
-        this.applyProjDamageBoss(owner, z.damagePerTick);
+        if (z.damagePerTick > 0) this.applyProjDamageBoss(owner, z.damagePerTick);
+        if (slows) applyBuff(this.boss, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
       }
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
         if (dist(z.pos, a.pos) <= z.radius + a.radius) {
-          if (owner) damageAdd(this, owner, a, z.damagePerTick);
-          else a.hp -= z.damagePerTick;
+          if (z.damagePerTick > 0) {
+            if (owner) damageAdd(this, owner, a, z.damagePerTick);
+            else a.hp -= z.damagePerTick;
+          }
+          if (slows) applyBuff(a, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
         }
       }
     }
@@ -671,6 +732,7 @@ export class World {
       boss.cooldowns[id] = Math.max(0, boss.cooldowns[id] - dt);
     }
     boss.blinkTimer = Math.max(0, boss.blinkTimer - dt);
+    this.tickModifierAura(dt);
 
     // regen (troll)
     if (boss.regen > 0) {
@@ -723,6 +785,57 @@ export class World {
         boss.action.remaining -= dt;
         this.bossMove(dt, target);
         if (boss.action.remaining <= 0) boss.action.kind = 'idle';
+        break;
+      }
+    }
+  }
+
+  /**
+   * Endless "type" modifier aura: a periodic themed pulse layered on the boss so
+   * a Frost Dragon chills the party, an Infernal one scorches them, and so on.
+   * Cheap, telegraph-light pressure that stacks on top of the boss's own kit.
+   */
+  private tickModifierAura(dt: number): void {
+    const boss = this.boss;
+    if (!boss || !boss.modAura) return;
+    boss.modAuraTimer = (boss.modAuraTimer ?? 0) + dt;
+    if (boss.modAuraTimer < MOD_AURA_INTERVAL) return;
+    boss.modAuraTimer = 0;
+    const scalar = this.bossDamageScalar();
+    switch (boss.modAura) {
+      case 'frost':
+        for (const p of this.players) {
+          if (p.state === 'alive' && dist(p.pos, boss.pos) <= 340) {
+            applyBuff(p, makeBuff('moveSpeed', 0.5, 2.5, 'modFrost'));
+          }
+        }
+        break;
+      case 'ember':
+        for (const p of this.players) {
+          if (p.state === 'alive' && dist(p.pos, boss.pos) <= 250) damagePlayer(this, p, 16 * scalar);
+        }
+        this.events.push({ t: 'telegraph', pos: { ...boss.pos }, shape: 'circle' });
+        break;
+      case 'shadow':
+        boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp * 0.025);
+        break;
+      case 'venom':
+        for (const p of this.players) {
+          if (p.state === 'alive' && dist(p.pos, boss.pos) <= 300) {
+            damagePlayer(this, p, 10 * scalar);
+            applyBuff(p, makeBuff('moveSpeed', 0.6, 2, 'modVenom'));
+          }
+        }
+        break;
+      case 'storm': {
+        const alive = this.players.filter((p) => p.state === 'alive');
+        if (alive.length > 0) {
+          const t = this.rng.pick(alive);
+          this.events.push({ t: 'telegraph', pos: { ...t.pos }, shape: 'circle' });
+          for (const p of alive) {
+            if (dist(p.pos, t.pos) <= 130) damagePlayer(this, p, 22 * scalar);
+          }
+        }
         break;
       }
     }
@@ -892,6 +1005,13 @@ export class World {
       tickBuffs(a, dt);
       a.attackCd = Math.max(0, a.attackCd - dt);
 
+      // Frozen / stunned adds hold still and can't attack (Frost Nova's Deep
+      // Freeze, Shield Bash, Holy Wrath… now bite minions too, not just the boss).
+      if (hasBuff(a, 'stun')) {
+        keep.push(a);
+        continue;
+      }
+
       // nearest alive player
       let target: Player | null = null;
       let best = Infinity;
@@ -939,6 +1059,12 @@ export class World {
       if (this.boss) {
         for (const m of movers) this.pushOutOfBoss(m);
       }
+      // Terrain obstacles are solid walls: eject every mover (and the boss) so
+      // nobody — hero, minion or boss — can walk through cover.
+      if (this.obstacles.length > 0) {
+        for (const m of movers) this.pushOutOfObstacles(m);
+        if (this.boss) this.pushOutOfObstacles(this.boss);
+      }
     }
     // Wrap around the torus instead of clamping to walls: an entity that walks
     // off one edge reappears on the opposite edge (infinite scrolling arena).
@@ -981,6 +1107,21 @@ export class World {
     const overlap = min - d;
     m.pos.x += nx * overlap;
     m.pos.y += ny * overlap;
+  }
+
+  /** Eject a mover (or the boss) out of any solid cover obstacle it overlaps. */
+  private pushOutOfObstacles(m: { pos: Vec2; radius: number }): void {
+    for (const o of this.obstacles) {
+      const min = m.radius + o.radius;
+      const delta = sub(m.pos, o.pos);
+      const d = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
+      if (d >= min) continue;
+      const nx = d > 0 ? delta.x / d : 1;
+      const ny = d > 0 ? delta.y / d : 0;
+      const overlap = min - d;
+      m.pos.x += nx * overlap;
+      m.pos.y += ny * overlap;
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -1046,6 +1187,7 @@ export class World {
         healingDone: Math.round(p.stats.healingDone),
         revives: p.stats.revives,
         deaths: p.stats.deaths,
+        score: Math.round(this.playerScore(p)),
       })),
     };
   }
@@ -1115,7 +1257,19 @@ export class World {
       reviveProgress: p.reviveProgress,
       castSlot: p.castSlot,
       castTimer: p.castTimer,
+      score: Math.round(this.playerScore(p)),
     };
+  }
+
+  /** Cumulative participation score: prior bosses (baseScore) + this fight. */
+  playerScore(p: Player): number {
+    const s = p.stats;
+    const fight =
+      s.damageDealt +
+      s.healingDone * SCORE_HEAL_FACTOR +
+      s.revives * SCORE_PER_REVIVE -
+      s.deaths * SCORE_PER_DEATH;
+    return Math.max(0, (p.baseScore ?? 0) + fight);
   }
 
   private bossView(): BossView | null {
@@ -1133,6 +1287,8 @@ export class World {
       buffs: b.buffs.map((bf) => ({ kind: bf.kind, remaining: bf.remaining, mult: bf.mult })),
       action: b.action.kind,
       abilityId: b.action.abilityId,
+      modName: this.modifier?.prefix,
+      modColor: this.modifier?.color,
     };
   }
 

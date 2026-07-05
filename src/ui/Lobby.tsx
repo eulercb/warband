@@ -3,7 +3,7 @@
  * the connected roster, a class picker, a ready toggle and (for the host) the
  * start button. All mutations route through the session helper.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useStore } from './store';
 import {
   selectClass,
@@ -19,12 +19,14 @@ import {
   setBotClass,
   playUiSound,
 } from './session';
+import { useGamepadMenu } from '../input/useGamepadMenu';
 import { CLASS_IDS, CLASSES } from '../engine/classes';
 import { MONSTER_IDS, MONSTERS } from '../engine/monsters';
 import { MAX_PLAYERS } from '../engine/constants';
 import type { ClassId } from '../engine/types';
 
 export function Lobby() {
+  const panelRef = useRef<HTMLDivElement>(null);
   const roomCode = useStore((s) => s.roomCode);
   const isHost = useStore((s) => s.isHost);
   const monsterId = useStore((s) => s.monsterId);
@@ -90,9 +92,11 @@ export function Lobby() {
     leaveToMenu();
   };
 
+  useGamepadMenu(panelRef, { onBack: onLeave });
+
   return (
     <div className="wb-screen">
-      <div className="wb-panel wb-lobby-panel">
+      <div className="wb-panel wb-lobby-panel" ref={panelRef}>
         <div className="wb-lobby-head">
           <div className="wb-roomcode-block">
             <span className="wb-field-label">Room code</span>

@@ -3,9 +3,10 @@
  * hash) and a display name, then connect to an existing host via
  * session.joinGame().
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useStore } from './store';
 import { joinGame, playUiSound } from './session';
+import { useGamepadMenu } from '../input/useGamepadMenu';
 
 export function JoinScreen() {
   const localName = useStore((s) => s.localName);
@@ -13,6 +14,7 @@ export function JoinScreen() {
   const setLocalName = useStore((s) => s.setLocalName);
   const setPhase = useStore((s) => s.setPhase);
   const setError = useStore((s) => s.setError);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Prefill from a room code the URL-hash handler may have written to the store.
   const [code, setCode] = useState<string>(
@@ -40,9 +42,11 @@ export function JoinScreen() {
     setPhase('menu');
   };
 
+  useGamepadMenu(panelRef, { onBack });
+
   return (
     <div className="wb-screen">
-      <div className="wb-panel wb-setup-panel">
+      <div className="wb-panel wb-setup-panel" ref={panelRef}>
         <h2 className="wb-title wb-title-sm">Join a Fight</h2>
         <p className="wb-subtitle">Enter the room code your host shared.</p>
 

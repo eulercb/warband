@@ -3,14 +3,17 @@
  * and gamepad buttons for movement and abilities; bindings persist locally (see
  * input/bindings.ts). Reachable from the main menu and the in-fight pause menu.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { closeControls, playUiSound } from './session';
 import { useStore } from './store';
+import { useGamepadMenu } from '../input/useGamepadMenu';
 import {
   useBindings,
   MOVE_ACTIONS,
   BUTTON_ACTIONS,
   ACTION_LABELS,
+  PAD_SCHEMES,
+  PAD_SCHEME_LABELS,
   codeToLabel,
   padIndexToLabel,
   type KeyAction,
@@ -43,10 +46,16 @@ export default function Controls() {
   const bindings = useBindings((s) => s.bindings);
   const setKey = useBindings((s) => s.setKey);
   const setPad = useBindings((s) => s.setPad);
+  const setPadScheme = useBindings((s) => s.setPadScheme);
   const reset = useBindings((s) => s.reset);
   const autofire = useStore((s) => s.autofire);
   const setAutofire = useStore((s) => s.setAutofire);
   const [capture, setCapture] = useState<Capture>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // While a rebind capture is pending, SUSPEND (don't disable) controller nav: the
+  // handler stays topmost and swallows the assignment press so it can't leak down
+  // to the pause menu / main menu beneath this overlay.
+  useGamepadMenu(panelRef, { onBack: closeControls, suspended: capture !== null });
 
   // Capture a keyboard key for the pending key-rebind.
   useEffect(() => {
@@ -109,12 +118,32 @@ export default function Controls() {
 
   return (
     <div className="wb-overlay" role="dialog" aria-modal="true" aria-label="Controls">
-      <div className="wb-panel wb-controls-panel">
+      <div className="wb-panel wb-controls-panel" ref={panelRef}>
         <h2 className="wb-title wb-title-sm">Controls</h2>
         <p className="wb-subtitle">
           Click a button to rebind it, then press the key or gamepad button.
           {capture ? ' Press Esc to cancel.' : ''}
         </p>
+
+        <div className="wb-pad-scheme">
+          <span className="wb-field-label">Controller icons</span>
+          <div className="wb-pad-scheme-row" role="group" aria-label="Controller icon style">
+            {PAD_SCHEMES.map((scheme) => (
+              <button
+                type="button"
+                key={scheme}
+                className={`wb-btn wb-btn-chip${bindings.padScheme === scheme ? ' selected' : ''}`}
+                onClick={() => {
+                  playUiSound('uiClick');
+                  setPadScheme(scheme);
+                }}
+                aria-pressed={bindings.padScheme === scheme}
+              >
+                {PAD_SCHEME_LABELS[scheme]}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="wb-controls-cols">
           <section className="wb-controls-col">

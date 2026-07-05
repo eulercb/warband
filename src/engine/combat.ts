@@ -79,7 +79,10 @@ export function damageBoss(
   boss: Boss,
   baseDamage: number,
 ): number {
-  const outgoing = baseDamage * buffMult(source, 'damageDealt') * source.damageMult;
+  // Honor the boss's own damage-taken buffs (Brace / Petrify / Regrow / Aegis…),
+  // so a boss defensive cooldown actually mitigates incoming damage.
+  const outgoing =
+    baseDamage * buffMult(source, 'damageDealt') * source.damageMult * buffMult(boss, 'damageTaken');
   const before = boss.hp;
   boss.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(boss.hp, 0));

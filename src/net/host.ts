@@ -19,6 +19,8 @@ import type {
   PauseMsg,
   PauseReqMsg,
   UpgradeMsg,
+  NextReadyMsg,
+  NextReadyStateMsg,
   ByeMsg,
   NetSession,
 } from './protocol';
@@ -27,14 +29,16 @@ import type { WorldPlayerInit } from '../engine/world';
 import {
   SIM_DT,
   MAX_PLAYERS,
-  GAUNTLET_ORDER,
-  GAUNTLET_INTERSTITIAL_S,
   RESUME_COUNTDOWN_S,
+  SCORE_BOSS_CLEAR,
 } from '../engine/constants';
 import { computeBotInput, BOT_PEER_PREFIX } from '../engine/bot';
 import { CLASSES } from '../engine/classes';
+import { buildRun, modifierForCycle } from '../engine/monsters';
+import { Rng } from '../engine/math';
 import { isUpgradeId } from '../engine/upgrades';
 import type { UpgradeId } from '../engine/upgrades';
+import { isCharUpgradeId } from '../engine/charUpgrades';
 import type {
   MonsterId,
   ClassId,
@@ -81,7 +85,9 @@ export interface HostOpts {
   /** Called whenever lobby state changes (including immediately in the ctor). */
   onLobby: (msg: LobbyMsg) => void;
   /** Called whenever a fight begins (manual start, retry or gauntlet advance). */
-  onStart?: (info: { runIndex: number; runTotal: number }) => void;
+  onStart?: (info: { runIndex: number; runTotal: number; cycle: number; modName?: string }) => void;
+  /** Called when between-boss readiness changes (host UI shows "X/Y ready"). */
+  onNextReady?: (info: { ready: number; total: number }) => void;
   /** Called once when the fight ends. */
   onResult: (result: FightResult) => void;
   /** Mirror shared pause state into the host UI (paused, who paused, countdown). */
@@ -120,6 +126,8 @@ export class Host implements NetSession {
   private readonly pauseAction: NetAction<PauseMsg>;
   private readonly pauseReqAction: NetAction<PauseReqMsg>;
   private readonly upgradeAction: NetAction<UpgradeMsg>;
+  private readonly nextReadyAction: NetAction<NextReadyMsg>;
+  private readonly nextReadyStateAction: NetAction<NextReadyStateMsg>;
   private readonly byeAction: NetAction<ByeMsg>;
 
   // Lobby / host-own state.
@@ -148,15 +156,29 @@ export class Host implements NetSession {
   private resumeCountdown: number | null = null;
   private resumeTimer: ReturnType<typeof setInterval> | null = null;
 
-  /** Accumulated between-boss upgrade picks per peerId (host + clients). */
+  /** Accumulated between-boss generic upgrade picks per peerId (host + clients). */
   private readonly upgrades = new Map<string, UpgradeId[]>();
-  /** Peers that have already picked during the current interstitial (1 per round). */
-  private readonly roundPickers = new Set<string>();
+  /** Accumulated between-boss character (class) upgrade picks per peerId. */
+  private readonly charUpgrades = new Map<string, string[]>();
+  /** Peers who already took a generic / character pick this interstitial. */
+  private readonly roundPickedGeneric = new Set<string>();
+  private readonly roundPickedChar = new Set<string>();
+  /** Cumulative banked score per peer (prior bosses this run; endless keeps it). */
+  private readonly scoreByPeer = new Map<string, number>();
+  /** Peers (including the host, keyed by selfId) marked ready for the next boss. */
+  private readonly nextReadyPeers = new Set<string>();
+  /**
+   * Who is in the between-boss ready flow: the host + the human peers who were
+   * connected when the fight ended (they receive the result screen). Snapshotting
+   * this — rather than counting the live lobby — means a latecomer who connects
+   * during the interstitial can't inflate the tally and soft-lock the advance.
+   */
+  private roundParticipants = new Set<string>();
 
-  // Gauntlet (sequence run) state.
+  // Run / endless state.
   private runOrder: MonsterId[] = [];
   private runIndex = 0;
-  private advanceTimer: ReturnType<typeof setTimeout> | null = null;
+  private cycle = 0;
 
   // Sim-loop bookkeeping.
   private running = false;
@@ -201,6 +223,8 @@ export class Host implements NetSession {
     this.pauseAction = this.action(ACTIONS.pause);
     this.pauseReqAction = this.action(ACTIONS.pauseReq);
     this.upgradeAction = this.action(ACTIONS.upgrade);
+    this.nextReadyAction = this.action(ACTIONS.nextReady);
+    this.nextReadyStateAction = this.action(ACTIONS.nextReadyState);
     this.byeAction = this.action(ACTIONS.bye);
 
     // --- Client -> host lobby messages ---
@@ -237,9 +261,14 @@ export class Host implements NetSession {
       else this.resume();
     };
 
-    // --- Client -> host between-boss upgrade picks ---
+    // --- Client -> host between-boss upgrade picks (generic and/or character) ---
     this.upgradeAction.onMessage = (data, ctx) => {
-      this.recordUpgrade(ctx.peerId, data.upgradeId);
+      this.recordUpgrade(ctx.peerId, data);
+    };
+
+    // --- Client -> host "ready for next boss" during the interstitial ---
+    this.nextReadyAction.onMessage = (data, ctx) => {
+      this.recordNextReady(ctx.peerId, data.ready);
     };
 
     // --- Peer presence ---
@@ -259,8 +288,11 @@ export class Host implements NetSession {
       this.lobby.delete(peerId);
       this.latestInput.delete(peerId);
       this.lastSeq.delete(peerId);
+      this.nextReadyPeers.delete(peerId);
       if (this.world) this.world.removePlayerByPeer(peerId);
       this.broadcastLobby();
+      // A departure can complete the "everyone ready" condition for the next boss.
+      this.maybeAdvanceNext();
     };
 
     // Emit the initial lobby so the host UI renders immediately.
@@ -402,50 +434,72 @@ export class Host implements NetSession {
     this.latestInput.set(selfId, cmd);
   }
 
-  /** Begin a run from the lobby (single boss, or a gauntlet sequence). */
+  /** Begin a run from the lobby (single boss, or a full multi-boss run). */
   startFight(): void {
     if (this.phase === 'inFight') return;
     if (!this.canStart()) {
       netLog('host', 'startFight blocked — not all players are ready');
       return;
     }
+    this.cycle = 0;
     this.runOrder = this.buildRunOrder();
     this.runIndex = 0;
     this.upgrades.clear(); // fresh run — nobody carries upgrades into boss 1
-    this.roundPickers.clear();
+    this.charUpgrades.clear();
+    this.scoreByPeer.clear();
+    this.roundPickedGeneric.clear();
+    this.roundPickedChar.clear();
+    this.nextReadyPeers.clear();
     this.beginFight();
   }
 
-  /** Restart the current fight (same boss / same gauntlet position) after a loss. */
+  /** Restart the current fight (same boss / same run position) after a loss. */
   retryFight(): void {
     if (this.phase === 'inFight') return;
     if (this.runOrder.length === 0) {
       this.runOrder = this.buildRunOrder();
       this.runIndex = 0;
     }
+    this.nextReadyPeers.clear();
     this.beginFight();
   }
 
-  /** Bosses this run will fight, in order (gauntlet = selected boss → end). */
+  /**
+   * Continue into the next endless cycle: carry every upgrade + score, bump the
+   * cycle (scaling + elemental modifier), and roll a fresh run. Host-only.
+   */
+  continueEndless(): void {
+    if (this.phase === 'inFight') return;
+    this.cycle += 1;
+    this.runOrder = this.buildRunOrder();
+    this.runIndex = 0;
+    this.roundPickedGeneric.clear();
+    this.roundPickedChar.clear();
+    this.nextReadyPeers.clear();
+    this.beginFight();
+  }
+
+  /** Bosses this run will fight, in order. Single boss when the run mode is off. */
   private buildRunOrder(): MonsterId[] {
     if (!this.gauntlet) return [this.monsterId];
-    const start = GAUNTLET_ORDER.indexOf(this.monsterId);
-    return start >= 0 ? GAUNTLET_ORDER.slice(start) : [this.monsterId];
+    // Deterministic within a run but varied across cycles.
+    const rng = new Rng(((Date.now() & 0xffff) ^ (this.cycle * 2654435761)) >>> 0 || 1);
+    return buildRun(this.monsterId, this.cycle, rng);
   }
 
   /** Spin up a fresh World for `runOrder[runIndex]` and start the sim loop. */
   private beginFight(): void {
-    this.clearAdvanceTimer();
     this.clearResumeCountdown();
     const monsterId = this.runOrder[this.runIndex] ?? this.monsterId;
+    const modifier = modifierForCycle(this.cycle);
 
-    // World roster carries each hero's accumulated upgrades (host-authoritative);
-    // bots earn none.
+    // World roster carries each hero's accumulated upgrades + carried score
+    // (host-authoritative); bots earn no upgrades and no score.
     const roster: WorldPlayerInit[] = [
-      { peerId: selfId, name: this.hostName, classId: this.hostClass, upgrades: this.upgrades.get(selfId) },
+      this.rosterEntry(selfId, this.hostName, this.hostClass),
     ];
     for (const [peerId, e] of this.lobby) {
-      roster.push({ peerId, name: e.name, classId: e.classId, upgrades: this.upgrades.get(peerId) });
+      roster.push(this.rosterEntry(peerId, e.name, e.classId));
     }
     for (const b of this.bots) {
       roster.push({ peerId: b.peerId, name: b.name, classId: b.classId });
@@ -464,7 +518,7 @@ export class Host implements NetSession {
     this.paused = false;
     this.pausedByName = undefined;
 
-    this.world = new World({ monsterId, seed, players: roster });
+    this.world = new World({ monsterId, seed, players: roster, cycle: this.cycle, modifier });
     this.localPlayerId = this.world.playerIdByPeer(selfId);
 
     const startMsg: StartMsg = {
@@ -475,18 +529,38 @@ export class Host implements NetSession {
       gauntlet: this.gauntlet,
       runIndex: this.runIndex,
       runTotal: this.runOrder.length,
+      cycle: this.cycle,
+      modName: modifier?.prefix,
     };
     netLog('host', `starting fight → ${playerCount} player(s)`, {
       seed,
       monster: monsterId,
       run: `${this.runIndex + 1}/${this.runOrder.length}`,
+      cycle: this.cycle,
     });
     this.startAction.send(startMsg);
 
     this.phase = 'inFight';
     this.broadcastLobby();
-    this.opts.onStart?.({ runIndex: this.runIndex, runTotal: this.runOrder.length });
+    this.opts.onStart?.({
+      runIndex: this.runIndex,
+      runTotal: this.runOrder.length,
+      cycle: this.cycle,
+      modName: modifier?.prefix,
+    });
     this.startLoop();
+  }
+
+  /** Build a world roster entry carrying this peer's upgrades + banked score. */
+  private rosterEntry(peerId: string, name: string, classId: ClassId): WorldPlayerInit {
+    return {
+      peerId,
+      name,
+      classId,
+      upgrades: this.upgrades.get(peerId),
+      charUpgrades: this.charUpgrades.get(peerId),
+      baseScore: this.scoreByPeer.get(peerId) ?? 0,
+    };
   }
 
   // -------------------------------------------------------------------------
@@ -577,24 +651,81 @@ export class Host implements NetSession {
     else this.resume();
   }
 
-  /** NetSession: record the host's own between-boss upgrade pick. */
+  /** NetSession: record the host's own between-boss generic upgrade pick. */
   chooseUpgrade(upgradeId: UpgradeId): void {
-    this.recordUpgrade(selfId, upgradeId);
+    this.recordUpgrade(selfId, { generic: upgradeId });
+  }
+
+  /** NetSession: record the host's own between-boss character upgrade pick. */
+  chooseCharUpgrade(upgradeId: string): void {
+    this.recordUpgrade(selfId, { char: upgradeId });
+  }
+
+  /** NetSession: host marks itself ready (or not) to advance to the next boss. */
+  setNextReady(ready: boolean): void {
+    this.recordNextReady(selfId, ready);
   }
 
   /**
-   * Accumulate a validated upgrade pick for a peer. Host-authoritative: ignores
-   * junk ids AND caps each peer to one pick per interstitial, so a misbehaving or
-   * looping client can't stack an upgrade dozens of times.
+   * Accumulate validated upgrade picks for a peer. Host-authoritative: ignores
+   * junk ids AND caps each peer to ONE generic + ONE character pick per
+   * interstitial, so a misbehaving or looping client can't stack picks.
    */
-  private recordUpgrade(peerId: string, upgradeId: unknown): void {
-    if (!isUpgradeId(upgradeId)) return;
-    if (this.roundPickers.has(peerId)) return; // already picked this round
-    this.roundPickers.add(peerId);
-    const arr = this.upgrades.get(peerId) ?? [];
-    arr.push(upgradeId);
-    this.upgrades.set(peerId, arr);
-    netLog('host', `upgrade "${upgradeId}" for ${peerId.slice(0, 6)}`, { total: arr.length });
+  private recordUpgrade(peerId: string, msg: UpgradeMsg): void {
+    if (isUpgradeId(msg.generic) && !this.roundPickedGeneric.has(peerId)) {
+      this.roundPickedGeneric.add(peerId);
+      const arr = this.upgrades.get(peerId) ?? [];
+      arr.push(msg.generic);
+      this.upgrades.set(peerId, arr);
+      netLog('host', `upgrade "${msg.generic}" for ${peerId.slice(0, 6)}`, { total: arr.length });
+    }
+    if (isCharUpgradeId(msg.char) && !this.roundPickedChar.has(peerId)) {
+      this.roundPickedChar.add(peerId);
+      const arr = this.charUpgrades.get(peerId) ?? [];
+      arr.push(msg.char);
+      this.charUpgrades.set(peerId, arr);
+      netLog('host', `char upgrade "${msg.char}" for ${peerId.slice(0, 6)}`, { total: arr.length });
+    }
+  }
+
+  /** Record a player's "ready for next boss" flag, then re-check the advance gate. */
+  private recordNextReady(peerId: string, ready: boolean): void {
+    if (ready) this.nextReadyPeers.add(peerId);
+    else this.nextReadyPeers.delete(peerId);
+    this.broadcastNextReady();
+    this.maybeAdvanceNext();
+  }
+
+  /**
+   * How many of the fight's participants must ready up and how many have. Only
+   * counts participants still connected (host is always connected; peers must
+   * still be in the lobby), so a disconnect completes the gate and a latecomer
+   * never blocks it.
+   */
+  private nextReadyTally(): { ready: number; total: number } {
+    let total = 0;
+    let ready = 0;
+    for (const peerId of this.roundParticipants) {
+      const connected = peerId === selfId || this.lobby.has(peerId);
+      if (!connected) continue;
+      total++;
+      if (this.nextReadyPeers.has(peerId)) ready++;
+    }
+    return { ready, total };
+  }
+
+  private broadcastNextReady(): void {
+    const tally = this.nextReadyTally();
+    this.nextReadyStateAction.send(tally);
+    this.opts.onNextReady?.(tally);
+  }
+
+  /** If a next boss is queued and everyone has readied up, advance to it. */
+  private maybeAdvanceNext(): void {
+    if (this.phase === 'inFight') return;
+    if (this.runIndex >= this.runOrder.length - 1) return; // no next boss queued
+    const { ready, total } = this.nextReadyTally();
+    if (ready >= total && total > 0) this.advanceGauntlet();
   }
 
   getRenderState(_nowMs: number): RenderState | null {
@@ -606,7 +737,6 @@ export class Host implements NetSession {
 
   returnToLobby(): void {
     this.stopLoop();
-    this.clearAdvanceTimer();
     this.clearResumeCountdown();
     this.world = null;
     this.localPlayerId = null;
@@ -617,8 +747,14 @@ export class Host implements NetSession {
     this.pausedByName = undefined;
     this.runOrder = [];
     this.runIndex = 0;
+    this.cycle = 0;
     this.upgrades.clear();
-    this.roundPickers.clear();
+    this.charUpgrades.clear();
+    this.scoreByPeer.clear();
+    this.roundPickedGeneric.clear();
+    this.roundPickedChar.clear();
+    this.nextReadyPeers.clear();
+    this.roundParticipants.clear();
     this.pendingEvents = [];
     this.latestInput.clear();
     this.lastSeq.clear();
@@ -631,17 +767,9 @@ export class Host implements NetSession {
     netLog('host', 'leaving room (host)');
     this.byeAction.send({ reason: 'hostLeft' });
     this.stopLoop();
-    this.clearAdvanceTimer();
     this.clearResumeCountdown();
     this.stopDiag();
     this.room.leave();
-  }
-
-  private clearAdvanceTimer(): void {
-    if (this.advanceTimer !== null) {
-      clearTimeout(this.advanceTimer);
-      this.advanceTimer = null;
-    }
   }
 
   // -------------------------------------------------------------------------
@@ -717,45 +845,59 @@ export class Host implements NetSession {
     this.clearResumeCountdown();
     this.paused = false;
     this.pausedByName = undefined;
-    // A fresh between-boss upgrade window opens now — reset who has picked.
-    this.roundPickers.clear();
+    // A fresh between-boss upgrade window opens now — reset picks + readiness and
+    // snapshot who's in the ready flow (host + currently-connected human peers,
+    // who all receive the result screen below).
+    this.roundPickedGeneric.clear();
+    this.roundPickedChar.clear();
+    this.nextReadyPeers.clear();
+    this.roundParticipants = new Set<string>([selfId, ...this.lobby.keys()]);
     // Stop stepping but keep `world` so the host can render the final frame.
     this.stopLoop();
 
     const result = world.result();
     result.runIndex = this.runIndex;
     result.runTotal = this.runOrder.length;
+    result.cycle = this.cycle;
 
-    // Gauntlet: on a win with another boss queued, advance automatically after a
-    // short interstitial (the result screen shows the countdown). Otherwise this
-    // is the end of the run.
-    const hasNext =
-      result.outcome === 'victory' && this.runIndex < this.runOrder.length - 1;
+    const victory = result.outcome === 'victory';
+    const hasNext = victory && this.runIndex < this.runOrder.length - 1;
     result.nextMonsterId = hasNext ? this.runOrder[this.runIndex + 1] : null;
+    // Cleared a whole MULTI-boss run → offer Endless on the victory screen. A
+    // plain single-boss fight has no run to continue.
+    result.endlessAvailable = victory && !hasNext && this.runOrder.length > 1;
+    result.modName = modifierForCycle(this.cycle)?.prefix;
+
+    // Bank each hero's cumulative score (+ a boss-clear bonus on a win) so the
+    // carried score keeps climbing across the run and into endless cycles.
+    if (victory) {
+      for (const p of world.players) {
+        this.scoreByPeer.set(p.peerId, world.playerScore(p) + SCORE_BOSS_CLEAR);
+      }
+    }
 
     this.phase = 'lobby'; // out of the fight until the next begins
     netLog('host', `fight finished → ${result.outcome}`, {
       run: `${this.runIndex + 1}/${this.runOrder.length}`,
       next: result.nextMonsterId ?? 'none',
+      cycle: this.cycle,
     });
     this.resultAction.send({ result });
     this.opts.onResult(result);
 
-    if (hasNext) {
-      this.clearAdvanceTimer();
-      this.advanceTimer = setTimeout(() => {
-        this.advanceTimer = null;
-        this.advanceGauntlet();
-      }, GAUNTLET_INTERSTITIAL_S * 1000);
-    }
+    // Between bosses: the run only advances once EVERY player readies up (no
+    // auto-advance timer). Seed the readiness tally for the upgrade screen.
+    if (hasNext) this.broadcastNextReady();
   }
 
-  /** Advance to the next boss in the gauntlet (auto, or host "Continue now"). */
+  /** Advance to the next boss in the run (once everyone has readied up). */
   advanceGauntlet(): void {
-    this.clearAdvanceTimer();
     if (this.phase === 'inFight') return;
     if (this.runIndex >= this.runOrder.length - 1) return;
     this.runIndex += 1;
+    this.roundPickedGeneric.clear();
+    this.roundPickedChar.clear();
+    this.nextReadyPeers.clear();
     this.beginFight();
   }
 

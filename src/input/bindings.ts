@@ -19,9 +19,26 @@ export type KeyAction = MoveAction | ButtonAction;
 export type KeyBindings = Record<KeyAction, string[]>;
 export type PadBindings = Record<ButtonAction, number[]>;
 
+/**
+ * Which glyph set to draw for gamepad buttons. `auto` sniffs the connected pad's
+ * id (PlayStation shapes vs. Xbox/Nintendo letters); the rest force a set so a
+ * player on an unrecognised pad can still pick the icons that match their device.
+ */
+export type PadScheme = 'auto' | 'playstation' | 'xbox' | 'nintendo' | 'letters';
+export const PAD_SCHEMES: PadScheme[] = ['auto', 'playstation', 'xbox', 'nintendo', 'letters'];
+export const PAD_SCHEME_LABELS: Record<PadScheme, string> = {
+  auto: 'Auto-detect',
+  playstation: 'PlayStation (✕ ◯ ▢ △)',
+  xbox: 'Xbox (A B X Y)',
+  nintendo: 'Nintendo (B A Y X)',
+  letters: 'Letters (A B X Y)',
+};
+
 export interface Bindings {
   keys: KeyBindings;
   pad: PadBindings;
+  /** Preferred gamepad glyph set (persisted). */
+  padScheme: PadScheme;
 }
 
 export const MOVE_ACTIONS: MoveAction[] = ['up', 'down', 'left', 'right'];
@@ -60,6 +77,7 @@ export const DEFAULT_BINDINGS: Bindings = {
     a3: [3],
     revive: [4, 5],
   },
+  padScheme: 'auto',
 };
 
 const STORAGE_KEY = 'warband.bindings.v1';
@@ -72,6 +90,7 @@ function clone(b: Bindings): Bindings {
     pad: Object.fromEntries(
       (Object.keys(b.pad) as ButtonAction[]).map((k) => [k, [...b.pad[k]]]),
     ) as PadBindings,
+    padScheme: b.padScheme,
   };
 }
 
@@ -91,6 +110,9 @@ function load(): Bindings {
       for (const a of Object.keys(base.pad) as ButtonAction[]) {
         if (Array.isArray(saved.pad[a])) base.pad[a] = saved.pad[a] as number[];
       }
+    }
+    if (typeof saved.padScheme === 'string' && PAD_SCHEMES.includes(saved.padScheme)) {
+      base.padScheme = saved.padScheme;
     }
   } catch {
     /* corrupt / unavailable storage — fall back to defaults */
@@ -114,6 +136,8 @@ interface BindingsStore {
   setKey: (action: KeyAction, slot: number, code: string) => void;
   /** Set the gamepad button index at `slot` for an action. */
   setPad: (action: ButtonAction, slot: number, buttonIndex: number) => void;
+  /** Choose the gamepad glyph set (auto / PlayStation / Xbox / …). */
+  setPadScheme: (scheme: PadScheme) => void;
   reset: () => void;
 }
 
@@ -146,6 +170,12 @@ export const useBindings = create<BindingsStore>((set, get) => ({
     while (arr.length <= slot) arr.push(-1);
     arr[slot] = buttonIndex;
     next.pad[action] = arr.filter((v, i) => v >= 0 || i === 0);
+    persist(next);
+    set({ bindings: next });
+  },
+  setPadScheme: (scheme) => {
+    const next = clone(get().bindings);
+    next.padScheme = scheme;
     persist(next);
     set({ bindings: next });
   },
@@ -195,28 +225,46 @@ export function codeToLabel(code: string | undefined): string {
   return special[code] ?? code;
 }
 
-/** PlayStation/standard glyph for a gamepad button index (DualSense-first). */
-export function padIndexToLabel(index: number | undefined): string {
+/** Concrete glyph type a scheme resolves to (never `auto`). */
+export type PadGlyphs = 'playstation' | 'xbox' | 'nintendo' | 'letters';
+
+/** Face/shoulder/dpad glyphs per concrete scheme, keyed by standard-mapping index. */
+const PAD_GLYPHS: Record<PadGlyphs, Record<number, string>> = {
+  playstation: { 0: '✕', 1: '◯', 2: '▢', 3: '△', 4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2', 8: 'Share', 9: 'Options', 10: 'L3', 11: 'R3', 12: '↑', 13: '↓', 14: '←', 15: '→' },
+  xbox: { 0: 'A', 1: 'B', 2: 'X', 3: 'Y', 4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT', 8: 'View', 9: 'Menu', 10: 'LS', 11: 'RS', 12: '↑', 13: '↓', 14: '←', 15: '→' },
+  nintendo: { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '-', 9: '+', 10: 'LS', 11: 'RS', 12: '↑', 13: '↓', 14: '←', 15: '→' },
+  letters: { 0: 'A', 1: 'B', 2: 'X', 3: 'Y', 4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT', 8: 'Select', 9: 'Start', 10: 'LS', 11: 'RS', 12: '↑', 13: '↓', 14: '←', 15: '→' },
+};
+
+/** Sniff the first connected pad's id string for its family (PlayStation-default). */
+export function detectPadGlyphs(): PadGlyphs {
+  try {
+    const nav = navigator as Navigator & { getGamepads?: () => (Gamepad | null)[] };
+    for (const pad of nav.getGamepads?.() ?? []) {
+      if (!pad || !pad.connected) continue;
+      const id = pad.id.toLowerCase();
+      if (/xbox|xinput|x-input|045e|microsoft/.test(id)) return 'xbox';
+      if (/switch|joy-?con|pro controller|057e|nintendo/.test(id)) return 'nintendo';
+      if (/054c|dualsense|dualshock|playstation|wireless controller/.test(id)) return 'playstation';
+      return 'letters'; // recognised a pad but not its family → safe A/B/X/Y
+    }
+  } catch {
+    /* no gamepad API */
+  }
+  return 'playstation';
+}
+
+/** The concrete glyph set to draw right now, honouring the user's `padScheme`. */
+export function resolvePadGlyphs(): PadGlyphs {
+  const scheme = getBindings().padScheme;
+  return scheme === 'auto' ? detectPadGlyphs() : scheme;
+}
+
+/** Glyph for a gamepad button index in the active (or a forced) scheme. */
+export function padIndexToLabel(index: number | undefined, glyphs?: PadGlyphs): string {
   if (index == null || index < 0) return '—';
-  const glyphs: Record<number, string> = {
-    0: '✕',
-    1: '◯',
-    2: '▢',
-    3: '△',
-    4: 'L1',
-    5: 'R1',
-    6: 'L2',
-    7: 'R2',
-    8: 'Share',
-    9: 'Options',
-    10: 'L3',
-    11: 'R3',
-    12: '↑',
-    13: '↓',
-    14: '←',
-    15: '→',
-  };
-  return glyphs[index] ?? `B${index}`;
+  const set = PAD_GLYPHS[glyphs ?? resolvePadGlyphs()];
+  return set[index] ?? `B${index}`;
 }
 
 /** Primary keyboard label for an action (used by the HUD). */

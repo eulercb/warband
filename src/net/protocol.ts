@@ -24,7 +24,9 @@ export const ACTIONS = {
   returnLobby: 'rtl', // host -> clients
   pause: 'pau', // host -> clients (sim frozen / resumed)
   pauseReq: 'prq', // client -> host (request pause / resume of the shared sim)
-  upgrade: 'upg', // client -> host (between-boss upgrade pick)
+  upgrade: 'upg', // client -> host (between-boss upgrade pick: generic and/or char)
+  nextReady: 'nrd', // client -> host (ready to advance to the next boss)
+  nextReadyState: 'nrs', // host -> clients (how many are ready to advance)
   bye: 'bye', // either -> either (graceful leave, esp. host)
 } as const;
 
@@ -68,10 +70,13 @@ export interface StartMsg {
   monsterId: MonsterId;
   /** Ordered roster used to build the world; peerId order must match host. */
   roster: Array<{ peerId: string; name: string; classId: ClassId }>;
-  /** Gauntlet/run context so clients can show "Boss 2 of 3", etc. */
+  /** Gauntlet/run context so clients can show "Boss 2 of 5", etc. */
   gauntlet: boolean;
   runIndex: number; // 0-based boss index in the run
   runTotal: number; // total bosses in the run (1 for a single fight)
+  /** Endless cycle (0 = first run) and the boss's elemental type prefix, if any. */
+  cycle: number;
+  modName?: string;
 }
 
 /**
@@ -92,9 +97,24 @@ export interface PauseReqMsg {
   paused: boolean;
 }
 
-/** Client -> host: the player's between-boss upgrade choice. */
+/**
+ * Client -> host: the player's between-boss upgrade choices. A round grants one
+ * generic pick AND one character (class) pick; either may arrive on its own.
+ */
 export interface UpgradeMsg {
-  upgradeId: UpgradeId;
+  generic?: UpgradeId;
+  char?: string;
+}
+
+/** Client -> host: this player is ready to advance to the next boss. */
+export interface NextReadyMsg {
+  ready: boolean;
+}
+
+/** Host -> clients: how many players have readied up for the next boss. */
+export interface NextReadyStateMsg {
+  ready: number;
+  total: number;
 }
 
 // --- Fight ---
@@ -124,7 +144,11 @@ export interface NetSession {
   setReady(ready: boolean): void;
   /** Request the shared sim pause/resume (host acts directly; client asks host). */
   requestPause(paused: boolean): void;
-  /** Submit a between-boss upgrade pick (host records it; client relays it). */
+  /** Submit a between-boss generic upgrade pick (host records it; client relays it). */
   chooseUpgrade(upgradeId: UpgradeId): void;
+  /** Submit a between-boss character (class) upgrade pick. */
+  chooseCharUpgrade(upgradeId: string): void;
+  /** Mark this player ready (or not) to advance to the next boss. */
+  setNextReady(ready: boolean): void;
   leave(): void;
 }

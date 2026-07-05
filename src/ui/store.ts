@@ -126,8 +126,15 @@ export interface AppState {
   resumeCountdown: number | null;
   /** Gauntlet progress for the current fight (index/total), or null. */
   run: { index: number; total: number } | null;
+  /** Endless cycle for the current run (0 = first run). */
+  cycle: number;
   /** Upgrades this local hero has picked so far this run (for display). */
   myUpgrades: UpgradeId[];
+  /** Character (class) upgrades this local hero has picked so far this run. */
+  myCharUpgrades: string[];
+  /** Between-boss readiness tally from the host (upgrade screen). */
+  nextReadyReady: number;
+  nextReadyTotal: number;
 
   // result
   result: FightResult | null;
@@ -164,8 +171,11 @@ export interface AppState {
   setPausedBy: (name: string | null) => void;
   setResumeCountdown: (n: number | null) => void;
   setRun: (run: { index: number; total: number } | null) => void;
+  setCycle: (n: number) => void;
   addMyUpgrade: (id: UpgradeId) => void;
+  addMyCharUpgrade: (id: string) => void;
   clearMyUpgrades: () => void;
+  setNextReadyState: (ready: number, total: number) => void;
   setResult: (r: FightResult | null) => void;
   toggleMute: () => void;
   setVolume: (v: number) => void;
@@ -199,7 +209,11 @@ export const useStore = create<AppState>((set, get) => ({
   pausedBy: null,
   resumeCountdown: null,
   run: null,
+  cycle: 0,
   myUpgrades: [],
+  myCharUpgrades: [],
+  nextReadyReady: 0,
+  nextReadyTotal: 0,
 
   result: null,
   muted: false,
@@ -230,8 +244,11 @@ export const useStore = create<AppState>((set, get) => ({
   setPausedBy: (pausedBy) => set({ pausedBy }),
   setResumeCountdown: (resumeCountdown) => set({ resumeCountdown }),
   setRun: (run) => set({ run }),
+  setCycle: (cycle) => set({ cycle }),
   addMyUpgrade: (id) => set({ myUpgrades: [...get().myUpgrades, id] }),
-  clearMyUpgrades: () => set({ myUpgrades: [] }),
+  addMyCharUpgrade: (id) => set({ myCharUpgrades: [...get().myCharUpgrades, id] }),
+  clearMyUpgrades: () => set({ myUpgrades: [], myCharUpgrades: [] }),
+  setNextReadyState: (ready, total) => set({ nextReadyReady: ready, nextReadyTotal: total }),
   setResult: (result) => set({ result }),
   toggleMute: () => set({ muted: !get().muted }),
   setVolume: (volume) => {
@@ -269,7 +286,11 @@ export const useStore = create<AppState>((set, get) => ({
       pausedBy: null,
       resumeCountdown: null,
       run: null,
+      cycle: 0,
       myUpgrades: [],
+      myCharUpgrades: [],
+      nextReadyReady: 0,
+      nextReadyTotal: 0,
       result: null,
       showControls: false,
     });

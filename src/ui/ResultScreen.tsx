@@ -1,24 +1,30 @@
 /**
- * Warband — post-fight results. Renders the victory/defeat banner, time-to-kill
- * and a per-player stats table with MVP callouts. In a gauntlet run a win that
- * still has bosses left shows an "advancing to next boss" interstitial (the host
- * auto-starts the next fight); a loss offers a one-click Retry. Rendering only;
- * the win/lose audio sting is played by the game/session layer.
+ * Warband — post-fight results + between-boss upgrade phase.
+ *
+ * Renders the victory/defeat banner, time-to-kill and a per-player stats table
+ * (with MVP callouts + run score). Between bosses each hero picks BOTH a generic
+ * upgrade and a class-specific character upgrade, then marks themselves ready;
+ * the run only advances once EVERYONE is ready (no countdown). Clearing a whole
+ * run shows Victory with a "Continue (Endless)" option that carries everything
+ * into a harder cycle. Fully controller-navigable.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from './store';
 import {
   returnToLobby,
   retryFight,
-  advanceGauntlet,
+  continueEndless,
   leaveToMenu,
   chooseUpgrade,
+  chooseCharUpgrade,
+  setNextReady,
   playUiSound,
 } from './session';
 import { CLASSES } from '../engine/classes';
 import { MONSTERS } from '../engine/monsters';
-import { GAUNTLET_INTERSTITIAL_S } from '../engine/constants';
 import { UPGRADES, rollUpgradeChoices, type UpgradeId } from '../engine/upgrades';
+import { CHAR_UPGRADES, rollCharChoices } from '../engine/charUpgrades';
+import { useGamepadMenu } from '../input/useGamepadMenu';
 
 /** Format milliseconds as `m:ss.mmm` (>= 1 min) or `s.d`s (under a minute). */
 function formatTime(ms: number): string {
@@ -28,9 +34,7 @@ function formatTime(ms: number): string {
     const m = Math.floor(totalSec / 60);
     const s = Math.floor(totalSec % 60);
     const mmm = Math.floor(clamped % 1000);
-    return `${m}:${s.toString().padStart(2, '0')}.${mmm
-      .toString()
-      .padStart(3, '0')}`;
+    return `${m}:${s.toString().padStart(2, '0')}.${mmm.toString().padStart(3, '0')}`;
   }
   return `${totalSec.toFixed(1)}s`;
 }
@@ -38,64 +42,77 @@ function formatTime(ms: number): string {
 export function ResultScreen() {
   const result = useStore((s) => s.result);
   const isHost = useStore((s) => s.isHost);
+  const localClass = useStore((s) => s.localClass);
+  const myUpgrades = useStore((s) => s.myUpgrades);
+  const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  const readyReady = useStore((s) => s.nextReadyReady);
+  const readyTotal = useStore((s) => s.nextReadyTotal);
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  useGamepadMenu(panelRef);
 
   const nextMonsterId = result?.nextMonsterId ?? null;
-  const advancing = !!nextMonsterId;
-  const myUpgrades = useStore((s) => s.myUpgrades);
-  const [countdown, setCountdown] = useState(GAUNTLET_INTERSTITIAL_S);
-  // Three random upgrades offered this round, and which one this player picked.
-  const [offers, setOffers] = useState<UpgradeId[]>([]);
-  const [picked, setPicked] = useState<UpgradeId | null>(null);
+  const advancing = !!nextMonsterId; // another boss queued in this run
+  const endlessAvailable = !!result?.endlessAvailable; // cleared the whole run
+  const showUpgrades = advancing || endlessAvailable;
 
-  // Cosmetic countdown while the gauntlet auto-advances (the host drives the
-  // actual transition; clients just watch the timer tick down).
+  // Offers for this round: 3 generic + 3 class-specific, and what we picked.
+  const [genOffers, setGenOffers] = useState<UpgradeId[]>([]);
+  const [charOffers, setCharOffers] = useState<string[]>([]);
+  const [pickedGen, setPickedGen] = useState<UpgradeId | null>(null);
+  const [pickedChar, setPickedChar] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+
+  // Roll a fresh set of offers whenever a new upgrade-eligible result lands.
   useEffect(() => {
-    if (!advancing) return;
-    setCountdown(GAUNTLET_INTERSTITIAL_S);
-    const t = setInterval(() => {
-      setCountdown((c) => Math.max(0, c - 1));
-    }, 1000);
-    return () => clearInterval(t);
-  }, [advancing, result]);
+    if (!showUpgrades) return;
+    setGenOffers(rollUpgradeChoices(3, Math.random));
+    setCharOffers(rollCharChoices(localClass, 3, Math.random));
+    setPickedGen(null);
+    setPickedChar(null);
+    setReady(false);
+  }, [showUpgrades, localClass, result]);
 
-  // Roll a fresh set of upgrade offers each time a new "advancing" result lands.
-  useEffect(() => {
-    if (!advancing) return;
-    setOffers(rollUpgradeChoices(3, Math.random));
-    setPicked(null);
-  }, [advancing, result]);
-
-  const onPickUpgrade = (id: UpgradeId): void => {
-    if (picked) return; // one pick per round
+  const onPickGen = (id: UpgradeId): void => {
+    if (pickedGen) return;
     playUiSound('uiConfirm');
-    setPicked(id);
+    setPickedGen(id);
     chooseUpgrade(id);
+  };
+  const onPickChar = (id: string): void => {
+    if (pickedChar) return;
+    playUiSound('uiConfirm');
+    setPickedChar(id);
+    chooseCharUpgrade(id);
+  };
+  const onToggleReady = (): void => {
+    playUiSound('uiConfirm');
+    const next = !ready;
+    setReady(next);
+    setNextReady(next);
   };
 
   const onReturn = (): void => {
     playUiSound('uiClick');
     returnToLobby();
   };
-
   const onMenu = (): void => {
     playUiSound('uiClick');
     leaveToMenu();
   };
-
   const onRetry = (): void => {
     playUiSound('uiConfirm');
     retryFight();
   };
-
-  const onContinue = (): void => {
+  const onEndless = (): void => {
     playUiSound('uiConfirm');
-    advanceGauntlet();
+    continueEndless();
   };
 
   if (!result) {
     return (
       <div className="wb-screen">
-        <div className="wb-panel wb-result-panel">
+        <div className="wb-panel wb-result-panel" ref={panelRef}>
           <p className="wb-subtitle">No fight results to show.</p>
           <div className="wb-row wb-actions-row">
             <button type="button" className="wb-btn wb-btn-primary" onClick={onMenu}>
@@ -111,58 +128,68 @@ export function ResultScreen() {
   const victory = result.outcome === 'victory';
   const runTotal = result.runTotal ?? 1;
   const runIndex = result.runIndex ?? 0;
-  const isGauntlet = runTotal > 1;
+  const isRun = runTotal > 1;
+  const cycle = result.cycle ?? 0;
 
-  // MVP thresholds. Math.max over an empty list would be -Infinity, so seed 0
-  // and only treat a positive maximum as a real MVP (avoids badging all-zeros).
   const maxDamage = Math.max(0, ...stats.map((s) => s.damageDealt));
   const maxHealing = Math.max(0, ...stats.map((s) => s.healingDone));
   const maxRevives = Math.max(0, ...stats.map((s) => s.revives));
+  const maxScore = Math.max(0, ...stats.map((s) => s.score));
 
   return (
     <div className="wb-screen">
-      <div className="wb-panel wb-result-panel">
-        <div
-          className={`wb-banner ${victory ? 'wb-victory' : 'wb-defeat'}`}
-          role="status"
-        >
-          {victory ? 'VICTORY' : 'DEFEAT'}
+      <div className="wb-panel wb-result-panel" ref={panelRef}>
+        <div className={`wb-banner ${victory ? 'wb-victory' : 'wb-defeat'}`} role="status">
+          {endlessAvailable ? 'RUN CLEARED' : victory ? 'VICTORY' : 'DEFEAT'}
         </div>
 
-        {isGauntlet ? (
+        {isRun ? (
           <p className="wb-run-progress">
-            {MONSTERS[result.monsterId].name} — Boss {runIndex + 1} of {runTotal}
+            {(result.modName ? `${result.modName} ` : '') + MONSTERS[result.monsterId].name} — Boss{' '}
+            {runIndex + 1} of {runTotal}
+            {cycle > 0 ? ` · Cycle ${cycle + 1}` : ''}
           </p>
         ) : null}
 
         {advancing ? (
           <div className="wb-advance-note" role="status">
             <span className="wb-advance-title">
-              Next up: {MONSTERS[nextMonsterId].name}
+              Next up: {(result.modName ? `${result.modName} ` : '') + MONSTERS[nextMonsterId].name}
             </span>
             <span className="wb-advance-sub">
-              Advancing in {countdown}s…
+              {ready
+                ? 'Waiting for the rest of the band…'
+                : 'Pick your upgrades, then ready up to advance.'}
             </span>
           </div>
         ) : null}
 
-        {advancing ? (
+        {endlessAvailable ? (
+          <div className="wb-advance-note" role="status">
+            <span className="wb-advance-title">You felled the whole gauntlet!</span>
+            <span className="wb-advance-sub">
+              Bank your upgrades and press on into Endless — every cycle grows deadlier.
+            </span>
+          </div>
+        ) : null}
+
+        {showUpgrades ? (
           <div className="wb-upgrades">
             <h3 className="wb-upgrades-title">
-              {picked ? 'Upgrade chosen' : 'Choose an upgrade for the next boss'}
+              {pickedGen ? 'Generic upgrade chosen' : 'Choose a generic upgrade'}
             </h3>
             <div className="wb-upgrade-cards">
-              {offers.map((id) => {
+              {genOffers.map((id) => {
                 const u = UPGRADES[id];
-                const isPicked = picked === id;
-                const dimmed = picked && !isPicked;
+                const isPicked = pickedGen === id;
+                const dimmed = pickedGen && !isPicked;
                 return (
                   <button
                     type="button"
                     key={id}
                     className={`wb-upgrade-card${isPicked ? ' picked' : ''}${dimmed ? ' dimmed' : ''}`}
-                    onClick={() => onPickUpgrade(id)}
-                    disabled={!!picked}
+                    onClick={() => onPickGen(id)}
+                    disabled={!!pickedGen}
                     aria-pressed={isPicked}
                   >
                     <span className="wb-upgrade-icon" aria-hidden="true">{u.icon}</span>
@@ -173,15 +200,52 @@ export function ResultScreen() {
                 );
               })}
             </div>
-            {myUpgrades.length > 0 ? (
+
+            <h3 className="wb-upgrades-title">
+              {pickedChar
+                ? 'Character upgrade chosen'
+                : `Choose a ${CLASSES[localClass].name} upgrade`}
+            </h3>
+            <div className="wb-upgrade-cards">
+              {charOffers.map((id) => {
+                const u = CHAR_UPGRADES[id];
+                if (!u) return null;
+                const isPicked = pickedChar === id;
+                const dimmed = pickedChar && !isPicked;
+                return (
+                  <button
+                    type="button"
+                    key={id}
+                    className={`wb-upgrade-card wb-upgrade-char${isPicked ? ' picked' : ''}${dimmed ? ' dimmed' : ''}`}
+                    onClick={() => onPickChar(id)}
+                    disabled={!!pickedChar}
+                    aria-pressed={isPicked}
+                  >
+                    <span className="wb-upgrade-icon" aria-hidden="true">{u.icon}</span>
+                    <span className="wb-upgrade-name">{u.name}</span>
+                    <span className="wb-upgrade-desc">{u.desc}</span>
+                    {isPicked ? <span className="wb-upgrade-tick" aria-hidden="true">✓</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+
+            {(myUpgrades.length > 0 || myCharUpgrades.length > 0) ? (
               <div className="wb-upgrade-owned">
                 <span className="wb-field-label">Your upgrades</span>
                 <span className="wb-upgrade-badges">
                   {myUpgrades.map((id, i) => (
-                    <span key={`${id}-${i}`} className="wb-upgrade-badge" title={UPGRADES[id].desc}>
+                    <span key={`g-${id}-${i}`} className="wb-upgrade-badge" title={UPGRADES[id].desc}>
                       {UPGRADES[id].icon} {UPGRADES[id].name}
                     </span>
                   ))}
+                  {myCharUpgrades.map((id, i) =>
+                    CHAR_UPGRADES[id] ? (
+                      <span key={`c-${id}-${i}`} className="wb-upgrade-badge wb-badge-char" title={CHAR_UPGRADES[id].desc}>
+                        {CHAR_UPGRADES[id].icon} {CHAR_UPGRADES[id].name}
+                      </span>
+                    ) : null,
+                  )}
                 </span>
               </div>
             ) : null}
@@ -203,6 +267,7 @@ export function ResultScreen() {
                 <th scope="col" className="wb-num">Healing</th>
                 <th scope="col" className="wb-num">Revives</th>
                 <th scope="col" className="wb-num">Deaths</th>
+                <th scope="col" className="wb-num">Score</th>
               </tr>
             </thead>
             <tbody>
@@ -210,57 +275,78 @@ export function ResultScreen() {
                 const isDamageMvp = row.damageDealt === maxDamage && maxDamage > 0;
                 const isHealMvp = row.healingDone === maxHealing && maxHealing > 0;
                 const isReviveMvp = row.revives === maxRevives && maxRevives > 0;
+                const isScoreMvp = row.score === maxScore && maxScore > 0;
                 return (
                   <tr key={row.peerId}>
                     <td className="wb-cell-name">{row.name || 'Hero'}</td>
-                    <td className={`cls-${row.classId}`}>
-                      {CLASSES[row.classId].name}
-                    </td>
+                    <td className={`cls-${row.classId}`}>{CLASSES[row.classId].name}</td>
                     <td className={`wb-num${isDamageMvp ? ' wb-mvp' : ''}`}>
                       {Math.round(row.damageDealt)}
-                      {isDamageMvp ? (
-                        <span className="wb-badge wb-badge-mvp">MVP</span>
-                      ) : null}
+                      {isDamageMvp ? <span className="wb-badge wb-badge-mvp">MVP</span> : null}
                     </td>
                     <td className={`wb-num${isHealMvp ? ' wb-mvp' : ''}`}>
                       {Math.round(row.healingDone)}
-                      {isHealMvp ? (
-                        <span className="wb-badge wb-badge-mvp">MVP</span>
-                      ) : null}
+                      {isHealMvp ? <span className="wb-badge wb-badge-mvp">MVP</span> : null}
                     </td>
                     <td className={`wb-num${isReviveMvp ? ' wb-mvp' : ''}`}>
                       {row.revives}
-                      {isReviveMvp ? (
-                        <span className="wb-badge wb-badge-mvp">MVP</span>
-                      ) : null}
+                      {isReviveMvp ? <span className="wb-badge wb-badge-mvp">MVP</span> : null}
                     </td>
                     <td className="wb-num">{row.deaths}</td>
+                    <td className={`wb-num wb-score-cell${isScoreMvp ? ' wb-mvp' : ''}`}>
+                      ★ {row.score}
+                    </td>
                   </tr>
                 );
               })}
               {stats.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="wb-player-empty">
-                    No combatants recorded.
-                  </td>
+                  <td colSpan={7} className="wb-player-empty">No combatants recorded.</td>
                 </tr>
               ) : null}
             </tbody>
           </table>
         </div>
 
+        {advancing ? (
+          <div className="wb-next-ready" role="status">
+            <button
+              type="button"
+              className={`wb-btn wb-btn-lg${ready ? ' wb-btn-ghost is-ready' : ' wb-btn-primary'}`}
+              onClick={onToggleReady}
+              aria-pressed={ready}
+            >
+              {ready ? 'Ready ✓ — waiting' : 'Ready for next boss'}
+            </button>
+            <span className="wb-ready-tally">
+              {readyReady}/{readyTotal} ready
+            </span>
+          </div>
+        ) : null}
+
         <div className="wb-row wb-actions-row">
           <button type="button" className="wb-btn wb-btn-ghost" onClick={onMenu}>
             Main Menu
           </button>
-          {advancing ? (
+          {endlessAvailable ? (
             isHost ? (
-              <button type="button" className="wb-btn wb-btn-primary" onClick={onContinue}>
-                Continue now →
-              </button>
+              <>
+                <button type="button" className="wb-btn wb-btn-primary" onClick={onReturn}>
+                  Return to Lobby
+                </button>
+                <button type="button" className="wb-btn wb-btn-endless" onClick={onEndless}>
+                  Continue (Endless) →
+                </button>
+              </>
             ) : (
-              <span className="wb-await-host">Waiting for the next boss…</span>
+              <span className="wb-await-host">Waiting for the host to choose…</span>
             )
+          ) : advancing ? (
+            <span className="wb-await-host">
+              {readyReady >= readyTotal && readyTotal > 0
+                ? 'Advancing…'
+                : 'The run advances once everyone is ready.'}
+            </span>
           ) : (
             <>
               {isHost ? (
@@ -268,11 +354,7 @@ export function ResultScreen() {
                   {victory ? 'Play Again' : 'Retry'}
                 </button>
               ) : null}
-              <button
-                type="button"
-                className="wb-btn wb-btn-primary"
-                onClick={onReturn}
-              >
+              <button type="button" className="wb-btn wb-btn-primary" onClick={onReturn}>
                 {isHost ? 'Return to Lobby' : 'Back to Lobby'}
               </button>
             </>

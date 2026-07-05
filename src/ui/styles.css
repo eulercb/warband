@@ -1674,3 +1674,135 @@ body {
   35% { transform: scale(1); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
+
+/* --------------------------------------------------------------------------
+ * Round 8: gamepad focus ring, character upgrades, next-boss readiness,
+ * endless button, score display, pad-scheme picker
+ * ------------------------------------------------------------------------ */
+
+/* Controller focus ring — clear and reliable even for programmatic focus. */
+.wb-gp-focus {
+  outline: 3px solid var(--gold) !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(242, 193, 78, 0.25) !important;
+  border-radius: var(--radius-sm);
+}
+
+/* Character (class) upgrade cards read as violet vs. the gold generic ones. */
+.wb-upgrade-char {
+  border-color: rgba(156, 108, 255, 0.4);
+}
+.wb-upgrade-char:hover:not(:disabled) {
+  border-color: #9c6cff;
+}
+.wb-upgrade-char.picked {
+  border-color: #9c6cff;
+  background: rgba(156, 108, 255, 0.14);
+  box-shadow: 0 0 0 1px #9c6cff inset;
+}
+.wb-upgrade-char .wb-upgrade-tick {
+  color: #b78cff;
+}
+.wb-badge-char {
+  background: rgba(156, 108, 255, 0.16);
+  border-color: rgba(156, 108, 255, 0.45);
+  color: #c6adff;
+}
+
+/* Between-boss readiness gate */
+.wb-next-ready {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 14px 0 4px;
+  flex-wrap: wrap;
+}
+.wb-ready-tally {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  font-weight: 700;
+}
+.wb-btn.is-ready {
+  color: var(--gold);
+}
+
+/* Endless continue button — a distinct violet call-to-action */
+.wb-btn-endless {
+  background: linear-gradient(180deg, #b78cff 0%, #7a4fd0 100%);
+  color: #16101f;
+  border-color: #7a4fd0;
+  font-weight: 800;
+}
+.wb-btn-endless:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+/* Score column in the results table + score chips */
+.wb-score-cell {
+  color: #ffe08a;
+  font-weight: 700;
+}
+
+/* Pause-menu run-score panel */
+.wb-pause-score {
+  margin: 6px 0 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+}
+.wb-pause-score-mine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wb-score-big {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #ffe08a;
+}
+.wb-pause-score-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.wb-pause-score-list li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.wb-pause-score-list li.is-local {
+  color: var(--text);
+  font-weight: 700;
+}
+.wb-pause-score-val {
+  color: #ffe08a;
+}
+
+/* Cycle tag (endless) */
+.wb-cycle-tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(156, 108, 255, 0.16);
+  border: 1px solid rgba(156, 108, 255, 0.45);
+  color: #c6adff;
+  font-size: 0.8rem;
+}
+
+/* Controller-icon (pad scheme) picker in Controls */
+.wb-pad-scheme {
+  margin: 4px 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wb-pad-scheme-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

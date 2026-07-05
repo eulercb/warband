@@ -87,6 +87,7 @@ describe('obstacles block ranged attacks', () => {
       impactRadius: 0,
       hitRadius: 8,
       lifetime: 3,
+      rangeLeft: 820,
     };
   }
 
