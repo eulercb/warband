@@ -13,15 +13,22 @@ import {
   shareLink,
   copyShareLink,
   setMonster,
+  setGauntlet,
+  addBot,
+  removeBot,
+  setBotClass,
   playUiSound,
 } from './session';
 import { CLASS_IDS, CLASSES } from '../engine/classes';
 import { MONSTER_IDS, MONSTERS } from '../engine/monsters';
+import { MAX_PLAYERS } from '../engine/constants';
+import type { ClassId } from '../engine/types';
 
 export function Lobby() {
   const roomCode = useStore((s) => s.roomCode);
   const isHost = useStore((s) => s.isHost);
   const monsterId = useStore((s) => s.monsterId);
+  const gauntlet = useStore((s) => s.gauntlet);
   const players = useStore((s) => s.players);
   const localClass = useStore((s) => s.localClass);
   const localReady = useStore((s) => s.localReady);
@@ -32,6 +39,20 @@ export function Lobby() {
 
   const link = shareLink();
   const monster = MONSTERS[monsterId];
+
+  // Ready-gate: the host may start solo any time; otherwise every non-host
+  // HUMAN must be ready (bots are always ready and never block the start).
+  const otherHumans = players.filter((p) => !p.isBot && !p.isHost);
+  const allHumansReady = otherHumans.every((p) => p.ready);
+  const canStart = otherHumans.length === 0 || allHumansReady;
+  const partyFull = players.length >= MAX_PLAYERS;
+
+  const cycleBotClass = (peerId: string, current: ClassId): void => {
+    const idx = CLASS_IDS.indexOf(current);
+    const next = CLASS_IDS[(idx + 1) % CLASS_IDS.length];
+    playUiSound('uiClick');
+    setBotClass(peerId, next);
+  };
 
   const connected = peerCount > 0;
   const connClass = connected ? 'is-connected' : isHost ? 'is-idle' : 'is-searching';
@@ -114,6 +135,43 @@ export function Lobby() {
                 </button>
               ))}
             </div>
+          ) : (
+            gauntlet && <span className="wb-badge wb-badge-gauntlet">Gauntlet run</span>
+          )}
+
+          {isHost ? (
+            <div className="wb-host-options">
+              <button
+                type="button"
+                className={`wb-btn wb-btn-chip${gauntlet ? ' selected' : ''}`}
+                onClick={() => {
+                  playUiSound('uiClick');
+                  setGauntlet(!gauntlet);
+                }}
+                aria-pressed={gauntlet}
+                title="Beat one boss, then jump straight to the next"
+              >
+                {gauntlet ? '✓ Gauntlet run' : 'Gauntlet run'}
+              </button>
+              <div className="wb-addbot" role="group" aria-label="Add a bot">
+                <span className="wb-addbot-label">Add bot:</span>
+                {CLASS_IDS.map((id) => (
+                  <button
+                    type="button"
+                    key={id}
+                    className="wb-btn wb-btn-chip wb-addbot-btn"
+                    disabled={partyFull}
+                    onClick={() => {
+                      playUiSound('uiClick');
+                      addBot(id);
+                    }}
+                  >
+                    {CLASSES[id].name}
+                  </button>
+                ))}
+                {partyFull ? <span className="wb-addbot-full">Party full</span> : null}
+              </div>
+            </div>
           ) : null}
         </div>
 
@@ -151,12 +209,39 @@ export function Lobby() {
                     {p.isHost ? (
                       <span className="wb-badge wb-badge-host">Host</span>
                     ) : null}
-                    <span
-                      className={`wb-ready${p.ready ? ' is-ready' : ''}`}
-                      aria-label={p.ready ? 'Ready' : 'Not ready'}
-                    >
-                      {p.ready ? '✓' : '…'}
-                    </span>
+                    {p.isBot ? (
+                      <span className="wb-badge wb-badge-bot">Bot</span>
+                    ) : null}
+                    {isHost && p.isBot ? (
+                      <>
+                        <button
+                          type="button"
+                          className="wb-bot-btn"
+                          title="Change class"
+                          onClick={() => cycleBotClass(p.peerId, p.classId)}
+                        >
+                          ⟳
+                        </button>
+                        <button
+                          type="button"
+                          className="wb-bot-btn wb-bot-remove"
+                          title="Remove bot"
+                          onClick={() => {
+                            playUiSound('uiClick');
+                            removeBot(p.peerId);
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </>
+                    ) : (
+                      <span
+                        className={`wb-ready${p.ready ? ' is-ready' : ''}`}
+                        aria-label={p.ready ? 'Ready' : 'Not ready'}
+                      >
+                        {p.ready ? '✓' : '…'}
+                      </span>
+                    )}
                   </span>
                 </li>
               ))}
@@ -213,11 +298,19 @@ export function Lobby() {
               type="button"
               className="wb-btn wb-btn-primary wb-btn-start"
               onClick={onStart}
+              disabled={!canStart}
+              title={canStart ? undefined : 'Waiting for all players to ready up'}
             >
               Start Fight
             </button>
           ) : null}
         </div>
+        {isHost && !canStart ? (
+          <div className="wb-start-hint" role="status">
+            Waiting for everyone to ready up… ({otherHumans.filter((p) => p.ready).length}/
+            {otherHumans.length} ready)
+          </div>
+        ) : null}
       </div>
     </div>
   );

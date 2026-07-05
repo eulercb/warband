@@ -40,17 +40,27 @@ export interface AppState {
   monsterId: MonsterId;
   players: LobbyPlayer[];
   lobbyPhase: 'lobby' | 'inFight';
+  /** Host setting: run a boss gauntlet rather than a single fight. */
+  gauntlet: boolean;
 
   // local selections
   localName: string;
   localClass: ClassId;
   localReady: boolean;
 
+  // fight / run
+  /** Sim frozen by the host (pause menu). */
+  paused: boolean;
+  /** Gauntlet progress for the current fight (index/total), or null. */
+  run: { index: number; total: number } | null;
+
   // result
   result: FightResult | null;
 
   // options
   muted: boolean;
+  /** Whether the Controls (rebinding) overlay is open. */
+  showControls: boolean;
 
   // --- actions ---
   setPhase: (p: Phase) => void;
@@ -61,16 +71,21 @@ export interface AppState {
   setPeerCount: (n: number) => void;
   setNetHint: (h: string | null) => void;
   setMonster: (id: MonsterId) => void;
+  setGauntlet: (on: boolean) => void;
   setLobby: (
     players: LobbyPlayer[],
     monsterId: MonsterId,
     lobbyPhase: 'lobby' | 'inFight',
+    gauntlet: boolean,
   ) => void;
   setLocalName: (n: string) => void;
   setLocalClass: (c: ClassId) => void;
   setLocalReady: (r: boolean) => void;
+  setPaused: (p: boolean) => void;
+  setRun: (run: { index: number; total: number } | null) => void;
   setResult: (r: FightResult | null) => void;
   toggleMute: () => void;
+  setShowControls: (v: boolean) => void;
   /** Tear the session down and return to the main menu. */
   reset: () => void;
 }
@@ -89,15 +104,22 @@ export const useStore = create<AppState>((set, get) => ({
   monsterId: DEFAULT_MONSTER,
   players: [],
   lobbyPhase: 'lobby',
+  gauntlet: false,
 
   localName: '',
   localClass: DEFAULT_CLASS,
   localReady: false,
 
+  paused: false,
+  run: null,
+
   result: null,
   muted: false,
+  showControls: false,
 
-  setPhase: (phase) => set({ phase }),
+  // Navigating always dismisses the transient Controls modal so it can't get
+  // stranded on top of the next screen (e.g. a fight ending while it's open).
+  setPhase: (phase) => set({ phase, showControls: false }),
   setError: (error) => set({ error }),
   setHostLeft: (hostLeft) => set({ hostLeft }),
   setRoom: (roomCode, isHost) => set({ roomCode, isHost }),
@@ -105,12 +127,17 @@ export const useStore = create<AppState>((set, get) => ({
   setPeerCount: (peerCount) => set({ peerCount }),
   setNetHint: (netHint) => set({ netHint }),
   setMonster: (monsterId) => set({ monsterId }),
-  setLobby: (players, monsterId, lobbyPhase) => set({ players, monsterId, lobbyPhase }),
+  setGauntlet: (gauntlet) => set({ gauntlet }),
+  setLobby: (players, monsterId, lobbyPhase, gauntlet) =>
+    set({ players, monsterId, lobbyPhase, gauntlet }),
   setLocalName: (localName) => set({ localName }),
   setLocalClass: (localClass) => set({ localClass }),
   setLocalReady: (localReady) => set({ localReady }),
+  setPaused: (paused) => set({ paused }),
+  setRun: (run) => set({ run }),
   setResult: (result) => set({ result }),
   toggleMute: () => set({ muted: !get().muted }),
+  setShowControls: (showControls) => set({ showControls }),
 
   reset: () => {
     const s = get();
@@ -131,7 +158,10 @@ export const useStore = create<AppState>((set, get) => ({
       players: [],
       lobbyPhase: 'lobby',
       localReady: false,
+      paused: false,
+      run: null,
       result: null,
+      showControls: false,
     });
   },
 }));

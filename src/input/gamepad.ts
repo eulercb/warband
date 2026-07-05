@@ -17,6 +17,7 @@
 
 import type { InputState, Vec2 } from '../engine/types';
 import { DEAD_ZONE } from '../engine/constants';
+import { getBindings } from './bindings';
 
 /**
  * Apply a radial dead-zone to a raw stick vector. Returns a vector whose
@@ -81,12 +82,16 @@ export function sampleGamepad(): { state: InputState; connected: boolean; active
     aimLen > 0 ? { x: aimVec.x / aimLen, y: aimVec.y / aimLen } : { x: 0, y: 0 };
 
   const pressed = (i: number): boolean => pad.buttons[i]?.pressed === true;
+  const anyPressed = (indices: number[]): boolean => indices.some(pressed);
+  // Action buttons are player-configurable; sticks stay fixed (left=move,
+  // right=aim). See input/bindings.ts.
+  const padB = getBindings().pad;
   const buttons = {
-    basic: pressed(0),
-    a1: pressed(1),
-    a2: pressed(2),
-    a3: pressed(3),
-    revive: pressed(4) || pressed(5),
+    basic: anyPressed(padB.basic),
+    a1: anyPressed(padB.a1),
+    a2: anyPressed(padB.a2),
+    a3: anyPressed(padB.a3),
+    revive: anyPressed(padB.revive),
   };
 
   const anyButton =

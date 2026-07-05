@@ -16,6 +16,7 @@ import type {
   AddView,
   ProjectileView,
   ZoneView,
+  TerrainView,
   RenderState,
   GameEvent,
   Vec2,
@@ -117,8 +118,9 @@ export class SnapshotInterpolator {
     const adds = this.lerpAdds(from, carry, t);
     const projectiles = this.lerpProjectiles(from, carry, t);
 
-    // Zones + events come from the carry (newer) snapshot / whole buffer.
+    // Zones + terrain + events come from the carry (newer) snapshot / buffer.
     const groundZones: ZoneView[] = carry.groundZones.map((z) => ({ ...z }));
+    const terrain: TerrainView[] = carry.terrain.map((t) => ({ ...t }));
     const events = this.collectEvents();
 
     // Client-side prediction override for the local player.
@@ -138,6 +140,7 @@ export class SnapshotInterpolator {
       adds,
       projectiles,
       groundZones,
+      terrain,
       events,
       localPlayerId: opts.localPlayerId,
       arena: opts.arena,

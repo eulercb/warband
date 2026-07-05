@@ -74,13 +74,22 @@ export async function hostGame(): Promise<void> {
   const host = new Host({
     code,
     monsterId: st.monsterId,
+    gauntlet: st.gauntlet,
     name: nameOrDefault(),
     classId: st.localClass,
     onLobby: (msg) =>
-      useStore.getState().setLobby(msg.players, msg.monsterId, msg.phase),
+      useStore.getState().setLobby(msg.players, msg.monsterId, msg.phase, msg.gauntlet),
+    onStart: (info) => {
+      const s = useStore.getState();
+      s.setResult(null);
+      s.setPaused(false);
+      s.setRun({ index: info.runIndex, total: info.runTotal });
+      s.setPhase('game');
+    },
     onResult: (result) => {
       const s = useStore.getState();
       s.setResult(result);
+      s.setPaused(false);
       s.setPhase('result');
       sfx.resume();
       sfx.play(result.outcome === 'victory' ? 'victory' : 'defeat');
@@ -108,21 +117,25 @@ export async function joinGame(code: string): Promise<void> {
     name: nameOrDefault(),
     onLobby: (msg) => {
       const s = useStore.getState();
-      s.setLobby(msg.players, msg.monsterId, msg.phase);
+      s.setLobby(msg.players, msg.monsterId, msg.phase, msg.gauntlet);
       if (msg.phase === 'inFight' && s.phase !== 'game') {
         s.setPhase('waiting');
       } else if (msg.phase === 'lobby' && (s.phase === 'join' || s.phase === 'waiting')) {
         s.setPhase('lobby');
       }
     },
-    onStart: () => {
+    onStart: (msg) => {
       const s = useStore.getState();
       s.setResult(null);
+      s.setPaused(false);
+      s.setRun({ index: msg.runIndex, total: msg.runTotal });
       s.setPhase('game');
     },
+    onPause: (paused) => useStore.getState().setPaused(paused),
     onResult: (result) => {
       const s = useStore.getState();
       s.setResult(result);
+      s.setPaused(false);
       s.setPhase('result');
       sfx.resume();
       sfx.play(result.outcome === 'victory' ? 'victory' : 'defeat');
@@ -203,17 +216,30 @@ export function setReady(ready: boolean): void {
 export function startFight(): void {
   const s = useStore.getState();
   if (s.isHost && s.session instanceof Host) {
-    s.setResult(null);
+    // Host's onStart callback drives the phase/run transition (also covers
+    // retry + gauntlet auto-advance), so just kick it off here.
     s.session.startFight();
-    // The host has no onStart callback (that's for clients) — transition here.
-    s.setPhase('game');
   }
+}
+
+/** Host: restart the current fight after a loss (same boss / run position). */
+export function retryFight(): void {
+  const s = useStore.getState();
+  if (s.isHost && s.session instanceof Host) s.session.retryFight();
+}
+
+/** Host: skip the gauntlet interstitial and start the next boss now. */
+export function advanceGauntlet(): void {
+  const s = useStore.getState();
+  if (s.isHost && s.session instanceof Host) s.session.advanceGauntlet();
 }
 
 export function returnToLobby(): void {
   const s = useStore.getState();
   s.setResult(null);
   s.setLocalReady(false);
+  s.setPaused(false);
+  s.setRun(null);
   if (s.isHost && s.session instanceof Host) {
     // Host: reset the world + tell clients; then transition our own UI.
     s.session.returnToLobby();
@@ -227,6 +253,62 @@ export function setMonster(monsterId: import('../engine/types').MonsterId): void
   const s = useStore.getState();
   s.setMonster(monsterId);
   if (s.isHost && s.session instanceof Host) s.session.setMonster(monsterId);
+}
+
+export function setGauntlet(on: boolean): void {
+  const s = useStore.getState();
+  s.setGauntlet(on);
+  if (s.isHost && s.session instanceof Host) s.session.setGauntlet(on);
+}
+
+// --- Bots (host only) ------------------------------------------------------
+
+export function addBot(classId: ClassId): void {
+  const s = useStore.getState();
+  if (s.isHost && s.session instanceof Host) s.session.addBot(classId);
+}
+
+export function removeBot(peerId: string): void {
+  const s = useStore.getState();
+  if (s.isHost && s.session instanceof Host) s.session.removeBot(peerId);
+}
+
+export function setBotClass(peerId: string, classId: ClassId): void {
+  const s = useStore.getState();
+  if (s.isHost && s.session instanceof Host) s.session.setBotClass(peerId, classId);
+}
+
+// --- Pause menu ------------------------------------------------------------
+
+/** Host: freeze the shared sim (also mirrors into our own store). */
+export function pauseGame(): void {
+  const s = useStore.getState();
+  if (s.isHost && s.session instanceof Host) {
+    s.session.pause();
+    s.setPaused(true);
+  }
+}
+
+export function resumeGame(): void {
+  const s = useStore.getState();
+  if (s.isHost && s.session instanceof Host) {
+    s.session.resume();
+    s.setPaused(false);
+  }
+}
+
+/** Host: end the current fight immediately as a defeat (pause-menu "End Run"). */
+export function endRun(): void {
+  const s = useStore.getState();
+  if (s.isHost && s.session instanceof Host) s.session.endRun('defeat');
+}
+
+export function openControls(): void {
+  useStore.getState().setShowControls(true);
+}
+
+export function closeControls(): void {
+  useStore.getState().setShowControls(false);
 }
 
 export function leaveToMenu(): void {

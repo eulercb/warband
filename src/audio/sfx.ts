@@ -273,6 +273,13 @@ export class Sfx {
         }
         break;
 
+      case 'spawn':
+        // An add claws its way up — brief detuned rasp (Lich summon cue).
+        if (this.throttle('spawn', 0.05)) {
+          this.voice({ type: 'sawtooth', freq: 150, freqEnd: 260, dur: 0.14, peak: 0.1, attack: 0.006 });
+        }
+        break;
+
       // 'hit' player/boss handled above; no default sound for the rest.
       default:
         break;

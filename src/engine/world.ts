@@ -8,6 +8,8 @@ import type {
   Add,
   Projectile,
   GroundZone,
+  TerrainPatch,
+  TerrainView,
   InputCommand,
   GameEvent,
   Snapshot,
@@ -37,6 +39,7 @@ import {
   REVIVE_TIME,
   REVIVE_HP_FRAC,
   ZONE_TICK_INTERVAL,
+  TERRAIN_TICK_INTERVAL,
   SOFT_ENRAGE_TIME,
   SOFT_ENRAGE_RAMP,
   ADD_DAMAGE,
@@ -44,6 +47,7 @@ import {
   SEPARATION_ITERATIONS,
   PLAYER_RADIUS,
 } from './constants';
+import { generateTerrain } from './terrain';
 import {
   Rng,
   vec,
@@ -67,6 +71,8 @@ import {
   tickBuffs,
   buffMult,
   hasBuff,
+  applyBuff,
+  makeBuff,
   damageBoss,
   damageAdd,
   damagePlayer,
@@ -105,6 +111,7 @@ export class World {
   adds: Add[] = [];
   projectiles: Projectile[] = [];
   groundZones: GroundZone[] = [];
+  terrain: TerrainPatch[] = [];
   events: GameEvent[] = [];
 
   rng: Rng;
@@ -130,6 +137,7 @@ export class World {
     this.monsterDef = getMonster(init.monsterId);
     this.spawnPlayers(init.players);
     this.spawnBoss();
+    this.terrain = generateTerrain(init.monsterId, init.seed, () => this.allocId());
   }
 
   // -------------------------------------------------------------------------
@@ -250,6 +258,7 @@ export class World {
     this.updateRevive(dt, inputs);
     this.updateProjectiles(dt);
     this.updateZones(dt);
+    this.updateTerrain(dt);
     this.checkDownedTransitions();
     this.updateBoss(dt);
     this.updateAdds(dt);
@@ -337,6 +346,7 @@ export class World {
         sourceId: p.id,
         pos: { ...p.pos },
         side: 'player',
+        slot,
       });
     } else {
       resolvePlayerAbility(this, p, slot, moveDir);
@@ -536,6 +546,52 @@ export class World {
       amount: effective,
       targetId: target.id,
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // Terrain (static per-run hazards)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Apply terrain effects to players: refresh the strongest slow found while
+   * inside any patch (lingers `slowDuration` after leaving), and tick contact
+   * damage per patch. Terrain never moves or expires. Boss/adds are unaffected
+   * so terrain stays a clean positioning puzzle for the party.
+   */
+  private updateTerrain(dt: number): void {
+    if (this.terrain.length === 0) return;
+
+    // Slow: strongest (lowest mult) patch a player is standing in wins.
+    for (const p of this.players) {
+      if (p.state !== 'alive') continue;
+      let slowest = 1;
+      let slowDur = 0;
+      for (const t of this.terrain) {
+        if (t.slowMult >= 1) continue;
+        if (dist(t.pos, p.pos) <= t.radius + p.radius && t.slowMult < slowest) {
+          slowest = t.slowMult;
+          slowDur = t.slowDuration;
+        }
+      }
+      if (slowest < 1) {
+        applyBuff(p, makeBuff('moveSpeed', slowest, slowDur, 'terrain'));
+      }
+    }
+
+    // Damage: per patch, on the shared ground-tick cadence.
+    for (const t of this.terrain) {
+      if (t.damagePerTick <= 0) continue;
+      t.tickAccum += dt;
+      while (t.tickAccum >= TERRAIN_TICK_INTERVAL) {
+        t.tickAccum -= TERRAIN_TICK_INTERVAL;
+        for (const p of this.players) {
+          if (p.state !== 'alive') continue;
+          if (dist(t.pos, p.pos) <= t.radius + p.radius) {
+            damagePlayer(this, p, t.damagePerTick);
+          }
+        }
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -891,6 +947,18 @@ export class World {
     }
   }
 
+  /**
+   * Force the fight to end immediately with the given outcome (host concede /
+   * "End Run" from the pause menu). Idempotent; freezes further stepping via the
+   * `finished` flag so a stale result can't be produced twice.
+   */
+  forceFinish(outcome: Outcome): void {
+    if (this.finished) return;
+    this.finished = true;
+    this.outcome = outcome;
+    this.endMs = this.elapsed * 1000;
+  }
+
   private checkEndConditions(): void {
     if (this.finished) return;
     if (this.boss && this.boss.hp <= 0) {
@@ -913,6 +981,7 @@ export class World {
     return {
       outcome: this.outcome ?? 'defeat',
       timeMs: Math.round(this.endMs),
+      monsterId: this.monsterDef.id,
       stats: this.players.map((p) => ({
         peerId: p.peerId,
         name: p.name,
@@ -963,8 +1032,12 @@ export class World {
         return { ...base, kind: 'line', width: ab.width ?? 45 };
       case 'beam':
         return { ...base, kind: 'line', width: ab.width ?? 24, range: ab.range ?? 500 };
+      case 'summon':
+        // No damage zone, but flash a growing ring around the boss so the party
+        // can read the incoming adds during the wind-up (Lich readability fix).
+        return { ...base, kind: 'circle', radius: ab.radius ?? 170, target: { ...boss.pos } };
       default:
-        return null; // summon / projectile / voidzones: no ground telegraph
+        return null; // projectile / voidzones: no ground telegraph
     }
   }
 
@@ -1031,6 +1104,12 @@ export class World {
         duration: z.duration,
         remaining: z.remaining,
       })) as ZoneView[],
+      terrain: this.terrain.map((t) => ({
+        id: t.id,
+        kind: t.kind,
+        pos: { ...t.pos },
+        radius: t.radius,
+      })) as TerrainView[],
       events: this.events.slice(),
     };
   }

@@ -13,7 +13,7 @@
  */
 import { Text, TextStyle } from 'pixi.js';
 import type { Container, Graphics } from 'pixi.js';
-import type { GameEvent, Telegraph, Vec2 } from '../engine/types';
+import type { GameEvent, Telegraph, SkillArea, Vec2 } from '../engine/types';
 import type { Camera } from './camera';
 import { clamp } from '../engine/math';
 
@@ -21,11 +21,13 @@ import { clamp } from '../engine/math';
 
 const FLOATER_CAP = 80;
 const BURST_CAP = 80;
+const AREA_FLASH_CAP = 24;
 
 const FLOATER_TTL = 0.8; // s
 const FLOATER_RISE_PX = 42; // total rise over its life
 
 const HIT_FLASH_TIME = 0.16; // s
+const AREA_FLASH_TTL = 0.45; // s — how long an ability's area cue lingers
 
 /** Boss abilities heavy enough to warrant a screen shake on cast. */
 const HEAVY_CAST = new Set(['groundSlam', 'tailSweep', 'smash', 'wingGust', 'charge']);
@@ -53,9 +55,18 @@ interface Burst {
   rise: number; // screen px the burst floats upward over its life
 }
 
+/** A short-lived cue that flashes a player/boss ability's effect area. */
+interface AreaFlash {
+  active: boolean;
+  area: SkillArea;
+  color: number;
+  age: number;
+}
+
 export class Fx {
   private readonly floaters: Floater[] = [];
   private readonly bursts: Burst[] = [];
+  private readonly areaFlashes: AreaFlash[] = [];
   private readonly flashes = new Map<number, number>();
 
   constructor(textLayer: Container) {
@@ -89,6 +100,14 @@ export class Fx {
         filled: false,
         lineWidth: 2,
         rise: 0,
+      });
+    }
+    for (let i = 0; i < AREA_FLASH_CAP; i++) {
+      this.areaFlashes.push({
+        active: false,
+        area: { kind: 'circle', origin: { x: 0, y: 0 }, angle: 0, range: 0, radius: 0, halfAngle: 0 },
+        color: 0xffffff,
+        age: 0,
       });
     }
   }
@@ -129,6 +148,24 @@ export class Fx {
             filled: true,
           });
           if (e.side === 'boss' && HEAVY_CAST.has(e.ability)) camera.addShake(8);
+          break;
+        }
+        case 'skillArea': {
+          this.spawnAreaFlash(e.area, e.color);
+          break;
+        }
+        case 'spawn': {
+          // A summoned add "arrives" — a quick rising puff at its spawn point.
+          this.spawnBurst(e.pos, {
+            startR: 4,
+            endR: 34,
+            ttl: 0.45,
+            color: 0x8a6cff,
+            alpha0: 0.7,
+            filled: false,
+            lineWidth: 3,
+            rise: 18,
+          });
           break;
         }
         case 'death': {
@@ -317,6 +354,13 @@ export class Fx {
       b.age += dt;
       if (b.age >= b.ttl) b.active = false;
     }
+
+    // Advance ability area flashes.
+    for (const a of this.areaFlashes) {
+      if (!a.active) continue;
+      a.age += dt;
+      if (a.age >= AREA_FLASH_TTL) a.active = false;
+    }
   }
 
   /** Render bursts to `g` and position/fade the pooled damage-number `Text`. */
@@ -326,6 +370,12 @@ export class Fx {
     // frame's circles pile up forever and each attack leaves a permanent ring on
     // the ground (the fx layer, unlike the others, is only cleared here).
     g.clear();
+
+    // Ability area cues (under the bursts): flash the region an ability hit.
+    for (const a of this.areaFlashes) {
+      if (!a.active) continue;
+      this.drawAreaFlash(g, a, camera);
+    }
 
     // Bursts.
     for (const b of this.bursts) {
@@ -416,6 +466,66 @@ export class Fx {
       if (b.age > oldest.age) oldest = b;
     }
     return oldest;
+  }
+
+  private spawnAreaFlash(area: SkillArea, color: number): void {
+    const a = this.acquireAreaFlash();
+    a.active = true;
+    a.age = 0;
+    a.color = color;
+    // Deep-copy the geometry (events are transient / reused).
+    a.area = {
+      kind: area.kind,
+      origin: { x: area.origin.x, y: area.origin.y },
+      angle: area.angle,
+      range: area.range,
+      radius: area.radius,
+      halfAngle: area.halfAngle,
+    };
+  }
+
+  private acquireAreaFlash(): AreaFlash {
+    let oldest = this.areaFlashes[0];
+    for (const a of this.areaFlashes) {
+      if (!a.active) return a;
+      if (a.age > oldest.age) oldest = a;
+    }
+    return oldest;
+  }
+
+  /** Draw one ability area cue (cone / circle / line) fading over its life. */
+  private drawAreaFlash(g: Graphics, a: AreaFlash, camera: Camera): void {
+    const t = clamp(a.age / AREA_FLASH_TTL, 0, 1);
+    const fade = 1 - t; // linear fade-out
+    const fillAlpha = 0.28 * fade;
+    const strokeAlpha = 0.8 * fade;
+    const s = camera.scale;
+    const { area, color } = a;
+
+    if (area.kind === 'circle') {
+      const c = camera.worldToScreen(area.origin);
+      const R = area.radius * s;
+      g.circle(c.x, c.y, R).fill({ color, alpha: fillAlpha });
+      g.circle(c.x, c.y, R).stroke({ width: 2, color, alpha: strokeAlpha });
+    } else if (area.kind === 'cone') {
+      const o = camera.worldToScreen(area.origin);
+      const R = area.range * s;
+      const a0 = area.angle - area.halfAngle;
+      const a1 = area.angle + area.halfAngle;
+      g.moveTo(o.x, o.y).arc(o.x, o.y, R, a0, a1).lineTo(o.x, o.y).fill({ color, alpha: fillAlpha });
+      g.moveTo(o.x, o.y).arc(o.x, o.y, R, a0, a1).lineTo(o.x, o.y).stroke({ width: 2, color, alpha: strokeAlpha });
+    } else {
+      // line: capsule from origin along angle for `range`, half-width `radius`.
+      const o = camera.worldToScreen(area.origin);
+      const ux = Math.cos(area.angle);
+      const uy = Math.sin(area.angle);
+      const nx = -uy;
+      const ny = ux;
+      const L = area.range * s;
+      const hw = Math.max(2, area.radius * s);
+      linePoly(g, o.x, o.y, ux, uy, nx, ny, L, hw).fill({ color, alpha: fillAlpha });
+      linePoly(g, o.x, o.y, ux, uy, nx, ny, L, hw).stroke({ width: 2, color, alpha: strokeAlpha });
+    }
   }
 }
 

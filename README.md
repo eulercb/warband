@@ -6,11 +6,17 @@ Warband is a browser-hosted, peer-to-peer co-op boss fight game. One player host
 
 - **4 classes** — Knight, Ranger, Mage, and Cleric, each with a distinct role and ability kit.
 - **3 bosses** — the Ancient Dragon, the Forest Troll, and the Lich, each with themed mechanics.
-- **Telegraphed attacks** — cones, circles, and lines wind up before they land, so danger is readable and dodgeable.
+- **Gauntlet runs** — the host can chain the bosses into one run: beat the Dragon and jump straight to the Troll, then the Lich.
+- **Bot band members** — short a player? The host can add AI teammates of any class to fill the warband.
+- **Themed terrain hazards** — each fight seeds random hazards themed to the boss (a dragon's magma pools, a troll's swamp, a lich's cursed ice) that slow and burn anyone standing in them.
+- **Telegraphed attacks** — cones, circles, and lines wind up before they land, so danger is readable and dodgeable — and now your own abilities flash their effect area too.
+- **Speech balloons** — a bubble pops over whoever is casting so the band can read what everyone (and the boss) is doing.
 - **Aggro / threat** — enemies pick targets based on accumulated threat; tanks hold aggro, healers and DPS manage theirs.
 - **Downed / revive** — fall to zero HP and you go down with a bleedout timer; a teammate can hold revive to bring you back.
-- **Player-count scaling** — boss health and pressure scale to the size of your warband.
-- **Gamepad + keyboard/mouse** — play with either; the last-used device wins seamlessly.
+- **Pause menu & retry** — pause the fight (host freezes it for everyone), end a run early, or retry a wipe without going back to the lobby.
+- **Remappable controls** — rebind every keyboard key and gamepad button for movement and abilities from the Controls screen; the HUD labels follow your bindings and the device you're using.
+- **Player-count scaling** — boss health and pressure scale to the size of your warband (bots included).
+- **Gamepad + keyboard/mouse** — play with either; the last-used device wins seamlessly, and the HUD shows the matching button glyphs.
 - **PWA** — installable and offline-capable app shell.
 - **GitHub Pages deploy** — ships as a static site via GitHub Actions to [warband.zen.dev.br](https://warband.zen.dev.br).
 
@@ -69,7 +75,7 @@ For the full explanation — how the rendezvous works, a step-by-step "connect w
 | Ability 3 (A3) | △ / Y |
 | Revive (hold) | L1 / R1 |
 
-The last-used device wins — switch between gamepad and keyboard/mouse at any time and control follows whatever you touched last.
+The last-used device wins — switch between gamepad and keyboard/mouse at any time and control follows whatever you touched last. The table above lists the **defaults**; every action is remappable from **Controls** (on the main menu or the in-fight pause menu), and the HUD button labels update to match. Press **Esc** (keyboard) or **Options/Start** (gamepad) during a fight to open the pause menu.
 
 ## Classes
 

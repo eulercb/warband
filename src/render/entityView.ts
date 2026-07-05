@@ -15,6 +15,8 @@ import type {
   AddView,
   ProjectileView,
   ZoneView,
+  TerrainView,
+  TerrainKind,
   Vec2,
   ProjectileKind,
   ZoneKind,
@@ -44,6 +46,16 @@ const ZONE_COLORS: Record<ZoneKind, number> = {
   voidZone: 0x9c4bd6, // purple
   rainOfArrows: 0x4caf50, // green
   sanctuary: 0xf2c14e, // gold
+};
+
+/** Terrain palette: [fill, edge]. Damaging kinds read hot/toxic; slows read cool. */
+const TERRAIN_COLORS: Record<TerrainKind, { fill: number; edge: number; hot: boolean }> = {
+  magma: { fill: 0xff521f, edge: 0xffc24a, hot: true },
+  ember: { fill: 0xc9591f, edge: 0xffa040, hot: true },
+  swamp: { fill: 0x4e6a24, edge: 0x8fc24a, hot: false },
+  bog: { fill: 0x3d5230, edge: 0x6f9050, hot: false },
+  ice: { fill: 0x74b3dc, edge: 0xdcf3ff, hot: false },
+  deathfog: { fill: 0x574a6e, edge: 0xa084d6, hot: true },
 };
 
 // ---------------------------------------------------------------------------
@@ -330,6 +342,46 @@ export function drawZone(g: Graphics, z: ZoneView, screen: Vec2, scale: number):
   const pulse = 0.13 + 0.06 * (0.5 + 0.5 * Math.sin(z.remaining * 6));
   g.circle(x, y, r).fill({ color, alpha: pulse * fade });
   g.circle(x, y, r).stroke({ width: 2, color, alpha: 0.55 * fade });
+}
+
+// ---------------------------------------------------------------------------
+// Terrain (static per-run hazards)
+// ---------------------------------------------------------------------------
+
+/**
+ * Draw one static terrain patch. `timeSec` drives a slow shimmer so lava/fog
+ * feel alive; `seed` (the patch id) offsets the phase so patches don't pulse in
+ * lockstep. Damaging kinds glow warmer and pulse; slows read as calm pools.
+ */
+export function drawTerrain(
+  g: Graphics,
+  t: TerrainView,
+  screen: Vec2,
+  scale: number,
+  timeSec: number,
+): void {
+  const pal = TERRAIN_COLORS[t.kind] ?? { fill: 0x666666, edge: 0x999999, hot: false };
+  const r = t.radius * scale;
+  const { x, y } = screen;
+  const phase = (t.id % 7) * 0.9;
+  const pulse = pal.hot
+    ? 0.10 + 0.08 * (0.5 + 0.5 * Math.sin(timeSec * 2.2 + phase))
+    : 0.06 + 0.03 * (0.5 + 0.5 * Math.sin(timeSec * 1.1 + phase));
+
+  // Soft outer glow, base pool, and a brighter irregular core for texture.
+  g.circle(x, y, r).fill({ color: pal.fill, alpha: 0.16 + pulse });
+  g.circle(x, y, r).stroke({ width: 2, color: pal.edge, alpha: 0.55 });
+  const coreR = r * (0.55 + 0.05 * Math.sin(timeSec * 1.7 + phase));
+  g.circle(x, y, coreR).fill({ color: pal.edge, alpha: (pal.hot ? 0.16 : 0.08) + pulse * 0.4 });
+
+  // A few deterministic blobs so the patch doesn't read as a flat disc.
+  for (let i = 0; i < 3; i++) {
+    const a = phase + (i * Math.PI * 2) / 3 + timeSec * (pal.hot ? 0.6 : 0.25);
+    const rr = r * 0.5;
+    const bx = x + Math.cos(a) * rr * 0.6;
+    const by = y + Math.sin(a) * rr * 0.6;
+    g.circle(bx, by, r * 0.22).fill({ color: pal.edge, alpha: 0.1 + pulse * 0.3 });
+  }
 }
 
 /**

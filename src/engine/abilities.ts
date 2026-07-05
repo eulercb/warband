@@ -46,7 +46,9 @@ import {
   ADD_MOVE_SPEED,
   ADD_RADIUS,
   PLAYER_RADIUS,
+  CLASS_COLORS,
 } from './constants';
+import type { SkillAreaKind } from './types';
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -99,6 +101,7 @@ export function resolvePlayerAbility(
   const cls = getClass(p.classId);
   const ab = cls.abilities[slot];
   const aimAngle = angleOf(p.aim);
+  const color = CLASS_COLORS[p.classId] ?? 0xffffff;
 
   world.events.push({
     t: 'cast',
@@ -106,12 +109,21 @@ export function resolvePlayerAbility(
     sourceId: p.id,
     pos: { ...p.pos },
     side: 'player',
+    slot,
   });
 
   switch (ab.kind) {
     case 'meleeCone': {
       const range = ab.range ?? 70;
       const half = ((ab.halfAngleDeg ?? 45) * Math.PI) / 180;
+      emitSkillArea(world, p.id, color, {
+        kind: 'cone',
+        origin: { ...p.pos },
+        angle: aimAngle,
+        range,
+        radius: 0,
+        halfAngle: half,
+      });
       if (world.boss && world.boss.hp > 0) {
         if (pointInCone(world.boss.pos, p.pos, aimAngle, range, half, world.boss.radius)) {
           damageBoss(world, p, world.boss, ab.damage);
@@ -179,6 +191,14 @@ export function resolvePlayerAbility(
 
     case 'pbaoe': {
       const radius = ab.radius ?? 150;
+      emitSkillArea(world, p.id, color, {
+        kind: 'circle',
+        origin: { ...p.pos },
+        angle: 0,
+        range: 0,
+        radius,
+        halfAngle: 0,
+      });
       if (world.boss && world.boss.hp > 0 && pointInCircle(world.boss.pos, p.pos, radius, world.boss.radius)) {
         damageBoss(world, p, world.boss, ab.damage);
         if (ab.slowMult) applySlow(world.boss, ab.slowMult, ab.slowDuration ?? 3);
@@ -221,6 +241,14 @@ export function resolvePlayerAbility(
     }
 
     case 'buffAlly': {
+      emitSkillArea(world, p.id, color, {
+        kind: 'circle',
+        origin: { ...p.pos },
+        angle: 0,
+        range: 0,
+        radius: ab.range ?? 400,
+        halfAngle: 0,
+      });
       const target = lowestHpAllyInRange(world, p.pos, ab.range ?? 400) ?? p;
       if (ab.buffDamageMult) {
         applyBuff(target, makeBuff('damageDealt', ab.buffDamageMult, ab.buffDuration ?? 6, 'blessingDmg'));
@@ -232,12 +260,29 @@ export function resolvePlayerAbility(
     }
 
     case 'heal': {
+      // Flash the heal's reach so the Cleric (and allies) can read the range.
+      emitSkillArea(world, p.id, color, {
+        kind: 'circle',
+        origin: { ...p.pos },
+        angle: 0,
+        range: 0,
+        radius: ab.range ?? 400,
+        halfAngle: 0,
+      });
       const target = lowestHpAllyInRange(world, p.pos, ab.range ?? 400);
       if (target) healPlayer(world, p, target, ab.damage);
       break;
     }
 
     case 'taunt': {
+      emitSkillArea(world, p.id, color, {
+        kind: 'circle',
+        origin: { ...p.pos },
+        angle: 0,
+        range: 0,
+        radius: 150,
+        halfAngle: 0,
+      });
       forceTopThreat(world.players, p.id);
       world.tauntTargetId = p.id;
       world.tauntTimer = ab.buffDuration ?? 4;
@@ -280,6 +325,24 @@ function spawnPlayerProjectile(
 
 function applySlow(entity: { buffs: import('./types').Buff[] }, mult: number, duration: number): void {
   applyBuff(entity, makeBuff('moveSpeed', mult, duration, 'slow'));
+}
+
+/** Push a one-shot `skillArea` event so the renderer can flash an ability's
+ * effect region (cone / circle / line). Cosmetic — purely for readability. */
+function emitSkillArea(
+  world: World,
+  sourceId: number,
+  color: number,
+  area: {
+    kind: SkillAreaKind;
+    origin: Vec2;
+    angle: number;
+    range: number;
+    radius: number;
+    halfAngle: number;
+  },
+): void {
+  world.events.push({ t: 'skillArea', sourceId, side: 'player', color, area });
 }
 
 interface SpawnZoneOpts {
@@ -440,6 +503,8 @@ export function resolveBossAbility(
           buffs: [],
         };
         world.adds.push(skeleton);
+        // Spawn burst so summoned skeletons visibly "arrive" (Lich readability).
+        world.events.push({ t: 'spawn', id: skeleton.id, kind: 'add', pos: { ...pos } });
       }
       break;
     }
