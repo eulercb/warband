@@ -51,12 +51,20 @@ export class Camera {
     this.center = { x: arenaW / 2, y: arenaH / 2 };
   }
 
-  /** Recompute scale + screen center for a new viewport size (zoomed-in follow). */
+  /**
+   * Recompute scale + screen center for a new viewport size (zoomed-in follow).
+   *
+   * Uses a COVER fit (`max`, not `min`) so the visible world span never exceeds
+   * the arena in either axis. That guarantees no on-screen point is more than
+   * half an arena from the camera center, so `worldToScreen`'s nearest-copy never
+   * flips a visible entity to the wrong side — which a portrait / ultrawide
+   * viewport would otherwise do, since only the tiled ground layers repeat.
+   */
   fit(viewW: number, viewH: number): void {
     this.viewW = viewW;
     this.viewH = viewH;
-    const fitScale = Math.min(viewW / this.arenaW, viewH / this.arenaH);
-    this.scale = fitScale * ZOOM;
+    const coverScale = Math.max(viewW / this.arenaW, viewH / this.arenaH);
+    this.scale = coverScale * ZOOM;
     this.screenCenter = { x: viewW / 2, y: viewH / 2 };
   }
 

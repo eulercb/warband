@@ -69,9 +69,15 @@ function isFrozen(): boolean {
   return s.paused || s.resumeCountdown != null;
 }
 
-/** Toggle the shared pause: pause when running, resume when paused/counting. */
+/**
+ * Toggle the shared pause. Running → pause; paused → begin the resume countdown;
+ * mid-countdown → re-pause (cancel the countdown), so a mis-click doesn't force
+ * everyone to wait out the 3 seconds.
+ */
 function togglePause(): void {
-  requestPause(!isFrozen());
+  const s = useStore.getState();
+  if (s.resumeCountdown != null) requestPause(true); // cancel the countdown
+  else requestPause(!s.paused);
 }
 
 export default function GameView() {
@@ -123,9 +129,9 @@ export default function GameView() {
         const state = session?.getRenderState(now) ?? null;
         if (!state) return;
 
-        // Terrain + obstacles are static per fight — snapshot the legend once so
-        // the pause menu can describe every hazard on the map.
-        if (!legendInited && state.terrain.length > 0) {
+        // Terrain + obstacles are static per fight — snapshot the legend once (on
+        // the first real frame) so the pause menu can describe every hazard.
+        if (!legendInited) {
           legendInited = true;
           const kinds = [...new Set(state.terrain.map((t) => t.kind))];
           hudSet({ terrainKinds: kinds, hasObstacles: state.obstacles.length > 0 });

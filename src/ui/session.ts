@@ -20,13 +20,23 @@ import type { UpgradeId } from '../engine/upgrades';
 /** Shared audio engine (used here for stings + by GameView for event SFX). */
 export const sfx = new Sfx();
 
-// Keep the audio engine synced with the store's mute flag + volume, now and on
-// every change. Seed from the persisted initial state so it's right on load.
-sfx.setVolume(useStore.getState().volume);
-sfx.setMuted(useStore.getState().muted);
+// Keep the audio engine synced with the store's mute flag + volume, now and
+// whenever they change. Seed from the persisted initial state so it's right on
+// load, and only touch the audio bus when the value ACTUALLY changes (the store
+// fires on every unrelated update too — pause ticks, phase, results, …).
+let lastMuted = useStore.getState().muted;
+let lastVolume = useStore.getState().volume;
+sfx.setVolume(lastVolume);
+sfx.setMuted(lastMuted);
 useStore.subscribe((s) => {
-  sfx.setMuted(s.muted);
-  sfx.setVolume(s.volume);
+  if (s.muted !== lastMuted) {
+    lastMuted = s.muted;
+    sfx.setMuted(s.muted);
+  }
+  if (s.volume !== lastVolume) {
+    lastVolume = s.volume;
+    sfx.setVolume(s.volume);
+  }
 });
 
 type StoreState = ReturnType<typeof useStore.getState>;
