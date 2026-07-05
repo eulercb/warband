@@ -25,11 +25,23 @@ export function Lobby() {
   const players = useStore((s) => s.players);
   const localClass = useStore((s) => s.localClass);
   const localReady = useStore((s) => s.localReady);
+  const peerCount = useStore((s) => s.peerCount);
+  const netHint = useStore((s) => s.netHint);
 
   const [copied, setCopied] = useState(false);
 
   const link = shareLink();
   const monster = MONSTERS[monsterId];
+
+  const connected = peerCount > 0;
+  const connClass = connected ? 'is-connected' : isHost ? 'is-idle' : 'is-searching';
+  const connMsg = isHost
+    ? connected
+      ? `${peerCount} ${peerCount === 1 ? 'player' : 'players'} connected`
+      : 'Share the room code — players appear here as they connect.'
+    : connected
+      ? 'Connected to the host'
+      : 'Connecting to the host…';
 
   const onCopy = async (): Promise<void> => {
     playUiSound('uiClick');
@@ -104,6 +116,22 @@ export function Lobby() {
             </div>
           ) : null}
         </div>
+
+        <div className={`wb-conn ${connClass}`} role="status" aria-live="polite">
+          <span className="wb-conn-msg">{connMsg}</span>
+          {!connected && !isHost ? (
+            <span className="wb-conn-dots" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+          ) : null}
+        </div>
+        {netHint && !connected ? (
+          <div className="wb-conn-hint" role="status">
+            {netHint}
+          </div>
+        ) : null}
 
         <div className="wb-lobby-cols">
           <section className="wb-lobby-col">

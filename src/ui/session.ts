@@ -21,6 +21,17 @@ export const sfx = new Sfx();
 // Keep the audio muted flag synced with the store.
 useStore.subscribe((s) => sfx.setMuted(s.muted));
 
+/** How long a client waits for the host before showing a connectivity hint. */
+const HOST_SEARCH_TIMEOUT_MS = 15000;
+let hostSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearHostSearchTimer(): void {
+  if (hostSearchTimer !== null) {
+    clearTimeout(hostSearchTimer);
+    hostSearchTimer = null;
+  }
+}
+
 function nameOrDefault(): string {
   const n = useStore.getState().localName.trim();
   return n || `Hero-${selfId.slice(0, 4)}`;
@@ -45,6 +56,7 @@ export async function hostGame(): Promise<void> {
       sfx.resume();
       sfx.play(result.outcome === 'victory' ? 'victory' : 'defeat');
     },
+    onPeers: (n) => useStore.getState().setPeerCount(n),
     onError: (e) => useStore.getState().setError(e),
   });
 
@@ -52,6 +64,8 @@ export async function hostGame(): Promise<void> {
   s.setRoom(code, true);
   s.setSession(host);
   s.setError(null);
+  s.setPeerCount(0);
+  s.setNetHint(null);
   host.setSelection(st.localClass);
   s.setPhase('lobby');
 }
@@ -85,6 +99,7 @@ export async function joinGame(code: string): Promise<void> {
     },
     onReturnLobby: () => useStore.getState().setPhase('lobby'),
     onHostLeft: () => {
+      clearHostSearchTimer();
       const s = useStore.getState();
       s.setHostLeft(true);
       s.setError('Host disconnected — the session has ended.');
@@ -95,7 +110,18 @@ export async function joinGame(code: string): Promise<void> {
       }
       s.setSession(null);
       s.setRoom(null, false);
+      s.setPeerCount(0);
+      s.setNetHint(null);
       s.setPhase('menu');
+    },
+    onPeers: (n) => {
+      const s = useStore.getState();
+      s.setPeerCount(n);
+      if (n > 0) {
+        // Reached the host — cancel the pending "still connecting" hint.
+        clearHostSearchTimer();
+        s.setNetHint(null);
+      }
     },
     onError: (e) => useStore.getState().setError(e),
   });
@@ -104,8 +130,26 @@ export async function joinGame(code: string): Promise<void> {
   s.setRoom(upper, false);
   s.setSession(client);
   s.setError(null);
+  s.setPeerCount(0);
+  s.setNetHint(null);
   client.setSelection(s.localClass);
   s.setPhase('lobby');
+
+  // If we haven't reached the host after a while, surface an actionable hint
+  // (the code, the host being offline, or a NAT that needs TURN). This is a hint,
+  // not a hard error — the connection may still complete afterwards.
+  clearHostSearchTimer();
+  hostSearchTimer = setTimeout(() => {
+    hostSearchTimer = null;
+    const cur = useStore.getState();
+    if (cur.peerCount === 0 && cur.roomCode === upper) {
+      cur.setNetHint(
+        "Still reaching the host… Double-check the room code and that the host's tab is open. " +
+          'If it keeps failing, one of you may be on a network that blocks direct connections — ' +
+          'see the connectivity notes in the README.',
+      );
+    }
+  }, HOST_SEARCH_TIMEOUT_MS);
 }
 
 export function selectClass(classId: ClassId): void {
@@ -150,6 +194,7 @@ export function setMonster(monsterId: import('../engine/types').MonsterId): void
 }
 
 export function leaveToMenu(): void {
+  clearHostSearchTimer();
   try {
     writeRoomToHash('');
     if (typeof location !== 'undefined') {

@@ -38,6 +38,12 @@ export const TAUNT_THREAT_MARGIN = 100; // added on top of current max threat
 // listed per-tick numbers legible and fair (a full sim-tick cadence would be
 // 20x and instantly lethal). Tunable.
 export const ZONE_TICK_INTERVAL = 0.5; // s
+// Purely visual: zones ease IN over their first `ZONE_FADE_IN` seconds and ease
+// OUT over their last `ZONE_FADE_OUT` seconds so they clearly appear and then
+// disappear after a while instead of popping in/out. The simulation still uses
+// the zone's full duration for ticks/hit-tests; only the drawn opacity fades.
+export const ZONE_FADE_IN = 0.2; // s
+export const ZONE_FADE_OUT = 0.6; // s
 
 // --- Stalemate breaker ---
 export const SOFT_ENRAGE_TIME = 300; // s — after this, escalating boss damage

@@ -1026,6 +1026,7 @@ export class World {
         kind: z.kind,
         pos: { ...z.pos },
         radius: z.radius,
+        duration: z.duration,
         remaining: z.remaining,
       })) as ZoneView[],
       events: this.events.slice(),
