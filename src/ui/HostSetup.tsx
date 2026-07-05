@@ -2,11 +2,12 @@
  * Warband — host setup screen. The host picks the boss to fight and a display
  * name, then creates a room. Networking is delegated to session.hostGame().
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useStore } from './store';
 import { hostGame, playUiSound, setGauntlet } from './session';
+import { useGamepadMenu } from '../input/useGamepadMenu';
 import { MONSTER_IDS, MONSTERS } from '../engine/monsters';
-import { GAUNTLET_ORDER } from '../engine/constants';
+import { RUN_LENGTH } from '../engine/constants';
 
 /** Convert a PixiJS numeric color (0xRRGGBB) to a CSS hex string. */
 function toHex(n: number): string {
@@ -23,11 +24,7 @@ export function HostSetup() {
   const setPhase = useStore((s) => s.setPhase);
   const setError = useStore((s) => s.setError);
 
-  // In a gauntlet the run continues through the remaining bosses in order.
-  const startIdx = GAUNTLET_ORDER.indexOf(monsterId);
-  const gauntletRun =
-    startIdx >= 0 ? GAUNTLET_ORDER.slice(startIdx) : [monsterId];
-
+  const panelRef = useRef<HTMLDivElement>(null);
   const [creating, setCreating] = useState(false);
 
   const onCreate = async (): Promise<void> => {
@@ -48,11 +45,13 @@ export function HostSetup() {
     setPhase('menu');
   };
 
+  useGamepadMenu(panelRef, { onBack });
+
   return (
     <div className="wb-screen">
-      <div className="wb-panel wb-setup-panel">
+      <div className="wb-panel wb-setup-panel" ref={panelRef}>
         <h2 className="wb-title wb-title-sm">Host a Fight</h2>
-        <p className="wb-subtitle">Choose your boss.</p>
+        <p className="wb-subtitle">Choose the boss that leads your run.</p>
 
         <div className="wb-monster-grid">
           {MONSTER_IDS.map((id) => {
@@ -103,13 +102,11 @@ export function HostSetup() {
             {gauntlet ? '✓' : ''}
           </span>
           <span className="wb-gauntlet-text">
-            <span className="wb-gauntlet-title">Gauntlet run (sequence)</span>
+            <span className="wb-gauntlet-title">Run mode ({RUN_LENGTH}-boss gauntlet + Endless)</span>
             <span className="wb-gauntlet-sub">
               {gauntlet
-                ? `Fight in order: ${gauntletRun
-                    .map((id) => MONSTERS[id].name)
-                    .join(' → ')}`
-                : 'Beat one boss, then jump straight to the next. Off: single fight.'}
+                ? `A ${RUN_LENGTH}-boss run of climbing difficulty, starting with ${MONSTERS[monsterId].name}. Pick upgrades between bosses; clear all ${RUN_LENGTH} to unlock Endless.`
+                : 'On: a full run of bosses with between-boss upgrades and Endless. Off: a single fight.'}
             </span>
           </span>
         </button>

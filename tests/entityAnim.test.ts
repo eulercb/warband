@@ -33,6 +33,7 @@ function player(over: Partial<PlayerView> = {}): PlayerView {
     reviveProgress: 0,
     castSlot: null,
     castTimer: 0,
+    score: 0,
     ...over,
   };
 }

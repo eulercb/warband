@@ -16,6 +16,8 @@ function pushZone(w: World, duration: number): GroundZone {
     ownerId: w.boss!.id,
     damagePerTick: 0, // harmless so the fight can't end mid-test
     healPerTick: 0,
+    slowMult: 1,
+    slowDuration: 0,
     duration,
     remaining: duration,
     tickAccum: 0,

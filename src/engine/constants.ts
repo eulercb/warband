@@ -70,15 +70,45 @@ export const OBSTACLE_MAX_RADIUS = 74;
 export const OBSTACLE_SPAWN_CLEARANCE = 170; // u
 
 // --- Gauntlet (sequence run) ---
-// Order the bosses are fought in when the host enables a gauntlet run. A run
-// starts at the host's chosen boss and proceeds through the rest of this list.
+// Legacy fixed order (kept for reference / single-picks). A modern "run" is now
+// a curated 5-boss sequence assembled by difficulty tier (see monsters.ts
+// `buildRun`), and continues into Endless cycles after the fifth boss falls.
 export const GAUNTLET_ORDER: MonsterId[] = ['dragon', 'troll', 'lich'];
+
+/** Bosses in a single run (a full run = this many bosses, then Victory/Endless). */
+export const RUN_LENGTH = 5;
+
 /**
- * Seconds the victory interstitial lingers before the next gauntlet fight. This
- * doubles as the window in which each hero picks a between-boss upgrade, so it
- * is generous enough for everyone to choose (host can skip with "Continue now").
+ * Endless mode: after clearing a full run the party may press on into escalating
+ * cycles. Each cycle multiplies boss HP and outgoing damage and applies an
+ * elemental "type" to every boss (Frost Dragon, Dark Troll, …). Carried upgrades
+ * and the accumulated score persist across cycles.
+ */
+export const ENDLESS_HP_PER_CYCLE = 0.35; // +35% boss HP per completed cycle
+export const ENDLESS_DMG_PER_CYCLE = 0.18; // +18% boss damage per completed cycle
+
+/**
+ * Seconds the victory interstitial lingers before the next fight. It is no longer
+ * an auto-advance timer — the run only proceeds once every player has marked
+ * themselves ready for the next boss (mirrors the lobby ready-gate). Kept as the
+ * cosmetic elapsed counter shown on the upgrade screen.
  */
 export const GAUNTLET_INTERSTITIAL_S = 12;
+
+// --- Player score (participation, accumulates across a run / endless) ---
+export const SCORE_HEAL_FACTOR = 1.0; // effective healing counts 1:1 with damage
+export const SCORE_PER_REVIVE = 250; // each revive
+export const SCORE_PER_DEATH = 60; // subtracted per death (never below 0 overall)
+export const SCORE_BOSS_CLEAR = 500; // flat bonus banked when a boss falls
+
+// --- Ranged attacks: hard travel cap so no shot laps the torus forever ---
+/**
+ * Default maximum distance (world units) a ranged projectile may travel before it
+ * fizzles, independent of its lifetime. Kept below a full arena lap so a shot can
+ * never wrap all the way around the torus and strike the caster from behind.
+ * Individual abilities may specify a shorter `range`.
+ */
+export const PROJECTILE_MAX_RANGE = 820;
 
 // --- Pause / resume ---
 /** Countdown (seconds) shown to everyone before the shared sim resumes. */
@@ -115,6 +145,10 @@ export const CLASS_COLORS: Record<string, number> = {
   ranger: 0x4caf50, // green
   mage: 0x9c5cf0, // violet
   cleric: 0xf2c14e, // gold
+  barbarian: 0xd9713e, // burnt orange
+  rogue: 0x8a8f98, // slate grey
+  paladin: 0xe8d36a, // radiant gold-white
+  druid: 0x5bbf7a, // moss green
 };
 
 // --- Monster colors ---

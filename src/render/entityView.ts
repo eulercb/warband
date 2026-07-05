@@ -112,6 +112,9 @@ const ZONE_COLORS: Record<ZoneKind, number> = {
   voidZone: 0x9c4bd6, // purple
   rainOfArrows: 0x4caf50, // green
   sanctuary: 0xf2c14e, // gold
+  poison: 0x8fd14a, // toxic green
+  entangle: 0x5bbf7a, // vine green
+  consecration: 0xe8d36a, // radiant gold
 };
 
 /** Terrain palette: [fill, edge]. Damaging kinds read hot/toxic; slows read cool. */
@@ -267,37 +270,17 @@ export function drawBoss(
   // Active buff/debuff auras (e.g. stunned by Shield Bash, slowed by Frost Nova).
   drawBuffGlows(g, x, y, r, b.buffs, timeSec);
 
+  // Endless "type" modifier glow (Frost/Dark/Infernal…), pulsing under the body.
+  if (b.modColor != null) {
+    const p = 0.5 + 0.5 * Math.sin(timeSec * 3);
+    g.circle(x, y, r * 1.3).fill({ color: b.modColor, alpha: 0.1 + 0.06 * p });
+    g.circle(x, y, r + 8).stroke({ width: 2, color: b.modColor, alpha: 0.4 + 0.25 * p });
+  }
+
   // Grounding shadow.
   g.ellipse(x, y + r * 0.5, r * 1.0, r * 0.45).fill({ color: 0x000000, alpha: 0.28 });
 
-  switch (b.monsterId) {
-    case 'dragon': {
-      // Spiky star.
-      const pts = starPoints(x, y, 9, r, r * 0.62, b.facing);
-      g.poly(pts).fill({ color });
-      g.poly(pts).stroke({ width: 2, color: OUTLINE, alpha: 0.7 });
-      break;
-    }
-    case 'troll': {
-      // Bulky rounded blob (body + shoulder bumps).
-      g.circle(x - r * 0.45, y - r * 0.35, r * 0.55).fill({ color });
-      g.circle(x + r * 0.45, y - r * 0.28, r * 0.5).fill({ color });
-      g.circle(x, y, r).fill({ color });
-      g.circle(x, y, r).stroke({ width: 2, color: OUTLINE, alpha: 0.7 });
-      break;
-    }
-    case 'lich': {
-      // Dark hovering diamond with a soft glow.
-      g.circle(x, y, r * 1.35).fill({ color: 0x8a6cff, alpha: 0.14 });
-      g.poly([x, y - r, x + r * 0.78, y, x, y + r, x - r * 0.78, y]).fill({ color });
-      g.poly([x, y - r, x + r * 0.78, y, x, y + r, x - r * 0.78, y]).stroke({
-        width: 2,
-        color: 0x8a6cff,
-        alpha: 0.6,
-      });
-      break;
-    }
-  }
+  drawBossBody(g, def.bodyShape, x, y, r, color, b.facing);
 
   // Facing indicator.
   const fx = x + Math.cos(b.facing) * r;
@@ -557,6 +540,127 @@ function hpColor(frac: number): number {
   if (frac > 0.6) return 0x5fd35f;
   if (frac > 0.3) return 0xf2c14e;
   return 0xd9463e;
+}
+
+/**
+ * Draw a boss silhouette by archetype so 30+ bosses read distinctly without any
+ * art assets. Every shape is centered on (x,y), sized to radius `r`, tinted by
+ * `color`, and outlined for a crisp top-down read.
+ */
+function drawBossBody(
+  g: Graphics,
+  shape: string,
+  x: number,
+  y: number,
+  r: number,
+  color: number,
+  facing: number,
+): void {
+  const stroke = (): void => {
+    g.stroke({ width: 2, color: OUTLINE, alpha: 0.7 });
+  };
+  switch (shape) {
+    case 'star': {
+      const pts = starPoints(x, y, 9, r, r * 0.62, facing);
+      g.poly(pts).fill({ color });
+      g.poly(pts).stroke({ width: 2, color: OUTLINE, alpha: 0.7 });
+      break;
+    }
+    case 'blob': {
+      g.circle(x - r * 0.45, y - r * 0.35, r * 0.55).fill({ color });
+      g.circle(x + r * 0.45, y - r * 0.28, r * 0.5).fill({ color });
+      g.circle(x, y, r).fill({ color });
+      g.circle(x, y, r).stroke({ width: 2, color: OUTLINE, alpha: 0.7 });
+      break;
+    }
+    case 'diamond': {
+      g.circle(x, y, r * 1.3).fill({ color, alpha: 0.14 });
+      g.poly([x, y - r, x + r * 0.78, y, x, y + r, x - r * 0.78, y]).fill({ color });
+      g.poly([x, y - r, x + r * 0.78, y, x, y + r, x - r * 0.78, y]).stroke({ width: 2, color: 0xffffff, alpha: 0.35 });
+      break;
+    }
+    case 'humanoid': {
+      // Torso + head + shoulders.
+      g.ellipse(x, y + r * 0.1, r * 0.72, r).fill({ color });
+      g.ellipse(x, y + r * 0.1, r * 0.72, r); stroke();
+      g.circle(x - r * 0.6, y - r * 0.35, r * 0.3).fill({ color });
+      g.circle(x + r * 0.6, y - r * 0.35, r * 0.3).fill({ color });
+      g.circle(x, y - r * 0.7, r * 0.42).fill({ color });
+      g.circle(x, y - r * 0.7, r * 0.42); stroke();
+      break;
+    }
+    case 'beast': {
+      // Elongated body + head + ears/horns.
+      g.ellipse(x, y, r * 1.1, r * 0.72).fill({ color });
+      g.ellipse(x, y, r * 1.1, r * 0.72); stroke();
+      const hx = x + Math.cos(facing) * r * 0.85;
+      const hy = y + Math.sin(facing) * r * 0.85;
+      g.circle(hx, hy, r * 0.48).fill({ color });
+      g.circle(hx, hy, r * 0.48); stroke();
+      // ears
+      g.poly([hx - r * 0.4, hy - r * 0.3, hx - r * 0.15, hy - r * 0.75, hx, hy - r * 0.35]).fill({ color });
+      g.poly([hx + r * 0.4, hy - r * 0.3, hx + r * 0.15, hy - r * 0.75, hx, hy - r * 0.35]).fill({ color });
+      break;
+    }
+    case 'construct': {
+      // Blocky hexagon.
+      const pts: number[] = [];
+      for (let i = 0; i < 6; i++) {
+        const a = facing + (i / 6) * Math.PI * 2;
+        pts.push(x + Math.cos(a) * r, y + Math.sin(a) * r);
+      }
+      g.poly(pts).fill({ color });
+      g.poly(pts).stroke({ width: 3, color: OUTLINE, alpha: 0.8 });
+      g.rect(x - r * 0.4, y - r * 0.4, r * 0.8, r * 0.8).fill({ color: 0xffffff, alpha: 0.08 });
+      break;
+    }
+    case 'orb': {
+      // Floating eye: outer glow, iris, pupil looking toward facing.
+      g.circle(x, y, r * 1.15).fill({ color, alpha: 0.16 });
+      g.circle(x, y, r).fill({ color });
+      g.circle(x, y, r); stroke();
+      g.circle(x, y, r * 0.55).fill({ color: 0xffffff, alpha: 0.85 });
+      const px = x + Math.cos(facing) * r * 0.4;
+      const py = y + Math.sin(facing) * r * 0.4;
+      g.circle(px, py, r * 0.3).fill({ color: 0x101018 });
+      break;
+    }
+    case 'insect': {
+      // Abdomen + head + radiating legs.
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        g.moveTo(x, y).lineTo(x + Math.cos(a) * r * 1.4, y + Math.sin(a) * r * 1.1).stroke({ width: 2, color, alpha: 0.85 });
+      }
+      g.circle(x, y + r * 0.2, r * 0.85).fill({ color });
+      g.circle(x, y + r * 0.2, r * 0.85); stroke();
+      g.circle(x, y - r * 0.6, r * 0.45).fill({ color });
+      break;
+    }
+    case 'serpent': {
+      // Coiled segments.
+      for (let i = 3; i >= 0; i--) {
+        const a = facing + i * 0.9;
+        const sx = x + Math.cos(a) * r * 0.55 * i * 0.4;
+        const sy = y + Math.sin(a) * r * 0.55 * i * 0.4;
+        g.circle(sx, sy, r * (0.9 - i * 0.12)).fill({ color });
+      }
+      g.circle(x, y, r * 0.9).stroke({ width: 2, color: OUTLINE, alpha: 0.6 });
+      break;
+    }
+    case 'tree': {
+      // Trunk + canopy.
+      g.rect(x - r * 0.28, y - r * 0.1, r * 0.56, r * 1.2).fill({ color: 0x5a4a2a });
+      g.circle(x, y - r * 0.4, r).fill({ color });
+      g.circle(x - r * 0.55, y - r * 0.1, r * 0.6).fill({ color });
+      g.circle(x + r * 0.55, y - r * 0.1, r * 0.6).fill({ color });
+      g.circle(x, y - r * 0.4, r); stroke();
+      break;
+    }
+    default: {
+      g.circle(x, y, r).fill({ color });
+      g.circle(x, y, r); stroke();
+    }
+  }
 }
 
 /** Vertices for a `spikes`-point star centered at (cx,cy), rotated by `rot`. */

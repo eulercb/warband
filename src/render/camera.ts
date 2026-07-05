@@ -20,13 +20,21 @@ const MAX_SHAKE = 24;
 /** Exponential decay rate of shake energy, per second. */
 const SHAKE_DECAY = 7;
 /**
- * How much to zoom in past a whole-arena letterbox fit. >1 shows only a window
- * of the world so there is room for the camera to follow the party and for the
- * ground to visibly scroll and wrap.
+ * Zoom band, as a multiplier over a whole-arena COVER fit. `ZOOM_MAX` (tight)
+ * is the default framing when everyone is bunched up; the camera zooms OUT
+ * toward `ZOOM_MIN` when the party (and boss) spread apart so nobody drops off
+ * the edge into "nowhere". `ZOOM_MIN` is exactly 1.0 (cover) — never looser —
+ * so no on-screen point is ever more than half an arena from the camera centre,
+ * which keeps the torus nearest-copy projection correct.
  */
-const ZOOM = 1.5;
+const ZOOM_MIN = 1.0;
+const ZOOM_MAX = 1.5;
 /** Camera follow smoothing (higher = snappier); per second. */
 const FOLLOW_RATE = 6;
+/** Zoom smoothing (per second) so the framing eases in/out, never snaps. */
+const ZOOM_RATE = 3;
+/** Extra world-unit breathing room kept around the framed group. */
+const FRAME_MARGIN = 120;
 
 export class Camera {
   /** World point the view is centered on (follows the party). */
@@ -44,6 +52,11 @@ export class Camera {
   private viewH = 0;
   private shakeEnergy = 0;
   private seeded = false;
+  /** Whole-arena cover scale (zoom == 1). Final scale = coverScale * zoom. */
+  private coverScale = 1;
+  /** Current + target zoom multiplier over the cover fit (smoothed each frame). */
+  private zoom = ZOOM_MAX;
+  private targetZoom = ZOOM_MAX;
 
   constructor(arenaW: number, arenaH: number) {
     this.arenaW = arenaW;
@@ -63,9 +76,23 @@ export class Camera {
   fit(viewW: number, viewH: number): void {
     this.viewW = viewW;
     this.viewH = viewH;
-    const coverScale = Math.max(viewW / this.arenaW, viewH / this.arenaH);
-    this.scale = coverScale * ZOOM;
+    this.coverScale = Math.max(viewW / this.arenaW, viewH / this.arenaH);
+    this.scale = this.coverScale * this.zoom;
     this.screenCenter = { x: viewW / 2, y: viewH / 2 };
+  }
+
+  /**
+   * Choose a target zoom that keeps a group of world points (radius `halfSpan`
+   * around the camera centre) comfortably on screen. Zooms out when the party +
+   * boss spread apart, back in when they regroup — clamped to [ZOOM_MIN, ZOOM_MAX]
+   * so it never loosens past a whole-arena cover fit (torus invariant).
+   */
+  frameGroup(halfSpan: number): void {
+    const span = Math.max(1, halfSpan + FRAME_MARGIN);
+    const halfView = Math.min(this.viewW, this.viewH) / 2;
+    // zoom such that visible half-extent (halfView / (coverScale*zoom)) >= span.
+    const desired = halfView / (this.coverScale * span);
+    this.targetZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, desired));
   }
 
   /** Smoothly follow a world target (the party average) across the torus. */
@@ -115,6 +142,11 @@ export class Camera {
    */
   update(dtMs: number): void {
     const dt = dtMs / 1000;
+    // Ease the zoom toward its target, then refresh the world->screen scale.
+    const kz = 1 - Math.exp(-ZOOM_RATE * dt);
+    this.zoom = lerp(this.zoom, this.targetZoom, kz);
+    this.scale = this.coverScale * this.zoom;
+
     this.shakeEnergy *= Math.exp(-SHAKE_DECAY * dt);
     if (this.shakeEnergy < 0.08) {
       this.shakeEnergy = 0;

@@ -17,9 +17,72 @@ export interface Vec2 {
 
 export type EntityId = number;
 
-export type ClassId = 'knight' | 'ranger' | 'mage' | 'cleric';
-export type MonsterId = 'dragon' | 'troll' | 'lich';
+export type ClassId =
+  | 'knight'
+  | 'ranger'
+  | 'mage'
+  | 'cleric'
+  | 'barbarian'
+  | 'rogue'
+  | 'paladin'
+  | 'druid';
+
+export type MonsterId =
+  // Originals
+  | 'dragon'
+  | 'troll'
+  | 'lich'
+  // Easy tier
+  | 'goblin'
+  | 'spider'
+  | 'bandit'
+  | 'kobold'
+  | 'direwolf'
+  | 'animatedArmor'
+  | 'harpy'
+  | 'gnoll'
+  | 'mudGolem'
+  | 'zombie'
+  // Medium tier
+  | 'orc'
+  | 'manticore'
+  | 'wraith'
+  | 'basilisk'
+  | 'owlbear'
+  | 'cyclops'
+  | 'gargoyle'
+  | 'ettin'
+  | 'wisp'
+  | 'minotaur'
+  // Hard tier
+  | 'beholder'
+  | 'vampire'
+  | 'frostGiant'
+  | 'mindflayer'
+  | 'deathknight'
+  | 'demon'
+  | 'treant'
+  | 'kraken'
+  | 'archlich'
+  | 'fae';
+
 export type AbilitySlot = 'basic' | 'a1' | 'a2' | 'a3';
+
+/** Coarse difficulty tier used to assemble a run (see monsters.ts `buildRun`). */
+export type BossTier = 'easy' | 'medium' | 'hard';
+
+/** Silhouette archetype the renderer draws for a boss (see entityView.drawBoss). */
+export type BossBodyShape =
+  | 'star'
+  | 'blob'
+  | 'diamond'
+  | 'beast'
+  | 'humanoid'
+  | 'construct'
+  | 'orb'
+  | 'insect'
+  | 'serpent'
+  | 'tree';
 
 export type PlayerState = 'alive' | 'downed' | 'dead';
 export type BossPhase = 'normal' | 'enraged';
@@ -123,6 +186,17 @@ export interface Player {
   threat: number; // cached threat contribution (mirror of boss table)
   stats: PlayerStats;
 
+  /**
+   * Per-player resolved ability table. A deep clone of the class defaults made at
+   * spawn so character upgrades (engine/charUpgrades.ts) can mutate this hero's
+   * ability numbers/mechanics without touching the shared class data. Optional so
+   * lightweight test fixtures can omit it (host resolution falls back to the class
+   * defaults). Typed via a type-only import to avoid a runtime import cycle.
+   */
+  abilities?: Record<AbilitySlot, import('./classes').PlayerAbilityDef>;
+  /** Score carried in from prior bosses this run (endless accumulates it). */
+  baseScore?: number;
+
   /** Host-side edge-detection of the previous button state for this player. */
   prevButtons: ButtonState;
   lastSeq: number;
@@ -163,6 +237,15 @@ export interface Boss {
   blinkTimer: number; // internal cooldown for Lich blink
 
   buffs: Buff[];
+
+  // Endless "type" modifier (Frost Dragon, Dark Troll, …). All optional / absent
+  // for a plain (cycle-0) boss.
+  /** Elemental aura behaviour ('frost' | 'shadow' | 'ember' | 'venom' | 'storm'). */
+  modAura?: string;
+  /** Accent colour for the modifier glow. */
+  modColor?: number;
+  /** Timer accumulator driving the modifier's periodic aura effect. */
+  modAuraTimer?: number;
 }
 
 export interface Add {
@@ -195,9 +278,23 @@ export interface Projectile {
   impactRadius: number; // > 0 = AoE on impact
   hitRadius: number; // collision radius
   lifetime: number; // remaining seconds
+  /** Remaining travel budget (world units). Fizzles at <= 0 so no shot laps the
+   * torus forever and strikes from behind (see world.updateProjectiles). */
+  rangeLeft: number;
+  /** Slow applied to whatever a projectile strikes (frost shots); 1 = none. */
+  slowMult?: number;
+  slowDuration?: number;
+  /** Stun/"freeze" seconds applied to whatever the projectile strikes. */
+  freeze?: number;
 }
 
-export type ZoneKind = 'voidZone' | 'rainOfArrows' | 'sanctuary';
+export type ZoneKind =
+  | 'voidZone'
+  | 'rainOfArrows'
+  | 'sanctuary'
+  | 'poison'
+  | 'entangle'
+  | 'consecration';
 
 // ---------------------------------------------------------------------------
 // Terrain (static, per-run environmental hazards)
@@ -263,6 +360,9 @@ export interface GroundZone {
   ownerId: EntityId;
   damagePerTick: number; // applied to the opposing side
   healPerTick: number; // applied to the owning side
+  /** Move-speed multiplier applied to enemies standing inside (1 = none). */
+  slowMult: number;
+  slowDuration: number; // s the slow lingers after leaving
   duration: number; // seconds — full lifetime, used for the render fade envelope
   remaining: number; // seconds — counts down; zone is removed at <= 0
   tickAccum: number; // accumulates toward ZONE_TICK_INTERVAL
@@ -397,6 +497,8 @@ export interface PlayerView {
   reviveProgress: number;
   castSlot: AbilitySlot | null;
   castTimer: number;
+  /** Live participation score (prior bosses + this fight), for HUD / pause menu. */
+  score: number;
 }
 
 export interface BossView {
@@ -409,6 +511,9 @@ export interface BossView {
   phase: BossPhase;
   telegraph: Telegraph | null;
   buffs: BuffView[];
+  /** Endless "type" name prefix (e.g. "Frost") and accent colour, if modified. */
+  modName?: string;
+  modColor?: number;
   // Presentation-only: drives boss animation clip selection (see render/sprites).
   // Carried verbatim over the wire (JSON) and never interpolated.
   action: BossActionKind; // 'idle' | 'windup' | 'channel' | 'recover'
@@ -488,6 +593,8 @@ export interface ResultPlayerStat {
   healingDone: number;
   revives: number;
   deaths: number;
+  /** Cumulative participation score across the run (endless keeps accumulating). */
+  score: number;
 }
 
 export interface FightResult {
@@ -505,4 +612,12 @@ export interface FightResult {
   nextMonsterId?: MonsterId | null;
   runIndex?: number;
   runTotal?: number;
+  /**
+   * Endless context. `cycle` is the 0-based run cycle (0 = the first run). When a
+   * full run is cleared, `endlessAvailable` is true so the victory screen can
+   * offer "Continue (Endless)". `modName` names the current elemental type prefix.
+   */
+  cycle?: number;
+  endlessAvailable?: boolean;
+  modName?: string;
 }

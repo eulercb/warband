@@ -10,9 +10,11 @@ import {
   useBindings,
   keyLabelFor,
   padLabelFor,
+  padIndexToLabel,
   SLOT_ACTION,
 } from '../input/bindings';
-import type { AbilitySlot, ClassId } from '../engine/types';
+import { buffBadges } from '../render/buffGlyphs';
+import type { AbilitySlot, ClassId, BuffView } from '../engine/types';
 import type { InputSource } from '../input/input';
 import './hud.css';
 
@@ -21,6 +23,27 @@ const SLOT_ORDER: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
 function pct(v: number, max: number): number {
   if (max <= 0) return 0;
   return Math.max(0, Math.min(100, (v / max) * 100));
+}
+
+/** A compact row of buff/debuff chips (glyph + seconds), colour-coded. */
+function BuffChips({ buffs }: { buffs: BuffView[] }) {
+  const badges = buffBadges(buffs);
+  if (badges.length === 0) return null;
+  return (
+    <span className="hud-buffs">
+      {badges.map((b, i) => (
+        <span
+          key={`${b.glyph}-${i}`}
+          className={`hud-buff${b.good ? ' good' : ' bad'}`}
+          title={`${b.label} · ${b.secs}s`}
+          style={{ borderColor: `#${b.color.toString(16).padStart(6, '0')}` }}
+        >
+          <span className="hud-buff-glyph" aria-hidden="true">{b.glyph}</span>
+          <span className="hud-buff-secs">{b.secs}</span>
+        </span>
+      ))}
+    </span>
+  );
 }
 
 /** Button label for a slot, keyboard or controller per the active device. */
@@ -60,15 +83,20 @@ function AbilityIcon({
 export default function HUD() {
   const hud = useHudStore();
   const run = useStore((s) => s.run);
+  const cycle = useStore((s) => s.cycle);
   const source = hud.inputSource;
+  // Re-render on binding / pad-scheme changes so glyph hints stay in sync.
+  useBindings((s) => s.bindings);
 
   const bossHpPct = pct(hud.bossHp, hud.bossMaxHp);
   const hpPct = pct(hud.hp, hud.maxHp);
 
   const usingPad = source === 'gamepad';
+  const abilityGlyphs = `${padLabelFor('a1')} ${padLabelFor('a2')} ${padLabelFor('a3')}`;
   const hint = usingPad
-    ? 'L-stick move · R-stick aim · ✕ basic · ◯▢△ abilities · L1 revive · Options menu'
+    ? `L-stick move · R-stick aim · ${padLabelFor('basic')} basic · ${abilityGlyphs} abilities · ${padLabelFor('revive')} revive · ${padIndexToLabel(9)} menu`
     : 'WASD move · Mouse aim · LMB basic · Q/E/R abilities · F revive · Esc menu';
+  const bossLabel = hud.bossModName ? `${hud.bossModName} ${hud.bossName}` : hud.bossName;
 
   return (
     <div className="hud-root">
@@ -79,8 +107,10 @@ export default function HUD() {
             {run && run.total > 1 && (
               <span className="hud-run-tag">Boss {run.index + 1}/{run.total}</span>
             )}
-            {hud.bossName}
+            {cycle > 0 && <span className="hud-cycle-tag">Cycle {cycle + 1}</span>}
+            {bossLabel}
             {hud.bossPhase === 'enraged' && <span className="hud-enrage-tag">ENRAGED</span>}
+            <BuffChips buffs={hud.bossBuffs} />
           </div>
           <div className="hud-bossbar-track">
             <div
@@ -109,6 +139,9 @@ export default function HUD() {
                 {t.isLocal && <span className="hud-teammate-you"> (you)</span>}
               </span>
               <span className="hud-teammate-class">{CLASSES[t.classId].name}</span>
+            </div>
+            <div className="hud-teammate-effects">
+              <BuffChips buffs={t.buffs} />
             </div>
             <div className="hud-healthbar hud-teammate-hp">
               <div
@@ -152,6 +185,10 @@ export default function HUD() {
       {/* Local health + abilities */}
       <div className="hud-bottom">
         <div className={`hud-selfhp cls-${hud.classId ?? 'knight'}`}>
+          <div className="hud-self-row">
+            <BuffChips buffs={hud.buffs} />
+            <span className="hud-score" title="Your run score">★ {hud.score}</span>
+          </div>
           <div className="hud-healthbar">
             <div className="hud-healthbar-fill" style={{ width: `${hpPct}%` }} />
             <span className="hud-healthbar-num">

@@ -8,13 +8,16 @@ import type {
   Add,
   Projectile,
   GroundZone,
+  ZoneKind,
   Vec2,
   AbilitySlot,
   BossAction,
   ProjectileKind,
+  BuffKind,
 } from './types';
 import type { World } from './world';
 import type { BossAbilityDef } from './monsters';
+import type { PlayerAbilityDef } from './classes';
 import { getClass } from './classes';
 import {
   add as vadd,
@@ -35,6 +38,7 @@ import {
   healBoss,
   applyBuff,
   makeBuff,
+  buffMult,
 } from './combat';
 import { forceTopThreat } from './threat';
 import { addCount, zoneCount } from './scaling';
@@ -44,6 +48,7 @@ import {
   ADD_RADIUS,
   PLAYER_RADIUS,
   CLASS_COLORS,
+  PROJECTILE_MAX_RANGE,
 } from './constants';
 import type { SkillAreaKind } from './types';
 
@@ -59,6 +64,11 @@ function clampToArena(world: World, pos: Vec2, _radius = 0): Vec2 {
     x: wrapCoord(pos.x, world.arena.w),
     y: wrapCoord(pos.y, world.arena.h),
   };
+}
+
+/** A hero's resolved ability table (per-run character upgrades), else class defaults. */
+function abilitiesOf(p: Player): Record<AbilitySlot, PlayerAbilityDef> {
+  return p.abilities ?? getClass(p.classId).abilities;
 }
 
 function aliveAllies(world: World): Player[] {
@@ -83,6 +93,12 @@ function lowestHpAllyInRange(
   return best;
 }
 
+/** Apply a strike's on-hit riders (stun / freeze) to a boss or add. */
+function applyStrikeRiders(target: { buffs: import('./types').Buff[] }, ab: PlayerAbilityDef): void {
+  if (ab.stun) applyBuff(target, makeBuff('stun', 0, ab.stun, 'stun'));
+  if (ab.freeze) applyBuff(target, makeBuff('stun', 0, ab.freeze, 'freeze'));
+}
+
 // ---------------------------------------------------------------------------
 // Player ability resolution
 // ---------------------------------------------------------------------------
@@ -98,8 +114,7 @@ export function resolvePlayerAbility(
   slot: AbilitySlot,
   moveDir: Vec2,
 ): void {
-  const cls = getClass(p.classId);
-  const ab = cls.abilities[slot];
+  const ab = abilitiesOf(p)[slot];
   const aimAngle = angleOf(p.aim);
   const color = CLASS_COLORS[p.classId] ?? 0xffffff;
 
@@ -124,19 +139,21 @@ export function resolvePlayerAbility(
         radius: 0,
         halfAngle: half,
       });
+      let dealt = 0;
       if (world.boss && world.boss.hp > 0) {
         if (pointInCone(world.boss.pos, p.pos, aimAngle, range, half, world.boss.radius)) {
-          damageBoss(world, p, world.boss, ab.damage);
-          if (ab.stun) applyBuff(world.boss, makeBuff('stun', 0, ab.stun, 'stun'));
+          dealt += damageBoss(world, p, world.boss, ab.damage);
+          applyStrikeRiders(world.boss, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
-          damageAdd(world, p, a, ab.damage);
-          if (ab.stun) applyBuff(a, makeBuff('stun', 0, ab.stun, 'stun'));
+          dealt += damageAdd(world, p, a, ab.damage);
+          applyStrikeRiders(a, ab);
         }
       }
+      lifesteal(world, p, ab, dealt);
       break;
     }
 
@@ -145,47 +162,26 @@ export function resolvePlayerAbility(
       const spread = ((ab.spreadDeg ?? 0) * Math.PI) / 180;
       const speed = ab.projSpeed ?? 600;
       const kind = projectileKindFor(p, slot);
+      const maxRange = ab.maxRange ?? PROJECTILE_MAX_RANGE;
       for (let i = 0; i < count; i++) {
         const t = count > 1 ? i / (count - 1) - 0.5 : 0; // -0.5..0.5
         const a = aimAngle + t * spread;
         const dir = fromAngle(a);
-        spawnPlayerProjectile(world, p, kind, dir, speed, ab.damage, ab.impactRadius ?? 0);
+        spawnPlayerProjectile(world, p, kind, dir, {
+          speed,
+          damage: ab.damage,
+          impactRadius: ab.impactRadius ?? 0,
+          maxRange,
+          slowMult: ab.slowMult,
+          slowDuration: ab.slowDuration,
+          freeze: ab.freeze,
+        });
       }
       break;
     }
 
     case 'groundZone': {
-      if (ab.zoneTickHeal && ab.zoneTickHeal > 0) {
-        // Sanctuary: centered on caster
-        spawnZone(world, {
-          kind: 'sanctuary',
-          pos: { ...p.pos },
-          radius: ab.radius ?? 140,
-          side: 'player',
-          ownerId: p.id,
-          damagePerTick: 0,
-          healPerTick: ab.zoneTickHeal,
-          duration: ab.zoneDuration ?? 4,
-        });
-      } else {
-        // Rain of Arrows: ground-targeted toward aim, clamped to range
-        const reach = ab.range ?? 500;
-        const center = clampToArena(
-          world,
-          vadd(p.pos, vscale(p.aim, reach)),
-          ab.radius ?? 120,
-        );
-        spawnZone(world, {
-          kind: 'rainOfArrows',
-          pos: center,
-          radius: ab.radius ?? 120,
-          side: 'player',
-          ownerId: p.id,
-          damagePerTick: ab.zoneTickDamage ?? 12,
-          healPerTick: 0,
-          duration: ab.zoneDuration ?? 3,
-        });
-      }
+      resolveGroundZone(world, p, ab);
       break;
     }
 
@@ -199,17 +195,21 @@ export function resolvePlayerAbility(
         radius,
         halfAngle: 0,
       });
+      let dealt = 0;
       if (world.boss && world.boss.hp > 0 && pointInCircle(world.boss.pos, p.pos, radius, world.boss.radius)) {
-        damageBoss(world, p, world.boss, ab.damage);
+        dealt += damageBoss(world, p, world.boss, ab.damage);
         if (ab.slowMult) applySlow(world.boss, ab.slowMult, ab.slowDuration ?? 3);
+        applyStrikeRiders(world.boss, ab);
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-          damageAdd(world, p, a, ab.damage);
+          dealt += damageAdd(world, p, a, ab.damage);
           if (ab.slowMult) applySlow(a, ab.slowMult, ab.slowDuration ?? 3);
+          applyStrikeRiders(a, ab);
         }
       }
+      lifesteal(world, p, ab, dealt);
       break;
     }
 
@@ -221,6 +221,26 @@ export function resolvePlayerAbility(
       p.pos = clampToArena(world, target, p.radius);
       if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
       world.events.push({ t: 'dodge', id: p.id, pos: { ...p.pos } });
+      // Leap-style landing slam.
+      if (ab.landingDamage && ab.landingDamage > 0) {
+        const radius = ab.radius ?? 120;
+        emitSkillArea(world, p.id, color, {
+          kind: 'circle',
+          origin: { ...p.pos },
+          angle: 0,
+          range: 0,
+          radius,
+          halfAngle: 0,
+        });
+        if (world.boss && world.boss.hp > 0 && pointInCircle(world.boss.pos, p.pos, radius, world.boss.radius)) {
+          damageBoss(world, p, world.boss, ab.landingDamage);
+        }
+        for (const a of world.adds) {
+          if (a.hp <= 0) continue;
+          if (pointInCircle(a.pos, p.pos, radius, a.radius)) damageAdd(world, p, a, ab.landingDamage);
+        }
+      }
+      if (ab.healOnUse) healPlayer(world, null, p, ab.healOnUse);
       break;
     }
 
@@ -229,13 +249,21 @@ export function resolvePlayerAbility(
       const from = { ...p.pos };
       const target = vadd(p.pos, vscale(dir, ab.range ?? 250));
       p.pos = clampToArena(world, target, p.radius);
+      if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
+      if (ab.healOnUse) healPlayer(world, null, p, ab.healOnUse);
       world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
       break;
     }
 
     case 'selfBuff': {
       if (ab.buffDefMult) {
-        applyBuff(p, makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 4, 'shieldWall'));
+        applyBuff(p, makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 4, 'selfBuffDef'));
+      }
+      if (ab.buffDamageMult) {
+        applyBuff(p, makeBuff('damageDealt', ab.buffDamageMult, ab.buffDuration ?? 4, 'selfBuffDmg'));
+      }
+      if (ab.buffMoveMult) {
+        applyBuff(p, makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 4, 'selfBuffMove'));
       }
       break;
     }
@@ -255,6 +283,9 @@ export function resolvePlayerAbility(
       }
       if (ab.buffDefMult) {
         applyBuff(target, makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 6, 'blessingDef'));
+      }
+      if (ab.buffMoveMult) {
+        applyBuff(target, makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 6, 'blessingMove'));
       }
       break;
     }
@@ -286,15 +317,65 @@ export function resolvePlayerAbility(
       forceTopThreat(world.players, p.id);
       world.tauntTargetId = p.id;
       world.tauntTimer = ab.buffDuration ?? 4;
+      // Bastion upgrade: taunting also shields the taunter.
+      if (ab.buffDefMult) {
+        applyBuff(p, makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 4, 'tauntShield'));
+      }
       break;
     }
   }
 }
 
+/** Heal the caster for a fraction of the damage a lifesteal ability dealt. */
+function lifesteal(world: World, p: Player, ab: PlayerAbilityDef, dealt: number): void {
+  if (ab.lifestealFrac && dealt > 0) {
+    healPlayer(world, null, p, dealt * ab.lifestealFrac);
+  }
+}
+
+/** Resolve a `groundZone` ability into a spawned zone (centered or ground-targeted). */
+function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void {
+  const healPerTick = ab.zoneTickHeal ?? 0;
+  const dmgPerTick = ab.zoneTickDamage ?? 0;
+  const slowMult = ab.slowMult ?? 1;
+  const slowDuration = ab.slowDuration ?? 0;
+  const kind: ZoneKind =
+    ab.zoneKind ?? (healPerTick > 0 ? 'sanctuary' : 'rainOfArrows');
+  const centered = kind === 'sanctuary' || kind === 'consecration';
+  const radius = ab.radius ?? 130;
+  const pos = centered
+    ? { ...p.pos }
+    : clampToArena(world, vadd(p.pos, vscale(p.aim, ab.range ?? 500)), radius);
+  spawnZone(world, {
+    kind,
+    pos,
+    radius,
+    side: 'player',
+    ownerId: p.id,
+    damagePerTick: dmgPerTick,
+    healPerTick,
+    slowMult,
+    slowDuration,
+    duration: ab.zoneDuration ?? 4,
+  });
+}
+
 function projectileKindFor(p: Player, slot: AbilitySlot): ProjectileKind {
   if (p.classId === 'mage') return slot === 'a1' ? 'fireball' : 'arcaneBolt';
-  if (p.classId === 'cleric') return 'smite';
+  if (p.classId === 'cleric' || p.classId === 'paladin') return 'smite';
+  if (p.classId === 'ranger' || p.classId === 'druid' || p.classId === 'barbarian' || p.classId === 'rogue')
+    return 'arrow';
   return 'arrow';
+}
+
+interface SpawnProjOpts {
+  speed: number;
+  damage: number;
+  impactRadius: number;
+  maxRange: number;
+  slowMult?: number;
+  slowDuration?: number;
+  freeze?: number;
 }
 
 function spawnPlayerProjectile(
@@ -302,22 +383,24 @@ function spawnPlayerProjectile(
   p: Player,
   kind: ProjectileKind,
   dir: Vec2,
-  speed: number,
-  damage: number,
-  impactRadius: number,
+  o: SpawnProjOpts,
 ): void {
   const origin = vadd(p.pos, vscale(dir, p.radius + 4));
   const proj: Projectile = {
     id: world.allocId(),
     kind,
     pos: origin,
-    vel: vscale(dir, speed),
+    vel: vscale(dir, o.speed),
     ownerId: p.id,
     side: 'player',
-    damage,
-    impactRadius,
-    hitRadius: impactRadius > 0 ? 10 : 8,
+    damage: o.damage,
+    impactRadius: o.impactRadius,
+    hitRadius: o.impactRadius > 0 ? 10 : 8,
     lifetime: 3,
+    rangeLeft: o.maxRange,
+    slowMult: o.slowMult,
+    slowDuration: o.slowDuration,
+    freeze: o.freeze,
   };
   world.projectiles.push(proj);
   world.events.push({ t: 'projectile', kind, pos: { ...origin } });
@@ -353,6 +436,8 @@ interface SpawnZoneOpts {
   ownerId: number;
   damagePerTick: number;
   healPerTick: number;
+  slowMult?: number;
+  slowDuration?: number;
   duration: number;
 }
 
@@ -366,6 +451,8 @@ function spawnZone(world: World, o: SpawnZoneOpts): void {
     ownerId: o.ownerId,
     damagePerTick: o.damagePerTick,
     healPerTick: o.healPerTick,
+    slowMult: o.slowMult ?? 1,
+    slowDuration: o.slowDuration ?? 0,
     duration: o.duration,
     remaining: o.duration,
     tickAccum: 0,
@@ -384,6 +471,13 @@ function knockback(world: World, p: Player, center: Vec2, distance: number): voi
   p.pos = clampToArena(world, vadd(p.pos, vscale(d, distance)), p.radius);
 }
 
+/** Apply a boss strike's on-hit slow rider to a player (frost bosses). */
+function bossSlowRider(p: Player, ab: BossAbilityDef): void {
+  if (ab.slowMult && ab.slowMult < 1) {
+    applyBuff(p, makeBuff('moveSpeed', ab.slowMult, ab.slowDuration ?? 2, 'bossSlow'));
+  }
+}
+
 /**
  * Resolve a boss ability's effect at execute time. `action` carries the
  * targeting locked at wind-up start (aimAngle / targetPos / targetId).
@@ -394,7 +488,8 @@ export function resolveBossAbility(
   ab: BossAbilityDef,
   action: BossAction,
 ): void {
-  const dmg = ab.damage * world.bossDamageScalar();
+  // Boss offensive self-buffs (War Cry / Frenzy / Power of Night…) empower its hits.
+  const dmg = ab.damage * world.bossDamageScalar() * buffMult(boss, 'damageDealt');
   const alivePlayers = world.players.filter((p) => p.state === 'alive');
 
   world.events.push({
@@ -412,6 +507,8 @@ export function resolveBossAbility(
       for (const p of alivePlayers) {
         if (pointInCone(p.pos, boss.pos, action.aimAngle, range, half, p.radius)) {
           damagePlayer(world, p, dmg);
+          bossSlowRider(p, ab);
+          if (ab.stun) applyBuff(p, makeBuff('stun', 0, ab.stun, 'bossStun'));
         }
       }
       world.events.push({ t: 'telegraph', pos: { ...boss.pos }, shape: 'cone' });
@@ -422,7 +519,10 @@ export function resolveBossAbility(
       const center = action.targetPos ?? { ...boss.pos };
       const radius = ab.radius ?? 110;
       for (const p of alivePlayers) {
-        if (pointInCircle(p.pos, center, radius, p.radius)) damagePlayer(world, p, dmg);
+        if (pointInCircle(p.pos, center, radius, p.radius)) {
+          damagePlayer(world, p, dmg);
+          bossSlowRider(p, ab);
+        }
       }
       world.events.push({ t: 'telegraph', pos: center, shape: 'circle' });
       break;
@@ -434,6 +534,8 @@ export function resolveBossAbility(
         if (pointInCircle(p.pos, boss.pos, radius, p.radius)) {
           damagePlayer(world, p, dmg);
           if (ab.knockback) knockback(world, p, boss.pos, ab.knockback);
+          bossSlowRider(p, ab);
+          if (ab.stun) applyBuff(p, makeBuff('stun', 0, ab.stun, 'bossStun'));
         }
       }
       world.events.push({ t: 'telegraph', pos: { ...boss.pos }, shape: 'circle' });
@@ -450,6 +552,7 @@ export function resolveBossAbility(
         if (pointInSegment(p.pos, from, to, halfWidth, p.radius)) {
           damagePlayer(world, p, dmg);
           if (ab.knockback) knockback(world, p, from, ab.knockback);
+          bossSlowRider(p, ab);
         }
       }
       boss.pos = clampToArena(world, to, boss.radius);
@@ -462,27 +565,40 @@ export function resolveBossAbility(
         ? world.players.find((p) => p.id === action.targetId && p.state === 'alive')
         : null;
       const aimAt = target ? target.pos : action.targetPos ?? vadd(boss.pos, fromAngle(action.aimAngle, 100));
-      const dir = normalize(sub(aimAt, boss.pos));
+      const baseAngle = angleOf(sub(aimAt, boss.pos));
       const speed = ab.projSpeed ?? 420;
-      const origin = vadd(boss.pos, vscale(dir, boss.radius + 6));
-      world.projectiles.push({
-        id: world.allocId(),
-        kind: 'shadowBolt',
-        pos: origin,
-        vel: vscale(dir, speed),
-        ownerId: boss.id,
-        side: 'boss',
-        damage: dmg,
-        impactRadius: 0,
-        hitRadius: 12,
-        lifetime: 4,
-      });
-      world.events.push({ t: 'projectile', kind: 'shadowBolt', pos: { ...origin } });
+      const count = ab.projCount ?? 1;
+      const spread = ((ab.spreadDeg ?? 0) * Math.PI) / 180;
+      const maxRange = ab.range ?? 900;
+      for (let i = 0; i < count; i++) {
+        const t = count > 1 ? i / (count - 1) - 0.5 : 0;
+        const ang = baseAngle + t * spread;
+        const dir = fromAngle(ang);
+        const origin = vadd(boss.pos, vscale(dir, boss.radius + 6));
+        world.projectiles.push({
+          id: world.allocId(),
+          kind: 'shadowBolt',
+          pos: origin,
+          vel: vscale(dir, speed),
+          ownerId: boss.id,
+          side: 'boss',
+          damage: dmg,
+          impactRadius: 0,
+          hitRadius: 12,
+          lifetime: 4,
+          rangeLeft: maxRange,
+          slowMult: ab.slowMult,
+          slowDuration: ab.slowDuration,
+        });
+      }
+      world.events.push({ t: 'projectile', kind: 'shadowBolt', pos: { ...boss.pos } });
       break;
     }
 
     case 'summon': {
-      const n = ab.countScaling === 'adds' ? addCount(world.scaling.playerCount) : 1;
+      const base = ab.countScaling === 'adds' ? addCount(world.scaling.playerCount) : 1;
+      const n = base + (ab.addCountBonus ?? 0);
+      const hp = ADD_HP * (ab.addHpMult ?? 1);
       for (let i = 0; i < n; i++) {
         const angle = world.rng.range(0, Math.PI * 2);
         const r = world.rng.range(60, 140);
@@ -491,26 +607,25 @@ export function resolveBossAbility(
           vadd(boss.pos, fromAngle(angle, boss.radius + r)),
           ADD_RADIUS,
         );
-        const skeleton: Add = {
+        const minion: Add = {
           id: world.allocId(),
           pos,
-          hp: ADD_HP,
-          maxHp: ADD_HP,
-          moveSpeed: ADD_MOVE_SPEED,
+          hp,
+          maxHp: hp,
+          moveSpeed: ADD_MOVE_SPEED * (ab.addSpeedMult ?? 1),
           radius: ADD_RADIUS,
           targetId: null,
           attackCd: world.rng.range(0.2, 0.8),
           buffs: [],
         };
-        world.adds.push(skeleton);
-        // Spawn burst so summoned skeletons visibly "arrive" (Lich readability).
-        world.events.push({ t: 'spawn', id: skeleton.id, kind: 'add', pos: { ...pos } });
+        world.adds.push(minion);
+        world.events.push({ t: 'spawn', id: minion.id, kind: 'add', pos: { ...pos } });
       }
       break;
     }
 
     case 'voidzones': {
-      const n = zoneCount(world.scaling.playerCount);
+      const n = zoneCount(world.scaling.playerCount) + (ab.zoneCountBonus ?? 0);
       const pool = alivePlayers.length > 0 ? alivePlayers : world.players;
       for (let i = 0; i < n; i++) {
         const anchor = pool.length > 0 ? world.rng.pick(pool).pos : boss.pos;
@@ -524,9 +639,19 @@ export function resolveBossAbility(
           ownerId: boss.id,
           damagePerTick: (ab.zoneTickDamage ?? 12) * world.bossDamageScalar(),
           healPerTick: 0,
+          slowMult: ab.slowMult,
+          slowDuration: ab.slowDuration,
           duration: ab.zoneDuration ?? 8,
         });
       }
+      break;
+    }
+
+    case 'buffSelf': {
+      if (ab.buffMoveMult) applyBuff(boss, makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 5, 'bossHaste'));
+      if (ab.buffDamageMult) applyBuff(boss, makeBuff('damageDealt', ab.buffDamageMult, ab.buffDuration ?? 5, 'bossFrenzy'));
+      if (ab.buffDefMult) applyBuff(boss, makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 5, 'bossWard'));
+      if (ab.selfHealFrac) healBoss(boss, boss.maxHp * ab.selfHealFrac);
       break;
     }
 
@@ -555,11 +680,15 @@ export function beamTick(
       : null;
   if (!target) return;
   if (dist(boss.pos, target.pos) > (ab.range ?? 500)) return; // out-ranged: broken
-  const dealt = damagePlayer(world, target, ab.damage * world.bossDamageScalar());
+  const dealt = damagePlayer(
+    world,
+    target,
+    ab.damage * world.bossDamageScalar() * buffMult(boss, 'damageDealt'),
+  );
   if (ab.healSelf) healBoss(boss, dealt);
 }
 
 // re-export for convenience / potential external tuning
 export { PLAYER_RADIUS };
-export type { Vec2, Add };
+export type { Vec2, Add, BuffKind };
 export { withLength };

@@ -3,14 +3,18 @@
  * toggle sound, and read a short explanation of how the peer-to-peer model
  * works. Purely presentational; all state lives in the app store.
  */
+import { useRef } from 'react';
 import './styles.css';
 import { useStore } from './store';
 import { playUiSound, openControls } from './session';
+import { useGamepadMenu } from '../input/useGamepadMenu';
 import VolumeControl from './VolumeControl';
 
 export function MainMenu() {
   const error = useStore((s) => s.error);
   const setPhase = useStore((s) => s.setPhase);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useGamepadMenu(panelRef);
 
   const goHost = (): void => {
     playUiSound('uiClick');
@@ -29,7 +33,7 @@ export function MainMenu() {
 
   return (
     <div className="wb-screen">
-      <div className="wb-panel wb-menu-panel">
+      <div className="wb-panel wb-menu-panel" ref={panelRef}>
         <h1 className="wb-title">WARBAND</h1>
         <p className="wb-tagline">
           Gather a warband. Slay the boss. No server required.

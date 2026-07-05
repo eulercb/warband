@@ -121,9 +121,13 @@ export async function hostGame(): Promise<void> {
       s.setResult(null);
       resetPauseState(s);
       s.setRun({ index: info.runIndex, total: info.runTotal });
-      if (info.runIndex === 0) s.clearMyUpgrades(); // fresh run
+      s.setCycle(info.cycle);
+      s.setNextReadyState(0, 0);
+      // Fresh run (first boss of cycle 0) clears carried upgrade display.
+      if (info.runIndex === 0 && info.cycle === 0) s.clearMyUpgrades();
       s.setPhase('game');
     },
+    onNextReady: (info) => useStore.getState().setNextReadyState(info.ready, info.total),
     onPause: applyPauseState,
     onResult: (result) => {
       const s = useStore.getState();
@@ -168,9 +172,12 @@ export async function joinGame(code: string): Promise<void> {
       s.setResult(null);
       resetPauseState(s);
       s.setRun({ index: msg.runIndex, total: msg.runTotal });
-      if (msg.runIndex === 0) s.clearMyUpgrades(); // fresh run
+      s.setCycle(msg.cycle);
+      s.setNextReadyState(0, 0);
+      if (msg.runIndex === 0 && msg.cycle === 0) s.clearMyUpgrades(); // fresh run
       s.setPhase('game');
     },
+    onNextReady: (info) => useStore.getState().setNextReadyState(info.ready, info.total),
     onPause: applyPauseState,
     onResult: (result) => {
       const s = useStore.getState();
@@ -330,11 +337,29 @@ export function requestPause(paused: boolean): void {
   useStore.getState().session?.requestPause(paused);
 }
 
-/** Submit this player's between-boss upgrade pick (records it locally + relays). */
+/** Submit this player's between-boss generic upgrade pick (records + relays). */
 export function chooseUpgrade(id: UpgradeId): void {
   const s = useStore.getState();
   s.session?.chooseUpgrade(id);
   s.addMyUpgrade(id);
+}
+
+/** Submit this player's between-boss character (class) upgrade pick. */
+export function chooseCharUpgrade(id: string): void {
+  const s = useStore.getState();
+  s.session?.chooseCharUpgrade(id);
+  s.addMyCharUpgrade(id);
+}
+
+/** Mark this player ready (or not) to advance to the next boss. */
+export function setNextReady(ready: boolean): void {
+  useStore.getState().session?.setNextReady(ready);
+}
+
+/** Host: carry the run into the next endless cycle (harder, keeps upgrades). */
+export function continueEndless(): void {
+  const s = useStore.getState();
+  if (s.isHost && s.session instanceof Host) s.session.continueEndless();
 }
 
 /** Host: end the current fight immediately as a defeat (pause-menu "End Run"). */

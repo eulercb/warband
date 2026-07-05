@@ -19,6 +19,8 @@ import type {
   PauseMsg,
   PauseReqMsg,
   UpgradeMsg,
+  NextReadyMsg,
+  NextReadyStateMsg,
   ByeMsg,
   NetSession,
 } from './protocol';
@@ -53,6 +55,8 @@ export interface ClientOpts {
   onReturnLobby: () => void;
   /** Host paused / resumed the shared sim (with who paused + resume countdown). */
   onPause?: (paused: boolean, info: { byName?: string; countdown: number | null }) => void;
+  /** How many players have readied up for the next boss (upgrade screen). */
+  onNextReady?: (info: { ready: number; total: number }) => void;
   onHostLeft: () => void;
   /**
    * Host reachability, as a 0/1 count: 1 once we've actually received a message
@@ -93,6 +97,8 @@ export class Client implements NetSession {
   private readonly pauseAction: NetAction<PauseMsg>;
   private readonly pauseReqAction: NetAction<PauseReqMsg>;
   private readonly upgradeAction: NetAction<UpgradeMsg>;
+  private readonly nextReadyAction: NetAction<NextReadyMsg>;
+  private readonly nextReadyStateAction: NetAction<NextReadyStateMsg>;
   private readonly byeAction: NetAction<ByeMsg>;
 
   private readonly interpolator = new SnapshotInterpolator();
@@ -151,6 +157,8 @@ export class Client implements NetSession {
     this.pauseAction = this.action(ACTIONS.pause);
     this.pauseReqAction = this.action(ACTIONS.pauseReq);
     this.upgradeAction = this.action(ACTIONS.upgrade);
+    this.nextReadyAction = this.action(ACTIONS.nextReady);
+    this.nextReadyStateAction = this.action(ACTIONS.nextReadyState);
     this.byeAction = this.action(ACTIONS.bye);
 
     // --- Host -> client messages ---
@@ -193,6 +201,10 @@ export class Client implements NetSession {
         byName: msg.byName,
         countdown: msg.countdown ?? null,
       });
+    };
+    this.nextReadyStateAction.onMessage = (msg, ctx) => {
+      this.markHostReached(ctx.peerId);
+      this.opts.onNextReady?.({ ready: msg.ready, total: msg.total });
     };
     this.byeAction.onMessage = (msg) => {
       // NB: a leaving *client* also sends bye, so this channel is not a
@@ -305,9 +317,19 @@ export class Client implements NetSession {
     this.pauseReqAction.send({ paused });
   }
 
-  /** NetSession: relay this player's between-boss upgrade pick to the host. */
+  /** NetSession: relay this player's between-boss generic upgrade pick to the host. */
   chooseUpgrade(upgradeId: UpgradeId): void {
-    this.upgradeAction.send({ upgradeId });
+    this.upgradeAction.send({ generic: upgradeId });
+  }
+
+  /** NetSession: relay this player's between-boss character upgrade pick. */
+  chooseCharUpgrade(upgradeId: string): void {
+    this.upgradeAction.send({ char: upgradeId });
+  }
+
+  /** NetSession: relay this player's "ready for the next boss" flag. */
+  setNextReady(ready: boolean): void {
+    this.nextReadyAction.send({ ready });
   }
 
   getRenderState(nowMs: number): RenderState | null {

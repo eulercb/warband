@@ -312,3 +312,72 @@
   color: #cfe3ff;
   font-size: 12px;
 }
+
+/* --- Buff / debuff chips (near names + on bars) ---------------------------- */
+.hud-buffs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.hud-buff {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0 3px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.5);
+  font-size: 10px;
+  line-height: 1;
+}
+.hud-buff.good {
+  background: rgba(40, 90, 60, 0.5);
+}
+.hud-buff.bad {
+  background: rgba(90, 40, 40, 0.5);
+}
+.hud-buff-glyph {
+  font-size: 10px;
+}
+.hud-buff-secs {
+  font-weight: 700;
+  opacity: 0.9;
+}
+.hud-teammate-effects {
+  margin: 2px 0 3px;
+  min-height: 0;
+}
+.hud-teammate-effects .hud-buffs {
+  margin-left: 0;
+}
+
+/* Local hero: buff row + live score above the health bar */
+.hud-self-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.hud-self-row .hud-buffs {
+  margin-left: 0;
+}
+.hud-score {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffe08a;
+  text-shadow: 0 1px 3px #000;
+  white-space: nowrap;
+}
+.hud-cycle-tag {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(120, 80, 200, 0.4);
+  border: 1px solid rgba(180, 150, 255, 0.5);
+  color: #d9c6ff;
+  font-size: 11px;
+}
