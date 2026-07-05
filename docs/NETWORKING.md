@@ -45,6 +45,12 @@ If the public WebTorrent trackers are down, overloaded, or blocked by a firewall
 mitigates this by contacting **every** tracker in its pool at once (so one dead
 tracker doesn't matter) and lets you add your own via `VITE_TRACKER_URLS`.
 
+Warband also **deny-lists trackers that are known to be broken** so they don't
+waste a redundancy slot or spam the console. In particular `tracker.files.fm`
+(one of Trystero's built-in defaults) rejects the `wss://…/announce` handshake
+with an HTTP **403 Forbidden** and can never introduce peers, so it is stripped
+from the pool in `src/net/rtc.ts` (`sanitizeTrackerUrls` / `BLOCKED_TRACKER_HOSTS`).
+
 ### 2. The direct connection must be establishable (NAT traversal)
 
 Even after a successful introduction, two browsers on the open internet are
@@ -136,7 +142,8 @@ problem is matchmaking (trackers) or the direct connection (NAT/TURN).
 
 - `src/net/room.ts` — opens the Trystero room; assembles TURN + tracker config.
 - `src/net/rtc.ts` — pure builders for the ICE/TURN + tracker configuration
-  (env-overridable, unit-tested in `tests/rtc.test.ts`).
+  (env-overridable, unit-tested in `tests/rtc.test.ts`); also holds the
+  known-broken-tracker deny-list (`sanitizeTrackerUrls`).
 - `src/net/host.ts` / `src/net/client.ts` — the star-topology host and clients;
   they report connected-peer counts up to the UI.
 - `src/ui/session.ts` — wires peer counts into the store and drives the

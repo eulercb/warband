@@ -3,6 +3,8 @@ import {
   buildTurnConfig,
   extraTrackerUrls,
   mergeTrackerUrls,
+  sanitizeTrackerUrls,
+  BLOCKED_TRACKER_HOSTS,
   DEFAULT_TURN,
   type RtcEnv,
 } from '../src/net/rtc';
@@ -69,5 +71,51 @@ describe('tracker url helpers', () => {
       'wss://b',
       'wss://c',
     ]);
+  });
+});
+
+describe('sanitizeTrackerUrls', () => {
+  it('drops the known-broken files.fm tracker (the "forbidden" one)', () => {
+    const pool = [
+      'wss://tracker.webtorrent.dev',
+      'wss://tracker.openwebtorrent.com',
+      'wss://tracker.btorrent.xyz',
+      'wss://tracker.files.fm:7073/announce',
+    ];
+    expect(sanitizeTrackerUrls(pool)).toEqual([
+      'wss://tracker.webtorrent.dev',
+      'wss://tracker.openwebtorrent.com',
+      'wss://tracker.btorrent.xyz',
+    ]);
+  });
+
+  it('matches a blocked host regardless of port, path, or casing', () => {
+    expect(
+      sanitizeTrackerUrls([
+        'wss://TRACKER.FILES.FM:7073/announce',
+        'wss://tracker.files.fm',
+        'wss://tracker.files.fm:1234/other',
+      ]),
+    ).toEqual([]);
+  });
+
+  it('leaves a clean pool untouched and preserves order', () => {
+    const pool = ['wss://a', 'wss://b', 'wss://c'];
+    expect(sanitizeTrackerUrls(pool)).toEqual(pool);
+  });
+
+  it('also strips a blocked tracker that arrived via env extras', () => {
+    const merged = mergeTrackerUrls(
+      ['wss://tracker.webtorrent.dev'],
+      extraTrackerUrls({ VITE_TRACKER_URLS: 'wss://tracker.files.fm:7073/announce, wss://ok.example' }),
+    );
+    expect(sanitizeTrackerUrls(merged)).toEqual([
+      'wss://tracker.webtorrent.dev',
+      'wss://ok.example',
+    ]);
+  });
+
+  it('exposes files.fm on the deny-list', () => {
+    expect(BLOCKED_TRACKER_HOSTS).toContain('tracker.files.fm');
   });
 });

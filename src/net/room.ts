@@ -11,7 +11,13 @@
 // connectivity is flaky — a one-line change.)
 import { joinRoom, defaultRelayUrls } from '@trystero-p2p/torrent';
 import { APP_ID } from './protocol';
-import { buildTurnConfig, extraTrackerUrls, mergeTrackerUrls, type RtcEnv } from './rtc';
+import {
+  buildTurnConfig,
+  extraTrackerUrls,
+  mergeTrackerUrls,
+  sanitizeTrackerUrls,
+  type RtcEnv,
+} from './rtc';
 
 /** This peer's stable, module-level id (from Trystero). Re-exported for callers. */
 export { selfId } from '@trystero-p2p/torrent';
@@ -60,7 +66,12 @@ const rtcEnv = import.meta.env as unknown as RtcEnv;
 const TURN_CONFIG = buildTurnConfig(rtcEnv);
 // Use every tracker we know about at once (built-in pool + any extras) so a
 // single dead/overloaded tracker can't stop two peers from finding each other.
-const TRACKER_URLS = mergeTrackerUrls(defaultRelayUrls, extraTrackerUrls(rtcEnv));
+// `sanitizeTrackerUrls` strips known-broken trackers (e.g. tracker.files.fm,
+// which rejects the announce handshake with HTTP 403 Forbidden) so they don't
+// waste a redundancy slot or spam the console with failures.
+const TRACKER_URLS = sanitizeTrackerUrls(
+  mergeTrackerUrls(defaultRelayUrls, extraTrackerUrls(rtcEnv)),
+);
 
 /**
  * Join (or create) the Trystero room for `code` under the shared app id.
