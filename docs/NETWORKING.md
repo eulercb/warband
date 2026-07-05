@@ -66,9 +66,33 @@ usually behind home routers doing **NAT**. To punch a direct path they use:
   how correct the code and trackers are.
 
 When you test with **two tabs / two windows on the same computer**, there is no
-NAT between them at all, so it always works — which is exactly why local testing
-can look fine while a real cross-internet game hangs in the lobby. **Missing TURN
-is the single most common cause of that.**
+NAT between them at all, so it *should* be the easy case — which is exactly why
+local testing usually looks fine while a real cross-internet game hangs in the
+lobby. **Missing TURN is the single most common cause of that.** (For the one way
+same-machine play can *also* break — mDNS host-candidate hiding — and how Warband
+fixes it, see the next section.)
+
+### Same machine, but still stuck? mDNS host candidates
+
+Two tabs on one machine can *still* fail to connect, with the exact same "SDP
+exchanged, 0 active peers" symptom, and the cause is **not** NAT/TURN. For
+privacy, modern browsers no longer expose your real local IP as a host ICE
+candidate — they replace it with a randomized `*.local` **mDNS** hostname. Turning
+that back into a usable address needs an mDNS multicast responder, and that
+responder is frequently **unavailable**: blocked by corporate security software,
+switched off by a privacy extension, or namespaced apart across browser profiles
+and incognito windows. When it is, even two tabs on one machine end up with **no
+usable host candidate** and fall through to STUN (needs NAT hairpinning) or the
+overloaded public TURN relay — and hang when both fail.
+
+Warband fixes this by **rewriting `*.local` host candidates to `127.0.0.1`** so
+same-machine peers connect directly over loopback, with no mDNS resolver and no
+TURN. It is **on by default**. It is safe for real games: only same-host
+`typ host` candidate lines are rewritten, so server-reflexive (STUN) and relay
+(TURN) candidates — the ones that carry play between different machines — are left
+untouched. The only thing it trades away is a *direct* same-LAN link between two
+*different* machines (their host candidates become loopback too, falling back to
+hairpin-STUN/TURN); set `VITE_NO_RTC_LOOPBACK=true` if you need that path.
 
 Warband bundles a free, best-effort public TURN relay so cross-network games have
 a chance of connecting out of the box, but public relays are shared and their
@@ -210,7 +234,8 @@ matchmaking (trackers) or the direct connection (NAT/TURN).
 - `src/net/room.ts` — opens the Trystero room; assembles TURN + tracker config.
 - `src/net/rtc.ts` — pure builders for the ICE/TURN + tracker configuration
   (env-overridable, unit-tested in `tests/rtc.test.ts`); also holds the
-  known-broken-tracker deny-list (`sanitizeTrackerUrls`).
+  known-broken-tracker deny-list (`sanitizeTrackerUrls`) and the same-machine
+  mDNS→loopback decision (`rewriteMdnsToLoopback`).
 - `src/net/host.ts` / `src/net/client.ts` — the star-topology host and clients;
   they report connected-peer counts up to the UI.
 - `src/net/log.ts` — verbose connection logging + live diagnostics (the

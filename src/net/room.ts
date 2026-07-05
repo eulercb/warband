@@ -16,6 +16,7 @@ import {
   extraTrackerUrls,
   mergeTrackerUrls,
   sanitizeTrackerUrls,
+  rewriteMdnsToLoopback,
   type RtcEnv,
 } from './rtc';
 import { netLog, netWarn, summarizeIceServers } from './log';
@@ -73,6 +74,10 @@ const TURN_CONFIG = buildTurnConfig(rtcEnv);
 const TRACKER_URLS = sanitizeTrackerUrls(
   mergeTrackerUrls(defaultRelayUrls, extraTrackerUrls(rtcEnv)),
 );
+// Rewrite same-machine mDNS (`*.local`) host candidates to loopback so two peers
+// on ONE machine (two tabs/windows) always connect directly, even when the OS
+// mDNS responder is blocked. Fixes "can't join even in two tabs"; see rtc.ts.
+const RTC_LOOPBACK = rewriteMdnsToLoopback(rtcEnv);
 
 /**
  * Live tracker WebSockets by url, from Trystero (`getRelaySockets`). Used by the
@@ -100,6 +105,7 @@ export function openRoom(code: string, onJoinError?: (msg: string) => void): Roo
     appId: APP_ID,
     ice: summarizeIceServers(TURN_CONFIG),
     trackers: TRACKER_URLS,
+    loopback: RTC_LOOPBACK,
   });
   return joinRoom(
     {
@@ -108,6 +114,12 @@ export function openRoom(code: string, onJoinError?: (msg: string) => void): Roo
       // peers behind restrictive NATs can still connect over the internet.
       turnConfig: TURN_CONFIG,
       relayConfig: { urls: TRACKER_URLS, redundancy: TRACKER_URLS.length },
+      // Rewrite `*.local` mDNS host candidates to 127.0.0.1 so two peers on the
+      // SAME machine connect over loopback without depending on the browser's
+      // mDNS responder (often blocked) or a TURN relay. This is the fix for
+      // "can't join even in two tabs on the same browser"; remote peers are
+      // unaffected (only same-host `typ host` lines are touched). See rtc.ts.
+      _test_only_mdnsHostFallbackToLoopback: RTC_LOOPBACK,
     },
     code,
     {

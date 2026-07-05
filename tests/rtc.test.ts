@@ -4,6 +4,7 @@ import {
   extraTrackerUrls,
   mergeTrackerUrls,
   sanitizeTrackerUrls,
+  rewriteMdnsToLoopback,
   BLOCKED_TRACKER_HOSTS,
   DEFAULT_TURN,
   type RtcEnv,
@@ -52,6 +53,26 @@ describe('buildTurnConfig', () => {
 
   it('returns nothing when no TURN is configured and the default is disabled', () => {
     expect(buildTurnConfig({ VITE_NO_DEFAULT_TURN: 'yes' })).toEqual([]);
+  });
+});
+
+describe('rewriteMdnsToLoopback', () => {
+  it('is ON by default so two tabs on one machine connect over loopback', () => {
+    expect(rewriteMdnsToLoopback({})).toBe(true);
+  });
+
+  it('can be turned off via VITE_NO_RTC_LOOPBACK (any truthy value)', () => {
+    expect(rewriteMdnsToLoopback({ VITE_NO_RTC_LOOPBACK: 'true' })).toBe(false);
+    expect(rewriteMdnsToLoopback({ VITE_NO_RTC_LOOPBACK: '1' })).toBe(false);
+    expect(rewriteMdnsToLoopback({ VITE_NO_RTC_LOOPBACK: 'yes' })).toBe(false);
+    expect(rewriteMdnsToLoopback({ VITE_NO_RTC_LOOPBACK: 'ON' })).toBe(false);
+  });
+
+  it('stays ON for empty / falsy / unrecognized values', () => {
+    expect(rewriteMdnsToLoopback({ VITE_NO_RTC_LOOPBACK: '' })).toBe(true);
+    expect(rewriteMdnsToLoopback({ VITE_NO_RTC_LOOPBACK: 'false' })).toBe(true);
+    expect(rewriteMdnsToLoopback({ VITE_NO_RTC_LOOPBACK: 'no' })).toBe(true);
+    expect(rewriteMdnsToLoopback({ VITE_NO_RTC_LOOPBACK: 'maybe' })).toBe(true);
   });
 });
 

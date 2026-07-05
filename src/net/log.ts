@@ -295,9 +295,12 @@ export function diagnosisVerdict(d: DiagnosisInput): string {
       'peers. Matchmaking WORKED — this is the NAT-traversal stage, and configuring TURN is ' +
       'exactly what helps here. The two browsers cannot open a direct path and need a TURN relay ' +
       'to bounce traffic between them; point VITE_TURN_URL at a relay you control (the bundled ' +
-      'public one is best-effort and often overloaded). This is the classic "connects in two tabs ' +
-      'on ONE machine, fails over the internet". If it ALSO fails in two tabs on one machine, then ' +
-      'WebRTC itself is being blocked locally (privacy extension / enterprise policy).'
+      'public one is best-effort and often overloaded). This is the classic "connects across the ' +
+      'internet only with TURN" case. Two tabs on ONE machine are handled separately: Warband ' +
+      'rewrites their mDNS host candidates to loopback so they connect directly without TURN, so ' +
+      'if a SAME-machine join still fails here either that rewrite was disabled ' +
+      '(VITE_NO_RTC_LOOPBACK) or WebRTC itself is being blocked locally (privacy extension / ' +
+      'enterprise policy).'
     );
   }
   // Sockets open, 0 peers, and NO signaling has been relayed: nobody has been
