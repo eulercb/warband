@@ -16,7 +16,10 @@ export interface BuffBadge {
 }
 
 /** Emoji + accent for one buff/debuff, or null if it shouldn't surface. */
-function describe(kind: BuffKind, mult: number): { glyph: string; color: number; good: boolean; label: string } | null {
+function describe(
+  kind: BuffKind,
+  mult: number,
+): { glyph: string; color: number; good: boolean; label: string } | null {
   switch (kind) {
     case 'stun':
       return { glyph: '💫', color: 0xffe14d, good: false, label: 'Stunned' };

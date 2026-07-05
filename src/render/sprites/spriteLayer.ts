@@ -22,13 +22,7 @@ import {
   type Spritesheet,
   type Texture,
 } from 'pixi.js';
-import type {
-  RenderState,
-  EntityId,
-  AbilitySlot,
-  GameEvent,
-  ClassId,
-} from '../../engine/types';
+import type { RenderState, EntityId, AbilitySlot, GameEvent, ClassId } from '../../engine/types';
 import type { Camera } from '../camera';
 import type { Fx } from '../fx';
 import {

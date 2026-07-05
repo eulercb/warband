@@ -83,7 +83,14 @@ export function pointInCone(
   halfAngle: number,
   targetRadius = 0,
 ): boolean {
-  return euclidPointInCone(nearestCopy(point, origin), origin, angle, range, halfAngle, targetRadius);
+  return euclidPointInCone(
+    nearestCopy(point, origin),
+    origin,
+    angle,
+    range,
+    halfAngle,
+    targetRadius,
+  );
 }
 
 export function pointInSegment(

@@ -38,12 +38,9 @@ jobs:
         run: npm ci
 
       - name: Format check (Prettier)
-        # Advisory only: the committed source does not yet fully conform to
-        # .prettierrc, so a hard failure here would block unrelated changes.
-        # Run `npm run format` locally to fix drift. Remove continue-on-error
-        # once the tree is fully formatted to make this a blocking gate.
-        continue-on-error: true
-        run: npx prettier --check "src/**/*.{ts,tsx}"
+        # Blocking gate: the tree is fully formatted. Run `npm run format`
+        # locally to fix any drift (see .prettierignore for excluded paths).
+        run: npm run format:check
 
       - name: Lint (ESLint)
         run: npm run lint

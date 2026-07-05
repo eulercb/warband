@@ -68,11 +68,7 @@ export function HostSetup() {
                   setMonster(id);
                 }}
                 aria-pressed={selected}
-                style={
-                  selected
-                    ? { borderColor: hex, boxShadow: `0 0 0 2px ${hex}55` }
-                    : undefined
-                }
+                style={selected ? { borderColor: hex, boxShadow: `0 0 0 2px ${hex}55` } : undefined}
               >
                 <span
                   className="wb-monster-accent"
@@ -102,7 +98,9 @@ export function HostSetup() {
             {gauntlet ? '✓' : ''}
           </span>
           <span className="wb-gauntlet-text">
-            <span className="wb-gauntlet-title">Run mode ({RUN_LENGTH}-boss gauntlet + Endless)</span>
+            <span className="wb-gauntlet-title">
+              Run mode ({RUN_LENGTH}-boss gauntlet + Endless)
+            </span>
             <span className="wb-gauntlet-sub">
               {gauntlet
                 ? `A ${RUN_LENGTH}-boss run of climbing difficulty, starting with ${MONSTERS[monsterId].name}. Pick upgrades between bosses; clear all ${RUN_LENGTH} to unlock Endless.`

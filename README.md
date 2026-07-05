@@ -8,10 +8,10 @@ Warband is a browser-hosted, peer-to-peer co-op boss fight game. One player host
 - **33 bosses** — the originals plus 30 new DnD/medieval creatures split across **Easy / Medium / Hard** tiers (goblins, spiders and dire wolves through orcs, basilisks and cyclopes up to beholders, vampire lords, mind flayers and krakens), each with its own mechanics.
 - **5-boss runs + Endless** — a run climbs through five bosses of rising difficulty with an upgrade phase between each. Clear all five and the Victory screen offers **Endless**: carry every upgrade and score into escalating cycles where bosses gain an elemental **type** (Frost Dragon, Dark Troll, Infernal Ogre…) and grow deadlier each lap.
 - **Between-boss upgrades (generic + character)** — after every boss each hero picks BOTH a generic run upgrade (swifter, tankier, faster cooldowns…) AND a class-specific **character upgrade** that retunes their kit's mechanics — a Mage can teach Frost Nova to freeze enemies solid, snap the Fireball's cast time down, a Barbarian's swings can drink blood, a Ranger's arrows can chill. Picks accumulate across the run.
-- **Ready-gated advance** — the run only proceeds to the next boss once *every* player has readied up (no auto-advance timer), just like the lobby.
+- **Ready-gated advance** — the run only proceeds to the next boss once _every_ player has readied up (no auto-advance timer), just like the lobby.
 - **Player score** — a running participation score (damage + healing + revives − deaths, plus boss-clear bonuses) shown live on the HUD, in the pause menu, and on the results screen, so an Endless run has a "how far did we get" number.
 - **Bot band members** — short a player? The host can add AI teammates of any class to fill the warband.
-- **Wrap-around arena** — the battlefield is a torus with no walls: march off one edge and you reappear on the other. The camera frames the **whole action** (party *and* boss) and **dynamically zooms out** when they spread apart so no hero is ever lost off-screen — without loosening past a full-arena view, so the wrap illusion stays intact.
+- **Wrap-around arena** — the battlefield is a torus with no walls: march off one edge and you reappear on the other. The camera frames the **whole action** (party _and_ boss) and **dynamically zooms out** when they spread apart so no hero is ever lost off-screen — without loosening past a full-arena view, so the wrap illusion stays intact.
 - **Ranged range caps** — every ranged attack now has a hard travel limit, so on the toroidal map a shot fizzles instead of lapping the arena forever and hitting you in the back.
 - **Themed terrain hazards** — each fight seeds random hazards themed to the boss (magma pools, swamps, cursed ice, death-fog…) that slow and burn anyone standing in them; a pause-menu legend explains each one.
 - **Solid cover obstacles** — seeded rubble blocks ranged attacks **and movement**: it behaves like a wall for heroes, minions and the boss alike, so you can break line of sight and body-block.
@@ -47,14 +47,14 @@ Then open the URL printed in your terminal (typically `http://localhost:5173`).
 
 **Same-machine two-window test:** you can try multiplayer with just one computer. Open the dev URL (`http://localhost:5173`) in two browser windows. In the first window click **Host** and copy the room code (or the full `#room=CODE` link). In the second window paste the code/link, pick a class, and press **Ready** — then Start from the host window. Peer-to-peer signaling works across two tabs on the same machine.
 
-> **Note:** the same-machine test always connects because there is no NAT between two tabs. Connecting over the *internet* has an extra requirement (a TURN relay for restrictive networks) — see **Multiplayer & connectivity** below.
+> **Note:** the same-machine test always connects because there is no NAT between two tabs. Connecting over the _internet_ has an extra requirement (a TURN relay for restrictive networks) — see **Multiplayer & connectivity** below.
 
 ## Multiplayer & connectivity
 
 Warband has no game server: the host's tab runs the simulation and peers connect directly over WebRTC. Two things are worth knowing:
 
 - **Yes, sharing the room code is enough to find the host.** The code (plus the app id) is hashed into a shared topic that both browsers announce to public WebTorrent trackers; the trackers introduce the peers and relay the one-time WebRTC handshake. No IP addresses or accounts are involved.
-- **Internet play may need a TURN relay.** After matchmaking, the browsers try to open a *direct* connection. On many real networks (symmetric NATs, mobile carriers, corporate/campus firewalls) a direct path is impossible and the traffic must bounce off a **TURN relay**. Warband bundles a free best-effort public relay so cross-network games can connect out of the box, but for dependable play you should point it at your own TURN server via environment variables. Copy `.env.example` to `.env.local` and set `VITE_TURN_URL` / `VITE_TURN_USERNAME` / `VITE_TURN_CREDENTIAL`, then rebuild.
+- **Internet play may need a TURN relay.** After matchmaking, the browsers try to open a _direct_ connection. On many real networks (symmetric NATs, mobile carriers, corporate/campus firewalls) a direct path is impossible and the traffic must bounce off a **TURN relay**. Warband bundles a free best-effort public relay so cross-network games can connect out of the box, but for dependable play you should point it at your own TURN server via environment variables. Copy `.env.example` to `.env.local` and set `VITE_TURN_URL` / `VITE_TURN_USERNAME` / `VITE_TURN_CREDENTIAL`, then rebuild.
 
 For the full explanation — how the rendezvous works, a step-by-step "connect with someone over the internet" guide, TURN options, and troubleshooting — see **[docs/NETWORKING.md](docs/NETWORKING.md)**.
 
@@ -62,27 +62,27 @@ For the full explanation — how the rendezvous works, a step-by-step "connect w
 
 **Keyboard & mouse**
 
-| Action | Input |
-| --- | --- |
-| Move | `W` `A` `S` `D` |
-| Aim | Mouse |
-| Basic attack | Left-Click / `Space` |
-| Ability 1 (A1) | `Q` |
-| Ability 2 (A2) | `E` |
-| Ability 3 (A3) | `R` |
-| Revive (hold) | `F` |
+| Action         | Input                |
+| -------------- | -------------------- |
+| Move           | `W` `A` `S` `D`      |
+| Aim            | Mouse                |
+| Basic attack   | Left-Click / `Space` |
+| Ability 1 (A1) | `Q`                  |
+| Ability 2 (A2) | `E`                  |
+| Ability 3 (A3) | `R`                  |
+| Revive (hold)  | `F`                  |
 
 **Gamepad / DualSense**
 
-| Action | Input |
-| --- | --- |
-| Move | Left stick |
-| Aim | Right stick |
-| Basic attack | ✕ / A |
-| Ability 1 (A1) | ○ / B |
-| Ability 2 (A2) | □ / X |
-| Ability 3 (A3) | △ / Y |
-| Revive (hold) | L1 / R1 |
+| Action         | Input       |
+| -------------- | ----------- |
+| Move           | Left stick  |
+| Aim            | Right stick |
+| Basic attack   | ✕ / A       |
+| Ability 1 (A1) | ○ / B       |
+| Ability 2 (A2) | □ / X       |
+| Ability 3 (A3) | △ / Y       |
+| Revive (hold)  | L1 / R1     |
 
 The last-used device wins — switch between gamepad and keyboard/mouse at any time and control follows whatever you touched last. The table above lists the **defaults**; every action is remappable from **Controls** (on the main menu or the in-fight pause menu), and the HUD button labels update to match. Press **Esc** (keyboard) or **Options/Start** (gamepad) during a fight to open the pause menu.
 

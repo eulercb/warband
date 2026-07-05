@@ -190,11 +190,7 @@ export class SnapshotInterpolator {
     }));
   }
 
-  private lerpProjectiles(
-    from: Snapshot | null,
-    carry: Snapshot,
-    t: number,
-  ): ProjectileView[] {
+  private lerpProjectiles(from: Snapshot | null, carry: Snapshot, t: number): ProjectileView[] {
     const prev = from ? indexById(from.projectiles) : null;
     return carry.projectiles.map((pr) => ({
       ...pr,

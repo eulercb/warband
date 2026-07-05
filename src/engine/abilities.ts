@@ -19,14 +19,7 @@ import type { World } from './world';
 import type { BossAbilityDef } from './monsters';
 import type { PlayerAbilityDef } from './classes';
 import { getClass } from './classes';
-import {
-  add as vadd,
-  scale as vscale,
-  normalize,
-  fromAngle,
-  angleOf,
-  withLength,
-} from './math';
+import { add as vadd, scale as vscale, normalize, fromAngle, angleOf, withLength } from './math';
 // Toroidal geometry (drop-in for the Euclidean sub/dist/point-in-shape helpers)
 // so abilities resolve correctly across the wrap-around seam. See engine/torus.
 import { sub, dist, pointInCircle, pointInCone, pointInSegment, wrapCoord } from './torus';
@@ -75,11 +68,7 @@ function aliveAllies(world: World): Player[] {
   return world.players.filter((p) => p.state === 'alive');
 }
 
-function lowestHpAllyInRange(
-  world: World,
-  from: Vec2,
-  range: number,
-): Player | null {
+function lowestHpAllyInRange(world: World, from: Vec2, range: number): Player | null {
   let best: Player | null = null;
   let bestRatio = Infinity;
   for (const p of aliveAllies(world)) {
@@ -94,7 +83,10 @@ function lowestHpAllyInRange(
 }
 
 /** Apply a strike's on-hit riders (stun / freeze) to a boss or add. */
-function applyStrikeRiders(target: { buffs: import('./types').Buff[] }, ab: PlayerAbilityDef): void {
+function applyStrikeRiders(
+  target: { buffs: import('./types').Buff[] },
+  ab: PlayerAbilityDef,
+): void {
   if (ab.stun) applyBuff(target, makeBuff('stun', 0, ab.stun, 'stun'));
   if (ab.freeze) applyBuff(target, makeBuff('stun', 0, ab.freeze, 'freeze'));
 }
@@ -196,7 +188,11 @@ export function resolvePlayerAbility(
         halfAngle: 0,
       });
       let dealt = 0;
-      if (world.boss && world.boss.hp > 0 && pointInCircle(world.boss.pos, p.pos, radius, world.boss.radius)) {
+      if (
+        world.boss &&
+        world.boss.hp > 0 &&
+        pointInCircle(world.boss.pos, p.pos, radius, world.boss.radius)
+      ) {
         dealt += damageBoss(world, p, world.boss, ab.damage);
         if (ab.slowMult) applySlow(world.boss, ab.slowMult, ab.slowDuration ?? 3);
         applyStrikeRiders(world.boss, ab);
@@ -232,12 +228,17 @@ export function resolvePlayerAbility(
           radius,
           halfAngle: 0,
         });
-        if (world.boss && world.boss.hp > 0 && pointInCircle(world.boss.pos, p.pos, radius, world.boss.radius)) {
+        if (
+          world.boss &&
+          world.boss.hp > 0 &&
+          pointInCircle(world.boss.pos, p.pos, radius, world.boss.radius)
+        ) {
           damageBoss(world, p, world.boss, ab.landingDamage);
         }
         for (const a of world.adds) {
           if (a.hp <= 0) continue;
-          if (pointInCircle(a.pos, p.pos, radius, a.radius)) damageAdd(world, p, a, ab.landingDamage);
+          if (pointInCircle(a.pos, p.pos, radius, a.radius))
+            damageAdd(world, p, a, ab.landingDamage);
         }
       }
       if (ab.healOnUse) healPlayer(world, null, p, ab.healOnUse);
@@ -260,7 +261,10 @@ export function resolvePlayerAbility(
         applyBuff(p, makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 4, 'selfBuffDef'));
       }
       if (ab.buffDamageMult) {
-        applyBuff(p, makeBuff('damageDealt', ab.buffDamageMult, ab.buffDuration ?? 4, 'selfBuffDmg'));
+        applyBuff(
+          p,
+          makeBuff('damageDealt', ab.buffDamageMult, ab.buffDuration ?? 4, 'selfBuffDmg'),
+        );
       }
       if (ab.buffMoveMult) {
         applyBuff(p, makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 4, 'selfBuffMove'));
@@ -279,13 +283,22 @@ export function resolvePlayerAbility(
       });
       const target = lowestHpAllyInRange(world, p.pos, ab.range ?? 400) ?? p;
       if (ab.buffDamageMult) {
-        applyBuff(target, makeBuff('damageDealt', ab.buffDamageMult, ab.buffDuration ?? 6, 'blessingDmg'));
+        applyBuff(
+          target,
+          makeBuff('damageDealt', ab.buffDamageMult, ab.buffDuration ?? 6, 'blessingDmg'),
+        );
       }
       if (ab.buffDefMult) {
-        applyBuff(target, makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 6, 'blessingDef'));
+        applyBuff(
+          target,
+          makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 6, 'blessingDef'),
+        );
       }
       if (ab.buffMoveMult) {
-        applyBuff(target, makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 6, 'blessingMove'));
+        applyBuff(
+          target,
+          makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 6, 'blessingMove'),
+        );
       }
       break;
     }
@@ -339,8 +352,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
   const dmgPerTick = ab.zoneTickDamage ?? 0;
   const slowMult = ab.slowMult ?? 1;
   const slowDuration = ab.slowDuration ?? 0;
-  const kind: ZoneKind =
-    ab.zoneKind ?? (healPerTick > 0 ? 'sanctuary' : 'rainOfArrows');
+  const kind: ZoneKind = ab.zoneKind ?? (healPerTick > 0 ? 'sanctuary' : 'rainOfArrows');
   const centered = kind === 'sanctuary' || kind === 'consecration';
   const radius = ab.radius ?? 130;
   const pos = centered
@@ -363,7 +375,12 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
 function projectileKindFor(p: Player, slot: AbilitySlot): ProjectileKind {
   if (p.classId === 'mage') return slot === 'a1' ? 'fireball' : 'arcaneBolt';
   if (p.classId === 'cleric' || p.classId === 'paladin') return 'smite';
-  if (p.classId === 'ranger' || p.classId === 'druid' || p.classId === 'barbarian' || p.classId === 'rogue')
+  if (
+    p.classId === 'ranger' ||
+    p.classId === 'druid' ||
+    p.classId === 'barbarian' ||
+    p.classId === 'rogue'
+  )
     return 'arrow';
   return 'arrow';
 }
@@ -406,7 +423,11 @@ function spawnPlayerProjectile(
   world.events.push({ t: 'projectile', kind, pos: { ...origin } });
 }
 
-function applySlow(entity: { buffs: import('./types').Buff[] }, mult: number, duration: number): void {
+function applySlow(
+  entity: { buffs: import('./types').Buff[] },
+  mult: number,
+  duration: number,
+): void {
   applyBuff(entity, makeBuff('moveSpeed', mult, duration, 'slow'));
 }
 
@@ -561,10 +582,13 @@ export function resolveBossAbility(
     }
 
     case 'projectile': {
-      const target = action.targetId != null
-        ? world.players.find((p) => p.id === action.targetId && p.state === 'alive')
-        : null;
-      const aimAt = target ? target.pos : action.targetPos ?? vadd(boss.pos, fromAngle(action.aimAngle, 100));
+      const target =
+        action.targetId != null
+          ? world.players.find((p) => p.id === action.targetId && p.state === 'alive')
+          : null;
+      const aimAt = target
+        ? target.pos
+        : (action.targetPos ?? vadd(boss.pos, fromAngle(action.aimAngle, 100)));
       const baseAngle = angleOf(sub(aimAt, boss.pos));
       const speed = ab.projSpeed ?? 420;
       const count = ab.projCount ?? 1;
@@ -648,9 +672,15 @@ export function resolveBossAbility(
     }
 
     case 'buffSelf': {
-      if (ab.buffMoveMult) applyBuff(boss, makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 5, 'bossHaste'));
-      if (ab.buffDamageMult) applyBuff(boss, makeBuff('damageDealt', ab.buffDamageMult, ab.buffDuration ?? 5, 'bossFrenzy'));
-      if (ab.buffDefMult) applyBuff(boss, makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 5, 'bossWard'));
+      if (ab.buffMoveMult)
+        applyBuff(boss, makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 5, 'bossHaste'));
+      if (ab.buffDamageMult)
+        applyBuff(
+          boss,
+          makeBuff('damageDealt', ab.buffDamageMult, ab.buffDuration ?? 5, 'bossFrenzy'),
+        );
+      if (ab.buffDefMult)
+        applyBuff(boss, makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 5, 'bossWard'));
       if (ab.selfHealFrac) healBoss(boss, boss.maxHp * ab.selfHealFrac);
       break;
     }
@@ -668,12 +698,7 @@ export function resolveBossAbility(
 }
 
 /** One Life-Drain tick: damage the locked target (if in range) and heal boss. */
-export function beamTick(
-  world: World,
-  boss: Boss,
-  ab: BossAbilityDef,
-  action: BossAction,
-): void {
+export function beamTick(world: World, boss: Boss, ab: BossAbilityDef, action: BossAction): void {
   const target =
     action.targetId != null
       ? world.players.find((p) => p.id === action.targetId && p.state === 'alive')

@@ -2,13 +2,7 @@
  * Warband — networking protocol. All messages are JSON-serializable and sent
  * over Trystero namespaced actions. Star topology, host-authoritative.
  */
-import type {
-  ClassId,
-  MonsterId,
-  InputCommand,
-  Snapshot,
-  FightResult,
-} from '../engine/types';
+import type { ClassId, MonsterId, InputCommand, Snapshot, FightResult } from '../engine/types';
 import type { UpgradeId } from '../engine/upgrades';
 
 /** Trystero action ids (kept short; must match across peers). */

@@ -20,10 +20,7 @@ import {
   type ButtonAction,
 } from '../input/bindings';
 
-type Capture =
-  | { mode: 'key'; action: KeyAction }
-  | { mode: 'pad'; action: ButtonAction }
-  | null;
+type Capture = { mode: 'key'; action: KeyAction } | { mode: 'pad'; action: ButtonAction } | null;
 
 /** Snapshot of currently-pressed gamepad button indices (any connected pad). */
 function pressedPadButtons(): Set<number> {
@@ -114,7 +111,8 @@ export default function Controls() {
   }, [capture]);
 
   const capturingKey = (a: KeyAction): boolean => capture?.mode === 'key' && capture.action === a;
-  const capturingPad = (a: ButtonAction): boolean => capture?.mode === 'pad' && capture.action === a;
+  const capturingPad = (a: ButtonAction): boolean =>
+    capture?.mode === 'pad' && capture.action === a;
 
   return (
     <div className="wb-overlay" role="dialog" aria-modal="true" aria-label="Controls">
@@ -184,7 +182,9 @@ export default function Controls() {
                       setCapture({ mode: 'pad', action });
                     }}
                   >
-                    {capturingPad(action) ? 'Press a button…' : padIndexToLabel(bindings.pad[action][0])}
+                    {capturingPad(action)
+                      ? 'Press a button…'
+                      : padIndexToLabel(bindings.pad[action][0])}
                   </button>
                 </li>
               ))}

@@ -204,7 +204,14 @@ export class Sfx {
         // Soft blip; higher for players, lower for the boss.
         if (this.throttle(`cast:${ev.side}`, DEFAULT_THROTTLE)) {
           const f = ev.side === 'player' ? 660 : 220;
-          this.voice({ type: 'triangle', freq: f, freqEnd: f * 1.12, dur: 0.11, peak: 0.11, attack: 0.004 });
+          this.voice({
+            type: 'triangle',
+            freq: f,
+            freqEnd: f * 1.12,
+            dur: 0.11,
+            peak: 0.11,
+            attack: 0.004,
+          });
         }
         break;
 
@@ -212,13 +219,27 @@ export class Sfx {
         if (ev.side === 'boss') {
           // A player struck the boss — heftier thud (low square + noise crack).
           if (this.throttle('hit:boss', DEFAULT_THROTTLE)) {
-            this.voice({ type: 'square', freq: 120, freqEnd: 55, dur: 0.14, peak: 0.24, attack: 0.002 });
+            this.voice({
+              type: 'square',
+              freq: 120,
+              freqEnd: 55,
+              dur: 0.14,
+              peak: 0.24,
+              attack: 0.002,
+            });
             this.noiseVoice({ dur: 0.06, peak: 0.14, filterType: 'lowpass', filterFreq: 900 });
           }
         } else {
           // A player took damage — a shorter, sharper "hurt" tone.
           if (this.throttle('hit:player', DEFAULT_THROTTLE)) {
-            this.voice({ type: 'sawtooth', freq: 320, freqEnd: 180, dur: 0.1, peak: 0.16, attack: 0.002 });
+            this.voice({
+              type: 'sawtooth',
+              freq: 320,
+              freqEnd: 180,
+              dur: 0.1,
+              peak: 0.16,
+              attack: 0.002,
+            });
           }
         }
         break;
@@ -227,7 +248,15 @@ export class Sfx {
         // Gentle rising sine shimmer (two slightly detuned partials).
         if (this.throttle('heal', DEFAULT_THROTTLE)) {
           this.voice({ type: 'sine', freq: 520, freqEnd: 784, dur: 0.3, peak: 0.1, attack: 0.02 });
-          this.voice({ type: 'sine', freq: 523, freqEnd: 788, dur: 0.3, peak: 0.05, attack: 0.02, detune: 6 });
+          this.voice({
+            type: 'sine',
+            freq: 523,
+            freqEnd: 788,
+            dur: 0.3,
+            peak: 0.05,
+            attack: 0.02,
+            detune: 6,
+          });
         }
         break;
 
@@ -235,18 +264,39 @@ export class Sfx {
         if (ev.kind === 'boss') {
           // Big descending boom (< 400ms) with a low noise rumble.
           if (this.throttle('death:boss', DEFAULT_THROTTLE)) {
-            this.voice({ type: 'triangle', freq: 180, freqEnd: 40, dur: 0.38, peak: 0.3, attack: 0.005 });
+            this.voice({
+              type: 'triangle',
+              freq: 180,
+              freqEnd: 40,
+              dur: 0.38,
+              peak: 0.3,
+              attack: 0.005,
+            });
             this.noiseVoice({ dur: 0.34, peak: 0.16, filterType: 'lowpass', filterFreq: 400 });
           }
         } else if (ev.kind === 'add') {
           // Short pop.
           if (this.throttle('death:add', DEFAULT_THROTTLE)) {
-            this.voice({ type: 'triangle', freq: 420, freqEnd: 180, dur: 0.08, peak: 0.14, attack: 0.002 });
+            this.voice({
+              type: 'triangle',
+              freq: 420,
+              freqEnd: 180,
+              dur: 0.08,
+              peak: 0.14,
+              attack: 0.002,
+            });
           }
         } else {
           // Player death — low thud.
           if (this.throttle('death:player', DEFAULT_THROTTLE)) {
-            this.voice({ type: 'sine', freq: 170, freqEnd: 70, dur: 0.22, peak: 0.22, attack: 0.004 });
+            this.voice({
+              type: 'sine',
+              freq: 170,
+              freqEnd: 70,
+              dur: 0.22,
+              peak: 0.22,
+              attack: 0.004,
+            });
           }
         }
         break;
@@ -255,7 +305,14 @@ export class Sfx {
         // Ominous low tone with a slight downward slump.
         if (this.throttle('downed', DEFAULT_THROTTLE)) {
           this.voice({ type: 'sine', freq: 110, freqEnd: 80, dur: 0.35, peak: 0.2, attack: 0.01 });
-          this.voice({ type: 'sawtooth', freq: 55, freqEnd: 40, dur: 0.35, peak: 0.08, attack: 0.01 });
+          this.voice({
+            type: 'sawtooth',
+            freq: 55,
+            freqEnd: 40,
+            dur: 0.35,
+            peak: 0.08,
+            attack: 0.01,
+          });
         }
         break;
 
@@ -269,22 +326,51 @@ export class Sfx {
       case 'dodge':
         // Quick filtered-noise whoosh (bandpass sweeping up).
         if (this.throttle('dodge', DEFAULT_THROTTLE)) {
-          this.noiseVoice({ dur: 0.18, peak: 0.14, filterType: 'bandpass', filterFreq: 600, filterFreqEnd: 2200 });
+          this.noiseVoice({
+            dur: 0.18,
+            peak: 0.14,
+            filterType: 'bandpass',
+            filterFreq: 600,
+            filterFreqEnd: 2200,
+          });
         }
         break;
 
       case 'blink':
         // Zap — fast descending square with heavy detune.
         if (this.throttle('blink', DEFAULT_THROTTLE)) {
-          this.voice({ type: 'square', freq: 1200, freqEnd: 200, dur: 0.1, peak: 0.12, attack: 0.001, detune: 12 });
+          this.voice({
+            type: 'square',
+            freq: 1200,
+            freqEnd: 200,
+            dur: 0.1,
+            peak: 0.12,
+            attack: 0.001,
+            detune: 12,
+          });
         }
         break;
 
       case 'enrage':
         // Detuned-saw growl (two saws beating against each other).
         if (this.throttle('enrage', DEFAULT_THROTTLE)) {
-          this.voice({ type: 'sawtooth', freq: 84, freqEnd: 70, dur: 0.36, peak: 0.2, attack: 0.01 });
-          this.voice({ type: 'sawtooth', freq: 84, freqEnd: 70, dur: 0.36, peak: 0.18, attack: 0.01, detune: 22 });
+          this.voice({
+            type: 'sawtooth',
+            freq: 84,
+            freqEnd: 70,
+            dur: 0.36,
+            peak: 0.2,
+            attack: 0.01,
+          });
+          this.voice({
+            type: 'sawtooth',
+            freq: 84,
+            freqEnd: 70,
+            dur: 0.36,
+            peak: 0.18,
+            attack: 0.01,
+            detune: 22,
+          });
         }
         break;
 
@@ -298,14 +384,28 @@ export class Sfx {
       case 'projectile':
         // Tiny pew — throttled so rapid fire doesn't spam.
         if (this.throttle('projectile', 0.04)) {
-          this.voice({ type: 'square', freq: 900, freqEnd: 480, dur: 0.06, peak: 0.07, attack: 0.001 });
+          this.voice({
+            type: 'square',
+            freq: 900,
+            freqEnd: 480,
+            dur: 0.06,
+            peak: 0.07,
+            attack: 0.001,
+          });
         }
         break;
 
       case 'spawn':
         // An add claws its way up — brief detuned rasp (Lich summon cue).
         if (this.throttle('spawn', 0.05)) {
-          this.voice({ type: 'sawtooth', freq: 150, freqEnd: 260, dur: 0.14, peak: 0.1, attack: 0.006 });
+          this.voice({
+            type: 'sawtooth',
+            freq: 150,
+            freqEnd: 260,
+            dur: 0.14,
+            peak: 0.1,
+            attack: 0.006,
+          });
         }
         break;
 

@@ -50,9 +50,7 @@ export function playerAnim(p: PlayerView, ctx: PlayerAnimCtx): AnimSelection {
   // Rooted cast (e.g. mage Fireball) — hold the cast pose, synced if we know total.
   if (p.castTimer > 0) {
     const slot = p.castSlot ?? 'a1';
-    const progress = ctx.castTotalMs
-      ? clamp01(1 - (p.castTimer * 1000) / ctx.castTotalMs)
-      : null;
+    const progress = ctx.castTotalMs ? clamp01(1 - (p.castTimer * 1000) / ctx.castTotalMs) : null;
     return { clip: `cast_${slot}`, dir, flipX, loop: progress === null, progress };
   }
 

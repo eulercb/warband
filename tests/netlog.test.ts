@@ -100,9 +100,9 @@ describe('isSignalingFrame', () => {
   });
 
   it('does NOT flag a plain announce response (no match relayed)', () => {
-    expect(isSignalingFrame('{"action":"announce","interval":120,"complete":0,"incomplete":1}')).toBe(
-      false,
-    );
+    expect(
+      isSignalingFrame('{"action":"announce","interval":120,"complete":0,"incomplete":1}'),
+    ).toBe(false);
   });
 
   it('ignores non-string frames (Blob/ArrayBuffer)', () => {

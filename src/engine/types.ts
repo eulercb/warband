@@ -18,14 +18,7 @@ export interface Vec2 {
 export type EntityId = number;
 
 export type ClassId =
-  | 'knight'
-  | 'ranger'
-  | 'mage'
-  | 'cleric'
-  | 'barbarian'
-  | 'rogue'
-  | 'paladin'
-  | 'druid';
+  'knight' | 'ranger' | 'mage' | 'cleric' | 'barbarian' | 'rogue' | 'paladin' | 'druid';
 
 export type MonsterId =
   // Originals
@@ -99,12 +92,7 @@ export type Side = 'player' | 'boss';
  *  - moveSpeed:   multiplies movement speed
  *  - stun / invuln: `mult` unused; presence for the duration is what matters
  */
-export type BuffKind =
-  | 'damageDealt'
-  | 'damageTaken'
-  | 'moveSpeed'
-  | 'stun'
-  | 'invuln';
+export type BuffKind = 'damageDealt' | 'damageTaken' | 'moveSpeed' | 'stun' | 'invuln';
 
 export interface Buff {
   kind: BuffKind;
@@ -260,12 +248,7 @@ export interface Add {
   buffs: Buff[];
 }
 
-export type ProjectileKind =
-  | 'arrow'
-  | 'arcaneBolt'
-  | 'fireball'
-  | 'shadowBolt'
-  | 'smite';
+export type ProjectileKind = 'arrow' | 'arcaneBolt' | 'fireball' | 'shadowBolt' | 'smite';
 
 export interface Projectile {
   id: EntityId;
@@ -289,12 +272,7 @@ export interface Projectile {
 }
 
 export type ZoneKind =
-  | 'voidZone'
-  | 'rainOfArrows'
-  | 'sanctuary'
-  | 'poison'
-  | 'entangle'
-  | 'consecration';
+  'voidZone' | 'rainOfArrows' | 'sanctuary' | 'poison' | 'entangle' | 'consecration';
 
 // ---------------------------------------------------------------------------
 // Terrain (static, per-run environmental hazards)

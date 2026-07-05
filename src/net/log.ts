@@ -181,9 +181,7 @@ export function summarizePeers(
 }
 
 /** STUN/TURN url tally with NO credentials, e.g. "5 url(s): 1 STUN, 4 TURN". */
-export function summarizeIceServers(
-  servers: readonly { urls: string | string[] }[],
-): string {
+export function summarizeIceServers(servers: readonly { urls: string | string[] }[]): string {
   const flat = servers.flatMap((s) => (Array.isArray(s.urls) ? s.urls : [s.urls]));
   if (flat.length === 0) return 'none';
   const stun = flat.filter((u) => u.startsWith('stun:')).length;
@@ -363,7 +361,10 @@ export function startNetDiagnostics(src: NetDiagnosticsSources): () => void {
   const instrumented = new WeakSet<WebSocket>();
   let lastSig = '';
 
-  const read = (): { sockets: Record<string, { readyState: number }>; peers: Record<string, RTCPeerConnection> } => ({
+  const read = (): {
+    sockets: Record<string, { readyState: number }>;
+    peers: Record<string, RTCPeerConnection>;
+  } => ({
     sockets: safe(src.getSockets, {}),
     peers: safe(src.getPeers, {}),
   });
@@ -396,11 +397,17 @@ export function startNetDiagnostics(src: NetDiagnosticsSources): () => void {
   };
 
   /** Snapshot of the tracker stats limited to sockets that currently exist. */
-  const trackerDetail = (sockets: Record<string, { readyState: number }>): Record<string, TrackerStat> => {
+  const trackerDetail = (
+    sockets: Record<string, { readyState: number }>,
+  ): Record<string, TrackerStat> => {
     const out: Record<string, TrackerStat> = {};
     for (const [url, sock] of Object.entries(sockets)) {
       const s = trackerStats.get(url);
-      out[url] = { readyState: sock.readyState, frames: s?.frames ?? 0, signaling: s?.signaling ?? 0 };
+      out[url] = {
+        readyState: sock.readyState,
+        frames: s?.frames ?? 0,
+        signaling: s?.signaling ?? 0,
+      };
     }
     return out;
   };
@@ -444,7 +451,10 @@ export function startNetDiagnostics(src: NetDiagnosticsSources): () => void {
       watched.add(conn);
       const short = id.slice(0, 6);
       const logState = (): void =>
-        netLog(src.scope, `peer ${short} → ${conn.connectionState} (ice ${conn.iceConnectionState})`);
+        netLog(
+          src.scope,
+          `peer ${short} → ${conn.connectionState} (ice ${conn.iceConnectionState})`,
+        );
       conn.addEventListener('connectionstatechange', logState);
       conn.addEventListener('iceconnectionstatechange', logState);
     }

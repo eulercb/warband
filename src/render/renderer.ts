@@ -109,10 +109,7 @@ export class Renderer {
     this.camera.fit(app.screen.width, app.screen.height);
   }
 
-  static async create(
-    container: HTMLElement,
-    arena: { w: number; h: number },
-  ): Promise<Renderer> {
+  static async create(container: HTMLElement, arena: { w: number; h: number }): Promise<Renderer> {
     const app = new Application();
     await app.init({
       background: '#0e0e14',
@@ -343,7 +340,14 @@ export class Renderer {
     }
     // Boss below players so downed/standing players stay readable on top of it.
     if (!SPRITE_FLAGS.boss && state.boss) {
-      drawBoss(g, state.boss, this.camera.worldToScreen(state.boss.pos), scale, this.fx.flashAmount(state.boss.id), timeSec);
+      drawBoss(
+        g,
+        state.boss,
+        this.camera.worldToScreen(state.boss.pos),
+        scale,
+        this.fx.flashAmount(state.boss.id),
+        timeSec,
+      );
     }
     if (!SPRITE_FLAGS.player) {
       for (const p of state.players) {

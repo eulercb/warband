@@ -8,13 +8,13 @@ existing `Fx` bursts.
 
 ## Files
 
-| File | What |
-|---|---|
-| `direction.ts` | Pure. Facing angle → discrete sprite direction (`8dir`/`4dir`/`flip`/`single`) + horizontal flip. |
-| `entityAnim.ts` | Pure. Serializable view (+ derived ctx) → semantic `AnimSelection` (clip/dir/loop/progress). Unit-tested in `tests/entityAnim.test.ts`. |
-| `manifest.ts` | Atlas config, `SPRITE_FLAGS`, `SPRITE_ATLAS_URL`, `ACTOR_PALETTE`, `resolveTextures`. |
-| `spriteLayer.ts` | Retained reconciler: pooled `AnimatedSprite`s keyed by `EntityId`, atlas-optional (procedural placeholders when no art). |
-| `particles.ts` | Pooled, bounded, asset-free particle pool fed off the `GameEvent` stream. |
+| File             | What                                                                                                                                    |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `direction.ts`   | Pure. Facing angle → discrete sprite direction (`8dir`/`4dir`/`flip`/`single`) + horizontal flip.                                       |
+| `entityAnim.ts`  | Pure. Serializable view (+ derived ctx) → semantic `AnimSelection` (clip/dir/loop/progress). Unit-tested in `tests/entityAnim.test.ts`. |
+| `manifest.ts`    | Atlas config, `SPRITE_FLAGS`, `SPRITE_ATLAS_URL`, `ACTOR_PALETTE`, `resolveTextures`.                                                   |
+| `spriteLayer.ts` | Retained reconciler: pooled `AnimatedSprite`s keyed by `EntityId`, atlas-optional (procedural placeholders when no art).                |
+| `particles.ts`   | Pooled, bounded, asset-free particle pool fed off the `GameEvent` stream.                                                               |
 
 ## Current state (no art shipped)
 

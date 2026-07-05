@@ -92,8 +92,7 @@ body {
   padding: 32px 20px;
   background:
     radial-gradient(120% 90% at 50% -10%, #201a2e 0%, transparent 60%),
-    radial-gradient(90% 80% at 50% 120%, #16121f 0%, transparent 55%),
-    var(--bg);
+    radial-gradient(90% 80% at 50% 120%, #16121f 0%, transparent 55%), var(--bg);
 }
 
 .wb-panel {
@@ -189,8 +188,12 @@ body {
   padding: 11px 20px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease,
-    box-shadow 0.15s ease, opacity 0.15s ease;
+  transition:
+    transform 0.08s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .wb-btn:hover {
@@ -314,7 +317,9 @@ body {
   font-family: inherit;
   font-size: 1rem;
   padding: 11px 14px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .wb-input::placeholder {
@@ -362,7 +367,10 @@ body {
   cursor: pointer;
   color: var(--text);
   font-family: inherit;
-  transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease,
+  transition:
+    transform 0.1s ease,
+    border-color 0.15s ease,
+    background 0.15s ease,
     box-shadow 0.15s ease;
 }
 
@@ -1235,7 +1243,9 @@ body {
   font-weight: 700;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 }
 .wb-bind-key:hover {
   border-color: var(--gold-deep);
@@ -1253,8 +1263,13 @@ body {
   text-align: center;
 }
 @keyframes wb-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -1353,7 +1368,9 @@ body {
   border: 1px solid var(--border-soft);
   color: var(--text);
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 }
 .wb-gauntlet-toggle:hover {
   border-color: var(--gold-deep);
@@ -1521,7 +1538,10 @@ body {
   color: var(--text);
   cursor: pointer;
   position: relative;
-  transition: border-color 0.12s, transform 0.08s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    transform 0.08s,
+    background 0.12s;
 }
 .wb-upgrade-card:hover:not(:disabled) {
   border-color: var(--gold);
@@ -1670,9 +1690,18 @@ body {
   color: var(--text-dim);
 }
 @keyframes wb-resume-pop {
-  0% { transform: scale(1.5); opacity: 0.2; }
-  35% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(1.5);
+    opacity: 0.2;
+  }
+  35% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* --------------------------------------------------------------------------

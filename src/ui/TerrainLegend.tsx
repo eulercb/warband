@@ -14,8 +14,16 @@ interface LegendEntry {
 }
 
 const TERRAIN_LEGEND: Record<TerrainKind, LegendEntry> = {
-  magma: { label: 'Magma', color: '#ff521f', effect: 'Burns you and briefly slows — get out fast.' },
-  ember: { label: 'Embers', color: '#c9591f', effect: 'Radiant heat that slows movement (no damage).' },
+  magma: {
+    label: 'Magma',
+    color: '#ff521f',
+    effect: 'Burns you and briefly slows — get out fast.',
+  },
+  ember: {
+    label: 'Embers',
+    color: '#c9591f',
+    effect: 'Radiant heat that slows movement (no damage).',
+  },
   swamp: { label: 'Swamp', color: '#6f9a34', effect: 'Heavy slow plus a light poison over time.' },
   bog: { label: 'Bog', color: '#5a7248', effect: 'Thick mud — heavy slow, no damage.' },
   ice: { label: 'Ice', color: '#74b3dc', effect: 'Slippery — strong slow, no damage.' },

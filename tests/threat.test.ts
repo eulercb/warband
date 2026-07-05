@@ -1,11 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Player, Boss, GameEvent } from '../src/engine/types';
 import { damageBoss } from '../src/engine/combat';
-import {
-  decayThreat,
-  highestThreatTarget,
-  forceTopThreat,
-} from '../src/engine/threat';
+import { decayThreat, highestThreatTarget, forceTopThreat } from '../src/engine/threat';
 
 function mkPlayer(id: number, classId: Player['classId']): Player {
   return {

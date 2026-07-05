@@ -180,8 +180,12 @@ export function drawPlayer(
   } else {
     // Prone marker (X) + revive-progress ring.
     const m = r * 0.5;
-    g.moveTo(x - m, y - m).lineTo(x + m, y + m).stroke({ width: 2, color: 0x2a2a2a, alpha: 0.85 });
-    g.moveTo(x - m, y + m).lineTo(x + m, y - m).stroke({ width: 2, color: 0x2a2a2a, alpha: 0.85 });
+    g.moveTo(x - m, y - m)
+      .lineTo(x + m, y + m)
+      .stroke({ width: 2, color: 0x2a2a2a, alpha: 0.85 });
+    g.moveTo(x - m, y + m)
+      .lineTo(x + m, y - m)
+      .stroke({ width: 2, color: 0x2a2a2a, alpha: 0.85 });
     const frac = clamp(p.reviveProgress / REVIVE_TIME, 0, 1);
     if (frac > 0) {
       const start = -Math.PI / 2;
@@ -378,12 +382,7 @@ export function drawAddOverlay(
 // Projectiles
 // ---------------------------------------------------------------------------
 
-export function drawProjectile(
-  g: Graphics,
-  pr: ProjectileView,
-  screen: Vec2,
-  scale: number,
-): void {
+export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, scale: number): void {
   const color = PROJECTILE_COLORS[pr.kind] ?? 0xffffff;
   const { x, y } = screen;
 
@@ -443,7 +442,7 @@ export function drawTerrain(
   const { x, y } = screen;
   const phase = (t.id % 7) * 0.9;
   const pulse = pal.hot
-    ? 0.10 + 0.08 * (0.5 + 0.5 * Math.sin(timeSec * 2.2 + phase))
+    ? 0.1 + 0.08 * (0.5 + 0.5 * Math.sin(timeSec * 2.2 + phase))
     : 0.06 + 0.03 * (0.5 + 0.5 * Math.sin(timeSec * 1.1 + phase));
 
   // Soft outer glow, base pool, and a brighter irregular core for texture.
@@ -576,30 +575,42 @@ function drawBossBody(
     case 'diamond': {
       g.circle(x, y, r * 1.3).fill({ color, alpha: 0.14 });
       g.poly([x, y - r, x + r * 0.78, y, x, y + r, x - r * 0.78, y]).fill({ color });
-      g.poly([x, y - r, x + r * 0.78, y, x, y + r, x - r * 0.78, y]).stroke({ width: 2, color: 0xffffff, alpha: 0.35 });
+      g.poly([x, y - r, x + r * 0.78, y, x, y + r, x - r * 0.78, y]).stroke({
+        width: 2,
+        color: 0xffffff,
+        alpha: 0.35,
+      });
       break;
     }
     case 'humanoid': {
       // Torso + head + shoulders.
       g.ellipse(x, y + r * 0.1, r * 0.72, r).fill({ color });
-      g.ellipse(x, y + r * 0.1, r * 0.72, r); stroke();
+      g.ellipse(x, y + r * 0.1, r * 0.72, r);
+      stroke();
       g.circle(x - r * 0.6, y - r * 0.35, r * 0.3).fill({ color });
       g.circle(x + r * 0.6, y - r * 0.35, r * 0.3).fill({ color });
       g.circle(x, y - r * 0.7, r * 0.42).fill({ color });
-      g.circle(x, y - r * 0.7, r * 0.42); stroke();
+      g.circle(x, y - r * 0.7, r * 0.42);
+      stroke();
       break;
     }
     case 'beast': {
       // Elongated body + head + ears/horns.
       g.ellipse(x, y, r * 1.1, r * 0.72).fill({ color });
-      g.ellipse(x, y, r * 1.1, r * 0.72); stroke();
+      g.ellipse(x, y, r * 1.1, r * 0.72);
+      stroke();
       const hx = x + Math.cos(facing) * r * 0.85;
       const hy = y + Math.sin(facing) * r * 0.85;
       g.circle(hx, hy, r * 0.48).fill({ color });
-      g.circle(hx, hy, r * 0.48); stroke();
+      g.circle(hx, hy, r * 0.48);
+      stroke();
       // ears
-      g.poly([hx - r * 0.4, hy - r * 0.3, hx - r * 0.15, hy - r * 0.75, hx, hy - r * 0.35]).fill({ color });
-      g.poly([hx + r * 0.4, hy - r * 0.3, hx + r * 0.15, hy - r * 0.75, hx, hy - r * 0.35]).fill({ color });
+      g.poly([hx - r * 0.4, hy - r * 0.3, hx - r * 0.15, hy - r * 0.75, hx, hy - r * 0.35]).fill({
+        color,
+      });
+      g.poly([hx + r * 0.4, hy - r * 0.3, hx + r * 0.15, hy - r * 0.75, hx, hy - r * 0.35]).fill({
+        color,
+      });
       break;
     }
     case 'construct': {
@@ -618,7 +629,8 @@ function drawBossBody(
       // Floating eye: outer glow, iris, pupil looking toward facing.
       g.circle(x, y, r * 1.15).fill({ color, alpha: 0.16 });
       g.circle(x, y, r).fill({ color });
-      g.circle(x, y, r); stroke();
+      g.circle(x, y, r);
+      stroke();
       g.circle(x, y, r * 0.55).fill({ color: 0xffffff, alpha: 0.85 });
       const px = x + Math.cos(facing) * r * 0.4;
       const py = y + Math.sin(facing) * r * 0.4;
@@ -629,10 +641,13 @@ function drawBossBody(
       // Abdomen + head + radiating legs.
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2;
-        g.moveTo(x, y).lineTo(x + Math.cos(a) * r * 1.4, y + Math.sin(a) * r * 1.1).stroke({ width: 2, color, alpha: 0.85 });
+        g.moveTo(x, y)
+          .lineTo(x + Math.cos(a) * r * 1.4, y + Math.sin(a) * r * 1.1)
+          .stroke({ width: 2, color, alpha: 0.85 });
       }
       g.circle(x, y + r * 0.2, r * 0.85).fill({ color });
-      g.circle(x, y + r * 0.2, r * 0.85); stroke();
+      g.circle(x, y + r * 0.2, r * 0.85);
+      stroke();
       g.circle(x, y - r * 0.6, r * 0.45).fill({ color });
       break;
     }
@@ -653,12 +668,14 @@ function drawBossBody(
       g.circle(x, y - r * 0.4, r).fill({ color });
       g.circle(x - r * 0.55, y - r * 0.1, r * 0.6).fill({ color });
       g.circle(x + r * 0.55, y - r * 0.1, r * 0.6).fill({ color });
-      g.circle(x, y - r * 0.4, r); stroke();
+      g.circle(x, y - r * 0.4, r);
+      stroke();
       break;
     }
     default: {
       g.circle(x, y, r).fill({ color });
-      g.circle(x, y, r); stroke();
+      g.circle(x, y, r);
+      stroke();
     }
   }
 }

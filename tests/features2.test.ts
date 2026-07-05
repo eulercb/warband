@@ -141,14 +141,20 @@ describe('hold-to-autofire', () => {
 
 describe('upgrades apply to a spawned hero', () => {
   it('swift raises move speed; vigor raises max HP; renewal regenerates', () => {
-    const base = new World({ monsterId: 'dragon', seed: 9, players: [{ peerId: 'a', name: 'A', classId: 'knight' }] });
+    const base = new World({
+      monsterId: 'dragon',
+      seed: 9,
+      players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+    });
     const baseSpeed = base.players[0].moveSpeed;
     const baseHp = base.players[0].maxHp;
 
     const up = new World({
       monsterId: 'dragon',
       seed: 9,
-      players: [{ peerId: 'a', name: 'A', classId: 'knight', upgrades: ['swift', 'vigor', 'renewal'] }],
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight', upgrades: ['swift', 'vigor', 'renewal'] },
+      ],
     });
     const p = up.players[0];
     expect(p.moveSpeed).toBeGreaterThan(baseSpeed);
@@ -163,7 +169,11 @@ describe('upgrades apply to a spawned hero', () => {
   });
 
   it('mighty increases outgoing damage', () => {
-    const plain = new World({ monsterId: 'dragon', seed: 2, players: [{ peerId: 'a', name: 'A', classId: 'knight' }] });
+    const plain = new World({
+      monsterId: 'dragon',
+      seed: 2,
+      players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+    });
     const buffed = new World({
       monsterId: 'dragon',
       seed: 2,
