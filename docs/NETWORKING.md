@@ -141,8 +141,22 @@ connection lifecycle so you can see *where* it stalls.
     then reload. It persists in `localStorage`, so it survives reloads until you
     run `warband.netDebug(false)`. Great for debugging the live site.
   - **Build-time:** set `VITE_NET_DEBUG=true` (see `.env.example`) and rebuild.
-- Run `warband.diagnose()` any time for a one-shot snapshot of tracker sockets and
-  peer connections.
+- Run `warband.diagnose()` any time for a one-shot snapshot. It works even with
+  verbose logging **off**, and prints four things:
+  1. the **room identity** (`appId / code`) — open `diagnose()` on the host *and*
+     the joiner and confirm both print the **same** line. If they differ, the two
+     tabs derived different rendezvous topics and can never find each other (wrong
+     code) — that is the whole bug, stop here.
+  2. the socket + peer summary (`3 tracker sockets (3 open) | 0 active peers`).
+  3. a **per-tracker** readout — each tracker's state **and how many inbound
+     frames it has sent you**. A socket being `open` only means the WebSocket
+     handshake succeeded; it does **not** mean the tracker is doing any
+     matchmaking. A tracker shown as `open, silent — 0 frames in` is a black hole:
+     connected but mute, and can never introduce a peer.
+  4. a plain-English **verdict** naming the stage that failed and its fix — e.g.
+     "tracker sockets are OPEN but you were never introduced to a peer … this is
+     the matchmaking stage, NOT NAT/TURN." Use it to avoid chasing TURN when the
+     trackers are the problem (or vice-versa).
 
 All lines are prefixed `[warband:net]` with a `+Ns` timestamp and a scope
 (`room` / `host` / `client`), so you can filter the console on `warband:net`.

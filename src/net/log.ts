@@ -191,6 +191,104 @@ export function summarizeIceServers(
   return `${flat.length} url(s): ${stun} STUN, ${turn} TURN`;
 }
 
+/**
+ * Per-tracker liveness. A tracker socket being *open* only proves the WebSocket
+ * upgrade succeeded — NOT that the tracker is actually doing WebRTC matchmaking.
+ * `frames` counts inbound messages; `signaling` counts the subset that carried a
+ * relayed WebRTC offer/answer (i.e. the tracker introduced us to another peer).
+ * A socket that is `open` with `frames: 0` is a black hole: connected but mute.
+ */
+export interface TrackerStat {
+  readyState: number;
+  frames: number;
+  signaling: number;
+}
+
+/**
+ * Does an inbound tracker frame carry WebRTC signaling (a relayed offer/answer)?
+ * WebTorrent tracker frames are JSON text; a plain announce response is just
+ * `interval`/`complete`/`incomplete`, while a relayed peer carries `offer` or
+ * `answer`. A cheap substring test avoids parsing every frame (SDP is large).
+ */
+export function isSignalingFrame(data: unknown): boolean {
+  if (typeof data !== 'string') return false;
+  return data.includes('"offer"') || data.includes('"answer"');
+}
+
+/**
+ * Multi-line per-tracker readout — state + whether the tracker is talking back.
+ * This is the signal `summarizeSockets` hides: "3 open" looks healthy even when
+ * all three are mute and can never introduce a peer.
+ */
+export function summarizeTrackerDetail(stats: Record<string, TrackerStat>): string {
+  const urls = Object.keys(stats);
+  if (urls.length === 0) return '  (no tracker sockets yet)';
+  return urls
+    .map((url) => {
+      const s = stats[url];
+      const state = WS_STATE[s.readyState] ?? `state${s.readyState}`;
+      const talk =
+        s.frames === 0
+          ? 'silent — 0 frames in (mute: cannot introduce peers)'
+          : `${s.frames} frame${s.frames === 1 ? '' : 's'} in, ${s.signaling} signaling`;
+      return `  ${url} — ${state}, ${talk}`;
+    })
+    .join('\n');
+}
+
+/** State a one-shot connection diagnosis reasons over (all counts, so it's pure). */
+export interface DiagnosisInput {
+  socketsOpen: number;
+  socketsTotal: number;
+  peersTotal: number;
+  peersConnected: number;
+  signalingFrames: number;
+}
+
+/**
+ * Turn the raw snapshot into a plain-English verdict that names the *stage* that
+ * failed and the fix for it — so `warband.diagnose()` stops reading as a healthy
+ * "3 open | 0 peers" and instead says where the connection actually died. The
+ * branches mirror the failure table in docs/NETWORKING.md.
+ */
+export function diagnosisVerdict(d: DiagnosisInput): string {
+  if (d.peersConnected > 0) {
+    return (
+      `connected to ${d.peersConnected} peer(s) — the transport is up. If the lobby ` +
+      'still looks empty the problem is above the network (app/lobby messages), not peer discovery.'
+    );
+  }
+  if (d.peersTotal > 0) {
+    return (
+      'introduced to a peer, but the direct WebRTC path is not completing (see the ' +
+      'checking/failed state above). THIS is the NAT case — configure a TURN relay ' +
+      '(VITE_TURN_URL). It is the classic "works on one machine, not over the internet".'
+    );
+  }
+  if (d.socketsOpen === 0) {
+    return (
+      'no tracker socket is open — matchmaking cannot even start. The trackers are ' +
+      'unreachable (firewall / proxy / captive portal). Try another network or add ' +
+      'reachable trackers via VITE_TRACKER_URLS.'
+    );
+  }
+  // Sockets open, zero peers: never introduced. This is NOT a NAT/TURN problem —
+  // ICE never runs without a peer, so configuring TURN would change nothing.
+  const relayed =
+    d.signalingFrames > 0
+      ? ' (a tracker DID relay signaling to you, so matchmaking partially worked — retry; the handshake may be racing).'
+      : '';
+  return (
+    'tracker sockets are OPEN but you were never introduced to a peer (0 peers). This ' +
+    'is the matchmaking stage, NOT NAT/TURN — configuring TURN would not help. Check, in order: ' +
+    '(1) both tabs show the SAME room id above; (2) the host tab is still open; ' +
+    '(3) re-test in two tabs on ONE machine — if it still fails, the public trackers are not ' +
+    'pairing you (switch trackers via VITE_TRACKER_URLS, or the nostr/mqtt strategy) or WebRTC ' +
+    'is blocked in this browser (privacy extension / enterprise policy).' +
+    relayed
+  );
+}
+
 // -----------------------------------------------------------------------------
 // Live diagnostics
 // -----------------------------------------------------------------------------
@@ -207,6 +305,12 @@ function safe<T>(f: () => T, fallback: T): T {
 export interface NetDiagnosticsSources {
   /** Short label for the owning session ("host" / "client"). */
   scope: string;
+  /**
+   * Room identity ("appId / code") printed by `diagnose()` so a host and a
+   * client can eyeball whether they derived the SAME rendezvous topic — a
+   * mismatch is the one deterministic cause of "open sockets, 0 peers forever".
+   */
+  roomLabel?: string;
   /** Current tracker WebSockets by url (Trystero's `getRelaySockets`). */
   getSockets: () => Record<string, { readyState: number }>;
   /** Current *active* peer connections by peerId (Trystero's `room.getPeers`). */
@@ -225,6 +329,10 @@ export interface NetDiagnosticsSources {
 export function startNetDiagnostics(src: NetDiagnosticsSources): () => void {
   const intervalMs = src.intervalMs ?? 2000;
   const watched = new WeakSet<RTCPeerConnection>();
+  // Per-tracker inbound-frame counters. Keyed by url so counts survive a socket
+  // reconnect; the WeakSet stops us double-listening to the same socket object.
+  const trackerStats = new Map<string, TrackerStat>();
+  const instrumented = new WeakSet<WebSocket>();
   let lastSig = '';
 
   const read = (): { sockets: Record<string, { readyState: number }>; peers: Record<string, RTCPeerConnection> } => ({
@@ -232,16 +340,73 @@ export function startNetDiagnostics(src: NetDiagnosticsSources): () => void {
     peers: safe(src.getPeers, {}),
   });
 
+  /**
+   * Attach a *passive* `message` counter to any tracker socket we haven't seen,
+   * so `diagnose()` can tell an open-and-relaying tracker from an open-but-mute
+   * one. Runs even with verbose logging off (diagnose() must work in prod), and
+   * touches nothing Trystero relies on — it only adds a listener and reads state.
+   */
+  const instrument = (sockets: Record<string, { readyState: number }>): void => {
+    for (const [url, sock] of Object.entries(sockets)) {
+      let stat = trackerStats.get(url);
+      if (!stat) {
+        stat = { readyState: sock.readyState, frames: 0, signaling: 0 };
+        trackerStats.set(url, stat);
+      }
+      stat.readyState = sock.readyState;
+      const ws = sock as Partial<WebSocket>;
+      if (typeof ws.addEventListener === 'function' && !instrumented.has(ws as WebSocket)) {
+        instrumented.add(ws as WebSocket);
+        ws.addEventListener('message', (ev: MessageEvent) => {
+          const s = trackerStats.get(url);
+          if (!s) return;
+          s.frames += 1;
+          if (isSignalingFrame(ev.data)) s.signaling += 1;
+        });
+      }
+    }
+  };
+
+  /** Snapshot of the tracker stats limited to sockets that currently exist. */
+  const trackerDetail = (sockets: Record<string, { readyState: number }>): Record<string, TrackerStat> => {
+    const out: Record<string, TrackerStat> = {};
+    for (const [url, sock] of Object.entries(sockets)) {
+      const s = trackerStats.get(url);
+      out[url] = { readyState: sock.readyState, frames: s?.frames ?? 0, signaling: s?.signaling ?? 0 };
+    }
+    return out;
+  };
+
   const snapshot = (): void => {
     const { sockets, peers } = read();
+    instrument(sockets);
+    const detail = trackerDetail(sockets);
+    const socketsOpen = Object.values(sockets).filter((s) => s.readyState === 1).length;
+    const peerList = Object.values(peers);
+    const peersConnected = peerList.filter((p) => p.connectionState === 'connected').length;
+    const signalingFrames = Object.values(detail).reduce((n, s) => n + s.signaling, 0);
+    const verdict = diagnosisVerdict({
+      socketsOpen,
+      socketsTotal: Object.keys(sockets).length,
+      peersTotal: peerList.length,
+      peersConnected,
+      signalingFrames,
+    });
     // console.info (not gated) so `warband.diagnose()` works even with logs off.
+    const room = src.roomLabel ? ` — room ${src.roomLabel}` : '';
     console.info(
-      `${PREFIX} [${src.scope}] snapshot — ${summarizeSockets(sockets)} | ${summarizePeers(peers)}`,
-      { trackers: Object.keys(sockets), peers: Object.keys(peers) },
+      `${PREFIX} [${src.scope}] snapshot${room}\n` +
+        `  ${summarizeSockets(sockets)} | ${summarizePeers(peers)}\n` +
+        `${summarizeTrackerDetail(detail)}\n` +
+        `  → ${verdict}`,
+      { trackers: detail, peers: Object.keys(peers) },
     );
   };
 
   const tick = (): void => {
+    // Instrument sockets even when verbose logging is off, so an on-demand
+    // `diagnose()` in a production build still has real per-tracker counts.
+    instrument(safe(src.getSockets, {}));
     if (!enabled) return;
     const { sockets, peers } = read();
 
