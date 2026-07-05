@@ -12,6 +12,7 @@ import {
   selfId,
 } from '../net/room';
 import { useStore } from './store';
+import { netLog } from '../net/log';
 import { Sfx } from '../audio/sfx';
 import type { ClassId } from '../engine/types';
 
@@ -143,6 +144,11 @@ export async function joinGame(code: string): Promise<void> {
     hostSearchTimer = null;
     const cur = useStore.getState();
     if (cur.peerCount === 0 && cur.roomCode === upper) {
+      netLog(
+        'client',
+        `still no host after ${HOST_SEARCH_TIMEOUT_MS / 1000}s — showing connectivity hint. ` +
+          'Run warband.diagnose() to inspect trackers/peers.',
+      );
       cur.setNetHint(
         "Still reaching the host… Double-check the room code and that the host's tab is open. " +
           'If it keeps failing, one of you may be on a network that blocks direct connections — ' +

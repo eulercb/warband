@@ -9,7 +9,7 @@
 // subpath is now a runtime-throwing deprecation stub, so import the real
 // torrent strategy directly. (Swap to @trystero-p2p/nostr or /mqtt if tracker
 // connectivity is flaky — a one-line change.)
-import { joinRoom, defaultRelayUrls } from '@trystero-p2p/torrent';
+import { joinRoom, defaultRelayUrls, getRelaySockets } from '@trystero-p2p/torrent';
 import { APP_ID } from './protocol';
 import {
   buildTurnConfig,
@@ -18,6 +18,7 @@ import {
   sanitizeTrackerUrls,
   type RtcEnv,
 } from './rtc';
+import { netLog, netWarn, summarizeIceServers } from './log';
 
 /** This peer's stable, module-level id (from Trystero). Re-exported for callers. */
 export { selfId } from '@trystero-p2p/torrent';
@@ -74,12 +75,32 @@ const TRACKER_URLS = sanitizeTrackerUrls(
 );
 
 /**
+ * Live tracker WebSockets by url, from Trystero (`getRelaySockets`). Used by the
+ * connectivity diagnostics to report whether matchmaking is even reachable.
+ * Wrapped so callers get a stable shape (and never throw) if the export is absent.
+ */
+export function getTrackerSockets(): Record<string, WebSocket> {
+  try {
+    return (getRelaySockets?.() ?? {}) as Record<string, WebSocket>;
+  } catch {
+    return {};
+  }
+}
+
+/**
  * Join (or create) the Trystero room for `code` under the shared app id.
  *
  * `onJoinError` surfaces transport-level join failures (e.g. every tracker
  * unreachable) so the UI can hint at connectivity problems instead of hanging.
+ * Join errors are always logged (see log.ts); the rest of the room lifecycle is
+ * logged verbosely when net-debug is enabled.
  */
 export function openRoom(code: string, onJoinError?: (msg: string) => void): Room {
+  netLog('room', `joining room "${code}"`, {
+    appId: APP_ID,
+    ice: summarizeIceServers(TURN_CONFIG),
+    trackers: TRACKER_URLS,
+  });
   return joinRoom(
     {
       appId: APP_ID,
@@ -89,11 +110,14 @@ export function openRoom(code: string, onJoinError?: (msg: string) => void): Roo
       relayConfig: { urls: TRACKER_URLS, redundancy: TRACKER_URLS.length },
     },
     code,
-    onJoinError
-      ? {
-          onJoinError: (d) =>
-            onJoinError(typeof d?.error === 'string' ? d.error : 'connection error'),
-        }
-      : undefined,
+    {
+      onJoinError: (d) => {
+        const msg = typeof d?.error === 'string' ? d.error : 'connection error';
+        // Always surfaced (even with debug off): a join error is a real fault —
+        // usually every tracker being unreachable — that explains a dead lobby.
+        netWarn('room', `join error: ${msg}`, d);
+        onJoinError?.(msg);
+      },
+    },
   );
 }
