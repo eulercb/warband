@@ -41,6 +41,8 @@ import {
 import { SpriteLayer } from './sprites/spriteLayer';
 import { Particles } from './sprites/particles';
 import { SPRITE_FLAGS, SPRITE_ATLAS_URL } from './sprites/manifest';
+import { RigLayer } from './rig/rigLayer';
+import { bossUsesRig, playerUsesRig, addUsesRig } from './rig/registry';
 import { buffLabel } from './buffGlyphs';
 
 const GRID_STEP = 100; // world units between grid lines
@@ -67,6 +69,7 @@ export class Renderer {
   private readonly fx: Fx;
   private readonly balloons: Balloons;
   private readonly sprites: SpriteLayer;
+  private readonly rigs: RigLayer;
   private readonly particles: Particles;
   private readonly labels: Text[] = [];
 
@@ -86,6 +89,7 @@ export class Renderer {
     this.fx = new Fx(this.fxTextLayer);
     this.balloons = new Balloons();
     this.sprites = new SpriteLayer(sheet, this.fx, app.renderer);
+    this.rigs = new RigLayer(this.fx);
     this.particles = new Particles(app.renderer);
 
     this.root.addChild(
@@ -97,7 +101,8 @@ export class Renderer {
       this.aimLayer, // local player's subtle aim/attack-area preview
       this.entitiesLayer, // geometry bodies (flag-off actors)
       this.sprites.container, // retained sprite bodies (flag-on actors)
-      this.overlayLayer, // vector bars/rings for sprite-driven actors
+      this.rigs.container, // retained articulated rig bodies (rig-opted actors)
+      this.overlayLayer, // vector bars/rings for sprite- and rig-driven actors
       this.projectilesLayer,
       this.fxLayer,
       this.particles.container,
@@ -155,6 +160,7 @@ export class Renderer {
     // to the sprite attack triggers and the particle emitter, BEFORE drawing.
     this.fx.processEvents(state.events, this.camera);
     this.sprites.ingestEvents(state.events, now);
+    this.rigs.ingestEvents(state.events);
     this.particles.processEvents(state.events);
     this.balloons.ingest(state.events);
 
@@ -164,9 +170,10 @@ export class Renderer {
     this.drawZones(state);
     this.drawTelegraph(state);
     this.drawAimPreview(state);
-    this.drawEntities(state, now); // geometry for flag-off actors
+    this.drawEntities(state, now); // geometry for flag-off, non-rig actors
     this.sprites.update(state, this.camera, now, dtMs); // sprites for flag-on actors
-    this.drawOverlays(state, now); // vector bars/rings for flag-on actors
+    this.rigs.update(state, this.camera, now, dtMs); // articulated rigs for rig-opted actors
+    this.drawOverlays(state, now); // vector bars/rings for sprite- and rig-driven actors
     this.drawProjectiles(state); // geometry for flag-off projectiles
 
     this.fx.update(dtMs);
@@ -194,6 +201,7 @@ export class Renderer {
 
   dispose(): void {
     this.sprites.destroy();
+    this.rigs.destroy();
     this.particles.destroy();
     this.balloons.destroy();
     this.app.destroy(true);
@@ -335,11 +343,12 @@ export class Renderer {
 
     if (!SPRITE_FLAGS.add) {
       for (const a of state.adds) {
+        if (addUsesRig(a)) continue;
         drawAdd(g, a, this.camera.worldToScreen(a.pos), scale, this.fx.flashAmount(a.id), timeSec);
       }
     }
     // Boss below players so downed/standing players stay readable on top of it.
-    if (!SPRITE_FLAGS.boss && state.boss) {
+    if (!SPRITE_FLAGS.boss && state.boss && !bossUsesRig(state.boss)) {
       drawBoss(
         g,
         state.boss,
@@ -351,6 +360,7 @@ export class Renderer {
     }
     if (!SPRITE_FLAGS.player) {
       for (const p of state.players) {
+        if (playerUsesRig(p)) continue; // rig draws the body (dead → geometry ghost here)
         drawPlayer(
           g,
           p,
@@ -371,16 +381,16 @@ export class Renderer {
     const scale = this.camera.scale;
     const timeSec = nowMs / 1000;
 
-    if (SPRITE_FLAGS.add) {
-      for (const a of state.adds) {
+    for (const a of state.adds) {
+      if (SPRITE_FLAGS.add || addUsesRig(a)) {
         drawAddOverlay(g, a, this.camera.worldToScreen(a.pos), scale, timeSec);
       }
     }
-    if (SPRITE_FLAGS.boss && state.boss) {
+    if (state.boss && (SPRITE_FLAGS.boss || bossUsesRig(state.boss))) {
       drawBossOverlay(g, state.boss, this.camera.worldToScreen(state.boss.pos), scale, timeSec);
     }
-    if (SPRITE_FLAGS.player) {
-      for (const p of state.players) {
+    for (const p of state.players) {
+      if (SPRITE_FLAGS.player || playerUsesRig(p)) {
         drawPlayerOverlay(
           g,
           p,

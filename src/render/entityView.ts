@@ -323,6 +323,14 @@ export function drawBossOverlay(
 
   drawBuffGlows(g, x, y, r, b.buffs, timeSec);
 
+  // Endless "type" modifier glow (Frost/Dark/Infernal…), pulsing under the body —
+  // drawn by the body pass for geometry bosses, so it lives here for sprite/rig ones.
+  if (b.modColor != null) {
+    const p = 0.5 + 0.5 * Math.sin(timeSec * 3);
+    g.circle(x, y, r * 1.3).fill({ color: b.modColor, alpha: 0.1 + 0.06 * p });
+    g.circle(x, y, r + 8).stroke({ width: 2, color: b.modColor, alpha: 0.4 + 0.25 * p });
+  }
+
   const fx = x + Math.cos(b.facing) * r;
   const fy = y + Math.sin(b.facing) * r;
   g.moveTo(x, y).lineTo(fx, fy).stroke({ width: 3, color: 0xffffff, alpha: 0.45 });
