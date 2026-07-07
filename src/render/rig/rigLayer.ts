@@ -47,9 +47,18 @@ export class RigLayer {
     this.sphereTex = makeSphereTexture();
   }
 
-  /** Trigger a weapon/attack swing on the caster's rig for each cast event. */
+  /** ms timestamp the current victory celebration started at, or null. */
+  private victoryAtMs: number | null = null;
+  private lastBrandishMs = 0;
+
+  /** Trigger a weapon/attack swing on the caster's rig for each cast event;
+   * a `victory` event starts the whole band's procedural victory dance. */
   ingestEvents(events: GameEvent[]): void {
     for (const e of events) {
+      if (e.t === 'victory') {
+        this.victoryAtMs = performance.now();
+        this.lastBrandishMs = 0;
+      }
       if (e.t !== 'cast') continue;
       this.nodes.get(e.sourceId)?.rig.triggerAttack();
     }
@@ -61,23 +70,38 @@ export class RigLayer {
     const scale = camera.scale;
     const timeSec = nowMs / 1000;
 
-    // Boss.
-    const b = state.boss;
-    if (b && bossUsesRig(b)) {
+    // Bosses (twin encounters drive one rig per boss).
+    for (const b of state.bosses) {
+      if (!bossUsesRig(b)) continue;
       const spec = bossRigSpec(b.monsterId);
-      if (spec) {
-        const def = getMonster(b.monsterId);
-        const node = this.ensure(b.id, spec, def.radius);
-        const scr = camera.worldToScreen(b.pos);
-        node.rig.update(scr, b.facing, scale, dtMs, timeSec, {
-          color: def.color,
-          flash: this.fx.flashAmount(b.id),
-          enraged: b.phase === 'enraged',
-          action: b.action,
-          telegraphT: telegraphProgress(b.telegraph),
-        });
-        node.rig.view.zIndex = Z_BIAS.boss + scr.y;
-        this.seen.add(b.id);
+      if (!spec) continue;
+      const def = getMonster(b.monsterId);
+      const node = this.ensure(b.id, spec, def.radius);
+      const scr = camera.worldToScreen(b.pos);
+      node.rig.update(scr, b.facing, scale, dtMs, timeSec, {
+        color: def.color,
+        flash: this.fx.flashAmount(b.id),
+        enraged: b.phase === 'enraged',
+        action: b.action,
+        telegraphT: telegraphProgress(b.telegraph),
+      });
+      node.rig.view.zIndex = Z_BIAS.boss + scr.y;
+      this.seen.add(b.id);
+    }
+
+    // Victory dance: once the fight is won, every living hero hops, twirls and
+    // pumps their weapon until the result screen takes over. A fresh fight
+    // (any boss back at hp > 0) clears the celebration.
+    let cheer: number | undefined;
+    if (this.victoryAtMs != null) {
+      if (state.bosses.some((b) => b.hp > 0)) {
+        this.victoryAtMs = null;
+      } else {
+        cheer = (nowMs - this.victoryAtMs) / 1000;
+        if (nowMs - this.lastBrandishMs > 460) {
+          this.lastBrandishMs = nowMs;
+          for (const [, node] of this.nodes) node.rig.triggerAttack();
+        }
       }
     }
 
@@ -88,7 +112,12 @@ export class RigLayer {
       if (!spec) continue;
       const node = this.ensure(p.id, spec, PLAYER_RADIUS);
       const scr = camera.worldToScreen(p.pos);
-      node.rig.update(scr, Math.atan2(p.aim.y, p.aim.x), scale, dtMs, timeSec, {
+      const celebrate = cheer != null && p.state === 'alive';
+      // Twirl during the dance: spin the facing a full turn per second-ish.
+      const facing = celebrate
+        ? Math.atan2(p.aim.y, p.aim.x) + Math.sin((cheer ?? 0) * 2.6) * 2.4
+        : Math.atan2(p.aim.y, p.aim.x);
+      node.rig.update(scr, facing, scale, dtMs, timeSec, {
         color: CLASS_COLORS[p.classId] ?? 0xffffff,
         flash: this.fx.flashAmount(p.id),
         enraged: false,
@@ -96,6 +125,7 @@ export class RigLayer {
         castSlot: p.castSlot,
         castT: castProgress(p),
         aim: p.aim,
+        cheer: celebrate ? cheer : undefined,
       });
       node.rig.view.zIndex = Z_BIAS.player + scr.y;
       this.seen.add(p.id);

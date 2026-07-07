@@ -74,6 +74,14 @@ export interface RtcEnv {
    * `rewriteMdnsToLoopback`.
    */
   VITE_NO_RTC_LOOPBACK?: string;
+  /**
+   * WebSocket URL of a Warband GLOBAL SERVER relay (see server/relay.mjs),
+   * e.g. `wss://relay.example.com`. When set, Host/Join screens offer a
+   * "Global server" connection mode that routes all traffic through it —
+   * the guaranteed-connectivity fallback for networks where peer-to-peer
+   * (even via TURN) cannot form.
+   */
+  VITE_RELAY_URL?: string;
 }
 
 function truthy(v: string | undefined): boolean {
@@ -143,6 +151,13 @@ export function buildTurnConfig(env: RtcEnv): TurnServer[] {
  */
 export function rewriteMdnsToLoopback(env: RtcEnv): boolean {
   return !truthy(env.VITE_NO_RTC_LOOPBACK);
+}
+
+/** The configured global-server relay URL, or null when the feature is off. */
+export function relayUrl(env: RtcEnv): string | null {
+  const raw = env.VITE_RELAY_URL?.trim();
+  if (!raw) return null;
+  return /^wss?:\/\//i.test(raw) ? raw : `wss://${raw}`;
 }
 
 /** Extra tracker URLs from `VITE_TRACKER_URLS` (comma/space separated). */

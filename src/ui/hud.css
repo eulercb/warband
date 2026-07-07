@@ -29,13 +29,18 @@
   user-select: none;
 }
 
-/* Boss bar (top center) */
-.hud-bossbar {
+/* Boss bars (top center; twin encounters stack one per boss) */
+.hud-bossbars {
   position: absolute;
   top: 14px;
   left: 50%;
   transform: translateX(-50%);
   width: min(720px, 84vw);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hud-bossbar {
   text-align: center;
 }
 .hud-bossbar-label {

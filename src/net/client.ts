@@ -7,6 +7,7 @@
  * and gently reconciled toward the authoritative position from snapshots.
  */
 import { openRoom, selfId, getTrackerSockets } from './room';
+import type { NetMode } from './room';
 import { netLog, netLogOnce, startNetDiagnostics } from './log';
 import { ACTIONS, APP_ID } from './protocol';
 import type {
@@ -48,6 +49,8 @@ interface NetAction<T> {
 export interface ClientOpts {
   code: string;
   name: string;
+  /** Transport: peer-to-peer WebRTC (default) or the global-server relay. */
+  net?: NetMode;
   onLobby: (msg: LobbyMsg) => void;
   /** Transition the UI into the game view. */
   onStart: (msg: StartMsg) => void;
@@ -134,7 +137,7 @@ export class Client implements NetSession {
     this.opts = opts;
     this.ownName = opts.name;
 
-    this.room = openRoom(opts.code, opts.onJoinError);
+    this.room = openRoom(opts.code, opts.onJoinError, opts.net ?? 'p2p');
     netLog('client', `joining room "${opts.code}" as ${selfId.slice(0, 6)}`, { name: opts.name });
     // Watch tracker sockets + peer connections so a stalled handshake is visible:
     // this is exactly the "stuck on Connecting to the host…" case to debug.

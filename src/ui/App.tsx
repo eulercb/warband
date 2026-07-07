@@ -59,10 +59,11 @@ export default function App() {
   const showControls = useStore((s) => s.showControls);
 
   useEffect(() => {
-    const code = readRoomFromHash();
-    if (code) {
+    const fromHash = readRoomFromHash();
+    if (fromHash) {
       const s = useStore.getState();
-      s.setRoom(code, false);
+      s.setRoom(fromHash.code, false);
+      s.setNetMode(fromHash.net);
       s.setPhase('join');
     }
     // Unlock the audio context on the first user gesture.

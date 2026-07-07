@@ -116,7 +116,7 @@ export class SnapshotInterpolator {
     }
 
     const players = this.lerpPlayers(from, carry, t);
-    const boss = this.lerpBoss(from, carry, t);
+    const bosses = this.lerpBosses(from, carry, t);
     const adds = this.lerpAdds(from, carry, t);
     const projectiles = this.lerpProjectiles(from, carry, t);
 
@@ -138,8 +138,9 @@ export class SnapshotInterpolator {
 
     return {
       tick: carry.tick,
+      seed: carry.seed,
       players,
-      boss,
+      bosses,
       adds,
       projectiles,
       groundZones,
@@ -175,11 +176,13 @@ export class SnapshotInterpolator {
     }));
   }
 
-  private lerpBoss(from: Snapshot | null, carry: Snapshot, t: number): BossView | null {
-    if (!carry.boss) return null;
-    const prev = from?.boss && from.boss.id === carry.boss.id ? from.boss : undefined;
+  private lerpBosses(from: Snapshot | null, carry: Snapshot, t: number): BossView[] {
+    const prev = from ? indexById(from.bosses) : null;
     // Telegraph + facing intentionally taken from `carry` (never interpolated).
-    return { ...carry.boss, pos: this.lerpVec(prev?.pos, carry.boss.pos, t) };
+    return carry.bosses.map((b) => ({
+      ...b,
+      pos: this.lerpVec(prev?.get(b.id)?.pos, b.pos, t),
+    }));
   }
 
   private lerpAdds(from: Snapshot | null, carry: Snapshot, t: number): AddView[] {

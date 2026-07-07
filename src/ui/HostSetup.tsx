@@ -8,6 +8,7 @@ import { hostGame, playUiSound, setGauntlet } from './session';
 import { useGamepadMenu } from '../input/useGamepadMenu';
 import { MONSTER_IDS, MONSTERS } from '../engine/monsters';
 import { RUN_LENGTH } from '../engine/constants';
+import { configuredRelayUrl } from '../net/room';
 
 /** Convert a PixiJS numeric color (0xRRGGBB) to a CSS hex string. */
 function toHex(n: number): string {
@@ -18,11 +19,14 @@ export function HostSetup() {
   const monsterId = useStore((s) => s.monsterId);
   const localName = useStore((s) => s.localName);
   const gauntlet = useStore((s) => s.gauntlet);
+  const netMode = useStore((s) => s.netMode);
   const error = useStore((s) => s.error);
   const setMonster = useStore((s) => s.setMonster);
   const setLocalName = useStore((s) => s.setLocalName);
+  const setNetMode = useStore((s) => s.setNetMode);
   const setPhase = useStore((s) => s.setPhase);
   const setError = useStore((s) => s.setError);
+  const relayConfigured = configuredRelayUrl() !== null;
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [creating, setCreating] = useState(false);
@@ -108,6 +112,30 @@ export function HostSetup() {
             </span>
           </span>
         </button>
+
+        {relayConfigured && (
+          <button
+            type="button"
+            className={`wb-gauntlet-toggle${netMode === 'relay' ? ' on' : ''}`}
+            onClick={() => {
+              playUiSound('uiClick');
+              setNetMode(netMode === 'relay' ? 'p2p' : 'relay');
+            }}
+            aria-pressed={netMode === 'relay'}
+          >
+            <span className="wb-gauntlet-check" aria-hidden="true">
+              {netMode === 'relay' ? '✓' : ''}
+            </span>
+            <span className="wb-gauntlet-text">
+              <span className="wb-gauntlet-title">Host on the global server</span>
+              <span className="wb-gauntlet-sub">
+                {netMode === 'relay'
+                  ? 'All traffic is relayed through the global server — connects even where peer-to-peer is blocked. The share link carries this setting.'
+                  : 'Off: direct peer-to-peer over WebRTC (default). Turn on if friends can never connect — the global server relays for you.'}
+              </span>
+            </span>
+          </button>
+        )}
 
         <label className="wb-field">
           <span className="wb-field-label">Your name</span>

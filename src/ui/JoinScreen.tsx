@@ -7,14 +7,18 @@ import { useRef, useState } from 'react';
 import { useStore } from './store';
 import { joinGame, playUiSound } from './session';
 import { useGamepadMenu } from '../input/useGamepadMenu';
+import { configuredRelayUrl } from '../net/room';
 
 export function JoinScreen() {
   const localName = useStore((s) => s.localName);
   const error = useStore((s) => s.error);
+  const netMode = useStore((s) => s.netMode);
   const setLocalName = useStore((s) => s.setLocalName);
+  const setNetMode = useStore((s) => s.setNetMode);
   const setPhase = useStore((s) => s.setPhase);
   const setError = useStore((s) => s.setError);
   const panelRef = useRef<HTMLDivElement>(null);
+  const relayConfigured = configuredRelayUrl() !== null;
 
   // Prefill from a room code the URL-hash handler may have written to the store.
   const [code, setCode] = useState<string>(() => useStore.getState().roomCode ?? '');
@@ -79,6 +83,29 @@ export function JoinScreen() {
             aria-label="Your display name"
           />
         </label>
+
+        {relayConfigured && (
+          <button
+            type="button"
+            className={`wb-gauntlet-toggle${netMode === 'relay' ? ' on' : ''}`}
+            onClick={() => {
+              playUiSound('uiClick');
+              setNetMode(netMode === 'relay' ? 'p2p' : 'relay');
+            }}
+            aria-pressed={netMode === 'relay'}
+          >
+            <span className="wb-gauntlet-check" aria-hidden="true">
+              {netMode === 'relay' ? '✓' : ''}
+            </span>
+            <span className="wb-gauntlet-text">
+              <span className="wb-gauntlet-title">Connect via the global server</span>
+              <span className="wb-gauntlet-sub">
+                Use this when the room was hosted on the global server (share links set it
+                automatically) or when peer-to-peer keeps failing on your network.
+              </span>
+            </span>
+          </button>
+        )}
 
         <div className="wb-row wb-actions-row">
           <button type="button" className="wb-btn wb-btn-ghost" onClick={onBack} disabled={joining}>

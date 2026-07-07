@@ -52,7 +52,8 @@ export const ZONE_FADE_OUT = 0.6; // s
 // who stand in them. Damage ticks at this cadence (matches ground zones).
 export const TERRAIN_TICK_INTERVAL = 0.5; // s
 export const TERRAIN_MIN_PATCHES = 3;
-export const TERRAIN_MAX_PATCHES = 5;
+/** Hard cap across every layout archetype (rivers/rings use many small blobs). */
+export const TERRAIN_MAX_PATCHES = 9;
 export const TERRAIN_MIN_RADIUS = 90; // world units
 export const TERRAIN_MAX_RADIUS = 180;
 /** Keep terrain away from the party's spawn strip and the boss's opening spot. */
@@ -126,6 +127,29 @@ export const BOT_REVIVE_RANGE = 340; // u
 // --- Stalemate breaker ---
 export const SOFT_ENRAGE_TIME = 300; // s — after this, escalating boss damage
 export const SOFT_ENRAGE_RAMP = 0.05; // +5%/s boss outgoing damage past the threshold
+
+// --- Stun diminishing returns (applies to players, bosses AND adds) ---
+// Chain-stunning the same target gets weaker each time: every successive stun
+// landed within the rolling window keeps only STUN_DR_FACTOR of the previous
+// effective duration. Once the effective duration would drop below
+// STUN_DR_FLOOR the stun is fully resisted (a `stunResist` event fires so the
+// resist is readable). The counter resets after STUN_DR_WINDOW seconds without
+// any new stun landing. Keeps Daze/Shield Bash/Deep Freeze strong openers
+// without letting a rotation freeze a boss (or a hero) forever.
+export const STUN_DR_FACTOR = 0.5; // each chained stun keeps 50% of the last
+export const STUN_DR_WINDOW = 14; // s without stuns before the falloff resets
+export const STUN_DR_FLOOR = 0.2; // s — anything shorter is resisted outright
+
+// --- Twin (shared-arena) boss encounters ---
+// A twin encounter splits the danger budget: each boss spawns with a fraction
+// of its solo HP and deals a fraction of its solo damage, so two-at-once stays
+// chaotic but survivable.
+export const TWIN_HP_FRAC = 0.62;
+export const TWIN_DMG_FRAC = 0.8;
+/** Chance a mid-run slot rolls a twin encounter (scales up in endless). */
+export const TWIN_BASE_CHANCE = 0.22;
+export const TWIN_CHANCE_PER_CYCLE = 0.12;
+export const TWIN_CHANCE_MAX = 0.6;
 
 // --- Adds (skeletons) ---
 export const ADD_HP = 60;

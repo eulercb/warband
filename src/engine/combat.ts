@@ -3,9 +3,9 @@
  * Pure functions operating on entities + an event sink. No world import (to
  * keep this decoupled and trivially unit-testable).
  */
-import type { Player, Boss, Add, Buff, BuffKind, GameEvent, Side } from './types';
+import type { Player, Boss, Add, Buff, BuffKind, GameEvent, Side, StunDr, Vec2 } from './types';
 import { getClass } from './classes';
-import { HEAL_THREAT_FACTOR } from './constants';
+import { HEAL_THREAT_FACTOR, STUN_DR_FACTOR, STUN_DR_WINDOW, STUN_DR_FLOOR } from './constants';
 
 /** Minimal structural sink so combat needn't import the World. */
 export interface EventSink {
@@ -43,6 +43,55 @@ export function tickBuffs(entity: { buffs: Buff[] }, dt: number): void {
   for (let i = entity.buffs.length - 1; i >= 0; i--) {
     entity.buffs[i].remaining -= dt;
     if (entity.buffs[i].remaining <= 0) entity.buffs.splice(i, 1);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stun with diminishing returns
+// ---------------------------------------------------------------------------
+
+/** Any entity that can be stunned: players, bosses and adds all match. */
+export interface Stunnable {
+  buffs: Buff[];
+  stunDr?: StunDr;
+  id: number;
+  pos: Vec2;
+}
+
+/**
+ * Apply a stun honoring diminishing returns. Each successive stun landed on the
+ * same target within `STUN_DR_WINDOW` keeps only `STUN_DR_FACTOR` of the
+ * previous effective duration; once the effective duration would fall under
+ * `STUN_DR_FLOOR` the stun is resisted entirely (a `stunResist` event fires so
+ * players can read it). Returns the effective stun seconds applied (0 = resisted).
+ */
+export function applyStun(
+  sink: EventSink,
+  target: Stunnable,
+  seconds: number,
+  source: string,
+): number {
+  if (seconds <= 0) return 0;
+  const dr = (target.stunDr ??= { count: 0, window: 0 });
+  const effective = seconds * Math.pow(STUN_DR_FACTOR, dr.count);
+  dr.window = STUN_DR_WINDOW; // any attempt (even a resisted one) keeps DR hot
+  if (effective < STUN_DR_FLOOR) {
+    sink.events.push({ t: 'stunResist', id: target.id, pos: { ...target.pos } });
+    return 0;
+  }
+  dr.count += 1;
+  applyBuff(target, makeBuff('stun', 0, effective, source));
+  return effective;
+}
+
+/** Tick a target's stun-DR window; when it runs out, the falloff fully resets. */
+export function tickStunDr(target: { stunDr?: StunDr }, dt: number): void {
+  const dr = target.stunDr;
+  if (!dr || dr.window <= 0) return;
+  dr.window -= dt;
+  if (dr.window <= 0) {
+    dr.count = 0;
+    dr.window = 0;
   }
 }
 

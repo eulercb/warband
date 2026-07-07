@@ -17,9 +17,18 @@ import {
   mergeTrackerUrls,
   sanitizeTrackerUrls,
   rewriteMdnsToLoopback,
+  relayUrl,
   type RtcEnv,
 } from './rtc';
+import { openRelayRoom } from './relayRoom';
 import { netLog, netWarn, summarizeIceServers } from './log';
+
+/**
+ * How a session connects. 'p2p' is the classic serverless WebRTC mesh;
+ * 'relay' routes every message through the configured GLOBAL SERVER
+ * (VITE_RELAY_URL) — the fallback for networks where no direct/TURN path forms.
+ */
+export type NetMode = 'p2p' | 'relay';
 
 /** This peer's stable, module-level id (from Trystero). Re-exported for callers. */
 export { selfId } from '@trystero-p2p/torrent';
@@ -44,23 +53,33 @@ export function generateRoomCode(): string {
 }
 
 /**
- * Parse the room code from `window.location.hash` (matching `#room=CODE`,
- * case-insensitive). Returns the code UPPERCASED, or null if absent/malformed.
+ * Parse the room code (+ optional connection mode) from
+ * `window.location.hash`. Accepts the classic `#room=CODE` and the
+ * global-server form `#room=CODE&net=g`. Returns the code UPPERCASED, or null
+ * if absent/malformed.
  */
-export function readRoomFromHash(): string | null {
+export function readRoomFromHash(): { code: string; net: NetMode } | null {
   const hash = window.location.hash.replace(/^#/, '');
-  const match = /^room=([a-z0-9]+)$/i.exec(hash);
-  return match ? match[1].toUpperCase() : null;
+  const match = /^room=([a-z0-9]+)(?:&net=(g|relay))?$/i.exec(hash);
+  if (!match) return null;
+  return { code: match[1].toUpperCase(), net: match[2] ? 'relay' : 'p2p' };
 }
 
-/** Write the room code into the URL hash as `#room=CODE`. */
-export function writeRoomToHash(code: string): void {
-  window.location.hash = 'room=' + code;
+/** Write the room code (+ mode) into the URL hash as `#room=CODE[&net=g]`. */
+export function writeRoomToHash(code: string, net: NetMode = 'p2p'): void {
+  window.location.hash = code ? 'room=' + code + (net === 'relay' ? '&net=g' : '') : '';
 }
 
-/** Build a full shareable link (origin + path + hash) for a room code. */
-export function shareLinkFor(code: string): string {
-  return window.location.origin + window.location.pathname + '#room=' + code;
+/** Build a full shareable link (origin + path + hash) for a room code. The
+ * link carries the connection mode so joiners land on the right transport. */
+export function shareLinkFor(code: string, net: NetMode = 'p2p'): string {
+  return (
+    window.location.origin +
+    window.location.pathname +
+    '#room=' +
+    code +
+    (net === 'relay' ? '&net=g' : '')
+  );
 }
 
 // Connectivity config, resolved once from build-time env (see rtc.ts + .env.example).
@@ -92,15 +111,39 @@ export function getTrackerSockets(): Record<string, WebSocket> {
   }
 }
 
+/** The configured global-server URL, or null when the feature is disabled. */
+export function configuredRelayUrl(): string | null {
+  return relayUrl(rtcEnv);
+}
+
 /**
- * Join (or create) the Trystero room for `code` under the shared app id.
+ * Join (or create) the room for `code` under the shared app id.
+ *
+ * `net` picks the transport: the classic serverless Trystero/WebRTC mesh
+ * ('p2p', default), or the GLOBAL SERVER WebSocket relay ('relay') when the
+ * build has one configured — same message channels, same host-authoritative
+ * protocol, different pipes.
  *
  * `onJoinError` surfaces transport-level join failures (e.g. every tracker
  * unreachable) so the UI can hint at connectivity problems instead of hanging.
  * Join errors are always logged (see log.ts); the rest of the room lifecycle is
  * logged verbosely when net-debug is enabled.
  */
-export function openRoom(code: string, onJoinError?: (msg: string) => void): Room {
+export function openRoom(
+  code: string,
+  onJoinError?: (msg: string) => void,
+  net: NetMode = 'p2p',
+): Room {
+  if (net === 'relay') {
+    const url = configuredRelayUrl();
+    if (url) {
+      netLog('room', `joining room "${code}" via GLOBAL SERVER`, { url, appId: APP_ID });
+      // Structurally identical to the Trystero room for every surface we use.
+      return openRelayRoom(url, code, onJoinError) as unknown as Room;
+    }
+    netWarn('room', 'relay mode requested but VITE_RELAY_URL is not set — using P2P');
+    onJoinError?.('No global server is configured for this build (VITE_RELAY_URL).');
+  }
   netLog('room', `joining room "${code}"`, {
     appId: APP_ID,
     ice: summarizeIceServers(TURN_CONFIG),

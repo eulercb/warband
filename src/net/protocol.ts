@@ -62,6 +62,8 @@ export interface StartMsg {
   seed: number;
   playerCount: number;
   monsterId: MonsterId;
+  /** Every boss of the encounter (twin fights list two). Absent = solo. */
+  monsterIds?: MonsterId[];
   /** Ordered roster used to build the world; peerId order must match host. */
   roster: Array<{ peerId: string; name: string; classId: ClassId }>;
   /** Gauntlet/run context so clients can show "Boss 2 of 5", etc. */

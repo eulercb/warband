@@ -6,6 +6,7 @@
  * at a fixed timestep, and broadcasts snapshots. It also owns lobby state.
  */
 import { openRoom, selfId, getTrackerSockets } from './room';
+import type { NetMode } from './room';
 import { netLog, netLogOnce, startNetDiagnostics } from './log';
 import { ACTIONS, APP_ID } from './protocol';
 import type {
@@ -27,9 +28,11 @@ import type {
 import { World } from '../engine/world';
 import type { WorldPlayerInit } from '../engine/world';
 import { SIM_DT, MAX_PLAYERS, RESUME_COUNTDOWN_S, SCORE_BOSS_CLEAR } from '../engine/constants';
-import { computeBotInput, BOT_PEER_PREFIX } from '../engine/bot';
+import { computeBotInput, rollPersonality, BOT_PEER_PREFIX } from '../engine/bot';
+import type { BotPersonality } from '../engine/bot';
 import { CLASSES } from '../engine/classes';
-import { buildRun, modifierForCycle } from '../engine/monsters';
+import { buildRunSlots, modifierForCycle } from '../engine/monsters';
+import type { RunSlot } from '../engine/monsters';
 import { Rng } from '../engine/math';
 import { isUpgradeId } from '../engine/upgrades';
 import type { UpgradeId } from '../engine/upgrades';
@@ -56,6 +59,9 @@ interface NetAction<T> {
   onMessage: ((data: T, ctx: { peerId: string; metadata?: unknown }) => void) | null;
 }
 
+/** How long (ms) the post-win victory dance plays before the result screen. */
+const VICTORY_LAP_MS = 2600;
+
 /** One connected (non-host) player's lobby entry. */
 interface PeerEntry {
   name: string;
@@ -68,6 +74,8 @@ interface BotEntry {
   peerId: string; // synthetic, prefixed `bot:` — never a real Trystero id
   name: string;
   classId: ClassId;
+  /** Rolled temperament — multiple bots on one team behave differently. */
+  personality: BotPersonality;
 }
 
 export interface HostOpts {
@@ -77,6 +85,8 @@ export interface HostOpts {
   classId: ClassId;
   /** Start a sequence run (gauntlet) rather than a single boss. */
   gauntlet?: boolean;
+  /** Transport: peer-to-peer WebRTC (default) or the global-server relay. */
+  net?: NetMode;
   /** Called whenever lobby state changes (including immediately in the ctor). */
   onLobby: (msg: LobbyMsg) => void;
   /** Called whenever a fight begins (manual start, retry or gauntlet advance). */
@@ -170,8 +180,8 @@ export class Host implements NetSession {
    */
   private roundParticipants = new Set<string>();
 
-  // Run / endless state.
-  private runOrder: MonsterId[] = [];
+  // Run / endless state. Each slot is one encounter: [boss] or [boss, twin].
+  private runOrder: RunSlot[] = [];
   private runIndex = 0;
   private cycle = 0;
 
@@ -180,6 +190,8 @@ export class Host implements NetSession {
   private raf = 0;
   private lastTime = 0;
   private acc = 0;
+  /** Wall-clock deadline of the post-win victory lap (0 = no lap pending). */
+  private victoryLapUntil = 0;
 
   // Debug: keys already logged once (first-input-per-peer, first snapshot, …).
   private readonly loggedOnce = new Set<string>();
@@ -192,7 +204,7 @@ export class Host implements NetSession {
     this.hostClass = opts.classId;
     this.gauntlet = opts.gauntlet ?? false;
 
-    this.room = openRoom(opts.code, opts.onJoinError);
+    this.room = openRoom(opts.code, opts.onJoinError, opts.net ?? 'p2p');
     netLog('host', `hosting room "${opts.code}" as ${selfId.slice(0, 6)}`, {
       monster: opts.monsterId,
       name: opts.name,
@@ -393,10 +405,12 @@ export class Host implements NetSession {
   addBot(classId: ClassId): void {
     if (this.partySize() >= MAX_PLAYERS) return;
     const n = this.nextBotNum++;
+    const personality = rollPersonality(((Date.now() & 0xfffff) ^ (n * 0x9e3779b9)) >>> 0 || n);
     this.bots.push({
       peerId: `${BOT_PEER_PREFIX}${n}`,
-      name: `Bot ${classLabel(classId)}`,
+      name: `${personality.label} Bot ${classLabel(classId)}`,
       classId,
+      personality,
     });
     this.broadcastLobby();
   }
@@ -413,7 +427,7 @@ export class Host implements NetSession {
     const bot = this.bots.find((b) => b.peerId === peerId);
     if (bot) {
       bot.classId = classId;
-      bot.name = `Bot ${classLabel(classId)}`;
+      bot.name = `${bot.personality.label} Bot ${classLabel(classId)}`;
       this.broadcastLobby();
     }
   }
@@ -479,18 +493,21 @@ export class Host implements NetSession {
     this.beginFight();
   }
 
-  /** Bosses this run will fight, in order. Single boss when the run mode is off. */
-  private buildRunOrder(): MonsterId[] {
-    if (!this.gauntlet) return [this.monsterId];
+  /** Encounters this run will fight, in order. Single boss when run mode is off. */
+  private buildRunOrder(): RunSlot[] {
+    if (!this.gauntlet) return [[this.monsterId]];
     // Deterministic within a run but varied across cycles.
     const rng = new Rng(((Date.now() & 0xffff) ^ (this.cycle * 2654435761)) >>> 0 || 1);
-    return buildRun(this.monsterId, this.cycle, rng);
+    return buildRunSlots(this.monsterId, this.cycle, rng);
   }
 
   /** Spin up a fresh World for `runOrder[runIndex]` and start the sim loop. */
   private beginFight(): void {
     this.clearResumeCountdown();
-    const monsterId = this.runOrder[this.runIndex] ?? this.monsterId;
+    this.victoryLapUntil = 0;
+    const slot = this.runOrder[this.runIndex] ?? [this.monsterId];
+    const monsterId = slot[0] ?? this.monsterId;
+    const coBosses = slot.slice(1);
     const modifier = modifierForCycle(this.cycle);
 
     // World roster carries each hero's accumulated upgrades + carried score
@@ -516,13 +533,21 @@ export class Host implements NetSession {
     this.paused = false;
     this.pausedByName = undefined;
 
-    this.world = new World({ monsterId, seed, players: roster, cycle: this.cycle, modifier });
+    this.world = new World({
+      monsterId,
+      seed,
+      players: roster,
+      cycle: this.cycle,
+      modifier,
+      coBosses,
+    });
     this.localPlayerId = this.world.playerIdByPeer(selfId);
 
     const startMsg: StartMsg = {
       seed,
       playerCount,
       monsterId,
+      monsterIds: slot,
       roster: wireRoster,
       gauntlet: this.gauntlet,
       runIndex: this.runIndex,
@@ -532,7 +557,7 @@ export class Host implements NetSession {
     };
     netLog('host', `starting fight → ${playerCount} player(s)`, {
       seed,
-      monster: monsterId,
+      monster: slot.join('+'),
       run: `${this.runIndex + 1}/${this.runOrder.length}`,
       cycle: this.cycle,
     });
@@ -825,7 +850,16 @@ export class Host implements NetSession {
       this.acc -= SIM_DT;
     }
 
-    if (world.finished) this.finishFight();
+    if (world.finished) {
+      // Victory lap: hold the result screen for a beat so everyone sees the
+      // heroes' victory dance + fireworks (the `victory` event already shipped
+      // in the final snapshot). Defeats cut straight to the result.
+      if (world.outcome === 'victory') {
+        if (this.victoryLapUntil === 0) this.victoryLapUntil = now + VICTORY_LAP_MS;
+        if (now < this.victoryLapUntil) return;
+      }
+      this.finishFight();
+    }
   }
 
   /** Synthesize AI input for each bot from the current world state (per step). */
@@ -834,7 +868,7 @@ export class Host implements NetSession {
     for (const b of this.bots) {
       const p = world.players.find((pl) => pl.peerId === b.peerId);
       if (!p) continue;
-      this.latestInput.set(b.peerId, computeBotInput(world, p, world.tick));
+      this.latestInput.set(b.peerId, computeBotInput(world, p, world.tick, b.personality));
     }
   }
 
@@ -863,7 +897,9 @@ export class Host implements NetSession {
 
     const victory = result.outcome === 'victory';
     const hasNext = victory && this.runIndex < this.runOrder.length - 1;
-    result.nextMonsterId = hasNext ? this.runOrder[this.runIndex + 1] : null;
+    const nextSlot = hasNext ? this.runOrder[this.runIndex + 1] : null;
+    result.nextMonsterId = nextSlot ? (nextSlot[0] ?? null) : null;
+    result.nextMonsterIds = nextSlot;
     // Cleared a whole MULTI-boss run → offer Endless on the victory screen. A
     // plain single-boss fight has no run to continue.
     result.endlessAvailable = victory && !hasNext && this.runOrder.length > 1;

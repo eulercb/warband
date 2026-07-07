@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import type { ClassId, MonsterId, FightResult } from '../engine/types';
 import type { UpgradeId } from '../engine/upgrades';
 import type { LobbyPlayer, NetSession } from '../net/protocol';
+import type { NetMode } from '../net/room';
 import { DEFAULT_CLASS } from '../engine/classes';
 import { DEFAULT_MONSTER } from '../engine/monsters';
 
@@ -89,6 +90,8 @@ export interface AppState {
   roomCode: string | null;
   isHost: boolean;
   session: NetSession | null;
+  /** Transport for the next session: P2P WebRTC or the global-server relay. */
+  netMode: NetMode;
   /**
    * Connectivity gauge. On the host: the number of connected players. On a
    * client: host reachability as 0/1 (1 once the host link is proven by an
@@ -147,6 +150,7 @@ export interface AppState {
   setHostLeft: (v: boolean) => void;
   setRoom: (code: string | null, isHost: boolean) => void;
   setSession: (s: NetSession | null) => void;
+  setNetMode: (m: NetMode) => void;
   setPeerCount: (n: number) => void;
   setNetHint: (h: string | null) => void;
   setMonster: (id: MonsterId) => void;
@@ -186,6 +190,7 @@ export const useStore = create<AppState>((set, get) => ({
   roomCode: null,
   isHost: false,
   session: null,
+  netMode: 'p2p',
   peerCount: 0,
   netHint: null,
 
@@ -221,6 +226,7 @@ export const useStore = create<AppState>((set, get) => ({
   setHostLeft: (hostLeft) => set({ hostLeft }),
   setRoom: (roomCode, isHost) => set({ roomCode, isHost }),
   setSession: (session) => set({ session }),
+  setNetMode: (netMode) => set({ netMode }),
   setPeerCount: (peerCount) => set({ peerCount }),
   setNetHint: (netHint) => set({ netHint }),
   setMonster: (monsterId) => set({ monsterId }),

@@ -73,7 +73,7 @@ describe('Lich summon telegraph cue', () => {
     };
     w.boss!.action = action;
     const snap = w.serialize();
-    expect(snap.boss?.telegraph).not.toBeNull();
-    expect(snap.boss?.telegraph?.kind).toBe('circle');
+    expect(snap.bosses[0]?.telegraph).not.toBeNull();
+    expect(snap.bosses[0]?.telegraph?.kind).toBe('circle');
   });
 });

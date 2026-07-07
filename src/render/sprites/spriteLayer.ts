@@ -114,16 +114,17 @@ export class SpriteLayer {
       }
     }
 
-    if (SPRITE_FLAGS.boss && state.boss) {
-      const b = state.boss;
-      const actor = b.monsterId as ActorKey;
-      const n = this.ensure(b.id, actor);
-      const scr = camera.worldToScreen(b.pos);
-      this.speed(n, scr, dtMs); // keep lastX/Y fresh (unused: boss anim is action-driven)
-      const sel = bossAnim(b, MANIFEST[actor].dirMode);
-      this.apply(n, sel, scr, s, Z_BIAS.boss);
-      n.sprite.tint = tintFor(actor, this.fx.flashAmount(b.id), b.phase === 'enraged');
-      this.seen.add(b.id);
+    if (SPRITE_FLAGS.boss) {
+      for (const b of state.bosses) {
+        const actor = b.monsterId as ActorKey;
+        const n = this.ensure(b.id, actor);
+        const scr = camera.worldToScreen(b.pos);
+        this.speed(n, scr, dtMs); // keep lastX/Y fresh (unused: boss anim is action-driven)
+        const sel = bossAnim(b, MANIFEST[actor].dirMode);
+        this.apply(n, sel, scr, s, Z_BIAS.boss);
+        n.sprite.tint = tintFor(actor, this.fx.flashAmount(b.id), b.phase === 'enraged');
+        this.seen.add(b.id);
+      }
     }
 
     if (SPRITE_FLAGS.add) {

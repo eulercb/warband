@@ -87,10 +87,20 @@ describe('character upgrades', () => {
     expect(boss.buffs.some((b) => b.kind === 'stun' && b.source === 'freeze')).toBe(true);
   });
 
-  it('rollCharChoices only offers the class pool', () => {
+  it('rollCharChoices offers the class pool, plus at most one hybrid pick', () => {
     const offers = rollCharChoices('rogue', 3, () => 0.42);
     expect(offers.length).toBeGreaterThan(0);
-    for (const id of offers) expect(CHAR_UPGRADES[id].classId).toBe('rogue');
+    // Everything offered must be usable by the class: its own pool or 'any'.
+    for (const id of offers) {
+      expect(['rogue', 'any']).toContain(CHAR_UPGRADES[id].classId);
+    }
+    const hybrids = offers.filter((id) => CHAR_UPGRADES[id].classId === 'any');
+    expect(hybrids.length).toBeLessThanOrEqual(1);
+    // A roll stream that never crosses the hybrid threshold stays pure-class.
+    let calls = 0;
+    const pureRolls = [0.1, 0.2, 0.3, 0.99, 0.99];
+    const pure = rollCharChoices('rogue', 3, () => pureRolls[calls++ % pureRolls.length]);
+    for (const id of pure) expect(CHAR_UPGRADES[id].classId).toBe('rogue');
   });
 });
 

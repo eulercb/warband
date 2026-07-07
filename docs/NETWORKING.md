@@ -149,6 +149,38 @@ You can also widen the tracker pool for more reliable matchmaking:
 VITE_TRACKER_URLS=wss://tracker.example.com,wss://tracker2.example.com
 ```
 
+## The global server: guaranteed connectivity without P2P
+
+Some networks defeat every peer-to-peer trick — symmetric NATs on both ends,
+firewalls that block UDP _and_ TURN's TCP ports, proxies that only allow plain
+web traffic. For those, Warband ships a **global server** mode: a tiny
+WebSocket relay (`server/relay.mjs`) you run on any publicly reachable machine.
+Rooms hosted "on the global server" route **all** game traffic through it —
+lobby messages, inputs and snapshots — instead of forming WebRTC connections.
+If both players can open an outbound WebSocket (i.e. load a normal website),
+they can play. The trade-offs: the relay machine pays the bandwidth, adds its
+round-trip to latency, and is a single point of failure — which is why P2P
+remains the default and this is the explicit fallback.
+
+Setting it up:
+
+1. Run the relay somewhere public: `npm run relay` (listens on `:8787`;
+   `PORT=…` to change). Put it behind a TLS proxy (Caddy, nginx, a cloud load
+   balancer) so browsers on HTTPS pages can connect via `wss://`.
+2. Point the build at it: `VITE_RELAY_URL=wss://relay.example.com` in
+   `.env.local`, then rebuild.
+3. Host with the **"Host on the global server"** toggle (Host screen). The
+   share link carries the mode (`#room=CODE&net=g`), so joiners land on the
+   right transport automatically; the Join screen also has a manual toggle.
+
+The relay is protocol-agnostic and stateless: it never reads game payloads,
+keeps no game state, and a room evaporates when its last socket closes. The
+host's tab still runs the entire authoritative simulation, exactly as in P2P.
+
+Where it lives: `server/relay.mjs` (the server), `src/net/relayRoom.ts` (the
+client transport, a structural drop-in for the Trystero room), and the `net`
+parameter threading through `src/net/room.ts` → `Host`/`Client`.
+
 ## Debugging with verbose logs
 
 Multiplayer failures are often **silent** — two peers sit in the lobby forever

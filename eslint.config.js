@@ -32,4 +32,9 @@ export default tseslint.config(
     files: ['scripts/**/*.{js,mjs}', '*.config.{js,ts}'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
+  {
+    // The global-server relay is plain Node.
+    files: ['server/**/*.{js,mjs}'],
+    languageOptions: { globals: { ...globals.node } },
+  },
 );

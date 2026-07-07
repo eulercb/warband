@@ -6,7 +6,13 @@
  */
 import type { MonsterId, Boss, Player, BossTier, BossBodyShape } from './types';
 import type { Rng } from './math';
-import { MONSTER_COLORS, RUN_LENGTH } from './constants';
+import {
+  MONSTER_COLORS,
+  RUN_LENGTH,
+  TWIN_BASE_CHANCE,
+  TWIN_CHANCE_PER_CYCLE,
+  TWIN_CHANCE_MAX,
+} from './constants';
 
 export type BossAbilityShape =
   | 'cone'
@@ -75,6 +81,8 @@ export interface MonsterDef {
   theme: string;
   difficulty: string;
   tier: BossTier;
+  /** Excluded from run pools and pickers (e.g. the playground training dummy). */
+  hidden?: boolean;
   bodyShape: BossBodyShape;
   color: number;
   baseHp: number;
@@ -1370,6 +1378,30 @@ const FAE: MonsterDef = {
   ]),
 };
 
+// ===========================================================================
+// Practice target (menu playground)
+// ===========================================================================
+const DUMMY: MonsterDef = {
+  id: 'dummy',
+  name: 'Training Dummy',
+  theme: 'A straw-stuffed sparring target. It judges you silently.',
+  difficulty: 'Practice',
+  tier: 'easy',
+  hidden: true,
+  bodyShape: 'construct',
+  color: 0xc9a86a,
+  baseHp: 600,
+  radius: 40,
+  moveSpeed: 0,
+  regen: 25,
+  meleeRange: 0,
+  enrageThreshold: 0, // never enrages
+  enrageCooldownMult: 1,
+  enrageRegenMult: 1,
+  abilities: [],
+  decide: () => null,
+};
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
@@ -1377,6 +1409,7 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
   dragon: DRAGON,
   troll: TROLL,
   lich: LICH,
+  dummy: DUMMY,
   goblin: GOBLIN,
   spider: SPIDER,
   bandit: BANDIT,
@@ -1409,7 +1442,10 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
   fae: FAE,
 };
 
-export const MONSTER_IDS: MonsterId[] = Object.keys(MONSTERS) as MonsterId[];
+/** Every pickable boss (hidden practice targets excluded). */
+export const MONSTER_IDS: MonsterId[] = (Object.keys(MONSTERS) as MonsterId[]).filter(
+  (id) => !MONSTERS[id].hidden,
+);
 export const DEFAULT_MONSTER: MonsterId = 'dragon';
 
 /** Boss ids grouped by difficulty tier (used to assemble runs). */
@@ -1466,6 +1502,44 @@ export function buildRun(startId: MonsterId, cycle: number, rng: Rng): MonsterId
     out.push(pickFrom(pattern[Math.min(i, pattern.length - 1)]));
   }
   return out.slice(0, RUN_LENGTH);
+}
+
+/**
+ * One run encounter: 1 boss (solo) or 2 (a shared-arena TWIN fight, each boss
+ * at TWIN_HP_FRAC health / TWIN_DMG_FRAC damage — see world.spawnBosses).
+ */
+export type RunSlot = MonsterId[];
+
+/**
+ * Assemble a run as ENCOUNTERS: the classic climbing-difficulty spine from
+ * `buildRun`, but any slot past the opener can roll into a chaotic twin fight
+ * where two different bosses share the arena. Twin odds rise through endless
+ * cycles (TWIN_BASE_CHANCE / TWIN_CHANCE_PER_CYCLE, capped at TWIN_CHANCE_MAX);
+ * the partner is drawn from the slot's tier or the one below it, so a duo
+ * spikes chaos without doubling the danger budget. Pure aside from the
+ * injected RNG.
+ */
+export function buildRunSlots(startId: MonsterId, cycle: number, rng: Rng): RunSlot[] {
+  const spine = buildRun(startId, cycle, rng);
+  const twinChance = Math.min(
+    TWIN_CHANCE_MAX,
+    TWIN_BASE_CHANCE + Math.max(0, cycle) * TWIN_CHANCE_PER_CYCLE,
+  );
+  const lowerTier: Record<BossTier, BossTier> = { easy: 'easy', medium: 'easy', hard: 'medium' };
+
+  return spine.map((id, slot) => {
+    // The opener stays solo on the first run so a fresh party learns one boss
+    // at a time; endless cycles throw twins at you from the very first gate.
+    if (slot === 0 && cycle <= 0) return [id];
+    if (rng.next() >= twinChance) return [id];
+    const tier = MONSTERS[id].tier;
+    const pool = [...MONSTERS_BY_TIER[tier], ...MONSTERS_BY_TIER[lowerTier[tier]]].filter(
+      (x) => x !== id,
+    );
+    if (pool.length === 0) return [id];
+    const partner = pool[Math.floor(rng.next() * pool.length) % pool.length];
+    return [id, partner];
+  });
 }
 
 export interface BossModifier {

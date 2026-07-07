@@ -19,6 +19,18 @@ export interface HudTeammate {
   score: number;
 }
 
+/** One boss health bar (twin encounters stack several). */
+export interface HudBoss {
+  id: number;
+  name: string;
+  hp: number;
+  maxHp: number;
+  phase: 'normal' | 'enraged';
+  buffs: BuffView[];
+  /** Endless "type" prefix ("Frost"), or '' if none. */
+  modName: string;
+}
+
 export interface HudState {
   active: boolean;
   classId: ClassId | null;
@@ -36,14 +48,8 @@ export interface HudState {
   buffs: BuffView[];
   score: number;
 
-  bossPresent: boolean;
-  bossName: string;
-  bossHp: number;
-  bossMaxHp: number;
-  bossPhase: 'normal' | 'enraged';
-  bossBuffs: BuffView[];
-  /** Endless "type" prefix on the boss ("Frost"), or '' if none. */
-  bossModName: string;
+  /** Every boss in the arena (twin encounters show one bar each). */
+  bosses: HudBoss[];
 
   teammates: HudTeammate[];
 
@@ -71,13 +77,7 @@ const INITIAL: Omit<HudState, 'set' | 'resetHud'> = {
   inputSource: 'keyboard',
   buffs: [],
   score: 0,
-  bossPresent: false,
-  bossName: '',
-  bossHp: 0,
-  bossMaxHp: 1,
-  bossPhase: 'normal',
-  bossBuffs: [],
-  bossModName: '',
+  bosses: [],
   teammates: [],
   terrainKinds: [],
   hasObstacles: false,
