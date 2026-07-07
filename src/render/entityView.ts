@@ -18,6 +18,8 @@ import type {
   TerrainView,
   TerrainKind,
   ObstacleView,
+  ObstacleKind,
+  TotemView,
   BuffView,
   BuffKind,
   Vec2,
@@ -473,38 +475,178 @@ export function drawTerrain(
 // Obstacles (static per-run cover that blocks ranged attacks)
 // ---------------------------------------------------------------------------
 
+/** Cheap deterministic hash → [0,1). Stable per (seed, i) across frames. */
+function jitter(seed: number, i: number): number {
+  const s = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+/** Push an irregular closed polygon around (x,y): `n` vertices, radius jittered
+ * by `rough` (fraction of r), rotated by `rot`. Returns nothing; caller fills. */
+function blobPath(
+  g: Graphics,
+  x: number,
+  y: number,
+  r: number,
+  n: number,
+  rough: number,
+  seed: number,
+  rot = 0,
+): void {
+  for (let i = 0; i < n; i++) {
+    const a = rot + (i / n) * Math.PI * 2;
+    const rr = r * (1 - rough / 2 + rough * jitter(seed, i));
+    const px = x + Math.cos(a) * rr;
+    const py = y + Math.sin(a) * rr;
+    if (i === 0) g.moveTo(px, py);
+    else g.lineTo(px, py);
+  }
+  g.closePath();
+}
+
+/** Per-kind palettes for the cover silhouettes. */
+const OBSTACLE_PALETTES: Record<ObstacleKind, { body: number; lit: number; dark: number }> = {
+  rock: { body: 0x40444d, lit: 0x565b66, dark: 0x33363e },
+  pillar: { body: 0x4a4a55, lit: 0x64646f, dark: 0x35353f },
+  crystal: { body: 0x3b4a6b, lit: 0x7fa8e0, dark: 0x2a3550 },
+  stump: { body: 0x4a3a28, lit: 0x6b573c, dark: 0x36291b },
+  monolith: { body: 0x3d4046, lit: 0x5a5e66, dark: 0x2b2d33 },
+  totem: { body: 0x4a4030, lit: 0x6e5f45, dark: 0x342d20 },
+};
+
 /**
- * Draw one solid cover obstacle — an opaque rubble mound with a rim light, so it
- * reads as a physical blocker (unlike the translucent terrain hazard pools). A
- * couple of deterministic facets (seeded off the id) keep it from looking like a
- * flat disc.
+ * Draw one solid cover obstacle. Collision is always the circle; the SHAPE is
+ * procedural flavour keyed by `kind` + `variant` — jagged rocks, faceted
+ * crystals, ringed stumps, carved monoliths — so no two arenas' cover looks
+ * alike. All silhouettes stay opaque so they read as physical blockers (unlike
+ * the translucent terrain hazard pools).
  */
 export function drawObstacle(g: Graphics, o: ObstacleView, screen: Vec2, scale: number): void {
   const r = o.radius * scale;
   const { x, y } = screen;
+  const kind: ObstacleKind = o.kind ?? 'rock';
+  const seed = (o.variant ?? o.id) + 1;
+  const pal = OBSTACLE_PALETTES[kind];
+  const rot = jitter(seed, 99) * Math.PI * 2;
 
   // Grounding shadow.
   g.ellipse(x, y + r * 0.35, r * 1.05, r * 0.5).fill({ color: 0x000000, alpha: 0.34 });
 
-  // Body + rim.
-  g.circle(x, y, r).fill({ color: 0x40444d });
-  g.circle(x, y, r).stroke({ width: 2, color: 0x1a1c22, alpha: 0.9 });
-
-  // Lit cap (top-left) so it reads as raised.
-  g.circle(x - r * 0.22, y - r * 0.24, r * 0.62).fill({ color: 0x565b66, alpha: 0.9 });
-
-  // Deterministic facets for texture.
-  const phase = (o.id % 5) * 1.3;
-  for (let i = 0; i < 3; i++) {
-    const a = phase + (i * Math.PI * 2) / 3;
-    const rr = r * 0.45;
-    const bx = x + Math.cos(a) * rr * 0.5;
-    const by = y + Math.sin(a) * rr * 0.5;
-    g.circle(bx, by, r * 0.2).fill({ color: 0x33363e, alpha: 0.55 });
+  switch (kind) {
+    case 'crystal': {
+      // A cluster of sharp shards with a faint inner glow.
+      blobPath(g, x, y, r, 6, 0.55, seed, rot);
+      g.fill({ color: pal.body });
+      g.stroke({ width: 2, color: 0x1a1c22, alpha: 0.9 });
+      blobPath(g, x - r * 0.15, y - r * 0.18, r * 0.55, 5, 0.5, seed + 7, rot + 0.6);
+      g.fill({ color: pal.lit, alpha: 0.85 });
+      g.circle(x, y, r * 0.28).fill({ color: 0xbfe0ff, alpha: 0.5 });
+      break;
+    }
+    case 'stump': {
+      // A felled ancient tree: bark ring + growth rings.
+      blobPath(g, x, y, r, 9, 0.18, seed, rot);
+      g.fill({ color: pal.body });
+      g.stroke({ width: 3, color: pal.dark, alpha: 0.95 });
+      g.circle(x, y, r * 0.72).stroke({ width: 1.5, color: pal.dark, alpha: 0.6 });
+      g.circle(x, y, r * 0.45).stroke({ width: 1.5, color: pal.dark, alpha: 0.5 });
+      g.circle(x, y, r * 0.2).fill({ color: pal.lit, alpha: 0.8 });
+      break;
+    }
+    case 'pillar': {
+      // A round column seen from above: concentric caps.
+      g.circle(x, y, r).fill({ color: pal.body });
+      g.circle(x, y, r).stroke({ width: 2, color: 0x1a1c22, alpha: 0.9 });
+      g.circle(x - r * 0.1, y - r * 0.12, r * 0.72).fill({ color: pal.lit });
+      g.circle(x - r * 0.16, y - r * 0.2, r * 0.4).fill({ color: 0x8a8f9a, alpha: 0.9 });
+      break;
+    }
+    case 'monolith':
+    case 'totem': {
+      // A carved standing stone: rotated slab + rune notches.
+      const w = r * 0.95;
+      const h = r * 1.5;
+      g.rect(x - w / 2, y - h / 2, w, h).fill({ color: pal.body });
+      g.rect(x - w / 2, y - h / 2, w, h).stroke({ width: 2, color: 0x1a1c22, alpha: 0.9 });
+      g.rect(x - w / 2 + 3, y - h / 2 + 3, w * 0.55, h - 6).fill({ color: pal.lit, alpha: 0.55 });
+      for (let i = 0; i < 3; i++) {
+        const ny = y - h * 0.3 + i * h * 0.28;
+        g.rect(x - w * 0.22, ny, w * 0.44, 2).fill({ color: pal.dark, alpha: 0.9 });
+      }
+      break;
+    }
+    default: {
+      // rock — a jagged boulder with a lit cap and facets.
+      blobPath(g, x, y, r, 8, 0.3, seed, rot);
+      g.fill({ color: pal.body });
+      g.stroke({ width: 2, color: 0x1a1c22, alpha: 0.9 });
+      blobPath(g, x - r * 0.2, y - r * 0.22, r * 0.6, 7, 0.3, seed + 3, rot + 0.4);
+      g.fill({ color: pal.lit, alpha: 0.9 });
+      for (let i = 0; i < 3; i++) {
+        const a = rot + (i * Math.PI * 2) / 3;
+        const bx = x + Math.cos(a) * r * 0.25;
+        const by = y + Math.sin(a) * r * 0.25;
+        g.circle(bx, by, r * 0.16).fill({ color: pal.dark, alpha: 0.55 });
+      }
+      g.circle(x - r * 0.3, y - r * 0.35, r * 0.15).fill({ color: 0x6f7480, alpha: 0.85 });
+    }
   }
+}
 
-  // Bright top edge highlight.
-  g.circle(x - r * 0.3, y - r * 0.35, r * 0.18).fill({ color: 0x6f7480, alpha: 0.85 });
+// ---------------------------------------------------------------------------
+// Totems (menu playground interaction pillars)
+// ---------------------------------------------------------------------------
+
+export const TOTEM_COLORS: Record<TotemView['kind'], number> = {
+  host: 0xf2c14e, // gold — raise your banner
+  join: 0x4a90d9, // blue — answer a call
+  class: 0x9c5cf0, // violet — change your destiny
+  controls: 0x5bbf7a, // green — practical matters
+};
+
+/**
+ * Draw one playground totem: a carved standing stone with a colored rune eye
+ * and a trigger ring that lights up when the local hero steps inside. `timeSec`
+ * drives a slow idle pulse; activation blooms the ring and the eye.
+ */
+export function drawTotem(
+  g: Graphics,
+  t: TotemView,
+  screen: Vec2,
+  scale: number,
+  timeSec: number,
+): void {
+  const { x, y } = screen;
+  const r = t.radius * scale;
+  const color = TOTEM_COLORS[t.kind];
+  const pulse = 0.5 + 0.5 * Math.sin(timeSec * 2 + t.id);
+  const active = t.active === true;
+
+  // Trigger ring: faint while idle, bright bloom when the hero is inside.
+  const ringR = t.triggerRadius * scale;
+  g.circle(x, y, ringR).stroke({
+    width: active ? 3 : 1.5,
+    color,
+    alpha: active ? 0.65 : 0.16 + pulse * 0.06,
+  });
+  if (active) g.circle(x, y, ringR).fill({ color, alpha: 0.06 });
+
+  // Grounding shadow + carved stone body.
+  g.ellipse(x, y + r * 0.4, r * 1.15, r * 0.55).fill({ color: 0x000000, alpha: 0.35 });
+  const w = r * 1.1;
+  const h = r * 1.7;
+  g.rect(x - w / 2, y - h / 2, w, h).fill({ color: 0x2e2a36 });
+  g.rect(x - w / 2, y - h / 2, w, h).stroke({ width: 2, color: 0x14121a, alpha: 0.95 });
+  g.rect(x - w / 2 + 3, y - h / 2 + 3, w * 0.5, h - 6).fill({ color: 0x413b4d, alpha: 0.8 });
+
+  // Rune eye + notches in the totem's color.
+  const eyeR = r * 0.34 * (active ? 1.25 : 1);
+  g.circle(x, y - h * 0.12, eyeR + 4).fill({ color, alpha: active ? 0.5 : 0.18 + pulse * 0.1 });
+  g.circle(x, y - h * 0.12, eyeR).fill({ color, alpha: active ? 1 : 0.75 });
+  for (let i = 0; i < 2; i++) {
+    const ny = y + h * 0.16 + i * h * 0.16;
+    g.rect(x - w * 0.24, ny, w * 0.48, 2.5).fill({ color, alpha: 0.55 });
+  }
 }
 
 /**

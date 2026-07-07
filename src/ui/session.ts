@@ -6,6 +6,7 @@
 import { Host } from '../net/host';
 import { Client } from '../net/client';
 import { generateRoomCode, writeRoomToHash, shareLinkFor, selfId } from '../net/room';
+import type { NetMode } from '../net/room';
 import { useStore } from './store';
 import { netLog } from '../net/log';
 import { Sfx } from '../audio/sfx';
@@ -101,10 +102,12 @@ function handleJoinError(msg: string): void {
 export async function hostGame(): Promise<void> {
   const st = useStore.getState();
   const code = generateRoomCode();
-  writeRoomToHash(code);
+  const net: NetMode = st.netMode;
+  writeRoomToHash(code, net);
 
   const host = new Host({
     code,
+    net,
     monsterId: st.monsterId,
     gauntlet: st.gauntlet,
     name: nameOrDefault(),
@@ -149,9 +152,11 @@ export async function hostGame(): Promise<void> {
 
 export async function joinGame(code: string): Promise<void> {
   const upper = code.trim().toUpperCase();
+  const net: NetMode = useStore.getState().netMode;
 
   const client = new Client({
     code: upper,
+    net,
     name: nameOrDefault(),
     onLobby: (msg) => {
       const s = useStore.getState();
@@ -197,6 +202,13 @@ export async function joinGame(code: string): Promise<void> {
       s.setRoom(null, false);
       s.setPeerCount(0);
       s.setNetHint(null);
+      // Scrub run/fight residue so the menu playground doesn't show stale run
+      // tags or grafted ability buttons from the dead session.
+      s.setResult(null);
+      s.setRun(null);
+      s.setCycle(0);
+      s.clearMyUpgrades();
+      resetPauseState(s);
       s.setPhase('menu');
     },
     onPeers: (n) => {
@@ -385,8 +397,8 @@ export function leaveToMenu(): void {
 }
 
 export function shareLink(): string {
-  const code = useStore.getState().roomCode;
-  return code ? shareLinkFor(code) : '';
+  const s = useStore.getState();
+  return s.roomCode ? shareLinkFor(s.roomCode, s.netMode) : '';
 }
 
 export async function copyShareLink(): Promise<void> {

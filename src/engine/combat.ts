@@ -3,9 +3,9 @@
  * Pure functions operating on entities + an event sink. No world import (to
  * keep this decoupled and trivially unit-testable).
  */
-import type { Player, Boss, Add, Buff, BuffKind, GameEvent, Side } from './types';
+import type { Player, Boss, Add, Buff, BuffKind, GameEvent, Side, StunDr, Vec2 } from './types';
 import { getClass } from './classes';
-import { HEAL_THREAT_FACTOR } from './constants';
+import { HEAL_THREAT_FACTOR, STUN_DR_FACTOR, STUN_DR_WINDOW, STUN_DR_FLOOR } from './constants';
 
 /** Minimal structural sink so combat needn't import the World. */
 export interface EventSink {
@@ -43,6 +43,75 @@ export function tickBuffs(entity: { buffs: Buff[] }, dt: number): void {
   for (let i = entity.buffs.length - 1; i >= 0; i--) {
     entity.buffs[i].remaining -= dt;
     if (entity.buffs[i].remaining <= 0) entity.buffs.splice(i, 1);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stun with diminishing returns
+// ---------------------------------------------------------------------------
+
+/** Any entity that can be stunned: players, bosses and adds all match. */
+export interface Stunnable {
+  buffs: Buff[];
+  stunDr?: StunDr;
+  id: number;
+  pos: Vec2;
+}
+
+/**
+ * Apply a stun honoring diminishing returns. Each successive stun LANDED on the
+ * same target within `STUN_DR_WINDOW` keeps only `STUN_DR_FACTOR` of the
+ * previous effective duration; once the effective duration would fall under
+ * `STUN_DR_FLOOR` the stun is resisted entirely (a `stunResist` event fires so
+ * players can read it — once per window, so rider spam doesn't flood the FX).
+ *
+ * Two deliberate asymmetries in the defender's favor:
+ *  - Only stuns that actually LAND refresh the window. Resisted attempts do
+ *    not, so spamming a freeze rider can't hold a target stun-immune forever —
+ *    the falloff always recovers `STUN_DR_WINDOW` after the last landed stun.
+ *  - A shorter chained stun never overwrites a longer one still ticking: if
+ *    the target is already stunned for at least the new effective duration,
+ *    the attempt is wasted (returns 0, no DR charge).
+ *
+ * Returns the effective stun seconds applied (0 = resisted / wasted).
+ */
+export function applyStun(
+  sink: EventSink,
+  target: Stunnable,
+  seconds: number,
+  source: string,
+): number {
+  if (seconds <= 0) return 0;
+  const dr = (target.stunDr ??= { count: 0, window: 0 });
+  const effective = seconds * Math.pow(STUN_DR_FACTOR, dr.count);
+  if (effective < STUN_DR_FLOOR) {
+    if (!dr.announced) {
+      dr.announced = true;
+      sink.events.push({ t: 'stunResist', id: target.id, pos: { ...target.pos } });
+    }
+    return 0;
+  }
+  let longestActive = 0;
+  for (const b of target.buffs) {
+    if (b.kind === 'stun' && b.remaining > longestActive) longestActive = b.remaining;
+  }
+  if (longestActive >= effective) return 0; // already stunned for longer
+  dr.count += 1;
+  dr.window = STUN_DR_WINDOW;
+  dr.announced = false;
+  applyBuff(target, makeBuff('stun', 0, effective, source));
+  return effective;
+}
+
+/** Tick a target's stun-DR window; when it runs out, the falloff fully resets. */
+export function tickStunDr(target: { stunDr?: StunDr }, dt: number): void {
+  const dr = target.stunDr;
+  if (!dr || dr.window <= 0) return;
+  dr.window -= dt;
+  if (dr.window <= 0) {
+    dr.count = 0;
+    dr.window = 0;
+    dr.announced = false;
   }
 }
 

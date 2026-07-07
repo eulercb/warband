@@ -110,11 +110,12 @@ export class Balloons {
     let radius = PLAYER_RADIUS;
     let x = a.lastX;
     let y = a.lastY;
-    if (a.side === 'boss' && state.boss && state.boss.id === a.sourceId) {
-      const s = camera.worldToScreen(state.boss.pos);
+    const srcBoss = a.side === 'boss' ? state.bosses.find((b) => b.id === a.sourceId) : undefined;
+    if (srcBoss) {
+      const s = camera.worldToScreen(srcBoss.pos);
       x = s.x;
       worldY = s.y;
-      radius = getMonster(state.boss.monsterId).radius;
+      radius = getMonster(srcBoss.monsterId).radius;
     } else {
       const p = state.players.find((pl) => pl.id === a.sourceId);
       if (p) {

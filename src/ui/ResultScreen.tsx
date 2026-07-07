@@ -56,7 +56,8 @@ export function ResultScreen() {
   const endlessAvailable = !!result?.endlessAvailable; // cleared the whole run
   const showUpgrades = advancing || endlessAvailable;
 
-  // Offers for this round: 3 generic + 3 class-specific, and what we picked.
+  // Offers for this round: 3 generic + 4 character picks (class pool, with a
+  // chance one is a wild cross-class HYBRID — see engine/charUpgrades.ts).
   const [genOffers, setGenOffers] = useState<UpgradeId[]>([]);
   const [charOffers, setCharOffers] = useState<string[]>([]);
   const [pickedGen, setPickedGen] = useState<UpgradeId | null>(null);
@@ -67,7 +68,7 @@ export function ResultScreen() {
   useEffect(() => {
     if (!showUpgrades) return;
     setGenOffers(rollUpgradeChoices(3, Math.random));
-    setCharOffers(rollCharChoices(localClass, 3, Math.random));
+    setCharOffers(rollCharChoices(localClass, 4, Math.random));
     setPickedGen(null);
     setPickedChar(null);
     setReady(false);
@@ -154,7 +155,12 @@ export function ResultScreen() {
         {advancing ? (
           <div className="wb-advance-note" role="status">
             <span className="wb-advance-title">
-              Next up: {(result.modName ? `${result.modName} ` : '') + MONSTERS[nextMonsterId].name}
+              Next up:{' '}
+              {(result.modName ? `${result.modName} ` : '') +
+                (result.nextMonsterIds && result.nextMonsterIds.length > 1
+                  ? result.nextMonsterIds.map((id) => MONSTERS[id].name).join(' & ') +
+                    ' — a TWIN fight!'
+                  : MONSTERS[nextMonsterId].name)}
             </span>
             <span className="wb-advance-sub">
               {ready

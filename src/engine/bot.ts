@@ -12,10 +12,10 @@
  * Recomputed once per sim step, this naturally pulses (fire / release / fire)
  * so a "want" that persists across ticks re-triggers as each cooldown clears.
  */
-import type { Player, InputCommand, ButtonState, Vec2 } from './types';
+import type { Player, Boss, InputCommand, ButtonState, Vec2 } from './types';
 import type { World } from './world';
 import { abilityById } from './monsters';
-import { add as vadd, scale as vscale, normalize, fromAngle, angleOf, len } from './math';
+import { Rng, add as vadd, scale as vscale, normalize, fromAngle, angleOf, len } from './math';
 // Toroidal geometry so bot AI navigates/aims the short way across the wrap seam.
 import { sub, dist, pointInCircle, pointInCone, pointInSegment } from './torus';
 import { BOT_RANGED_STANDOFF, BOT_MELEE_RANGE, BOT_REVIVE_RANGE } from './constants';
@@ -25,6 +25,76 @@ export const BOT_PEER_PREFIX = 'bot:';
 
 export function isBotPeerId(peerId: string): boolean {
   return peerId.startsWith(BOT_PEER_PREFIX);
+}
+
+// ---------------------------------------------------------------------------
+// Personalities
+// ---------------------------------------------------------------------------
+
+/**
+ * A bot's rolled temperament. Multiple bots in one band behave visibly
+ * differently: a Genius reads telegraphs the instant they start, a Sleepy one
+ * eats the first half of every wind-up; a Reckless bruiser hugs the boss while
+ * a Timid archer hangs way back; a Twitchy bot never stops wandering.
+ */
+export interface BotPersonality {
+  /** Human-readable temperament tag shown in the bot's name ("Genius", …). */
+  label: string;
+  /** 0..1 — how early the bot reads danger and how disciplined its casts are. */
+  smart: number;
+  /** 0..1 — appetite for closing in (melee hug / ranged crowding). */
+  aggression: number;
+  /** 0..1 — positioning jitter: how much aimless wander it mixes in. */
+  chaos: number;
+  /** Private dice + wander state (host-only; bots never cross the wire). */
+  rng: Rng;
+  wander: Vec2;
+  nextWanderTick: number;
+}
+
+/** Steady veteran used when no personality is supplied (also keeps tests stable). */
+export function defaultPersonality(): BotPersonality {
+  return {
+    label: 'Steady',
+    smart: 0.8,
+    aggression: 0.5,
+    chaos: 0,
+    rng: new Rng(1),
+    wander: { x: 0, y: 0 },
+    nextWanderTick: Number.MAX_SAFE_INTEGER,
+  };
+}
+
+/** Named temperament archetypes a rolled bot can land on. */
+const ARCHETYPES: Array<{
+  label: string;
+  smart: [number, number];
+  aggr: [number, number];
+  chaos: [number, number];
+}> = [
+  { label: 'Genius', smart: [0.9, 1.0], aggr: [0.4, 0.7], chaos: [0.0, 0.15] },
+  { label: 'Steady', smart: [0.7, 0.85], aggr: [0.4, 0.6], chaos: [0.05, 0.2] },
+  { label: 'Reckless', smart: [0.35, 0.6], aggr: [0.85, 1.0], chaos: [0.2, 0.45] },
+  { label: 'Timid', smart: [0.55, 0.8], aggr: [0.05, 0.25], chaos: [0.1, 0.3] },
+  { label: 'Twitchy', smart: [0.5, 0.75], aggr: [0.4, 0.7], chaos: [0.6, 1.0] },
+  // Sleepy is slow, not suicidal: the floor still dodges the tail end of most
+  // long wind-ups, so a Sleepy bot is a liability without being a corpse.
+  { label: 'Sleepy', smart: [0.22, 0.42], aggr: [0.3, 0.6], chaos: [0.0, 0.2] },
+];
+
+/** Roll a seeded temperament for a fresh bot (deterministic per seed). */
+export function rollPersonality(seed: number): BotPersonality {
+  const rng = new Rng((seed ^ 0xbf58476d) >>> 0 || 1);
+  const arch = ARCHETYPES[rng.int(0, ARCHETYPES.length - 1)];
+  return {
+    label: arch.label,
+    smart: rng.range(arch.smart[0], arch.smart[1]),
+    aggression: rng.range(arch.aggr[0], arch.aggr[1]),
+    chaos: rng.range(arch.chaos[0], arch.chaos[1]),
+    rng,
+    wander: { x: 0, y: 0 },
+    nextWanderTick: 0,
+  };
 }
 
 const NO_BUTTONS: ButtonState = {
@@ -39,13 +109,20 @@ const NO_BUTTONS: ButtonState = {
  * Compute one bot's input for the current tick. `seq` is a monotonic counter
  * (the world tick works well) that the host stores verbatim; it is not used for
  * de-dup since bot inputs are set locally, never received over the wire.
+ * `personality` shapes reactions, positioning and discipline; omitted = a
+ * steady veteran (keeps existing tests and callers stable).
  */
-export function computeBotInput(world: World, bot: Player, seq: number): InputCommand {
+export function computeBotInput(
+  world: World,
+  bot: Player,
+  seq: number,
+  personality: BotPersonality = defaultPersonality(),
+): InputCommand {
   if (bot.state !== 'alive') {
     return { seq, move: { x: 0, y: 0 }, aim: { ...bot.aim }, buttons: { ...NO_BUTTONS } };
   }
 
-  const boss = world.boss && world.boss.hp > 0 ? world.boss : null;
+  const boss = pickNearestBoss(world, bot.pos);
   const nearestAdd = pickNearestAdd(world, bot.pos);
   const focus = boss ? boss.pos : nearestAdd ? nearestAdd.pos : null;
 
@@ -63,7 +140,7 @@ export function computeBotInput(world: World, bot: Player, seq: number): InputCo
     return { seq, move, aim, buttons: edge(want, bot.prevButtons) };
   }
 
-  const danger = dangerAvoidance(world, bot);
+  const danger = dangerAvoidance(world, bot, personality);
   const inDanger = danger !== null;
 
   // --- Movement: flee danger, else position for the class role. ---
@@ -71,13 +148,47 @@ export function computeBotInput(world: World, bot: Player, seq: number): InputCo
   if (inDanger) {
     move = clampMove(danger);
   } else {
-    move = clampMove(avoidObstacles(world, bot, positioning(bot, boss ? boss.pos : focus)));
+    let desired = positioning(bot, boss ? boss.pos : focus, personality);
+    desired = vadd(desired, wanderDrift(personality, seq));
+    move = clampMove(avoidObstacles(world, bot, desired));
   }
 
   // --- Ability desires per class (gated later by cooldown-aware edge). ---
-  const want = decideAbilities(world, bot, boss ? boss.pos : null, focus, inDanger);
+  const want = decideAbilities(world, bot, boss ? boss.pos : null, focus, inDanger, personality);
 
   return { seq, move, aim, buttons: edge(want, bot.prevButtons) };
+}
+
+/** Nearest alive boss (twin fights: each bot picks its own closest threat). */
+function pickNearestBoss(world: World, from: Vec2): Boss | null {
+  let best: Boss | null = null;
+  let bestD = Infinity;
+  for (const b of world.bosses) {
+    if (b.hp <= 0) continue;
+    const d = dist(from, b.pos);
+    if (d < bestD) {
+      bestD = d;
+      best = b;
+    }
+  }
+  return best;
+}
+
+/**
+ * A chaotic bot mixes in an aimless drift, re-rolled every ~1.5s. Magnitude
+ * scales with the temperament's `chaos`, so a Twitchy bot never sits still
+ * while a Genius holds textbook position.
+ */
+function wanderDrift(p: BotPersonality, tick: number): Vec2 {
+  if (p.chaos <= 0) return { x: 0, y: 0 };
+  if (tick >= p.nextWanderTick) {
+    p.nextWanderTick = tick + 20 + p.rng.int(0, 20); // 1-2s at 20Hz
+    p.wander =
+      p.rng.next() < 0.25
+        ? { x: 0, y: 0 } // sometimes just stand there menacingly
+        : fromAngle(p.rng.range(0, Math.PI * 2), p.chaos * 0.7);
+  }
+  return p.wander;
 }
 
 // ---------------------------------------------------------------------------
@@ -88,20 +199,24 @@ export function computeBotInput(world: World, bot: Player, seq: number): InputCo
 const MELEE_CLASSES = new Set(['knight', 'barbarian', 'rogue', 'paladin']);
 
 /** Desired movement vector for the bot's role (not yet normalized). */
-function positioning(bot: Player, focus: Vec2 | null): Vec2 {
+function positioning(bot: Player, focus: Vec2 | null, p: BotPersonality): Vec2 {
   if (!focus) return { x: 0, y: 0 };
   const toFocus = sub(focus, bot.pos);
   const d = len(toFocus);
   const dir = safeDir(toFocus, { x: 0, y: -1 });
 
   if (MELEE_CLASSES.has(bot.classId)) {
-    // Melee: close to the boss and stay in its face.
-    if (d > BOT_MELEE_RANGE) return dir;
+    // Melee: close to the boss and stay in its face. A reckless bruiser wants
+    // to touch the boss; a timid one hovers at the edge of its swing.
+    const hug = BOT_MELEE_RANGE + (0.5 - p.aggression) * 70;
+    if (d > hug) return dir;
     return { x: 0, y: 0 };
   }
 
-  // Ranged/support: hold a standoff band around the boss.
-  const standoff = bot.classId === 'cleric' ? BOT_RANGED_STANDOFF - 40 : BOT_RANGED_STANDOFF;
+  // Ranged/support: hold a standoff band around the boss. Aggressive archers
+  // crowd in for the thrill; timid ones snipe from the horizon.
+  let standoff = bot.classId === 'cleric' ? BOT_RANGED_STANDOFF - 40 : BOT_RANGED_STANDOFF;
+  standoff += (0.5 - p.aggression) * 160;
   if (d < standoff - 40) return vscale(dir, -1); // too close — back off
   if (d > standoff + 40) return dir; // too far — close in
   // In the band: strafe a little so the bot isn't a static target.
@@ -140,7 +255,7 @@ function avoidObstacles(world: World, bot: Player, move: Vec2): Vec2 {
  * return a strong flee direction; otherwise null. Covers damaging terrain,
  * boss-side ground zones (void zones), and the current boss wind-up area.
  */
-function dangerAvoidance(world: World, bot: Player): Vec2 | null {
+function dangerAvoidance(world: World, bot: Player, p: BotPersonality): Vec2 | null {
   let flee: Vec2 = { x: 0, y: 0 };
   let found = false;
 
@@ -164,23 +279,34 @@ function dangerAvoidance(world: World, bot: Player): Vec2 | null {
     }
   }
 
-  const tele = telegraphFlee(world, bot);
-  if (tele) {
-    flee = vadd(flee, tele);
-    found = true;
+  for (const boss of world.bosses) {
+    if (boss.hp <= 0) continue;
+    const tele = telegraphFlee(world, boss, bot, p);
+    if (tele) {
+      flee = vadd(flee, tele);
+      found = true;
+    }
   }
 
   return found ? safeDir(flee, { x: 0, y: 1 }) : null;
 }
 
-/** Flee vector out of the boss's current wind-up danger area, or null. */
-function telegraphFlee(world: World, bot: Player): Vec2 | null {
-  const boss = world.boss;
-  if (!boss || boss.hp <= 0) return null;
+/**
+ * Flee vector out of one boss's current wind-up danger area, or null. Reaction
+ * time is temperament-driven: a smart bot starts dodging the instant the
+ * telegraph appears, a sleepy one only notices once most of the wind-up has
+ * elapsed — often too late. That asymmetry is what makes a mixed bot band feel
+ * like different people.
+ */
+function telegraphFlee(world: World, boss: Boss, bot: Player, p: BotPersonality): Vec2 | null {
   const a = boss.action;
   if (a.kind !== 'windup' || !a.abilityId) return null;
-  const ab = abilityById(world.monsterDef, a.abilityId);
+  const ab = abilityById(world.defOf(boss), a.abilityId);
   if (!ab) return null;
+  // How far into the wind-up the bot "notices" the danger.
+  const elapsedFrac = a.total > 1e-6 ? 1 - a.remaining / a.total : 1;
+  const reactionLag = (1 - p.smart) * 0.75;
+  if (elapsedFrac < reactionLag) return null;
   const r = bot.radius;
 
   switch (ab.shape) {
@@ -236,19 +362,24 @@ function decideAbilities(
   bossPos: Vec2 | null,
   focus: Vec2 | null,
   inDanger: boolean,
+  p: BotPersonality,
 ): ButtonState {
   const want: ButtonState = { ...NO_BUTTONS };
   const cd = bot.cooldowns;
   const distBoss = bossPos ? dist(bot.pos, bossPos) : Infinity;
   const hpFrac = bot.hp / bot.maxHp;
   const hasTarget = focus !== null;
+  // Smart bots pop defensives early (hp < ~0.55); sleepy ones panic late (~0.3).
+  const panicAt = 0.28 + p.smart * 0.27;
+  // Aggressive bots swing big cooldowns at the edge of (or past) sensible range.
+  const reach = (base: number): number => base * (0.85 + p.aggression * 0.4);
 
   switch (bot.classId) {
     case 'knight': {
       if (hasTarget && cd.basic <= 0) want.basic = true; // Cleave
       if (bossPos && cd.a1 <= 0) want.a1 = true; // Taunt on cooldown
-      if (cd.a2 <= 0 && (hpFrac < 0.5 || inDanger)) want.a2 = true; // Shield Wall
-      if (bossPos && cd.a3 <= 0 && distBoss <= BOT_MELEE_RANGE + 40) want.a3 = true; // Shield Bash
+      if (cd.a2 <= 0 && (hpFrac < panicAt || inDanger)) want.a2 = true; // Shield Wall
+      if (bossPos && cd.a3 <= 0 && distBoss <= reach(BOT_MELEE_RANGE + 40)) want.a3 = true; // Shield Bash
       break;
     }
     case 'ranger': {
@@ -260,15 +391,17 @@ function decideAbilities(
     }
     case 'mage': {
       if (hasTarget && cd.basic <= 0) want.basic = true; // Arcane Bolt
-      // Fireball roots mid-cast — only when it's safe to stand still.
-      if (bossPos && cd.a1 <= 0 && !inDanger && distBoss > 180) want.a1 = true;
-      if (bossPos && cd.a2 <= 0 && distBoss <= 170) want.a2 = true; // Frost Nova
+      // Fireball roots mid-cast — smart mages only cast when it's safe to
+      // stand still; reckless/sleepy ones greed the cast anyway.
+      const greedy = p.smart < 0.45;
+      if (bossPos && cd.a1 <= 0 && (greedy || !inDanger) && distBoss > 180) want.a1 = true;
+      if (bossPos && cd.a2 <= 0 && distBoss <= reach(170)) want.a2 = true; // Frost Nova
       if (inDanger && cd.a3 <= 0) want.a3 = true; // Blink out of danger
       break;
     }
     case 'cleric': {
       const wounded = mostWounded(world);
-      const needHeal = wounded ? wounded.hp / wounded.maxHp < 0.65 : false;
+      const needHeal = wounded ? wounded.hp / wounded.maxHp < 0.4 + p.smart * 0.3 : false;
       if (needHeal && cd.a1 <= 0)
         want.a1 = true; // Heal
       else if (cd.a2 <= 0 && woundedCount(world) >= 2)
@@ -282,34 +415,34 @@ function decideAbilities(
       if (hasTarget && cd.basic <= 0) want.basic = true; // Reckless Swing
       if (cd.a1 <= 0 && (hpFrac < 0.7 || distBoss <= BOT_MELEE_RANGE + 60)) want.a1 = true; // Rage
       if (bossPos && cd.a2 <= 0 && (inDanger || distBoss > 220)) want.a2 = true; // Leap
-      if (cd.a3 <= 0 && distBoss <= 150) want.a3 = true; // Whirlwind
+      if (cd.a3 <= 0 && distBoss <= reach(150)) want.a3 = true; // Whirlwind
       break;
     }
     case 'rogue': {
       if (hasTarget && cd.basic <= 0) want.basic = true; // Slash
-      if (bossPos && cd.a1 <= 0 && distBoss <= BOT_MELEE_RANGE + 20) want.a1 = true; // Backstab
+      if (bossPos && cd.a1 <= 0 && distBoss <= reach(BOT_MELEE_RANGE + 20)) want.a1 = true; // Backstab
       if (cd.a2 <= 0 && inDanger) want.a2 = true; // Shadowstep out
       if (bossPos && cd.a3 <= 0) want.a3 = true; // Poison Vial toward boss
       break;
     }
     case 'paladin': {
       const wounded = mostWounded(world);
-      const needHeal = wounded ? wounded.hp / wounded.maxHp < 0.6 : false;
-      if (cd.a3 <= 0 && (hpFrac < 0.5 || inDanger))
+      const needHeal = wounded ? wounded.hp / wounded.maxHp < 0.35 + p.smart * 0.25 : false;
+      if (cd.a3 <= 0 && (hpFrac < panicAt || inDanger))
         want.a3 = true; // Divine Shield
       else if (needHeal && cd.a2 <= 0)
         want.a2 = true; // Lay on Hands
-      else if (cd.a1 <= 0 && distBoss <= 170)
+      else if (cd.a1 <= 0 && distBoss <= reach(170))
         want.a1 = true; // Consecration
       else if (hasTarget && cd.basic <= 0) want.basic = true; // Holy Strike
       break;
     }
     case 'druid': {
       const wounded = mostWounded(world);
-      const needHeal = wounded ? wounded.hp / wounded.maxHp < 0.6 : false;
+      const needHeal = wounded ? wounded.hp / wounded.maxHp < 0.35 + p.smart * 0.25 : false;
       if (needHeal && cd.a2 <= 0) want.a2 = true; // Regrowth
       if (bossPos && cd.a1 <= 0) want.a1 = true; // Entangle toward boss
-      if (cd.a3 <= 0 && distBoss <= 170) want.a3 = true; // Cyclone
+      if (cd.a3 <= 0 && distBoss <= reach(170)) want.a3 = true; // Cyclone
       if (hasTarget && cd.basic <= 0) want.basic = true; // Thornlash
       break;
     }

@@ -25,6 +25,8 @@ export type MonsterId =
   | 'dragon'
   | 'troll'
   | 'lich'
+  // Practice target (menu playground only; hidden from run pools)
+  | 'dummy'
   // Easy tier
   | 'goblin'
   | 'spider'
@@ -100,6 +102,21 @@ export interface Buff {
   remaining: number; // seconds
   /** Source label, used for de-duping refreshable buffs (e.g. 'shieldWall'). */
   source: string;
+}
+
+/**
+ * Stun diminishing-returns bookkeeping, shared by players, bosses and adds.
+ * Each successive stun landed within the rolling window is shorter; past the
+ * cap the target is briefly immune. The window resets once no stun has landed
+ * for STUN_DR_WINDOW seconds. See combat.applyStun.
+ */
+export interface StunDr {
+  /** Stuns landed inside the current window (drives the duration falloff). */
+  count: number;
+  /** Seconds left before the falloff resets (refreshed on every LANDED stun). */
+  window: number;
+  /** A "RESIST" cue already fired this window (dedupes rider-spam floaters). */
+  announced?: boolean;
 }
 
 /**
@@ -185,6 +202,9 @@ export interface Player {
   /** Score carried in from prior bosses this run (endless accumulates it). */
   baseScore?: number;
 
+  /** Stun diminishing-returns state (see combat.applyStun). Lazily created. */
+  stunDr?: StunDr;
+
   /** Host-side edge-detection of the previous button state for this player. */
   prevButtons: ButtonState;
   lastSeq: number;
@@ -226,6 +246,18 @@ export interface Boss {
 
   buffs: Buff[];
 
+  /** Stun diminishing-returns state (see combat.applyStun). Lazily created. */
+  stunDr?: StunDr;
+
+  /**
+   * Damage scale for shared arenas: a twin boss deals a fraction of its solo
+   * damage so a duo isn't simply twice as lethal. 1 (or absent) = solo boss.
+   */
+  dmgScale?: number;
+
+  /** Host bookkeeping: this boss's death event has been emitted (twin fights). */
+  deathAnnounced?: boolean;
+
   // Endless "type" modifier (Frost Dragon, Dark Troll, …). All optional / absent
   // for a plain (cycle-0) boss.
   /** Elemental aura behaviour ('frost' | 'shadow' | 'ember' | 'venom' | 'storm'). */
@@ -246,6 +278,8 @@ export interface Add {
   targetId: EntityId | null;
   attackCd: number;
   buffs: Buff[];
+  /** Stun diminishing-returns state (see combat.applyStun). Lazily created. */
+  stunDr?: StunDr;
 }
 
 export type ProjectileKind = 'arrow' | 'arcaneBolt' | 'fireball' | 'shadowBolt' | 'smite';
@@ -269,6 +303,8 @@ export interface Projectile {
   slowDuration?: number;
   /** Stun/"freeze" seconds applied to whatever the projectile strikes. */
   freeze?: number;
+  /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
+  lifesteal?: number;
 }
 
 export type ZoneKind =
@@ -301,6 +337,8 @@ export interface TerrainPatch {
   slowMult: number; // moveSpeed multiplier while inside (1 = no slow)
   slowDuration: number; // s the slow lingers after leaving
   tickAccum: number; // accumulates toward TERRAIN_TICK_INTERVAL
+  /** Seed for the renderer's procedural blob outline (visual only). */
+  variant?: number;
 }
 
 /** Wire/render view of a terrain patch (static, so no interpolation needed). */
@@ -309,17 +347,31 @@ export interface TerrainView {
   kind: TerrainKind;
   pos: Vec2;
   radius: number;
+  /** Seed for the renderer's procedural blob outline (visual only). */
+  variant?: number;
 }
 
 /**
- * A solid cover obstacle (rubble / pillar) laid out once per run (seeded). It
- * blocks ranged attacks — projectiles crossing it are absorbed — so players can
- * break line of sight and take cover. It does not block movement.
+ * Silhouette the renderer draws for a cover obstacle. Collision stays circular
+ * (pos + radius) for every kind — the shapes are purely visual flavour, and
+ * layout archetypes (walls, rings, spirals…) compose many circles instead.
+ */
+export type ObstacleKind = 'rock' | 'pillar' | 'crystal' | 'stump' | 'monolith' | 'totem';
+
+/**
+ * A solid cover obstacle (rubble / pillar / crystal / stump…) laid out once per
+ * run (seeded). It blocks ranged attacks — projectiles crossing it are absorbed
+ * — AND movement (world.separateAndClamp ejects movers), so players can break
+ * line of sight and body-block.
  */
 export interface Obstacle {
   id: EntityId;
   pos: Vec2;
   radius: number;
+  /** Visual silhouette (collision is always the circle). Defaults to 'rock'. */
+  kind?: ObstacleKind;
+  /** Seed for the renderer's procedural shape jitter (visual only). */
+  variant?: number;
 }
 
 /** Wire/render view of a cover obstacle (static; carried verbatim). */
@@ -327,6 +379,33 @@ export interface ObstacleView {
   id: EntityId;
   pos: Vec2;
   radius: number;
+  kind?: ObstacleKind;
+  variant?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Totems (menu-playground interaction pillars; local practice worlds only)
+// ---------------------------------------------------------------------------
+
+export type TotemKind = 'host' | 'join' | 'class' | 'controls';
+
+export interface Totem {
+  id: EntityId;
+  kind: TotemKind;
+  pos: Vec2;
+  radius: number; // solid body (blocks movement like an obstacle)
+  triggerRadius: number; // walking inside this ring activates the totem's UI
+}
+
+/** Render view of a playground totem (local only; never crosses the wire). */
+export interface TotemView {
+  id: EntityId;
+  kind: TotemKind;
+  pos: Vec2;
+  radius: number;
+  triggerRadius: number;
+  /** True while the local hero stands inside the trigger ring (drives glow). */
+  active?: boolean;
 }
 
 export interface GroundZone {
@@ -430,7 +509,14 @@ export type GameEvent =
   | { t: 'blink'; id: EntityId; from: Vec2; to: Vec2 }
   | { t: 'telegraph'; pos: Vec2; shape: TelegraphKind }
   | { t: 'enrage'; id: EntityId; pos: Vec2 }
-  | { t: 'projectile'; kind: ProjectileKind; pos: Vec2 };
+  | { t: 'projectile'; kind: ProjectileKind; pos: Vec2 }
+  // A stun failed to land because the target's diminishing returns hit the
+  // immunity floor (see combat.applyStun). Renderer flashes "Resisted".
+  | { t: 'stunResist'; id: EntityId; pos: Vec2 }
+  // The fight was just won — heroes cheer and fireworks fly (victory lap).
+  | { t: 'victory'; pos: Vec2 }
+  // A practice dummy fell and respawned (menu playground only).
+  | { t: 'dummyReset'; id: EntityId; pos: Vec2 };
 
 // ---------------------------------------------------------------------------
 // Telegraphs
@@ -527,7 +613,8 @@ export interface ZoneView {
 export interface Snapshot {
   tick: number;
   players: PlayerView[];
-  boss: BossView | null;
+  /** Every living-or-dying boss in the arena (twin encounters ship several). */
+  bosses: BossView[];
   adds: AddView[];
   projectiles: ProjectileView[];
   groundZones: ZoneView[];
@@ -536,6 +623,8 @@ export interface Snapshot {
   /** Static per-run cover obstacles that block ranged attacks. */
   obstacles: ObstacleView[];
   events: GameEvent[];
+  /** Run seed — drives the renderer's procedural ground tiling (visual only). */
+  seed: number;
 }
 
 /**
@@ -546,15 +635,18 @@ export interface Snapshot {
 export interface RenderState {
   tick: number;
   players: PlayerView[];
-  boss: BossView | null;
+  bosses: BossView[];
   adds: AddView[];
   projectiles: ProjectileView[];
   groundZones: ZoneView[];
   terrain: TerrainView[];
   obstacles: ObstacleView[];
   events: GameEvent[];
+  seed: number;
   localPlayerId: EntityId | null;
   arena: { w: number; h: number };
+  /** Playground totems (local practice world only). */
+  totems?: TotemView[];
 }
 
 // ---------------------------------------------------------------------------
@@ -579,8 +671,10 @@ export interface FightResult {
   outcome: Outcome;
   timeMs: number;
   stats: ResultPlayerStat[];
-  /** Which boss this result is for. */
+  /** Which boss this result is for (the encounter's lead boss). */
   monsterId: MonsterId;
+  /** Every boss of the encounter (twin fights list two). Absent = solo. */
+  monsterIds?: MonsterId[];
   /**
    * Gauntlet/run context. When a gauntlet fight is won and another boss
    * remains, `nextMonsterId` names it (the host auto-advances). `runIndex` /
@@ -588,6 +682,8 @@ export interface FightResult {
    * a plain single-boss fight.
    */
   nextMonsterId?: MonsterId | null;
+  /** All bosses of the NEXT encounter (twin fights list two). */
+  nextMonsterIds?: MonsterId[] | null;
   runIndex?: number;
   runTotal?: number;
   /**

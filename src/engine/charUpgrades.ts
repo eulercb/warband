@@ -12,6 +12,7 @@
  */
 import type { ClassId, AbilitySlot, Player } from './types';
 import type { PlayerAbilityDef } from './classes';
+import { CLASSES, cloneAbilities } from './classes';
 
 /** What an upgrade's `apply` receives: the hero and their private ability table. */
 export interface CharUpgradeCtx {
@@ -21,11 +22,29 @@ export interface CharUpgradeCtx {
 
 export interface CharUpgradeDef {
   id: string;
-  classId: ClassId;
+  /**
+   * Which class may take this upgrade. `'any'` marks a HYBRID upgrade — a
+   * cross-class power or whole combat style any hero can adopt (a Knight who
+   * learns Fireball, a Cleric who turns vampiric…).
+   */
+  classId: ClassId | 'any';
+  /**
+   * Classes a hybrid ('any') upgrade is NEVER offered to or applied on —
+   * used to keep grafts from duplicating a class's own kit (a Mage taking
+   * Pyromancer's Pact) or bricking its role (a healer replacing their real
+   * heal with the field-dressed one).
+   */
+  exclude?: ClassId[];
   name: string;
   desc: string;
   icon: string;
   apply: (ctx: CharUpgradeCtx) => void;
+}
+
+/** Whether a hero of `classId` may take this upgrade. */
+export function upgradeAllowedFor(def: CharUpgradeDef, classId: ClassId): boolean {
+  if (def.classId !== 'any') return def.classId === classId;
+  return !def.exclude?.includes(classId);
 }
 
 /** Small mutation helpers (kept terse; every field defaults sensibly). */
@@ -42,7 +61,7 @@ const setMin = (ab: PlayerAbilityDef, k: keyof PlayerAbilityDef, v: number): voi
 
 // A helper so each definition reads as a one-liner.
 function u(
-  classId: ClassId,
+  classId: ClassId | 'any',
   id: string,
   name: string,
   icon: string,
@@ -50,6 +69,24 @@ function u(
   apply: (ctx: CharUpgradeCtx) => void,
 ): CharUpgradeDef {
   return { id, classId, name, icon, desc, apply };
+}
+
+/**
+ * Graft another class's ability onto a hero's slot: deep-copies the source def
+ * (so later mutations stay private) and re-labels its slot. The old ability on
+ * that slot is GONE — hybrid picks trade a power for a power.
+ */
+function graft(
+  abilities: Record<AbilitySlot, PlayerAbilityDef>,
+  slot: AbilitySlot,
+  from: ClassId,
+  fromSlot: AbilitySlot,
+  tweak?: (ab: PlayerAbilityDef) => void,
+): void {
+  const src = CLASSES[from].abilities[fromSlot];
+  const copy: PlayerAbilityDef = { ...src, slot };
+  if (tweak) tweak(copy);
+  abilities[slot] = copy;
 }
 
 // ---------------------------------------------------------------------------
@@ -546,6 +583,148 @@ const DRUID: CharUpgradeDef[] = [
   ),
 ];
 
+// ---------------------------------------------------------------------------
+// HYBRID upgrades — cross-class powers and whole combat styles ANY hero can
+// adopt. These are the wild picks: they can graft an ability the class never
+// had (replacing a slot outright) or re-flavour the entire kit. Chaos by design.
+// ---------------------------------------------------------------------------
+
+const HYBRID: CharUpgradeDef[] = [
+  {
+    ...u(
+      'any',
+      'hy_pyromancer',
+      "Pyromancer's Pact",
+      '☄️',
+      'REPLACES your A2 with the Mage’s Fireball — whoever you were before',
+      ({ abilities: a }) => {
+        graft(a, 'a2', 'mage', 'a1');
+      },
+    ),
+    exclude: ['mage'], // already owns the real thing
+  },
+  {
+    ...u(
+      'any',
+      'hy_shadowpact',
+      'Shadow Pact',
+      '🌑',
+      'REPLACES your A3 with the Rogue’s Shadowstep blink',
+      ({ abilities: a }) => {
+        graft(a, 'a3', 'rogue', 'a2');
+      },
+    ),
+    exclude: ['rogue', 'mage'], // both already carry a blink
+  },
+  {
+    ...u(
+      'any',
+      'hy_warhowl',
+      "Berserker's Howl",
+      '📯',
+      'REPLACES your A1 with the Barbarian’s Rage',
+      ({ abilities: a }) => {
+        graft(a, 'a1', 'barbarian', 'a1');
+      },
+    ),
+    exclude: ['barbarian'],
+  },
+  {
+    ...u(
+      'any',
+      'hy_fieldmedic',
+      'Field Medic',
+      '🩹',
+      'REPLACES your A2 with a field-dressed Heal (weaker than a Cleric’s)',
+      ({ abilities: a }) => {
+        graft(a, 'a2', 'cleric', 'a1', (ab) => {
+          ab.damage = Math.round(ab.damage * 0.75);
+          ab.cooldown = ab.cooldown + 2;
+          ab.name = 'Field Dressing';
+        });
+      },
+    ),
+    // Real healers would be trading their actual heal away for a worse one.
+    exclude: ['cleric', 'paladin', 'druid'],
+  },
+  u(
+    'any',
+    'hy_vampiric',
+    'Vampiric Style',
+    '🧛',
+    'Your strikes and shots feed you (10% lifesteal) — but pale flesh: -10% max HP',
+    ({ player: p, abilities: a }) => {
+      for (const ab of [a.basic, a.a1, a.a2, a.a3]) {
+        // Strikes (melee/pbaoe/dash landings) and shots (projectiles) can
+        // drink; ground zones and heals can't, so they stay untouched.
+        const drinks =
+          ab.damage > 0 &&
+          (ab.kind === 'meleeCone' || ab.kind === 'pbaoe' || ab.kind === 'projectile');
+        if (drinks) ab.lifestealFrac = (ab.lifestealFrac ?? 0) + 0.1;
+      }
+      p.maxHp = Math.round(p.maxHp * 0.9);
+      p.hp = Math.min(p.hp, p.maxHp);
+    },
+  ),
+  u(
+    'any',
+    'hy_frostbrand',
+    'Frostbrand Style',
+    '❄️',
+    'Everything you land chills the target, slowing it',
+    ({ abilities: a }) => {
+      for (const ab of [a.basic, a.a1, a.a2, a.a3]) {
+        if (ab.damage > 0 && ab.kind !== 'heal') {
+          ab.slowMult = Math.min(ab.slowMult ?? 1, 0.72);
+          ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.4);
+        }
+      }
+    },
+  ),
+  u(
+    'any',
+    'hy_stormsplit',
+    'Stormsplit',
+    '⚡',
+    'Your basic attack forks: an extra projectile, or a wider heavier swing',
+    ({ abilities: a }) => {
+      const b = a.basic;
+      if (b.kind === 'projectile') {
+        b.projCount = (b.projCount ?? 1) + 1;
+        b.spreadDeg = Math.max(b.spreadDeg ?? 0, 12);
+      } else {
+        b.halfAngleDeg = (b.halfAngleDeg ?? 45) + 12;
+        b.range = (b.range ?? 70) + 12;
+        b.damage += 4;
+      }
+    },
+  ),
+  u(
+    'any',
+    'hy_juggernaut',
+    'Juggernaut Style',
+    '🐘',
+    'Become a mountain: +25% max HP and -8% damage taken, but slower on your feet',
+    ({ player: p }) => {
+      p.maxHp = Math.round(p.maxHp * 1.25);
+      p.hp = p.maxHp;
+      p.damageTakenMult *= 0.92;
+      p.moveSpeed *= 0.93;
+    },
+  ),
+  u(
+    'any',
+    'hy_glasscannon',
+    'Glass Cannon',
+    '💎',
+    'Hit like a meteor (+25% damage), shatter like glass (+18% damage taken)',
+    ({ player: p }) => {
+      p.damageMult *= 1.25;
+      p.damageTakenMult *= 1.18;
+    },
+  ),
+];
+
 /** All character upgrades, grouped by class. */
 export const CHAR_UPGRADES_BY_CLASS: Record<ClassId, CharUpgradeDef[]> = {
   knight: KNIGHT,
@@ -558,11 +737,12 @@ export const CHAR_UPGRADES_BY_CLASS: Record<ClassId, CharUpgradeDef[]> = {
   druid: DRUID,
 };
 
-/** Flat lookup by id (across every class). */
+/** The class-agnostic hybrid pool (cross-class powers + combat styles). */
+export const HYBRID_UPGRADES: CharUpgradeDef[] = HYBRID;
+
+/** Flat lookup by id (across every class + the hybrid pool). */
 export const CHAR_UPGRADES: Record<string, CharUpgradeDef> = Object.fromEntries(
-  Object.values(CHAR_UPGRADES_BY_CLASS)
-    .flat()
-    .map((d) => [d.id, d]),
+  [...Object.values(CHAR_UPGRADES_BY_CLASS).flat(), ...HYBRID].map((d) => [d.id, d]),
 );
 
 /** Type guard for an untrusted (networked) character-upgrade id. */
@@ -579,15 +759,55 @@ export function applyCharUpgrades(player: Player, ids: string[] | undefined): vo
   if (!ids || !player.abilities) return;
   for (const id of ids) {
     const def = CHAR_UPGRADES[id];
-    if (def && def.classId === player.classId) {
+    if (def && upgradeAllowedFor(def, player.classId)) {
       def.apply({ player, abilities: player.abilities });
     }
   }
 }
 
 /**
+ * Preview the ability table a hero of `classId` ends up with after taking the
+ * given character/hybrid upgrades — WITHOUT a live World. Used by the HUD so
+ * ability names/cooldowns follow hybrid grafts (a Knight who learned Fireball
+ * should see "Fireball" on the button). Stat-flavoured upgrades mutate a
+ * throwaway player stub and are otherwise ignored.
+ */
+export function previewAbilityTable(
+  classId: ClassId,
+  ids: string[],
+): Record<AbilitySlot, PlayerAbilityDef> {
+  const cls = CLASSES[classId];
+  const abilities = cloneAbilities(cls.abilities);
+  const stub = {
+    classId,
+    maxHp: cls.maxHp,
+    hp: cls.maxHp,
+    moveSpeed: cls.moveSpeed,
+    cooldownMult: 1,
+    castMult: 1,
+    damageMult: 1,
+    damageTakenMult: 1,
+    terrainResist: 0,
+    regenPerSec: 0,
+    abilities,
+  } as unknown as Player;
+  for (const id of ids) {
+    const def = CHAR_UPGRADES[id];
+    if (def && upgradeAllowedFor(def, classId)) {
+      def.apply({ player: stub, abilities });
+    }
+  }
+  return abilities;
+}
+
+/** Chance one class offer is swapped for a wild cross-class hybrid pick. */
+export const HYBRID_OFFER_CHANCE = 0.45;
+
+/**
  * Roll `n` distinct character-upgrade offers from a class's pool. `rnd` returns a
  * float in [0,1). Pure aside from the injected randomness (mirrors upgrades.ts).
+ * With `HYBRID_OFFER_CHANCE`, one offer is swapped for a random HYBRID pick —
+ * a cross-class power or combat style the class never had.
  */
 export function rollCharChoices(classId: ClassId, n: number, rnd: () => number): string[] {
   const pool = [...(CHAR_UPGRADES_BY_CLASS[classId] ?? [])].map((d) => d.id);
@@ -597,6 +817,11 @@ export function rollCharChoices(classId: ClassId, n: number, rnd: () => number):
     const i = Math.floor(rnd() * pool.length) % pool.length;
     out.push(pool[i]);
     pool.splice(i, 1);
+  }
+  const eligible = HYBRID.filter((h) => upgradeAllowedFor(h, classId));
+  if (out.length > 0 && eligible.length > 0 && rnd() < HYBRID_OFFER_CHANCE) {
+    const hy = eligible[Math.floor(rnd() * eligible.length) % eligible.length];
+    out[out.length - 1] = hy.id;
   }
   return out;
 }

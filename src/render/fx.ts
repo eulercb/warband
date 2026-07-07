@@ -32,6 +32,9 @@ const AREA_FLASH_TTL = 0.45; // s — how long an ability's area cue lingers
 /** Boss abilities heavy enough to warrant a screen shake on cast. */
 const HEAVY_CAST = new Set(['groundSlam', 'tailSweep', 'smash', 'wingGust', 'charge']);
 
+/** Confetti palette for the post-win fireworks. */
+const FIREWORK_COLORS = [0xffe066, 0xff7a6e, 0x8fd3ff, 0x9c5cf0, 0x66ff88, 0xf2c14e];
+
 // --- Pooled objects ---------------------------------------------------------
 
 interface Floater {
@@ -275,10 +278,79 @@ export class Fx {
           });
           break;
         }
+        case 'stunResist': {
+          // Diminishing returns kicked in — the target shrugged the stun off.
+          this.spawnFloater(e.pos, 'RESIST', 0xc9d2de);
+          this.spawnBurst(e.pos, {
+            startR: 10,
+            endR: 34,
+            ttl: 0.3,
+            color: 0xc9d2de,
+            alpha0: 0.5,
+            filled: false,
+            lineWidth: 2,
+          });
+          break;
+        }
+        case 'dummyReset': {
+          // The practice dummy pops back up.
+          this.spawnFloater(e.pos, 'AGAIN!', 0xc9a86a);
+          this.spawnBurst(e.pos, {
+            startR: 4,
+            endR: 46,
+            ttl: 0.5,
+            color: 0xc9a86a,
+            alpha0: 0.7,
+            filled: false,
+            lineWidth: 3,
+            rise: 20,
+          });
+          break;
+        }
+        case 'victory': {
+          // The fight is won — kick off a procedural fireworks celebration that
+          // update() keeps feeding for a couple of seconds (the victory lap).
+          this.celebration = { age: 0, dur: 2.6, sinceLast: 0, center: { ...e.pos } };
+          camera.addShake(12);
+          this.spawnFloater(e.pos, 'VICTORY!', 0xffe066);
+          break;
+        }
         case 'telegraph':
           // Persistent boss telegraph is drawn from `boss.telegraph`; nothing here.
           break;
       }
+    }
+  }
+
+  /** Live fireworks state during the post-win victory lap (null = none). */
+  private celebration: { age: number; dur: number; sinceLast: number; center: Vec2 } | null = null;
+
+  /** Feed the victory fireworks: colorful bursts raining around the arena. */
+  private updateCelebration(dt: number): void {
+    const c = this.celebration;
+    if (!c) return;
+    c.age += dt;
+    c.sinceLast += dt;
+    if (c.age >= c.dur) {
+      this.celebration = null;
+      return;
+    }
+    while (c.sinceLast >= 0.11) {
+      c.sinceLast -= 0.11;
+      const ang = Math.random() * Math.PI * 2;
+      const d = 60 + Math.random() * 360;
+      const pos = { x: c.center.x + Math.cos(ang) * d, y: c.center.y + Math.sin(ang) * d };
+      const color = FIREWORK_COLORS[(Math.random() * FIREWORK_COLORS.length) | 0];
+      this.spawnBurst(pos, {
+        startR: 3,
+        endR: 40 + Math.random() * 70,
+        ttl: 0.55 + Math.random() * 0.3,
+        color,
+        alpha0: 0.85,
+        filled: Math.random() < 0.35,
+        lineWidth: 3,
+        rise: 24 + Math.random() * 30,
+      });
     }
   }
 
@@ -337,6 +409,9 @@ export class Fx {
 
   update(dtMs: number): void {
     const dt = dtMs / 1000;
+
+    // Victory fireworks (spawns more bursts while a celebration is live).
+    this.updateCelebration(dt);
 
     // Decay hit flashes.
     for (const [id, v] of this.flashes) {

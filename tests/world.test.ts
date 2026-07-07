@@ -48,7 +48,7 @@ describe('world: setup + scaling', () => {
     });
     const snap = w.serialize();
     expect(snap.players.length).toBe(1);
-    expect(snap.boss?.monsterId).toBe('lich');
+    expect(snap.bosses[0]?.monsterId).toBe('lich');
     expect(Array.isArray(snap.adds)).toBe(true);
   });
 });

@@ -10,57 +10,18 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from './store';
 import { hudSet, useHudStore } from './hudStore';
+import { pushHud } from './hudBridge';
 import { sfx, requestPause } from './session';
 import HUD from './HUD';
 import PauseMenu from './PauseMenu';
 import ResumeCountdown from './ResumeCountdown';
 import { Renderer } from '../render/renderer';
 import { InputManager } from '../input/input';
-import { getMonster } from '../engine/monsters';
-import { ARENA_W, ARENA_H, REVIVE_TIME } from '../engine/constants';
-import type { InputCommand, InputState, RenderState } from '../engine/types';
-import type { InputSource } from '../input/input';
+import { ARENA_W, ARENA_H } from '../engine/constants';
+import type { InputCommand, InputState } from '../engine/types';
 
 /** Gamepad "Options / Start" button index (standard mapping) for the menu toggle. */
 const PAD_MENU_BUTTON = 9;
-
-function pushHud(state: RenderState, source: InputSource): void {
-  const localId = state.localPlayerId;
-  const lp = localId != null ? (state.players.find((p) => p.id === localId) ?? null) : null;
-  const boss = state.boss;
-  hudSet({
-    active: true,
-    classId: lp?.classId ?? null,
-    hp: lp?.hp ?? 0,
-    maxHp: lp?.maxHp ?? 1,
-    state: lp?.state ?? 'dead',
-    cooldowns: lp?.cooldowns ?? { basic: 0, a1: 0, a2: 0, a3: 0 },
-    casting: (lp?.castTimer ?? 0) > 0,
-    inputSource: source,
-    buffs: lp?.buffs ?? [],
-    score: lp?.score ?? 0,
-    bossPresent: !!boss,
-    bossName: boss ? getMonster(boss.monsterId).name : '',
-    bossHp: boss?.hp ?? 0,
-    bossMaxHp: boss?.maxHp ?? 1,
-    bossPhase: boss?.phase ?? 'normal',
-    bossBuffs: boss?.buffs ?? [],
-    bossModName: boss?.modName ?? '',
-    teammates: state.players.map((p) => ({
-      id: p.id,
-      name: p.name,
-      classId: p.classId,
-      hp: p.hp,
-      maxHp: p.maxHp,
-      state: p.state,
-      isLocal: p.id === localId,
-      buffs: p.buffs,
-      score: p.score,
-    })),
-    reviveProgress: lp && lp.state === 'downed' ? Math.min(1, lp.reviveProgress / REVIVE_TIME) : 0,
-    downedTimer: lp?.downedTimer ?? 0,
-  });
-}
 
 const NEUTRAL_BUTTONS = { basic: false, a1: false, a2: false, a3: false, revive: false };
 

@@ -12,6 +12,8 @@ import type {
   TerrainView,
   Obstacle,
   ObstacleView,
+  Totem,
+  TotemView,
   InputCommand,
   GameEvent,
   Snapshot,
@@ -51,6 +53,8 @@ import {
   SCORE_HEAL_FACTOR,
   SCORE_PER_REVIVE,
   SCORE_PER_DEATH,
+  TWIN_HP_FRAC,
+  TWIN_DMG_FRAC,
 } from './constants';
 import { generateTerrain } from './terrain';
 import { generateObstacles } from './obstacles';
@@ -78,15 +82,18 @@ import { computeScaling } from './scaling';
 import type { ScalingResult } from './scaling';
 import {
   tickBuffs,
+  tickStunDr,
   buffMult,
   hasBuff,
   applyBuff,
+  applyStun,
   makeBuff,
   damageBoss,
   damageAdd,
   damagePlayer,
+  healPlayer,
 } from './combat';
-import { decayThreat, highestThreatTarget } from './threat';
+import { decayThreat, nthThreatTarget } from './threat';
 import { resolvePlayerAbility, resolveBossAbility, beamTick } from './abilities';
 
 const SLOTS: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
@@ -123,6 +130,18 @@ export interface WorldInit {
   cycle?: number;
   /** Endless "type" modifier layered on the boss (Frost, Dark, …). */
   modifier?: BossModifier | null;
+  /**
+   * Extra bosses sharing the arena (twin encounters). Every boss — lead
+   * included — then spawns with TWIN_HP_FRAC of its HP and TWIN_DMG_FRAC of its
+   * damage so the duo stays survivable.
+   */
+  coBosses?: MonsterId[];
+  /**
+   * Practice mode (the walkable menu playground): the dummy respawns instead of
+   * granting victory, the party can never wipe to defeat, and interaction
+   * totems are placed around the arena.
+   */
+  practice?: boolean;
 }
 
 /** Interval (s) at which an endless "type" modifier's aura fires. */
@@ -130,22 +149,29 @@ const MOD_AURA_INTERVAL = 3.5;
 
 export class World {
   players: Player[] = [];
-  boss: Boss | null = null;
+  /** Every boss in the arena. Solo fights have one; twin encounters have two. */
+  bosses: Boss[] = [];
   adds: Add[] = [];
   projectiles: Projectile[] = [];
   groundZones: GroundZone[] = [];
   terrain: TerrainPatch[] = [];
   obstacles: Obstacle[] = [];
+  /** Playground interaction pillars (practice worlds only; block movement). */
+  totems: Totem[] = [];
   events: GameEvent[] = [];
 
   rng: Rng;
   arena = { w: ARENA_W, h: ARENA_H };
   tick = 0;
   elapsed = 0; // seconds
+  seed: number;
 
   scaling: ScalingResult;
+  /** Def of the encounter's LEAD boss (terrain theme, legacy single-boss paths). */
   monsterDef: MonsterDef;
   modifier: BossModifier | null;
+  /** Practice playground: dummy respawns, party can't wipe. */
+  practice: boolean;
 
   tauntTargetId: EntityId | null = null;
   tauntTimer = 0;
@@ -158,18 +184,46 @@ export class World {
 
   constructor(init: WorldInit) {
     this.rng = new Rng(init.seed);
+    this.seed = init.seed;
     this.scaling = computeScaling(init.players.length, init.cycle ?? 0);
     this.monsterDef = getMonster(init.monsterId);
     this.modifier = init.modifier ?? null;
+    this.practice = init.practice ?? false;
     this.spawnPlayers(init.players);
-    this.spawnBoss();
-    this.terrain = generateTerrain(init.monsterId, init.seed, () => this.allocId());
+    const ids: MonsterId[] = [init.monsterId, ...(init.coBosses ?? [])];
+    this.spawnBosses(ids);
+    this.terrain = this.practice ? [] : generateTerrain(ids, init.seed, () => this.allocId());
     // Cover obstacles avoid the terrain patches so cover stays readable.
-    this.obstacles = generateObstacles(
-      init.seed,
-      () => this.allocId(),
-      this.terrain.map((t) => ({ pos: t.pos, radius: t.radius })),
-    );
+    this.obstacles = this.practice
+      ? []
+      : generateObstacles(
+          init.seed,
+          () => this.allocId(),
+          this.terrain.map((t) => ({ pos: t.pos, radius: t.radius })),
+        );
+    if (this.practice) this.spawnTotems();
+  }
+
+  /**
+   * Back-compat accessor for the single-boss era: the encounter's first boss.
+   * Prefer iterating `bosses` — this exists for tests and single-target logic.
+   */
+  get boss(): Boss | null {
+    return this.bosses[0] ?? null;
+  }
+
+  set boss(b: Boss | null) {
+    this.bosses = b ? [b] : [];
+  }
+
+  /** The MonsterDef a given boss acts by (twin bosses differ from the lead). */
+  defOf(boss: Boss): MonsterDef {
+    return boss.monsterId === this.monsterDef.id ? this.monsterDef : getMonster(boss.monsterId);
+  }
+
+  /** All bosses still fighting (hp > 0). */
+  aliveBosses(): Boss[] {
+    return this.bosses.filter((b) => b.hp > 0);
   }
 
   // -------------------------------------------------------------------------
@@ -231,40 +285,67 @@ export class World {
     });
   }
 
-  private spawnBoss(): void {
-    const def = this.monsterDef;
-    const maxHp = Math.round(def.baseHp * this.scaling.hpMultiplier);
-    const cooldowns: Record<string, number> = {};
-    for (const ab of def.abilities) cooldowns[ab.id] = 0;
-    this.boss = {
+  private spawnBosses(ids: MonsterId[]): void {
+    const twin = ids.length > 1;
+    ids.forEach((id, i) => {
+      const def = getMonster(id);
+      const frac = twin ? TWIN_HP_FRAC : 1;
+      const maxHp = Math.round(def.baseHp * this.scaling.hpMultiplier * frac);
+      const cooldowns: Record<string, number> = {};
+      for (const ab of def.abilities) cooldowns[ab.id] = 0;
+      // Spread a duo along the top of the arena so they don't spawn stacked.
+      const x = (this.arena.w * (i + 1)) / (ids.length + 1);
+      this.bosses.push({
+        id: this.allocId(),
+        monsterId: def.id,
+        pos: { x, y: 300 },
+        facing: Math.PI / 2,
+        hp: maxHp,
+        maxHp,
+        moveSpeed: def.moveSpeed,
+        radius: def.radius,
+        phase: 'normal',
+        action: {
+          kind: 'idle',
+          abilityId: null,
+          remaining: 0,
+          total: 0,
+          targetId: null,
+          targetPos: null,
+          aimAngle: Math.PI / 2,
+          channelAccum: 0,
+        },
+        cooldowns,
+        // Stagger twin decisions so their openers don't land the same tick.
+        decisionTimer: BOSS_DECISION_MIN * (1 + i * 0.5),
+        regen: def.regen,
+        blinkTimer: def.blink ? def.blink.internalCd : 0,
+        buffs: [],
+        dmgScale: twin ? TWIN_DMG_FRAC : 1,
+        modAura: this.modifier?.aura,
+        modColor: this.modifier?.color,
+        modAuraTimer: 0,
+      });
+    });
+  }
+
+  /** Playground interaction pillars: Host / Join / Class / Controls totems. */
+  private spawnTotems(): void {
+    const w = this.arena.w;
+    const h = this.arena.h;
+    const mk = (kind: Totem['kind'], x: number, y: number): Totem => ({
       id: this.allocId(),
-      monsterId: def.id,
-      pos: { x: this.arena.w / 2, y: 300 },
-      facing: Math.PI / 2,
-      hp: maxHp,
-      maxHp,
-      moveSpeed: def.moveSpeed,
-      radius: def.radius,
-      phase: 'normal',
-      action: {
-        kind: 'idle',
-        abilityId: null,
-        remaining: 0,
-        total: 0,
-        targetId: null,
-        targetPos: null,
-        aimAngle: Math.PI / 2,
-        channelAccum: 0,
-      },
-      cooldowns,
-      decisionTimer: BOSS_DECISION_MIN,
-      regen: def.regen,
-      blinkTimer: def.blink ? def.blink.internalCd : 0,
-      buffs: [],
-      modAura: this.modifier?.aura,
-      modColor: this.modifier?.color,
-      modAuraTimer: 0,
-    };
+      kind,
+      pos: { x, y },
+      radius: 34,
+      triggerRadius: 120,
+    });
+    this.totems = [
+      mk('host', w * 0.24, h * 0.4),
+      mk('join', w * 0.76, h * 0.4),
+      mk('class', w * 0.24, h * 0.78),
+      mk('controls', w * 0.76, h * 0.78),
+    ];
   }
 
   playerIdByPeer(peerId: string): EntityId | null {
@@ -311,7 +392,7 @@ export class World {
     this.updateZones(dt);
     this.updateTerrain(dt);
     this.checkDownedTransitions();
-    this.updateBoss(dt);
+    this.updateBosses(dt);
     this.updateAdds(dt);
     decayThreat(this.players, dt);
     this.tauntTimer = Math.max(0, this.tauntTimer - dt);
@@ -325,6 +406,7 @@ export class World {
   private tickTimers(dt: number): void {
     for (const p of this.players) {
       tickBuffs(p, dt);
+      tickStunDr(p, dt);
       // Passive regeneration (Renewal upgrade) — only while up and fighting.
       if (p.regenPerSec > 0 && p.state === 'alive' && p.hp > 0) {
         p.hp = Math.min(p.maxHp, p.hp + p.regenPerSec * dt);
@@ -486,10 +568,13 @@ export class World {
 
   private resolvePlayerProjectile(proj: Projectile): boolean {
     const owner = this.players.find((p) => p.id === proj.ownerId) ?? null;
-    // find first collision (boss or add)
-    let hitBoss = false;
-    if (this.boss && this.boss.hp > 0) {
-      if (dist(proj.pos, this.boss.pos) <= proj.hitRadius + this.boss.radius) hitBoss = true;
+    // find first collision (any boss, else an add)
+    let hitBoss: Boss | null = null;
+    for (const b of this.aliveBosses()) {
+      if (dist(proj.pos, b.pos) <= proj.hitRadius + b.radius) {
+        hitBoss = b;
+        break;
+      }
     }
     let hitAdd: Add | null = null;
     if (!hitBoss) {
@@ -503,22 +588,23 @@ export class World {
     }
     if (!hitBoss && !hitAdd) return false;
 
+    let dealt = 0;
     if (proj.impactRadius > 0) {
       // AoE on impact
       const center = proj.pos;
-      if (
-        this.boss &&
-        this.boss.hp > 0 &&
-        dist(center, this.boss.pos) <= proj.impactRadius + this.boss.radius
-      ) {
-        this.applyProjDamageBoss(owner, proj.damage);
-        this.applyProjRiders(this.boss, proj);
+      for (const b of this.aliveBosses()) {
+        if (dist(center, b.pos) <= proj.impactRadius + b.radius) {
+          this.applyProjDamageBoss(owner, proj.damage, b);
+          dealt += proj.damage;
+          this.applyProjRiders(b, proj);
+        }
       }
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
         if (dist(center, a.pos) <= proj.impactRadius + a.radius) {
           if (owner) damageAdd(this, owner, a, proj.damage);
           else a.hp -= proj.damage;
+          dealt += proj.damage;
           this.applyProjRiders(a, proj);
         }
       }
@@ -539,39 +625,46 @@ export class World {
         },
       });
     } else if (hitBoss) {
-      this.applyProjDamageBoss(owner, proj.damage);
-      if (this.boss) this.applyProjRiders(this.boss, proj);
+      this.applyProjDamageBoss(owner, proj.damage, hitBoss);
+      dealt += proj.damage;
+      this.applyProjRiders(hitBoss, proj);
     } else if (hitAdd) {
       if (owner) damageAdd(this, owner, hitAdd, proj.damage);
       else hitAdd.hp -= proj.damage;
+      dealt += proj.damage;
       this.applyProjRiders(hitAdd, proj);
+    }
+    // Vampiric shots feed their archer (melee lifesteal lives in abilities.ts).
+    if (proj.lifesteal && proj.lifesteal > 0 && dealt > 0 && owner) {
+      healPlayer(this, null, owner, dealt * proj.lifesteal);
     }
     return true;
   }
 
   /** Apply a hostile projectile's on-hit riders (frost slow, freeze) to a target. */
-  private applyProjRiders(target: { buffs: import('./types').Buff[] }, proj: Projectile): void {
+  private applyProjRiders(target: Boss | Add, proj: Projectile): void {
     if (proj.slowMult != null && proj.slowMult < 1) {
       applyBuff(target, makeBuff('moveSpeed', proj.slowMult, proj.slowDuration ?? 2, 'slow'));
     }
     if (proj.freeze != null && proj.freeze > 0) {
-      applyBuff(target, makeBuff('stun', 0, proj.freeze, 'freeze'));
+      applyStun(this, target, proj.freeze, 'freeze');
     }
   }
 
-  private applyProjDamageBoss(owner: Player | null, base: number): void {
-    if (!this.boss) return;
+  private applyProjDamageBoss(owner: Player | null, base: number, boss?: Boss | null): void {
+    const target = boss ?? this.boss;
+    if (!target) return;
     if (owner) {
-      damageBoss(this, owner, this.boss, base);
+      damageBoss(this, owner, target, base);
     } else {
       // Ownerless (disconnected caster): still honor the boss's mitigation buffs.
-      const dealt = base * buffMult(this.boss, 'damageTaken');
-      this.boss.hp -= dealt;
+      const dealt = base * buffMult(target, 'damageTaken');
+      target.hp -= dealt;
       this.events.push({
         t: 'hit',
-        pos: { ...this.boss.pos },
+        pos: { ...target.pos },
         amount: dealt,
-        targetId: this.boss.id,
+        targetId: target.id,
         side: 'boss',
       });
     }
@@ -627,14 +720,10 @@ export class World {
     const owner = this.players.find((p) => p.id === z.ownerId) ?? null;
     const slows = z.slowMult < 1;
     if (z.damagePerTick > 0 || slows) {
-      if (
-        this.boss &&
-        this.boss.hp > 0 &&
-        dist(z.pos, this.boss.pos) <= z.radius + this.boss.radius
-      ) {
-        if (z.damagePerTick > 0) this.applyProjDamageBoss(owner, z.damagePerTick);
-        if (slows)
-          applyBuff(this.boss, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
+      for (const b of this.aliveBosses()) {
+        if (dist(z.pos, b.pos) > z.radius + b.radius) continue;
+        if (z.damagePerTick > 0) this.applyProjDamageBoss(owner, z.damagePerTick, b);
+        if (slows) applyBuff(b, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
       }
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
@@ -727,17 +816,26 @@ export class World {
   // Boss
   // -------------------------------------------------------------------------
 
-  private updateBoss(dt: number): void {
-    const boss = this.boss;
-    if (!boss || boss.hp <= 0) return;
-    const def = this.monsterDef;
+  private updateBosses(dt: number): void {
+    this.tickModifierAura(dt);
+    // Index among the LIVING bosses, so when one twin falls the survivor slides
+    // back to hunting the top threat instead of forever chasing the runner-up.
+    let aliveIndex = 0;
+    for (const boss of this.bosses) {
+      this.updateBoss(dt, boss, boss.hp > 0 ? aliveIndex++ : 0);
+    }
+  }
+
+  private updateBoss(dt: number, boss: Boss, index: number): void {
+    if (boss.hp <= 0) return;
+    const def = this.defOf(boss);
 
     tickBuffs(boss, dt);
+    tickStunDr(boss, dt);
     for (const id of Object.keys(boss.cooldowns)) {
       boss.cooldowns[id] = Math.max(0, boss.cooldowns[id] - dt);
     }
     boss.blinkTimer = Math.max(0, boss.blinkTimer - dt);
-    this.tickModifierAura(dt);
 
     // regen (troll)
     if (boss.regen > 0) {
@@ -754,22 +852,24 @@ export class World {
 
     if (hasBuff(boss, 'stun')) return; // stunned: no movement or actions
 
-    const target = highestThreatTarget(this.players, this.tauntTargetId, this.tauntTimer);
+    // Twin bosses split their attention: the second boss hunts the 2nd-highest
+    // threat when one exists, so a duo can't simply pile onto the tank.
+    const target = nthThreatTarget(this.players, index, this.tauntTargetId, this.tauntTimer);
 
     switch (boss.action.kind) {
       case 'idle': {
         boss.decisionTimer -= dt;
-        this.bossMove(dt, target);
-        this.handleBlink();
+        this.bossMove(dt, boss, def, target);
+        this.handleBlink(boss, def);
         if (boss.decisionTimer <= 0) {
-          this.bossDecide(target);
+          this.bossDecide(boss, def, target);
           boss.decisionTimer = BOSS_DECISION_MIN;
         }
         break;
       }
       case 'windup': {
         boss.action.remaining -= dt;
-        if (boss.action.remaining <= 0) this.bossExecute();
+        if (boss.action.remaining <= 0) this.bossExecute(boss, def);
         break;
       }
       case 'channel': {
@@ -781,14 +881,14 @@ export class World {
           beamTick(this, boss, ab, boss.action);
         }
         if (boss.action.remaining <= 0) {
-          if (ab) boss.cooldowns[ab.id] = this.bossCooldown(ab.cooldown);
-          this.enterRecover();
+          if (ab) boss.cooldowns[ab.id] = this.bossCooldown(boss, def, ab.cooldown);
+          this.enterRecover(boss);
         }
         break;
       }
       case 'recover': {
         boss.action.remaining -= dt;
-        this.bossMove(dt, target);
+        this.bossMove(dt, boss, def, target);
         if (boss.action.remaining <= 0) boss.action.kind = 'idle';
         break;
       }
@@ -801,12 +901,15 @@ export class World {
    * Cheap, telegraph-light pressure that stacks on top of the boss's own kit.
    */
   private tickModifierAura(dt: number): void {
-    const boss = this.boss;
-    if (!boss || !boss.modAura) return;
+    for (const boss of this.aliveBosses()) this.tickBossAura(dt, boss);
+  }
+
+  private tickBossAura(dt: number, boss: Boss): void {
+    if (!boss.modAura) return;
     boss.modAuraTimer = (boss.modAuraTimer ?? 0) + dt;
     if (boss.modAuraTimer < MOD_AURA_INTERVAL) return;
     boss.modAuraTimer = 0;
-    const scalar = this.bossDamageScalar();
+    const scalar = this.bossDamageScalar() * (boss.dmgScale ?? 1);
     switch (boss.modAura) {
       case 'frost':
         for (const p of this.players) {
@@ -847,23 +950,19 @@ export class World {
     }
   }
 
-  private bossCooldown(base: number): number {
-    const boss = this.boss!;
-    const def = this.monsterDef;
+  private bossCooldown(boss: Boss, def: MonsterDef, base: number): number {
     return base * (boss.phase === 'enraged' ? def.enrageCooldownMult : 1);
   }
 
-  private enterRecover(): void {
-    const a = this.boss!.action;
+  private enterRecover(boss: Boss): void {
+    const a = boss.action;
     a.kind = 'recover';
     a.abilityId = null;
     a.remaining = BOSS_RECOVER_TIME;
     a.total = BOSS_RECOVER_TIME;
   }
 
-  private bossMove(dt: number, target: Player | null): void {
-    const boss = this.boss!;
-    const def = this.monsterDef;
+  private bossMove(dt: number, boss: Boss, def: MonsterDef, target: Player | null): void {
     if (!target) return;
     const d = dist(boss.pos, target.pos);
     const speed = boss.moveSpeed * buffMult(boss, 'moveSpeed');
@@ -889,9 +988,7 @@ export class World {
     }
   }
 
-  private handleBlink(): void {
-    const boss = this.boss!;
-    const def = this.monsterDef;
+  private handleBlink(boss: Boss, def: MonsterDef): void {
     if (!def.blink) return;
     if (boss.blinkTimer > 0) return;
     // nearest alive player
@@ -919,9 +1016,7 @@ export class World {
     this.events.push({ t: 'blink', id: boss.id, from, to });
   }
 
-  private bossDecide(target: Player | null): void {
-    const boss = this.boss!;
-    const def = this.monsterDef;
+  private bossDecide(boss: Boss, def: MonsterDef, target: Player | null): void {
     const hpFrac = boss.hp / boss.maxHp;
     const distToTarget = target ? dist(boss.pos, target.pos) : Infinity;
     const anyInMelee = this.players.some(
@@ -946,11 +1041,15 @@ export class World {
     if (!choice) return;
     const ab = abilityById(def, choice);
     if (!ab) return;
-    this.startBossAbility(ab, target);
+    this.startBossAbility(boss, def, ab, target);
   }
 
-  private startBossAbility(ab: import('./monsters').BossAbilityDef, target: Player | null): void {
-    const boss = this.boss!;
+  private startBossAbility(
+    boss: Boss,
+    def: MonsterDef,
+    ab: import('./monsters').BossAbilityDef,
+    target: Player | null,
+  ): void {
     const alive = this.players.filter((p) => p.state === 'alive');
     let tgt = target;
     if (ab.targetRandom && alive.length > 0) tgt = this.rng.pick(alive);
@@ -981,28 +1080,26 @@ export class World {
     if (ab.windup <= 0) {
       // instant: resolve now
       resolveBossAbility(this, boss, ab, action);
-      boss.cooldowns[ab.id] = this.bossCooldown(ab.cooldown);
-      if (boss.action.kind === 'windup') this.enterRecover();
+      boss.cooldowns[ab.id] = this.bossCooldown(boss, def, ab.cooldown);
+      if (boss.action.kind === 'windup') this.enterRecover(boss);
     }
   }
 
-  private bossExecute(): void {
-    const boss = this.boss!;
-    const def = this.monsterDef;
+  private bossExecute(boss: Boss, def: MonsterDef): void {
     const id = boss.action.abilityId;
     if (!id) {
-      this.enterRecover();
+      this.enterRecover(boss);
       return;
     }
     const ab = abilityById(def, id);
     if (!ab) {
-      this.enterRecover();
+      this.enterRecover(boss);
       return;
     }
     resolveBossAbility(this, boss, ab, boss.action);
-    boss.cooldowns[ab.id] = this.bossCooldown(ab.cooldown);
+    boss.cooldowns[ab.id] = this.bossCooldown(boss, def, ab.cooldown);
     // beam ability switches action to 'channel'; otherwise recover
-    if (boss.action.kind === 'windup') this.enterRecover();
+    if (boss.action.kind === 'windup') this.enterRecover(boss);
   }
 
   // -------------------------------------------------------------------------
@@ -1017,6 +1114,7 @@ export class World {
         continue;
       }
       tickBuffs(a, dt);
+      tickStunDr(a, dt);
       a.attackCd = Math.max(0, a.attackCd - dt);
 
       // Frozen / stunned adds hold still and can't attack (Frost Nova's Deep
@@ -1064,30 +1162,38 @@ export class World {
       ...this.players.filter((p) => p.state !== 'dead'),
       ...this.adds,
     ];
+    const bosses = this.aliveBosses();
     for (let iter = 0; iter < SEPARATION_ITERATIONS; iter++) {
       for (let i = 0; i < movers.length; i++) {
         for (let j = i + 1; j < movers.length; j++) {
           this.separatePair(movers[i], movers[j]);
         }
       }
-      if (this.boss) {
-        for (const m of movers) this.pushOutOfBoss(m);
+      for (const b of bosses) {
+        for (const m of movers) this.pushOutOfBoss(m, b);
       }
-      // Terrain obstacles are solid walls: eject every mover (and the boss) so
+      // Twin bosses shove each other apart too, so a duo can't merge into one
+      // unreadable blob of hitboxes.
+      for (let i = 0; i < bosses.length; i++) {
+        for (let j = i + 1; j < bosses.length; j++) {
+          this.separatePair(bosses[i], bosses[j]);
+        }
+      }
+      // Terrain obstacles are solid walls: eject every mover (and the bosses) so
       // nobody — hero, minion or boss — can walk through cover.
-      if (this.obstacles.length > 0) {
+      if (this.obstacles.length > 0 || this.totems.length > 0) {
         for (const m of movers) this.pushOutOfObstacles(m);
-        if (this.boss) this.pushOutOfObstacles(this.boss);
+        for (const b of bosses) this.pushOutOfObstacles(b);
       }
     }
     // Wrap around the torus instead of clamping to walls: an entity that walks
     // off one edge reappears on the opposite edge (infinite scrolling arena).
     for (const p of this.players) p.pos = wrapPos(p.pos);
     for (const a of this.adds) a.pos = wrapPos(a.pos);
-    if (this.boss) this.boss.pos = wrapPos(this.boss.pos);
+    for (const b of this.bosses) b.pos = wrapPos(b.pos);
   }
 
-  private separatePair(a: Player | Add, b: Player | Add): void {
+  private separatePair(a: { pos: Vec2; radius: number }, b: { pos: Vec2; radius: number }): void {
     const min = a.radius + b.radius;
     // Shortest torus delta so pairs near opposite edges are handled correctly.
     const delta = sub(b.pos, a.pos);
@@ -1108,8 +1214,7 @@ export class World {
     b.pos.y += ny * overlap;
   }
 
-  private pushOutOfBoss(m: Player | Add): void {
-    const boss = this.boss!;
+  private pushOutOfBoss(m: Player | Add, boss: Boss): void {
     const min = m.radius + boss.radius;
     const delta = sub(m.pos, boss.pos);
     const dx = delta.x;
@@ -1123,19 +1228,22 @@ export class World {
     m.pos.y += ny * overlap;
   }
 
-  /** Eject a mover (or the boss) out of any solid cover obstacle it overlaps. */
+  /** Eject a mover (or a boss) out of any solid cover obstacle / totem it overlaps. */
   private pushOutOfObstacles(m: { pos: Vec2; radius: number }): void {
-    for (const o of this.obstacles) {
-      const min = m.radius + o.radius;
-      const delta = sub(m.pos, o.pos);
-      const d = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
-      if (d >= min) continue;
-      const nx = d > 0 ? delta.x / d : 1;
-      const ny = d > 0 ? delta.y / d : 0;
-      const overlap = min - d;
-      m.pos.x += nx * overlap;
-      m.pos.y += ny * overlap;
-    }
+    for (const o of this.obstacles) this.ejectFromCircle(m, o.pos, o.radius);
+    for (const t of this.totems) this.ejectFromCircle(m, t.pos, t.radius);
+  }
+
+  private ejectFromCircle(m: { pos: Vec2; radius: number }, center: Vec2, radius: number): void {
+    const min = m.radius + radius;
+    const delta = sub(m.pos, center);
+    const d = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
+    if (d >= min) return;
+    const nx = d > 0 ? delta.x / d : 1;
+    const ny = d > 0 ? delta.y / d : 0;
+    const overlap = min - d;
+    m.pos.x += nx * overlap;
+    m.pos.y += ny * overlap;
   }
 
   // -------------------------------------------------------------------------
@@ -1172,12 +1280,46 @@ export class World {
 
   private checkEndConditions(): void {
     if (this.finished) return;
-    if (this.boss && this.boss.hp <= 0) {
-      this.boss.hp = 0;
+
+    if (this.practice) {
+      // Playground: a felled dummy explodes and pops back up; nobody ever
+      // "wins" or "loses" the menu.
+      for (const b of this.bosses) {
+        if (b.hp <= 0) {
+          this.events.push({ t: 'death', id: b.id, kind: 'boss', pos: { ...b.pos } });
+          b.hp = b.maxHp;
+          b.phase = 'normal';
+          this.events.push({ t: 'dummyReset', id: b.id, pos: { ...b.pos } });
+        }
+      }
+      return;
+    }
+
+    // Announce each boss death as it happens (twin fights continue after the
+    // first falls); victory only once EVERY boss is down.
+    let anyBossAlive = false;
+    for (const b of this.bosses) {
+      if (b.hp <= 0) {
+        b.hp = 0;
+        if (!b.deathAnnounced) {
+          b.deathAnnounced = true;
+          // Clear any in-flight wind-up/channel so the corpse doesn't keep a
+          // frozen telegraph painted on the arena forever.
+          b.action.kind = 'idle';
+          b.action.abilityId = null;
+          b.action.remaining = 0;
+          this.events.push({ t: 'death', id: b.id, kind: 'boss', pos: { ...b.pos } });
+        }
+      } else {
+        anyBossAlive = true;
+      }
+    }
+    if (this.bosses.length > 0 && !anyBossAlive) {
       this.finished = true;
       this.outcome = 'victory';
       this.endMs = this.elapsed * 1000;
-      this.events.push({ t: 'death', id: this.boss.id, kind: 'boss', pos: { ...this.boss.pos } });
+      const center = this.bosses[0] ? { ...this.bosses[0].pos } : { x: 0, y: 0 };
+      this.events.push({ t: 'victory', pos: center });
       return;
     }
     const anyAlive = this.players.some((p) => p.state === 'alive');
@@ -1193,6 +1335,7 @@ export class World {
       outcome: this.outcome ?? 'defeat',
       timeMs: Math.round(this.endMs),
       monsterId: this.monsterDef.id,
+      monsterIds: this.bosses.map((b) => b.monsterId),
       stats: this.players.map((p) => ({
         peerId: p.peerId,
         name: p.name,
@@ -1210,11 +1353,10 @@ export class World {
   // Serialization
   // -------------------------------------------------------------------------
 
-  private buildTelegraph(): Telegraph | null {
-    const boss = this.boss;
-    if (!boss) return null;
+  private buildTelegraph(boss: Boss): Telegraph | null {
+    if (boss.hp <= 0) return null; // corpses telegraph nothing
     const a = boss.action;
-    const def = this.monsterDef;
+    const def = this.defOf(boss);
     if (a.kind !== 'windup' && a.kind !== 'channel') return null;
     if (!a.abilityId) return null;
     const ab = abilityById(def, a.abilityId);
@@ -1286,9 +1428,7 @@ export class World {
     return Math.max(0, (p.baseScore ?? 0) + fight);
   }
 
-  private bossView(): BossView | null {
-    const b = this.boss;
-    if (!b) return null;
+  private bossView(b: Boss): BossView {
     return {
       id: b.id,
       monsterId: b.monsterId,
@@ -1297,7 +1437,7 @@ export class World {
       hp: Math.max(0, Math.round(b.hp)),
       maxHp: b.maxHp,
       phase: b.phase,
-      telegraph: this.buildTelegraph(),
+      telegraph: this.buildTelegraph(b),
       buffs: b.buffs.map((bf) => ({ kind: bf.kind, remaining: bf.remaining, mult: bf.mult })),
       action: b.action.kind,
       abilityId: b.action.abilityId,
@@ -1309,8 +1449,9 @@ export class World {
   serialize(): Snapshot {
     return {
       tick: this.tick,
+      seed: this.seed,
       players: this.players.map((p) => this.playerView(p)),
-      boss: this.bossView(),
+      bosses: this.bosses.map((b) => this.bossView(b)),
       adds: this.adds.map((a) => ({
         id: a.id,
         pos: { ...a.pos },
@@ -1338,11 +1479,14 @@ export class World {
         kind: t.kind,
         pos: { ...t.pos },
         radius: t.radius,
+        variant: t.variant,
       })) as TerrainView[],
       obstacles: this.obstacles.map((o) => ({
         id: o.id,
         pos: { ...o.pos },
         radius: o.radius,
+        kind: o.kind,
+        variant: o.variant,
       })) as ObstacleView[],
       events: this.events.slice(),
     };
@@ -1354,7 +1498,21 @@ export class World {
       ...snap,
       localPlayerId,
       arena: { w: this.arena.w, h: this.arena.h },
+      totems: this.totems.length > 0 ? this.totemViews(localPlayerId) : undefined,
     };
+  }
+
+  /** Playground totem views, with `active` set for the local hero's proximity. */
+  totemViews(localPlayerId: EntityId | null): TotemView[] {
+    const me = this.players.find((p) => p.id === localPlayerId) ?? null;
+    return this.totems.map((t) => ({
+      id: t.id,
+      kind: t.kind,
+      pos: { ...t.pos },
+      radius: t.radius,
+      triggerRadius: t.triggerRadius,
+      active: me != null && dist(me.pos, t.pos) <= t.triggerRadius,
+    }));
   }
 }
 

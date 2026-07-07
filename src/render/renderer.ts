@@ -18,11 +18,13 @@
  */
 import { Application, Assets, Container, Graphics, Text, TextStyle } from 'pixi.js';
 import type { Spritesheet } from 'pixi.js';
-import type { RenderState, Vec2 } from '../engine/types';
+import type { RenderState, TerrainKind, Vec2 } from '../engine/types';
 import { PLAYER_RADIUS, CLASS_COLORS, ARENA_W, ARENA_H } from '../engine/constants';
 import { nearestCopy, wrapPos } from '../engine/torus';
 import { getMonster } from '../engine/monsters';
 import { getClass } from '../engine/classes';
+import { themeFor } from '../engine/terrain';
+import { Rng } from '../engine/math';
 import { Camera } from './camera';
 import { Fx } from './fx';
 import { Balloons } from './balloons';
@@ -34,6 +36,7 @@ import {
   drawZone,
   drawTerrain,
   drawObstacle,
+  drawTotem,
   drawPlayerOverlay,
   drawBossOverlay,
   drawAddOverlay,
@@ -164,9 +167,9 @@ export class Renderer {
     this.particles.processEvents(state.events);
     this.balloons.ingest(state.events);
 
-    this.drawFloor(state.arena);
+    this.drawFloor(state, now);
     this.drawTerrain(state, now);
-    this.drawObstacles(state);
+    this.drawObstacles(state, now);
     this.drawZones(state);
     this.drawTelegraph(state);
     this.drawAimPreview(state);
@@ -209,15 +212,18 @@ export class Renderer {
 
   // --- Layer drawing --------------------------------------------------------
 
-  private drawFloor(arena: { w: number; h: number }): void {
+  private drawFloor(state: RenderState, nowMs: number): void {
     const g = this.floorLayer;
     const cam = this.camera;
+    const arena = state.arena;
     g.clear();
+
+    this.ensureGroundDecor(state);
 
     const { x: vw, y: vh } = cam.viewSize;
     // The torus has no walls: fill the whole viewport, then draw an endlessly
     // scrolling grid so the ground visibly rolls over as the party marches.
-    g.rect(0, 0, vw, vh).fill({ color: 0x14141c });
+    g.rect(0, 0, vw, vh).fill({ color: this.groundBase });
 
     const halfW = vw / 2 / cam.scale;
     const halfH = vh / 2 / cam.scale;
@@ -235,6 +241,30 @@ export class Renderer {
     }
     g.stroke({ width: 1, color: 0x24242f, alpha: 0.7 });
 
+    // Seeded, boss-themed ground decor: mosaic slabs, specks and faint runes,
+    // tiled so they recur as the arena wraps. Pure flavour — regenerated when
+    // the fight seed changes, so every arena floor is different.
+    const timeSec = nowMs / 1000;
+    for (const d of this.groundDecor) {
+      this.drawTiled({ x: d.x, y: d.y }, d.r, (s) => {
+        const r = d.r * cam.scale;
+        if (d.type === 'slab') {
+          decorPoly(g, s.x, s.y, r, d.sides, d.rot, d.color, d.alpha);
+        } else if (d.type === 'speck') {
+          g.circle(s.x, s.y, Math.max(1, r * 0.25)).fill({ color: d.color, alpha: d.alpha });
+        } else {
+          // rune — a faint diamond that breathes very slowly.
+          const a = d.alpha * (0.7 + 0.3 * Math.sin(timeSec * 0.7 + d.rot * 7));
+          g.moveTo(s.x, s.y - r)
+            .lineTo(s.x + r * 0.6, s.y)
+            .lineTo(s.x, s.y + r)
+            .lineTo(s.x - r * 0.6, s.y)
+            .closePath()
+            .stroke({ width: 1.2, color: d.color, alpha: a });
+        }
+      });
+    }
+
     // Decorative pillars, tiled so they recur as the arena wraps.
     const pr = 26 * cam.scale;
     for (const p of PILLARS) {
@@ -243,6 +273,72 @@ export class Renderer {
         g.circle(s.x, s.y, pr).stroke({ width: 2, color: 0x2c2c3a, alpha: 0.9 });
       });
     }
+  }
+
+  // --- Procedural ground decor (seeded per fight) ---------------------------
+
+  private groundKey = '';
+  private groundBase = 0x14141c;
+  private groundDecor: GroundDecor[] = [];
+
+  /**
+   * (Re)build the seeded floor decoration when the fight changes. The palette
+   * follows the lead boss's terrain theme (magma arenas glow warm, crypts run
+   * cold) and the layout comes from the run seed, so every arena floor tiles
+   * differently — procedural tiles without a single asset.
+   */
+  private ensureGroundDecor(state: RenderState): void {
+    const lead = state.bosses[0]?.monsterId ?? 'dummy';
+    const key = `${state.seed}:${lead}`;
+    if (key === this.groundKey) return;
+    this.groundKey = key;
+
+    const theme = themeFor([lead])[0] ?? 'ember';
+    const pal = GROUND_PALETTES[theme] ?? GROUND_PALETTES.ember;
+    this.groundBase = pal.base;
+
+    const rng = new Rng((state.seed ^ 0xc0ffee) >>> 0 || 1);
+    const out: GroundDecor[] = [];
+    const slabs = rng.int(14, 22);
+    for (let i = 0; i < slabs; i++) {
+      out.push({
+        type: 'slab',
+        x: rng.range(0, ARENA_W),
+        y: rng.range(0, ARENA_H),
+        r: rng.range(18, 52),
+        sides: rng.int(4, 7),
+        rot: rng.range(0, Math.PI * 2),
+        color: rng.next() < 0.5 ? pal.slabA : pal.slabB,
+        alpha: rng.range(0.25, 0.5),
+      });
+    }
+    const specks = rng.int(20, 32);
+    for (let i = 0; i < specks; i++) {
+      out.push({
+        type: 'speck',
+        x: rng.range(0, ARENA_W),
+        y: rng.range(0, ARENA_H),
+        r: rng.range(4, 12),
+        sides: 0,
+        rot: 0,
+        color: pal.speck,
+        alpha: rng.range(0.2, 0.45),
+      });
+    }
+    const runes = rng.int(3, 6);
+    for (let i = 0; i < runes; i++) {
+      out.push({
+        type: 'rune',
+        x: rng.range(0, ARENA_W),
+        y: rng.range(0, ARENA_H),
+        r: rng.range(14, 26),
+        sides: 0,
+        rot: rng.range(0, Math.PI * 2),
+        color: pal.rune,
+        alpha: rng.range(0.1, 0.2),
+      });
+    }
+    this.groundDecor = out;
   }
 
   /**
@@ -272,12 +368,17 @@ export class Renderer {
     }
   }
 
-  private drawObstacles(state: RenderState): void {
+  private drawObstacles(state: RenderState, nowMs: number): void {
     const g = this.obstaclesLayer;
     g.clear();
-    if (state.obstacles.length === 0) return;
+    const totems = state.totems ?? [];
+    if (state.obstacles.length === 0 && totems.length === 0) return;
     for (const o of state.obstacles) {
       this.drawTiled(o.pos, o.radius, (s) => drawObstacle(g, o, s, this.camera.scale));
+    }
+    const timeSec = nowMs / 1000;
+    for (const t of totems) {
+      this.drawTiled(t.pos, t.triggerRadius, (s) => drawTotem(g, t, s, this.camera.scale, timeSec));
     }
   }
 
@@ -330,8 +431,8 @@ export class Renderer {
   private drawTelegraph(state: RenderState): void {
     const g = this.telegraphLayer;
     g.clear();
-    if (state.boss?.telegraph) {
-      this.fx.drawTelegraph(g, state.boss.telegraph, this.camera);
+    for (const boss of state.bosses) {
+      if (boss.telegraph) this.fx.drawTelegraph(g, boss.telegraph, this.camera);
     }
   }
 
@@ -347,16 +448,19 @@ export class Renderer {
         drawAdd(g, a, this.camera.worldToScreen(a.pos), scale, this.fx.flashAmount(a.id), timeSec);
       }
     }
-    // Boss below players so downed/standing players stay readable on top of it.
-    if (!SPRITE_FLAGS.boss && state.boss && !bossUsesRig(state.boss)) {
-      drawBoss(
-        g,
-        state.boss,
-        this.camera.worldToScreen(state.boss.pos),
-        scale,
-        this.fx.flashAmount(state.boss.id),
-        timeSec,
-      );
+    // Bosses below players so downed/standing players stay readable on top.
+    if (!SPRITE_FLAGS.boss) {
+      for (const boss of state.bosses) {
+        if (bossUsesRig(boss)) continue;
+        drawBoss(
+          g,
+          boss,
+          this.camera.worldToScreen(boss.pos),
+          scale,
+          this.fx.flashAmount(boss.id),
+          timeSec,
+        );
+      }
     }
     if (!SPRITE_FLAGS.player) {
       for (const p of state.players) {
@@ -386,8 +490,10 @@ export class Renderer {
         drawAddOverlay(g, a, this.camera.worldToScreen(a.pos), scale, timeSec);
       }
     }
-    if (state.boss && (SPRITE_FLAGS.boss || bossUsesRig(state.boss))) {
-      drawBossOverlay(g, state.boss, this.camera.worldToScreen(state.boss.pos), scale, timeSec);
+    for (const boss of state.bosses) {
+      if (SPRITE_FLAGS.boss || bossUsesRig(boss)) {
+        drawBossOverlay(g, boss, this.camera.worldToScreen(boss.pos), scale, timeSec);
+      }
     }
     for (const p of state.players) {
       if (SPRITE_FLAGS.player || playerUsesRig(p)) {
@@ -434,7 +540,8 @@ export class Renderer {
   }
 
   private updateLabels(state: RenderState): void {
-    this.ensureLabels(state.players.length + (state.boss ? 1 : 0));
+    const totems = state.totems ?? [];
+    this.ensureLabels(state.players.length + state.bosses.length + totems.length);
     const scale = this.camera.scale;
     let i = 0;
 
@@ -449,21 +556,38 @@ export class Renderer {
       t.alpha = p.state === 'dead' ? 0.4 : 1;
     }
 
-    if (state.boss) {
-      const def = getMonster(state.boss.monsterId);
+    for (const boss of state.bosses) {
+      const def = getMonster(boss.monsterId);
       const t = this.labels[i++];
       t.visible = true;
-      const name = state.boss.modName ? `${state.boss.modName} ${def.name}` : def.name;
-      const badges = buffLabel(state.boss.buffs);
+      const name = boss.modName ? `${boss.modName} ${def.name}` : def.name;
+      const badges = buffLabel(boss.buffs);
       t.text = badges ? `${name}\n${badges}` : name;
-      const s = this.camera.worldToScreen(state.boss.pos);
+      const s = this.camera.worldToScreen(boss.pos);
       t.position.set(s.x, s.y - def.radius * scale - 10);
-      t.alpha = 1;
+      t.alpha = boss.hp > 0 ? 1 : 0.4; // a felled twin's corpse label fades
+    }
+
+    for (const tot of totems) {
+      const t = this.labels[i++];
+      t.visible = true;
+      t.text = TOTEM_LABELS[tot.kind];
+      const s = this.camera.worldToScreen(tot.pos);
+      t.position.set(s.x, s.y - tot.radius * scale - 26);
+      t.alpha = tot.active ? 1 : 0.75;
     }
 
     for (; i < this.labels.length; i++) this.labels[i].visible = false;
   }
 }
+
+/** Floating captions over the playground totems. */
+const TOTEM_LABELS: Record<string, string> = {
+  host: '⚔ HOST A GAME',
+  join: '🌀 JOIN A GAME',
+  class: '🛡 CHANGE HERO',
+  controls: '🎮 CONTROLS',
+};
 
 /** Fractional (0..1) arena positions for decorative floor pillars. */
 const PILLARS: ReadonlyArray<{ x: number; y: number }> = [
@@ -472,6 +596,58 @@ const PILLARS: ReadonlyArray<{ x: number; y: number }> = [
   { x: 0.25, y: 0.72 },
   { x: 0.75, y: 0.72 },
 ];
+
+/** One piece of seeded floor decoration (world-space, static per fight). */
+interface GroundDecor {
+  type: 'slab' | 'speck' | 'rune';
+  x: number;
+  y: number;
+  r: number;
+  sides: number;
+  rot: number;
+  color: number;
+  alpha: number;
+}
+
+/** Floor palettes keyed by the lead boss's terrain theme. */
+const GROUND_PALETTES: Record<
+  TerrainKind,
+  {
+    base: number;
+    slabA: number;
+    slabB: number;
+    speck: number;
+    rune: number;
+  }
+> = {
+  magma: { base: 0x171216, slabA: 0x221619, slabB: 0x1d1417, speck: 0x2e1c1a, rune: 0xff8a3d },
+  ember: { base: 0x16130f, slabA: 0x201a13, slabB: 0x1b1610, speck: 0x2a2117, rune: 0xd9a05b },
+  swamp: { base: 0x111a15, slabA: 0x18241c, slabB: 0x141f18, speck: 0x203026, rune: 0x5bbf7a },
+  bog: { base: 0x121812, slabA: 0x1a231a, slabB: 0x151e15, speck: 0x232f22, rune: 0x8fd14a },
+  ice: { base: 0x121722, slabA: 0x18202e, slabB: 0x141b28, speck: 0x1f2a3c, rune: 0x7fd4ff },
+  deathfog: { base: 0x161220, slabA: 0x1e182c, slabB: 0x191426, speck: 0x281f38, rune: 0x9b6cff },
+};
+
+/** Fill a small rotated regular-ish polygon (mosaic slab). */
+function decorPoly(
+  g: Graphics,
+  x: number,
+  y: number,
+  r: number,
+  sides: number,
+  rot: number,
+  color: number,
+  alpha: number,
+): void {
+  for (let i = 0; i < sides; i++) {
+    const a = rot + (i / sides) * Math.PI * 2;
+    const px = x + Math.cos(a) * r;
+    const py = y + Math.sin(a) * r;
+    if (i === 0) g.moveTo(px, py);
+    else g.lineTo(px, py);
+  }
+  g.closePath().fill({ color, alpha });
+}
 
 /**
  * The world point the camera should follow and how far the framed group spreads.
@@ -483,7 +659,7 @@ const PILLARS: ReadonlyArray<{ x: number; y: number }> = [
 function frameOf(state: RenderState): { center: Vec2; halfSpan: number } {
   const alive = state.players.filter((p) => p.state !== 'dead');
   const pts: Vec2[] = (alive.length > 0 ? alive : state.players).map((p) => p.pos);
-  if (state.boss) pts.push(state.boss.pos);
+  for (const boss of state.bosses) if (boss.hp > 0) pts.push(boss.pos);
   if (pts.length === 0) return { center: { x: ARENA_W / 2, y: ARENA_H / 2 }, halfSpan: 0 };
 
   const base = pts[0];

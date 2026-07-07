@@ -2,10 +2,12 @@
  * Warband — HUD overlay (React). Reads the throttled hudStore updated by the
  * game loop; never re-renders from the hot per-frame path directly.
  */
+import { useMemo } from 'react';
 import { useHudStore } from './hudStore';
+import type { HudBoss } from './hudStore';
 import { useStore } from './store';
 import VolumeControl from './VolumeControl';
-import { CLASSES } from '../engine/classes';
+import { previewAbilityTable } from '../engine/charUpgrades';
 import {
   useBindings,
   keyLabelFor,
@@ -14,7 +16,8 @@ import {
   SLOT_ACTION,
 } from '../input/bindings';
 import { buffBadges } from '../render/buffGlyphs';
-import type { AbilitySlot, ClassId, BuffView } from '../engine/types';
+import { CLASSES } from '../engine/classes';
+import type { AbilitySlot, BuffView } from '../engine/types';
 import type { InputSource } from '../input/input';
 import './hud.css';
 
@@ -56,17 +59,16 @@ function slotLabel(slot: AbilitySlot, source: InputSource): string {
 
 function AbilityIcon({
   slot,
-  classId,
+  ability,
   source,
 }: {
   slot: AbilitySlot;
-  classId: ClassId;
+  ability: { name: string; cooldown: number };
   source: InputSource;
 }) {
   const remaining = useHudStore((s) => s.cooldowns[slot]);
   // Subscribe to bindings so the label updates live when the player rebinds.
   useBindings((s) => s.bindings);
-  const ability = CLASSES[classId].abilities[slot];
   const total = ability.cooldown;
   const frac = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
   const ready = frac <= 0.001;
@@ -82,49 +84,78 @@ function AbilityIcon({
   );
 }
 
+/** One boss health bar; twin encounters stack one of these per boss. */
+function BossBar({
+  boss,
+  run,
+  cycle,
+  first,
+}: {
+  boss: HudBoss;
+  run: { index: number; total: number } | null;
+  cycle: number;
+  first: boolean;
+}) {
+  const label = boss.modName ? `${boss.modName} ${boss.name}` : boss.name;
+  const hpPct = pct(boss.hp, boss.maxHp);
+  return (
+    <div className="hud-bossbar">
+      <div className="hud-bossbar-label">
+        {first && run && run.total > 1 && (
+          <span className="hud-run-tag">
+            Boss {run.index + 1}/{run.total}
+          </span>
+        )}
+        {first && cycle > 0 && <span className="hud-cycle-tag">Cycle {cycle + 1}</span>}
+        {label}
+        {boss.phase === 'enraged' && <span className="hud-enrage-tag">ENRAGED</span>}
+        <BuffChips buffs={boss.buffs} />
+      </div>
+      <div className="hud-bossbar-track">
+        <div
+          className={`hud-bossbar-fill${boss.phase === 'enraged' ? ' enraged' : ''}`}
+          style={{ width: `${hpPct}%` }}
+        />
+      </div>
+      <div className="hud-bossbar-num">
+        {Math.round(boss.hp)} / {Math.round(boss.maxHp)}
+      </div>
+    </div>
+  );
+}
+
 export default function HUD() {
   const hud = useHudStore();
   const run = useStore((s) => s.run);
   const cycle = useStore((s) => s.cycle);
+  const myCharUpgrades = useStore((s) => s.myCharUpgrades);
   const source = hud.inputSource;
   // Re-render on binding / pad-scheme changes so glyph hints stay in sync.
   useBindings((s) => s.bindings);
 
-  const bossHpPct = pct(hud.bossHp, hud.bossMaxHp);
   const hpPct = pct(hud.hp, hud.maxHp);
+
+  // Resolve the local hero's live ability table (hybrid grafts rename slots and
+  // change cooldowns; the buttons should follow what the hero actually has).
+  const abilityTable = useMemo(
+    () => (hud.classId ? previewAbilityTable(hud.classId, myCharUpgrades) : null),
+    [hud.classId, myCharUpgrades],
+  );
 
   const usingPad = source === 'gamepad';
   const abilityGlyphs = `${padLabelFor('a1')} ${padLabelFor('a2')} ${padLabelFor('a3')}`;
   const hint = usingPad
     ? `L-stick move · R-stick aim · ${padLabelFor('basic')} basic · ${abilityGlyphs} abilities · ${padLabelFor('revive')} revive · ${padIndexToLabel(9)} menu`
     : 'WASD move · Mouse aim · LMB basic · Q/E/R abilities · F revive · Esc menu';
-  const bossLabel = hud.bossModName ? `${hud.bossModName} ${hud.bossName}` : hud.bossName;
 
   return (
     <div className="hud-root">
-      {/* Boss bar */}
-      {hud.bossPresent && (
-        <div className="hud-bossbar">
-          <div className="hud-bossbar-label">
-            {run && run.total > 1 && (
-              <span className="hud-run-tag">
-                Boss {run.index + 1}/{run.total}
-              </span>
-            )}
-            {cycle > 0 && <span className="hud-cycle-tag">Cycle {cycle + 1}</span>}
-            {bossLabel}
-            {hud.bossPhase === 'enraged' && <span className="hud-enrage-tag">ENRAGED</span>}
-            <BuffChips buffs={hud.bossBuffs} />
-          </div>
-          <div className="hud-bossbar-track">
-            <div
-              className={`hud-bossbar-fill${hud.bossPhase === 'enraged' ? ' enraged' : ''}`}
-              style={{ width: `${bossHpPct}%` }}
-            />
-          </div>
-          <div className="hud-bossbar-num">
-            {Math.round(hud.bossHp)} / {Math.round(hud.bossMaxHp)}
-          </div>
+      {/* Boss bars (one per boss — twin encounters stack two) */}
+      {hud.bosses.length > 0 && (
+        <div className="hud-bossbars">
+          {hud.bosses.map((b, i) => (
+            <BossBar key={b.id} boss={b} run={run} cycle={cycle} first={i === 0} />
+          ))}
         </div>
       )}
 
@@ -202,15 +233,10 @@ export default function HUD() {
             </span>
           </div>
         </div>
-        {hud.classId && (
+        {hud.classId && abilityTable && (
           <div className="hud-abilities">
             {SLOT_ORDER.map((slot) => (
-              <AbilityIcon
-                key={slot}
-                slot={slot}
-                classId={hud.classId as ClassId}
-                source={source}
-              />
+              <AbilityIcon key={slot} slot={slot} ability={abilityTable[slot]} source={source} />
             ))}
           </div>
         )}

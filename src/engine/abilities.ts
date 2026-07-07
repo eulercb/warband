@@ -30,6 +30,7 @@ import {
   healPlayer,
   healBoss,
   applyBuff,
+  applyStun,
   makeBuff,
   buffMult,
 } from './combat';
@@ -82,13 +83,15 @@ function lowestHpAllyInRange(world: World, from: Vec2, range: number): Player | 
   return best;
 }
 
-/** Apply a strike's on-hit riders (stun / freeze) to a boss or add. */
-function applyStrikeRiders(
-  target: { buffs: import('./types').Buff[] },
-  ab: PlayerAbilityDef,
-): void {
-  if (ab.stun) applyBuff(target, makeBuff('stun', 0, ab.stun, 'stun'));
-  if (ab.freeze) applyBuff(target, makeBuff('stun', 0, ab.freeze, 'freeze'));
+/** Apply a strike's on-hit riders (stun / freeze / chill) to a boss or add.
+ * Stuns honor diminishing returns (see combat.applyStun); slow riders let
+ * Frostbrand-style upgrades chill through melee swings, not just projectiles. */
+function applyStrikeRiders(world: World, target: Boss | Add, ab: PlayerAbilityDef): void {
+  if (ab.stun) applyStun(world, target, ab.stun, 'stun');
+  if (ab.freeze) applyStun(world, target, ab.freeze, 'freeze');
+  if (ab.slowMult != null && ab.slowMult < 1) {
+    applySlow(target, ab.slowMult, ab.slowDuration ?? 2);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -132,17 +135,18 @@ export function resolvePlayerAbility(
         halfAngle: half,
       });
       let dealt = 0;
-      if (world.boss && world.boss.hp > 0) {
-        if (pointInCone(world.boss.pos, p.pos, aimAngle, range, half, world.boss.radius)) {
-          dealt += damageBoss(world, p, world.boss, ab.damage);
-          applyStrikeRiders(world.boss, ab);
+      for (const b of world.bosses) {
+        if (b.hp <= 0) continue;
+        if (pointInCone(b.pos, p.pos, aimAngle, range, half, b.radius)) {
+          dealt += damageBoss(world, p, b, ab.damage);
+          applyStrikeRiders(world, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
           dealt += damageAdd(world, p, a, ab.damage);
-          applyStrikeRiders(a, ab);
+          applyStrikeRiders(world, a, ab);
         }
       }
       lifesteal(world, p, ab, dealt);
@@ -153,7 +157,10 @@ export function resolvePlayerAbility(
       const count = ab.projCount ?? 1;
       const spread = ((ab.spreadDeg ?? 0) * Math.PI) / 180;
       const speed = ab.projSpeed ?? 600;
-      const kind = projectileKindFor(p, slot);
+      // Anything that detonates in an area reads as a fireball — including a
+      // Fireball GRAFTED onto a non-mage by a hybrid upgrade (charUpgrades.ts).
+      const kind: ProjectileKind =
+        (ab.impactRadius ?? 0) > 0 ? 'fireball' : projectileKindFor(p, slot);
       const maxRange = ab.maxRange ?? PROJECTILE_MAX_RANGE;
       for (let i = 0; i < count; i++) {
         const t = count > 1 ? i / (count - 1) - 0.5 : 0; // -0.5..0.5
@@ -167,6 +174,7 @@ export function resolvePlayerAbility(
           slowMult: ab.slowMult,
           slowDuration: ab.slowDuration,
           freeze: ab.freeze,
+          lifesteal: ab.lifestealFrac,
         });
       }
       break;
@@ -188,21 +196,18 @@ export function resolvePlayerAbility(
         halfAngle: 0,
       });
       let dealt = 0;
-      if (
-        world.boss &&
-        world.boss.hp > 0 &&
-        pointInCircle(world.boss.pos, p.pos, radius, world.boss.radius)
-      ) {
-        dealt += damageBoss(world, p, world.boss, ab.damage);
-        if (ab.slowMult) applySlow(world.boss, ab.slowMult, ab.slowDuration ?? 3);
-        applyStrikeRiders(world.boss, ab);
+      for (const b of world.bosses) {
+        if (b.hp <= 0) continue;
+        if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
+          dealt += damageBoss(world, p, b, ab.damage);
+          applyStrikeRiders(world, b, ab);
+        }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
           dealt += damageAdd(world, p, a, ab.damage);
-          if (ab.slowMult) applySlow(a, ab.slowMult, ab.slowDuration ?? 3);
-          applyStrikeRiders(a, ab);
+          applyStrikeRiders(world, a, ab);
         }
       }
       lifesteal(world, p, ab, dealt);
@@ -228,17 +233,19 @@ export function resolvePlayerAbility(
           radius,
           halfAngle: 0,
         });
-        if (
-          world.boss &&
-          world.boss.hp > 0 &&
-          pointInCircle(world.boss.pos, p.pos, radius, world.boss.radius)
-        ) {
-          damageBoss(world, p, world.boss, ab.landingDamage);
+        for (const b of world.bosses) {
+          if (b.hp <= 0) continue;
+          if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
+            damageBoss(world, p, b, ab.landingDamage);
+            applyStrikeRiders(world, b, ab);
+          }
         }
         for (const a of world.adds) {
           if (a.hp <= 0) continue;
-          if (pointInCircle(a.pos, p.pos, radius, a.radius))
+          if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
             damageAdd(world, p, a, ab.landingDamage);
+            applyStrikeRiders(world, a, ab);
+          }
         }
       }
       if (ab.healOnUse) healPlayer(world, null, p, ab.healOnUse);
@@ -393,6 +400,8 @@ interface SpawnProjOpts {
   slowMult?: number;
   slowDuration?: number;
   freeze?: number;
+  /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
+  lifesteal?: number;
 }
 
 function spawnPlayerProjectile(
@@ -418,6 +427,7 @@ function spawnPlayerProjectile(
     slowMult: o.slowMult,
     slowDuration: o.slowDuration,
     freeze: o.freeze,
+    lifesteal: o.lifesteal,
   };
   world.projectiles.push(proj);
   world.events.push({ t: 'projectile', kind, pos: { ...origin } });
@@ -509,8 +519,10 @@ export function resolveBossAbility(
   ab: BossAbilityDef,
   action: BossAction,
 ): void {
-  // Boss offensive self-buffs (War Cry / Frenzy / Power of Night…) empower its hits.
-  const dmg = ab.damage * world.bossDamageScalar() * buffMult(boss, 'damageDealt');
+  // Boss offensive self-buffs (War Cry / Frenzy / Power of Night…) empower its
+  // hits; twin bosses swing at a fraction of solo strength (dmgScale).
+  const dmg =
+    ab.damage * world.bossDamageScalar() * (boss.dmgScale ?? 1) * buffMult(boss, 'damageDealt');
   const alivePlayers = world.players.filter((p) => p.state === 'alive');
 
   world.events.push({
@@ -529,7 +541,7 @@ export function resolveBossAbility(
         if (pointInCone(p.pos, boss.pos, action.aimAngle, range, half, p.radius)) {
           damagePlayer(world, p, dmg);
           bossSlowRider(p, ab);
-          if (ab.stun) applyBuff(p, makeBuff('stun', 0, ab.stun, 'bossStun'));
+          if (ab.stun) applyStun(world, p, ab.stun, 'bossStun');
         }
       }
       world.events.push({ t: 'telegraph', pos: { ...boss.pos }, shape: 'cone' });
@@ -556,7 +568,7 @@ export function resolveBossAbility(
           damagePlayer(world, p, dmg);
           if (ab.knockback) knockback(world, p, boss.pos, ab.knockback);
           bossSlowRider(p, ab);
-          if (ab.stun) applyBuff(p, makeBuff('stun', 0, ab.stun, 'bossStun'));
+          if (ab.stun) applyStun(world, p, ab.stun, 'bossStun');
         }
       }
       world.events.push({ t: 'telegraph', pos: { ...boss.pos }, shape: 'circle' });
@@ -661,7 +673,8 @@ export function resolveBossAbility(
           radius: ab.radius ?? 90,
           side: 'boss',
           ownerId: boss.id,
-          damagePerTick: (ab.zoneTickDamage ?? 12) * world.bossDamageScalar(),
+          damagePerTick:
+            (ab.zoneTickDamage ?? 12) * world.bossDamageScalar() * (boss.dmgScale ?? 1),
           healPerTick: 0,
           slowMult: ab.slowMult,
           slowDuration: ab.slowDuration,
@@ -708,7 +721,7 @@ export function beamTick(world: World, boss: Boss, ab: BossAbilityDef, action: B
   const dealt = damagePlayer(
     world,
     target,
-    ab.damage * world.bossDamageScalar() * buffMult(boss, 'damageDealt'),
+    ab.damage * world.bossDamageScalar() * (boss.dmgScale ?? 1) * buffMult(boss, 'damageDealt'),
   );
   if (ab.healSelf) healBoss(boss, dealt);
 }

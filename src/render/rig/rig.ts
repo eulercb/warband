@@ -270,7 +270,10 @@ export class CreatureRig {
     const breathe = this.spec.idle
       ? 1 + this.spec.idle.breatheAmp * Math.sin(timeSec * this.spec.idle.breatheFreq)
       : 1;
-    const bodyScale = (downed ? 1 : breathe) * (1 + 0.14 * windupT);
+    // Victory dance: rhythmic full-body hops while the cheer is live. In the
+    // top-down view a scale pulse reads as jumping for joy.
+    const cheerPulse = ctx.cheer != null ? Math.abs(Math.sin(ctx.cheer * 5.5)) : 0;
+    const bodyScale = (downed ? 1 : breathe) * (1 + 0.14 * windupT) * (1 + 0.13 * cheerPulse);
 
     const anchorLocal = this.spec.legs ? this.partLocal(this.spec.legs.anchorPart) : { x: 0, y: 0 };
     const shadowAt = this.bodyPoint(anchorLocal, R);
