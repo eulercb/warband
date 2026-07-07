@@ -70,7 +70,9 @@ export class RigLayer {
     const scale = camera.scale;
     const timeSec = nowMs / 1000;
 
-    // Bosses (twin encounters drive one rig per boss).
+    // Bosses (twin encounters drive one rig per boss). A felled twin stays in
+    // the arena as a collapsed corpse (the 'downed' pose) while its partner
+    // fights on.
     for (const b of state.bosses) {
       if (!bossUsesRig(b)) continue;
       const spec = bossRigSpec(b.monsterId);
@@ -78,12 +80,14 @@ export class RigLayer {
       const def = getMonster(b.monsterId);
       const node = this.ensure(b.id, spec, def.radius);
       const scr = camera.worldToScreen(b.pos);
+      const dead = b.hp <= 0;
       node.rig.update(scr, b.facing, scale, dtMs, timeSec, {
         color: def.color,
         flash: this.fx.flashAmount(b.id),
-        enraged: b.phase === 'enraged',
-        action: b.action,
-        telegraphT: telegraphProgress(b.telegraph),
+        enraged: !dead && b.phase === 'enraged',
+        action: dead ? 'idle' : b.action,
+        telegraphT: dead ? 0 : telegraphProgress(b.telegraph),
+        state: dead ? 'downed' : undefined,
       });
       node.rig.view.zIndex = Z_BIAS.boss + scr.y;
       this.seen.add(b.id);
@@ -93,6 +97,7 @@ export class RigLayer {
     // pumps their weapon until the result screen takes over. A fresh fight
     // (any boss back at hp > 0) clears the celebration.
     let cheer: number | undefined;
+    let brandishNow = false;
     if (this.victoryAtMs != null) {
       if (state.bosses.some((b) => b.hp > 0)) {
         this.victoryAtMs = null;
@@ -100,7 +105,7 @@ export class RigLayer {
         cheer = (nowMs - this.victoryAtMs) / 1000;
         if (nowMs - this.lastBrandishMs > 460) {
           this.lastBrandishMs = nowMs;
-          for (const [, node] of this.nodes) node.rig.triggerAttack();
+          brandishNow = true; // living HEROES pump their weapons (not corpses)
         }
       }
     }
@@ -113,6 +118,7 @@ export class RigLayer {
       const node = this.ensure(p.id, spec, PLAYER_RADIUS);
       const scr = camera.worldToScreen(p.pos);
       const celebrate = cheer != null && p.state === 'alive';
+      if (celebrate && brandishNow) node.rig.triggerAttack();
       // Twirl during the dance: spin the facing a full turn per second-ish.
       const facing = celebrate
         ? Math.atan2(p.aim.y, p.aim.x) + Math.sin((cheer ?? 0) * 2.6) * 2.4

@@ -7,7 +7,7 @@
  */
 import { World } from '../engine/world';
 import { SIM_DT } from '../engine/constants';
-import type { ClassId, InputCommand, RenderState, TotemView } from '../engine/types';
+import type { ClassId, GameEvent, InputCommand, RenderState, TotemView } from '../engine/types';
 
 /** Synthetic peer id for the local playground hero (never hits the network). */
 const LOCAL_PEER = 'local:hero';
@@ -57,9 +57,16 @@ export class Playground {
     this.input = cmd;
   }
 
+  /** Events accumulated across steps, drained once per rendered frame — the
+   * same pattern as Host.drainEvents. Without this, frames that run 0 steps
+   * (render runs faster than the 20Hz sim) would replay the last step's
+   * events, duplicating FX/SFX, and frames that run 2+ steps would drop some. */
+  private pendingEvents: GameEvent[] = [];
+
   /**
    * Advance the sim to `nowMs` (fixed-timestep accumulator, same shape as the
-   * host loop) and return the frame's render state — totems included.
+   * host loop) and return the frame's render state — totems included, events
+   * exactly-once.
    */
   frame(nowMs: number): RenderState {
     if (this.lastMs === 0) this.lastMs = nowMs;
@@ -68,9 +75,13 @@ export class Playground {
     const inputs = new Map([[LOCAL_PEER, this.input]]);
     while (this.acc >= SIM_DT) {
       this.world.step(SIM_DT, inputs);
+      this.pendingEvents.push(...this.world.events);
       this.acc -= SIM_DT;
     }
-    return this.world.toRenderState(this.localPlayerId);
+    const state = this.world.toRenderState(this.localPlayerId);
+    state.events = this.pendingEvents;
+    this.pendingEvents = [];
+    return state;
   }
 
   /** The totem the hero currently stands on, or null. */

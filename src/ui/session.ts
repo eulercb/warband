@@ -202,6 +202,13 @@ export async function joinGame(code: string): Promise<void> {
       s.setRoom(null, false);
       s.setPeerCount(0);
       s.setNetHint(null);
+      // Scrub run/fight residue so the menu playground doesn't show stale run
+      // tags or grafted ability buttons from the dead session.
+      s.setResult(null);
+      s.setRun(null);
+      s.setCycle(0);
+      s.clearMyUpgrades();
+      resetPauseState(s);
       s.setPhase('menu');
     },
     onPeers: (n) => {

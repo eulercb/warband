@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { World } from '../src/engine/world';
-import { applyStun, tickStunDr } from '../src/engine/combat';
+import { applyStun, tickStunDr, tickBuffs } from '../src/engine/combat';
 import { buildRunSlots, buildRun, MONSTERS } from '../src/engine/monsters';
 import { generateTerrain } from '../src/engine/terrain';
 import { generateObstacles } from '../src/engine/obstacles';
@@ -55,35 +55,74 @@ function counter(): () => number {
 
 describe('stun diminishing returns', () => {
   function target() {
-    return { id: 7, pos: { x: 0, y: 0 }, buffs: [] as { kind: string }[] } as unknown as Parameters<
-      typeof applyStun
-    >[1];
+    return {
+      id: 7,
+      pos: { x: 0, y: 0 },
+      buffs: [] as { kind: string; remaining: number }[],
+    } as unknown as Parameters<typeof applyStun>[1];
   }
 
   it('each chained stun keeps only the DR factor of the previous duration', () => {
     const s = sink();
     const t = target();
     expect(applyStun(s, t, 1.0, 'stun')).toBeCloseTo(1.0);
+    tickBuffs(t, 1.01); // let the stun expire — a shorter one never overwrites
     expect(applyStun(s, t, 1.0, 'stun')).toBeCloseTo(STUN_DR_FACTOR);
+    tickBuffs(t, 0.51);
     expect(applyStun(s, t, 1.0, 'stun')).toBeCloseTo(STUN_DR_FACTOR * STUN_DR_FACTOR);
   });
 
-  it('falls to full immunity (a stunResist event) below the floor', () => {
+  it('a shorter chained stun never overwrites a longer one still ticking', () => {
+    const s = sink();
+    const t = target();
+    expect(applyStun(s, t, 1.0, 'stun')).toBeCloseTo(1.0);
+    // Immediate second stun would be 0.5s — but 1.0s is still active: wasted.
+    expect(applyStun(s, t, 1.0, 'stun')).toBe(0);
+    const stun = t.buffs.find((b) => b.kind === 'stun');
+    expect(stun?.remaining).toBeCloseTo(1.0);
+  });
+
+  it('falls to full immunity (one stunResist cue) below the floor', () => {
     const s = sink();
     const t = target();
     applyStun(s, t, 1.0, 'stun');
+    tickBuffs(t, 1.01);
     applyStun(s, t, 1.0, 'stun');
+    tickBuffs(t, 0.51);
     applyStun(s, t, 1.0, 'stun');
-    // 4th chained stun would be 0.125s < floor → resisted outright.
+    tickBuffs(t, 0.26);
+    // 4th chained stun would be 0.125s < floor → resisted outright…
     expect(applyStun(s, t, 1.0, 'stun')).toBe(0);
-    expect(s.events.some((e) => e.t === 'stunResist')).toBe(true);
+    expect(applyStun(s, t, 1.0, 'stun')).toBe(0);
+    // …and the RESIST cue fires once per window, not per spam attempt.
+    expect(s.events.filter((e) => e.t === 'stunResist').length).toBe(1);
+  });
+
+  it('resisted attempts do NOT refresh the window (no permanent immunity)', () => {
+    const s = sink();
+    const t = target();
+    applyStun(s, t, 1.0, 'stun');
+    tickBuffs(t, 1.01);
+    applyStun(s, t, 1.0, 'stun');
+    tickBuffs(t, 0.51);
+    applyStun(s, t, 1.0, 'stun');
+    tickBuffs(t, 0.26);
+    expect(applyStun(s, t, 1.0, 'stun')).toBe(0); // immune now
+    // Keep spamming resisted stuns through most of the window…
+    tickStunDr(t, STUN_DR_WINDOW / 2);
+    expect(applyStun(s, t, 1.0, 'stun')).toBe(0);
+    // …the window still expires on schedule from the last LANDED stun.
+    tickStunDr(t, STUN_DR_WINDOW / 2 + 0.1);
+    expect(applyStun(s, t, 1.0, 'stun')).toBeCloseTo(1.0);
   });
 
   it('the falloff resets once the window elapses without new stuns', () => {
     const s = sink();
     const t = target();
     applyStun(s, t, 1.0, 'stun');
+    tickBuffs(t, 1.01);
     applyStun(s, t, 1.0, 'stun');
+    tickBuffs(t, 0.51);
     tickStunDr(t, STUN_DR_WINDOW + 0.1);
     expect(applyStun(s, t, 1.0, 'stun')).toBeCloseTo(1.0);
   });
@@ -95,10 +134,11 @@ describe('stun diminishing returns', () => {
       players: [{ peerId: 'm', name: 'M', classId: 'mage', charUpgrades: ['mg_freeze'] }],
     });
     const boss = w.boss!;
-    // Land many freezes in a row (directly, to skip cooldown pacing).
+    // Land freezes back-to-back as each expires (skipping cooldown pacing).
     let landed = 0;
     for (let i = 0; i < 6; i++) {
       if (applyStun(w, boss, 1.1, 'freeze') > 0) landed++;
+      tickBuffs(boss, 1.2);
     }
     expect(landed).toBeLessThan(6); // DR kicked in before all six landed
     expect(w.events.some((e) => e.t === 'stunResist')).toBe(true);
@@ -157,6 +197,65 @@ describe('twin-boss encounters', () => {
     const snap = w.serialize();
     expect(snap.bosses.length).toBe(2);
     expect(snap.seed).toBe(11);
+  });
+
+  it('a felled twin clears its wind-up and telegraphs nothing', () => {
+    const w = twinWorld();
+    const b = w.bosses[0];
+    b.action = {
+      kind: 'windup',
+      abilityId: 'fireBreath',
+      remaining: 1,
+      total: 1.2,
+      targetId: null,
+      targetPos: null,
+      aimAngle: 0,
+      channelAccum: 0,
+    };
+    b.hp = 0;
+    w.step(DT, new Map());
+    expect(b.action.kind).toBe('idle');
+    const view = w.serialize().bosses.find((v) => v.id === b.id);
+    expect(view?.telegraph).toBeNull();
+  });
+
+  it('the surviving twin slides back to hunting the TOP threat', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 12,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'mage' },
+      ],
+      coBosses: ['troll'],
+    });
+    w.players[0].threat = 100; // knight holds top threat
+    w.players[1].threat = 10;
+    // Kill the first twin; step so the survivor re-targets.
+    w.bosses[0].hp = 0;
+    const survivor = w.bosses[1];
+    survivor.pos = { x: 800, y: 300 };
+    // Keep torus distances unambiguous: knight is 350u below the troll (short
+    // way), the low-threat mage is closer still but off to the side.
+    w.players[0].pos = { x: 800, y: 650 };
+    w.players[1].pos = { x: 640, y: 300 };
+    for (let i = 0; i < 40; i++) w.step(DT, new Map());
+    // The troll walks toward the top-threat knight (down), not the nearby mage.
+    expect(survivor.pos.y).toBeGreaterThan(320);
+  });
+
+  it('twin odds shrink for small parties', () => {
+    let soloTwins = 0;
+    let bandTwins = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      for (const slot of buildRunSlots('goblin', 1, new Rng(seed), 1)) {
+        if (slot.length === 2) soloTwins++;
+      }
+      for (const slot of buildRunSlots('goblin', 1, new Rng(seed), 4)) {
+        if (slot.length === 2) bandTwins++;
+      }
+    }
+    expect(soloTwins).toBeLessThan(bandTwins);
   });
 
   it('splits attention: the second boss hunts the second-highest threat', () => {
@@ -350,6 +449,49 @@ describe('hybrid upgrades', () => {
         expect(CHAR_UPGRADES[id]).toBeTruthy();
       }
     }
+  });
+
+  it('excluded hybrids are never offered to (or applied on) their exclusions', () => {
+    // Healers never see Field Medic; a mage never sees Pyromancer's Pact.
+    for (let i = 0; i < 80; i++) {
+      const rng = new Rng(i * 7 + 1);
+      expect(rollCharChoices('cleric', 4, () => rng.next())).not.toContain('hy_fieldmedic');
+      expect(rollCharChoices('mage', 4, () => rng.next())).not.toContain('hy_pyromancer');
+    }
+    // Even a forged pick is ignored at apply time (host-authoritative guard).
+    const table = previewAbilityTable('cleric', ['hy_fieldmedic']);
+    expect(table.a2.name).toBe('Sanctuary');
+  });
+
+  it('Vampiric shots heal the archer in a live fight', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 8,
+      players: [{ peerId: 'r', name: 'R', classId: 'ranger', charUpgrades: ['hy_vampiric'] }],
+    });
+    const r = w.players[0];
+    const boss = w.boss!;
+    r.pos = { x: 800, y: 700 };
+    boss.pos = { x: 800, y: 500 };
+    r.hp = 50; // wounded, so lifesteal is visible
+    // Fire an arrow straight at the boss and let it fly.
+    w.step(DT, new Map([['r', inp({ aim: { x: 0, y: -1 }, buttons: buttons({ basic: true }) })]]));
+    for (let i = 0; i < 20 && r.hp <= 50; i++) w.step(DT, new Map([['r', inp()]]));
+    expect(r.hp).toBeGreaterThan(50);
+  });
+
+  it('Frostbrand chills through melee swings', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 8,
+      players: [{ peerId: 'k', name: 'K', classId: 'knight', charUpgrades: ['hy_frostbrand'] }],
+    });
+    const k = w.players[0];
+    const boss = w.boss!;
+    boss.pos = { x: 800, y: 500 };
+    k.pos = { x: 800, y: 560 }; // inside Cleave range
+    w.step(DT, new Map([['k', inp({ aim: { x: 0, y: -1 }, buttons: buttons({ basic: true }) })]]));
+    expect(boss.buffs.some((b) => b.kind === 'moveSpeed' && b.mult < 1)).toBe(true);
   });
 });
 

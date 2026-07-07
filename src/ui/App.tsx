@@ -4,7 +4,7 @@
  */
 import { useEffect } from 'react';
 import { useStore } from './store';
-import { readRoomFromHash } from '../net/room';
+import { readRoomFromHash, configuredRelayUrl } from '../net/room';
 import { sfx, leaveToMenu } from './session';
 import MainMenu from './MainMenu';
 import HostSetup from './HostSetup';
@@ -63,7 +63,17 @@ export default function App() {
     if (fromHash) {
       const s = useStore.getState();
       s.setRoom(fromHash.code, false);
-      s.setNetMode(fromHash.net);
+      // Honor a global-server link only when this build actually has a relay
+      // configured; otherwise fall back to P2P and say so instead of failing
+      // silently with a link that still advertises the relay.
+      if (fromHash.net === 'relay' && !configuredRelayUrl()) {
+        s.setNetMode('p2p');
+        s.setError(
+          'This invite uses a global server, but this build has none configured — trying peer-to-peer instead.',
+        );
+      } else {
+        s.setNetMode(fromHash.net);
+      }
       s.setPhase('join');
     }
     // Unlock the audio context on the first user gesture.

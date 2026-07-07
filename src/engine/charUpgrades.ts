@@ -28,10 +28,23 @@ export interface CharUpgradeDef {
    * learns Fireball, a Cleric who turns vampiric…).
    */
   classId: ClassId | 'any';
+  /**
+   * Classes a hybrid ('any') upgrade is NEVER offered to or applied on —
+   * used to keep grafts from duplicating a class's own kit (a Mage taking
+   * Pyromancer's Pact) or bricking its role (a healer replacing their real
+   * heal with the field-dressed one).
+   */
+  exclude?: ClassId[];
   name: string;
   desc: string;
   icon: string;
   apply: (ctx: CharUpgradeCtx) => void;
+}
+
+/** Whether a hero of `classId` may take this upgrade. */
+export function upgradeAllowedFor(def: CharUpgradeDef, classId: ClassId): boolean {
+  if (def.classId !== 'any') return def.classId === classId;
+  return !def.exclude?.includes(classId);
 }
 
 /** Small mutation helpers (kept terse; every field defaults sensibly). */
@@ -577,61 +590,77 @@ const DRUID: CharUpgradeDef[] = [
 // ---------------------------------------------------------------------------
 
 const HYBRID: CharUpgradeDef[] = [
-  u(
-    'any',
-    'hy_pyromancer',
-    "Pyromancer's Pact",
-    '☄️',
-    'REPLACES your A2 with the Mage’s Fireball — whoever you were before',
-    ({ abilities: a }) => {
-      graft(a, 'a2', 'mage', 'a1');
-    },
-  ),
-  u(
-    'any',
-    'hy_shadowpact',
-    'Shadow Pact',
-    '🌑',
-    'REPLACES your A3 with the Rogue’s Shadowstep blink',
-    ({ abilities: a }) => {
-      graft(a, 'a3', 'rogue', 'a2');
-    },
-  ),
-  u(
-    'any',
-    'hy_warhowl',
-    "Berserker's Howl",
-    '📯',
-    'REPLACES your A1 with the Barbarian’s Rage',
-    ({ abilities: a }) => {
-      graft(a, 'a1', 'barbarian', 'a1');
-    },
-  ),
-  u(
-    'any',
-    'hy_fieldmedic',
-    'Field Medic',
-    '🩹',
-    'REPLACES your A2 with a field-dressed Heal (weaker than a Cleric’s)',
-    ({ abilities: a }) => {
-      graft(a, 'a2', 'cleric', 'a1', (ab) => {
-        ab.damage = Math.round(ab.damage * 0.75);
-        ab.cooldown = ab.cooldown + 2;
-        ab.name = 'Field Dressing';
-      });
-    },
-  ),
+  {
+    ...u(
+      'any',
+      'hy_pyromancer',
+      "Pyromancer's Pact",
+      '☄️',
+      'REPLACES your A2 with the Mage’s Fireball — whoever you were before',
+      ({ abilities: a }) => {
+        graft(a, 'a2', 'mage', 'a1');
+      },
+    ),
+    exclude: ['mage'], // already owns the real thing
+  },
+  {
+    ...u(
+      'any',
+      'hy_shadowpact',
+      'Shadow Pact',
+      '🌑',
+      'REPLACES your A3 with the Rogue’s Shadowstep blink',
+      ({ abilities: a }) => {
+        graft(a, 'a3', 'rogue', 'a2');
+      },
+    ),
+    exclude: ['rogue', 'mage'], // both already carry a blink
+  },
+  {
+    ...u(
+      'any',
+      'hy_warhowl',
+      "Berserker's Howl",
+      '📯',
+      'REPLACES your A1 with the Barbarian’s Rage',
+      ({ abilities: a }) => {
+        graft(a, 'a1', 'barbarian', 'a1');
+      },
+    ),
+    exclude: ['barbarian'],
+  },
+  {
+    ...u(
+      'any',
+      'hy_fieldmedic',
+      'Field Medic',
+      '🩹',
+      'REPLACES your A2 with a field-dressed Heal (weaker than a Cleric’s)',
+      ({ abilities: a }) => {
+        graft(a, 'a2', 'cleric', 'a1', (ab) => {
+          ab.damage = Math.round(ab.damage * 0.75);
+          ab.cooldown = ab.cooldown + 2;
+          ab.name = 'Field Dressing';
+        });
+      },
+    ),
+    // Real healers would be trading their actual heal away for a worse one.
+    exclude: ['cleric', 'paladin', 'druid'],
+  },
   u(
     'any',
     'hy_vampiric',
     'Vampiric Style',
     '🧛',
-    'Every damaging strike feeds you (10% lifesteal) — but pale flesh: -10% max HP',
+    'Your strikes and shots feed you (10% lifesteal) — but pale flesh: -10% max HP',
     ({ player: p, abilities: a }) => {
       for (const ab of [a.basic, a.a1, a.a2, a.a3]) {
-        if (ab.damage > 0 && ab.kind !== 'heal') {
-          ab.lifestealFrac = (ab.lifestealFrac ?? 0) + 0.1;
-        }
+        // Strikes (melee/pbaoe/dash landings) and shots (projectiles) can
+        // drink; ground zones and heals can't, so they stay untouched.
+        const drinks =
+          ab.damage > 0 &&
+          (ab.kind === 'meleeCone' || ab.kind === 'pbaoe' || ab.kind === 'projectile');
+        if (drinks) ab.lifestealFrac = (ab.lifestealFrac ?? 0) + 0.1;
       }
       p.maxHp = Math.round(p.maxHp * 0.9);
       p.hp = Math.min(p.hp, p.maxHp);
@@ -730,7 +759,7 @@ export function applyCharUpgrades(player: Player, ids: string[] | undefined): vo
   if (!ids || !player.abilities) return;
   for (const id of ids) {
     const def = CHAR_UPGRADES[id];
-    if (def && (def.classId === player.classId || def.classId === 'any')) {
+    if (def && upgradeAllowedFor(def, player.classId)) {
       def.apply({ player, abilities: player.abilities });
     }
   }
@@ -764,7 +793,7 @@ export function previewAbilityTable(
   } as unknown as Player;
   for (const id of ids) {
     const def = CHAR_UPGRADES[id];
-    if (def && (def.classId === classId || def.classId === 'any')) {
+    if (def && upgradeAllowedFor(def, classId)) {
       def.apply({ player: stub, abilities });
     }
   }
@@ -789,8 +818,9 @@ export function rollCharChoices(classId: ClassId, n: number, rnd: () => number):
     out.push(pool[i]);
     pool.splice(i, 1);
   }
-  if (out.length > 0 && HYBRID.length > 0 && rnd() < HYBRID_OFFER_CHANCE) {
-    const hy = HYBRID[Math.floor(rnd() * HYBRID.length) % HYBRID.length];
+  const eligible = HYBRID.filter((h) => upgradeAllowedFor(h, classId));
+  if (out.length > 0 && eligible.length > 0 && rnd() < HYBRID_OFFER_CHANCE) {
+    const hy = eligible[Math.floor(rnd() * eligible.length) % eligible.length];
     out[out.length - 1] = hy.id;
   }
   return out;

@@ -77,7 +77,9 @@ const ARCHETYPES: Array<{
   { label: 'Reckless', smart: [0.35, 0.6], aggr: [0.85, 1.0], chaos: [0.2, 0.45] },
   { label: 'Timid', smart: [0.55, 0.8], aggr: [0.05, 0.25], chaos: [0.1, 0.3] },
   { label: 'Twitchy', smart: [0.5, 0.75], aggr: [0.4, 0.7], chaos: [0.6, 1.0] },
-  { label: 'Sleepy', smart: [0.1, 0.3], aggr: [0.3, 0.6], chaos: [0.0, 0.2] },
+  // Sleepy is slow, not suicidal: the floor still dodges the tail end of most
+  // long wind-ups, so a Sleepy bot is a liability without being a corpse.
+  { label: 'Sleepy', smart: [0.22, 0.42], aggr: [0.3, 0.6], chaos: [0.0, 0.2] },
 ];
 
 /** Roll a seeded temperament for a fresh bot (deterministic per seed). */

@@ -565,7 +565,7 @@ export class Renderer {
       t.text = badges ? `${name}\n${badges}` : name;
       const s = this.camera.worldToScreen(boss.pos);
       t.position.set(s.x, s.y - def.radius * scale - 10);
-      t.alpha = 1;
+      t.alpha = boss.hp > 0 ? 1 : 0.4; // a felled twin's corpse label fades
     }
 
     for (const tot of totems) {

@@ -192,6 +192,8 @@ export class Host implements NetSession {
   private acc = 0;
   /** Wall-clock deadline of the post-win victory lap (0 = no lap pending). */
   private victoryLapUntil = 0;
+  /** Backstop for the lap: rAF stalls in hidden tabs, a timer does not. */
+  private victoryLapTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Debug: keys already logged once (first-input-per-peer, first snapshot, …).
   private readonly loggedOnce = new Set<string>();
@@ -498,13 +500,13 @@ export class Host implements NetSession {
     if (!this.gauntlet) return [[this.monsterId]];
     // Deterministic within a run but varied across cycles.
     const rng = new Rng(((Date.now() & 0xffff) ^ (this.cycle * 2654435761)) >>> 0 || 1);
-    return buildRunSlots(this.monsterId, this.cycle, rng);
+    return buildRunSlots(this.monsterId, this.cycle, rng, this.partySize());
   }
 
   /** Spin up a fresh World for `runOrder[runIndex]` and start the sim loop. */
   private beginFight(): void {
     this.clearResumeCountdown();
-    this.victoryLapUntil = 0;
+    this.clearVictoryLap();
     const slot = this.runOrder[this.runIndex] ?? [this.monsterId];
     const monsterId = slot[0] ?? this.monsterId;
     const coBosses = slot.slice(1);
@@ -763,6 +765,7 @@ export class Host implements NetSession {
 
   returnToLobby(): void {
     this.stopLoop();
+    this.clearVictoryLap();
     this.clearResumeCountdown();
     this.world = null;
     this.localPlayerId = null;
@@ -793,6 +796,7 @@ export class Host implements NetSession {
     netLog('host', 'leaving room (host)');
     this.byeAction.send({ reason: 'hostLeft' });
     this.stopLoop();
+    this.clearVictoryLap();
     this.clearResumeCountdown();
     this.stopDiag();
     this.room.leave();
@@ -853,13 +857,26 @@ export class Host implements NetSession {
     if (world.finished) {
       // Victory lap: hold the result screen for a beat so everyone sees the
       // heroes' victory dance + fireworks (the `victory` event already shipped
-      // in the final snapshot). Defeats cut straight to the result.
+      // in the final snapshot). Defeats cut straight to the result. A timer
+      // backstops the rAF-driven loop so a hidden host tab (rAF suspended)
+      // can't stall the result screen for every client.
       if (world.outcome === 'victory') {
-        if (this.victoryLapUntil === 0) this.victoryLapUntil = now + VICTORY_LAP_MS;
+        if (this.victoryLapUntil === 0) {
+          this.victoryLapUntil = now + VICTORY_LAP_MS;
+          this.victoryLapTimer = setTimeout(() => this.finishFight(), VICTORY_LAP_MS + 150);
+        }
         if (now < this.victoryLapUntil) return;
       }
       this.finishFight();
     }
+  }
+
+  private clearVictoryLap(): void {
+    if (this.victoryLapTimer !== null) {
+      clearTimeout(this.victoryLapTimer);
+      this.victoryLapTimer = null;
+    }
+    this.victoryLapUntil = 0;
   }
 
   /** Synthesize AI input for each bot from the current world state (per step). */
@@ -877,6 +894,7 @@ export class Host implements NetSession {
     const world = this.world;
     if (!world) return;
     this.resultSent = true;
+    this.clearVictoryLap();
     this.clearResumeCountdown();
     this.paused = false;
     this.pausedByName = undefined;

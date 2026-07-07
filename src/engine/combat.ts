@@ -59,11 +59,21 @@ export interface Stunnable {
 }
 
 /**
- * Apply a stun honoring diminishing returns. Each successive stun landed on the
+ * Apply a stun honoring diminishing returns. Each successive stun LANDED on the
  * same target within `STUN_DR_WINDOW` keeps only `STUN_DR_FACTOR` of the
  * previous effective duration; once the effective duration would fall under
  * `STUN_DR_FLOOR` the stun is resisted entirely (a `stunResist` event fires so
- * players can read it). Returns the effective stun seconds applied (0 = resisted).
+ * players can read it — once per window, so rider spam doesn't flood the FX).
+ *
+ * Two deliberate asymmetries in the defender's favor:
+ *  - Only stuns that actually LAND refresh the window. Resisted attempts do
+ *    not, so spamming a freeze rider can't hold a target stun-immune forever —
+ *    the falloff always recovers `STUN_DR_WINDOW` after the last landed stun.
+ *  - A shorter chained stun never overwrites a longer one still ticking: if
+ *    the target is already stunned for at least the new effective duration,
+ *    the attempt is wasted (returns 0, no DR charge).
+ *
+ * Returns the effective stun seconds applied (0 = resisted / wasted).
  */
 export function applyStun(
   sink: EventSink,
@@ -74,12 +84,21 @@ export function applyStun(
   if (seconds <= 0) return 0;
   const dr = (target.stunDr ??= { count: 0, window: 0 });
   const effective = seconds * Math.pow(STUN_DR_FACTOR, dr.count);
-  dr.window = STUN_DR_WINDOW; // any attempt (even a resisted one) keeps DR hot
   if (effective < STUN_DR_FLOOR) {
-    sink.events.push({ t: 'stunResist', id: target.id, pos: { ...target.pos } });
+    if (!dr.announced) {
+      dr.announced = true;
+      sink.events.push({ t: 'stunResist', id: target.id, pos: { ...target.pos } });
+    }
     return 0;
   }
+  let longestActive = 0;
+  for (const b of target.buffs) {
+    if (b.kind === 'stun' && b.remaining > longestActive) longestActive = b.remaining;
+  }
+  if (longestActive >= effective) return 0; // already stunned for longer
   dr.count += 1;
+  dr.window = STUN_DR_WINDOW;
+  dr.announced = false;
   applyBuff(target, makeBuff('stun', 0, effective, source));
   return effective;
 }
@@ -92,6 +111,7 @@ export function tickStunDr(target: { stunDr?: StunDr }, dt: number): void {
   if (dr.window <= 0) {
     dr.count = 0;
     dr.window = 0;
+    dr.announced = false;
   }
 }
 

@@ -91,6 +91,7 @@ import {
   damageBoss,
   damageAdd,
   damagePlayer,
+  healPlayer,
 } from './combat';
 import { decayThreat, nthThreatTarget } from './threat';
 import { resolvePlayerAbility, resolveBossAbility, beamTick } from './abilities';
@@ -587,12 +588,14 @@ export class World {
     }
     if (!hitBoss && !hitAdd) return false;
 
+    let dealt = 0;
     if (proj.impactRadius > 0) {
       // AoE on impact
       const center = proj.pos;
       for (const b of this.aliveBosses()) {
         if (dist(center, b.pos) <= proj.impactRadius + b.radius) {
           this.applyProjDamageBoss(owner, proj.damage, b);
+          dealt += proj.damage;
           this.applyProjRiders(b, proj);
         }
       }
@@ -601,6 +604,7 @@ export class World {
         if (dist(center, a.pos) <= proj.impactRadius + a.radius) {
           if (owner) damageAdd(this, owner, a, proj.damage);
           else a.hp -= proj.damage;
+          dealt += proj.damage;
           this.applyProjRiders(a, proj);
         }
       }
@@ -622,11 +626,17 @@ export class World {
       });
     } else if (hitBoss) {
       this.applyProjDamageBoss(owner, proj.damage, hitBoss);
+      dealt += proj.damage;
       this.applyProjRiders(hitBoss, proj);
     } else if (hitAdd) {
       if (owner) damageAdd(this, owner, hitAdd, proj.damage);
       else hitAdd.hp -= proj.damage;
+      dealt += proj.damage;
       this.applyProjRiders(hitAdd, proj);
+    }
+    // Vampiric shots feed their archer (melee lifesteal lives in abilities.ts).
+    if (proj.lifesteal && proj.lifesteal > 0 && dealt > 0 && owner) {
+      healPlayer(this, null, owner, dealt * proj.lifesteal);
     }
     return true;
   }
@@ -808,7 +818,12 @@ export class World {
 
   private updateBosses(dt: number): void {
     this.tickModifierAura(dt);
-    this.bosses.forEach((boss, index) => this.updateBoss(dt, boss, index));
+    // Index among the LIVING bosses, so when one twin falls the survivor slides
+    // back to hunting the top threat instead of forever chasing the runner-up.
+    let aliveIndex = 0;
+    for (const boss of this.bosses) {
+      this.updateBoss(dt, boss, boss.hp > 0 ? aliveIndex++ : 0);
+    }
   }
 
   private updateBoss(dt: number, boss: Boss, index: number): void {
@@ -1285,12 +1300,15 @@ export class World {
     let anyBossAlive = false;
     for (const b of this.bosses) {
       if (b.hp <= 0) {
-        if (b.hp !== 0 || !b.deathAnnounced) {
-          b.hp = 0;
-          if (!b.deathAnnounced) {
-            b.deathAnnounced = true;
-            this.events.push({ t: 'death', id: b.id, kind: 'boss', pos: { ...b.pos } });
-          }
+        b.hp = 0;
+        if (!b.deathAnnounced) {
+          b.deathAnnounced = true;
+          // Clear any in-flight wind-up/channel so the corpse doesn't keep a
+          // frozen telegraph painted on the arena forever.
+          b.action.kind = 'idle';
+          b.action.abilityId = null;
+          b.action.remaining = 0;
+          this.events.push({ t: 'death', id: b.id, kind: 'boss', pos: { ...b.pos } });
         }
       } else {
         anyBossAlive = true;
@@ -1336,6 +1354,7 @@ export class World {
   // -------------------------------------------------------------------------
 
   private buildTelegraph(boss: Boss): Telegraph | null {
+    if (boss.hp <= 0) return null; // corpses telegraph nothing
     const a = boss.action;
     const def = this.defOf(boss);
     if (a.kind !== 'windup' && a.kind !== 'channel') return null;

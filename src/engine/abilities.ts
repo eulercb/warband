@@ -83,11 +83,15 @@ function lowestHpAllyInRange(world: World, from: Vec2, range: number): Player | 
   return best;
 }
 
-/** Apply a strike's on-hit riders (stun / freeze) to a boss or add. Both honor
- * stun diminishing returns so chained crowd-control decays (see combat.applyStun). */
+/** Apply a strike's on-hit riders (stun / freeze / chill) to a boss or add.
+ * Stuns honor diminishing returns (see combat.applyStun); slow riders let
+ * Frostbrand-style upgrades chill through melee swings, not just projectiles. */
 function applyStrikeRiders(world: World, target: Boss | Add, ab: PlayerAbilityDef): void {
   if (ab.stun) applyStun(world, target, ab.stun, 'stun');
   if (ab.freeze) applyStun(world, target, ab.freeze, 'freeze');
+  if (ab.slowMult != null && ab.slowMult < 1) {
+    applySlow(target, ab.slowMult, ab.slowDuration ?? 2);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -170,6 +174,7 @@ export function resolvePlayerAbility(
           slowMult: ab.slowMult,
           slowDuration: ab.slowDuration,
           freeze: ab.freeze,
+          lifesteal: ab.lifestealFrac,
         });
       }
       break;
@@ -195,7 +200,6 @@ export function resolvePlayerAbility(
         if (b.hp <= 0) continue;
         if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
           dealt += damageBoss(world, p, b, ab.damage);
-          if (ab.slowMult) applySlow(b, ab.slowMult, ab.slowDuration ?? 3);
           applyStrikeRiders(world, b, ab);
         }
       }
@@ -203,7 +207,6 @@ export function resolvePlayerAbility(
         if (a.hp <= 0) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
           dealt += damageAdd(world, p, a, ab.damage);
-          if (ab.slowMult) applySlow(a, ab.slowMult, ab.slowDuration ?? 3);
           applyStrikeRiders(world, a, ab);
         }
       }
@@ -234,12 +237,15 @@ export function resolvePlayerAbility(
           if (b.hp <= 0) continue;
           if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
             damageBoss(world, p, b, ab.landingDamage);
+            applyStrikeRiders(world, b, ab);
           }
         }
         for (const a of world.adds) {
           if (a.hp <= 0) continue;
-          if (pointInCircle(a.pos, p.pos, radius, a.radius))
+          if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
             damageAdd(world, p, a, ab.landingDamage);
+            applyStrikeRiders(world, a, ab);
+          }
         }
       }
       if (ab.healOnUse) healPlayer(world, null, p, ab.healOnUse);
@@ -394,6 +400,8 @@ interface SpawnProjOpts {
   slowMult?: number;
   slowDuration?: number;
   freeze?: number;
+  /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
+  lifesteal?: number;
 }
 
 function spawnPlayerProjectile(
@@ -419,6 +427,7 @@ function spawnPlayerProjectile(
     slowMult: o.slowMult,
     slowDuration: o.slowDuration,
     freeze: o.freeze,
+    lifesteal: o.lifesteal,
   };
   world.projectiles.push(proj);
   world.events.push({ t: 'projectile', kind, pos: { ...origin } });

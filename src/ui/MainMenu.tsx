@@ -67,6 +67,7 @@ export function MainMenu() {
     let moved = false;
     let dwellS = 0;
     let armedTotem: string | null = null; // trigger re-arms after stepping off
+    let lastDwellFrac = -1; // last frac pushed to React (-1 = none shown)
     let lastNow = 0;
 
     const st = useStore.getState();
@@ -132,18 +133,37 @@ export function MainMenu() {
           sfx.handleEvents(state.events);
         }
 
-        // Totem dwell: stand on a totem to channel its action.
-        const active = uiOpen ? null : playground.activeTotem();
+        // Totem dwell: stand on a totem to channel its action. A totem that
+        // fired stays "armed" until the hero steps OFF it — including while
+        // the overlay it opened is up — so closing the class picker doesn't
+        // immediately re-channel the totem you're still standing on.
+        const active = playground.activeTotem();
         if (!active) {
           dwellS = 0;
           armedTotem = null;
-          setDwell((d) => (d === null ? d : null));
+          if (lastDwellFrac >= 0) {
+            lastDwellFrac = -1;
+            setDwell(null);
+          }
+        } else if (uiOpen) {
+          // Overlay open: freeze the channel but keep the armed state.
+          dwellS = 0;
+          if (lastDwellFrac >= 0) {
+            lastDwellFrac = -1;
+            setDwell(null);
+          }
         } else if (armedTotem !== active.kind) {
           dwellS += dt;
-          setDwell({ kind: active.kind, frac: Math.min(1, dwellS / TOTEM_DWELL_S) });
+          const frac = Math.min(1, dwellS / TOTEM_DWELL_S);
+          // Throttle React updates: only re-render on visible progress steps.
+          if (frac >= 1 || frac - lastDwellFrac >= 0.05 || lastDwellFrac < 0) {
+            lastDwellFrac = frac;
+            setDwell({ kind: active.kind, frac });
+          }
           if (dwellS >= TOTEM_DWELL_S) {
             armedTotem = active.kind; // don't re-fire until they step off
             dwellS = 0;
+            lastDwellFrac = -1;
             setDwell(null);
             trigger(active.kind);
           }

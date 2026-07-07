@@ -49,13 +49,21 @@ function joinRoom(ws, app, room, id) {
     members = new Map();
     rooms.set(key, members);
   }
-  // A reconnect with the same id replaces the stale socket.
-  const stale = members.get(id);
-  if (stale && stale !== ws) {
+  // Peer ids are self-declared, so NEVER let a joiner displace a live socket
+  // that already owns the id — that would let any room member kick or
+  // impersonate any other (including the host). A reconnect only replaces a
+  // socket that is already dead/closing; live conflicts are rejected and the
+  // heartbeat reaps zombies within a minute for legitimate re-joins.
+  const existing = members.get(id);
+  if (existing && existing !== ws) {
+    if (existing.readyState === existing.OPEN) {
+      ws.close(4002, 'id in use');
+      return;
+    }
     try {
-      stale.close(4000, 'replaced');
+      existing.terminate();
     } catch {
-      /* ignore */
+      /* already gone */
     }
   }
   ws._room = key;
@@ -104,6 +112,10 @@ wss.on('connection', (ws) => {
       return; // ignore malformed frames
     }
     if (frame?.t === 'join') {
+      if (ws._room) {
+        ws.close(4003, 'already joined'); // one room per socket, ever
+        return;
+      }
       const app = String(frame.app ?? '');
       const room = String(frame.room ?? '');
       const id = String(frame.id ?? '');

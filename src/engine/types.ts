@@ -113,8 +113,10 @@ export interface Buff {
 export interface StunDr {
   /** Stuns landed inside the current window (drives the duration falloff). */
   count: number;
-  /** Seconds left before the falloff resets (refreshed on every stun). */
+  /** Seconds left before the falloff resets (refreshed on every LANDED stun). */
   window: number;
+  /** A "RESIST" cue already fired this window (dedupes rider-spam floaters). */
+  announced?: boolean;
 }
 
 /**
@@ -301,6 +303,8 @@ export interface Projectile {
   slowDuration?: number;
   /** Stun/"freeze" seconds applied to whatever the projectile strikes. */
   freeze?: number;
+  /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
+  lifesteal?: number;
 }
 
 export type ZoneKind =

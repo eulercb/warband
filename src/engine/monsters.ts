@@ -1514,17 +1514,24 @@ export type RunSlot = MonsterId[];
  * Assemble a run as ENCOUNTERS: the classic climbing-difficulty spine from
  * `buildRun`, but any slot past the opener can roll into a chaotic twin fight
  * where two different bosses share the arena. Twin odds rise through endless
- * cycles (TWIN_BASE_CHANCE / TWIN_CHANCE_PER_CYCLE, capped at TWIN_CHANCE_MAX);
- * the partner is drawn from the slot's tier or the one below it, so a duo
+ * cycles (TWIN_BASE_CHANCE / TWIN_CHANCE_PER_CYCLE, capped at TWIN_CHANCE_MAX)
+ * and scale DOWN for small parties — a lone hero facing two bosses that both
+ * hunt them is punishment, not chaos, so solo/duo bands see twins rarely.
+ * The partner is drawn from the slot's tier or the one below it, so a duo
  * spikes chaos without doubling the danger budget. Pure aside from the
  * injected RNG.
  */
-export function buildRunSlots(startId: MonsterId, cycle: number, rng: Rng): RunSlot[] {
+export function buildRunSlots(
+  startId: MonsterId,
+  cycle: number,
+  rng: Rng,
+  partySize = 4,
+): RunSlot[] {
   const spine = buildRun(startId, cycle, rng);
-  const twinChance = Math.min(
-    TWIN_CHANCE_MAX,
-    TWIN_BASE_CHANCE + Math.max(0, cycle) * TWIN_CHANCE_PER_CYCLE,
-  );
+  const partyFactor = partySize >= 3 ? 1 : partySize === 2 ? 0.6 : 0.3;
+  const twinChance =
+    Math.min(TWIN_CHANCE_MAX, TWIN_BASE_CHANCE + Math.max(0, cycle) * TWIN_CHANCE_PER_CYCLE) *
+    partyFactor;
   const lowerTier: Record<BossTier, BossTier> = { easy: 'easy', medium: 'easy', hard: 'medium' };
 
   return spine.map((id, slot) => {
