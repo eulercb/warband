@@ -12,7 +12,11 @@ import { generateObstacles } from '../src/engine/world/obstacles';
 import { nthThreatTarget } from '../src/engine/combat/threat';
 import { computeBotInput, rollPersonality, defaultPersonality } from '../src/engine/ai/bot';
 import type { BotPersonality } from '../src/engine/ai/bot';
-import { previewAbilityTable, rollCharChoices, CHAR_UPGRADES } from '../src/engine/content/charUpgrades';
+import {
+  previewAbilityTable,
+  rollCharChoices,
+  CHAR_UPGRADES,
+} from '../src/engine/content/charUpgrades';
 import {
   STUN_DR_FACTOR,
   STUN_DR_WINDOW,

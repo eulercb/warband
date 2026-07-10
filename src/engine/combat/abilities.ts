@@ -19,7 +19,14 @@ import type { World } from '../world/world';
 import type { BossAbilityDef } from '../content/monsters';
 import type { PlayerAbilityDef } from '../content/classes';
 import { getClass } from '../content/classes';
-import { add as vadd, scale as vscale, normalize, fromAngle, angleOf, withLength } from '../core/math';
+import {
+  add as vadd,
+  scale as vscale,
+  normalize,
+  fromAngle,
+  angleOf,
+  withLength,
+} from '../core/math';
 // Toroidal geometry (drop-in for the Euclidean sub/dist/point-in-shape helpers)
 // so abilities resolve correctly across the wrap-around seam. See engine/torus.
 import { sub, dist, pointInCircle, pointInCone, pointInSegment, wrapCoord } from '../core/torus';

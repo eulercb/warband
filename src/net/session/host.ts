@@ -27,7 +27,12 @@ import type {
 } from '../protocol';
 import { World } from '../../engine/world/world';
 import type { WorldPlayerInit } from '../../engine/world/world';
-import { SIM_DT, MAX_PLAYERS, RESUME_COUNTDOWN_S, SCORE_BOSS_CLEAR } from '../../engine/core/constants';
+import {
+  SIM_DT,
+  MAX_PLAYERS,
+  RESUME_COUNTDOWN_S,
+  SCORE_BOSS_CLEAR,
+} from '../../engine/core/constants';
 import { computeBotInput, rollPersonality, BOT_PEER_PREFIX } from '../../engine/ai/bot';
 import type { BotPersonality } from '../../engine/ai/bot';
 import { CLASSES } from '../../engine/content/classes';

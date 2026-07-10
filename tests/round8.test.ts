@@ -2,8 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { World } from '../src/engine/world/world';
 import type { InputCommand, ButtonState, Projectile, Player } from '../src/engine/core/types';
 import { CLASSES, CLASS_IDS, cloneAbilities } from '../src/engine/content/classes';
-import { applyCharUpgrades, rollCharChoices, CHAR_UPGRADES } from '../src/engine/content/charUpgrades';
-import { buildRun, modifierForCycle, MONSTER_IDS, MONSTERS_BY_TIER } from '../src/engine/content/monsters';
+import {
+  applyCharUpgrades,
+  rollCharChoices,
+  CHAR_UPGRADES,
+} from '../src/engine/content/charUpgrades';
+import {
+  buildRun,
+  modifierForCycle,
+  MONSTER_IDS,
+  MONSTERS_BY_TIER,
+} from '../src/engine/content/monsters';
 import { computeScaling } from '../src/engine/content/scaling';
 import { computeBotInput } from '../src/engine/ai/bot';
 import { damageBoss, applyBuff, makeBuff } from '../src/engine/combat/combat';

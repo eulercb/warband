@@ -7,7 +7,13 @@
  */
 import { World } from '../../engine/world/world';
 import { SIM_DT } from '../../engine/core/constants';
-import type { ClassId, GameEvent, InputCommand, RenderState, TotemView } from '../../engine/core/types';
+import type {
+  ClassId,
+  GameEvent,
+  InputCommand,
+  RenderState,
+  TotemView,
+} from '../../engine/core/types';
 
 /** Synthetic peer id for the local playground hero (never hits the network). */
 const LOCAL_PEER = 'local:hero';

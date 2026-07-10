@@ -15,7 +15,15 @@
 import type { Player, Boss, InputCommand, ButtonState, Vec2 } from '../core/types';
 import type { World } from '../world/world';
 import { abilityById } from '../content/monsters';
-import { Rng, add as vadd, scale as vscale, normalize, fromAngle, angleOf, len } from '../core/math';
+import {
+  Rng,
+  add as vadd,
+  scale as vscale,
+  normalize,
+  fromAngle,
+  angleOf,
+  len,
+} from '../core/math';
 // Toroidal geometry so bot AI navigates/aims the short way across the wrap seam.
 import { sub, dist, pointInCircle, pointInCone, pointInSegment } from '../core/torus';
 import { BOT_RANGED_STANDOFF, BOT_MELEE_RANGE, BOT_REVIVE_RANGE } from '../core/constants';

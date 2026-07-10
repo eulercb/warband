@@ -3,9 +3,24 @@
  * Pure functions operating on entities + an event sink. No world import (to
  * keep this decoupled and trivially unit-testable).
  */
-import type { Player, Boss, Add, Buff, BuffKind, GameEvent, Side, StunDr, Vec2 } from '../core/types';
+import type {
+  Player,
+  Boss,
+  Add,
+  Buff,
+  BuffKind,
+  GameEvent,
+  Side,
+  StunDr,
+  Vec2,
+} from '../core/types';
 import { getClass } from '../content/classes';
-import { HEAL_THREAT_FACTOR, STUN_DR_FACTOR, STUN_DR_WINDOW, STUN_DR_FLOOR } from '../core/constants';
+import {
+  HEAL_THREAT_FACTOR,
+  STUN_DR_FACTOR,
+  STUN_DR_WINDOW,
+  STUN_DR_FLOOR,
+} from '../core/constants';
 
 /** Minimal structural sink so combat needn't import the World. */
 export interface EventSink {

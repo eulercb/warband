@@ -4,7 +4,13 @@
  * React re-renders of menus/lobby.
  */
 import { create } from 'zustand';
-import type { ClassId, PlayerState, AbilitySlot, TerrainKind, BuffView } from '../../engine/core/types';
+import type {
+  ClassId,
+  PlayerState,
+  AbilitySlot,
+  TerrainKind,
+  BuffView,
+} from '../../engine/core/types';
 import type { InputSource } from '../../input/input';
 
 export interface HudTeammate {
