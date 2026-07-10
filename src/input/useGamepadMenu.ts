@@ -60,8 +60,12 @@ export function useGamepadMenu(
   const { onBack, enabled = true, suspended = false } = opts;
   // Read `suspended` through a ref so toggling it doesn't unsubscribe/resubscribe
   // the handler (which would pop it off the stack and expose the parent screen).
+  // The ref is written in an effect (not during render) so the render stays pure;
+  // it's only read later inside gamepad callbacks, so a one-commit lag is fine.
   const suspendedRef = useRef(suspended);
-  suspendedRef.current = suspended;
+  useEffect(() => {
+    suspendedRef.current = suspended;
+  }, [suspended]);
 
   useEffect(() => {
     if (!enabled) return;

@@ -104,8 +104,11 @@ const RTC_LOOPBACK = rewriteMdnsToLoopback(rtcEnv);
  * Wrapped so callers get a stable shape (and never throw) if the export is absent.
  */
 export function getTrackerSockets(): Record<string, WebSocket> {
+  // `getRelaySockets` is loosely typed by the package; pin it to the shape we
+  // rely on so the call is type-safe and the optional-call guard is meaningful.
+  const getSockets = getRelaySockets as (() => Record<string, WebSocket>) | undefined;
   try {
-    return (getRelaySockets?.() ?? {}) as Record<string, WebSocket>;
+    return getSockets?.() ?? {};
   } catch {
     return {};
   }

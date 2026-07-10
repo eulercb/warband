@@ -103,12 +103,12 @@ function load(): Bindings {
     const saved = JSON.parse(raw) as Partial<Bindings>;
     if (saved.keys) {
       for (const a of Object.keys(base.keys) as KeyAction[]) {
-        if (Array.isArray(saved.keys[a])) base.keys[a] = saved.keys[a] as string[];
+        if (Array.isArray(saved.keys[a])) base.keys[a] = saved.keys[a];
       }
     }
     if (saved.pad) {
       for (const a of Object.keys(base.pad) as ButtonAction[]) {
-        if (Array.isArray(saved.pad[a])) base.pad[a] = saved.pad[a] as number[];
+        if (Array.isArray(saved.pad[a])) base.pad[a] = saved.pad[a];
       }
     }
     if (typeof saved.padScheme === 'string' && PAD_SCHEMES.includes(saved.padScheme)) {

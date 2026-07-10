@@ -50,9 +50,13 @@ export function MainMenu() {
   // belongs to the hero (walk to a totem instead of scrolling a menu).
   useGamepadMenu(pickerRef, { enabled: showPicker, onBack: () => setShowPicker(false) });
 
-  // Refs mirroring transient UI state into the imperative render loop.
+  // Refs mirroring transient UI state into the imperative render loop. Written
+  // in an effect (not during render) so render stays pure; the RAF loop reads
+  // `.current` on the next frame, so a one-commit lag is imperceptible.
   const showPickerRef = useRef(showPicker);
-  showPickerRef.current = showPicker;
+  useEffect(() => {
+    showPickerRef.current = showPicker;
+  }, [showPicker]);
 
   useEffect(() => {
     const container = canvasRef.current;
@@ -92,7 +96,7 @@ export function MainMenu() {
         renderer = null;
         return;
       }
-      input = new InputManager(renderer.app.canvas as HTMLElement);
+      input = new InputManager(renderer.app.canvas);
 
       const loop = () => {
         raf = requestAnimationFrame(loop);

@@ -1,0 +1,169 @@
+// @vitest-environment jsdom
+/**
+ * Extra bindings coverage: pad-scheme selection, gamepad-id sniffing, the label
+ * edge cases, and the persisted-load merge path. (Core store behaviour lives in
+ * bindings.test.ts.)
+ */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import {
+  useBindings,
+  getBindings,
+  codeToLabel,
+  padIndexToLabel,
+  detectPadGlyphs,
+  resolvePadGlyphs,
+  keyLabelFor,
+  PAD_SCHEMES,
+  type PadGlyphs,
+} from '../src/input/bindings';
+
+interface FakePad {
+  id: string;
+  connected: boolean;
+}
+
+function stubGamepads(pads: (FakePad | null)[]): void {
+  Object.defineProperty(navigator, 'getGamepads', {
+    value: () => pads,
+    configurable: true,
+    writable: true,
+  });
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  useBindings.getState().reset();
+});
+
+afterEach(() => {
+  useBindings.getState().reset();
+});
+
+describe('setPadScheme', () => {
+  it('updates and persists the chosen scheme', () => {
+    useBindings.getState().setPadScheme('xbox');
+    expect(getBindings().padScheme).toBe('xbox');
+    expect(localStorage.getItem('warband.bindings.v1')).toContain('xbox');
+  });
+
+  it('supports every declared scheme', () => {
+    for (const s of PAD_SCHEMES) {
+      useBindings.getState().setPadScheme(s);
+      expect(getBindings().padScheme).toBe(s);
+    }
+  });
+});
+
+describe('detectPadGlyphs', () => {
+  it('defaults to playstation when no pad is connected', () => {
+    stubGamepads([]);
+    expect(detectPadGlyphs()).toBe('playstation');
+    stubGamepads([null]);
+    expect(detectPadGlyphs()).toBe('playstation');
+  });
+
+  it('sniffs the pad family from its id', () => {
+    const cases: [string, PadGlyphs][] = [
+      ['Xbox 360 Controller (XInput STANDARD GAMEPAD)', 'xbox'],
+      ['045e-Microsoft controller', 'xbox'],
+      ['Pro Controller (Nintendo Switch)', 'nintendo'],
+      ['Joy-Con (L)', 'nintendo'],
+      ['DualSense Wireless Controller', 'playstation'],
+      ['054c-PlayStation', 'playstation'],
+      ['Some Generic USB Gamepad', 'letters'], // recognised, unknown family
+    ];
+    for (const [id, expected] of cases) {
+      stubGamepads([{ id, connected: true }]);
+      expect(detectPadGlyphs()).toBe(expected);
+    }
+  });
+
+  it('skips disconnected pads', () => {
+    stubGamepads([
+      { id: 'Xbox', connected: false },
+      { id: 'DualSense', connected: true },
+    ]);
+    expect(detectPadGlyphs()).toBe('playstation');
+  });
+
+  it('falls back to playstation if the gamepad API throws', () => {
+    Object.defineProperty(navigator, 'getGamepads', {
+      value: () => {
+        throw new Error('no gamepad api');
+      },
+      configurable: true,
+      writable: true,
+    });
+    expect(detectPadGlyphs()).toBe('playstation');
+  });
+});
+
+describe('resolvePadGlyphs', () => {
+  it('returns the forced scheme when not auto', () => {
+    useBindings.getState().setPadScheme('nintendo');
+    expect(resolvePadGlyphs()).toBe('nintendo');
+  });
+
+  it('detects from the pad when auto', () => {
+    useBindings.getState().setPadScheme('auto');
+    stubGamepads([{ id: 'Xbox Wireless Controller', connected: true }]);
+    expect(resolvePadGlyphs()).toBe('xbox');
+  });
+});
+
+describe('label edge cases', () => {
+  it('codeToLabel handles numpad, modifiers, arrows and passthrough', () => {
+    expect(codeToLabel('Numpad5')).toBe('Num5');
+    expect(codeToLabel('ShiftLeft')).toBe('LShift');
+    expect(codeToLabel('ControlRight')).toBe('RCtrl');
+    expect(codeToLabel('Enter')).toBe('⏎');
+    expect(codeToLabel('Backquote')).toBe('`');
+    expect(codeToLabel('ArrowLeft')).toBe('←');
+    expect(codeToLabel('F5')).toBe('F5'); // unknown → passthrough
+  });
+
+  it('padIndexToLabel honours a forced glyph set and unknown indices', () => {
+    expect(padIndexToLabel(0, 'xbox')).toBe('A');
+    expect(padIndexToLabel(1, 'nintendo')).toBe('A');
+    expect(padIndexToLabel(99, 'xbox')).toBe('B99'); // out of table
+    expect(padIndexToLabel(undefined)).toBe('—');
+  });
+
+  it('keyLabelFor shows the LMB hint for the basic attack', () => {
+    expect(keyLabelFor('basic')).toContain('LMB');
+  });
+});
+
+describe('setKey slot handling', () => {
+  it('assigns an alternate slot and keeps the primary', () => {
+    useBindings.getState().setKey('a1', 1, 'KeyZ');
+    const codes = getBindings().keys.a1;
+    expect(codes[1]).toBe('KeyZ');
+    expect(codes[0]).toBe('KeyQ'); // primary preserved
+  });
+});
+
+describe('persisted load merge', () => {
+  it('merges saved bindings over defaults on a fresh module load', async () => {
+    localStorage.setItem(
+      'warband.bindings.v1',
+      JSON.stringify({ keys: { a1: ['KeyZ'] }, pad: { a1: [7] }, padScheme: 'xbox' }),
+    );
+    // Reset the module registry so a fresh import re-runs load() against storage.
+    vi.resetModules();
+    const mod = await import('../src/input/bindings');
+    const b = mod.getBindings();
+    expect(b.keys.a1[0]).toBe('KeyZ');
+    expect(b.pad.a1[0]).toBe(7);
+    expect(b.padScheme).toBe('xbox');
+    // Untouched actions keep their defaults.
+    expect(b.keys.up[0]).toBe('KeyW');
+  });
+
+  it('falls back to defaults when storage holds corrupt JSON', async () => {
+    localStorage.setItem('warband.bindings.v1', '{not valid json');
+    vi.resetModules();
+    const mod = await import('../src/input/bindings');
+    expect(mod.getBindings().keys.a1[0]).toBe('KeyQ');
+  });
+});

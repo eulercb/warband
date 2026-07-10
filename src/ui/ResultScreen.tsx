@@ -65,6 +65,10 @@ export function ResultScreen() {
   const [ready, setReady] = useState(false);
 
   // Roll a fresh set of offers whenever a new upgrade-eligible result lands.
+  // This is a legitimate effect: the offers are RANDOM (a side effect that
+  // can't run during render, or it would reroll on every paint), so we seed
+  // them — and reset the pick/ready state — in response to the result changing.
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional derived-random reset keyed on a new result */
   useEffect(() => {
     if (!showUpgrades) return;
     setGenOffers(rollUpgradeChoices(3, Math.random));
@@ -73,6 +77,7 @@ export function ResultScreen() {
     setPickedChar(null);
     setReady(false);
   }, [showUpgrades, localClass, result]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const onPickGen = (id: UpgradeId): void => {
     if (pickedGen) return;

@@ -48,8 +48,10 @@ jobs:
       - name: Typecheck (tsc --noEmit)
         run: npm run typecheck
 
-      - name: Test (Vitest)
-        run: npm test
+      - name: Test + coverage (Vitest)
+        # Runs the unit suite and enforces the coverage thresholds configured in
+        # vite.config.ts; fails the build if coverage regresses below them.
+        run: npm run test:coverage
 
       - name: Build (tsc + Vite)
         run: npm run build
