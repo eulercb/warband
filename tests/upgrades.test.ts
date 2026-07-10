@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import type { Player } from '../src/engine/types';
+import type { Player } from '../src/engine/core/types';
 import {
   UPGRADES,
   UPGRADE_IDS,
   isUpgradeId,
   applyUpgrades,
   rollUpgradeChoices,
-} from '../src/engine/upgrades';
-import type { UpgradeId, UpgradeDef } from '../src/engine/upgrades';
+} from '../src/engine/content/upgrades';
+import type { UpgradeId, UpgradeDef } from '../src/engine/content/upgrades';
 
 // ---------------------------------------------------------------------------
 // Fixtures & deterministic RNG helpers

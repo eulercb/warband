@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { World } from '../src/engine/world';
-import { zoneFadeAlpha } from '../src/render/entityView';
-import { ZONE_FADE_IN, ZONE_FADE_OUT } from '../src/engine/constants';
-import type { GroundZone } from '../src/engine/types';
+import { World } from '../src/engine/world/world';
+import { zoneFadeAlpha } from '../src/render/pipeline/entityView';
+import { ZONE_FADE_IN, ZONE_FADE_OUT } from '../src/engine/core/constants';
+import type { GroundZone } from '../src/engine/core/types';
 
 const DT = 0.05;
 

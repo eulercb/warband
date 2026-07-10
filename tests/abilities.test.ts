@@ -5,13 +5,13 @@ import {
   beamTick,
   withLength,
   PLAYER_RADIUS,
-} from '../src/engine/abilities';
-import { World } from '../src/engine/world';
-import { getMonster, abilityById } from '../src/engine/monsters';
-import type { BossAbilityDef } from '../src/engine/monsters';
-import { makeBuff, applyBuff } from '../src/engine/combat';
-import { ARENA_W, ARENA_H, ADD_HP, ADD_MOVE_SPEED, ADD_RADIUS } from '../src/engine/constants';
-import type { Player, BossAction, ClassId, MonsterId, Add, Vec2 } from '../src/engine/types';
+} from '../src/engine/combat/abilities';
+import { World } from '../src/engine/world/world';
+import { getMonster, abilityById } from '../src/engine/content/monsters';
+import type { BossAbilityDef } from '../src/engine/content/monsters';
+import { makeBuff, applyBuff } from '../src/engine/combat/combat';
+import { ARENA_W, ARENA_H, ADD_HP, ADD_MOVE_SPEED, ADD_RADIUS } from '../src/engine/core/constants';
+import type { Player, BossAction, ClassId, MonsterId, Add, Vec2 } from '../src/engine/core/types';
 
 // ---------------------------------------------------------------------------
 // Fixtures / helpers

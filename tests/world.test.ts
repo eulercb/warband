@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { World } from '../src/engine/world';
-import type { InputCommand, ButtonState } from '../src/engine/types';
-import { getMonster } from '../src/engine/monsters';
-import { DOWNED_BLEEDOUT, REVIVE_TIME, REVIVE_HP_FRAC } from '../src/engine/constants';
+import { World } from '../src/engine/world/world';
+import type { InputCommand, ButtonState } from '../src/engine/core/types';
+import { getMonster } from '../src/engine/content/monsters';
+import { DOWNED_BLEEDOUT, REVIVE_TIME, REVIVE_HP_FRAC } from '../src/engine/core/constants';
 
 function buttons(over: Partial<ButtonState> = {}): ButtonState {
   return { basic: false, a1: false, a2: false, a3: false, revive: false, ...over };

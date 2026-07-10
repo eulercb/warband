@@ -104,7 +104,7 @@ The last-used device wins — switch between gamepad and keyboard/mouse at any t
 
 ## Bosses
 
-33 bosses across three difficulty tiers (`src/engine/monsters.ts`):
+33 bosses across three difficulty tiers (`src/engine/content/monsters.ts`):
 
 - **Easy** — Goblin Warlord, Broodmother, Bandit Captain, Kobold Firebrand, Dire Wolf Alpha, Animated Armor, Harpy Matriarch, Gnoll Packlord, Mud Golem, Zombie Hulk.
 - **Medium** — Ancient Dragon, Forest Troll, Orc Warchief, Manticore, Wraith, Basilisk, Owlbear, Cyclops, Gargoyle Sentinel, Ettin, Will-o'-Wisp, Minotaur.
@@ -116,10 +116,10 @@ A run assembles five of them in climbing difficulty; Endless cycles re-roll the 
 
 All balance numbers live in plain data files and are easy to tweak:
 
-- `src/engine/constants.ts` — global simulation constants (tick rate, arena size, radii, revive/bleedout timings, run length, endless + score coefficients, projectile range cap, colors).
-- `src/engine/classes.ts` — per-class stats and ability definitions.
-- `src/engine/charUpgrades.ts` — per-class character upgrades earned between bosses.
-- `src/engine/monsters.ts` — per-boss stats, difficulty tiers, run assembly and endless type modifiers.
+- `src/engine/core/constants.ts` — global simulation constants (tick rate, arena size, radii, revive/bleedout timings, run length, endless + score coefficients, projectile range cap, colors).
+- `src/engine/content/classes.ts` — per-class stats and ability definitions.
+- `src/engine/content/charUpgrades.ts` — per-class character upgrades earned between bosses.
+- `src/engine/content/monsters.ts` — per-boss stats, difficulty tiers, run assembly and endless type modifiers.
 
 ## Tests
 
@@ -131,13 +131,24 @@ npm test
 
 ## Architecture
 
-The codebase is organized around a clean split between simulation, networking, and presentation:
+The codebase is organized around a clean split between simulation, networking, and presentation. Each top-level layer is further divided into **cohesive domain sub-packages** so related code lives together and cross-cutting dependencies stay explicit (see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full map):
 
 - **`engine/`** — pure, deterministic, host-authoritative simulation. No DOM, no network, no rendering — just game logic, so it can be unit-tested in isolation.
-- **`net/`** — networking over Trystero (WebRTC) in a star topology, with snapshot interpolation and client-side prediction. ICE/TURN and tracker configuration lives in `net/rtc.ts` (env-overridable); see [docs/NETWORKING.md](docs/NETWORKING.md).
+  - `core/` — the shared kernel: the domain model + wire/render contract (`types.ts`), all tunable constants (`constants.ts`), and geometry helpers (`math.ts`, `torus.ts`).
+  - `content/` — data-driven game content: classes, monsters, generic + character upgrades, and player-count scaling.
+  - `combat/` — combat resolution: damage/heal application, ability execution, and the threat/aggro table.
+  - `world/` — world generation (procedural `terrain` + `obstacles`) and the authoritative simulation step (`world.ts`).
+  - `ai/` — host-simulated bot party members and their personalities.
+- **`net/`** — networking over Trystero (WebRTC) in a star topology, with snapshot interpolation and client-side prediction.
+  - `transport/` — raw peer transport (`rtc`, `room`, and the `relayRoom` global-server fallback). ICE/TURN and tracker configuration lives in `net/transport/rtc.ts` (env-overridable); see [docs/NETWORKING.md](docs/NETWORKING.md).
+  - `session/` — the authoritative host session and the client session built on top of a transport.
+  - `protocol.ts` / `log.ts` — the shared wire protocol and connection diagnostics.
 - **`render/`** — PixiJS rendering of the interpolated render state.
+  - `pipeline/` — the core draw loop (`renderer`, `entityView`, `camera`, snapshot `interpolate`).
+  - `overlays/` — world-space overlays (`fx`, speech `balloons`, `buffGlyphs`).
+  - `rig/` — the procedural skeletal-rig animation system; `sprites/` — the pixel-sprite layer.
 - **`input/`** — keyboard/mouse and gamepad input, normalized into a single input command.
-- **`ui/`** — React + Zustand for menus, lobby, HUD, and results.
+- **`ui/`** — React + Zustand shell, split into `screens/` (menus, lobby, results), `game/` (in-fight HUD, pause, view), and `state/` (Zustand stores and the session/HUD bridges).
 
 Only the **host** runs the full simulation. Clients send their inputs to the host and render interpolated snapshots they receive back, so all game state stays authoritative on a single peer.
 

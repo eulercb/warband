@@ -16,12 +16,12 @@ import type {
   PlayerView,
   Telegraph,
   AbilitySlot,
-} from '../../engine/types';
-import type { Camera } from '../camera';
-import type { Fx } from '../fx';
-import { PLAYER_RADIUS, CLASS_COLORS } from '../../engine/constants';
-import { getMonster } from '../../engine/monsters';
-import { getClass } from '../../engine/classes';
+} from '../../engine/core/types';
+import type { Camera } from '../pipeline/camera';
+import type { Fx } from '../overlays/fx';
+import { PLAYER_RADIUS, CLASS_COLORS } from '../../engine/core/constants';
+import { getMonster } from '../../engine/content/monsters';
+import { getClass } from '../../engine/content/classes';
 import { CreatureRig } from './rig';
 import { makeSphereTexture } from './shading';
 import type { RigSpec } from './types';

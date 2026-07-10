@@ -67,20 +67,20 @@ export default defineConfig({
         // Playwright end-to-end smoke test (npm run smoke / the `smoke` CI job)
         // instead. Excluding them keeps this metric focused on the pure,
         // unit-testable logic (engine, net protocol, input, stores, view models).
-        'src/net/host.ts', // host-authoritative session over a live Trystero room
-        'src/net/client.ts', // client session over a live Trystero room
-        'src/net/relayRoom.ts', // global-server WebSocket relay transport
-        'src/render/renderer.ts', // PixiJS application + draw loop
-        'src/render/entityView.ts', // immediate-mode Pixi Graphics drawing
-        'src/render/balloons.ts', // Pixi text/emote balloons
-        'src/render/fx.ts', // Pixi particle / screen-fx layer
+        'src/net/session/host.ts', // host-authoritative session over a live Trystero room
+        'src/net/session/client.ts', // client session over a live Trystero room
+        'src/net/transport/relayRoom.ts', // global-server WebSocket relay transport
+        'src/render/pipeline/renderer.ts', // PixiJS application + draw loop
+        'src/render/pipeline/entityView.ts', // immediate-mode Pixi Graphics drawing
+        'src/render/overlays/balloons.ts', // Pixi text/emote balloons
+        'src/render/overlays/fx.ts', // Pixi particle / screen-fx layer
         'src/render/rig/rig.ts', // Pixi skeletal rig runtime
         'src/render/rig/rigLayer.ts', // Pixi rig render layer
         'src/render/rig/shading.ts', // Pixi shading/tint helpers
         'src/render/sprites/particles.ts', // Pixi particle sprites
         'src/render/sprites/spriteLayer.ts', // Pixi retained sprite layer
-        'src/ui/MainMenu.tsx', // boots a Pixi Renderer (walkable menu)
-        'src/ui/GameView.tsx', // boots a Pixi Renderer (in-fight view)
+        'src/ui/screens/MainMenu.tsx', // boots a Pixi Renderer (walkable menu)
+        'src/ui/game/GameView.tsx', // boots a Pixi Renderer (in-fight view)
         'src/ui/App.tsx', // shell that mounts MainMenu/GameView
       ],
       reporter: ['text', 'text-summary', 'lcov'],

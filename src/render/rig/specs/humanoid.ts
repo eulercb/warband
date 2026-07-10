@@ -4,8 +4,8 @@
  * points), while the two legs orient to the TRAVEL direction and step with a
  * walk-cycle gait. Each class carries a distinct simple-shape weapon.
  */
-import type { ClassId } from '../../../engine/types';
-import { CLASS_COLORS } from '../../../engine/constants';
+import type { ClassId } from '../../../engine/core/types';
+import { CLASS_COLORS } from '../../../engine/core/constants';
 import type { RigSpec, WeaponSpec, ArmSpec } from '../types';
 
 function arm(side: 1 | -1): ArmSpec {

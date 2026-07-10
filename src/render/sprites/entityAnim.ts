@@ -11,7 +11,7 @@ import type {
   AddView,
   ProjectileView,
   AbilitySlot,
-} from '../../engine/types';
+} from '../../engine/core/types';
 import type { DirMode, DirToken } from './manifest';
 import { facingFor } from './direction';
 

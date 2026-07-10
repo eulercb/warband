@@ -4,10 +4,10 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 
 // The component only needs `playUiSound` from session; mock it so we don't pull
 // in the audio engine or the networking stack.
-vi.mock('../src/ui/session', () => ({ playUiSound: vi.fn() }));
+vi.mock('../src/ui/state/session', () => ({ playUiSound: vi.fn() }));
 
-import VolumeControl from '../src/ui/VolumeControl';
-import { useStore } from '../src/ui/store';
+import VolumeControl from '../src/ui/game/VolumeControl';
+import { useStore } from '../src/ui/state/store';
 
 beforeEach(() => {
   localStorage.clear();

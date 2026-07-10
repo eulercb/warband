@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buffBadges, buffLabel } from '../src/render/buffGlyphs';
-import type { BuffView, BuffKind } from '../src/engine/types';
+import { buffBadges, buffLabel } from '../src/render/overlays/buffGlyphs';
+import type { BuffView, BuffKind } from '../src/engine/core/types';
 
 const buff = (kind: BuffKind, remaining: number, mult = 1): BuffView => ({ kind, remaining, mult });
 

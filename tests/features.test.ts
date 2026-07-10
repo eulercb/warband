@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { World } from '../src/engine/world';
-import type { InputCommand, ButtonState, BossAction } from '../src/engine/types';
+import { World } from '../src/engine/world/world';
+import type { InputCommand, ButtonState, BossAction } from '../src/engine/core/types';
 
 function buttons(over: Partial<ButtonState> = {}): ButtonState {
   return { basic: false, a1: false, a2: false, a3: false, revive: false, ...over };

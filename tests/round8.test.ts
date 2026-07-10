@@ -1,19 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import { World } from '../src/engine/world';
-import type { InputCommand, ButtonState, Projectile, Player } from '../src/engine/types';
-import { CLASSES, CLASS_IDS, cloneAbilities } from '../src/engine/classes';
-import { applyCharUpgrades, rollCharChoices, CHAR_UPGRADES } from '../src/engine/charUpgrades';
-import { buildRun, modifierForCycle, MONSTER_IDS, MONSTERS_BY_TIER } from '../src/engine/monsters';
-import { computeScaling } from '../src/engine/scaling';
-import { computeBotInput } from '../src/engine/bot';
-import { damageBoss, applyBuff, makeBuff } from '../src/engine/combat';
-import type { Add, GroundZone } from '../src/engine/types';
-import { ADD_HP, ADD_MOVE_SPEED, ADD_RADIUS } from '../src/engine/constants';
-import { buffBadges, buffLabel } from '../src/render/buffGlyphs';
+import { World } from '../src/engine/world/world';
+import type { InputCommand, ButtonState, Projectile, Player } from '../src/engine/core/types';
+import { CLASSES, CLASS_IDS, cloneAbilities } from '../src/engine/content/classes';
+import { applyCharUpgrades, rollCharChoices, CHAR_UPGRADES } from '../src/engine/content/charUpgrades';
+import { buildRun, modifierForCycle, MONSTER_IDS, MONSTERS_BY_TIER } from '../src/engine/content/monsters';
+import { computeScaling } from '../src/engine/content/scaling';
+import { computeBotInput } from '../src/engine/ai/bot';
+import { damageBoss, applyBuff, makeBuff } from '../src/engine/combat/combat';
+import type { Add, GroundZone } from '../src/engine/core/types';
+import { ADD_HP, ADD_MOVE_SPEED, ADD_RADIUS } from '../src/engine/core/constants';
+import { buffBadges, buffLabel } from '../src/render/overlays/buffGlyphs';
 import { padIndexToLabel } from '../src/input/bindings';
-import { Camera } from '../src/render/camera';
-import { Rng } from '../src/engine/math';
-import { PROJECTILE_MAX_RANGE } from '../src/engine/constants';
+import { Camera } from '../src/render/pipeline/camera';
+import { Rng } from '../src/engine/core/math';
+import { PROJECTILE_MAX_RANGE } from '../src/engine/core/constants';
 
 function buttons(over: Partial<ButtonState> = {}): ButtonState {
   return { basic: false, a1: false, a2: false, a3: false, revive: false, ...over };

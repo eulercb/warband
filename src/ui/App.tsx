@@ -3,16 +3,16 @@
  * matching screen. Reads the room code from the URL hash once on load.
  */
 import { useEffect } from 'react';
-import { useStore } from './store';
-import { readRoomFromHash, configuredRelayUrl } from '../net/room';
-import { sfx, leaveToMenu } from './session';
-import MainMenu from './MainMenu';
-import HostSetup from './HostSetup';
-import JoinScreen from './JoinScreen';
-import Lobby from './Lobby';
-import GameView from './GameView';
-import ResultScreen from './ResultScreen';
-import Controls from './Controls';
+import { useStore } from './state/store';
+import { readRoomFromHash, configuredRelayUrl } from '../net/transport/room';
+import { sfx, leaveToMenu } from './state/session';
+import MainMenu from './screens/MainMenu';
+import HostSetup from './screens/HostSetup';
+import JoinScreen from './screens/JoinScreen';
+import Lobby from './screens/Lobby';
+import GameView from './game/GameView';
+import ResultScreen from './screens/ResultScreen';
+import Controls from './screens/Controls';
 import './styles.css';
 
 function Waiting() {

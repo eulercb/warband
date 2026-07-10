@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Vec2 } from '../src/engine/types';
+import type { Vec2 } from '../src/engine/core/types';
 import {
   vec,
   clone,
@@ -25,7 +25,7 @@ import {
   pointInCone,
   pointInLine,
   pointInSegment,
-} from '../src/engine/math';
+} from '../src/engine/core/math';
 
 /** Assert a Vec2 close to (x, y); toBeCloseTo tolerates signed zero / FP noise. */
 function expectVec(v: Vec2, x: number, y: number, precision = 9): void {

@@ -7,8 +7,8 @@
  * read as clean shockwaves, particles add the grit. Both are cheap and bounded.
  */
 import { Container, Graphics, Sprite, type Renderer as PixiRenderer, type Texture } from 'pixi.js';
-import type { GameEvent, Vec2, ProjectileKind } from '../../engine/types';
-import type { Camera } from '../camera';
+import type { GameEvent, Vec2, ProjectileKind } from '../../engine/core/types';
+import type { Camera } from '../pipeline/camera';
 
 /** Hard cap on live particles; oldest is recycled past this. */
 const CAP = 400;

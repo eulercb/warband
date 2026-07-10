@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
  * Component tests for the two multiplayer entry screens:
- *   - src/ui/HostSetup.tsx  (pick boss + name → create a room via session.hostGame)
- *   - src/ui/JoinScreen.tsx (enter a room code → connect via session.joinGame)
+ *   - src/ui/screens/HostSetup.tsx  (pick boss + name → create a room via session.hostGame)
+ *   - src/ui/screens/JoinScreen.tsx (enter a room code → connect via session.joinGame)
  *
  * The `session` module is mocked so hostGame/joinGame never touch real
  * networking/audio; the real Zustand store drives everything else. `../net/room`
@@ -20,17 +20,17 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 
 // Stub every session export these two components import. hostGame/joinGame are
 // awaited by the click handlers, so they must resolve.
-vi.mock('../src/ui/session', () => ({
+vi.mock('../src/ui/state/session', () => ({
   hostGame: vi.fn().mockResolvedValue(undefined),
   joinGame: vi.fn().mockResolvedValue(undefined),
   playUiSound: vi.fn(),
   setGauntlet: vi.fn(),
 }));
 
-import HostSetup from '../src/ui/HostSetup';
-import JoinScreen from '../src/ui/JoinScreen';
-import { hostGame, joinGame, playUiSound, setGauntlet } from '../src/ui/session';
-import { useStore } from '../src/ui/store';
+import HostSetup from '../src/ui/screens/HostSetup';
+import JoinScreen from '../src/ui/screens/JoinScreen';
+import { hostGame, joinGame, playUiSound, setGauntlet } from '../src/ui/state/session';
+import { useStore } from '../src/ui/state/store';
 
 beforeEach(() => {
   vi.clearAllMocks(); // clears call history but keeps mockResolvedValue impls

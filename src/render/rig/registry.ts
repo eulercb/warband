@@ -9,8 +9,8 @@
  * Specs are immutable, camera-scale-independent data, so they're built once and
  * cached here (shared across every instance of that creature/class).
  */
-import type { BossView, PlayerView, AddView, MonsterId, ClassId } from '../../engine/types';
-import { getMonster } from '../../engine/monsters';
+import type { BossView, PlayerView, AddView, MonsterId, ClassId } from '../../engine/core/types';
+import { getMonster } from '../../engine/content/monsters';
 import { SPRITE_FLAGS } from '../sprites/manifest';
 import type { RigId, RigSpec } from './types';
 import { buildSpiderSpec } from './specs/spider';

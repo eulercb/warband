@@ -44,8 +44,8 @@ import type {
   ArmSpec,
   WeaponSpec,
 } from '../src/render/rig/types';
-import { MONSTERS, getMonster } from '../src/engine/monsters';
-import { CLASS_COLORS } from '../src/engine/constants';
+import { MONSTERS, getMonster } from '../src/engine/content/monsters';
+import { CLASS_COLORS } from '../src/engine/core/constants';
 import type {
   ClassId,
   MonsterId,
@@ -54,7 +54,7 @@ import type {
   PlayerView,
   AddView,
   PlayerState,
-} from '../src/engine/types';
+} from '../src/engine/core/types';
 
 // ---------------------------------------------------------------------------
 // Reference tables (mirror the type unions / source enums)

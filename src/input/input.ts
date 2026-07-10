@@ -11,7 +11,7 @@
  *     sample has none (so the reticle never snaps to center).
  */
 
-import type { InputState, Vec2 } from '../engine/types';
+import type { InputState, Vec2 } from '../engine/core/types';
 import { sampleGamepad } from './gamepad';
 import { KeyboardMouse } from './keyboard';
 

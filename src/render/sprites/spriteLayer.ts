@@ -22,9 +22,9 @@ import {
   type Spritesheet,
   type Texture,
 } from 'pixi.js';
-import type { RenderState, EntityId, AbilitySlot, GameEvent, ClassId } from '../../engine/types';
-import type { Camera } from '../camera';
-import type { Fx } from '../fx';
+import type { RenderState, EntityId, AbilitySlot, GameEvent, ClassId } from '../../engine/core/types';
+import type { Camera } from '../pipeline/camera';
+import type { Fx } from '../overlays/fx';
 import {
   MANIFEST,
   ACTOR_PALETTE,
@@ -41,7 +41,7 @@ import {
   EPS_MOVE,
   type AnimSelection,
 } from './entityAnim';
-import { getClass } from '../../engine/classes';
+import { getClass } from '../../engine/content/classes';
 
 /** One-shot instant-attack clip length (ms). Author to match the chosen art. */
 const ATTACK_CLIP_MS = 320;

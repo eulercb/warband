@@ -8,7 +8,7 @@ import {
   BLOCKED_TRACKER_HOSTS,
   DEFAULT_TURN,
   type RtcEnv,
-} from '../src/net/rtc';
+} from '../src/net/transport/rtc';
 
 describe('buildTurnConfig', () => {
   it('returns the bundled public TURN by default', () => {

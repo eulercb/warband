@@ -12,7 +12,7 @@
  * click handler to create/resume it.
  */
 
-import type { GameEvent } from '../engine/types';
+import type { GameEvent } from '../engine/core/types';
 
 /** Constructor for the standard or webkit-prefixed AudioContext. */
 type AudioCtxCtor = new () => AudioContext;

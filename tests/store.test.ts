@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useStore } from '../src/ui/store';
-import type { AppState } from '../src/ui/store';
-import { DEFAULT_CLASS } from '../src/engine/classes';
-import { DEFAULT_MONSTER } from '../src/engine/monsters';
-import type { FightResult } from '../src/engine/types';
+import { useStore } from '../src/ui/state/store';
+import type { AppState } from '../src/ui/state/store';
+import { DEFAULT_CLASS } from '../src/engine/content/classes';
+import { DEFAULT_MONSTER } from '../src/engine/content/monsters';
+import type { FightResult } from '../src/engine/core/types';
 import type { LobbyPlayer, NetSession } from '../src/net/protocol';
 
-// localStorage keys mirror the (unexported) constants in src/ui/store.ts.
+// localStorage keys mirror the (unexported) constants in src/ui/state/store.ts.
 const NAME_KEY = 'warband.heroName.v1';
 const VOLUME_KEY = 'warband.volume.v1';
 const AUTOFIRE_KEY = 'warband.autofire.v1';
@@ -71,7 +71,7 @@ function changedKeys(before: AppState, after: AppState): string[] {
 /** Re-import the store module so its load* helpers re-read the current localStorage. */
 async function freshStore(): Promise<typeof useStore> {
   vi.resetModules();
-  const mod = await import('../src/ui/store');
+  const mod = await import('../src/ui/state/store');
   return mod.useStore;
 }
 
