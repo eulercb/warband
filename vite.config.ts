@@ -45,8 +45,55 @@ export default defineConfig({
     target: 'es2022',
   },
   test: {
+    // Default to a fast Node environment; DOM-dependent specs opt in per-file
+    // with a `// @vitest-environment jsdom` docblock.
     environment: 'node',
     globals: true,
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/**/*.test.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      // `include` reports on the whole source tree (not just files a test
+      // imported) so untested modules show up as 0% rather than vanishing.
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        '**/*.d.ts',
+        '**/*.md', // docs (e.g. sprites/README.md) — not code
+        'src/main.tsx', // app entry: mounts React, nothing to unit test
+        'src/pwa/**', // service-worker registration glue (virtual module)
+        'src/**/*types.ts', // type-only declarations (no runtime code)
+        // The I/O edges below execute only against a real browser canvas
+        // (PixiJS/WebGL) or a live WebRTC/relay peer connection, so they carry
+        // no meaningful unit-test surface — they are exercised by the headless
+        // Playwright end-to-end smoke test (npm run smoke / the `smoke` CI job)
+        // instead. Excluding them keeps this metric focused on the pure,
+        // unit-testable logic (engine, net protocol, input, stores, view models).
+        'src/net/host.ts', // host-authoritative session over a live Trystero room
+        'src/net/client.ts', // client session over a live Trystero room
+        'src/net/relayRoom.ts', // global-server WebSocket relay transport
+        'src/render/renderer.ts', // PixiJS application + draw loop
+        'src/render/entityView.ts', // immediate-mode Pixi Graphics drawing
+        'src/render/balloons.ts', // Pixi text/emote balloons
+        'src/render/fx.ts', // Pixi particle / screen-fx layer
+        'src/render/rig/rig.ts', // Pixi skeletal rig runtime
+        'src/render/rig/rigLayer.ts', // Pixi rig render layer
+        'src/render/rig/shading.ts', // Pixi shading/tint helpers
+        'src/render/sprites/particles.ts', // Pixi particle sprites
+        'src/render/sprites/spriteLayer.ts', // Pixi retained sprite layer
+        'src/ui/MainMenu.tsx', // boots a Pixi Renderer (walkable menu)
+        'src/ui/GameView.tsx', // boots a Pixi Renderer (in-fight view)
+        'src/ui/App.tsx', // shell that mounts MainMenu/GameView
+      ],
+      reporter: ['text', 'text-summary', 'lcov'],
+      // Ratchet floor for the unit-testable surface (currently ~95% lines /
+      // ~87% branches). Set a few points below the achieved numbers so ordinary
+      // v8 variance never fails CI, while a real coverage regression does. Raise
+      // these as coverage climbs.
+      thresholds: {
+        statements: 90,
+        branches: 80,
+        functions: 90,
+        lines: 90,
+      },
+    },
   },
 });

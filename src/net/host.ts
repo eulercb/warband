@@ -799,7 +799,8 @@ export class Host implements NetSession {
     this.clearVictoryLap();
     this.clearResumeCountdown();
     this.stopDiag();
-    this.room.leave();
+    // Fire-and-forget: room teardown races the tab closing; we don't await it.
+    void this.room.leave();
   }
 
   // -------------------------------------------------------------------------

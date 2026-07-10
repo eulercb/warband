@@ -87,7 +87,7 @@ export default function GameView() {
         renderer = null;
         return;
       }
-      input = new InputManager(renderer.app.canvas as HTMLElement);
+      input = new InputManager(renderer.app.canvas);
 
       const loop = () => {
         raf = requestAnimationFrame(loop);

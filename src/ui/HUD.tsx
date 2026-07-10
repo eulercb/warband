@@ -53,7 +53,7 @@ function BuffChips({ buffs }: { buffs: BuffView[] }) {
 
 /** Button label for a slot, keyboard or controller per the active device. */
 function slotLabel(slot: AbilitySlot, source: InputSource): string {
-  const action = SLOT_ACTION[slot as 'basic' | 'a1' | 'a2' | 'a3'];
+  const action = SLOT_ACTION[slot];
   return source === 'gamepad' ? padLabelFor(action) : keyLabelFor(action);
 }
 

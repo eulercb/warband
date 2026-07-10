@@ -361,6 +361,7 @@ export class Client implements NetSession {
     netLog('client', 'leaving room (client)');
     this.byeAction.send({ reason: 'left' });
     this.stopDiag();
-    this.room.leave();
+    // Fire-and-forget: room teardown races the tab closing; we don't await it.
+    void this.room.leave();
   }
 }

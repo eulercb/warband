@@ -99,6 +99,11 @@ function handleJoinError(msg: string): void {
   }
 }
 
+// `async` by contract: these front the networked session lifecycle and are
+// awaited by their callers (Host/Client wire up connections that resolve later).
+// No `await` in the body yet, so silence require-await rather than change the
+// awaited Promise<void> API that the UI depends on.
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function hostGame(): Promise<void> {
   const st = useStore.getState();
   const code = generateRoomCode();
@@ -150,6 +155,7 @@ export async function hostGame(): Promise<void> {
   s.setPhase('lobby');
 }
 
+// eslint-disable-next-line @typescript-eslint/require-await -- async by API contract (see hostGame)
 export async function joinGame(code: string): Promise<void> {
   const upper = code.trim().toUpperCase();
   const net: NetMode = useStore.getState().netMode;
