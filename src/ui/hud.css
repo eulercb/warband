@@ -213,6 +213,17 @@
   font-weight: 800;
   color: #f2c14e;
   letter-spacing: 0.04em;
+  /* Keep multi-key hints like "LMB/Space" on one line and inside the tile
+   * instead of clipping mid-word against the tile's hidden overflow. */
+  max-width: 100%;
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.hud-ability-key.long {
+  font-size: 9px;
+  letter-spacing: 0;
 }
 .hud-ability-name {
   font-size: 9px;
@@ -282,30 +293,56 @@
   pointer-events: auto;
 }
 
-/* class accent colors for teammate frames */
+/* Class accent colors for teammate frames + local health bar. One colour per
+ * class, sourced from the shared --cls-* tokens (styles.css :root, mirroring
+ * engine/core/constants.ts CLASS_COLORS) so all eight classes stay in sync. */
 .hud-teammate.cls-knight {
-  border-left-color: #4a90d9;
+  border-left-color: var(--cls-knight);
 }
 .hud-teammate.cls-ranger {
-  border-left-color: #4caf50;
+  border-left-color: var(--cls-ranger);
 }
 .hud-teammate.cls-mage {
-  border-left-color: #9c5cf0;
+  border-left-color: var(--cls-mage);
 }
 .hud-teammate.cls-cleric {
-  border-left-color: #f2c14e;
+  border-left-color: var(--cls-cleric);
+}
+.hud-teammate.cls-barbarian {
+  border-left-color: var(--cls-barbarian);
+}
+.hud-teammate.cls-rogue {
+  border-left-color: var(--cls-rogue);
+}
+.hud-teammate.cls-paladin {
+  border-left-color: var(--cls-paladin);
+}
+.hud-teammate.cls-druid {
+  border-left-color: var(--cls-druid);
 }
 .hud-selfhp.cls-knight .hud-healthbar {
-  border-color: #4a90d9;
+  border-color: var(--cls-knight);
 }
 .hud-selfhp.cls-ranger .hud-healthbar {
-  border-color: #4caf50;
+  border-color: var(--cls-ranger);
 }
 .hud-selfhp.cls-mage .hud-healthbar {
-  border-color: #9c5cf0;
+  border-color: var(--cls-mage);
 }
 .hud-selfhp.cls-cleric .hud-healthbar {
-  border-color: #f2c14e;
+  border-color: var(--cls-cleric);
+}
+.hud-selfhp.cls-barbarian .hud-healthbar {
+  border-color: var(--cls-barbarian);
+}
+.hud-selfhp.cls-rogue .hud-healthbar {
+  border-color: var(--cls-rogue);
+}
+.hud-selfhp.cls-paladin .hud-healthbar {
+  border-color: var(--cls-paladin);
+}
+.hud-selfhp.cls-druid .hud-healthbar {
+  border-color: var(--cls-druid);
 }
 
 @keyframes hud-pulse {

@@ -72,10 +72,15 @@ function AbilityIcon({
   const total = ability.cooldown;
   const frac = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
   const ready = frac <= 0.001;
+  const label = slotLabel(slot, source);
   return (
     <div className={`hud-ability${ready ? ' ready' : ''}`}>
-      <div className={`hud-ability-key${source === 'gamepad' ? ' pad' : ''}`}>
-        {slotLabel(slot, source)}
+      <div
+        className={`hud-ability-key${source === 'gamepad' ? ' pad' : ''}${
+          label.length > 5 ? ' long' : ''
+        }`}
+      >
+        {label}
       </div>
       <div className="hud-ability-name">{ability.name}</div>
       <div className="hud-cd" style={{ height: `${frac * 100}%` }} />
