@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useHudStore, hudSet } from '../src/ui/hudStore';
-import type { HudBoss, HudTeammate } from '../src/ui/hudStore';
-import type { BuffView } from '../src/engine/types';
+import { useHudStore, hudSet } from '../src/ui/state/hudStore';
+import type { HudBoss, HudTeammate } from '../src/ui/state/hudStore';
+import type { BuffView } from '../src/engine/core/types';
 
 // The HUD store is a module-level singleton, so reset it to the documented
 // defaults before each test to keep the specs independent.

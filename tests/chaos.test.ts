@@ -4,23 +4,27 @@
  * upgrades, procedural terrain themes, and the menu-playground practice mode.
  */
 import { describe, it, expect } from 'vitest';
-import { World } from '../src/engine/world';
-import { applyStun, tickStunDr, tickBuffs } from '../src/engine/combat';
-import { buildRunSlots, buildRun, MONSTERS } from '../src/engine/monsters';
-import { generateTerrain } from '../src/engine/terrain';
-import { generateObstacles } from '../src/engine/obstacles';
-import { nthThreatTarget } from '../src/engine/threat';
-import { computeBotInput, rollPersonality, defaultPersonality } from '../src/engine/bot';
-import type { BotPersonality } from '../src/engine/bot';
-import { previewAbilityTable, rollCharChoices, CHAR_UPGRADES } from '../src/engine/charUpgrades';
+import { World } from '../src/engine/world/world';
+import { applyStun, tickStunDr, tickBuffs } from '../src/engine/combat/combat';
+import { buildRunSlots, buildRun, MONSTERS } from '../src/engine/content/monsters';
+import { generateTerrain } from '../src/engine/world/terrain';
+import { generateObstacles } from '../src/engine/world/obstacles';
+import { nthThreatTarget } from '../src/engine/combat/threat';
+import { computeBotInput, rollPersonality, defaultPersonality } from '../src/engine/ai/bot';
+import type { BotPersonality } from '../src/engine/ai/bot';
+import {
+  previewAbilityTable,
+  rollCharChoices,
+  CHAR_UPGRADES,
+} from '../src/engine/content/charUpgrades';
 import {
   STUN_DR_FACTOR,
   STUN_DR_WINDOW,
   TWIN_HP_FRAC,
   RUN_LENGTH,
   TERRAIN_MAX_PATCHES,
-} from '../src/engine/constants';
-import { Rng } from '../src/engine/math';
+} from '../src/engine/core/constants';
+import { Rng } from '../src/engine/core/math';
 import type {
   ButtonState,
   InputCommand,
@@ -28,7 +32,7 @@ import type {
   Player,
   MonsterId,
   TerrainKind,
-} from '../src/engine/types';
+} from '../src/engine/core/types';
 
 const DT = 0.05;
 

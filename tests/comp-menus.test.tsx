@@ -14,21 +14,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 
 // Stub the whole session module: expose exactly the functions PauseMenu imports.
-vi.mock('../src/ui/session', () => ({
+vi.mock('../src/ui/state/session', () => ({
   playUiSound: vi.fn(),
   endRun: vi.fn(),
   openControls: vi.fn(),
   leaveToMenu: vi.fn(),
 }));
 
-import PauseMenu from '../src/ui/PauseMenu';
-import ResumeCountdown from '../src/ui/ResumeCountdown';
-import TerrainLegend from '../src/ui/TerrainLegend';
-import { useStore } from '../src/ui/store';
-import { useHudStore } from '../src/ui/hudStore';
-import type { HudTeammate } from '../src/ui/hudStore';
-import type { TerrainKind } from '../src/engine/types';
-import { playUiSound, endRun, openControls, leaveToMenu } from '../src/ui/session';
+import PauseMenu from '../src/ui/game/PauseMenu';
+import ResumeCountdown from '../src/ui/game/ResumeCountdown';
+import TerrainLegend from '../src/ui/game/TerrainLegend';
+import { useStore } from '../src/ui/state/store';
+import { useHudStore } from '../src/ui/state/hudStore';
+import type { HudTeammate } from '../src/ui/state/hudStore';
+import type { TerrainKind } from '../src/engine/core/types';
+import { playUiSound, endRun, openControls, leaveToMenu } from '../src/ui/state/session';
 
 /** Build a fully-typed HUD teammate, overriding only the interesting fields. */
 function makeTeammate(over: Partial<HudTeammate> & { id: number }): HudTeammate {

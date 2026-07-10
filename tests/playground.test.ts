@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { Playground } from '../src/ui/playground';
-import { SIM_DT } from '../src/engine/constants';
-import type { InputCommand } from '../src/engine/types';
+import { Playground } from '../src/ui/state/playground';
+import { SIM_DT } from '../src/engine/core/constants';
+import type { InputCommand } from '../src/engine/core/types';
 
 /** Build an InputCommand, overriding only the fields a test cares about. */
 function inp(over: Partial<InputCommand> = {}): InputCommand {

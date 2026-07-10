@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { pushHud } from '../src/ui/hudBridge';
-import { useHudStore } from '../src/ui/hudStore';
-import { DEFAULT_MONSTER, getMonster } from '../src/engine/monsters';
-import { REVIVE_TIME } from '../src/engine/constants';
-import type { RenderState, PlayerView, BossView } from '../src/engine/types';
+import { pushHud } from '../src/ui/state/hudBridge';
+import { useHudStore } from '../src/ui/state/hudStore';
+import { DEFAULT_MONSTER, getMonster } from '../src/engine/content/monsters';
+import { REVIVE_TIME } from '../src/engine/core/constants';
+import type { RenderState, PlayerView, BossView } from '../src/engine/core/types';
 
 function player(over: Partial<PlayerView>): PlayerView {
   return {

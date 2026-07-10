@@ -13,8 +13,8 @@
  * and floating-point error that `toEqual` would reject spuriously.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SnapshotInterpolator, type SampleOpts } from '../src/render/interpolate';
-import { INTERP_DELAY_MS, ARENA_W, ARENA_H } from '../src/engine/constants';
+import { SnapshotInterpolator, type SampleOpts } from '../src/render/pipeline/interpolate';
+import { INTERP_DELAY_MS, ARENA_W, ARENA_H } from '../src/engine/core/constants';
 import type {
   Snapshot,
   PlayerView,
@@ -27,7 +27,7 @@ import type {
   GameEvent,
   Telegraph,
   RenderState,
-} from '../src/engine/types';
+} from '../src/engine/core/types';
 
 // --- Fixtures --------------------------------------------------------------
 

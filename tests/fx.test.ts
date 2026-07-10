@@ -12,9 +12,9 @@
  */
 import { describe, it, expect } from 'vitest';
 import { Container, Graphics } from 'pixi.js';
-import { Fx } from '../src/render/fx';
-import { Camera } from '../src/render/camera';
-import type { GameEvent } from '../src/engine/types';
+import { Fx } from '../src/render/overlays/fx';
+import { Camera } from '../src/render/pipeline/camera';
+import type { GameEvent } from '../src/engine/core/types';
 
 /** Number of retained draw instructions currently held by a Graphics. */
 function instructionCount(g: Graphics): number {

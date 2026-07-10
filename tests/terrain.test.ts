@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { generateTerrain } from '../src/engine/terrain';
-import { World } from '../src/engine/world';
+import { generateTerrain } from '../src/engine/world/terrain';
+import { World } from '../src/engine/world/world';
 import {
   TERRAIN_MAX_PATCHES,
   TERRAIN_SPAWN_CLEARANCE,
   ARENA_W,
   ARENA_H,
-} from '../src/engine/constants';
-import type { InputCommand } from '../src/engine/types';
+} from '../src/engine/core/constants';
+import type { InputCommand } from '../src/engine/core/types';
 
 const DT = 0.05;
 

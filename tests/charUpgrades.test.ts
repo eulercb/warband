@@ -9,10 +9,10 @@ import {
   CHAR_UPGRADES_BY_CLASS,
   HYBRID_UPGRADES,
   HYBRID_OFFER_CHANCE,
-} from '../src/engine/charUpgrades';
-import { CLASSES, CLASS_IDS, cloneAbilities } from '../src/engine/classes';
-import type { PlayerAbilityDef, AbilityKind } from '../src/engine/classes';
-import type { ClassId, Player, AbilitySlot } from '../src/engine/types';
+} from '../src/engine/content/charUpgrades';
+import { CLASSES, CLASS_IDS, cloneAbilities } from '../src/engine/content/classes';
+import type { PlayerAbilityDef, AbilityKind } from '../src/engine/content/classes';
+import type { ClassId, Player, AbilitySlot } from '../src/engine/core/types';
 
 // ---------------------------------------------------------------------------
 // Fixtures / helpers

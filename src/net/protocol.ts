@@ -2,8 +2,8 @@
  * Warband — networking protocol. All messages are JSON-serializable and sent
  * over Trystero namespaced actions. Star topology, host-authoritative.
  */
-import type { ClassId, MonsterId, InputCommand, Snapshot, FightResult } from '../engine/types';
-import type { UpgradeId } from '../engine/upgrades';
+import type { ClassId, MonsterId, InputCommand, Snapshot, FightResult } from '../engine/core/types';
+import type { UpgradeId } from '../engine/content/upgrades';
 
 /** Trystero action ids (kept short; must match across peers). */
 export const ACTIONS = {
@@ -134,7 +134,7 @@ export interface NetSession {
   localPlayerId: number | null;
   setLocalInput(input: InputCommand): void;
   /** Interpolated (client) or authoritative (host) render state for `nowMs`. */
-  getRenderState(nowMs: number): import('../engine/types').RenderState | null;
+  getRenderState(nowMs: number): import('../engine/core/types').RenderState | null;
   /** Lobby controls (implemented by both Host and Client). */
   setSelection(classId: ClassId): void;
   setReady(ready: boolean): void;

@@ -13,7 +13,7 @@ import {
   projectileAnim,
   type PlayerAnimCtx,
 } from '../src/render/sprites/entityAnim';
-import type { PlayerView, BossView, Telegraph } from '../src/engine/types';
+import type { PlayerView, BossView, Telegraph } from '../src/engine/core/types';
 
 function player(over: Partial<PlayerView> = {}): PlayerView {
   return {

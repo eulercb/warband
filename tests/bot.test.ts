@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { World } from '../src/engine/world';
-import { computeBotInput, isBotPeerId, BOT_PEER_PREFIX } from '../src/engine/bot';
-import type { InputCommand } from '../src/engine/types';
+import { World } from '../src/engine/world/world';
+import { computeBotInput, isBotPeerId, BOT_PEER_PREFIX } from '../src/engine/ai/bot';
+import type { InputCommand } from '../src/engine/core/types';
 
 function botMap(w: World): Map<string, InputCommand> {
   const map = new Map<string, InputCommand>();

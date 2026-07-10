@@ -1,6 +1,6 @@
 /**
  * Unit tests for the data-driven monster (boss) catalog + helpers in
- * src/engine/monsters.ts: per-boss definition invariants, registry lookups,
+ * src/engine/content/monsters.ts: per-boss definition invariants, registry lookups,
  * the terse ability builders' output, every boss `decide` AI branch, run /
  * encounter assembly (buildRun / buildRunSlots) and the endless cycle
  * modifiers. Decide functions are pure — we drive them with a hand-built
@@ -18,11 +18,11 @@ import {
   buildRunSlots,
   modifierForCycle,
   CYCLE_MODIFIERS,
-} from '../src/engine/monsters';
-import type { BossAbilityShape, BossDecisionCtx, MonsterDef } from '../src/engine/monsters';
-import type { MonsterId, BossTier, BossBodyShape, Boss, Player } from '../src/engine/types';
-import { Rng } from '../src/engine/math';
-import { RUN_LENGTH } from '../src/engine/constants';
+} from '../src/engine/content/monsters';
+import type { BossAbilityShape, BossDecisionCtx, MonsterDef } from '../src/engine/content/monsters';
+import type { MonsterId, BossTier, BossBodyShape, Boss, Player } from '../src/engine/core/types';
+import { Rng } from '../src/engine/core/math';
+import { RUN_LENGTH } from '../src/engine/core/constants';
 
 // ---------------------------------------------------------------------------
 // Fixtures / helpers

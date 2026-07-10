@@ -49,7 +49,7 @@ Warband also **deny-lists trackers that are known to be broken** so they don't
 waste a redundancy slot or spam the console. In particular `tracker.files.fm`
 (one of Trystero's built-in defaults) rejects the `wss://…/announce` handshake
 with an HTTP **403 Forbidden** and can never introduce peers, so it is stripped
-from the pool in `src/net/rtc.ts` (`sanitizeTrackerUrls` / `BLOCKED_TRACKER_HOSTS`).
+from the pool in `src/net/transport/rtc.ts` (`sanitizeTrackerUrls` / `BLOCKED_TRACKER_HOSTS`).
 
 ### 2. The direct connection must be establishable (NAT traversal)
 
@@ -177,9 +177,9 @@ The relay is protocol-agnostic and stateless: it never reads game payloads,
 keeps no game state, and a room evaporates when its last socket closes. The
 host's tab still runs the entire authoritative simulation, exactly as in P2P.
 
-Where it lives: `server/relay.mjs` (the server), `src/net/relayRoom.ts` (the
-client transport, a structural drop-in for the Trystero room), and the `net`
-parameter threading through `src/net/room.ts` → `Host`/`Client`.
+Where it lives: `server/relay.mjs` (the server), `src/net/transport/relayRoom.ts`
+(the client transport, a structural drop-in for the Trystero room), and the `net`
+parameter threading through `src/net/transport/room.ts` → `Host`/`Client`.
 
 ## Debugging with verbose logs
 
@@ -263,15 +263,15 @@ matchmaking (trackers) or the direct connection (NAT/TURN).
 
 ## Where this lives in the code
 
-- `src/net/room.ts` — opens the Trystero room; assembles TURN + tracker config.
-- `src/net/rtc.ts` — pure builders for the ICE/TURN + tracker configuration
+- `src/net/transport/room.ts` — opens the Trystero room; assembles TURN + tracker config.
+- `src/net/transport/rtc.ts` — pure builders for the ICE/TURN + tracker configuration
   (env-overridable, unit-tested in `tests/rtc.test.ts`); also holds the
   known-broken-tracker deny-list (`sanitizeTrackerUrls`) and the same-machine
   mDNS→loopback decision (`rewriteMdnsToLoopback`).
-- `src/net/host.ts` / `src/net/client.ts` — the star-topology host and clients;
-  they report connected-peer counts up to the UI.
+- `src/net/session/host.ts` / `src/net/session/client.ts` — the star-topology host and
+  clients; they report connected-peer counts up to the UI.
 - `src/net/log.ts` — verbose connection logging + live diagnostics (the
   `[warband:net]` logs and `warband.netDebug()` / `warband.diagnose()` console
   helpers described in "Debugging with verbose logs" above).
-- `src/ui/session.ts` — wires peer counts into the store and drives the
-  "still connecting" hint; `src/ui/Lobby.tsx` renders the connection banner.
+- `src/ui/state/session.ts` — wires peer counts into the store and drives the
+  "still connecting" hint; `src/ui/screens/Lobby.tsx` renders the connection banner.

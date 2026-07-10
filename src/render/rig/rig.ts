@@ -15,7 +15,7 @@
  *   → decor.
  */
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
-import type { EntityId } from '../../engine/types';
+import type { EntityId } from '../../engine/core/types';
 import type { Vec2 } from './math/vec';
 import { vperp } from './math/vec';
 import { solveTwoBone } from './math/ik';

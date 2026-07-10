@@ -16,9 +16,9 @@
  * cos/sin form a unit vector, so `|shakeOffset| === shakeEnergy * r`).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Camera } from '../src/render/camera';
-import { ARENA_W, ARENA_H } from '../src/engine/constants';
-import type { Vec2 } from '../src/engine/types';
+import { Camera } from '../src/render/pipeline/camera';
+import { ARENA_W, ARENA_H } from '../src/engine/core/constants';
+import type { Vec2 } from '../src/engine/core/types';
 
 // --- Mirrors of camera.ts's private tunables (kept in sync by hand) ----------
 // FOLLOW_RATE = 6, ZOOM_RATE = 3, SHAKE_DECAY = 7, FRAME_MARGIN = 120 (per sec).

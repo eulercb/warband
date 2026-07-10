@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Player, Boss, GameEvent } from '../src/engine/types';
+import type { Player, Boss, GameEvent } from '../src/engine/core/types';
 import {
   damageBoss,
   damagePlayer,
@@ -8,7 +8,7 @@ import {
   makeBuff,
   buffMult,
   tickBuffs,
-} from '../src/engine/combat';
+} from '../src/engine/combat/combat';
 
 function mkPlayer(over: Partial<Player> = {}): Player {
   return {

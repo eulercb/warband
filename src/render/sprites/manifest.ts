@@ -10,7 +10,7 @@
  * module is pure config and safe to import from tests.
  */
 import type { Texture, Spritesheet } from 'pixi.js';
-import { CLASS_COLORS, MONSTER_COLORS, ADD_RADIUS } from '../../engine/constants';
+import { CLASS_COLORS, MONSTER_COLORS, ADD_RADIUS } from '../../engine/core/constants';
 
 export type DirMode = '8dir' | '4dir' | 'flip' | 'single';
 export type DirToken = 'e' | 'se' | 's' | 'sw' | 'w' | 'nw' | 'n' | 'ne' | 'side';

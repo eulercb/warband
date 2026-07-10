@@ -15,8 +15,8 @@
  *   buttons[4] = L1  or  buttons[5] = R1 -> revive (either shoulder, held)
  */
 
-import type { InputState, Vec2 } from '../engine/types';
-import { DEAD_ZONE } from '../engine/constants';
+import type { InputState, Vec2 } from '../engine/core/types';
+import { DEAD_ZONE } from '../engine/core/constants';
 import { getBindings } from './bindings';
 
 /**

@@ -17,8 +17,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { InputManager } from '../src/input/input';
 import { useBindings } from '../src/input/bindings';
-import { DEAD_ZONE } from '../src/engine/constants';
-import type { Vec2 } from '../src/engine/types';
+import { DEAD_ZONE } from '../src/engine/core/constants';
+import type { Vec2 } from '../src/engine/core/types';
 
 const ORIGIN: Vec2 = { x: 0, y: 0 };
 

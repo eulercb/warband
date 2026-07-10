@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /**
  * Warband — component tests for the two big menu screens:
- *   • src/ui/ResultScreen.tsx — victory/defeat banner, stats table, and the
+ *   • src/ui/screens/ResultScreen.tsx — victory/defeat banner, stats table, and the
  *     between-boss upgrade phase (generic + character picks, ready-gate, endless).
- *   • src/ui/Lobby.tsx        — room code / share link, boss pick, roster, class
+ *   • src/ui/screens/Lobby.tsx        — room code / share link, boss pick, roster, class
  *     picker, ready toggle, and the host-only start / bot / gauntlet controls.
  *
  * The session control layer is fully mocked so rendering pulls in NO audio,
@@ -18,7 +18,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 // missing one would resolve to `undefined` and crash the render. shareLink must
 // return a string (Lobby renders it in a <code>); copyShareLink a resolved
 // promise (Lobby awaits it in an async click handler).
-vi.mock('../src/ui/session', () => ({
+vi.mock('../src/ui/state/session', () => ({
   // ResultScreen
   returnToLobby: vi.fn(),
   retryFight: vi.fn(),
@@ -41,11 +41,11 @@ vi.mock('../src/ui/session', () => ({
   setBotClass: vi.fn(),
 }));
 
-import ResultScreen from '../src/ui/ResultScreen';
-import Lobby from '../src/ui/Lobby';
-import { useStore } from '../src/ui/store';
-import type { AppState } from '../src/ui/store';
-import type { FightResult, ResultPlayerStat } from '../src/engine/types';
+import ResultScreen from '../src/ui/screens/ResultScreen';
+import Lobby from '../src/ui/screens/Lobby';
+import { useStore } from '../src/ui/state/store';
+import type { AppState } from '../src/ui/state/store';
+import type { FightResult, ResultPlayerStat } from '../src/engine/core/types';
 import type { LobbyPlayer } from '../src/net/protocol';
 import {
   leaveToMenu,
@@ -65,7 +65,7 @@ import {
   removeBot,
   setBotClass,
   copyShareLink,
-} from '../src/ui/session';
+} from '../src/ui/state/session';
 
 // --- fixtures --------------------------------------------------------------
 

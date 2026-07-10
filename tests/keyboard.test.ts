@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { KeyboardMouse } from '../src/input/keyboard';
 import { useBindings } from '../src/input/bindings';
-import type { Vec2 } from '../src/engine/types';
+import type { Vec2 } from '../src/engine/core/types';
 
 const ORIGIN: Vec2 = { x: 0, y: 0 };
 

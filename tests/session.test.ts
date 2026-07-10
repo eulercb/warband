@@ -42,7 +42,7 @@ function makeSpies(): Record<string, ReturnType<typeof vi.fn>> {
   return out;
 }
 
-vi.mock('../src/net/host', () => {
+vi.mock('../src/net/session/host', () => {
   class Host {
     constructor(opts: Record<string, (...a: unknown[]) => unknown>) {
       const spies = makeSpies();
@@ -53,7 +53,7 @@ vi.mock('../src/net/host', () => {
   return { Host };
 });
 
-vi.mock('../src/net/client', () => {
+vi.mock('../src/net/session/client', () => {
   class Client {
     constructor(opts: Record<string, (...a: unknown[]) => unknown>) {
       const spies = makeSpies();
@@ -82,7 +82,7 @@ vi.mock('../src/audio/sfx', () => {
   return { Sfx };
 });
 
-vi.mock('../src/net/room', () => ({
+vi.mock('../src/net/transport/room', () => ({
   generateRoomCode: vi.fn(() => 'ABC234'),
   writeRoomToHash: vi.fn(),
   shareLinkFor: vi.fn((code: string, net: string) => `https://warband/#room=${code}&net=${net}`),
@@ -92,9 +92,9 @@ vi.mock('../src/net/room', () => ({
 vi.mock('../src/net/log', () => ({ netLog: vi.fn(), netWarn: vi.fn() }));
 
 // Import the SUT and store AFTER the mocks are registered.
-import * as session from '../src/ui/session';
-import { useStore } from '../src/ui/store';
-import { Host } from '../src/net/host';
+import * as session from '../src/ui/state/session';
+import { useStore } from '../src/ui/state/store';
+import { Host } from '../src/net/session/host';
 
 function resetStore(): void {
   useStore.setState({

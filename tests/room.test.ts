@@ -7,9 +7,9 @@ import {
   readRoomFromHash,
   shareLinkFor,
   writeRoomToHash,
-} from '../src/net/room';
+} from '../src/net/transport/room';
 
-// Mirror of the unambiguous alphabet + length declared in src/net/room.ts.
+// Mirror of the unambiguous alphabet + length declared in src/net/transport/room.ts.
 // Intentionally omits O/0, I/1 and L so a code is unmistakable when read aloud.
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 6;

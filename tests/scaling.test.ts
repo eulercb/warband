@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeScaling, addCount, zoneCount } from '../src/engine/scaling';
+import { computeScaling, addCount, zoneCount } from '../src/engine/content/scaling';
 
 describe('scaling', () => {
   it('hp multiplier for n=1..4', () => {

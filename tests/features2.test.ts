@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { World } from '../src/engine/world';
-import { ARENA_W, ARENA_H } from '../src/engine/constants';
-import { applyUpgrades } from '../src/engine/upgrades';
-import { makeBuff } from '../src/engine/combat';
-import type { InputCommand, ButtonState, Projectile } from '../src/engine/types';
+import { World } from '../src/engine/world/world';
+import { ARENA_W, ARENA_H } from '../src/engine/core/constants';
+import { applyUpgrades } from '../src/engine/content/upgrades';
+import { makeBuff } from '../src/engine/combat/combat';
+import type { InputCommand, ButtonState, Projectile } from '../src/engine/core/types';
 
 function buttons(over: Partial<ButtonState> = {}): ButtonState {
   return { basic: false, a1: false, a2: false, a3: false, revive: false, ...over };

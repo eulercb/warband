@@ -4,7 +4,7 @@
  * merge/sanitize and the loopback flag are covered in rtc.test.ts.)
  */
 import { describe, it, expect } from 'vitest';
-import { relayUrl, sanitizeTrackerUrls } from '../src/net/rtc';
+import { relayUrl, sanitizeTrackerUrls } from '../src/net/transport/rtc';
 
 describe('relayUrl', () => {
   it('is null when unset or blank', () => {

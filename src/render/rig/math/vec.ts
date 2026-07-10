@@ -7,8 +7,8 @@
  * Kept separate from `engine/math.ts` so the rig module has no engine coupling
  * beyond the type and stays independently unit-testable.
  */
-export type { Vec2 } from '../../../engine/types';
-import type { Vec2 } from '../../../engine/types';
+export type { Vec2 } from '../../../engine/core/types';
+import type { Vec2 } from '../../../engine/core/types';
 
 export const v = (x: number, y: number): Vec2 => ({ x, y });
 

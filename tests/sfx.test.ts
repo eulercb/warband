@@ -15,7 +15,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { Sfx } from '../src/audio/sfx';
-import type { GameEvent, Side, Vec2 } from '../src/engine/types';
+import type { GameEvent, Side, Vec2 } from '../src/engine/core/types';
 
 // ---------------------------------------------------------------------------
 // A typed fake Web Audio graph. Only the surface the source actually uses is

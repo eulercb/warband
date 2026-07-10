@@ -10,7 +10,7 @@
  * counts as the basic attack regardless of the keyboard `basic` binding.
  */
 
-import type { InputState, Vec2 } from '../engine/types';
+import type { InputState, Vec2 } from '../engine/core/types';
 import { getBindings, type KeyAction } from './bindings';
 
 /** Whether `code` is currently bound to any action (drives track + preventDefault). */

@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 /**
  * Component tests for the two in-fight React surfaces:
- *   - src/ui/HUD.tsx      — reads hudStore + the app store, renders hero/boss/
+ *   - src/ui/game/HUD.tsx      — reads hudStore + the app store, renders hero/boss/
  *                           teammate frames, buff badges, ability buttons and the
  *                           controls hint.
- *   - src/ui/Controls.tsx — the key/gamepad rebinding overlay backed by the real
+ *   - src/ui/screens/Controls.tsx — the key/gamepad rebinding overlay backed by the real
  *                           (localStorage-persisted) bindings store.
  *
  * `@testing-library/jest-dom` is NOT installed, so assertions use `.textContent`,
@@ -15,7 +15,7 @@ import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
 
 // Mock the session module (audio + networking). HUD pulls it in transitively via
 // VolumeControl (`playUiSound`); Controls calls `closeControls`/`playUiSound`.
-vi.mock('../src/ui/session', () => ({
+vi.mock('../src/ui/state/session', () => ({
   playUiSound: vi.fn(),
   closeControls: vi.fn(),
 }));
@@ -24,14 +24,14 @@ vi.mock('../src/ui/session', () => ({
 // loop. Controls still calls it (line coverage kept); it's just a no-op here.
 vi.mock('../src/input/useGamepadMenu', () => ({ useGamepadMenu: vi.fn() }));
 
-import HUD from '../src/ui/HUD';
-import Controls from '../src/ui/Controls';
-import { useHudStore } from '../src/ui/hudStore';
-import type { HudBoss, HudTeammate } from '../src/ui/hudStore';
-import { useStore } from '../src/ui/store';
+import HUD from '../src/ui/game/HUD';
+import Controls from '../src/ui/screens/Controls';
+import { useHudStore } from '../src/ui/state/hudStore';
+import type { HudBoss, HudTeammate } from '../src/ui/state/hudStore';
+import { useStore } from '../src/ui/state/store';
 import { useBindings } from '../src/input/bindings';
-import { closeControls, playUiSound } from '../src/ui/session';
-import type { BuffView } from '../src/engine/types';
+import { closeControls, playUiSound } from '../src/ui/state/session';
+import type { BuffView } from '../src/engine/core/types';
 
 const closeControlsMock = vi.mocked(closeControls);
 const playUiSoundMock = vi.mocked(playUiSound);

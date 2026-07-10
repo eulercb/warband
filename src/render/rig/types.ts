@@ -13,7 +13,7 @@
  */
 import type { Vec2 } from './math/vec';
 import type { GaitParams } from './math/gait';
-import type { BossActionKind, PlayerState, AbilitySlot } from '../../engine/types';
+import type { BossActionKind, PlayerState, AbilitySlot } from '../../engine/core/types';
 
 export type RigId = 'spider' | 'serpent' | 'kraken' | 'treant' | 'insectoid' | 'humanoid';
 
