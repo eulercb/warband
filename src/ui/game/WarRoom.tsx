@@ -266,9 +266,10 @@ export default function WarRoom() {
         </div>
       ) : null}
 
-      {/* Accessible list overlay: the classic host-setup form. */}
+      {/* Accessible list overlay: the classic host-setup form. Scrolls (top-
+          aligned) so the tall boss grid + Create Room button are always reachable. */}
       {showList ? (
-        <div className="wb-overlay" role="dialog" aria-label="Host setup">
+        <div className="wb-overlay wb-war-listview" role="dialog" aria-label="Host setup">
           <div ref={listRef}>
             <HostSetup />
           </div>

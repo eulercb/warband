@@ -2019,3 +2019,16 @@ body {
   text-shadow: 0 1px 6px #000;
   pointer-events: none;
 }
+
+/* War-room List view: let the tall classic HostSetup form scroll (its bottom
+ * Create Room button must stay reachable) instead of centring + clipping it. */
+.wb-war-listview {
+  overflow-y: auto;
+  align-items: flex-start;
+}
+
+.wb-war-listview .wb-screen {
+  min-height: auto;
+  width: 100%;
+  padding-block: 8px;
+}
