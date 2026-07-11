@@ -128,9 +128,12 @@ export default function RewardRoom({ result }: { result: FightResult }) {
       setNextReady(desired);
       if (desired) sfx.play('uiConfirm');
     };
-    // Expose the list-view toggle to the loop via the scene ref closure.
+    // Expose the list-view toggle to the loop via the scene ref closure. Base the
+    // flip on the CURRENT effective readiness (not the private latch) so clicking
+    // while already ready-via-vortex can't strand listReady=true and defeat the
+    // "step out of the vortex to un-ready" rule.
     toggleListReadyRef.current = () => {
-      listReady = !listReady;
+      listReady = !lastSentReady;
       applyReady(listReady || scene.readyToDescend());
     };
 
@@ -254,14 +257,10 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   };
   const onToggleListReady = (): void => {
     playUiSound('uiClick');
-    if (toggleListReadyRef.current) {
-      toggleListReadyRef.current();
-    } else {
-      // Loop not running (no WebGL): drive readiness directly.
-      const next = !ready;
-      setReady(next);
-      setNextReady(next);
-    }
+    // Set synchronously in the mount effect (before the async renderer bring-up),
+    // so it is always available here — including headless, where the loop never
+    // starts. The optional-call guard only covers the post-unmount teardown.
+    toggleListReadyRef.current?.();
   };
 
   const generic = offers.generic;

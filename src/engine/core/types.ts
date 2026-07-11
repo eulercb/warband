@@ -458,6 +458,55 @@ export interface VortexView {
   standing?: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Stations (diegetic menu interaction objects; local menu/lobby scenes only)
+// ---------------------------------------------------------------------------
+
+/**
+ * A walkable menu station — the diegetic replacement for a flat menu control.
+ * `class`/`boss` are selection effigies (walk onto to pick a hero / run opener),
+ * `tier` filters the boss gallery, and the `portal` kinds are actions you walk
+ * INTO (host a run, join, open controls, ready up, start). Local-only, like
+ * totems: content-agnostic geometry the UI harness maps to a selection/action.
+ */
+export type StationKind =
+  | 'class' // pick a hero class (refId = ClassId)
+  | 'boss' // pick the run's opening boss (refId = MonsterId)
+  | 'tier' // filter the boss gallery to a difficulty tier (refId = BossTier)
+  | 'single' // run mode: a single boss fight
+  | 'gauntlet' // run mode: a full gauntlet run
+  | 'host' // commit: raise your banner (host a room)
+  | 'join' // walk into the join portal
+  | 'controls' // open the controls/rebinding overlay
+  | 'muster' // lobby: step on to ready up
+  | 'start'; // lobby: host steps on to start the fight
+
+/** Render view of a menu station (local scene worlds only; never crosses the wire). */
+export interface StationView {
+  id: EntityId;
+  kind: StationKind;
+  pos: Vec2;
+  radius: number;
+  /** Walking within this radius selects/activates the station. */
+  triggerRadius: number;
+  /** Class id / monster id / tier the station refers to (selection stations). */
+  refId?: string;
+  /** Caption drawn under/over the station. */
+  label?: string;
+  /** This station is the current selection (drives the lit/chosen look). */
+  selected?: boolean;
+  /** Greyed-out and non-interactive (e.g. host gate before a boss is chosen). */
+  disabled?: boolean;
+  /** The hero is inside the trigger ring (drives the glow / channel). */
+  active?: boolean;
+  /** Channel progress 0..1 while the hero dwells to commit (0 if not dwelling). */
+  channel?: number;
+  /** Draw as a swirling portal (walk-into action) rather than a pedestal. */
+  portal?: boolean;
+  /** Accent colour (class colour / boss colour / tier colour). */
+  color?: number;
+}
+
 export interface GroundZone {
   id: EntityId;
   kind: ZoneKind;
@@ -701,6 +750,8 @@ export interface RenderState {
   loot?: LootView[];
   /** Reward-room descent vortex (local scene world only), or null/absent. */
   vortex?: VortexView | null;
+  /** Diegetic menu stations (local menu/lobby scene only). */
+  stations?: StationView[];
 }
 
 // ---------------------------------------------------------------------------

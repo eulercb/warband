@@ -466,13 +466,18 @@ export class World {
         const speed = p.moveSpeed * buffMult(p, 'moveSpeed');
         p.pos = vadd(p.pos, vscale(move, speed * dt));
 
-        const moveDir = normalize(move);
-        for (const slot of SLOTS) {
-          // Edge-triggered by default; with auto-fire, a held button repeats
-          // (tryUseAbility still gates on cooldown, so it fires at cadence).
-          const held = cmd.buttons[slot];
-          const fired = cmd.autofire ? held : held && !p.prevButtons[slot];
-          if (fired) this.tryUseAbility(p, slot, moveDir);
+        // The reward chamber is a calm, no-combat scene: the hero walks freely
+        // but abilities are inert (no stray projectiles, and no cast-time root
+        // locking the hero mid-stride while they walk to a relic or the vortex).
+        if (this.scene !== 'reward') {
+          const moveDir = normalize(move);
+          for (const slot of SLOTS) {
+            // Edge-triggered by default; with auto-fire, a held button repeats
+            // (tryUseAbility still gates on cooldown, so it fires at cadence).
+            const held = cmd.buttons[slot];
+            const fired = cmd.autofire ? held : held && !p.prevButtons[slot];
+            if (fired) this.tryUseAbility(p, slot, moveDir);
+          }
         }
       }
 

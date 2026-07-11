@@ -22,6 +22,7 @@ import type {
   TotemView,
   LootView,
   VortexView,
+  StationView,
   BuffView,
   BuffKind,
   Vec2,
@@ -787,6 +788,79 @@ export function drawVortex(
   g.circle(x, y, eyeR).fill({ color: open ? 0xffffff : color, alpha: open ? 0.85 : 0.5 });
   if (standing) {
     g.circle(x, y, r * 1.3).stroke({ width: 2.5, color: 0xffffff, alpha: 0.4 });
+  }
+}
+
+/**
+ * Draw a diegetic menu station. Selection effigies (class/boss) draw as a lit
+ * pedestal topped by a colored banner-shard — brightened when the hero is near,
+ * ringed gold when it is the current selection, with a channel arc while the
+ * hero dwells to commit. (Portal-kind stations are added in a later phase.)
+ */
+export function drawStation(
+  g: Graphics,
+  st: StationView,
+  screen: Vec2,
+  scale: number,
+  timeSec: number,
+): void {
+  const { x, y } = screen;
+  const color = st.color ?? 0xffffff;
+  const r = st.radius * scale;
+  const active = st.active === true;
+  const selected = st.selected === true;
+  const pulse = 0.5 + 0.5 * Math.sin(timeSec * 2 + st.id);
+
+  // Trigger ring on the ground.
+  const ringR = st.triggerRadius * scale;
+  g.circle(x, y, ringR).stroke({
+    width: selected ? 3 : active ? 2.4 : 1.3,
+    color: selected ? 0xf2c14e : color,
+    alpha: selected ? 0.75 : active ? 0.5 : 0.14 + pulse * 0.06,
+  });
+  if (selected || active) g.circle(x, y, ringR).fill({ color, alpha: 0.05 });
+
+  // Channel arc: fills clockwise as the hero dwells to swap.
+  if (st.channel && st.channel > 0) {
+    const a0 = -Math.PI / 2;
+    g.arc(x, y, ringR - 2, a0, a0 + st.channel * Math.PI * 2).stroke({
+      width: 3.5,
+      color: 0xffe066,
+      alpha: 0.95,
+    });
+  }
+
+  // Grounding shadow + pedestal.
+  g.ellipse(x, y + r * 0.5, r * 1.1, r * 0.45).fill({ color: 0x000000, alpha: 0.32 });
+  g.ellipse(x, y + r * 0.34, r * 0.9, r * 0.34).fill({ color: 0x2e2a36 });
+  g.ellipse(x, y + r * 0.34, r * 0.9, r * 0.34).stroke({ width: 1.5, color: 0x14121a, alpha: 0.9 });
+
+  // Effigy: a tall banner-shard in the class colour, bobbing gently, brighter
+  // when active/selected.
+  const bob = Math.sin(timeSec * 1.8 + st.id) * 0.1 * r;
+  const topY = y - r * 1.15 - bob;
+  const midY = y - r * 0.1;
+  const alpha = selected ? 1 : active ? 0.95 : 0.72;
+  g.moveTo(x, topY)
+    .lineTo(x + r * 0.5, midY)
+    .lineTo(x, y + r * 0.15)
+    .lineTo(x - r * 0.5, midY)
+    .closePath()
+    .fill({ color, alpha });
+  // Bright inner facet.
+  g.moveTo(x, topY)
+    .lineTo(x + r * 0.5, midY)
+    .lineTo(x, midY)
+    .closePath()
+    .fill({ color: 0xffffff, alpha: alpha * 0.25 });
+  g.moveTo(x, topY)
+    .lineTo(x + r * 0.5, midY)
+    .lineTo(x, y + r * 0.15)
+    .lineTo(x - r * 0.5, midY)
+    .closePath()
+    .stroke({ width: 1.6, color: OUTLINE, alpha: 0.65 });
+  if (selected) {
+    g.circle(x, midY - r * 0.2, r * 1.5).stroke({ width: 1.4, color: 0xf2c14e, alpha: 0.3 });
   }
 }
 

@@ -123,6 +123,29 @@ describe('RewardScene: construction', () => {
     const b = scene.frame(1400);
     expect(b.tick).toBeGreaterThan(a.tick);
   });
+
+  it('is a no-combat scene: holding attack fires nothing (no cast/projectile)', () => {
+    const scene = new RewardScene('Ranger', 'ranger', offers());
+    scene.frame(1000);
+    // Mash every ability button while aiming up — in a fight this rains arrows.
+    scene.setInput(
+      inp({
+        aim: { x: 0, y: -1 },
+        buttons: { basic: true, a1: true, a2: true, a3: true, revive: false },
+        autofire: true,
+      }),
+    );
+    let combatEvents = 0;
+    let now = 1000;
+    for (let i = 0; i < 40; i++) {
+      now += 100;
+      const s = scene.frame(now);
+      combatEvents += s.events.filter(
+        (e) => e.t === 'cast' || e.t === 'projectile' || e.t === 'hit',
+      ).length;
+    }
+    expect(combatEvents).toBe(0);
+  });
 });
 
 describe('RewardScene: claiming relics', () => {

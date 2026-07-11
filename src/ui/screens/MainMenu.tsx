@@ -108,7 +108,7 @@ export function MainMenu() {
         // Freeze the hero while an overlay (class picker / controls) is up.
         const uiOpen = showPickerRef.current || useStore.getState().showControls;
 
-        const state = playground.frame(now);
+        const state = playground.frame(now, uiOpen);
         const localId = state.localPlayerId;
         const lp = localId != null ? state.players.find((p) => p.id === localId) : null;
         const localScreen = lp
@@ -135,6 +135,17 @@ export function MainMenu() {
         renderer.render(state);
         if (!useStore.getState().muted && state.events.length > 0) {
           sfx.handleEvents(state.events);
+        }
+
+        // Class effigies: walking onto one (a short dwell) swaps the hero in
+        // place — the store follows so the lobby/host pick up the new class.
+        for (const trig of playground.takeStationTriggers()) {
+          if (trig.kind === 'class' && trig.refId) {
+            const id = trig.refId as ClassId;
+            useStore.getState().setLocalClass(id);
+            playground.setClass(id);
+            playUiSound('uiConfirm');
+          }
         }
 
         // Totem dwell: stand on a totem to channel its action. A totem that

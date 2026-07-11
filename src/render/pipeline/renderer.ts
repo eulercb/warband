@@ -39,6 +39,7 @@ import {
   drawTotem,
   drawLoot,
   drawVortex,
+  drawStation,
   drawPlayerOverlay,
   drawBossOverlay,
   drawAddOverlay,
@@ -376,11 +377,13 @@ export class Renderer {
     const totems = state.totems ?? [];
     const loot = state.loot ?? [];
     const vortex = state.vortex ?? null;
+    const stations = state.stations ?? [];
     if (
       state.obstacles.length === 0 &&
       totems.length === 0 &&
       loot.length === 0 &&
-      vortex === null
+      vortex === null &&
+      stations.length === 0
     ) {
       return;
     }
@@ -400,6 +403,11 @@ export class Renderer {
     }
     for (const l of loot) {
       this.drawTiled(l.pos, l.pickupRadius, (s) => drawLoot(g, l, s, this.camera.scale, timeSec));
+    }
+    for (const st of stations) {
+      this.drawTiled(st.pos, st.triggerRadius, (s) =>
+        drawStation(g, st, s, this.camera.scale, timeSec),
+      );
     }
   }
 
@@ -564,8 +572,14 @@ export class Renderer {
     const totems = state.totems ?? [];
     const loot = state.loot ?? [];
     const vortex = state.vortex ?? null;
+    const stations = state.stations ?? [];
     this.ensureLabels(
-      state.players.length + state.bosses.length + totems.length + loot.length + (vortex ? 1 : 0),
+      state.players.length +
+        state.bosses.length +
+        totems.length +
+        loot.length +
+        (vortex ? 1 : 0) +
+        stations.length,
     );
     const scale = this.camera.scale;
     let i = 0;
@@ -620,6 +634,17 @@ export class Renderer {
       const s = this.camera.worldToScreen(vortex.pos);
       t.position.set(s.x, s.y - vortex.radius * scale - 30);
       t.alpha = vortex.open ? 1 : 0.6;
+    }
+
+    // Menu station captions (class effigy names, etc.). The selected one shows a
+    // check so the current pick reads at a glance.
+    for (const st of stations) {
+      const t = this.labels[i++];
+      t.visible = true;
+      t.text = st.selected ? `${st.label ?? ''} ✓` : (st.label ?? '');
+      const s = this.camera.worldToScreen(st.pos);
+      t.position.set(s.x, s.y - st.radius * scale - 22);
+      t.alpha = st.selected ? 1 : st.active ? 1 : 0.7;
     }
 
     for (; i < this.labels.length; i++) this.labels[i].visible = false;
@@ -709,6 +734,8 @@ function frameOf(state: RenderState): { center: Vec2; halfSpan: number } {
   // the whole chamber reads as a diorama instead of a keyhole around the hero.
   if (state.loot) for (const l of state.loot) pts.push(l.pos);
   if (state.vortex) pts.push(state.vortex.pos);
+  // Menu camp: keep the diegetic stations (class effigies…) in frame too.
+  if (state.stations) for (const st of state.stations) pts.push(st.pos);
   if (pts.length === 0) return { center: { x: ARENA_W / 2, y: ARENA_H / 2 }, halfSpan: 0 };
 
   const base = pts[0];
