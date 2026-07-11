@@ -166,6 +166,9 @@ export function damageBoss(
   boss.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(boss.hp, 0));
   source.stats.damageDealt += effective;
+  // Record recently-soaked damage so a `barbed` affix can scale its thorn burst
+  // to how hard the band is hitting (decays each tick in world.tickBossAffixes).
+  boss.recentDamageTaken = (boss.recentDamageTaken ?? 0) + effective;
   addDamageThreat(source, outgoing);
   sink.events.push({
     t: 'hit',

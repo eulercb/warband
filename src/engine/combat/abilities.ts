@@ -466,7 +466,7 @@ function emitSkillArea(
   world.events.push({ t: 'skillArea', sourceId, side: 'player', color, area });
 }
 
-interface SpawnZoneOpts {
+export interface SpawnZoneOpts {
   kind: GroundZone['kind'];
   pos: Vec2;
   radius: number;
@@ -477,9 +477,14 @@ interface SpawnZoneOpts {
   slowMult?: number;
   slowDuration?: number;
   duration: number;
+  /** Themed tint override (affix/corruption hazards); falls back to the palette. */
+  color?: number;
 }
 
-function spawnZone(world: World, o: SpawnZoneOpts): void {
+/** Spawn a ground zone. Exported so the World can place affix/corruption hazards
+ * (volatile/molten pools, vent eruptions, a healing rift) without duplicating the
+ * GroundZone construction. */
+export function spawnZone(world: World, o: SpawnZoneOpts): void {
   const zone: GroundZone = {
     id: world.allocId(),
     kind: o.kind,
@@ -494,6 +499,7 @@ function spawnZone(world: World, o: SpawnZoneOpts): void {
     duration: o.duration,
     remaining: o.duration,
     tickAccum: 0,
+    color: o.color,
   };
   world.groundZones.push(zone);
 }
@@ -519,18 +525,23 @@ function bossSlowRider(p: Player, ab: BossAbilityDef): void {
 /**
  * Resolve a boss ability's effect at execute time. `action` carries the
  * targeting locked at wind-up start (aimAngle / targetPos / targetId).
+ *
+ * Returns the total damage dealt to players by this resolution, so the World can
+ * drive on-hit affix reactions (a `vampiric` boss heals a fraction of it). AoE
+ * DoTs (void zones) and channels return 0 here — those tick later.
  */
 export function resolveBossAbility(
   world: World,
   boss: Boss,
   ab: BossAbilityDef,
   action: BossAction,
-): void {
+): number {
   // Boss offensive self-buffs (War Cry / Frenzy / Power of Night…) empower its
   // hits; twin bosses swing at a fraction of solo strength (dmgScale).
   const dmg =
     ab.damage * world.bossDamageScalar() * (boss.dmgScale ?? 1) * buffMult(boss, 'damageDealt');
   const alivePlayers = world.players.filter((p) => p.state === 'alive');
+  let dealtToPlayers = 0;
 
   world.events.push({
     t: 'cast',
@@ -546,7 +557,7 @@ export function resolveBossAbility(
       const half = ((ab.halfAngleDeg ?? 30) * Math.PI) / 180;
       for (const p of alivePlayers) {
         if (pointInCone(p.pos, boss.pos, action.aimAngle, range, half, p.radius)) {
-          damagePlayer(world, p, dmg);
+          dealtToPlayers += damagePlayer(world, p, dmg);
           bossSlowRider(p, ab);
           if (ab.stun) applyStun(world, p, ab.stun, 'bossStun');
         }
@@ -560,7 +571,7 @@ export function resolveBossAbility(
       const radius = ab.radius ?? 110;
       for (const p of alivePlayers) {
         if (pointInCircle(p.pos, center, radius, p.radius)) {
-          damagePlayer(world, p, dmg);
+          dealtToPlayers += damagePlayer(world, p, dmg);
           bossSlowRider(p, ab);
         }
       }
@@ -572,7 +583,7 @@ export function resolveBossAbility(
       const radius = ab.radius ?? 160;
       for (const p of alivePlayers) {
         if (pointInCircle(p.pos, boss.pos, radius, p.radius)) {
-          damagePlayer(world, p, dmg);
+          dealtToPlayers += damagePlayer(world, p, dmg);
           if (ab.knockback) knockback(world, p, boss.pos, ab.knockback);
           bossSlowRider(p, ab);
           if (ab.stun) applyStun(world, p, ab.stun, 'bossStun');
@@ -590,7 +601,7 @@ export function resolveBossAbility(
       const halfWidth = (ab.width ?? 45) + boss.radius * 0.5;
       for (const p of alivePlayers) {
         if (pointInSegment(p.pos, from, to, halfWidth, p.radius)) {
-          damagePlayer(world, p, dmg);
+          dealtToPlayers += damagePlayer(world, p, dmg);
           if (ab.knockback) knockback(world, p, from, ab.knockback);
           bossSlowRider(p, ab);
         }
@@ -715,22 +726,29 @@ export function resolveBossAbility(
       break;
     }
   }
+
+  return dealtToPlayers;
 }
 
-/** One Life-Drain tick: damage the locked target (if in range) and heal boss. */
-export function beamTick(world: World, boss: Boss, ab: BossAbilityDef, action: BossAction): void {
+/**
+ * One Life-Drain tick: damage the locked target (if in range) and heal boss.
+ * Returns the damage dealt so the World can drive a `vampiric` affix on top of
+ * the ability's own `healSelf`.
+ */
+export function beamTick(world: World, boss: Boss, ab: BossAbilityDef, action: BossAction): number {
   const target =
     action.targetId != null
       ? world.players.find((p) => p.id === action.targetId && p.state === 'alive')
       : null;
-  if (!target) return;
-  if (dist(boss.pos, target.pos) > (ab.range ?? 500)) return; // out-ranged: broken
+  if (!target) return 0;
+  if (dist(boss.pos, target.pos) > (ab.range ?? 500)) return 0; // out-ranged: broken
   const dealt = damagePlayer(
     world,
     target,
     ab.damage * world.bossDamageScalar() * (boss.dmgScale ?? 1) * buffMult(boss, 'damageDealt'),
   );
   if (ab.healSelf) healBoss(boss, dealt);
+  return dealt;
 }
 
 // re-export for convenience / potential external tuning

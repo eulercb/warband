@@ -83,6 +83,41 @@ export type PlayerState = 'alive' | 'downed' | 'dead';
 export type BossPhase = 'normal' | 'enraged';
 export type Side = 'player' | 'boss';
 
+/**
+ * Boss AFFIXES — modifiers rolled onto a boss at fight-gen (see content/affixes.ts).
+ * Each one bends the SAME boss into a different fight (Diablo/PoE map-mod style):
+ * a Vampiric Dragon sustains through your burst, a Splitting one buries you in
+ * adds, a Volatile one salts the floor with pools. They compose — a boss can
+ * carry several at once. Behaviour is host-authoritative (world.ts); the ids
+ * ride to clients on `BossView.affixes` purely to drive the aura + HUD chips.
+ */
+export type AffixId =
+  | 'vampiric' // heals for a fraction of the damage its attacks deal
+  | 'frenzied' // attacks faster and faster as its health falls
+  | 'splitting' // periodically calls a fresh wave of adds, on top of its kit
+  | 'volatile' // its telegraphed impacts leave a lingering damage pool
+  | 'molten' // trails burning ground wherever it walks
+  | 'warding' // periodically raises a damage-absorbing ward
+  | 'accelerating' // grows faster the longer the fight drags on
+  | 'teleporting' // blinks away from anyone who crowds it (even non-casters)
+  | 'overcharged' // its telegraphs — and the hits — swell larger
+  | 'barbed'; // retaliates with a thorn burst scaled by the damage it soaks
+
+/**
+ * Mid-fight CORRUPTION events — seeded random beats that fire during a fight to
+ * keep even a familiar boss unpredictable (Hades encounters / RoR2 void seeds).
+ * Some punish (rain, vents), some reward (a healing rift), one just herds you
+ * (collapsing arena). Host-scheduled; announced to everyone via a `corruption`
+ * GameEvent. See world/corruption.ts.
+ */
+export type CorruptionKind =
+  | 'enrageSurge' // every boss briefly roars: +damage, +speed for a few seconds
+  | 'telegraphRain' // a scatter of delayed circle strikes rains across the arena
+  | 'healingRift' // a benevolent rift blooms — stand in it to be healed
+  | 'addSwarm' // a seeded wave of adds boils up around the arena's edges
+  | 'ventEruption' // hazard vents erupt, leaving lingering pools (dynamic terrain)
+  | 'collapsingArena'; // a ring of strikes closes in, herding the band to the centre
+
 // ---------------------------------------------------------------------------
 // Buffs / debuffs
 // ---------------------------------------------------------------------------
@@ -266,6 +301,20 @@ export interface Boss {
   modColor?: number;
   /** Timer accumulator driving the modifier's periodic aura effect. */
   modAuraTimer?: number;
+
+  // Boss AFFIXES (Vampiric, Frenzied, Splitting…). All optional / absent for a
+  // plain boss. Behaviour is applied host-side in world.ts; `affixes` is the
+  // only part that crosses the wire (via BossView) to drive visuals + HUD.
+  /** Affixes rolled onto this boss at fight-gen (empty / absent = none). */
+  affixes?: AffixId[];
+  /** Per-affix cadence accumulators (splitting/molten/warding/barbed timers). */
+  affixTimers?: Record<string, number>;
+  /**
+   * Damage soaked since the last `barbed` retaliation pulse, so a Barbed boss's
+   * thorn burst scales with how hard the band is hitting it. Decays each tick;
+   * recorded in combat.damageBoss. Absent = 0.
+   */
+  recentDamageTaken?: number;
 }
 
 export interface Add {
@@ -507,6 +556,35 @@ export interface StationView {
   color?: number;
 }
 
+/**
+ * A telegraphed DELAYED strike not tied to a boss action — the primitive behind
+ * mid-fight corruption beats (telegraph rain, hazard vents, a collapsing arena).
+ * It shows a countdown telegraph while `fuse` burns down, then detonates once:
+ * damages everyone inside `radius`, optionally applies a slow, and optionally
+ * leaves a lingering ground zone (an erupted vent). Host-only world state; each
+ * one is serialized into `Snapshot.telegraphs` so clients can dodge it too.
+ */
+export interface PendingStrike {
+  id: EntityId;
+  pos: Vec2;
+  radius: number;
+  fuse: number; // seconds remaining until detonation
+  totalFuse: number; // full fuse length (drives the telegraph countdown fill)
+  damage: number; // dealt to each player inside at detonation
+  slowMult?: number; // on-detonation slow (1 / absent = none)
+  slowDuration?: number;
+  /** Accent colour hint for the telegraph (matches the corruption theme). */
+  color?: number;
+  /** Leave a lingering hazard zone at the impact point (vent eruptions). */
+  leaveZone?: {
+    kind: ZoneKind;
+    duration: number;
+    tickDamage: number;
+    slowMult?: number;
+    slowDuration?: number;
+  };
+}
+
 export interface GroundZone {
   id: EntityId;
   kind: ZoneKind;
@@ -522,6 +600,8 @@ export interface GroundZone {
   duration: number; // seconds — full lifetime, used for the render fade envelope
   remaining: number; // seconds — counts down; zone is removed at <= 0
   tickAccum: number; // accumulates toward ZONE_TICK_INTERVAL
+  /** Themed tint override (affix/corruption hazards); falls back to the per-kind palette. */
+  color?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -614,6 +694,9 @@ export type GameEvent =
   | { t: 'stunResist'; id: EntityId; pos: Vec2 }
   // The fight was just won — heroes cheer and fireworks fly (victory lap).
   | { t: 'victory'; pos: Vec2 }
+  // A mid-fight corruption beat just fired (enrage surge, telegraph rain, a
+  // healing rift…). Drives a center-screen banner + a world-anchored burst.
+  | { t: 'corruption'; kind: CorruptionKind; name: string; pos: Vec2; good?: boolean }
   // A practice dummy fell and respawned (menu playground only).
   | { t: 'dummyReset'; id: EntityId; pos: Vec2 };
 
@@ -677,6 +760,12 @@ export interface BossView {
   /** Endless "type" name prefix (e.g. "Frost") and accent colour, if modified. */
   modName?: string;
   modColor?: number;
+  /**
+   * Affixes on this boss (Vampiric, Frenzied…). Display-only over the wire: the
+   * renderer maps them to an aura colour and the HUD to name chips. Behaviour is
+   * resolved host-side. Absent / empty for a plain boss.
+   */
+  affixes?: AffixId[];
   // Presentation-only: drives boss animation clip selection (see render/sprites).
   // Carried verbatim over the wire (JSON) and never interpolated.
   action: BossActionKind; // 'idle' | 'windup' | 'channel' | 'recover'
@@ -706,6 +795,8 @@ export interface ZoneView {
   radius: number;
   duration: number;
   remaining: number;
+  /** Themed tint override (affix/corruption hazards); falls back to the palette. */
+  color?: number;
 }
 
 /** The over-the-wire fight snapshot (host -> clients). */
@@ -721,6 +812,12 @@ export interface Snapshot {
   terrain: TerrainView[];
   /** Static per-run cover obstacles that block ranged attacks. */
   obstacles: ObstacleView[];
+  /**
+   * World-level telegraphs NOT owned by a boss action — the incoming corruption
+   * strikes (rain, vents, a collapsing ring). Carried so clients can dodge them.
+   * Absent / empty when nothing is pending.
+   */
+  telegraphs?: Telegraph[];
   events: GameEvent[];
   /** Run seed — drives the renderer's procedural ground tiling (visual only). */
   seed: number;
@@ -740,6 +837,8 @@ export interface RenderState {
   groundZones: ZoneView[];
   terrain: TerrainView[];
   obstacles: ObstacleView[];
+  /** World-level corruption telegraphs (see Snapshot.telegraphs). */
+  telegraphs?: Telegraph[];
   events: GameEvent[];
   seed: number;
   localPlayerId: EntityId | null;

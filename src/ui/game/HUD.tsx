@@ -2,12 +2,13 @@
  * Warband — HUD overlay (React). Reads the throttled hudStore updated by the
  * game loop; never re-renders from the hot per-frame path directly.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useHudStore } from '../state/hudStore';
 import type { HudBoss } from '../state/hudStore';
 import { useStore } from '../state/store';
 import VolumeControl from './VolumeControl';
 import { previewAbilityTable } from '../../engine/content/charUpgrades';
+import { AFFIXES } from '../../engine/content/affixes';
 import {
   useBindings,
   keyLabelFor,
@@ -17,7 +18,7 @@ import {
 } from '../../input/bindings';
 import { buffBadges } from '../../render/overlays/buffGlyphs';
 import { CLASSES } from '../../engine/content/classes';
-import type { AbilitySlot, BuffView } from '../../engine/core/types';
+import type { AbilitySlot, BuffView, AffixId } from '../../engine/core/types';
 import type { InputSource } from '../../input/input';
 import '../hud.css';
 
@@ -48,6 +49,53 @@ function BuffChips({ buffs }: { buffs: BuffView[] }) {
         </span>
       ))}
     </span>
+  );
+}
+
+/** Boss affix name chips (Vampiric, Frenzied…), each tinted by its affix colour. */
+function AffixChips({ affixes }: { affixes: AffixId[] }) {
+  if (!affixes || affixes.length === 0) return null;
+  return (
+    <span className="hud-affixes">
+      {affixes.map((id) => {
+        const def = AFFIXES[id];
+        const hex = `#${def.color.toString(16).padStart(6, '0')}`;
+        return (
+          <span
+            key={id}
+            className="hud-affix"
+            title={def.blurb}
+            style={{ borderColor: hex, color: hex }}
+          >
+            {def.name}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/**
+ * Transient center-screen banner for a mid-fight corruption beat. Visibility is
+ * DERIVED from the store's latest beat versus the last seq we've faded out, so
+ * the effect only ever sets state inside its timeout callback (never synchronously
+ * in the effect body). A fresh `seq` re-shows the banner even for a repeat beat.
+ */
+function CorruptionBanner() {
+  const banner = useHudStore((s) => s.banner);
+  const [dismissedSeq, setDismissedSeq] = useState<number | null>(null);
+  const seq = banner?.seq ?? null;
+  useEffect(() => {
+    if (seq == null) return;
+    const id = setTimeout(() => setDismissedSeq(seq), 2400);
+    return () => clearTimeout(id);
+  }, [seq]);
+  if (!banner || banner.seq === dismissedSeq) return null;
+  return (
+    <div className={`hud-corruption${banner.good ? ' good' : ''}`} key={banner.seq}>
+      <span className="hud-corruption-tag">{banner.good ? 'Rift' : 'Corruption'}</span>
+      <span className="hud-corruption-name">{banner.text}</span>
+    </div>
   );
 }
 
@@ -114,6 +162,7 @@ function BossBar({
         {first && cycle > 0 && <span className="hud-cycle-tag">Cycle {cycle + 1}</span>}
         {label}
         {boss.phase === 'enraged' && <span className="hud-enrage-tag">ENRAGED</span>}
+        <AffixChips affixes={boss.affixes} />
         <BuffChips buffs={boss.buffs} />
       </div>
       <div className="hud-bossbar-track">
@@ -163,6 +212,9 @@ export default function HUD() {
           ))}
         </div>
       )}
+
+      {/* Transient mid-fight corruption announcement */}
+      <CorruptionBanner />
 
       {/* Teammate frames */}
       <div className="hud-teammates">

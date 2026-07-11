@@ -10,6 +10,7 @@ import type {
   AbilitySlot,
   TerrainKind,
   BuffView,
+  AffixId,
 } from '../../engine/core/types';
 import type { InputSource } from '../../input/input';
 
@@ -35,6 +36,18 @@ export interface HudBoss {
   buffs: BuffView[];
   /** Endless "type" prefix ("Frost"), or '' if none. */
   modName: string;
+  /** Affixes on this boss (Vampiric, Frenzied…), for the name chips. */
+  affixes: AffixId[];
+}
+
+/**
+ * A transient center-screen corruption announcement. `seq` increments per beat so
+ * the banner component re-triggers its show/fade even for a repeated beat name.
+ */
+export interface HudBanner {
+  text: string;
+  good: boolean;
+  seq: number;
 }
 
 export interface HudState {
@@ -56,6 +69,10 @@ export interface HudState {
 
   /** Every boss in the arena (twin encounters show one bar each). */
   bosses: HudBoss[];
+
+  /** Latest mid-fight corruption beat to announce, or null. Set per-frame by the
+   * render loop (not the throttled bridge) so a one-frame beat is never dropped. */
+  banner: HudBanner | null;
 
   teammates: HudTeammate[];
 
@@ -84,6 +101,7 @@ const INITIAL: Omit<HudState, 'set' | 'resetHud'> = {
   buffs: [],
   score: 0,
   bosses: [],
+  banner: null,
   teammates: [],
   terrainKinds: [],
   hasObstacles: false,

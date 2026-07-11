@@ -70,6 +70,7 @@ describe('hudStore: set', () => {
       phase: 'enraged',
       buffs: [],
       modName: 'Frost',
+      affixes: [],
     };
     const teammate: HudTeammate = {
       id: 2,
@@ -182,7 +183,9 @@ describe('hudStore: resetHud', () => {
       inputSource: 'gamepad',
       buffs: [{ kind: 'stun', remaining: 1, mult: 0 }],
       score: 1234,
-      bosses: [{ id: 1, name: 'X', hp: 1, maxHp: 2, phase: 'normal', buffs: [], modName: '' }],
+      bosses: [
+        { id: 1, name: 'X', hp: 1, maxHp: 2, phase: 'normal', buffs: [], modName: '', affixes: [] },
+      ],
       teammates: [
         {
           id: 2,

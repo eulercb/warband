@@ -124,6 +124,13 @@ export const BOT_MELEE_RANGE = 120; // u
 /** A bot reacts to a downed ally within this distance to res them. */
 export const BOT_REVIVE_RANGE = 340; // u
 
+// --- Attack-pattern fairness governor (see world/grammar.ts) ---
+// A twitch fight must stay dodgeable: a boss won't START a big telegraphed attack
+// aimed at a spot another hostile telegraph (a twin's cast, a corruption strike)
+// is already threatening within this gap — unless it is ENRAGED, when composing
+// telegraphs into a wall is a deliberate pressure beat. Inert for a lone boss.
+export const FAIR_TELEGRAPH_GAP = 175; // world units between overlapping impacts
+
 // --- Stalemate breaker ---
 export const SOFT_ENRAGE_TIME = 300; // s — after this, escalating boss damage
 export const SOFT_ENRAGE_RAMP = 0.05; // +5%/s boss outgoing damage past the threshold
@@ -150,6 +157,85 @@ export const TWIN_DMG_FRAC = 0.8;
 export const TWIN_BASE_CHANCE = 0.22;
 export const TWIN_CHANCE_PER_CYCLE = 0.12;
 export const TWIN_CHANCE_MAX = 0.6;
+
+// --- Boss affixes (rolled at fight-gen; see content/affixes.ts + world.ts) ---
+// Each affix bends the same boss into a different fight. All numbers are starting
+// balance points. Cadence timers accumulate in `boss.affixTimers`.
+/** Vampiric: boss heals this fraction of the damage its attacks deal to players. */
+export const AFFIX_VAMPIRIC_FRAC = 0.35;
+/** Frenzied: attacks up to this much faster, ramping in as HP falls below half. */
+export const AFFIX_FRENZY_MAX_CDR = 0.45; // 0.45 => cooldowns as low as 55%
+/** Splitting: seconds between the bonus add waves it calls on top of its kit. */
+export const AFFIX_SPLIT_INTERVAL = 11;
+/** Volatile: a lingering pool dropped at each telegraphed impact. */
+export const AFFIX_VOLATILE_ZONE_DURATION = 5;
+export const AFFIX_VOLATILE_TICK = 11; // per-0.5s tick damage inside the pool
+export const AFFIX_VOLATILE_RADIUS = 95;
+/** Molten: a short-lived burning patch trailed as the boss walks. */
+export const AFFIX_MOLTEN_INTERVAL = 0.85; // s between trail drops
+export const AFFIX_MOLTEN_ZONE_DURATION = 3;
+export const AFFIX_MOLTEN_TICK = 9;
+export const AFFIX_MOLTEN_RADIUS = 62;
+/** Warding: a periodic damage-absorbing ward (a damage-taken buff). */
+export const AFFIX_WARD_INTERVAL = 12; // s between wards
+export const AFFIX_WARD_DEF_MULT = 0.55; // incoming-damage mult while warded
+export const AFFIX_WARD_DURATION = 4;
+/** Accelerating: move speed ramps the longer the fight drags on. */
+export const AFFIX_ACCEL_RAMP = 0.012; // +1.2%/s of base move speed
+export const AFFIX_ACCEL_MAX = 1.6; // capped at +60%
+/** Overcharged: telegraph + hit radius/range swell by this factor. */
+export const AFFIX_OVERCHARGE_SCALE = 1.4;
+/** Barbed: a retaliation pulse whose damage scales with recently-soaked damage. */
+export const AFFIX_BARBED_INTERVAL = 3; // s between thorn pulses
+export const AFFIX_BARBED_RADIUS = 210;
+export const AFFIX_BARBED_FRAC = 0.5; // pulse dmg = this × recent damage soaked
+export const AFFIX_BARBED_MAX = 55; // cap per pulse (before scaling)
+export const AFFIX_BARBED_MEMORY = 2; // s half-life-ish window for "recent" damage
+/** Teleporting: a synthetic blink granted even to bosses that can't normally. */
+export const AFFIX_TELEPORT_CD = 4.5; // internal cooldown (s)
+export const AFFIX_TELEPORT_RANGE = 300;
+export const AFFIX_TELEPORT_THREATEN = 130; // blink when a hero is this close
+export const AFFIX_TELEPORT_CD_MULT = 0.6; // shortens an existing blinker's cd too
+
+// --- Mid-fight corruption events (see world/corruption.ts) ---
+// Seeded beats that fire during a fight to keep a familiar boss unpredictable.
+// Only active when the World is created with `corruption: true` (host enables it
+// for gauntlet slots past the opener and every endless cycle).
+/** Grace period (s) before the first corruption beat can fire. */
+export const CORRUPTION_FIRST_DELAY = 22;
+/** Baseline seconds between beats (randomised ±CORRUPTION_INTERVAL_JITTER). */
+export const CORRUPTION_INTERVAL = 26;
+export const CORRUPTION_INTERVAL_JITTER = 8;
+/** Each endless cycle shortens the gap between beats by this fraction (capped). */
+export const CORRUPTION_CYCLE_SPEEDUP = 0.12;
+export const CORRUPTION_MIN_INTERVAL = 12; // s — the fastest the cadence gets
+/** Telegraph-rain: strike count + per-strike geometry / fuse / damage. */
+export const CORRUPTION_RAIN_COUNT = 5;
+export const CORRUPTION_RAIN_RADIUS = 105;
+export const CORRUPTION_RAIN_FUSE = 1.5;
+export const CORRUPTION_RAIN_DAMAGE = 34;
+/** Vent eruption: erupting hazard count + lingering pool profile. */
+export const CORRUPTION_VENT_COUNT = 4;
+export const CORRUPTION_VENT_RADIUS = 96;
+export const CORRUPTION_VENT_FUSE = 1.7;
+export const CORRUPTION_VENT_DAMAGE = 26;
+export const CORRUPTION_VENT_POOL_DURATION = 6;
+export const CORRUPTION_VENT_POOL_TICK = 12;
+/** Collapsing arena: ring radius, strike count and fuse. */
+export const CORRUPTION_COLLAPSE_RADIUS = 430;
+export const CORRUPTION_COLLAPSE_COUNT = 10;
+export const CORRUPTION_COLLAPSE_FUSE = 2.2;
+export const CORRUPTION_COLLAPSE_DAMAGE = 40;
+/** Enrage surge: temporary boss empower window. */
+export const CORRUPTION_SURGE_DURATION = 9;
+export const CORRUPTION_SURGE_DMG_MULT = 1.4;
+export const CORRUPTION_SURGE_MOVE_MULT = 1.25;
+/** Healing rift: the benevolent beat — a player-side heal pool. */
+export const CORRUPTION_RIFT_RADIUS = 120;
+export const CORRUPTION_RIFT_DURATION = 8;
+export const CORRUPTION_RIFT_TICK_HEAL = 22;
+/** Add swarm: how many extra minions boil up (before player-count scaling). */
+export const CORRUPTION_SWARM_COUNT = 3;
 
 // --- Adds (skeletons) ---
 export const ADD_HP = 60;

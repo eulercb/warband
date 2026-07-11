@@ -30,6 +30,7 @@ export function pushHud(state: RenderState, source: InputSource): void {
       phase: b.phase,
       buffs: b.buffs,
       modName: b.modName ?? '',
+      affixes: b.affixes ?? [],
     })),
     teammates: state.players.map((p) => ({
       id: p.id,

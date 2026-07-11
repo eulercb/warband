@@ -66,6 +66,7 @@ export default function GameView() {
     let lastHud = 0;
     let padMenuPrev = false;
     let legendInited = false; // set the pause-menu map legend once per fight
+    let bannerSeq = 0; // increments per corruption beat (drives the HUD banner)
 
     const session = useStore.getState().session;
 
@@ -135,6 +136,16 @@ export default function GameView() {
 
         if (!useStore.getState().muted && state.events.length > 0) {
           sfx.handleEvents(state.events);
+        }
+
+        // Corruption beats are one-frame events — catch them here every frame
+        // (the HUD push below is throttled and could drop one) and raise the
+        // transient center-screen banner.
+        for (const e of state.events) {
+          if (e.t === 'corruption') {
+            bannerSeq += 1;
+            hudSet({ banner: { text: e.name, good: e.good === true, seq: bannerSeq } });
+          }
         }
 
         if (now - lastHud > 66) {

@@ -36,8 +36,9 @@ import {
 import { computeBotInput, rollPersonality, BOT_PEER_PREFIX } from '../../engine/ai/bot';
 import type { BotPersonality } from '../../engine/ai/bot';
 import { CLASSES } from '../../engine/content/classes';
-import { buildRunSlots, modifierForCycle } from '../../engine/content/monsters';
+import { buildRunSlots, modifierForCycle, getMonster } from '../../engine/content/monsters';
 import type { RunSlot } from '../../engine/content/monsters';
+import { rollAffixes } from '../../engine/content/affixes';
 import { Rng } from '../../engine/core/math';
 import { isUpgradeId } from '../../engine/content/upgrades';
 import type { UpgradeId } from '../../engine/content/upgrades';
@@ -45,6 +46,7 @@ import { isCharUpgradeId } from '../../engine/content/charUpgrades';
 import type {
   MonsterId,
   ClassId,
+  AffixId,
   Outcome,
   InputCommand,
   Snapshot,
@@ -508,6 +510,16 @@ export class Host implements NetSession {
     return buildRunSlots(this.monsterId, this.cycle, rng, this.partySize());
   }
 
+  /**
+   * Roll boss affixes for an encounter, aligned with `[lead, ...coBosses]`. Seeded
+   * from the fight seed so it is reproducible, and scaled by the run position +
+   * endless cycle (rollAffixes returns none for a fresh party's opener).
+   */
+  private rollBossAffixes(ids: MonsterId[], seed: number): AffixId[][] {
+    const rng = new Rng((seed ^ 0x5eeda11c) >>> 0 || 1);
+    return ids.map((id) => rollAffixes(getMonster(id).tier, this.cycle, this.runIndex, rng));
+  }
+
   /** Spin up a fresh World for `runOrder[runIndex]` and start the sim loop. */
   private beginFight(): void {
     this.clearResumeCountdown();
@@ -516,6 +528,12 @@ export class Host implements NetSession {
     const monsterId = slot[0] ?? this.monsterId;
     const coBosses = slot.slice(1);
     const modifier = modifierForCycle(this.cycle);
+    // Boss affixes + mid-fight corruption ramp with the run (gauntlet/endless).
+    // A fresh party's opening boss stays clean (rollAffixes returns none and the
+    // corruption gate is false); slots past the opener and every endless cycle
+    // get spicier. Single fights stay pure — neither is enabled.
+    const spicy = this.gauntlet && (this.runIndex > 0 || this.cycle > 0);
+    const corruption = spicy;
 
     // World roster carries each hero's accumulated upgrades + carried score
     // (host-authoritative); bots earn no upgrades and no score.
@@ -531,6 +549,11 @@ export class Host implements NetSession {
 
     const playerCount = roster.length;
     const seed = (Math.random() * 2 ** 31) | 0;
+    // Roll each boss's affixes deterministically from the fight seed (the opener
+    // of a fresh run rolls none; later slots + endless cycles roll more).
+    const bossAffixes = this.gauntlet
+      ? this.rollBossAffixes([monsterId, ...coBosses], seed)
+      : undefined;
 
     // Fresh fight state.
     this.latestInput.clear();
@@ -547,6 +570,8 @@ export class Host implements NetSession {
       cycle: this.cycle,
       modifier,
       coBosses,
+      bossAffixes,
+      corruption,
     });
     this.localPlayerId = this.world.playerIdByPeer(selfId);
 

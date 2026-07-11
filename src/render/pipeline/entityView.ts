@@ -39,6 +39,7 @@ import {
   ZONE_FADE_OUT,
 } from '../../engine/core/constants';
 import { getMonster } from '../../engine/content/monsters';
+import { affixColors } from '../../engine/content/affixes';
 import { clamp } from '../../engine/core/math';
 
 const OUTLINE = 0x0a0a12;
@@ -259,6 +260,42 @@ export function drawPlayerOverlay(
   drawBar(g, x, y - r - 9, Math.max(22, r * 2), 4, hpFrac, downed ? 0x9a9a9a : hpColor(hpFrac));
 }
 
+/**
+ * Draw an AFFIX corona around a boss: a slow-rotating ring of motes coloured by
+ * its affixes (a Vampiric Frenzied boss orbits crimson + orange), so an "elite"
+ * boss reads as procedurally distinct at a glance — pairing the procedural
+ * BEHAVIOUR (world.ts) with a procedural APPEARANCE. Graphics-only + cheap; must
+ * be drawn for BOTH the geometry path (drawBoss) and the rig path (drawBossOverlay).
+ */
+export function drawAffixAura(
+  g: Graphics,
+  x: number,
+  y: number,
+  bodyR: number,
+  affixes: import('../../engine/core/types').AffixId[] | undefined,
+  timeSec: number,
+): void {
+  const colors = affixColors(affixes);
+  if (colors.length === 0) return;
+  const ringR = bodyR + 12;
+  const pulse = 0.5 + 0.5 * Math.sin(timeSec * 2.5);
+  // A thin ring in the primary colour anchors the corona.
+  g.circle(x, y, ringR).stroke({ width: 2, color: colors[0], alpha: 0.3 + 0.25 * pulse });
+  // Orbiting motes, cycling through every affix's colour.
+  const motes = 3 + colors.length * 3;
+  const spin = timeSec * 0.8;
+  const moteR = Math.max(1.6, bodyR * 0.07);
+  for (let i = 0; i < motes; i++) {
+    const a = spin + (i / motes) * Math.PI * 2;
+    const mr = ringR + 4 + 3 * Math.sin(timeSec * 3 + i);
+    const color = colors[i % colors.length];
+    g.circle(x + Math.cos(a) * mr, y + Math.sin(a) * mr, moteR).fill({
+      color,
+      alpha: 0.45 + 0.4 * pulse,
+    });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Boss
 // ---------------------------------------------------------------------------
@@ -286,6 +323,9 @@ export function drawBoss(
     g.circle(x, y, r * 1.3).fill({ color: b.modColor, alpha: 0.1 + 0.06 * p });
     g.circle(x, y, r + 8).stroke({ width: 2, color: b.modColor, alpha: 0.4 + 0.25 * p });
   }
+
+  // Affix corona (Vampiric / Frenzied / … — elite look). Geometry path.
+  drawAffixAura(g, x, y, r, b.affixes, timeSec);
 
   // Grounding shadow.
   g.ellipse(x, y + r * 0.5, r * 1.0, r * 0.45).fill({ color: 0x000000, alpha: 0.28 });
@@ -336,6 +376,9 @@ export function drawBossOverlay(
     g.circle(x, y, r * 1.3).fill({ color: b.modColor, alpha: 0.1 + 0.06 * p });
     g.circle(x, y, r + 8).stroke({ width: 2, color: b.modColor, alpha: 0.4 + 0.25 * p });
   }
+
+  // Affix corona — drawn here for sprite/rig bosses (body isn't in this pass).
+  drawAffixAura(g, x, y, r, b.affixes, timeSec);
 
   const fx = x + Math.cos(b.facing) * r;
   const fy = y + Math.sin(b.facing) * r;
@@ -420,7 +463,8 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
 // ---------------------------------------------------------------------------
 
 export function drawZone(g: Graphics, z: ZoneView, screen: Vec2, scale: number): void {
-  const color = ZONE_COLORS[z.kind] ?? 0xffffff;
+  // A themed tint override (affix/corruption hazards) wins over the per-kind palette.
+  const color = z.color ?? ZONE_COLORS[z.kind] ?? 0xffffff;
   const r = z.radius * scale;
   const { x, y } = screen;
 

@@ -19,9 +19,12 @@ import type {
   PlayerView,
   BossView,
   Telegraph,
+  PendingStrike,
+  BossAction,
   EntityId,
   ClassId,
   MonsterId,
+  AffixId,
   Outcome,
   FightResult,
   AbilitySlot,
@@ -50,6 +53,34 @@ import {
   SCORE_PER_DEATH,
   TWIN_HP_FRAC,
   TWIN_DMG_FRAC,
+  ADD_HP,
+  ADD_MOVE_SPEED,
+  ADD_RADIUS,
+  AFFIX_VAMPIRIC_FRAC,
+  AFFIX_FRENZY_MAX_CDR,
+  AFFIX_SPLIT_INTERVAL,
+  AFFIX_VOLATILE_ZONE_DURATION,
+  AFFIX_VOLATILE_TICK,
+  AFFIX_VOLATILE_RADIUS,
+  AFFIX_MOLTEN_INTERVAL,
+  AFFIX_MOLTEN_ZONE_DURATION,
+  AFFIX_MOLTEN_TICK,
+  AFFIX_MOLTEN_RADIUS,
+  AFFIX_WARD_INTERVAL,
+  AFFIX_WARD_DEF_MULT,
+  AFFIX_WARD_DURATION,
+  AFFIX_ACCEL_RAMP,
+  AFFIX_ACCEL_MAX,
+  AFFIX_OVERCHARGE_SCALE,
+  AFFIX_BARBED_INTERVAL,
+  AFFIX_BARBED_RADIUS,
+  AFFIX_BARBED_FRAC,
+  AFFIX_BARBED_MAX,
+  AFFIX_BARBED_MEMORY,
+  AFFIX_TELEPORT_CD,
+  AFFIX_TELEPORT_RANGE,
+  AFFIX_TELEPORT_THREATEN,
+  AFFIX_TELEPORT_CD_MULT,
 } from '../core/constants';
 import { generateTerrain } from './terrain';
 import { generateObstacles } from './obstacles';
@@ -73,7 +104,8 @@ import type { UpgradeId } from '../content/upgrades';
 import { applyCharUpgrades } from '../content/charUpgrades';
 import { getMonster, abilityById } from '../content/monsters';
 import type { MonsterDef, BossModifier } from '../content/monsters';
-import { computeScaling } from '../content/scaling';
+import { hasAffix, AFFIXES } from '../content/affixes';
+import { computeScaling, addCount } from '../content/scaling';
 import type { ScalingResult } from '../content/scaling';
 import {
   tickBuffs,
@@ -89,7 +121,11 @@ import {
   healPlayer,
 } from '../combat/combat';
 import { decayThreat, nthThreatTarget } from '../combat/threat';
-import { resolvePlayerAbility, resolveBossAbility, beamTick } from '../combat/abilities';
+import { resolvePlayerAbility, resolveBossAbility, beamTick, spawnZone } from '../combat/abilities';
+import type { BossAbilityDef } from '../content/monsters';
+import { stepCorruption, firstCorruptionDelay } from './corruption';
+import { WALLING_SHAPES, overlapsActiveTelegraph } from './grammar';
+import { FAIR_TELEGRAPH_GAP } from '../core/constants';
 
 const SLOTS: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
 
@@ -132,6 +168,18 @@ export interface WorldInit {
    */
   coBosses?: MonsterId[];
   /**
+   * Boss AFFIXES per boss, aligned with `[monsterId, ...coBosses]`. Rolled by the
+   * host (content/affixes.rollAffixes) and applied at spawn. Absent = none, so
+   * plain fights and the vast majority of tests are unaffected.
+   */
+  bossAffixes?: AffixId[][];
+  /**
+   * Enable mid-fight CORRUPTION events (world/corruption.ts). Off by default so
+   * single fights and a fresh party's opener stay clean; the host turns it on for
+   * gauntlet slots past the opener and every endless cycle.
+   */
+  corruption?: boolean;
+  /**
    * Practice mode (the walkable menu playground): the dummy respawns instead of
    * granting victory, the party can never wipe to defeat, and interaction
    * totems are placed around the arena.
@@ -158,6 +206,8 @@ export class World {
   adds: Add[] = [];
   projectiles: Projectile[] = [];
   groundZones: GroundZone[] = [];
+  /** Telegraphed delayed strikes not tied to a boss (corruption rain / vents). */
+  pendingStrikes: PendingStrike[] = [];
   terrain: TerrainPatch[] = [];
   obstacles: Obstacle[] = [];
   /** Playground interaction pillars (practice worlds only; block movement). */
@@ -179,6 +229,15 @@ export class World {
   /** Scene mode (calm diegetic menu world): no boss, no combat, never ends. */
   scene: 'reward' | 'war' | null;
 
+  /** Mid-fight corruption events enabled for this fight (host-gated). */
+  corruptionEnabled: boolean;
+  /** Seconds until the next corruption beat fires (see world/corruption.ts). */
+  corruptionTimer = 0;
+  /** How many corruption beats have fired (drives variety / anti-repeat). */
+  corruptionCount = 0;
+  /** The last corruption kind fired, so a beat doesn't immediately repeat. */
+  lastCorruption: string | null = null;
+
   tauntTargetId: EntityId | null = null;
   tauntTimer = 0;
 
@@ -196,12 +255,15 @@ export class World {
     this.modifier = init.modifier ?? null;
     this.practice = init.practice ?? false;
     this.scene = init.scene ?? null;
+    // Corruption only runs in a real fight (never in the menu scenes / playground).
+    this.corruptionEnabled = (init.corruption ?? false) && !this.practice && this.scene === null;
+    this.corruptionTimer = this.corruptionEnabled ? firstCorruptionDelay(this) : 0;
     this.spawnPlayers(init.players);
     // A menu scene (reward chamber / war room) is heroes-only: no boss, no
     // hazards, no cover, no totems — only the harness's interaction objects.
     if (this.scene === null) {
       const ids: MonsterId[] = [init.monsterId, ...(init.coBosses ?? [])];
-      this.spawnBosses(ids);
+      this.spawnBosses(ids, init.bossAffixes);
       this.terrain = this.practice ? [] : generateTerrain(ids, init.seed, () => this.allocId());
       // Cover obstacles avoid the terrain patches so cover stays readable.
       this.obstacles = this.practice
@@ -296,7 +358,7 @@ export class World {
     });
   }
 
-  private spawnBosses(ids: MonsterId[]): void {
+  private spawnBosses(ids: MonsterId[], bossAffixes?: AffixId[][]): void {
     const twin = ids.length > 1;
     ids.forEach((id, i) => {
       const def = getMonster(id);
@@ -306,6 +368,11 @@ export class World {
       for (const ab of def.abilities) cooldowns[ab.id] = 0;
       // Spread a duo along the top of the arena so they don't spawn stacked.
       const x = (this.arena.w * (i + 1)) / (ids.length + 1);
+      const affixes = bossAffixes?.[i]?.length ? bossAffixes[i] : undefined;
+      // A Teleporting boss that can't normally blink gets a synthetic blink cd so
+      // it starts on cooldown like a real blinker rather than vanishing on tick 1.
+      const teleports = affixes?.includes('teleporting') ?? false;
+      const blinkTimer = def.blink ? def.blink.internalCd : teleports ? AFFIX_TELEPORT_CD : 0;
       this.bosses.push({
         id: this.allocId(),
         monsterId: def.id,
@@ -330,14 +397,33 @@ export class World {
         // Stagger twin decisions so their openers don't land the same tick.
         decisionTimer: BOSS_DECISION_MIN * (1 + i * 0.5),
         regen: def.regen,
-        blinkTimer: def.blink ? def.blink.internalCd : 0,
+        blinkTimer,
         buffs: [],
         dmgScale: twin ? TWIN_DMG_FRAC : 1,
         modAura: this.modifier?.aura,
         modColor: this.modifier?.color,
         modAuraTimer: 0,
+        affixes,
+        // Stagger affix cadences per boss so a duo's waves/pools don't sync up.
+        affixTimers: affixes ? this.initialAffixTimers(i) : undefined,
+        recentDamageTaken: 0,
       });
     });
+  }
+
+  /**
+   * Seed each affix's cadence accumulator with a small per-boss offset so a twin
+   * pair's molten trails / add waves / wards don't all fire on the same tick, and
+   * so the first wave/pool doesn't land the instant the fight opens.
+   */
+  private initialAffixTimers(index: number): Record<string, number> {
+    const jitter = index * 0.9;
+    return {
+      splitting: -3 + jitter, // first bonus wave lands a few seconds later
+      molten: jitter * 0.2,
+      warding: -2 + jitter,
+      barbed: jitter * 0.3,
+    };
   }
 
   /** Playground interaction pillars: Host / Join / Class / Controls totems. */
@@ -401,10 +487,14 @@ export class World {
     this.updateRevive(dt, inputs);
     this.updateProjectiles(dt);
     this.updateZones(dt);
+    this.updatePendingStrikes(dt);
     this.updateTerrain(dt);
     this.checkDownedTransitions();
     this.updateBosses(dt);
     this.updateAdds(dt);
+    // Mid-fight corruption beats (host-gated) — may add pending strikes, zones,
+    // adds or boss buffs that resolve on subsequent ticks.
+    if (this.corruptionEnabled) stepCorruption(this, dt);
     decayThreat(this.players, dt);
     this.tauntTimer = Math.max(0, this.tauntTimer - dt);
     this.separateAndClamp();
@@ -866,7 +956,11 @@ export class World {
       this.events.push({ t: 'enrage', id: boss.id, pos: { ...boss.pos } });
     }
 
-    if (hasBuff(boss, 'stun')) return; // stunned: no movement or actions
+    // Passive affix upkeep (trails, wards, waves, thorns, ramping haste). Runs
+    // whether or not the boss is stunned; the "active" ones pause while stunned.
+    const stunned = hasBuff(boss, 'stun');
+    this.tickBossAffixes(dt, boss, stunned);
+    if (stunned) return; // stunned: no movement or actions
 
     // Twin bosses split their attention: the second boss hunts the 2nd-highest
     // threat when one exists, so a duo can't simply pile onto the tank.
@@ -894,7 +988,7 @@ export class World {
         const ab = boss.action.abilityId ? abilityById(def, boss.action.abilityId) : undefined;
         while (boss.action.channelAccum >= ZONE_TICK_INTERVAL && ab) {
           boss.action.channelAccum -= ZONE_TICK_INTERVAL;
-          beamTick(this, boss, ab, boss.action);
+          this.applyVampiric(boss, beamTick(this, boss, ab, boss.action));
         }
         if (boss.action.remaining <= 0) {
           if (ab) boss.cooldowns[ab.id] = this.bossCooldown(boss, def, ab.cooldown);
@@ -967,7 +1061,340 @@ export class World {
   }
 
   private bossCooldown(boss: Boss, def: MonsterDef, base: number): number {
-    return base * (boss.phase === 'enraged' ? def.enrageCooldownMult : 1);
+    const enrage = boss.phase === 'enraged' ? def.enrageCooldownMult : 1;
+    return base * enrage * this.frenzyCooldownMult(boss);
+  }
+
+  /** Frenzied affix: attacks ramp faster as HP falls below half (1 above half). */
+  private frenzyCooldownMult(boss: Boss): number {
+    if (!hasAffix(boss, 'frenzied')) return 1;
+    const hpFrac = boss.maxHp > 0 ? boss.hp / boss.maxHp : 0;
+    if (hpFrac >= 0.5) return 1;
+    const t = Math.min(1, (0.5 - hpFrac) / 0.5); // 0 at half HP → 1 at death
+    return 1 - AFFIX_FRENZY_MAX_CDR * t;
+  }
+
+  /**
+   * Overcharged affix: swell a telegraphed ability's reach/size (returns the SAME
+   * object untouched for a non-overcharged boss, so nothing else changes). Applied
+   * at every id→numbers lookup — resolution AND the telegraph — so the danger the
+   * band sees matches the danger that lands.
+   */
+  private affixAbility(boss: Boss, ab: BossAbilityDef): BossAbilityDef {
+    if (!hasAffix(boss, 'overcharged')) return ab;
+    const s = AFFIX_OVERCHARGE_SCALE;
+    return {
+      ...ab,
+      radius: ab.radius != null ? ab.radius * s : ab.radius,
+      range: ab.range != null ? ab.range * s : ab.range,
+      width: ab.width != null ? ab.width * s : ab.width,
+    };
+  }
+
+  /**
+   * The blink config a boss acts by: its own (Lich/Wraith/…), or a synthetic one
+   * granted by the Teleporting affix to a boss that can't normally blink. A real
+   * blinker with Teleporting just blinks more often. Null = this boss never blinks.
+   */
+  private blinkConfigFor(
+    boss: Boss,
+    def: MonsterDef,
+  ): { range: number; threatenRange: number; internalCd: number } | null {
+    if (def.blink) {
+      return hasAffix(boss, 'teleporting')
+        ? { ...def.blink, internalCd: def.blink.internalCd * AFFIX_TELEPORT_CD_MULT }
+        : def.blink;
+    }
+    if (hasAffix(boss, 'teleporting')) {
+      return {
+        range: AFFIX_TELEPORT_RANGE,
+        threatenRange: AFFIX_TELEPORT_THREATEN,
+        internalCd: AFFIX_TELEPORT_CD,
+      };
+    }
+    return null;
+  }
+
+  // -------------------------------------------------------------------------
+  // Affix runtime (behaviour for the ids on boss.affixes; visuals live in the
+  // renderer / HUD off BossView.affixes). See content/affixes.ts.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Per-tick affix upkeep: the passive, cadence-driven affixes. `stunned` gates
+   * the "active" ones (a stunned boss doesn't split or lash out, but its molten
+   * ground and ward still smoulder). Cadence accumulators live in `affixTimers`.
+   */
+  private tickBossAffixes(dt: number, boss: Boss, stunned: boolean): void {
+    // Decay the rolling "recent damage" window a Barbed pulse scales from.
+    if (boss.recentDamageTaken) {
+      boss.recentDamageTaken = Math.max(0, boss.recentDamageTaken * (1 - dt / AFFIX_BARBED_MEMORY));
+    }
+    const affixes = boss.affixes;
+    if (!affixes || affixes.length === 0) return;
+    const timers = (boss.affixTimers ??= {});
+    const scalar = this.bossDamageScalar() * (boss.dmgScale ?? 1);
+
+    // Accelerating: a haste that ramps with fight time, refreshed each tick.
+    if (affixes.includes('accelerating')) {
+      const mult = Math.min(AFFIX_ACCEL_MAX, 1 + AFFIX_ACCEL_RAMP * this.elapsed);
+      applyBuff(boss, makeBuff('moveSpeed', mult, 1, 'affixAccel'));
+    }
+
+    // Molten: trail a short-lived burning patch (pools under a stationary boss).
+    if (affixes.includes('molten')) {
+      timers.molten = (timers.molten ?? 0) + dt;
+      if (timers.molten >= AFFIX_MOLTEN_INTERVAL) {
+        timers.molten = 0;
+        this.hazardZone(
+          boss.pos,
+          AFFIX_MOLTEN_RADIUS,
+          AFFIX_MOLTEN_TICK * scalar,
+          AFFIX_MOLTEN_ZONE_DURATION,
+          AFFIXES.molten.color,
+        );
+      }
+    }
+
+    // Warding: periodically wrap itself in a damage-absorbing ward.
+    if (affixes.includes('warding')) {
+      timers.warding = (timers.warding ?? 0) + dt;
+      if (timers.warding >= AFFIX_WARD_INTERVAL) {
+        timers.warding = 0;
+        applyBuff(
+          boss,
+          makeBuff('damageTaken', AFFIX_WARD_DEF_MULT, AFFIX_WARD_DURATION, 'affixWard'),
+        );
+      }
+    }
+
+    if (stunned) return; // the "active" affixes below pause while stunned
+
+    // Splitting: call a fresh add wave on top of the boss's own kit.
+    if (affixes.includes('splitting')) {
+      timers.splitting = (timers.splitting ?? 0) + dt;
+      if (timers.splitting >= AFFIX_SPLIT_INTERVAL) {
+        timers.splitting = 0;
+        this.spawnAddWave(boss.pos, addCount(this.scaling.playerCount), {
+          hpMult: 0.7,
+          speedMult: 1.1,
+          minR: boss.radius + 40,
+          maxR: boss.radius + 130,
+        });
+      }
+    }
+
+    // Barbed: a thorn burst scaled by how much the band has recently soaked in.
+    if (affixes.includes('barbed')) {
+      timers.barbed = (timers.barbed ?? 0) + dt;
+      if (timers.barbed >= AFFIX_BARBED_INTERVAL) {
+        timers.barbed = 0;
+        this.barbedPulse(boss, scalar);
+      }
+    }
+  }
+
+  /** A short-range retaliation nova; damage scales with recently-soaked damage. */
+  private barbedPulse(boss: Boss, scalar: number): void {
+    const base = Math.min(AFFIX_BARBED_MAX, (boss.recentDamageTaken ?? 0) * AFFIX_BARBED_FRAC);
+    if (base <= 1) return;
+    const dmg = base * scalar;
+    let hitAny = false;
+    for (const p of this.players) {
+      if (p.state !== 'alive') continue;
+      if (dist(p.pos, boss.pos) <= AFFIX_BARBED_RADIUS + p.radius) {
+        damagePlayer(this, p, dmg);
+        hitAny = true;
+      }
+    }
+    if (hitAny) this.events.push({ t: 'telegraph', pos: { ...boss.pos }, shape: 'circle' });
+  }
+
+  /** Resolve a boss ability, then fire its on-hit affix reactions (vampiric/volatile). */
+  private resolveBossAndReact(boss: Boss, ab: BossAbilityDef, action: BossAction): void {
+    const dealt = resolveBossAbility(this, boss, ab, action);
+    this.applyVampiric(boss, dealt);
+    this.applyVolatile(boss, ab, action);
+  }
+
+  /** Vampiric affix: heal the boss a fraction of the damage its attack just dealt. */
+  private applyVampiric(boss: Boss, dealtToPlayers: number): void {
+    if (dealtToPlayers <= 0 || !hasAffix(boss, 'vampiric')) return;
+    const before = boss.hp;
+    boss.hp = Math.min(boss.maxHp, boss.hp + dealtToPlayers * AFFIX_VAMPIRIC_FRAC);
+    const healed = boss.hp - before;
+    if (healed > 0) {
+      this.events.push({ t: 'heal', pos: { ...boss.pos }, amount: healed, targetId: boss.id });
+    }
+  }
+
+  /** Volatile affix: drop a lingering pool where a telegraphed impact just landed. */
+  private applyVolatile(boss: Boss, ab: BossAbilityDef, action: BossAction): void {
+    if (!hasAffix(boss, 'volatile')) return;
+    const center = this.volatileImpact(boss, ab, action);
+    if (!center) return; // projectile / summon / void / buff / beam: nothing to salt
+    this.hazardZone(
+      center,
+      AFFIX_VOLATILE_RADIUS,
+      AFFIX_VOLATILE_TICK * this.bossDamageScalar() * (boss.dmgScale ?? 1),
+      AFFIX_VOLATILE_ZONE_DURATION,
+      AFFIXES.volatile.color,
+    );
+  }
+
+  /** Impact point for a Volatile pool, or null for non-impact ability shapes. */
+  private volatileImpact(boss: Boss, ab: BossAbilityDef, action: BossAction): Vec2 | null {
+    switch (ab.shape) {
+      case 'circleAtTarget':
+      case 'line':
+        return action.targetPos ? { ...action.targetPos } : { ...boss.pos };
+      case 'pbaoe':
+        return { ...boss.pos };
+      case 'cone':
+        return vadd(boss.pos, fromAngle(action.aimAngle, (ab.range ?? 300) * 0.5));
+      default:
+        return null;
+    }
+  }
+
+  /** Spawn a boss-side damaging ground pool (volatile / molten / vent). */
+  private hazardZone(
+    pos: Vec2,
+    radius: number,
+    perTickDamage: number,
+    duration: number,
+    color?: number,
+  ): void {
+    spawnZone(this, {
+      kind: 'voidZone',
+      pos: { ...pos },
+      radius,
+      side: 'boss',
+      ownerId: this.bosses[0]?.id ?? 0,
+      damagePerTick: perTickDamage,
+      healPerTick: 0,
+      duration,
+      color,
+    });
+  }
+
+  /**
+   * Spawn a wave of adds around `origin`. Shared by the Splitting affix and the
+   * corruption Add-Swarm beat; the boss's own summons stay in abilities.ts.
+   */
+  spawnAddWave(
+    origin: Vec2,
+    count: number,
+    opts: { hpMult?: number; speedMult?: number; minR?: number; maxR?: number } = {},
+  ): void {
+    const hp = ADD_HP * (opts.hpMult ?? 1);
+    for (let i = 0; i < count; i++) {
+      const angle = this.rng.range(0, Math.PI * 2);
+      const r = this.rng.range(opts.minR ?? 80, opts.maxR ?? 180);
+      const pos = wrapPos(vadd(origin, fromAngle(angle, r)));
+      const minion: Add = {
+        id: this.allocId(),
+        pos,
+        hp,
+        maxHp: hp,
+        moveSpeed: ADD_MOVE_SPEED * (opts.speedMult ?? 1),
+        radius: ADD_RADIUS,
+        targetId: null,
+        attackCd: this.rng.range(0.2, 0.8),
+        buffs: [],
+      };
+      this.adds.push(minion);
+      this.events.push({ t: 'spawn', id: minion.id, kind: 'add', pos: { ...pos } });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Pending strikes — telegraphed delayed AoE not owned by a boss action. The
+  // primitive behind corruption rain / vents / a collapsing arena.
+  // -------------------------------------------------------------------------
+
+  /** Queue a telegraphed delayed strike (used by world/corruption.ts). */
+  addPendingStrike(opts: {
+    pos: Vec2;
+    radius: number;
+    fuse: number;
+    damage: number;
+    color?: number;
+    slowMult?: number;
+    slowDuration?: number;
+    leaveZone?: PendingStrike['leaveZone'];
+  }): void {
+    this.pendingStrikes.push({
+      id: this.allocId(),
+      pos: { ...opts.pos },
+      radius: opts.radius,
+      fuse: opts.fuse,
+      totalFuse: opts.fuse,
+      damage: opts.damage,
+      color: opts.color,
+      slowMult: opts.slowMult,
+      slowDuration: opts.slowDuration,
+      leaveZone: opts.leaveZone,
+    });
+  }
+
+  private updatePendingStrikes(dt: number): void {
+    if (this.pendingStrikes.length === 0) return;
+    const keep: PendingStrike[] = [];
+    for (const s of this.pendingStrikes) {
+      s.fuse -= dt;
+      if (s.fuse > 0) {
+        keep.push(s);
+        continue;
+      }
+      this.detonateStrike(s);
+    }
+    this.pendingStrikes = keep;
+  }
+
+  private detonateStrike(s: PendingStrike): void {
+    for (const p of this.players) {
+      if (p.state !== 'alive') continue;
+      if (dist(p.pos, s.pos) <= s.radius + p.radius) {
+        if (s.damage > 0) damagePlayer(this, p, s.damage);
+        if (s.slowMult != null && s.slowMult < 1) {
+          applyBuff(p, makeBuff('moveSpeed', s.slowMult, s.slowDuration ?? 2, 'strikeSlow'));
+        }
+      }
+    }
+    // Flash the impact + optionally leave a lingering hazard (vent eruptions).
+    this.events.push({ t: 'telegraph', pos: { ...s.pos }, shape: 'circle' });
+    if (s.leaveZone) {
+      spawnZone(this, {
+        kind: s.leaveZone.kind,
+        pos: { ...s.pos },
+        radius: s.radius,
+        side: 'boss',
+        ownerId: 0,
+        damagePerTick: s.leaveZone.tickDamage,
+        healPerTick: 0,
+        slowMult: s.leaveZone.slowMult,
+        slowDuration: s.leaveZone.slowDuration,
+        duration: s.leaveZone.duration,
+        color: s.color,
+      });
+    }
+  }
+
+  /** Serialize pending strikes as circle telegraphs so clients can dodge them. */
+  private worldTelegraphs(): Telegraph[] {
+    return this.pendingStrikes.map((s) => ({
+      kind: 'circle',
+      origin: { ...s.pos },
+      angle: 0,
+      range: 0,
+      radius: s.radius,
+      halfAngle: 0,
+      width: 0,
+      target: { ...s.pos },
+      remainingWindup: Math.max(0, s.fuse),
+      totalWindup: s.totalFuse,
+    }));
   }
 
   private enterRecover(boss: Boss): void {
@@ -1005,7 +1432,8 @@ export class World {
   }
 
   private handleBlink(boss: Boss, def: MonsterDef): void {
-    if (!def.blink) return;
+    const cfg = this.blinkConfigFor(boss, def);
+    if (!cfg) return;
     if (boss.blinkTimer > 0) return;
     // nearest alive player
     let nearest: Player | null = null;
@@ -1019,16 +1447,16 @@ export class World {
       }
     }
     if (!nearest) return;
-    if (Math.sqrt(best) > def.blink.threatenRange) return;
+    if (Math.sqrt(best) > cfg.threatenRange) return;
     let dir = normalize(sub(boss.pos, nearest.pos));
     if (dir.x === 0 && dir.y === 0) dir = fromAngle(this.rng.range(0, Math.PI * 2));
     const from = { ...boss.pos };
     const to = wrapPos({
-      x: boss.pos.x + dir.x * def.blink.range,
-      y: boss.pos.y + dir.y * def.blink.range,
+      x: boss.pos.x + dir.x * cfg.range,
+      y: boss.pos.y + dir.y * cfg.range,
     });
     boss.pos = to;
-    boss.blinkTimer = def.blink.internalCd;
+    boss.blinkTimer = cfg.internalCd;
     this.events.push({ t: 'blink', id: boss.id, from, to });
   }
 
@@ -1057,15 +1485,38 @@ export class World {
     if (!choice) return;
     const ab = abilityById(def, choice);
     if (!ab) return;
+    // Fairness governor: defer a big telegraphed attack rather than compose it
+    // into an undodgeable wall with another live telegraph (a twin's cast or a
+    // corruption strike). The boss simply re-decides next cycle. Inert for a lone
+    // boss with nothing pending, so single-boss fights are byte-for-byte unchanged.
+    if (this.wouldWallUnfairly(boss, ab, target)) return;
     this.startBossAbility(boss, def, ab, target);
+  }
+
+  /** True if starting `ab` now would stack an unfair telegraph wall (see grammar.ts). */
+  private wouldWallUnfairly(boss: Boss, ab: BossAbilityDef, target: Player | null): boolean {
+    // Fast path: nothing else can overlap, so a lone boss is never affected.
+    if (this.bosses.length < 2 && this.pendingStrikes.length === 0) return false;
+    if (!WALLING_SHAPES.has(ab.shape)) return false;
+    if (boss.phase === 'enraged') return false; // enrage may deliberately wall
+    const center = ab.shape === 'pbaoe' ? boss.pos : (target?.pos ?? boss.pos);
+    return overlapsActiveTelegraph(
+      center,
+      boss,
+      this.bosses,
+      this.pendingStrikes,
+      FAIR_TELEGRAPH_GAP,
+    );
   }
 
   private startBossAbility(
     boss: Boss,
     def: MonsterDef,
-    ab: import('../content/monsters').BossAbilityDef,
+    rawAb: BossAbilityDef,
     target: Player | null,
   ): void {
+    // Overcharged swells reach/size; a plain boss gets the same object back.
+    const ab = this.affixAbility(boss, rawAb);
     const alive = this.players.filter((p) => p.state === 'alive');
     let tgt = target;
     if (ab.targetRandom && alive.length > 0) tgt = this.rng.pick(alive);
@@ -1094,8 +1545,8 @@ export class World {
     }
 
     if (ab.windup <= 0) {
-      // instant: resolve now
-      resolveBossAbility(this, boss, ab, action);
+      // instant: resolve now (+ vampiric / volatile reactions)
+      this.resolveBossAndReact(boss, ab, action);
       boss.cooldowns[ab.id] = this.bossCooldown(boss, def, ab.cooldown);
       if (boss.action.kind === 'windup') this.enterRecover(boss);
     }
@@ -1107,12 +1558,14 @@ export class World {
       this.enterRecover(boss);
       return;
     }
-    const ab = abilityById(def, id);
-    if (!ab) {
+    const raw = abilityById(def, id);
+    if (!raw) {
       this.enterRecover(boss);
       return;
     }
-    resolveBossAbility(this, boss, ab, boss.action);
+    // Overcharged swells the resolved hit to match the (already-swelled) telegraph.
+    const ab = this.affixAbility(boss, raw);
+    this.resolveBossAndReact(boss, ab, boss.action);
     boss.cooldowns[ab.id] = this.bossCooldown(boss, def, ab.cooldown);
     // beam ability switches action to 'channel'; otherwise recover
     if (boss.action.kind === 'windup') this.enterRecover(boss);
@@ -1379,8 +1832,10 @@ export class World {
     const def = this.defOf(boss);
     if (a.kind !== 'windup' && a.kind !== 'channel') return null;
     if (!a.abilityId) return null;
-    const ab = abilityById(def, a.abilityId);
-    if (!ab) return null;
+    const raw = abilityById(def, a.abilityId);
+    if (!raw) return null;
+    // Show the Overcharged-swollen shape, so what the band dodges is what lands.
+    const ab = this.affixAbility(boss, raw);
 
     const base: Telegraph = {
       kind: 'circle',
@@ -1463,6 +1918,7 @@ export class World {
       abilityId: b.action.abilityId,
       modName: this.modifier?.prefix,
       modColor: this.modifier?.color,
+      affixes: b.affixes,
     };
   }
 
@@ -1493,6 +1949,7 @@ export class World {
         radius: z.radius,
         duration: z.duration,
         remaining: z.remaining,
+        color: z.color,
       })),
       terrain: this.terrain.map((t) => ({
         id: t.id,
@@ -1508,6 +1965,7 @@ export class World {
         kind: o.kind,
         variant: o.variant,
       })),
+      telegraphs: this.pendingStrikes.length > 0 ? this.worldTelegraphs() : undefined,
       events: this.events.slice(),
     };
   }

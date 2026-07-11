@@ -318,6 +318,24 @@ export class Fx {
         case 'telegraph':
           // Persistent boss telegraph is drawn from `boss.telegraph`; nothing here.
           break;
+        case 'corruption': {
+          // A mid-fight corruption beat fired — a big themed shockwave + a name
+          // floater at the party's heart. Benevolent beats (a healing rift) read
+          // green and shake softly; hostile ones read violet and hit harder.
+          const color = e.good ? 0x7dffa0 : 0x9b6cff;
+          this.spawnFloater(e.pos, e.name.toUpperCase(), color);
+          this.spawnBurst(e.pos, {
+            startR: 14,
+            endR: 320,
+            ttl: 0.85,
+            color,
+            alpha0: 0.8,
+            filled: false,
+            lineWidth: 5,
+          });
+          camera.addShake(e.good ? 8 : 18);
+          break;
+        }
       }
     }
   }
