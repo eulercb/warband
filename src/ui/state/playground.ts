@@ -173,7 +173,10 @@ export class Playground {
 
   /** Advance the class-effigy dwell; queue a swap once the hero holds their pick. */
   private updateStationDwell(dt: number): void {
-    const target = this.effigyUnder();
+    // Only commit when the hero eases to a stop on an effigy — walking THROUGH
+    // the row at speed shouldn't swap the hero at every stall it passes.
+    const moving = Math.hypot(this.input.move.x, this.input.move.y) > 0.35;
+    const target = moving ? null : this.effigyUnder();
     if (!target) {
       this.stationDwellId = null;
       this.stationDwellS = 0;

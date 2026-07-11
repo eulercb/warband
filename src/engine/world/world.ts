@@ -138,13 +138,14 @@ export interface WorldInit {
    */
   practice?: boolean;
   /**
-   * Scene mode — a calm, non-combat local world used for diegetic menus. The
-   * only scene today is `'reward'` (the between-boss chamber): heroes only, no
-   * boss, no hazards, no totems, and the sim never "finishes". Relic pickups and
-   * the descent vortex are owned by the UI harness, not the World (they are
-   * non-solid, so the World needs no knowledge of them).
+   * Scene mode — a calm, non-combat local world used for diegetic menus:
+   * `'reward'` (the between-boss chamber) or `'war'` (the boss-selection war
+   * room). In any scene it is heroes only — no boss, no hazards, no totems,
+   * abilities are inert, and the sim never "finishes". The scene's interaction
+   * objects (relics, vortex, effigies, portals) are owned by the UI harness, not
+   * the World (they are non-solid, so the World needs no knowledge of them).
    */
-  scene?: 'reward';
+  scene?: 'reward' | 'war';
 }
 
 /** Interval (s) at which an endless "type" modifier's aura fires. */
@@ -175,8 +176,8 @@ export class World {
   modifier: BossModifier | null;
   /** Practice playground: dummy respawns, party can't wipe. */
   practice: boolean;
-  /** Scene mode (e.g. the between-boss reward chamber): no combat, never ends. */
-  scene: 'reward' | null;
+  /** Scene mode (calm diegetic menu world): no boss, no combat, never ends. */
+  scene: 'reward' | 'war' | null;
 
   tauntTargetId: EntityId | null = null;
   tauntTimer = 0;
@@ -196,8 +197,9 @@ export class World {
     this.practice = init.practice ?? false;
     this.scene = init.scene ?? null;
     this.spawnPlayers(init.players);
-    // The reward chamber is heroes-only: no boss, no hazards, no cover, no totems.
-    if (this.scene !== 'reward') {
+    // A menu scene (reward chamber / war room) is heroes-only: no boss, no
+    // hazards, no cover, no totems — only the harness's interaction objects.
+    if (this.scene === null) {
       const ids: MonsterId[] = [init.monsterId, ...(init.coBosses ?? [])];
       this.spawnBosses(ids);
       this.terrain = this.practice ? [] : generateTerrain(ids, init.seed, () => this.allocId());
@@ -469,7 +471,7 @@ export class World {
         // The reward chamber is a calm, no-combat scene: the hero walks freely
         // but abilities are inert (no stray projectiles, and no cast-time root
         // locking the hero mid-stride while they walk to a relic or the vortex).
-        if (this.scene !== 'reward') {
+        if (this.scene === null) {
           const moveDir = normalize(move);
           for (const slot of SLOTS) {
             // Edge-triggered by default; with auto-fire, a held button repeats
@@ -1297,7 +1299,7 @@ export class World {
 
     // The reward chamber has no bosses and no failure state — it simply lets the
     // party mill about picking up boons, so there is nothing to resolve.
-    if (this.scene === 'reward') return;
+    if (this.scene !== null) return;
 
     if (this.practice) {
       // Playground: a felled dummy explodes and pops back up; nobody ever

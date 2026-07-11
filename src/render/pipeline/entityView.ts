@@ -23,6 +23,7 @@ import type {
   LootView,
   VortexView,
   StationView,
+  MonsterId,
   BuffView,
   BuffKind,
   Vec2,
@@ -792,10 +793,11 @@ export function drawVortex(
 }
 
 /**
- * Draw a diegetic menu station. Selection effigies (class/boss) draw as a lit
- * pedestal topped by a colored banner-shard — brightened when the hero is near,
- * ringed gold when it is the current selection, with a channel arc while the
- * hero dwells to commit. (Portal-kind stations are added in a later phase.)
+ * Draw a diegetic menu station. Dispatches by kind: class/boss effigies are lit
+ * pedestals (a banner-shard, or the boss's own silhouette); tier gates are
+ * labelled banners; and `portal` stations (host / run-mode / muster…) are
+ * swirling gateways you walk into. All share a ground ring + a channel arc that
+ * fills while the hero dwells to commit.
  */
 export function drawStation(
   g: Graphics,
@@ -806,21 +808,22 @@ export function drawStation(
 ): void {
   const { x, y } = screen;
   const color = st.color ?? 0xffffff;
-  const r = st.radius * scale;
-  const active = st.active === true;
   const selected = st.selected === true;
+  const active = st.active === true;
+  const disabled = st.disabled === true;
   const pulse = 0.5 + 0.5 * Math.sin(timeSec * 2 + st.id);
 
-  // Trigger ring on the ground.
+  // Shared ground ring.
   const ringR = st.triggerRadius * scale;
+  const ringColor = disabled ? 0x555560 : selected ? 0xf2c14e : color;
   g.circle(x, y, ringR).stroke({
     width: selected ? 3 : active ? 2.4 : 1.3,
-    color: selected ? 0xf2c14e : color,
-    alpha: selected ? 0.75 : active ? 0.5 : 0.14 + pulse * 0.06,
+    color: ringColor,
+    alpha: disabled ? 0.2 : selected ? 0.75 : active ? 0.5 : 0.14 + pulse * 0.06,
   });
-  if (selected || active) g.circle(x, y, ringR).fill({ color, alpha: 0.05 });
+  if ((selected || active) && !disabled) g.circle(x, y, ringR).fill({ color, alpha: 0.05 });
 
-  // Channel arc: fills clockwise as the hero dwells to swap.
+  // Shared channel arc (dwell-to-commit).
   if (st.channel && st.channel > 0) {
     const a0 = -Math.PI / 2;
     g.arc(x, y, ringR - 2, a0, a0 + st.channel * Math.PI * 2).stroke({
@@ -830,13 +833,37 @@ export function drawStation(
     });
   }
 
-  // Grounding shadow + pedestal.
+  if (st.portal) {
+    drawPortalStation(g, st, x, y, scale, timeSec);
+    return;
+  }
+  if (st.kind === 'boss' && st.refId) {
+    drawBossStation(g, st, x, y, scale, timeSec);
+    return;
+  }
+  if (st.kind === 'tier') {
+    drawTierStation(g, st, x, y, scale, timeSec);
+    return;
+  }
+  drawEffigyStation(g, color, st, x, y, scale, timeSec);
+}
+
+/** Class effigy: a tall banner-shard in the class colour on a pedestal. */
+function drawEffigyStation(
+  g: Graphics,
+  color: number,
+  st: StationView,
+  x: number,
+  y: number,
+  scale: number,
+  timeSec: number,
+): void {
+  const r = st.radius * scale;
+  const selected = st.selected === true;
+  const active = st.active === true;
   g.ellipse(x, y + r * 0.5, r * 1.1, r * 0.45).fill({ color: 0x000000, alpha: 0.32 });
   g.ellipse(x, y + r * 0.34, r * 0.9, r * 0.34).fill({ color: 0x2e2a36 });
   g.ellipse(x, y + r * 0.34, r * 0.9, r * 0.34).stroke({ width: 1.5, color: 0x14121a, alpha: 0.9 });
-
-  // Effigy: a tall banner-shard in the class colour, bobbing gently, brighter
-  // when active/selected.
   const bob = Math.sin(timeSec * 1.8 + st.id) * 0.1 * r;
   const topY = y - r * 1.15 - bob;
   const midY = y - r * 0.1;
@@ -847,7 +874,6 @@ export function drawStation(
     .lineTo(x - r * 0.5, midY)
     .closePath()
     .fill({ color, alpha });
-  // Bright inner facet.
   g.moveTo(x, topY)
     .lineTo(x + r * 0.5, midY)
     .lineTo(x, midY)
@@ -862,6 +888,101 @@ export function drawStation(
   if (selected) {
     g.circle(x, midY - r * 0.2, r * 1.5).stroke({ width: 1.4, color: 0xf2c14e, alpha: 0.3 });
   }
+}
+
+/** Boss effigy: the boss's own silhouette risen over a pedestal. */
+function drawBossStation(
+  g: Graphics,
+  st: StationView,
+  x: number,
+  y: number,
+  scale: number,
+  timeSec: number,
+): void {
+  const def = getMonster(st.refId as MonsterId);
+  const r = st.radius * scale;
+  const selected = st.selected === true;
+  // Pedestal.
+  g.ellipse(x, y + r * 0.55, r * 1.15, r * 0.4).fill({ color: 0x000000, alpha: 0.32 });
+  g.ellipse(x, y + r * 0.4, r * 0.95, r * 0.32).fill({ color: 0x2e2a36 });
+  // The silhouette, bobbing, facing the viewer (down).
+  const bob = Math.sin(timeSec * 1.6 + st.id) * 0.08 * r;
+  drawBossBody(g, def.bodyShape, x, y - r * 0.35 - bob, r * 0.85, def.color, Math.PI / 2);
+  if (selected) {
+    g.circle(x, y - r * 0.35, r * 1.35).stroke({ width: 1.5, color: 0xf2c14e, alpha: 0.4 });
+  }
+}
+
+/** Tier gate: a labelled banner, lit when it is the active gallery tier. */
+function drawTierStation(
+  g: Graphics,
+  st: StationView,
+  x: number,
+  y: number,
+  scale: number,
+  timeSec: number,
+): void {
+  const color = st.color ?? 0xffffff;
+  const r = st.radius * scale;
+  const selected = st.selected === true; // = active tier
+  const active = st.active === true;
+  const pulse = 0.5 + 0.5 * Math.sin(timeSec * 2 + st.id);
+  g.ellipse(x, y + r * 0.4, r * 1.0, r * 0.35).fill({ color: 0x000000, alpha: 0.3 });
+  // Two posts + a lintel (a gate).
+  const w = r * 1.1;
+  const h = r * 1.7;
+  const postW = r * 0.28;
+  const alpha = selected ? 1 : active ? 0.9 : 0.6;
+  for (const sx of [x - w / 2, x + w / 2 - postW]) {
+    g.rect(sx, y - h / 2, postW, h).fill({ color, alpha });
+    g.rect(sx, y - h / 2, postW, h).stroke({ width: 1.4, color: OUTLINE, alpha: 0.6 });
+  }
+  g.rect(x - w / 2, y - h / 2, w, r * 0.34).fill({ color, alpha });
+  // Glow through the gate when active/selected.
+  g.rect(x - w / 2 + postW, y - h / 2 + r * 0.34, w - postW * 2, h - r * 0.34).fill({
+    color,
+    alpha: selected ? 0.28 : active ? 0.18 : 0.08 + pulse * 0.05,
+  });
+}
+
+/** Portal station (host / join / run-mode / muster / start): a walk-in gateway. */
+function drawPortalStation(
+  g: Graphics,
+  st: StationView,
+  x: number,
+  y: number,
+  scale: number,
+  timeSec: number,
+): void {
+  const disabled = st.disabled === true;
+  const selected = st.selected === true;
+  const color = disabled ? 0x555560 : (st.color ?? 0x7fd4ff);
+  const r = st.radius * scale;
+  const spin = timeSec * (disabled ? 0.4 : 1.6) * (selected ? 1.5 : 1);
+  g.ellipse(x, y + r * 0.35, r * 1.1, r * 0.45).fill({ color: 0x000000, alpha: 0.3 });
+  const arms = 4;
+  for (let a = 0; a < arms; a++) {
+    const base = spin + (a / arms) * Math.PI * 2;
+    const steps = 12;
+    let started = false;
+    for (let s = 0; s <= steps; s++) {
+      const f = s / steps;
+      const rad = r * (0.15 + f * 0.95);
+      const ang = base + f * 1.5 * Math.PI * 2;
+      const px = x + Math.cos(ang) * rad;
+      const py = y + Math.sin(ang) * rad * 0.9;
+      if (!started) {
+        g.moveTo(px, py);
+        started = true;
+      } else {
+        g.lineTo(px, py);
+      }
+    }
+    g.stroke({ width: 2, color, alpha: disabled ? 0.3 : selected ? 0.8 : 0.55 });
+  }
+  const eyeR = r * (selected ? 0.34 : 0.24);
+  g.circle(x, y, eyeR + 3).fill({ color, alpha: disabled ? 0.2 : 0.45 });
+  g.circle(x, y, eyeR).fill({ color: disabled ? color : 0xffffff, alpha: disabled ? 0.4 : 0.85 });
 }
 
 /**

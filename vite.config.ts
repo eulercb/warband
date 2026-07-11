@@ -82,6 +82,7 @@ export default defineConfig({
         'src/ui/screens/MainMenu.tsx', // boots a Pixi Renderer (walkable menu)
         'src/ui/game/GameView.tsx', // boots a Pixi Renderer (in-fight view)
         'src/ui/game/RewardRoom.tsx', // boots a Pixi Renderer (walkable reward room)
+        'src/ui/game/WarRoom.tsx', // boots a Pixi Renderer (walkable war room)
         'src/ui/App.tsx', // shell that mounts MainMenu/GameView
       ],
       reporter: ['text', 'text-summary', 'lcov'],

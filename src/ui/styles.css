@@ -1958,3 +1958,25 @@ body {
   max-height: 88vh;
   overflow-y: auto;
 }
+
+/* ============================================================================
+ * War room — the walkable host-setup scene (WarRoom.tsx). Reuses the reward-room
+ * banner / inspector overlays; adds a corner panel for name + back.
+ * ==========================================================================*/
+.wb-war-panel {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  max-width: 280px;
+  padding: 14px 16px;
+  background: rgba(14, 14, 22, 0.82);
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 6;
+}
+
+.wb-war-inspect {
+  bottom: 16vh;
+}
