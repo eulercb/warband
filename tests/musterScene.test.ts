@@ -129,6 +129,25 @@ describe('MusterScene: war-horn (host)', () => {
   });
 });
 
+describe('MusterScene: class sync', () => {
+  it('swaps the walking avatar when setClass is called (keeps position)', () => {
+    const scene = new MusterScene('Aria', 'knight', false);
+    const first = scene.frame(1000);
+    expect(first.players[0].classId).toBe('knight');
+    // Nudge the hero so "keeps position" is a real assertion.
+    scene.setInput(inp({ move: { x: 1, y: 0 } }));
+    const moved = scene.frame(1250);
+    const keptX = moved.players[0].pos.x;
+    expect(keptX).toBeGreaterThan(800);
+
+    scene.setInput(inp());
+    scene.setClass('mage');
+    const s = scene.frame(1500);
+    expect(s.players[0].classId).toBe('mage');
+    expect(s.players[0].pos.x).toBeCloseTo(keptX, 3);
+  });
+});
+
 describe('MusterScene: overlay freeze', () => {
   it('holds the rune dwell frozen while an overlay is up', () => {
     const scene = new MusterScene('Aria', 'knight', false);

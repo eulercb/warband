@@ -307,6 +307,23 @@ describe('Playground: class effigies (stations)', () => {
     expect(pg.takeStationTriggers()).toHaveLength(0);
   });
 
+  it('keeps every effigy clear of every totem trigger (no double-channel)', () => {
+    const pg = new Playground('Aria', 'knight');
+    const s = pg.frame(1000);
+    const effigies = s.stations ?? [];
+    const totems = s.totems ?? [];
+    expect(effigies.length).toBeGreaterThan(0);
+    expect(totems.length).toBe(4);
+    for (const e of effigies) {
+      for (const t of totems) {
+        const d = Math.hypot(e.pos.x - t.pos.x, e.pos.y - t.pos.y);
+        // The two trigger circles must not touch, or standing on a corner
+        // effigy would also channel the totem beneath it.
+        expect(d).toBeGreaterThan(e.triggerRadius + t.triggerRadius);
+      }
+    }
+  });
+
   it('queues a class trigger when the hero dwells on another class effigy', () => {
     const pg = new Playground('Aria', 'knight');
     const first = pg.frame(1000);

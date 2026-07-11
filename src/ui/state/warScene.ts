@@ -99,6 +99,9 @@ export class WarScene {
   private stations: WarStation[] = [];
   private dwellId: number | null = null;
   private dwellS = 0;
+  /** A station that just fired; skipped until the hero steps off it (so the
+   * host portal can't hands-free re-fire every dwell while you stand on it). */
+  private armedId: number | null = null;
   private pendingTriggers: WarTrigger[] = [];
   private nextId = 1;
 
@@ -266,6 +269,17 @@ export class WarScene {
   // Interaction
   // -------------------------------------------------------------------------
 
+  /** Clear the armed latch once the hero has stepped fully off that station.
+   * Runs every frame (even while moving), so a hero can loop off-and-back
+   * without a stationary frame and still re-arm. */
+  private clearArmedLatch(): void {
+    if (this.armedId == null) return;
+    const hp = this.heroPos();
+    if (!hp) return;
+    const armed = this.stations.find((s) => s.id === this.armedId);
+    if (!armed || dist(hp, armed.pos) > armed.triggerRadius) this.armedId = null;
+  }
+
   /** The station the hero is committing to (nearest within its trigger), or null. */
   private stationUnder(): WarStation | null {
     const hp = this.heroPos();
@@ -273,6 +287,7 @@ export class WarScene {
     let best: WarStation | null = null;
     let bestFrac = 1;
     for (const s of this.stations) {
+      if (s.id === this.armedId) continue; // fired this visit — wait for step-off
       // Skip stations already reflecting the current state (no-op selections).
       if (s.kind === 'tier' && s.refId === this.activeTier) continue;
       if (s.kind === 'boss' && s.refId === this.monsterId) continue;
@@ -290,6 +305,7 @@ export class WarScene {
   }
 
   private updateDwell(dt: number): void {
+    this.clearArmedLatch(); // re-arm even while traversing off the station
     // Selection needs the hero to slow to a stop ON a station — otherwise walking
     // THROUGH the effigy row (each trigger takes longer to cross than the dwell)
     // would auto-pick everything you pass. Ease off the stick to commit.
@@ -308,6 +324,7 @@ export class WarScene {
     if (this.dwellS >= target.dwell) {
       this.dwellId = null;
       this.dwellS = 0;
+      this.armedId = target.id; // fire once per visit; re-arm on step-off
       this.commit(target);
     }
   }

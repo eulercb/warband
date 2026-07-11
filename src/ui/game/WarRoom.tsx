@@ -48,6 +48,7 @@ export default function WarRoom() {
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<WarScene | null>(null);
 
   const [showList, setShowList] = useState(false);
   const [focusBoss, setFocusBoss] = useState<MonsterId | null>(null);
@@ -60,6 +61,15 @@ export default function WarRoom() {
 
   useGamepadMenu(listRef, { enabled: showList, onBack: () => setShowList(false) });
 
+  // Keep the scene's lit effigy / portal in sync when the store changes from the
+  // List view (the classic HostSetup form) rather than from an in-world walk.
+  useEffect(() => {
+    sceneRef.current?.setMonster(monsterId);
+  }, [monsterId]);
+  useEffect(() => {
+    sceneRef.current?.setGauntlet(gauntlet);
+  }, [gauntlet]);
+
   const opener = MONSTERS[monsterId];
 
   useEffect(() => {
@@ -68,6 +78,7 @@ export default function WarRoom() {
 
     const st = useStore.getState();
     const scene = new WarScene(st.localName || 'Hero', st.localClass, st.monsterId, st.gauntlet);
+    sceneRef.current = scene;
 
     let renderer: Renderer | null = null;
     let input: InputManager | null = null;
@@ -167,6 +178,7 @@ export default function WarRoom() {
       cancelAnimationFrame(raf);
       input?.dispose();
       renderer?.dispose();
+      sceneRef.current = null;
       useHudStore.getState().resetHud();
     };
     // Mount-once by design (mirrors MainMenu / RewardRoom).

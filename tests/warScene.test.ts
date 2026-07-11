@@ -138,6 +138,15 @@ describe('WarScene: selection', () => {
     walkOnto(scene, host.pos, 40000, WAR_HOST_DWELL_S + 0.3);
     expect(scene.takeTriggers().some((t) => t.kind === 'host')).toBe(true);
   });
+
+  it('fires host only ONCE per visit — standing on it does not re-fire', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    const first = scene.frame(1000);
+    const host = (first.stations ?? []).find((x) => x.kind === 'host')!;
+    // Hold far past several host-dwell windows.
+    walkOnto(scene, host.pos, 1000, WAR_HOST_DWELL_S * 3);
+    expect(scene.takeTriggers().filter((t) => t.kind === 'host')).toHaveLength(1);
+  });
 });
 
 describe('WarScene: inspector + freeze', () => {

@@ -59,8 +59,13 @@ interface Station {
 // --- Class-effigy row geometry (world units; arena 1600 x 1000) --------------
 const EFFIGY_RADIUS = 26;
 const EFFIGY_TRIGGER_RADIUS = 46;
-/** The effigies stand on a shallow arc between the hero's spawn and centre. */
-const EFFIGY_ROW_Y = 660;
+/** The effigies stand on a shallow arc above the hero's spawn. Kept high enough
+ * (and the spread narrow enough) that the endpoint effigies clear the corner
+ * class/controls totems at y=780 (trigger radius 120) — the two circles must not
+ * touch, or standing on a corner effigy would also channel its totem. */
+const EFFIGY_ROW_Y = 580;
+/** Fraction of the arena width the effigy row spans (endpoints at 0.25w/0.75w). */
+const EFFIGY_SPREAD_FRAC = 0.5;
 
 export class Playground {
   private world: World;
@@ -86,7 +91,7 @@ export class Playground {
   /** Lay out one class effigy per class in a shallow arc the hero walks along. */
   private layoutEffigies(): void {
     const n = CLASS_IDS.length;
-    const spread = ARENA_W * 0.52;
+    const spread = ARENA_W * EFFIGY_SPREAD_FRAC;
     const startX = ARENA_W / 2 - spread / 2;
     CLASS_IDS.forEach((id, i) => {
       const x = startX + (spread * i) / (n - 1);

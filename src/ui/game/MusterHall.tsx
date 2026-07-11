@@ -42,6 +42,7 @@ export default function MusterHall() {
     let disposed = false;
     let seq = 0;
     let lastHud = 0;
+    let lastClass = st.localClass;
 
     void (async () => {
       try {
@@ -65,9 +66,13 @@ export default function MusterHall() {
         const store = useStore.getState();
         const uiOpen = store.showControls;
 
-        // Keep the rune/horn in sync with the shared lobby state.
+        // Keep the rune/horn + avatar in sync with the shared lobby state.
         scene.setReady(store.localReady);
         scene.setCanStart(computeCanStart(store));
+        if (store.localClass !== lastClass) {
+          lastClass = store.localClass;
+          scene.setClass(store.localClass);
+        }
 
         const state = scene.frame(now, uiOpen);
         const localId = state.localPlayerId;

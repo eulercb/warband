@@ -62,6 +62,8 @@ export class MusterScene {
   private input: InputCommand = ZERO_INPUT;
   private pendingEvents: GameEvent[] = [];
 
+  private readonly name: string;
+  private classId: ClassId;
   private ready = false;
   private canStart = false;
 
@@ -73,12 +75,9 @@ export class MusterScene {
   private pendingTriggers: MusterTrigger[] = [];
 
   constructor(name: string, classId: ClassId, isHost: boolean) {
-    this.world = new World({
-      monsterId: 'dummy',
-      seed: (Math.random() * 2 ** 31) | 0,
-      players: [{ peerId: LOCAL_PEER, name: name || 'Hero', classId }],
-      scene: 'war',
-    });
+    this.name = name;
+    this.classId = classId;
+    this.world = this.build(null);
     this.stations.push({
       id: 1,
       kind: 'muster',
@@ -103,8 +102,27 @@ export class MusterScene {
     }
   }
 
+  private build(keepPos: Vec2 | null): World {
+    const w = new World({
+      monsterId: 'dummy',
+      seed: (Math.random() * 2 ** 31) | 0,
+      players: [{ peerId: LOCAL_PEER, name: this.name || 'Hero', classId: this.classId }],
+      scene: 'war',
+    });
+    if (keepPos && w.players[0]) w.players[0].pos = keepPos;
+    return w;
+  }
+
   get localPlayerId(): number | null {
     return this.world.playerIdByPeer(LOCAL_PEER);
+  }
+
+  /** Swap the hero's class in place (rebuilds the world, keeps the position). */
+  setClass(classId: ClassId): void {
+    if (classId === this.classId) return;
+    this.classId = classId;
+    const prev = this.world.players[0];
+    this.world = this.build(prev ? { x: prev.pos.x, y: prev.pos.y } : null);
   }
 
   setInput(cmd: InputCommand): void {
@@ -152,15 +170,20 @@ export class MusterScene {
     return p ? p.pos : null;
   }
 
+  /** Clear the armed latch once the hero has stepped fully off it. Runs every
+   * frame (even while moving) so looping off-and-back re-arms the rune. */
+  private clearArmedLatch(): void {
+    if (this.armedId == null) return;
+    const hp = this.heroPos();
+    if (!hp) return;
+    const armed = this.stations.find((s) => s.id === this.armedId);
+    if (!armed || dist(hp, armed.pos) > armed.triggerRadius) this.armedId = null;
+  }
+
   /** The station the hero is committing to (nearest within trigger), or null. */
   private stationUnder(): MusterStation | null {
     const hp = this.heroPos();
     if (!hp) return null;
-    // Clear the armed latch once the hero has stepped fully off it.
-    if (this.armedId != null) {
-      const armed = this.stations.find((s) => s.id === this.armedId);
-      if (!armed || dist(hp, armed.pos) > armed.triggerRadius) this.armedId = null;
-    }
     let best: MusterStation | null = null;
     let bestFrac = 1;
     for (const s of this.stations) {
@@ -178,6 +201,7 @@ export class MusterScene {
   }
 
   private updateDwell(dt: number): void {
+    this.clearArmedLatch(); // re-arm even while traversing off the rune/horn
     const moving = Math.hypot(this.input.move.x, this.input.move.y) > 0.35;
     const target = moving ? null : this.stationUnder();
     if (!target) {
