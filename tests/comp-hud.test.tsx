@@ -128,6 +128,7 @@ describe('<HUD>', () => {
       phase: 'enraged',
       buffs: [{ kind: 'damageTaken', remaining: 5, mult: 1.5 }], // vulnerable
       modName: 'Frost',
+      affixes: [],
     };
     useHudStore
       .getState()
@@ -155,6 +156,46 @@ describe('<HUD>', () => {
     expect(screen.queryByText('ENRAGED')).toBeNull();
   });
 
+  it('renders affix name chips on the boss bar', () => {
+    const boss: HudBoss = {
+      id: 2,
+      name: 'Orc',
+      hp: 80,
+      maxHp: 100,
+      phase: 'normal',
+      buffs: [],
+      modName: '',
+      affixes: ['vampiric', 'frenzied'],
+    };
+    useHudStore
+      .getState()
+      .set({ active: true, classId: 'knight', hp: 10, maxHp: 100, bosses: [boss] });
+    const { container } = render(<HUD />);
+    expect(container.querySelectorAll('.hud-affix').length).toBe(2);
+    expect(screen.getByText('Vampiric')).toBeTruthy();
+    expect(screen.getByText('Frenzied')).toBeTruthy();
+  });
+
+  it('shows a transient corruption banner and fades it after the beat', () => {
+    vi.useFakeTimers();
+    try {
+      useHudStore.getState().set({ active: true, classId: 'knight', hp: 10, maxHp: 100 });
+      const { container } = render(<HUD />);
+      expect(container.querySelector('.hud-corruption')).toBeNull();
+      act(() => {
+        useHudStore.getState().set({ banner: { text: 'Telegraph Rain', good: false, seq: 1 } });
+      });
+      expect(container.querySelector('.hud-corruption-name')?.textContent).toBe('Telegraph Rain');
+      expect(container.querySelector('.hud-corruption-tag')?.textContent).toBe('Corruption');
+      act(() => {
+        vi.advanceTimersByTime(2500);
+      });
+      expect(container.querySelector('.hud-corruption')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('hides the run tag for a single-boss fight and the cycle tag on cycle 0', () => {
     useStore.setState({ run: { index: 0, total: 1 }, cycle: 0 });
     const boss: HudBoss = {
@@ -165,6 +206,7 @@ describe('<HUD>', () => {
       phase: 'normal',
       buffs: [],
       modName: '',
+      affixes: [],
     };
     useHudStore
       .getState()

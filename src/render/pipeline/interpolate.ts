@@ -120,10 +120,12 @@ export class SnapshotInterpolator {
     const adds = this.lerpAdds(from, carry, t);
     const projectiles = this.lerpProjectiles(from, carry, t);
 
-    // Zones + terrain + obstacles + events come from the carry (newer) snapshot.
+    // Zones + terrain + obstacles + telegraphs + events come from the carry
+    // (newer) snapshot — none are position-interpolated.
     const groundZones: ZoneView[] = carry.groundZones.map((z) => ({ ...z }));
     const terrain: TerrainView[] = carry.terrain.map((t) => ({ ...t }));
     const obstacles: ObstacleView[] = carry.obstacles.map((o) => ({ ...o }));
+    const telegraphs = carry.telegraphs ? carry.telegraphs.map((t) => ({ ...t })) : undefined;
     const events = this.collectEvents();
 
     // Client-side prediction override for the local player.
@@ -146,6 +148,7 @@ export class SnapshotInterpolator {
       groundZones,
       terrain,
       obstacles,
+      telegraphs,
       events,
       localPlayerId: opts.localPlayerId,
       arena: opts.arena,

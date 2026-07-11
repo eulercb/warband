@@ -409,6 +409,41 @@ export class Sfx {
         }
         break;
 
+      case 'corruption':
+        // A mid-fight corruption beat lands. A benevolent rift shimmers bright;
+        // a hostile beat swells low and ominous with a noise rumble underneath.
+        if (this.throttle('corruption', 0.1)) {
+          if (ev.good) {
+            this.arpeggio([392, 587.33, 784], 'triangle', 0.16, 0.12, 0.08);
+          } else {
+            this.voice({
+              type: 'sawtooth',
+              freq: 70,
+              freqEnd: 130,
+              dur: 0.4,
+              peak: 0.2,
+              attack: 0.02,
+            });
+            this.voice({
+              type: 'sawtooth',
+              freq: 70,
+              freqEnd: 130,
+              dur: 0.4,
+              peak: 0.16,
+              attack: 0.02,
+              detune: 24,
+            });
+            this.noiseVoice({
+              dur: 0.3,
+              peak: 0.12,
+              filterType: 'bandpass',
+              filterFreq: 400,
+              filterFreqEnd: 1400,
+            });
+          }
+        }
+        break;
+
       // 'hit' player/boss handled above; no default sound for the rest.
       default:
         break;

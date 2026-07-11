@@ -463,6 +463,11 @@ export class Renderer {
     for (const boss of state.bosses) {
       if (boss.telegraph) this.fx.drawTelegraph(g, boss.telegraph, this.camera);
     }
+    // World-level corruption telegraphs (rain / vents / collapsing ring) that
+    // aren't owned by any boss action — drawn with the same countdown fill.
+    if (state.telegraphs) {
+      for (const tg of state.telegraphs) this.fx.drawTelegraph(g, tg, this.camera);
+    }
   }
 
   private drawEntities(state: RenderState, nowMs: number): void {

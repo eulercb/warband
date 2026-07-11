@@ -382,6 +382,87 @@
   letter-spacing: 0.02em;
 }
 
+/* Boss affix chips (Vampiric, Frenzied…) — each tinted by its affix colour. */
+.hud-affixes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+.hud-affix {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  background: rgba(0, 0, 0, 0.45);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px #000;
+}
+
+/* Transient mid-fight corruption announcement (center screen, self-fading). */
+.hud-corruption {
+  position: absolute;
+  top: 26%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  z-index: 30;
+  text-align: center;
+  animation: hud-corruption-pop 2.4s ease-out forwards;
+}
+.hud-corruption-tag {
+  font-size: 12px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #c9a6ff;
+  text-shadow: 0 2px 8px #000;
+}
+.hud-corruption.good .hud-corruption-tag {
+  color: #9dffbf;
+}
+.hud-corruption-name {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #efe6ff;
+  text-shadow:
+    0 0 18px rgba(155, 108, 255, 0.8),
+    0 3px 10px #000;
+}
+.hud-corruption.good .hud-corruption-name {
+  text-shadow:
+    0 0 18px rgba(125, 255, 160, 0.8),
+    0 3px 10px #000;
+}
+@keyframes hud-corruption-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.7);
+  }
+  12% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.05);
+  }
+  20% {
+    transform: translateX(-50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
 /* Controller glyphs read a touch larger / cooler than keyboard letters. */
 .hud-ability-key.pad {
   color: #cfe3ff;
