@@ -9,7 +9,7 @@ import { sfx, leaveToMenu } from './state/session';
 import MainMenu from './screens/MainMenu';
 import WarRoom from './game/WarRoom';
 import JoinScreen from './screens/JoinScreen';
-import Lobby from './screens/Lobby';
+import MusterHall from './game/MusterHall';
 import GameView from './game/GameView';
 import ResultScreen from './screens/ResultScreen';
 import Controls from './screens/Controls';
@@ -42,7 +42,7 @@ function Screen({ phase }: { phase: ReturnType<typeof useStore.getState>['phase'
     case 'join':
       return <JoinScreen />;
     case 'lobby':
-      return <Lobby />;
+      return <MusterHall />;
     case 'waiting':
       return <Waiting />;
     case 'game':
