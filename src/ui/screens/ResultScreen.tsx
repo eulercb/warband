@@ -1,12 +1,13 @@
 /**
- * Warband — post-fight results + between-boss upgrade phase.
+ * Warband — post-fight results + terminal upgrade phases.
  *
- * Renders the victory/defeat banner, time-to-kill and a per-player stats table
- * (with MVP callouts + run score). Between bosses each hero picks BOTH a generic
- * upgrade and a class-specific character upgrade, then marks themselves ready;
- * the run only advances once EVERYONE is ready (no countdown). Clearing a whole
- * run shows Victory with a "Continue (Endless)" option that carries everything
- * into a harder cycle. Fully controller-navigable.
+ * The BETWEEN-BOSS upgrade phase (another boss still queued) is now the walkable
+ * RewardRoom — walk over relics to claim boons, into the vortex to descend — so
+ * this screen delegates that case to <RewardRoom>. What remains here are the
+ * flat, once-per-run TERMINAL results: a single-fight victory/defeat, and the
+ * "RUN CLEARED" endless offer (bank your boons, then the host presses on into a
+ * harder cycle). Both show the victory/defeat banner, time-to-kill and a
+ * per-player stats table (MVP callouts + run score). Fully controller-navigable.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
@@ -17,7 +18,6 @@ import {
   leaveToMenu,
   chooseUpgrade,
   chooseCharUpgrade,
-  setNextReady,
   playUiSound,
 } from '../state/session';
 import { CLASSES } from '../../engine/content/classes';
@@ -25,6 +25,7 @@ import { MONSTERS } from '../../engine/content/monsters';
 import { UPGRADES, rollUpgradeChoices, type UpgradeId } from '../../engine/content/upgrades';
 import { CHAR_UPGRADES, rollCharChoices } from '../../engine/content/charUpgrades';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
+import RewardRoom from '../game/RewardRoom';
 
 /** Format milliseconds as `m:ss.mmm` (>= 1 min) or `s.d`s (under a minute). */
 function formatTime(ms: number): string {
@@ -45,8 +46,6 @@ export function ResultScreen() {
   const localClass = useStore((s) => s.localClass);
   const myUpgrades = useStore((s) => s.myUpgrades);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
-  const readyReady = useStore((s) => s.nextReadyReady);
-  const readyTotal = useStore((s) => s.nextReadyTotal);
 
   const panelRef = useRef<HTMLDivElement>(null);
   useGamepadMenu(panelRef);
@@ -54,20 +53,17 @@ export function ResultScreen() {
   const nextMonsterId = result?.nextMonsterId ?? null;
   const advancing = !!nextMonsterId; // another boss queued in this run
   const endlessAvailable = !!result?.endlessAvailable; // cleared the whole run
-  const showUpgrades = advancing || endlessAvailable;
+  // The endless offer still lets you bank a boon that carries into the next cycle.
+  const showUpgrades = endlessAvailable;
 
-  // Offers for this round: 3 generic + 4 character picks (class pool, with a
-  // chance one is a wild cross-class HYBRID — see engine/charUpgrades.ts).
+  // Offers for the endless bank (3 generic + 4 character picks). Rolled randomly,
+  // so seed them in an effect (can't run during render) whenever a new eligible
+  // result lands, and reset the picks.
   const [genOffers, setGenOffers] = useState<UpgradeId[]>([]);
   const [charOffers, setCharOffers] = useState<string[]>([]);
   const [pickedGen, setPickedGen] = useState<UpgradeId | null>(null);
   const [pickedChar, setPickedChar] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
 
-  // Roll a fresh set of offers whenever a new upgrade-eligible result lands.
-  // This is a legitimate effect: the offers are RANDOM (a side effect that
-  // can't run during render, or it would reroll on every paint), so we seed
-  // them — and reset the pick/ready state — in response to the result changing.
   /* eslint-disable react-hooks/set-state-in-effect -- intentional derived-random reset keyed on a new result */
   useEffect(() => {
     if (!showUpgrades) return;
@@ -75,7 +71,6 @@ export function ResultScreen() {
     setCharOffers(rollCharChoices(localClass, 4, Math.random));
     setPickedGen(null);
     setPickedChar(null);
-    setReady(false);
   }, [showUpgrades, localClass, result]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -90,12 +85,6 @@ export function ResultScreen() {
     playUiSound('uiConfirm');
     setPickedChar(id);
     chooseCharUpgrade(id);
-  };
-  const onToggleReady = (): void => {
-    playUiSound('uiConfirm');
-    const next = !ready;
-    setReady(next);
-    setNextReady(next);
   };
 
   const onReturn = (): void => {
@@ -130,6 +119,10 @@ export function ResultScreen() {
     );
   }
 
+  // Between-boss (another boss queued): the walkable reward room replaces the
+  // flat card screen entirely.
+  if (advancing) return <RewardRoom result={result} />;
+
   const stats = result.stats;
   const victory = result.outcome === 'victory';
   const runTotal = result.runTotal ?? 1;
@@ -155,24 +148,6 @@ export function ResultScreen() {
             {runIndex + 1} of {runTotal}
             {cycle > 0 ? ` · Cycle ${cycle + 1}` : ''}
           </p>
-        ) : null}
-
-        {advancing ? (
-          <div className="wb-advance-note" role="status">
-            <span className="wb-advance-title">
-              Next up:{' '}
-              {(result.modName ? `${result.modName} ` : '') +
-                (result.nextMonsterIds && result.nextMonsterIds.length > 1
-                  ? result.nextMonsterIds.map((id) => MONSTERS[id].name).join(' & ') +
-                    ' — a TWIN fight!'
-                  : MONSTERS[nextMonsterId].name)}
-            </span>
-            <span className="wb-advance-sub">
-              {ready
-                ? 'Waiting for the rest of the band…'
-                : 'Pick your upgrades, then ready up to advance.'}
-            </span>
-          </div>
         ) : null}
 
         {endlessAvailable ? (
@@ -351,22 +326,6 @@ export function ResultScreen() {
           </table>
         </div>
 
-        {advancing ? (
-          <div className="wb-next-ready" role="status">
-            <button
-              type="button"
-              className={`wb-btn wb-btn-lg${ready ? ' wb-btn-ghost is-ready' : ' wb-btn-primary'}`}
-              onClick={onToggleReady}
-              aria-pressed={ready}
-            >
-              {ready ? 'Ready ✓ — waiting' : 'Ready for next boss'}
-            </button>
-            <span className="wb-ready-tally">
-              {readyReady}/{readyTotal} ready
-            </span>
-          </div>
-        ) : null}
-
         <div className="wb-row wb-actions-row">
           <button type="button" className="wb-btn wb-btn-ghost" onClick={onMenu}>
             Main Menu
@@ -384,12 +343,6 @@ export function ResultScreen() {
             ) : (
               <span className="wb-await-host">Waiting for the host to choose…</span>
             )
-          ) : advancing ? (
-            <span className="wb-await-host">
-              {readyReady >= readyTotal && readyTotal > 0
-                ? 'Advancing…'
-                : 'The run advances once everyone is ready.'}
-            </span>
           ) : (
             <>
               {isHost ? (

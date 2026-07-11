@@ -124,14 +124,19 @@ await step('reset to menu', async () => {
   await waitForMenu();
 });
 
-await step('host setup', async () => {
+await step('host setup (walkable war room + list-view form)', async () => {
   await hostBtn().click();
+  // Hosting now opens the walkable WAR ROOM; assert it mounted, then drive the
+  // deterministic classic form kept one click away under "List view".
+  await page.getByText(/choose your fight/i).waitFor({ timeout: 10000 });
+  await page.getByRole('button', { name: /list view/i }).click();
   await page.getByRole('button', { name: /create room/i }).waitFor({ timeout: 10000 });
   await page.screenshot({ path: `${SHOT_DIR}/smoke-4-setup.png` });
 });
 
-await step('create room -> lobby', async () => {
+await step('create room -> muster hall lobby', async () => {
   await page.getByRole('button', { name: /create room/i }).click();
+  // The lobby is now the walkable MUSTER HALL; its panel still carries Start Fight.
   await page.getByRole('button', { name: /start fight/i }).waitFor({ timeout: 15000 });
   await page.screenshot({ path: `${SHOT_DIR}/smoke-5-lobby.png` });
 });

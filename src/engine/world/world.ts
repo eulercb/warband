@@ -137,6 +137,15 @@ export interface WorldInit {
    * totems are placed around the arena.
    */
   practice?: boolean;
+  /**
+   * Scene mode — a calm, non-combat local world used for diegetic menus:
+   * `'reward'` (the between-boss chamber) or `'war'` (the boss-selection war
+   * room). In any scene it is heroes only — no boss, no hazards, no totems,
+   * abilities are inert, and the sim never "finishes". The scene's interaction
+   * objects (relics, vortex, effigies, portals) are owned by the UI harness, not
+   * the World (they are non-solid, so the World needs no knowledge of them).
+   */
+  scene?: 'reward' | 'war';
 }
 
 /** Interval (s) at which an endless "type" modifier's aura fires. */
@@ -167,6 +176,8 @@ export class World {
   modifier: BossModifier | null;
   /** Practice playground: dummy respawns, party can't wipe. */
   practice: boolean;
+  /** Scene mode (calm diegetic menu world): no boss, no combat, never ends. */
+  scene: 'reward' | 'war' | null;
 
   tauntTargetId: EntityId | null = null;
   tauntTimer = 0;
@@ -184,19 +195,24 @@ export class World {
     this.monsterDef = getMonster(init.monsterId);
     this.modifier = init.modifier ?? null;
     this.practice = init.practice ?? false;
+    this.scene = init.scene ?? null;
     this.spawnPlayers(init.players);
-    const ids: MonsterId[] = [init.monsterId, ...(init.coBosses ?? [])];
-    this.spawnBosses(ids);
-    this.terrain = this.practice ? [] : generateTerrain(ids, init.seed, () => this.allocId());
-    // Cover obstacles avoid the terrain patches so cover stays readable.
-    this.obstacles = this.practice
-      ? []
-      : generateObstacles(
-          init.seed,
-          () => this.allocId(),
-          this.terrain.map((t) => ({ pos: t.pos, radius: t.radius })),
-        );
-    if (this.practice) this.spawnTotems();
+    // A menu scene (reward chamber / war room) is heroes-only: no boss, no
+    // hazards, no cover, no totems — only the harness's interaction objects.
+    if (this.scene === null) {
+      const ids: MonsterId[] = [init.monsterId, ...(init.coBosses ?? [])];
+      this.spawnBosses(ids);
+      this.terrain = this.practice ? [] : generateTerrain(ids, init.seed, () => this.allocId());
+      // Cover obstacles avoid the terrain patches so cover stays readable.
+      this.obstacles = this.practice
+        ? []
+        : generateObstacles(
+            init.seed,
+            () => this.allocId(),
+            this.terrain.map((t) => ({ pos: t.pos, radius: t.radius })),
+          );
+      if (this.practice) this.spawnTotems();
+    }
   }
 
   /**
@@ -452,13 +468,18 @@ export class World {
         const speed = p.moveSpeed * buffMult(p, 'moveSpeed');
         p.pos = vadd(p.pos, vscale(move, speed * dt));
 
-        const moveDir = normalize(move);
-        for (const slot of SLOTS) {
-          // Edge-triggered by default; with auto-fire, a held button repeats
-          // (tryUseAbility still gates on cooldown, so it fires at cadence).
-          const held = cmd.buttons[slot];
-          const fired = cmd.autofire ? held : held && !p.prevButtons[slot];
-          if (fired) this.tryUseAbility(p, slot, moveDir);
+        // The reward chamber is a calm, no-combat scene: the hero walks freely
+        // but abilities are inert (no stray projectiles, and no cast-time root
+        // locking the hero mid-stride while they walk to a relic or the vortex).
+        if (this.scene === null) {
+          const moveDir = normalize(move);
+          for (const slot of SLOTS) {
+            // Edge-triggered by default; with auto-fire, a held button repeats
+            // (tryUseAbility still gates on cooldown, so it fires at cadence).
+            const held = cmd.buttons[slot];
+            const fired = cmd.autofire ? held : held && !p.prevButtons[slot];
+            if (fired) this.tryUseAbility(p, slot, moveDir);
+          }
         }
       }
 
@@ -1275,6 +1296,10 @@ export class World {
 
   private checkEndConditions(): void {
     if (this.finished) return;
+
+    // The reward chamber has no bosses and no failure state — it simply lets the
+    // party mill about picking up boons, so there is nothing to resolve.
+    if (this.scene !== null) return;
 
     if (this.practice) {
       // Playground: a felled dummy explodes and pops back up; nobody ever

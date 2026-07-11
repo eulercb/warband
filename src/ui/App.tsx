@@ -7,9 +7,9 @@ import { useStore } from './state/store';
 import { readRoomFromHash, configuredRelayUrl } from '../net/transport/room';
 import { sfx, leaveToMenu } from './state/session';
 import MainMenu from './screens/MainMenu';
-import HostSetup from './screens/HostSetup';
+import WarRoom from './game/WarRoom';
 import JoinScreen from './screens/JoinScreen';
-import Lobby from './screens/Lobby';
+import MusterHall from './game/MusterHall';
 import GameView from './game/GameView';
 import ResultScreen from './screens/ResultScreen';
 import Controls from './screens/Controls';
@@ -38,11 +38,11 @@ function Screen({ phase }: { phase: ReturnType<typeof useStore.getState>['phase'
     case 'menu':
       return <MainMenu />;
     case 'hostSetup':
-      return <HostSetup />;
+      return <WarRoom />;
     case 'join':
       return <JoinScreen />;
     case 'lobby':
-      return <Lobby />;
+      return <MusterHall />;
     case 'waiting':
       return <Waiting />;
     case 'game':

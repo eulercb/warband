@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { Playground } from '../src/ui/state/playground';
+import { Playground, STATION_DWELL_S } from '../src/ui/state/playground';
 import { SIM_DT } from '../src/engine/core/constants';
-import type { InputCommand } from '../src/engine/core/types';
+import { CLASS_IDS } from '../src/engine/content/classes';
+import type { InputCommand, RenderState, Vec2 } from '../src/engine/core/types';
 
 /** Build an InputCommand, overriding only the fields a test cares about. */
 function inp(over: Partial<InputCommand> = {}): InputCommand {
@@ -12,6 +13,37 @@ function inp(over: Partial<InputCommand> = {}): InputCommand {
     buttons: { basic: false, a1: false, a2: false, a3: false, revive: false },
     ...over,
   };
+}
+
+function heroPos(state: RenderState): Vec2 {
+  const id = state.localPlayerId;
+  const p = state.players.find((pl) => pl.id === id);
+  if (!p) throw new Error('no local hero');
+  return p.pos;
+}
+
+/** Walk the hero onto `target` and hold there past the station dwell. */
+function walkOnto(pg: Playground, target: Vec2, startMs: number, frozen = false): number {
+  let now = startMs;
+  let state = pg.frame(now, frozen);
+  let held = 0;
+  for (let i = 0; i < 400; i++) {
+    const hp = heroPos(state);
+    const dx = target.x - hp.x;
+    const dy = target.y - hp.y;
+    const d = Math.hypot(dx, dy);
+    if (d <= 16) {
+      pg.setInput(inp({ move: { x: 0, y: 0 } }));
+      held += 0.05;
+    } else {
+      pg.setInput(inp({ move: { x: dx / d, y: dy / d } }));
+      held = 0;
+    }
+    now += 50;
+    state = pg.frame(now, frozen);
+    if (held >= STATION_DWELL_S + 0.2) break;
+  }
+  return now;
 }
 
 describe('Playground: construction', () => {
@@ -251,5 +283,78 @@ describe('Playground: respawning dummy', () => {
     // Practice never "finishes": the sim keeps stepping afterwards.
     const after = pg.frame(now + 250);
     expect(after.tick).toBeGreaterThan(last.tick);
+  });
+});
+
+describe('Playground: class effigies (stations)', () => {
+  it('projects one class effigy per class, with the current class selected', () => {
+    const pg = new Playground('Aria', 'knight');
+    const s = pg.frame(1000);
+    expect(s.stations).toBeDefined();
+    expect(s.stations).toHaveLength(CLASS_IDS.length);
+    expect(new Set((s.stations ?? []).map((st) => st.kind))).toEqual(new Set(['class']));
+    const refs = (s.stations ?? []).map((st) => st.refId).sort();
+    expect(refs).toEqual([...CLASS_IDS].sort());
+    const selected = (s.stations ?? []).filter((st) => st.selected);
+    expect(selected).toHaveLength(1);
+    expect(selected[0].refId).toBe('knight');
+  });
+
+  it('does not auto-select at spawn (hero stands clear of the effigy row)', () => {
+    const pg = new Playground('Aria', 'knight');
+    pg.frame(1000);
+    pg.frame(1200);
+    expect(pg.takeStationTriggers()).toHaveLength(0);
+  });
+
+  it('keeps every effigy clear of every totem trigger (no double-channel)', () => {
+    const pg = new Playground('Aria', 'knight');
+    const s = pg.frame(1000);
+    const effigies = s.stations ?? [];
+    const totems = s.totems ?? [];
+    expect(effigies.length).toBeGreaterThan(0);
+    expect(totems.length).toBe(4);
+    for (const e of effigies) {
+      for (const t of totems) {
+        const d = Math.hypot(e.pos.x - t.pos.x, e.pos.y - t.pos.y);
+        // The two trigger circles must not touch, or standing on a corner
+        // effigy would also channel the totem beneath it.
+        expect(d).toBeGreaterThan(e.triggerRadius + t.triggerRadius);
+      }
+    }
+  });
+
+  it('queues a class trigger when the hero dwells on another class effigy', () => {
+    const pg = new Playground('Aria', 'knight');
+    const first = pg.frame(1000);
+    const mage = (first.stations ?? []).find((st) => st.refId === 'mage')!;
+    expect(mage).toBeDefined();
+    walkOnto(pg, mage.pos, 1000);
+    const trigs = pg.takeStationTriggers();
+    expect(trigs.some((t) => t.kind === 'class' && t.refId === 'mage')).toBe(true);
+    // Draining is exactly-once.
+    expect(pg.takeStationTriggers()).toHaveLength(0);
+  });
+
+  it('holds the effigy dwell frozen while an overlay is up', () => {
+    const pg = new Playground('Aria', 'knight');
+    const first = pg.frame(1000);
+    const mage = (first.stations ?? []).find((st) => st.refId === 'mage')!;
+    walkOnto(pg, mage.pos, 1000, true); // frozen throughout
+    expect(pg.takeStationTriggers()).toHaveLength(0);
+  });
+
+  it('reflects a class swap in the selected effigy (setClass follows the trigger)', () => {
+    const pg = new Playground('Aria', 'knight');
+    const first = pg.frame(1000);
+    const mage = (first.stations ?? []).find((st) => st.refId === 'mage')!;
+    const now = walkOnto(pg, mage.pos, 1000);
+    // The UI relays the trigger by calling setClass; do that here.
+    for (const t of pg.takeStationTriggers()) if (t.refId) pg.setClass(t.refId as 'mage');
+    const s = pg.frame(now + 50);
+    expect(s.players[0].classId).toBe('mage');
+    const selected = (s.stations ?? []).filter((st) => st.selected);
+    expect(selected).toHaveLength(1);
+    expect(selected[0].refId).toBe('mage');
   });
 });

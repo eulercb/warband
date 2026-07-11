@@ -37,6 +37,9 @@ import {
   drawTerrain,
   drawObstacle,
   drawTotem,
+  drawLoot,
+  drawVortex,
+  drawStation,
   drawPlayerOverlay,
   drawBossOverlay,
   drawAddOverlay,
@@ -372,13 +375,39 @@ export class Renderer {
     const g = this.obstaclesLayer;
     g.clear();
     const totems = state.totems ?? [];
-    if (state.obstacles.length === 0 && totems.length === 0) return;
+    const loot = state.loot ?? [];
+    const vortex = state.vortex ?? null;
+    const stations = state.stations ?? [];
+    if (
+      state.obstacles.length === 0 &&
+      totems.length === 0 &&
+      loot.length === 0 &&
+      vortex === null &&
+      stations.length === 0
+    ) {
+      return;
+    }
     for (const o of state.obstacles) {
       this.drawTiled(o.pos, o.radius, (s) => drawObstacle(g, o, s, this.camera.scale));
     }
     const timeSec = nowMs / 1000;
     for (const t of totems) {
       this.drawTiled(t.pos, t.triggerRadius, (s) => drawTotem(g, t, s, this.camera.scale, timeSec));
+    }
+    // Reward-room furniture (local scene worlds only): the descent vortex under
+    // the relics, then each relic pickup on top.
+    if (vortex) {
+      this.drawTiled(vortex.pos, vortex.activeRadius, (s) =>
+        drawVortex(g, vortex, s, this.camera.scale, timeSec),
+      );
+    }
+    for (const l of loot) {
+      this.drawTiled(l.pos, l.pickupRadius, (s) => drawLoot(g, l, s, this.camera.scale, timeSec));
+    }
+    for (const st of stations) {
+      this.drawTiled(st.pos, st.triggerRadius, (s) =>
+        drawStation(g, st, s, this.camera.scale, timeSec),
+      );
     }
   }
 
@@ -541,7 +570,17 @@ export class Renderer {
 
   private updateLabels(state: RenderState): void {
     const totems = state.totems ?? [];
-    this.ensureLabels(state.players.length + state.bosses.length + totems.length);
+    const loot = state.loot ?? [];
+    const vortex = state.vortex ?? null;
+    const stations = state.stations ?? [];
+    this.ensureLabels(
+      state.players.length +
+        state.bosses.length +
+        totems.length +
+        loot.length +
+        (vortex ? 1 : 0) +
+        stations.length,
+    );
     const scale = this.camera.scale;
     let i = 0;
 
@@ -575,6 +614,37 @@ export class Renderer {
       const s = this.camera.worldToScreen(tot.pos);
       t.position.set(s.x, s.y - tot.radius * scale - 26);
       t.alpha = tot.active ? 1 : 0.75;
+    }
+
+    // Reward-room relic captions (icon + name), dim once claimed/locked.
+    for (const l of loot) {
+      const t = this.labels[i++];
+      t.visible = true;
+      t.text = l.claimed ? `${l.label ?? ''} ✓` : (l.label ?? '');
+      const s = this.camera.worldToScreen(l.pos);
+      t.position.set(s.x, s.y - l.radius * scale - 24);
+      t.alpha = l.claimed ? 0.85 : l.locked ? 0.3 : l.active ? 1 : 0.7;
+    }
+
+    // Reward-room vortex caption.
+    if (vortex) {
+      const t = this.labels[i++];
+      t.visible = true;
+      t.text = vortex.open ? '🌀 DESCEND' : '🌀 CLAIM YOUR BOONS';
+      const s = this.camera.worldToScreen(vortex.pos);
+      t.position.set(s.x, s.y - vortex.radius * scale - 30);
+      t.alpha = vortex.open ? 1 : 0.6;
+    }
+
+    // Menu station captions (class effigy names, etc.). The selected one shows a
+    // check so the current pick reads at a glance.
+    for (const st of stations) {
+      const t = this.labels[i++];
+      t.visible = true;
+      t.text = st.selected ? `${st.label ?? ''} ✓` : (st.label ?? '');
+      const s = this.camera.worldToScreen(st.pos);
+      t.position.set(s.x, s.y - st.radius * scale - 22);
+      t.alpha = st.selected ? 1 : st.active ? 1 : 0.7;
     }
 
     for (; i < this.labels.length; i++) this.labels[i].visible = false;
@@ -660,6 +730,12 @@ function frameOf(state: RenderState): { center: Vec2; halfSpan: number } {
   const alive = state.players.filter((p) => p.state !== 'dead');
   const pts: Vec2[] = (alive.length > 0 ? alive : state.players).map((p) => p.pos);
   for (const boss of state.bosses) if (boss.hp > 0) pts.push(boss.pos);
+  // Reward room: with no boss to widen the shot, frame the relics + vortex too so
+  // the whole chamber reads as a diorama instead of a keyhole around the hero.
+  if (state.loot) for (const l of state.loot) pts.push(l.pos);
+  if (state.vortex) pts.push(state.vortex.pos);
+  // Menu camp: keep the diegetic stations (class effigies…) in frame too.
+  if (state.stations) for (const st of state.stations) pts.push(st.pos);
   if (pts.length === 0) return { center: { x: ARENA_W / 2, y: ARENA_H / 2 }, halfSpan: 0 };
 
   const base = pts[0];

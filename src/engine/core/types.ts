@@ -408,6 +408,105 @@ export interface TotemView {
   active?: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Reward room (diegetic between-boss upgrade scene; local scene worlds only)
+// ---------------------------------------------------------------------------
+
+/**
+ * A relic pickup lying on the floor of the between-boss reward room. The hero
+ * walks OVER it (non-solid) to claim the boon it carries. `kind` groups it into
+ * the generic-boon or class-boon set (one claim per set, mirroring the flat
+ * upgrade screen's one-generic-one-character rule). Content-agnostic by design:
+ * the engine only knows position/geometry, the UI maps it to a rolled offer.
+ */
+export type LootKind = 'generic' | 'char';
+
+/** Render view of a reward-room relic (local only; never crosses the wire). */
+export interface LootView {
+  id: EntityId;
+  kind: LootKind;
+  pos: Vec2;
+  radius: number;
+  /** Walking within this radius of the relic claims it (walk-over pickup). */
+  pickupRadius: number;
+  /** This relic has been claimed (drives the pop/afterglow). */
+  claimed?: boolean;
+  /** Locked because another relic of the same kind was already claimed. */
+  locked?: boolean;
+  /** The hero is close enough to read/claim it (drives the inspector glow). */
+  active?: boolean;
+  /** Short caption drawn under the relic (icon + name); set by the UI. */
+  label?: string;
+}
+
+/**
+ * The descent vortex at the far end of the reward room. It only OPENS once the
+ * hero has claimed their boons; walking into an open vortex readies the hero for
+ * the next boss (steps out to un-ready). Local-only, like totems.
+ */
+export interface VortexView {
+  id: EntityId;
+  pos: Vec2;
+  radius: number;
+  /** Walking within this radius of an OPEN vortex descends (readies up). */
+  activeRadius: number;
+  /** 0..1 spin-up as the room's boons get claimed (1 = fully open). */
+  charge: number;
+  /** True once every boon is claimed and the vortex accepts a descent. */
+  open?: boolean;
+  /** True while the hero stands inside an open vortex (drives the pull FX). */
+  standing?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Stations (diegetic menu interaction objects; local menu/lobby scenes only)
+// ---------------------------------------------------------------------------
+
+/**
+ * A walkable menu station — the diegetic replacement for a flat menu control.
+ * `class`/`boss` are selection effigies (walk onto to pick a hero / run opener),
+ * `tier` filters the boss gallery, and the `portal` kinds are actions you walk
+ * INTO (host a run, join, open controls, ready up, start). Local-only, like
+ * totems: content-agnostic geometry the UI harness maps to a selection/action.
+ */
+export type StationKind =
+  | 'class' // pick a hero class (refId = ClassId)
+  | 'boss' // pick the run's opening boss (refId = MonsterId)
+  | 'tier' // filter the boss gallery to a difficulty tier (refId = BossTier)
+  | 'single' // run mode: a single boss fight
+  | 'gauntlet' // run mode: a full gauntlet run
+  | 'host' // commit: raise your banner (host a room)
+  | 'join' // walk into the join portal
+  | 'controls' // open the controls/rebinding overlay
+  | 'muster' // lobby: step on to ready up
+  | 'start'; // lobby: host steps on to start the fight
+
+/** Render view of a menu station (local scene worlds only; never crosses the wire). */
+export interface StationView {
+  id: EntityId;
+  kind: StationKind;
+  pos: Vec2;
+  radius: number;
+  /** Walking within this radius selects/activates the station. */
+  triggerRadius: number;
+  /** Class id / monster id / tier the station refers to (selection stations). */
+  refId?: string;
+  /** Caption drawn under/over the station. */
+  label?: string;
+  /** This station is the current selection (drives the lit/chosen look). */
+  selected?: boolean;
+  /** Greyed-out and non-interactive (e.g. host gate before a boss is chosen). */
+  disabled?: boolean;
+  /** The hero is inside the trigger ring (drives the glow / channel). */
+  active?: boolean;
+  /** Channel progress 0..1 while the hero dwells to commit (0 if not dwelling). */
+  channel?: number;
+  /** Draw as a swirling portal (walk-into action) rather than a pedestal. */
+  portal?: boolean;
+  /** Accent colour (class colour / boss colour / tier colour). */
+  color?: number;
+}
+
 export interface GroundZone {
   id: EntityId;
   kind: ZoneKind;
@@ -647,6 +746,12 @@ export interface RenderState {
   arena: { w: number; h: number };
   /** Playground totems (local practice world only). */
   totems?: TotemView[];
+  /** Reward-room relic pickups (local scene world only). */
+  loot?: LootView[];
+  /** Reward-room descent vortex (local scene world only), or null/absent. */
+  vortex?: VortexView | null;
+  /** Diegetic menu stations (local menu/lobby scene only). */
+  stations?: StationView[];
 }
 
 // ---------------------------------------------------------------------------
