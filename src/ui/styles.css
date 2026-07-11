@@ -1790,3 +1790,171 @@ body {
   gap: 2px;
   padding: 10px 12px;
 }
+
+/* ============================================================================
+ * Reward room — the walkable between-boss upgrade scene (RewardRoom.tsx).
+ * Overlays sit above the full-screen canvas (which reuses .wb-playground-*).
+ * ==========================================================================*/
+.wb-reward-root {
+  background: #0e0e14;
+}
+
+/* Top banner: boss felled + next boss + one-line how-to. */
+.wb-reward-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+  z-index: 6;
+  pointer-events: none;
+  padding: 8px 18px;
+  border-radius: 12px;
+  background: rgba(14, 14, 22, 0.6);
+  backdrop-filter: blur(4px);
+  max-width: 92vw;
+}
+
+.wb-reward-banner-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #f2c14e;
+  text-shadow: 0 2px 10px #000;
+}
+
+.wb-reward-banner-next {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #7fd4ff;
+  text-shadow: 0 2px 8px #000;
+}
+
+.wb-reward-banner-hint {
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  color: #aeb2c4;
+  text-shadow: 0 1px 6px #000;
+}
+
+/* List-view toggle (accessible / pointer fallback), top-right. */
+.wb-reward-listbtn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 7;
+}
+
+/* Relic inspector (reuses the totem-hint frame at bottom-centre). */
+.wb-reward-inspect {
+  bottom: 15vh;
+  width: min(420px, 82vw);
+}
+
+.wb-reward-inspect-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 2px 8px #000;
+  margin-bottom: 2px;
+}
+
+.wb-reward-inspect-desc {
+  font-size: 0.85rem;
+  line-height: 1.3;
+  color: #cfd2e0;
+  text-shadow: 0 1px 6px #000;
+  margin-bottom: 8px;
+}
+
+.wb-reward-inspect-tag {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.wb-reward-inspect-tag.claimed {
+  color: #5fd35f;
+}
+
+.wb-reward-inspect-tag.locked {
+  color: #d99b3e;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-weight: 600;
+}
+
+/* Descend prompt + band tally, upper-centre near the vortex label. */
+.wb-reward-descend {
+  position: absolute;
+  top: 16vh;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  z-index: 6;
+  pointer-events: none;
+  padding: 8px 18px;
+  border-radius: 12px;
+  background: rgba(10, 16, 26, 0.55);
+  backdrop-filter: blur(4px);
+  animation: wb-reward-pulse 2.2s ease-in-out infinite;
+}
+
+.wb-reward-descend-title {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #7fd4ff;
+  text-shadow:
+    0 0 16px rgba(127, 212, 255, 0.5),
+    0 2px 8px #000;
+}
+
+.wb-reward-descend-sub {
+  font-size: 0.82rem;
+  color: #cfe6f4;
+  text-shadow: 0 1px 6px #000;
+  margin-top: 2px;
+}
+
+/* Descent charge bar (reuses the totem-hint track, centred + narrower). */
+.wb-reward-descend-track {
+  margin: 6px auto 0;
+  max-width: 220px;
+}
+
+.wb-reward-descend-track .wb-totem-hint-fill {
+  background: linear-gradient(90deg, #4a90d9, #7fd4ff);
+}
+
+/* Next-boss line inside the accessible list overlay. */
+.wb-reward-list-next {
+  margin: -4px 0 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #7fd4ff;
+}
+
+@keyframes wb-reward-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Accessible list overlay panel: the classic cards, one click away. */
+.wb-reward-list {
+  max-width: 620px;
+  width: min(620px, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+}

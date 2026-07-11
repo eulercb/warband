@@ -28,6 +28,8 @@ vi.mock('../src/ui/state/session', () => ({
   chooseCharUpgrade: vi.fn(),
   setNextReady: vi.fn(),
   playUiSound: vi.fn(),
+  // RewardRoom (transitively imported by ResultScreen's advancing branch)
+  sfx: { play: vi.fn(), handleEvents: vi.fn() },
   // Lobby
   selectClass: vi.fn(),
   setReady: vi.fn(),
@@ -52,9 +54,6 @@ import {
   retryFight,
   returnToLobby,
   continueEndless,
-  chooseUpgrade,
-  chooseCharUpgrade,
-  setNextReady,
   playUiSound,
   selectClass,
   setReady,
@@ -247,103 +246,10 @@ describe('<ResultScreen>', () => {
     expect(screen.getByRole('button', { name: 'Back to Lobby' })).toBeTruthy();
   });
 
-  it('offers upgrades + a ready toggle when another boss is queued', () => {
-    useStore.setState({
-      result: makeResult({ nextMonsterId: 'troll', runIndex: 0, runTotal: 5 }),
-    });
-    const { container } = render(<ResultScreen />);
-
-    // Next-boss + run progress copy.
-    expect(container.querySelector('.wb-advance-title')?.textContent ?? '').toContain(
-      'Forest Troll',
-    );
-    const progress = container.querySelector('.wb-run-progress')?.textContent ?? '';
-    expect(progress).toContain('Ancient Dragon');
-    expect(progress).toContain('Boss 1 of 5');
-
-    // 3 generic offers + 4 character offers.
-    expect(container.querySelectorAll('.wb-upgrade-card:not(.wb-upgrade-char)').length).toBe(3);
-    expect(container.querySelectorAll('.wb-upgrade-char').length).toBe(4);
-    expect(screen.getByText('Choose a generic upgrade')).toBeTruthy();
-    expect(screen.getByText('Choose a Knight upgrade')).toBeTruthy();
-
-    // Ready-up relays to setNextReady(true).
-    fireEvent.click(screen.getByRole('button', { name: 'Ready for next boss' }));
-    expect(vi.mocked(setNextReady)).toHaveBeenCalledWith(true);
-    expect(vi.mocked(playUiSound)).toHaveBeenCalledWith('uiConfirm');
-    expect(container.querySelector('.wb-ready-tally')?.textContent ?? '').toContain('0/0');
-    expect(screen.getByText('The run advances once everyone is ready.')).toBeTruthy();
-  });
-
-  it('records a generic pick via chooseUpgrade and a character pick via chooseCharUpgrade', () => {
-    useStore.setState({
-      localClass: 'knight',
-      result: makeResult({ nextMonsterId: 'troll', runIndex: 0, runTotal: 5 }),
-    });
-    const { container } = render(<ResultScreen />);
-
-    const genCards = container.querySelectorAll('.wb-upgrade-card:not(.wb-upgrade-char)');
-    expect(genCards[0].textContent ?? '').toContain('Swift');
-    fireEvent.click(genCards[0]);
-    expect(vi.mocked(chooseUpgrade)).toHaveBeenCalledWith('swift');
-    expect(vi.mocked(playUiSound)).toHaveBeenCalledWith('uiConfirm');
-    expect(screen.getByText('Generic upgrade chosen')).toBeTruthy();
-
-    const charCards = container.querySelectorAll('.wb-upgrade-char');
-    fireEvent.click(charCards[0]);
-    expect(vi.mocked(chooseCharUpgrade)).toHaveBeenCalledWith('kn_bulwark');
-    expect(screen.getByText('Character upgrade chosen')).toBeTruthy();
-  });
-
-  it('names a twin next-fight and shows the modifier + endless cycle in the progress line', () => {
-    useStore.setState({
-      result: makeResult({
-        nextMonsterId: 'troll',
-        nextMonsterIds: ['troll', 'lich'],
-        modName: 'Frost',
-        cycle: 1,
-        runIndex: 2,
-        runTotal: 5,
-      }),
-    });
-    const { container } = render(<ResultScreen />);
-
-    const title = container.querySelector('.wb-advance-title')?.textContent ?? '';
-    expect(title).toContain('Forest Troll & Lich');
-    expect(title).toContain('TWIN fight');
-    expect(title).toContain('Frost');
-
-    const progress = container.querySelector('.wb-run-progress')?.textContent ?? '';
-    expect(progress).toContain('Frost Ancient Dragon');
-    expect(progress).toContain('Boss 3 of 5');
-    expect(progress).toContain('Cycle 2');
-  });
-
-  it('reflects the ready tally and switches to "Advancing…" once everyone is ready', () => {
-    useStore.setState({
-      nextReadyReady: 2,
-      nextReadyTotal: 2,
-      result: makeResult({ nextMonsterId: 'troll', runIndex: 1, runTotal: 5 }),
-    });
-    const { container } = render(<ResultScreen />);
-
-    expect(container.querySelector('.wb-ready-tally')?.textContent ?? '').toContain('2/2');
-    expect(screen.getByText(/Advancing/)).toBeTruthy();
-  });
-
-  it('lists the upgrades this hero already owns', () => {
-    useStore.setState({
-      myUpgrades: ['swift'],
-      myCharUpgrades: ['kn_bulwark'],
-      result: makeResult({ nextMonsterId: 'troll', runIndex: 0, runTotal: 5 }),
-    });
-    const { container } = render(<ResultScreen />);
-
-    const owned = container.querySelector('.wb-upgrade-owned')?.textContent ?? '';
-    expect(screen.getByText('Your upgrades')).toBeTruthy();
-    expect(owned).toContain('Swift');
-    expect(owned).toContain('Impenetrable');
-  });
+  // NOTE: the between-boss "advancing" upgrade phase is now the walkable
+  // RewardRoom (walk over relics + into the vortex); ResultScreen delegates that
+  // case to <RewardRoom>. Its behaviour is covered in tests/comp-reward.test.tsx.
+  // What remains here are the TERMINAL result screens (single fight + RUN CLEARED).
 
   it('shows RUN CLEARED with host Continue/Return when the run is fully cleared', () => {
     useStore.setState({ isHost: true, result: makeResult({ endlessAvailable: true }) });

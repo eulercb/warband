@@ -81,6 +81,7 @@ export default defineConfig({
         'src/render/sprites/spriteLayer.ts', // Pixi retained sprite layer
         'src/ui/screens/MainMenu.tsx', // boots a Pixi Renderer (walkable menu)
         'src/ui/game/GameView.tsx', // boots a Pixi Renderer (in-fight view)
+        'src/ui/game/RewardRoom.tsx', // boots a Pixi Renderer (walkable reward room)
         'src/ui/App.tsx', // shell that mounts MainMenu/GameView
       ],
       reporter: ['text', 'text-summary', 'lcov'],

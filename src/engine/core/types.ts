@@ -408,6 +408,56 @@ export interface TotemView {
   active?: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Reward room (diegetic between-boss upgrade scene; local scene worlds only)
+// ---------------------------------------------------------------------------
+
+/**
+ * A relic pickup lying on the floor of the between-boss reward room. The hero
+ * walks OVER it (non-solid) to claim the boon it carries. `kind` groups it into
+ * the generic-boon or class-boon set (one claim per set, mirroring the flat
+ * upgrade screen's one-generic-one-character rule). Content-agnostic by design:
+ * the engine only knows position/geometry, the UI maps it to a rolled offer.
+ */
+export type LootKind = 'generic' | 'char';
+
+/** Render view of a reward-room relic (local only; never crosses the wire). */
+export interface LootView {
+  id: EntityId;
+  kind: LootKind;
+  pos: Vec2;
+  radius: number;
+  /** Walking within this radius of the relic claims it (walk-over pickup). */
+  pickupRadius: number;
+  /** This relic has been claimed (drives the pop/afterglow). */
+  claimed?: boolean;
+  /** Locked because another relic of the same kind was already claimed. */
+  locked?: boolean;
+  /** The hero is close enough to read/claim it (drives the inspector glow). */
+  active?: boolean;
+  /** Short caption drawn under the relic (icon + name); set by the UI. */
+  label?: string;
+}
+
+/**
+ * The descent vortex at the far end of the reward room. It only OPENS once the
+ * hero has claimed their boons; walking into an open vortex readies the hero for
+ * the next boss (steps out to un-ready). Local-only, like totems.
+ */
+export interface VortexView {
+  id: EntityId;
+  pos: Vec2;
+  radius: number;
+  /** Walking within this radius of an OPEN vortex descends (readies up). */
+  activeRadius: number;
+  /** 0..1 spin-up as the room's boons get claimed (1 = fully open). */
+  charge: number;
+  /** True once every boon is claimed and the vortex accepts a descent. */
+  open?: boolean;
+  /** True while the hero stands inside an open vortex (drives the pull FX). */
+  standing?: boolean;
+}
+
 export interface GroundZone {
   id: EntityId;
   kind: ZoneKind;
@@ -647,6 +697,10 @@ export interface RenderState {
   arena: { w: number; h: number };
   /** Playground totems (local practice world only). */
   totems?: TotemView[];
+  /** Reward-room relic pickups (local scene world only). */
+  loot?: LootView[];
+  /** Reward-room descent vortex (local scene world only), or null/absent. */
+  vortex?: VortexView | null;
 }
 
 // ---------------------------------------------------------------------------

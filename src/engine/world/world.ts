@@ -137,6 +137,14 @@ export interface WorldInit {
    * totems are placed around the arena.
    */
   practice?: boolean;
+  /**
+   * Scene mode — a calm, non-combat local world used for diegetic menus. The
+   * only scene today is `'reward'` (the between-boss chamber): heroes only, no
+   * boss, no hazards, no totems, and the sim never "finishes". Relic pickups and
+   * the descent vortex are owned by the UI harness, not the World (they are
+   * non-solid, so the World needs no knowledge of them).
+   */
+  scene?: 'reward';
 }
 
 /** Interval (s) at which an endless "type" modifier's aura fires. */
@@ -167,6 +175,8 @@ export class World {
   modifier: BossModifier | null;
   /** Practice playground: dummy respawns, party can't wipe. */
   practice: boolean;
+  /** Scene mode (e.g. the between-boss reward chamber): no combat, never ends. */
+  scene: 'reward' | null;
 
   tauntTargetId: EntityId | null = null;
   tauntTimer = 0;
@@ -184,19 +194,23 @@ export class World {
     this.monsterDef = getMonster(init.monsterId);
     this.modifier = init.modifier ?? null;
     this.practice = init.practice ?? false;
+    this.scene = init.scene ?? null;
     this.spawnPlayers(init.players);
-    const ids: MonsterId[] = [init.monsterId, ...(init.coBosses ?? [])];
-    this.spawnBosses(ids);
-    this.terrain = this.practice ? [] : generateTerrain(ids, init.seed, () => this.allocId());
-    // Cover obstacles avoid the terrain patches so cover stays readable.
-    this.obstacles = this.practice
-      ? []
-      : generateObstacles(
-          init.seed,
-          () => this.allocId(),
-          this.terrain.map((t) => ({ pos: t.pos, radius: t.radius })),
-        );
-    if (this.practice) this.spawnTotems();
+    // The reward chamber is heroes-only: no boss, no hazards, no cover, no totems.
+    if (this.scene !== 'reward') {
+      const ids: MonsterId[] = [init.monsterId, ...(init.coBosses ?? [])];
+      this.spawnBosses(ids);
+      this.terrain = this.practice ? [] : generateTerrain(ids, init.seed, () => this.allocId());
+      // Cover obstacles avoid the terrain patches so cover stays readable.
+      this.obstacles = this.practice
+        ? []
+        : generateObstacles(
+            init.seed,
+            () => this.allocId(),
+            this.terrain.map((t) => ({ pos: t.pos, radius: t.radius })),
+          );
+      if (this.practice) this.spawnTotems();
+    }
   }
 
   /**
@@ -1275,6 +1289,10 @@ export class World {
 
   private checkEndConditions(): void {
     if (this.finished) return;
+
+    // The reward chamber has no bosses and no failure state — it simply lets the
+    // party mill about picking up boons, so there is nothing to resolve.
+    if (this.scene === 'reward') return;
 
     if (this.practice) {
       // Playground: a felled dummy explodes and pops back up; nobody ever

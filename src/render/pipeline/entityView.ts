@@ -20,6 +20,8 @@ import type {
   ObstacleView,
   ObstacleKind,
   TotemView,
+  LootView,
+  VortexView,
   BuffView,
   BuffKind,
   Vec2,
@@ -646,6 +648,145 @@ export function drawTotem(
   for (let i = 0; i < 2; i++) {
     const ny = y + h * 0.16 + i * h * 0.16;
     g.rect(x - w * 0.24, ny, w * 0.48, 2.5).fill({ color, alpha: 0.55 });
+  }
+}
+
+/** Reward-room relic colors: gold for generic boons, violet for class boons. */
+export const LOOT_COLORS: Record<LootView['kind'], number> = {
+  generic: 0xf2c14e, // gold
+  char: 0x9c5cf0, // violet
+};
+
+/**
+ * Draw one reward-room relic: a faceted gem hovering (bobbing) over a small
+ * pedestal, ringed by its pickup halo. Unclaimed relics glow and the halo
+ * brightens when the hero is near; a claimed relic collapses to a bright spark;
+ * a locked relic (another of its kind was taken) dims to a grey husk.
+ */
+export function drawLoot(
+  g: Graphics,
+  loot: LootView,
+  screen: Vec2,
+  scale: number,
+  timeSec: number,
+): void {
+  const { x, y } = screen;
+  const color = LOOT_COLORS[loot.kind];
+  const claimed = loot.claimed === true;
+  const locked = loot.locked === true && !claimed;
+  const active = loot.active === true && !claimed && !locked;
+  const pulse = 0.5 + 0.5 * Math.sin(timeSec * 2.4 + loot.id * 1.7);
+
+  // Pickup halo on the ground (brightens when readable).
+  const haloR = loot.pickupRadius * scale;
+  if (!claimed && !locked) {
+    g.circle(x, y, haloR).stroke({
+      width: active ? 2.5 : 1.4,
+      color,
+      alpha: active ? 0.5 : 0.16 + pulse * 0.06,
+    });
+    if (active) g.circle(x, y, haloR).fill({ color, alpha: 0.05 });
+  }
+
+  // Grounding shadow + pedestal.
+  const r = loot.radius * scale;
+  g.ellipse(x, y + r * 0.5, r * 0.95, r * 0.4).fill({ color: 0x000000, alpha: 0.32 });
+  const baseC = locked ? 0x2a2a33 : 0x2e2a36;
+  g.ellipse(x, y + r * 0.35, r * 0.8, r * 0.32).fill({ color: baseC });
+
+  if (claimed) {
+    // Claimed: a bright afterglow spark that fades as it ages upward.
+    const a = 0.35 + 0.35 * pulse;
+    g.circle(x, y - r * 0.2, r * 0.5).fill({ color, alpha: a });
+    g.circle(x, y - r * 0.2, r * 1.1).stroke({ width: 1.5, color, alpha: a * 0.5 });
+    return;
+  }
+
+  // Hovering gem (bobs on the idle pulse; brighter when active).
+  const bob = (locked ? 0.5 : 1) * (Math.sin(timeSec * 2 + loot.id) * 0.14 + 0.1) * r;
+  const gy = y - r * 0.55 - bob;
+  const gemR = r * (active ? 1.08 : 0.95);
+  const gemColor = locked ? 0x4a4753 : color;
+  const gemAlpha = locked ? 0.6 : 1;
+  // A four-point faceted gem (diamond with a bright top facet).
+  g.poly([x, gy - gemR, x + gemR * 0.7, gy, x, gy + gemR, x - gemR * 0.7, gy]).fill({
+    color: gemColor,
+    alpha: gemAlpha,
+  });
+  g.poly([x, gy - gemR, x + gemR * 0.7, gy, x, gy, x - gemR * 0.7, gy]).fill({
+    color: 0xffffff,
+    alpha: locked ? 0.12 : 0.28,
+  });
+  g.poly([x, gy - gemR, x + gemR * 0.7, gy, x, gy + gemR, x - gemR * 0.7, gy]).stroke({
+    width: 1.6,
+    color: OUTLINE,
+    alpha: 0.7,
+  });
+  if (active) {
+    g.circle(x, gy, gemR * 1.6).stroke({ width: 1.2, color, alpha: 0.3 + pulse * 0.25 });
+  }
+}
+
+/**
+ * Draw the reward-room descent vortex: a swirling ring of arms that quickens and
+ * brightens as `charge` climbs from 0 (sealed) to 1 (open). While a hero stands
+ * inside an open vortex it drinks inward with a bright pull. Purely procedural.
+ */
+export function drawVortex(
+  g: Graphics,
+  vortex: VortexView,
+  screen: Vec2,
+  scale: number,
+  timeSec: number,
+): void {
+  const { x, y } = screen;
+  const r = vortex.radius * scale;
+  const charge = clamp(vortex.charge, 0, 1);
+  const open = vortex.open === true;
+  const standing = vortex.standing === true;
+  const color = open ? 0x7fd4ff : 0x4a6a86; // icy blue when open, dim slate when sealed
+  const spin = timeSec * (0.6 + charge * 2.2) * (standing ? 1.8 : 1);
+
+  // Active ring on the ground: where standing inside triggers the descent.
+  const activeR = vortex.activeRadius * scale;
+  g.circle(x, y, activeR).stroke({
+    width: open ? 2 : 1,
+    color,
+    alpha: open ? 0.3 + 0.15 * Math.sin(timeSec * 3) : 0.12,
+  });
+
+  // Grounding shadow.
+  g.ellipse(x, y + r * 0.35, r * 1.2, r * 0.5).fill({ color: 0x000000, alpha: 0.3 });
+
+  // Swirling arms — more arms + brighter as the vortex charges up.
+  const arms = 5;
+  const turns = 1.6;
+  for (let a = 0; a < arms; a++) {
+    const base = spin + (a / arms) * Math.PI * 2;
+    const steps = 14;
+    let started = false;
+    for (let s = 0; s <= steps; s++) {
+      const f = s / steps;
+      const rad = r * (0.12 + f * 0.95);
+      const ang = base + f * turns * Math.PI * 2;
+      const px = x + Math.cos(ang) * rad;
+      const py = y + Math.sin(ang) * rad * 0.9;
+      if (!started) {
+        g.moveTo(px, py);
+        started = true;
+      } else {
+        g.lineTo(px, py);
+      }
+    }
+    g.stroke({ width: 2, color, alpha: (open ? 0.55 : 0.28) + charge * 0.25 });
+  }
+
+  // Bright eye at the centre; blooms wide and hot while a hero descends.
+  const eyeR = r * (0.2 + charge * 0.16) * (standing ? 1.6 : 1);
+  g.circle(x, y, eyeR + 3).fill({ color, alpha: open ? 0.5 : 0.2 });
+  g.circle(x, y, eyeR).fill({ color: open ? 0xffffff : color, alpha: open ? 0.85 : 0.5 });
+  if (standing) {
+    g.circle(x, y, r * 1.3).stroke({ width: 2.5, color: 0xffffff, alpha: 0.4 });
   }
 }
 
