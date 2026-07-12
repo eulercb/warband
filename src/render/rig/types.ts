@@ -15,7 +15,19 @@ import type { Vec2 } from './math/vec';
 import type { GaitParams } from './math/gait';
 import type { BossActionKind, PlayerState, AbilitySlot } from '../../engine/core/types';
 
-export type RigId = 'spider' | 'serpent' | 'kraken' | 'treant' | 'insectoid' | 'humanoid';
+export type RigId =
+  | 'spider'
+  | 'serpent'
+  | 'kraken'
+  | 'treant'
+  | 'insectoid'
+  | 'humanoid'
+  | 'beast'
+  | 'blob'
+  | 'golem'
+  | 'gem'
+  | 'eye'
+  | 'dragon';
 
 /** Painter bucket: parts sort back → front as behind → main → front. */
 export type PartZ = 'behind' | 'main' | 'front';

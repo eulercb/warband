@@ -22,6 +22,12 @@ import { buildKrakenSpec } from '../src/render/rig/specs/kraken';
 import { buildTreantSpec } from '../src/render/rig/specs/treant';
 import { buildInsectoidSpec } from '../src/render/rig/specs/insectoid';
 import { buildHumanoidSpec, buildBossHumanoidSpec } from '../src/render/rig/specs/humanoid';
+import { buildBeastSpec } from '../src/render/rig/specs/beast';
+import { buildBlobSpec } from '../src/render/rig/specs/blob';
+import { buildGolemSpec } from '../src/render/rig/specs/golem';
+import { buildGemSpec } from '../src/render/rig/specs/gem';
+import { buildEyeSpec } from '../src/render/rig/specs/eye';
+import { buildDragonSpec } from '../src/render/rig/specs/dragon';
 import {
   RIG_FLAGS,
   bossRigId,
@@ -73,7 +79,20 @@ const ALL_CLASS_IDS: ClassId[] = [
 
 const ALL_MONSTER_IDS = Object.keys(MONSTERS) as MonsterId[];
 
-const RIG_IDS: RigId[] = ['spider', 'serpent', 'kraken', 'treant', 'insectoid', 'humanoid'];
+const RIG_IDS: RigId[] = [
+  'spider',
+  'serpent',
+  'kraken',
+  'treant',
+  'insectoid',
+  'humanoid',
+  'beast',
+  'blob',
+  'golem',
+  'gem',
+  'eye',
+  'dragon',
+];
 const PART_Z = ['behind', 'main', 'front'];
 const WEAPON_KINDS = ['sword', 'bow', 'staff', 'mace', 'axe', 'dagger', 'shield', 'claws'];
 const DECOR_KINDS = ['eyes', 'marking', 'horn', 'mandible'];
@@ -247,6 +266,12 @@ const BUILT_SPECS: { name: string; spec: RigSpec }[] = [
   { name: 'kraken', spec: buildKrakenSpec() },
   { name: 'treant', spec: buildTreantSpec() },
   { name: 'insectoid', spec: buildInsectoidSpec() },
+  { name: 'beast', spec: buildBeastSpec() },
+  { name: 'blob', spec: buildBlobSpec() },
+  { name: 'golem', spec: buildGolemSpec() },
+  { name: 'gem', spec: buildGemSpec() },
+  { name: 'eye', spec: buildEyeSpec() },
+  { name: 'dragon', spec: buildDragonSpec() },
   { name: 'bossHumanoid', spec: buildBossHumanoidSpec() },
   ...ALL_CLASS_IDS.map((c) => ({ name: `humanoid:${c}`, spec: buildHumanoidSpec(c) })),
 ];
@@ -548,6 +573,243 @@ describe('buildInsectoidSpec', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Beast (quadruped)
+// ---------------------------------------------------------------------------
+
+describe('buildBeastSpec', () => {
+  const spec = buildBeastSpec();
+
+  it('is a haunch → chest → head body', () => {
+    expect(spec.id).toBe('beast');
+    expect(spec.parts.map((p) => p.id)).toEqual(['haunch', 'chest', 'head']);
+    expect(spec.parts[0].z).toBe('behind');
+    expect(spec.parts[1].z).toBe('main');
+    expect(spec.parts[2].z).toBe('front');
+  });
+
+  it('walks on four facing-oriented legs, front + rear pairs mirrored', () => {
+    const legs = spec.legs;
+    expect(legs).toBeDefined();
+    if (!legs) return;
+    expect(legs.count).toBe(4);
+    expect(legs.anchorPart).toBe('chest');
+    expect(legs.around).toBe('facing');
+    expect(legs.bendOutward).toBe(true);
+    expect(legs.gait.maxConcurrent).toBe(2);
+    // Front pair splays ±58°, rear pair ±128°; the two sides mirror.
+    expect(legs.baseAngleDeg(0)).toBeCloseTo(58, 6);
+    expect(legs.baseAngleDeg(1)).toBeCloseTo(-58, 6);
+    expect(legs.baseAngleDeg(2)).toBeCloseTo(128, 6);
+    expect(legs.baseAngleDeg(3)).toBeCloseTo(-128, 6);
+    expect(legs.homeDist(0)).toBeCloseTo(1.7, 6); // front reach
+    expect(legs.homeDist(2)).toBeCloseTo(1.95, 6); // rear reach
+  });
+
+  it('has a tail tentacle off the haunch and a horned, eyed head', () => {
+    expect(spec.tentacles).toHaveLength(1);
+    const tail = spec.tentacles?.[0];
+    expect(tail?.anchorPart).toBe('haunch');
+    expect(tail?.baseAngleDeg).toBe(180);
+    const kinds = spec.decor?.map((d) => d.kind);
+    expect(kinds).toEqual(['eyes', 'horn']);
+    expect(spec.decor?.every((d) => d.anchorPart === 'head')).toBe(true);
+    expect(spec.spine).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Blob (amorphous bruiser)
+// ---------------------------------------------------------------------------
+
+describe('buildBlobSpec', () => {
+  const spec = buildBlobSpec();
+
+  it('is a belly + two shoulder lumps + head', () => {
+    expect(spec.id).toBe('blob');
+    expect(spec.parts.map((p) => p.id)).toEqual(['belly', 'lumpL', 'lumpR', 'head']);
+    // The lumps mirror across the lateral axis.
+    const lumpL = spec.parts[1];
+    const lumpR = spec.parts[2];
+    expect(lumpL.local.y).toBeCloseTo(-lumpR.local.y, 6);
+  });
+
+  it('waddles on two thick splayed legs oriented by travel', () => {
+    const legs = spec.legs;
+    expect(legs).toBeDefined();
+    if (!legs) return;
+    expect(legs.count).toBe(2);
+    expect(legs.around).toBe('velocity');
+    expect(legs.bendOutward).toBe(true);
+    expect(legs.gait.maxConcurrent).toBe(1);
+    expect(legs.baseAngleDeg(0)).toBeCloseTo(95, 6);
+    expect(legs.baseAngleDeg(1)).toBeCloseTo(-95, 6);
+  });
+
+  it('swings two telegraph-reaching arms in front', () => {
+    const arms = spec.tentacles;
+    expect(arms).toHaveLength(2);
+    if (!arms) return;
+    expect(arms.every((a) => a.anchorPart === 'belly')).toBe(true);
+    expect(arms.every((a) => a.z === 'front')).toBe(true);
+    expect(arms.every((a) => a.reach === 'telegraph')).toBe(true);
+    expect(arms[0].baseAngleDeg).toBeCloseTo(58, 6);
+    expect(arms[1].baseAngleDeg).toBeCloseTo(-58, 6);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Golem (construct)
+// ---------------------------------------------------------------------------
+
+describe('buildGolemSpec', () => {
+  const spec = buildGolemSpec();
+
+  it('is a core + two shoulders + head', () => {
+    expect(spec.id).toBe('golem');
+    expect(spec.parts.map((p) => p.id)).toEqual(['core', 'shoulderL', 'shoulderR', 'head']);
+    expect(spec.parts[1].local.y).toBeCloseTo(-spec.parts[2].local.y, 6); // mirrored shoulders
+  });
+
+  it('plods on two heavy biped-biased legs', () => {
+    const legs = spec.legs;
+    expect(legs).toBeDefined();
+    if (!legs) return;
+    expect(legs.count).toBe(2);
+    expect(legs.around).toBe('velocity');
+    expect(legs.bendOutward).toBe(false);
+    expect(legs.gait.maxConcurrent).toBe(1);
+    expect(legs.gait.stepDuration).toBeCloseTo(0.24, 6); // ponderous
+  });
+
+  it('has two short rigid arms off the shoulders that reach on a windup', () => {
+    const arms = spec.tentacles;
+    expect(arms).toHaveLength(2);
+    if (!arms) return;
+    expect(arms.map((a) => a.anchorPart)).toEqual(['shoulderL', 'shoulderR']);
+    expect(arms.every((a) => a.segments === 2)).toBe(true);
+    expect(arms.every((a) => a.reach === 'telegraph')).toBe(true);
+  });
+
+  it('stamps a core sigil and glowing eyes', () => {
+    const kinds = spec.decor?.map((d) => d.kind);
+    expect(kinds).toEqual(['eyes', 'marking']);
+    expect(spec.decor?.find((d) => d.kind === 'marking')?.anchorPart).toBe('core');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Gem (floating undead relic)
+// ---------------------------------------------------------------------------
+
+describe('buildGemSpec', () => {
+  const spec = buildGemSpec();
+
+  it('is a core + crown + tinted inner soul-glow, with no legs (it hovers)', () => {
+    expect(spec.id).toBe('gem');
+    expect(spec.parts.map((p) => p.id)).toEqual(['core', 'crown', 'heart']);
+    expect(spec.legs).toBeUndefined();
+    expect(spec.spine).toBeUndefined();
+    // The heart is an explicit accent tint, not the base monster colour.
+    const heart = spec.parts.find((p) => p.id === 'heart');
+    expect(typeof heart?.tint).toBe('number');
+  });
+
+  it('drifts three spectral tatters behind the core', () => {
+    const t = spec.tentacles;
+    expect(t).toHaveLength(3);
+    if (!t) return;
+    expect(t.every((x) => x.anchorPart === 'core')).toBe(true);
+    expect(t.every((x) => x.z === 'behind')).toBe(true);
+  });
+
+  it('carries a diamond facet marking and two cold eyes', () => {
+    const kinds = spec.decor?.map((d) => d.kind);
+    expect(kinds).toEqual(['marking', 'eyes']);
+    expect(spec.decor?.find((d) => d.kind === 'marking')?.anchorPart).toBe('core');
+    expect(spec.decor?.find((d) => d.kind === 'eyes')?.anchorPart).toBe('crown');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Eye (floating eye-tyrant)
+// ---------------------------------------------------------------------------
+
+describe('buildEyeSpec', () => {
+  const spec = buildEyeSpec();
+
+  it('is an orb + forward iris + dark pupil, no legs (it hovers)', () => {
+    expect(spec.id).toBe('eye');
+    expect(spec.parts.map((p) => p.id)).toEqual(['orb', 'iris', 'pupil']);
+    expect(spec.legs).toBeUndefined();
+    expect(spec.spine).toBeUndefined();
+    // Iris + pupil sit toward the facing (positive local x) so it stares forward.
+    const iris = spec.parts[1];
+    const pupil = spec.parts[2];
+    expect(iris.local.x).toBeGreaterThan(0);
+    expect(pupil.local.x).toBeGreaterThan(iris.local.x);
+    expect(typeof iris.tint).toBe('number');
+    expect(typeof pupil.tint).toBe('number');
+  });
+
+  it('fans five back-trailing eyestalks off the orb, symmetric about the rear', () => {
+    const stalks = spec.tentacles;
+    expect(stalks).toHaveLength(5);
+    if (!stalks) return;
+    expect(stalks.every((s) => s.anchorPart === 'orb')).toBe(true);
+    expect(stalks.every((s) => s.z === 'behind')).toBe(true);
+    // Angles 130,160,180,-160,-130 mirror across the 180° rear axis.
+    expect(stalks[0].baseAngleDeg).toBeCloseTo(-stalks[4].baseAngleDeg, 6);
+    expect(stalks[1].baseAngleDeg).toBeCloseTo(-stalks[3].baseAngleDeg, 6);
+    expect(stalks[2].baseAngleDeg).toBe(180);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Dragon (winged serpent — the `star` marquee boss)
+// ---------------------------------------------------------------------------
+
+describe('buildDragonSpec', () => {
+  const spec = buildDragonSpec();
+
+  it('is a body → chest → brow → snout profile', () => {
+    expect(spec.id).toBe('dragon');
+    expect(spec.parts.map((p) => p.id)).toEqual(['body', 'chest', 'brow', 'snout']);
+    // The snout is the frontmost part.
+    expect(spec.parts[3].local.x).toBeGreaterThan(spec.parts[2].local.x);
+  });
+
+  it('composes a lashing tail-spine with four facing legs (both primitives at once)', () => {
+    expect(spec.spine).toBeDefined();
+    expect(spec.spine?.segments).toBe(7);
+    const legs = spec.legs;
+    expect(legs).toBeDefined();
+    if (!legs) return;
+    expect(legs.count).toBe(4);
+    expect(legs.around).toBe('facing');
+    expect(legs.baseAngleDeg(0)).toBeCloseTo(62, 6);
+    expect(legs.baseAngleDeg(1)).toBeCloseTo(-62, 6);
+    expect(legs.baseAngleDeg(2)).toBeCloseTo(126, 6);
+    expect(legs.baseAngleDeg(3)).toBeCloseTo(-126, 6);
+  });
+
+  it('beats two broad wings in phase behind the body', () => {
+    const wings = spec.tentacles;
+    expect(wings).toHaveLength(2);
+    if (!wings) return;
+    expect(wings.every((w) => w.anchorPart === 'body')).toBe(true);
+    expect(wings.every((w) => w.z === 'behind')).toBe(true);
+    expect(wings[0].phase).toBe(wings[1].phase); // in phase → a flap, not a slither
+    expect(wings[0].baseAngleDeg).toBeCloseTo(-wings[1].baseAngleDeg, 6);
+  });
+
+  it('crowns the brow with a fiery eye and horns', () => {
+    const kinds = spec.decor?.map((d) => d.kind);
+    expect(kinds).toEqual(['eyes', 'horn']);
+    expect(spec.decor?.every((d) => d.anchorPart === 'brow')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Humanoid (per-class biped + boss variant)
 // ---------------------------------------------------------------------------
 
@@ -673,8 +935,17 @@ const SHAPE_TO_RIG: Partial<Record<BossBodyShape, RigId>> = {
   serpent: 'serpent',
   tree: 'treant',
   humanoid: 'humanoid',
+  beast: 'beast',
+  blob: 'blob',
+  construct: 'golem',
+  diamond: 'gem',
+  orb: 'eye',
+  star: 'dragon',
 };
 function expectedBossRig(id: MonsterId): RigId | null {
+  // The practice dummy (a construct-shaped menu target) is the sole documented
+  // geometry holdout — it never resolves to a rig even though its shape maps.
+  if (id === 'dummy') return null;
   return BOSS_RIG_OVERRIDE[id] ?? SHAPE_TO_RIG[getMonster(id).bodyShape] ?? null;
 }
 
@@ -696,13 +967,30 @@ describe('bossRigId', () => {
     expect(bossRigId('demon')).toBe('humanoid');
   });
 
-  it('falls back to null for star / blob / diamond / beast / construct / orb', () => {
-    expect(bossRigId('dragon')).toBeNull(); // star
-    expect(bossRigId('troll')).toBeNull(); // blob
-    expect(bossRigId('lich')).toBeNull(); // diamond
-    expect(bossRigId('direwolf')).toBeNull(); // beast
-    expect(bossRigId('animatedArmor')).toBeNull(); // construct
-    expect(bossRigId('beholder')).toBeNull(); // orb
+  it('maps the formerly geometry-only silhouettes to their new rigs', () => {
+    expect(bossRigId('dragon')).toBe('dragon'); // star
+    expect(bossRigId('troll')).toBe('blob'); // blob
+    expect(bossRigId('lich')).toBe('gem'); // diamond
+    expect(bossRigId('direwolf')).toBe('beast'); // beast
+    expect(bossRigId('animatedArmor')).toBe('golem'); // construct
+    expect(bossRigId('beholder')).toBe('eye'); // orb
+  });
+
+  it('keeps only the practice dummy on geometry (no boss rig)', () => {
+    expect(bossRigId('dummy')).toBeNull();
+    // ...even though the dummy shares the `construct` silhouette that now maps.
+    expect(getMonster('dummy').bodyShape).toBe('construct');
+    expect(bossRigId('mudGolem')).toBe('golem');
+  });
+
+  it('every non-dummy boss now resolves to a rig (no geometry fallback remains)', () => {
+    for (const id of ALL_MONSTER_IDS) {
+      if (id === 'dummy') {
+        expect(bossRigId(id)).toBeNull();
+      } else {
+        expect(bossRigId(id)).not.toBeNull();
+      }
+    }
   });
 
   it('every resolved rig id is a known RigId', () => {
@@ -764,9 +1052,17 @@ describe('bossRigSpec', () => {
     expect(bossRigSpec('goblin')).toBe(bossRigSpec('demon'));
   });
 
-  it('returns null for an unmapped silhouette', () => {
-    expect(bossRigSpec('dragon')).toBeNull();
-    expect(bossRigSpec('beholder')).toBeNull();
+  it('builds the newly-mapped silhouette rigs', () => {
+    expect(bossRigSpec('dragon')?.id).toBe('dragon');
+    expect(bossRigSpec('troll')?.id).toBe('blob');
+    expect(bossRigSpec('lich')?.id).toBe('gem');
+    expect(bossRigSpec('direwolf')?.id).toBe('beast');
+    expect(bossRigSpec('animatedArmor')?.id).toBe('golem');
+    expect(bossRigSpec('beholder')?.id).toBe('eye');
+  });
+
+  it('returns null only for the practice dummy', () => {
+    expect(bossRigSpec('dummy')).toBeNull();
   });
 });
 
@@ -811,10 +1107,11 @@ describe('rig predicates', () => {
     expect(bossUsesRig(bossView(id))).toBe(expectedBossRig(id) !== null);
   });
 
-  it('rig-rendered bosses vs geometry silhouettes', () => {
+  it('rig-rendered bosses vs the geometry dummy', () => {
     expect(bossUsesRig(bossView('goblin'))).toBe(true);
     expect(bossUsesRig(bossView('kraken'))).toBe(true);
-    expect(bossUsesRig(bossView('dragon'))).toBe(false);
+    expect(bossUsesRig(bossView('dragon'))).toBe(true); // now the winged dragon rig
+    expect(bossUsesRig(bossView('dummy'))).toBe(false); // the lone geometry holdout
   });
 
   it('players use the rig unless dead', () => {
