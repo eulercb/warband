@@ -522,6 +522,16 @@ export function drawTerrain(
     const by = y + Math.sin(a) * rr * 0.6;
     g.circle(bx, by, r * 0.22).fill({ color: pal.edge, alpha: 0.1 + pulse * 0.3 });
   }
+
+  // A bottomless lethal CORE (the abyss, item 28): a near-black void ringed by a
+  // pulsing warning band, so the deadly heart of the chasm reads at a glance — a
+  // surge that drags you in here is an environmental death.
+  if (t.lethalRadius && t.lethalRadius > 0) {
+    const lr = t.lethalRadius * scale;
+    const warn = 0.5 + 0.5 * Math.sin(timeSec * 3 + phase);
+    g.circle(x, y, lr).fill({ color: 0x05030a, alpha: 0.92 });
+    g.circle(x, y, lr).stroke({ width: 2, color: pal.edge, alpha: 0.5 + 0.4 * warn });
+  }
 }
 
 // ---------------------------------------------------------------------------

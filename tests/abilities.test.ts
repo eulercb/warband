@@ -939,7 +939,7 @@ describe('boss cone', () => {
       range: 400,
       halfAngleDeg: 40,
       slowMult: 0.5,
-      // slowDuration omitted -> exercises the bossSlowRider default (2s)
+      // slowDuration omitted -> exercises the bossHitRider slow default (2s)
     };
     resolveBossAbility(w, boss, ab, mkAction({ aimAngle: -Math.PI / 2 }));
     const slow = p.buffs.find((b) => b.kind === 'moveSpeed' && b.source === 'bossSlow');

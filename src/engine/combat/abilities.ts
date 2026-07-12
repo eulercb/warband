@@ -511,21 +511,62 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
 // Boss ability resolution
 // ---------------------------------------------------------------------------
 
-/** Push a player away from `center` by `distance`, clamped to the arena. */
-function knockback(world: World, p: Player, center: Vec2, distance: number): void {
-  const dir = normalize(sub(p.pos, center));
-  const d = dir.x === 0 && dir.y === 0 ? { x: 1, y: 0 } : dir;
-  p.pos = clampToArena(world, vadd(p.pos, vscale(d, distance)), p.radius);
+/**
+ * The shared movement-impulse primitive (item 28): shove `target` `distance`
+ * world-units along `dir`, wrapped around the torus. A degenerate direction
+ * falls back to +x so an impulse is never a no-op. Knockbacks (push away) and
+ * pulls (drag toward) both build on this; terrain surges and boss grabs reuse it.
+ */
+export function applyImpulse(
+  world: World,
+  target: { pos: Vec2 },
+  dir: Vec2,
+  distance: number,
+): void {
+  const n = normalize(dir);
+  const d = n.x === 0 && n.y === 0 ? { x: 1, y: 0 } : n;
+  target.pos = clampToArena(world, vadd(target.pos, vscale(d, distance)));
 }
 
-/** Apply a boss strike's on-hit riders to a player: a frost SLOW and/or a caster
- * SILENCE (item 28 — a silenced hero can use only their basic attack). */
-function bossSlowRider(p: Player, ab: BossAbilityDef): void {
+/**
+ * Drag `target` toward `center` by up to `distance`, never overshooting the
+ * centre (a pull can't fling you out the far side). Torus-aware. Returns the
+ * distance actually moved, so callers can tell how deep the drag went.
+ */
+export function pullToward(
+  world: World,
+  target: { pos: Vec2 },
+  center: Vec2,
+  distance: number,
+): number {
+  const delta = sub(center, target.pos); // shortest torus vector to the centre
+  const d = Math.hypot(delta.x, delta.y);
+  if (d < 1e-3) return 0;
+  const move = Math.min(distance, d);
+  applyImpulse(world, target, delta, move);
+  return move;
+}
+
+/** Push a player away from `center` by `distance`, wrapped around the arena. */
+function knockback(world: World, p: Player, center: Vec2, distance: number): void {
+  applyImpulse(world, p, sub(p.pos, center), distance);
+}
+
+/**
+ * Apply a boss strike's on-hit riders to a player: a frost SLOW, a caster
+ * SILENCE (item 28 — a silenced hero can use only their basic attack) and/or a
+ * signature PULL that drags the hero toward the boss (the Kraken's tentacle grab
+ * from the deep). `pull` and `knockback` are mutually exclusive per ability.
+ */
+function bossHitRider(world: World, boss: Boss, p: Player, ab: BossAbilityDef): void {
   if (ab.slowMult && ab.slowMult < 1) {
     applyBuff(p, makeBuff('moveSpeed', ab.slowMult, ab.slowDuration ?? 2, 'bossSlow'));
   }
   if (ab.silence && ab.silence > 0) {
     applyBuff(p, makeBuff('silence', 0, ab.silence, 'bossSilence'));
+  }
+  if (ab.pull && ab.pull > 0) {
+    pullToward(world, p, boss.pos, ab.pull);
   }
 }
 
@@ -565,7 +606,7 @@ export function resolveBossAbility(
       for (const p of alivePlayers) {
         if (pointInCone(p.pos, boss.pos, action.aimAngle, range, half, p.radius)) {
           dealtToPlayers += damagePlayer(world, p, dmg);
-          bossSlowRider(p, ab);
+          bossHitRider(world, boss, p, ab);
           if (ab.stun) applyStun(world, p, ab.stun, 'bossStun');
         }
       }
@@ -579,7 +620,7 @@ export function resolveBossAbility(
       for (const p of alivePlayers) {
         if (pointInCircle(p.pos, center, radius, p.radius)) {
           dealtToPlayers += damagePlayer(world, p, dmg);
-          bossSlowRider(p, ab);
+          bossHitRider(world, boss, p, ab);
         }
       }
       world.events.push({ t: 'telegraph', pos: center, shape: 'circle' });
@@ -592,7 +633,7 @@ export function resolveBossAbility(
         if (pointInCircle(p.pos, boss.pos, radius, p.radius)) {
           dealtToPlayers += damagePlayer(world, p, dmg);
           if (ab.knockback) knockback(world, p, boss.pos, ab.knockback);
-          bossSlowRider(p, ab);
+          bossHitRider(world, boss, p, ab);
           if (ab.stun) applyStun(world, p, ab.stun, 'bossStun');
         }
       }
@@ -610,7 +651,7 @@ export function resolveBossAbility(
         if (pointInSegment(p.pos, from, to, halfWidth, p.radius)) {
           dealtToPlayers += damagePlayer(world, p, dmg);
           if (ab.knockback) knockback(world, p, from, ab.knockback);
-          bossSlowRider(p, ab);
+          bossHitRider(world, boss, p, ab);
         }
       }
       boss.pos = clampToArena(world, to, boss.radius);

@@ -31,6 +31,7 @@ import type {
   SubSlot,
   ExtSlot,
   Cooldowns,
+  TerrainKind,
   Vec2,
 } from '../core/types';
 import {
@@ -87,6 +88,19 @@ import {
   AFFIX_TELEPORT_RANGE,
   AFFIX_TELEPORT_THREATEN,
   AFFIX_TELEPORT_CD_MULT,
+  SYNERGY_FIRST_DELAY,
+  SYNERGY_INTERVAL,
+  SYNERGY_WINDUP,
+  SYNERGY_BUFF_DURATION,
+  SYNERGY_EMPOWER_MULT,
+  SYNERGY_WARD_MULT,
+  TERRAIN_SURGE_INTERVAL,
+  TERRAIN_SURGE_FUSE,
+  ABYSS_SURGE_PULL,
+  ABYSS_SURGE_DAMAGE,
+  ABYSS_PLUNGE_DAMAGE,
+  TIDE_SURGE_PULL,
+  TIDE_SURGE_DAMAGE,
 } from '../core/constants';
 import { generateTerrain } from './terrain';
 import { generateObstacles } from './obstacles';
@@ -136,6 +150,7 @@ import {
   beamTick,
   spawnZone,
   abilityForSlot,
+  pullToward,
 } from '../combat/abilities';
 import type { BossAbilityDef } from '../content/monsters';
 import { stepCorruption, firstCorruptionDelay } from './corruption';
@@ -240,6 +255,39 @@ export interface WorldInit {
 /** Interval (s) at which an endless "type" modifier's aura fires. */
 const MOD_AURA_INTERVAL = 3.5;
 
+/**
+ * Per-kind terrain SURGE behaviour (item 28). A surging hazard periodically drags
+ * every hero caught inside toward its heart; the abyss's bottomless core makes the
+ * drag lethal, the Kraken's tide only hauls you deeper into the drowning water.
+ * Terrain kinds absent from this table never surge. `color` tints the telegraph.
+ */
+const TERRAIN_SURGE: Partial<
+  Record<TerrainKind, { pull: number; surgeDamage: number; plunge: number; color: number }>
+> = {
+  abyss: {
+    pull: ABYSS_SURGE_PULL,
+    surgeDamage: ABYSS_SURGE_DAMAGE,
+    plunge: ABYSS_PLUNGE_DAMAGE,
+    color: 0x7b5cff,
+  },
+  tide: { pull: TIDE_SURGE_PULL, surgeDamage: TIDE_SURGE_DAMAGE, plunge: 0, color: 0x6cc6ff },
+};
+
+/**
+ * An in-flight boss-vs-boss BOND (twin/N-boss packs, item 28): the healthiest
+ * boss (`casterId`) is winding up a gift to a wounded partner (`partnerId`). If
+ * BOTH survive the wind-up the partner is empowered (harder hits) or warded
+ * (tankier); killing either mid wind-up cancels it. Host-only; the forming bond
+ * is serialized as a line telegraph so the band can read and interrupt it.
+ */
+interface BossBond {
+  casterId: EntityId;
+  partnerId: EntityId;
+  kind: 'empower' | 'ward';
+  fuse: number; // s remaining in the wind-up
+  total: number; // full wind-up (drives the telegraph fill)
+}
+
 export class World {
   players: Player[] = [];
   /** Every boss in the arena. Solo fights have one; twin encounters have two. */
@@ -286,6 +334,11 @@ export class World {
   tauntTargetId: EntityId | null = null;
   tauntTimer = 0;
 
+  /** Seconds until the next boss-vs-boss bond can form (twin/N-boss packs only). */
+  synergyTimer = 0;
+  /** The in-flight pack bond winding up, or null (see updateBossSynergy). */
+  bond: BossBond | null = null;
+
   finished = false;
   outcome: Outcome | null = null;
   endMs = 0;
@@ -313,6 +366,9 @@ export class World {
     if (this.scene === null) {
       const ids: MonsterId[] = [init.monsterId, ...(init.coBosses ?? [])];
       this.spawnBosses(ids, init.bossAffixes);
+      // A shared-arena pack stops ignoring each other after a grace period (item
+      // 28): the first cross-boss bond can form once the fight has settled.
+      if (this.bosses.length > 1) this.synergyTimer = SYNERGY_FIRST_DELAY;
       this.terrain = this.practice ? [] : generateTerrain(ids, init.seed, () => this.allocId());
       // Cover obstacles avoid the terrain patches so cover stays readable.
       this.obstacles = this.practice
@@ -623,6 +679,9 @@ export class World {
     this.updateTerrain(dt);
     this.checkDownedTransitions();
     this.updateBosses(dt);
+    // Boss-vs-boss synergy (twin/N-boss packs): a telegraphed bond that empowers
+    // or wards a wounded partner. Inert for a lone boss (guards on pack size).
+    this.updateBossSynergy(dt);
     this.updateAdds(dt);
     // Mid-fight corruption beats (host-gated) — may add pending strikes, zones,
     // adds or boss buffs that resolve on subsequent ticks.
@@ -1102,6 +1161,10 @@ export class World {
   private updateTerrain(dt: number): void {
     if (this.terrain.length === 0) return;
 
+    // Signature hazards (abyss / tide) periodically SURGE — a telegraphed pull
+    // toward their heart, lethal at the abyss's bottomless core (item 28).
+    this.updateTerrainSurge(dt);
+
     // Slow: strongest (lowest mult) patch a player is standing in wins. The
     // Surefooted upgrade eases the slow back toward 1 (no effect at resist=1).
     for (const p of this.players) {
@@ -1138,6 +1201,36 @@ export class World {
     }
   }
 
+  /**
+   * Schedule terrain SURGES (item 28): each surging hazard (abyss / tide) fires a
+   * telegraphed pull toward its heart on a seeded cadence. The surge itself is a
+   * pending strike carrying a `pull`, so it reuses the existing telegraph path
+   * (clients see a filling ring and can flee) and resolves in updatePendingStrikes.
+   * A per-patch phase stagger keeps multiple hazards from surging on the same tick.
+   */
+  private updateTerrainSurge(dt: number): void {
+    for (let i = 0; i < this.terrain.length; i++) {
+      const t = this.terrain[i];
+      const cfg = TERRAIN_SURGE[t.kind];
+      if (!cfg) continue;
+      t.surgeAccum = (t.surgeAccum ?? -i * 0.9) + dt;
+      if (t.surgeAccum < TERRAIN_SURGE_INTERVAL) continue;
+      t.surgeAccum -= TERRAIN_SURGE_INTERVAL;
+      this.addPendingStrike({
+        pos: { ...t.pos },
+        radius: t.radius,
+        fuse: TERRAIN_SURGE_FUSE,
+        damage: cfg.surgeDamage,
+        color: cfg.color,
+        pull: {
+          strength: cfg.pull,
+          lethalRadius: t.lethalRadius ?? 0,
+          lethalDamage: cfg.plunge,
+        },
+      });
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Boss
   // -------------------------------------------------------------------------
@@ -1150,6 +1243,90 @@ export class World {
     for (const boss of this.bosses) {
       this.updateBoss(dt, boss, boss.hp > 0 ? aliveIndex++ : 0);
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Boss-vs-boss synergy (twin / N-boss packs). A pack stops ignoring each other:
+  // the healthiest boss forms a telegraphed BOND to a wounded partner and, if both
+  // survive the wind-up, empowers or wards it — so a duo is more than two solos.
+  // Seeded + host-authoritative; composes with affixes (distinct buff sources).
+  // Completely inert for a lone boss (guards on pack size), so solo fights are
+  // byte-for-byte unchanged.
+  // -------------------------------------------------------------------------
+
+  private updateBossSynergy(dt: number): void {
+    // Cross-boss behaviour only exists when a pack shares the arena.
+    if (this.bosses.length < 2) return;
+
+    // A bond already forming: burn its wind-up, but only while BOTH ends live.
+    if (this.bond) {
+      const caster = this.bosses.find((b) => b.id === this.bond!.casterId);
+      const partner = this.bosses.find((b) => b.id === this.bond!.partnerId);
+      if (!caster || !partner || caster.hp <= 0 || partner.hp <= 0) {
+        // The combo only resolves while both are alive — a kill cancels it.
+        this.bond = null;
+        this.synergyTimer = SYNERGY_INTERVAL;
+        return;
+      }
+      this.bond.fuse -= dt;
+      if (this.bond.fuse <= 0) {
+        this.resolveBond(caster, partner, this.bond.kind);
+        this.bond = null;
+        this.synergyTimer = SYNERGY_INTERVAL;
+      }
+      return;
+    }
+
+    // Otherwise count down to the next bond; need two live bosses to pair up.
+    const alive = this.aliveBosses();
+    if (alive.length < 2) return;
+    this.synergyTimer -= dt;
+    if (this.synergyTimer > 0) return;
+    this.startBond(alive);
+  }
+
+  /** Begin a telegraphed bond: the healthiest boss lends power to the most wounded. */
+  private startBond(alive: Boss[]): void {
+    const sorted = [...alive].sort((a, b) => b.hp / b.maxHp - a.hp / a.maxHp);
+    const caster = sorted[0];
+    const partner = sorted[sorted.length - 1];
+    if (caster.id === partner.id) return; // degenerate (shouldn't happen with >=2)
+    // Seeded gift: empower (partner hits harder) or ward (partner takes less).
+    const kind: BossBond['kind'] = this.rng.next() < 0.5 ? 'empower' : 'ward';
+    this.bond = {
+      casterId: caster.id,
+      partnerId: partner.id,
+      kind,
+      fuse: SYNERGY_WINDUP,
+      total: SYNERGY_WINDUP,
+    };
+    // Flash the wind-up start; the forming bond also rides the wire as a line
+    // telegraph (worldTelegraphs) so the band can read and interrupt it.
+    this.events.push({ t: 'telegraph', pos: { ...partner.pos }, shape: 'line' });
+  }
+
+  /** Land a resolved bond: empower or ward the partner (composes with affixes). */
+  private resolveBond(caster: Boss, partner: Boss, kind: BossBond['kind']): void {
+    if (kind === 'empower') {
+      applyBuff(
+        partner,
+        makeBuff('damageDealt', SYNERGY_EMPOWER_MULT, SYNERGY_BUFF_DURATION, 'packEmpower'),
+      );
+    } else {
+      applyBuff(
+        partner,
+        makeBuff('damageTaken', SYNERGY_WARD_MULT, SYNERGY_BUFF_DURATION, 'packWard'),
+      );
+    }
+    // Reads as a cast from the anchor + a flash on the empowered partner.
+    this.events.push({
+      t: 'cast',
+      ability: kind === 'empower' ? 'Empower Pack' : 'Ward Pack',
+      sourceId: caster.id,
+      pos: { ...caster.pos },
+      side: 'boss',
+    });
+    this.events.push({ t: 'telegraph', pos: { ...partner.pos }, shape: 'circle' });
   }
 
   private updateBoss(dt: number, boss: Boss, index: number): void {
@@ -1553,6 +1730,7 @@ export class World {
     slowMult?: number;
     slowDuration?: number;
     leaveZone?: PendingStrike['leaveZone'];
+    pull?: PendingStrike['pull'];
   }): void {
     this.pendingStrikes.push({
       id: this.allocId(),
@@ -1565,6 +1743,7 @@ export class World {
       slowMult: opts.slowMult,
       slowDuration: opts.slowDuration,
       leaveZone: opts.leaveZone,
+      pull: opts.pull,
     });
   }
 
@@ -1590,6 +1769,16 @@ export class World {
         if (s.slowMult != null && s.slowMult < 1) {
           applyBuff(p, makeBuff('moveSpeed', s.slowMult, s.slowDuration ?? 2, 'strikeSlow'));
         }
+        // Terrain surge: haul a caught hero toward the hazard's heart. A dodge /
+        // i-frame slips the grip entirely (never a cheap-shot). Dragged into a
+        // bottomless core → a plunge into the void (an environmental kill).
+        if (s.pull && !hasBuff(p, 'invuln')) {
+          pullToward(this, p, s.pos, s.pull.strength);
+          if (s.pull.lethalRadius > 0 && dist(p.pos, s.pos) <= s.pull.lethalRadius) {
+            damagePlayer(this, p, s.pull.lethalDamage);
+            this.events.push({ t: 'telegraph', pos: { ...p.pos }, shape: 'circle' });
+          }
+        }
       }
     }
     // Flash the impact + optionally leave a lingering hazard (vent eruptions).
@@ -1611,9 +1800,10 @@ export class World {
     }
   }
 
-  /** Serialize pending strikes as circle telegraphs so clients can dodge them. */
+  /** Serialize pending strikes (circles) + any forming pack bond (a line) so
+   * clients can dodge the surge and read the incoming boss-vs-boss empower. */
   private worldTelegraphs(): Telegraph[] {
-    return this.pendingStrikes.map((s) => ({
+    const out: Telegraph[] = this.pendingStrikes.map((s) => ({
       kind: 'circle',
       origin: { ...s.pos },
       angle: 0,
@@ -1625,6 +1815,27 @@ export class World {
       remainingWindup: Math.max(0, s.fuse),
       totalWindup: s.totalFuse,
     }));
+    // A forming pack bond rides the wire as a line telegraph between the two
+    // bosses, filling as its wind-up burns down (item 28).
+    if (this.bond) {
+      const caster = this.bosses.find((b) => b.id === this.bond!.casterId);
+      const partner = this.bosses.find((b) => b.id === this.bond!.partnerId);
+      if (caster && partner && caster.hp > 0 && partner.hp > 0) {
+        out.push({
+          kind: 'line',
+          origin: { ...caster.pos },
+          angle: angleOf(sub(partner.pos, caster.pos)),
+          range: dist(caster.pos, partner.pos),
+          radius: 0,
+          halfAngle: 0,
+          width: 26,
+          target: { ...partner.pos },
+          remainingWindup: Math.max(0, this.bond.fuse),
+          totalWindup: this.bond.total,
+        });
+      }
+    }
+    return out;
   }
 
   private enterRecover(boss: Boss): void {
@@ -2209,6 +2420,7 @@ export class World {
         pos: { ...t.pos },
         radius: t.radius,
         variant: t.variant,
+        lethalRadius: t.lethalRadius,
       })),
       obstacles: this.obstacles.map((o) => ({
         id: o.id,
@@ -2217,7 +2429,7 @@ export class World {
         kind: o.kind,
         variant: o.variant,
       })),
-      telegraphs: this.pendingStrikes.length > 0 ? this.worldTelegraphs() : undefined,
+      telegraphs: this.pendingStrikes.length > 0 || this.bond ? this.worldTelegraphs() : undefined,
       events: this.events.slice(),
     };
   }

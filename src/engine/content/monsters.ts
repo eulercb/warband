@@ -41,6 +41,9 @@ export interface BossAbilityDef {
   halfAngleDeg?: number;
   width?: number; // line half-width
   knockback?: number;
+  /** Signature PULL (item 28): drag a struck hero this many units toward the boss
+   * (the Kraken's tentacle grab). Mutually exclusive with `knockback` per ability. */
+  pull?: number;
   stun?: number; // applied to players hit by cone/pbaoe
   silence?: number; // seconds of SILENCE applied to players hit (item 28) — caster bosses
   slowMult?: number; // on-hit slow (frost bosses); applied to projectiles/zones too
@@ -1027,7 +1030,9 @@ const BEHOLDER: MonsterDef = {
   blink: { range: 260, threatenRange: 120, internalCd: 6 },
   abilities: [
     A.proj('eyeRays', 'Eye Rays', 0.6, 5, 22, { projSpeed: 480, projCount: 8, spreadDeg: 320 }),
-    A.circle('disintegrate', 'Disintegrate', 1.0, 6, 50, 700, 100),
+    // SIGNATURE (item 28): the disintegration ray also snuffs magic where it lands —
+    // a second, focused anti-magic beat beyond the wide Antimagic Eye cone.
+    A.circle('disintegrate', 'Disintegrate', 1.0, 6, 50, 700, 100, { silence: 2 }),
     // SIGNATURE (item 28): the central eye's antimagic cone SILENCES casters caught
     // in its gaze — turn away or fight with your basic until it passes.
     A.cone('antimagicEye', 'Antimagic Eye', 1.0, 12, 16, 440, 42, {
@@ -1193,9 +1198,13 @@ const DEATHKNIGHT: MonsterDef = {
     A.line('deathGrip', 'Death Grip', 0.7, 8, 40, 640, 44, { knockback: 70, targetRandom: true }),
     A.nova('deathAndDecay', 'Death and Decay', 1.0, 7, 44, 210),
     A.summon('raiseGhouls', 'Raise Ghouls', 1.2, 14, { addHpMult: 1.1 }),
+    // SIGNATURE (item 28): a lifedrain theme — the fallen champion siphons a soul
+    // to knit its own undeath back together (heals as the beam channels).
+    A.beam('soulHarvest', 'Soul Harvest', 0.8, 11, 20, { healSelf: true, channelDuration: 2 }),
   ],
   decide: decideBy([
     { id: 'deathGrip', cond: far(240) },
+    { id: 'soulHarvest', cond: (c) => c.hpFrac < 0.6 && c.target != null },
     { id: 'deathAndDecay', cond: melee, chance: 0.5 },
     { id: 'raiseGhouls' },
     { id: 'deathCleave', cond: melee },
@@ -1303,9 +1312,18 @@ const KRAKEN: MonsterDef = {
       projCount: 4,
       spreadDeg: 60,
     }),
+    // SIGNATURE (item 28): a tentacle erupts from the deep and HAULS a distant hero
+    // toward the leviathan (and toward the tide) — a grab, not a shove.
+    A.circle('tentacleGrab', 'Tentacle Grab', 1.0, 9, 34, 780, 95, {
+      pull: 270,
+      slowMult: 0.5,
+      slowDuration: 2.5,
+      targetRandom: true,
+    }),
   ],
   decide: decideBy([
     { id: 'maelstrom', cond: melee },
+    { id: 'tentacleGrab', cond: far(260), chance: 0.5 },
     { id: 'tentacleSlam', cond: far(200) },
     { id: 'inkSpray' },
     { id: 'brineBolts' },

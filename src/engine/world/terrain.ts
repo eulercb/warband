@@ -24,6 +24,7 @@ import {
   TERRAIN_MAX_PATCHES,
   TERRAIN_SPAWN_CLEARANCE,
   TERRAIN_TICK_INTERVAL,
+  TERRAIN_ABYSS_CORE_FRAC,
 } from '../core/constants';
 
 /** Static balance profile for one terrain kind (per-tick = per 0.5s). */
@@ -34,6 +35,12 @@ interface TerrainProfile {
   slowDuration: number; // s the slow lingers after leaving
   /** Relative selection weight within a theme. */
   weight: number;
+  /**
+   * Bottomless lethal-core radius as a FRACTION of the patch radius (the abyss).
+   * A surge that drags a hero this deep plunges them to an environmental death
+   * (item 28). Absent = no lethal core.
+   */
+  lethalFrac?: number;
 }
 
 const PROFILES: Record<TerrainKind, TerrainProfile> = {
@@ -43,9 +50,16 @@ const PROFILES: Record<TerrainKind, TerrainProfile> = {
   bog: { kind: 'bog', damagePerTick: 0, slowMult: 0.45, slowDuration: 1.8, weight: 2 },
   ice: { kind: 'ice', damagePerTick: 0, slowMult: 0.5, slowDuration: 0.6, weight: 3 },
   deathfog: { kind: 'deathfog', damagePerTick: 6, slowMult: 0.85, slowDuration: 1.0, weight: 2 },
-  // Signature terrains (item 28).
+  // Signature terrains (item 28). The abyss carries a bottomless lethal core.
   tide: { kind: 'tide', damagePerTick: 3, slowMult: 0.4, slowDuration: 1.4, weight: 3 },
-  abyss: { kind: 'abyss', damagePerTick: 11, slowMult: 0.7, slowDuration: 1.0, weight: 2 },
+  abyss: {
+    kind: 'abyss',
+    damagePerTick: 11,
+    slowMult: 0.7,
+    slowDuration: 1.0,
+    weight: 2,
+    lethalFrac: TERRAIN_ABYSS_CORE_FRAC,
+  },
 };
 
 /**
@@ -168,6 +182,7 @@ export function generateTerrain(
       slowDuration: profile.slowDuration,
       tickAccum: 0,
       variant: rng.int(0, 0xffff),
+      lethalRadius: profile.lethalFrac ? a.radius * profile.lethalFrac : undefined,
     });
   }
   // A degenerate roll (every anchor rejected by the clearance rules) falls back
@@ -184,6 +199,7 @@ export function generateTerrain(
       slowDuration: profile.slowDuration,
       tickAccum: 0,
       variant: rng.int(0, 0xffff),
+      lethalRadius: profile.lethalFrac ? TERRAIN_MIN_RADIUS * profile.lethalFrac : undefined,
     });
   }
   return patches;

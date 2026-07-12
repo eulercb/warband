@@ -194,6 +194,36 @@ export const TWIN_EXTRA_FALLOFF = 0.45; // each further boss is much less likely
 export const TWIN_EXTRA_PER_CYCLE = 0.06;
 export const TWIN_MAX_BOSSES = 4;
 
+// --- Boss-vs-boss synergy (twin / N-boss packs; see world.updateBossSynergy) ---
+// While two or more bosses share the arena they stop ignoring each other: on a
+// seeded cadence the healthiest boss forms a telegraphed BOND to a wounded
+// partner and, if BOTH survive the wind-up, empowers (harder hits) or wards
+// (tankier) it. The bond only resolves while both are alive, so killing the
+// caster mid wind-up cancels the pulse — a duo becomes more than two solos, but
+// it stays readable and interruptible. Host-authoritative + seeded; composes
+// with affixes (distinct buff sources). Inert for a lone boss.
+export const SYNERGY_FIRST_DELAY = 7; // s before the first pack bond can form
+export const SYNERGY_INTERVAL = 10; // s between bond pulses
+export const SYNERGY_WINDUP = 1.6; // s telegraphed, interruptible wind-up
+export const SYNERGY_BUFF_DURATION = 6; // s the granted bond buff lasts
+export const SYNERGY_EMPOWER_MULT = 1.35; // partner's outgoing-damage mult while bonded
+export const SYNERGY_WARD_MULT = 0.6; // partner's incoming-damage mult while bonded
+
+// --- Terrain surge (abyss void + Kraken tide; see world.updateTerrainSurge) ---
+// The signature hazards stop being pure damage-over-time and become positioning
+// threats. On a seeded cadence a surge telegraphs (a filling ring the band can
+// flee) then PULLS every hero still inside toward the hazard's heart. The abyss
+// has a bottomless CORE — a hero dragged into it plunges to an environmental
+// death (Furi/Hades pit); the tide only hauls you deeper into the drowning water.
+export const TERRAIN_ABYSS_CORE_FRAC = 0.5; // lethal core radius as a frac of the patch
+export const TERRAIN_SURGE_INTERVAL = 7.5; // s between surges
+export const TERRAIN_SURGE_FUSE = 1.5; // s telegraphed wind-up before the pull
+export const ABYSS_SURGE_PULL = 210; // u a caught hero is dragged toward the core
+export const ABYSS_SURGE_DAMAGE = 10; // surge contact damage (scaled), on top of the pull
+export const ABYSS_PLUNGE_DAMAGE = 100000; // effectively lethal — a plunge into the void
+export const TIDE_SURGE_PULL = 150; // u the tide hauls a hero deeper (never lethal)
+export const TIDE_SURGE_DAMAGE = 9; // extra drowning damage from a tide surge
+
 // --- Boss affixes (rolled at fight-gen; see content/affixes.ts + world.ts) ---
 // Each affix bends the same boss into a different fight. All numbers are starting
 // balance points. Cadence timers accumulate in `boss.affixTimers`.

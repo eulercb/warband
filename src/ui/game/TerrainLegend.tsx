@@ -31,12 +31,12 @@ const TERRAIN_LEGEND: Record<TerrainKind, LegendEntry> = {
   tide: {
     label: 'Tide',
     color: '#1f5f9e',
-    effect: 'Surging ocean — very heavy slow and slow drowning damage.',
+    effect: 'Surging ocean — heavy slow and drowning damage; surges haul you deeper.',
   },
   abyss: {
     label: 'Abyss',
     color: '#7b5cff',
-    effect: 'A black chasm — heavy damage; the void drags at your steps.',
+    effect: 'A black chasm — heavy damage; its surges drag you into the lethal void.',
   },
 };
 

@@ -1,0 +1,459 @@
+/**
+ * Warband — boss signatures, round 2 (item 28 follow-up, issue #25).
+ *
+ * Covers the three new pillars:
+ *   1. Boss-vs-boss synergy — a telegraphed pack bond that only resolves while
+ *      both bosses live, empowering / warding a wounded partner (seeded).
+ *   2. The knockback/pull primitive + the lethal abyss void (a surge drags a
+ *      hero into a bottomless core for an environmental death).
+ *   3. New per-boss signatures — the Kraken's tentacle grab (pull), the
+ *      Beholder's anti-magic disintegration (silence), the Death Knight's
+ *      soul-harvest lifedrain.
+ */
+import { describe, it, expect } from 'vitest';
+import { World } from '../src/engine/world/world';
+import {
+  applyImpulse,
+  pullToward,
+  resolveBossAbility,
+  beamTick,
+} from '../src/engine/combat/abilities';
+import { getMonster, abilityById } from '../src/engine/content/monsters';
+import { generateTerrain } from '../src/engine/world/terrain';
+import { hasBuff } from '../src/engine/combat/combat';
+import { dist } from '../src/engine/core/torus';
+import {
+  SYNERGY_WINDUP,
+  SYNERGY_EMPOWER_MULT,
+  SYNERGY_WARD_MULT,
+  TERRAIN_SURGE_INTERVAL,
+} from '../src/engine/core/constants';
+import type {
+  InputCommand,
+  ButtonState,
+  BossAction,
+  TerrainPatch,
+  ClassId,
+  MonsterId,
+} from '../src/engine/core/types';
+
+const DT = 0.05;
+
+function buttons(over: Partial<ButtonState> = {}): ButtonState {
+  return { basic: false, a1: false, a2: false, a3: false, revive: false, ...over };
+}
+function inp(over: Partial<InputCommand> = {}): InputCommand {
+  return { seq: 0, move: { x: 0, y: 0 }, aim: { x: 1, y: 0 }, buttons: buttons(), ...over };
+}
+/** A zero-input map for every player in the world (nobody moves or acts). */
+function idle(w: World): Map<string, InputCommand> {
+  return new Map(w.players.map((p) => [p.peerId, inp()]));
+}
+function mkWorld(monsterId: MonsterId, classId: ClassId = 'knight'): World {
+  return new World({ monsterId, seed: 1, players: [{ peerId: 'a', name: 'A', classId }] });
+}
+function mkAction(over: Partial<BossAction> = {}): BossAction {
+  return {
+    kind: 'windup',
+    abilityId: null,
+    remaining: 0,
+    total: 0,
+    targetId: null,
+    targetPos: null,
+    aimAngle: 0,
+    channelAccum: 0,
+    ...over,
+  };
+}
+let terrainIds = 1;
+function counter(): () => number {
+  return () => terrainIds++;
+}
+
+// ---------------------------------------------------------------------------
+// 1. The movement-impulse primitive (shared knockback / pull path)
+// ---------------------------------------------------------------------------
+
+describe('signatures: impulse primitive', () => {
+  it('applyImpulse shoves a target along a direction (degenerate dir → +x)', () => {
+    const w = mkWorld('dragon');
+    const t = { pos: { x: 800, y: 500 } };
+    applyImpulse(w, t, { x: 1, y: 0 }, 100);
+    expect(t.pos.x).toBeCloseTo(900, 4);
+    expect(t.pos.y).toBeCloseTo(500, 4);
+    // A zero direction never no-ops — it falls back to +x so a shove always lands.
+    const u = { pos: { x: 400, y: 400 } };
+    applyImpulse(w, u, { x: 0, y: 0 }, 50);
+    expect(u.pos.x).toBeCloseTo(450, 4);
+  });
+
+  it('applyImpulse wraps around the torus instead of clamping to a wall', () => {
+    const w = mkWorld('dragon');
+    const t = { pos: { x: w.arena.w - 20, y: 500 } };
+    applyImpulse(w, t, { x: 1, y: 0 }, 60);
+    // 1580 + 60 = 1640 → wraps to 40 on a 1600-wide torus.
+    expect(t.pos.x).toBeCloseTo(40, 3);
+  });
+
+  it('pullToward drags a target toward a centre, never overshooting it', () => {
+    const w = mkWorld('dragon');
+    const t = { pos: { x: 800, y: 300 } };
+    const moved = pullToward(w, t, { x: 800, y: 500 }, 50); // centre 200 below
+    expect(moved).toBeCloseTo(50, 4);
+    expect(t.pos.y).toBeCloseTo(350, 4);
+
+    // A pull longer than the gap lands exactly on the centre (no overshoot).
+    const u = { pos: { x: 800, y: 300 } };
+    const moved2 = pullToward(w, u, { x: 800, y: 500 }, 999);
+    expect(moved2).toBeCloseTo(200, 4);
+    expect(u.pos.y).toBeCloseTo(500, 4);
+
+    // Already at the centre → no movement.
+    const v = { pos: { x: 800, y: 500 } };
+    expect(pullToward(w, v, { x: 800, y: 500 }, 100)).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2. The lethal abyss void (surge pull → environmental death)
+// ---------------------------------------------------------------------------
+
+describe('signatures: lethal abyss void', () => {
+  /** A two-player world so a single victim downing never ends the fight. */
+  function voidWorld(): World {
+    const w = new World({
+      monsterId: 'bandit',
+      seed: 5,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'ranger' },
+      ],
+    });
+    w.boss = null; // isolate the terrain surge from boss behaviour
+    w.terrain = [];
+    return w;
+  }
+
+  it('a surge drags a caught hero into the core for an environmental death', () => {
+    const w = voidWorld();
+    const [victim, bystander] = w.players;
+    const centre = { x: 800, y: 500 };
+    victim.pos = { x: 800, y: 380 }; // 120u from centre: inside the pull, outside the core
+    bystander.pos = { x: 150, y: 150 }; // far outside the surge
+    // A telegraphed pull-strike about to land (a surge distilled to one detonation).
+    w.addPendingStrike({
+      pos: { ...centre },
+      radius: 160,
+      fuse: DT * 0.5,
+      damage: 0,
+      pull: { strength: 210, lethalRadius: 80, lethalDamage: 100000 },
+    });
+    w.step(DT, idle(w));
+    // Dragged to the heart of the chasm and plunged.
+    expect(victim.state).toBe('downed');
+    expect(dist(victim.pos, centre)).toBeLessThanOrEqual(80);
+    // The hero safely outside the surge is untouched (no cheap-shot at range).
+    expect(bystander.state).toBe('alive');
+    expect(bystander.pos).toEqual({ x: 150, y: 150 });
+  });
+
+  it('an i-frame slips the surge grip entirely (dodge saves you)', () => {
+    const w = voidWorld();
+    const victim = w.players[0];
+    victim.pos = { x: 800, y: 380 };
+    victim.buffs.push({ kind: 'invuln', mult: 0, remaining: 5, source: 'test' });
+    w.addPendingStrike({
+      pos: { x: 800, y: 500 },
+      radius: 160,
+      fuse: DT * 0.5,
+      damage: 0,
+      pull: { strength: 210, lethalRadius: 80, lethalDamage: 100000 },
+    });
+    w.step(DT, idle(w));
+    expect(victim.state).toBe('alive');
+    expect(victim.pos).toEqual({ x: 800, y: 380 }); // not pulled at all
+  });
+
+  it('a non-lethal (tide) pull hauls a hero deeper without killing them', () => {
+    const w = voidWorld();
+    const victim = w.players[0];
+    const centre = { x: 800, y: 500 };
+    victim.pos = { x: 800, y: 300 }; // 200u away
+    w.addPendingStrike({
+      pos: { ...centre },
+      radius: 260,
+      fuse: DT * 0.5,
+      damage: 0,
+      pull: { strength: 150, lethalRadius: 0, lethalDamage: 100000 }, // no core → never lethal
+    });
+    w.step(DT, idle(w));
+    expect(victim.state).toBe('alive'); // dragged, but the tide has no bottomless core
+    expect(dist(victim.pos, centre)).toBeCloseTo(50, 0); // 200 - 150 pull
+  });
+
+  it('an abyss patch surges on its cadence, telegraphs it, then plunges a hero in the core', () => {
+    const w = voidWorld();
+    const victim = w.players[0];
+    w.players[1].pos = { x: 150, y: 150 };
+    const centre = { x: 800, y: 500 };
+    const patch: TerrainPatch = {
+      id: w.allocId(),
+      kind: 'abyss',
+      pos: { ...centre },
+      radius: 160,
+      damagePerTick: 0, // isolate the plunge from the ambient DoT
+      slowMult: 1,
+      slowDuration: 0,
+      tickAccum: 0,
+      lethalRadius: 80,
+      surgeAccum: TERRAIN_SURGE_INTERVAL, // due to surge on the next tick
+    };
+    w.terrain = [patch];
+    victim.pos = { x: 800, y: 400 }; // 100u from centre, inside the pull
+
+    // First tick: the surge schedules a telegraphed pull the band can read.
+    w.step(DT, idle(w));
+    expect(w.pendingStrikes.some((s) => s.pull != null)).toBe(true);
+    const tg = w.serialize().telegraphs ?? [];
+    expect(tg.some((t) => t.kind === 'circle')).toBe(true);
+
+    // It then detonates after its fuse and plunges the hero into the void.
+    for (let i = 0; i < 60 && victim.state === 'alive'; i++) w.step(DT, idle(w));
+    expect(victim.state).toBe('downed');
+  });
+
+  it('a tide patch surges with a non-lethal pull (no bottomless core)', () => {
+    const w = voidWorld();
+    w.terrain = [
+      {
+        id: w.allocId(),
+        kind: 'tide',
+        pos: { x: 800, y: 500 },
+        radius: 200,
+        damagePerTick: 0,
+        slowMult: 1,
+        slowDuration: 0,
+        tickAccum: 0,
+        surgeAccum: TERRAIN_SURGE_INTERVAL,
+      },
+    ];
+    w.step(DT, idle(w));
+    const surge = w.pendingStrikes.find((s) => s.pull != null);
+    expect(surge).toBeTruthy();
+    expect(surge!.pull!.lethalRadius).toBe(0); // the tide hauls, but never plunges
+  });
+
+  it('ordinary terrain (magma) never surges — only the signature hazards do', () => {
+    const w = voidWorld();
+    w.terrain = [
+      {
+        id: w.allocId(),
+        kind: 'magma',
+        pos: { x: 800, y: 500 },
+        radius: 150,
+        damagePerTick: 0,
+        slowMult: 1,
+        slowDuration: 0,
+        tickAccum: 0,
+        surgeAccum: 999, // would fire immediately IF magma surged
+      },
+    ];
+    w.step(DT, idle(w));
+    expect(w.pendingStrikes.length).toBe(0);
+  });
+
+  it('generated abyss patches carry a lethal core; the tide never does', () => {
+    let sawAbyssCore = false;
+    for (let seed = 1; seed <= 25; seed++) {
+      for (const p of generateTerrain('bandit', seed * 7, counter())) {
+        if (p.kind === 'abyss') {
+          expect(p.lethalRadius).toBeGreaterThan(0);
+          sawAbyssCore = true;
+        }
+      }
+      for (const p of generateTerrain('kraken', seed * 7, counter())) {
+        if (p.kind === 'tide') expect(p.lethalRadius ?? 0).toBe(0);
+      }
+    }
+    expect(sawAbyssCore).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3. Boss-vs-boss synergy (twin / N-boss packs)
+// ---------------------------------------------------------------------------
+
+describe('signatures: boss-vs-boss synergy', () => {
+  function twin(seed = 11): World {
+    return new World({
+      monsterId: 'dragon',
+      seed,
+      players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+      coBosses: ['troll'],
+    });
+  }
+
+  it('a lone boss never forms a pack bond (solo fights are untouched)', () => {
+    const w = mkWorld('dragon');
+    w.synergyTimer = 0.01; // even if forced, a single boss has no partner
+    for (let i = 0; i < 5; i++) w.step(DT, idle(w));
+    expect(w.bond).toBeNull();
+    expect(w.serialize().telegraphs).toBeUndefined();
+  });
+
+  it('a pack bond forms in a twin fight, is telegraphed, and empowers/wards a partner', () => {
+    const w = twin();
+    w.synergyTimer = 0.01;
+    w.step(DT, new Map()); // synergy timer elapses → bond begins winding up
+    expect(w.bond).not.toBeNull();
+
+    // Telegraphed: a line telegraph connects the two bosses during the wind-up.
+    const tg = w.serialize().telegraphs ?? [];
+    expect(tg.some((t) => t.kind === 'line')).toBe(true);
+
+    // Burn through the wind-up; the bond resolves onto the partner.
+    for (let i = 0; i < Math.ceil(SYNERGY_WINDUP / DT) + 3 && w.bond; i++) w.step(DT, new Map());
+    expect(w.bond).toBeNull();
+
+    const partner = w.bosses.find((b) =>
+      b.buffs.some((bf) => bf.source === 'packEmpower' || bf.source === 'packWard'),
+    );
+    expect(partner).toBeTruthy();
+    const buff = partner!.buffs.find(
+      (bf) => bf.source === 'packEmpower' || bf.source === 'packWard',
+    )!;
+    // The gift is exactly one of the two designed values.
+    expect([SYNERGY_EMPOWER_MULT, SYNERGY_WARD_MULT]).toContain(buff.mult);
+  });
+
+  it('resolves both gifts — empower grants outgoing damage, ward grants mitigation', () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 40 && seen.size < 2; seed++) {
+      const w = twin(seed);
+      w.synergyTimer = 0.01;
+      w.step(DT, new Map());
+      const kind = w.bond?.kind;
+      if (!kind || seen.has(kind)) continue;
+      for (let i = 0; i < Math.ceil(SYNERGY_WINDUP / DT) + 3 && w.bond; i++) w.step(DT, new Map());
+      const partner = w.bosses.find((b) =>
+        b.buffs.some((bf) => bf.source === 'packEmpower' || bf.source === 'packWard'),
+      )!;
+      const buff = partner.buffs.find(
+        (bf) => bf.source === 'packEmpower' || bf.source === 'packWard',
+      )!;
+      if (kind === 'empower') {
+        expect(buff.kind).toBe('damageDealt'); // partner hits harder
+        expect(buff.mult).toBeCloseTo(SYNERGY_EMPOWER_MULT);
+      } else {
+        expect(buff.kind).toBe('damageTaken'); // partner takes less
+        expect(buff.mult).toBeCloseTo(SYNERGY_WARD_MULT);
+      }
+      seen.add(kind);
+    }
+    expect(seen).toEqual(new Set(['empower', 'ward']));
+  });
+
+  it('the combo only resolves while BOTH bosses live — killing one cancels it', () => {
+    const w = twin();
+    w.synergyTimer = 0.01;
+    w.step(DT, new Map());
+    expect(w.bond).not.toBeNull();
+
+    // Fell the partner mid wind-up.
+    const partner = w.bosses.find((b) => b.id === w.bond!.partnerId)!;
+    partner.hp = 0;
+    w.step(DT, new Map());
+
+    expect(w.bond).toBeNull(); // fizzled
+    const anyPackBuff = w.bosses.some((b) =>
+      b.buffs.some((bf) => bf.source === 'packEmpower' || bf.source === 'packWard'),
+    );
+    expect(anyPackBuff).toBe(false); // no gift was ever granted
+  });
+
+  it('the bond gift is seeded — the same seed picks the same empower/ward', () => {
+    const pick = (seed: number): string | undefined => {
+      const w = twin(seed);
+      w.synergyTimer = 0.01;
+      w.step(DT, new Map());
+      return w.bond?.kind;
+    };
+    expect(pick(4)).toBe(pick(4));
+    expect(pick(4)).toBe(pick(4));
+    expect(['empower', 'ward']).toContain(pick(4));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. New per-boss signature abilities
+// ---------------------------------------------------------------------------
+
+describe('signatures: new per-boss abilities', () => {
+  it("the Kraken's tentacle grab HAULS a distant hero toward the leviathan", () => {
+    const w = mkWorld('kraken', 'ranger');
+    const boss = w.boss!;
+    const p = w.players[0];
+    boss.pos = { x: 800, y: 300 };
+    p.pos = { x: 800, y: 600 }; // 300u below the kraken
+    const ab = abilityById(getMonster('kraken'), 'tentacleGrab')!;
+    expect(ab.pull).toBeGreaterThan(0);
+    const before = dist(p.pos, boss.pos);
+    resolveBossAbility(
+      w,
+      boss,
+      ab,
+      mkAction({ abilityId: 'tentacleGrab', targetId: p.id, targetPos: { ...p.pos } }),
+    );
+    const after = dist(p.pos, boss.pos);
+    expect(after).toBeLessThan(before); // grabbed and dragged inward
+    expect(before - after).toBeCloseTo(ab.pull!, 0); // pulled ~the grab distance
+    expect(hasBuff(p, 'moveSpeed')).toBe(true); // and left clinging in the slow
+  });
+
+  it("the Beholder's disintegration ray silences (anti-magic variety)", () => {
+    const ab = abilityById(getMonster('beholder'), 'disintegrate')!;
+    expect(ab.silence).toBeGreaterThan(0);
+    const w = mkWorld('beholder', 'mage');
+    const boss = w.boss!;
+    const p = w.players[0];
+    boss.pos = { x: 800, y: 300 };
+    p.pos = { x: 800, y: 400 };
+    resolveBossAbility(
+      w,
+      boss,
+      ab,
+      mkAction({ abilityId: 'disintegrate', targetId: p.id, targetPos: { ...p.pos } }),
+    );
+    expect(hasBuff(p, 'silence')).toBe(true);
+  });
+
+  it('the Death Knight can drain a soul to heal itself (lifedrain theme)', () => {
+    const ab = abilityById(getMonster('deathknight'), 'soulHarvest')!;
+    expect(ab.shape).toBe('beam');
+    expect(ab.healSelf).toBe(true);
+    const w = mkWorld('deathknight', 'knight');
+    const boss = w.boss!;
+    const p = w.players[0];
+    boss.hp = boss.maxHp * 0.5;
+    boss.pos = { x: 800, y: 300 };
+    p.pos = { x: 800, y: 400 }; // in beam range
+    const before = boss.hp;
+    beamTick(w, boss, ab, mkAction({ kind: 'channel', abilityId: 'soulHarvest', targetId: p.id }));
+    expect(boss.hp).toBeGreaterThan(before); // knit its undeath back together
+    expect(p.hp).toBeLessThan(p.maxHp); // at the hero's expense
+  });
+
+  it('the Death Knight reaches for Soul Harvest when wounded, with a target', () => {
+    const dk = getMonster('deathknight');
+    const choice = dk.decide({
+      boss: { cooldowns: {} } as never,
+      hpFrac: 0.5,
+      target: { id: 1 } as never,
+      distToTarget: 300,
+      anyInMelee: false,
+      usable: (id) => id === 'soulHarvest',
+      rng: { next: () => 0.5 } as never,
+    });
+    expect(choice).toBe('soulHarvest');
+  });
+});
