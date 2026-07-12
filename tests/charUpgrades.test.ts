@@ -5,6 +5,11 @@ import {
   previewAbilityTable,
   isCharUpgradeId,
   rollCharChoices,
+  reofferCandidates,
+  describeCharOffer,
+  charUpgradeBadge,
+  charUpgradeMaxStacks,
+  REOFFER_CHANCE,
   CHAR_UPGRADES,
   CHAR_UPGRADES_BY_CLASS,
   HYBRID_UPGRADES,
@@ -828,5 +833,274 @@ describe('effect fallbacks for absent optional fields', () => {
     CHAR_UPGRADES.mg_quickcast.apply({ player: stub, abilities: a });
     expect(a.a1.castTime).toBe(0); // (undefined ?? 0) * 0.6
     expect(a.a1.cooldown).toBeCloseTo(0.85, 5); // 1 * 0.85
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Skill-keyed progression — stash / restore + isolation (items 15 & 17)
+//
+// A hero's a2 (knight) is Shield Wall; hy_pyromancer grafts the Mage's Fireball
+// over it. Progression must key by SKILL, not slot: a Shield-Wall boon may never
+// bleed onto the grafted Fireball, and reclaiming Shield Wall must bring its
+// boons back.
+// ---------------------------------------------------------------------------
+
+describe('skill-keyed progression: isolation (item 17)', () => {
+  it('a class boon on the native skill never lands on a graft that later takes the slot', () => {
+    // kn_bulwark tunes Shield Wall (a2); grafting Fireball over a2 must not absorb it.
+    const p = apply('knight', ['hy_pyromancer', 'kn_bulwark']);
+    const a2 = p.abilities!.a2;
+    expect(a2.name).toBe('Fireball'); // the graft is what's equipped
+    expect(a2.buffDefMult).toBeUndefined(); // Shield Wall's boon did NOT bleed onto Fireball
+    expect(a2.buffDuration).toBeUndefined();
+    // Fireball's own numbers are pristine.
+    expect(a2.damage).toBe(70);
+    expect(a2.impactRadius).toBe(100);
+  });
+
+  it('routes the boon to the displaced native even when it is picked AFTER the graft', () => {
+    // Boon accrues on the stashed Shield Wall; reclaiming it proves the boon landed there.
+    const p = apply('knight', ['hy_pyromancer', 'kn_bulwark', 'restore:a2']);
+    const a2 = p.abilities!.a2;
+    expect(a2.name).toBe('Shield Wall');
+    expect(a2.buffDefMult!).toBeCloseTo(0.4, 5); // 0.5 * 0.8 — the boon was preserved on the native
+    expect(a2.buffDuration!).toBeCloseTo(5.5, 5); // 4 + 1.5
+  });
+
+  it('a whole-kit combat style still lands on the CURRENT occupant (the graft)', () => {
+    // hy_vampiric feeds damaging strikes/shots — it should feed the grafted Fireball,
+    // not the stashed native, because a style re-flavours what you actually hold.
+    const p = apply('knight', ['hy_pyromancer', 'hy_vampiric']);
+    const a2 = p.abilities!.a2;
+    expect(a2.name).toBe('Fireball');
+    expect(a2.lifestealFrac!).toBeCloseTo(0.1, 5); // the equipped Fireball drinks
+  });
+});
+
+describe('skill-keyed progression: stash / restore round-trip (item 15)', () => {
+  it('earn → graft over → reclaim preserves the original skill and its boons', () => {
+    const p = apply('knight', ['kn_bulwark', 'hy_pyromancer', 'restore:a2']);
+    const a2 = p.abilities!.a2;
+    expect(a2.name).toBe('Shield Wall'); // reclaimed
+    expect(a2.buffDefMult!).toBeCloseTo(0.4, 5); // boon intact
+    expect(a2.buffDuration!).toBeCloseTo(5.5, 5);
+  });
+
+  it('reclaim is a no-op when the native skill was never displaced', () => {
+    const p = apply('knight', ['kn_bulwark', 'restore:a2']);
+    const a2 = p.abilities!.a2;
+    expect(a2.name).toBe('Shield Wall');
+    expect(a2.buffDefMult!).toBeCloseTo(0.4, 5);
+  });
+
+  it('re-seats a previously-stashed GRAFT with its accrued graftup boons intact', () => {
+    // Graft Fireball, level it, bury it under Field Dressing, then graft Fireball again:
+    // the second Pyromancer restores the SAME leveled Fireball, not a fresh one.
+    const p = apply('knight', [
+      'hy_pyromancer',
+      'graftup:a2:mg_combust', // Fireball +22 dmg / +35 impact
+      'hy_fieldmedic', // displaces Fireball with Field Dressing
+      'hy_pyromancer', // re-seats the stashed, leveled Fireball
+    ]);
+    const a2 = p.abilities!.a2;
+    expect(a2.name).toBe('Fireball');
+    expect(a2.damage).toBe(92); // 70 + 22 preserved across the stash
+    expect(a2.impactRadius).toBe(135); // 100 + 35
+  });
+
+  it('previewAbilityTable (HUD path) reflects reclaimed progression too', () => {
+    const t = previewAbilityTable('knight', ['kn_bulwark', 'hy_pyromancer', 'restore:a2']);
+    expect(t.a2.name).toBe('Shield Wall');
+    expect(t.a2.buffDefMult!).toBeCloseTo(0.4, 5);
+  });
+});
+
+describe('skill-keyed progression: grafted-skill upgrades (graftup)', () => {
+  it('a graftup levels the grafted skill via a source-class boon', () => {
+    const a = apply('knight', ['hy_pyromancer', 'graftup:a2:mg_combust']).abilities!;
+    expect(a.a2.name).toBe('Fireball');
+    expect(a.a2.damage).toBe(92); // 70 + 22
+    expect(a.a2.impactRadius).toBe(135); // 100 + 35
+  });
+
+  it('a second source boon composes on the same grafted skill', () => {
+    const a = apply('knight', [
+      'hy_pyromancer',
+      'graftup:a2:mg_combust', // dmg 92, impact 135
+      'graftup:a2:mg_quickcast', // castTime 0.42, cooldown *0.85
+    ]).abilities!;
+    expect(a.a2.damage).toBe(92);
+    expect(a.a2.castTime!).toBeCloseTo(0.42, 5); // 0.7 * 0.6
+  });
+
+  it('a graftup on a non-graft slot is harmless (applies to whatever is there)', () => {
+    // Defensive: an unsolicited graftup with no graft present still must not throw.
+    expect(() => apply('knight', ['graftup:a2:mg_combust'])).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Synthetic-id plumbing: wire guard, stacking caps
+// ---------------------------------------------------------------------------
+
+describe('isCharUpgradeId accepts well-formed synthetic ids only', () => {
+  it('accepts valid reclaim / graftup ids', () => {
+    expect(isCharUpgradeId('restore:a2')).toBe(true);
+    expect(isCharUpgradeId('restore:basic')).toBe(true);
+    expect(isCharUpgradeId('graftup:a2:mg_combust')).toBe(true);
+  });
+
+  it('rejects malformed or unknown-boon synthetic ids', () => {
+    expect(isCharUpgradeId('restore:')).toBe(false);
+    expect(isCharUpgradeId('restore:zz')).toBe(false); // not a slot
+    expect(isCharUpgradeId('graftup:a2')).toBe(false); // no boon
+    expect(isCharUpgradeId('graftup::mg_combust')).toBe(false); // empty slot
+    expect(isCharUpgradeId('graftup:zz:mg_combust')).toBe(false); // bad slot
+    expect(isCharUpgradeId('graftup:a2:bogus')).toBe(false); // unknown boon
+    expect(isCharUpgradeId('restore')).toBe(false); // no colon at all
+  });
+});
+
+describe('charUpgradeMaxStacks for synthetic ids', () => {
+  it('a reclaim is never capped (contextual)', () => {
+    expect(charUpgradeMaxStacks('restore:a2')).toBe(Number.POSITIVE_INFINITY);
+  });
+  it('a graftup inherits the source boon cap', () => {
+    expect(charUpgradeMaxStacks('graftup:a2:mg_combust')).toBe(charUpgradeMaxStacks('mg_combust'));
+    expect(charUpgradeMaxStacks('graftup:a2:mg_combust')).toBe(5); // MAX_SKILL_STACKS default
+  });
+});
+
+// ---------------------------------------------------------------------------
+// reofferCandidates — what a hero currently qualifies to reclaim / level
+// ---------------------------------------------------------------------------
+
+describe('reofferCandidates (items 15 & 17)', () => {
+  it('is empty for a hero who owns no grafts (offer stream untouched)', () => {
+    expect(reofferCandidates('knight', [])).toEqual([]);
+    expect(reofferCandidates('knight', ['kn_bulwark', 'kn_concuss'])).toEqual([]);
+  });
+
+  it('is empty for an unrecognised class', () => {
+    expect(reofferCandidates('nope' as ClassId, ['hy_pyromancer'])).toEqual([]);
+  });
+
+  it('offers a reclaim of the displaced native plus the graft’s source boons', () => {
+    const c = reofferCandidates('knight', ['hy_pyromancer']);
+    expect(c).toContain('restore:a2'); // reclaim Shield Wall
+    expect(c).toContain('graftup:a2:mg_quickcast');
+    expect(c).toContain('graftup:a2:mg_combust');
+    // Only Fireball's (a1) mage boons — never an unrelated-slot mage boon.
+    expect(c).not.toContain('graftup:a2:mg_freeze'); // Frost Nova (a2), not Fireball
+    expect(c).not.toContain('graftup:a2:mg_blink'); // Blink (a3)
+  });
+
+  it('drops a graftup once it is owned at the source boon cap', () => {
+    const owned = ['hy_pyromancer', ...Array<string>(5).fill('graftup:a2:mg_combust')];
+    const c = reofferCandidates('knight', owned);
+    expect(c).not.toContain('graftup:a2:mg_combust'); // at cap (5)
+    expect(c).toContain('graftup:a2:mg_quickcast'); // still available
+    expect(c).toContain('restore:a2');
+  });
+
+  it('stops offering a reclaim once the native has been reclaimed', () => {
+    const c = reofferCandidates('knight', ['hy_pyromancer', 'restore:a2']);
+    expect(c).toEqual([]); // a2 native equipped again → nothing displaced
+  });
+});
+
+// ---------------------------------------------------------------------------
+// rollCharChoices — the re-offer swap (deterministic, seeded)
+// ---------------------------------------------------------------------------
+
+describe('rollCharChoices re-offer swap', () => {
+  it('exposes the documented re-offer chance', () => {
+    expect(REOFFER_CHANCE).toBeCloseTo(0.5, 5);
+  });
+
+  it('does not draw rng or swap for a hero without a displaced skill', () => {
+    // Same stream, with and without a trailing (would-be) re-offer draw, is identical.
+    const base = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0.9, 0.9]), []);
+    expect(base).toEqual(['kn_bulwark', 'kn_concuss', 'kn_widecleave', 'kn_bastion']);
+  });
+
+  it('swaps in a reclaim when the re-offer roll fires', () => {
+    // picks 0×4 → [bulwark, concuss, widecleave, bastion]; 0.9 skips hybrid + grand;
+    // 0.0 < 0.5 fires the re-offer; index 0.0 → reoffers[0] = restore:a2, placed at [1].
+    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0.9, 0.9, 0.0, 0.0]), [
+      'hy_pyromancer',
+    ]);
+    expect(off[1]).toBe('restore:a2');
+    expect(off[0]).toBe('kn_bulwark');
+    expect(isCharUpgradeId(off[1])).toBe(true);
+  });
+
+  it('can swap in a graftup (index picks a grafted-skill upgrade)', () => {
+    // index 0.9 → floor(0.9*3)=2 → reoffers[2] = graftup:a2:mg_combust.
+    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0.9, 0.9, 0.0, 0.9]), [
+      'hy_pyromancer',
+    ]);
+    expect(off[1]).toBe('graftup:a2:mg_combust');
+  });
+
+  it('does NOT swap when the re-offer roll is at/above the threshold', () => {
+    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0.9, 0.9, 0.5]), ['hy_pyromancer']);
+    expect(off[1]).toBe('kn_concuss'); // untouched base pick
+    expect(off).not.toContain('restore:a2');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// describeCharOffer / charUpgradeBadge — labels for real + synthetic ids
+// ---------------------------------------------------------------------------
+
+describe('describeCharOffer', () => {
+  it('keeps the "Replaces X" graft label (item 18)', () => {
+    const v = describeCharOffer('knight', [], 'hy_pyromancer')!;
+    expect(v.label).toBe("☄️ Pyromancer's Pact");
+    expect(v.desc).toContain('Replaces Shield Wall');
+  });
+
+  it('flags a GRAND capstone', () => {
+    const v = describeCharOffer('knight', [], 'kn_grand_immovable')!;
+    expect(v.label.startsWith('★')).toBe(true);
+    expect(v.desc.startsWith('GRAND —')).toBe(true);
+  });
+
+  it('labels a reclaim, naming the displaced skill and what it drops', () => {
+    const v = describeCharOffer('knight', ['hy_pyromancer'], 'restore:a2')!;
+    expect(v.label).toBe('↩️ Reclaim Shield Wall');
+    expect(v.desc).toContain('dropping Fireball');
+  });
+
+  it('omits the "dropping" clause when nothing is displaced', () => {
+    const v = describeCharOffer('knight', [], 'restore:a2')!;
+    expect(v.label).toBe('↩️ Reclaim Shield Wall');
+    expect(v.desc).not.toContain('dropping');
+  });
+
+  it('labels a graftup with the source boon, naming the grafted skill', () => {
+    const v = describeCharOffer('knight', ['hy_pyromancer'], 'graftup:a2:mg_combust')!;
+    expect(v.label).toBe('🔥 Combustion');
+    expect(v.desc).toContain('Upgrades your grafted Fireball');
+  });
+
+  it('returns null for an unrecognised id', () => {
+    expect(describeCharOffer('knight', [], 'bogus')).toBeNull();
+  });
+});
+
+describe('charUpgradeBadge', () => {
+  it('describes a real boon', () => {
+    const b = charUpgradeBadge('kn_bulwark')!;
+    expect(b.name).toBe('Impenetrable');
+    expect(b.icon).toBe('🛡️');
+  });
+  it('describes a reclaim and a graftup', () => {
+    expect(charUpgradeBadge('restore:a2')!.icon).toBe('↩️');
+    expect(charUpgradeBadge('graftup:a2:mg_combust')!.name).toBe('Combustion');
+  });
+  it('returns null for an unrecognised id', () => {
+    expect(charUpgradeBadge('bogus')).toBeNull();
   });
 });
