@@ -20,10 +20,23 @@ import {
   playUiSound,
 } from '../state/session';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
-import { CLASS_IDS, CLASSES } from '../../engine/content/classes';
+import { CLASS_IDS, CLASSES, describeAbility } from '../../engine/content/classes';
+import { previewAbilityTable } from '../../engine/content/charUpgrades';
 import { MONSTER_IDS, MONSTERS } from '../../engine/content/monsters';
 import { MAX_PLAYERS } from '../../engine/core/constants';
-import type { ClassId } from '../../engine/core/types';
+import type { ClassId, AbilitySlot } from '../../engine/core/types';
+
+const KIT_SLOTS: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
+
+/**
+ * A multi-line summary of a class's base kit — each ability's name and its
+ * concrete effect numbers (item 19) — for the class-card tooltip. Uses the
+ * spawn-resolved table so the cooldowns match what the fight actually commits.
+ */
+function classKitTooltip(id: ClassId): string {
+  const table = previewAbilityTable(id, []);
+  return KIT_SLOTS.map((slot) => `${table[slot].name}: ${describeAbility(table[slot])}`).join('\n');
+}
 
 export function Lobby() {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -260,6 +273,7 @@ export function Lobby() {
                       selectClass(id);
                     }}
                     aria-pressed={selected}
+                    title={classKitTooltip(id)}
                   >
                     <span className="wb-card-name">{def.name}</span>
                     <span className="wb-card-role">{def.role}</span>

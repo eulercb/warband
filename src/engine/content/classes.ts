@@ -776,3 +776,77 @@ export function cloneAbilities(
     a3: { ...src.a3 },
   };
 }
+
+/**
+ * A compact, player-facing effect line for a base-kit ability (item 19) — the
+ * concrete numbers behind its icon: damage/heal, projectile count, blast/reach/
+ * radius, cast/stun/slow seconds, buff percentages + duration, lifesteal, i-frames
+ * and the cooldown. The upgrade cards already read this legibly (upgrades.ts /
+ * charUpgrades.ts); this brings the same clarity to the abilities themselves.
+ *
+ * PURE — it reads only the def, so passing a hero's *resolved* ability (post
+ * grafts/boons, e.g. from `previewAbilityTable`) reflects their current numbers.
+ * `slot` is ignored, so a subclass skill's ability (which carries no slot)
+ * describes fine too. Rounds like the reward cards: magnitudes to whole units,
+ * seconds to one decimal, ratios to whole percents.
+ */
+export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>): string {
+  const n = (v: number): string => `${Math.round(v)}`;
+  // Up to two decimals (trailing zeros drop naturally), so a 0.25s i-frame or a
+  // 1.1s cooldown both read exactly, matching the reward cards' precision.
+  const s = (v: number): string => `${Math.round(v * 100) / 100}s`;
+  const parts: string[] = [];
+
+  // --- Primary magnitude (what it does when it lands) ---
+  if (def.kind === 'taunt') parts.push('Pull aggro');
+  if (def.kind === 'heal' && def.damage > 0) {
+    parts.push(`Heal ${n(def.damage)}`);
+  } else if (def.damage > 0) {
+    const count = def.projCount ?? 1;
+    parts.push(count > 1 ? `${count}× ${n(def.damage)} dmg` : `${n(def.damage)} dmg`);
+  }
+  if (def.landingDamage) parts.push(`${n(def.landingDamage)} landing dmg`);
+  if (def.zoneTickDamage) parts.push(`${n(def.zoneTickDamage)}/tick dmg`);
+  if (def.zoneTickHeal) parts.push(`${n(def.zoneTickHeal)}/tick heal`);
+  if (def.healOnUse) parts.push(`heal ${n(def.healOnUse)}`);
+
+  // --- Shape / reach ---
+  if (def.impactRadius) parts.push(`${n(def.impactRadius)}u blast`);
+  else if (def.radius) parts.push(`${n(def.radius)}u radius`);
+  if (def.kind === 'meleeCone' && def.range) {
+    parts.push(`${n(def.range)}u reach`);
+    if (def.halfAngleDeg) parts.push(`${n(def.halfAngleDeg * 2)}° arc`);
+  } else if ((def.kind === 'dash' || def.kind === 'blink') && def.range) {
+    parts.push(`${n(def.range)}u ${def.kind === 'blink' ? 'blink' : 'dash'}`);
+  }
+
+  // --- Timing / control ---
+  if (def.castTime) parts.push(`${s(def.castTime)} cast`);
+  if (def.stun) parts.push(`${s(def.stun)} stun`);
+  if (def.freeze) parts.push(`${s(def.freeze)} freeze`);
+  if (def.slowMult != null && def.slowMult < 1) {
+    const dur = def.slowDuration ? ` for ${s(def.slowDuration)}` : '';
+    parts.push(`slow to ${n(def.slowMult * 100)}%${dur}`);
+  }
+
+  // --- Buffs (damage/move up, damage-taken down) ---
+  if (def.buffDamageMult) parts.push(`+${n((def.buffDamageMult - 1) * 100)}% dmg`);
+  if (def.buffMoveMult) parts.push(`+${n((def.buffMoveMult - 1) * 100)}% move`);
+  if (def.buffDefMult) parts.push(`${n((1 - def.buffDefMult) * 100)}% less dmg taken`);
+
+  // --- Duration (a buff's or a ground zone's) ---
+  if (def.buffDuration) parts.push(`for ${s(def.buffDuration)}`);
+  else if (def.zoneDuration) parts.push(`lasts ${s(def.zoneDuration)}`);
+
+  // --- Sustain / evasion / who it can reach ---
+  if (def.lifestealFrac) parts.push(`${n(def.lifestealFrac * 100)}% lifesteal`);
+  if (def.iframes) parts.push(`${s(def.iframes)} i-frames`);
+  if ((def.kind === 'heal' || def.kind === 'buffAlly') && def.range && def.range > 1) {
+    parts.push(`${n(def.range)}u range`);
+  }
+
+  // --- Cooldown always closes the line ---
+  parts.push(`${s(def.cooldown)} cooldown`);
+
+  return parts.join(' · ');
+}
