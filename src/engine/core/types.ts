@@ -417,7 +417,15 @@ export interface Projectile {
 }
 
 export type ZoneKind =
-  'voidZone' | 'rainOfArrows' | 'sanctuary' | 'poison' | 'entangle' | 'consecration';
+  | 'voidZone'
+  | 'rainOfArrows'
+  | 'sanctuary'
+  | 'poison'
+  | 'entangle'
+  | 'consecration'
+  /** Antimagic pool (item 28 follow-up): a standable SILENCE zone — casters who
+   * stand in it are silenced tick-by-tick (Beholder / Mind Flayer signature). */
+  | 'antimagic';
 
 // ---------------------------------------------------------------------------
 // Terrain (static, per-run environmental hazards)
@@ -438,7 +446,11 @@ export type TerrainKind =
   | 'deathfog' // lich: creeping damage + mild slow
   // Signature terrains (item 28) — a boss's arena reads as its home.
   | 'tide' // kraken: surging ocean — very heavy slow, light drowning damage
-  | 'abyss'; // bandit/void: a black chasm — heavy damage, strong pull-to-edge slow
+  | 'abyss' // bandit/void: a black chasm — heavy damage, strong pull-to-edge slow
+  // Signature terrains (item 28 follow-up) — more marquee bosses fight on themed,
+  // mechanically-relevant ground (both surge with a telegraphed, non-lethal pull).
+  | 'bloodmire' // vampire: a mire of blood — heavy slow + drain damage, drags you in
+  | 'brimstone'; // demon: molten fissures — heavy burn + light slow, drags you in
 
 export interface TerrainPatch {
   id: EntityId;
@@ -686,6 +698,14 @@ export interface GroundZone {
   /** Move-speed multiplier applied to enemies standing inside (1 = none). */
   slowMult: number;
   slowDuration: number; // s the slow lingers after leaving
+  /**
+   * SILENCE zone (item 28 follow-up): seconds of silence re-applied every tick to
+   * an opposing-side creature standing inside, so an antimagic pool is a standable
+   * silence zone — not just an on-hit rider. Refreshed per tick (source
+   * 'zoneSilence'), so it lingers ~this long after the caster steps out. Absent /
+   * 0 = a plain hazard. Boss-side zones only (players don't silence bosses).
+   */
+  silence?: number;
   duration: number; // seconds — full lifetime, used for the render fade envelope
   remaining: number; // seconds — counts down; zone is removed at <= 0
   tickAccum: number; // accumulates toward ZONE_TICK_INTERVAL

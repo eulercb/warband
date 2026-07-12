@@ -104,6 +104,10 @@ import {
   ABYSS_PLUNGE_DAMAGE,
   TIDE_SURGE_PULL,
   TIDE_SURGE_DAMAGE,
+  BLOODMIRE_SURGE_PULL,
+  BLOODMIRE_SURGE_DAMAGE,
+  BRIMSTONE_SURGE_PULL,
+  BRIMSTONE_SURGE_DAMAGE,
 } from '../core/constants';
 import { generateTerrain } from './terrain';
 import { generateObstacles } from './obstacles';
@@ -274,6 +278,18 @@ const TERRAIN_SURGE: Partial<
     color: 0x7b5cff,
   },
   tide: { pull: TIDE_SURGE_PULL, surgeDamage: TIDE_SURGE_DAMAGE, plunge: 0, color: 0x6cc6ff },
+  bloodmire: {
+    pull: BLOODMIRE_SURGE_PULL,
+    surgeDamage: BLOODMIRE_SURGE_DAMAGE,
+    plunge: 0,
+    color: 0xd0466a,
+  },
+  brimstone: {
+    pull: BRIMSTONE_SURGE_PULL,
+    surgeDamage: BRIMSTONE_SURGE_DAMAGE,
+    plunge: 0,
+    color: 0xff7a3d,
+  },
 };
 
 /**
@@ -1144,12 +1160,17 @@ export class World {
   private applyZoneTick(z: GroundZone): void {
     if (z.side === 'boss') {
       const slows = z.slowMult < 1;
+      const silences = (z.silence ?? 0) > 0;
       for (const p of this.players) {
         if (p.state !== 'alive') continue;
         if (dist(z.pos, p.pos) <= z.radius + p.radius) {
           if (z.damagePerTick > 0) damagePlayer(this, p, z.damagePerTick);
           // Snare zones (Web Snare, Grasping Roots, Thorn Field…) also mire the party.
           if (slows) applyBuff(p, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
+          // Antimagic pools SILENCE casters who stand in them (item 28 follow-up):
+          // a standable silence zone, re-applied each tick so leaving clears it.
+          // The 🔇 buff glyph is the HUD cue; the world.step gate blocks specials.
+          if (silences) applyBuff(p, makeBuff('silence', 0, z.silence!, 'zoneSilence'));
         }
       }
       return;

@@ -1,14 +1,22 @@
 /**
- * Warband — boss signatures, round 2 (item 28 follow-up, issue #25).
+ * Warband — boss signatures.
  *
- * Covers the three new pillars:
+ * Round 2 (item 28, issue #25):
  *   1. Boss-vs-boss synergy — a telegraphed pack bond that only resolves while
  *      both bosses live, empowering / warding a wounded partner (seeded).
  *   2. The knockback/pull primitive + the lethal abyss void (a surge drags a
  *      hero into a bottomless core for an environmental death).
- *   3. New per-boss signatures — the Kraken's tentacle grab (pull), the
- *      Beholder's anti-magic disintegration (silence), the Death Knight's
- *      soul-harvest lifedrain.
+ *   3. Per-boss signatures — the Kraken's tentacle grab (pull), the Beholder's
+ *      anti-magic disintegration (silence), the Death Knight's lifedrain.
+ *
+ * Round 3 — breadth + depth (item 28 follow-up, issue #33):
+ *   5. Standable SILENCE zones — an antimagic pool hushes casters who stand IN
+ *      it, tick-by-tick, with the 🔇 buff as the HUD cue.
+ *   6. Deeper Hard-tier kits — a real Death Grip PULL, the Lich's grasping void,
+ *      death-magic / fae silences.
+ *   7. Broadened signature terrains — the vampire's blood-mire and the demon's
+ *      brimstone, each a surging home arena.
+ *   8. The breadth target — EVERY Hard-tier boss now reads as distinctive.
  */
 import { describe, it, expect } from 'vitest';
 import { World } from '../src/engine/world/world';
@@ -17,9 +25,10 @@ import {
   pullToward,
   resolveBossAbility,
   beamTick,
+  spawnZone,
 } from '../src/engine/combat/abilities';
-import { getMonster, abilityById } from '../src/engine/content/monsters';
-import { generateTerrain } from '../src/engine/world/terrain';
+import { getMonster, abilityById, MONSTERS_BY_TIER } from '../src/engine/content/monsters';
+import { generateTerrain, themeFor, SIGNATURE_TERRAINS } from '../src/engine/world/terrain';
 import { hasBuff } from '../src/engine/combat/combat';
 import { dist } from '../src/engine/core/torus';
 import {
@@ -455,5 +464,301 @@ describe('signatures: new per-boss abilities', () => {
       rng: { next: () => 0.5 } as never,
     });
     expect(choice).toBe('soulHarvest');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. Standable SILENCE zones (item 28 follow-up, issue #33)
+//    An antimagic pool is a zone you can stand IN — casters caught inside are
+//    silenced tick-by-tick (the 🔇 buff is the HUD cue), not merely on-hit.
+// ---------------------------------------------------------------------------
+
+describe('signatures: standable antimagic silence zones', () => {
+  /** A boss-side antimagic silence pool centred on `pos` (harmless damage so a
+   * test fight can't end mid-way). Uses the real spawnZone construction. */
+  function silencePool(w: World, pos: { x: number; y: number }): void {
+    spawnZone(w, {
+      kind: 'antimagic',
+      pos: { ...pos },
+      radius: 120,
+      side: 'boss',
+      ownerId: w.boss!.id,
+      damagePerTick: 0,
+      healPerTick: 0,
+      silence: 1.5,
+      duration: 12,
+    });
+  }
+
+  it("the Beholder's Antimagic Pools spawn as silencing antimagic zones", () => {
+    const ab = abilityById(getMonster('beholder'), 'antimagic')!;
+    expect(ab.zoneKind).toBe('antimagic');
+    expect(ab.zoneSilence).toBeGreaterThan(0);
+    const w = mkWorld('beholder', 'mage');
+    w.groundZones = [];
+    resolveBossAbility(w, w.boss!, ab, mkAction());
+    expect(w.groundZones.length).toBeGreaterThanOrEqual(1);
+    for (const z of w.groundZones) {
+      expect(z.kind).toBe('antimagic'); // a standable silence pool, not a plain void
+      expect(z.silence ?? 0).toBeGreaterThan(0);
+    }
+  });
+
+  it("the Mind Flayer's Psychic Rift also tears open a standable silence zone", () => {
+    const ab = abilityById(getMonster('mindflayer'), 'psychicRift')!;
+    expect(ab.zoneKind).toBe('antimagic');
+    expect(ab.zoneSilence).toBeGreaterThan(0);
+    const w = mkWorld('mindflayer', 'mage');
+    w.groundZones = [];
+    resolveBossAbility(w, w.boss!, ab, mkAction());
+    expect(w.groundZones.every((z) => z.kind === 'antimagic' && (z.silence ?? 0) > 0)).toBe(true);
+  });
+
+  it('standing in the pool silences the caster on the zone tick (HUD cue), sparing those outside', () => {
+    // The dragon does not act within this short window (first decision 1.2s away),
+    // so the only effect on the party is our controlled pool.
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 3,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'mage' },
+        { peerId: 'b', name: 'B', classId: 'mage' },
+      ],
+    });
+    w.terrain = [];
+    w.obstacles = [];
+    const [inside, outside] = w.players;
+    inside.pos = { x: 800, y: 500 };
+    outside.pos = { x: 150, y: 150 };
+    silencePool(w, inside.pos);
+
+    expect(hasBuff(inside, 'silence')).toBe(false); // nothing until the pool ticks
+    for (let t = 0; t < 0.6; t += DT) w.step(DT, idle(w)); // one ZONE_TICK_INTERVAL elapses
+    expect(hasBuff(inside, 'silence')).toBe(true); // 🔇 — hushed by the pool (the HUD cue)
+    expect(hasBuff(outside, 'silence')).toBe(false); // the pool only reaches who stands in it
+
+    // A special can't fire while the pool hushes the caster (rising edge, still inside).
+    inside.prevButtons = buttons();
+    w.step(
+      DT,
+      new Map([
+        ['a', inp({ buttons: buttons({ a1: true }) })],
+        ['b', inp()],
+      ]),
+    );
+    expect(inside.cooldowns.a1).toBe(0); // silenced → the special never went off
+  });
+
+  it('stepping out of the pool lets the silence lapse — the caster casts again', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 3,
+      players: [{ peerId: 'a', name: 'A', classId: 'mage' }],
+    });
+    w.terrain = [];
+    w.obstacles = [];
+    const p = w.players[0];
+    p.pos = { x: 800, y: 500 };
+    silencePool(w, p.pos);
+    for (let t = 0; t < 0.6; t += DT) w.step(DT, idle(w));
+    expect(hasBuff(p, 'silence')).toBe(true);
+
+    // Walk clear of the pool; with no tick to refresh it, the silence expires.
+    p.pos = { x: 150, y: 150 };
+    for (let t = 0; t < 2.0; t += DT) w.step(DT, idle(w));
+    expect(hasBuff(p, 'silence')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. More per-boss signatures (item 28 follow-up): a real Death Grip pull, the
+//    Lich's grasping void, and death-magic / fae silences.
+// ---------------------------------------------------------------------------
+
+describe('signatures: deepened Hard-tier boss kits', () => {
+  it("the Death Knight's Death Grip is a true PULL that yanks a kiting hero in", () => {
+    const ab = abilityById(getMonster('deathknight'), 'deathGrip')!;
+    expect(ab.shape).toBe('circleAtTarget'); // a ranged yank, not a shove-charge
+    expect(ab.pull).toBeGreaterThan(0);
+    expect(ab.knockback ?? 0).toBe(0); // a pull, never a knockback
+    const w = mkWorld('deathknight', 'ranger');
+    const boss = w.boss!;
+    const p = w.players[0];
+    boss.pos = { x: 800, y: 300 };
+    p.pos = { x: 800, y: 640 }; // kiting at range
+    const before = dist(p.pos, boss.pos);
+    resolveBossAbility(
+      w,
+      boss,
+      ab,
+      mkAction({ abilityId: 'deathGrip', targetId: p.id, targetPos: { ...p.pos } }),
+    );
+    const after = dist(p.pos, boss.pos);
+    expect(after).toBeLessThan(before); // hauled toward the champion
+    expect(before - after).toBeCloseTo(ab.pull!, 0);
+    expect(hasBuff(p, 'moveSpeed')).toBe(true); // left dazed in the grip
+  });
+
+  it("the Lich's Void Zone is a heavy grasping snare that mires a hero standing in it", () => {
+    const ab = abilityById(getMonster('lich'), 'voidZone')!;
+    expect(ab.slowMult ?? 1).toBeLessThanOrEqual(0.35); // clutching dead — a hard snare
+    const w = mkWorld('lich', 'knight');
+    w.terrain = [];
+    w.obstacles = [];
+    w.groundZones = [];
+    // Spawn the lich's actual void, then drop a hero into it and tick.
+    resolveBossAbility(w, w.boss!, ab, mkAction({ targetId: w.players[0].id }));
+    const z = w.groundZones[0];
+    expect(z.slowMult).toBeLessThanOrEqual(0.35);
+    const p = w.players[0];
+    p.pos = { ...z.pos };
+    for (let t = 0; t < 0.6; t += DT) w.step(DT, idle(w));
+    const mire = p.buffs.find((b) => b.source === 'zoneSlow');
+    expect(mire).toBeTruthy();
+    expect(mire!.mult).toBeLessThanOrEqual(0.35);
+  });
+
+  it("the Archlich's Necrotic Burst snuffs magic (a desperation silence)", () => {
+    const ab = abilityById(getMonster('archlich'), 'necroBurst')!;
+    expect(ab.silence).toBeGreaterThan(0);
+    const w = mkWorld('archlich', 'mage');
+    const boss = w.boss!;
+    const p = w.players[0];
+    boss.pos = { x: 800, y: 500 };
+    p.pos = { x: 800, y: 560 }; // inside the necrotic nova
+    resolveBossAbility(w, boss, ab, mkAction({ abilityId: 'necroBurst' }));
+    expect(hasBuff(p, 'silence')).toBe(true);
+  });
+
+  it("the Archfae's Bewilder leaves a hero too bewildered to cast (a silence)", () => {
+    const ab = abilityById(getMonster('fae'), 'charm')!;
+    expect(ab.silence).toBeGreaterThan(0);
+    const w = mkWorld('fae', 'mage');
+    const boss = w.boss!;
+    const p = w.players[0];
+    boss.pos = { x: 800, y: 300 };
+    p.pos = { x: 800, y: 400 };
+    resolveBossAbility(
+      w,
+      boss,
+      ab,
+      mkAction({ abilityId: 'charm', targetId: p.id, targetPos: { ...p.pos } }),
+    );
+    expect(hasBuff(p, 'silence')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 7. Broadened signature terrains (item 28 follow-up): the vampire's blood-mire
+//    and the demon's brimstone, each a themed home arena that SURGES.
+// ---------------------------------------------------------------------------
+
+describe('signatures: broadened signature terrains', () => {
+  /** A two-player world with no boss/terrain so a surge can be studied in isolation. */
+  function terrainWorld(): World {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 9,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'ranger' },
+      ],
+    });
+    w.boss = null;
+    w.terrain = [];
+    return w;
+  }
+
+  function surgePatch(w: World, kind: 'bloodmire' | 'brimstone'): void {
+    w.terrain = [
+      {
+        id: w.allocId(),
+        kind,
+        pos: { x: 800, y: 500 },
+        radius: 200,
+        damagePerTick: 0,
+        slowMult: 1,
+        slowDuration: 0,
+        tickAccum: 0,
+        surgeAccum: TERRAIN_SURGE_INTERVAL, // due to surge on the next tick
+      },
+    ];
+  }
+
+  it('a blood-mire patch surges with a non-lethal pull (the mire drags you in)', () => {
+    const w = terrainWorld();
+    surgePatch(w, 'bloodmire');
+    w.step(DT, idle(w));
+    const surge = w.pendingStrikes.find((s) => s.pull != null);
+    expect(surge).toBeTruthy();
+    expect(surge!.pull!.strength).toBeGreaterThan(0);
+    expect(surge!.pull!.lethalRadius).toBe(0); // hauls you deeper, never plunges
+  });
+
+  it('a brimstone patch surges with a non-lethal pull (the fissure sucks you toward the vent)', () => {
+    const w = terrainWorld();
+    surgePatch(w, 'brimstone');
+    w.step(DT, idle(w));
+    const surge = w.pendingStrikes.find((s) => s.pull != null);
+    expect(surge).toBeTruthy();
+    expect(surge!.pull!.strength).toBeGreaterThan(0);
+    expect(surge!.pull!.lethalRadius).toBe(0);
+  });
+
+  it("the Vampire's arena themes to blood-mire; the Demon's to brimstone", () => {
+    let sawBloodmire = false;
+    let sawBrimstone = false;
+    for (let seed = 1; seed <= 30; seed++) {
+      for (const p of generateTerrain('vampire', seed * 7, counter())) {
+        if (p.kind === 'bloodmire') sawBloodmire = true;
+      }
+      for (const p of generateTerrain('demon', seed * 7, counter())) {
+        if (p.kind === 'brimstone') sawBrimstone = true;
+      }
+    }
+    expect(sawBloodmire).toBe(true);
+    expect(sawBrimstone).toBe(true);
+  });
+
+  it('the new signature terrains are members of the exported signature set', () => {
+    expect(SIGNATURE_TERRAINS.has('bloodmire')).toBe(true);
+    expect(SIGNATURE_TERRAINS.has('brimstone')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8. Breadth target (issue #33 acceptance): EVERY Hard-tier boss now reads as
+//    distinctive — carrying a pull, a silence (on-hit or standable zone), a
+//    heavy control snare, or a signature home terrain — not the generic toolkit.
+// ---------------------------------------------------------------------------
+
+describe('signatures: breadth target — every Hard-tier boss is distinctive', () => {
+  const SIGNATURE_SLOW = 0.35; // a slow at/under this reads as a hard control snare/freeze
+
+  /** A flashy "marquee" marker: a pull, any silence, or a signature home terrain. */
+  function marqueeMarker(id: MonsterId): boolean {
+    const abil = getMonster(id).abilities.some(
+      (a) => (a.pull ?? 0) > 0 || (a.silence ?? 0) > 0 || (a.zoneSilence ?? 0) > 0,
+    );
+    return abil || themeFor([id]).some((k) => SIGNATURE_TERRAINS.has(k));
+  }
+
+  /** Any distinctive signature, including a heavy control snare/freeze. */
+  function hasSignature(id: MonsterId): boolean {
+    if (marqueeMarker(id)) return true;
+    return getMonster(id).abilities.some((a) => (a.slowMult ?? 1) <= SIGNATURE_SLOW);
+  }
+
+  it('every Hard-tier boss carries at least one distinctive signature', () => {
+    for (const id of MONSTERS_BY_TIER.hard) {
+      expect(hasSignature(id), `${id} has no distinctive signature`).toBe(true);
+    }
+  });
+
+  it('the hard tier is broad and mostly carries a marquee (pull / silence / signature-terrain) marker', () => {
+    expect(MONSTERS_BY_TIER.hard.length).toBeGreaterThanOrEqual(10);
+    const marquee = MONSTERS_BY_TIER.hard.filter(marqueeMarker);
+    // Up from ~3 hard-tier bosses (kraken, beholder, mind flayer) before this round.
+    expect(marquee.length).toBeGreaterThanOrEqual(8);
   });
 });

@@ -4,7 +4,7 @@
  * start and to boss outgoing damage. Endless "type" modifiers (Frost Dragon,
  * Dark Troll, …) are layered on per cycle — see CYCLE_MODIFIERS / applyModifier.
  */
-import type { MonsterId, Boss, Player, BossTier, BossBodyShape } from '../core/types';
+import type { MonsterId, Boss, Player, BossTier, BossBodyShape, ZoneKind } from '../core/types';
 import type { Rng } from '../core/math';
 import {
   MONSTER_COLORS,
@@ -62,6 +62,12 @@ export interface BossAbilityDef {
   zoneCountBonus?: number;
   zoneDuration?: number;
   zoneTickDamage?: number;
+  /** Signature zone kind the spawned voidzones use (default 'voidZone'). An
+   * 'antimagic' pool becomes a standable SILENCE zone (item 28 follow-up). */
+  zoneKind?: ZoneKind;
+  /** Seconds of silence the spawned zone re-applies per tick to casters inside
+   * it (a standable antimagic pool). Absent = a plain damaging void. */
+  zoneSilence?: number;
   // beam channel
   channelDuration?: number;
   healSelf?: boolean;
@@ -384,7 +390,16 @@ const LICH: MonsterDef = {
   abilities: [
     A.proj('shadowBolt', 'Shadow Bolt', 0, 2.0, 30, { projSpeed: 420 }),
     A.summon('summonSkeletons', 'Summon Skeletons', 1.5, 12),
-    A.voids('voidZone', 'Void Zone', 0, 9, { radius: 90, zoneDuration: 8, zoneTickDamage: 12 }),
+    // SIGNATURE (item 28 follow-up): the void seethes with clutching dead — a heavy
+    // GRASPING snare (not just chip damage) that mires anyone who stands in it, so
+    // the lich's ground-control reads as its own, distinct from a plain void.
+    A.voids('voidZone', 'Void Zone', 0, 9, {
+      radius: 90,
+      zoneDuration: 8,
+      zoneTickDamage: 12,
+      slowMult: 0.3,
+      slowDuration: 1.5,
+    }),
     A.beam('lifeDrain', 'Life Drain', 0.8, 10, 15, { healSelf: true }),
   ],
   decide: ({ usable, target }) => {
@@ -1040,11 +1055,16 @@ const BEHOLDER: MonsterDef = {
       slowMult: 0.6,
       slowDuration: 1.5,
     }),
+    // SIGNATURE (item 28 follow-up): the antimagic pools are STANDABLE silence
+    // zones — a caster who lingers in one is hushed tick-by-tick (🔇), not merely
+    // slowed. Step out to cast; the silence lingers ~zoneSilence after you leave.
     A.voids('antimagic', 'Antimagic Pools', 0.4, 10, {
       radius: 100,
       zoneTickDamage: 14,
       slowMult: 0.5,
       slowDuration: 1.5,
+      zoneKind: 'antimagic',
+      zoneSilence: 1.5,
     }),
     A.beam('deathRay', 'Death Ray', 0.8, 12, 20, { channelDuration: 2.2 }),
   ],
@@ -1162,7 +1182,15 @@ const MINDFLAYER: MonsterDef = {
       slowDuration: 2,
     }),
     A.beam('brainDrain', 'Brain Drain', 0.7, 9, 22, { healSelf: true, channelDuration: 2 }),
-    A.voids('psychicRift', 'Psychic Rift', 0.5, 9, { radius: 100, zoneTickDamage: 14 }),
+    // SIGNATURE (item 28 follow-up): the rift tears at the mind — a STANDABLE
+    // silence zone that hushes casters who stand in it, reinforcing the flayer's
+    // psionic-lockdown identity beyond the instantaneous Psionic Silence.
+    A.voids('psychicRift', 'Psychic Rift', 0.5, 9, {
+      radius: 100,
+      zoneTickDamage: 14,
+      zoneKind: 'antimagic',
+      zoneSilence: 1.5,
+    }),
     A.summon('enthrall', 'Enthrall', 1.2, 14, { addHpMult: 1.0 }),
   ],
   decide: decideBy([
@@ -1195,11 +1223,20 @@ const DEATHKNIGHT: MonsterDef = {
       slowMult: 0.6,
       slowDuration: 2,
     }),
-    A.line('deathGrip', 'Death Grip', 0.7, 8, 40, 640, 44, { knockback: 70, targetRandom: true }),
+    // SIGNATURE (item 28 follow-up): Death Grip is a true ranged PULL, not a shove
+    // — an ethereal chain YANKS a kiting hero out of position and into the
+    // champion's reach (then leaves them dazed), so a ranged party can't simply
+    // out-space it. Distinct from the generic soul-harvest lifedrain below.
+    A.circle('deathGrip', 'Death Grip', 0.7, 8, 40, 640, 90, {
+      pull: 240,
+      slowMult: 0.6,
+      slowDuration: 2,
+      targetRandom: true,
+    }),
     A.nova('deathAndDecay', 'Death and Decay', 1.0, 7, 44, 210),
     A.summon('raiseGhouls', 'Raise Ghouls', 1.2, 14, { addHpMult: 1.1 }),
-    // SIGNATURE (item 28): a lifedrain theme — the fallen champion siphons a soul
-    // to knit its own undeath back together (heals as the beam channels).
+    // A lifedrain theme — the fallen champion siphons a soul to knit its own
+    // undeath back together (heals as the beam channels).
     A.beam('soulHarvest', 'Soul Harvest', 0.8, 11, 20, { healSelf: true, channelDuration: 2 }),
   ],
   decide: decideBy([
@@ -1356,7 +1393,10 @@ const ARCHLICH: MonsterDef = {
     A.summon('legion', 'Undead Legion', 1.4, 12, { addCountBonus: 1, addHpMult: 1.0 }),
     A.voids('deathZone', 'Death Zone', 0, 8, { radius: 95, zoneTickDamage: 15, zoneDuration: 8 }),
     A.beam('soulRend', 'Soul Rend', 0.8, 10, 20, { healSelf: true, channelDuration: 2.2 }),
-    A.nova('necroBurst', 'Necrotic Burst', 1.1, 11, 40, 220, { minHpFrac: 0.5 }),
+    // SIGNATURE (item 28 follow-up): below half health the perfected lich detonates
+    // a wave of raw death magic that SNUFFS its victims' spells — a desperation
+    // silence burst that turns the endgame into a scramble.
+    A.nova('necroBurst', 'Necrotic Burst', 1.1, 11, 40, 220, { minHpFrac: 0.5, silence: 2.5 }),
   ],
   decide: decideBy([
     { id: 'necroBurst', cond: (c) => c.hpFrac < 0.5 && melee(c) },
@@ -1401,7 +1441,13 @@ const FAE: MonsterDef = {
       addHpMult: 0.5,
       addCountBonus: 1,
     }),
-    A.circle('charm', 'Bewilder', 0.9, 7, 26, 620, 120, { slowMult: 0.4, slowDuration: 2 }),
+    // SIGNATURE (item 28 follow-up): a fae glamour that leaves you too BEWILDERED
+    // to cast — a silence (🔇), not just a slow — living up to the ability's name.
+    A.circle('charm', 'Bewilder', 0.9, 7, 26, 620, 120, {
+      slowMult: 0.4,
+      slowDuration: 2,
+      silence: 2.5,
+    }),
     A.buff('glamour', 'Glamour', 0.4, 13, {
       buffMoveMult: 1.35,
       buffDefMult: 0.55,

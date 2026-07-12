@@ -124,6 +124,7 @@ const ZONE_COLORS: Record<ZoneKind, number> = {
   poison: 0x8fd14a, // toxic green
   entangle: 0x5bbf7a, // vine green
   consecration: 0xe8d36a, // radiant gold
+  antimagic: 0x4bd6c6, // null-magic teal — a standable silence pool reads apart from a void
 };
 
 /** Terrain palette: [fill, edge]. Damaging kinds read hot/toxic; slows read cool. */
@@ -137,6 +138,9 @@ const TERRAIN_COLORS: Record<TerrainKind, { fill: number; edge: number; hot: boo
   // Signature terrains (item 28): deep ocean and a black chasm.
   tide: { fill: 0x1f5f9e, edge: 0x6cc6ff, hot: false },
   abyss: { fill: 0x14101f, edge: 0x7b5cff, hot: true },
+  // Signature terrains (item 28 follow-up): a mire of blood and molten brimstone.
+  bloodmire: { fill: 0x6a1524, edge: 0xd0466a, hot: true },
+  brimstone: { fill: 0x7a2a10, edge: 0xff7a3d, hot: true },
 };
 
 // ---------------------------------------------------------------------------

@@ -60,7 +60,25 @@ const PROFILES: Record<TerrainKind, TerrainProfile> = {
     weight: 2,
     lethalFrac: TERRAIN_ABYSS_CORE_FRAC,
   },
+  // Signature terrains (item 28 follow-up): the vampire's blood-mire (heavy slow,
+  // steady drain) and the demon's brimstone fissures (heavy burn). Both SURGE with
+  // a non-lethal pull (see world.TERRAIN_SURGE) so they threaten position, not just HP.
+  bloodmire: { kind: 'bloodmire', damagePerTick: 6, slowMult: 0.4, slowDuration: 1.5, weight: 3 },
+  brimstone: { kind: 'brimstone', damagePerTick: 12, slowMult: 0.7, slowDuration: 1.0, weight: 3 },
 };
+
+/**
+ * The signature terrains (item 28 + follow-up): a boss's home ground that reads
+ * as its own and — unlike the six generic themes — carries a mechanic (a lethal
+ * core or a telegraphed surge-pull), so more marquee bosses fight on distinctive,
+ * positionally-relevant terrain. Exported so tests can assert the breadth target.
+ */
+export const SIGNATURE_TERRAINS: ReadonlySet<TerrainKind> = new Set([
+  'tide',
+  'abyss',
+  'bloodmire',
+  'brimstone',
+]);
 
 /**
  * Which terrain kinds each boss's arena is themed with. Fiery brutes get magma,
@@ -71,7 +89,6 @@ const THEMES: Partial<Record<MonsterId, TerrainKind[]>> = {
   // Fire / infernal
   dragon: ['magma', 'ember'],
   kobold: ['magma', 'ember'],
-  demon: ['magma', 'ember'],
   wisp: ['ember', 'magma'],
   manticore: ['ember', 'magma'],
   // Forest / swamp / venom
@@ -87,15 +104,18 @@ const THEMES: Partial<Record<MonsterId, TerrainKind[]>> = {
   direwolf: ['bog', 'swamp'],
   minotaur: ['swamp', 'bog'],
   fae: ['swamp', 'ember'],
-  // Signature arenas (item 28): the Kraken drags you into a surging ocean, the
-  // Bandit Captain fights on the lip of a black chasm.
+  // Signature arenas (item 28 + follow-up): the Kraken drags you into a surging
+  // ocean, the Bandit Captain fights on the lip of a black chasm, the Demon Lord
+  // over molten brimstone fissures.
   kraken: ['tide', 'bog'],
+  demon: ['brimstone', 'magma'],
   // Frost / undead
   lich: ['ice', 'deathfog'],
   archlich: ['ice', 'deathfog'],
   wraith: ['ice', 'deathfog'],
   zombie: ['deathfog', 'bog'],
-  vampire: ['deathfog', 'ice'],
+  // The Vampire Lord holds court over a mire of spilled blood.
+  vampire: ['bloodmire', 'deathfog'],
   deathknight: ['ice', 'deathfog'],
   frostGiant: ['ice', 'ember'],
   mindflayer: ['deathfog', 'ice'],
