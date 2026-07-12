@@ -516,4 +516,31 @@ describe('<Lobby>', () => {
     expect(botButtons[0].hasAttribute('disabled')).toBe(true);
     expect(screen.getByText('Party full')).toBeTruthy();
   });
+
+  it('marks the host gauntlet toggle selected when a run is active, and shows "Hero" for an unnamed player', () => {
+    useStore.setState({
+      isHost: true,
+      gauntlet: true,
+      roomCode: 'ABCDEF',
+      peerCount: 1,
+      players: [
+        makePlayer({ peerId: 'h', name: 'Alice', isHost: true, ready: true }),
+        makePlayer({ peerId: 'p2', name: '', classId: 'mage' }), // unnamed human
+      ],
+    });
+    const { container } = render(<Lobby />);
+
+    // Host + gauntlet on → the chip carries ' selected', is aria-pressed, and reads
+    // "✓ Gauntlet run".
+    const gauntletBtn = screen.getByRole('button', { name: '✓ Gauntlet run' });
+    expect(gauntletBtn.classList.contains('selected')).toBe(true);
+    expect(gauntletBtn.getAttribute('aria-pressed')).toBe('true');
+
+    // The unnamed roster member falls back to the "Hero" placeholder name.
+    const names = Array.from(container.querySelectorAll('.wb-player-name')).map(
+      (n) => n.textContent,
+    );
+    expect(names).toContain('Alice');
+    expect(names).toContain('Hero');
+  });
 });

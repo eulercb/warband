@@ -1104,3 +1104,58 @@ describe('charUpgradeBadge', () => {
     expect(charUpgradeBadge('bogus')).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Grand improvements — every capstone's `apply` must actually transform the
+// hero. The catalog test above only proves they EXIST; here we run each one so
+// the effect body (a stat retune or an ability-number bump) is exercised.
+// ---------------------------------------------------------------------------
+
+describe('grand improvements apply real, measurable transformations (item 22)', () => {
+  const grands = Object.values(GRAND_BY_CLASS).flat();
+
+  it('there are two grand capstones per class', () => {
+    expect(grands).toHaveLength(24);
+  });
+
+  for (const def of grands) {
+    it(`${def.id} changes the ${def.classId} hero when applied`, () => {
+      const classId = def.classId as ClassId;
+      const base = makePlayer(classId);
+      const after = apply(classId, [def.id]);
+      const statChanged =
+        after.maxHp !== base.maxHp ||
+        after.moveSpeed !== base.moveSpeed ||
+        after.damageMult !== base.damageMult ||
+        after.damageTakenMult !== base.damageTakenMult ||
+        after.cooldownMult !== base.cooldownMult ||
+        after.castMult !== base.castMult ||
+        after.regenPerSec !== base.regenPerSec;
+      const abilitiesChanged = JSON.stringify(after.abilities) !== JSON.stringify(base.abilities);
+      // A capstone must retune SOMETHING — a stat multiplier or an ability number.
+      expect(statChanged || abilitiesChanged).toBe(true);
+    });
+  }
+
+  it('rg_grand_deadeye sharpens the ranger Arrow by exact amounts', () => {
+    const arrow = CLASSES.ranger.abilities.basic;
+    const a = apply('ranger', ['rg_grand_deadeye']).abilities!;
+    expect(a.basic.damage).toBe((arrow.damage ?? 0) + 15);
+    expect(a.basic.projSpeed).toBe((arrow.projSpeed ?? 0) + 150);
+  });
+
+  it('mg_grand_archmage discounts the mage cooldowns and cast time', () => {
+    const p = apply('mage', ['mg_grand_archmage']);
+    expect(p.cooldownMult).toBeCloseTo(0.75, 5); // 1 * 0.75
+    expect(p.castMult).toBeCloseTo(0.7, 5); // 1 * 0.7
+  });
+
+  it('wa_grand_ruin deepens the warlock Hex and Hellish Rebuke', () => {
+    const hex = CLASSES.warlock.abilities.a1;
+    const rebuke = CLASSES.warlock.abilities.a2;
+    const a = apply('warlock', ['wa_grand_ruin']).abilities!;
+    expect(a.a1.zoneTickDamage).toBe((hex.zoneTickDamage ?? 0) + 15);
+    expect(a.a1.radius).toBe((hex.radius ?? 0) + 40);
+    expect(a.a2.damage).toBe((rebuke.damage ?? 0) + 30);
+  });
+});

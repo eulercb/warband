@@ -17,6 +17,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { InputManager } from '../src/input/input';
 import { useBindings } from '../src/input/bindings';
+import { setTouchMove, resetTouch } from '../src/input/touch';
 import { DEAD_ZONE } from '../src/engine/core/constants';
 import type { Vec2 } from '../src/engine/core/types';
 
@@ -73,6 +74,7 @@ beforeEach(() => {
 afterEach(() => {
   manager.dispose();
   target.remove();
+  resetTouch();
   vi.restoreAllMocks();
 });
 
@@ -226,6 +228,24 @@ describe('InputManager: sanitize guarantees', () => {
       expect(Number.isFinite(v)).toBe(true);
     }
     expect(Math.hypot(s.aim.x, s.aim.y)).toBeCloseTo(1);
+  });
+});
+
+describe('InputManager: sanitize move-magnitude clamp', () => {
+  it('renormalizes an over-unit move vector (touch emits |v| > 1)', () => {
+    // Touch passes its stick vector straight through with no internal clamp, so it
+    // is the one source that can hand `sanitize` a move whose magnitude exceeds 1.
+    // (0.8, 0.8) has |v| ≈ 1.131 > 1, driving the moveLen>1 normalization branch.
+    // performance.now is pinned to 0 so touch's activity stamp can't leak into
+    // later tests' last-used-device arbitration.
+    vi.spyOn(performance, 'now').mockReturnValue(0);
+    setTouchMove(0.8, 0.8);
+    const s = manager.sample(ORIGIN);
+    expect(manager.activeSource).toBe('touch');
+    expect(Math.hypot(s.move.x, s.move.y)).toBeCloseTo(1, 5);
+    // Direction preserved through renormalization (equal components -> 45°).
+    expect(s.move.x).toBeCloseTo(Math.SQRT1_2, 5);
+    expect(s.move.y).toBeCloseTo(Math.SQRT1_2, 5);
   });
 });
 

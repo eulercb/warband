@@ -5,6 +5,7 @@ import {
   damagePlayer,
   healPlayer,
   applyBuff,
+  applyStun,
   makeBuff,
   buffMult,
   tickBuffs,
@@ -155,5 +156,41 @@ describe('combat: buffs', () => {
     expect(p.buffs.length).toBe(1);
     tickBuffs(p, 0.6);
     expect(p.buffs.length).toBe(0);
+  });
+});
+
+describe('combat: stun guard', () => {
+  it('a non-positive stun is resisted outright (returns 0, applies no buff)', () => {
+    const boss = mkBoss();
+    expect(applyStun(sink(), boss, 0, 'test')).toBe(0); // seconds <= 0 short-circuit
+    expect(applyStun(sink(), boss, -2, 'test')).toBe(0);
+    expect(boss.buffs.some((b) => b.kind === 'stun')).toBe(false);
+    expect(boss.stunDr).toBeUndefined(); // never even touched the DR bookkeeping
+  });
+
+  it('a positive stun lands as a stun buff of the effective duration', () => {
+    const boss = mkBoss();
+    const applied = applyStun(sink(), boss, 1.5, 'test');
+    expect(applied).toBeCloseTo(1.5, 6);
+    const stun = boss.buffs.find((b) => b.kind === 'stun' && b.source === 'test');
+    expect(stun!.remaining).toBeCloseTo(1.5, 6);
+  });
+});
+
+describe('combat: regen lockout', () => {
+  it('zero effective damage never arms the regen lockout', () => {
+    const p = mkPlayer({ classId: 'ranger' });
+    const boss = mkBoss();
+    const out = damageBoss(sink(), p, boss, 0); // 0 base → 0 outgoing → 0 effective
+    expect(out).toBe(0);
+    expect(boss.hp).toBe(1000); // unharmed
+    expect(boss.regenLockout).toBeUndefined(); // effective > 0 branch NOT taken
+  });
+
+  it('real damage arms the regen lockout', () => {
+    const p = mkPlayer({ classId: 'ranger' });
+    const boss = mkBoss();
+    damageBoss(sink(), p, boss, 20);
+    expect(boss.regenLockout).toBeGreaterThan(0); // the taken branch, for contrast
   });
 });

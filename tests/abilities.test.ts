@@ -1590,3 +1590,105 @@ describe('beamTick', () => {
     expect(boss.hp).toBe(bHp);
   });
 });
+
+// ===========================================================================
+// Player: resolution defaults / guards (untaken `??` and early-return branches)
+// ===========================================================================
+describe('player ability resolution defaults', () => {
+  it('a melee slow rider defaults its duration to 2s when slowDuration is unset', () => {
+    const w = mkWorld('rogue');
+    const p = w.players[0];
+    const boss = w.boss!;
+    tableOf(p).basic.slowMult = 0.5;
+    tableOf(p).basic.slowDuration = undefined; // exercises `ab.slowDuration ?? 2`
+    p.pos = { x: 800, y: 500 };
+    p.aim = { ...UP };
+    boss.pos = { x: 800, y: 470 };
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    const slow = boss.buffs.find((b) => b.kind === 'moveSpeed' && b.source === 'slow');
+    expect(slow!.mult).toBeCloseTo(0.5, 6);
+    expect(slow!.remaining).toBeCloseTo(2, 6); // the default duration
+  });
+
+  it('resolving an unbound sub slot is an early no-op (no cast, no projectile)', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    expect(p.subAbilities).toBeUndefined(); // nothing bound to sub1
+    resolvePlayerAbility(w, p, 'sub1', ZERO);
+    expect(w.events.some((e) => e.t === 'cast')).toBe(false); // returned before the cast push
+    expect(w.projectiles).toHaveLength(0);
+  });
+
+  it('falls back to white (0xffffff) when the class has no palette colour', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    const boss = w.boss!;
+    p.classId = 'ghost' as ClassId; // not a key in CLASS_COLORS → `?? 0xffffff`
+    p.pos = { x: 800, y: 500 };
+    p.aim = { ...UP };
+    boss.pos = { x: 200, y: 200 }; // out of the cone → no damage → no getClass on the bogus id
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    let color: number | undefined;
+    for (const e of w.events) if (e.t === 'skillArea') color = e.color;
+    expect(color).toBe(0xffffff);
+    expect(boss.hp).toBe(boss.maxHp); // nothing was struck
+  });
+
+  it('a bare meleeCone uses the default range (70) and half-angle (45)', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    const boss = w.boss!;
+    tableOf(p).basic = {
+      slot: 'basic',
+      name: 'Bare Cleave',
+      kind: 'meleeCone',
+      cooldown: 0,
+      damage: 15,
+      // no range / no halfAngleDeg → exercises `?? 70` and `?? 45`
+    };
+    p.pos = { x: 800, y: 500 };
+    p.aim = { ...UP };
+    boss.pos = { x: 800, y: 450 }; // 50u dead ahead: inside the default 70 range and 45° arc
+    const before = boss.hp;
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    expect(before - boss.hp).toBeCloseTo(15, 6);
+  });
+
+  it('a bare projectile uses the default count (1) and speed (600)', () => {
+    const w = mkWorld('ranger');
+    const p = w.players[0];
+    tableOf(p).basic = {
+      slot: 'basic',
+      name: 'Bare Bolt',
+      kind: 'projectile',
+      cooldown: 0,
+      damage: 10,
+      // no projCount / no projSpeed → exercises `?? 1` and `?? 600`
+    };
+    p.pos = { x: 400, y: 500 };
+    p.aim = { ...RIGHT };
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    expect(w.projectiles).toHaveLength(1); // projCount ?? 1
+    const proj = w.projectiles[0];
+    expect(Math.hypot(proj.vel.x, proj.vel.y)).toBeCloseTo(600, 3); // projSpeed ?? 600
+  });
+
+  it('a bare pbaoe uses the default radius (150)', () => {
+    const w = mkWorld('mage');
+    const p = w.players[0];
+    const boss = w.boss!;
+    tableOf(p).a2 = {
+      slot: 'a2',
+      name: 'Bare Nova',
+      kind: 'pbaoe',
+      cooldown: 0,
+      damage: 12,
+      // no radius → exercises `?? 150`
+    };
+    p.pos = { x: 800, y: 500 };
+    boss.pos = { x: 800, y: 600 }; // 100u away: comfortably inside the default 150 radius
+    const before = boss.hp;
+    resolvePlayerAbility(w, p, 'a2', ZERO);
+    expect(before - boss.hp).toBeCloseTo(12, 6);
+  });
+});

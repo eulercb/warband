@@ -167,3 +167,48 @@ describe('persisted load merge', () => {
     expect(mod.getBindings().keys.a1[0]).toBe('KeyQ');
   });
 });
+
+describe('setKey / setPad slot compaction', () => {
+  it('drops an empty middle slot when a key lands past the array end (line 186)', () => {
+    // sub1 has a single default key ('KeyZ'); binding a fresh key at slot 2 pads
+    // slot 1 with '' — the compaction filter must drop that empty interior gap.
+    useBindings.getState().setKey('sub1', 2, 'KeyM');
+    expect(getBindings().keys.sub1).toEqual(['KeyZ', 'KeyM']);
+  });
+
+  it('keeps an empty PRIMARY slot when the action was emptied first (line 186, i===0)', () => {
+    // Rebinding revive's only key ('KeyF') onto its alternate slot strips it from
+    // the primary; the `|| i === 0` clause preserves the (now empty) primary slot.
+    useBindings.getState().setKey('revive', 1, 'KeyF');
+    expect(getBindings().keys.revive).toEqual(['', 'KeyF']);
+  });
+
+  it('grows the pad array then drops the -1 filler (lines 198, 200)', () => {
+    // Binding at slot 2 runs the while-loop padding with -1 (line 198); the
+    // compaction filter (line 200) drops the interior -1 but keeps real indices.
+    useBindings.getState().setPad('sub1', 2, 5);
+    expect(getBindings().pad.sub1).toEqual([6, 5]);
+  });
+
+  it('keeps a -1 PRIMARY slot when the action was emptied first (line 200, i===0)', () => {
+    // Moving sub1's only button (6) to its alternate slot empties the primary;
+    // `|| i === 0` preserves the (now -1) primary slot.
+    useBindings.getState().setPad('sub1', 1, 6);
+    expect(getBindings().pad.sub1).toEqual([-1, 6]);
+  });
+});
+
+describe('label fallbacks', () => {
+  it('codeToLabel falls back to the raw code for an unknown Arrow* code (line 243)', () => {
+    // The Up/Down/Left/Right lookup misses, so `?? code` returns the code itself.
+    expect(codeToLabel('ArrowFoo')).toBe('ArrowFoo');
+  });
+
+  it('keyLabelFor(basic) is just "LMB" when basic has no bound key (line 373)', () => {
+    // Steal basic's only key (Space) -> basic becomes empty -> the ternary's
+    // false arm ('LMB', with no `/key` suffix) is taken.
+    useBindings.getState().setKey('a1', 0, 'Space');
+    expect(getBindings().keys.basic).toEqual([]);
+    expect(keyLabelFor('basic')).toBe('LMB');
+  });
+});

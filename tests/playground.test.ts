@@ -358,3 +358,31 @@ describe('Playground: class effigies (stations)', () => {
     expect(selected[0].refId).toBe('mage');
   });
 });
+
+describe('Playground: hero-absent guards', () => {
+  it('renames and re-classes from a fresh spawn when the world has no hero', () => {
+    const pg = new Playground('Aria', 'knight');
+    pg.frame(1000);
+    (pg as unknown as { world: { players: unknown[] } }).world.players = [];
+    pg.setName('Zed'); // no player → the `if (p)` rename is skipped, name still stored
+    pg.setClass('mage'); // no player → prev falsy → build(null), no kept position
+    const s = pg.frame(1050);
+    expect(s.players[0].name).toBe('Zed'); // stored name surfaces on the rebuilt hero
+    expect(s.players[0].classId).toBe('mage');
+    expect(s.players[0].pos.x).toBeCloseTo(800, 3); // default spawn, nothing carried over
+    expect(s.players[0].pos.y).toBeCloseTo(780, 3);
+  });
+
+  it('resolves no hero position and no effigy under a hero-less world', () => {
+    const pg = new Playground('Aria', 'knight');
+    pg.frame(1000);
+    const raw = pg as unknown as {
+      world: { players: unknown[] };
+      heroPos(): Vec2 | null;
+      effigyUnder(): unknown;
+    };
+    raw.world.players = [];
+    expect(raw.heroPos()).toBeNull(); // heroPos: p ? p.pos : null
+    expect(raw.effigyUnder()).toBeNull(); // effigyUnder: !hp guard
+  });
+});

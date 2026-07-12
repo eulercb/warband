@@ -412,4 +412,16 @@ describe('<TouchControls> swap radial button', () => {
     fireEvent.pointerMove(btn, { pointerId: 1, clientX: 0, clientY: -40 });
     expect(setTouchSwapAimMock).not.toHaveBeenCalled();
   });
+
+  it('a release before any press is ignored (release sees no active gesture)', () => {
+    const btn = renderSwap();
+    setTouchButtonMock.mockClear();
+    setTouchSwapAimMock.mockClear();
+    // A stray pointerup with no preceding pointerdown: `release` finds active ===
+    // false and bails out before clearing the swap button / aim state.
+    fireEvent.pointerUp(btn, { pointerId: 1 });
+    expect(btn.classList.contains('held')).toBe(false);
+    expect(setTouchButtonMock).not.toHaveBeenCalled();
+    expect(setTouchSwapAimMock).not.toHaveBeenCalled();
+  });
 });

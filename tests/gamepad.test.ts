@@ -154,6 +154,20 @@ describe('gamepad: movement from left stick + radial dead-zone', () => {
     expect(state.move.x).toBeCloseTo(Math.SQRT1_2, 5);
     expect(state.move.y).toBeCloseTo(Math.SQRT1_2, 5);
   });
+
+  it('renormalizes a marginally over-unit stick back to magnitude 1 (fp guard)', () => {
+    // A near-full diagonal: applyDeadzone rebuilds the unit direction, but the
+    // component divisions leave hypot at 1.0000000000000002 (> 1) via IEEE-754
+    // rounding — the exact case the `moveLen > 1` clamp in sampleGamepad handles.
+    const { state } = readPad(makePad({ axes: [0.998, 0.998, 0, 0] }));
+    // The guard re-divides by that length, so the emitted move never exceeds 1
+    // (without it, magnitude would stay at 1.0000000000000002 > 1).
+    expect(magnitude(state.move)).toBeLessThanOrEqual(1);
+    expect(magnitude(state.move)).toBeCloseTo(1, 9);
+    // Symmetric diagonal preserved (equal, positive components).
+    expect(state.move.x).toBeCloseTo(state.move.y, 12);
+    expect(state.move.x).toBeGreaterThan(0);
+  });
 });
 
 describe('gamepad: aim from right stick (unit vector)', () => {

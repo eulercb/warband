@@ -66,7 +66,16 @@ vi.mock('../src/input/input', () => ({
   },
 }));
 
+// Spy on rollCharChoices but keep the real behaviour by default (so the seeded
+// roll tests still see genuine offers). One test overrides it to inject an
+// unresolvable id and exercise the `describeCharOffer → null` skip branch.
+vi.mock('../src/engine/content/charUpgrades', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/engine/content/charUpgrades')>();
+  return { ...actual, rollCharChoices: vi.fn(actual.rollCharChoices) };
+});
+
 import ResultScreen from '../src/ui/screens/ResultScreen';
+import { rollCharChoices } from '../src/engine/content/charUpgrades';
 import { useStore } from '../src/ui/state/store';
 import type { AppState } from '../src/ui/state/store';
 import type { FightResult, ResultPlayerStat } from '../src/engine/core/types';
@@ -420,6 +429,27 @@ describe('<ResultScreen> branch coverage', () => {
 
     fireEvent.click(cards[0]);
     expect(vi.mocked(chooseCharUpgrade)).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips a character offer whose id resolves to no view (describeCharOffer → null)', () => {
+    // Inject one resolvable grand pick + one bogus id. describeCharOffer returns
+    // null for the bogus id, so its card renders nothing (the `if (!view) return
+    // null` branch) — only the resolvable offer survives.
+    const spy = vi.mocked(rollCharChoices);
+    const original = spy.getMockImplementation();
+    spy.mockReturnValue(['kn_grand_immovable', 'zzz_not_a_real_upgrade']);
+    try {
+      useStore.setState({ isHost: true, result: makeResult({ endlessAvailable: true }) });
+      const { container } = render(<ResultScreen />);
+
+      const cards = charCards(container);
+      expect(cards.length).toBe(1); // the bogus offer contributed no card
+      expect(cards[0].textContent ?? '').toContain('Immovable Object');
+      // The character-pick heading still renders (we DID map the offers).
+      expect(screen.getByText('Choose a Knight upgrade')).toBeTruthy();
+    } finally {
+      spy.mockImplementation(original!);
+    }
   });
 
   it('lists owned generic + character boons, skipping an unrecognised character id', () => {

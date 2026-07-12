@@ -88,14 +88,15 @@ export default defineConfig({
       ],
       reporter: ['text', 'text-summary', 'lcov'],
       // Ratchet floor for the unit-testable surface. Achieved coverage is
-      // currently ~98% lines / ~94% branches; all four gates sit at 90 — a few
-      // points below the branch number so ordinary v8 variance never fails CI,
-      // while a real coverage regression does. Raise these as coverage climbs.
+      // currently ~99% statements/functions/lines and ~98% branches; all four
+      // gates sit at 95 — a few points below the branch number so ordinary v8
+      // variance never fails CI, while a real coverage regression does. Raise
+      // these as coverage climbs.
       thresholds: {
-        statements: 90,
-        branches: 90,
-        functions: 90,
-        lines: 90,
+        statements: 95,
+        branches: 95,
+        functions: 95,
+        lines: 95,
       },
     },
   },

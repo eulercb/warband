@@ -1124,3 +1124,66 @@ describe('rig predicates', () => {
     expect(addUsesRig({} as unknown as AddView)).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Humanoid — expansion classes (bard / monk / sorcerer / warlock)
+// ---------------------------------------------------------------------------
+
+// ALL_CLASS_IDS above pins only the original eight; the four expansion classes
+// have their own `weaponFor` switch arms. Exercise them so every class's weapon
+// mapping is covered, not just the originals.
+const EXPANSION_CLASS_IDS: ClassId[] = ['bard', 'monk', 'sorcerer', 'warlock'];
+
+describe('buildHumanoidSpec — expansion classes', () => {
+  it.each(EXPANSION_CLASS_IDS)('carries the correct weapon for %s', (classId) => {
+    expect(buildHumanoidSpec(classId).weapon).toEqual(WEAPON_EXPECT[classId]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Registry — silhouette arms otherwise shadowed by the boss overrides
+// ---------------------------------------------------------------------------
+
+describe('bossRigId — insect / serpent / tree silhouette fallbacks', () => {
+  // The insect/serpent/tree body shapes exist in the monster data ONLY on bosses
+  // that also carry an explicit rig override (spider → insect, kraken+basilisk →
+  // serpent, treant → tree), so those three `bodyShape` switch arms are never hit
+  // through the shipped registry. Temporarily retag a plain, non-overridden,
+  // non-dummy boss to each shape to drive the silhouette fallback directly.
+  it('resolves the three override-shadowed silhouettes to spider / serpent / treant', () => {
+    const victim = MONSTERS.goblin; // humanoid, not in the override table, not the dummy
+    const original = victim.bodyShape;
+    try {
+      victim.bodyShape = 'insect';
+      expect(bossRigId('goblin')).toBe('spider');
+      victim.bodyShape = 'serpent';
+      expect(bossRigId('goblin')).toBe('serpent');
+      victim.bodyShape = 'tree';
+      expect(bossRigId('goblin')).toBe('treant');
+    } finally {
+      victim.bodyShape = original;
+    }
+    // Restored: the untouched registry resolves goblin to the humanoid rig again.
+    expect(bossRigId('goblin')).toBe('humanoid');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Registry — addUsesRig with the (shipped-off) add rig flag forced on
+// ---------------------------------------------------------------------------
+
+describe('addUsesRig — add rig flag forced on', () => {
+  // RIG_FLAGS.add ships OFF, so addUsesRig short-circuits on the first term. Flip
+  // it on to drive the rest of the predicate: even then an add has no rig
+  // (addRigId() is null), so it still never rig-renders.
+  it('still returns false because addRigId() is null even when RIG_FLAGS.add is on', () => {
+    const original = RIG_FLAGS.add;
+    try {
+      RIG_FLAGS.add = true;
+      expect(addUsesRig({} as unknown as AddView)).toBe(false);
+    } finally {
+      RIG_FLAGS.add = original;
+    }
+    expect(RIG_FLAGS.add).toBe(false); // restored to the shipped default
+  });
+});

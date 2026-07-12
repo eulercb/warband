@@ -157,3 +157,104 @@ describe('MusterScene: overlay freeze', () => {
     expect(scene.takeTriggers()).toHaveLength(0);
   });
 });
+
+describe('MusterScene: construction fallbacks', () => {
+  it('falls back to the name "Hero" when built with an empty name', () => {
+    const scene = new MusterScene('', 'knight', false);
+    const s = scene.frame(1000);
+    expect(s.players[0].name).toBe('Hero');
+  });
+});
+
+describe('MusterScene: class sync edge cases', () => {
+  it('is a no-op when the class is unchanged (keeps the same world/tick)', () => {
+    const scene = new MusterScene('Aria', 'knight', false);
+    scene.frame(1000); // baseline
+    const before = scene.frame(2000); // +1s clamped to 0.25s => tick 5
+    expect(before.tick).toBe(5);
+    scene.setClass('knight'); // same class → early return, world not rebuilt
+    const s = scene.frame(3000); // world kept counting
+    expect(s.tick).toBe(10);
+    expect(s.players[0].classId).toBe('knight');
+  });
+
+  it('rebuilds from a fresh spawn when there is no hero to carry over', () => {
+    const scene = new MusterScene('Aria', 'knight', false);
+    scene.frame(1000);
+    (scene as unknown as { world: { players: unknown[] } }).world.players = [];
+    scene.setClass('mage'); // prev is undefined → build(null), no kept position
+    const s = scene.frame(1050);
+    expect(s.players[0].classId).toBe('mage');
+    expect(s.players[0].pos.x).toBeCloseTo(800, 3); // default spawn, nothing carried over
+    expect(s.players[0].pos.y).toBeCloseTo(780, 3);
+  });
+});
+
+describe('MusterScene: station selection internals', () => {
+  it('reports null / stays inert when the world has no hero', () => {
+    const scene = new MusterScene('Aria', 'knight', true);
+    scene.frame(1000);
+    const raw = scene as unknown as {
+      world: { players: unknown[] };
+      armedId: number | null;
+      heroPos(): Vec2 | null;
+      stationUnder(): unknown;
+      clearArmedLatch(): void;
+    };
+    raw.armedId = 1;
+    raw.world.players = [];
+    expect(raw.heroPos()).toBeNull(); // heroPos: p ? p.pos : null
+    expect(raw.stationUnder()).toBeNull(); // stationUnder: !hp guard
+    raw.clearArmedLatch(); // clearArmedLatch: !hp guard returns before clearing
+    expect(raw.armedId).toBe(1);
+  });
+
+  it('picks the nearest of two overlapping stations under the hero', () => {
+    const scene = new MusterScene('Aria', 'knight', false);
+    const state = scene.frame(1000);
+    const hp = heroPos(state);
+    // Two runes the hero stands within: the loop keeps the nearer and rejects the
+    // farther (frac > bestFrac), so `best` settles on station 501.
+    (scene as unknown as { stations: unknown[] }).stations.push(
+      {
+        id: 501,
+        kind: 'muster',
+        pos: { x: hp.x, y: hp.y },
+        radius: 46,
+        triggerRadius: 88,
+        label: 'a',
+        color: 0,
+        dwell: 0.4,
+      },
+      {
+        id: 502,
+        kind: 'muster',
+        pos: { x: hp.x, y: hp.y + 40 },
+        radius: 46,
+        triggerRadius: 88,
+        label: 'b',
+        color: 0,
+        dwell: 0.4,
+      },
+    );
+    const under = (scene as unknown as { stationUnder(): { id: number } | null }).stationUnder();
+    expect(under?.id).toBe(501);
+  });
+
+  it('leaves a station label untouched when its kind is neither rune nor horn', () => {
+    const scene = new MusterScene('Aria', 'knight', false);
+    (scene as unknown as { stations: unknown[] }).stations.push({
+      id: 99,
+      kind: 'host',
+      pos: { x: 0, y: 0 },
+      radius: 46,
+      triggerRadius: 88,
+      label: 'CUSTOM LABEL',
+      color: 0x123456,
+      dwell: 0.5,
+    });
+    const s = scene.frame(1000);
+    const view = (s.stations ?? []).find((x) => x.id === 99);
+    expect(view?.label).toBe('CUSTOM LABEL'); // neither muster nor start → label kept
+  });
+});

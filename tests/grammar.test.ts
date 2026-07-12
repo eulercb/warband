@@ -71,6 +71,18 @@ describe('overlapsActiveTelegraph', () => {
     expect(overlapsActiveTelegraph({ x: 500, y: 500 }, a, [a, idle, dead], [], GAP)).toBe(false);
   });
 
+  it('falls back to the boss position when its telegraph has no explicit target', () => {
+    const a = boss({ x: 100, y: 100 }, { id: 1 });
+    // A channelling boss with a null targetPos — the threatened spot is its own
+    // position (the `?? other.pos` fallback), not a separate aimed point.
+    const b = boss(
+      { x: 500, y: 500 },
+      { id: 2, action: action({ kind: 'channel', targetPos: null }) },
+    );
+    expect(overlapsActiveTelegraph({ x: 500, y: 500 }, a, [a, b], [], GAP)).toBe(true);
+    expect(overlapsActiveTelegraph({ x: 900, y: 900 }, a, [a, b], [], GAP)).toBe(false);
+  });
+
   it('flags a spot a pending corruption strike is about to hit', () => {
     const a = boss({ x: 100, y: 100 }, { id: 1 });
     const strike: PendingStrike = {

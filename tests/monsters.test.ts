@@ -736,6 +736,41 @@ describe('buildRunSlots', () => {
     }
     expect(laterTwins).toBeGreaterThan(0);
   });
+
+  it('randomOpener falls back to the full tier when every candidate is excluded', () => {
+    const easy = MONSTERS_BY_TIER.easy;
+    const exclude = new Set<MonsterId>(easy); // exclude the ENTIRE easy tier
+    const opener = randomOpener(0, new Rng(5), exclude);
+    // The filtered pool is empty, so it falls back to the whole easy tier.
+    expect(easy).toContain(opener);
+    expect(MONSTERS[opener].tier).toBe('easy');
+  });
+
+  it('fills multi-boss packs — triplets and quads — deep in the endless cycles', () => {
+    let sawTriplet = false;
+    let sawQuad = false;
+    for (let seed = 1; seed <= 120; seed++) {
+      // A high cycle + full party maxes the twin AND extra-co-boss odds, so the
+      // pack-growth loop runs its continue path and, sometimes, fills right up.
+      for (const slot of buildRunSlots('dragon', 6, new Rng(seed), 4)) {
+        expect(slot.length).toBeGreaterThanOrEqual(1);
+        expect(slot.length).toBeLessThanOrEqual(TWIN_MAX_BOSSES);
+        if (slot.length === 3) sawTriplet = true;
+        if (slot.length === TWIN_MAX_BOSSES) sawQuad = true;
+        if (slot.length >= 2) {
+          const [lead, ...partners] = slot;
+          const allowed = [MONSTERS[lead].tier, lowerTier[MONSTERS[lead].tier]];
+          expect(new Set(partners).size).toBe(partners.length); // co-bosses are distinct
+          for (const partner of partners) {
+            expect(partner).not.toBe(lead);
+            expect(allowed).toContain(MONSTERS[partner].tier);
+          }
+        }
+      }
+    }
+    expect(sawTriplet).toBe(true); // the extra-co-boss continue path fired
+    expect(sawQuad).toBe(true); // a pack filled to TWIN_MAX_BOSSES (the while-loop exit)
+  });
 });
 
 // ---------------------------------------------------------------------------

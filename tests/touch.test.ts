@@ -4,7 +4,7 @@
  * source into the InputManager. We assert that an engaged virtual stick/button
  * wins over an idle keyboard and that held button state passes straight through.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { InputManager } from '../src/input/input';
 import {
   setTouchMove,
@@ -14,6 +14,7 @@ import {
   touchSwapAim,
   resetTouch,
   touchEngaged,
+  touchLastActivityMs,
   isTouchCapable,
 } from '../src/input/touch';
 
@@ -28,6 +29,8 @@ beforeEach(() => {
   manager = new InputManager(target);
 });
 afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   resetTouch();
   manager.dispose();
   target.remove();
@@ -85,5 +88,67 @@ describe('touch input source', () => {
     expect(touchEngaged()).toBe(true);
     resetTouch();
     expect(touchSwapAim()).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe('touch: isTouchCapable + activity stamping (edge branches)', () => {
+  it('returns false when there is no window at all (SSR guard, line 40)', () => {
+    vi.stubGlobal('window', undefined);
+    expect(isTouchCapable()).toBe(false);
+  });
+
+  it('reports capable when navigator.maxTouchPoints > 0 (line 43)', () => {
+    vi.stubGlobal('navigator', { maxTouchPoints: 5 });
+    expect(isTouchCapable()).toBe(true);
+  });
+
+  it('returns false when navigator is absent and no other touch signal (line 43)', () => {
+    // navigator missing -> the first OR-branch is false; neutralize the other two
+    // (no `ontouchstart`, a matchMedia that never matches) for a deterministic no.
+    vi.stubGlobal('navigator', undefined);
+    vi.stubGlobal('window', { matchMedia: () => ({ matches: false }) });
+    expect(isTouchCapable()).toBe(false);
+  });
+
+  it('setTouchMove stamps activity only for a non-zero vector (line 56)', () => {
+    const now = vi.spyOn(performance, 'now');
+    now.mockReturnValue(1111);
+    setTouchMove(0.4, 0); // x !== 0 -> stamp
+    expect(touchLastActivityMs()).toBe(1111);
+    now.mockReturnValue(2222);
+    setTouchMove(0, 0); // both zero -> NO stamp (value unchanged)
+    expect(touchLastActivityMs()).toBe(1111);
+    now.mockReturnValue(3333);
+    setTouchMove(0, -0.7); // x === 0, y !== 0 -> stamp
+    expect(touchLastActivityMs()).toBe(3333);
+  });
+
+  it('setTouchAim stamps activity only for a non-zero vector (line 63)', () => {
+    const now = vi.spyOn(performance, 'now');
+    now.mockReturnValue(1000);
+    setTouchAim(0.9, 0); // x !== 0 -> stamp
+    expect(touchLastActivityMs()).toBe(1000);
+    now.mockReturnValue(2000);
+    setTouchAim(0, 0); // both zero -> NO stamp
+    expect(touchLastActivityMs()).toBe(1000);
+  });
+
+  it('setTouchSwapAim stamps activity only for a non-zero drag (line 76)', () => {
+    const now = vi.spyOn(performance, 'now');
+    now.mockReturnValue(800);
+    setTouchSwapAim(0.5, -0.5); // x !== 0 -> stamp
+    expect(touchLastActivityMs()).toBe(800);
+    now.mockReturnValue(900);
+    setTouchSwapAim(0, 0); // both zero -> NO stamp
+    expect(touchLastActivityMs()).toBe(800);
+    now.mockReturnValue(950);
+    setTouchSwapAim(0, 0.6); // x === 0, y !== 0 -> stamp
+    expect(touchLastActivityMs()).toBe(950);
+  });
+
+  it('now() falls back to 0 when performance is unavailable (line 126)', () => {
+    vi.stubGlobal('performance', undefined);
+    setTouchMove(0.5, 0); // triggers the internal now() -> 0 (no performance)
+    expect(touchLastActivityMs()).toBe(0);
   });
 });
