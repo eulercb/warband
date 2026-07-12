@@ -125,7 +125,7 @@ function resolveHostSeed(): number | undefined {
     // Numeric text uses the number directly; any other text hashes its chars, so
     // both "12345" and "warband" are valid, shareable seeds.
     const asNum = Number(t);
-    if (Number.isFinite(asNum) && /^\d+$/.test(t)) return (asNum >>> 0) || 1;
+    if (Number.isFinite(asNum) && /^\d+$/.test(t)) return asNum >>> 0 || 1;
     const acc: number[] = [];
     for (let i = 0; i < t.length; i++) acc.push(t.charCodeAt(i));
     return mixSeed(...acc, t.length);

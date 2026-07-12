@@ -395,7 +395,7 @@ describe('per-run upgrades', () => {
 });
 
 describe('ephemeral shop (item 21)', () => {
-  it('awardCoinsFromResult banks this hero row\'s coins', () => {
+  it("awardCoinsFromResult banks this hero row's coins", () => {
     const g = useStore.getState();
     g.setSession(makeSession()); // selfId = 'self-id'
     g.awardCoinsFromResult({
@@ -403,8 +403,28 @@ describe('ephemeral shop (item 21)', () => {
       timeMs: 1,
       monsterId: 'dragon',
       stats: [
-        { peerId: 'self-id', name: 'Me', classId: 'knight', damageDealt: 0, healingDone: 0, revives: 0, deaths: 0, score: 0, coins: 5 },
-        { peerId: 'other', name: 'O', classId: 'mage', damageDealt: 0, healingDone: 0, revives: 0, deaths: 0, score: 0, coins: 3 },
+        {
+          peerId: 'self-id',
+          name: 'Me',
+          classId: 'knight',
+          damageDealt: 0,
+          healingDone: 0,
+          revives: 0,
+          deaths: 0,
+          score: 0,
+          coins: 5,
+        },
+        {
+          peerId: 'other',
+          name: 'O',
+          classId: 'mage',
+          damageDealt: 0,
+          healingDone: 0,
+          revives: 0,
+          deaths: 0,
+          score: 0,
+          coins: 3,
+        },
       ],
     });
     expect(useStore.getState().myCoins).toBe(5);
@@ -412,9 +432,14 @@ describe('ephemeral shop (item 21)', () => {
 
   it('buyEphemeral deducts coins, mirrors the stock and relays to the host', () => {
     const bought: string[] = [];
-    const session = { ...makeSession(), buyEphemeral: (id: string) => bought.push(id) };
+    const session: NetSession = {
+      ...makeSession(),
+      buyEphemeral: (id) => {
+        bought.push(id);
+      },
+    };
     const g = useStore.getState();
-    g.setSession(session as unknown as NetSession);
+    g.setSession(session);
     useStore.setState({ myCoins: 10 });
     const ok = useStore.getState().buyEphemeral('potion');
     expect(ok).toBe(true);

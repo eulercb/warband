@@ -1031,110 +1031,278 @@ function g(
 }
 
 const GRAND: CharUpgradeDef[] = [
-  g('knight', 'kn_grand_immovable', 'Immovable Object', '🗿', 'Become a fortress: −25% damage taken and +15% max HP', ({ player: p }) => {
-    p.damageTakenMult *= 0.75;
-    p.maxHp = Math.round(p.maxHp * 1.15);
-    p.hp = p.maxHp;
-  }),
-  g('knight', 'kn_grand_wrath', "Warlord's Wrath", '⚔️', 'Cleave hits for +12 and 20% faster; Shield Bash hits for +20', ({ abilities: a }) => {
-    addN(a.basic, 'damage', 12);
-    mul(a.basic, 'cooldown', 0.8);
-    addN(a.a3, 'damage', 20);
-  }),
-  g('ranger', 'rg_grand_deadeye', 'Deadeye', '🎯', 'Arrows hit for +15 and fly much faster (+150 speed)', ({ abilities: a }) => {
-    addN(a.basic, 'damage', 15);
-    addN(a.basic, 'projSpeed', 150);
-  }),
-  g('ranger', 'rg_grand_storm', 'Arrow Storm', '🌩️', 'Multishot looses 3 extra arrows across a much wider fan', ({ abilities: a }) => {
-    addN(a.a1, 'projCount', 3);
-    addN(a.a1, 'spreadDeg', 15);
-  }),
-  g('mage', 'mg_grand_archmage', 'Archmage', '🧙', 'Mastery of magic: −25% ability cooldowns and −30% cast time', ({ player: p }) => {
-    p.cooldownMult *= 0.75;
-    p.castMult *= 0.7;
-  }),
-  g('mage', 'mg_grand_cataclysm', 'Cataclysm', '☄️', 'Fireball erupts for +40 across a vastly wider blast (+60 radius)', ({ abilities: a }) => {
-    addN(a.a1, 'impactRadius', 60);
-    addN(a.a1, 'damage', 40);
-  }),
-  g('cleric', 'cl_grand_beacon', 'Beacon of Hope', '🕯️', 'Heal restores +50 and Sanctuary mends +15 per tick', ({ abilities: a }) => {
-    addN(a.a1, 'damage', 50);
-    addN(a.a2, 'zoneTickHeal', 15);
-  }),
-  g('cleric', 'cl_grand_avatar', 'Avatar of Faith', '👼', '+20% max HP and Blessing grants +30% more damage', ({ player: p, abilities: a }) => {
-    p.maxHp = Math.round(p.maxHp * 1.2);
-    p.hp = p.maxHp;
-    addN(a.a3, 'buffDamageMult', 0.3);
-  }),
-  g('barbarian', 'bb_grand_unstoppable', 'Unstoppable', '🐗', '+20% max HP and Rage empowers to +30% more damage', ({ player: p, abilities: a }) => {
-    p.maxHp = Math.round(p.maxHp * 1.2);
-    p.hp = p.maxHp;
-    addN(a.a1, 'buffDamageMult', 0.3);
-  }),
-  g('barbarian', 'bb_grand_reaver', 'Blood Reaver', '🩸', 'Swings drink 25% of the damage as health; Whirlwind hits for +25', ({ abilities: a }) => {
-    addN(a.basic, 'lifestealFrac', 0.25);
-    addN(a.a3, 'damage', 25);
-  }),
-  g('rogue', 'ro_grand_shadow', 'Shadow Master', '🌑', 'Shadowstep resets twice as fast; Backstab bursts for +40', ({ abilities: a }) => {
-    mul(a.a2, 'cooldown', 0.5);
-    addN(a.a1, 'damage', 40);
-  }),
-  g('rogue', 'ro_grand_venom', 'Grand Venom', '☠️', 'Poison Vial festers for +15 per tick across a far wider cloud (+40)', ({ abilities: a }) => {
-    addN(a.a3, 'zoneTickDamage', 15);
-    addN(a.a3, 'radius', 40);
-  }),
-  g('paladin', 'pa_grand_aegis', 'Eternal Aegis', '🛡️', 'Divine Shield blocks far more, and you take 15% less damage always', ({ player: p, abilities: a }) => {
-    mul(a.a3, 'buffDefMult', 0.6);
-    p.damageTakenMult *= 0.85;
-  }),
-  g('paladin', 'pa_grand_dawn', 'Dawnbringer', '🌅', 'Holy Strike hits for +15 and heals 20%; Lay on Hands restores +50', ({ abilities: a }) => {
-    addN(a.basic, 'damage', 15);
-    addN(a.basic, 'lifestealFrac', 0.2);
-    addN(a.a2, 'damage', 50);
-  }),
-  g('druid', 'dr_grand_wild', 'Wild Shape', '🐾', 'Regrowth heals +50 and Thornlash splits into 2 extra thorns', ({ abilities: a }) => {
-    addN(a.a2, 'damage', 50);
-    addN(a.basic, 'projCount', 2);
-  }),
-  g('druid', 'dr_grand_grove', 'Sacred Grove', '🌳', 'Entangle gnaws for +15 per tick across a far wider, longer snare', ({ abilities: a }) => {
-    addN(a.a1, 'zoneTickDamage', 15);
-    addN(a.a1, 'radius', 40);
-    addN(a.a1, 'zoneDuration', 3);
-  }),
-  g('bard', 'ba_grand_symphony', 'Grand Symphony', '🎼', 'Inspiration grants +30% more damage and lasts 4s longer', ({ abilities: a }) => {
-    addN(a.a1, 'buffDamageMult', 0.3);
-    addN(a.a1, 'buffDuration', 4);
-  }),
-  g('bard', 'ba_grand_ballad', 'Ballad of Heroes', '🎻', 'Healing Word restores +50 and Vicious Mockery hits for +15', ({ abilities: a }) => {
-    addN(a.a2, 'damage', 50);
-    addN(a.basic, 'damage', 15);
-  }),
-  g('monk', 'mo_grand_ascend', 'Ascendant', '🕉️', '+20% move speed and Flurry of Blows strikes 30% faster', ({ player: p, abilities: a }) => {
-    p.moveSpeed *= 1.2;
-    mul(a.basic, 'cooldown', 0.7);
-  }),
-  g('monk', 'mo_grand_thousand', 'Thousand Palms', '🙌', 'Flurry hits for +12; Stunning Strike stuns +0.8s and hits for +30', ({ abilities: a }) => {
-    addN(a.basic, 'damage', 12);
-    addN(a.a1, 'stun', 0.8);
-    addN(a.a1, 'damage', 30);
-  }),
-  g('sorcerer', 'so_grand_wild', 'Wild Magic Surge', '🎲', 'Chaos Bolt fires 2 extra bolts, each hitting for +8', ({ abilities: a }) => {
-    addN(a.basic, 'projCount', 2);
-    addN(a.basic, 'damage', 8);
-  }),
-  g('sorcerer', 'so_grand_cataclysm', 'Meteor Swarm', '💥', 'Meteor erupts for +50 across a vastly wider blast (+60 radius)', ({ abilities: a }) => {
-    addN(a.a1, 'impactRadius', 60);
-    addN(a.a1, 'damage', 50);
-  }),
-  g('warlock', 'wa_grand_pact', 'Pact of the Fiend', '😈', 'Eldritch Blast hits for +15 and drinks 20% more of the damage', ({ abilities: a }) => {
-    addN(a.basic, 'damage', 15);
-    addN(a.basic, 'lifestealFrac', 0.2);
-  }),
-  g('warlock', 'wa_grand_ruin', 'Word of Ruin', '💀', 'Hex festers for +15 per tick across a wider curse; Hellish Rebuke +30', ({ abilities: a }) => {
-    addN(a.a1, 'zoneTickDamage', 15);
-    addN(a.a1, 'radius', 40);
-    addN(a.a2, 'damage', 30);
-  }),
+  g(
+    'knight',
+    'kn_grand_immovable',
+    'Immovable Object',
+    '🗿',
+    'Become a fortress: −25% damage taken and +15% max HP',
+    ({ player: p }) => {
+      p.damageTakenMult *= 0.75;
+      p.maxHp = Math.round(p.maxHp * 1.15);
+      p.hp = p.maxHp;
+    },
+  ),
+  g(
+    'knight',
+    'kn_grand_wrath',
+    "Warlord's Wrath",
+    '⚔️',
+    'Cleave hits for +12 and 20% faster; Shield Bash hits for +20',
+    ({ abilities: a }) => {
+      addN(a.basic, 'damage', 12);
+      mul(a.basic, 'cooldown', 0.8);
+      addN(a.a3, 'damage', 20);
+    },
+  ),
+  g(
+    'ranger',
+    'rg_grand_deadeye',
+    'Deadeye',
+    '🎯',
+    'Arrows hit for +15 and fly much faster (+150 speed)',
+    ({ abilities: a }) => {
+      addN(a.basic, 'damage', 15);
+      addN(a.basic, 'projSpeed', 150);
+    },
+  ),
+  g(
+    'ranger',
+    'rg_grand_storm',
+    'Arrow Storm',
+    '🌩️',
+    'Multishot looses 3 extra arrows across a much wider fan',
+    ({ abilities: a }) => {
+      addN(a.a1, 'projCount', 3);
+      addN(a.a1, 'spreadDeg', 15);
+    },
+  ),
+  g(
+    'mage',
+    'mg_grand_archmage',
+    'Archmage',
+    '🧙',
+    'Mastery of magic: −25% ability cooldowns and −30% cast time',
+    ({ player: p }) => {
+      p.cooldownMult *= 0.75;
+      p.castMult *= 0.7;
+    },
+  ),
+  g(
+    'mage',
+    'mg_grand_cataclysm',
+    'Cataclysm',
+    '☄️',
+    'Fireball erupts for +40 across a vastly wider blast (+60 radius)',
+    ({ abilities: a }) => {
+      addN(a.a1, 'impactRadius', 60);
+      addN(a.a1, 'damage', 40);
+    },
+  ),
+  g(
+    'cleric',
+    'cl_grand_beacon',
+    'Beacon of Hope',
+    '🕯️',
+    'Heal restores +50 and Sanctuary mends +15 per tick',
+    ({ abilities: a }) => {
+      addN(a.a1, 'damage', 50);
+      addN(a.a2, 'zoneTickHeal', 15);
+    },
+  ),
+  g(
+    'cleric',
+    'cl_grand_avatar',
+    'Avatar of Faith',
+    '👼',
+    '+20% max HP and Blessing grants +30% more damage',
+    ({ player: p, abilities: a }) => {
+      p.maxHp = Math.round(p.maxHp * 1.2);
+      p.hp = p.maxHp;
+      addN(a.a3, 'buffDamageMult', 0.3);
+    },
+  ),
+  g(
+    'barbarian',
+    'bb_grand_unstoppable',
+    'Unstoppable',
+    '🐗',
+    '+20% max HP and Rage empowers to +30% more damage',
+    ({ player: p, abilities: a }) => {
+      p.maxHp = Math.round(p.maxHp * 1.2);
+      p.hp = p.maxHp;
+      addN(a.a1, 'buffDamageMult', 0.3);
+    },
+  ),
+  g(
+    'barbarian',
+    'bb_grand_reaver',
+    'Blood Reaver',
+    '🩸',
+    'Swings drink 25% of the damage as health; Whirlwind hits for +25',
+    ({ abilities: a }) => {
+      addN(a.basic, 'lifestealFrac', 0.25);
+      addN(a.a3, 'damage', 25);
+    },
+  ),
+  g(
+    'rogue',
+    'ro_grand_shadow',
+    'Shadow Master',
+    '🌑',
+    'Shadowstep resets twice as fast; Backstab bursts for +40',
+    ({ abilities: a }) => {
+      mul(a.a2, 'cooldown', 0.5);
+      addN(a.a1, 'damage', 40);
+    },
+  ),
+  g(
+    'rogue',
+    'ro_grand_venom',
+    'Grand Venom',
+    '☠️',
+    'Poison Vial festers for +15 per tick across a far wider cloud (+40)',
+    ({ abilities: a }) => {
+      addN(a.a3, 'zoneTickDamage', 15);
+      addN(a.a3, 'radius', 40);
+    },
+  ),
+  g(
+    'paladin',
+    'pa_grand_aegis',
+    'Eternal Aegis',
+    '🛡️',
+    'Divine Shield blocks far more, and you take 15% less damage always',
+    ({ player: p, abilities: a }) => {
+      mul(a.a3, 'buffDefMult', 0.6);
+      p.damageTakenMult *= 0.85;
+    },
+  ),
+  g(
+    'paladin',
+    'pa_grand_dawn',
+    'Dawnbringer',
+    '🌅',
+    'Holy Strike hits for +15 and heals 20%; Lay on Hands restores +50',
+    ({ abilities: a }) => {
+      addN(a.basic, 'damage', 15);
+      addN(a.basic, 'lifestealFrac', 0.2);
+      addN(a.a2, 'damage', 50);
+    },
+  ),
+  g(
+    'druid',
+    'dr_grand_wild',
+    'Wild Shape',
+    '🐾',
+    'Regrowth heals +50 and Thornlash splits into 2 extra thorns',
+    ({ abilities: a }) => {
+      addN(a.a2, 'damage', 50);
+      addN(a.basic, 'projCount', 2);
+    },
+  ),
+  g(
+    'druid',
+    'dr_grand_grove',
+    'Sacred Grove',
+    '🌳',
+    'Entangle gnaws for +15 per tick across a far wider, longer snare',
+    ({ abilities: a }) => {
+      addN(a.a1, 'zoneTickDamage', 15);
+      addN(a.a1, 'radius', 40);
+      addN(a.a1, 'zoneDuration', 3);
+    },
+  ),
+  g(
+    'bard',
+    'ba_grand_symphony',
+    'Grand Symphony',
+    '🎼',
+    'Inspiration grants +30% more damage and lasts 4s longer',
+    ({ abilities: a }) => {
+      addN(a.a1, 'buffDamageMult', 0.3);
+      addN(a.a1, 'buffDuration', 4);
+    },
+  ),
+  g(
+    'bard',
+    'ba_grand_ballad',
+    'Ballad of Heroes',
+    '🎻',
+    'Healing Word restores +50 and Vicious Mockery hits for +15',
+    ({ abilities: a }) => {
+      addN(a.a2, 'damage', 50);
+      addN(a.basic, 'damage', 15);
+    },
+  ),
+  g(
+    'monk',
+    'mo_grand_ascend',
+    'Ascendant',
+    '🕉️',
+    '+20% move speed and Flurry of Blows strikes 30% faster',
+    ({ player: p, abilities: a }) => {
+      p.moveSpeed *= 1.2;
+      mul(a.basic, 'cooldown', 0.7);
+    },
+  ),
+  g(
+    'monk',
+    'mo_grand_thousand',
+    'Thousand Palms',
+    '🙌',
+    'Flurry hits for +12; Stunning Strike stuns +0.8s and hits for +30',
+    ({ abilities: a }) => {
+      addN(a.basic, 'damage', 12);
+      addN(a.a1, 'stun', 0.8);
+      addN(a.a1, 'damage', 30);
+    },
+  ),
+  g(
+    'sorcerer',
+    'so_grand_wild',
+    'Wild Magic Surge',
+    '🎲',
+    'Chaos Bolt fires 2 extra bolts, each hitting for +8',
+    ({ abilities: a }) => {
+      addN(a.basic, 'projCount', 2);
+      addN(a.basic, 'damage', 8);
+    },
+  ),
+  g(
+    'sorcerer',
+    'so_grand_cataclysm',
+    'Meteor Swarm',
+    '💥',
+    'Meteor erupts for +50 across a vastly wider blast (+60 radius)',
+    ({ abilities: a }) => {
+      addN(a.a1, 'impactRadius', 60);
+      addN(a.a1, 'damage', 50);
+    },
+  ),
+  g(
+    'warlock',
+    'wa_grand_pact',
+    'Pact of the Fiend',
+    '😈',
+    'Eldritch Blast hits for +15 and drinks 20% more of the damage',
+    ({ abilities: a }) => {
+      addN(a.basic, 'damage', 15);
+      addN(a.basic, 'lifestealFrac', 0.2);
+    },
+  ),
+  g(
+    'warlock',
+    'wa_grand_ruin',
+    'Word of Ruin',
+    '💀',
+    'Hex festers for +15 per tick across a wider curse; Hellish Rebuke +30',
+    ({ abilities: a }) => {
+      addN(a.a1, 'zoneTickDamage', 15);
+      addN(a.a1, 'radius', 40);
+      addN(a.a2, 'damage', 30);
+    },
+  ),
 ];
 
 /** Grand improvements grouped by class (item 22). */

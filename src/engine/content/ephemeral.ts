@@ -9,13 +9,7 @@
  * its own when you fall. In a hardcore run this shop is also where you buy back
  * a revive-stock top-up or a retry.
  */
-export type EphemeralId =
-  | 'speed'
-  | 'damage'
-  | 'defense'
-  | 'potion'
-  | 'revive'
-  | 'retry';
+export type EphemeralId = 'speed' | 'damage' | 'defense' | 'potion' | 'revive' | 'retry';
 
 /** How the perk is consumed. */
 export type EphemeralKind =

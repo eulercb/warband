@@ -60,7 +60,9 @@ export default function EphemeralShop() {
           🪙 {coins}
         </span>
       </div>
-      <p className="wb-shop-sub">One-off perks for the next fight only — earn more by ranking high.</p>
+      <p className="wb-shop-sub">
+        One-off perks for the next fight only — earn more by ranking high.
+      </p>
       <div className="wb-shop-cards">
         {ids.map((id) => {
           const def = EPHEMERAL[id];

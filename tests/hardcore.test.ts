@@ -26,15 +26,32 @@ function reviveInput(): InputCommand {
 
 describe('hardcore corruption cadence', () => {
   it('opens the corruption clock sooner than a standard run (same seed)', () => {
-    const std = new World({ monsterId: 'dragon', seed: 7, players: [{ peerId: 'a', name: 'A', classId: 'knight' }], corruption: true });
-    const hc = new World({ monsterId: 'dragon', seed: 7, players: [{ peerId: 'a', name: 'A', classId: 'knight' }], corruption: true, hardcore: true });
+    const std = new World({
+      monsterId: 'dragon',
+      seed: 7,
+      players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+      corruption: true,
+    });
+    const hc = new World({
+      monsterId: 'dragon',
+      seed: 7,
+      players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+      corruption: true,
+      hardcore: true,
+    });
     // Both consumed the same seeded draw for the base delay; hardcore scales it down.
     expect(hc.corruptionTimer).toBeLessThan(std.corruptionTimer);
     expect(hc.corruptionTimer).toBeCloseTo(std.corruptionTimer * HARDCORE_CORRUPTION_MULT, 5);
   });
 
   it('firstCorruptionDelay honours the hardcore flag', () => {
-    const w = new World({ monsterId: 'dragon', seed: 3, players: [{ peerId: 'a', name: 'A', classId: 'knight' }], corruption: true, hardcore: true });
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 3,
+      players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+      corruption: true,
+      hardcore: true,
+    });
     expect(firstCorruptionDelay(w)).toBeGreaterThan(0);
   });
 });
@@ -82,7 +99,11 @@ describe('hardcore revive budget', () => {
   });
 
   it('a standard run has an unlimited (Infinity) revive budget', () => {
-    const w = new World({ monsterId: 'dragon', seed: 5, players: [{ peerId: 'a', name: 'A', classId: 'knight' }] });
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 5,
+      players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+    });
     expect(w.reviveBudget).toBe(Infinity);
   });
 });

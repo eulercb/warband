@@ -134,7 +134,12 @@ function TouchButton({
     };
   }, [slot]);
   return (
-    <button ref={ref} type="button" className={`wb-touch-btn wb-touch-btn-${kind}`} aria-hidden="true">
+    <button
+      ref={ref}
+      type="button"
+      className={`wb-touch-btn wb-touch-btn-${kind}`}
+      aria-hidden="true"
+    >
       {label}
     </button>
   );
@@ -159,7 +164,8 @@ export default function TouchControls() {
   if (!capable || !hasHud) return null;
 
   const clip = (n: string): string => (n.length > 9 ? n.slice(0, 8) + '…' : n);
-  const shortName = (slot: AbilitySlot): string => clip(abilities[slot]?.name ?? slot.toUpperCase());
+  const shortName = (slot: AbilitySlot): string =>
+    clip(abilities[slot]?.name ?? slot.toUpperCase());
   const subName = (id: string | undefined): string => {
     const sk = id ? getSubSkill(id) : undefined;
     return sk ? clip(sk.name) : '';

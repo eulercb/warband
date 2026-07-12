@@ -608,7 +608,9 @@
   line-height: 1.05;
   padding: 4px;
   touch-action: none;
-  transition: transform 0.05s ease, background 0.05s ease;
+  transition:
+    transform 0.05s ease,
+    background 0.05s ease;
 }
 .wb-touch-btn.held {
   transform: scale(0.92);
@@ -699,11 +701,27 @@
 }
 
 /* Class accents for the expansion classes (bard/monk/sorcerer/warlock). */
-.hud-teammate.cls-bard { border-left-color: var(--cls-bard); }
-.hud-teammate.cls-monk { border-left-color: var(--cls-monk); }
-.hud-teammate.cls-sorcerer { border-left-color: var(--cls-sorcerer); }
-.hud-teammate.cls-warlock { border-left-color: var(--cls-warlock); }
-.hud-selfhp.cls-bard .hud-healthbar { border-color: var(--cls-bard); }
-.hud-selfhp.cls-monk .hud-healthbar { border-color: var(--cls-monk); }
-.hud-selfhp.cls-sorcerer .hud-healthbar { border-color: var(--cls-sorcerer); }
-.hud-selfhp.cls-warlock .hud-healthbar { border-color: var(--cls-warlock); }
+.hud-teammate.cls-bard {
+  border-left-color: var(--cls-bard);
+}
+.hud-teammate.cls-monk {
+  border-left-color: var(--cls-monk);
+}
+.hud-teammate.cls-sorcerer {
+  border-left-color: var(--cls-sorcerer);
+}
+.hud-teammate.cls-warlock {
+  border-left-color: var(--cls-warlock);
+}
+.hud-selfhp.cls-bard .hud-healthbar {
+  border-color: var(--cls-bard);
+}
+.hud-selfhp.cls-monk .hud-healthbar {
+  border-color: var(--cls-monk);
+}
+.hud-selfhp.cls-sorcerer .hud-healthbar {
+  border-color: var(--cls-sorcerer);
+}
+.hud-selfhp.cls-warlock .hud-healthbar {
+  border-color: var(--cls-warlock);
+}

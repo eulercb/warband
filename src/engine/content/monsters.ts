@@ -1540,11 +1540,7 @@ export function buildRun(
  * the difficulty has climbed), avoiding the previous run's bosses so Endless
  * opens on something new.
  */
-export function randomOpener(
-  cycle: number,
-  rng: Rng,
-  exclude?: ReadonlySet<MonsterId>,
-): MonsterId {
+export function randomOpener(cycle: number, rng: Rng, exclude?: ReadonlySet<MonsterId>): MonsterId {
   const tier: BossTier = cycle <= 0 ? 'easy' : 'medium';
   let pool = MONSTERS_BY_TIER[tier].filter((id) => !exclude?.has(id));
   if (pool.length === 0) pool = MONSTERS_BY_TIER[tier];
@@ -1597,8 +1593,7 @@ export function buildRunSlots(
     // Second boss is guaranteed once we've committed to a multi-fight; each
     // further co-boss is added with a tapering, cycle-scaled probability so
     // triplets — and, rarely, quads — surface without becoming a wipe.
-    let extraChance =
-      (TWIN_EXTRA_CHANCE + Math.max(0, cycle) * TWIN_EXTRA_PER_CYCLE) * partyFactor;
+    let extraChance = (TWIN_EXTRA_CHANCE + Math.max(0, cycle) * TWIN_EXTRA_PER_CYCLE) * partyFactor;
     while (pack.length < TWIN_MAX_BOSSES) {
       const candidates = pool.filter((x) => !taken.has(x));
       if (candidates.length === 0) break;

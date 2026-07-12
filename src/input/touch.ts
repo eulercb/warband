@@ -35,7 +35,7 @@ export function isTouchCapable(): boolean {
   try {
     return (
       (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0) ||
-      ('ontouchstart' in window) ||
+      'ontouchstart' in window ||
       (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches)
     );
   } catch {

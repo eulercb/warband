@@ -173,7 +173,10 @@ export function pickBotUpgrades(
   const charPool = (CHAR_UPGRADES_BY_CLASS[classId] ?? [])
     .map((d) => d.id)
     .filter((id) => !charUpgradeAtMax(id, ownedChar));
-  const char = charPool.length > 0 ? charPool[Math.floor(rng.next() * charPool.length) % charPool.length] : null;
+  const char =
+    charPool.length > 0
+      ? charPool[Math.floor(rng.next() * charPool.length) % charPool.length]
+      : null;
   return { generic, char };
 }
 

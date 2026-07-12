@@ -117,12 +117,7 @@ function applyStrikeRiders(world: World, target: Boss | Add, ab: PlayerAbilityDe
  * stun checks are handled by the World before calling this. `moveDir` is the
  * player's current movement input (used by dashes).
  */
-export function resolvePlayerAbility(
-  world: World,
-  p: Player,
-  slot: ExtSlot,
-  moveDir: Vec2,
-): void {
+export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, moveDir: Vec2): void {
   const ab = abilityForSlot(p, slot);
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
   const aimAngle = angleOf(p.aim);

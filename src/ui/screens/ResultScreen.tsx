@@ -363,10 +363,13 @@ export function ResultScreen() {
             <>
               {/* Hardcore has no FREE retry on a wipe (item 11) — but a banked
                   Second Chance from the ephemeral shop (item 21) buys one back. */}
-              {isHost &&
-              (!(activeHardcore && !victory) || result.hardcoreRetryAvailable) ? (
+              {isHost && (!(activeHardcore && !victory) || result.hardcoreRetryAvailable) ? (
                 <button type="button" className="wb-btn wb-btn-danger" onClick={onRetry}>
-                  {victory ? 'Play Again' : result.hardcoreRetryAvailable ? 'Second Chance' : 'Retry'}
+                  {victory
+                    ? 'Play Again'
+                    : result.hardcoreRetryAvailable
+                      ? 'Second Chance'
+                      : 'Retry'}
                 </button>
               ) : null}
               <button type="button" className="wb-btn wb-btn-primary" onClick={onReturn}>

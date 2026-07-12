@@ -647,7 +647,9 @@ describe('buildRunSlots', () => {
     const runFor = (s: number): string => {
       const rng = new Rng(mixSeed(s, 0, 0x51ac));
       const opener = randomOpener(0, rng);
-      return buildRunSlots(opener, 0, rng, 4).map((slot) => slot.join('+')).join(',');
+      return buildRunSlots(opener, 0, rng, 4)
+        .map((slot) => slot.join('+'))
+        .join(',');
     };
     const runs = new Set([runFor(1), runFor(2), runFor(3), runFor(4), runFor(5)]);
     expect(runs.size).toBeGreaterThan(1);

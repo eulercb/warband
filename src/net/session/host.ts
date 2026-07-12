@@ -42,7 +42,12 @@ import {
 } from '../../engine/ai/bot';
 import type { BotPersonality } from '../../engine/ai/bot';
 import { CLASSES } from '../../engine/content/classes';
-import { buildRunSlots, modifierForCycle, getMonster, randomOpener } from '../../engine/content/monsters';
+import {
+  buildRunSlots,
+  modifierForCycle,
+  getMonster,
+  randomOpener,
+} from '../../engine/content/monsters';
 import type { RunSlot } from '../../engine/content/monsters';
 import { rollAffixes } from '../../engine/content/affixes';
 import { Rng, mixSeed } from '../../engine/core/math';
@@ -957,7 +962,11 @@ export class Host implements NetSession {
   /** The primary class of a peer (host, a connected client, or a bot). */
   private classForPeer(peerId: string): ClassId {
     if (peerId === selfId) return this.hostClass;
-    return this.lobby.get(peerId)?.classId ?? this.bots.find((b) => b.peerId === peerId)?.classId ?? 'knight';
+    return (
+      this.lobby.get(peerId)?.classId ??
+      this.bots.find((b) => b.peerId === peerId)?.classId ??
+      'knight'
+    );
   }
 
   /** Record a player's "ready for next boss" flag, then re-check the advance gate. */
@@ -1233,4 +1242,3 @@ export class Host implements NetSession {
 function classLabel(classId: ClassId): string {
   return CLASSES[classId].name;
 }
-

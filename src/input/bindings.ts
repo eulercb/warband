@@ -17,15 +17,7 @@ export type MoveAction = 'up' | 'down' | 'left' | 'right';
  * (hold for the radial), and `item` spends the selected ephemeral shop item.
  */
 export type ButtonAction =
-  | 'basic'
-  | 'a1'
-  | 'a2'
-  | 'a3'
-  | 'revive'
-  | 'sub1'
-  | 'sub2'
-  | 'swap'
-  | 'item';
+  'basic' | 'a1' | 'a2' | 'a3' | 'revive' | 'sub1' | 'sub2' | 'swap' | 'item';
 export type KeyAction = MoveAction | ButtonAction;
 
 /** Two slots per action: a primary and an optional alternate. */

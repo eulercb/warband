@@ -333,7 +333,10 @@ export default function RewardRoom({ result }: { result: FightResult }) {
           </span>
         ) : null}
         {myCoins > 0 ? (
-          <span className="wb-reward-banner-coins" title="Spend coins in the list view's Ephemeral Stall">
+          <span
+            className="wb-reward-banner-coins"
+            title="Spend coins in the list view's Ephemeral Stall"
+          >
             🪙 {myCoins} — spend in list view
           </span>
         ) : null}

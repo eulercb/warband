@@ -692,11 +692,7 @@ export class World {
       // Ephemeral healing vial (item 21) — quaffed with the item button. A
       // consumable, not an ability, so it works even while stunned or mid-cast
       // (a clutch escape). Edge-triggered; inert in the calm reward scene.
-      if (
-        this.scene === null &&
-        (cmd.buttons.item ?? false) &&
-        !(p.prevButtons.item ?? false)
-      ) {
+      if (this.scene === null && (cmd.buttons.item ?? false) && !(p.prevButtons.item ?? false)) {
         this.tryUsePotion(p);
       }
 
