@@ -63,12 +63,13 @@ describe('hardcore revive budget', () => {
       // Stand the medic right on the downed hero so it's always in revive range.
       medic.pos = { ...downed.pos };
       const ticks = Math.ceil(REVIVE_TIME / SIM_DT) + 4;
+      const isAlive = (): boolean => w.players[0].state === 'alive';
       for (let i = 0; i < ticks; i++) {
         medic.pos = { ...downed.pos };
         w.step(SIM_DT, inputs);
-        if (downed.state === 'alive') return true;
+        if (isAlive()) return true;
       }
-      return downed.state === 'alive';
+      return isAlive();
     };
 
     // The first HARDCORE_REVIVES_PER_FIGHT revives succeed and drain the stock.
