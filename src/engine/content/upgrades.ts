@@ -13,6 +13,9 @@ import { MAX_SKILL_STACKS } from '../core/constants';
 export type UpgradeId =
   'swift' | 'vigor' | 'haste' | 'focus' | 'surefooted' | 'mighty' | 'bulwark' | 'renewal';
 
+/** Coarse role of a boon, used to bias personality-driven bot picks (item 6). */
+export type UpgradeRole = 'offense' | 'defense' | 'sustain' | 'tempo' | 'mobility';
+
 export interface UpgradeDef {
   id: UpgradeId;
   name: string;
@@ -20,6 +23,8 @@ export interface UpgradeDef {
   desc: string;
   /** Emoji shown on the upgrade card / accumulated badge. */
   icon: string;
+  /** What the boon is FOR — biases which bots (by temperament) favour it. */
+  role: UpgradeRole;
   /**
    * Most times this boon can be taken across a run. Once a hero owns this many,
    * it stops being offered (a maxed pick — e.g. Surefooted at full terrain
@@ -38,6 +43,7 @@ export interface UpgradeDef {
 export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   swift: {
     id: 'swift',
+    role: 'mobility',
     name: 'Swift',
     icon: '🌀',
     desc: '+15% movement speed',
@@ -47,6 +53,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   },
   vigor: {
     id: 'vigor',
+    role: 'defense',
     name: 'Vigor',
     icon: '❤️',
     desc: '+20% maximum health',
@@ -57,6 +64,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   },
   haste: {
     id: 'haste',
+    role: 'tempo',
     name: 'Haste',
     icon: '⚡',
     desc: '-18% ability cooldowns',
@@ -66,6 +74,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   },
   focus: {
     id: 'focus',
+    role: 'tempo',
     name: 'Focus',
     icon: '🎯',
     desc: '-30% cast time',
@@ -75,6 +84,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   },
   surefooted: {
     id: 'surefooted',
+    role: 'mobility',
     name: 'Surefooted',
     icon: '🥾',
     // Two picks reach full immunity, after which it drops out of the offer pool.
@@ -86,6 +96,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   },
   mighty: {
     id: 'mighty',
+    role: 'offense',
     name: 'Mighty',
     icon: '🔥',
     desc: '+15% damage dealt',
@@ -95,6 +106,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   },
   bulwark: {
     id: 'bulwark',
+    role: 'defense',
     name: 'Bulwark',
     icon: '🛡️',
     desc: '-15% damage taken',
@@ -104,6 +116,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   },
   renewal: {
     id: 'renewal',
+    role: 'sustain',
     name: 'Renewal',
     icon: '✨',
     desc: 'Regenerate 2% max HP per second',

@@ -33,7 +33,12 @@ import {
   RESUME_COUNTDOWN_S,
   SCORE_BOSS_CLEAR,
 } from '../../engine/core/constants';
-import { computeBotInput, rollPersonality, BOT_PEER_PREFIX } from '../../engine/ai/bot';
+import {
+  computeBotInput,
+  rollPersonality,
+  pickBotUpgrades,
+  BOT_PEER_PREFIX,
+} from '../../engine/ai/bot';
 import type { BotPersonality } from '../../engine/ai/bot';
 import { CLASSES } from '../../engine/content/classes';
 import { buildRunSlots, modifierForCycle, getMonster, randomOpener } from '../../engine/content/monsters';
@@ -516,6 +521,8 @@ export class Host implements NetSession {
    */
   continueEndless(): void {
     if (this.phase === 'inFight') return;
+    // Bots bank a boon for the new cycle just like the humans' endless pick.
+    this.awardBotUpgrades();
     this.cycle += 1;
     this.runOrder = this.buildRunOrder();
     this.runIndex = 0;
@@ -575,13 +582,14 @@ export class Host implements NetSession {
     const corruption = true;
 
     // World roster carries each hero's accumulated upgrades + carried score
-    // (host-authoritative); bots earn no upgrades and no score.
+    // (host-authoritative). Bots now progress too — their auto-awarded upgrades
+    // (see awardBotUpgrades) ride in through rosterEntry exactly like a human's.
     const roster: WorldPlayerInit[] = [this.rosterEntry(selfId, this.hostName, this.hostClass)];
     for (const [peerId, e] of this.lobby) {
       roster.push(this.rosterEntry(peerId, e.name, e.classId));
     }
     for (const b of this.bots) {
-      roster.push({ peerId: b.peerId, name: b.name, classId: b.classId });
+      roster.push(this.rosterEntry(b.peerId, b.name, b.classId));
     }
     // Clients only render snapshots, so the wire roster omits the upgrade lists.
     const wireRoster = roster.map(({ peerId, name, classId }) => ({ peerId, name, classId }));
@@ -793,6 +801,31 @@ export class Host implements NetSession {
         });
       }
     }
+  }
+
+  /**
+   * Auto-award each bot a generic + character upgrade for the coming boss, so an
+   * AI band member's power PROGRESSES between fights exactly like a human's — no
+   * diegetic walk into the reward room, just the same stat growth. The generic
+   * pick is biased by the bot's temperament (a Reckless bot hoards damage, a Timid
+   * one stacks health/mitigation); the class pick advances its kit. Deterministic
+   * from the master seed (independent of the movement RNG), and cap-respecting.
+   */
+  private awardBotUpgrades(): void {
+    this.bots.forEach((b, i) => {
+      const rng = new Rng(mixSeed(this.masterSeed, this.cycle, this.runIndex, 0xb07 + i));
+      const ownedGen = this.upgrades.get(b.peerId) ?? [];
+      const ownedChar = this.charUpgrades.get(b.peerId) ?? [];
+      const pick = pickBotUpgrades(b.classId, b.personality, ownedGen, ownedChar, rng);
+      if (pick.generic) {
+        ownedGen.push(pick.generic);
+        this.upgrades.set(b.peerId, ownedGen);
+      }
+      if (pick.char) {
+        ownedChar.push(pick.char);
+        this.charUpgrades.set(b.peerId, ownedChar);
+      }
+    });
   }
 
   /** Record a player's "ready for next boss" flag, then re-check the advance gate. */
@@ -1034,6 +1067,8 @@ export class Host implements NetSession {
   advanceGauntlet(): void {
     if (this.phase === 'inFight') return;
     if (this.runIndex >= this.runOrder.length - 1) return;
+    // Bots grow their power alongside the humans who just picked in the reward room.
+    this.awardBotUpgrades();
     this.runIndex += 1;
     this.roundPickedGeneric.clear();
     this.roundPickedChar.clear();
@@ -1053,3 +1088,4 @@ export class Host implements NetSession {
 function classLabel(classId: ClassId): string {
   return CLASSES[classId].name;
 }
+

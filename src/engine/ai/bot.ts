@@ -12,9 +12,17 @@
  * Recomputed once per sim step, this naturally pulses (fire / release / fire)
  * so a "want" that persists across ticks re-triggers as each cooldown clears.
  */
-import type { Player, Boss, InputCommand, ButtonState, Vec2 } from '../core/types';
+import type { Player, Boss, InputCommand, ButtonState, Vec2, ClassId } from '../core/types';
 import type { World } from '../world/world';
 import { abilityById } from '../content/monsters';
+import {
+  UPGRADE_IDS,
+  UPGRADES,
+  upgradeAtMax,
+  type UpgradeId,
+  type UpgradeRole,
+} from '../content/upgrades';
+import { CHAR_UPGRADES_BY_CLASS, charUpgradeAtMax } from '../content/charUpgrades';
 import {
   Rng,
   add as vadd,
@@ -103,6 +111,70 @@ export function rollPersonality(seed: number): BotPersonality {
     wander: { x: 0, y: 0 },
     nextWanderTick: 0,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Bot progression — auto-picked between-boss upgrades (item 6)
+// ---------------------------------------------------------------------------
+
+/** One bot's between-boss picks: a generic boon + a class upgrade (either may be
+ * null once every option is maxed). */
+export interface BotUpgradePick {
+  generic: UpgradeId | null;
+  char: string | null;
+}
+
+/** How strongly a bot of the given temperament favours a boon of `role`. */
+export function botRoleWeight(role: UpgradeRole, p: BotPersonality): number {
+  const base = 1 + p.chaos * 0.6; // chaos flattens toward a random pick
+  switch (role) {
+    case 'offense':
+      return base + p.aggression * 1.6;
+    case 'defense':
+      return base + (1 - p.aggression) * 1.6;
+    case 'sustain':
+      return base + (1 - p.aggression) * 1.0 + (1 - p.smart) * 0.6;
+    case 'tempo':
+      return base + p.smart * 1.4;
+    case 'mobility':
+      return base + p.chaos * 0.8 + p.aggression * 0.4;
+  }
+}
+
+/** Weighted random pick from `pool` (null if empty). Pure aside from `rng`. */
+function weightedPick<T>(pool: T[], weight: (x: T) => number, rng: Rng): T | null {
+  if (pool.length === 0) return null;
+  const weights = pool.map((x) => Math.max(0.0001, weight(x)));
+  const total = weights.reduce((s, w) => s + w, 0);
+  let roll = rng.range(0, total);
+  for (let i = 0; i < pool.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return pool[i];
+  }
+  return pool[pool.length - 1];
+}
+
+/**
+ * Choose a bot's between-boss upgrades. The generic boon is biased by the bot's
+ * temperament (a Reckless bot hoards damage, a Timid one stacks health/mitigation,
+ * a Genius favours tempo…); the class pick simply advances its kit. Both respect
+ * the per-skill stacking caps. Pure aside from the injected `rng`, so a bot band's
+ * power growth is reproducible from a seed.
+ */
+export function pickBotUpgrades(
+  classId: ClassId,
+  personality: BotPersonality,
+  ownedGeneric: readonly string[],
+  ownedChar: readonly string[],
+  rng: Rng,
+): BotUpgradePick {
+  const genPool = UPGRADE_IDS.filter((id) => !upgradeAtMax(id, ownedGeneric));
+  const generic = weightedPick(genPool, (id) => botRoleWeight(UPGRADES[id].role, personality), rng);
+  const charPool = (CHAR_UPGRADES_BY_CLASS[classId] ?? [])
+    .map((d) => d.id)
+    .filter((id) => !charUpgradeAtMax(id, ownedChar));
+  const char = charPool.length > 0 ? charPool[Math.floor(rng.next() * charPool.length) % charPool.length] : null;
+  return { generic, char };
 }
 
 const NO_BUTTONS: ButtonState = {
