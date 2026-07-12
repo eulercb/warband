@@ -105,7 +105,7 @@ describe('EphemeralShop — coin stall (item 21)', () => {
   it('shows the coin balance and one card per non-hardcore perk', () => {
     useStore.setState({ myCoins: 12, activeHardcore: false });
     const { container } = render(<EphemeralShop />);
-    expect(screen.getByText(/🪙 12/)).toBeTruthy();
+    expect(screen.getByText(/💰 12/)).toBeTruthy();
     // The hardcore-only Second Chance is hidden outside a hardcore run.
     expect(screen.queryByText(EPHEMERAL.retry.name)).toBeNull();
     expect(screen.getByText(EPHEMERAL.potion.name)).toBeTruthy();

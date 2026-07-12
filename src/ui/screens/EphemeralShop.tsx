@@ -57,7 +57,7 @@ export default function EphemeralShop() {
       <div className="wb-shop-head">
         <h3 className="wb-upgrades-title wb-shop-title">Ephemeral Stall</h3>
         <span className="wb-shop-coins" title="Coins banked from your boss performance">
-          🪙 {coins}
+          💰 {coins}
         </span>
       </div>
       <p className="wb-shop-sub">
@@ -89,7 +89,7 @@ export default function EphemeralShop() {
                 {have > 0 ? <span className="wb-shop-have"> ×{have}</span> : null}
               </span>
               <span className="wb-shop-desc">{def.desc}</span>
-              <span className="wb-shop-cost">{maxed ? 'Ready' : `🪙 ${def.cost}`}</span>
+              <span className="wb-shop-cost">{maxed ? 'Ready' : `💰 ${def.cost}`}</span>
             </button>
           );
         })}

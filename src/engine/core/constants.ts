@@ -41,6 +41,14 @@ export const PLAYER_RADIUS = 16;
 
 // --- Input / netcode ---
 export const DEAD_ZONE = 0.15;
+/**
+ * Larger dead-zone for the AIM stick than for movement. Aim is normalized to a
+ * full-strength unit vector regardless of magnitude, so a worn/drifting stick (or
+ * an involuntary finger tremor on a touch stick) that leaks past the movement
+ * dead-zone would otherwise snap the reticle to a noisy heading — the "aim
+ * changes for no reason" bug. A deeper aim dead-zone rejects that idle noise.
+ */
+export const AIM_DEAD_ZONE = 0.28;
 export const INTERP_DELAY_MS = 100;
 export const INPUT_SEND_RATE = 30; // Hz (client -> host)
 

@@ -447,6 +447,18 @@ body {
 .wb-class-card[data-cls='druid'] {
   --accent: var(--cls-druid);
 }
+.wb-class-card[data-cls='bard'] {
+  --accent: var(--cls-bard);
+}
+.wb-class-card[data-cls='monk'] {
+  --accent: var(--cls-monk);
+}
+.wb-class-card[data-cls='sorcerer'] {
+  --accent: var(--cls-sorcerer);
+}
+.wb-class-card[data-cls='warlock'] {
+  --accent: var(--cls-warlock);
+}
 
 .wb-class-card .wb-card-name {
   color: var(--accent);

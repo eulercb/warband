@@ -720,7 +720,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
         sk(
           'dr_land_spike',
           'Erupting Earth',
-          '🪨',
+          '🌋',
           'A 160u quake for 38',
           nova('Erupting Earth', 8, 38, 160),
         ),

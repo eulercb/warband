@@ -276,6 +276,19 @@ describe('<TouchControls> virtual sticks', () => {
     // The left-stick setter is untouched by a right-stick drag.
     expect(setTouchMoveMock).not.toHaveBeenCalled();
   });
+
+  it('a tiny drag inside the aim dead-zone reports {0,0} (keeps last reticle)', () => {
+    useHudStore.getState().set({ classId: 'knight' });
+    const { container } = render(<TouchControls />);
+    const stick = container.querySelector('.wb-touch-stick-right') as HTMLElement;
+    centreStickAtOrigin(stick);
+
+    // |v| = 5px is well under AIM_DEAD_ZONE * STICK_R (~15.7px), so no re-aim.
+    fireEvent.pointerDown(stick, { pointerId: 1, clientX: 3, clientY: 4 });
+    const [x, y] = setTouchAimMock.mock.calls.at(-1)!;
+    expect(x).toBe(0);
+    expect(y).toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
