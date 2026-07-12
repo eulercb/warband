@@ -407,10 +407,12 @@ describe('dynamic camera zoom', () => {
     cam.fit(800, 600);
     const cover = Math.max(800 / 1600, 600 / 1000); // 0.6
 
-    // Huge spread → clamp to cover (zoom 1.0).
+    // Huge spread → clamp to the aspect-aware floor. This 800×600 viewport is
+    // NOT arena-aspect (1.333 vs 1.6), so the floor loosens below cover to keep a
+    // spread group framed: minZoom = min(1, max(contain/cover=0.833, 1/2.5)) = 0.833.
     cam.frameGroup(5000);
     for (let i = 0; i < 40; i++) cam.update(500);
-    expect(cam.scale).toBeCloseTo(cover * 1.0, 1);
+    expect(cam.scale).toBeCloseTo(cover * 0.8333, 1); // ≈ 0.5, looser than plain cover
 
     // Tight clump → clamp to closest (zoom 1.5).
     cam.frameGroup(1);

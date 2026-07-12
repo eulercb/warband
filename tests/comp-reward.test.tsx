@@ -16,6 +16,8 @@ vi.mock('../src/ui/state/session', () => ({
   chooseCharUpgrade: vi.fn(),
   setNextReady: vi.fn(),
   playUiSound: vi.fn(),
+  openControls: vi.fn(),
+  leaveToMenu: vi.fn(),
   sfx: { play: vi.fn(), handleEvents: vi.fn() },
 }));
 
@@ -197,5 +199,19 @@ describe('<RewardRoom>', () => {
     const owned = container.querySelector('.wb-upgrade-owned')?.textContent ?? '';
     expect(owned).toContain('Swift');
     expect(owned).toContain('Impenetrable');
+  });
+
+  it('opens a local pause menu on Escape and resumes on Resume (item: pause in reward room)', () => {
+    useHudStore.setState({ classId: 'knight', hp: 200, maxHp: 240 });
+    render(<RewardRoom result={makeResult()} />);
+    // No pause dialog until Esc.
+    expect(screen.queryByRole('dialog', { name: 'Paused' })).toBeNull();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByRole('dialog', { name: 'Paused' })).toBeTruthy();
+    // The character sheet rides along so you can read your stats.
+    expect(screen.getByText('Knight — 200/240 HP')).toBeTruthy();
+    // Resume closes it again.
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+    expect(screen.queryByRole('dialog', { name: 'Paused' })).toBeNull();
   });
 });

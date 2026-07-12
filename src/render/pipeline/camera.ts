@@ -35,14 +35,23 @@ export function isShakeEnabled(): boolean {
 const SHAKE_DECAY = 7;
 /**
  * Zoom band, as a multiplier over a whole-arena COVER fit. `ZOOM_MAX` (tight)
- * is the default framing when everyone is bunched up; the camera zooms OUT
- * toward `ZOOM_MIN` when the party (and boss) spread apart so nobody drops off
- * the edge into "nowhere". `ZOOM_MIN` is exactly 1.0 (cover) — never looser —
- * so no on-screen point is ever more than half an arena from the camera centre,
- * which keeps the torus nearest-copy projection correct.
+ * is the default framing when everyone is bunched up; the camera zooms OUT when
+ * the party (and boss) spread apart so nobody drops off the edge into "nowhere".
+ *
+ * The zoom-out FLOOR is per-viewport (see `fit`), not a fixed 1.0. A square-ish
+ * (arena-aspect) viewport floors at exactly cover (1.0) — so no on-screen point
+ * is more than half an arena from centre and the torus nearest-copy projection
+ * stays exact. A strongly non-square viewport (a portrait phone, an ultrawide)
+ * is allowed to loosen BELOW cover so a spread party+boss stays framed instead
+ * of hiding off the narrow axis; the loosening is capped by `OVERSCAN_MAX` so the
+ * loose axis never shows more than that multiple of the arena (bounding the wrap
+ * artifact — on a torus a far entity simply draws via its nearer copy anyway).
  */
-const ZOOM_MIN = 1.0;
 const ZOOM_MAX = 1.5;
+/** Loosest cover-relative zoom floor for an arena-aspect viewport. */
+const ZOOM_MIN = 1.0;
+/** Max arena multiples the loose viewport axis may show at full zoom-out. */
+const OVERSCAN_MAX = 2.5;
 /** Camera follow smoothing (higher = snappier); per second. */
 const FOLLOW_RATE = 6;
 /** Zoom smoothing (per second) so the framing eases in/out, never snaps. */
@@ -68,6 +77,8 @@ export class Camera {
   private seeded = false;
   /** Whole-arena cover scale (zoom == 1). Final scale = coverScale * zoom. */
   private coverScale = 1;
+  /** Loosest zoom this viewport allows (≤ 1); aspect-aware, set in `fit`. */
+  private minZoom = ZOOM_MIN;
   /** Current + target zoom multiplier over the cover fit (smoothed each frame). */
   private zoom = ZOOM_MAX;
   private targetZoom = ZOOM_MAX;
@@ -90,7 +101,17 @@ export class Camera {
   fit(viewW: number, viewH: number): void {
     this.viewW = viewW;
     this.viewH = viewH;
-    this.coverScale = Math.max(viewW / this.arenaW, viewH / this.arenaH);
+    const rw = viewW / this.arenaW;
+    const rh = viewH / this.arenaH;
+    this.coverScale = Math.max(rw, rh);
+    // Per-viewport zoom-out floor. `contain / cover` (= min ratio / max ratio) is
+    // the zoom at which the arena just fills the TIGHT axis — 1.0 for an arena-
+    // aspect viewport, < 1 for a non-square one, letting it loosen below cover to
+    // frame a spread group. Bound the loosening by OVERSCAN_MAX (`1 / OVERSCAN` is
+    // the zoom at which the loose axis shows OVERSCAN× the arena) and never above
+    // cover (1.0), so we only ever ADD headroom on non-square viewports.
+    const containOverCover = Math.min(rw, rh) / this.coverScale;
+    this.minZoom = Math.min(ZOOM_MIN, Math.max(containOverCover, 1 / OVERSCAN_MAX));
     this.scale = this.coverScale * this.zoom;
     this.screenCenter = { x: viewW / 2, y: viewH / 2 };
   }
@@ -106,7 +127,8 @@ export class Camera {
     const halfView = Math.min(this.viewW, this.viewH) / 2;
     // zoom such that visible half-extent (halfView / (coverScale*zoom)) >= span.
     const desired = halfView / (this.coverScale * span);
-    this.targetZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, desired));
+    // Clamp into the per-viewport band: `minZoom` (aspect-aware) up to ZOOM_MAX.
+    this.targetZoom = Math.max(this.minZoom, Math.min(ZOOM_MAX, desired));
   }
 
   /** Smoothly follow a world target (the party average) across the torus. */

@@ -464,40 +464,42 @@ describe('<HUD>', () => {
 // Controls
 // ---------------------------------------------------------------------------
 
-/** The Controller `<section>` (index 1); index 0 is the Keyboard section. */
+/** The Controller bind section. Controls is tabbed now, so switch to the
+ * Controller tab first (idempotent), then return its single bind column. */
 function controllerSection(container: HTMLElement): Element {
-  const cols = container.querySelectorAll('.wb-controls-col');
-  return cols[1];
+  const tab = screen.getByRole('tab', { name: 'Controller' });
+  if (tab.getAttribute('aria-selected') !== 'true') fireEvent.click(tab);
+  return container.querySelector('.wb-controls-col') as Element;
 }
 
 describe('<Controls>', () => {
-  it('renders the rebindable actions and their default bindings', () => {
+  it('renders the rebindable actions and their default bindings across tabs', () => {
     const { container } = render(<Controls />);
 
-    // Title + action labels. Movement actions are keyboard-only (one row); the
-    // button actions (Basic Attack, Ability 1…) appear in BOTH columns (two rows).
+    // The Keyboard tab is default: title, a movement action, and 13 keyboard rows
+    // (4 move + 9 button actions). Default keyboard labels (basic => Space, a1 => Q).
     expect(screen.getByText('Controls')).toBeTruthy();
     expect(screen.getByText('Move Up')).toBeTruthy();
-    expect(screen.getAllByText('Basic Attack')).toHaveLength(2);
-    expect(screen.getAllByText('Ability 1')).toHaveLength(2);
-
-    // Row counts: 4 move + 9 button actions = 13 keyboard rows, 9 controller buttons.
-    const cols = container.querySelectorAll('.wb-controls-col');
-    expect(cols[0].querySelectorAll('.wb-bind-row')).toHaveLength(13);
-    expect(cols[1].querySelectorAll('.wb-bind-row')).toHaveLength(9);
-
-    // Default keyboard labels (basic => "Space", a1 => "Q").
+    expect(screen.getByText('Basic Attack')).toBeTruthy();
+    expect(container.querySelector('.wb-controls-col')?.querySelectorAll('.wb-bind-row')).toHaveLength(
+      13,
+    );
     expect(screen.getByText('Space')).toBeTruthy();
     expect(screen.getByText('Q')).toBeTruthy();
-    // Default controller label for the first button (basic) is ✕ (PlayStation).
-    expect(controllerSection(container).querySelector('.wb-bind-key')?.textContent).toBe('✕');
 
-    // Pad-scheme chips + auto-detect selected by default.
+    // Controller tab: 9 button rows + the pad-scheme chips (auto-detect default),
+    // and the first button (basic) glyph is ✕ (PlayStation).
+    fireEvent.click(screen.getByRole('tab', { name: 'Controller' }));
+    expect(container.querySelector('.wb-controls-col')?.querySelectorAll('.wb-bind-row')).toHaveLength(
+      9,
+    );
     expect(screen.getByText('Auto-detect')).toBeTruthy();
     expect(screen.getByText('Xbox (A B X Y)')).toBeTruthy();
     expect(screen.getByText('Auto-detect').getAttribute('aria-pressed')).toBe('true');
+    expect(container.querySelector('.wb-controls-col .wb-bind-key')?.textContent).toBe('✕');
 
-    // Auto-fire toggle defaults off.
+    // Options tab: the auto-fire toggle, defaulting off.
+    fireEvent.click(screen.getByRole('tab', { name: 'Options' }));
     expect(screen.getByText('Hold to auto-fire')).toBeTruthy();
     expect(useStore.getState().autofire).toBe(false);
   });
@@ -568,6 +570,7 @@ describe('<Controls>', () => {
 
   it('toggling auto-fire updates the store and shows the checkmark', () => {
     const { container } = render(<Controls />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Options' }));
     const toggle = container.querySelector('.wb-gauntlet-toggle');
     expect(toggle).toBeTruthy();
     if (toggle) fireEvent.click(toggle);
@@ -654,6 +657,7 @@ describe('<Controls>', () => {
   it('toggles screen-shake off→on and shows the accessibility copy while off', () => {
     useStore.setState({ screenShake: false });
     const { container } = render(<Controls />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Options' }));
     const toggle = screen.getByText('Screen shake').closest('button');
     if (!toggle) throw new Error('screen-shake toggle not found');
 

@@ -3,6 +3,7 @@ import {
   upgradeAllowedFor,
   applyCharUpgrades,
   previewAbilityTable,
+  previewPlayerStats,
   isCharUpgradeId,
   rollCharChoices,
   reofferCandidates,
@@ -1157,5 +1158,37 @@ describe('grand improvements apply real, measurable transformations (item 22)', 
     expect(a.a1.zoneTickDamage).toBe((hex.zoneTickDamage ?? 0) + 15);
     expect(a.a1.radius).toBe((hex.radius ?? 0) + 40);
     expect(a.a2.damage).toBe((rebuke.damage ?? 0) + 30);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// previewPlayerStats — resolved stat block for the pause-menu character sheet
+// ---------------------------------------------------------------------------
+describe('previewPlayerStats', () => {
+  it('returns the class baseline with no boons', () => {
+    const s = previewPlayerStats('knight', [], []);
+    expect(s.maxHp).toBe(CLASSES.knight.maxHp);
+    expect(s.moveSpeed).toBe(CLASSES.knight.moveSpeed);
+    expect(s.damageMult).toBe(1);
+    expect(s.cooldownMult).toBe(1);
+    expect(s.damageTakenMult).toBe(1);
+    expect(s.regenPerSec).toBe(0);
+    expect(s.terrainResist).toBe(0);
+  });
+
+  it('folds generic boons into the stat block (Mighty/Bulwark/Vigor/Swift)', () => {
+    const s = previewPlayerStats('knight', ['mighty', 'bulwark', 'vigor', 'swift'], []);
+    expect(s.damageMult).toBeCloseTo(1.15, 5);
+    expect(s.damageTakenMult).toBeCloseTo(0.85, 5);
+    expect(s.maxHp).toBe(Math.round(CLASSES.knight.maxHp * 1.2));
+    expect(s.moveSpeed).toBeCloseTo(CLASSES.knight.moveSpeed * 1.15, 3);
+  });
+
+  it('applies class character boons for the ACTIVE class only', () => {
+    // A knight grand that cuts damage-taken should move the stat; a mismatched
+    // (ranger) id is skipped, exactly as the live sim does.
+    const s = previewPlayerStats('knight', [], ['kn_grand_immovable', 'rg_grand_deadeye']);
+    expect(s.damageTakenMult).toBeCloseTo(0.75, 5);
+    expect(s.maxHp).toBe(Math.round(CLASSES.knight.maxHp * 1.15));
   });
 });

@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useHudStore } from '../state/hudStore';
 import type { HudBoss } from '../state/hudStore';
 import { useStore } from '../state/store';
+import { isTouchCapable } from '../../input/touch';
+import { requestPause, playUiSound } from '../state/session';
 import VolumeControl from './VolumeControl';
 import { previewAbilityTable } from '../../engine/content/charUpgrades';
 import { getSubSkill } from '../../engine/content/subclasses';
@@ -212,12 +214,18 @@ function DeadlineTimer({ remaining }: { remaining: number }) {
   );
 }
 
-export default function HUD() {
+/** HUD props. `onPause` overrides the default fight-pause (the reward room, which
+ * has no shared sim, passes a handler that opens its own local pause overlay). */
+export default function HUD({ onPause }: { onPause?: () => void } = {}) {
   const hud = useHudStore();
   const run = useStore((s) => s.run);
   const cycle = useStore((s) => s.cycle);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
   const source = hud.inputSource;
+  // Touch has no Esc / Options button, so the overlay needs its own pause control
+  // (item: mobile overlay can't pause). The HUD stays mounted while paused, so a
+  // button here survives the pause state (TouchControls unmounts).
+  const touchCapable = useMemo(() => isTouchCapable(), []);
   // Re-render on binding / pad-scheme changes so glyph hints stay in sync.
   useBindings((s) => s.bindings);
 
@@ -238,6 +246,21 @@ export default function HUD() {
 
   return (
     <div className="hud-root">
+      {/* Touch pause button — the mobile overlay's only way into the pause menu. */}
+      {touchCapable && (
+        <button
+          type="button"
+          className="hud-pause-btn"
+          aria-label="Pause"
+          onClick={() => {
+            playUiSound('uiClick');
+            if (onPause) onPause();
+            else requestPause(true);
+          }}
+        >
+          <span className="hud-pause-glyph" aria-hidden="true" />
+        </button>
+      )}
       {/* Boss bars (one per boss — twin encounters stack two), with the hardcore
           kill-deadline countdown flowing beneath them when it's a hardcore fight. */}
       {hud.bosses.length > 0 && (

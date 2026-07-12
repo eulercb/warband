@@ -13,6 +13,7 @@
 import type { ClassId, AbilitySlot, Player } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
 import { CLASSES, cloneAbilities, slowAttackCooldowns } from './classes';
+import { applyUpgrades, type UpgradeId } from './upgrades';
 import { MAX_SKILL_STACKS } from '../core/constants';
 
 /** What an upgrade's `apply` receives: the hero and their private ability table. */
@@ -1540,6 +1541,51 @@ export function previewAbilityTable(
   // the cooldowns the HUD previews agree with the ones the sim actually commits.
   slowAttackCooldowns(abilities);
   return abilities;
+}
+
+/**
+ * A hero's resolved persistent stat block after a run's boons are applied. Mirrors
+ * the mutable stat fields the World applies at spawn (generic upgrades first, then
+ * class-specific ones — the same order), so the pause-menu character sheet can show
+ * a player exactly what their picks add up to WITHOUT any of it crossing the wire.
+ */
+export interface PreviewedStats {
+  maxHp: number;
+  moveSpeed: number;
+  damageMult: number;
+  cooldownMult: number;
+  castMult: number;
+  damageTakenMult: number;
+  terrainResist: number;
+  regenPerSec: number;
+}
+
+/**
+ * Resolve the stat block a hero of `classId` ends up with after taking the given
+ * generic + character upgrades, off a throwaway stub (no World). For a multiclass
+ * hero pass the ACTIVE class — only that class's character boons apply, matching the
+ * live sim. Pure.
+ */
+export function previewPlayerStats(
+  classId: ClassId,
+  upgrades: string[],
+  charUpgrades: string[],
+): PreviewedStats {
+  const stub = stubPlayer(classId);
+  // Generic boons first, then class ones — the exact order World.spawn uses.
+  // applyUpgrades skips ids it doesn't recognise, so the loose cast is safe.
+  applyUpgrades(stub, upgrades as UpgradeId[]);
+  applyCharUpgrades(stub, charUpgrades);
+  return {
+    maxHp: stub.maxHp,
+    moveSpeed: stub.moveSpeed,
+    damageMult: stub.damageMult,
+    cooldownMult: stub.cooldownMult,
+    castMult: stub.castMult,
+    damageTakenMult: stub.damageTakenMult,
+    terrainResist: stub.terrainResist,
+    regenPerSec: stub.regenPerSec,
+  };
 }
 
 /** Most times a character upgrade may be taken (its `maxStacks`, or the shared cap). */

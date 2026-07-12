@@ -1013,6 +1013,34 @@ body {
   max-width: 640px;
   width: 100%;
 }
+/* Tabbed controls (one pane at a time keeps the panel compact). */
+.wb-controls-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.wb-controls-tab {
+  flex: 1 1 0;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.wb-controls-tab.selected {
+  color: var(--text);
+  border-bottom-color: var(--accent, #f2c14e);
+}
+.wb-controls-options {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .wb-controls-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1720,6 +1748,38 @@ body {
 }
 .wb-pause-score-val {
   color: #ffe08a;
+}
+
+/* Pause-menu character sheet (current resolved stats) */
+.wb-pause-stats {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+}
+.wb-pause-stat-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 16px;
+}
+.wb-pause-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.wb-pause-stat-val {
+  font-weight: 700;
+  color: var(--text);
+}
+.wb-pause-stat-val.good {
+  color: var(--success);
+}
+.wb-pause-stat-val.bad {
+  color: var(--danger);
 }
 
 /* Cycle tag (endless) */
