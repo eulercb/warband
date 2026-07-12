@@ -10,12 +10,13 @@ touching the shader or the coordinate math** — both adaptations are load-beari
 
 ## What's here
 
-| File           | Role                                                                          | Coverage              |
-| -------------- | ----------------------------------------------------------------------------- | --------------------- |
-| `light.ts`     | `Light` model + `LightManager` — cull/expire/pack into a shared uniform group | unit-tested           |
-| `presets.ts`   | `LIGHTING` flag, material presets (§6), per-arena ambient, rig→preset map     | unit-tested           |
-| `litShader.ts` | GLSL ES 3.00 source builders for the sphere / limb / textured variants        | unit-tested (strings) |
-| `litMesh.ts`   | `LitMesh` = Pixi `Mesh` + the lighting shader; the GPU glue                   | excluded (GPU only)   |
+| File              | Role                                                                            | Coverage              |
+| ----------------- | ------------------------------------------------------------------------------- | --------------------- |
+| `light.ts`        | `Light` model + `LightManager` — cull/expire/pack into a shared uniform group   | unit-tested           |
+| `presets.ts`      | `LIGHTING` flag, material presets (§6), per-arena ambient, rig→preset map       | unit-tested           |
+| `litShader.ts`    | GLSL ES 3.00 source builders for the sphere / limb / textured variants          | unit-tested (strings) |
+| `limbGeometry.ts` | Quad-strip extrusion (centre-line → 2-wide vertex strip) for the `limb` variant | unit-tested           |
+| `litMesh.ts`      | `LitMesh` (unit-quad sphere) + `LitLimb` (dynamic bone strip); the GPU glue     | excluded (GPU only)   |
 
 Integration points: `pipeline/renderer.ts` (owns the manager, forces WebGL,
 registers hit-flash lights, drives the per-frame update), `rig/rigLayer.ts`
@@ -50,9 +51,15 @@ The GL program is shared across every sphere mesh (`GlProgram.from` caches by
 source); each `LitMesh` owns only a tiny per-instance uniform group (base colour,
 emissive, hit-flash) and binds the shared `lights` / `env` / `material` groups.
 
-## Wired in v1
+## Wired
 
 - Sphere-imposter lighting on all rig **body parts** (bosses + players).
+- **Spine segments + limbs** — brief milestone **M3**. Spine segments become
+  sphere imposters exactly like body parts; legs / arms / tentacles become
+  `LitLimb` quad-strips extruded along each bone (`limbGeometry.ts`) and shaded by
+  the `limb` cylinder-imposter variant (`N = vec3(perp·v, √(1−v²))`). The rig
+  writes limb centre-lines in screen space and the strip keeps an identity
+  transform, so `aPerp` is already in the shader's space (see Adaptation 1).
 - **Hit-flash** lights (§7.1) — 60 ms white pop per impact.
 - **Boss-core glow** (§7.2) — persistent coloured light parented to each boss.
 - **Telegraph ramp** (§7.3) — the glow brightens + widens with the windup, so the
@@ -63,9 +70,8 @@ emissive, hit-flash) and binds the shared `lights` / `env` / `material` groups.
 
 ## Deliberately deferred (follow-ups)
 
-- **Limbs / spine / weapons** stay flat-shaded (they're `Graphics` strokes). The
-  `limb` shader variant + `LitMesh` limb geometry exist and are tested, but wiring
-  them into the IK mesh builder is brief milestone M3.
+- **Weapons** stay flat-shaded `Graphics` strokes (thin, low visual mass — folding
+  them into the lit path is optional polish, not part of M3).
 - **Textured / normal-map path** (Path B) — the `textured` variant is complete but
   unused (no sprite atlas ships yet; see `sprites/manifest.ts`).
 - **WGSL port** (re-enable WebGPU), **bloom** on the emissive/overbright channel,

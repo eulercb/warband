@@ -8,11 +8,18 @@
  * a small stack of `Graphics`. The pure math (IK / gait / chain) lives in `math/`
  * and is unit-tested; everything here is the imperative glue that drives it.
  *
- * The `view` Container interleaves seven sub-layers back → front so limbs sort
- * correctly against the body:
- *   ground shadows → behind graphics(legs/tentacles) → behind sprites →
- *   main sprites(spine+body) → front graphics(arms/weapon) → front sprites(head)
- *   → decor.
+ * When dynamic lighting is on, the shaded shapes become per-fragment-lit imposters
+ * instead: body parts + spine segments are sphere-imposter `LitMesh`es, and legs /
+ * arms / tentacles are cylinder-imposter `LitLimb` quad-strips extruded along each
+ * bone. Weapons + decor stay stroked. `LIGHTING.enabled = false` (or no
+ * `LightManager`) routes everything back to the sprite/stroke look, pixel-identical.
+ *
+ * The `view` Container interleaves sub-layers back → front so limbs sort correctly
+ * against the body:
+ *   ground shadows → behind limbs(lit legs/tentacles) → behind graphics(stroked
+ *   legs/tentacles) → behind sprites → main sprites/meshes(spine+body) → front
+ *   limbs(lit arms/tentacles) → front graphics(stroked arms/weapon) → front
+ *   sprites/meshes(head) → decor.
  */
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import type { EntityId } from '../../engine/core/types';
@@ -23,7 +30,7 @@ import { updateGait, makeLeg, type LegRuntime, type GaitParams } from './math/ga
 import { updateChain, makeChain } from './math/chain';
 import { drawLimb, contactShadow, footShadow, lighten, darken, mixColor } from './shading';
 import type { RigSpec, BodyPartSpec, RigDriveCtx } from './types';
-import { LitMesh } from '../lighting/litMesh';
+import { LitMesh, LitLimb } from '../lighting/litMesh';
 import { LIGHTING, RIG_MATERIAL } from '../lighting/presets';
 import type { LightManager } from '../lighting/light';
 
@@ -41,9 +48,11 @@ export class CreatureRig {
   readonly view = new Container();
 
   private readonly gGround = new Graphics();
+  private readonly behindLimbC = new Container();
   private readonly gBehind = new Graphics();
   private readonly behindC = new Container();
   private readonly mainC = new Container();
+  private readonly frontLimbC = new Container();
   private readonly gFront = new Graphics();
   private readonly frontC = new Container();
   private readonly gDecor = new Graphics();
@@ -53,6 +62,12 @@ export class CreatureRig {
   private readonly partMeshes = new Map<string, LitMesh>();
   private readonly lit: boolean;
   private readonly spineSprites: Sprite[] = [];
+  /** Lit sphere-imposter spine segments, when lighting is on (else spineSprites). */
+  private readonly spineMeshes: LitMesh[] = [];
+  /** Lit cylinder-imposter limb strips, when lighting is on (else stroked graphics). */
+  private readonly legMeshes: LitLimb[] = [];
+  private readonly armMeshes: LitLimb[] = [];
+  private readonly tentacleMeshes: LitLimb[] = [];
   private readonly legs: LegRuntime[] = [];
   private readonly legHomes: Vec2[] = [];
   private readonly jitterVals: number[] = [];
@@ -78,9 +93,11 @@ export class CreatureRig {
   ) {
     this.view.addChild(
       this.gGround,
+      this.behindLimbC,
       this.gBehind,
       this.behindC,
       this.mainC,
+      this.frontLimbC,
       this.gFront,
       this.frontC,
       this.gDecor,
@@ -93,13 +110,25 @@ export class CreatureRig {
     this.lit = lights != null && LIGHTING.enabled;
     const preset = RIG_MATERIAL[spec.id];
 
-    // Spine segments draw under the body parts (added to mainC first).
+    // Spine segments draw under the body parts (added to mainC first). Lit: sphere
+    // imposters exactly like body parts; unlit: the original tinted sprites.
     if (spec.spine) {
       for (let i = 0; i < spec.spine.segments; i++) {
-        const s = new Sprite(sphereTex);
-        s.anchor.set(0.5);
-        this.mainC.addChild(s);
-        this.spineSprites.push(s);
+        if (this.lit) {
+          const m = new LitMesh({
+            variant: 'sphere',
+            maxLights: lights!.maxLights,
+            lights: lights!,
+            preset,
+          });
+          this.mainC.addChild(m);
+          this.spineMeshes.push(m);
+        } else {
+          const s = new Sprite(sphereTex);
+          s.anchor.set(0.5);
+          this.mainC.addChild(s);
+          this.spineSprites.push(s);
+        }
       }
     }
 
@@ -118,6 +147,36 @@ export class CreatureRig {
         s.anchor.set(0.5);
         this.parentFor(part.z).addChild(s);
         this.partSprites.set(part.id, s);
+      }
+    }
+
+    // Limbs become cylinder-imposter strips when lit (one `LitLimb` per leg / arm /
+    // tentacle, reshaped each frame in draw); otherwise they stay stroked graphics.
+    // A leg/arm is a 3-point centre-line (shoulder → joint → tip); a tentacle is
+    // one point per segment plus the anchor. Weapons stay stroked.
+    if (this.lit) {
+      const litLimb = (points: number): LitLimb =>
+        new LitLimb({ points, maxLights: lights!.maxLights, lights: lights!, preset });
+      if (spec.legs) {
+        for (let i = 0; i < spec.legs.count; i++) {
+          const m = litLimb(3);
+          this.behindLimbC.addChild(m);
+          this.legMeshes.push(m);
+        }
+      }
+      if (spec.arms) {
+        for (let i = 0; i < spec.arms.length; i++) {
+          const m = litLimb(3);
+          this.frontLimbC.addChild(m);
+          this.armMeshes.push(m);
+        }
+      }
+      if (spec.tentacles) {
+        for (const t of spec.tentacles) {
+          const m = litLimb(t.segments + 1);
+          ((t.z ?? 'behind') === 'front' ? this.frontLimbC : this.behindLimbC).addChild(m);
+          this.tentacleMeshes.push(m);
+        }
       }
     }
 
@@ -344,7 +403,8 @@ export class CreatureRig {
     const lg = this.spec.legs!;
     const anchor = this.bodyPoint(this.partLocal(lg.anchorPart), R);
     const around = this.legAround;
-    const legColor = this.limbColor(darken(ctx.color, 0.35), ctx);
+    // Lit: the hit-flash rides the shader, so keep it out of the stroke/albedo colour.
+    const legColor = this.limbColor(darken(ctx.color, 0.35), ctx, !this.lit);
     const wRoot = lg.legWidthRoot * R;
     const wTip = lg.legWidthTip * R;
     const bipedRef = this.bipedBendRef(R);
@@ -373,16 +433,23 @@ export class CreatureRig {
 
       const bendRef = lg.bendOutward ? anchor : bipedRef;
       const knee = solveTwoBone(shoulder, foot, lg.l1 * R, lg.l2 * R, bendRef);
-      drawLimb(this.gBehind, shoulder, knee, foot, wRoot, wTip, legColor);
+      if (this.lit) {
+        // Quad-strip along shoulder → knee → foot, half-widths tapering root → tip.
+        const m = this.legMeshes[i];
+        m.setStrip([shoulder, knee, foot], [wRoot * 0.5, (wRoot + wTip) * 0.25, wTip * 0.5]);
+        m.setMaterial(legColor, 0, ctx.flash);
+      } else {
+        drawLimb(this.gBehind, shoulder, knee, foot, wRoot, wTip, legColor);
+      }
     }
   }
 
   private drawSpine(R: number, timeSec: number, bodyScale: number, ctx: RigDriveCtx): void {
     const sp = this.spec.spine!;
-    const color = this.partColor('base', ctx);
-    const n = this.spineSprites.length;
+    // Lit: the hit-flash rides the shader's white pop, so keep it out of the albedo.
+    const color = this.partColor('base', ctx, !this.lit);
+    const n = this.lit ? this.spineMeshes.length : this.spineSprites.length;
     for (let i = 0; i < n; i++) {
-      const s = this.spineSprites[i];
       const pt = this.chain[i];
       const prev = i === 0 ? this.bodyPoint({ x: 0, y: 0 }, R) : this.chain[i - 1];
       const dir = normalizeOr({ x: pt.x - prev.x, y: pt.y - prev.y }, { x: this.cos, y: this.sin });
@@ -390,44 +457,76 @@ export class CreatureRig {
       const wave = Math.sin(timeSec * sp.sinFreq + i * 0.6) * sp.sinAmp * R;
       const t = i / Math.max(1, n - 1);
       const seg = 1 - t + t * sp.taper; // taper head → tail
-      s.position.set(pt.x + perp.x * wave, pt.y + perp.y * wave);
-      s.width = 2 * sp.rx * R * seg * bodyScale;
-      s.height = 2 * sp.ry * R * seg * bodyScale;
-      s.tint = color;
+      const cx = pt.x + perp.x * wave;
+      const cy = pt.y + perp.y * wave;
+      const halfW = sp.rx * R * seg * bodyScale;
+      const halfH = sp.ry * R * seg * bodyScale;
+      if (this.lit) {
+        const m = this.spineMeshes[i];
+        m.setPose(cx, cy, halfW, halfH);
+        m.setMaterial(color, 0, ctx.flash);
+      } else {
+        const s = this.spineSprites[i];
+        s.position.set(cx, cy);
+        s.width = 2 * halfW;
+        s.height = 2 * halfH;
+        s.tint = color;
+      }
     }
   }
 
   private drawTentacles(R: number, timeSec: number, ctx: RigDriveCtx): void {
-    const color = this.limbColor(darken(ctx.color, 0.2), ctx);
-    for (const t of this.spec.tentacles!) {
-      const g = (t.z ?? 'behind') === 'front' ? this.gFront : this.gBehind;
+    const tentacles = this.spec.tentacles!;
+    const color = this.limbColor(darken(ctx.color, 0.2), ctx, !this.lit);
+    for (let ti = 0; ti < tentacles.length; ti++) {
+      const t = tentacles[ti];
       const anchor = this.bodyPoint(this.partLocal(t.anchorPart), R);
       let ang = this.facing + (t.baseAngleDeg * Math.PI) / 180;
       let px = anchor.x;
       let py = anchor.y;
       const reachBias = t.reach === 'telegraph' ? this.windupAmount(ctx) * 0.25 : 0;
-      for (let i = 0; i < t.segments; i++) {
-        const curl = Math.sin(timeSec * t.sinFreq + t.phase + i * 0.5) * t.sinAmp + reachBias;
-        ang += curl;
-        const nx = px + Math.cos(ang) * t.segLen * R;
-        const ny = py + Math.sin(ang) * t.segLen * R;
-        const w = t.width * R * (1 - i / (t.segments + 1));
-        g.moveTo(px, py)
-          .lineTo(nx, ny)
-          .stroke({ width: Math.max(1, w), color, cap: 'round' });
-        px = nx;
-        py = ny;
+      if (this.lit) {
+        // Collect the curled centre-line (anchor + one point per segment) and taper
+        // the half-width toward the tip, then drive the cylinder-imposter strip.
+        const pts: Vec2[] = [{ x: px, y: py }];
+        const hw: number[] = [t.width * R * 0.5];
+        for (let i = 0; i < t.segments; i++) {
+          const curl = Math.sin(timeSec * t.sinFreq + t.phase + i * 0.5) * t.sinAmp + reachBias;
+          ang += curl;
+          px += Math.cos(ang) * t.segLen * R;
+          py += Math.sin(ang) * t.segLen * R;
+          pts.push({ x: px, y: py });
+          hw.push(t.width * R * 0.5 * (1 - (i + 1) / (t.segments + 1)));
+        }
+        const m = this.tentacleMeshes[ti];
+        m.setStrip(pts, hw);
+        m.setMaterial(color, 0, ctx.flash);
+      } else {
+        const g = (t.z ?? 'behind') === 'front' ? this.gFront : this.gBehind;
+        for (let i = 0; i < t.segments; i++) {
+          const curl = Math.sin(timeSec * t.sinFreq + t.phase + i * 0.5) * t.sinAmp + reachBias;
+          ang += curl;
+          const nx = px + Math.cos(ang) * t.segLen * R;
+          const ny = py + Math.sin(ang) * t.segLen * R;
+          const w = t.width * R * (1 - i / (t.segments + 1));
+          g.moveTo(px, py)
+            .lineTo(nx, ny)
+            .stroke({ width: Math.max(1, w), color, cap: 'round' });
+          px = nx;
+          py = ny;
+        }
+        g.circle(px, py, Math.max(1, t.width * R * 0.4)).fill({ color: darken(color, 0.2) });
       }
-      g.circle(px, py, Math.max(1, t.width * R * 0.4)).fill({ color: darken(color, 0.2) });
     }
   }
 
   private drawArms(R: number, ctx: RigDriveCtx, downed: boolean): void {
     const arms = this.spec.arms!;
-    const color = this.limbColor(darken(ctx.color, 0.25), ctx);
+    const color = this.limbColor(darken(ctx.color, 0.25), ctx, !this.lit);
     const center = this.origin;
     const grip = this.gripPoint(R, ctx, downed);
-    for (const arm of arms) {
+    for (let i = 0; i < arms.length; i++) {
+      const arm = arms[i];
       const shoulder = this.bodyPoint(arm.shoulderLocal, R);
       const hand = downed
         ? this.bodyPoint({ x: -0.2, y: arm.side * 1.3 }, R)
@@ -439,7 +538,15 @@ export class CreatureRig {
         ? center
         : { x: center.x + this.cos * 6 * R, y: center.y + this.sin * 6 * R };
       const elbow = solveTwoBone(shoulder, hand, arm.l1 * R, arm.l2 * R, bendRef);
-      drawLimb(this.gFront, shoulder, elbow, hand, arm.width * R, arm.width * R * 0.8, color);
+      const wRoot = arm.width * R;
+      const wTip = arm.width * R * 0.8;
+      if (this.lit) {
+        const m = this.armMeshes[i];
+        m.setStrip([shoulder, elbow, hand], [wRoot * 0.5, (wRoot + wTip) * 0.25, wTip * 0.5]);
+        m.setMaterial(color, 0, ctx.flash);
+      } else {
+        drawLimb(this.gFront, shoulder, elbow, hand, wRoot, wTip, color);
+      }
     }
   }
 
@@ -659,10 +766,12 @@ export class CreatureRig {
     return c;
   }
 
-  private limbColor(c: number, ctx: RigDriveCtx): number {
+  private limbColor(c: number, ctx: RigDriveCtx, withFlash = true): number {
     let out = c;
     if (ctx.enraged) out = mixColor(out, ENRAGE_TINT, 0.3);
-    if (ctx.flash > 0) out = lighten(out, clamp(ctx.flash, 0, 1) * 0.7);
+    // The lit path drives the hit-flash through the shader (a white pop), so it opts
+    // out of the colour-space flash here (matching `partColor`).
+    if (withFlash && ctx.flash > 0) out = lighten(out, clamp(ctx.flash, 0, 1) * 0.7);
     return out;
   }
 
