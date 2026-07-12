@@ -19,7 +19,8 @@ import {
   SLOT_ACTION,
 } from '../../input/bindings';
 import { buffBadges } from '../../render/overlays/buffGlyphs';
-import { CLASSES } from '../../engine/content/classes';
+import { CLASSES, describeAbility } from '../../engine/content/classes';
+import type { PlayerAbilityDef } from '../../engine/content/classes';
 import type { AbilitySlot, BuffView, AffixId } from '../../engine/core/types';
 import type { InputSource } from '../../input/input';
 import '../hud.css';
@@ -109,22 +110,30 @@ function slotLabel(slot: keyof typeof SLOT_ACTION, source: InputSource): string 
 
 function AbilityIcon({
   slot,
-  ability,
+  def,
+  displayName,
   source,
 }: {
   slot: keyof typeof SLOT_ACTION;
-  ability: { name: string; cooldown: number };
+  /** The (upgrade-resolved) ability this button casts; drives the effect tooltip. */
+  def: Omit<PlayerAbilityDef, 'slot'>;
+  /** Overrides the shown label (subclass skills prefix an icon); defaults to def.name. */
+  displayName?: string;
   source: InputSource;
 }) {
   const remaining = useHudStore((s) => s.cooldowns[slot] ?? 0);
   // Subscribe to bindings so the label updates live when the player rebinds.
   useBindings((s) => s.bindings);
-  const total = ability.cooldown;
+  const total = def.cooldown;
   const frac = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
   const ready = frac <= 0.001;
   const label = slotLabel(slot, source);
+  const name = displayName ?? def.name;
+  // Concrete effect numbers on hover/focus (item 19), reflecting the hero's
+  // current upgraded values since `def` comes from the resolved ability table.
+  const tip = `${name} — ${describeAbility(def)}`;
   return (
-    <div className={`hud-ability${ready ? ' ready' : ''}`}>
+    <div className={`hud-ability${ready ? ' ready' : ''}`} title={tip} aria-label={tip}>
       <div
         className={`hud-ability-key${source === 'gamepad' ? ' pad' : ''}${
           label.length > 5 ? ' long' : ''
@@ -132,7 +141,7 @@ function AbilityIcon({
       >
         {label}
       </div>
-      <div className="hud-ability-name">{ability.name}</div>
+      <div className="hud-ability-name">{name}</div>
       <div className="hud-cd" style={{ height: `${frac * 100}%` }} />
       {!ready && <div className="hud-cd-num">{remaining.toFixed(1)}</div>}
     </div>
@@ -320,7 +329,7 @@ export default function HUD() {
         {hud.classId && abilityTable && (
           <div className="hud-abilities">
             {SLOT_ORDER.map((slot) => (
-              <AbilityIcon key={slot} slot={slot} ability={abilityTable[slot]} source={source} />
+              <AbilityIcon key={slot} slot={slot} def={abilityTable[slot]} source={source} />
             ))}
             {/* Subclass skills (item 13) — bound to sub1/sub2. */}
             {hud.subSkills.map((id, i) => {
@@ -330,7 +339,8 @@ export default function HUD() {
                 <AbilityIcon
                   key={id}
                   slot={i === 0 ? 'sub1' : 'sub2'}
-                  ability={{ name: `${sk.icon} ${sk.name}`, cooldown: sk.ability.cooldown }}
+                  def={sk.ability}
+                  displayName={`${sk.icon} ${sk.name}`}
                   source={source}
                 />
               );

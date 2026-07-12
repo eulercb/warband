@@ -93,6 +93,36 @@ describe('<HUD>', () => {
     expect(container.querySelectorAll('.hud-ability')).toHaveLength(4);
   });
 
+  it('shows a concrete effect tooltip on each ability icon (item 19)', () => {
+    useHudStore.getState().set({ active: true, classId: 'knight', hp: 100, maxHp: 200 });
+    const { container } = render(<HUD />);
+    const tiles = Array.from(container.querySelectorAll('.hud-ability'));
+    const cleave = tiles.find((t) => t.querySelector('.hud-ability-name')?.textContent === 'Cleave');
+    expect(cleave).toBeTruthy();
+    const tip = cleave!.getAttribute('title');
+    expect(tip).toContain('Cleave —');
+    expect(tip).toContain('22 dmg');
+    expect(tip).toContain('reach');
+    expect(tip).toContain('cooldown');
+    // aria-label mirrors the tooltip so assistive tech reads the same thing.
+    expect(cleave!.getAttribute('aria-label')).toBe(tip);
+  });
+
+  it("the ability tooltip reflects the hero's upgrade-resolved numbers", () => {
+    // A Mage who took Combustion should see Fireball's boosted damage + blast.
+    useStore.setState({ myCharUpgrades: ['mg_combust'] });
+    useHudStore.getState().set({ active: true, classId: 'mage', hp: 100, maxHp: 100 });
+    const { container } = render(<HUD />);
+    const tiles = Array.from(container.querySelectorAll('.hud-ability'));
+    const fireball = tiles.find(
+      (t) => t.querySelector('.hud-ability-name')?.textContent === 'Fireball',
+    );
+    expect(fireball).toBeTruthy();
+    const tip = fireball!.getAttribute('title');
+    expect(tip).toContain('92 dmg');
+    expect(tip).toContain('135u blast');
+  });
+
   it('shows buff badges (glyph + seconds + tooltip) when the hero has buffs', () => {
     const buffs: BuffView[] = [
       { kind: 'invuln', remaining: 3, mult: 1 },
