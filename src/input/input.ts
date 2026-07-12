@@ -130,6 +130,10 @@ export class InputManager {
         a2: state.buttons.a2,
         a3: state.buttons.a3,
         revive: state.buttons.revive,
+        sub1: state.buttons.sub1 ?? false,
+        sub2: state.buttons.sub2 ?? false,
+        swap: state.buttons.swap ?? false,
+        item: state.buttons.item ?? false,
       },
     };
   }

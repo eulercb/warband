@@ -91,9 +91,22 @@ export function sampleGamepad(): { state: InputState; connected: boolean; active
     a2: anyPressed(padB.a2),
     a3: anyPressed(padB.a3),
     revive: anyPressed(padB.revive),
+    sub1: anyPressed(padB.sub1),
+    sub2: anyPressed(padB.sub2),
+    swap: anyPressed(padB.swap),
+    item: anyPressed(padB.item),
   };
 
-  const anyButton = buttons.basic || buttons.a1 || buttons.a2 || buttons.a3 || buttons.revive;
+  const anyButton =
+    buttons.basic ||
+    buttons.a1 ||
+    buttons.a2 ||
+    buttons.a3 ||
+    buttons.revive ||
+    buttons.sub1 ||
+    buttons.sub2 ||
+    buttons.swap ||
+    buttons.item;
   const active = moveLen > 0 || aimLen > 0 || anyButton;
 
   const state: InputState = { move, aim, buttons };

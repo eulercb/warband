@@ -134,6 +134,10 @@ export class KeyboardMouse {
       a2: down('a2'),
       a3: down('a3'),
       revive: down('revive'),
+      sub1: down('sub1'),
+      sub2: down('sub2'),
+      swap: down('swap'),
+      item: down('item'),
     };
 
     return { move, aim, buttons };

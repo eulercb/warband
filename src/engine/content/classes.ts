@@ -2,7 +2,7 @@
  * Warband — data-driven class definitions (Knight / Ranger / Mage / Cleric).
  * All balance numbers per the build brief §7; tweak freely.
  */
-import type { ClassId, AbilitySlot, ZoneKind } from '../core/types';
+import type { ClassId, AbilitySlot, ExtSlot, ZoneKind } from '../core/types';
 import { PLAYER_RADIUS, CLASS_COLORS, ATTACK_CD_SCALE } from '../core/constants';
 
 /** How an ability resolves. Interpreted by abilities.ts. */
@@ -19,7 +19,8 @@ export type AbilityKind =
   | 'taunt'; // force boss focus + top threat (Taunt)
 
 export interface PlayerAbilityDef {
-  slot: AbilitySlot;
+  /** Base kit slot, or a subclass slot (sub1/sub2) once a subclass skill is bound. */
+  slot: ExtSlot;
   name: string;
   kind: AbilityKind;
   cooldown: number; // s

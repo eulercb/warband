@@ -16,7 +16,17 @@ import type { ButtonState, InputState, Vec2 } from '../engine/core/types';
 
 const move: Vec2 = { x: 0, y: 0 };
 const aim: Vec2 = { x: 0, y: 0 };
-const buttons: ButtonState = { basic: false, a1: false, a2: false, a3: false, revive: false };
+const buttons: ButtonState = {
+  basic: false,
+  a1: false,
+  a2: false,
+  a3: false,
+  revive: false,
+  sub1: false,
+  sub2: false,
+  swap: false,
+  item: false,
+};
 let lastActivityMs = 0;
 
 /** True on a touch-capable device (coarse pointer / touch points present). */
@@ -58,6 +68,7 @@ export function resetTouch(): void {
   move.x = move.y = 0;
   aim.x = aim.y = 0;
   buttons.basic = buttons.a1 = buttons.a2 = buttons.a3 = buttons.revive = false;
+  buttons.sub1 = buttons.sub2 = buttons.swap = buttons.item = false;
 }
 
 export function touchLastActivityMs(): number {
@@ -75,7 +86,11 @@ export function touchEngaged(): boolean {
     buttons.a1 ||
     buttons.a2 ||
     buttons.a3 ||
-    buttons.revive
+    buttons.revive ||
+    !!buttons.sub1 ||
+    !!buttons.sub2 ||
+    !!buttons.swap ||
+    !!buttons.item
   );
 }
 

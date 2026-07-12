@@ -11,6 +11,7 @@ import type {
   ZoneKind,
   Vec2,
   AbilitySlot,
+  ExtSlot,
   BossAction,
   ProjectileKind,
   BuffKind,
@@ -72,6 +73,12 @@ function abilitiesOf(p: Player): Record<AbilitySlot, PlayerAbilityDef> {
   return p.abilities ?? getClass(p.classId).abilities;
 }
 
+/** Resolve the ability def for ANY slot — base kit or a subclass slot (item 13). */
+export function abilityForSlot(p: Player, slot: ExtSlot): PlayerAbilityDef | undefined {
+  if (slot === 'sub1' || slot === 'sub2') return p.subAbilities?.[slot];
+  return abilitiesOf(p)[slot];
+}
+
 function aliveAllies(world: World): Player[] {
   return world.players.filter((p) => p.state === 'alive');
 }
@@ -113,10 +120,11 @@ function applyStrikeRiders(world: World, target: Boss | Add, ab: PlayerAbilityDe
 export function resolvePlayerAbility(
   world: World,
   p: Player,
-  slot: AbilitySlot,
+  slot: ExtSlot,
   moveDir: Vec2,
 ): void {
-  const ab = abilitiesOf(p)[slot];
+  const ab = abilityForSlot(p, slot);
+  if (!ab) return; // a sub slot with no bound skill — nothing to resolve
   const aimAngle = angleOf(p.aim);
   const color = CLASS_COLORS[p.classId] ?? 0xffffff;
 
@@ -386,7 +394,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
   });
 }
 
-function projectileKindFor(p: Player, slot: AbilitySlot): ProjectileKind {
+function projectileKindFor(p: Player, slot: ExtSlot): ProjectileKind {
   if (p.classId === 'mage') return slot === 'a1' ? 'fireball' : 'arcaneBolt';
   if (p.classId === 'cleric' || p.classId === 'paladin') return 'smite';
   if (

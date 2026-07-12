@@ -106,7 +106,10 @@ export class SpriteLayer {
         if (n.attack && nowMs - n.attack.startMs >= ATTACK_CLIP_MS) n.attack = null;
         const scr = camera.worldToScreen(p.pos);
         const moving = this.speed(n, scr, dtMs) > EPS_MOVE;
-        const castTotalMs = p.castTimer > 0 ? castMs(p.classId, p.castSlot) : null;
+        // Sub-skill casts are instant (never rooted), so only base slots matter here.
+        const baseCastSlot =
+          p.castSlot === 'sub1' || p.castSlot === 'sub2' ? null : p.castSlot;
+        const castTotalMs = p.castTimer > 0 ? castMs(p.classId, baseCastSlot) : null;
         const sel = playerAnim(p, {
           dirMode: MANIFEST[p.classId as ActorKey].dirMode,
           moving,

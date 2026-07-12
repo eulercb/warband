@@ -11,8 +11,21 @@ import { create } from 'zustand';
 
 /** Directional movement actions (keyboard only; pads use the left stick). */
 export type MoveAction = 'up' | 'down' | 'left' | 'right';
-/** Ability / action buttons (rebindable on both keyboard and gamepad). */
-export type ButtonAction = 'basic' | 'a1' | 'a2' | 'a3' | 'revive';
+/**
+ * Ability / action buttons (rebindable on both keyboard and gamepad). Beyond the
+ * base kit: `sub1`/`sub2` fire the two subclass skills, `swap` cycles multiclass
+ * (hold for the radial), and `item` spends the selected ephemeral shop item.
+ */
+export type ButtonAction =
+  | 'basic'
+  | 'a1'
+  | 'a2'
+  | 'a3'
+  | 'revive'
+  | 'sub1'
+  | 'sub2'
+  | 'swap'
+  | 'item';
 export type KeyAction = MoveAction | ButtonAction;
 
 /** Two slots per action: a primary and an optional alternate. */
@@ -42,7 +55,17 @@ export interface Bindings {
 }
 
 export const MOVE_ACTIONS: MoveAction[] = ['up', 'down', 'left', 'right'];
-export const BUTTON_ACTIONS: ButtonAction[] = ['basic', 'a1', 'a2', 'a3', 'revive'];
+export const BUTTON_ACTIONS: ButtonAction[] = [
+  'basic',
+  'a1',
+  'a2',
+  'a3',
+  'revive',
+  'sub1',
+  'sub2',
+  'swap',
+  'item',
+];
 
 /** Human-facing labels for each action row in the Controls screen. */
 export const ACTION_LABELS: Record<KeyAction, string> = {
@@ -55,6 +78,10 @@ export const ACTION_LABELS: Record<KeyAction, string> = {
   a2: 'Ability 2',
   a3: 'Ability 3',
   revive: 'Revive (hold)',
+  sub1: 'Subclass Skill 1',
+  sub2: 'Subclass Skill 2',
+  swap: 'Swap Class (hold: radial)',
+  item: 'Use Item',
 };
 
 export const DEFAULT_BINDINGS: Bindings = {
@@ -68,14 +95,23 @@ export const DEFAULT_BINDINGS: Bindings = {
     a2: ['KeyE', 'Digit2'],
     a3: ['KeyR', 'Digit3'],
     revive: ['KeyF'],
+    sub1: ['KeyZ'],
+    sub2: ['KeyX'],
+    swap: ['KeyC'],
+    item: ['KeyV'],
   },
-  // Standard-mapping button indices (see gamepad.ts): 0=✕ 1=◯ 2=▢ 3=△ 4=L1 5=R1.
+  // Standard-mapping button indices (see gamepad.ts): 0=✕ 1=◯ 2=▢ 3=△ 4=L1 5=R1
+  // 6=L2 7=R2 8=Share/View 10=L3 (9=Options/Start is reserved for pause).
   pad: {
     basic: [0],
     a1: [1],
     a2: [2],
     a3: [3],
     revive: [4, 5],
+    sub1: [6],
+    sub2: [7],
+    swap: [8],
+    item: [10],
   },
   padScheme: 'auto',
 };

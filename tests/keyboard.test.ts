@@ -68,6 +68,10 @@ describe('KeyboardMouse: construction', () => {
       a2: false,
       a3: false,
       revive: false,
+      sub1: false,
+      sub2: false,
+      swap: false,
+      item: false,
     });
     // With cursor on the player (dist 0) aim defaults to the initial "up".
     expect(s.aim.x).toBeCloseTo(0);
@@ -142,6 +146,10 @@ describe('KeyboardMouse: ability keys -> button flags', () => {
       a2: true,
       a3: true,
       revive: true,
+      sub1: false,
+      sub2: false,
+      swap: false,
+      item: false,
     });
   });
 
@@ -174,7 +182,7 @@ describe('KeyboardMouse: code vs key handling & edge cases', () => {
   });
 
   it('ignores unbound keys and does not register activity for them', () => {
-    key('keydown', 'KeyZ'); // not bound by default
+    key('keydown', 'KeyM'); // not bound by default
     expect(kb.sample(ORIGIN).move).toEqual({ x: 0, y: 0 });
     expect(kb.sample(ORIGIN).buttons.basic).toBe(false);
     expect(kb.lastActivityMs).toBe(0); // handler returned early, no activity
@@ -207,7 +215,7 @@ describe('KeyboardMouse: code vs key handling & edge cases', () => {
   it('calls preventDefault for bound keys but not for unbound keys', () => {
     const bound = key('keydown', 'Space');
     expect(bound.defaultPrevented).toBe(true);
-    const unbound = key('keydown', 'KeyZ');
+    const unbound = key('keydown', 'KeyM');
     expect(unbound.defaultPrevented).toBe(false);
   });
 });

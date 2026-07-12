@@ -208,6 +208,10 @@ describe('gamepad: action buttons (default standard mapping)', () => {
       a2: false,
       a3: false,
       revive: false,
+      sub1: false,
+      sub2: false,
+      swap: false,
+      item: false,
     });
   });
 
@@ -252,6 +256,10 @@ describe('gamepad: action buttons (default standard mapping)', () => {
       a2: false,
       a3: false,
       revive: false,
+      sub1: false,
+      sub2: false,
+      swap: false,
+      item: false,
     });
   });
 });
