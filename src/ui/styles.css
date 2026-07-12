@@ -794,6 +794,18 @@ body {
 .cls-druid {
   color: var(--cls-druid);
 }
+.cls-bard {
+  color: var(--cls-bard);
+}
+.cls-monk {
+  color: var(--cls-monk);
+}
+.cls-sorcerer {
+  color: var(--cls-sorcerer);
+}
+.cls-warlock {
+  color: var(--cls-warlock);
+}
 
 .cls-bg-knight {
   background: rgba(74, 144, 217, 0.16);
