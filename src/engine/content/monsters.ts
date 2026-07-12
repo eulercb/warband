@@ -42,6 +42,7 @@ export interface BossAbilityDef {
   width?: number; // line half-width
   knockback?: number;
   stun?: number; // applied to players hit by cone/pbaoe
+  silence?: number; // seconds of SILENCE applied to players hit (item 28) — caster bosses
   slowMult?: number; // on-hit slow (frost bosses); applied to projectiles/zones too
   slowDuration?: number;
   projSpeed?: number;
@@ -1027,6 +1028,13 @@ const BEHOLDER: MonsterDef = {
   abilities: [
     A.proj('eyeRays', 'Eye Rays', 0.6, 5, 22, { projSpeed: 480, projCount: 8, spreadDeg: 320 }),
     A.circle('disintegrate', 'Disintegrate', 1.0, 6, 50, 700, 100),
+    // SIGNATURE (item 28): the central eye's antimagic cone SILENCES casters caught
+    // in its gaze — turn away or fight with your basic until it passes.
+    A.cone('antimagicEye', 'Antimagic Eye', 1.0, 12, 16, 440, 42, {
+      silence: 4,
+      slowMult: 0.6,
+      slowDuration: 1.5,
+    }),
     A.voids('antimagic', 'Antimagic Pools', 0.4, 10, {
       radius: 100,
       zoneTickDamage: 14,
@@ -1037,6 +1045,7 @@ const BEHOLDER: MonsterDef = {
   ],
   decide: decideBy([
     { id: 'eyeRays', chance: 0.6 },
+    { id: 'antimagicEye', cond: within(440), chance: 0.5 },
     { id: 'disintegrate' },
     { id: 'antimagic' },
     { id: 'deathRay', cond: (c) => c.target != null },
@@ -1140,11 +1149,19 @@ const MINDFLAYER: MonsterDef = {
   blink: { range: 280, threatenRange: 130, internalCd: 5 },
   abilities: [
     A.cone('mindBlast', 'Mind Blast', 1.0, 7, 30, 340, 34, { stun: 1.3 }),
+    // SIGNATURE (item 28): a psionic hush that SILENCES casters in a wide circle —
+    // no abilities but the basic attack while it lasts.
+    A.circle('psionicSilence', 'Psionic Silence', 1.1, 13, 18, 640, 150, {
+      silence: 4,
+      slowMult: 0.6,
+      slowDuration: 2,
+    }),
     A.beam('brainDrain', 'Brain Drain', 0.7, 9, 22, { healSelf: true, channelDuration: 2 }),
     A.voids('psychicRift', 'Psychic Rift', 0.5, 9, { radius: 100, zoneTickDamage: 14 }),
     A.summon('enthrall', 'Enthrall', 1.2, 14, { addHpMult: 1.0 }),
   ],
   decide: decideBy([
+    { id: 'psionicSilence', cond: (c) => c.target != null, chance: 0.5 },
     { id: 'mindBlast', cond: within(340), chance: 0.6 },
     { id: 'brainDrain', cond: (c) => c.target != null },
     { id: 'psychicRift' },

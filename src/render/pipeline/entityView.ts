@@ -61,6 +61,8 @@ export function buffGlow(kind: BuffKind, mult: number): BuffGlow | null {
   switch (kind) {
     case 'stun':
       return { color: 0xffe14d, good: false }; // yellow — crowd-controlled
+    case 'silence':
+      return { color: 0xc06cff, good: false }; // violet — abilities muted
     case 'invuln':
       return { color: 0xbfe9ff, good: true }; // pale cyan — untouchable
     case 'moveSpeed':

@@ -523,10 +523,14 @@ function knockback(world: World, p: Player, center: Vec2, distance: number): voi
   p.pos = clampToArena(world, vadd(p.pos, vscale(d, distance)), p.radius);
 }
 
-/** Apply a boss strike's on-hit slow rider to a player (frost bosses). */
+/** Apply a boss strike's on-hit riders to a player: a frost SLOW and/or a caster
+ * SILENCE (item 28 — a silenced hero can use only their basic attack). */
 function bossSlowRider(p: Player, ab: BossAbilityDef): void {
   if (ab.slowMult && ab.slowMult < 1) {
     applyBuff(p, makeBuff('moveSpeed', ab.slowMult, ab.slowDuration ?? 2, 'bossSlow'));
+  }
+  if (ab.silence && ab.silence > 0) {
+    applyBuff(p, makeBuff('silence', 0, ab.silence, 'bossSilence'));
   }
 }
 
