@@ -661,13 +661,14 @@ describe('store: per-run progression', () => {
     expect(useStore.getState().myCharUpgrades).toEqual(['cleave+']);
   });
 
-  it('addMySubSkill caps at two and records the subclass', () => {
+  it('addMySubSkill accumulates skills (uncapped for per-class subclasses) and dedupes', () => {
     const g = useStore.getState();
     g.addMySubSkill('kn_champion', 'a');
     g.addMySubSkill('kn_champion', 'b');
-    g.addMySubSkill('kn_champion', 'c');
-    expect(useStore.getState().mySubSkills).toEqual(['a', 'b']);
-    expect(useStore.getState().mySubclassId).toBe('kn_champion');
+    g.addMySubSkill('mo_open_hand', 'c'); // a 3rd, for another class's subclass (item 15)
+    g.addMySubSkill('mo_open_hand', 'c'); // duplicate → ignored
+    expect(useStore.getState().mySubSkills).toEqual(['a', 'b', 'c']);
+    expect(useStore.getState().mySubclassId).toBe('mo_open_hand');
   });
 
   it('addMyExtraClass appends once then dedupes (lines 345 & 346)', () => {

@@ -914,18 +914,31 @@ export class Host implements NetSession {
   }
 
   /**
-   * Record a run-clear SPECIAL pick (item 13/14), host-authoritative and validated:
-   * a subclass skill (max two, same subclass) or an additional multiclass class
-   * (must be a real class the hero doesn't already field).
+   * Record a run-clear SPECIAL pick (item 13/14/15), host-authoritative and
+   * validated: a subclass skill (up to two PER owned class, one subclass per class)
+   * or an additional multiclass class (a real class the hero doesn't already field).
    */
   private recordSpecial(peerId: string, msg: SpecialMsg): void {
     if (msg.subSkillId && msg.subclassId) {
       const skill = getSubSkill(msg.subSkillId);
       const sub = subclassOfSkill(msg.subSkillId);
+      const owner = sub?.classId; // the class this subclass belongs to
       const owned = this.subSkillsByPeer.get(peerId) ?? [];
-      const committed = this.subclassByPeer.get(peerId);
-      const okSubclass = sub?.id === msg.subclassId && (!committed || committed === msg.subclassId);
-      if (skill && okSubclass && owned.length < 2 && !owned.includes(msg.subSkillId)) {
+      // The subclass must belong to a class the hero actually fields (item 19).
+      const heroClasses = [this.classForPeer(peerId), ...(this.extraClassesByPeer.get(peerId) ?? [])];
+      const classOwned = owner != null && heroClasses.includes(owner);
+      // One subclass per class: skills already held for the SAME class must share it,
+      // and each subclass caps at two skills.
+      const sameClass = owned.filter((id) => subclassOfSkill(id)?.classId === owner);
+      const committedSub = sameClass.length > 0 ? subclassOfSkill(sameClass[0])?.id : null;
+      const okSubclass = sub?.id === msg.subclassId && (!committedSub || committedSub === msg.subclassId);
+      if (
+        skill &&
+        classOwned &&
+        okSubclass &&
+        sameClass.length < 2 &&
+        !owned.includes(msg.subSkillId)
+      ) {
         this.subclassByPeer.set(peerId, msg.subclassId);
         owned.push(msg.subSkillId);
         this.subSkillsByPeer.set(peerId, owned);

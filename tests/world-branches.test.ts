@@ -170,8 +170,10 @@ describe('world-branches: subclass binding', () => {
       ],
     });
     const p = w.players[0];
-    // First (invalid) skipped; second (valid) bound to sub2.
-    expect(p.subAbilities?.sub2).toBeTruthy();
+    // The invalid id is dropped entirely (not just skipped), so the valid skill
+    // takes the first slot rather than wasting sub1 (item 15 binding).
+    expect(p.subAbilities?.sub1).toBeTruthy();
+    expect(p.subAbilities?.sub2).toBeUndefined();
     expect(p.subSkillIds).toEqual(['kn_champion_slam']);
   });
 
@@ -1963,15 +1965,20 @@ describe('world-branches: subclass slot edges', () => {
   it('a bound sub2 skill decays its cooldown and is not fired without its button', () => {
     const w = makeWorld({
       players: [
-        { peerId: 'a', name: 'A', classId: 'knight', subSkills: ['nope', 'kn_champion_slam'] },
+        {
+          peerId: 'a',
+          name: 'A',
+          classId: 'knight',
+          subSkills: ['kn_champion_slam', 'kn_champion_riposte'],
+        },
       ],
     });
     w.boss = null;
     w.terrain = [];
     const p = w.players[0];
-    // The single valid id lands in sub2 (the invalid first id is skipped).
+    // Two skills of the same subclass fill sub1 + sub2.
+    expect(p.subAbilities?.sub1).toBeTruthy();
     expect(p.subAbilities?.sub2).toBeTruthy();
-    expect(p.subAbilities?.sub1).toBeUndefined();
     p.cooldowns.sub2 = 5;
     // inp() carries no sub2 button → the `cmd.buttons[slot] ?? false` nullish path.
     w.step(DT, new Map([['a', inp()]]));

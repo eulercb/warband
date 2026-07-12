@@ -335,10 +335,13 @@ export const useStore = create<AppState>((set, get) => ({
       myEphemeral: {},
     }),
   addMySubSkill: (subclassId, skillId) =>
-    set({
+    // No longer capped at 2 (item 15): a multiclass hero accrues a full 2-skill
+    // subclass PER owned class, so the flat list can hold more than two — the host
+    // binds only the ACTIVE class's two to sub1/sub2. Guard against duplicates.
+    set((s) => ({
       mySubclassId: subclassId,
-      mySubSkills: [...get().mySubSkills, skillId].slice(0, 2),
-    }),
+      mySubSkills: s.mySubSkills.includes(skillId) ? s.mySubSkills : [...s.mySubSkills, skillId],
+    })),
   addMyExtraClass: (classId) =>
     set({
       myExtraClasses: get().myExtraClasses.includes(classId)

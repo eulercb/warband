@@ -5,7 +5,14 @@
 import { describe, it, expect } from 'vitest';
 import { World } from '../src/engine/world/world';
 import { SIM_DT } from '../src/engine/core/constants';
-import { getSubSkill, subclassOfSkill, isSubSkillId } from '../src/engine/content/subclasses';
+import {
+  getSubSkill,
+  subclassOfSkill,
+  isSubSkillId,
+  subclassesFor,
+  subSkillsForClass,
+  specialRewardStep,
+} from '../src/engine/content/subclasses';
 import type { InputCommand } from '../src/engine/core/types';
 
 function input(over: Partial<InputCommand['buttons']>): InputCommand {
@@ -164,5 +171,84 @@ describe('subclass lookups', () => {
     expect(isSubSkillId('not_a_skill')).toBe(false); // a string, but not indexed
     expect(isSubSkillId(42)).toBe(false); // non-string short-circuit
     expect(isSubSkillId(undefined)).toBe(false);
+  });
+});
+
+describe('specialRewardStep — run-clear reward ordering (item 15)', () => {
+  const kSub = subclassesFor('knight')[0];
+  const mSub = subclassesFor('mage')[0];
+  const kFull = [kSub.skills[0].id, kSub.skills[1].id];
+
+  it('groups a hero’s sub skills by owning class', () => {
+    const mixed = [kSub.skills[0].id, mSub.skills[0].id];
+    expect(subSkillsForClass('knight', mixed)).toEqual([kSub.skills[0].id]);
+    expect(subSkillsForClass('mage', mixed)).toEqual([mSub.skills[0].id]);
+    expect(subSkillsForClass('mage', ['ghost'])).toEqual([]);
+  });
+
+  it('G1 → subclass, G2 → second skill, G3 → class-or-grand (primary class)', () => {
+    expect(specialRewardStep('knight', [], [])).toEqual({ kind: 'subclass', classId: 'knight' });
+    expect(specialRewardStep('knight', [], [kSub.skills[0].id])).toEqual({
+      kind: 'skill2',
+      classId: 'knight',
+      subclassId: kSub.id,
+    });
+    expect(specialRewardStep('knight', [], kFull)).toEqual({ kind: 'classOrGrand' });
+  });
+
+  it('picking a new class re-enters the subclass flow for it, then loops', () => {
+    // Owns mage now but it has no subclass yet → offer mage a subclass (G4).
+    expect(specialRewardStep('knight', ['mage'], kFull)).toEqual({
+      kind: 'subclass',
+      classId: 'mage',
+    });
+    // Mage gets a skill → its second skill (G5).
+    expect(specialRewardStep('knight', ['mage'], [...kFull, mSub.skills[0].id])).toEqual({
+      kind: 'skill2',
+      classId: 'mage',
+      subclassId: mSub.id,
+    });
+    // Every owned class complete again → class-or-grand (G6).
+    expect(
+      specialRewardStep('knight', ['mage'], [...kFull, mSub.skills[0].id, mSub.skills[1].id]),
+    ).toEqual({ kind: 'classOrGrand' });
+  });
+
+  it('an unrecognised sub skill counts for no class (treated as sub-less)', () => {
+    expect(specialRewardStep('knight', [], ['ghost'])).toEqual({
+      kind: 'subclass',
+      classId: 'knight',
+    });
+  });
+});
+
+describe('per-class subclass binding (item 15)', () => {
+  const kSkill = subclassesFor('knight')[0].skills[0].id;
+  const mSkill = subclassesFor('mage')[0].skills[0].id;
+
+  it('binds only the ACTIVE class subclass skills, and a swap rebinds', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 3,
+      players: [
+        {
+          peerId: 'a',
+          name: 'A',
+          classId: 'knight',
+          extraClasses: ['mage'],
+          subSkills: [kSkill, mSkill],
+        },
+      ],
+    });
+    const p = w.players[0];
+    // On knight: sub1 is the knight skill; the mage skill is dormant.
+    expect(p.subAbilities?.sub1?.name).toBe(getSubSkill(kSkill)!.ability.name);
+    // The wire carries only the active class's sub skills (HUD binds by index).
+    expect(w.serialize().players[0].subSkills).toEqual([kSkill]);
+
+    // Swap to mage: sub1 rebinds to the mage skill.
+    w.setActiveClass(p, 'mage');
+    expect(p.subAbilities?.sub1?.name).toBe(getSubSkill(mSkill)!.ability.name);
+    expect(w.serialize().players[0].subSkills).toEqual([mSkill]);
   });
 });

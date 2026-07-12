@@ -1091,3 +1091,41 @@ export function isSubSkillId(x: unknown): x is string {
 export function subclassesFor(classId: ClassId): SubclassDef[] {
   return SUBCLASSES[classId] ?? [];
 }
+
+/** The subclass skills a hero owns for a specific class (from their flat pick list). */
+export function subSkillsForClass(classId: ClassId, subSkills: readonly string[]): string[] {
+  return subSkills.filter((id) => subclassOfSkill(id)?.classId === classId);
+}
+
+/**
+ * The run-clear SPECIAL reward step a hero is due (item 15). Owned classes are
+ * walked in acquisition order (primary first); the FIRST class that lacks a full
+ * two-skill subclass drives the step:
+ *   - 0 subclass skills → choose a SUBCLASS for it, then its first skill;
+ *   - 1 subclass skill  → choose a SECOND skill of that same subclass.
+ * Once EVERY owned class has a full subclass, the reward is a new multiclass OR a
+ * grand improvement — and because picking a class adds it to the owned set, the
+ * NEXT clear re-enters the subclass flow for that new class, while picking a grand
+ * leaves the set unchanged so the class-or-grand choice simply recurs. Pure.
+ */
+export type SpecialRewardStep =
+  | { kind: 'subclass'; classId: ClassId }
+  | { kind: 'skill2'; classId: ClassId; subclassId: string }
+  | { kind: 'classOrGrand' };
+
+export function specialRewardStep(
+  primaryClass: ClassId,
+  extraClasses: readonly ClassId[],
+  subSkills: readonly string[],
+): SpecialRewardStep {
+  const owned = [primaryClass, ...extraClasses.filter((c) => c !== primaryClass)];
+  for (const cls of owned) {
+    const skills = subSkillsForClass(cls, subSkills);
+    if (skills.length === 0) return { kind: 'subclass', classId: cls };
+    if (skills.length === 1) {
+      const subclassId = subclassOfSkill(skills[0])?.id;
+      if (subclassId) return { kind: 'skill2', classId: cls, subclassId };
+    }
+  }
+  return { kind: 'classOrGrand' };
+}

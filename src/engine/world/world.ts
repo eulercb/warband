@@ -184,10 +184,19 @@ const SUB_SLOTS: SubSlot[] = ['sub1', 'sub2'];
  */
 function subSlotForActiveClass(p: Player, slot: SubSlot): boolean {
   const idx = slot === 'sub1' ? 0 : 1;
-  const id = p.subSkillIds?.[idx];
+  const id = activeSubSkillIds(p)[idx];
   if (!id) return false;
   const owner = subclassOfSkill(id)?.classId;
   return owner == null || owner === p.classId;
+}
+
+/** The (≤2) subclass-skill ids belonging to the hero's ACTIVE class (item 15): a
+ *  multiclass hero can hold a full subclass per class, but only wields one at a
+ *  time. Drives which two skills bind to sub1/sub2 and what the client is told. */
+function activeSubSkillIds(p: Player): string[] {
+  return (p.subSkillIds ?? [])
+    .filter((id) => subclassOfSkill(id)?.classId === p.classId)
+    .slice(0, 2);
 }
 /** Cooldown gate (s) after a multiclass swap, so it can't be spammed for free casts. */
 const CLASS_SWAP_CD = 1.0;
@@ -666,19 +675,32 @@ export class World {
     });
   }
 
-  /** Bind up to two chosen subclass skills to the hero's sub1/sub2 slots (item 13). */
+  /**
+   * Record the hero's chosen subclass skills and bind the ACTIVE class's two to the
+   * sub1/sub2 slots (items 13/15). A multiclass hero can hold a full subclass per
+   * class; only the class they're currently wielding contributes usable sub skills,
+   * and a class swap re-binds via `rebindActiveSubs`.
+   */
   private bindSubSkills(p: Player, ids?: string[]): void {
     if (!ids || ids.length === 0) return;
-    const bound: string[] = [];
-    ids.slice(0, 2).forEach((id, i) => {
+    const valid = ids.filter((id) => getSubSkill(id));
+    if (valid.length === 0) return;
+    p.subSkillIds = valid;
+    p.cooldowns.sub1 = 0;
+    p.cooldowns.sub2 = 0;
+    this.rebindActiveSubs(p);
+  }
+
+  /** Rebuild sub1/sub2 from the sub skills belonging to the hero's ACTIVE class. */
+  private rebindActiveSubs(p: Player): void {
+    const active = activeSubSkillIds(p);
+    p.subAbilities = {};
+    active.forEach((id, i) => {
       const skill = getSubSkill(id);
       if (!skill) return;
       const slot: SubSlot = i === 0 ? 'sub1' : 'sub2';
-      (p.subAbilities ??= {})[slot] = { ...skill.ability, slot };
-      p.cooldowns[slot] = 0;
-      bound.push(id);
+      p.subAbilities![slot] = { ...skill.ability, slot };
     });
-    if (bound.length > 0) p.subSkillIds = bound;
   }
 
   /**
@@ -1056,12 +1078,15 @@ export class World {
     if (p.swapCd != null && p.swapCd > 0) return;
     const table = p.classTables[classId];
     if (!table) return;
-    // Stash the current class's base-slot cooldowns.
+    // Stash the current class's base-slot AND subclass-slot cooldowns: each class
+    // carries its own subclass (item 15), so sub1/sub2 are per-class too now.
     p.classCooldowns[p.classId] = {
       basic: p.cooldowns.basic,
       a1: p.cooldowns.a1,
       a2: p.cooldowns.a2,
       a3: p.cooldowns.a3,
+      sub1: p.cooldowns.sub1,
+      sub2: p.cooldowns.sub2,
     };
     p.classId = classId;
     p.abilities = table;
@@ -1071,9 +1096,11 @@ export class World {
       a1: cds.a1,
       a2: cds.a2,
       a3: cds.a3,
-      sub1: p.cooldowns.sub1, // subclass skills are the hero's, not per-class
-      sub2: p.cooldowns.sub2,
+      sub1: cds.sub1 ?? 0,
+      sub2: cds.sub2 ?? 0,
     };
+    // Swap sub1/sub2 to the new class's subclass skills (or clear if it has none).
+    this.rebindActiveSubs(p);
     p.castTimer = 0;
     p.castSlot = null;
     p.swapCd = CLASS_SWAP_CD;
@@ -1089,6 +1116,8 @@ export class World {
       c.a1 = Math.max(0, c.a1 - dt);
       c.a2 = Math.max(0, c.a2 - dt);
       c.a3 = Math.max(0, c.a3 - dt);
+      if (c.sub1 != null) c.sub1 = Math.max(0, c.sub1 - dt);
+      if (c.sub2 != null) c.sub2 = Math.max(0, c.sub2 - dt);
     }
   }
 
@@ -2582,7 +2611,9 @@ export class World {
       castSlot: p.castSlot,
       castTimer: p.castTimer,
       score: Math.round(this.playerScore(p)),
-      subSkills: p.subSkillIds,
+      // Only the ACTIVE class's subclass skills cross the wire (item 15): the HUD
+      // binds them to sub1/sub2 by index, so a multiclass hero shows the right two.
+      subSkills: activeSubSkillIds(p),
       classes: p.classes,
       swapCd: p.swapCd,
       potions: p.potions,
