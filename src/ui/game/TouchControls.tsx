@@ -23,7 +23,7 @@ import {
   isTouchCapable,
 } from '../../input/touch';
 import { previewAbilityTable } from '../../engine/content/charUpgrades';
-import { getSubSkill } from '../../engine/content/subclasses';
+import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
 import { AIM_DEAD_ZONE } from '../../engine/core/constants';
 import type { AbilitySlot, ButtonState } from '../../engine/core/types';
 
@@ -238,6 +238,7 @@ export default function TouchControls() {
     [localClass, myCharUpgrades],
   );
   const hasHud = useHudStore((s) => s.classId !== null);
+  const activeClass = useHudStore((s) => s.classId);
   const subSkills = useHudStore((s) => s.subSkills);
   const multiclass = useHudStore((s) => s.classes.length > 1);
   const potions = useHudStore((s) => s.potions);
@@ -253,14 +254,24 @@ export default function TouchControls() {
     const sk = id ? getSubSkill(id) : undefined;
     return sk ? clip(sk.name) : '';
   };
+  // A sub skill only shows while its owning class is the active one (item 14).
+  const subVisible = (id: string | undefined): boolean => {
+    if (!id) return false;
+    const owner = subclassOfSkill(id)?.classId;
+    return owner == null || owner === activeClass;
+  };
 
   return (
     <div className="wb-touch-controls" role="group" aria-label="Touch controls">
       <VirtualStick side="left" label="MOVE" onVec={setTouchMove} />
       <VirtualStick side="right" label="AIM" onVec={setTouchAim} deadzone={AIM_DEAD_ZONE} />
       <div className="wb-touch-buttons">
-        {subSkills[1] ? <TouchButton slot="sub2" label={subName(subSkills[1])} kind="sub" /> : null}
-        {subSkills[0] ? <TouchButton slot="sub1" label={subName(subSkills[0])} kind="sub" /> : null}
+        {subVisible(subSkills[1]) ? (
+          <TouchButton slot="sub2" label={subName(subSkills[1])} kind="sub" />
+        ) : null}
+        {subVisible(subSkills[0]) ? (
+          <TouchButton slot="sub1" label={subName(subSkills[0])} kind="sub" />
+        ) : null}
         <TouchButton slot="a3" label={shortName('a3')} kind="a3" />
         <TouchButton slot="a2" label={shortName('a2')} kind="a2" />
         <TouchButton slot="a1" label={shortName('a1')} kind="a1" />

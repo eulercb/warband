@@ -12,7 +12,7 @@
  */
 import type { ClassId, AbilitySlot, Player } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
-import { CLASSES, cloneAbilities, slowAttackCooldowns } from './classes';
+import { CLASSES, cloneAbilities, slowAttackCooldowns, describeAbility } from './classes';
 import { applyUpgrades, type UpgradeId } from './upgrades';
 import { MAX_SKILL_STACKS } from '../core/constants';
 
@@ -1705,6 +1705,17 @@ export function describeCharOffer(
   const replaced = def.replaces ? current[def.replaces]?.name : null;
   let desc = replaced ? `${def.desc}. Replaces ${replaced}.` : def.desc;
   if (def.grand) desc = `GRAND — ${desc}`;
+  // Current-stats preview (item 4): if this boon retunes ability numbers, append
+  // the affected ability's resolved effect line AFTER stacking it on the hero's
+  // CURRENT kit — so a repeat pick shows real values ("Arrow → 3× 30 dmg · 0.5s
+  // cooldown") instead of a fixed "+5 damage". Grafts already name what they swap.
+  if (!def.replaces) {
+    const after = previewAbilityTable(classId, [...ownedChar, id]);
+    const preview = SLOTS.filter((s) => JSON.stringify(current[s]) !== JSON.stringify(after[s]))
+      .map((s) => `${after[s].name}: ${describeAbility(after[s])}`)
+      .join(' · ');
+    if (preview) desc = `${desc}. Now → ${preview}`;
+  }
   const label = def.grand ? `★ ${def.icon} ${def.name}` : `${def.icon} ${def.name}`;
   return { id, label, desc };
 }

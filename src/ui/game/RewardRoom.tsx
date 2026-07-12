@@ -176,7 +176,12 @@ export default function RewardRoom({ result }: { result: FightResult }) {
 
     const st = useStore.getState();
     const myScore = result.stats.find((s) => s.peerId === selfId)?.score ?? 0;
-    const scene = new RewardScene(st.localName || 'Hero', st.localClass, offers, myScore);
+    // Carry the hero's earned subclass skills + extra classes into the room so the
+    // sub1/sub2 and Swap buttons show here too, not only in the fight (item 13).
+    const scene = new RewardScene(st.localName || 'Hero', st.localClass, offers, myScore, {
+      subSkills: st.mySubSkills,
+      extraClasses: st.myExtraClasses,
+    });
     sceneRef.current = scene;
 
     let renderer: Renderer | null = null;

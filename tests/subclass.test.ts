@@ -117,6 +117,36 @@ describe('multiclass swap', () => {
     w.step(SIM_DT, new Map([['a', input({ swap: true })]]));
     expect(w.players[0].classId).toBe('knight');
   });
+
+  it('a sub-slot skill only fires while wielding its owning class (item 14)', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 7,
+      players: [
+        {
+          peerId: 'a',
+          name: 'A',
+          classId: 'knight',
+          extraClasses: ['mage'],
+          subSkills: ['kn_champion_slam'], // a KNIGHT subclass skill
+        },
+      ],
+    });
+    const p = w.players[0];
+    // Swap to mage (which doesn't own the knight sub skill): pressing sub1 is inert.
+    w.setActiveClass(p, 'mage');
+    p.pos = { ...w.bosses[0].pos };
+    w.step(SIM_DT, new Map([['a', input({ sub1: true })]]));
+    expect(p.cooldowns.sub1 ?? 0).toBe(0); // dormant on the wrong class
+
+    // Release, swap back to knight, and press again — now it works.
+    w.step(SIM_DT, new Map([['a', input({})]]));
+    p.swapCd = 0; // clear the post-swap gate
+    w.setActiveClass(p, 'knight');
+    p.pos = { ...w.bosses[0].pos };
+    w.step(SIM_DT, new Map([['a', input({ sub1: true })]]));
+    expect(p.cooldowns.sub1 ?? 0).toBeGreaterThan(0); // active on the owning class
+  });
 });
 
 describe('subclass lookups', () => {

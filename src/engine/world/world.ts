@@ -129,7 +129,7 @@ import { getClass, cloneAbilities, slowAttackCooldowns } from '../content/classe
 import { applyUpgrades } from '../content/upgrades';
 import type { UpgradeId } from '../content/upgrades';
 import { applyCharUpgrades, previewAbilityTable } from '../content/charUpgrades';
-import { getSubSkill } from '../content/subclasses';
+import { getSubSkill, subclassOfSkill } from '../content/subclasses';
 import { coinsForRank } from '../content/ephemeral';
 import type { EphemeralStock } from '../content/ephemeral';
 import { getMonster, abilityById } from '../content/monsters';
@@ -166,6 +166,20 @@ import { FAIR_TELEGRAPH_GAP } from '../core/constants';
 
 const SLOTS: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
 const SUB_SLOTS: SubSlot[] = ['sub1', 'sub2'];
+
+/**
+ * Whether a hero's sub-slot skill is usable with their ACTIVE class (item 14). A
+ * subclass skill belongs to exactly one class; a multiclass hero who swaps to a
+ * different class should not be able to cast (or see) it. A single-class hero — or
+ * a skill whose owning class we can't resolve — always passes, so nothing regresses.
+ */
+function subSlotForActiveClass(p: Player, slot: SubSlot): boolean {
+  const idx = slot === 'sub1' ? 0 : 1;
+  const id = p.subSkillIds?.[idx];
+  if (!id) return false;
+  const owner = subclassOfSkill(id)?.classId;
+  return owner == null || owner === p.classId;
+}
 /** Cooldown gate (s) after a multiclass swap, so it can't be spammed for free casts. */
 const CLASS_SWAP_CD = 1.0;
 // Ephemeral shop consumables (item 21).
@@ -822,9 +836,12 @@ export class World {
             const fired = cmd.autofire ? held : held && !p.prevButtons[slot];
             if (fired) this.tryUseAbility(p, slot, moveDir);
           }
-          // Subclass skills (item 13) — same edge / autofire rules.
+          // Subclass skills (item 13) — same edge / autofire rules, but only while
+          // wielding the class the skill belongs to (item 14: a multiclass hero's
+          // sub skills go dormant when they swap to a class that doesn't own them).
           for (const slot of SUB_SLOTS) {
             if (!p.subAbilities?.[slot]) continue;
+            if (!subSlotForActiveClass(p, slot)) continue;
             const held = cmd.buttons[slot] ?? false;
             const fired = cmd.autofire ? held : held && !(p.prevButtons[slot] ?? false);
             if (fired) this.tryUseAbility(p, slot, moveDir);

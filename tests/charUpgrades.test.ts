@@ -1089,6 +1089,25 @@ describe('describeCharOffer', () => {
   it('returns null for an unrecognised id', () => {
     expect(describeCharOffer('knight', [], 'bogus')).toBeNull();
   });
+
+  it('appends a current-stats preview naming the retuned ability (item 4)', () => {
+    const v = describeCharOffer('ranger', [], 'rg_pierce')!;
+    // The boon retunes Arrow + Multishot, so the tooltip shows their resolved line.
+    expect(v.desc).toContain('Now →');
+    expect(v.desc).toContain('Arrow:');
+  });
+
+  it('the preview reflects the CURRENT stacked stats, not fixed numbers (item 4)', () => {
+    const arrowDmg = (desc: string): number => {
+      const after = desc.split('Now →')[1] ?? '';
+      return Number(/Arrow: (\d+) dmg/.exec(after)?.[1] ?? '0');
+    };
+    const fresh = describeCharOffer('ranger', [], 'rg_pierce')!;
+    // A hero who already stacked the boon once sees a HIGHER arrow number in the
+    // preview — the tooltip is computed off their real current kit.
+    const stacked = describeCharOffer('ranger', ['rg_pierce'], 'rg_pierce')!;
+    expect(arrowDmg(stacked.desc)).toBeGreaterThan(arrowDmg(fresh.desc));
+  });
 });
 
 describe('charUpgradeBadge', () => {

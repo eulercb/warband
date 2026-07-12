@@ -10,7 +10,7 @@ import { isTouchCapable } from '../../input/touch';
 import { requestPause, playUiSound } from '../state/session';
 import VolumeControl from './VolumeControl';
 import { previewAbilityTable } from '../../engine/content/charUpgrades';
-import { getSubSkill } from '../../engine/content/subclasses';
+import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
 import { AFFIXES } from '../../engine/content/affixes';
 import { HARDCORE_DEADLINE_WARN } from '../../engine/core/constants';
 import {
@@ -354,10 +354,14 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
             {SLOT_ORDER.map((slot) => (
               <AbilityIcon key={slot} slot={slot} def={abilityTable[slot]} source={source} />
             ))}
-            {/* Subclass skills (item 13) — bound to sub1/sub2. */}
+            {/* Subclass skills (item 13) — bound to sub1/sub2. Only shown while the
+                hero wields the class the skill belongs to (item 14): a multiclass
+                hero's sub buttons vanish when they swap to a class without them. */}
             {hud.subSkills.map((id, i) => {
               const sk = getSubSkill(id);
               if (!sk) return null;
+              const owner = subclassOfSkill(id)?.classId;
+              if (owner != null && owner !== hud.classId) return null;
               return (
                 <AbilityIcon
                   key={id}
