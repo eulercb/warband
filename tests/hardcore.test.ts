@@ -1,6 +1,7 @@
 /**
  * Hardcore mode (item 11): a deadlier run. Corruption opens sooner and comes
- * faster, and revives are limited per fight. Both are host-authoritative World
+ * faster, revives are limited per fight, and a real kill-DEADLINE wipes the band
+ * to defeat if the boss isn't down in time. All host-authoritative World
  * behaviour, so we drive a real World.
  */
 import { describe, it, expect } from 'vitest';
@@ -9,11 +10,23 @@ import { firstCorruptionDelay } from '../src/engine/world/corruption';
 import {
   HARDCORE_CORRUPTION_MULT,
   HARDCORE_REVIVES_PER_FIGHT,
+  HARDCORE_TIME_BUDGET,
+  HARDCORE_DEADLINE_MULT,
   REVIVE_TIME,
   DOWNED_BLEEDOUT,
   SIM_DT,
 } from '../src/engine/core/constants';
 import type { InputCommand } from '../src/engine/core/types';
+
+/** A one-player hardcore World on `dragon` (the balance-reference boss). */
+function hcWorld(seed = 9, hardcore = true): World {
+  return new World({
+    monsterId: 'dragon',
+    seed,
+    players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+    hardcore,
+  });
+}
 
 function reviveInput(): InputCommand {
   return {
@@ -105,5 +118,95 @@ describe('hardcore revive budget', () => {
       players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
     });
     expect(w.reviveBudget).toBe(Infinity);
+  });
+});
+
+describe('hardcore kill-deadline', () => {
+  it('fixes a finite deadline at spawn (multiple of the expected kill budget)', () => {
+    const w = hcWorld();
+    expect(Number.isFinite(w.hardcoreDeadline)).toBe(true);
+    // A lone boss ⇒ budget × the base multiplier.
+    expect(w.hardcoreDeadline).toBeCloseTo(HARDCORE_TIME_BUDGET * HARDCORE_DEADLINE_MULT, 5);
+    // The countdown starts at the full deadline and clamps at 0.
+    expect(w.deadlineRemaining()).toBeCloseTo(w.hardcoreDeadline, 5);
+  });
+
+  it('wipes the band to defeat when the deadline passes with a boss still up', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 9,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'cleric' },
+      ],
+      hardcore: true,
+    });
+    expect(w.boss!.hp).toBeGreaterThan(0);
+    expect(w.finished).toBe(false);
+
+    // Jump the clock to the brink; a single tick then tips it over the deadline.
+    w.elapsed = w.hardcoreDeadline - SIM_DT / 2;
+    w.step(SIM_DT, new Map());
+
+    expect(w.finished).toBe(true);
+    expect(w.outcome).toBe('defeat');
+    expect(w.result().outcome).toBe('defeat');
+    // The whole band is wiped and the moment emits a deadline cue.
+    expect(w.players.every((p) => p.state === 'dead')).toBe(true);
+    expect(w.events.some((e) => e.t === 'deadline')).toBe(true);
+  });
+
+  it('does NOT fail the fight one tick before the deadline', () => {
+    const w = hcWorld();
+    // Land just shy of the wall — the fight is still live after a tick.
+    w.elapsed = w.hardcoreDeadline - SIM_DT * 3;
+    w.step(SIM_DT, new Map());
+    expect(w.finished).toBe(false);
+    expect(w.outcome).toBeNull();
+  });
+
+  it('a kill landing on the deadline tick still wins (victory checked first)', () => {
+    const w = hcWorld(2);
+    w.elapsed = w.hardcoreDeadline; // exactly at the wall…
+    for (const b of w.bosses) b.hp = 0; // …but the boss just fell
+    w.step(SIM_DT, new Map());
+    expect(w.outcome).toBe('victory');
+  });
+
+  it('a shared-arena pack earns a longer deadline than a lone boss', () => {
+    const solo = hcWorld(1);
+    const twin = new World({
+      monsterId: 'dragon',
+      coBosses: ['dragon'],
+      seed: 1,
+      players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+      hardcore: true,
+    });
+    expect(twin.bosses.length).toBe(2);
+    expect(twin.hardcoreDeadline).toBeGreaterThan(solo.hardcoreDeadline);
+  });
+
+  it('a standard (non-hardcore) fight has no deadline and never times out', () => {
+    const w = hcWorld(9, false);
+    expect(w.hardcoreDeadline).toBe(Infinity);
+    expect(w.deadlineRemaining()).toBe(Infinity);
+    // Far beyond any hardcore deadline, a standard fight simply keeps going.
+    w.elapsed = 100_000;
+    w.step(SIM_DT, new Map());
+    expect(w.finished).toBe(false);
+    expect(w.outcome).toBeNull();
+  });
+
+  it('ships the countdown in a hardcore snapshot and nothing in a standard one', () => {
+    const hc = hcWorld(4);
+    const std = hcWorld(4, false);
+    // Present + full at spawn for hardcore; absent for a standard fight.
+    expect(hc.serialize().deadlineRemaining).toBeCloseTo(hc.hardcoreDeadline, 5);
+    expect(std.serialize().deadlineRemaining).toBeUndefined();
+    // It counts down as the fight runs, and reaches the render state the HUD reads.
+    hc.step(SIM_DT, new Map());
+    expect(hc.serialize().deadlineRemaining!).toBeLessThan(hc.hardcoreDeadline);
+    expect(hc.toRenderState(null).deadlineRemaining!).toBeGreaterThan(0);
+    expect(std.toRenderState(null).deadlineRemaining).toBeUndefined();
   });
 });

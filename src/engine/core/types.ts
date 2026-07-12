@@ -792,6 +792,9 @@ export type GameEvent =
   | { t: 'stunResist'; id: EntityId; pos: Vec2 }
   // The fight was just won — heroes cheer and fireworks fly (victory lap).
   | { t: 'victory'; pos: Vec2 }
+  // Hardcore kill-deadline expired (item 11) — the clock ran out with a boss
+  // still up and the band wiped. Drives a "time's up" cue on the final frame.
+  | { t: 'deadline'; pos: Vec2 }
   // A mid-fight corruption beat just fired (enrage surge, telegraph rain, a
   // healing rift…). Drives a center-screen banner + a world-anchored burst.
   | { t: 'corruption'; kind: CorruptionKind; name: string; pos: Vec2; good?: boolean }
@@ -925,6 +928,12 @@ export interface Snapshot {
   events: GameEvent[];
   /** Run seed — drives the renderer's procedural ground tiling (visual only). */
   seed: number;
+  /**
+   * Hardcore kill-deadline (item 11): seconds left before the fight is lost on
+   * the clock. Present only in a hardcore fight — the HUD shows the countdown
+   * whenever this is defined. Absent for every standard fight.
+   */
+  deadlineRemaining?: number;
 }
 
 /**
@@ -945,6 +954,8 @@ export interface RenderState {
   telegraphs?: Telegraph[];
   events: GameEvent[];
   seed: number;
+  /** Hardcore kill-deadline countdown seconds (see Snapshot.deadlineRemaining). */
+  deadlineRemaining?: number;
   localPlayerId: EntityId | null;
   arena: { w: number; h: number };
   /** Playground totems (local practice world only). */

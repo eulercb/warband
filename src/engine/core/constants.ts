@@ -307,6 +307,8 @@ export const CORRUPTION_SWARM_COUNT = 3;
 // A deadlier run for aggressive players. There's an EXPECTED kill time per boss;
 // corruption beats already come more often, and ACCELERATE the longer a fight
 // drags past that budget, so a party that can't close the kill drowns in beats.
+// That death spiral is the WARNING; a hard kill-DEADLINE is the wall — let the
+// clock run out with a boss still standing and the band wipes to defeat.
 // Revives are limited per fight and a wipe has no free retry (the run ends).
 /** Baseline corruption cadence multiplier in hardcore (< 1 = more frequent). */
 export const HARDCORE_CORRUPTION_MULT = 0.55;
@@ -318,6 +320,16 @@ export const HARDCORE_RAMP_TAU = 45;
 export const HARDCORE_MIN_INTERVAL = 3.5;
 /** Revives a hardcore band gets per fight before a downed hero is lost for good. */
 export const HARDCORE_REVIVES_PER_FIGHT = 2;
+// Hard kill-DEADLINE. Multiples of the expected-kill budget above: a lone boss
+// must fall within HARDCORE_DEADLINE_MULT × budget, and a shared-arena pack earns
+// HARDCORE_DEADLINE_PACK_BONUS × budget for each EXTRA boss (more health bars to
+// chew through). The budget is a flat time (party DPS already scales with the
+// boss-HP knobs — player count, tier, endless cycle), so the deadline stays flat
+// too rather than double-counting HP. Single boss ⇒ 75·2.4 = 180 s; twin ⇒ 225 s.
+export const HARDCORE_DEADLINE_MULT = 2.4;
+export const HARDCORE_DEADLINE_PACK_BONUS = 0.6;
+/** Seconds-remaining under which the HUD countdown flips to its urgent (red) state. */
+export const HARDCORE_DEADLINE_WARN = 30;
 
 // --- Adds (skeletons) ---
 export const ADD_HP = 60;
