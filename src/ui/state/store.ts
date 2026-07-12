@@ -229,6 +229,9 @@ export interface AppState {
   addMyExtraClass: (classId: ClassId) => void;
   /** Bank this fight's ephemeral coins from a landed result (item 21). */
   awardCoinsFromResult: (result: FightResult) => void;
+  /** Reset the coin balance + carried stock at a gauntlet boundary (item 23), keeping
+   *  the hero's persistent build. Coins accumulate WITHIN a 5-boss run, then reset. */
+  resetCoins: () => void;
   /** Buy an ephemeral perk if affordable; returns true on success (item 21). */
   buyEphemeral: (id: EphemeralId) => boolean;
   /** Clear the pending ephemeral stock once a fight consumes it (item 21). */
@@ -354,6 +357,7 @@ export const useStore = create<AppState>((set, get) => ({
     const mine = result.stats?.find((st) => st.peerId === sess.selfId);
     if (mine?.coins) set({ myCoins: get().myCoins + mine.coins });
   },
+  resetCoins: () => set({ myCoins: 0, myEphemeral: {} }),
   buyEphemeral: (id) => {
     const def = EPHEMERAL[id];
     if (!def) return false;

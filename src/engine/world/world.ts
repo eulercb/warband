@@ -56,6 +56,7 @@ import {
   SCORE_PER_REVIVE,
   SCORE_PER_DEATH,
   TWIN_HP_FRAC,
+  PACK_EARLY_DMG_EASE,
   TWIN_DMG_FRAC,
   BOSS_HP_SCALE,
   BOSS_REGEN_MAX_FRAC,
@@ -248,6 +249,10 @@ export interface WorldInit {
   players: WorldPlayerInit[];
   /** Endless cycle (0 = first run) — scales boss HP/damage (scaling.ts). */
   cycle?: number;
+  /** Slot within the current run (0-based) and the run's length, so a multi-boss
+   *  pack can be eased against party progression early on (item 10). Default 0/1. */
+  runIndex?: number;
+  runTotal?: number;
   /** Endless "type" modifier layered on the boss (Frost, Dark, …). */
   modifier?: BossModifier | null;
   /**
@@ -361,6 +366,11 @@ export class World {
   seed: number;
 
   scaling: ScalingResult;
+  /** Endless cycle + this encounter's slot in the run, for progression-aware pack
+   *  easing (item 10). Default cycle 0, slot 0 of a length-1 run. */
+  private readonly cycle: number;
+  private readonly runIndex: number;
+  private readonly runTotal: number;
   /** Def of the encounter's LEAD boss (terrain theme, legacy single-boss paths). */
   monsterDef: MonsterDef;
   modifier: BossModifier | null;
@@ -410,6 +420,9 @@ export class World {
     this.rng = new Rng(init.seed);
     this.seed = init.seed;
     this.scaling = computeScaling(init.players.length, init.cycle ?? 0);
+    this.cycle = init.cycle ?? 0;
+    this.runIndex = init.runIndex ?? 0;
+    this.runTotal = init.runTotal ?? 1;
     this.monsterDef = getMonster(init.monsterId);
     this.modifier = init.modifier ?? null;
     this.practice = init.practice ?? false;
@@ -750,6 +763,15 @@ export class World {
     this.events.push({ t: 'heal', pos: { ...p.pos }, amount: healed, targetId: p.id });
   }
 
+  /** Damage ease for a multi-boss pack, tied to party progression (item 10): full
+   *  (1) in endless or by the run's end; softer for an early first-run pack. */
+  private packDamageEase(): number {
+    if (this.cycle > 0) return 1; // a built endless party takes packs at full strength
+    const progress = this.runTotal > 1 ? this.runIndex / (this.runTotal - 1) : 1;
+    const p = Math.max(0, Math.min(1, progress));
+    return PACK_EARLY_DMG_EASE + (1 - PACK_EARLY_DMG_EASE) * p;
+  }
+
   private spawnBosses(ids: MonsterId[], bossAffixes?: AffixId[][]): void {
     const n = ids.length;
     const twin = n > 1;
@@ -757,7 +779,10 @@ export class World {
     // of them share the floor (twin ≈ 0.62 HP / 0.8 dmg; a triplet/quad even
     // less), so N-at-once stays chaotic rather than simply N× lethal.
     const hpFrac = twin ? TWIN_HP_FRAC * Math.sqrt(2 / n) : 1;
-    const dmgFrac = twin ? TWIN_DMG_FRAC * Math.pow(2 / n, 0.35) : 1;
+    // Ease a pack's damage against party progression (item 10): a multi-boss event
+    // early in the FIRST run (cycle 0), when the band has barely any upgrades, hits
+    // softer, ramping to full by the run's end. Endless cycles pay full (built party).
+    const dmgFrac = twin ? TWIN_DMG_FRAC * Math.pow(2 / n, 0.35) * this.packDamageEase() : 1;
     ids.forEach((id, i) => {
       const def = getMonster(id);
       // The practice dummy is a UI/training target, not a balance target — it

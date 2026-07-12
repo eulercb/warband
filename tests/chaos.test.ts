@@ -177,6 +177,24 @@ describe('twin-boss encounters', () => {
     expect(w.bosses[0].dmgScale).toBeLessThan(1);
   });
 
+  it('eases a pack’s damage early in a run, ramping to full by the end (item 10)', () => {
+    const mk = (runIndex: number, runTotal: number, cycle = 0) =>
+      new World({
+        monsterId: 'dragon',
+        seed: 11,
+        players: [{ peerId: 'k', name: 'K', classId: 'knight' }],
+        coBosses: ['troll'],
+        runIndex,
+        runTotal,
+        cycle,
+      });
+    const early = mk(1, 5).bosses[0].dmgScale!;
+    const late = mk(4, 5).bosses[0].dmgScale!;
+    const endless = mk(0, 5, 1).bosses[0].dmgScale!;
+    expect(early).toBeLessThan(late); // an early-run pack hits softer
+    expect(late).toBeCloseTo(endless, 5); // the last slot pays full, like endless
+  });
+
   it('the fight continues after the first boss falls and ends after both', () => {
     const w = twinWorld();
     w.bosses[0].hp = 0;

@@ -672,6 +672,8 @@ export class Host implements NetSession {
       seed,
       players: roster,
       cycle: this.cycle,
+      runIndex: this.runIndex,
+      runTotal: this.runOrder.length,
       modifier,
       coBosses,
       bossAffixes,

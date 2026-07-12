@@ -186,6 +186,13 @@ export const STUN_DR_FLOOR = 0.2; // s — anything shorter is resisted outright
 // chaotic but survivable.
 export const TWIN_HP_FRAC = 0.62;
 export const TWIN_DMG_FRAC = 0.8;
+/**
+ * Multi-boss packs are eased against PARTY PROGRESSION (item 10). The party grows
+ * a boss's worth of upgrades per slot, so a pack that lands early in a run — when
+ * the band is barely kitted — hits at this fraction of its damage, ramping to full
+ * (1.0) by the run's end. Endless cycles (a fully-built party) always pay full.
+ */
+export const PACK_EARLY_DMG_EASE = 0.78;
 /** Chance a mid-run slot rolls a MULTI-boss encounter (scales up in endless). */
 export const TWIN_BASE_CHANCE = 0.38;
 export const TWIN_CHANCE_PER_CYCLE = 0.14;
