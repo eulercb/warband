@@ -813,10 +813,11 @@ export class World {
             const fired = cmd.autofire ? held : held && !(p.prevButtons[slot] ?? false);
             if (fired) this.tryUseAbility(p, slot, moveDir);
           }
-          // Multiclass swap (item 14) — a fresh press cycles to the next class.
-          if ((cmd.buttons.swap ?? false) && !(p.prevButtons.swap ?? false)) {
-            this.cycleClass(p);
-          }
+          // Multiclass swap (item 14) is no longer driven off the raw button here:
+          // the client owns the tap-vs-hold gesture (a quick tap cycles, a hold
+          // opens the class radial) and drives it through `requestClassSwap` so a
+          // hold can't accidentally cycle on the initial press. See net protocol
+          // `swap` + `requestClassSwap` below.
         }
       }
 
@@ -857,6 +858,27 @@ export class World {
     const cur = p.classes.indexOf(p.classId);
     const next = p.classes[(cur + 1) % p.classes.length];
     this.setActiveClass(p, next);
+  }
+
+  /**
+   * Host-authoritative multiclass swap request for a peer (item 14). The single
+   * deterministic entry point both the tap-cycle and the hold-to-open class radial
+   * resolve through: with `target` it swaps directly to that class (the radial),
+   * without it cycles to the next owned class (a quick tap). Validated — a target
+   * the hero doesn't own is ignored, dead/downed heroes can't swap, and swaps are
+   * inert outside a real fight — so a misbehaving client can't force a bad swap.
+   * The swap-gate + per-class cooldowns are enforced by `setActiveClass`.
+   */
+  requestClassSwap(peerId: string, target?: ClassId): void {
+    if (this.scene !== null) return; // only in a live fight, never a menu scene
+    const p = this.players.find((x) => x.peerId === peerId);
+    if (!p || p.state !== 'alive') return;
+    if (target != null) {
+      if (!p.classes || !p.classes.includes(target)) return; // must own the target
+      this.setActiveClass(p, target);
+    } else {
+      this.cycleClass(p);
+    }
   }
 
   /**
@@ -2400,6 +2422,7 @@ export class World {
       score: Math.round(this.playerScore(p)),
       subSkills: p.subSkillIds,
       classes: p.classes,
+      swapCd: p.swapCd,
       potions: p.potions,
     };
   }

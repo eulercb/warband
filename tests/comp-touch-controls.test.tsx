@@ -28,6 +28,7 @@ vi.mock('../src/input/touch', () => ({
   setTouchMove: vi.fn(),
   setTouchAim: vi.fn(),
   setTouchButton: vi.fn(),
+  setTouchSwapAim: vi.fn(),
   resetTouch: vi.fn(),
   isTouchCapable: vi.fn(() => true),
 }));
@@ -46,6 +47,7 @@ import {
   setTouchMove,
   setTouchAim,
   setTouchButton,
+  setTouchSwapAim,
   resetTouch,
   isTouchCapable,
 } from '../src/input/touch';
@@ -57,6 +59,7 @@ const ELLIPSIS = '…';
 const setTouchMoveMock = vi.mocked(setTouchMove);
 const setTouchAimMock = vi.mocked(setTouchAim);
 const setTouchButtonMock = vi.mocked(setTouchButton);
+const setTouchSwapAimMock = vi.mocked(setTouchSwapAim);
 const resetTouchMock = vi.mocked(resetTouch);
 const isTouchCapableMock = vi.mocked(isTouchCapable);
 
@@ -319,5 +322,94 @@ describe('<TouchControls> ability buttons', () => {
     expect(resetTouchMock).not.toHaveBeenCalled();
     unmount();
     expect(resetTouchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Swap radial button (item 14) — hold-drag mini-stick that opens the class radial
+// ---------------------------------------------------------------------------
+
+describe('<TouchControls> swap radial button', () => {
+  const SWAP_DRAG_R = 56;
+
+  function renderSwap(): HTMLElement {
+    // A multiclass hero (classes.length > 1) is what surfaces the Swap button.
+    useHudStore.getState().set({ classId: 'knight', classes: ['knight', 'mage'] });
+    const { container } = render(<TouchControls />);
+    const btn = container.querySelector('.wb-touch-btn-swap') as HTMLElement;
+    centreStickAtOrigin(btn); // pin its centre (the drag origin) to (0,0)
+    return btn;
+  }
+
+  it('holds swap on pointerdown and reports a centred (zero) direction', () => {
+    const btn = renderSwap();
+    fireEvent.pointerDown(btn, { pointerId: 1, clientX: 0, clientY: 0 });
+    expect(btn.classList.contains('held')).toBe(true);
+    expect(setTouchButtonMock).toHaveBeenLastCalledWith('swap', true);
+    expect(setTouchSwapAimMock).toHaveBeenLastCalledWith(0, 0);
+  });
+
+  it('a drag beyond the dead-zone reports a scaled unit direction', () => {
+    const btn = renderSwap();
+    fireEvent.pointerDown(btn, { pointerId: 1, clientX: 0, clientY: 0 });
+    setTouchSwapAimMock.mockClear();
+    // Drag straight up 40px: |v| = 40 (> 12 dead-zone), scale = 40/56.
+    fireEvent.pointerMove(btn, { pointerId: 1, clientX: 0, clientY: -40 });
+    const [x, y] = setTouchSwapAimMock.mock.calls.at(-1)!;
+    expect(x).toBe(0);
+    expect(y).toBeCloseTo(-40 / SWAP_DRAG_R, 6);
+  });
+
+  it('clamps a big drag to the rim (magnitude 1)', () => {
+    const btn = renderSwap();
+    fireEvent.pointerDown(btn, { pointerId: 1, clientX: 0, clientY: 0 });
+    setTouchSwapAimMock.mockClear();
+    fireEvent.pointerMove(btn, { pointerId: 1, clientX: 200, clientY: 0 }); // way past the radius
+    const [x, y] = setTouchSwapAimMock.mock.calls.at(-1)!;
+    expect(x).toBeCloseTo(1, 6);
+    expect(y).toBe(0);
+  });
+
+  it('a tiny drag inside the dead-zone stays centred (cancel)', () => {
+    const btn = renderSwap();
+    fireEvent.pointerDown(btn, { pointerId: 1, clientX: 0, clientY: 0 });
+    setTouchSwapAimMock.mockClear();
+    fireEvent.pointerMove(btn, { pointerId: 1, clientX: 3, clientY: 4 }); // |v| = 5 < 12
+    expect(setTouchSwapAimMock).toHaveBeenLastCalledWith(0, 0);
+  });
+
+  it('releases swap on pointerup and re-centres the direction', () => {
+    const btn = renderSwap();
+    fireEvent.pointerDown(btn, { pointerId: 1, clientX: 0, clientY: 0 });
+    fireEvent.pointerMove(btn, { pointerId: 1, clientX: 0, clientY: -40 });
+    fireEvent.pointerUp(btn, { pointerId: 1 });
+    expect(btn.classList.contains('held')).toBe(false);
+    expect(setTouchButtonMock).toHaveBeenLastCalledWith('swap', false);
+    expect(setTouchSwapAimMock).toHaveBeenLastCalledWith(0, 0);
+  });
+
+  it('releases on pointercancel too', () => {
+    const btn = renderSwap();
+    fireEvent.pointerDown(btn, { pointerId: 1, clientX: 0, clientY: 0 });
+    fireEvent.pointerCancel(btn, { pointerId: 1 });
+    expect(btn.classList.contains('held')).toBe(false);
+    expect(setTouchButtonMock).toHaveBeenLastCalledWith('swap', false);
+  });
+
+  it('does NOT release when the finger drags off the button (no pointerleave release)', () => {
+    const btn = renderSwap();
+    fireEvent.pointerDown(btn, { pointerId: 1, clientX: 0, clientY: 0 });
+    setTouchButtonMock.mockClear();
+    fireEvent.pointerLeave(btn, { pointerId: 1 });
+    // Still held: dragging the finger past the rim keeps the radial gesture alive.
+    expect(btn.classList.contains('held')).toBe(true);
+    expect(setTouchButtonMock).not.toHaveBeenCalledWith('swap', false);
+  });
+
+  it('a move before any press is ignored (no active pointer)', () => {
+    const btn = renderSwap();
+    setTouchSwapAimMock.mockClear();
+    fireEvent.pointerMove(btn, { pointerId: 1, clientX: 0, clientY: -40 });
+    expect(setTouchSwapAimMock).not.toHaveBeenCalled();
   });
 });

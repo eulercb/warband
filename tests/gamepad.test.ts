@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { sampleGamepad, rumble } from '../src/input/gamepad';
+import { sampleGamepad, rumble, rawGamepadAim } from '../src/input/gamepad';
 
 // ---------------------------------------------------------------------------
 // Fakes. The module reads the browser Gamepad API off the global `navigator`
@@ -196,6 +196,29 @@ describe('gamepad: aim from right stick (unit vector)', () => {
     expect(magnitude(right.state.aim)).toBeCloseTo(1, 5);
     expect(right.state.move.x).toBeCloseTo(0, 6);
     expect(right.state.move.y).toBeCloseTo(0, 6);
+  });
+});
+
+describe('gamepad: rawGamepadAim (class-radial direction)', () => {
+  it('returns {0,0} when no pad is connected', () => {
+    stubPads([]);
+    expect(rawGamepadAim()).toEqual({ x: 0, y: 0 });
+  });
+
+  it('returns a dead-zoned right-stick vector whose magnitude means "distance from centre"', () => {
+    // Unlike the sanitized aim, this is NOT unit length: it carries the rescaled
+    // stick magnitude so "how far pushed" survives (a full push ≈ 1).
+    stubPads([makePad({ axes: [0, 0, 1, 0] })]);
+    const full = rawGamepadAim();
+    expect(full.x).toBeCloseTo(1, 5);
+    expect(full.y).toBeCloseTo(0, 5);
+    expect(magnitude(full)).toBeGreaterThan(0);
+  });
+
+  it('returns {0,0} inside the dead-zone so "centred = no selection" is detectable', () => {
+    // hypot(0.1, 0.05) < 0.15 → inside the radial dead-zone.
+    stubPads([makePad({ axes: [0, 0, 0.1, 0.05] })]);
+    expect(rawGamepadAim()).toEqual({ x: 0, y: 0 });
   });
 });
 

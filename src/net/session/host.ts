@@ -21,6 +21,7 @@ import type {
   PauseReqMsg,
   UpgradeMsg,
   SpecialMsg,
+  SwapMsg,
   NextReadyMsg,
   NextReadyStateMsg,
   ByeMsg,
@@ -170,6 +171,7 @@ export class Host implements NetSession {
   private readonly pauseReqAction: NetAction<PauseReqMsg>;
   private readonly upgradeAction: NetAction<UpgradeMsg>;
   private readonly specialAction: NetAction<SpecialMsg>;
+  private readonly swapAction: NetAction<SwapMsg>;
   private readonly nextReadyAction: NetAction<NextReadyMsg>;
   private readonly nextReadyStateAction: NetAction<NextReadyStateMsg>;
   private readonly byeAction: NetAction<ByeMsg>;
@@ -295,6 +297,7 @@ export class Host implements NetSession {
     this.pauseReqAction = this.action(ACTIONS.pauseReq);
     this.upgradeAction = this.action(ACTIONS.upgrade);
     this.specialAction = this.action(ACTIONS.special);
+    this.swapAction = this.action(ACTIONS.swap);
     this.nextReadyAction = this.action(ACTIONS.nextReady);
     this.nextReadyStateAction = this.action(ACTIONS.nextReadyState);
     this.byeAction = this.action(ACTIONS.bye);
@@ -346,6 +349,13 @@ export class Host implements NetSession {
     // --- Client -> host run-clear special picks (subclass skill / extra class) ---
     this.specialAction.onMessage = (data, ctx) => {
       this.recordSpecial(ctx.peerId, data);
+    };
+
+    // --- Client -> host multiclass swap (tap-cycle or a radial's targeted class) ---
+    // Applied straight to the live world (host-authoritative + validated there);
+    // JS is single-threaded so this never interleaves with a sim step.
+    this.swapAction.onMessage = (data, ctx) => {
+      this.world?.requestClassSwap(ctx.peerId, data.target);
     };
 
     // --- Client -> host "ready for next boss" during the interstitial ---
@@ -829,6 +839,11 @@ export class Host implements NetSession {
   /** NetSession: record the host's own run-clear extra-class pick (item 14). */
   chooseExtraClass(classId: ClassId): void {
     this.recordSpecial(selfId, { extraClass: classId });
+  }
+
+  /** NetSession: apply the host's own multiclass swap directly to the world (item 14). */
+  swapClass(target?: ClassId): void {
+    this.world?.requestClassSwap(selfId, target);
   }
 
   /** NetSession: buy the host's own ephemeral-shop perk for the next fight (item 21). */

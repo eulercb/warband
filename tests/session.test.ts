@@ -32,6 +32,7 @@ function makeSpies(): Record<string, ReturnType<typeof vi.fn>> {
     'requestPause',
     'chooseUpgrade',
     'chooseCharUpgrade',
+    'swapClass',
     'setNextReady',
     'continueEndless',
     'endRun',
@@ -363,6 +364,13 @@ describe('session upgrade + pause relays', () => {
     expect(hosts[0].spies.requestPause).toHaveBeenCalledWith(true);
     session.setNextReady(true);
     expect(hosts[0].spies.setNextReady).toHaveBeenCalledWith(true);
+  });
+
+  it('swapClass relays a targeted (radial) and a targetless (cycle) swap', () => {
+    session.swapClass('mage'); // radial release onto a specific class
+    expect(hosts[0].spies.swapClass).toHaveBeenCalledWith('mage');
+    session.swapClass(); // quick tap → cycle
+    expect(hosts[0].spies.swapClass).toHaveBeenLastCalledWith(undefined);
   });
 });
 

@@ -114,6 +114,18 @@ export function sampleGamepad(): { state: InputState; connected: boolean; active
 }
 
 /**
+ * Raw right-stick aim (dead-zoned), for the class-radial's pointing direction.
+ * Unlike the InputManager's sanitized aim — which persists the last reticle
+ * heading so it is never zero — this returns {0,0} inside the dead-zone, so
+ * "centred = no selection" is detectable while choosing a class to swap to.
+ */
+export function rawGamepadAim(): Vec2 {
+  const pad = firstConnectedPad();
+  if (!pad) return { x: 0, y: 0 };
+  return applyDeadzone(pad.axes[2] ?? 0, pad.axes[3] ?? 0);
+}
+
+/**
  * Fire a standard "dual-rumble" haptic effect on the first connected pad.
  * Fully feature-detected and wrapped in try/catch: browsers/pads without the
  * Gamepad haptics extension simply do nothing. DualSense adaptive triggers are

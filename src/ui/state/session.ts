@@ -419,6 +419,16 @@ export function chooseExtraClass(classId: ClassId): void {
   s.addMyExtraClass(classId);
 }
 
+/**
+ * Request a multiclass swap (item 14). `target` swaps directly to that owned
+ * class (the class radial landed on it); omitted, cycles to the next owned class
+ * (a quick tap). Host-authoritative — the host validates + applies it, and the
+ * result arrives back through the normal snapshot stream.
+ */
+export function swapClass(target?: ClassId): void {
+  useStore.getState().session?.swapClass(target);
+}
+
 /** Mark this player ready (or not) to advance to the next boss. */
 export function setNextReady(ready: boolean): void {
   useStore.getState().session?.setNextReady(ready);

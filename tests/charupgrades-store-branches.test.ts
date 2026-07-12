@@ -512,6 +512,7 @@ function makeSession(onLeave: () => void = noop): NetSession {
     chooseCharUpgrade: noop,
     chooseSubSkill: noop,
     chooseExtraClass: noop,
+    swapClass: noop,
     buyEphemeral: noop,
     setNextReady: noop,
     leave: onLeave,

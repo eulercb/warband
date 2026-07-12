@@ -373,38 +373,80 @@ describe('world-branches: input + cast', () => {
 // multiclass (item 14)
 // ---------------------------------------------------------------------------
 
-describe('world-branches: multiclass swap', () => {
-  it('a swap press cycles the active class and gates re-swaps behind a cooldown', () => {
+describe('world-branches: multiclass swap (requestClassSwap)', () => {
+  function multi() {
     const w = makeWorld({
-      players: [{ peerId: 'a', name: 'A', classId: 'knight', extraClasses: ['mage'] }],
+      players: [{ peerId: 'a', name: 'A', classId: 'knight', extraClasses: ['mage', 'cleric'] }],
     });
     w.boss = null;
     w.terrain = [];
+    return w;
+  }
+
+  it('a targetless request cycles to the next owned class and arms the swap gate', () => {
+    const w = multi();
     const p = w.players[0];
-    expect(p.classes).toEqual(['knight', 'mage']);
+    expect(p.classes).toEqual(['knight', 'mage', 'cleric']);
     expect(p.swapCd).toBe(0);
-    w.step(DT, new Map([['a', inp({ buttons: buttons({ swap: true }) })]]));
+    w.requestClassSwap('a'); // tap → cycle
     expect(p.classId).toBe('mage');
     expect(p.swapCd).toBeGreaterThan(0);
     const cd1 = p.swapCd!;
-    // The swap gate decays on subsequent ticks.
+    // The gate decays on subsequent ticks (and blocks an immediate re-cycle).
     w.step(DT, new Map([['a', inp()]]));
     expect(p.swapCd!).toBeLessThan(cd1);
   });
 
-  it('a single-class hero ignores the swap button', () => {
+  it('a targeted request swaps directly to that owned class (the radial)', () => {
+    const w = multi();
+    const p = w.players[0];
+    w.requestClassSwap('a', 'cleric'); // radial release onto Cleric — skips Mage
+    expect(p.classId).toBe('cleric');
+    expect(p.abilities?.a2.name).toBe(w.players[0].classTables?.cleric?.a2.name);
+  });
+
+  it('the swap gate blocks a second swap until it decays', () => {
+    const w = multi();
+    const p = w.players[0];
+    w.requestClassSwap('a', 'mage');
+    expect(p.classId).toBe('mage');
+    w.requestClassSwap('a', 'cleric'); // gated — swapCd still > 0
+    expect(p.classId).toBe('mage');
+  });
+
+  it('ignores a target the hero does not own', () => {
+    const w = multi();
+    const p = w.players[0];
+    w.requestClassSwap('a', 'ranger'); // not an owned class
+    expect(p.classId).toBe('knight');
+    expect(p.swapCd).toBe(0);
+  });
+
+  it('a single-class hero ignores a swap request', () => {
     const w = solo();
     w.boss = null;
     const p = w.players[0];
-    w.step(DT, new Map([['a', inp({ buttons: buttons({ swap: true }) })]]));
+    w.requestClassSwap('a'); // nothing to cycle to
     expect(p.classId).toBe('knight');
     expect(p.swapCd).toBeUndefined();
   });
 
+  it('ignores requests for an unknown or downed peer, and outside a fight', () => {
+    const w = multi();
+    const p = w.players[0];
+    w.requestClassSwap('nobody', 'mage'); // no such peer
+    expect(p.classId).toBe('knight');
+    p.state = 'downed';
+    w.requestClassSwap('a', 'mage'); // downed hero can't swap
+    expect(p.classId).toBe('knight');
+    p.state = 'alive';
+    w.scene = 'reward'; // a calm menu scene, not a live fight
+    w.requestClassSwap('a', 'mage');
+    expect(p.classId).toBe('knight');
+  });
+
   it('setActiveClass ignores a swap to the class already active', () => {
-    const w = makeWorld({
-      players: [{ peerId: 'a', name: 'A', classId: 'knight', extraClasses: ['mage'] }],
-    });
+    const w = multi();
     const p = w.players[0];
     const abilities = p.abilities;
     w.setActiveClass(p, 'knight'); // same class → no-op

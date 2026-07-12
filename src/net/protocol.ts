@@ -21,6 +21,7 @@ export const ACTIONS = {
   pauseReq: 'prq', // client -> host (request pause / resume of the shared sim)
   upgrade: 'upg', // client -> host (between-boss upgrade pick: generic and/or char)
   special: 'spc', // client -> host (run-clear special pick: subclass skill / extra class)
+  swap: 'swc', // client -> host (multiclass swap: cycle, or a radial's targeted class)
   nextReady: 'nrd', // client -> host (ready to advance to the next boss)
   nextReadyState: 'nrs', // host -> clients (how many are ready to advance)
   bye: 'bye', // either -> either (graceful leave, esp. host)
@@ -120,6 +121,16 @@ export interface SpecialMsg {
   buyEphemeral?: EphemeralId;
 }
 
+/**
+ * Client -> host: a multiclass swap request (item 14). `target` names the class
+ * the hero's class radial landed on (a direct swap); omitted, the host cycles to
+ * the next owned class (a quick tap). The host validates ownership + the swap
+ * gate, so this only ever expresses intent.
+ */
+export interface SwapMsg {
+  target?: ClassId;
+}
+
 /** Client -> host: this player is ready to advance to the next boss. */
 export interface NextReadyMsg {
   ready: boolean;
@@ -166,6 +177,12 @@ export interface NetSession {
   chooseSubSkill(subclassId: string, skillId: string): void;
   /** Submit a run-clear extra-class (multiclass) pick (item 14). */
   chooseExtraClass(classId: ClassId): void;
+  /**
+   * Request a multiclass swap (item 14): `target` swaps directly to that owned
+   * class (the class radial); omitted, cycles to the next owned class (a tap).
+   * Host-authoritative — the host validates and applies it to the live world.
+   */
+  swapClass(target?: ClassId): void;
   /** Buy a coin-priced ephemeral perk for the next fight (item 21). */
   buyEphemeral(id: EphemeralId): void;
   /** Mark this player ready (or not) to advance to the next boss. */

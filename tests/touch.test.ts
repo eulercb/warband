@@ -10,6 +10,8 @@ import {
   setTouchMove,
   setTouchAim,
   setTouchButton,
+  setTouchSwapAim,
+  touchSwapAim,
   resetTouch,
   touchEngaged,
   isTouchCapable,
@@ -67,5 +69,21 @@ describe('touch input source', () => {
 
   it('isTouchCapable does not throw in a DOM environment', () => {
     expect(typeof isTouchCapable()).toBe('boolean');
+  });
+
+  it('carries the class-radial swap-drag direction and clears it on reset', () => {
+    expect(touchSwapAim()).toEqual({ x: 0, y: 0 });
+    setTouchSwapAim(0.5, -0.5);
+    expect(touchSwapAim()).toEqual({ x: 0.5, y: -0.5 });
+    // Returned as a copy — mutating it can't corrupt the singleton.
+    const v = touchSwapAim();
+    v.x = 99;
+    expect(touchSwapAim().x).toBe(0.5);
+    // A non-zero drag counts as touch activity (wins over an idle keyboard).
+    expect(touchEngaged()).toBe(false); // swapAim alone isn't "engaged"…
+    setTouchButton('swap', true); // …but the held Swap button is
+    expect(touchEngaged()).toBe(true);
+    resetTouch();
+    expect(touchSwapAim()).toEqual({ x: 0, y: 0 });
   });
 });
