@@ -403,8 +403,9 @@ describe('<HUD>', () => {
     affixes: [],
   };
 
-  it('renders the hardcore kill-deadline clock (non-urgent) as mm:ss beneath the boss bar', () => {
-    // 90s remaining (> HARDCORE_DEADLINE_WARN of 30) → present but not urgent.
+  it('shows NO ticking deadline timer — the deadline warns via banners now (item 24)', () => {
+    // Even in a hardcore fight with time left, the HUD no longer paints a visual
+    // countdown clock; warnings arrive as transient banners (see world.stepDeadline).
     useHudStore.getState().set({
       active: true,
       classId: 'knight',
@@ -415,47 +416,8 @@ describe('<HUD>', () => {
     });
     const { container } = render(<HUD />);
 
-    const timer = container.querySelector('.hud-deadline');
-    expect(timer).toBeTruthy();
-    expect(timer?.classList.contains('urgent')).toBe(false);
-    expect(timer?.getAttribute('role')).toBe('timer');
-    expect(timer?.getAttribute('aria-label')).toBe('Kill deadline: 1:30 remaining');
-    expect(container.querySelector('.hud-deadline-time')?.textContent).toBe('1:30');
-    expect(container.querySelector('.hud-deadline-tag')?.textContent).toContain('DEADLINE');
-  });
-
-  it('reddens the kill-deadline clock in the final seconds (urgent)', () => {
-    // 15s remaining (<= HARDCORE_DEADLINE_WARN of 30) → the urgent modifier is set.
-    useHudStore.getState().set({
-      active: true,
-      classId: 'knight',
-      hp: 10,
-      maxHp: 100,
-      bosses: [deadlineBoss],
-      deadlineRemaining: 15,
-    });
-    const { container } = render(<HUD />);
-
-    const timer = container.querySelector('.hud-deadline');
-    expect(timer?.classList.contains('urgent')).toBe(true);
-    expect(container.querySelector('.hud-deadline-time')?.textContent).toBe('0:15');
-  });
-
-  it('renders no deadline clock when the remaining time is non-finite', () => {
-    // deadlineRemaining != null so DeadlineTimer mounts, but a non-finite value
-    // makes it render nothing (guard against a stale Infinity leaking in).
-    useHudStore.getState().set({
-      active: true,
-      classId: 'knight',
-      hp: 10,
-      maxHp: 100,
-      bosses: [deadlineBoss],
-      deadlineRemaining: Infinity,
-    });
-    const { container } = render(<HUD />);
-
     expect(container.querySelector('.hud-deadline')).toBeNull();
-    // The boss bar it would flow beneath is still present (we ARE in that branch).
+    // The boss bar is still there — only the clock beneath it is gone.
     expect(container.querySelector('.hud-bossbar')).toBeTruthy();
   });
 });

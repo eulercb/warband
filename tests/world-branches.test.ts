@@ -2542,14 +2542,19 @@ describe('world-branches: hardcore kill deadline', () => {
     deadHero.hp = 0;
     const aliveDeathsBefore = aliveHero.stats.deaths;
     const downedDeathsBefore = downedHero.stats.deaths;
-    w.hardcoreDeadline = 0; // clock already blown
-    w.step(DT, new Map());
+    w.hardcoreDeadline = 0; // clock already blown → the chasm opens at once
+    // The closing chasm devours the band over a few seconds (not an instant wipe).
+    let sawDeadline = false;
+    for (let i = 0; i < 600 && !w.finished; i++) {
+      w.step(DT, new Map());
+      if (w.events.some((e) => e.t === 'deadline')) sawDeadline = true;
+    }
     expect(w.finished).toBe(true);
     expect(w.outcome).toBe('defeat');
-    expect(w.events.some((e) => e.t === 'deadline')).toBe(true);
+    expect(sawDeadline).toBe(true);
     expect(aliveHero.state).toBe('dead');
     expect(downedHero.state).toBe('dead');
-    expect(deadHero.state).toBe('dead'); // already dead → skipped by the wipe loop
+    expect(deadHero.state).toBe('dead'); // already dead → skipped by the swallow
     expect(aliveHero.stats.deaths).toBe(aliveDeathsBefore + 1); // alive → newly counted
     expect(downedHero.stats.deaths).toBe(downedDeathsBefore); // downed → not double-counted
   });

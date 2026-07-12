@@ -63,6 +63,15 @@ import {
   HARDCORE_TIME_BUDGET,
   HARDCORE_DEADLINE_MULT,
   HARDCORE_DEADLINE_PACK_BONUS,
+  HARDCORE_DEADLINE_WARN_TIMES,
+  DEADLINE_CHASM_START,
+  DEADLINE_CHASM_CLOSE_RATE,
+  DEADLINE_CHASM_MIN,
+  DEADLINE_CHASM_DPS_FRAC,
+  DEADLINE_CHASM_PULSE,
+  DEADLINE_CHASM_RING_COUNT,
+  DEADLINE_CORRUPTION_INTERVAL,
+  CORRUPTION_COLLAPSE_DAMAGE,
   ADD_HP,
   ADD_MOVE_SPEED,
   ADD_RADIUS,
@@ -369,6 +378,10 @@ export class World {
   corruptionCount = 0;
   /** The last corruption kind fired, so a beat doesn't immediately repeat. */
   lastCorruption: string | null = null;
+  /** Deadline warning marks already announced (seconds-remaining) — each fires once. */
+  private deadlineWarned = new Set<number>();
+  /** Closing-chasm escalation once the deadline passes (items 21/27), or null. */
+  private deadlineChasm: { center: Vec2; radius: number; pulse: number } | null = null;
 
   tauntTargetId: EntityId | null = null;
   tauntTimer = 0;
@@ -441,6 +454,123 @@ export class World {
   deadlineRemaining(): number {
     if (!Number.isFinite(this.hardcoreDeadline)) return Infinity;
     return Math.max(0, this.hardcoreDeadline - this.elapsed);
+  }
+
+  /**
+   * Hardcore kill-deadline (items 21/24/27). The deadline is neither a visual
+   * timer nor an instant wipe: the band gets escalating spoken-banner WARNINGS as
+   * it nears (30/15/5s), and when it passes a bottomless CHASM opens and closes in
+   * a shrinking ring around the party while corruption redoubles — so everyone is
+   * swallowed within a few desperate seconds. No-op outside a hardcore fight, and
+   * a kill (no boss alive) stops the clock so victory still wins on the wire.
+   */
+  private stepDeadline(dt: number): void {
+    if (!Number.isFinite(this.hardcoreDeadline)) return;
+    if (!this.bosses.some((b) => b.hp > 0)) return;
+    const remaining = this.deadlineRemaining();
+
+    // Before the deadline: spoken warnings at 30 / 15 / 5s (item 24, no visual timer).
+    if (remaining > 0) {
+      const center = { x: this.arena.w / 2, y: this.arena.h / 2 };
+      for (const mark of HARDCORE_DEADLINE_WARN_TIMES) {
+        if (remaining <= mark && !this.deadlineWarned.has(mark)) {
+          this.deadlineWarned.add(mark);
+          this.events.push({
+            t: 'deadlineWarn',
+            pos: center,
+            text: `${mark}s — fell it or the Abyss opens`,
+          });
+        }
+      }
+      return;
+    }
+
+    // Deadline passed: open + close the chasm (items 21/27).
+    if (!this.deadlineChasm) {
+      this.deadlineChasm = { center: this.aliveCentroid(), radius: DEADLINE_CHASM_START, pulse: 0 };
+      this.events.push({
+        t: 'deadlineWarn',
+        pos: { ...this.deadlineChasm.center },
+        text: 'The Abyss opens — flee to the centre!',
+      });
+      // Corruption redoubles from here on (item 27): force a tight cadence.
+      this.corruptionTimer = Math.min(this.corruptionTimer, DEADLINE_CORRUPTION_INTERVAL);
+    }
+    const chasm = this.deadlineChasm;
+    chasm.radius = Math.max(DEADLINE_CHASM_MIN, chasm.radius - DEADLINE_CHASM_CLOSE_RATE * dt);
+    const closed = chasm.radius <= DEADLINE_CHASM_MIN + 0.5;
+
+    // Plunge a hero into the void — killed outright (swallowed, not merely downed),
+    // so the escalation is truly terminal. The wipe check emits the time's-up cue.
+    const swallow = (p: Player): void => {
+      if (p.state === 'dead') return;
+      if (p.state === 'alive') p.stats.deaths += 1;
+      p.state = 'dead';
+      p.hp = 0;
+      this.events.push({ t: 'death', id: p.id, kind: 'player', pos: { ...p.pos } });
+    };
+
+    if (closed) {
+      // The ring has bottomed out: the band is fully swallowed, centred stragglers
+      // and all. checkEndConditions then ends the run as a defeat + deadline cue.
+      for (const p of this.players) swallow(p);
+      return;
+    }
+
+    // Telegraphed ring of strikes at the closing edge so clients see it squeeze in.
+    chasm.pulse -= dt;
+    if (chasm.pulse <= 0) {
+      chasm.pulse = DEADLINE_CHASM_PULSE;
+      this.spawnChasmRing(chasm.center, chasm.radius);
+    }
+
+    // Anyone OUTSIDE the shrinking safe circle is being devoured — a heavy fraction
+    // of max HP per second (ignores mitigation), killed outright once it bites deep.
+    for (const p of this.players) {
+      if (p.state === 'dead') continue;
+      if (dist(p.pos, chasm.center) > chasm.radius + p.radius) {
+        p.hp -= p.maxHp * DEADLINE_CHASM_DPS_FRAC * dt;
+        this.events.push({
+          t: 'hit',
+          pos: { ...p.pos },
+          amount: p.maxHp * DEADLINE_CHASM_DPS_FRAC * dt,
+          targetId: p.id,
+          side: 'player',
+        });
+        if (p.hp <= 0) swallow(p);
+      }
+    }
+  }
+
+  /** Average position of the still-standing heroes (chasm centre), arena mid if none. */
+  private aliveCentroid(): Vec2 {
+    const alive = this.players.filter((p) => p.state === 'alive');
+    if (alive.length === 0) return { x: this.arena.w / 2, y: this.arena.h / 2 };
+    let x = 0;
+    let y = 0;
+    for (const p of alive) {
+      x += p.pos.x;
+      y += p.pos.y;
+    }
+    return { x: x / alive.length, y: y / alive.length };
+  }
+
+  /** A telegraphed ring of strikes marking the chasm's closing edge (item 21/27). */
+  private spawnChasmRing(center: Vec2, radius: number): void {
+    const n = DEADLINE_CHASM_RING_COUNT;
+    const dmg = CORRUPTION_COLLAPSE_DAMAGE * this.bossDamageScalar();
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * Math.PI * 2;
+      this.addPendingStrike({
+        pos: { x: center.x + Math.cos(ang) * radius, y: center.y + Math.sin(ang) * radius },
+        radius: 92,
+        fuse: 0.9,
+        damage: dmg,
+        color: 0x6a2fa0, // void purple
+        slowMult: 0.5,
+        slowDuration: 1,
+      });
+    }
   }
 
   /**
@@ -747,6 +877,8 @@ export class World {
     // Mid-fight corruption beats (host-gated) — may add pending strikes, zones,
     // adds or boss buffs that resolve on subsequent ticks.
     if (this.corruptionEnabled) stepCorruption(this, dt);
+    // Hardcore kill-deadline warnings + closing-chasm escalation (items 21/24/27).
+    this.stepDeadline(dt);
     decayThreat(this.players, dt);
     this.tauntTimer = Math.max(0, this.tauntTimer - dt);
     this.separateAndClamp();
@@ -2337,29 +2469,21 @@ export class World {
       this.events.push({ t: 'victory', pos: center });
       return;
     }
-    // Hardcore kill-DEADLINE (item 11): a boss is still standing (victory would
-    // have returned) and the clock has run out — the abyss claims the whole band.
-    // Checked AFTER victory so a kill landing on the very tick the deadline passes
-    // still wins. Host-authoritative and deterministic (deadline fixed at spawn).
-    if (anyBossAlive && this.elapsed >= this.hardcoreDeadline) {
-      for (const p of this.players) {
-        if (p.state === 'dead') continue;
-        if (p.state === 'alive') p.stats.deaths += 1; // downed heroes already counted
-        p.state = 'dead';
-        p.hp = 0;
-        this.events.push({ t: 'death', id: p.id, kind: 'player', pos: { ...p.pos } });
-      }
-      this.finished = true;
-      this.outcome = 'defeat';
-      this.endMs = this.elapsed * 1000;
-      this.events.push({ t: 'deadline', pos: { x: this.arena.w / 2, y: this.arena.h / 2 } });
-      return;
-    }
+    // Hardcore kill-DEADLINE (items 11/21/24/27): past the deadline the band is no
+    // longer instantly wiped — the closing chasm in `stepDeadline` devours them over
+    // a few seconds, downing/killing everyone (which the wipe check below then ends
+    // as a defeat). anyBossAlive is referenced there; kept local for readability.
+    void anyBossAlive;
     const anyAlive = this.players.some((p) => p.state === 'alive');
     if (!anyAlive && this.players.length > 0) {
       this.finished = true;
       this.outcome = 'defeat';
       this.endMs = this.elapsed * 1000;
+      // If the closing chasm caused this wipe, fire the classic time's-up cue at
+      // its centre (items 21/24/27) — the render layer flashes the "TIME'S UP" burst.
+      if (this.deadlineChasm) {
+        this.events.push({ t: 'deadline', pos: { ...this.deadlineChasm.center } });
+      }
     }
   }
 

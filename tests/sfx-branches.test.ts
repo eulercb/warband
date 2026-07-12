@@ -350,6 +350,18 @@ describe('Sfx: corruption beat synthesis', () => {
     expect(ctx.createdOscillators.length).toBe(2);
     expect(ctx.createdBufferSources.length).toBe(1);
   });
+
+  it('a deadline warning is a low ominous saw swell plus a band-pass rumble (item 24)', () => {
+    const sfx = new Sfx();
+    sfx.handleEvents([{ t: 'deadlineWarn', pos: { x: 0, y: 0 }, text: '15s' }]);
+    const ctx = currentCtx();
+    // A single low saw voice (55->110Hz) with a bandpass noise rumble underneath.
+    expect(ctx.createdOscillators.length).toBe(1);
+    expect(ctx.createdOscillators[0].type).toBe('sawtooth');
+    expect(ctx.createdOscillators[0].frequency.setValueAtTime.mock.calls[0][0]).toBeCloseTo(55);
+    expect(ctx.createdBufferSources.length).toBe(1);
+    expect(ctx.createdFilters[0].type).toBe('bandpass');
+  });
 });
 
 // ---------------------------------------------------------------------------

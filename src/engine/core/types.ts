@@ -815,6 +815,10 @@ export type GameEvent =
   // Hardcore kill-deadline expired (item 11) — the clock ran out with a boss
   // still up and the band wiped. Drives a "time's up" cue on the final frame.
   | { t: 'deadline'; pos: Vec2 }
+  // Hardcore deadline WARNING / escalation banner (items 24/21/27): the countdown
+  // is no longer a visual timer — instead the band is warned at 30/15/5s, and told
+  // when the chasm opens and closes. Drives a transient center-screen banner.
+  | { t: 'deadlineWarn'; pos: Vec2; text: string; good?: boolean }
   // A mid-fight corruption beat just fired (enrage surge, telegraph rain, a
   // healing rift…). Drives a center-screen banner + a world-anchored burst.
   | { t: 'corruption'; kind: CorruptionKind; name: string; pos: Vec2; good?: boolean }

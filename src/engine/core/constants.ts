@@ -345,6 +345,28 @@ export const HARDCORE_DEADLINE_MULT = 2.4;
 export const HARDCORE_DEADLINE_PACK_BONUS = 0.6;
 /** Seconds-remaining under which the HUD countdown flips to its urgent (red) state. */
 export const HARDCORE_DEADLINE_WARN = 30;
+/**
+ * The deadline is no longer a ticking visual timer (item 24): instead the band
+ * gets escalating spoken-banner warnings at these seconds-remaining marks.
+ */
+export const HARDCORE_DEADLINE_WARN_TIMES = [30, 15, 5];
+// When the clock runs out (item 21/27) the boss doesn't instant-wipe the band —
+// a bottomless CHASM opens and closes in a shrinking ring around them, and
+// corruption redoubles, so everyone is swallowed within a few desperate seconds.
+/** Starting safe-circle radius (u) when the chasm opens around the party. */
+export const DEADLINE_CHASM_START = 560;
+/** How fast the safe circle closes inward (u/s). */
+export const DEADLINE_CHASM_CLOSE_RATE = 95;
+/** Safe radius (u) at which the band is fully swallowed (everyone left dies). */
+export const DEADLINE_CHASM_MIN = 54;
+/** Damage/s dealt to a hero standing OUTSIDE the safe circle, as a fraction of max HP. */
+export const DEADLINE_CHASM_DPS_FRAC = 0.6;
+/** Seconds between the chasm's telegraphed edge pulses (the closing ring of strikes). */
+export const DEADLINE_CHASM_PULSE = 1.6;
+/** Strikes spread around the ring each pulse (telegraphs the closing edge for clients). */
+export const DEADLINE_CHASM_RING_COUNT = 12;
+/** Corruption beat interval (s) forced while the chasm is closing — beats redouble. */
+export const DEADLINE_CORRUPTION_INTERVAL = 4;
 
 // --- Adds (skeletons) ---
 export const ADD_HP = 60;
