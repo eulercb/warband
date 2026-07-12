@@ -223,6 +223,13 @@ export const ABYSS_SURGE_DAMAGE = 10; // surge contact damage (scaled), on top o
 export const ABYSS_PLUNGE_DAMAGE = 100000; // effectively lethal — a plunge into the void
 export const TIDE_SURGE_PULL = 150; // u the tide hauls a hero deeper (never lethal)
 export const TIDE_SURGE_DAMAGE = 9; // extra drowning damage from a tide surge
+// The vampire's blood-mire and the demon's brimstone fissures surge too (item 28
+// follow-up): a telegraphed, non-lethal drag toward the hazard's heart, so more
+// marquee bosses fight on ground that threatens position, not just chip damage.
+export const BLOODMIRE_SURGE_PULL = 140; // u the mire drags a hero toward the pool
+export const BLOODMIRE_SURGE_DAMAGE = 10; // extra exsanguination damage on a surge
+export const BRIMSTONE_SURGE_PULL = 160; // u the fissure sucks a hero toward the vent
+export const BRIMSTONE_SURGE_DAMAGE = 12; // extra scorch damage on a surge
 
 // --- Boss affixes (rolled at fight-gen; see content/affixes.ts + world.ts) ---
 // Each affix bends the same boss into a different fight. All numbers are starting

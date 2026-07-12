@@ -38,6 +38,16 @@ const TERRAIN_LEGEND: Record<TerrainKind, LegendEntry> = {
     color: '#7b5cff',
     effect: 'A black chasm — heavy damage; its surges drag you into the lethal void.',
   },
+  bloodmire: {
+    label: 'Blood-mire',
+    color: '#d0466a',
+    effect: 'A mire of blood — heavy slow and steady drain; surges haul you toward it.',
+  },
+  brimstone: {
+    label: 'Brimstone',
+    color: '#ff7a3d',
+    effect: 'Molten fissures — heavy burning damage; surges suck you toward the vent.',
+  },
 };
 
 const OBSTACLE_ENTRY: LegendEntry = {

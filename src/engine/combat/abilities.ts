@@ -479,6 +479,9 @@ export interface SpawnZoneOpts {
   healPerTick: number;
   slowMult?: number;
   slowDuration?: number;
+  /** Seconds of silence re-applied per tick to opposing creatures inside (a
+   * standable antimagic pool). Absent = a plain hazard. See GroundZone.silence. */
+  silence?: number;
   duration: number;
   /** Themed tint override (affix/corruption hazards); falls back to the palette. */
   color?: number;
@@ -499,6 +502,7 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     healPerTick: o.healPerTick,
     slowMult: o.slowMult ?? 1,
     slowDuration: o.slowDuration ?? 0,
+    silence: o.silence,
     duration: o.duration,
     remaining: o.duration,
     tickAccum: 0,
@@ -734,7 +738,9 @@ export function resolveBossAbility(
         const jitter = fromAngle(world.rng.range(0, Math.PI * 2), world.rng.range(0, 60));
         const pos = clampToArena(world, vadd(anchor, jitter), ab.radius ?? 90);
         spawnZone(world, {
-          kind: 'voidZone',
+          // A void ability can stamp a signature zone kind (an antimagic silence
+          // pool); it defaults to the plain damaging void.
+          kind: ab.zoneKind ?? 'voidZone',
           pos,
           radius: ab.radius ?? 90,
           side: 'boss',
@@ -744,6 +750,7 @@ export function resolveBossAbility(
           healPerTick: 0,
           slowMult: ab.slowMult,
           slowDuration: ab.slowDuration,
+          silence: ab.zoneSilence,
           duration: ab.zoneDuration ?? 8,
         });
       }

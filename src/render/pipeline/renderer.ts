@@ -695,6 +695,9 @@ const GROUND_PALETTES: Record<
   // Signature arenas (item 28): the Kraken's tide-washed deep and the Bandit's abyss.
   tide: { base: 0x0c1420, slabA: 0x102336, slabB: 0x0d1b2b, speck: 0x184063, rune: 0x6cc6ff },
   abyss: { base: 0x0b0a12, slabA: 0x14111f, slabB: 0x0f0d18, speck: 0x1e1730, rune: 0x7b5cff },
+  // Signature arenas (item 28 follow-up): the Vampire's blood-mire and the Demon's brimstone.
+  bloodmire: { base: 0x180a0e, slabA: 0x25101a, slabB: 0x1d0c13, speck: 0x3a1622, rune: 0xd0466a },
+  brimstone: { base: 0x18100b, slabA: 0x261812, slabB: 0x1d130d, speck: 0x3a231a, rune: 0xff7a3d },
 };
 
 /** Fill a small rotated regular-ish polygon (mosaic slab). */
