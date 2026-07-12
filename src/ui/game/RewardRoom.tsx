@@ -33,9 +33,10 @@ import { MONSTERS } from '../../engine/content/monsters';
 import { Rng, mixSeed } from '../../engine/core/math';
 import { UPGRADES, rollUpgradeChoices, type UpgradeId } from '../../engine/content/upgrades';
 import {
-  CHAR_UPGRADES,
   rollCharChoices,
-  previewAbilityTable,
+  describeCharOffer,
+  charUpgradeBadge,
+  type CharOfferView,
 } from '../../engine/content/charUpgrades';
 import type { ClassId, FightResult } from '../../engine/core/types';
 
@@ -63,23 +64,17 @@ function rollOffers(
   const gen = rollUpgradeChoices(3, rnd, ownedGen);
   // Multiclass heroes see every owned class's upgrades, weighted toward the main.
   const chr = rollCharChoices(classId, 4, rnd, ownedChar, extraClasses);
-  const current = previewAbilityTable(classId, ownedChar);
   return {
     generic: gen.map((id) => {
       const u = UPGRADES[id];
       return { id, label: `${u.icon} ${u.name}`, desc: u.desc };
     }),
+    // describeCharOffer resolves each id — a real boon, a `restore:` reclaim, or a
+    // `graftup:` grafted-skill upgrade — against the hero's current kit, keeping the
+    // "Replaces X" graft label (item 18) and naming reclaimed / grafted skills.
     char: chr
-      .filter((id) => CHAR_UPGRADES[id])
-      .map((id) => {
-        const u = CHAR_UPGRADES[id];
-        const replaced = u.replaces ? current[u.replaces]?.name : null;
-        let desc = replaced ? `${u.desc}. Replaces ${replaced}.` : u.desc;
-        // A GRAND improvement is a rare one-of-a-kind capstone — flag it.
-        if (u.grand) desc = `GRAND — ${desc}`;
-        const label = u.grand ? `★ ${u.icon} ${u.name}` : `${u.icon} ${u.name}`;
-        return { id, label, desc };
-      }),
+      .map((id) => describeCharOffer(classId, ownedChar, id))
+      .filter((o): o is CharOfferView => o !== null),
   };
 }
 
@@ -486,17 +481,18 @@ export default function RewardRoom({ result }: { result: FightResult }) {
                       {UPGRADES[id].icon} {UPGRADES[id].name}
                     </span>
                   ))}
-                  {myCharUpgrades.map((id, i) =>
-                    CHAR_UPGRADES[id] ? (
+                  {myCharUpgrades.map((id, i) => {
+                    const b = charUpgradeBadge(id);
+                    return b ? (
                       <span
                         key={`c-${id}-${i}`}
                         className="wb-upgrade-badge wb-badge-char"
-                        title={CHAR_UPGRADES[id].desc}
+                        title={b.desc}
                       >
-                        {CHAR_UPGRADES[id].icon} {CHAR_UPGRADES[id].name}
+                        {b.icon} {b.name}
                       </span>
-                    ) : null,
-                  )}
+                    ) : null;
+                  })}
                 </span>
               </div>
             ) : null}

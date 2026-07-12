@@ -53,6 +53,13 @@ export interface CharUpgradeDef {
    */
   replaces?: AbilitySlot;
   /**
+   * For a graft: the source class + slot the ability is copied FROM. Lets the
+   * re-offer roll (items 15 & 17) surface the *source* class's boons for that
+   * ability as "graftup" picks, so a grafted skill can be levelled like a native
+   * one. Only meaningful alongside `replaces`.
+   */
+  graftSource?: { classId: ClassId; slot: AbilitySlot };
+  /**
    * A GRAND improvement (item 22): a rare, transformative class capstone that can
    * never stack with itself (maxStacks is forced to 1) and is offered as a special
    * one-of-a-kind pick. Each class has a small set; you can hold each at most once.
@@ -867,6 +874,7 @@ const HYBRID: CharUpgradeDef[] = [
     ),
     exclude: ['mage', 'sorcerer'], // already own a big bomb (Fireball / Meteor)
     replaces: 'a2',
+    graftSource: { classId: 'mage', slot: 'a1' },
     maxStacks: 1,
   },
   {
@@ -882,6 +890,7 @@ const HYBRID: CharUpgradeDef[] = [
     ),
     exclude: ['rogue', 'mage', 'sorcerer'], // all already carry a blink
     replaces: 'a3',
+    graftSource: { classId: 'rogue', slot: 'a2' },
     maxStacks: 1,
   },
   {
@@ -897,6 +906,7 @@ const HYBRID: CharUpgradeDef[] = [
     ),
     exclude: ['barbarian'],
     replaces: 'a1',
+    graftSource: { classId: 'barbarian', slot: 'a1' },
     maxStacks: 1,
   },
   {
@@ -917,6 +927,7 @@ const HYBRID: CharUpgradeDef[] = [
     // Real healers would be trading their actual heal away for a worse one.
     exclude: ['cleric', 'paladin', 'druid', 'bard'],
     replaces: 'a2',
+    graftSource: { classId: 'cleric', slot: 'a1' },
     maxStacks: 1,
   },
   {
@@ -1338,9 +1349,167 @@ export const CHAR_UPGRADES: Record<string, CharUpgradeDef> = Object.fromEntries(
   [...Object.values(CHAR_UPGRADES_BY_CLASS).flat(), ...HYBRID, ...GRAND].map((d) => [d.id, d]),
 );
 
+// ---------------------------------------------------------------------------
+// Skill-keyed progression (items 15 & 17) — the "model change" flagged in #22.
+//
+// Per-run character upgrades are an ordered id list re-applied from scratch each
+// spawn. The naive replay keys progression by *slot*: a numeric boon mutates
+// whatever ability currently sits in a slot, and a graft overwrites the slot
+// outright. That loses / mis-targets progression when a graft displaces a slot —
+// earlier boons meant for the original skill land on the graft, and a displaced
+// skill can never be reclaimed with its boons intact.
+//
+// The replay below keys progression by SKILL IDENTITY instead:
+//   • SkillKey — a stable id per ability the hero has held. A native class
+//     ability is keyed by its slot ('basic' | 'a1' | 'a2' | 'a3'); a grafted
+//     ability is keyed by its graft upgrade id (e.g. 'hy_pyromancer'). The two
+//     namespaces never collide.
+//   • registry: Map<SkillKey, def> — EVERY skill the hero has touched, whether
+//     it is live in a slot or stashed after being displaced. Boons accrue onto
+//     the def in the registry, so a stashed skill keeps its progression.
+//   • occupant: which SkillKey is live in each slot right now.
+//
+// Routing an upgrade during replay:
+//   • a numeric CLASS boon / grand → the NATIVE skill for the slots it touches
+//     (live or stashed), so a later graft can never absorb it (item 17);
+//   • a GRAFT → stashes the slot's current occupant and installs the graft (or
+//     re-seats a previously-stashed graft, boons intact);
+//   • a whole-kit combat/stat STYLE (hybrid, no `replaces`) → the CURRENT
+//     occupants, because it re-flavours whatever the hero is actually holding;
+//   • a synthetic `restore:<slot>` → re-seats the native skill in its slot (with
+//     its stashed boons) — the reclaim path (item 15);
+//   • a synthetic `graftup:<slot>:<boonId>` → applies a source-class boon to the
+//     graft currently in that slot, so a grafted skill levels like a native one.
+// The stash lives only for one replay: the ordered id list is the source of
+// truth, so replaying it reconstructs every stash/restore deterministically.
+// ---------------------------------------------------------------------------
+
+const SLOTS: readonly AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
+
+/** A stable identity for a skill the hero holds (native slot name, or graft id). */
+type SkillKey = string;
+
+const RESTORE_PREFIX = 'restore:';
+const GRAFTUP_PREFIX = 'graftup:';
+
+function isAbilitySlot(x: string): x is AbilitySlot {
+  return x === 'basic' || x === 'a1' || x === 'a2' || x === 'a3';
+}
+
+/** Parse `restore:<slot>` → the slot whose native skill is being reclaimed. */
+function parseRestore(id: string): AbilitySlot | null {
+  if (!id.startsWith(RESTORE_PREFIX)) return null;
+  const slot = id.slice(RESTORE_PREFIX.length);
+  return isAbilitySlot(slot) ? slot : null;
+}
+
+/** Parse `graftup:<slot>:<boonId>` → the graft slot + the source boon levelling it. */
+function parseGraftup(id: string): { slot: AbilitySlot; boonId: string } | null {
+  if (!id.startsWith(GRAFTUP_PREFIX)) return null;
+  const rest = id.slice(GRAFTUP_PREFIX.length);
+  const sep = rest.indexOf(':');
+  if (sep <= 0) return null;
+  const slot = rest.slice(0, sep);
+  const boonId = rest.slice(sep + 1);
+  if (!isAbilitySlot(slot)) return null;
+  if (!Object.prototype.hasOwnProperty.call(CHAR_UPGRADES, boonId)) return null;
+  return { slot, boonId };
+}
+
+/** A throwaway hero stub with a fresh cloned ability table (preview / occupancy). */
+function stubPlayer(classId: ClassId): Player {
+  const cls = CLASSES[classId];
+  return {
+    classId,
+    maxHp: cls.maxHp,
+    hp: cls.maxHp,
+    moveSpeed: cls.moveSpeed,
+    cooldownMult: 1,
+    castMult: 1,
+    damageMult: 1,
+    damageTakenMult: 1,
+    terrainResist: 0,
+    regenPerSec: 0,
+    abilities: cloneAbilities(cls.abilities),
+  } as unknown as Player;
+}
+
+/**
+ * Replay an ordered upgrade list onto `player` (its ability table + stats) using
+ * the skill-keyed model above. Mutates `player.abilities` in place to the final
+ * slot occupants and returns the occupancy map (which SkillKey sits in each slot)
+ * so the offer roll can see displaced / grafted slots. Pure aside from `player`.
+ */
+function replayCharUpgrades(player: Player, ids: readonly string[]): Record<AbilitySlot, SkillKey> {
+  const table = player.abilities as Record<AbilitySlot, PlayerAbilityDef>;
+  const registry = new Map<SkillKey, PlayerAbilityDef>();
+  const occupant: Record<AbilitySlot, SkillKey> = { basic: 'basic', a1: 'a1', a2: 'a2', a3: 'a3' };
+  for (const s of SLOTS) registry.set(s, table[s]);
+
+  // The native def for a slot (live or stashed) — where class boons accrue.
+  const nativeView = (): Record<AbilitySlot, PlayerAbilityDef> => ({
+    basic: registry.get('basic')!,
+    a1: registry.get('a1')!,
+    a2: registry.get('a2')!,
+    a3: registry.get('a3')!,
+  });
+  // The def currently equipped in each slot — where kit-wide styles land.
+  const currentView = (): Record<AbilitySlot, PlayerAbilityDef> => ({
+    basic: registry.get(occupant.basic)!,
+    a1: registry.get(occupant.a1)!,
+    a2: registry.get(occupant.a2)!,
+    a3: registry.get(occupant.a3)!,
+  });
+
+  for (const id of ids) {
+    // Reclaim a displaced native skill, its stashed boons intact (item 15).
+    const restoreSlot = parseRestore(id);
+    if (restoreSlot) {
+      occupant[restoreSlot] = restoreSlot;
+      continue;
+    }
+    // Level the graft currently equipped in a slot with a source-class boon.
+    const graftup = parseGraftup(id);
+    if (graftup) {
+      const boon = CHAR_UPGRADES[graftup.boonId]; // parseGraftup guarantees it exists
+      const target = registry.get(occupant[graftup.slot])!;
+      // Point every proxy slot at the graft def so the (single-slot) source boon
+      // lands on it regardless of which slot it natively targets.
+      boon.apply({ player, abilities: { basic: target, a1: target, a2: target, a3: target } });
+      continue;
+    }
+    const def = CHAR_UPGRADES[id];
+    if (!def || !upgradeAllowedFor(def, player.classId)) continue;
+    if (def.replaces) {
+      // A graft: install (or re-seat a previously-stashed) foreign ability. The
+      // displaced occupant simply stays in the registry, stashed under its key.
+      const slot = def.replaces;
+      if (registry.has(id)) {
+        occupant[slot] = id;
+      } else {
+        const scratch = currentView();
+        def.apply({ player, abilities: scratch });
+        registry.set(id, scratch[slot]);
+        occupant[slot] = id;
+      }
+      continue;
+    }
+    // A numeric class boon / grand accrues on its NATIVE skill; a whole-kit
+    // hybrid style re-flavours the CURRENT kit.
+    def.apply({ player, abilities: def.classId === 'any' ? currentView() : nativeView() });
+  }
+
+  for (const s of SLOTS) table[s] = registry.get(occupant[s])!;
+  return occupant;
+}
+
 /** Type guard for an untrusted (networked) character-upgrade id. */
 export function isCharUpgradeId(x: unknown): x is string {
-  return typeof x === 'string' && Object.prototype.hasOwnProperty.call(CHAR_UPGRADES, x);
+  if (typeof x !== 'string') return false;
+  if (Object.prototype.hasOwnProperty.call(CHAR_UPGRADES, x)) return true;
+  // Synthetic reclaim / grafted-skill upgrades (items 15 & 17) are valid picks
+  // too, but only in their exact, well-formed shape — arbitrary strings stay out.
+  return parseRestore(x) !== null || parseGraftup(x) !== null;
 }
 
 /**
@@ -1350,12 +1519,7 @@ export function isCharUpgradeId(x: unknown): x is string {
  */
 export function applyCharUpgrades(player: Player, ids: string[] | undefined): void {
   if (!ids || !player.abilities) return;
-  for (const id of ids) {
-    const def = CHAR_UPGRADES[id];
-    if (def && upgradeAllowedFor(def, player.classId)) {
-      def.apply({ player, abilities: player.abilities });
-    }
-  }
+  replayCharUpgrades(player, ids);
 }
 
 /**
@@ -1369,27 +1533,9 @@ export function previewAbilityTable(
   classId: ClassId,
   ids: string[],
 ): Record<AbilitySlot, PlayerAbilityDef> {
-  const cls = CLASSES[classId];
-  const abilities = cloneAbilities(cls.abilities);
-  const stub = {
-    classId,
-    maxHp: cls.maxHp,
-    hp: cls.maxHp,
-    moveSpeed: cls.moveSpeed,
-    cooldownMult: 1,
-    castMult: 1,
-    damageMult: 1,
-    damageTakenMult: 1,
-    terrainResist: 0,
-    regenPerSec: 0,
-    abilities,
-  } as unknown as Player;
-  for (const id of ids) {
-    const def = CHAR_UPGRADES[id];
-    if (def && upgradeAllowedFor(def, classId)) {
-      def.apply({ player: stub, abilities });
-    }
-  }
+  const stub = stubPlayer(classId);
+  applyCharUpgrades(stub, ids);
+  const abilities = stub.abilities as Record<AbilitySlot, PlayerAbilityDef>;
   // Match the sim: the same global attack slow-down the World applies at spawn, so
   // the cooldowns the HUD previews agree with the ones the sim actually commits.
   slowAttackCooldowns(abilities);
@@ -1398,6 +1544,11 @@ export function previewAbilityTable(
 
 /** Most times a character upgrade may be taken (its `maxStacks`, or the shared cap). */
 export function charUpgradeMaxStacks(id: string): number {
+  const graftup = parseGraftup(id);
+  // A grafted-skill upgrade inherits the source boon's own cap.
+  if (graftup) return CHAR_UPGRADES[graftup.boonId]?.maxStacks ?? MAX_SKILL_STACKS;
+  // A reclaim is contextual (only offered while a skill is displaced), never "maxed".
+  if (parseRestore(id)) return Number.POSITIVE_INFINITY;
   return CHAR_UPGRADES[id]?.maxStacks ?? MAX_SKILL_STACKS;
 }
 
@@ -1407,8 +1558,135 @@ export function charUpgradeAtMax(id: string, owned: readonly string[]): boolean 
   return have >= charUpgradeMaxStacks(id);
 }
 
+// ---------------------------------------------------------------------------
+// Re-offer of displaced / grafted skills (items 15 & 17). Once a graft displaces
+// an ability, the reward roll can surface a RECLAIM of the original (with its
+// stashed boons) or a graftup that levels the grafted skill using its source
+// class's boons — so a replaced ability is never lost and a grafted one still
+// progresses.
+// ---------------------------------------------------------------------------
+
+/** Which ability slots a class boon actually mutates — probed once at load, so a
+ *  graft can surface exactly the source-class boons that would upgrade it. */
+const BOON_SLOTS: Record<string, AbilitySlot[]> = (() => {
+  const map: Record<string, AbilitySlot[]> = {};
+  for (const def of Object.values(CHAR_UPGRADES_BY_CLASS).flat()) {
+    const stub = stubPlayer(def.classId as ClassId);
+    const abilities = stub.abilities as Record<AbilitySlot, PlayerAbilityDef>;
+    const before = SLOTS.map((s) => JSON.stringify(abilities[s]));
+    def.apply({ player: stub, abilities });
+    map[def.id] = SLOTS.filter((s, i) => JSON.stringify(abilities[s]) !== before[i]);
+  }
+  return map;
+})();
+
+/** Which SkillKey sits in each slot after a hero's owned upgrades are replayed. */
+function occupancyAfter(classId: ClassId, owned: readonly string[]): Record<AbilitySlot, SkillKey> {
+  return replayCharUpgrades(stubPlayer(classId), owned);
+}
+
+/**
+ * The reclaim + grafted-skill upgrade ids a hero currently qualifies for. Empty
+ * unless a graft has displaced one of their native abilities (so heroes without
+ * grafts never see these picks — and the offer roll's rng stays untouched).
+ */
+export function reofferCandidates(classId: ClassId, owned: readonly string[]): string[] {
+  if (!CLASSES[classId]) return []; // unrecognised class → no kit to reclaim
+  const occupant = occupancyAfter(classId, owned);
+  const out: string[] = [];
+  for (const slot of SLOTS) {
+    const key = occupant[slot];
+    if (key === slot) continue; // native still equipped here → nothing displaced
+    out.push(`${RESTORE_PREFIX}${slot}`); // reclaim the displaced original
+    // Offer the source-class boons that level ONLY the grafted ability (a
+    // single-slot boon on the source slot), so a graftup can't smear an
+    // unrelated slot's effect onto the graft via the apply proxy.
+    const src = CHAR_UPGRADES[key]?.graftSource;
+    if (!src) continue;
+    for (const b of CHAR_UPGRADES_BY_CLASS[src.classId] ?? []) {
+      const touched = BOON_SLOTS[b.id] ?? [];
+      if (touched.length !== 1 || touched[0] !== src.slot) continue;
+      const gid = `${GRAFTUP_PREFIX}${slot}:${b.id}`;
+      if (!charUpgradeAtMax(gid, owned)) out.push(gid);
+    }
+  }
+  return out;
+}
+
+/** A resolved label + description for an offer (a real, reclaim, or graftup id). */
+export interface CharOfferView {
+  id: string;
+  label: string;
+  desc: string;
+}
+
+/**
+ * Human-readable label + description for ANY character-upgrade offer id — a real
+ * catalog id, a `restore:` reclaim, or a `graftup:` grafted-skill upgrade —
+ * resolved against the hero's current (upgrade-applied) kit so a graft names the
+ * REAL skill it replaces ("Replaces Fireball", item 18) and a reclaim / graftup
+ * names the ability it acts on. Returns null for an unrecognised id.
+ */
+export function describeCharOffer(
+  classId: ClassId,
+  ownedChar: readonly string[],
+  id: string,
+): CharOfferView | null {
+  const current = previewAbilityTable(classId, [...ownedChar]);
+  const restoreSlot = parseRestore(id);
+  if (restoreSlot) {
+    const nativeName = CLASSES[classId].abilities[restoreSlot].name;
+    const cur = current[restoreSlot]?.name;
+    const tail = cur && cur !== nativeName ? `, dropping ${cur}` : '';
+    return {
+      id,
+      label: `↩️ Reclaim ${nativeName}`,
+      desc: `Take back ${nativeName}${tail}. Boons you earned on it are restored.`,
+    };
+  }
+  const graftup = parseGraftup(id);
+  if (graftup) {
+    const boon = CHAR_UPGRADES[graftup.boonId]; // parseGraftup guarantees it exists
+    const skillName = current[graftup.slot]?.name ?? 'grafted skill';
+    return {
+      id,
+      label: `${boon.icon} ${boon.name}`,
+      desc: `${boon.desc}. Upgrades your grafted ${skillName}.`,
+    };
+  }
+  const def = CHAR_UPGRADES[id];
+  if (!def) return null;
+  const replaced = def.replaces ? current[def.replaces]?.name : null;
+  let desc = replaced ? `${def.desc}. Replaces ${replaced}.` : def.desc;
+  if (def.grand) desc = `GRAND — ${desc}`;
+  const label = def.grand ? `★ ${def.icon} ${def.name}` : `${def.icon} ${def.name}`;
+  return { id, label, desc };
+}
+
+/** A compact icon + name + tooltip for an owned boon badge (real or synthetic). */
+export function charUpgradeBadge(id: string): { icon: string; name: string; desc: string } | null {
+  const restoreSlot = parseRestore(id);
+  if (restoreSlot)
+    return {
+      icon: '↩️',
+      name: 'Reclaimed skill',
+      desc: 'Reclaimed a replaced ability, boons intact.',
+    };
+  const graftup = parseGraftup(id);
+  if (graftup) {
+    const boon = CHAR_UPGRADES[graftup.boonId]; // parseGraftup guarantees it exists
+    return { icon: boon.icon, name: boon.name, desc: `${boon.desc}. Upgrades your grafted skill.` };
+  }
+  const def = CHAR_UPGRADES[id];
+  if (!def) return null;
+  return { icon: def.icon, name: def.name, desc: def.desc };
+}
+
 /** Chance one class offer is swapped for a wild cross-class hybrid pick. */
 export const HYBRID_OFFER_CHANCE = 0.45;
+
+/** Chance one offer is swapped for a reclaim / grafted-skill upgrade (items 15 & 17). */
+export const REOFFER_CHANCE = 0.5;
 
 /** Chance one class offer is swapped for a rare GRAND improvement (item 22). */
 export const GRAND_OFFER_CHANCE = 0.14;
@@ -1482,6 +1760,17 @@ export function rollCharChoices(
     .filter((id) => !charUpgradeAtMax(id, owned));
   if (out.length > 0 && grandPool.length > 0 && rnd() < GRAND_OFFER_CHANCE) {
     out[0] = grandPool[Math.floor(rnd() * grandPool.length) % grandPool.length];
+  }
+  // Re-offer (items 15 & 17): if a graft has displaced one of the hero's skills,
+  // sometimes surface a reclaim of the original or an upgrade for the graft, so a
+  // replaced ability isn't lost and a grafted one can still be levelled. Draws no
+  // rng for heroes without a displaced skill, so the base offer stream is intact.
+  const reoffers = reofferCandidates(classId, owned);
+  if (out.length > 0 && reoffers.length > 0 && rnd() < REOFFER_CHANCE) {
+    const pick = reoffers[Math.floor(rnd() * reoffers.length) % reoffers.length];
+    // A synthetic reclaim / graftup id never collides with the real base picks;
+    // slot it away from the grand (index 0) / hybrid (last) swaps.
+    out[out.length > 1 ? 1 : 0] = pick;
   }
   return out;
 }

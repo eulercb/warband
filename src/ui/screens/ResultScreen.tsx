@@ -24,7 +24,11 @@ import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
 import { MONSTERS } from '../../engine/content/monsters';
 import { Rng, mixSeed } from '../../engine/core/math';
 import { UPGRADES, rollUpgradeChoices, type UpgradeId } from '../../engine/content/upgrades';
-import { CHAR_UPGRADES, rollCharChoices } from '../../engine/content/charUpgrades';
+import {
+  rollCharChoices,
+  describeCharOffer,
+  charUpgradeBadge,
+} from '../../engine/content/charUpgrades';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import RewardRoom from '../game/RewardRoom';
 import SpecialReward from './SpecialReward';
@@ -216,8 +220,10 @@ export function ResultScreen() {
             </h3>
             <div className="wb-upgrade-cards">
               {charOffers.map((id) => {
-                const u = CHAR_UPGRADES[id];
-                if (!u) return null;
+                // describeCharOffer resolves real boons, `restore:` reclaims and
+                // `graftup:` grafted-skill upgrades alike (items 15 & 17).
+                const view = describeCharOffer(localClass, myCharUpgrades, id);
+                if (!view) return null;
                 const isPicked = pickedChar === id;
                 const dimmed = pickedChar && !isPicked;
                 return (
@@ -229,11 +235,8 @@ export function ResultScreen() {
                     disabled={!!pickedChar}
                     aria-pressed={isPicked}
                   >
-                    <span className="wb-upgrade-icon" aria-hidden="true">
-                      {u.icon}
-                    </span>
-                    <span className="wb-upgrade-name">{u.name}</span>
-                    <span className="wb-upgrade-desc">{u.desc}</span>
+                    <span className="wb-upgrade-name">{view.label}</span>
+                    <span className="wb-upgrade-desc">{view.desc}</span>
                     {isPicked ? (
                       <span className="wb-upgrade-tick" aria-hidden="true">
                         ✓
@@ -257,17 +260,18 @@ export function ResultScreen() {
                       {UPGRADES[id].icon} {UPGRADES[id].name}
                     </span>
                   ))}
-                  {myCharUpgrades.map((id, i) =>
-                    CHAR_UPGRADES[id] ? (
+                  {myCharUpgrades.map((id, i) => {
+                    const b = charUpgradeBadge(id);
+                    return b ? (
                       <span
                         key={`c-${id}-${i}`}
                         className="wb-upgrade-badge wb-badge-char"
-                        title={CHAR_UPGRADES[id].desc}
+                        title={b.desc}
                       >
-                        {CHAR_UPGRADES[id].icon} {CHAR_UPGRADES[id].name}
+                        {b.icon} {b.name}
                       </span>
-                    ) : null,
-                  )}
+                    ) : null;
+                  })}
                 </span>
               </div>
             ) : null}
