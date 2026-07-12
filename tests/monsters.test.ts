@@ -22,7 +22,7 @@ import {
 import type { BossAbilityShape, BossDecisionCtx, MonsterDef } from '../src/engine/content/monsters';
 import type { MonsterId, BossTier, BossBodyShape, Boss, Player } from '../src/engine/core/types';
 import { Rng } from '../src/engine/core/math';
-import { RUN_LENGTH } from '../src/engine/core/constants';
+import { RUN_LENGTH, TWIN_MAX_BOSSES } from '../src/engine/core/constants';
 
 // ---------------------------------------------------------------------------
 // Fixtures / helpers
@@ -623,7 +623,7 @@ describe('buildRunSlots', () => {
     for (const slot of slots) {
       expect(slot[0]).toBeDefined();
       expect(slot.length).toBeGreaterThanOrEqual(1);
-      expect(slot.length).toBeLessThanOrEqual(2);
+      expect(slot.length).toBeLessThanOrEqual(TWIN_MAX_BOSSES);
     }
   });
 
@@ -646,20 +646,22 @@ describe('buildRunSlots', () => {
     }
   });
 
-  it('twin partners are distinct and drawn from the same or lower tier', () => {
+  it('co-bosses are distinct and drawn from the same or lower tier', () => {
     let twins = 0;
     for (let seed = 1; seed <= 60; seed++) {
       for (const slot of buildRunSlots('goblin', 2, new Rng(seed), 4)) {
-        if (slot.length !== 2) continue;
+        if (slot.length < 2) continue;
         twins++;
-        const [lead, partner] = slot;
-        expect(partner).not.toBe(lead);
-        expect(MONSTER_IDS).toContain(partner);
+        const [lead, ...partners] = slot;
         const allowed = [MONSTERS[lead].tier, lowerTier[MONSTERS[lead].tier]];
-        expect(allowed).toContain(MONSTERS[partner].tier);
+        for (const partner of partners) {
+          expect(partner).not.toBe(lead);
+          expect(MONSTER_IDS).toContain(partner);
+          expect(allowed).toContain(MONSTERS[partner].tier);
+        }
       }
     }
-    expect(twins).toBeGreaterThan(0); // the twin branch is actually exercised
+    expect(twins).toBeGreaterThan(0); // the multi-boss branch is actually exercised
   });
 
   it('scales twin odds down for small parties (party-factor branches)', () => {
@@ -667,7 +669,7 @@ describe('buildRunSlots', () => {
       let n = 0;
       for (let seed = 1; seed <= 80; seed++) {
         for (const slot of buildRunSlots('goblin', 2, new Rng(seed), partySize)) {
-          if (slot.length === 2) n++;
+          if (slot.length >= 2) n++;
         }
       }
       return n;

@@ -10,11 +10,13 @@ import type { LobbyPlayer, NetSession } from '../../net/protocol';
 import type { NetMode } from '../../net/transport/room';
 import { DEFAULT_CLASS } from '../../engine/content/classes';
 import { DEFAULT_MONSTER } from '../../engine/content/monsters';
+import { setShakeEnabled } from '../../render/pipeline/camera';
 
 // --- Persisted local preferences (survive reloads / future runs) -----------
 const NAME_KEY = 'warband.heroName.v1';
 const VOLUME_KEY = 'warband.volume.v1';
 const AUTOFIRE_KEY = 'warband.autofire.v1';
+const SHAKE_KEY = 'warband.screenShake.v1';
 
 /** Load the last hero name the player used (empty string if none / unavailable). */
 function loadName(): string {
@@ -74,6 +76,24 @@ function loadAutofire(): boolean {
 function persistAutofire(on: boolean): void {
   try {
     if (typeof localStorage !== 'undefined') localStorage.setItem(AUTOFIRE_KEY, on ? '1' : '0');
+  } catch {
+    /* ignore quota / privacy-mode failures */
+  }
+}
+
+/** Load the persisted screen-shake preference (default ON). */
+function loadScreenShake(): boolean {
+  try {
+    if (typeof localStorage !== 'undefined') return localStorage.getItem(SHAKE_KEY) !== '0';
+  } catch {
+    /* privacy mode / unavailable storage — default on */
+  }
+  return true;
+}
+
+function persistScreenShake(on: boolean): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(SHAKE_KEY, on ? '1' : '0');
   } catch {
     /* ignore quota / privacy-mode failures */
   }
@@ -141,6 +161,8 @@ export interface AppState {
   volume: number;
   /** Hold-to-autofire: held ability buttons repeat instead of edge-triggering. */
   autofire: boolean;
+  /** Accessibility: allow the camera to shake on heavy hits/casts (persisted). */
+  screenShake: boolean;
   /** Whether the Controls (rebinding) overlay is open. */
   showControls: boolean;
 
@@ -177,6 +199,7 @@ export interface AppState {
   toggleMute: () => void;
   setVolume: (v: number) => void;
   setAutofire: (on: boolean) => void;
+  setScreenShake: (on: boolean) => void;
   setShowControls: (v: boolean) => void;
   /** Tear the session down and return to the main menu. */
   reset: () => void;
@@ -217,6 +240,7 @@ export const useStore = create<AppState>((set, get) => ({
   muted: false,
   volume: loadVolume(),
   autofire: loadAutofire(),
+  screenShake: loadScreenShake(),
   showControls: false,
 
   // Navigating always dismisses the transient Controls modal so it can't get
@@ -260,6 +284,11 @@ export const useStore = create<AppState>((set, get) => ({
     persistAutofire(autofire);
     set({ autofire });
   },
+  setScreenShake: (screenShake) => {
+    persistScreenShake(screenShake);
+    setShakeEnabled(screenShake);
+    set({ screenShake });
+  },
   setShowControls: (showControls) => set({ showControls }),
 
   reset: () => {
@@ -295,3 +324,7 @@ export const useStore = create<AppState>((set, get) => ({
     });
   },
 }));
+
+// Sync the render-layer shake flag with the persisted preference at startup so a
+// player who turned screen shake off stays shake-free before touching any toggle.
+setShakeEnabled(useStore.getState().screenShake);

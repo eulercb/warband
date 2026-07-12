@@ -320,14 +320,20 @@ export class CreatureRig {
         y: anchor.y + Math.sin(around + baseAng) * lg.attachDist * R,
       };
       const leg = this.legs[i];
+      // Clamp the planted foot to the leg's full reach from the hip. When the
+      // body outruns the gait (fast movement, one-foot-at-a-time biped) a foot
+      // can lag arbitrarily far behind; without this the two-bone solve draws a
+      // fully-extended straight limb that reads as a leg "stretching forever".
+      const maxReach = (lg.l1 + lg.l2) * R * 0.98;
+      const planted = clampToReach(leg.foot, shoulder, maxReach);
       // Front-leg raise telegraph: legs pointing forward lift during a windup.
       const forwardness = Math.cos(baseAng);
       const raise =
         windupT > 0 && forwardness > 0.2 ? windupT * forwardness * lg.liftHeight * R : 0;
       const lift = leg.stepping ? Math.sin(Math.PI * leg.t) * lg.liftHeight * R : 0;
-      const foot = { x: leg.foot.x, y: leg.foot.y - lift - raise };
+      const foot = { x: planted.x, y: planted.y - lift - raise };
 
-      if (!leg.stepping && !downed) footShadow(this.gGround, leg.foot.x, leg.foot.y, wTip * 1.6);
+      if (!leg.stepping && !downed) footShadow(this.gGround, planted.x, planted.y, wTip * 1.6);
 
       const bendRef = lg.bendOutward ? anchor : bipedRef;
       const knee = solveTwoBone(shoulder, foot, lg.l1 * R, lg.l2 * R, bendRef);
@@ -644,4 +650,14 @@ function normalizeOr(a: Vec2, fallback: Vec2): Vec2 {
   const l = Math.hypot(a.x, a.y);
   if (l < 1e-6) return fallback;
   return { x: a.x / l, y: a.y / l };
+}
+
+/** Pull `p` back toward `origin` so it sits no farther than `maxDist` away. */
+function clampToReach(p: Vec2, origin: Vec2, maxDist: number): Vec2 {
+  const dx = p.x - origin.x;
+  const dy = p.y - origin.y;
+  const d = Math.hypot(dx, dy);
+  if (d <= maxDist || d < 1e-6) return { x: p.x, y: p.y };
+  const s = maxDist / d;
+  return { x: origin.x + dx * s, y: origin.y + dy * s };
 }

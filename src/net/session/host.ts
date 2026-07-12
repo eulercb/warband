@@ -40,9 +40,9 @@ import { buildRunSlots, modifierForCycle, getMonster } from '../../engine/conten
 import type { RunSlot } from '../../engine/content/monsters';
 import { rollAffixes } from '../../engine/content/affixes';
 import { Rng } from '../../engine/core/math';
-import { isUpgradeId } from '../../engine/content/upgrades';
+import { isUpgradeId, upgradeMaxStacks } from '../../engine/content/upgrades';
 import type { UpgradeId } from '../../engine/content/upgrades';
-import { isCharUpgradeId } from '../../engine/content/charUpgrades';
+import { isCharUpgradeId, charUpgradeMaxStacks } from '../../engine/content/charUpgrades';
 import type {
   MonsterId,
   ClassId,
@@ -731,18 +731,28 @@ export class Host implements NetSession {
    */
   private recordUpgrade(peerId: string, msg: UpgradeMsg): void {
     if (isUpgradeId(msg.generic) && !this.roundPickedGeneric.has(peerId)) {
-      this.roundPickedGeneric.add(peerId);
       const arr = this.upgrades.get(peerId) ?? [];
-      arr.push(msg.generic);
-      this.upgrades.set(peerId, arr);
-      netLog('host', `upgrade "${msg.generic}" for ${peerId.slice(0, 6)}`, { total: arr.length });
+      // Reject a pick already at its stacking cap (defence-in-depth: the client
+      // filters maxed boons out of the offer, so a valid client never sends one).
+      const have = arr.reduce((n, id) => (id === msg.generic ? n + 1 : n), 0);
+      if (have < upgradeMaxStacks(msg.generic)) {
+        this.roundPickedGeneric.add(peerId);
+        arr.push(msg.generic);
+        this.upgrades.set(peerId, arr);
+        netLog('host', `upgrade "${msg.generic}" for ${peerId.slice(0, 6)}`, { total: arr.length });
+      }
     }
     if (isCharUpgradeId(msg.char) && !this.roundPickedChar.has(peerId)) {
-      this.roundPickedChar.add(peerId);
       const arr = this.charUpgrades.get(peerId) ?? [];
-      arr.push(msg.char);
-      this.charUpgrades.set(peerId, arr);
-      netLog('host', `char upgrade "${msg.char}" for ${peerId.slice(0, 6)}`, { total: arr.length });
+      const have = arr.reduce((n, id) => (id === msg.char ? n + 1 : n), 0);
+      if (have < charUpgradeMaxStacks(msg.char)) {
+        this.roundPickedChar.add(peerId);
+        arr.push(msg.char);
+        this.charUpgrades.set(peerId, arr);
+        netLog('host', `char upgrade "${msg.char}" for ${peerId.slice(0, 6)}`, {
+          total: arr.length,
+        });
+      }
     }
   }
 

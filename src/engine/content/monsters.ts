@@ -12,6 +12,10 @@ import {
   TWIN_BASE_CHANCE,
   TWIN_CHANCE_PER_CYCLE,
   TWIN_CHANCE_MAX,
+  TWIN_EXTRA_CHANCE,
+  TWIN_EXTRA_FALLOFF,
+  TWIN_EXTRA_PER_CYCLE,
+  TWIN_MAX_BOSSES,
 } from '../core/constants';
 
 export type BossAbilityShape =
@@ -1536,7 +1540,7 @@ export function buildRunSlots(
 
   return spine.map((id, slot) => {
     // The opener stays solo on the first run so a fresh party learns one boss
-    // at a time; endless cycles throw twins at you from the very first gate.
+    // at a time; endless cycles throw packs at you from the very first gate.
     if (slot === 0 && cycle <= 0) return [id];
     if (rng.next() >= twinChance) return [id];
     const tier = MONSTERS[id].tier;
@@ -1544,8 +1548,23 @@ export function buildRunSlots(
       (x) => x !== id,
     );
     if (pool.length === 0) return [id];
-    const partner = pool[Math.floor(rng.next() * pool.length) % pool.length];
-    return [id, partner];
+    const pack: MonsterId[] = [id];
+    const taken = new Set<MonsterId>([id]);
+    // Second boss is guaranteed once we've committed to a multi-fight; each
+    // further co-boss is added with a tapering, cycle-scaled probability so
+    // triplets — and, rarely, quads — surface without becoming a wipe.
+    let extraChance =
+      (TWIN_EXTRA_CHANCE + Math.max(0, cycle) * TWIN_EXTRA_PER_CYCLE) * partyFactor;
+    while (pack.length < TWIN_MAX_BOSSES) {
+      const candidates = pool.filter((x) => !taken.has(x));
+      if (candidates.length === 0) break;
+      const partner = candidates[Math.floor(rng.next() * candidates.length) % candidates.length];
+      pack.push(partner);
+      taken.add(partner);
+      if (pack.length >= 2 && rng.next() >= extraChance) break;
+      extraChance *= TWIN_EXTRA_FALLOFF;
+    }
+    return pack;
   });
 }
 

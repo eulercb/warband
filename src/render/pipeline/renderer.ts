@@ -420,9 +420,10 @@ export class Renderer {
   }
 
   /**
-   * Subtle, local-only preview of the local player's basic attack area: a faint
-   * cone for melee cleaves, a short reticle line for ranged shots. Helps the
-   * player read where their attack lands without cluttering the shared field.
+   * Subtle, local-only preview of the local player's MELEE basic attack area: a
+   * faint cone showing where a cleave lands. Ranged classes get no preview — the
+   * old "reticle line" from the hero to the pointer read as a rendering bug (and
+   * followed you around the menu playground), so it was removed.
    */
   private drawAimPreview(state: RenderState): void {
     const g = this.aimLayer;
@@ -433,28 +434,18 @@ export class Renderer {
     if (!p || p.state !== 'alive') return;
 
     const ab = getClass(p.classId).abilities.basic;
+    if (ab.kind !== 'meleeCone') return;
     const s = this.camera.scale;
     const scr = this.camera.worldToScreen(p.pos);
     const ang = Math.atan2(p.aim.y, p.aim.x);
     const color = CLASS_COLORS[p.classId] ?? 0xffffff;
 
-    if (ab.kind === 'meleeCone') {
-      const R = (ab.range ?? 70) * s;
-      const half = ((ab.halfAngleDeg ?? 45) * Math.PI) / 180;
-      g.moveTo(scr.x, scr.y)
-        .arc(scr.x, scr.y, R, ang - half, ang + half)
-        .lineTo(scr.x, scr.y)
-        .stroke({ width: 1.5, color, alpha: 0.28 });
-    } else if (ab.kind === 'projectile') {
-      const R = 130 * s;
-      const startR = PLAYER_RADIUS * s * 1.6;
-      const sx = scr.x + Math.cos(ang) * startR;
-      const sy = scr.y + Math.sin(ang) * startR;
-      const ex = scr.x + Math.cos(ang) * R;
-      const ey = scr.y + Math.sin(ang) * R;
-      g.moveTo(sx, sy).lineTo(ex, ey).stroke({ width: 1.5, color, alpha: 0.22 });
-      g.circle(ex, ey, 3).fill({ color, alpha: 0.3 });
-    }
+    const R = (ab.range ?? 70) * s;
+    const half = ((ab.halfAngleDeg ?? 45) * Math.PI) / 180;
+    g.moveTo(scr.x, scr.y)
+      .arc(scr.x, scr.y, R, ang - half, ang + half)
+      .lineTo(scr.x, scr.y)
+      .stroke({ width: 1.5, color, alpha: 0.28 });
   }
 
   private drawTelegraph(state: RenderState): void {

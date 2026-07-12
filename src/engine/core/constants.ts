@@ -9,6 +9,31 @@ export const SIM_TICK_RATE = 20; // Hz
 export const SIM_DT = 1 / SIM_TICK_RATE; // 0.05 s
 export const SNAPSHOT_RATE = 20; // Hz (host -> clients)
 
+// --- Pacing / weight of blows (see spawnPlayers / spawnBosses) ---
+/**
+ * Global slow-down for the twitchy "attack" abilities (basic + the direct-damage
+ * A1/A2/A3s). Doubling their cooldowns makes each blow land less often but read
+ * as a heavier hit; boss HP is reduced by BOSS_HP_SCALE to keep a fight's overall
+ * length roughly the same. Sustain / mobility / heal cooldowns are untouched so
+ * the slower pace doesn't quietly make the band more fragile.
+ */
+export const ATTACK_CD_SCALE = 2;
+/** Boss max-HP multiplier that pairs with ATTACK_CD_SCALE to hold fight length. */
+export const BOSS_HP_SCALE = 0.6;
+
+/**
+ * A boss's passive regen is SUPPRESSED for this long after it takes any damage,
+ * so a band that keeps up the pressure always out-DPSes the heal and the fight
+ * can't drag; step away and the boss slowly knits itself back together. Also caps
+ * the fraction of max HP a boss may regenerate per second so no boss out-heals
+ * a committed party.
+ */
+export const BOSS_REGEN_LOCKOUT_S = 3.5;
+export const BOSS_REGEN_MAX_FRAC = 0.006; // ≤ 0.6% max HP / s regardless of `regen`
+
+/** Class SKILL stacking cap: the same class/graft upgrade can be taken at most this many times. */
+export const MAX_SKILL_STACKS = 5;
+
 // --- Arena ---
 export const ARENA_W = 1600; // world units
 export const ARENA_H = 1000;
@@ -153,10 +178,21 @@ export const STUN_DR_FLOOR = 0.2; // s — anything shorter is resisted outright
 // chaotic but survivable.
 export const TWIN_HP_FRAC = 0.62;
 export const TWIN_DMG_FRAC = 0.8;
-/** Chance a mid-run slot rolls a twin encounter (scales up in endless). */
-export const TWIN_BASE_CHANCE = 0.22;
-export const TWIN_CHANCE_PER_CYCLE = 0.12;
-export const TWIN_CHANCE_MAX = 0.6;
+/** Chance a mid-run slot rolls a MULTI-boss encounter (scales up in endless). */
+export const TWIN_BASE_CHANCE = 0.38;
+export const TWIN_CHANCE_PER_CYCLE = 0.14;
+export const TWIN_CHANCE_MAX = 0.75;
+/**
+ * Once a slot has rolled into a multi-boss fight, each EXTRA co-boss beyond the
+ * second is added with this probability (so triplets — and, rarely, quads —
+ * become possible), tapering by TWIN_EXTRA_FALLOFF per additional boss and rising
+ * with the endless cycle. Capped at TWIN_MAX_BOSSES total. Each boss in an N-pack
+ * is weakened further (see spawnBosses) so a swarm stays chaotic, not lethal.
+ */
+export const TWIN_EXTRA_CHANCE = 0.3;
+export const TWIN_EXTRA_FALLOFF = 0.45; // each further boss is much less likely
+export const TWIN_EXTRA_PER_CYCLE = 0.06;
+export const TWIN_MAX_BOSSES = 4;
 
 // --- Boss affixes (rolled at fight-gen; see content/affixes.ts + world.ts) ---
 // Each affix bends the same boss into a different fight. All numbers are starting

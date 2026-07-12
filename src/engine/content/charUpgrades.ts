@@ -12,7 +12,8 @@
  */
 import type { ClassId, AbilitySlot, Player } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
-import { CLASSES, cloneAbilities } from './classes';
+import { CLASSES, cloneAbilities, slowAttackCooldowns } from './classes';
+import { MAX_SKILL_STACKS } from '../core/constants';
 
 /** What an upgrade's `apply` receives: the hero and their private ability table. */
 export interface CharUpgradeCtx {
@@ -38,6 +39,19 @@ export interface CharUpgradeDef {
   name: string;
   desc: string;
   icon: string;
+  /**
+   * Most times this upgrade can be taken across a run (class SKILL cap). Once a
+   * hero owns this many, it drops out of the offer pool. Defaults to
+   * MAX_SKILL_STACKS; one-shot transforms (grafts / whole-kit styles) set 1 so a
+   * "replace this slot" pick is never offered again pointlessly.
+   */
+  maxStacks?: number;
+  /**
+   * For a graft that swaps out one of the hero's ability slots: which slot it
+   * replaces. The reward UI reads this to show the REAL name of the ability being
+   * replaced ("Replaces Fireball") instead of a cryptic slot code.
+   */
+  replaces?: AbilitySlot;
   apply: (ctx: CharUpgradeCtx) => void;
 }
 
@@ -100,7 +114,7 @@ const KNIGHT: CharUpgradeDef[] = [
     'kn_bulwark',
     'Impenetrable',
     '🛡️',
-    'Shield Wall mitigates far more and lasts longer',
+    'Shield Wall blocks 60% of damage (up from 50%) and lasts 5.5s (up from 4s)',
     ({ abilities: a }) => {
       mul(a.a2, 'buffDefMult', 0.8);
       addN(a.a2, 'buffDuration', 1.5);
@@ -111,7 +125,7 @@ const KNIGHT: CharUpgradeDef[] = [
     'kn_concuss',
     'Concussive Bash',
     '💫',
-    'Shield Bash stuns much longer and hits harder',
+    'Shield Bash stuns for 1.3s (up from 0.8s) and hits for 42 (up from 30)',
     ({ abilities: a }) => {
       addN(a.a3, 'stun', 0.5);
       addN(a.a3, 'damage', 12);
@@ -122,7 +136,7 @@ const KNIGHT: CharUpgradeDef[] = [
     'kn_widecleave',
     'Sweeping Blows',
     '🌀',
-    'Cleave reaches wider and cuts deeper',
+    'Cleave reaches 84u (+14), widens to a 53° arc (+8°), and hits for 27 (+5)',
     ({ abilities: a }) => {
       addN(a.basic, 'range', 14);
       addN(a.basic, 'halfAngleDeg', 8);
@@ -134,7 +148,7 @@ const KNIGHT: CharUpgradeDef[] = [
     'kn_bastion',
     'Bastion',
     '⚔️',
-    'Taunt now also shields you, and comes up faster',
+    'Taunt now shields you (−30% damage taken while active) and returns 20% sooner (9.6s)',
     ({ abilities: a }) => {
       mul(a.a1, 'cooldown', 0.8);
       setMin(a.a1, 'buffDefMult', 0.7);
@@ -146,7 +160,7 @@ const KNIGHT: CharUpgradeDef[] = [
     'kn_secondwind',
     'Second Wind',
     '❤️',
-    'Steadily regenerate health while you hold the line',
+    'Regenerate 1.5% of your max HP every second',
     ({ player: p }) => {
       p.regenPerSec += p.maxHp * 0.015;
     },
@@ -159,7 +173,7 @@ const RANGER: CharUpgradeDef[] = [
     'rg_pierce',
     'Piercing Shots',
     '🎯',
-    'Arrows fly faster and hit harder',
+    'Arrow hits for 25 (+5) and flies 13% faster; Multishot arrows deal 20 each (+4)',
     ({ abilities: a }) => {
       addN(a.basic, 'damage', 5);
       addN(a.basic, 'projSpeed', 90);
@@ -171,7 +185,7 @@ const RANGER: CharUpgradeDef[] = [
     'rg_frost',
     'Frost Arrows',
     '❄️',
-    'Your shots chill whatever they strike, slowing it',
+    'Arrow and Multishot chill the target to 60% move speed for 1.5s',
     ({ abilities: a }) => {
       for (const ab of [a.basic, a.a1]) {
         ab.slowMult = Math.min(ab.slowMult ?? 1, 0.6);
@@ -184,7 +198,7 @@ const RANGER: CharUpgradeDef[] = [
     'rg_volley',
     'Volley',
     '🏹',
-    'Multishot looses two extra arrows in a wider fan',
+    'Multishot looses 5 arrows (+2) in a wider 38° fan',
     ({ abilities: a }) => {
       addN(a.a1, 'projCount', 2);
       addN(a.a1, 'spreadDeg', 8);
@@ -195,7 +209,7 @@ const RANGER: CharUpgradeDef[] = [
     'rg_barbed',
     'Barbed Rain',
     '🌧️',
-    'Rain of Arrows bites harder and lingers',
+    'Rain of Arrows ticks for 19 (+7), lasts 4.5s (+1.5), and covers 135u (+15)',
     ({ abilities: a }) => {
       addN(a.a2, 'zoneTickDamage', 7);
       addN(a.a2, 'zoneDuration', 1.5);
@@ -207,7 +221,7 @@ const RANGER: CharUpgradeDef[] = [
     'rg_fleet',
     'Fleet-footed',
     '🥾',
-    'Roll travels farther, dodges longer, and refreshes faster',
+    'Roll travels 270u (+50), dodges for 0.45s (+0.15), and refreshes 30% faster (3.5s)',
     ({ abilities: a }) => {
       mul(a.a3, 'cooldown', 0.7);
       addN(a.a3, 'range', 50);
@@ -222,7 +236,7 @@ const MAGE: CharUpgradeDef[] = [
     'mg_freeze',
     'Deep Freeze',
     '🧊',
-    'Frost Nova now freezes enemies solid for a moment',
+    'Frost Nova freezes solid for 1.1s, hits for 28 (+8), and reaches 168u (+18)',
     ({ abilities: a }) => {
       addN(a.a2, 'freeze', 1.1);
       addN(a.a2, 'radius', 18);
@@ -234,7 +248,7 @@ const MAGE: CharUpgradeDef[] = [
     'mg_quickcast',
     'Quickened Casting',
     '⚡',
-    'Fireball takes far less time to charge and recharges faster',
+    'Fireball charges in 0.42s (−40%) and recharges 15% faster (~6s)',
     ({ abilities: a }) => {
       mul(a.a1, 'castTime', 0.6);
       mul(a.a1, 'cooldown', 0.85);
@@ -245,7 +259,7 @@ const MAGE: CharUpgradeDef[] = [
     'mg_combust',
     'Combustion',
     '🔥',
-    'Fireball erupts in a wider, deadlier blast',
+    'Fireball erupts for 92 (+22) across a 135u blast (+35)',
     ({ abilities: a }) => {
       addN(a.a1, 'impactRadius', 35);
       addN(a.a1, 'damage', 22);
@@ -256,7 +270,7 @@ const MAGE: CharUpgradeDef[] = [
     'mg_arcane',
     'Arcane Surge',
     '✨',
-    'Arcane Bolt hits harder and fires more often',
+    'Arcane Bolt hits for 22 (+6, ~+38%) and fires 18% more often',
     ({ abilities: a }) => {
       addN(a.basic, 'damage', 6);
       mul(a.basic, 'cooldown', 0.82);
@@ -267,7 +281,7 @@ const MAGE: CharUpgradeDef[] = [
     'mg_blink',
     'Flicker',
     '🌀',
-    'Blink jumps farther, comes up faster, and phases you briefly',
+    'Blink jumps 320u (+70), returns 30% faster (4.2s), and phases you for 0.25s',
     ({ abilities: a }) => {
       addN(a.a3, 'range', 70);
       mul(a.a3, 'cooldown', 0.7);
@@ -282,7 +296,7 @@ const CLERIC: CharUpgradeDef[] = [
     'cl_greaterheal',
     'Greater Heal',
     '💚',
-    'Heal restores much more, from farther away',
+    'Heal restores 88 HP (+28) from up to 450u away (+50)',
     ({ abilities: a }) => {
       addN(a.a1, 'damage', 28);
       addN(a.a1, 'range', 50);
@@ -293,7 +307,7 @@ const CLERIC: CharUpgradeDef[] = [
     'cl_blessing',
     'Exalt',
     '🙏',
-    'Blessing empowers and shields the ally far more, for longer',
+    'Blessing grants +40% damage (up from +25%) and 28% damage reduction for 8s (+2)',
     ({ abilities: a }) => {
       addN(a.a3, 'buffDamageMult', 0.15);
       mul(a.a3, 'buffDefMult', 0.9);
@@ -305,7 +319,7 @@ const CLERIC: CharUpgradeDef[] = [
     'cl_sanctuary',
     'Hallowed Sanctuary',
     '⛪',
-    'Sanctuary mends more and covers more ground',
+    'Sanctuary heals 17/tick (+7), covers 165u (+25), and lasts 5.5s (+1.5)',
     ({ abilities: a }) => {
       addN(a.a2, 'zoneTickHeal', 7);
       addN(a.a2, 'radius', 25);
@@ -317,7 +331,7 @@ const CLERIC: CharUpgradeDef[] = [
     'cl_smite',
     'Holy Wrath',
     '🌟',
-    'Smite hits harder and dazes what it strikes',
+    'Smite hits for 20 (+8) and dazes (0.5s stun) what it strikes',
     ({ abilities: a }) => {
       addN(a.basic, 'damage', 8);
       addN(a.basic, 'freeze', 0.5);
@@ -328,7 +342,7 @@ const CLERIC: CharUpgradeDef[] = [
     'cl_warpriest',
     'War Priest',
     '❤️',
-    'Toughen up: more health and swifter footwork',
+    '+12% max HP and +8% move speed',
     ({ player: p }) => {
       p.maxHp = Math.round(p.maxHp * 1.12);
       p.hp = p.maxHp;
@@ -343,7 +357,7 @@ const BARBARIAN: CharUpgradeDef[] = [
     'bb_endlessrage',
     'Endless Rage',
     '😤',
-    'Rage burns hotter, drives you faster, and returns sooner',
+    'Rage empowers to +50% damage and +30% move speed, and returns 15% sooner (~12s)',
     ({ abilities: a }) => {
       addN(a.a1, 'buffDamageMult', 0.15);
       addN(a.a1, 'buffMoveMult', 0.1);
@@ -355,7 +369,7 @@ const BARBARIAN: CharUpgradeDef[] = [
     'bb_bloodthirst',
     'Bloodthirst',
     '🩸',
-    'Your Swings and Whirlwind heal you for a cut of the damage',
+    'Reckless Swing and Whirlwind heal you for 15% of the damage they deal',
     ({ abilities: a }) => {
       for (const ab of [a.basic, a.a3]) addN(ab, 'lifestealFrac', 0.15);
     },
@@ -365,7 +379,7 @@ const BARBARIAN: CharUpgradeDef[] = [
     'bb_seismic',
     'Seismic Leap',
     '💥',
-    'Leap slams down for heavy area damage on landing',
+    'Leap slams for 46 landing damage (+24) across 150u (+30), 15% faster',
     ({ abilities: a }) => {
       addN(a.a2, 'landingDamage', 24);
       addN(a.a2, 'radius', 30);
@@ -377,7 +391,7 @@ const BARBARIAN: CharUpgradeDef[] = [
     'bb_brutal',
     'Brutal',
     '🪓',
-    'Swings and Whirlwind hit harder over a wider arc',
+    'Reckless Swing hits for 32 (+6) reaching 92u; Whirlwind hits for 43 (+9) across 150u',
     ({ abilities: a }) => {
       addN(a.basic, 'damage', 6);
       addN(a.basic, 'range', 10);
@@ -390,7 +404,7 @@ const BARBARIAN: CharUpgradeDef[] = [
     'bb_thickhide',
     'Thick Hide',
     '🐻',
-    'Shrug off blows: more health, less damage taken',
+    '+12% max HP and −10% damage taken',
     ({ player: p }) => {
       p.maxHp = Math.round(p.maxHp * 1.12);
       p.hp = p.maxHp;
@@ -405,7 +419,7 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_assassin',
     'Assassinate',
     '🗡️',
-    'Backstab lands for devastating burst, far more often',
+    'Backstab bursts for 82 (+24) and returns 22% sooner (3.9s)',
     ({ abilities: a }) => {
       addN(a.a1, 'damage', 24);
       mul(a.a1, 'cooldown', 0.78);
@@ -416,7 +430,7 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_poison',
     'Deadly Poison',
     '☠️',
-    'Poison Vial spreads farther and festers longer',
+    'Poison Vial ticks for 18 (+7), lasts 5.5s (+1.5), and spreads to 123u (+18)',
     ({ abilities: a }) => {
       addN(a.a3, 'zoneTickDamage', 7);
       addN(a.a3, 'zoneDuration', 1.5);
@@ -428,7 +442,7 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_vanish',
     'Vanish',
     '💨',
-    'Shadowstep resets faster, phases longer, and patches you up',
+    'Shadowstep resets 30% faster (4.2s), phases for 0.5s, and heals 22 on use',
     ({ abilities: a }) => {
       mul(a.a2, 'cooldown', 0.7);
       addN(a.a2, 'iframes', 0.2);
@@ -440,7 +454,7 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_flurry',
     'Flurry',
     '⚡',
-    'Slash strikes noticeably faster and harder',
+    'Slash strikes 22% faster and hits for 23 (+5)',
     ({ abilities: a }) => {
       mul(a.basic, 'cooldown', 0.78);
       addN(a.basic, 'damage', 5);
@@ -451,7 +465,7 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_envenom',
     'Envenomed Blades',
     '🐍',
-    'Your melee strikes siphon life from foes',
+    'Slash and Backstab siphon 12% of the damage they deal back as health',
     ({ abilities: a }) => {
       for (const ab of [a.basic, a.a1]) addN(ab, 'lifestealFrac', 0.12);
     },
@@ -464,7 +478,7 @@ const PALADIN: CharUpgradeDef[] = [
     'pa_hallowed',
     'Hallowed Ground',
     '⛪',
-    'Consecration scorches harder and mends more, for longer',
+    'Consecration scorches for 13 and mends 13 per tick (+5 each), covers 172u (+22), lasts 6.5s',
     ({ abilities: a }) => {
       addN(a.a1, 'zoneTickDamage', 5);
       addN(a.a1, 'zoneTickHeal', 5);
@@ -477,7 +491,7 @@ const PALADIN: CharUpgradeDef[] = [
     'pa_aegis',
     'Greater Aegis',
     '🛡️',
-    'Divine Shield blocks far more, lasts longer, and returns faster',
+    'Divine Shield blocks 72% of damage (up from 65%), lasts 6s (+2), returns 15% sooner',
     ({ abilities: a }) => {
       mul(a.a3, 'buffDefMult', 0.8);
       addN(a.a3, 'buffDuration', 2);
@@ -489,7 +503,7 @@ const PALADIN: CharUpgradeDef[] = [
     'pa_mercy',
     'Merciful Hands',
     '💛',
-    'Lay on Hands restores far more and recharges quicker',
+    'Lay on Hands restores 122 HP (+32) and recharges 15% faster (~5s)',
     ({ abilities: a }) => {
       addN(a.a2, 'damage', 32);
       mul(a.a2, 'cooldown', 0.85);
@@ -500,7 +514,7 @@ const PALADIN: CharUpgradeDef[] = [
     'pa_radiant',
     'Radiant Strike',
     '🌟',
-    'Holy Strike smites harder, dazes foes, and heals you',
+    'Holy Strike hits for 29 (+6), dazes (0.4s), and heals you 10% of the damage dealt',
     ({ abilities: a }) => {
       addN(a.basic, 'damage', 6);
       addN(a.basic, 'freeze', 0.4);
@@ -512,7 +526,7 @@ const PALADIN: CharUpgradeDef[] = [
     'pa_zeal',
     'Zeal',
     '⚡',
-    'Move faster and bring every ability off cooldown sooner',
+    '+8% move speed and −10% ability cooldowns',
     ({ player: p }) => {
       p.moveSpeed *= 1.08;
       p.cooldownMult *= 0.9;
@@ -526,7 +540,7 @@ const DRUID: CharUpgradeDef[] = [
     'dr_grasp',
     'Thorned Grasp',
     '🌿',
-    'Entangle roots foes almost solid and gnaws harder',
+    'Entangle roots to 18% move speed, gnaws for 11/tick (+5), and lasts 5.5s',
     ({ abilities: a }) => {
       a.a1.slowMult = (a.a1.slowMult ?? 1) * 0.6;
       addN(a.a1, 'zoneTickDamage', 5);
@@ -538,7 +552,7 @@ const DRUID: CharUpgradeDef[] = [
     'dr_regrowth',
     'Wild Growth',
     '💚',
-    'Regrowth heals much more from farther away, faster',
+    'Regrowth heals 81 HP (+26) from 430u (+50), and recharges 15% faster',
     ({ abilities: a }) => {
       addN(a.a2, 'damage', 26);
       addN(a.a2, 'range', 50);
@@ -550,7 +564,7 @@ const DRUID: CharUpgradeDef[] = [
     'dr_gale',
     'Gale Force',
     '🌪️',
-    'Cyclone widens, bites harder, and slows more sharply',
+    'Cyclone widens to 180u (+25), slows to 35% move speed, and hits for 32 (+8)',
     ({ abilities: a }) => {
       addN(a.a3, 'radius', 25);
       a.a3.slowMult = (a.a3.slowMult ?? 1) * 0.7;
@@ -562,7 +576,7 @@ const DRUID: CharUpgradeDef[] = [
     'dr_thorns',
     'Splintering Thorns',
     '🌵',
-    'Thornlash splits into a spread of extra thorns',
+    'Thornlash splits into 2 thorns in a 14° spread and hits for 22 each (+5)',
     ({ abilities: a }) => {
       addN(a.basic, 'projCount', 1);
       a.basic.spreadDeg = Math.max(a.basic.spreadDeg ?? 0, 14);
@@ -574,7 +588,7 @@ const DRUID: CharUpgradeDef[] = [
     'dr_ward',
     "Nature's Ward",
     '🍃',
-    'Grow hardier: more health and steady regeneration',
+    '+12% max HP and regenerate 1.5% of max HP per second',
     ({ player: p }) => {
       p.maxHp = Math.round(p.maxHp * 1.12);
       p.hp = p.maxHp;
@@ -596,12 +610,14 @@ const HYBRID: CharUpgradeDef[] = [
       'hy_pyromancer',
       "Pyromancer's Pact",
       '☄️',
-      'REPLACES your A2 with the Mage’s Fireball — whoever you were before',
+      'Graft the Mage’s Fireball: a 0.7s-charged bomb bursting for 70 in a 100-radius blast (7s cooldown)',
       ({ abilities: a }) => {
         graft(a, 'a2', 'mage', 'a1');
       },
     ),
     exclude: ['mage'], // already owns the real thing
+    replaces: 'a2',
+    maxStacks: 1,
   },
   {
     ...u(
@@ -609,12 +625,14 @@ const HYBRID: CharUpgradeDef[] = [
       'hy_shadowpact',
       'Shadow Pact',
       '🌑',
-      'REPLACES your A3 with the Rogue’s Shadowstep blink',
+      'Graft the Rogue’s Shadowstep: blink 240u toward your aim with 0.3s of i-frames (6s cooldown)',
       ({ abilities: a }) => {
         graft(a, 'a3', 'rogue', 'a2');
       },
     ),
     exclude: ['rogue', 'mage'], // both already carry a blink
+    replaces: 'a3',
+    maxStacks: 1,
   },
   {
     ...u(
@@ -622,12 +640,14 @@ const HYBRID: CharUpgradeDef[] = [
       'hy_warhowl',
       "Berserker's Howl",
       '📯',
-      'REPLACES your A1 with the Barbarian’s Rage',
+      'Graft the Barbarian’s Rage: +35% damage and +20% move speed for 6s (14s cooldown)',
       ({ abilities: a }) => {
         graft(a, 'a1', 'barbarian', 'a1');
       },
     ),
     exclude: ['barbarian'],
+    replaces: 'a1',
+    maxStacks: 1,
   },
   {
     ...u(
@@ -635,7 +655,7 @@ const HYBRID: CharUpgradeDef[] = [
       'hy_fieldmedic',
       'Field Medic',
       '🩹',
-      'REPLACES your A2 with a field-dressed Heal (weaker than a Cleric’s)',
+      'Graft a field-dressed Heal: restore 45 HP to a hurt ally within 400u (5s cooldown; weaker than a Cleric’s)',
       ({ abilities: a }) => {
         graft(a, 'a2', 'cleric', 'a1', (ab) => {
           ab.damage = Math.round(ab.damage * 0.75);
@@ -646,83 +666,100 @@ const HYBRID: CharUpgradeDef[] = [
     ),
     // Real healers would be trading their actual heal away for a worse one.
     exclude: ['cleric', 'paladin', 'druid'],
+    replaces: 'a2',
+    maxStacks: 1,
   },
-  u(
-    'any',
-    'hy_vampiric',
-    'Vampiric Style',
-    '🧛',
-    'Your strikes and shots feed you (10% lifesteal) — but pale flesh: -10% max HP',
-    ({ player: p, abilities: a }) => {
-      for (const ab of [a.basic, a.a1, a.a2, a.a3]) {
-        // Strikes (melee/pbaoe/dash landings) and shots (projectiles) can
-        // drink; ground zones and heals can't, so they stay untouched.
-        const drinks =
-          ab.damage > 0 &&
-          (ab.kind === 'meleeCone' || ab.kind === 'pbaoe' || ab.kind === 'projectile');
-        if (drinks) ab.lifestealFrac = (ab.lifestealFrac ?? 0) + 0.1;
-      }
-      p.maxHp = Math.round(p.maxHp * 0.9);
-      p.hp = Math.min(p.hp, p.maxHp);
-    },
-  ),
-  u(
-    'any',
-    'hy_frostbrand',
-    'Frostbrand Style',
-    '❄️',
-    'Everything you land chills the target, slowing it',
-    ({ abilities: a }) => {
-      for (const ab of [a.basic, a.a1, a.a2, a.a3]) {
-        if (ab.damage > 0 && ab.kind !== 'heal') {
-          ab.slowMult = Math.min(ab.slowMult ?? 1, 0.72);
-          ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.4);
+  {
+    ...u(
+      'any',
+      'hy_vampiric',
+      'Vampiric Style',
+      '🧛',
+      'Your strikes and shots heal you for 10% of the damage dealt — but pale flesh: −10% max HP',
+      ({ player: p, abilities: a }) => {
+        for (const ab of [a.basic, a.a1, a.a2, a.a3]) {
+          // Strikes (melee/pbaoe/dash landings) and shots (projectiles) can
+          // drink; ground zones and heals can't, so they stay untouched.
+          const drinks =
+            ab.damage > 0 &&
+            (ab.kind === 'meleeCone' || ab.kind === 'pbaoe' || ab.kind === 'projectile');
+          if (drinks) ab.lifestealFrac = (ab.lifestealFrac ?? 0) + 0.1;
         }
-      }
-    },
-  ),
-  u(
-    'any',
-    'hy_stormsplit',
-    'Stormsplit',
-    '⚡',
-    'Your basic attack forks: an extra projectile, or a wider heavier swing',
-    ({ abilities: a }) => {
-      const b = a.basic;
-      if (b.kind === 'projectile') {
-        b.projCount = (b.projCount ?? 1) + 1;
-        b.spreadDeg = Math.max(b.spreadDeg ?? 0, 12);
-      } else {
-        b.halfAngleDeg = (b.halfAngleDeg ?? 45) + 12;
-        b.range = (b.range ?? 70) + 12;
-        b.damage += 4;
-      }
-    },
-  ),
-  u(
-    'any',
-    'hy_juggernaut',
-    'Juggernaut Style',
-    '🐘',
-    'Become a mountain: +25% max HP and -8% damage taken, but slower on your feet',
-    ({ player: p }) => {
-      p.maxHp = Math.round(p.maxHp * 1.25);
-      p.hp = p.maxHp;
-      p.damageTakenMult *= 0.92;
-      p.moveSpeed *= 0.93;
-    },
-  ),
-  u(
-    'any',
-    'hy_glasscannon',
-    'Glass Cannon',
-    '💎',
-    'Hit like a meteor (+25% damage), shatter like glass (+18% damage taken)',
-    ({ player: p }) => {
-      p.damageMult *= 1.25;
-      p.damageTakenMult *= 1.18;
-    },
-  ),
+        p.maxHp = Math.round(p.maxHp * 0.9);
+        p.hp = Math.min(p.hp, p.maxHp);
+      },
+    ),
+    maxStacks: 3,
+  },
+  {
+    ...u(
+      'any',
+      'hy_frostbrand',
+      'Frostbrand Style',
+      '❄️',
+      'Everything you land chills the target to 72% move speed for 1.4s',
+      ({ abilities: a }) => {
+        for (const ab of [a.basic, a.a1, a.a2, a.a3]) {
+          if (ab.damage > 0 && ab.kind !== 'heal') {
+            ab.slowMult = Math.min(ab.slowMult ?? 1, 0.72);
+            ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.4);
+          }
+        }
+      },
+    ),
+    maxStacks: 1,
+  },
+  {
+    ...u(
+      'any',
+      'hy_stormsplit',
+      'Stormsplit',
+      '⚡',
+      'Your basic attack forks: +1 projectile in a 12° fan, or (melee) +12° arc, +12 range and +4 damage',
+      ({ abilities: a }) => {
+        const b = a.basic;
+        if (b.kind === 'projectile') {
+          b.projCount = (b.projCount ?? 1) + 1;
+          b.spreadDeg = Math.max(b.spreadDeg ?? 0, 12);
+        } else {
+          b.halfAngleDeg = (b.halfAngleDeg ?? 45) + 12;
+          b.range = (b.range ?? 70) + 12;
+          b.damage += 4;
+        }
+      },
+    ),
+    maxStacks: 3,
+  },
+  {
+    ...u(
+      'any',
+      'hy_juggernaut',
+      'Juggernaut Style',
+      '🐘',
+      'Become a mountain: +25% max HP and −8% damage taken, but −7% move speed',
+      ({ player: p }) => {
+        p.maxHp = Math.round(p.maxHp * 1.25);
+        p.hp = p.maxHp;
+        p.damageTakenMult *= 0.92;
+        p.moveSpeed *= 0.93;
+      },
+    ),
+    maxStacks: 2,
+  },
+  {
+    ...u(
+      'any',
+      'hy_glasscannon',
+      'Glass Cannon',
+      '💎',
+      'Hit like a meteor (+25% damage), shatter like glass (+18% damage taken)',
+      ({ player: p }) => {
+        p.damageMult *= 1.25;
+        p.damageTakenMult *= 1.18;
+      },
+    ),
+    maxStacks: 2,
+  },
 ];
 
 /** All character upgrades, grouped by class. */
@@ -797,7 +834,21 @@ export function previewAbilityTable(
       def.apply({ player: stub, abilities });
     }
   }
+  // Match the sim: the same global attack slow-down the World applies at spawn, so
+  // the cooldowns the HUD previews agree with the ones the sim actually commits.
+  slowAttackCooldowns(abilities);
   return abilities;
+}
+
+/** Most times a character upgrade may be taken (its `maxStacks`, or the shared cap). */
+export function charUpgradeMaxStacks(id: string): number {
+  return CHAR_UPGRADES[id]?.maxStacks ?? MAX_SKILL_STACKS;
+}
+
+/** Whether the hero already owns `id` at its stacking cap (so it shouldn't reroll). */
+export function charUpgradeAtMax(id: string, owned: readonly string[]): boolean {
+  const have = owned.reduce((n, o) => (o === id ? n + 1 : n), 0);
+  return have >= charUpgradeMaxStacks(id);
 }
 
 /** Chance one class offer is swapped for a wild cross-class hybrid pick. */
@@ -809,8 +860,15 @@ export const HYBRID_OFFER_CHANCE = 0.45;
  * With `HYBRID_OFFER_CHANCE`, one offer is swapped for a random HYBRID pick —
  * a cross-class power or combat style the class never had.
  */
-export function rollCharChoices(classId: ClassId, n: number, rnd: () => number): string[] {
-  const pool = [...(CHAR_UPGRADES_BY_CLASS[classId] ?? [])].map((d) => d.id);
+export function rollCharChoices(
+  classId: ClassId,
+  n: number,
+  rnd: () => number,
+  owned: readonly string[] = [],
+): string[] {
+  const pool = (CHAR_UPGRADES_BY_CLASS[classId] ?? [])
+    .map((d) => d.id)
+    .filter((id) => !charUpgradeAtMax(id, owned));
   const out: string[] = [];
   const count = Math.min(n, pool.length);
   while (out.length < count) {
@@ -818,7 +876,9 @@ export function rollCharChoices(classId: ClassId, n: number, rnd: () => number):
     out.push(pool[i]);
     pool.splice(i, 1);
   }
-  const eligible = HYBRID.filter((h) => upgradeAllowedFor(h, classId));
+  const eligible = HYBRID.filter(
+    (h) => upgradeAllowedFor(h, classId) && !charUpgradeAtMax(h.id, owned),
+  );
   if (out.length > 0 && eligible.length > 0 && rnd() < HYBRID_OFFER_CHANCE) {
     const hy = eligible[Math.floor(rnd() * eligible.length) % eligible.length];
     out[out.length - 1] = hy.id;

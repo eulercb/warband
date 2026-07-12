@@ -29,13 +29,23 @@ import { ARENA_W, ARENA_H } from '../../engine/core/constants';
 import { CLASSES } from '../../engine/content/classes';
 import { MONSTERS } from '../../engine/content/monsters';
 import { UPGRADES, rollUpgradeChoices, type UpgradeId } from '../../engine/content/upgrades';
-import { CHAR_UPGRADES, rollCharChoices } from '../../engine/content/charUpgrades';
+import {
+  CHAR_UPGRADES,
+  rollCharChoices,
+  previewAbilityTable,
+} from '../../engine/content/charUpgrades';
 import type { ClassId, FightResult } from '../../engine/core/types';
 
-/** Roll this round's offers (3 generic + 4 class) and hydrate them for the floor. */
-function rollOffers(classId: ClassId): RewardOffers {
-  const gen = rollUpgradeChoices(3, Math.random);
-  const chr = rollCharChoices(classId, 4, Math.random);
+/**
+ * Roll this round's offers (3 generic + 4 class) and hydrate them for the floor.
+ * Boons already at their stacking cap are filtered out (owned lists), and a graft
+ * offer names the REAL skill it would replace (e.g. "Replaces Fireball") using the
+ * hero's current, upgrade-resolved ability table.
+ */
+function rollOffers(classId: ClassId, ownedGen: UpgradeId[], ownedChar: string[]): RewardOffers {
+  const gen = rollUpgradeChoices(3, Math.random, ownedGen);
+  const chr = rollCharChoices(classId, 4, Math.random, ownedChar);
+  const current = previewAbilityTable(classId, ownedChar);
   return {
     generic: gen.map((id) => {
       const u = UPGRADES[id];
@@ -45,7 +55,9 @@ function rollOffers(classId: ClassId): RewardOffers {
       .filter((id) => CHAR_UPGRADES[id])
       .map((id) => {
         const u = CHAR_UPGRADES[id];
-        return { id, label: `${u.icon} ${u.name}`, desc: u.desc };
+        const replaced = u.replaces ? current[u.replaces]?.name : null;
+        const desc = replaced ? `${u.desc}. Replaces ${replaced}.` : u.desc;
+        return { id, label: `${u.icon} ${u.name}`, desc };
       }),
   };
 }
@@ -58,8 +70,13 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   const readyTotal = useStore((s) => s.nextReadyTotal);
 
   // Offers are rolled ONCE for this interstitial (the component remounts fresh
-  // each result phase, so this is stable for the room's whole lifetime).
-  const offers = useMemo(() => rollOffers(localClass), [localClass]);
+  // each result phase, so this is stable for the room's whole lifetime). The
+  // owned picks are snapshotted at mount so claiming here never re-rolls the
+  // floor — only maxed-out boons carried IN from prior bosses are filtered.
+  const offers = useMemo(
+    () => rollOffers(localClass, useStore.getState().myUpgrades, useStore.getState().myCharUpgrades),
+    [localClass],
+  );
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<RewardScene | null>(null);

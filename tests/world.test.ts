@@ -27,7 +27,8 @@ describe('world: setup + scaling', () => {
       seed: 1,
       players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
     });
-    expect(solo.boss?.maxHp).toBe(2600);
+    // Dragon base 2600 × BOSS_HP_SCALE (0.6) = 1560 at n=1 (see spawnBosses).
+    expect(solo.boss?.maxHp).toBe(1560);
 
     const duo = new World({
       monsterId: 'dragon',
@@ -37,7 +38,7 @@ describe('world: setup + scaling', () => {
         { peerId: 'b', name: 'B', classId: 'ranger' },
       ],
     });
-    expect(duo.boss?.maxHp).toBe(Math.round(2600 * 1.75));
+    expect(duo.boss?.maxHp).toBe(Math.round(1560 * 1.75));
   });
 
   it('serializes a valid snapshot', () => {

@@ -57,6 +57,11 @@ describe('affixes + corruption integration', () => {
         w.players.map((p, i) => [p.peerId, computeBotInput(w, p, w.tick, personalities[i])]),
       );
       w.step(DT, inputs);
+      // Keep beats firing briskly so a telegraph-producing kind (rain / vents /
+      // collapse) reliably surfaces within the window — the exact beat picked is
+      // stochastic (shared world RNG), so this makes the pipeline assertion below
+      // robust to any unrelated sim-timing change rather than seed-fragile.
+      if (w.corruptionTimer > 3) w.corruptionTimer = 2;
 
       if (w.events.some((e) => e.t === 'corruption')) sawCorruption = true;
 

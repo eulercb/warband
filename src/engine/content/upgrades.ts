@@ -8,6 +8,7 @@
  * data-driven and unit-testable without any UI or networking.
  */
 import type { Player } from '../core/types';
+import { MAX_SKILL_STACKS } from '../core/constants';
 
 export type UpgradeId =
   'swift' | 'vigor' | 'haste' | 'focus' | 'surefooted' | 'mighty' | 'bulwark' | 'renewal';
@@ -19,6 +20,12 @@ export interface UpgradeDef {
   desc: string;
   /** Emoji shown on the upgrade card / accumulated badge. */
   icon: string;
+  /**
+   * Most times this boon can be taken across a run. Once a hero owns this many,
+   * it stops being offered (a maxed pick — e.g. Surefooted at full terrain
+   * immunity — never clutters the shop again). Defaults to MAX_SKILL_STACKS.
+   */
+  maxStacks?: number;
   /** Mutate a freshly-spawned player to apply this upgrade. */
   apply: (p: Player) => void;
 }
@@ -70,7 +77,9 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
     id: 'surefooted',
     name: 'Surefooted',
     icon: '🥾',
-    desc: 'Halve terrain slow & damage (stacks to immunity)',
+    // Two picks reach full immunity, after which it drops out of the offer pool.
+    maxStacks: 2,
+    desc: 'Halve terrain slow & damage (2 stacks = full immunity)',
     apply: (p) => {
       p.terrainResist = Math.min(1, p.terrainResist + 0.5);
     },
@@ -121,12 +130,29 @@ export function applyUpgrades(p: Player, ids: UpgradeId[] | undefined): void {
   }
 }
 
+/** Most times a generic boon may be taken (its `maxStacks`, or the shared cap). */
+export function upgradeMaxStacks(id: UpgradeId): number {
+  return UPGRADES[id].maxStacks ?? MAX_SKILL_STACKS;
+}
+
+/** Whether the hero already owns `id` at its stacking cap (so it shouldn't reroll). */
+export function upgradeAtMax(id: UpgradeId, owned: readonly string[]): boolean {
+  const have = owned.reduce((n, o) => (o === id ? n + 1 : n), 0);
+  return have >= upgradeMaxStacks(id);
+}
+
 /**
  * Roll `n` distinct upgrades to offer this round. `rnd` returns a float in
- * [0,1) (Math.random in the UI). Pure aside from that injected randomness.
+ * [0,1) (Math.random in the UI). `owned` (the hero's picks so far) filters out
+ * any boon already at its stacking cap so a maxed pick never clutters the shop.
+ * Pure aside from the injected randomness.
  */
-export function rollUpgradeChoices(n: number, rnd: () => number): UpgradeId[] {
-  const pool = [...UPGRADE_IDS];
+export function rollUpgradeChoices(
+  n: number,
+  rnd: () => number,
+  owned: readonly string[] = [],
+): UpgradeId[] {
+  const pool = UPGRADE_IDS.filter((id) => !upgradeAtMax(id, owned));
   const out: UpgradeId[] = [];
   const count = Math.min(n, pool.length);
   while (out.length < count) {

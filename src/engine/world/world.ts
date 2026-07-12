@@ -53,6 +53,8 @@ import {
   SCORE_PER_DEATH,
   TWIN_HP_FRAC,
   TWIN_DMG_FRAC,
+  BOSS_HP_SCALE,
+  BOSS_REGEN_MAX_FRAC,
   ADD_HP,
   ADD_MOVE_SPEED,
   ADD_RADIUS,
@@ -98,7 +100,7 @@ import {
 // sub/dist/distSq/pointInSegment so combat measures the shortest path on the
 // torus. `wrapPos` canonicalises positions after they move (see §infinite-map).
 import { sub, dist, distSq, pointInSegment, wrapPos } from '../core/torus';
-import { getClass, cloneAbilities } from '../content/classes';
+import { getClass, cloneAbilities, slowAttackCooldowns } from '../content/classes';
 import { applyUpgrades } from '../content/upgrades';
 import type { UpgradeId } from '../content/upgrades';
 import { applyCharUpgrades } from '../content/charUpgrades';
@@ -353,17 +355,28 @@ export class World {
       // the class-specific character upgrades that retune the ability table.
       applyUpgrades(player, pi.upgrades);
       applyCharUpgrades(player, pi.charUpgrades);
+      // Global attack slow-down last, so character cooldown-reduction upgrades
+      // still shave a proportional slice off the (doubled) base.
+      if (player.abilities) slowAttackCooldowns(player.abilities);
       player.hp = player.maxHp;
       this.players.push(player);
     });
   }
 
   private spawnBosses(ids: MonsterId[], bossAffixes?: AffixId[][]): void {
-    const twin = ids.length > 1;
+    const n = ids.length;
+    const twin = n > 1;
+    // A shared-arena pack splits its danger budget: each boss is weaker the more
+    // of them share the floor (twin ≈ 0.62 HP / 0.8 dmg; a triplet/quad even
+    // less), so N-at-once stays chaotic rather than simply N× lethal.
+    const hpFrac = twin ? TWIN_HP_FRAC * Math.sqrt(2 / n) : 1;
+    const dmgFrac = twin ? TWIN_DMG_FRAC * Math.pow(2 / n, 0.35) : 1;
     ids.forEach((id, i) => {
       const def = getMonster(id);
-      const frac = twin ? TWIN_HP_FRAC : 1;
-      const maxHp = Math.round(def.baseHp * this.scaling.hpMultiplier * frac);
+      // The practice dummy is a UI/training target, not a balance target — it
+      // keeps its full HP (and its brisk self-heal) so sparring stays smooth.
+      const hpScale = def.id === 'dummy' ? 1 : BOSS_HP_SCALE;
+      const maxHp = Math.round(def.baseHp * hpScale * this.scaling.hpMultiplier * hpFrac);
       const cooldowns: Record<string, number> = {};
       for (const ab of def.abilities) cooldowns[ab.id] = 0;
       // Spread a duo along the top of the arena so they don't spawn stacked.
@@ -394,12 +407,13 @@ export class World {
           channelAccum: 0,
         },
         cooldowns,
-        // Stagger twin decisions so their openers don't land the same tick.
+        // Stagger pack decisions so their openers don't land the same tick.
         decisionTimer: BOSS_DECISION_MIN * (1 + i * 0.5),
         regen: def.regen,
+        regenLockout: 0,
         blinkTimer,
         buffs: [],
-        dmgScale: twin ? TWIN_DMG_FRAC : 1,
+        dmgScale: dmgFrac,
         modAura: this.modifier?.aura,
         modColor: this.modifier?.color,
         modAuraTimer: 0,
@@ -943,11 +957,21 @@ export class World {
     }
     boss.blinkTimer = Math.max(0, boss.blinkTimer - dt);
 
-    // regen (troll)
-    if (boss.regen > 0) {
+    // regen (troll & other regenerators) — SUPPRESSED for a beat after taking
+    // damage, and hard-capped as a fraction of max HP/s, so a boss can never
+    // out-heal a committed band and drag the fight out.
+    boss.regenLockout = Math.max(0, (boss.regenLockout ?? 0) - dt);
+    if (boss.regen > 0 && boss.regenLockout <= 0) {
       const regenMult =
         this.scaling.trollRegenMult * (boss.phase === 'enraged' ? def.enrageRegenMult : 1);
-      boss.hp = Math.min(boss.maxHp, boss.hp + boss.regen * regenMult * dt);
+      // The practice dummy keeps its brisk, uncapped self-heal so it refills fast
+      // once you stop swinging — but it still honours the lockout, so a committed
+      // combo bursts it down (and it pops back up) instead of out-healing you.
+      const perSec =
+        def.id === 'dummy'
+          ? boss.regen * regenMult
+          : Math.min(boss.regen * regenMult, boss.maxHp * BOSS_REGEN_MAX_FRAC);
+      boss.hp = Math.min(boss.maxHp, boss.hp + perSec * dt);
     }
 
     // enrage transition

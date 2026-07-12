@@ -3,7 +3,7 @@
  * All balance numbers per the build brief §7; tweak freely.
  */
 import type { ClassId, AbilitySlot, ZoneKind } from '../core/types';
-import { PLAYER_RADIUS, CLASS_COLORS } from '../core/constants';
+import { PLAYER_RADIUS, CLASS_COLORS, ATTACK_CD_SCALE } from '../core/constants';
 
 /** How an ability resolves. Interpreted by abilities.ts. */
 export type AbilityKind =
@@ -518,6 +518,23 @@ export const DEFAULT_CLASS: ClassId = 'knight';
 
 export function getClass(id: ClassId): ClassDef {
   return CLASSES[id];
+}
+
+/** Ability kinds that count as a twitchy "attack" for the global CD slow-down. */
+const ATTACK_KINDS = new Set<AbilityKind>(['meleeCone', 'projectile', 'pbaoe']);
+
+/**
+ * Slow down the direct-damage "attack" cooldowns by ATTACK_CD_SCALE so blows land
+ * less often but hit with more weight (see constants). Leaves heals, buffs, taunts
+ * and pure mobility untouched. Mutates the table in place; applied AFTER cloning
+ * (and after character upgrades) in BOTH the sim spawn and the HUD preview, so the
+ * numbers a player sees and the numbers the sim commits always agree.
+ */
+export function slowAttackCooldowns(abilities: Record<AbilitySlot, PlayerAbilityDef>): void {
+  for (const slot of ['basic', 'a1', 'a2', 'a3'] as AbilitySlot[]) {
+    const ab = abilities[slot];
+    if (slot === 'basic' || ATTACK_KINDS.has(ab.kind)) ab.cooldown *= ATTACK_CD_SCALE;
+  }
 }
 
 /**

@@ -277,6 +277,12 @@ export interface Boss {
 
   // monster-specific
   regen: number; // HP/s (troll); 0 otherwise
+  /**
+   * Host-only regen suppression timer (s). Set whenever the boss takes damage
+   * (combat.damageBoss) and counted down each tick; passive regen only applies
+   * while it is <= 0, so an actively-DPSed boss never heals. Never serialized.
+   */
+  regenLockout?: number;
   blinkTimer: number; // internal cooldown for Lich blink
 
   buffs: Buff[];
