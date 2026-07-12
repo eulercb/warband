@@ -43,6 +43,23 @@ describe('terrain: generation', () => {
     }
   });
 
+  it('gives signature bosses their own arena hazards (item 28)', () => {
+    // The Kraken drags you into a surging tide; the Bandit fights on an abyss.
+    for (const p of generateTerrain('kraken', 9, counter())) {
+      expect(['tide', 'bog']).toContain(p.kind);
+    }
+    // Every bandit patch is drawn from its theme, and the abyss shows up across
+    // a spread of seeds (weighted, so any single seed may skip it).
+    let sawAbyss = false;
+    for (let seed = 1; seed <= 20; seed++) {
+      for (const p of generateTerrain('bandit', seed * 7, counter())) {
+        expect(['abyss', 'bog']).toContain(p.kind);
+        if (p.kind === 'abyss') sawAbyss = true;
+      }
+    }
+    expect(sawAbyss).toBe(true);
+  });
+
   it('keeps patches inside the arena and clear of the spawn/boss anchors', () => {
     const spawn = { x: ARENA_W / 2, y: ARENA_H - 220 };
     const boss = { x: ARENA_W / 2, y: 300 };

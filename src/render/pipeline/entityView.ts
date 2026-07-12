@@ -134,6 +134,9 @@ const TERRAIN_COLORS: Record<TerrainKind, { fill: number; edge: number; hot: boo
   bog: { fill: 0x3d5230, edge: 0x6f9050, hot: false },
   ice: { fill: 0x74b3dc, edge: 0xdcf3ff, hot: false },
   deathfog: { fill: 0x574a6e, edge: 0xa084d6, hot: true },
+  // Signature terrains (item 28): deep ocean and a black chasm.
+  tide: { fill: 0x1f5f9e, edge: 0x6cc6ff, hot: false },
+  abyss: { fill: 0x14101f, edge: 0x7b5cff, hot: true },
 };
 
 // ---------------------------------------------------------------------------

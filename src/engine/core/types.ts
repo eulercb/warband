@@ -435,7 +435,10 @@ export type TerrainKind =
   | 'swamp' // troll: heavy slow + light poison
   | 'bog' // troll: heavy slow, no damage
   | 'ice' // lich: strong slow, no damage (slippery)
-  | 'deathfog'; // lich: creeping damage + mild slow
+  | 'deathfog' // lich: creeping damage + mild slow
+  // Signature terrains (item 28) — a boss's arena reads as its home.
+  | 'tide' // kraken: surging ocean — very heavy slow, light drowning damage
+  | 'abyss'; // bandit/void: a black chasm — heavy damage, strong pull-to-edge slow
 
 export interface TerrainPatch {
   id: EntityId;

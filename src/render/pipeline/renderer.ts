@@ -692,6 +692,9 @@ const GROUND_PALETTES: Record<
   bog: { base: 0x121812, slabA: 0x1a231a, slabB: 0x151e15, speck: 0x232f22, rune: 0x8fd14a },
   ice: { base: 0x121722, slabA: 0x18202e, slabB: 0x141b28, speck: 0x1f2a3c, rune: 0x7fd4ff },
   deathfog: { base: 0x161220, slabA: 0x1e182c, slabB: 0x191426, speck: 0x281f38, rune: 0x9b6cff },
+  // Signature arenas (item 28): the Kraken's tide-washed deep and the Bandit's abyss.
+  tide: { base: 0x0c1420, slabA: 0x102336, slabB: 0x0d1b2b, speck: 0x184063, rune: 0x6cc6ff },
+  abyss: { base: 0x0b0a12, slabA: 0x14111f, slabB: 0x0f0d18, speck: 0x1e1730, rune: 0x7b5cff },
 };
 
 /** Fill a small rotated regular-ish polygon (mosaic slab). */
