@@ -14,8 +14,9 @@
 import type { InputState, Vec2 } from '../engine/core/types';
 import { sampleGamepad } from './gamepad';
 import { KeyboardMouse } from './keyboard';
+import { sampleTouch, touchEngaged, touchLastActivityMs } from './touch';
 
-export type InputSource = 'keyboard' | 'gamepad';
+export type InputSource = 'keyboard' | 'gamepad' | 'touch';
 
 /**
  * How long (ms) an idle-but-connected gamepad stays the active source after its
@@ -65,8 +66,19 @@ export class InputManager {
       }
     }
 
+    // The on-screen touch overlay wins whenever it is engaged (a stick moved or a
+    // button held) or was the most-recently-used source within the sticky window,
+    // so a phone player keeps control without the idle keyboard reclaiming it.
+    const touchMs = touchLastActivityMs();
+    const otherMs = Math.max(useGamepad ? this.lastGamepadActiveMs : 0, kbActivityMs);
+    const useTouch =
+      touchEngaged() || (touchMs > 0 && touchMs >= otherMs && now - touchMs <= GAMEPAD_STICKY_MS);
+
     let state: InputState;
-    if (useGamepad && gp) {
+    if (useTouch) {
+      this.activeSource = 'touch';
+      state = sampleTouch();
+    } else if (useGamepad && gp) {
       this.activeSource = 'gamepad';
       state = gp.state;
     } else {

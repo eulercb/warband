@@ -13,6 +13,7 @@ import { playUiSound, openControls, sfx } from '../state/session';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import VolumeControl from '../game/VolumeControl';
 import HUD from '../game/HUD';
+import TouchControls from '../game/TouchControls';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
 import { Playground } from '../state/playground';
@@ -228,6 +229,8 @@ export function MainMenu() {
     <div className="wb-playground-root">
       <div ref={canvasRef} className="wb-playground-canvas" />
       <HUD />
+      {/* Touch overlay so mobile players can walk the camp + swing at the dummy. */}
+      <TouchControls />
 
       {/* Corner panel: the classic menu, for pointer/keyboard users. */}
       <div className="wb-panel wb-playground-panel" ref={panelRef}>

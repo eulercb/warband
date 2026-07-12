@@ -20,6 +20,7 @@ import { chooseUpgrade, chooseCharUpgrade, setNextReady, playUiSound, sfx } from
 import { selfId } from '../../net/transport/room';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import HUD from './HUD';
+import TouchControls from './TouchControls';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
 import { RewardScene, type RewardOffers, type RelicFocus } from '../state/rewardScene';
@@ -307,6 +308,8 @@ export default function RewardRoom({ result }: { result: FightResult }) {
     <div className="wb-playground-root wb-reward-root">
       <div ref={canvasRef} className="wb-playground-canvas" aria-hidden="true" />
       <HUD />
+      {/* Touch overlay so mobile players can walk to relics + the vortex. */}
+      {!showList ? <TouchControls /> : null}
 
       {/* Room banner: run progress + next boss. */}
       <div className="wb-reward-banner">

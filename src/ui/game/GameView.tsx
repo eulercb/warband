@@ -13,6 +13,7 @@ import { hudSet, useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
 import { sfx, requestPause } from '../state/session';
 import HUD from './HUD';
+import TouchControls from './TouchControls';
 import PauseMenu from './PauseMenu';
 import ResumeCountdown from './ResumeCountdown';
 import { Renderer } from '../../render/pipeline/renderer';
@@ -170,6 +171,9 @@ export default function GameView() {
     <div className="game-root">
       <div ref={containerRef} className="game-canvas" />
       <HUD />
+      {/* Mobile twin-stick overlay (renders only on touch-capable devices). Hidden
+          while paused so its buttons don't sit over the pause menu. */}
+      {!paused ? <TouchControls /> : null}
       {resumeCountdown != null ? (
         <ResumeCountdown count={resumeCountdown} />
       ) : paused ? (
