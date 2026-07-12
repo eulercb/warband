@@ -97,7 +97,9 @@ describe('<HUD>', () => {
     useHudStore.getState().set({ active: true, classId: 'knight', hp: 100, maxHp: 200 });
     const { container } = render(<HUD />);
     const tiles = Array.from(container.querySelectorAll('.hud-ability'));
-    const cleave = tiles.find((t) => t.querySelector('.hud-ability-name')?.textContent === 'Cleave');
+    const cleave = tiles.find(
+      (t) => t.querySelector('.hud-ability-name')?.textContent === 'Cleave',
+    );
     expect(cleave).toBeTruthy();
     const tip = cleave!.getAttribute('title');
     expect(tip).toContain('Cleave —');
