@@ -232,11 +232,13 @@ export function getBindings(): Bindings {
 // ---------------------------------------------------------------------------
 
 /** Slot -> the action button that fires it (for HUD labels). */
-export const SLOT_ACTION: Record<'basic' | 'a1' | 'a2' | 'a3', ButtonAction> = {
+export const SLOT_ACTION: Record<'basic' | 'a1' | 'a2' | 'a3' | 'sub1' | 'sub2', ButtonAction> = {
   basic: 'basic',
   a1: 'a1',
   a2: 'a2',
   a3: 'a3',
+  sub1: 'sub1',
+  sub2: 'sub2',
 };
 
 /** Compact display label for a `KeyboardEvent.code` (e.g. `KeyQ` -> `Q`). */

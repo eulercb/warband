@@ -48,6 +48,7 @@ function rollOffers(
   classId: ClassId,
   ownedGen: UpgradeId[],
   ownedChar: string[],
+  extraClasses: ClassId[],
   rewardSeed?: number,
 ): RewardOffers {
   // With a shared seed, roll from a deterministic per-class stream so the same
@@ -59,7 +60,8 @@ function rollOffers(
     rnd = () => rng.next();
   }
   const gen = rollUpgradeChoices(3, rnd, ownedGen);
-  const chr = rollCharChoices(classId, 4, rnd, ownedChar);
+  // Multiclass heroes see every owned class's upgrades, weighted toward the main.
+  const chr = rollCharChoices(classId, 4, rnd, ownedChar, extraClasses);
   const current = previewAbilityTable(classId, ownedChar);
   return {
     generic: gen.map((id) => {
@@ -97,6 +99,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
         localClass,
         useStore.getState().myUpgrades,
         useStore.getState().myCharUpgrades,
+        useStore.getState().myExtraClasses,
         result.rewardSeed,
       ),
     [localClass, result.rewardSeed],

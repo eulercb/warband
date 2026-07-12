@@ -40,6 +40,10 @@
   --cls-rogue: #8a8f98;
   --cls-paladin: #e8d36a;
   --cls-druid: #5bbf7a;
+  --cls-bard: #e083c8;
+  --cls-monk: #2fb8a6;
+  --cls-sorcerer: #ff7043;
+  --cls-warlock: #6d3fa0;
 
   /* Outcome */
   --victory: #f2c14e;
@@ -2031,4 +2035,36 @@ body {
   min-height: auto;
   width: 100%;
   padding-block: 8px;
+}
+
+/* --- Run-clear special reward (subclass / multiclass / grand) ------------- */
+.wb-special-reward {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 214, 120, 0.5);
+  border-radius: 10px;
+  background: rgba(60, 48, 20, 0.35);
+}
+.wb-special-title {
+  display: block;
+  font-weight: 700;
+  color: #ffd678;
+  margin-bottom: 8px;
+}
+.wb-special-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.wb-special-card {
+  flex: 1 1 160px;
+  min-width: 150px;
+}
+.wb-special-reward.chosen {
+  border-color: rgba(120, 220, 140, 0.5);
+  background: rgba(30, 60, 40, 0.35);
+}
+.wb-special-reward.chosen .wb-special-title {
+  color: #9df0b0;
+  margin-bottom: 0;
 }

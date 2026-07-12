@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import type {
   ClassId,
   PlayerState,
-  AbilitySlot,
+  Cooldowns,
   TerrainKind,
   BuffView,
   AffixId,
@@ -56,8 +56,12 @@ export interface HudState {
   hp: number;
   maxHp: number;
   state: PlayerState;
-  /** Remaining cooldown seconds per slot (0 = ready). */
-  cooldowns: Record<AbilitySlot, number>;
+  /** Remaining cooldown seconds per slot (0 = ready; sub1/sub2 present when bound). */
+  cooldowns: Cooldowns;
+  /** Bound subclass-skill ids (drives the sub1/sub2 HUD buttons). */
+  subSkills: string[];
+  /** Owned classes for a multiclass hero (drives the swap indicator). */
+  classes: ClassId[];
   /** Whether the local player is currently casting (rooted). */
   casting: boolean;
   /** Which device the local player last used (drives HUD button labels). */
@@ -96,6 +100,8 @@ const INITIAL: Omit<HudState, 'set' | 'resetHud'> = {
   maxHp: 1,
   state: 'alive',
   cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 },
+  subSkills: [],
+  classes: [],
   casting: false,
   inputSource: 'keyboard',
   buffs: [],

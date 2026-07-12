@@ -8,6 +8,7 @@ import type { HudBoss } from '../state/hudStore';
 import { useStore } from '../state/store';
 import VolumeControl from './VolumeControl';
 import { previewAbilityTable } from '../../engine/content/charUpgrades';
+import { getSubSkill } from '../../engine/content/subclasses';
 import { AFFIXES } from '../../engine/content/affixes';
 import {
   useBindings,
@@ -100,7 +101,7 @@ function CorruptionBanner() {
 }
 
 /** Button label for a slot, keyboard or controller per the active device. */
-function slotLabel(slot: AbilitySlot, source: InputSource): string {
+function slotLabel(slot: keyof typeof SLOT_ACTION, source: InputSource): string {
   const action = SLOT_ACTION[slot];
   return source === 'gamepad' ? padLabelFor(action) : keyLabelFor(action);
 }
@@ -110,11 +111,11 @@ function AbilityIcon({
   ability,
   source,
 }: {
-  slot: AbilitySlot;
+  slot: keyof typeof SLOT_ACTION;
   ability: { name: string; cooldown: number };
   source: InputSource;
 }) {
-  const remaining = useHudStore((s) => s.cooldowns[slot]);
+  const remaining = useHudStore((s) => s.cooldowns[slot] ?? 0);
   // Subscribe to bindings so the label updates live when the player rebinds.
   useBindings((s) => s.bindings);
   const total = ability.cooldown;
@@ -295,6 +296,37 @@ export default function HUD() {
             {SLOT_ORDER.map((slot) => (
               <AbilityIcon key={slot} slot={slot} ability={abilityTable[slot]} source={source} />
             ))}
+            {/* Subclass skills (item 13) — bound to sub1/sub2. */}
+            {hud.subSkills.map((id, i) => {
+              const sk = getSubSkill(id);
+              if (!sk) return null;
+              return (
+                <AbilityIcon
+                  key={id}
+                  slot={i === 0 ? 'sub1' : 'sub2'}
+                  ability={{ name: `${sk.icon} ${sk.name}`, cooldown: sk.ability.cooldown }}
+                  source={source}
+                />
+              );
+            })}
+          </div>
+        )}
+        {/* Multiclass indicator (item 14) — current class + swap key. */}
+        {hud.classes.length > 1 && (
+          <div className="hud-multiclass" role="status">
+            <span className="hud-multiclass-key">
+              {source === 'gamepad' ? padLabelFor('swap') : keyLabelFor('swap')}
+            </span>
+            <span className="hud-multiclass-classes">
+              {hud.classes.map((c) => (
+                <span
+                  key={c}
+                  className={`hud-multiclass-chip${c === hud.classId ? ' active' : ''}`}
+                >
+                  {CLASSES[c].name}
+                </span>
+              ))}
+            </span>
           </div>
         )}
       </div>

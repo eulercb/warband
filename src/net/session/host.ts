@@ -20,6 +20,7 @@ import type {
   PauseMsg,
   PauseReqMsg,
   UpgradeMsg,
+  SpecialMsg,
   NextReadyMsg,
   NextReadyStateMsg,
   ByeMsg,
@@ -48,6 +49,8 @@ import { Rng, mixSeed } from '../../engine/core/math';
 import { isUpgradeId, upgradeMaxStacks } from '../../engine/content/upgrades';
 import type { UpgradeId } from '../../engine/content/upgrades';
 import { isCharUpgradeId, charUpgradeMaxStacks } from '../../engine/content/charUpgrades';
+import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
+import { CLASS_IDS } from '../../engine/content/classes';
 import type {
   MonsterId,
   ClassId,
@@ -159,6 +162,7 @@ export class Host implements NetSession {
   private readonly pauseAction: NetAction<PauseMsg>;
   private readonly pauseReqAction: NetAction<PauseReqMsg>;
   private readonly upgradeAction: NetAction<UpgradeMsg>;
+  private readonly specialAction: NetAction<SpecialMsg>;
   private readonly nextReadyAction: NetAction<NextReadyMsg>;
   private readonly nextReadyStateAction: NetAction<NextReadyStateMsg>;
   private readonly byeAction: NetAction<ByeMsg>;
@@ -194,6 +198,12 @@ export class Host implements NetSession {
   private readonly upgrades = new Map<string, UpgradeId[]>();
   /** Accumulated between-boss character (class) upgrade picks per peerId. */
   private readonly charUpgrades = new Map<string, string[]>();
+  /** Chosen subclass id per peer (item 13). */
+  private readonly subclassByPeer = new Map<string, string>();
+  /** Chosen subclass-skill ids per peer (up to 2, same subclass; bound to sub1/sub2). */
+  private readonly subSkillsByPeer = new Map<string, string[]>();
+  /** Extra (multiclass) class ids per peer (item 14). */
+  private readonly extraClassesByPeer = new Map<string, ClassId[]>();
   /** Peers who already took a generic / character pick this interstitial. */
   private readonly roundPickedGeneric = new Set<string>();
   private readonly roundPickedChar = new Set<string>();
@@ -271,6 +281,7 @@ export class Host implements NetSession {
     this.pauseAction = this.action(ACTIONS.pause);
     this.pauseReqAction = this.action(ACTIONS.pauseReq);
     this.upgradeAction = this.action(ACTIONS.upgrade);
+    this.specialAction = this.action(ACTIONS.special);
     this.nextReadyAction = this.action(ACTIONS.nextReady);
     this.nextReadyStateAction = this.action(ACTIONS.nextReadyState);
     this.byeAction = this.action(ACTIONS.bye);
@@ -317,6 +328,11 @@ export class Host implements NetSession {
     // --- Client -> host between-boss upgrade picks (generic and/or character) ---
     this.upgradeAction.onMessage = (data, ctx) => {
       this.recordUpgrade(ctx.peerId, data);
+    };
+
+    // --- Client -> host run-clear special picks (subclass skill / extra class) ---
+    this.specialAction.onMessage = (data, ctx) => {
+      this.recordSpecial(ctx.peerId, data);
     };
 
     // --- Client -> host "ready for next boss" during the interstitial ---
@@ -502,6 +518,9 @@ export class Host implements NetSession {
     this.runIndex = 0;
     this.upgrades.clear(); // fresh run — nobody carries upgrades into boss 1
     this.charUpgrades.clear();
+    this.subclassByPeer.clear();
+    this.subSkillsByPeer.clear();
+    this.extraClassesByPeer.clear();
     this.scoreByPeer.clear();
     this.roundPickedGeneric.clear();
     this.roundPickedChar.clear();
@@ -671,6 +690,8 @@ export class Host implements NetSession {
       classId,
       upgrades: this.upgrades.get(peerId),
       charUpgrades: this.charUpgrades.get(peerId),
+      subSkills: this.subSkillsByPeer.get(peerId),
+      extraClasses: this.extraClassesByPeer.get(peerId),
       baseScore: this.scoreByPeer.get(peerId) ?? 0,
     };
   }
@@ -776,6 +797,16 @@ export class Host implements NetSession {
     this.recordUpgrade(selfId, { char: upgradeId });
   }
 
+  /** NetSession: record the host's own run-clear subclass-skill pick (item 13). */
+  chooseSubSkill(subclassId: string, skillId: string): void {
+    this.recordSpecial(selfId, { subclassId, subSkillId: skillId });
+  }
+
+  /** NetSession: record the host's own run-clear extra-class pick (item 14). */
+  chooseExtraClass(classId: ClassId): void {
+    this.recordSpecial(selfId, { extraClass: classId });
+  }
+
   /** NetSession: host marks itself ready (or not) to advance to the next boss. */
   setNextReady(ready: boolean): void {
     this.recordNextReady(selfId, ready);
@@ -836,6 +867,42 @@ export class Host implements NetSession {
         this.charUpgrades.set(b.peerId, ownedChar);
       }
     });
+  }
+
+  /**
+   * Record a run-clear SPECIAL pick (item 13/14), host-authoritative and validated:
+   * a subclass skill (max two, same subclass) or an additional multiclass class
+   * (must be a real class the hero doesn't already field).
+   */
+  private recordSpecial(peerId: string, msg: SpecialMsg): void {
+    if (msg.subSkillId && msg.subclassId) {
+      const skill = getSubSkill(msg.subSkillId);
+      const sub = subclassOfSkill(msg.subSkillId);
+      const owned = this.subSkillsByPeer.get(peerId) ?? [];
+      const committed = this.subclassByPeer.get(peerId);
+      const okSubclass = sub?.id === msg.subclassId && (!committed || committed === msg.subclassId);
+      if (skill && okSubclass && owned.length < 2 && !owned.includes(msg.subSkillId)) {
+        this.subclassByPeer.set(peerId, msg.subclassId);
+        owned.push(msg.subSkillId);
+        this.subSkillsByPeer.set(peerId, owned);
+        netLog('host', `subclass skill "${msg.subSkillId}" for ${peerId.slice(0, 6)}`);
+      }
+    }
+    if (msg.extraClass && (CLASS_IDS as string[]).includes(msg.extraClass)) {
+      const primary = this.classForPeer(peerId);
+      const owned = this.extraClassesByPeer.get(peerId) ?? [];
+      if (msg.extraClass !== primary && !owned.includes(msg.extraClass)) {
+        owned.push(msg.extraClass);
+        this.extraClassesByPeer.set(peerId, owned);
+        netLog('host', `extra class "${msg.extraClass}" for ${peerId.slice(0, 6)}`);
+      }
+    }
+  }
+
+  /** The primary class of a peer (host, a connected client, or a bot). */
+  private classForPeer(peerId: string): ClassId {
+    if (peerId === selfId) return this.hostClass;
+    return this.lobby.get(peerId)?.classId ?? this.bots.find((b) => b.peerId === peerId)?.classId ?? 'knight';
   }
 
   /** Record a player's "ready for next boss" flag, then re-check the advance gate. */
@@ -902,6 +969,9 @@ export class Host implements NetSession {
     this.lastRunBosses.clear();
     this.upgrades.clear();
     this.charUpgrades.clear();
+    this.subclassByPeer.clear();
+    this.subSkillsByPeer.clear();
+    this.extraClassesByPeer.clear();
     this.scoreByPeer.clear();
     this.roundPickedGeneric.clear();
     this.roundPickedChar.clear();

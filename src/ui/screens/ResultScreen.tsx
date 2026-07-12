@@ -27,6 +27,7 @@ import { UPGRADES, rollUpgradeChoices, type UpgradeId } from '../../engine/conte
 import { CHAR_UPGRADES, rollCharChoices } from '../../engine/content/charUpgrades';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import RewardRoom from '../game/RewardRoom';
+import SpecialReward from './SpecialReward';
 
 /** Format milliseconds as `m:ss.mmm` (>= 1 min) or `s.d`s (under a minute). */
 function formatTime(ms: number): string {
@@ -168,6 +169,8 @@ export function ResultScreen() {
             </span>
           </div>
         ) : null}
+
+        {showUpgrades ? <SpecialReward /> : null}
 
         {showUpgrades ? (
           <div className="wb-upgrades">

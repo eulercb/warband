@@ -400,6 +400,20 @@ export function chooseCharUpgrade(id: string): void {
   s.addMyCharUpgrade(id);
 }
 
+/** Submit this player's run-clear subclass-skill pick (item 13; records + relays). */
+export function chooseSubSkill(subclassId: string, skillId: string): void {
+  const s = useStore.getState();
+  s.session?.chooseSubSkill(subclassId, skillId);
+  s.addMySubSkill(subclassId, skillId);
+}
+
+/** Submit this player's run-clear extra-class (multiclass) pick (item 14). */
+export function chooseExtraClass(classId: ClassId): void {
+  const s = useStore.getState();
+  s.session?.chooseExtraClass(classId);
+  s.addMyExtraClass(classId);
+}
+
 /** Mark this player ready (or not) to advance to the next boss. */
 export function setNextReady(ready: boolean): void {
   useStore.getState().session?.setNextReady(ready);

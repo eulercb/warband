@@ -257,8 +257,11 @@ describe('<ResultScreen>', () => {
 
     expect(screen.getByText('RUN CLEARED')).toBeTruthy();
     expect(screen.getByText('You felled the whole gauntlet!')).toBeTruthy();
-    // Banking upgrades is offered even at the end of a run.
-    expect(container.querySelectorAll('.wb-upgrade-card:not(.wb-upgrade-char)').length).toBe(3);
+    // Banking upgrades is offered even at the end of a run (scope to the endless
+    // bank — the special-reward panel above it also uses upgrade-card styling).
+    expect(
+      container.querySelectorAll('.wb-upgrades .wb-upgrade-card:not(.wb-upgrade-char)').length,
+    ).toBe(3);
 
     fireEvent.click(screen.getByRole('button', { name: /Continue \(Endless\)/ }));
     expect(vi.mocked(continueEndless)).toHaveBeenCalledTimes(1);

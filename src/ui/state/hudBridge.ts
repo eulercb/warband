@@ -22,6 +22,8 @@ export function pushHud(state: RenderState, source: InputSource): void {
     inputSource: source,
     buffs: lp?.buffs ?? [],
     score: lp?.score ?? 0,
+    subSkills: lp?.subSkills ?? [],
+    classes: lp?.classes ?? [],
     bosses: state.bosses.map((b) => ({
       id: b.id,
       name: getMonster(b.monsterId).name,

@@ -22,6 +22,7 @@ import {
   isTouchCapable,
 } from '../../input/touch';
 import { previewAbilityTable } from '../../engine/content/charUpgrades';
+import { getSubSkill } from '../../engine/content/subclasses';
 import type { AbilitySlot, ButtonState } from '../../engine/core/types';
 
 /** Radius (px) of a virtual stick's active area; the knob clamps to this. */
@@ -149,14 +150,18 @@ export default function TouchControls() {
     [localClass, myCharUpgrades],
   );
   const hasHud = useHudStore((s) => s.classId !== null);
+  const subSkills = useHudStore((s) => s.subSkills);
+  const multiclass = useHudStore((s) => s.classes.length > 1);
 
   useEffect(() => () => resetTouch(), []);
 
   if (!capable || !hasHud) return null;
 
-  const shortName = (slot: AbilitySlot): string => {
-    const n = abilities[slot]?.name ?? slot.toUpperCase();
-    return n.length > 9 ? n.slice(0, 8) + '…' : n;
+  const clip = (n: string): string => (n.length > 9 ? n.slice(0, 8) + '…' : n);
+  const shortName = (slot: AbilitySlot): string => clip(abilities[slot]?.name ?? slot.toUpperCase());
+  const subName = (id: string | undefined): string => {
+    const sk = id ? getSubSkill(id) : undefined;
+    return sk ? clip(sk.name) : '';
   };
 
   return (
@@ -164,12 +169,15 @@ export default function TouchControls() {
       <VirtualStick side="left" label="MOVE" onVec={setTouchMove} />
       <VirtualStick side="right" label="AIM" onVec={setTouchAim} />
       <div className="wb-touch-buttons">
+        {subSkills[1] ? <TouchButton slot="sub2" label={subName(subSkills[1])} kind="sub" /> : null}
+        {subSkills[0] ? <TouchButton slot="sub1" label={subName(subSkills[0])} kind="sub" /> : null}
         <TouchButton slot="a3" label={shortName('a3')} kind="a3" />
         <TouchButton slot="a2" label={shortName('a2')} kind="a2" />
         <TouchButton slot="a1" label={shortName('a1')} kind="a1" />
         <TouchButton slot="basic" label={shortName('basic')} kind="basic" />
       </div>
-      <div className="wb-touch-revive">
+      <div className="wb-touch-side">
+        {multiclass ? <TouchButton slot="swap" label="Swap" kind="swap" /> : null}
         <TouchButton slot="revive" label="Revive" kind="revive" />
       </div>
     </div>

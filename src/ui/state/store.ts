@@ -162,6 +162,12 @@ export interface AppState {
   myUpgrades: UpgradeId[];
   /** Character (class) upgrades this local hero has picked so far this run. */
   myCharUpgrades: string[];
+  /** The subclass this hero committed to (item 13), or null. */
+  mySubclassId: string | null;
+  /** Subclass skill ids bound to sub1/sub2 (up to two, same subclass). */
+  mySubSkills: string[];
+  /** Extra classes unlocked for multiclass swapping (item 14). */
+  myExtraClasses: ClassId[];
   /** Between-boss readiness tally from the host (upgrade screen). */
   nextReadyReady: number;
   nextReadyTotal: number;
@@ -213,6 +219,8 @@ export interface AppState {
   addMyUpgrade: (id: UpgradeId) => void;
   addMyCharUpgrade: (id: string) => void;
   clearMyUpgrades: () => void;
+  addMySubSkill: (subclassId: string, skillId: string) => void;
+  addMyExtraClass: (classId: ClassId) => void;
   setNextReadyState: (ready: number, total: number) => void;
   setResult: (r: FightResult | null) => void;
   toggleMute: () => void;
@@ -257,6 +265,9 @@ export const useStore = create<AppState>((set, get) => ({
   cycle: 0,
   myUpgrades: [],
   myCharUpgrades: [],
+  mySubclassId: null,
+  mySubSkills: [],
+  myExtraClasses: [],
   nextReadyReady: 0,
   nextReadyTotal: 0,
 
@@ -299,7 +310,19 @@ export const useStore = create<AppState>((set, get) => ({
   setCycle: (cycle) => set({ cycle }),
   addMyUpgrade: (id) => set({ myUpgrades: [...get().myUpgrades, id] }),
   addMyCharUpgrade: (id) => set({ myCharUpgrades: [...get().myCharUpgrades, id] }),
-  clearMyUpgrades: () => set({ myUpgrades: [], myCharUpgrades: [] }),
+  clearMyUpgrades: () =>
+    set({ myUpgrades: [], myCharUpgrades: [], mySubclassId: null, mySubSkills: [], myExtraClasses: [] }),
+  addMySubSkill: (subclassId, skillId) =>
+    set({
+      mySubclassId: subclassId,
+      mySubSkills: [...get().mySubSkills, skillId].slice(0, 2),
+    }),
+  addMyExtraClass: (classId) =>
+    set({
+      myExtraClasses: get().myExtraClasses.includes(classId)
+        ? get().myExtraClasses
+        : [...get().myExtraClasses, classId],
+    }),
   setNextReadyState: (ready, total) => set({ nextReadyReady: ready, nextReadyTotal: total }),
   setResult: (result) => set({ result }),
   toggleMute: () => set({ muted: !get().muted }),
@@ -346,6 +369,9 @@ export const useStore = create<AppState>((set, get) => ({
       cycle: 0,
       myUpgrades: [],
       myCharUpgrades: [],
+      mySubclassId: null,
+      mySubSkills: [],
+      myExtraClasses: [],
       nextReadyReady: 0,
       nextReadyTotal: 0,
       result: null,

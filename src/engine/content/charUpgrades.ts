@@ -1251,21 +1251,54 @@ export const GRAND_OFFER_CHANCE = 0.14;
  * With `HYBRID_OFFER_CHANCE`, one offer is swapped for a random HYBRID pick —
  * a cross-class power or combat style the class never had.
  */
+/** Selection weight for the hero's MAIN class over an extra multiclass (item 23). */
+export const MAIN_CLASS_WEIGHT = 2.5;
+
 export function rollCharChoices(
   classId: ClassId,
   n: number,
   rnd: () => number,
   owned: readonly string[] = [],
+  extraClasses: readonly ClassId[] = [],
 ): string[] {
-  const pool = (CHAR_UPGRADES_BY_CLASS[classId] ?? [])
-    .map((d) => d.id)
-    .filter((id) => !charUpgradeAtMax(id, owned));
   const out: string[] = [];
-  const count = Math.min(n, pool.length);
-  while (out.length < count) {
-    const i = Math.floor(rnd() * pool.length) % pool.length;
-    out.push(pool[i]);
-    pool.splice(i, 1);
+  const extras = extraClasses.filter((c) => c !== classId);
+  if (extras.length > 0) {
+    // Multiclass (item 14/23): the pool spans EVERY owned class's upgrades, but the
+    // MAIN class's picks are weighted heavier so they surface more often.
+    const weighted: Array<{ id: string; w: number }> = [];
+    const push = (cid: ClassId, w: number): void => {
+      for (const d of CHAR_UPGRADES_BY_CLASS[cid] ?? []) {
+        if (!charUpgradeAtMax(d.id, owned)) weighted.push({ id: d.id, w });
+      }
+    };
+    push(classId, MAIN_CLASS_WEIGHT);
+    for (const c of extras) push(c, 1);
+    const count = Math.min(n, weighted.length);
+    while (out.length < count && weighted.length > 0) {
+      const total = weighted.reduce((s, x) => s + x.w, 0);
+      let roll = rnd() * total;
+      let idx = weighted.length - 1;
+      for (let i = 0; i < weighted.length; i++) {
+        roll -= weighted[i].w;
+        if (roll <= 0) {
+          idx = i;
+          break;
+        }
+      }
+      out.push(weighted[idx].id);
+      weighted.splice(idx, 1);
+    }
+  } else {
+    const pool = (CHAR_UPGRADES_BY_CLASS[classId] ?? [])
+      .map((d) => d.id)
+      .filter((id) => !charUpgradeAtMax(id, owned));
+    const count = Math.min(n, pool.length);
+    while (out.length < count) {
+      const i = Math.floor(rnd() * pool.length) % pool.length;
+      out.push(pool[i]);
+      pool.splice(i, 1);
+    }
   }
   const eligible = HYBRID.filter(
     (h) => upgradeAllowedFor(h, classId) && !charUpgradeAtMax(h.id, owned),

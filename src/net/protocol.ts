@@ -19,6 +19,7 @@ export const ACTIONS = {
   pause: 'pau', // host -> clients (sim frozen / resumed)
   pauseReq: 'prq', // client -> host (request pause / resume of the shared sim)
   upgrade: 'upg', // client -> host (between-boss upgrade pick: generic and/or char)
+  special: 'spc', // client -> host (run-clear special pick: subclass skill / extra class)
   nextReady: 'nrd', // client -> host (ready to advance to the next boss)
   nextReadyState: 'nrs', // host -> clients (how many are ready to advance)
   bye: 'bye', // either -> either (graceful leave, esp. host)
@@ -106,6 +107,16 @@ export interface UpgradeMsg {
   char?: string;
 }
 
+/**
+ * Client -> host: a run-clear SPECIAL pick (item 13/14). Either a subclass skill
+ * (its subclass id + skill id) or an additional multiclass class.
+ */
+export interface SpecialMsg {
+  subclassId?: string;
+  subSkillId?: string;
+  extraClass?: ClassId;
+}
+
 /** Client -> host: this player is ready to advance to the next boss. */
 export interface NextReadyMsg {
   ready: boolean;
@@ -148,6 +159,10 @@ export interface NetSession {
   chooseUpgrade(upgradeId: UpgradeId): void;
   /** Submit a between-boss character (class) upgrade pick. */
   chooseCharUpgrade(upgradeId: string): void;
+  /** Submit a run-clear subclass-skill pick (item 13). */
+  chooseSubSkill(subclassId: string, skillId: string): void;
+  /** Submit a run-clear extra-class (multiclass) pick (item 14). */
+  chooseExtraClass(classId: ClassId): void;
   /** Mark this player ready (or not) to advance to the next boss. */
   setNextReady(ready: boolean): void;
   leave(): void;

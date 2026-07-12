@@ -31,6 +31,8 @@ function makeSession(onLeave: () => void = noop): NetSession {
     requestPause: noop,
     chooseUpgrade: noop,
     chooseCharUpgrade: noop,
+    chooseSubSkill: noop,
+    chooseExtraClass: noop,
     setNextReady: noop,
     leave: onLeave,
   };
@@ -362,16 +364,23 @@ describe('per-run upgrades', () => {
     expect(after.myCharUpgrades).toEqual(['cleave+', 'bash+']);
   });
 
-  it('clearMyUpgrades empties both upgrade lists at once', () => {
+  it('clearMyUpgrades empties every per-run progression list at once', () => {
     const g = useStore.getState();
     g.addMyUpgrade('swift');
     g.addMyCharUpgrade('cleave+');
+    g.addMySubSkill('kn_champion', 'kn_champion_slam');
     const before = snapshot();
     g.clearMyUpgrades();
     const after = snapshot();
     expect(after.myUpgrades).toEqual([]);
     expect(after.myCharUpgrades).toEqual([]);
-    expect(changedKeys(before, after)).toEqual(['myCharUpgrades', 'myUpgrades']);
+    expect(after.mySubSkills).toEqual([]);
+    expect(after.myExtraClasses).toEqual([]);
+    expect(after.mySubclassId).toBeNull();
+    // The subclass-id key also resets; assert the list keys that flipped from ours.
+    expect(changedKeys(before, after)).toEqual(
+      expect.arrayContaining(['myCharUpgrades', 'myUpgrades', 'mySubSkills']),
+    );
   });
 
   it('setNextReadyState records the between-boss tally', () => {
