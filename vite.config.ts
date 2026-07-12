@@ -77,6 +77,7 @@ export default defineConfig({
         'src/render/rig/rig.ts', // Pixi skeletal rig runtime
         'src/render/rig/rigLayer.ts', // Pixi rig render layer
         'src/render/rig/shading.ts', // Pixi shading/tint helpers
+        'src/render/lighting/litMesh.ts', // Pixi Mesh + custom lighting shader (GPU only)
         'src/render/sprites/particles.ts', // Pixi particle sprites
         'src/render/sprites/spriteLayer.ts', // Pixi retained sprite layer
         'src/ui/screens/MainMenu.tsx', // boots a Pixi Renderer (walkable menu)

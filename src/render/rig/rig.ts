@@ -23,6 +23,9 @@ import { updateGait, makeLeg, type LegRuntime, type GaitParams } from './math/ga
 import { updateChain, makeChain } from './math/chain';
 import { drawLimb, contactShadow, footShadow, lighten, darken, mixColor } from './shading';
 import type { RigSpec, BodyPartSpec, RigDriveCtx } from './types';
+import { LitMesh } from '../lighting/litMesh';
+import { LIGHTING, RIG_MATERIAL } from '../lighting/presets';
+import type { LightManager } from '../lighting/light';
 
 const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > hi ? hi : v);
 
@@ -46,6 +49,9 @@ export class CreatureRig {
   private readonly gDecor = new Graphics();
 
   private readonly partSprites = new Map<string, Sprite>();
+  /** Lit sphere-imposter body parts, when dynamic lighting is on (else empty). */
+  private readonly partMeshes = new Map<string, LitMesh>();
+  private readonly lit: boolean;
   private readonly spineSprites: Sprite[] = [];
   private readonly legs: LegRuntime[] = [];
   private readonly legHomes: Vec2[] = [];
@@ -68,6 +74,7 @@ export class CreatureRig {
     readonly id: EntityId,
     sphereTex: Texture,
     private readonly baseRadius: number,
+    lights: LightManager | null = null,
   ) {
     this.view.addChild(
       this.gGround,
@@ -78,6 +85,13 @@ export class CreatureRig {
       this.frontC,
       this.gDecor,
     );
+
+    // Body parts become per-fragment-lit sphere imposters when a LightManager is
+    // supplied and lighting is enabled; otherwise they stay baked-sphere sprites
+    // (the escape hatch — pixel-identical to the pre-lighting look). Limbs, spine
+    // and decor keep their current shading in v1 (a documented follow-up).
+    this.lit = lights != null && LIGHTING.enabled;
+    const preset = RIG_MATERIAL[spec.id];
 
     // Spine segments draw under the body parts (added to mainC first).
     if (spec.spine) {
@@ -90,10 +104,21 @@ export class CreatureRig {
     }
 
     for (const part of spec.parts) {
-      const s = new Sprite(sphereTex);
-      s.anchor.set(0.5);
-      this.parentFor(part.z).addChild(s);
-      this.partSprites.set(part.id, s);
+      if (this.lit) {
+        const m = new LitMesh({
+          variant: 'sphere',
+          maxLights: lights!.maxLights,
+          lights: lights!,
+          preset,
+        });
+        this.parentFor(part.z).addChild(m);
+        this.partMeshes.set(part.id, m);
+      } else {
+        const s = new Sprite(sphereTex);
+        s.anchor.set(0.5);
+        this.parentFor(part.z).addChild(s);
+        this.partSprites.set(part.id, s);
+      }
     }
 
     if (spec.legs) {
@@ -292,15 +317,26 @@ export class CreatureRig {
 
   private drawBodyParts(R: number, bodyScale: number, downed: boolean, ctx: RigDriveCtx): void {
     for (const part of this.spec.parts) {
-      const s = this.partSprites.get(part.id)!;
       const p = this.bodyPoint(part.local, R);
       const rx = part.rx * R * bodyScale;
       const ry = part.ry * R * bodyScale * (downed ? 0.72 : 1);
-      s.position.set(p.x, p.y);
-      s.width = 2 * rx;
-      s.height = 2 * ry;
-      s.tint = this.partColor(part.tint, ctx);
-      s.alpha = downed ? 0.85 : 1;
+      const alpha = downed ? 0.85 : 1;
+      if (this.lit) {
+        // Lit path: base colour excludes the flash (that rides the shader's white
+        // pop instead), and the sphere imposter is drawn axis-aligned like the
+        // sprite — a sphere's shading is rotation-invariant.
+        const m = this.partMeshes.get(part.id)!;
+        m.setPose(p.x, p.y, rx, ry);
+        m.setMaterial(this.partColor(part.tint, ctx, false), 0, ctx.flash);
+        m.alpha = alpha;
+      } else {
+        const s = this.partSprites.get(part.id)!;
+        s.position.set(p.x, p.y);
+        s.width = 2 * rx;
+        s.height = 2 * ry;
+        s.tint = this.partColor(part.tint, ctx);
+        s.alpha = alpha;
+      }
     }
   }
 
@@ -614,10 +650,12 @@ export class CreatureRig {
     }
   }
 
-  private partColor(tint: BodyPartSpec['tint'], ctx: RigDriveCtx): number {
+  private partColor(tint: BodyPartSpec['tint'], ctx: RigDriveCtx, withFlash = true): number {
     let c = tint == null || tint === 'base' ? ctx.color : tint;
     if (ctx.enraged) c = mixColor(c, ENRAGE_TINT, 0.35);
-    if (ctx.flash > 0) c = lighten(c, clamp(ctx.flash, 0, 1) * 0.85);
+    // The lit path drives the hit-flash through the shader (a white pop) instead
+    // of lightening the albedo, so it opts out of the colour-space flash here.
+    if (withFlash && ctx.flash > 0) c = lighten(c, clamp(ctx.flash, 0, 1) * 0.85);
     return c;
   }
 

@@ -26,6 +26,8 @@ import { CreatureRig } from './rig';
 import { makeSphereTexture } from './shading';
 import type { RigSpec } from './types';
 import { bossUsesRig, playerUsesRig, bossRigSpec, classRigSpec } from './registry';
+import { LIGHTING } from '../lighting/presets';
+import type { LightManager, Light } from '../lighting/light';
 
 /** z-index category biases (matches `SpriteLayer`); screen-y is added on top. */
 const Z_BIAS = { add: 0, boss: 20000, player: 40000 } as const;
@@ -42,9 +44,18 @@ export class RigLayer {
   private readonly seen = new Set<EntityId>();
   private readonly sphereTex: Texture;
 
-  constructor(private readonly fx: Fx) {
+  /** Whether dynamic lighting is live (a manager was supplied + the flag is on). */
+  private readonly lit: boolean;
+  /** Persistent per-boss "core" glow lights (§7.2), keyed by boss id. */
+  private readonly bossGlows = new Map<EntityId, Light>();
+
+  constructor(
+    private readonly fx: Fx,
+    private readonly lights: LightManager | null = null,
+  ) {
     this.container.sortableChildren = true;
     this.sphereTex = makeSphereTexture();
+    this.lit = lights != null && LIGHTING.enabled;
   }
 
   /** ms timestamp the current victory celebration started at, or null. */
@@ -58,6 +69,21 @@ export class RigLayer {
       if (e.t === 'victory') {
         this.victoryAtMs = performance.now();
         this.lastBrandishMs = 0;
+      }
+      // Hit-flash light (§7.1): a brief bright pop at each impact. The single
+      // largest perceived-quality jump — every hit briefly lights its surroundings.
+      if (e.t === 'hit' && this.lit) {
+        this.lights!.add({
+          x: e.pos.x,
+          y: e.pos.y,
+          z: 30,
+          radius: 120,
+          r: 1,
+          g: 1,
+          b: 1,
+          intensity: 3,
+          ttl: 0.06,
+        });
       }
       if (e.t !== 'cast') continue;
       this.nodes.get(e.sourceId)?.rig.triggerAttack();
@@ -90,6 +116,16 @@ export class RigLayer {
         state: dead ? 'downed' : undefined,
       });
       node.rig.view.zIndex = Z_BIAS.boss + scr.y;
+      if (this.lit) {
+        this.updateBossGlow(
+          b.id,
+          b.pos,
+          def.color,
+          dead,
+          telegraphProgress(b.telegraph) ?? 0,
+          def.radius,
+        );
+      }
       this.seen.add(b.id);
     }
 
@@ -144,10 +180,55 @@ export class RigLayer {
       this.container.removeChild(node.rig.view);
       node.rig.destroy();
       this.nodes.delete(id);
+      const glow = this.bossGlows.get(id);
+      if (glow) {
+        this.lights?.remove(glow);
+        this.bossGlows.delete(id);
+      }
     }
   }
 
+  /**
+   * Drive a boss's persistent core glow: a coloured point light anchored to the
+   * boss (§7.2) that ramps its intensity + reach with the telegraph windup (§7.3),
+   * so the arena physically brightens as an attack charges — readable in
+   * peripheral vision. Created on first sight, removed when the boss vanishes.
+   */
+  private updateBossGlow(
+    id: EntityId,
+    pos: { x: number; y: number },
+    color: number,
+    dead: boolean,
+    tele: number,
+    bodyR: number,
+  ): void {
+    let glow = this.bossGlows.get(id);
+    if (!glow) {
+      glow = this.lights!.add({
+        x: pos.x,
+        y: pos.y,
+        z: 46,
+        radius: bodyR * 2.2,
+        r: 1,
+        g: 1,
+        b: 1,
+        intensity: 1,
+      });
+      this.bossGlows.set(id, glow);
+    }
+    glow.x = pos.x;
+    glow.y = pos.y;
+    glow.r = ((color >> 16) & 0xff) / 255;
+    glow.g = ((color >> 8) & 0xff) / 255;
+    glow.b = (color & 0xff) / 255;
+    const t = dead ? 0 : tele;
+    glow.intensity = dead ? 0.15 : 0.85 + 1.9 * t; // felled twin dims to an ember
+    glow.radius = bodyR * (2.2 + 3.0 * t);
+  }
+
   destroy(): void {
+    for (const glow of this.bossGlows.values()) this.lights?.remove(glow);
+    this.bossGlows.clear();
     for (const [, node] of this.nodes) node.rig.destroy();
     this.nodes.clear();
     // Guard the shared-singleton fallback: makeSphereTexture returns Texture.WHITE
@@ -166,7 +247,7 @@ export class RigLayer {
       this.container.removeChild(existing.rig.view);
       existing.rig.destroy();
     }
-    const rig = new CreatureRig(spec, id, this.sphereTex, baseRadius);
+    const rig = new CreatureRig(spec, id, this.sphereTex, baseRadius, this.lights);
     this.container.addChild(rig.view);
     const node: Node = { rig, spec, baseRadius };
     this.nodes.set(id, node);
