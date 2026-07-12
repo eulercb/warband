@@ -451,6 +451,18 @@ export interface TerrainPatch {
   tickAccum: number; // accumulates toward TERRAIN_TICK_INTERVAL
   /** Seed for the renderer's procedural blob outline (visual only). */
   variant?: number;
+  /**
+   * Bottomless-core radius for a lethal hazard (the abyss). A hero dragged
+   * within this of the patch centre by a surge plunges to an environmental death
+   * (item 28). Absent / 0 = no lethal core (ordinary terrain, or the tide).
+   */
+  lethalRadius?: number;
+  /**
+   * Host-only surge cadence accumulator for a surging hazard (abyss / tide).
+   * Counts up each tick; a surge fires and it resets. Never serialized. Absent
+   * for terrain that never surges.
+   */
+  surgeAccum?: number;
 }
 
 /** Wire/render view of a terrain patch (static, so no interpolation needed). */
@@ -461,6 +473,8 @@ export interface TerrainView {
   radius: number;
   /** Seed for the renderer's procedural blob outline (visual only). */
   variant?: number;
+  /** Lethal bottomless-core radius (the abyss); drives the darker void ring. */
+  lethalRadius?: number;
 }
 
 /**
@@ -645,6 +659,18 @@ export interface PendingStrike {
     tickDamage: number;
     slowMult?: number;
     slowDuration?: number;
+  };
+  /**
+   * A positional PULL on detonation (terrain surges): every hero still inside
+   * `radius` is dragged toward `pos` by `strength` (never overshooting the
+   * centre). If the drag lands them within `lethalRadius` of the centre they take
+   * `lethalDamage` — a plunge into the void (item 28). `lethalRadius` 0 = a
+   * non-lethal haul (the tide). Absent = a plain damage strike (no pull).
+   */
+  pull?: {
+    strength: number;
+    lethalRadius: number;
+    lethalDamage: number;
   };
 }
 
