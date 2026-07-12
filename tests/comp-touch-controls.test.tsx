@@ -35,8 +35,8 @@ vi.mock('../src/input/touch', () => ({
 // Spy on previewAbilityTable but keep the real behaviour by default (real ability
 // names). One test swaps in a partial table to hit the slot-code fallback.
 vi.mock('../src/engine/content/charUpgrades', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>;
-  return { ...actual, previewAbilityTable: vi.fn(actual.previewAbilityTable as never) };
+  const actual = await importOriginal<typeof import('../src/engine/content/charUpgrades')>();
+  return { ...actual, previewAbilityTable: vi.fn(actual.previewAbilityTable) };
 });
 
 import TouchControls from '../src/ui/game/TouchControls';
@@ -66,8 +66,17 @@ Element.prototype.releasePointerCapture = function () {};
 
 /** Pin a stick's base rect so its centre (the drag origin) is exactly (0,0). */
 function centreStickAtOrigin(el: Element): void {
-  (el as HTMLElement).getBoundingClientRect = () =>
-    ({ left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+  (el as HTMLElement).getBoundingClientRect = () => ({
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 0,
+    height: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  });
 }
 
 beforeEach(() => {
@@ -203,7 +212,7 @@ describe('<TouchControls> virtual sticks', () => {
     const { container } = render(<TouchControls />);
     const stick = container.querySelector('.wb-touch-stick-left') as HTMLElement;
     centreStickAtOrigin(stick);
-    return container as HTMLElement;
+    return container;
   }
 
   it('reports a normalized move vector, clamps past the radius and re-centres on release', () => {

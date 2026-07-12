@@ -258,7 +258,9 @@ describe('effect fallbacks for absent optional fields', () => {
     expect(a.a1.slowMult).toBeUndefined(); // Heal spared
     expect(a.a2.slowMult).toBeUndefined(); // no damage
     // Synthetic ability that already carries a slow → the ?? left operands are used.
-    const preset = table({ basic: ab('basic', 'meleeCone', 10, { slowMult: 0.9, slowDuration: 5 }) });
+    const preset = table({
+      basic: ab('basic', 'meleeCone', 10, { slowMult: 0.9, slowDuration: 5 }),
+    });
     CHAR_UPGRADES.hy_frostbrand.apply({ player: stub, abilities: preset });
     expect(preset.basic.slowMult!).toBeCloseTo(0.72, 5); // min(0.9, 0.72)
     expect(preset.basic.slowDuration!).toBeCloseTo(5, 5); // max(5, 1.4)
@@ -483,7 +485,6 @@ import { useStore } from '../src/ui/state/store';
 import type { AppState } from '../src/ui/state/store';
 import { DEFAULT_CLASS } from '../src/engine/content/classes';
 import { DEFAULT_MONSTER } from '../src/engine/content/monsters';
-import type { FightResult } from '../src/engine/core/types';
 import type { LobbyPlayer, NetSession } from '../src/net/protocol';
 import type { EphemeralId } from '../src/engine/content/ephemeral';
 
@@ -626,7 +627,7 @@ describe('store: navigation, room & lobby setters', () => {
     g.setRun({ index: 1, total: 5 });
     g.setCycle(2);
     g.setNextReadyState(2, 4);
-    g.setResult({ outcome: 'victory', timeMs: 1, stats: [], monsterId: 'dragon' } as FightResult);
+    g.setResult({ outcome: 'victory', timeMs: 1, stats: [], monsterId: 'dragon' });
     const s = useStore.getState();
     expect(s.paused).toBe(true);
     expect(s.pausedBy).toBe('Bob');
@@ -724,7 +725,7 @@ describe('store: awardCoinsFromResult (null-session guard, line 350)', () => {
           coins: 5,
         },
       ],
-    } as FightResult);
+    });
     expect(useStore.getState().myCoins).toBe(5);
   });
 
@@ -747,7 +748,7 @@ describe('store: awardCoinsFromResult (null-session guard, line 350)', () => {
           coins: 5,
         },
       ],
-    } as FightResult);
+    });
     expect(useStore.getState().myCoins).toBe(0);
   });
 
@@ -759,7 +760,7 @@ describe('store: awardCoinsFromResult (null-session guard, line 350)', () => {
       timeMs: 1,
       monsterId: 'dragon',
       stats: [],
-    } as FightResult);
+    });
     expect(useStore.getState().myCoins).toBe(0);
   });
 });
@@ -880,7 +881,7 @@ describe('store: reset', () => {
     g.setLobby([player], 'lich', 'inFight', true);
     g.setRun({ index: 1, total: 3 });
     g.addMyUpgrade('swift');
-    g.setResult({ outcome: 'victory', timeMs: 1, stats: [], monsterId: 'dragon' } as FightResult);
+    g.setResult({ outcome: 'victory', timeMs: 1, stats: [], monsterId: 'dragon' });
     g.setShowControls(true);
 
     useStore.getState().reset();

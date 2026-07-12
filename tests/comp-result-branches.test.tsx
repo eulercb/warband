@@ -154,10 +154,10 @@ function upgradesBlock(container: HTMLElement): HTMLElement {
 function genCards(container: HTMLElement): HTMLButtonElement[] {
   return Array.from(
     upgradesBlock(container).querySelectorAll('.wb-upgrade-card:not(.wb-upgrade-char)'),
-  ) as HTMLButtonElement[];
+  );
 }
 function charCards(container: HTMLElement): HTMLButtonElement[] {
-  return Array.from(upgradesBlock(container).querySelectorAll('.wb-upgrade-char')) as HTMLButtonElement[];
+  return Array.from(upgradesBlock(container).querySelectorAll('.wb-upgrade-char'));
 }
 
 // ===========================================================================
@@ -197,8 +197,26 @@ describe('<ResultScreen> branch coverage', () => {
         outcome: 'victory',
         timeMs: 12345,
         stats: [
-          makeStat({ peerId: 'a', name: 'Alice', classId: 'knight', damageDealt: 300, healingDone: 0, revives: 1, deaths: 0, score: 810 }),
-          makeStat({ peerId: 'b', name: 'Bob', classId: 'cleric', damageDealt: 55, healingDone: 210, revives: 0, deaths: 1, score: 320 }),
+          makeStat({
+            peerId: 'a',
+            name: 'Alice',
+            classId: 'knight',
+            damageDealt: 300,
+            healingDone: 0,
+            revives: 1,
+            deaths: 0,
+            score: 810,
+          }),
+          makeStat({
+            peerId: 'b',
+            name: 'Bob',
+            classId: 'cleric',
+            damageDealt: 55,
+            healingDone: 210,
+            revives: 0,
+            deaths: 1,
+            score: 320,
+          }),
         ],
       }),
     });
@@ -226,7 +244,9 @@ describe('<ResultScreen> branch coverage', () => {
   it('falls back to "Hero" for an empty name and renders no MVP when every stat is zero', () => {
     useStore.setState({
       result: makeResult({
-        stats: [makeStat({ name: '', damageDealt: 0, healingDone: 0, revives: 0, deaths: 0, score: 0 })],
+        stats: [
+          makeStat({ name: '', damageDealt: 0, healingDone: 0, revives: 0, deaths: 0, score: 0 }),
+        ],
       }),
     });
     const { container } = render(<ResultScreen />);
@@ -268,7 +288,13 @@ describe('<ResultScreen> branch coverage', () => {
   it('omits the mod-name prefix and cycle suffix on a plain cycle-0 run, and hides Retry from a client', () => {
     useStore.setState({
       isHost: false,
-      result: makeResult({ outcome: 'defeat', monsterId: 'dragon', runIndex: 0, runTotal: 3, cycle: 0 }),
+      result: makeResult({
+        outcome: 'defeat',
+        monsterId: 'dragon',
+        runIndex: 0,
+        runTotal: 3,
+        cycle: 0,
+      }),
     });
     const { container } = render(<ResultScreen />);
 
@@ -360,11 +386,14 @@ describe('<ResultScreen> branch coverage', () => {
 
     // Heading flips, the chosen card is picked (with a tick), the others dim.
     expect(screen.getByText('Generic upgrade chosen')).toBeTruthy();
-    const picked = upgradesBlock(container).querySelector('.wb-upgrade-card.picked:not(.wb-upgrade-char)');
+    const picked = upgradesBlock(container).querySelector(
+      '.wb-upgrade-card.picked:not(.wb-upgrade-char)',
+    );
     expect(picked).toBeTruthy();
     expect(picked?.querySelector('.wb-upgrade-tick')?.textContent).toContain('✓');
     expect(
-      upgradesBlock(container).querySelectorAll('.wb-upgrade-card.dimmed:not(.wb-upgrade-char)').length,
+      upgradesBlock(container).querySelectorAll('.wb-upgrade-card.dimmed:not(.wb-upgrade-char)')
+        .length,
     ).toBe(2);
 
     // A second click on the now-disabled card is a no-op (the pick is locked in).

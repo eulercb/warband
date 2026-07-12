@@ -13,7 +13,6 @@ import {
   isBotPeerId,
   BOT_PEER_PREFIX,
   rollPersonality,
-  defaultPersonality,
   botRoleWeight,
   pickBotUpgrades,
   type BotPersonality,
@@ -27,6 +26,7 @@ import type {
   Obstacle,
   Add,
   Boss,
+  Player,
 } from '../src/engine/core/types';
 import { Rng } from '../src/engine/core/math';
 import { UPGRADE_IDS, upgradeMaxStacks } from '../src/engine/content/upgrades';
@@ -51,7 +51,10 @@ function persona(over: Partial<BotPersonality> = {}): BotPersonality {
 /** Build a world with the given classes; strip generated hazards for isolation. */
 function mkWorld(
   classes: ClassId[],
-  opts: { monsterId?: 'dragon' | 'troll' | 'lich'; coBosses?: ('dragon' | 'troll' | 'lich')[] } = {},
+  opts: {
+    monsterId?: 'dragon' | 'troll' | 'lich';
+    coBosses?: ('dragon' | 'troll' | 'lich')[];
+  } = {},
 ): World {
   const w = new World({
     monsterId: opts.monsterId ?? 'dragon',
@@ -65,13 +68,13 @@ function mkWorld(
   return w;
 }
 
-function readyCds(p: { cooldowns: Record<string, number> }): void {
+function readyCds(p: Player): void {
   p.cooldowns.basic = 0;
   p.cooldowns.a1 = 0;
   p.cooldowns.a2 = 0;
   p.cooldowns.a3 = 0;
 }
-function busyCds(p: { cooldowns: Record<string, number> }): void {
+function busyCds(p: Player): void {
   p.cooldowns.basic = 9;
   p.cooldowns.a1 = 9;
   p.cooldowns.a2 = 9;
@@ -158,7 +161,7 @@ function patchDef(w: World, ability: Record<string, unknown>): void {
 }
 
 /** Arm a ranger so ONLY its Roll (a3) tracks inDanger; a3 true <=> bot is fleeing. */
-function armRangerDangerProbe(bot: { cooldowns: Record<string, number> }): void {
+function armRangerDangerProbe(bot: Player): void {
   bot.cooldowns.basic = 9;
   bot.cooldowns.a1 = 9;
   bot.cooldowns.a2 = 9;
@@ -1156,6 +1159,5 @@ describe('bot: integrated all-class fights stay finite and land damage', () => {
   }
 
   it('knight/ranger/mage/cleric', () => runBand(['knight', 'ranger', 'mage', 'cleric'], 8));
-  it('barbarian/rogue/paladin/druid', () =>
-    runBand(['barbarian', 'rogue', 'paladin', 'druid'], 5));
+  it('barbarian/rogue/paladin/druid', () => runBand(['barbarian', 'rogue', 'paladin', 'druid'], 5));
 });

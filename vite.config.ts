@@ -87,13 +87,13 @@ export default defineConfig({
         'src/ui/App.tsx', // shell that mounts MainMenu/GameView
       ],
       reporter: ['text', 'text-summary', 'lcov'],
-      // Ratchet floor for the unit-testable surface (currently ~95% lines /
-      // ~87% branches). Set a few points below the achieved numbers so ordinary
-      // v8 variance never fails CI, while a real coverage regression does. Raise
-      // these as coverage climbs.
+      // Ratchet floor for the unit-testable surface. Achieved coverage is
+      // currently ~98% lines / ~94% branches; all four gates sit at 90 — a few
+      // points below the branch number so ordinary v8 variance never fails CI,
+      // while a real coverage regression does. Raise these as coverage climbs.
       thresholds: {
         statements: 90,
-        branches: 80,
+        branches: 90,
         functions: 90,
         lines: 90,
       },

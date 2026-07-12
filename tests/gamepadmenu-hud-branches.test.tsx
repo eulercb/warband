@@ -176,18 +176,17 @@ describe('useGamepadMenu — branch coverage', () => {
   }
 
   function setRect(el: Element, x: number, y: number, w = 10, h = 10): void {
-    (el as HTMLElement).getBoundingClientRect = () =>
-      ({
-        x,
-        y,
-        left: x,
-        top: y,
-        right: x + w,
-        bottom: y + h,
-        width: w,
-        height: h,
-        toJSON() {},
-      }) as DOMRect;
+    (el as HTMLElement).getBoundingClientRect = () => ({
+      x,
+      y,
+      left: x,
+      top: y,
+      right: x + w,
+      bottom: y + h,
+      width: w,
+      height: h,
+      toJSON() {},
+    });
   }
 
   it('registers a nav handler when enabled and the container exists', () => {
@@ -380,10 +379,14 @@ describe('HUD — branch coverage', () => {
   });
 
   it('renders hero health, score and the four ability buttons (keyboard)', () => {
-    useHudStore.getState().set({ active: true, classId: 'knight', hp: 120, maxHp: 200, score: 1234 });
+    useHudStore
+      .getState()
+      .set({ active: true, classId: 'knight', hp: 120, maxHp: 200, score: 1234 });
     const { container } = render(<HUD />);
 
-    expect(container.querySelector('.hud-selfhp .hud-healthbar-num')?.textContent).toBe('120 / 200');
+    expect(container.querySelector('.hud-selfhp .hud-healthbar-num')?.textContent).toBe(
+      '120 / 200',
+    );
     expect(container.querySelector('.hud-score')?.textContent).toContain('1234');
     expect(container.querySelectorAll('.hud-ability')).toHaveLength(4);
     expect(screen.getByText('Cleave')).toBeTruthy();
@@ -423,7 +426,9 @@ describe('HUD — branch coverage', () => {
       modName: 'Frost',
       affixes: [],
     };
-    useHudStore.getState().set({ active: true, classId: 'knight', hp: 10, maxHp: 100, bosses: [boss] });
+    useHudStore
+      .getState()
+      .set({ active: true, classId: 'knight', hp: 10, maxHp: 100, bosses: [boss] });
     const { container } = render(<HUD />);
 
     expect(container.querySelector('.hud-bossbar-label')?.textContent).toContain('Frost Dragon');
@@ -447,7 +452,9 @@ describe('HUD — branch coverage', () => {
       modName: '',
       affixes: [],
     };
-    useHudStore.getState().set({ active: true, classId: 'knight', hp: 10, maxHp: 100, bosses: [boss] });
+    useHudStore
+      .getState()
+      .set({ active: true, classId: 'knight', hp: 10, maxHp: 100, bosses: [boss] });
     const { container } = render(<HUD />);
     expect(container.querySelector('.hud-run-tag')).toBeNull();
     expect(container.querySelector('.hud-cycle-tag')).toBeNull();
@@ -466,7 +473,9 @@ describe('HUD — branch coverage', () => {
       modName: '',
       affixes: ['vampiric', 'frenzied'],
     };
-    useHudStore.getState().set({ active: true, classId: 'knight', hp: 10, maxHp: 100, bosses: [boss] });
+    useHudStore
+      .getState()
+      .set({ active: true, classId: 'knight', hp: 10, maxHp: 100, bosses: [boss] });
     const { container } = render(<HUD />);
     expect(container.querySelectorAll('.hud-affix')).toHaveLength(2);
     expect(screen.getByText('Vampiric')).toBeTruthy();
@@ -593,7 +602,9 @@ describe('HUD — branch coverage', () => {
   });
 
   it('shows the fallen note when the hero is dead', () => {
-    useHudStore.getState().set({ active: true, classId: 'knight', hp: 0, maxHp: 100, state: 'dead' });
+    useHudStore
+      .getState()
+      .set({ active: true, classId: 'knight', hp: 0, maxHp: 100, state: 'dead' });
     render(<HUD />);
     expect(screen.getByText('You have fallen')).toBeTruthy();
     expect(screen.getByText(/Spectating/)).toBeTruthy();
@@ -640,7 +651,7 @@ describe('HUD — branch coverage', () => {
     useHudStore.getState().set({ active: true, classId: 'knight', hp: 0, maxHp: 0 });
     const { container } = render(<HUD />);
     expect(container.querySelector('.hud-selfhp .hud-healthbar-num')?.textContent).toBe('0 / 0');
-    const fill = container.querySelector('.hud-selfhp .hud-healthbar-fill') as HTMLElement | null;
+    const fill = container.querySelector<HTMLElement>('.hud-selfhp .hud-healthbar-fill');
     expect(fill?.style.width).toBe('0%');
   });
 

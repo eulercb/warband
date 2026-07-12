@@ -376,9 +376,7 @@ describe('world-branches: input + cast', () => {
 describe('world-branches: multiclass swap', () => {
   it('a swap press cycles the active class and gates re-swaps behind a cooldown', () => {
     const w = makeWorld({
-      players: [
-        { peerId: 'a', name: 'A', classId: 'knight', extraClasses: ['mage'] },
-      ],
+      players: [{ peerId: 'a', name: 'A', classId: 'knight', extraClasses: ['mage'] }],
     });
     w.boss = null;
     w.terrain = [];
@@ -427,9 +425,7 @@ describe('world-branches: player projectiles', () => {
     const boss = w.boss!;
     boss.pos = { x: 800, y: 400 };
     const before = boss.hp;
-    w.projectiles = [
-      mkProj(w, { ownerId: 0, pos: { x: 800, y: 400 }, damage: 40, hitRadius: 8 }),
-    ];
+    w.projectiles = [mkProj(w, { ownerId: 0, pos: { x: 800, y: 400 }, damage: 40, hitRadius: 8 })];
     w.step(DT, new Map());
     expect(boss.hp).toBeLessThan(before);
     expect(w.events.some((e) => e.t === 'hit' && e.side === 'boss')).toBe(true);
@@ -1050,13 +1046,25 @@ describe('world-branches: boss channel', () => {
 
 describe('world-branches: modifier auras', () => {
   function auraWorld(aura: string, seed = 5) {
-    const w = solo({ seed });
+    const w = makeWorld({
+      seed,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'ranger' },
+      ],
+    });
     w.terrain = [];
     w.obstacles = [];
     const boss = w.boss!;
     boss.decisionTimer = 100; // don't let the boss act
     boss.modAura = aura;
     boss.modAuraTimer = 5; // over the ~3.5s interval → fires on the next tick
+    // A second, downed hero exercises the "not alive" side of each aura loop.
+    const other = w.players[1];
+    other.state = 'downed';
+    other.hp = 0;
+    other.downedTimer = 100;
+    other.pos = { x: 50, y: 950 };
     return w;
   }
 
@@ -1367,7 +1375,10 @@ describe('world-branches: boss cooldown scaling', () => {
 
 describe('world-branches: affix upkeep', () => {
   function affixWorld(seed = 9) {
-    const w = solo({ seed, bossAffixes: [['molten', 'warding', 'splitting', 'barbed', 'accelerating']] });
+    const w = solo({
+      seed,
+      bossAffixes: [['molten', 'warding', 'splitting', 'barbed', 'accelerating']],
+    });
     w.terrain = [];
     w.obstacles = [];
     const boss = w.boss!;
@@ -1576,6 +1587,290 @@ describe('world-branches: pack synergy bond', () => {
 });
 
 // ---------------------------------------------------------------------------
+// scene mode (diegetic menu world) + item edge cases
+// ---------------------------------------------------------------------------
+
+describe('world-branches: scene mode', () => {
+  it('a reward scene is heroes-only: no boss, inert abilities, never resolves', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 41,
+      players: [{ peerId: 'a', name: 'A', classId: 'mage' }],
+      scene: 'reward',
+    });
+    expect(w.scene).toBe('reward');
+    expect(w.bosses.length).toBe(0);
+    expect(w.boss).toBeNull();
+    expect(w.terrain.length).toBe(0);
+    const p = w.players[0];
+    const startX = p.pos.x;
+    // Movement is free; the ability + item buttons are inert inside a scene.
+    w.step(
+      DT,
+      new Map([['a', inp({ move: { x: 1, y: 0 }, buttons: buttons({ a1: true, item: true }) })]]),
+    );
+    expect(p.pos.x).toBeGreaterThan(startX); // walked
+    expect(w.projectiles.length).toBe(0); // abilities inert
+    expect(p.castSlot).toBeNull();
+    // Even with no heroes standing the scene never flips to a defeat.
+    p.state = 'dead';
+    w.step(DT, new Map());
+    expect(w.finished).toBe(false);
+  });
+});
+
+describe('world-branches: hardcore setup', () => {
+  it('a hardcore fight caps its revive budget', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 42,
+      hardcore: true,
+      players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+    });
+    expect(w.hardcore).toBe(true);
+    expect(w.reviveBudget).toBe(2); // HARDCORE_REVIVES_PER_FIGHT
+    // Practice/scene flags force hardcore back off (guarded at construction).
+    const calm = new World({
+      monsterId: 'dummy',
+      seed: 42,
+      hardcore: true,
+      practice: true,
+      players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+    });
+    expect(calm.hardcore).toBe(false);
+    expect(calm.reviveBudget).toBe(Infinity);
+  });
+
+  it('a spent hardcore revive budget blocks any further revive', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 43,
+      hardcore: true,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'cleric' },
+      ],
+    });
+    w.boss = null;
+    w.terrain = [];
+    const [downed, reviver] = w.players;
+    downed.state = 'downed';
+    downed.hp = 0;
+    downed.downedTimer = 100;
+    w.reviveBudget = 0; // stock already spent
+    downed.pos = { x: 400, y: 800 };
+    reviver.pos = { x: 420, y: 800 };
+    w.step(DT, new Map([['b', inp({ buttons: buttons({ revive: true }) })]]));
+    expect(downed.state).toBe('downed'); // no revive while the budget is empty
+    expect(downed.reviveProgress).toBe(0);
+  });
+});
+
+describe('world-branches: item button with no vials', () => {
+  it('pressing the item button with no charges heals nothing', () => {
+    const w = solo({ classId: 'mage' });
+    w.boss = null;
+    w.terrain = [];
+    const p = w.players[0];
+    expect(p.potions).toBeUndefined();
+    p.hp = 1;
+    w.step(DT, new Map([['a', inp({ buttons: buttons({ item: true }) })]]));
+    expect(p.hp).toBe(1); // no vial → nothing to quaff
+    expect(p.potions).toBeUndefined();
+  });
+});
+
+describe('world-branches: teleporting affix on a non-blinker', () => {
+  it('grants a synthetic blink to a boss that cannot normally teleport', () => {
+    const w = solo({ bossAffixes: [['teleporting']] });
+    w.terrain = [];
+    w.obstacles = [];
+    const boss = w.boss!;
+    // A dragon has no innate blink, so the affix seeds a synthetic blink cooldown.
+    expect(boss.blinkTimer).toBeGreaterThan(0);
+    const p = w.players[0];
+    boss.pos = { x: 800, y: 400 };
+    p.pos = { x: 850, y: 400 }; // crowding it
+    boss.blinkTimer = 0;
+    boss.decisionTimer = 100;
+    w.step(DT, new Map([['a', inp()]]));
+    expect(w.events.some((e) => e.t === 'blink')).toBe(true);
+  });
+});
+
+describe('world-branches: soft enrage + passive regen', () => {
+  it('the boss damage scalar ramps past the soft-enrage time', () => {
+    const w = solo();
+    const base = w.bossDamageScalar();
+    w.elapsed = 400; // past SOFT_ENRAGE_TIME (300s)
+    expect(w.bossDamageScalar()).toBeGreaterThan(base);
+  });
+
+  it('a Renewal hero regenerates while up, but not while down', () => {
+    const w = solo();
+    w.boss = null;
+    w.terrain = [];
+    const p = w.players[0];
+    p.regenPerSec = 40;
+    p.hp = 100;
+    w.step(DT, new Map([['a', inp()]]));
+    expect(p.hp).toBeGreaterThan(100); // regen ticked
+
+    p.state = 'downed';
+    p.hp = 0;
+    p.downedTimer = 100;
+    w.step(DT, new Map([['a', inp()]]));
+    expect(p.hp).toBe(0); // no regen while downed
+  });
+
+  it('a downed hero bleeds out to dead once the timer elapses', () => {
+    const w = solo();
+    w.boss = null;
+    w.terrain = [];
+    const p = w.players[0];
+    p.state = 'downed';
+    p.hp = 0;
+    p.downedTimer = 0.01;
+    w.step(DT, new Map());
+    expect(p.state).toBe('dead');
+    expect(w.events.some((e) => e.t === 'death' && e.kind === 'player')).toBe(true);
+  });
+});
+
+describe('world-branches: boss-side + healing zones', () => {
+  it('a boss damage+snare zone bites a standing hero', () => {
+    const w = solo();
+    w.boss = null;
+    w.terrain = [];
+    w.obstacles = [];
+    const p = w.players[0];
+    p.pos = { x: 500, y: 500 };
+    const before = p.hp;
+    w.groundZones = [
+      mkZone(w, {
+        side: 'boss',
+        pos: { x: 500, y: 500 },
+        radius: 130,
+        damagePerTick: 14,
+        slowMult: 0.5,
+        slowDuration: 2,
+        tickAccum: 0.5,
+      }),
+    ];
+    w.step(DT, new Map([['a', inp()]]));
+    expect(p.hp).toBeLessThan(before);
+    expect(p.buffs.some((b) => b.kind === 'moveSpeed' && b.mult < 1)).toBe(true);
+  });
+
+  it('a player heal zone with an owner mends a wounded ally and credits the healer', () => {
+    const w = makeWorld({
+      players: [
+        { peerId: 'a', name: 'A', classId: 'cleric' },
+        { peerId: 'b', name: 'B', classId: 'knight' },
+      ],
+    });
+    w.boss = null;
+    w.terrain = [];
+    const [owner, wounded] = w.players;
+    wounded.hp = 20;
+    wounded.pos = { x: 500, y: 500 };
+    w.groundZones = [
+      mkZone(w, {
+        kind: 'sanctuary',
+        side: 'player',
+        ownerId: owner.id,
+        pos: { x: 500, y: 500 },
+        radius: 150,
+        healPerTick: 25,
+        tickAccum: 0.5,
+      }),
+    ];
+    w.step(DT, new Map());
+    expect(wounded.hp).toBeGreaterThan(20);
+    expect(owner.stats.healingDone).toBeGreaterThan(0);
+  });
+});
+
+describe('world-branches: enrage + dummy regen transitions', () => {
+  it('a boss crossing its HP threshold enters the enraged phase', () => {
+    const w = solo();
+    w.terrain = [];
+    const boss = w.boss!;
+    boss.decisionTimer = 100;
+    boss.hp = boss.maxHp * 0.24; // below the dragon's 0.25 threshold
+    w.step(DT, new Map());
+    expect(boss.phase).toBe('enraged');
+    expect(w.events.some((e) => e.t === 'enrage')).toBe(true);
+  });
+
+  it('a practice dummy self-heals briskly (uncapped) once you stop hitting it', () => {
+    const w = new World({
+      monsterId: 'dummy',
+      seed: 44,
+      players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+      practice: true,
+    });
+    const dummy = w.boss!;
+    dummy.hp = dummy.maxHp - 200;
+    dummy.regenLockout = 0;
+    const before = dummy.hp;
+    for (let i = 0; i < 20; i++) w.step(DT, new Map());
+    expect(dummy.hp).toBeGreaterThan(before);
+  });
+});
+
+describe('world-branches: silenced casters', () => {
+  it('silence blocks the specials but never the basic attack', () => {
+    const w = solo();
+    w.terrain = [];
+    w.obstacles = [];
+    const p = w.players[0];
+    const boss = w.boss!;
+    boss.pos = { x: 800, y: 400 };
+    p.pos = { x: 800, y: 460 };
+    applyBuff(p, makeBuff('silence', 0, 5, 'test'));
+    // A silenced A1 does nothing.
+    w.step(DT, new Map([['a', inp({ aim: { x: 0, y: -1 }, buttons: buttons({ a1: true }) })]]));
+    expect(p.cooldowns.a1).toBe(0); // never fired
+
+    // The basic still lands.
+    const before = boss.hp;
+    p.pos = { x: 800, y: 460 };
+    boss.pos = { x: 800, y: 400 };
+    p.prevButtons = buttons();
+    w.step(DT, new Map([['a', inp({ aim: { x: 0, y: -1 }, buttons: buttons({ basic: true }) })]]));
+    expect(boss.hp).toBeLessThan(before);
+  });
+});
+
+describe('world-branches: applyEphemeral passives', () => {
+  it('speed/damage/defence perks fold into the stat multipliers at spawn', () => {
+    const plain = new World({
+      monsterId: 'dragon',
+      seed: 45,
+      players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+    });
+    const buffed = new World({
+      monsterId: 'dragon',
+      seed: 45,
+      players: [
+        {
+          peerId: 'a',
+          name: 'A',
+          classId: 'knight',
+          ephemeral: { speed: true, damage: true, defense: true },
+        },
+      ],
+    });
+    const a = plain.players[0];
+    const b = buffed.players[0];
+    expect(b.moveSpeed).toBeGreaterThan(a.moveSpeed);
+    expect(b.damageMult).toBeGreaterThan(a.damageMult);
+    expect(b.damageTakenMult).toBeLessThan(a.damageTakenMult);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // long soak: keep the sim honest with affixes + corruption enabled
 // ---------------------------------------------------------------------------
 
@@ -1591,7 +1886,10 @@ describe('world-branches: soak', () => {
         { peerId: 'p2', name: 'P2', classId: 'cleric' },
       ],
       coBosses: ['lich'],
-      bossAffixes: [['molten', 'vampiric'], ['splitting', 'warding']],
+      bossAffixes: [
+        ['molten', 'vampiric'],
+        ['splitting', 'warding'],
+      ],
     });
     for (let t = 0; t < 400 && !w.finished; t++) {
       const map = new Map<string, InputCommand>();

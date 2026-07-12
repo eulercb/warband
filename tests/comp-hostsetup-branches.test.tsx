@@ -127,9 +127,7 @@ describe('<HostSetup> with run mode enabled', () => {
     render(<HostSetup />);
 
     // L65-66 / L119-120 (true side): gauntlet subtitle + "on" blurb.
-    expect(
-      screen.getByText(/Run mode assembles a fully RANDOM boss set/),
-    ).toBeTruthy();
+    expect(screen.getByText(/Run mode assembles a fully RANDOM boss set/)).toBeTruthy();
     const runBtn = screen.getByRole('button', { name: /Run mode/ });
     expect(runBtn.classList.contains('on')).toBe(true); // L104 true
     expect(runBtn.getAttribute('aria-pressed')).toBe('true');
@@ -176,9 +174,9 @@ describe('<HostSetup> with run mode enabled', () => {
     expect(playUiSound).toHaveBeenCalledWith('uiClick');
     let seedGroup = screen.getByRole('group', { name: 'Gauntlet seed' });
     expect(seedGroup.textContent).toContain('Everyone playing today shares');
-    expect(screen.getByRole('button', { name: 'Run of the Day' }).classList.contains('selected')).toBe(
-      true,
-    );
+    expect(
+      screen.getByRole('button', { name: 'Run of the Day' }).classList.contains('selected'),
+    ).toBe(true);
     expect(screen.queryByLabelText('Custom gauntlet seed')).toBeNull(); // L145-146 false
 
     // daily -> custom (L145-146 true: input appears; L160-161 custom blurb).

@@ -213,7 +213,13 @@ function masterGain(ctx: FakeAudioContext): FakeGain {
 // ---------------------------------------------------------------------------
 
 const P: Vec2 = { x: 0, y: 0 };
-const cast = (side: Side): GameEvent => ({ t: 'cast', ability: 'slash', sourceId: 1, pos: P, side });
+const cast = (side: Side): GameEvent => ({
+  t: 'cast',
+  ability: 'slash',
+  sourceId: 1,
+  pos: P,
+  side,
+});
 const hit = (side: Side): GameEvent => ({ t: 'hit', pos: P, amount: 5, targetId: 2, side });
 const heal = (): GameEvent => ({ t: 'heal', pos: P, amount: 3, targetId: 1 });
 const dodge = (): GameEvent => ({ t: 'dodge', id: 1, pos: P });
@@ -353,9 +359,7 @@ describe('Sfx: corruption beat synthesis', () => {
 describe('Sfx: entry guards short-circuit before building a context', () => {
   it('handleEvents ignores a null batch (the `!events` arm)', () => {
     const sfx = new Sfx();
-    expect(() =>
-      sfx.handleEvents(null as unknown as GameEvent[]),
-    ).not.toThrow();
+    expect(() => sfx.handleEvents(null as unknown as GameEvent[])).not.toThrow();
     expect(FakeAudioContext.instances.length).toBe(0);
   });
 

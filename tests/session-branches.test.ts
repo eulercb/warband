@@ -300,7 +300,12 @@ describe('Host callbacks drive the store', () => {
   });
 
   it('onLobby / onNextReady / onPeers / onError mirror into the store', () => {
-    hosts[0].opts.onLobby({ players: [], monsterId: st().monsterId, phase: 'lobby', gauntlet: true });
+    hosts[0].opts.onLobby({
+      players: [],
+      monsterId: st().monsterId,
+      phase: 'lobby',
+      gauntlet: true,
+    });
     expect(st().gauntlet).toBe(true);
     hosts[0].opts.onNextReady({ ready: 2, total: 4 });
     expect(st().nextReadyReady).toBe(2);
@@ -350,28 +355,53 @@ describe('Client callbacks drive the store', () => {
 
   it('onLobby returns a lobby-phase player to the lobby from both waiting and join', () => {
     useStore.setState({ phase: 'waiting' });
-    clients[0].opts.onLobby({ players: [], monsterId: st().monsterId, phase: 'lobby', gauntlet: false });
+    clients[0].opts.onLobby({
+      players: [],
+      monsterId: st().monsterId,
+      phase: 'lobby',
+      gauntlet: false,
+    });
     expect(st().phase).toBe('lobby');
 
     useStore.setState({ phase: 'join' });
-    clients[0].opts.onLobby({ players: [], monsterId: st().monsterId, phase: 'lobby', gauntlet: false });
+    clients[0].opts.onLobby({
+      players: [],
+      monsterId: st().monsterId,
+      phase: 'lobby',
+      gauntlet: false,
+    });
     expect(st().phase).toBe('lobby');
   });
 
   it('onLobby leaves an in-game player alone and does not pull other screens into the lobby', () => {
     // Already in the fight: inFight message must not bounce us to "waiting".
     useStore.setState({ phase: 'game' });
-    clients[0].opts.onLobby({ players: [], monsterId: st().monsterId, phase: 'inFight', gauntlet: false });
+    clients[0].opts.onLobby({
+      players: [],
+      monsterId: st().monsterId,
+      phase: 'inFight',
+      gauntlet: false,
+    });
     expect(st().phase).toBe('game');
 
     // lobby message while on the menu: neither join nor waiting -> no transition.
     useStore.setState({ phase: 'menu' });
-    clients[0].opts.onLobby({ players: [], monsterId: st().monsterId, phase: 'lobby', gauntlet: false });
+    clients[0].opts.onLobby({
+      players: [],
+      monsterId: st().monsterId,
+      phase: 'lobby',
+      gauntlet: false,
+    });
     expect(st().phase).toBe('menu');
   });
 
   it('onLobby moves a late joiner to waiting when a fight is in progress', () => {
-    clients[0].opts.onLobby({ players: [], monsterId: st().monsterId, phase: 'inFight', gauntlet: false });
+    clients[0].opts.onLobby({
+      players: [],
+      monsterId: st().monsterId,
+      phase: 'inFight',
+      gauntlet: false,
+    });
     expect(st().phase).toBe('waiting');
   });
 
