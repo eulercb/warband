@@ -294,6 +294,17 @@ export interface Player {
   /** Stun diminishing-returns state (see combat.applyStun). Lazily created. */
   stunDr?: StunDr;
 
+  /**
+   * Purely-visual slide (item 28). A knockback / pull sets the authoritative `pos`
+   * instantly (so all logic — collisions, the lethal-chasm plunge — is unaffected),
+   * but records the pre-move offset here so the RENDERED position eases in from it
+   * over `slideTotal` seconds — the hero visibly travels instead of teleporting,
+   * like the Rogue roll. Never read by the simulation; only `playerView` uses it.
+   */
+  slideOff?: Vec2;
+  slideRemaining?: number;
+  slideTotal?: number;
+
   /** Host-side edge-detection of the previous button state for this player. */
   prevButtons: ButtonState;
   lastSeq: number;

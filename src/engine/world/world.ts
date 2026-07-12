@@ -953,6 +953,10 @@ export class World {
       // Multiclass swap gate + per-class cooldown decay for the INACTIVE classes,
       // so a swapped-away kit keeps recovering while you fight with another.
       if (p.swapCd != null && p.swapCd > 0) p.swapCd = Math.max(0, p.swapCd - dt);
+      // Decay the purely-visual knockback/pull slide (item 28); logic never reads it.
+      if (p.slideRemaining != null && p.slideRemaining > 0) {
+        p.slideRemaining = Math.max(0, p.slideRemaining - dt);
+      }
       this.tickInactiveClassCooldowns(p, dt);
 
       if (p.castTimer > 0) {
@@ -2618,12 +2622,20 @@ export class World {
   }
 
   private playerView(p: Player): PlayerView {
+    // Purely-visual knockback/pull slide (item 28): the RENDERED position eases in
+    // from the pre-shove offset while `slideRemaining` burns down, so the hero
+    // travels rather than teleporting. `p.pos` (logic) is untouched.
+    const ease = p.slideRemaining && p.slideTotal ? p.slideRemaining / p.slideTotal : 0;
+    const rpos =
+      p.slideOff && ease > 0
+        ? wrapPos({ x: p.pos.x + p.slideOff.x * ease, y: p.pos.y + p.slideOff.y * ease })
+        : p.pos;
     return {
       id: p.id,
       peerId: p.peerId,
       name: p.name,
       classId: p.classId,
-      pos: { ...p.pos },
+      pos: { ...rpos },
       aim: { ...p.aim },
       hp: Math.max(0, Math.round(p.hp)),
       maxHp: p.maxHp,

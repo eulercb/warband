@@ -521,15 +521,31 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
  * falls back to +x so an impulse is never a no-op. Knockbacks (push away) and
  * pulls (drag toward) both build on this; terrain surges and boss grabs reuse it.
  */
+/** Below this a shove isn't worth animating; above it eases in over SHOVE_TIME. */
+const SHOVE_MIN = 24;
+const SHOVE_TIME = 0.18;
+
 export function applyImpulse(
   world: World,
-  target: { pos: Vec2 },
+  target: {
+    pos: Vec2;
+    slideOff?: Vec2;
+    slideRemaining?: number;
+    slideTotal?: number;
+  },
   dir: Vec2,
   distance: number,
 ): void {
   const n = normalize(dir);
   const d = n.x === 0 && n.y === 0 ? { x: 1, y: 0 } : n;
   target.pos = clampToArena(world, vadd(target.pos, vscale(d, distance)));
+  // Record a purely-visual slide-IN so the hero travels rather than teleporting
+  // (item 28). The authoritative pos above is final; only `playerView` reads this.
+  if (distance >= SHOVE_MIN) {
+    target.slideOff = { x: -d.x * distance, y: -d.y * distance };
+    target.slideRemaining = SHOVE_TIME;
+    target.slideTotal = SHOVE_TIME;
+  }
 }
 
 /**
