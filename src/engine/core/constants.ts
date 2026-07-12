@@ -295,6 +295,10 @@ export const CLASS_COLORS: Record<string, number> = {
   rogue: 0x8a8f98, // slate grey
   paladin: 0xe8d36a, // radiant gold-white
   druid: 0x5bbf7a, // moss green
+  bard: 0xe083c8, // orchid
+  monk: 0x2fb8a6, // teal
+  sorcerer: 0xff7043, // deep orange
+  warlock: 0x6d3fa0, // indigo-violet
 };
 
 // --- Monster colors ---

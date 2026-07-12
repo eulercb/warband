@@ -597,6 +597,250 @@ const DRUID: CharUpgradeDef[] = [
   ),
 ];
 
+const BARD: CharUpgradeDef[] = [
+  u(
+    'bard',
+    'ba_cutting',
+    'Cutting Words',
+    '🎭',
+    'Vicious Mockery hits for 21 (+6) and chills the target to 60% move speed for 2s',
+    ({ abilities: a }) => {
+      addN(a.basic, 'damage', 6);
+      a.basic.slowMult = Math.min(a.basic.slowMult ?? 1, 0.6);
+      addN(a.basic, 'slowDuration', 1);
+    },
+  ),
+  u(
+    'bard',
+    'ba_anthem',
+    'Rousing Anthem',
+    '🎺',
+    'Inspiration grants +35% damage and 23% damage reduction for 8s (+2)',
+    ({ abilities: a }) => {
+      addN(a.a1, 'buffDamageMult', 0.15);
+      mul(a.a1, 'buffDefMult', 0.9);
+      addN(a.a1, 'buffDuration', 2);
+    },
+  ),
+  u(
+    'bard',
+    'ba_song',
+    'Song of Rest',
+    '🎶',
+    'Healing Word restores 74 HP (+24) and recharges 15% faster',
+    ({ abilities: a }) => {
+      addN(a.a2, 'damage', 24);
+      mul(a.a2, 'cooldown', 0.85);
+    },
+  ),
+  u(
+    'bard',
+    'ba_thunder',
+    'Thunderous Chord',
+    '⚡',
+    'Dissonant Whispers widens to 175u (+25), hits for 32 (+10), and slows to 35%',
+    ({ abilities: a }) => {
+      addN(a.a3, 'radius', 25);
+      addN(a.a3, 'damage', 10);
+      a.a3.slowMult = (a.a3.slowMult ?? 1) * 0.7;
+    },
+  ),
+  u(
+    'bard',
+    'ba_versatile',
+    'Jack of All Trades',
+    '🃏',
+    '+12% max HP and +8% move speed',
+    ({ player: p }) => {
+      p.maxHp = Math.round(p.maxHp * 1.12);
+      p.hp = p.maxHp;
+      p.moveSpeed *= 1.08;
+    },
+  ),
+];
+
+const MONK: CharUpgradeDef[] = [
+  u(
+    'monk',
+    'mo_flurry',
+    'Empty Body',
+    '👊',
+    'Flurry of Blows strikes 20% faster and hits for 20 (+5)',
+    ({ abilities: a }) => {
+      mul(a.basic, 'cooldown', 0.8);
+      addN(a.basic, 'damage', 5);
+    },
+  ),
+  u(
+    'monk',
+    'mo_stun',
+    'Stunning Fist',
+    '💫',
+    'Stunning Strike stuns for 1.4s (+0.5) and hits for 48 (+14)',
+    ({ abilities: a }) => {
+      addN(a.a1, 'stun', 0.5);
+      addN(a.a1, 'damage', 14);
+    },
+  ),
+  u(
+    'monk',
+    'mo_wind',
+    'Wind Walker',
+    '🍃',
+    'Step of the Wind travels 300u (+50), heals 38 (+20), and refreshes 25% faster',
+    ({ abilities: a }) => {
+      mul(a.a2, 'cooldown', 0.75);
+      addN(a.a2, 'range', 50);
+      addN(a.a2, 'healOnUse', 20);
+    },
+  ),
+  u(
+    'monk',
+    'mo_palm',
+    'Quivering Palm',
+    '🌀',
+    'Quivering Palm widens to 155u (+25), hits for 40 (+10), and briefly stuns (0.6s)',
+    ({ abilities: a }) => {
+      addN(a.a3, 'radius', 25);
+      addN(a.a3, 'damage', 10);
+      addN(a.a3, 'freeze', 0.6);
+    },
+  ),
+  u(
+    'monk',
+    'mo_ki',
+    'Ki Flow',
+    '🧘',
+    '+8% move speed and regenerate 1.5% max HP per second',
+    ({ player: p }) => {
+      p.moveSpeed *= 1.08;
+      p.regenPerSec += p.maxHp * 0.015;
+    },
+  ),
+];
+
+const SORCERER: CharUpgradeDef[] = [
+  u(
+    'sorcerer',
+    'so_twin',
+    'Twinned Spell',
+    '✨',
+    'Chaos Bolt fires 3 bolts (+1) and each hits for 19 (+4)',
+    ({ abilities: a }) => {
+      addN(a.basic, 'projCount', 1);
+      addN(a.basic, 'damage', 4);
+    },
+  ),
+  u(
+    'sorcerer',
+    'so_meteor',
+    'Empowered Meteor',
+    '☄️',
+    'Meteor erupts for 102 (+24) across a 145u blast (+35) and charges 30% faster',
+    ({ abilities: a }) => {
+      addN(a.a1, 'impactRadius', 35);
+      addN(a.a1, 'damage', 24);
+      mul(a.a1, 'castTime', 0.7);
+    },
+  ),
+  u(
+    'sorcerer',
+    'so_mirror',
+    'Greater Mirror Image',
+    '🪞',
+    'Mirror Image blocks 52% of damage (up from 40%), lasts 7s (+2), and returns 15% sooner',
+    ({ abilities: a }) => {
+      mul(a.a2, 'buffDefMult', 0.8);
+      addN(a.a2, 'buffDuration', 2);
+      mul(a.a2, 'cooldown', 0.85);
+    },
+  ),
+  u(
+    'sorcerer',
+    'so_leap',
+    'Distant Leap',
+    '🌀',
+    'Arcane Leap jumps 330u (+70), returns 30% faster, and phases you for 0.45s',
+    ({ abilities: a }) => {
+      addN(a.a3, 'range', 70);
+      mul(a.a3, 'cooldown', 0.7);
+      addN(a.a3, 'iframes', 0.25);
+    },
+  ),
+  u(
+    'sorcerer',
+    'so_font',
+    'Font of Magic',
+    '🔮',
+    '+8% move speed and −10% ability cooldowns',
+    ({ player: p }) => {
+      p.moveSpeed *= 1.08;
+      p.cooldownMult *= 0.9;
+    },
+  ),
+];
+
+const WARLOCK: CharUpgradeDef[] = [
+  u(
+    'warlock',
+    'wa_blast',
+    'Agonizing Blast',
+    '💥',
+    'Eldritch Blast hits for 30 (+8) and drinks 25% of the damage as health (+10%)',
+    ({ abilities: a }) => {
+      addN(a.basic, 'damage', 8);
+      addN(a.basic, 'lifestealFrac', 0.1);
+    },
+  ),
+  u(
+    'warlock',
+    'wa_hex',
+    'Deepening Hex',
+    '🕸️',
+    'Hex festers for 18/tick (+6), lasts 6.5s (+1.5), and covers 138u (+18)',
+    ({ abilities: a }) => {
+      addN(a.a1, 'zoneTickDamage', 6);
+      addN(a.a1, 'zoneDuration', 1.5);
+      addN(a.a1, 'radius', 18);
+    },
+  ),
+  u(
+    'warlock',
+    'wa_rebuke',
+    'Searing Rebuke',
+    '🔥',
+    'Hellish Rebuke widens to 165u (+25) and hits for 42 (+12)',
+    ({ abilities: a }) => {
+      addN(a.a2, 'radius', 25);
+      addN(a.a2, 'damage', 12);
+    },
+  ),
+  u(
+    'warlock',
+    'wa_pact',
+    'Fiendish Pact',
+    '😈',
+    "Dark One's Blessing empowers to +45% damage, +15% move speed, and lasts 8s (+2)",
+    ({ abilities: a }) => {
+      addN(a.a3, 'buffDamageMult', 0.15);
+      a.a3.buffMoveMult = Math.max(a.a3.buffMoveMult ?? 1, 1.15);
+      addN(a.a3, 'buffDuration', 2);
+    },
+  ),
+  u(
+    'warlock',
+    'wa_fiend',
+    'Fiendish Vigor',
+    '🩸',
+    '+12% max HP and +10% damage dealt',
+    ({ player: p }) => {
+      p.maxHp = Math.round(p.maxHp * 1.12);
+      p.hp = p.maxHp;
+      p.damageMult *= 1.1;
+    },
+  ),
+];
+
 // ---------------------------------------------------------------------------
 // HYBRID upgrades — cross-class powers and whole combat styles ANY hero can
 // adopt. These are the wild picks: they can graft an ability the class never
@@ -615,7 +859,7 @@ const HYBRID: CharUpgradeDef[] = [
         graft(a, 'a2', 'mage', 'a1');
       },
     ),
-    exclude: ['mage'], // already owns the real thing
+    exclude: ['mage', 'sorcerer'], // already own a big bomb (Fireball / Meteor)
     replaces: 'a2',
     maxStacks: 1,
   },
@@ -630,7 +874,7 @@ const HYBRID: CharUpgradeDef[] = [
         graft(a, 'a3', 'rogue', 'a2');
       },
     ),
-    exclude: ['rogue', 'mage'], // both already carry a blink
+    exclude: ['rogue', 'mage', 'sorcerer'], // all already carry a blink
     replaces: 'a3',
     maxStacks: 1,
   },
@@ -665,7 +909,7 @@ const HYBRID: CharUpgradeDef[] = [
       },
     ),
     // Real healers would be trading their actual heal away for a worse one.
-    exclude: ['cleric', 'paladin', 'druid'],
+    exclude: ['cleric', 'paladin', 'druid', 'bard'],
     replaces: 'a2',
     maxStacks: 1,
   },
@@ -772,6 +1016,10 @@ export const CHAR_UPGRADES_BY_CLASS: Record<ClassId, CharUpgradeDef[]> = {
   rogue: ROGUE,
   paladin: PALADIN,
   druid: DRUID,
+  bard: BARD,
+  monk: MONK,
+  sorcerer: SORCERER,
+  warlock: WARLOCK,
 };
 
 /** The class-agnostic hybrid pool (cross-class powers + combat styles). */

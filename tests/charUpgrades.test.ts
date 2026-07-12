@@ -63,8 +63,8 @@ function lcg(seed: number): () => number {
 // ---------------------------------------------------------------------------
 
 describe('character-upgrade catalog', () => {
-  it('has a 5-strong pool for every one of the 8 classes', () => {
-    expect(CLASS_IDS).toHaveLength(8);
+  it('has a 5-strong pool for every one of the 12 classes', () => {
+    expect(CLASS_IDS).toHaveLength(12);
     for (const classId of CLASS_IDS) {
       const pool = CHAR_UPGRADES_BY_CLASS[classId];
       expect(pool).toHaveLength(5);
@@ -86,10 +86,10 @@ describe('character-upgrade catalog', () => {
 
   it('tags each hybrid graft/heal with the classes it must skip', () => {
     const byId = Object.fromEntries(HYBRID_UPGRADES.map((d) => [d.id, d]));
-    expect(byId.hy_pyromancer.exclude).toEqual(['mage']);
-    expect(byId.hy_shadowpact.exclude).toEqual(['rogue', 'mage']);
+    expect(byId.hy_pyromancer.exclude).toEqual(['mage', 'sorcerer']);
+    expect(byId.hy_shadowpact.exclude).toEqual(['rogue', 'mage', 'sorcerer']);
     expect(byId.hy_warhowl.exclude).toEqual(['barbarian']);
-    expect(byId.hy_fieldmedic.exclude).toEqual(['cleric', 'paladin', 'druid']);
+    expect(byId.hy_fieldmedic.exclude).toEqual(['cleric', 'paladin', 'druid', 'bard']);
     // The pure combat-style hybrids graft nothing away, so they exclude nobody.
     for (const id of [
       'hy_vampiric',
@@ -104,10 +104,10 @@ describe('character-upgrade catalog', () => {
 
   it('flat lookup covers every class + hybrid def with unique ids', () => {
     const all = [...Object.values(CHAR_UPGRADES_BY_CLASS).flat(), ...HYBRID_UPGRADES];
-    expect(all).toHaveLength(8 * 5 + 9); // 49
+    expect(all).toHaveLength(12 * 5 + 9); // 69
     const ids = all.map((d) => d.id);
     expect(new Set(ids).size).toBe(ids.length); // no duplicates
-    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(49);
+    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(69);
     for (const id of ids) expect(CHAR_UPGRADES[id].id).toBe(id);
   });
 });

@@ -18,7 +18,19 @@ export interface Vec2 {
 export type EntityId = number;
 
 export type ClassId =
-  'knight' | 'ranger' | 'mage' | 'cleric' | 'barbarian' | 'rogue' | 'paladin' | 'druid';
+  | 'knight'
+  | 'ranger'
+  | 'mage'
+  | 'cleric'
+  | 'barbarian'
+  | 'rogue'
+  | 'paladin'
+  | 'druid'
+  // Expansion — the remaining DnD base classes.
+  | 'bard'
+  | 'monk'
+  | 'sorcerer'
+  | 'warlock';
 
 export type MonsterId =
   // Originals
