@@ -19,6 +19,12 @@ import { buildKrakenSpec } from './specs/kraken';
 import { buildTreantSpec } from './specs/treant';
 import { buildInsectoidSpec } from './specs/insectoid';
 import { buildHumanoidSpec, buildBossHumanoidSpec } from './specs/humanoid';
+import { buildBeastSpec } from './specs/beast';
+import { buildBlobSpec } from './specs/blob';
+import { buildGolemSpec } from './specs/golem';
+import { buildGemSpec } from './specs/gem';
+import { buildEyeSpec } from './specs/eye';
+import { buildDragonSpec } from './specs/dragon';
 
 /** Per-category master switches (mirror of `SPRITE_FLAGS`). */
 export type RigCategory = 'boss' | 'player' | 'add';
@@ -38,6 +44,9 @@ const BOSS_RIG_OVERRIDE: Partial<Record<MonsterId, RigId>> = {
 
 /** The rig a boss uses, or null to keep its geometry silhouette. */
 export function bossRigId(id: MonsterId): RigId | null {
+  // The practice dummy is a menu-only training target, not a real encounter, so it
+  // keeps its plain geometry silhouette (the one intentional, documented exception).
+  if (id === 'dummy') return null;
   const override = BOSS_RIG_OVERRIDE[id];
   if (override) return override;
   switch (getMonster(id).bodyShape) {
@@ -49,8 +58,20 @@ export function bossRigId(id: MonsterId): RigId | null {
       return 'treant';
     case 'humanoid':
       return 'humanoid';
+    case 'beast':
+      return 'beast';
+    case 'blob':
+      return 'blob';
+    case 'construct':
+      return 'golem';
+    case 'diamond':
+      return 'gem';
+    case 'orb':
+      return 'eye';
+    case 'star':
+      return 'dragon';
     default:
-      return null; // star / blob / diamond / beast / construct / orb → geometry
+      return null; // every shape is now mapped; a new one falls back to geometry
   }
 }
 
@@ -104,6 +125,18 @@ function buildCreature(id: RigId): RigSpec {
       return buildTreantSpec();
     case 'insectoid':
       return buildInsectoidSpec();
+    case 'beast':
+      return buildBeastSpec();
+    case 'blob':
+      return buildBlobSpec();
+    case 'golem':
+      return buildGolemSpec();
+    case 'gem':
+      return buildGemSpec();
+    case 'eye':
+      return buildEyeSpec();
+    case 'dragon':
+      return buildDragonSpec();
     case 'humanoid':
       return buildBossHumanoidSpec();
   }

@@ -356,10 +356,10 @@ export function drawBoss(
 }
 
 /**
- * Vector overlay for a boss whose body is a sprite: the facing indicator and the
- * enrage rings. The body fill/flash live on the sprite. (The dragon "star",
- * troll "blob", lich "diamond" silhouettes stay in `drawBoss` for the geometry
- * fallback path.)
+ * Vector overlay for a boss whose body is drawn by the sprite or rig layer: the
+ * facing indicator and the enrage rings. The body fill/flash live on that layer.
+ * (Bosses still on the immediate-geometry fallback — today only the practice
+ * `dummy` — draw their body AND these overlays together in `drawBoss` instead.)
  */
 export function drawBossOverlay(
   g: Graphics,
