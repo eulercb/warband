@@ -60,6 +60,9 @@ import {
   BOSS_HP_SCALE,
   BOSS_REGEN_MAX_FRAC,
   HARDCORE_REVIVES_PER_FIGHT,
+  HARDCORE_TIME_BUDGET,
+  HARDCORE_DEADLINE_MULT,
+  HARDCORE_DEADLINE_PACK_BONUS,
   ADD_HP,
   ADD_MOVE_SPEED,
   ADD_RADIUS,
@@ -324,6 +327,12 @@ export class World {
   hardcore = false;
   /** Revives remaining this fight (hardcore only; Infinity otherwise). */
   reviveBudget = Infinity;
+  /**
+   * Hardcore kill-DEADLINE (item 11): the `elapsed` second at which the band
+   * wipes to defeat if any boss still stands. `Infinity` outside hardcore, so a
+   * standard fight never times out. Fixed at spawn from the boss count.
+   */
+  hardcoreDeadline = Infinity;
   /** Seconds until the next corruption beat fires (see world/corruption.ts). */
   corruptionTimer = 0;
   /** How many corruption beats have fired (drives variety / anti-repeat). */
@@ -380,6 +389,28 @@ export class World {
           );
       if (this.practice) this.spawnTotems();
     }
+    // Fix the hardcore kill-deadline now that the pack size is known (item 11).
+    this.hardcoreDeadline = this.computeHardcoreDeadline();
+  }
+
+  /**
+   * The `elapsed` second a hardcore fight is lost on the clock (item 11), or
+   * `Infinity` for any non-hardcore fight. A flat budget per boss (party DPS
+   * already tracks the boss-HP knobs) plus a bonus per EXTRA boss in a pack.
+   */
+  private computeHardcoreDeadline(): number {
+    if (!this.hardcore || this.bosses.length === 0) return Infinity;
+    const extra = this.bosses.length - 1;
+    return HARDCORE_TIME_BUDGET * (HARDCORE_DEADLINE_MULT + HARDCORE_DEADLINE_PACK_BONUS * extra);
+  }
+
+  /**
+   * Seconds left before the hardcore kill-deadline fails the fight (item 11), or
+   * `Infinity` outside hardcore. Drives the HUD countdown; clamped at 0.
+   */
+  deadlineRemaining(): number {
+    if (!Number.isFinite(this.hardcoreDeadline)) return Infinity;
+    return Math.max(0, this.hardcoreDeadline - this.elapsed);
   }
 
   /**
@@ -2246,6 +2277,24 @@ export class World {
       this.events.push({ t: 'victory', pos: center });
       return;
     }
+    // Hardcore kill-DEADLINE (item 11): a boss is still standing (victory would
+    // have returned) and the clock has run out — the abyss claims the whole band.
+    // Checked AFTER victory so a kill landing on the very tick the deadline passes
+    // still wins. Host-authoritative and deterministic (deadline fixed at spawn).
+    if (anyBossAlive && this.elapsed >= this.hardcoreDeadline) {
+      for (const p of this.players) {
+        if (p.state === 'dead') continue;
+        if (p.state === 'alive') p.stats.deaths += 1; // downed heroes already counted
+        p.state = 'dead';
+        p.hp = 0;
+        this.events.push({ t: 'death', id: p.id, kind: 'player', pos: { ...p.pos } });
+      }
+      this.finished = true;
+      this.outcome = 'defeat';
+      this.endMs = this.elapsed * 1000;
+      this.events.push({ t: 'deadline', pos: { x: this.arena.w / 2, y: this.arena.h / 2 } });
+      return;
+    }
     const anyAlive = this.players.some((p) => p.state === 'alive');
     if (!anyAlive && this.players.length > 0) {
       this.finished = true;
@@ -2431,6 +2480,9 @@ export class World {
       })),
       telegraphs: this.pendingStrikes.length > 0 || this.bond ? this.worldTelegraphs() : undefined,
       events: this.events.slice(),
+      // Hardcore kill-deadline countdown (item 11); absent (undefined) otherwise,
+      // so a standard fight ships nothing extra and the HUD shows no timer.
+      deadlineRemaining: this.hardcore ? this.deadlineRemaining() : undefined,
     };
   }
 

@@ -150,6 +150,8 @@ export class SnapshotInterpolator {
       obstacles,
       telegraphs,
       events,
+      // Scalar carried verbatim from the newer snapshot (the hardcore countdown).
+      deadlineRemaining: carry.deadlineRemaining,
       localPlayerId: opts.localPlayerId,
       arena: opts.arena,
     };

@@ -315,6 +315,22 @@ export class Fx {
           this.spawnFloater(e.pos, 'VICTORY!', 0xffe066);
           break;
         }
+        case 'deadline': {
+          // Hardcore kill-deadline expired (item 11) — the clock beat the band. A
+          // hard red shockwave + "TIME'S UP" on the final frame before defeat.
+          camera.addShake(24);
+          this.spawnFloater(e.pos, "TIME'S UP", 0xff4136);
+          this.spawnBurst(e.pos, {
+            startR: 20,
+            endR: 420,
+            ttl: 0.9,
+            color: 0xff4136,
+            alpha0: 0.85,
+            filled: false,
+            lineWidth: 6,
+          });
+          break;
+        }
         case 'telegraph':
           // Persistent boss telegraph is drawn from `boss.telegraph`; nothing here.
           break;

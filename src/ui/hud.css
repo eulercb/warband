@@ -81,6 +81,57 @@
   text-shadow: 0 1px 3px #000;
 }
 
+/* Hardcore kill-deadline countdown (item 11) — an enrage-timer under the boss
+   bar. Reddens and throbs in the final HARDCORE_DEADLINE_WARN seconds. */
+.hud-deadline {
+  align-self: center;
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 170, 60, 0.55);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.hud-deadline-tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ffb545;
+  text-shadow: 0 1px 3px #000;
+}
+.hud-deadline-time {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  /* Tabular figures so the ticking seconds don't jitter the pill's width. */
+  font-variant-numeric: tabular-nums;
+  color: #ffe0a0;
+  text-shadow: 0 2px 6px #000;
+}
+.hud-deadline.urgent {
+  border-color: #ff5a4d;
+  background: rgba(60, 0, 0, 0.6);
+  animation: hud-deadline-throb 0.7s infinite alternate;
+}
+.hud-deadline.urgent .hud-deadline-tag,
+.hud-deadline.urgent .hud-deadline-time {
+  color: #ff6a5a;
+}
+@keyframes hud-deadline-throb {
+  from {
+    transform: scale(1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  }
+  to {
+    transform: scale(1.06);
+    box-shadow: 0 0 18px rgba(255, 70, 60, 0.65);
+  }
+}
+
 /* Teammate frames (top left) */
 .hud-teammates {
   position: absolute;

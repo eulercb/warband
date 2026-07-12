@@ -10,6 +10,7 @@ import VolumeControl from './VolumeControl';
 import { previewAbilityTable } from '../../engine/content/charUpgrades';
 import { getSubSkill } from '../../engine/content/subclasses';
 import { AFFIXES } from '../../engine/content/affixes';
+import { HARDCORE_DEADLINE_WARN } from '../../engine/core/constants';
 import {
   useBindings,
   keyLabelFor,
@@ -179,6 +180,29 @@ function BossBar({
   );
 }
 
+/**
+ * Hardcore kill-deadline countdown (item 11). A Furi/enrage-timer-style clock at
+ * the top of the screen so the pressure is legible — the band must fell the boss
+ * before it hits 0:00 or the fight is lost. Reddens and pulses in the final
+ * seconds. Only present in a hardcore fight (`deadlineRemaining` is otherwise null).
+ */
+function DeadlineTimer({ remaining }: { remaining: number }) {
+  if (!Number.isFinite(remaining)) return null;
+  const secs = Math.ceil(Math.max(0, remaining));
+  const label = `${Math.floor(secs / 60)}:${(secs % 60).toString().padStart(2, '0')}`;
+  const urgent = remaining <= HARDCORE_DEADLINE_WARN;
+  return (
+    <div
+      className={`hud-deadline${urgent ? ' urgent' : ''}`}
+      role="timer"
+      aria-label={`Kill deadline: ${label} remaining`}
+    >
+      <span className="hud-deadline-tag">☠ DEADLINE</span>
+      <span className="hud-deadline-time">{label}</span>
+    </div>
+  );
+}
+
 export default function HUD() {
   const hud = useHudStore();
   const run = useStore((s) => s.run);
@@ -205,12 +229,14 @@ export default function HUD() {
 
   return (
     <div className="hud-root">
-      {/* Boss bars (one per boss — twin encounters stack two) */}
+      {/* Boss bars (one per boss — twin encounters stack two), with the hardcore
+          kill-deadline countdown flowing beneath them when it's a hardcore fight. */}
       {hud.bosses.length > 0 && (
         <div className="hud-bossbars">
           {hud.bosses.map((b, i) => (
             <BossBar key={b.id} boss={b} run={run} cycle={cycle} first={i === 0} />
           ))}
+          {hud.deadlineRemaining != null && <DeadlineTimer remaining={hud.deadlineRemaining} />}
         </div>
       )}
 
