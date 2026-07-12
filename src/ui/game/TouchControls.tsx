@@ -18,6 +18,7 @@ import {
   setTouchMove,
   setTouchAim,
   setTouchButton,
+  setTouchSwapAim,
   resetTouch,
   isTouchCapable,
 } from '../../input/touch';
@@ -145,6 +146,73 @@ function TouchButton({
   );
 }
 
+/** Drag distance (px) that maps to a full-magnitude radial direction. */
+const SWAP_DRAG_R = 56;
+/** Below this drag distance (px) the radial reads "centred" (release = cancel). */
+const SWAP_DRAG_DEADZONE = 12;
+
+/**
+ * The multiclass Swap control (item 14). A quick tap cycles to the next class; a
+ * HOLD opens the class radial (driven by GameView's gesture) and the button then
+ * doubles as a mini-stick — drag toward a class and release to swap to it, or let
+ * go centred to cancel. Unlike a plain TouchButton it does NOT release on
+ * pointerleave, so dragging the finger off the button keeps the gesture alive.
+ */
+function SwapRadialButton() {
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const origin = { x: 0, y: 0 };
+    let active = false;
+    const press = (e: PointerEvent): void => {
+      e.preventDefault();
+      el.setPointerCapture(e.pointerId);
+      el.classList.add('held');
+      active = true;
+      const r = el.getBoundingClientRect();
+      origin.x = r.left + r.width / 2;
+      origin.y = r.top + r.height / 2;
+      setTouchButton('swap', true);
+      setTouchSwapAim(0, 0);
+    };
+    const move = (e: PointerEvent): void => {
+      if (!active) return;
+      const dx = e.clientX - origin.x;
+      const dy = e.clientY - origin.y;
+      const len = Math.hypot(dx, dy);
+      if (len < SWAP_DRAG_DEADZONE) {
+        setTouchSwapAim(0, 0);
+        return;
+      }
+      const scale = Math.min(len, SWAP_DRAG_R) / SWAP_DRAG_R;
+      setTouchSwapAim((dx / len) * scale, (dy / len) * scale);
+    };
+    const release = (): void => {
+      if (!active) return;
+      active = false;
+      el.classList.remove('held');
+      setTouchButton('swap', false);
+      setTouchSwapAim(0, 0);
+    };
+    el.addEventListener('pointerdown', press);
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+    return () => {
+      el.removeEventListener('pointerdown', press);
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', release);
+      el.removeEventListener('pointercancel', release);
+    };
+  }, []);
+  return (
+    <button ref={ref} type="button" className="wb-touch-btn wb-touch-btn-swap" aria-hidden="true">
+      Swap
+    </button>
+  );
+}
+
 export default function TouchControls() {
   const capable = useMemo(() => isTouchCapable(), []);
   const localClass = useStore((s) => s.localClass);
@@ -185,7 +253,7 @@ export default function TouchControls() {
       </div>
       <div className="wb-touch-side">
         {potions > 0 ? <TouchButton slot="item" label={`🧪${potions}`} kind="item" /> : null}
-        {multiclass ? <TouchButton slot="swap" label="Swap" kind="swap" /> : null}
+        {multiclass ? <SwapRadialButton /> : null}
         <TouchButton slot="revive" label="Revive" kind="revive" />
       </div>
     </div>

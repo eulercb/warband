@@ -850,6 +850,8 @@ export interface PlayerView {
   subSkills?: string[];
   /** Owned classes for a multiclass hero (index 0 primary; `classId` is active). */
   classes?: ClassId[];
+  /** Remaining class-swap gate (seconds); 0/absent = a swap is ready (item 14). */
+  swapCd?: number;
   /** Healing vials carried this fight (item 21) — drives the HUD item pip. */
   potions?: number;
 }

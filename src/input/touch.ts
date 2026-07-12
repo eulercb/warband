@@ -16,6 +16,12 @@ import type { ButtonState, InputState, Vec2 } from '../engine/core/types';
 
 const move: Vec2 = { x: 0, y: 0 };
 const aim: Vec2 = { x: 0, y: 0 };
+/**
+ * Radial pointing direction while the on-screen Swap button is held and dragged
+ * (item 14). Magnitude 0..1 reflects drag distance; {0,0} = centred (cancel).
+ * Read by the class-radial gesture as touch's equivalent of the right stick.
+ */
+const swapAim: Vec2 = { x: 0, y: 0 };
 const buttons: ButtonState = {
   basic: false,
   a1: false,
@@ -63,10 +69,23 @@ export function setTouchButton(slot: keyof ButtonState, held: boolean): void {
   if (held) lastActivityMs = now();
 }
 
+/** Set the class-radial pointing direction from the Swap button drag (item 14). */
+export function setTouchSwapAim(x: number, y: number): void {
+  swapAim.x = x;
+  swapAim.y = y;
+  if (x !== 0 || y !== 0) lastActivityMs = now();
+}
+
+/** The current class-radial pointing direction (copied, not shared). */
+export function touchSwapAim(): Vec2 {
+  return { x: swapAim.x, y: swapAim.y };
+}
+
 /** Clear everything (on overlay unmount / dispose). */
 export function resetTouch(): void {
   move.x = move.y = 0;
   aim.x = aim.y = 0;
+  swapAim.x = swapAim.y = 0;
   buttons.basic = buttons.a1 = buttons.a2 = buttons.a3 = buttons.revive = false;
   buttons.sub1 = buttons.sub2 = buttons.swap = buttons.item = false;
 }

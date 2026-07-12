@@ -100,9 +100,21 @@ describe('multiclass swap', () => {
     expect(p.classId).toBe('mage');
   });
 
-  it('a tap on swap cycles the class in a live step', () => {
+  it('requestClassSwap without a target cycles to the next owned class (a tap)', () => {
+    const w = multiWorld();
+    w.requestClassSwap('a');
+    expect(w.players[0].classId).toBe('mage');
+  });
+
+  it('requestClassSwap with a target swaps directly to that class (the radial)', () => {
+    const w = multiWorld();
+    w.requestClassSwap('a', 'mage');
+    expect(w.players[0].classId).toBe('mage');
+  });
+
+  it('the raw swap button no longer cycles in-sim (the client drives the gesture)', () => {
     const w = multiWorld();
     w.step(SIM_DT, new Map([['a', input({ swap: true })]]));
-    expect(w.players[0].classId).toBe('mage');
+    expect(w.players[0].classId).toBe('knight');
   });
 });

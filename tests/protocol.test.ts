@@ -23,6 +23,7 @@ describe('protocol', () => {
       pauseReq: 'prq',
       upgrade: 'upg',
       special: 'spc',
+      swap: 'swc',
       nextReady: 'nrd',
       nextReadyState: 'nrs',
       bye: 'bye',

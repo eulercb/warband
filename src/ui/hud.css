@@ -731,6 +731,82 @@
   font-weight: 700;
 }
 
+/* --- Multiclass class radial (item 14) ---------------------------------- */
+/* Hold-to-open wheel of owned classes. Purely presentational: GameView owns the
+   gesture, so the overlay itself never captures pointer input (the touch Swap
+   button / stick does). Sits above the HUD + touch controls, below the pause
+   menu. */
+.wb-radial {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(8, 8, 16, 0.5), rgba(8, 8, 16, 0) 62%);
+}
+.wb-radial-wheel {
+  position: relative;
+  width: 250px;
+  height: 250px;
+  border-radius: 50%;
+  border: 1px solid rgba(180, 150, 240, 0.35);
+  background: rgba(14, 14, 24, 0.72);
+  box-shadow: 0 0 40px rgba(120, 90, 200, 0.25);
+  animation: wb-radial-pop 120ms ease-out;
+}
+.wb-radial-wheel.recharging {
+  opacity: 0.6;
+  filter: grayscale(0.4);
+}
+@keyframes wb-radial-pop {
+  from {
+    transform: scale(0.82);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.wb-radial-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 54px;
+  padding: 5px 9px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  transition:
+    transform 90ms ease-out,
+    color 90ms ease-out;
+}
+.wb-radial-node.active {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.28);
+}
+.wb-radial-node.hover {
+  color: #0b0b12;
+  transform: translate(-50%, -50%) scale(1.18);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.4);
+}
+.wb-radial-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 34px;
+  text-align: center;
+  color: #d9c6ff;
+  font-size: 13px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
 /* Ephemeral healing-vial pip (item 21). */
 .hud-item {
   display: flex;

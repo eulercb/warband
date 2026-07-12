@@ -21,6 +21,7 @@ import type {
   PauseReqMsg,
   UpgradeMsg,
   SpecialMsg,
+  SwapMsg,
   NextReadyMsg,
   NextReadyStateMsg,
   ByeMsg,
@@ -103,6 +104,7 @@ export class Client implements NetSession {
   private readonly pauseReqAction: NetAction<PauseReqMsg>;
   private readonly upgradeAction: NetAction<UpgradeMsg>;
   private readonly specialAction: NetAction<SpecialMsg>;
+  private readonly swapAction: NetAction<SwapMsg>;
   private readonly nextReadyAction: NetAction<NextReadyMsg>;
   private readonly nextReadyStateAction: NetAction<NextReadyStateMsg>;
   private readonly byeAction: NetAction<ByeMsg>;
@@ -164,6 +166,7 @@ export class Client implements NetSession {
     this.pauseReqAction = this.action(ACTIONS.pauseReq);
     this.upgradeAction = this.action(ACTIONS.upgrade);
     this.specialAction = this.action(ACTIONS.special);
+    this.swapAction = this.action(ACTIONS.swap);
     this.nextReadyAction = this.action(ACTIONS.nextReady);
     this.nextReadyStateAction = this.action(ACTIONS.nextReadyState);
     this.byeAction = this.action(ACTIONS.bye);
@@ -342,6 +345,11 @@ export class Client implements NetSession {
   /** NetSession: relay this player's run-clear extra-class pick (item 14). */
   chooseExtraClass(classId: ClassId): void {
     this.specialAction.send({ extraClass: classId });
+  }
+
+  /** NetSession: relay a multiclass swap request to the host (item 14). */
+  swapClass(target?: ClassId): void {
+    this.swapAction.send({ target });
   }
 
   /** NetSession: relay this player's ephemeral-shop purchase (item 21). */

@@ -11,20 +11,50 @@ import { useEffect, useRef } from 'react';
 import { useStore } from '../state/store';
 import { hudSet, useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
-import { sfx, requestPause } from '../state/session';
+import { sfx, requestPause, swapClass } from '../state/session';
+import { radialSet, radialClose } from '../state/radialStore';
 import HUD from './HUD';
 import TouchControls from './TouchControls';
+import ClassRadial from './ClassRadial';
 import PauseMenu from './PauseMenu';
 import ResumeCountdown from './ResumeCountdown';
 import { Renderer } from '../../render/pipeline/renderer';
-import { InputManager } from '../../input/input';
+import { InputManager, type InputSource } from '../../input/input';
+import { SwapGesture, hoveredSlot } from '../../input/radial';
+import { rawGamepadAim } from '../../input/gamepad';
+import { touchSwapAim } from '../../input/touch';
 import { ARENA_W, ARENA_H } from '../../engine/core/constants';
-import type { InputCommand, InputState } from '../../engine/core/types';
+import type { ClassId, InputCommand, InputState, Vec2 } from '../../engine/core/types';
 
 /** Gamepad "Options / Start" button index (standard mapping) for the menu toggle. */
 const PAD_MENU_BUTTON = 9;
 
+/** How far (px) the cursor must sit from screen-centre to select a radial slot. */
+const MOUSE_RADIAL_DEADZONE_PX = 44;
+
 const NEUTRAL_BUTTONS = { basic: false, a1: false, a2: false, a3: false, revive: false };
+
+/**
+ * The class-radial pointing direction for the active input source. Returns a
+ * vector whose magnitude means "distance from centre" (0 = centred → no
+ * selection): the raw right stick on a pad, the Swap-button drag on touch, or the
+ * cursor's offset from screen-centre on keyboard/mouse. Deliberately NOT the
+ * sanitized reticle aim (which is never zero), so centring can cancel the swap.
+ */
+function radialDirection(
+  source: InputSource,
+  mouseScreen: Vec2,
+  canvasW: number,
+  canvasH: number,
+): Vec2 {
+  if (source === 'touch') return touchSwapAim();
+  if (source === 'gamepad') return rawGamepadAim();
+  const dx = mouseScreen.x - canvasW / 2;
+  const dy = mouseScreen.y - canvasH / 2;
+  const mag = Math.hypot(dx, dy);
+  if (!(mag > MOUSE_RADIAL_DEADZONE_PX)) return { x: 0, y: 0 };
+  return { x: dx / mag, y: dy / mag };
+}
 
 /**
  * Is the shared sim currently frozen for the local player? True while paused OR
@@ -68,6 +98,12 @@ export default function GameView() {
     let padMenuPrev = false;
     let legendInited = false; // set the pause-menu map legend once per fight
     let bannerSeq = 0; // increments per corruption beat (drives the HUD banner)
+
+    // Multiclass class-radial (item 14): tap-vs-hold gesture + the slot the radial
+    // is pointing at, remembered so a release can commit the last-hovered class.
+    const swapGesture = new SwapGesture();
+    let radialHover = -1;
+    let radialShown = false; // whether the radial store currently shows the wheel
 
     const session = useStore.getState().session;
 
@@ -120,16 +156,57 @@ export default function GameView() {
         if (padMenu && !padMenuPrev) togglePause();
         padMenuPrev = padMenu;
 
-        seq += 1;
         // Freeze input while the shared sim is paused OR counting down to resume,
         // so nobody walks a predicted hero around a frozen arena.
         const frozen = isFrozen();
+
+        // --- Multiclass class-radial (item 14): tap-vs-hold on the swap button ---
+        // Owned classes / active class / swap gate come from the local player's
+        // authoritative view (fresher than the throttled HUD bridge).
+        const ownedClasses: ClassId[] = lp?.classes ?? [];
+        const canOpenRadial = !frozen && ownedClasses.length >= 2 && lp?.state === 'alive';
+        const g = swapGesture.update(now, sampled.buttons.swap ?? false, canOpenRadial);
+        if (g.open) {
+          const dir = radialDirection(
+            input.activeSource,
+            input.mouseScreen,
+            container.clientWidth,
+            container.clientHeight,
+          );
+          radialHover = hoveredSlot(dir.x, dir.y, ownedClasses.length);
+          radialSet({
+            open: true,
+            options: ownedClasses,
+            activeClassId: lp?.classId ?? null,
+            hover: radialHover,
+            ready: (lp?.swapCd ?? 0) <= 0,
+          });
+          radialShown = true;
+        } else if (radialShown) {
+          radialClose();
+          radialShown = false;
+        }
+        // Resolve a release: a quick tap cycles; a radial release swaps to the
+        // hovered class (centred = cancel). Host-authoritative resolution either way.
+        if (!frozen && g.release === 'cycle' && ownedClasses.length >= 2) {
+          swapClass();
+        } else if (g.release === 'commit') {
+          if (radialHover >= 0 && radialHover < ownedClasses.length) {
+            swapClass(ownedClasses[radialHover]);
+          }
+          radialHover = -1;
+        }
+
+        seq += 1;
+        // While the radial is open the hero is frozen too (stand still, no attacks,
+        // facing held) so choosing a class never fires an ability or wanders off.
+        const suppress = frozen || g.open;
         const cmd: InputCommand = {
           seq,
-          move: frozen ? { x: 0, y: 0 } : sampled.move,
-          aim: sampled.aim,
-          buttons: frozen ? { ...NEUTRAL_BUTTONS } : sampled.buttons,
-          autofire: frozen ? false : useStore.getState().autofire,
+          move: suppress ? { x: 0, y: 0 } : sampled.move,
+          aim: g.open ? { x: 0, y: 0 } : sampled.aim,
+          buttons: suppress ? { ...NEUTRAL_BUTTONS } : sampled.buttons,
+          autofire: suppress ? false : useStore.getState().autofire,
         };
         session?.setLocalInput(cmd);
 
@@ -164,6 +241,7 @@ export default function GameView() {
       input?.dispose();
       renderer?.dispose();
       useHudStore.getState().resetHud();
+      radialClose(); // never leave the class radial stranded across a fight teardown
     };
   }, []);
 
@@ -174,6 +252,8 @@ export default function GameView() {
       {/* Mobile twin-stick overlay (renders only on touch-capable devices). Hidden
           while paused so its buttons don't sit over the pause menu. */}
       {!paused ? <TouchControls /> : null}
+      {/* Hold-to-open multiclass class radial (item 14); self-hides when closed. */}
+      <ClassRadial />
       {resumeCountdown != null ? (
         <ResumeCountdown count={resumeCountdown} />
       ) : paused ? (
