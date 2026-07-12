@@ -390,6 +390,74 @@ describe('<HUD>', () => {
     // The three ready abilities carry the "ready" class.
     expect(container.querySelectorAll('.hud-ability.ready')).toHaveLength(3);
   });
+
+  // --- hardcore kill-deadline countdown (item 11) -------------------------
+  const deadlineBoss: HudBoss = {
+    id: 9,
+    name: 'Dragon',
+    hp: 200,
+    maxHp: 300,
+    phase: 'normal',
+    buffs: [],
+    modName: '',
+    affixes: [],
+  };
+
+  it('renders the hardcore kill-deadline clock (non-urgent) as mm:ss beneath the boss bar', () => {
+    // 90s remaining (> HARDCORE_DEADLINE_WARN of 30) → present but not urgent.
+    useHudStore.getState().set({
+      active: true,
+      classId: 'knight',
+      hp: 10,
+      maxHp: 100,
+      bosses: [deadlineBoss],
+      deadlineRemaining: 90,
+    });
+    const { container } = render(<HUD />);
+
+    const timer = container.querySelector('.hud-deadline');
+    expect(timer).toBeTruthy();
+    expect(timer?.classList.contains('urgent')).toBe(false);
+    expect(timer?.getAttribute('role')).toBe('timer');
+    expect(timer?.getAttribute('aria-label')).toBe('Kill deadline: 1:30 remaining');
+    expect(container.querySelector('.hud-deadline-time')?.textContent).toBe('1:30');
+    expect(container.querySelector('.hud-deadline-tag')?.textContent).toContain('DEADLINE');
+  });
+
+  it('reddens the kill-deadline clock in the final seconds (urgent)', () => {
+    // 15s remaining (<= HARDCORE_DEADLINE_WARN of 30) → the urgent modifier is set.
+    useHudStore.getState().set({
+      active: true,
+      classId: 'knight',
+      hp: 10,
+      maxHp: 100,
+      bosses: [deadlineBoss],
+      deadlineRemaining: 15,
+    });
+    const { container } = render(<HUD />);
+
+    const timer = container.querySelector('.hud-deadline');
+    expect(timer?.classList.contains('urgent')).toBe(true);
+    expect(container.querySelector('.hud-deadline-time')?.textContent).toBe('0:15');
+  });
+
+  it('renders no deadline clock when the remaining time is non-finite', () => {
+    // deadlineRemaining != null so DeadlineTimer mounts, but a non-finite value
+    // makes it render nothing (guard against a stale Infinity leaking in).
+    useHudStore.getState().set({
+      active: true,
+      classId: 'knight',
+      hp: 10,
+      maxHp: 100,
+      bosses: [deadlineBoss],
+      deadlineRemaining: Infinity,
+    });
+    const { container } = render(<HUD />);
+
+    expect(container.querySelector('.hud-deadline')).toBeNull();
+    // The boss bar it would flow beneath is still present (we ARE in that branch).
+    expect(container.querySelector('.hud-bossbar')).toBeTruthy();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -558,5 +626,113 @@ describe('<Controls>', () => {
     // The glyph follows the auto-detected scheme: the fake pad's id matches no
     // known family, so detectPadGlyphs falls back to the "letters" set (5 => RB).
     expect(controllerSection(container).querySelector('.wb-bind-key')?.textContent).toBe('RB');
+  });
+
+  it('pressing Escape while capturing a key cancels the rebind and keeps the old binding', () => {
+    render(<Controls />);
+    fireEvent.click(screen.getByText('Q')); // enter capture for a1
+    expect(screen.getByText('Press a key…')).toBeTruthy();
+
+    // Escape is the "cancel" key inside a capture: setKey is skipped, the capture
+    // ends, and a1 keeps its default 'Q' binding.
+    fireEvent.keyDown(window, { code: 'Escape' });
+    expect(screen.queryByText('Press a key…')).toBeNull();
+    expect(screen.getByText('Q')).toBeTruthy();
+    expect(useBindings.getState().bindings.keys.a1[0]).toBe('KeyQ');
+    // Escape here is consumed as "cancel", NOT forwarded to closeControls.
+    expect(closeControlsMock).not.toHaveBeenCalled();
+  });
+
+  it('ignores a non-Escape key while the overlay is idle (does not close)', () => {
+    render(<Controls />);
+    // Not capturing → the window key listener only acts on Escape; any other key
+    // is a no-op and must not close the overlay.
+    fireEvent.keyDown(window, { code: 'KeyJ' });
+    expect(closeControlsMock).not.toHaveBeenCalled();
+  });
+
+  it('toggles screen-shake off→on and shows the accessibility copy while off', () => {
+    useStore.setState({ screenShake: false });
+    const { container } = render(<Controls />);
+    const toggle = screen.getByText('Screen shake').closest('button');
+    if (!toggle) throw new Error('screen-shake toggle not found');
+
+    // While OFF: no `on` class, aria-pressed false, an empty checkmark, and the
+    // steady-camera accessibility blurb.
+    expect(toggle.classList.contains('on')).toBe(false);
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(toggle.querySelector('.wb-gauntlet-check')?.textContent).toBe('');
+    expect(toggle.textContent).toContain('Off: the camera stays perfectly steady');
+
+    fireEvent.click(toggle);
+    expect(useStore.getState().screenShake).toBe(true);
+    expect(playUiSoundMock).toHaveBeenCalledWith('uiClick');
+    // Re-rendered ON: the checkmark now shows.
+    expect(container.querySelector('.wb-gauntlet-toggle.on .wb-gauntlet-check')?.textContent).toBe(
+      '✓',
+    );
+  });
+
+  it('keeps listening when the capture poll sees only null / disconnected pad slots', () => {
+    // An empty controller slot (null) — getGamepads reports one every frame.
+    const nav = navigator as Navigator & { getGamepads?: () => (Gamepad | null)[] };
+    nav.getGamepads = () => [null];
+
+    const rafCbs: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback): number => {
+      rafCbs.push(cb);
+      return rafCbs.length;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (): void => {});
+    const flushFrame = (): void => {
+      for (const cb of rafCbs.splice(0)) cb(0);
+    };
+
+    const { container } = render(<Controls />);
+    const padBtn = controllerSection(container).querySelector('.wb-bind-key');
+    if (padBtn) fireEvent.click(padBtn);
+    expect(screen.getByText('Press a button…')).toBeTruthy();
+
+    // The poll skips the null slot, finds no press, and re-arms the next frame
+    // instead of committing a rebind.
+    act(() => {
+      flushFrame();
+    });
+    expect(screen.getByText('Press a button…')).toBeTruthy();
+    expect(rafCbs.length).toBeGreaterThan(0); // rescheduled another poll frame
+  });
+
+  it('ignores a controller button already held when capture starts (waits for a fresh press)', () => {
+    const pad = {
+      connected: true,
+      id: 'Test Pad',
+      buttons: Array.from({ length: 8 }, () => ({ pressed: false })),
+      axes: [0, 0],
+    };
+    pad.buttons[3].pressed = true; // held BEFORE we begin listening → it's in the baseline
+    const nav = navigator as Navigator & { getGamepads?: () => (Gamepad | null)[] };
+    nav.getGamepads = () => [pad as unknown as Gamepad];
+
+    const rafCbs: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback): number => {
+      rafCbs.push(cb);
+      return rafCbs.length;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (): void => {});
+    const flushFrame = (): void => {
+      for (const cb of rafCbs.splice(0)) cb(0);
+    };
+
+    const { container } = render(<Controls />);
+    const padBtn = controllerSection(container).querySelector('.wb-bind-key');
+    if (padBtn) fireEvent.click(padBtn); // baseline snapshot already includes button 3
+    act(() => {
+      flushFrame();
+    });
+
+    // Button 3 was already down at baseline, so it is NOT treated as a new press:
+    // capture stays open and `basic` keeps its default (button 0, not 3).
+    expect(screen.getByText('Press a button…')).toBeTruthy();
+    expect(useBindings.getState().bindings.pad.basic[0]).not.toBe(3);
   });
 });

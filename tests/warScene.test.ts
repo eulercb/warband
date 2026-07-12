@@ -6,6 +6,7 @@ import {
   type WarTrigger,
 } from '../src/ui/state/warScene';
 import { MONSTERS, MONSTER_IDS } from '../src/engine/content/monsters';
+import { ARENA_W } from '../src/engine/core/constants';
 import type { InputCommand, RenderState, Vec2, MonsterId } from '../src/engine/core/types';
 
 function inp(over: Partial<InputCommand> = {}): InputCommand {
@@ -176,5 +177,147 @@ describe('WarScene: inspector + freeze', () => {
       state = scene.frame(now, true); // frozen
     }
     expect(scene.takeTriggers()).toHaveLength(0);
+  });
+});
+
+describe('WarScene: constructor fallbacks', () => {
+  it('falls back to the "easy" tier when the opener id is not a known monster', () => {
+    // MONSTERS[bogus] is undefined, so `?.tier` short-circuits and `?? 'easy'`
+    // supplies the tier — the gallery must open on the easy band.
+    const scene = new WarScene('Aria', 'knight', 'not-a-real-boss' as MonsterId, false);
+    const s = scene.frame(1000);
+    const easyGate = (s.stations ?? []).find((x) => x.kind === 'tier' && x.refId === 'easy');
+    expect(easyGate?.selected).toBe(true);
+    const bosses = (s.stations ?? []).filter((x) => x.kind === 'boss');
+    expect(bosses.length).toBeGreaterThan(0);
+    expect(bosses.every((b) => MONSTERS[b.refId as MonsterId].tier === 'easy')).toBe(true);
+  });
+
+  it('falls back to the name "Hero" when constructed with an empty name', () => {
+    const scene = new WarScene('', 'knight', EASY, false);
+    const s = scene.frame(1000);
+    expect(s.players[0].name).toBe('Hero');
+  });
+
+  it('centres a lone effigy when the active tier holds exactly one boss', () => {
+    // Every real tier ships many bosses, so shrink the pool to hit the n === 1
+    // layout path (effigy pinned to arena centre, flat arc offset).
+    const saved = MONSTER_IDS.slice();
+    try {
+      const easyOne = saved.find((id) => MONSTERS[id].tier === 'easy')!;
+      MONSTER_IDS.length = 0;
+      MONSTER_IDS.push(easyOne);
+      const scene = new WarScene('Aria', 'knight', easyOne, false);
+      const s = scene.frame(1000);
+      const bosses = (s.stations ?? []).filter((x) => x.kind === 'boss');
+      expect(bosses).toHaveLength(1);
+      expect(bosses[0].refId).toBe(easyOne);
+      expect(bosses[0].pos.x).toBeCloseTo(ARENA_W / 2, 3); // n === 1 → x = ARENA_W / 2
+    } finally {
+      MONSTER_IDS.length = 0;
+      MONSTER_IDS.push(...saved);
+    }
+  });
+});
+
+describe('WarScene: commit edge cases', () => {
+  it('commits the single-fight portal when the hero switches back from gauntlet', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    const first = scene.frame(1000);
+    const single = (first.stations ?? []).find((x) => x.kind === 'single')!;
+    // With gauntlet armed, stepping onto SINGLE is a real (non-no-op) selection.
+    scene.setGauntlet(true);
+    walkOnto(scene, single.pos, 1000);
+    expect(scene.takeTriggers().some((t: WarTrigger) => t.kind === 'single')).toBe(true);
+    const s = scene.frame(9000);
+    expect((s.stations ?? []).find((x) => x.kind === 'single')?.selected).toBe(true);
+    expect((s.stations ?? []).find((x) => x.kind === 'gauntlet')?.selected).toBe(false);
+  });
+
+  it('ignores a malformed station kind on commit (no trigger, pick untouched)', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    const before = scene.frame(1000);
+    const selBefore = (before.stations ?? []).find((x) => x.kind === 'boss' && x.selected)?.refId;
+    // A boss station missing its refId slips past every guard down to the final
+    // `if (s.kind === 'host')` — whose false side must leave the room untouched.
+    (scene as unknown as { commit(s: unknown): void }).commit({
+      kind: 'boss',
+      pos: { x: 0, y: 0 },
+    });
+    expect(scene.takeTriggers()).toHaveLength(0);
+    const after = scene.frame(1050);
+    const selAfter = (after.stations ?? []).find((x) => x.kind === 'boss' && x.selected)?.refId;
+    expect(selAfter).toBe(selBefore);
+  });
+
+  it('does not re-fire the gauntlet portal when gauntlet mode is already active', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    const first = scene.frame(1000);
+    const gauntlet = (first.stations ?? []).find((x) => x.kind === 'gauntlet')!;
+    scene.setGauntlet(true); // already on → stepping back onto it is a no-op
+    walkOnto(scene, gauntlet.pos, 1000);
+    expect(scene.takeTriggers().filter((t) => t.kind === 'gauntlet')).toHaveLength(0);
+    const s = scene.frame(9000);
+    expect((s.stations ?? []).find((x) => x.kind === 'gauntlet')?.selected).toBe(true);
+  });
+
+  it('picks the nearest of two overlapping stations under the hero', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    const state = scene.frame(1000);
+    const hp = heroPos(state);
+    // Two host portals the hero stands within: the loop must keep the nearer one
+    // and reject the farther (frac > bestFrac), leaving `best` on station 701.
+    (scene as unknown as { stations: unknown[] }).stations = [
+      {
+        id: 701,
+        kind: 'host',
+        pos: { x: hp.x, y: hp.y },
+        radius: 46,
+        triggerRadius: 84,
+        dwell: 0.8,
+        portal: true,
+      },
+      {
+        id: 702,
+        kind: 'host',
+        pos: { x: hp.x, y: hp.y + 40 },
+        radius: 46,
+        triggerRadius: 84,
+        dwell: 0.8,
+        portal: true,
+      },
+    ];
+    const under = (scene as unknown as { stationUnder(): { id: number } | null }).stationUnder();
+    expect(under?.id).toBe(701);
+  });
+});
+
+describe('WarScene: hero-absent guards', () => {
+  it('reports null / stays inert when the world has no hero', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    scene.frame(1000);
+    const raw = scene as unknown as {
+      world: { players: unknown[] };
+      armedId: number | null;
+      heroPos(): Vec2 | null;
+      stationUnder(): unknown;
+      clearArmedLatch(): void;
+    };
+    raw.armedId = 1;
+    raw.world.players = [];
+    expect(raw.heroPos()).toBeNull(); // heroPos: p ? p.pos : null
+    expect(scene.focusBoss()).toBeNull(); // focusBoss: !hp guard
+    expect(raw.stationUnder()).toBeNull(); // stationUnder: !hp guard
+    raw.clearArmedLatch(); // clearArmedLatch: !hp guard returns before clearing
+    expect(raw.armedId).toBe(1);
+  });
+
+  it('clears an armed latch that points at a station that no longer exists', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    scene.frame(1000); // hero present, position known
+    const raw = scene as unknown as { armedId: number | null; clearArmedLatch(): void };
+    raw.armedId = 99999; // no station has this id
+    raw.clearArmedLatch(); // !armed → latch released
+    expect(raw.armedId).toBeNull();
   });
 });

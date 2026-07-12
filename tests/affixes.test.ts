@@ -12,6 +12,7 @@ import {
   affixBudget,
   affixPrefix,
   affixAuraColor,
+  affixColors,
   hasAffix,
   isAffixId,
   getAffix,
@@ -66,6 +67,15 @@ describe('affix registry', () => {
     expect(affixAuraColor(undefined)).toBeNull();
     expect(affixPrefix(['vampiric', 'frenzied'])).toBe('Vampiric Frenzied');
     expect(affixPrefix([])).toBe('');
+  });
+
+  it('affixColors lists every affix accent colour, or empty for none', () => {
+    expect(affixColors(['vampiric', 'frenzied'])).toEqual([
+      AFFIXES.vampiric.color,
+      AFFIXES.frenzied.color,
+    ]);
+    expect(affixColors([])).toEqual([]); // empty list guard
+    expect(affixColors(undefined)).toEqual([]); // missing list guard
   });
 });
 

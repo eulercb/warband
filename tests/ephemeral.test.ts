@@ -112,6 +112,13 @@ describe('ephemeral coins — ranked payout', () => {
     expect(coinsForRank(99)).toBe(0); // clamps past the band
   });
 
+  it('coinsForRank floors a negative rank to zero (the ?? 0 guard)', () => {
+    // A stray negative rank indexes off the front of COIN_BY_RANK → undefined,
+    // which the `?? 0` fallback turns into a safe zero payout.
+    expect(coinsForRank(-1)).toBe(0);
+    expect(coinsForRank(-10)).toBe(0);
+  });
+
   it('a victory ranks coins by participation score', () => {
     const w = new World({
       monsterId: 'dragon',

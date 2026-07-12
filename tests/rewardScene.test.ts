@@ -393,4 +393,72 @@ describe('RewardScene: list-view sync + empty sets', () => {
     walkOnto(scene, (s.loot ?? []).find((l) => l.kind === 'generic')!.pos, 1000);
     expect(scene.vortexOpen()).toBe(true);
   });
+
+  it('opens an empty reward room immediately (no offers of either kind)', () => {
+    const scene = new RewardScene('Aria', 'knight', { generic: [], char: [] });
+    const s = scene.frame(1000);
+    expect(s.loot).toHaveLength(0);
+    // kinds === 0 → charge pinned to 1; both empty kinds auto-satisfy the gate.
+    expect(s.vortex?.charge).toBe(1);
+    expect(s.vortex?.open).toBe(true);
+    expect(scene.vortexOpen()).toBe(true);
+  });
+});
+
+describe('RewardScene: constructor + guard branches', () => {
+  it('falls back to the name "Hero" when built with an empty name', () => {
+    const scene = new RewardScene('', 'knight', offers());
+    const s = scene.frame(1000);
+    expect(s.players[0].name).toBe('Hero');
+  });
+
+  it('treats a hero-less world as out of range for every relic', () => {
+    const scene = new RewardScene('Aria', 'knight', offers());
+    scene.frame(1000);
+    const raw = scene as unknown as {
+      world: { players: unknown[] };
+      heroPos(): Vec2 | null;
+      heroDist(p: Vec2): number;
+    };
+    raw.world.players = [];
+    expect(raw.heroPos()).toBeNull(); // heroPos: p ? p.pos : null
+    expect(raw.heroDist({ x: 0, y: 0 })).toBe(Infinity); // heroDist: hp ? … : Infinity
+    expect(scene.focus()).toBeNull(); // nothing is readable without a hero
+  });
+
+  it('markClaimed is a no-op for an offer id that is not on the floor', () => {
+    const scene = new RewardScene('Aria', 'knight', offers());
+    scene.frame(1000);
+    scene.markClaimed('generic', 'nonexistent'); // no matching relic → early return
+    expect(scene.progress().claimedGeneric).toBe(0);
+    expect(scene.takeClaims()).toHaveLength(0);
+  });
+});
+
+describe('RewardScene: focus dwell readout', () => {
+  it('reports the in-progress claim charge while the hero dwells on a relic', () => {
+    const scene = new RewardScene('Aria', 'knight', offers());
+    let state = scene.frame(1000);
+    const gen = (state.loot ?? []).find((l) => l.kind === 'generic')!;
+    let now = 1000;
+    let sawDwell = false;
+    for (let i = 0; i < 200; i++) {
+      const hp = heroPos(state);
+      const dx = gen.pos.x - hp.x;
+      const dy = gen.pos.y - hp.y;
+      const d = Math.hypot(dx, dy);
+      scene.setInput(inp({ move: d <= 6 ? { x: 0, y: 0 } : { x: dx / d, y: dy / d } }));
+      now += 50;
+      state = scene.frame(now);
+      const f = scene.focus();
+      // Once the hero is on the relic, dwellId === best.id → dwell > 0 (mid-claim).
+      if (f && !f.claimed && f.dwell > 0) {
+        expect(f.kind).toBe('generic');
+        expect(f.dwell).toBeLessThanOrEqual(1);
+        sawDwell = true;
+        break;
+      }
+    }
+    expect(sawDwell).toBe(true);
+  });
 });

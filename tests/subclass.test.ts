@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { World } from '../src/engine/world/world';
 import { SIM_DT } from '../src/engine/core/constants';
-import { getSubSkill } from '../src/engine/content/subclasses';
+import { getSubSkill, subclassOfSkill, isSubSkillId } from '../src/engine/content/subclasses';
 import type { InputCommand } from '../src/engine/core/types';
 
 function input(over: Partial<InputCommand['buttons']>): InputCommand {
@@ -116,5 +116,23 @@ describe('multiclass swap', () => {
     const w = multiWorld();
     w.step(SIM_DT, new Map([['a', input({ swap: true })]]));
     expect(w.players[0].classId).toBe('knight');
+  });
+});
+
+describe('subclass lookups', () => {
+  it('subclassOfSkill resolves a skill id to its parent subclass, else undefined', () => {
+    const sub = subclassOfSkill('kn_champion_slam');
+    expect(sub).toBeDefined();
+    expect(sub!.classId).toBe('knight');
+    expect(sub!.skills.some((s) => s.id === 'kn_champion_slam')).toBe(true);
+    // Unknown id → optional-chain short-circuits to undefined (no throw).
+    expect(subclassOfSkill('not_a_skill')).toBeUndefined();
+  });
+
+  it('isSubSkillId accepts real skill ids and rejects junk', () => {
+    expect(isSubSkillId('kn_champion_slam')).toBe(true);
+    expect(isSubSkillId('not_a_skill')).toBe(false); // a string, but not indexed
+    expect(isSubSkillId(42)).toBe(false); // non-string short-circuit
+    expect(isSubSkillId(undefined)).toBe(false);
   });
 });

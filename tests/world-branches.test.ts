@@ -1952,3 +1952,634 @@ describe('world-branches: soak', () => {
     expect(Number.isFinite(snap.tick)).toBe(true);
   });
 });
+
+// ===========================================================================
+// Extra branch coverage: subclass-slot decay, defensive numeric fallbacks,
+// aura / affix / telegraph edges, HP-gated abilities, hardcore deadline, the
+// fairness governor with no target, and the end-conditions finished guard.
+// ===========================================================================
+
+describe('world-branches: subclass slot edges', () => {
+  it('a bound sub2 skill decays its cooldown and is not fired without its button', () => {
+    const w = makeWorld({
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight', subSkills: ['nope', 'kn_champion_slam'] },
+      ],
+    });
+    w.boss = null;
+    w.terrain = [];
+    const p = w.players[0];
+    // The single valid id lands in sub2 (the invalid first id is skipped).
+    expect(p.subAbilities?.sub2).toBeTruthy();
+    expect(p.subAbilities?.sub1).toBeUndefined();
+    p.cooldowns.sub2 = 5;
+    // inp() carries no sub2 button → the `cmd.buttons[slot] ?? false` nullish path.
+    w.step(DT, new Map([['a', inp()]]));
+    // Decayed by tickTimers (sub2 != null branch), and NOT reset by a fire.
+    expect(p.cooldowns.sub2).toBeLessThan(5);
+    expect(p.cooldowns.sub2).toBeGreaterThan(4.9);
+  });
+
+  it('an undefined sub cooldown counts as ready (?? 0) so the skill still fires', () => {
+    const w = makeWorld({
+      players: [{ peerId: 'a', name: 'A', classId: 'knight', subSkills: ['kn_champion_slam'] }],
+    });
+    w.terrain = [];
+    w.obstacles = [];
+    const p = w.players[0];
+    const boss = w.boss!;
+    boss.pos = { x: 800, y: 400 };
+    p.pos = { x: 800, y: 460 };
+    delete p.cooldowns.sub1; // (undefined ?? 0) > 0 is false → not on cooldown
+    const before = boss.hp;
+    w.step(DT, new Map([['a', inp({ autofire: true, buttons: buttons({ sub1: true }) })]]));
+    expect(boss.hp).toBeLessThan(before);
+  });
+});
+
+describe('world-branches: setActiveClass fallbacks', () => {
+  function multi() {
+    const w = makeWorld({
+      players: [{ peerId: 'a', name: 'A', classId: 'knight', extraClasses: ['mage', 'cleric'] }],
+    });
+    w.boss = null;
+    w.terrain = [];
+    return w;
+  }
+
+  it('ignores a swap to a class with no resolved table', () => {
+    const w = multi();
+    const p = w.players[0];
+    const abilities = p.abilities;
+    w.setActiveClass(p, 'ranger'); // not an owned class → no classTables entry
+    expect(p.classId).toBe('knight');
+    expect(p.abilities).toBe(abilities);
+    expect(p.swapCd).toBe(0); // gate not armed
+  });
+
+  it('falls back to zeroed cooldowns when the target class has no saved bank', () => {
+    const w = multi();
+    const p = w.players[0];
+    // Drop the saved cooldown bank for mage while keeping its ability table.
+    p.classCooldowns = { knight: { basic: 0, a1: 0, a2: 0, a3: 0 } };
+    w.setActiveClass(p, 'mage');
+    expect(p.classId).toBe('mage'); // table present → swap proceeds
+    expect(p.cooldowns.a1).toBe(0); // ?? default zeroed bank
+    expect(p.swapCd).toBeGreaterThan(0);
+  });
+});
+
+describe('world-branches: projectile branch edges', () => {
+  it('an AoE impact spares a boss outside the blast while still catching a nearby add', () => {
+    const w = solo();
+    w.terrain = [];
+    w.obstacles = [];
+    const boss = w.boss!;
+    boss.pos = { x: 200, y: 200 }; // far from the blast centre
+    const add = mkAdd(w, { pos: { x: 500, y: 500 } });
+    w.adds = [add];
+    const bossBefore = boss.hp;
+    w.projectiles = [
+      mkProj(w, {
+        ownerId: 0,
+        kind: 'fireball',
+        pos: { x: 500, y: 500 },
+        damage: 30,
+        impactRadius: 120,
+      }),
+    ];
+    w.step(DT, new Map());
+    expect(boss.hp).toBe(bossBefore); // boss outside impactRadius → skipped
+    expect(add.hp).toBeLessThan(60); // add inside the AoE
+  });
+
+  it('a direct add hit resolves even with a live boss present but out of reach', () => {
+    const w = solo();
+    w.terrain = [];
+    w.obstacles = [];
+    const boss = w.boss!;
+    boss.pos = { x: 200, y: 200 };
+    const p = w.players[0];
+    const add = mkAdd(w, { pos: { x: 900, y: 600 } });
+    w.adds = [add];
+    const bossBefore = boss.hp;
+    w.projectiles = [mkProj(w, { ownerId: p.id, pos: { x: 900, y: 600 }, damage: 25 })];
+    w.step(DT, new Map());
+    expect(add.hp).toBeLessThan(60); // struck the add (else-if hitAdd branch)
+    expect(boss.hp).toBe(bossBefore); // boss loop ran but found no collision
+    expect(p.stats.damageDealt).toBeGreaterThan(0);
+  });
+
+  it('a player shot with a frost rider but no explicit duration chills for the default', () => {
+    const w = solo();
+    w.terrain = [];
+    w.obstacles = [];
+    const boss = w.boss!;
+    boss.pos = { x: 800, y: 400 };
+    const before = boss.hp;
+    w.projectiles = [
+      mkProj(w, { ownerId: w.players[0].id, pos: { x: 800, y: 400 }, damage: 10, slowMult: 0.5 }),
+    ];
+    w.step(DT, new Map());
+    expect(boss.hp).toBeLessThan(before);
+    const slow = boss.buffs.find((b) => b.kind === 'moveSpeed' && b.mult < 1);
+    expect(slow).toBeTruthy();
+    expect(slow!.remaining).toBeGreaterThan(0); // slowDuration ?? 2
+  });
+
+  it('a boss bolt with a frost rider but no explicit duration chills for the default', () => {
+    const w = solo();
+    w.boss = null;
+    w.terrain = [];
+    w.obstacles = [];
+    const p = w.players[0];
+    p.pos = { x: 500, y: 500 };
+    const before = p.hp;
+    w.projectiles = [
+      mkProj(w, { side: 'boss', ownerId: 999, pos: { x: 500, y: 500 }, damage: 15, slowMult: 0.5 }),
+    ];
+    w.step(DT, new Map());
+    expect(p.hp).toBeLessThan(before);
+    expect(p.buffs.some((b) => b.kind === 'moveSpeed' && b.source === 'bossSlow')).toBe(true);
+  });
+});
+
+describe('world-branches: snare-only player zone', () => {
+  it('mires the boss and adds without a damage tick', () => {
+    const w = solo();
+    w.terrain = [];
+    w.obstacles = [];
+    const boss = w.boss!;
+    boss.pos = { x: 800, y: 400 };
+    const add = mkAdd(w, { pos: { x: 800, y: 400 } });
+    w.adds = [add];
+    const bossBefore = boss.hp;
+    w.groundZones = [
+      mkZone(w, {
+        side: 'player',
+        ownerId: 0,
+        pos: { x: 800, y: 400 },
+        radius: 140,
+        damagePerTick: 0, // slow-only → the `damagePerTick > 0` guard is false
+        slowMult: 0.5,
+        slowDuration: 2,
+        tickAccum: 0.5,
+      }),
+    ];
+    w.step(DT, new Map());
+    expect(boss.hp).toBe(bossBefore); // no damage
+    expect(boss.buffs.some((b) => b.kind === 'moveSpeed' && b.mult < 1)).toBe(true);
+    expect(add.hp).toBe(60); // no damage
+    expect(add.buffs.some((b) => b.kind === 'moveSpeed' && b.mult < 1)).toBe(true);
+  });
+});
+
+describe('world-branches: modifier aura fallbacks', () => {
+  it('seeds an undefined aura timer via the ?? 0 fallback', () => {
+    const w = solo();
+    w.terrain = [];
+    const boss = w.boss!;
+    boss.decisionTimer = 100;
+    boss.modAura = 'ember';
+    boss.modAuraTimer = undefined;
+    w.step(DT, new Map([['a', inp()]]));
+    expect(Number.isFinite(boss.modAuraTimer)).toBe(true);
+    expect(boss.modAuraTimer).toBeCloseTo(DT, 5); // 0 + dt, not NaN
+  });
+
+  it('an ember aura with an undefined dmgScale still scorches (?? 1 fallback)', () => {
+    const w = solo();
+    w.terrain = [];
+    const boss = w.boss!;
+    boss.decisionTimer = 100;
+    boss.modAura = 'ember';
+    boss.modAuraTimer = 5; // over the interval → fires this tick
+    boss.dmgScale = undefined;
+    const p = w.players[0];
+    p.pos = { x: boss.pos.x, y: boss.pos.y + 100 };
+    const before = p.hp;
+    w.step(DT, new Map([['a', inp()]]));
+    expect(p.hp).toBeLessThan(before);
+    expect(Number.isFinite(p.hp)).toBe(true); // scalar was finite, not NaN
+  });
+
+  it('a storm aura with no living target arcs onto nobody', () => {
+    const w = makeWorld({
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'ranger' },
+      ],
+    });
+    w.terrain = [];
+    const boss = w.boss!;
+    boss.decisionTimer = 100;
+    boss.modAura = 'storm';
+    boss.modAuraTimer = 5;
+    for (const p of w.players) {
+      p.state = 'downed';
+      p.hp = 0;
+      p.downedTimer = 100;
+    }
+    w.step(DT, new Map());
+    expect(w.events.some((e) => e.t === 'telegraph')).toBe(false); // alive.length === 0 → no arc
+  });
+
+  it('a storm aura arcs onto exactly one of two spread-out heroes', () => {
+    const w = makeWorld({
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'ranger' },
+      ],
+    });
+    w.terrain = [];
+    const boss = w.boss!;
+    boss.decisionTimer = 100;
+    boss.modAura = 'storm';
+    boss.modAuraTimer = 5;
+    const [a, b] = w.players;
+    a.pos = { x: 300, y: 500 };
+    b.pos = { x: 900, y: 500 }; // 600 apart → the 130u arc catches only the struck hero
+    const aBefore = a.hp;
+    const bBefore = b.hp;
+    w.step(DT, new Map());
+    const damaged = [a.hp < aBefore, b.hp < bBefore].filter(Boolean);
+    expect(damaged.length).toBe(1); // one within the arc (true), one outside (false)
+  });
+});
+
+describe('world-branches: frenzied with zero max HP', () => {
+  it('uses the hpFrac=0 fallback (maximum cooldown reduction) when maxHp is 0', () => {
+    const w = solo();
+    w.terrain = [];
+    w.obstacles = [];
+    const boss = w.boss!;
+    boss.affixes = ['frenzied'];
+    boss.maxHp = 0; // `maxHp > 0 ? hp/maxHp : 0` → 0
+    boss.hp = 100; // still counts as alive
+    const p = w.players[0];
+    boss.pos = { x: 800, y: 400 };
+    p.pos = { x: 800, y: 460 };
+    boss.action = {
+      kind: 'windup',
+      abilityId: 'tailSweep',
+      remaining: 0.01,
+      total: 0.9,
+      targetId: p.id,
+      targetPos: { ...p.pos },
+      aimAngle: Math.PI / 2,
+      channelAccum: 0,
+    };
+    w.step(DT, new Map([['a', inp()]]));
+    // hpFrac forced to 0 → deepest frenzy CDR, below even the enraged 0.7 mult.
+    expect(boss.cooldowns.tailSweep).toBeGreaterThan(0);
+    expect(boss.cooldowns.tailSweep).toBeLessThan(8 * 0.7);
+  });
+});
+
+describe('world-branches: affix numeric fallbacks', () => {
+  it('molten upkeep with an undefined dmgScale still trails a finite-damage pool', () => {
+    const w = solo({ bossAffixes: [['molten']] });
+    w.terrain = [];
+    w.obstacles = [];
+    w.groundZones = [];
+    const boss = w.boss!;
+    boss.decisionTimer = 100;
+    boss.dmgScale = undefined; // ?? 1 in the scalar
+    boss.affixTimers = { molten: 1 }; // over AFFIX_MOLTEN_INTERVAL → fires this tick
+    w.step(DT, new Map([['a', inp()]]));
+    const pool = w.groundZones.find((z) => z.side === 'boss');
+    expect(pool).toBeTruthy();
+    expect(Number.isFinite(pool!.damagePerTick)).toBe(true);
+    expect(pool!.damagePerTick).toBeGreaterThan(0);
+  });
+
+  it('affix cadence accumulators seed from ?? 0 rather than going NaN', () => {
+    const w = solo({ bossAffixes: [['molten', 'warding', 'splitting', 'barbed']] });
+    w.terrain = [];
+    w.obstacles = [];
+    const boss = w.boss!;
+    boss.decisionTimer = 100;
+    boss.affixTimers = {}; // wipe the seeded timers → each reads undefined ?? 0
+    w.step(DT, new Map([['a', inp()]]));
+    const t = boss.affixTimers;
+    for (const key of ['molten', 'warding', 'splitting', 'barbed'] as const) {
+      expect(Number.isFinite(t[key])).toBe(true);
+      expect(t[key]).toBeCloseTo(DT, 5);
+    }
+  });
+
+  it('a barbed pulse with an undefined recent-damage window deals no NaN damage', () => {
+    const w = solo({ bossAffixes: [['barbed']] });
+    w.terrain = [];
+    w.obstacles = [];
+    const boss = w.boss!;
+    boss.decisionTimer = 100;
+    boss.recentDamageTaken = undefined; // ?? 0 → base 0 → bails cleanly
+    boss.affixTimers = { barbed: 100 };
+    const p = w.players[0];
+    p.pos = { x: boss.pos.x, y: boss.pos.y + 20 };
+    const before = p.hp;
+    w.step(DT, new Map([['a', inp()]]));
+    expect(p.hp).toBe(before); // no NaN damage
+  });
+
+  it('a barbed pulse skips downed heroes, spares those out of range, and flashes on a hit', () => {
+    const w = makeWorld({
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'ranger' },
+        { peerId: 'c', name: 'C', classId: 'cleric' },
+      ],
+      bossAffixes: [['barbed']],
+    });
+    w.terrain = [];
+    w.obstacles = [];
+    const boss = w.boss!;
+    boss.decisionTimer = 100;
+    boss.pos = { x: 800, y: 400 };
+    boss.recentDamageTaken = 200; // base clamps to the cap → a real pulse
+    boss.affixTimers = { barbed: 100 };
+    const [near, far, downed] = w.players;
+    near.pos = { x: 800, y: 420 }; // inside the thorn radius
+    far.pos = { x: 100, y: 950 }; // well outside
+    downed.pos = { x: 800, y: 415 };
+    downed.state = 'downed';
+    downed.hp = 0;
+    downed.downedTimer = 100;
+    const nearBefore = near.hp;
+    const farBefore = far.hp;
+    w.step(DT, new Map());
+    expect(near.hp).toBeLessThan(nearBefore); // in range → hit
+    expect(far.hp).toBe(farBefore); // out of range → spared
+    expect(downed.hp).toBe(0); // not alive → skipped
+    expect(w.events.some((e) => e.t === 'telegraph')).toBe(true); // hitAny → flash
+  });
+
+  it('a barbed pulse that catches nobody emits no flash', () => {
+    const w = solo({ bossAffixes: [['barbed']] });
+    w.terrain = [];
+    w.obstacles = [];
+    const boss = w.boss!;
+    boss.decisionTimer = 100;
+    boss.pos = { x: 800, y: 400 };
+    boss.recentDamageTaken = 200; // base > 1, so it does NOT bail early
+    boss.affixTimers = { barbed: 100 };
+    const p = w.players[0];
+    p.pos = { x: 100, y: 950 }; // out of range → hitAny stays false
+    const before = p.hp;
+    w.step(DT, new Map());
+    expect(p.hp).toBe(before);
+    expect(w.events.some((e) => e.t === 'telegraph')).toBe(false);
+  });
+});
+
+describe('world-branches: vampiric at full health', () => {
+  it('a Vampiric hit at full HP deals damage but banks no heal event', () => {
+    const w = solo({ bossAffixes: [['vampiric']] });
+    w.terrain = [];
+    w.obstacles = [];
+    const boss = w.boss!;
+    const p = w.players[0];
+    boss.pos = { x: 800, y: 400 };
+    p.pos = { x: 800, y: 460 };
+    boss.hp = boss.maxHp; // no room to heal → healed === 0
+    boss.action = {
+      kind: 'windup',
+      abilityId: 'tailSweep',
+      remaining: 0.01,
+      total: 0.9,
+      targetId: p.id,
+      targetPos: { ...p.pos },
+      aimAngle: Math.PI / 2,
+      channelAccum: 0,
+    };
+    const pBefore = p.hp;
+    w.step(DT, new Map([['a', inp()]]));
+    expect(p.hp).toBeLessThan(pBefore); // it dealt damage
+    expect(boss.hp).toBe(boss.maxHp); // clamped at full
+    expect(w.events.some((e) => e.t === 'heal' && e.targetId === boss.id)).toBe(false);
+  });
+});
+
+describe('world-branches: volatile with undefined dmgScale', () => {
+  it('a Volatile pbaoe salts a finite-damage pool despite an undefined dmgScale', () => {
+    const w = solo({ bossAffixes: [['volatile']] });
+    w.terrain = [];
+    w.obstacles = [];
+    w.groundZones = [];
+    const boss = w.boss!;
+    const p = w.players[0];
+    boss.pos = { x: 800, y: 400 };
+    p.pos = { x: 800, y: 460 };
+    boss.dmgScale = undefined; // ?? 1 in the pool tick scalar
+    boss.action = {
+      kind: 'windup',
+      abilityId: 'tailSweep',
+      remaining: 0.01,
+      total: 0.9,
+      targetId: p.id,
+      targetPos: { ...p.pos },
+      aimAngle: Math.PI / 2,
+      channelAccum: 0,
+    };
+    w.step(DT, new Map([['a', inp()]]));
+    const pool = w.groundZones.find((z) => z.side === 'boss');
+    expect(pool).toBeTruthy();
+    expect(Number.isFinite(pool!.damagePerTick)).toBe(true);
+    expect(pool!.damagePerTick).toBeGreaterThan(0);
+  });
+});
+
+describe('world-branches: pending strike default slow duration', () => {
+  it('a slow-riding strike with no explicit duration mires for the default', () => {
+    const w = solo();
+    w.boss = null;
+    w.terrain = [];
+    w.obstacles = [];
+    const p = w.players[0];
+    p.pos = { x: 500, y: 500 };
+    w.addPendingStrike({
+      pos: { x: 500, y: 500 },
+      radius: 120,
+      fuse: 0.01,
+      damage: 20,
+      slowMult: 0.5, // no slowDuration → the ?? 2 default
+    });
+    w.step(DT, new Map([['a', inp()]]));
+    const slow = p.buffs.find((b) => b.kind === 'moveSpeed' && b.source === 'strikeSlow');
+    expect(slow).toBeTruthy();
+    expect(slow!.remaining).toBeGreaterThan(0);
+  });
+});
+
+describe('world-branches: pack bond telegraph guard', () => {
+  it('a killed bond caster drops the line telegraph on serialize', () => {
+    const w = makeWorld({ monsterId: 'dragon', seed: 21, coBosses: ['troll'] });
+    w.terrain = [];
+    w.obstacles = [];
+    for (let i = 0; i < 260 && !w.bond; i++) {
+      for (const b of w.bosses) {
+        b.hp = b.maxHp;
+        b.pos = { x: 400 + b.id * 60, y: 300 };
+      }
+      w.step(DT, new Map());
+    }
+    expect(w.bond).not.toBeNull();
+    // Kill the anchor, then serialize BEFORE the next step can cancel the bond.
+    const caster = w.bosses.find((b) => b.id === w.bond!.casterId)!;
+    caster.hp = 0;
+    const snap = w.serialize();
+    expect((snap.telegraphs ?? []).some((t) => t.kind === 'line')).toBe(false);
+  });
+});
+
+describe('world-branches: degenerate pack bond', () => {
+  it('a boss listed twice cannot bond with itself', () => {
+    const w = makeWorld({ monsterId: 'dragon', seed: 21, coBosses: ['troll'] });
+    w.terrain = [];
+    w.obstacles = [];
+    const b = w.bosses[0];
+    b.hp = b.maxHp;
+    b.decisionTimer = 100;
+    w.bosses = [b, b]; // same object twice → caster.id === partner.id
+    w.bond = null;
+    w.synergyTimer = 0; // force a bond attempt this tick
+    w.step(DT, new Map());
+    expect(w.bond).toBeNull(); // startBond bailed on the degenerate pair
+    expect(w.events.some((e) => e.t === 'telegraph')).toBe(false);
+  });
+});
+
+describe('world-branches: HP-gated boss ability (minHpFrac)', () => {
+  function wraith(seed: number): World {
+    const w = new World({
+      monsterId: 'wraith',
+      seed,
+      players: [{ peerId: 'a', name: 'A', classId: 'knight' }],
+    });
+    w.terrain = [];
+    w.obstacles = [];
+    return w;
+  }
+
+  it('skips an HP-gated ability above its threshold and commits it below', () => {
+    // Above the gate (full HP): Wail (minHpFrac 0.5) is unusable → Drain Soul chosen.
+    const high = wraith(3);
+    const hb = high.boss!;
+    hb.pos = { x: 800, y: 400 };
+    high.players[0].pos = { x: 820, y: 420 };
+    hb.decisionTimer = 0.01;
+    high.step(DT, new Map([['a', inp()]]));
+    expect(hb.action.abilityId).toBe('drainSoul');
+
+    // Below the gate (30% HP) and in melee: Wail becomes usable and is chosen.
+    const low = wraith(3);
+    const lb = low.boss!;
+    lb.pos = { x: 800, y: 400 };
+    low.players[0].pos = { x: 820, y: 420 };
+    lb.hp = lb.maxHp * 0.3;
+    lb.decisionTimer = 0.01;
+    low.step(DT, new Map([['a', inp()]]));
+    expect(lb.action.abilityId).toBe('wail');
+  });
+});
+
+describe('world-branches: fairness governor with no target', () => {
+  it('defers a walling attack centred on the boss when every hero is down', () => {
+    const w = solo();
+    w.terrain = [];
+    w.obstacles = [];
+    const boss = w.boss!;
+    const p = w.players[0];
+    p.state = 'dead'; // no live target → target?.pos ?? boss.pos falls back to the boss
+    boss.pos = { x: 800, y: 400 };
+    boss.decisionTimer = 0.01;
+    // A strike overlapping the boss's own position walls the centred fireball.
+    w.addPendingStrike({ pos: { x: 800, y: 400 }, radius: 120, fuse: 5, damage: 10 });
+    w.step(DT, new Map());
+    expect(boss.action.kind).toBe('idle'); // deferred, no wind-up started
+  });
+});
+
+describe('world-branches: end-conditions guard after a forced finish', () => {
+  it('does not overturn a forced defeat when a disconnect re-checks end conditions', () => {
+    const w = makeWorld({
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'ranger' },
+      ],
+    });
+    const boss = w.boss!;
+    boss.hp = 0; // a dead boss would normally flip the result to victory...
+    w.forceFinish('defeat'); // ...but the fight is already resolved
+    w.removePlayerByPeer('b'); // re-enters checkEndConditions with finished = true
+    expect(w.players.length).toBe(1);
+    expect(w.outcome).toBe('defeat'); // guard returned early → no victory flip
+  });
+});
+
+describe('world-branches: hardcore kill deadline', () => {
+  it('wipes the surviving band when the deadline passes with a boss alive', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 46,
+      hardcore: true,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'ranger' },
+        { peerId: 'c', name: 'C', classId: 'cleric' },
+      ],
+    });
+    w.terrain = [];
+    w.obstacles = [];
+    const boss = w.boss!;
+    boss.decisionTimer = 100; // keep it alive + idle
+    const [aliveHero, downedHero, deadHero] = w.players;
+    downedHero.state = 'downed';
+    downedHero.hp = 0;
+    downedHero.downedTimer = 100;
+    deadHero.state = 'dead';
+    deadHero.hp = 0;
+    const aliveDeathsBefore = aliveHero.stats.deaths;
+    const downedDeathsBefore = downedHero.stats.deaths;
+    w.hardcoreDeadline = 0; // clock already blown
+    w.step(DT, new Map());
+    expect(w.finished).toBe(true);
+    expect(w.outcome).toBe('defeat');
+    expect(w.events.some((e) => e.t === 'deadline')).toBe(true);
+    expect(aliveHero.state).toBe('dead');
+    expect(downedHero.state).toBe('dead');
+    expect(deadHero.state).toBe('dead'); // already dead → skipped by the wipe loop
+    expect(aliveHero.stats.deaths).toBe(aliveDeathsBefore + 1); // alive → newly counted
+    expect(downedHero.stats.deaths).toBe(downedDeathsBefore); // downed → not double-counted
+  });
+});
+
+describe('world-branches: telegraph for an unresolved ability id', () => {
+  it('a windup referencing an unknown ability serializes no telegraph', () => {
+    const w = solo();
+    const boss = w.boss!;
+    boss.action = {
+      kind: 'windup',
+      abilityId: 'notARealAbility', // non-null but unresolvable → abilityById miss
+      remaining: 1,
+      total: 1,
+      targetId: null,
+      targetPos: null,
+      aimAngle: 0,
+      channelAccum: 0,
+    };
+    expect(w.serialize().bosses[0].telegraph).toBeNull();
+  });
+});
+
+describe('world-branches: player score without a base score', () => {
+  it('treats an undefined baseScore as 0 (?? 0) instead of NaN', () => {
+    const w = solo();
+    w.boss = null;
+    const p = w.players[0];
+    p.baseScore = undefined;
+    p.stats.damageDealt = 100;
+    expect(w.playerScore(p)).toBe(100);
+  });
+});

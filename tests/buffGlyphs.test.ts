@@ -21,6 +21,14 @@ describe('buffBadges', () => {
     expect(inv.good).toBe(true);
   });
 
+  it('describes silence', () => {
+    const [sil] = buffBadges([buff('silence', 3)]);
+    expect(sil.glyph).toBe('🔇');
+    expect(sil.color).toBe(0xc06cff);
+    expect(sil.good).toBe(false);
+    expect(sil.label).toBe('Silenced');
+  });
+
   it('splits moveSpeed into slow (mult<1) vs haste (mult>=1)', () => {
     expect(buffBadges([buff('moveSpeed', 3, 0.5)])[0]).toMatchObject({
       glyph: '🐌',

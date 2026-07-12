@@ -4,10 +4,34 @@ import {
   configuredRelayUrl,
   generateRoomCode,
   getTrackerSockets,
+  openRoom,
   readRoomFromHash,
   shareLinkFor,
   writeRoomToHash,
 } from '../src/net/transport/room';
+import { joinRoom } from '@trystero-p2p/torrent';
+import type { JoinError } from '@trystero-p2p/torrent';
+import { openRelayRoom } from '../src/net/transport/relayRoom';
+
+// openRoom wraps a LIVE Trystero torrent room (and, in relay mode, a live
+// WebSocket relay). Mock both so the lifecycle branches can be driven without a
+// network: a typed hoisted stub for `getRelaySockets` (it is loosely typed as
+// `any` in the package) plus plain fns for `joinRoom` / `openRelayRoom`, whose
+// real types flow through `vi.mocked` for type-safe control below.
+const trysteroMocks = vi.hoisted(() => ({
+  getRelaySockets: vi.fn<() => Record<string, WebSocket>>(() => ({})),
+}));
+
+vi.mock('@trystero-p2p/torrent', () => ({
+  joinRoom: vi.fn(),
+  getRelaySockets: trysteroMocks.getRelaySockets,
+  defaultRelayUrls: ['wss://tracker.mock'],
+  selfId: 'self-mock',
+}));
+
+vi.mock('../src/net/transport/relayRoom', () => ({
+  openRelayRoom: vi.fn(),
+}));
 
 // Mirror of the unambiguous alphabet + length declared in src/net/transport/room.ts.
 // Intentionally omits O/0, I/1 and L so a code is unmistakable when read aloud.
@@ -198,5 +222,93 @@ describe('getTrackerSockets', () => {
     for (const key of Object.keys(sockets)) {
       expect(typeof key).toBe('string');
     }
+  });
+
+  it('falls back to an empty object when getRelaySockets yields nullish', () => {
+    // Trystero's getRelaySockets can be absent/return nothing before any room is
+    // joined; getTrackerSockets must still hand callers a usable `{}`.
+    trysteroMocks.getRelaySockets.mockReturnValueOnce(
+      undefined as unknown as Record<string, WebSocket>,
+    );
+    expect(getTrackerSockets()).toEqual({});
+  });
+});
+
+describe('openRoom', () => {
+  const mockedJoinRoom = vi.mocked(joinRoom);
+  const mockedOpenRelayRoom = vi.mocked(openRelayRoom);
+
+  beforeEach(() => {
+    mockedJoinRoom.mockReset();
+    mockedJoinRoom.mockReturnValue({} as unknown as ReturnType<typeof joinRoom>);
+    mockedOpenRelayRoom.mockReset();
+    mockedOpenRelayRoom.mockReturnValue({} as unknown as ReturnType<typeof openRelayRoom>);
+    trysteroMocks.getRelaySockets.mockReset();
+    trysteroMocks.getRelaySockets.mockReturnValue({});
+    // Silence (and allow inspecting) the always-on netWarn/netLog output.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('defaults the mode to p2p and joins via the Trystero torrent strategy', () => {
+    const room = openRoom('ABC123');
+    expect(mockedJoinRoom).toHaveBeenCalledTimes(1);
+    // joinRoom(config, roomId, callbacks) — the code flows through as roomId.
+    expect(mockedJoinRoom.mock.calls[0][1]).toBe('ABC123');
+    expect(mockedOpenRelayRoom).not.toHaveBeenCalled();
+    expect(room).toBeDefined();
+  });
+
+  it('warns and falls back to P2P when relay mode is requested but no relay URL is set', () => {
+    const onJoinError = vi.fn<(msg: string) => void>();
+    const room = openRoom('ABC123', onJoinError, 'relay');
+    // configuredRelayUrl() is null (no VITE_RELAY_URL) → notify + join over P2P.
+    expect(onJoinError).toHaveBeenCalledWith(expect.stringContaining('No global server'));
+    expect(mockedOpenRelayRoom).not.toHaveBeenCalled();
+    expect(mockedJoinRoom).toHaveBeenCalledTimes(1);
+    expect(room).toBeDefined();
+  });
+
+  it('opens the global-server room when relay mode has a configured relay URL', () => {
+    vi.stubEnv('VITE_RELAY_URL', 'relay.example');
+    // Sanity-check that the stub reached the module-captured env before relying on it.
+    expect(configuredRelayUrl()).toBe('wss://relay.example');
+
+    const onJoinError = vi.fn<(msg: string) => void>();
+    const room = openRoom('ABC123', onJoinError, 'relay');
+    expect(mockedOpenRelayRoom).toHaveBeenCalledWith('wss://relay.example', 'ABC123', onJoinError);
+    expect(mockedJoinRoom).not.toHaveBeenCalled();
+    expect(room).toBeDefined();
+  });
+
+  it('surfaces a string join error from the transport to onJoinError', () => {
+    const onJoinError = vi.fn<(msg: string) => void>();
+    mockedJoinRoom.mockImplementationOnce((_config, _roomId, callbacks) => {
+      callbacks?.onJoinError?.({
+        error: 'all trackers unreachable',
+        appId: 'warband',
+        roomId: 'ABC123',
+        peerId: 'peer',
+      });
+      return {} as unknown as ReturnType<typeof joinRoom>;
+    });
+    openRoom('ABC123', onJoinError);
+    expect(onJoinError).toHaveBeenCalledWith('all trackers unreachable');
+  });
+
+  it('uses a generic message when the join-error payload carries no string error', () => {
+    const onJoinError = vi.fn<(msg: string) => void>();
+    mockedJoinRoom.mockImplementationOnce((_config, _roomId, callbacks) => {
+      // A non-string `error` exercises the defensive fallback message.
+      callbacks?.onJoinError?.({ error: 42 } as unknown as JoinError);
+      return {} as unknown as ReturnType<typeof joinRoom>;
+    });
+    openRoom('ABC123', onJoinError);
+    expect(onJoinError).toHaveBeenCalledWith('connection error');
   });
 });

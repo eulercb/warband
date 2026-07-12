@@ -16,7 +16,7 @@
  * cos/sin form a unit vector, so `|shakeOffset| === shakeEnergy * r`).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Camera } from '../src/render/pipeline/camera';
+import { Camera, setShakeEnabled, isShakeEnabled } from '../src/render/pipeline/camera';
 import { ARENA_W, ARENA_H } from '../src/engine/core/constants';
 import type { Vec2 } from '../src/engine/core/types';
 
@@ -367,5 +367,27 @@ describe('Camera: screen shake (energy add + decay)', () => {
     runUpdates(cam, 10, 16); // early-returns before touching Math.random
     expect(cam.shakeOffset.x).toBeCloseTo(0);
     expect(cam.shakeOffset.y).toBeCloseTo(0);
+  });
+});
+
+describe('Camera: screen-shake accessibility toggle', () => {
+  it('addShake is inert while the global toggle is off, then live again once restored', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    try {
+      setShakeEnabled(false);
+      expect(isShakeEnabled()).toBe(false);
+      const cam = new Camera(ARENA_W, ARENA_H);
+      cam.addShake(1000); // a huge event, but the disabled toggle swallows it whole
+      cam.update(0); // dt 0 → no decay; reads the (still zero) energy straight back
+      expect(mag(cam.shakeOffset)).toBeCloseTo(0); // no jitter accumulated at all
+    } finally {
+      setShakeEnabled(true); // restore the module-global default for the other specs
+    }
+    expect(isShakeEnabled()).toBe(true);
+    // Re-enabled: the identical add now registers energy (|offset| = energy * r).
+    const cam2 = new Camera(ARENA_W, ARENA_H);
+    cam2.addShake(10);
+    cam2.update(0);
+    expect(mag(cam2.shakeOffset)).toBeCloseTo(10 * 0.5); // 5
   });
 });

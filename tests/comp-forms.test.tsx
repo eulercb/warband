@@ -267,4 +267,32 @@ describe('<JoinScreen>', () => {
     expect(useStore.getState().netMode).toBe('relay');
     expect(playUiSound).toHaveBeenCalledWith('uiClick');
   });
+
+  it('switches the global-server toggle back off (relay → p2p)', () => {
+    vi.stubEnv('VITE_RELAY_URL', 'relay.example.com');
+    useStore.setState({ netMode: 'relay' });
+    render(<JoinScreen />);
+    const toggle = screen.getByRole('button', { name: /Connect via the global server/ });
+    // Starts ON (relay); clicking flips it back to peer-to-peer.
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(toggle);
+    expect(useStore.getState().netMode).toBe('p2p');
+    expect(playUiSound).toHaveBeenCalledWith('uiClick');
+  });
+
+  it('falls back to the generic error message when joinGame rejects with a non-Error', async () => {
+    // A rejection that is not an Error instance hits the `: 'Failed to join room.'`
+    // side of the message ternary.
+    vi.mocked(joinGame).mockRejectedValueOnce('socket exploded');
+    render(<JoinScreen />);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Room code' }), {
+      target: { value: 'abcd' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Failed to join room.'));
+    expect(useStore.getState().error).toBe('Failed to join room.');
+    // joining was reset → Join is enabled again (the code is still valid).
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Join' }).disabled).toBe(false);
+  });
 });

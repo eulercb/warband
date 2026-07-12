@@ -22,7 +22,12 @@ import SpecialReward from '../src/ui/screens/SpecialReward';
 import EphemeralShop from '../src/ui/screens/EphemeralShop';
 import { useStore } from '../src/ui/state/store';
 import type { AppState } from '../src/ui/state/store';
-import { chooseSubSkill, chooseExtraClass, chooseCharUpgrade } from '../src/ui/state/session';
+import {
+  chooseSubSkill,
+  chooseExtraClass,
+  chooseCharUpgrade,
+  playUiSound,
+} from '../src/ui/state/session';
 import { subclassesFor } from '../src/engine/content/subclasses';
 import { EPHEMERAL } from '../src/engine/content/ephemeral';
 
@@ -82,6 +87,18 @@ describe('SpecialReward — tiered run-clear pick', () => {
       expect(chooseCharUpgrade).not.toHaveBeenCalled();
     }
   });
+
+  it('tier 1: offers no second skill when the banked subclass id is unknown', () => {
+    // getSubclass() returns undefined for an unrecognised id, so the skill list
+    // falls back to `[]` (the `?? []` branch) — the panel renders with no cards.
+    useStore.setState({ mySubclassId: 'ghost_subclass', mySubSkills: ['ghost_skill'] });
+    const { container } = render(<SpecialReward />);
+
+    // We're in the tier-1 "pick a second skill" view, but with nothing to offer.
+    expect(screen.getByRole('group', { name: 'Choose a second subclass skill' })).toBeTruthy();
+    expect(container.querySelectorAll('.wb-special-card').length).toBe(0);
+    expect(chooseSubSkill).not.toHaveBeenCalled();
+  });
 });
 
 describe('EphemeralShop — coin stall (item 21)', () => {
@@ -116,5 +133,46 @@ describe('EphemeralShop — coin stall (item 21)', () => {
     useStore.setState({ myCoins: 20, activeHardcore: true });
     render(<EphemeralShop />);
     expect(screen.getByText(EPHEMERAL.retry.name)).toBeTruthy();
+  });
+
+  it('marks already-owned single-shot passives as Ready (×1) and disables re-buying', () => {
+    // owned() returns 1 for each banked passive → the card is `owned`/maxed:
+    // disabled, its cost reads "Ready", and an "×1" count shows next to the name.
+    useStore.setState({
+      myCoins: 20,
+      activeHardcore: false,
+      myEphemeral: { speed: true, damage: true, defense: true },
+    });
+    const { container } = render(<EphemeralShop />);
+
+    const ownedCards = container.querySelectorAll('.wb-shop-card.owned');
+    expect(ownedCards.length).toBe(3); // speed, damage, defence
+    ownedCards.forEach((card) => {
+      expect((card as HTMLButtonElement).disabled).toBe(true);
+      expect(card.querySelector('.wb-shop-cost')?.textContent).toBe('Ready');
+      expect(card.querySelector('.wb-shop-have')?.textContent).toContain('×1');
+    });
+  });
+
+  it('plays the soft click cue (not the confirm) when the store declines a purchase', () => {
+    // A well-funded hero (card enabled) but a store that rejects the buy — e.g.
+    // the host validated it away — takes the else-branch of onBuy: uiClick, not
+    // uiConfirm, and no coins move.
+    useStore.setState({
+      myCoins: 99,
+      activeHardcore: false,
+      myEphemeral: {},
+      buyEphemeral: () => false,
+    });
+    render(<EphemeralShop />);
+
+    const card = screen.getByText(EPHEMERAL.potion.name).closest('button');
+    if (!card) throw new Error('potion card not found');
+    expect(card.disabled).toBe(false); // affordable + not maxed → clickable
+    fireEvent.click(card);
+
+    expect(playUiSound).toHaveBeenCalledWith('uiClick');
+    expect(playUiSound).not.toHaveBeenCalledWith('uiConfirm');
+    expect(useStore.getState().myCoins).toBe(99); // the stubbed buy moved nothing
   });
 });

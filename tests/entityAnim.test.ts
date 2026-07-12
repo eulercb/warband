@@ -190,6 +190,24 @@ describe('bossAnim: action → clip mapping', () => {
     expect(sel.progress).toBeNull();
   });
 
+  it('clamps windup progress to 0 when more windup remains than the telegraph total', () => {
+    // 1 - 2/1 = -1 → clamp01 floors it at 0 (progress never runs backwards).
+    const sel = bossAnim(
+      boss({ action: 'windup', abilityId: 'smash', telegraph: tel(2, 1) }),
+      '4dir',
+    );
+    expect(sel.progress).toBe(0);
+  });
+
+  it('clamps windup progress to 1 when the telegraph over-fills (negative remaining)', () => {
+    // 1 - (-1)/1 = 2 → clamp01 caps it at 1 (progress never overshoots the clip end).
+    const sel = bossAnim(
+      boss({ action: 'windup', abilityId: 'smash', telegraph: tel(-1, 1) }),
+      '4dir',
+    );
+    expect(sel.progress).toBe(1);
+  });
+
   it('channel loops on a per-ability clip', () => {
     const sel = bossAnim(boss({ action: 'channel', abilityId: 'lifeDrain' }), 'flip');
     expect(sel.clip).toBe('channel_lifeDrain');

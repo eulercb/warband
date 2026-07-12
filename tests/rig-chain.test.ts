@@ -36,6 +36,19 @@ describe('updateChain', () => {
     expect(points[0].y).toBeCloseTo(100, 6);
   });
 
+  it('keeps a point coincident with the head finite (guards the zero-length segment)', () => {
+    const head = { x: 5, y: 5 };
+    const points: Vec2[] = [{ x: 5, y: 5 }]; // exactly on the head → zero-length segment
+    updateChain(points, head, 10, 1);
+    // Math.hypot(0, 0) === 0, so the `|| 1e-4` guard stands in for the divisor and
+    // the normalised direction is (0, 0): the point holds its place instead of
+    // becoming NaN from a 0/0 divide.
+    expect(Number.isNaN(points[0].x)).toBe(false);
+    expect(Number.isNaN(points[0].y)).toBe(false);
+    expect(points[0].x).toBeCloseTo(5, 6);
+    expect(points[0].y).toBeCloseTo(5, 6);
+  });
+
   it('converges toward the constraint over iterations when ease < 1', () => {
     const head = { x: 0, y: 0 };
     const points: Vec2[] = [

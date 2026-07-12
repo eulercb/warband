@@ -8,7 +8,15 @@ import { describe, it, expect } from 'vitest';
 import { World } from '../src/engine/world/world';
 import type { CorruptionKind } from '../src/engine/core/types';
 import { firstCorruptionDelay } from '../src/engine/world/corruption';
-import { CORRUPTION_FIRST_DELAY, CORRUPTION_INTERVAL_JITTER } from '../src/engine/core/constants';
+import {
+  CORRUPTION_FIRST_DELAY,
+  CORRUPTION_INTERVAL_JITTER,
+  CORRUPTION_RAIN_COUNT,
+  ARENA_W,
+  ARENA_H,
+  HARDCORE_TIME_BUDGET,
+  HARDCORE_MIN_INTERVAL,
+} from '../src/engine/core/constants';
 import { buffMult } from '../src/engine/combat/combat';
 
 // These sims run without player input; an empty input map suffices each tick.
@@ -183,4 +191,84 @@ describe('pending strikes', () => {
     // A world with nothing pending omits the channel entirely.
     expect(plainWorld().serialize().telegraphs).toBeUndefined();
   });
+});
+
+describe('corruption: hardcore cadence + party-wipe placement', () => {
+  function hardcoreWorld(seed = 5): World {
+    return new World({
+      monsterId: 'dragon',
+      seed,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'cleric' },
+      ],
+      corruption: true,
+      hardcore: true,
+    });
+  }
+
+  it('floors the reschedule interval once a hardcore fight drags past its budget', () => {
+    const w = hardcoreWorld(9);
+    expect(w.hardcore).toBe(true);
+    // Push far past the time budget so the acceleration ramp collapses toward
+    // zero and the hardcore branch clamps the next beat to its hard floor.
+    w.elapsed = HARDCORE_TIME_BUDGET + 1e7;
+    w.corruptionTimer = 0.01;
+    w.step(DT, new Map());
+    expect(w.corruptionTimer).toBeCloseTo(HARDCORE_MIN_INTERVAL);
+  });
+
+  it('never rolls the benevolent healing rift in a hardcore run', () => {
+    const seen = new Set<CorruptionKind>();
+    for (let seed = 1; seed <= 120; seed++) {
+      const w = hardcoreWorld(seed);
+      w.corruptionTimer = 0.01;
+      w.step(DT, new Map());
+      for (const e of w.events) if (e.t === 'corruption') seen.add(e.kind);
+    }
+    expect(seen.size).toBeGreaterThan(1); // beats really did fire
+    expect(seen.has('healingRift')).toBe(false); // the good beat is filtered out
+  });
+
+  it('centres a beat on the arena when the whole party is down', () => {
+    const w = corruptWorld(7);
+    for (const p of w.players) {
+      p.hp = 0;
+      p.state = 'dead';
+    }
+    w.corruptionTimer = 0.01;
+    w.step(DT, new Map());
+    const ev = w.events.find((e) => e.t === 'corruption');
+    if (ev?.t !== 'corruption') throw new Error('expected a corruption beat to fire');
+    // partyCentroid found no living heroes and fell back to the arena centre.
+    expect(ev.pos.x).toBeCloseTo(ARENA_W / 2);
+    expect(ev.pos.y).toBeCloseTo(ARENA_H / 2);
+  });
+
+  it('rains telegraphs on the arena centre when the whole party is down', () => {
+    let covered = false;
+    for (let seed = 1; seed <= 400 && !covered; seed++) {
+      const w = corruptWorld(seed);
+      w.terrain = []; // isolate: only corruption can add pending strikes now
+      for (const p of w.players) {
+        p.hp = 0;
+        p.state = 'dead';
+      }
+      w.corruptionTimer = 0.01;
+      w.step(DT, new Map());
+      if (!w.events.some((e) => e.t === 'corruption' && e.kind === 'telegraphRain')) continue;
+      // nearParty saw zero living heroes, so every strike lands on the exact centre.
+      expect(w.pendingStrikes.length).toBe(CORRUPTION_RAIN_COUNT);
+      for (const s of w.pendingStrikes) {
+        expect(s.pos.x).toBeCloseTo(ARENA_W / 2);
+        expect(s.pos.y).toBeCloseTo(ARENA_H / 2);
+      }
+      covered = true;
+    }
+    expect(covered).toBe(true);
+  });
+
+  // corruption.ts:136 `pool.length > 0 ? pool : table` — the `: table` fallback is
+  // unreachable: `pool` removes only the single last-fired kind from a table of
+  // >=5 distinct kinds, so it can never be emptied. Left as defensive code.
 });

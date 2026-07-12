@@ -821,3 +821,43 @@ describe('SnapshotInterpolator — reset', () => {
     expect(render(interp, 2000).events).toEqual([ev]);
   });
 });
+
+describe('SnapshotInterpolator — degenerate bracket + telegraph passthrough', () => {
+  it('clamps t to 1 when the bracketing snapshots arrive within 1e-6 ms of each other', () => {
+    const interp = new SnapshotInterpolator();
+    // Two snapshots straddle the render time but land a sub-microsecond apart, so
+    // span ≤ 1e-6 and `sample` takes the `: 1` guard instead of dividing by ~0.
+    // t = 1 selects the newer position (200); the divide path would give 0/span = 0
+    // and yield the OLDER position (100), so 200 proves the guard branch ran.
+    pushAt(
+      interp,
+      mkSnapshot({ tick: 1, players: [mkPlayer({ id: 1, pos: { x: 100, y: 0 } })] }),
+      1000,
+    );
+    pushAt(
+      interp,
+      mkSnapshot({ tick: 2, players: [mkPlayer({ id: 1, pos: { x: 200, y: 0 } })] }),
+      1000 + 5e-7,
+    );
+
+    const rs = render(interp, 1000); // renderTime === older.recvMs, newer 5e-7 later
+    expect(rs.players[0].pos.x).toBeCloseTo(200); // clamped to the newer snapshot
+    expect(rs.tick).toBe(2);
+  });
+
+  it('deep-copies telegraphs from the carry snapshot when present', () => {
+    const interp = new SnapshotInterpolator();
+    const tele = mkTelegraph({ kind: 'cone', angle: 1.2, range: 300 });
+    const snap: Snapshot = {
+      ...mkSnapshot({ tick: 4, players: [mkPlayer({ id: 1, pos: { x: 0, y: 0 } })] }),
+      telegraphs: [tele],
+    };
+    pushAt(interp, snap, 1000);
+
+    const rs = render(interp, 1000);
+    expect(rs.telegraphs).toBeDefined();
+    expect(rs.telegraphs).toHaveLength(1);
+    expect(rs.telegraphs?.[0]).toEqual(tele); // same data…
+    expect(rs.telegraphs?.[0]).not.toBe(tele); // …but a fresh copy, never aliased
+  });
+});
