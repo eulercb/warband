@@ -127,6 +127,16 @@ export interface AppState {
   lobbyPhase: 'lobby' | 'inFight';
   /** Host setting: run a boss gauntlet rather than a single fight. */
   gauntlet: boolean;
+  /**
+   * Host seed mode for a gauntlet: a fresh random seed each run, the shared
+   * run-of-the-day (UTC date), or a custom seed the player types in to replay an
+   * exact boss set + reward sequence. Only meaningful when `gauntlet` is on.
+   */
+  seedMode: 'random' | 'daily' | 'custom';
+  /** Custom seed text (any string; hashed to a number). Used when seedMode==='custom'. */
+  seedInput: string;
+  /** The master seed of the run currently in progress (from the host), for display/sharing. */
+  activeRunSeed: number | null;
 
   // local selections
   localName: string;
@@ -177,6 +187,9 @@ export interface AppState {
   setNetHint: (h: string | null) => void;
   setMonster: (id: MonsterId) => void;
   setGauntlet: (on: boolean) => void;
+  setSeedMode: (m: 'random' | 'daily' | 'custom') => void;
+  setSeedInput: (s: string) => void;
+  setActiveRunSeed: (n: number | null) => void;
   setLobby: (
     players: LobbyPlayer[],
     monsterId: MonsterId,
@@ -221,6 +234,9 @@ export const useStore = create<AppState>((set, get) => ({
   players: [],
   lobbyPhase: 'lobby',
   gauntlet: false,
+  seedMode: 'random',
+  seedInput: '',
+  activeRunSeed: null,
 
   localName: loadName(),
   localClass: DEFAULT_CLASS,
@@ -255,6 +271,9 @@ export const useStore = create<AppState>((set, get) => ({
   setNetHint: (netHint) => set({ netHint }),
   setMonster: (monsterId) => set({ monsterId }),
   setGauntlet: (gauntlet) => set({ gauntlet }),
+  setSeedMode: (seedMode) => set({ seedMode }),
+  setSeedInput: (seedInput) => set({ seedInput: seedInput.slice(0, 24) }),
+  setActiveRunSeed: (activeRunSeed) => set({ activeRunSeed }),
   setLobby: (players, monsterId, lobbyPhase, gauntlet) =>
     set({ players, monsterId, lobbyPhase, gauntlet }),
   setLocalName: (localName) => {

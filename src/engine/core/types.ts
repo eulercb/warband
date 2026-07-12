@@ -904,4 +904,12 @@ export interface FightResult {
   cycle?: number;
   endlessAvailable?: boolean;
   modName?: string;
+  /**
+   * Deterministic seed for THIS interstitial's reward offers, derived host-side
+   * from the master run seed. Every client seeds its own offer roll from it so a
+   * shared seed reproduces the same boons between the same bosses (seed mode).
+   */
+  rewardSeed?: number;
+  /** The session's master seed (for display / sharing on the result screen). */
+  runSeed?: number;
 }

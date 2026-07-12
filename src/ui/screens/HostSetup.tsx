@@ -19,6 +19,10 @@ export function HostSetup() {
   const monsterId = useStore((s) => s.monsterId);
   const localName = useStore((s) => s.localName);
   const gauntlet = useStore((s) => s.gauntlet);
+  const seedMode = useStore((s) => s.seedMode);
+  const seedInput = useStore((s) => s.seedInput);
+  const setSeedMode = useStore((s) => s.setSeedMode);
+  const setSeedInput = useStore((s) => s.setSeedInput);
   const netMode = useStore((s) => s.netMode);
   const error = useStore((s) => s.error);
   const setMonster = useStore((s) => s.setMonster);
@@ -55,7 +59,11 @@ export function HostSetup() {
     <div className="wb-screen">
       <div className="wb-panel wb-setup-panel" ref={panelRef}>
         <h2 className="wb-title wb-title-sm">Host a Fight</h2>
-        <p className="wb-subtitle">Choose the boss that leads your run.</p>
+        <p className="wb-subtitle">
+          {gauntlet
+            ? 'Run mode assembles a fully RANDOM boss set — the pick below is only used for a single fight.'
+            : 'Choose the boss to fight.'}
+        </p>
 
         <div className="wb-monster-grid">
           {MONSTER_IDS.map((id) => {
@@ -107,11 +115,51 @@ export function HostSetup() {
             </span>
             <span className="wb-gauntlet-sub">
               {gauntlet
-                ? `A ${RUN_LENGTH}-boss run of climbing difficulty, starting with ${MONSTERS[monsterId].name}. Pick upgrades between bosses; clear all ${RUN_LENGTH} to unlock Endless.`
+                ? `A ${RUN_LENGTH}-boss run of climbing difficulty from a random, seeded boss set. Pick upgrades between bosses; clear all ${RUN_LENGTH} to unlock Endless.`
                 : 'On: a full run of bosses with between-boss upgrades and Endless. Off: a single fight.'}
             </span>
           </span>
         </button>
+
+        {gauntlet ? (
+          <div className="wb-field" role="group" aria-label="Gauntlet seed">
+            <span className="wb-field-label">Gauntlet seed</span>
+            <div className="wb-pad-scheme-row">
+              {(['random', 'daily', 'custom'] as const).map((m) => (
+                <button
+                  type="button"
+                  key={m}
+                  className={`wb-btn wb-btn-chip${seedMode === m ? ' selected' : ''}`}
+                  onClick={() => {
+                    playUiSound('uiClick');
+                    setSeedMode(m);
+                  }}
+                  aria-pressed={seedMode === m}
+                >
+                  {m === 'random' ? 'Random' : m === 'daily' ? 'Run of the Day' : 'Custom seed'}
+                </button>
+              ))}
+            </div>
+            {seedMode === 'custom' ? (
+              <input
+                className="wb-input"
+                type="text"
+                value={seedInput}
+                maxLength={24}
+                placeholder="Enter a seed (any text or number)"
+                onChange={(e) => setSeedInput(e.target.value)}
+                aria-label="Custom gauntlet seed"
+              />
+            ) : null}
+            <span className="wb-gauntlet-sub">
+              {seedMode === 'random'
+                ? 'A fresh random boss set and reward sequence each run.'
+                : seedMode === 'daily'
+                  ? 'Everyone playing today shares one boss set and reward sequence (based on the UTC date).'
+                  : 'Reproduce an exact run — the same seed always yields the same bosses and the same boons between them.'}
+            </span>
+          </div>
+        ) : null}
 
         {relayConfigured && (
           <button

@@ -20,8 +20,9 @@ import {
   chooseCharUpgrade,
   playUiSound,
 } from '../state/session';
-import { CLASSES } from '../../engine/content/classes';
+import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
 import { MONSTERS } from '../../engine/content/monsters';
+import { Rng, mixSeed } from '../../engine/core/math';
 import { UPGRADES, rollUpgradeChoices, type UpgradeId } from '../../engine/content/upgrades';
 import { CHAR_UPGRADES, rollCharChoices } from '../../engine/content/charUpgrades';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
@@ -67,8 +68,16 @@ export function ResultScreen() {
   /* eslint-disable react-hooks/set-state-in-effect -- intentional derived-random reset keyed on a new result */
   useEffect(() => {
     if (!showUpgrades) return;
-    setGenOffers(rollUpgradeChoices(3, Math.random));
-    setCharOffers(rollCharChoices(localClass, 4, Math.random));
+    const st = useStore.getState();
+    // Deterministic from the shared reward seed (seed mode), filtered by what's
+    // already maxed. Falls back to Math.random when no seed is present.
+    let rnd: () => number = Math.random;
+    if (result?.rewardSeed != null) {
+      const rng = new Rng(mixSeed(result.rewardSeed, CLASS_IDS.indexOf(localClass) + 1));
+      rnd = () => rng.next();
+    }
+    setGenOffers(rollUpgradeChoices(3, rnd, st.myUpgrades));
+    setCharOffers(rollCharChoices(localClass, 4, rnd, st.myCharUpgrades));
     setPickedGen(null);
     setPickedChar(null);
   }, [showUpgrades, localClass, result]);

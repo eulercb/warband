@@ -26,8 +26,9 @@ import { RewardScene, type RewardOffers, type RelicFocus } from '../state/reward
 import { Renderer } from '../../render/pipeline/renderer';
 import { InputManager } from '../../input/input';
 import { ARENA_W, ARENA_H } from '../../engine/core/constants';
-import { CLASSES } from '../../engine/content/classes';
+import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
 import { MONSTERS } from '../../engine/content/monsters';
+import { Rng, mixSeed } from '../../engine/core/math';
 import { UPGRADES, rollUpgradeChoices, type UpgradeId } from '../../engine/content/upgrades';
 import {
   CHAR_UPGRADES,
@@ -42,9 +43,22 @@ import type { ClassId, FightResult } from '../../engine/core/types';
  * offer names the REAL skill it would replace (e.g. "Replaces Fireball") using the
  * hero's current, upgrade-resolved ability table.
  */
-function rollOffers(classId: ClassId, ownedGen: UpgradeId[], ownedChar: string[]): RewardOffers {
-  const gen = rollUpgradeChoices(3, Math.random, ownedGen);
-  const chr = rollCharChoices(classId, 4, Math.random, ownedChar);
+function rollOffers(
+  classId: ClassId,
+  ownedGen: UpgradeId[],
+  ownedChar: string[],
+  rewardSeed?: number,
+): RewardOffers {
+  // With a shared seed, roll from a deterministic per-class stream so the same
+  // seed reproduces the same boons between the same bosses (seed mode / daily
+  // run). Without one (legacy single fights), fall back to Math.random.
+  let rnd: () => number = Math.random;
+  if (rewardSeed != null) {
+    const rng = new Rng(mixSeed(rewardSeed, CLASS_IDS.indexOf(classId) + 1));
+    rnd = () => rng.next();
+  }
+  const gen = rollUpgradeChoices(3, rnd, ownedGen);
+  const chr = rollCharChoices(classId, 4, rnd, ownedChar);
   const current = previewAbilityTable(classId, ownedChar);
   return {
     generic: gen.map((id) => {
@@ -74,8 +88,14 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   // owned picks are snapshotted at mount so claiming here never re-rolls the
   // floor — only maxed-out boons carried IN from prior bosses are filtered.
   const offers = useMemo(
-    () => rollOffers(localClass, useStore.getState().myUpgrades, useStore.getState().myCharUpgrades),
-    [localClass],
+    () =>
+      rollOffers(
+        localClass,
+        useStore.getState().myUpgrades,
+        useStore.getState().myCharUpgrades,
+        result.rewardSeed,
+      ),
+    [localClass, result.rewardSeed],
   );
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -296,6 +316,11 @@ export default function RewardRoom({ result }: { result: FightResult }) {
             : 'Boss felled'}
         </span>
         {nextName ? <span className="wb-reward-banner-next">Next: {nextName}</span> : null}
+        {result.runSeed != null ? (
+          <span className="wb-reward-banner-seed" title="Share this seed to replay the exact run">
+            Seed: {result.runSeed.toString(36).toUpperCase()}
+          </span>
+        ) : null}
         <span className="wb-reward-banner-hint">
           Walk onto a relic to claim it — then step into the vortex to descend. Or open the list
           view.

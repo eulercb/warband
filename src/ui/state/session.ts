@@ -11,6 +11,7 @@ import { useStore } from './store';
 import { netLog } from '../../net/log';
 import { Sfx } from '../../audio/sfx';
 import type { ClassId } from '../../engine/core/types';
+import { mixSeed } from '../../engine/core/math';
 import type { UpgradeId } from '../../engine/content/upgrades';
 
 /** Shared audio engine (used here for stings + by GameView for event SFX). */
@@ -103,6 +104,35 @@ function handleJoinError(msg: string): void {
 // awaited by their callers (Host/Client wire up connections that resolve later).
 // No `await` in the body yet, so silence require-await rather than change the
 // awaited Promise<void> API that the UI depends on.
+
+/**
+ * Resolve the host's master seed from the store's seed mode. `random` returns
+ * undefined (Host mints a fresh seed); `daily` hashes today's UTC date so everyone
+ * playing the run-of-the-day shares one seed; `custom` hashes whatever text the
+ * player typed so any string reproduces the exact same run.
+ */
+function resolveHostSeed(): number | undefined {
+  const st = useStore.getState();
+  if (!st.gauntlet) return undefined; // seeds only govern gauntlet assembly
+  if (st.seedMode === 'daily') {
+    const d = new Date();
+    const key = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+    return mixSeed(key, 0xda11);
+  }
+  if (st.seedMode === 'custom') {
+    const t = st.seedInput.trim();
+    if (!t) return undefined;
+    // Numeric text uses the number directly; any other text hashes its chars, so
+    // both "12345" and "warband" are valid, shareable seeds.
+    const asNum = Number(t);
+    if (Number.isFinite(asNum) && /^\d+$/.test(t)) return (asNum >>> 0) || 1;
+    const acc: number[] = [];
+    for (let i = 0; i < t.length; i++) acc.push(t.charCodeAt(i));
+    return mixSeed(...acc, t.length);
+  }
+  return undefined; // 'random'
+}
+
 // eslint-disable-next-line @typescript-eslint/require-await
 export async function hostGame(): Promise<void> {
   const st = useStore.getState();
@@ -115,6 +145,7 @@ export async function hostGame(): Promise<void> {
     net,
     monsterId: st.monsterId,
     gauntlet: st.gauntlet,
+    seed: resolveHostSeed(),
     name: nameOrDefault(),
     classId: st.localClass,
     onLobby: (msg) =>
@@ -125,6 +156,7 @@ export async function hostGame(): Promise<void> {
       resetPauseState(s);
       s.setRun({ index: info.runIndex, total: info.runTotal });
       s.setCycle(info.cycle);
+      s.setActiveRunSeed(info.runSeed);
       s.setNextReadyState(0, 0);
       // Fresh run (first boss of cycle 0) clears carried upgrade display.
       if (info.runIndex === 0 && info.cycle === 0) s.clearMyUpgrades();
@@ -179,6 +211,7 @@ export async function joinGame(code: string): Promise<void> {
       resetPauseState(s);
       s.setRun({ index: msg.runIndex, total: msg.runTotal });
       s.setCycle(msg.cycle);
+      if (msg.runSeed != null) s.setActiveRunSeed(msg.runSeed);
       s.setNextReadyState(0, 0);
       if (msg.runIndex === 0 && msg.cycle === 0) s.clearMyUpgrades(); // fresh run
       s.setPhase('game');

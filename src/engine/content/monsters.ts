@@ -1477,7 +1477,12 @@ export function abilityById(def: MonsterDef, id: string): BossAbilityDef | undef
  * so a run climbs easy → medium → hard. Later cycles bias toward the harder end.
  * Pure aside from the injected RNG.
  */
-export function buildRun(startId: MonsterId, cycle: number, rng: Rng): MonsterId[] {
+export function buildRun(
+  startId: MonsterId,
+  cycle: number,
+  rng: Rng,
+  exclude?: ReadonlySet<MonsterId>,
+): MonsterId[] {
   // Difficulty pattern per slot, hardened by cycle.
   const patternC0: BossTier[] = ['easy', 'easy', 'medium', 'medium', 'hard'];
   const patternHard: BossTier[] = ['medium', 'medium', 'hard', 'hard', 'hard'];
@@ -1490,12 +1495,16 @@ export function buildRun(startId: MonsterId, cycle: number, rng: Rng): MonsterId
 
   const used = new Set<MonsterId>();
   const out: MonsterId[] = [];
-  // Lead with the host's featured boss.
+  // Lead with the given opener (host's pick for a single fight; a seeded random
+  // draw for a gauntlet — the run never lets you hand-pick the boss set).
   out.push(startId);
   used.add(startId);
 
   const pickFrom = (tier: BossTier): MonsterId => {
-    const pool = MONSTERS_BY_TIER[tier].filter((id) => !used.has(id));
+    // Prefer bosses neither used this run NOR seen last run (so Endless re-rolls a
+    // fresh set), falling back progressively if the tier can't fill that.
+    let pool = MONSTERS_BY_TIER[tier].filter((id) => !used.has(id) && !exclude?.has(id));
+    if (pool.length === 0) pool = MONSTERS_BY_TIER[tier].filter((id) => !used.has(id));
     const src = pool.length > 0 ? pool : MONSTERS_BY_TIER[tier];
     const id = src[Math.floor(rng.next() * src.length) % src.length];
     used.add(id);
@@ -1506,6 +1515,23 @@ export function buildRun(startId: MonsterId, cycle: number, rng: Rng): MonsterId
     out.push(pickFrom(pattern[Math.min(i, pattern.length - 1)]));
   }
   return out.slice(0, RUN_LENGTH);
+}
+
+/**
+ * Pick a seeded random opener for a gauntlet — the run never lets a player
+ * hand-pick the first boss. Drawn from the easy tier on a fresh run (medium once
+ * the difficulty has climbed), avoiding the previous run's bosses so Endless
+ * opens on something new.
+ */
+export function randomOpener(
+  cycle: number,
+  rng: Rng,
+  exclude?: ReadonlySet<MonsterId>,
+): MonsterId {
+  const tier: BossTier = cycle <= 0 ? 'easy' : 'medium';
+  let pool = MONSTERS_BY_TIER[tier].filter((id) => !exclude?.has(id));
+  if (pool.length === 0) pool = MONSTERS_BY_TIER[tier];
+  return pool[Math.floor(rng.next() * pool.length) % pool.length];
 }
 
 /**
@@ -1530,8 +1556,9 @@ export function buildRunSlots(
   cycle: number,
   rng: Rng,
   partySize = 4,
+  exclude?: ReadonlySet<MonsterId>,
 ): RunSlot[] {
-  const spine = buildRun(startId, cycle, rng);
+  const spine = buildRun(startId, cycle, rng, exclude);
   const partyFactor = partySize >= 3 ? 1 : partySize === 2 ? 0.6 : 0.3;
   const twinChance =
     Math.min(TWIN_CHANCE_MAX, TWIN_BASE_CHANCE + Math.max(0, cycle) * TWIN_CHANCE_PER_CYCLE) *

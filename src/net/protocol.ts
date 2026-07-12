@@ -73,6 +73,8 @@ export interface StartMsg {
   /** Endless cycle (0 = first run) and the boss's elemental type prefix, if any. */
   cycle: number;
   modName?: string;
+  /** The session's master seed (shared so clients can display the run seed). */
+  runSeed?: number;
 }
 
 /**

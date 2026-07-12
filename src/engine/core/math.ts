@@ -69,6 +69,23 @@ export function angleDelta(a: number, b: number): number {
 // Seeded RNG (mulberry32). Deterministic; only the host runs it.
 // ---------------------------------------------------------------------------
 
+/**
+ * Deterministically fold a list of integers into a non-zero 32-bit seed
+ * (FNV-1a-ish, order-sensitive). Used to derive every per-run / per-fight /
+ * per-reward RNG stream from one master seed, so a whole gauntlet — boss set,
+ * affixes, terrain AND between-boss reward offers — is reproducible from a single
+ * shared seed (the seed-mode + run-of-the-day features).
+ */
+export function mixSeed(...vals: number[]): number {
+  let h = 0x811c9dc5;
+  for (const v of vals) {
+    h ^= v | 0;
+    h = Math.imul(h, 0x01000193);
+    h ^= h >>> 15;
+  }
+  return h >>> 0 || 1;
+}
+
 export class Rng {
   private state: number;
   constructor(seed: number) {

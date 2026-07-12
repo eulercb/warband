@@ -36,10 +36,10 @@ import {
 import { computeBotInput, rollPersonality, BOT_PEER_PREFIX } from '../../engine/ai/bot';
 import type { BotPersonality } from '../../engine/ai/bot';
 import { CLASSES } from '../../engine/content/classes';
-import { buildRunSlots, modifierForCycle, getMonster } from '../../engine/content/monsters';
+import { buildRunSlots, modifierForCycle, getMonster, randomOpener } from '../../engine/content/monsters';
 import type { RunSlot } from '../../engine/content/monsters';
 import { rollAffixes } from '../../engine/content/affixes';
-import { Rng } from '../../engine/core/math';
+import { Rng, mixSeed } from '../../engine/core/math';
 import { isUpgradeId, upgradeMaxStacks } from '../../engine/content/upgrades';
 import type { UpgradeId } from '../../engine/content/upgrades';
 import { isCharUpgradeId, charUpgradeMaxStacks } from '../../engine/content/charUpgrades';
@@ -92,12 +92,25 @@ export interface HostOpts {
   classId: ClassId;
   /** Start a sequence run (gauntlet) rather than a single boss. */
   gauntlet?: boolean;
+  /**
+   * Master seed governing EVERY random choice this session — the gauntlet's boss
+   * set, each boss's affixes, terrain, and the between-boss reward offers — so a
+   * seed can be shared to replay the exact same run (seed mode / run-of-the-day).
+   * Omitted = a fresh random seed is minted.
+   */
+  seed?: number;
   /** Transport: peer-to-peer WebRTC (default) or the global-server relay. */
   net?: NetMode;
   /** Called whenever lobby state changes (including immediately in the ctor). */
   onLobby: (msg: LobbyMsg) => void;
   /** Called whenever a fight begins (manual start, retry or gauntlet advance). */
-  onStart?: (info: { runIndex: number; runTotal: number; cycle: number; modName?: string }) => void;
+  onStart?: (info: {
+    runIndex: number;
+    runTotal: number;
+    cycle: number;
+    modName?: string;
+    runSeed: number;
+  }) => void;
   /** Called when between-boss readiness changes (host UI shows "X/Y ready"). */
   onNextReady?: (info: { ready: number; total: number }) => void;
   /** Called once when the fight ends. */
@@ -187,10 +200,18 @@ export class Host implements NetSession {
    */
   private roundParticipants = new Set<string>();
 
-  // Run / endless state. Each slot is one encounter: [boss] or [boss, twin].
+  // Run / endless state. Each slot is one encounter: [boss] or [boss, ...co-bosses].
   private runOrder: RunSlot[] = [];
   private runIndex = 0;
   private cycle = 0;
+  /**
+   * Master seed for this session (see HostOpts.seed). Every RNG stream — run
+   * assembly, per-fight world seed, affixes, reward offers — derives from it, so
+   * the whole run is reproducible from this one number.
+   */
+  private readonly masterSeed: number;
+  /** Bosses fielded in the current run, so the next Endless run opens on a fresh set. */
+  private lastRunBosses = new Set<MonsterId>();
 
   // Sim-loop bookkeeping.
   private running = false;
@@ -212,6 +233,7 @@ export class Host implements NetSession {
     this.hostName = opts.name;
     this.hostClass = opts.classId;
     this.gauntlet = opts.gauntlet ?? false;
+    this.masterSeed = (opts.seed ?? (Math.random() * 2 ** 31) | 0) >>> 0 || 1;
 
     this.room = openRoom(opts.code, opts.onJoinError, opts.net ?? 'p2p');
     netLog('host', `hosting room "${opts.code}" as ${selfId.slice(0, 6)}`, {
@@ -465,6 +487,7 @@ export class Host implements NetSession {
       return;
     }
     this.cycle = 0;
+    this.lastRunBosses.clear(); // a fresh run isn't constrained by a prior one
     this.runOrder = this.buildRunOrder();
     this.runIndex = 0;
     this.upgrades.clear(); // fresh run — nobody carries upgrades into boss 1
@@ -505,9 +528,25 @@ export class Host implements NetSession {
   /** Encounters this run will fight, in order. Single boss when run mode is off. */
   private buildRunOrder(): RunSlot[] {
     if (!this.gauntlet) return [[this.monsterId]];
-    // Deterministic within a run but varied across cycles.
-    const rng = new Rng(((Date.now() & 0xffff) ^ (this.cycle * 2654435761)) >>> 0 || 1);
-    return buildRunSlots(this.monsterId, this.cycle, rng, this.partySize());
+    // Fully deterministic from the master seed + cycle: the same seed always
+    // yields the same boss set (seed mode / run-of-the-day). A gauntlet never
+    // lets you hand-pick the opener — it's a seeded random draw — and each Endless
+    // cycle avoids the previous run's bosses so the next lap opens on a fresh set.
+    const rng = new Rng(mixSeed(this.masterSeed, this.cycle, 0x51ac));
+    const opener = randomOpener(this.cycle, rng, this.lastRunBosses);
+    const slots = buildRunSlots(opener, this.cycle, rng, this.partySize(), this.lastRunBosses);
+    this.lastRunBosses = new Set<MonsterId>(slots.flat());
+    return slots;
+  }
+
+  /** Deterministic per-fight world seed (drives terrain, affixes, boss RNG). */
+  private fightSeed(): number {
+    return mixSeed(this.masterSeed, this.cycle, this.runIndex, 0xf16);
+  }
+
+  /** Deterministic per-interstitial reward seed (shipped so offers reproduce). */
+  private rewardSeed(): number {
+    return mixSeed(this.masterSeed, this.cycle, this.runIndex, 0x2ec0);
   }
 
   /**
@@ -528,12 +567,12 @@ export class Host implements NetSession {
     const monsterId = slot[0] ?? this.monsterId;
     const coBosses = slot.slice(1);
     const modifier = modifierForCycle(this.cycle);
-    // Boss affixes + mid-fight corruption ramp with the run (gauntlet/endless).
-    // A fresh party's opening boss stays clean (rollAffixes returns none and the
-    // corruption gate is false); slots past the opener and every endless cycle
-    // get spicier. Single fights stay pure — neither is enabled.
-    const spicy = this.gauntlet && (this.runIndex > 0 || this.cycle > 0);
-    const corruption = spicy;
+    // Boss affixes + mid-fight corruption are now STANDARD for every fight
+    // (single, opener and beyond). They still RAMP — affixBudget gives the opener
+    // a single light affix and the corruption grace delay holds the first beat —
+    // so a fresh boss is a small twist, not a wall, while later slots and Endless
+    // cycles pile it on.
+    const corruption = true;
 
     // World roster carries each hero's accumulated upgrades + carried score
     // (host-authoritative); bots earn no upgrades and no score.
@@ -548,12 +587,10 @@ export class Host implements NetSession {
     const wireRoster = roster.map(({ peerId, name, classId }) => ({ peerId, name, classId }));
 
     const playerCount = roster.length;
-    const seed = (Math.random() * 2 ** 31) | 0;
-    // Roll each boss's affixes deterministically from the fight seed (the opener
-    // of a fresh run rolls none; later slots + endless cycles roll more).
-    const bossAffixes = this.gauntlet
-      ? this.rollBossAffixes([monsterId, ...coBosses], seed)
-      : undefined;
+    const seed = this.fightSeed();
+    // Roll each boss's affixes deterministically from the fight seed. Standard for
+    // every fight now (item 4); affixBudget keeps the opener to a single affix.
+    const bossAffixes = this.rollBossAffixes([monsterId, ...coBosses], seed);
 
     // Fresh fight state.
     this.latestInput.clear();
@@ -586,6 +623,7 @@ export class Host implements NetSession {
       runTotal: this.runOrder.length,
       cycle: this.cycle,
       modName: modifier?.prefix,
+      runSeed: this.masterSeed,
     };
     netLog('host', `starting fight → ${playerCount} player(s)`, {
       seed,
@@ -602,6 +640,7 @@ export class Host implements NetSession {
       runTotal: this.runOrder.length,
       cycle: this.cycle,
       modName: modifier?.prefix,
+      runSeed: this.masterSeed,
     });
     this.startLoop();
   }
@@ -817,6 +856,7 @@ export class Host implements NetSession {
     this.runOrder = [];
     this.runIndex = 0;
     this.cycle = 0;
+    this.lastRunBosses.clear();
     this.upgrades.clear();
     this.charUpgrades.clear();
     this.scoreByPeer.clear();
@@ -963,6 +1003,10 @@ export class Host implements NetSession {
     // plain single-boss fight has no run to continue.
     result.endlessAvailable = victory && !hasNext && this.runOrder.length > 1;
     result.modName = modifierForCycle(this.cycle)?.prefix;
+    // Ship the deterministic reward seed so every client's between-boss offers
+    // reproduce for a shared seed, plus the master seed for display/sharing.
+    result.rewardSeed = this.rewardSeed();
+    result.runSeed = this.masterSeed;
 
     // Bank each hero's cumulative score (+ a boss-clear bonus on a win) so the
     // carried score keeps climbing across the run and into endless cycles.

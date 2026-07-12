@@ -70,22 +70,22 @@ describe('affix registry', () => {
 });
 
 describe('affix budget', () => {
-  it("a fresh party's opening boss carries none", () => {
-    expect(affixBudget(0, 0)).toBe(0);
+  it("a fresh party's opening boss carries one (affixes are standard now)", () => {
+    expect(affixBudget(0, 0)).toBe(1);
   });
 
   it('ramps through a run and hardens each endless cycle, capped', () => {
-    expect(affixBudget(0, 1)).toBe(1); // second encounter
+    expect(affixBudget(0, 1)).toBe(1); // opener + second encounter: one
     expect(affixBudget(0, 3)).toBe(2); // deep in the run
-    expect(affixBudget(1, 0)).toBe(1); // endless opener still gets one
+    expect(affixBudget(1, 0)).toBe(2); // endless opener already carries two
     expect(affixBudget(2, 3)).toBe(MAX_AFFIXES); // caps at MAX
     expect(affixBudget(9, 4)).toBe(MAX_AFFIXES);
   });
 });
 
 describe('rollAffixes', () => {
-  it('returns nothing for the clean opener', () => {
-    expect(rollAffixes('easy', 0, 0, new Rng(1))).toEqual([]);
+  it('gives the opener exactly one affix (standard)', () => {
+    expect(rollAffixes('easy', 0, 0, new Rng(1))).toHaveLength(1);
   });
 
   it('is deterministic for a given seed + context', () => {
