@@ -23,6 +23,8 @@ export function HostSetup() {
   const seedInput = useStore((s) => s.seedInput);
   const setSeedMode = useStore((s) => s.setSeedMode);
   const setSeedInput = useStore((s) => s.setSeedInput);
+  const hardcore = useStore((s) => s.hardcore);
+  const setHardcore = useStore((s) => s.setHardcore);
   const netMode = useStore((s) => s.netMode);
   const error = useStore((s) => s.error);
   const setMonster = useStore((s) => s.setMonster);
@@ -159,6 +161,30 @@ export function HostSetup() {
                   : 'Reproduce an exact run — the same seed always yields the same bosses and the same boons between them.'}
             </span>
           </div>
+        ) : null}
+
+        {gauntlet ? (
+          <button
+            type="button"
+            className={`wb-gauntlet-toggle${hardcore ? ' on' : ''}`}
+            onClick={() => {
+              playUiSound('uiClick');
+              setHardcore(!hardcore);
+            }}
+            aria-pressed={hardcore}
+          >
+            <span className="wb-gauntlet-check" aria-hidden="true">
+              {hardcore ? '💀' : ''}
+            </span>
+            <span className="wb-gauntlet-text">
+              <span className="wb-gauntlet-title">Hardcore</span>
+              <span className="wb-gauntlet-sub">
+                {hardcore
+                  ? 'Kill fast or die: mid-fight corruption comes thick and ACCELERATES the longer a boss survives, revives are limited to 2 per fight, and a wipe ends the run — no free retry. For aggressive players.'
+                  : 'Off: the standard run. On: a deadlier run with a per-fight time pressure, limited revives and no free retry.'}
+              </span>
+            </span>
+          </button>
         ) : null}
 
         {relayConfigured && (

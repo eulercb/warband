@@ -44,6 +44,7 @@ function formatTime(ms: number): string {
 export function ResultScreen() {
   const result = useStore((s) => s.result);
   const isHost = useStore((s) => s.isHost);
+  const activeHardcore = useStore((s) => s.activeHardcore);
   const localClass = useStore((s) => s.localClass);
   const myUpgrades = useStore((s) => s.myUpgrades);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
@@ -354,7 +355,8 @@ export function ResultScreen() {
             )
           ) : (
             <>
-              {isHost ? (
+              {/* Hardcore has no free retry on a wipe (item 11) — the run ends. */}
+              {isHost && !(activeHardcore && !victory) ? (
                 <button type="button" className="wb-btn wb-btn-danger" onClick={onRetry}>
                   {victory ? 'Play Again' : 'Retry'}
                 </button>

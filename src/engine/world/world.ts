@@ -55,6 +55,7 @@ import {
   TWIN_DMG_FRAC,
   BOSS_HP_SCALE,
   BOSS_REGEN_MAX_FRAC,
+  HARDCORE_REVIVES_PER_FIGHT,
   ADD_HP,
   ADD_MOVE_SPEED,
   ADD_RADIUS,
@@ -182,6 +183,12 @@ export interface WorldInit {
    */
   corruption?: boolean;
   /**
+   * Hardcore run (item 11): corruption beats come far more often and accelerate
+   * the longer a fight drags past the expected kill time, revives are limited per
+   * fight, and a wipe has no free retry. A deadlier mode for aggressive players.
+   */
+  hardcore?: boolean;
+  /**
    * Practice mode (the walkable menu playground): the dummy respawns instead of
    * granting victory, the party can never wipe to defeat, and interaction
    * totems are placed around the arena.
@@ -233,6 +240,10 @@ export class World {
 
   /** Mid-fight corruption events enabled for this fight (host-gated). */
   corruptionEnabled: boolean;
+  /** Hardcore run: deadlier corruption cadence + limited revives (see item 11). */
+  hardcore = false;
+  /** Revives remaining this fight (hardcore only; Infinity otherwise). */
+  reviveBudget = Infinity;
   /** Seconds until the next corruption beat fires (see world/corruption.ts). */
   corruptionTimer = 0;
   /** How many corruption beats have fired (drives variety / anti-repeat). */
@@ -257,6 +268,10 @@ export class World {
     this.modifier = init.modifier ?? null;
     this.practice = init.practice ?? false;
     this.scene = init.scene ?? null;
+    // Hardcore only bites in a real fight; set it BEFORE the first corruption
+    // delay is computed so the opening beat already lands on the deadlier cadence.
+    this.hardcore = (init.hardcore ?? false) && !this.practice && this.scene === null;
+    this.reviveBudget = this.hardcore ? HARDCORE_REVIVES_PER_FIGHT : Infinity;
     // Corruption only runs in a real fight (never in the menu scenes / playground).
     this.corruptionEnabled = (init.corruption ?? false) && !this.practice && this.scene === null;
     this.corruptionTimer = this.corruptionEnabled ? firstCorruptionDelay(this) : 0;
@@ -615,6 +630,9 @@ export class World {
   }
 
   private updateRevive(dt: number, inputs: Map<string, InputCommand>): void {
+    // Hardcore: once the fight's revive stock is spent, a downed hero can no
+    // longer be brought back — they're out for the rest of this boss.
+    if (this.reviveBudget <= 0) return;
     for (const d of this.players) {
       if (d.state !== 'downed') continue;
       let reviver: Player | null = null;
@@ -637,7 +655,9 @@ export class World {
           d.reviverId = null;
           d.downedTimer = 0;
           reviver.stats.revives += 1;
+          this.reviveBudget -= 1; // hardcore: spend from the fight's revive stock
           this.events.push({ t: 'revive', id: d.id, pos: { ...d.pos } });
+          if (this.reviveBudget <= 0) return; // stock spent — no more this fight
         }
       } else {
         d.reviveProgress = 0;

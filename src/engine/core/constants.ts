@@ -273,6 +273,22 @@ export const CORRUPTION_RIFT_TICK_HEAL = 22;
 /** Add swarm: how many extra minions boil up (before player-count scaling). */
 export const CORRUPTION_SWARM_COUNT = 3;
 
+// --- Hardcore mode (item 11) ---
+// A deadlier run for aggressive players. There's an EXPECTED kill time per boss;
+// corruption beats already come more often, and ACCELERATE the longer a fight
+// drags past that budget, so a party that can't close the kill drowns in beats.
+// Revives are limited per fight and a wipe has no free retry (the run ends).
+/** Baseline corruption cadence multiplier in hardcore (< 1 = more frequent). */
+export const HARDCORE_CORRUPTION_MULT = 0.55;
+/** Expected seconds to fell a boss; beats accelerate once the fight runs longer. */
+export const HARDCORE_TIME_BUDGET = 75;
+/** Seconds-over-budget that halves the gap between beats (the death spiral). */
+export const HARDCORE_RAMP_TAU = 45;
+/** Floor on the beat interval in hardcore, so it stays dodgeable, never instant. */
+export const HARDCORE_MIN_INTERVAL = 3.5;
+/** Revives a hardcore band gets per fight before a downed hero is lost for good. */
+export const HARDCORE_REVIVES_PER_FIGHT = 2;
+
 // --- Adds (skeletons) ---
 export const ADD_HP = 60;
 export const ADD_MOVE_SPEED = 160;

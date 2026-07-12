@@ -145,6 +145,7 @@ export async function hostGame(): Promise<void> {
     net,
     monsterId: st.monsterId,
     gauntlet: st.gauntlet,
+    hardcore: st.hardcore,
     seed: resolveHostSeed(),
     name: nameOrDefault(),
     classId: st.localClass,
@@ -157,6 +158,7 @@ export async function hostGame(): Promise<void> {
       s.setRun({ index: info.runIndex, total: info.runTotal });
       s.setCycle(info.cycle);
       s.setActiveRunSeed(info.runSeed);
+      s.setActiveHardcore(info.hardcore);
       s.setNextReadyState(0, 0);
       // Fresh run (first boss of cycle 0) clears carried upgrade display.
       if (info.runIndex === 0 && info.cycle === 0) s.clearMyUpgrades();
@@ -212,6 +214,7 @@ export async function joinGame(code: string): Promise<void> {
       s.setRun({ index: msg.runIndex, total: msg.runTotal });
       s.setCycle(msg.cycle);
       if (msg.runSeed != null) s.setActiveRunSeed(msg.runSeed);
+      s.setActiveHardcore(msg.hardcore ?? false);
       s.setNextReadyState(0, 0);
       if (msg.runIndex === 0 && msg.cycle === 0) s.clearMyUpgrades(); // fresh run
       s.setPhase('game');

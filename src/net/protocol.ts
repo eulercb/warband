@@ -75,6 +75,8 @@ export interface StartMsg {
   modName?: string;
   /** The session's master seed (shared so clients can display the run seed). */
   runSeed?: number;
+  /** Hardcore run (item 11) — clients hide the retry option and show the mode. */
+  hardcore?: boolean;
 }
 
 /**

@@ -104,6 +104,8 @@ export interface HostOpts {
    * Omitted = a fresh random seed is minted.
    */
   seed?: number;
+  /** Hardcore run (item 11): deadlier corruption cadence, limited revives, no free retry. */
+  hardcore?: boolean;
   /** Transport: peer-to-peer WebRTC (default) or the global-server relay. */
   net?: NetMode;
   /** Called whenever lobby state changes (including immediately in the ctor). */
@@ -115,6 +117,7 @@ export interface HostOpts {
     cycle: number;
     modName?: string;
     runSeed: number;
+    hardcore: boolean;
   }) => void;
   /** Called when between-boss readiness changes (host UI shows "X/Y ready"). */
   onNextReady?: (info: { ready: number; total: number }) => void;
@@ -166,6 +169,7 @@ export class Host implements NetSession {
   private hostClass: ClassId;
   private hostReady = false;
   private gauntlet: boolean;
+  private readonly hardcore: boolean;
   private phase: 'lobby' | 'inFight' = 'lobby';
   private readonly lobby = new Map<string, PeerEntry>();
   /** Host-added AI band members (in roster order after real peers). */
@@ -238,6 +242,7 @@ export class Host implements NetSession {
     this.hostName = opts.name;
     this.hostClass = opts.classId;
     this.gauntlet = opts.gauntlet ?? false;
+    this.hardcore = (opts.hardcore ?? false) && this.gauntlet;
     this.masterSeed = (opts.seed ?? (Math.random() * 2 ** 31) | 0) >>> 0 || 1;
 
     this.room = openRoom(opts.code, opts.onJoinError, opts.net ?? 'p2p');
@@ -507,6 +512,8 @@ export class Host implements NetSession {
   /** Restart the current fight (same boss / same run position) after a loss. */
   retryFight(): void {
     if (this.phase === 'inFight') return;
+    // Hardcore has no free retry — a wipe ends the run (item 11).
+    if (this.hardcore) return;
     if (this.runOrder.length === 0) {
       this.runOrder = this.buildRunOrder();
       this.runIndex = 0;
@@ -617,6 +624,7 @@ export class Host implements NetSession {
       coBosses,
       bossAffixes,
       corruption,
+      hardcore: this.hardcore,
     });
     this.localPlayerId = this.world.playerIdByPeer(selfId);
 
@@ -632,6 +640,7 @@ export class Host implements NetSession {
       cycle: this.cycle,
       modName: modifier?.prefix,
       runSeed: this.masterSeed,
+      hardcore: this.hardcore,
     };
     netLog('host', `starting fight → ${playerCount} player(s)`, {
       seed,
@@ -649,6 +658,7 @@ export class Host implements NetSession {
       cycle: this.cycle,
       modName: modifier?.prefix,
       runSeed: this.masterSeed,
+      hardcore: this.hardcore,
     });
     this.startLoop();
   }

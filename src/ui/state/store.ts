@@ -137,6 +137,10 @@ export interface AppState {
   seedInput: string;
   /** The master seed of the run currently in progress (from the host), for display/sharing. */
   activeRunSeed: number | null;
+  /** Host setting: hardcore run (deadlier corruption, limited revives, no free retry). */
+  hardcore: boolean;
+  /** Whether the run currently in progress is hardcore (from the host). */
+  activeHardcore: boolean;
 
   // local selections
   localName: string;
@@ -190,6 +194,8 @@ export interface AppState {
   setSeedMode: (m: 'random' | 'daily' | 'custom') => void;
   setSeedInput: (s: string) => void;
   setActiveRunSeed: (n: number | null) => void;
+  setHardcore: (on: boolean) => void;
+  setActiveHardcore: (on: boolean) => void;
   setLobby: (
     players: LobbyPlayer[],
     monsterId: MonsterId,
@@ -237,6 +243,8 @@ export const useStore = create<AppState>((set, get) => ({
   seedMode: 'random',
   seedInput: '',
   activeRunSeed: null,
+  hardcore: false,
+  activeHardcore: false,
 
   localName: loadName(),
   localClass: DEFAULT_CLASS,
@@ -274,6 +282,8 @@ export const useStore = create<AppState>((set, get) => ({
   setSeedMode: (seedMode) => set({ seedMode }),
   setSeedInput: (seedInput) => set({ seedInput: seedInput.slice(0, 24) }),
   setActiveRunSeed: (activeRunSeed) => set({ activeRunSeed }),
+  setHardcore: (hardcore) => set({ hardcore }),
+  setActiveHardcore: (activeHardcore) => set({ activeHardcore }),
   setLobby: (players, monsterId, lobbyPhase, gauntlet) =>
     set({ players, monsterId, lobbyPhase, gauntlet }),
   setLocalName: (localName) => {
