@@ -40,6 +40,10 @@
   --cls-rogue: #8a8f98;
   --cls-paladin: #e8d36a;
   --cls-druid: #5bbf7a;
+  --cls-bard: #e083c8;
+  --cls-monk: #2fb8a6;
+  --cls-sorcerer: #ff7043;
+  --cls-warlock: #6d3fa0;
 
   /* Outcome */
   --victory: #f2c14e;
@@ -1392,6 +1396,102 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+ * Ephemeral coin shop (item 21)
+ * ------------------------------------------------------------------------ */
+.wb-shop {
+  margin: 14px 0 4px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 210, 90, 0.05);
+  border: 1px solid rgba(255, 210, 90, 0.22);
+}
+.wb-shop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.wb-shop-title {
+  margin: 0;
+}
+.wb-shop-coins {
+  font-weight: 900;
+  font-size: 1rem;
+  color: #ffd25a;
+  white-space: nowrap;
+}
+.wb-shop-sub {
+  margin: 2px 0 10px;
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}
+.wb-shop-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+.wb-shop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 8px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+  transition:
+    border-color 0.12s,
+    transform 0.08s,
+    background 0.12s;
+}
+.wb-shop-card:hover:not(:disabled) {
+  border-color: #ffd25a;
+  transform: translateY(-2px);
+}
+.wb-shop-card:disabled {
+  cursor: default;
+}
+.wb-shop-card.unaffordable {
+  opacity: 0.45;
+}
+.wb-shop-card.owned {
+  border-color: #7dffa0;
+  background: rgba(125, 255, 160, 0.1);
+}
+.wb-shop-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.wb-shop-name {
+  font-weight: 800;
+  font-size: 0.86rem;
+}
+.wb-shop-have {
+  color: #7dffa0;
+}
+.wb-shop-desc {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  line-height: 1.22;
+}
+.wb-shop-cost {
+  margin-top: 2px;
+  font-weight: 800;
+  font-size: 0.8rem;
+  color: #ffd25a;
+}
+.wb-shop-card.owned .wb-shop-cost {
+  color: #7dffa0;
+}
+.wb-reward-banner-coins {
+  color: #ffd25a;
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
  * Pause-menu map legend (terrain + obstacles)
  * ------------------------------------------------------------------------ */
 
@@ -2031,4 +2131,36 @@ body {
   min-height: auto;
   width: 100%;
   padding-block: 8px;
+}
+
+/* --- Run-clear special reward (subclass / multiclass / grand) ------------- */
+.wb-special-reward {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 214, 120, 0.5);
+  border-radius: 10px;
+  background: rgba(60, 48, 20, 0.35);
+}
+.wb-special-title {
+  display: block;
+  font-weight: 700;
+  color: #ffd678;
+  margin-bottom: 8px;
+}
+.wb-special-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.wb-special-card {
+  flex: 1 1 160px;
+  min-width: 150px;
+}
+.wb-special-reward.chosen {
+  border-color: rgba(120, 220, 140, 0.5);
+  background: rgba(30, 60, 40, 0.35);
+}
+.wb-special-reward.chosen .wb-special-title {
+  color: #9df0b0;
+  margin-bottom: 0;
 }

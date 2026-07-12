@@ -20,12 +20,15 @@ import {
   chooseCharUpgrade,
   playUiSound,
 } from '../state/session';
-import { CLASSES } from '../../engine/content/classes';
+import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
 import { MONSTERS } from '../../engine/content/monsters';
+import { Rng, mixSeed } from '../../engine/core/math';
 import { UPGRADES, rollUpgradeChoices, type UpgradeId } from '../../engine/content/upgrades';
 import { CHAR_UPGRADES, rollCharChoices } from '../../engine/content/charUpgrades';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import RewardRoom from '../game/RewardRoom';
+import SpecialReward from './SpecialReward';
+import EphemeralShop from './EphemeralShop';
 
 /** Format milliseconds as `m:ss.mmm` (>= 1 min) or `s.d`s (under a minute). */
 function formatTime(ms: number): string {
@@ -43,6 +46,7 @@ function formatTime(ms: number): string {
 export function ResultScreen() {
   const result = useStore((s) => s.result);
   const isHost = useStore((s) => s.isHost);
+  const activeHardcore = useStore((s) => s.activeHardcore);
   const localClass = useStore((s) => s.localClass);
   const myUpgrades = useStore((s) => s.myUpgrades);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
@@ -67,8 +71,16 @@ export function ResultScreen() {
   /* eslint-disable react-hooks/set-state-in-effect -- intentional derived-random reset keyed on a new result */
   useEffect(() => {
     if (!showUpgrades) return;
-    setGenOffers(rollUpgradeChoices(3, Math.random));
-    setCharOffers(rollCharChoices(localClass, 4, Math.random));
+    const st = useStore.getState();
+    // Deterministic from the shared reward seed (seed mode), filtered by what's
+    // already maxed. Falls back to Math.random when no seed is present.
+    let rnd: () => number = Math.random;
+    if (result?.rewardSeed != null) {
+      const rng = new Rng(mixSeed(result.rewardSeed, CLASS_IDS.indexOf(localClass) + 1));
+      rnd = () => rng.next();
+    }
+    setGenOffers(rollUpgradeChoices(3, rnd, st.myUpgrades));
+    setCharOffers(rollCharChoices(localClass, 4, rnd, st.myCharUpgrades));
     setPickedGen(null);
     setPickedChar(null);
   }, [showUpgrades, localClass, result]);
@@ -158,6 +170,10 @@ export function ResultScreen() {
             </span>
           </div>
         ) : null}
+
+        {showUpgrades ? <SpecialReward /> : null}
+
+        {showUpgrades ? <EphemeralShop /> : null}
 
         {showUpgrades ? (
           <div className="wb-upgrades">
@@ -345,9 +361,15 @@ export function ResultScreen() {
             )
           ) : (
             <>
-              {isHost ? (
+              {/* Hardcore has no FREE retry on a wipe (item 11) — but a banked
+                  Second Chance from the ephemeral shop (item 21) buys one back. */}
+              {isHost && (!(activeHardcore && !victory) || result.hardcoreRetryAvailable) ? (
                 <button type="button" className="wb-btn wb-btn-danger" onClick={onRetry}>
-                  {victory ? 'Play Again' : 'Retry'}
+                  {victory
+                    ? 'Play Again'
+                    : result.hardcoreRetryAvailable
+                      ? 'Second Chance'
+                      : 'Retry'}
                 </button>
               ) : null}
               <button type="button" className="wb-btn wb-btn-primary" onClick={onReturn}>

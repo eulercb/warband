@@ -572,6 +572,16 @@ const WEAPON_EXPECT: Record<ClassId, WeaponSpec> = {
   mage: { kind: 'staff', length: 1.8, color: 0x9c5cf0, style: 'ranged' },
   druid: { kind: 'staff', length: 1.7, color: 0x6b8f3a, style: 'melee' },
   cleric: { kind: 'mace', length: 1.3, color: 0xf2c14e, style: 'melee' },
+  bard: { kind: 'dagger', length: 1.1, color: CLASS_COLORS.bard, style: 'ranged' },
+  monk: {
+    kind: 'dagger',
+    length: 0.8,
+    color: CLASS_COLORS.monk,
+    style: 'melee',
+    offhand: 'dagger',
+  },
+  sorcerer: { kind: 'staff', length: 1.7, color: CLASS_COLORS.sorcerer, style: 'ranged' },
+  warlock: { kind: 'staff', length: 1.6, color: CLASS_COLORS.warlock, style: 'ranged' },
 };
 
 describe('buildHumanoidSpec', () => {

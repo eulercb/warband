@@ -40,6 +40,14 @@ function weaponFor(classId: ClassId): WeaponSpec {
       return { kind: 'staff', length: 1.7, color: 0x6b8f3a, style: 'melee' };
     case 'cleric':
       return { kind: 'mace', length: 1.3, color: 0xf2c14e, style: 'melee' };
+    case 'bard':
+      return { kind: 'dagger', length: 1.1, color: c, style: 'ranged' };
+    case 'monk':
+      return { kind: 'dagger', length: 0.8, color: c, style: 'melee', offhand: 'dagger' };
+    case 'sorcerer':
+      return { kind: 'staff', length: 1.7, color: c, style: 'ranged' };
+    case 'warlock':
+      return { kind: 'staff', length: 1.6, color: c, style: 'ranged' };
     default:
       return { kind: 'sword', length: 2.0, color: c, style: 'melee' };
   }

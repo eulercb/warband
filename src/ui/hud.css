@@ -537,3 +537,191 @@
   color: #d9c6ff;
   font-size: 11px;
 }
+
+/* --- Mobile touch control overlay (TouchControls.tsx) --------------------- */
+.wb-touch-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none; /* only the sticks/buttons are interactive */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.wb-touch-controls > * {
+  pointer-events: auto;
+}
+.wb-touch-stick {
+  position: absolute;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wb-touch-stick-left {
+  left: max(20px, env(safe-area-inset-left));
+}
+.wb-touch-stick-right {
+  right: max(20px, env(safe-area-inset-right));
+}
+.wb-touch-knob {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.24);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  will-change: transform;
+}
+.wb-touch-stick-label {
+  position: absolute;
+  bottom: 6px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+.wb-touch-buttons {
+  position: absolute;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: calc(max(24px, env(safe-area-inset-bottom)) + 150px);
+  display: grid;
+  grid-template-columns: repeat(2, 66px);
+  gap: 10px;
+  justify-items: center;
+}
+.wb-touch-btn {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: rgba(20, 22, 34, 0.55);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.05;
+  padding: 4px;
+  touch-action: none;
+  transition:
+    transform 0.05s ease,
+    background 0.05s ease;
+}
+.wb-touch-btn.held {
+  transform: scale(0.92);
+  background: rgba(90, 120, 200, 0.75);
+}
+.wb-touch-btn-basic {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(60, 70, 110, 0.6);
+}
+.wb-touch-btn-sub {
+  border-color: rgba(220, 160, 255, 0.55);
+  background: rgba(90, 60, 120, 0.55);
+}
+.wb-touch-side {
+  position: absolute;
+  right: max(20px, env(safe-area-inset-right));
+  top: max(70px, env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+.wb-touch-side .wb-touch-btn {
+  width: 74px;
+  height: 44px;
+  border-radius: 22px;
+  background: rgba(40, 90, 55, 0.6);
+  border-color: rgba(120, 220, 140, 0.5);
+}
+.wb-touch-side .wb-touch-btn-swap {
+  background: rgba(90, 70, 130, 0.6);
+  border-color: rgba(180, 150, 240, 0.5);
+}
+.wb-touch-side .wb-touch-btn-item {
+  background: rgba(40, 100, 70, 0.6);
+  border-color: rgba(125, 255, 160, 0.55);
+}
+
+/* --- HUD multiclass indicator (item 14) ---------------------------------- */
+.hud-multiclass {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11px;
+}
+.hud-multiclass-key {
+  padding: 1px 6px;
+  border: 1px solid rgba(180, 150, 240, 0.6);
+  border-radius: 5px;
+  color: #d9c6ff;
+  font-weight: 700;
+}
+.hud-multiclass-classes {
+  display: flex;
+  gap: 4px;
+}
+.hud-multiclass-chip {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+}
+.hud-multiclass-chip.active {
+  background: rgba(180, 150, 240, 0.35);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Ephemeral healing-vial pip (item 21). */
+.hud-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+.hud-item-key {
+  padding: 1px 6px;
+  border: 1px solid rgba(125, 255, 160, 0.6);
+  border-radius: 5px;
+  color: #b6ffcf;
+  font-weight: 700;
+}
+.hud-item-count {
+  font-weight: 800;
+  color: #7dffa0;
+}
+
+/* Class accents for the expansion classes (bard/monk/sorcerer/warlock). */
+.hud-teammate.cls-bard {
+  border-left-color: var(--cls-bard);
+}
+.hud-teammate.cls-monk {
+  border-left-color: var(--cls-monk);
+}
+.hud-teammate.cls-sorcerer {
+  border-left-color: var(--cls-sorcerer);
+}
+.hud-teammate.cls-warlock {
+  border-left-color: var(--cls-warlock);
+}
+.hud-selfhp.cls-bard .hud-healthbar {
+  border-color: var(--cls-bard);
+}
+.hud-selfhp.cls-monk .hud-healthbar {
+  border-color: var(--cls-monk);
+}
+.hud-selfhp.cls-sorcerer .hud-healthbar {
+  border-color: var(--cls-sorcerer);
+}
+.hud-selfhp.cls-warlock .hud-healthbar {
+  border-color: var(--cls-warlock);
+}

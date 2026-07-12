@@ -160,15 +160,15 @@ export function affixPrefix(affixes: AffixId[] | undefined): string {
 export const MAX_AFFIXES = 3;
 
 /**
- * How many affixes a boss should carry given its place in the run. Zero for a
- * fresh party's opening boss (learn one clean fight first); one from the second
- * encounter on; two deep in a run; and every endless cycle stacks one more, up
- * to MAX_AFFIXES. Pure.
+ * How many affixes a boss should carry given its place in the run. Affixes are
+ * STANDARD now (every fight rolls at least one — a single light twist on the
+ * opener), ramping to two deeper in a run, with every endless cycle stacking one
+ * more up to MAX_AFFIXES. Pure.
  */
 export function affixBudget(cycle: number, encounterIndex: number): number {
   const c = Math.max(0, Math.floor(cycle));
   const slot = Math.max(0, Math.floor(encounterIndex));
-  const fromSlot = slot <= 0 ? 0 : slot <= 2 ? 1 : 2;
+  const fromSlot = slot <= 1 ? 1 : 2;
   return Math.min(MAX_AFFIXES, fromSlot + c);
 }
 

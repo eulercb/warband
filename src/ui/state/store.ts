@@ -6,15 +6,19 @@
 import { create } from 'zustand';
 import type { ClassId, MonsterId, FightResult } from '../../engine/core/types';
 import type { UpgradeId } from '../../engine/content/upgrades';
+import { EPHEMERAL } from '../../engine/content/ephemeral';
+import type { EphemeralId, EphemeralStock } from '../../engine/content/ephemeral';
 import type { LobbyPlayer, NetSession } from '../../net/protocol';
 import type { NetMode } from '../../net/transport/room';
 import { DEFAULT_CLASS } from '../../engine/content/classes';
 import { DEFAULT_MONSTER } from '../../engine/content/monsters';
+import { setShakeEnabled } from '../../render/pipeline/camera';
 
 // --- Persisted local preferences (survive reloads / future runs) -----------
 const NAME_KEY = 'warband.heroName.v1';
 const VOLUME_KEY = 'warband.volume.v1';
 const AUTOFIRE_KEY = 'warband.autofire.v1';
+const SHAKE_KEY = 'warband.screenShake.v1';
 
 /** Load the last hero name the player used (empty string if none / unavailable). */
 function loadName(): string {
@@ -79,6 +83,24 @@ function persistAutofire(on: boolean): void {
   }
 }
 
+/** Load the persisted screen-shake preference (default ON). */
+function loadScreenShake(): boolean {
+  try {
+    if (typeof localStorage !== 'undefined') return localStorage.getItem(SHAKE_KEY) !== '0';
+  } catch {
+    /* privacy mode / unavailable storage — default on */
+  }
+  return true;
+}
+
+function persistScreenShake(on: boolean): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(SHAKE_KEY, on ? '1' : '0');
+  } catch {
+    /* ignore quota / privacy-mode failures */
+  }
+}
+
 export type Phase = 'menu' | 'hostSetup' | 'join' | 'lobby' | 'game' | 'result' | 'waiting'; // late-join holding state: "fight in progress"
 
 export interface AppState {
@@ -107,6 +129,20 @@ export interface AppState {
   lobbyPhase: 'lobby' | 'inFight';
   /** Host setting: run a boss gauntlet rather than a single fight. */
   gauntlet: boolean;
+  /**
+   * Host seed mode for a gauntlet: a fresh random seed each run, the shared
+   * run-of-the-day (UTC date), or a custom seed the player types in to replay an
+   * exact boss set + reward sequence. Only meaningful when `gauntlet` is on.
+   */
+  seedMode: 'random' | 'daily' | 'custom';
+  /** Custom seed text (any string; hashed to a number). Used when seedMode==='custom'. */
+  seedInput: string;
+  /** The master seed of the run currently in progress (from the host), for display/sharing. */
+  activeRunSeed: number | null;
+  /** Host setting: hardcore run (deadlier corruption, limited revives, no free retry). */
+  hardcore: boolean;
+  /** Whether the run currently in progress is hardcore (from the host). */
+  activeHardcore: boolean;
 
   // local selections
   localName: string;
@@ -128,6 +164,16 @@ export interface AppState {
   myUpgrades: UpgradeId[];
   /** Character (class) upgrades this local hero has picked so far this run. */
   myCharUpgrades: string[];
+  /** The subclass this hero committed to (item 13), or null. */
+  mySubclassId: string | null;
+  /** Subclass skill ids bound to sub1/sub2 (up to two, same subclass). */
+  mySubSkills: string[];
+  /** Extra classes unlocked for multiclass swapping (item 14). */
+  myExtraClasses: ClassId[];
+  /** Ephemeral-shop coin balance for this local hero (item 21; carries the run). */
+  myCoins: number;
+  /** Ephemeral perks this hero has bought for the next fight (item 21). */
+  myEphemeral: EphemeralStock;
   /** Between-boss readiness tally from the host (upgrade screen). */
   nextReadyReady: number;
   nextReadyTotal: number;
@@ -141,6 +187,8 @@ export interface AppState {
   volume: number;
   /** Hold-to-autofire: held ability buttons repeat instead of edge-triggering. */
   autofire: boolean;
+  /** Accessibility: allow the camera to shake on heavy hits/casts (persisted). */
+  screenShake: boolean;
   /** Whether the Controls (rebinding) overlay is open. */
   showControls: boolean;
 
@@ -155,6 +203,11 @@ export interface AppState {
   setNetHint: (h: string | null) => void;
   setMonster: (id: MonsterId) => void;
   setGauntlet: (on: boolean) => void;
+  setSeedMode: (m: 'random' | 'daily' | 'custom') => void;
+  setSeedInput: (s: string) => void;
+  setActiveRunSeed: (n: number | null) => void;
+  setHardcore: (on: boolean) => void;
+  setActiveHardcore: (on: boolean) => void;
   setLobby: (
     players: LobbyPlayer[],
     monsterId: MonsterId,
@@ -172,11 +225,20 @@ export interface AppState {
   addMyUpgrade: (id: UpgradeId) => void;
   addMyCharUpgrade: (id: string) => void;
   clearMyUpgrades: () => void;
+  addMySubSkill: (subclassId: string, skillId: string) => void;
+  addMyExtraClass: (classId: ClassId) => void;
+  /** Bank this fight's ephemeral coins from a landed result (item 21). */
+  awardCoinsFromResult: (result: FightResult) => void;
+  /** Buy an ephemeral perk if affordable; returns true on success (item 21). */
+  buyEphemeral: (id: EphemeralId) => boolean;
+  /** Clear the pending ephemeral stock once a fight consumes it (item 21). */
+  resetEphemeralStock: () => void;
   setNextReadyState: (ready: number, total: number) => void;
   setResult: (r: FightResult | null) => void;
   toggleMute: () => void;
   setVolume: (v: number) => void;
   setAutofire: (on: boolean) => void;
+  setScreenShake: (on: boolean) => void;
   setShowControls: (v: boolean) => void;
   /** Tear the session down and return to the main menu. */
   reset: () => void;
@@ -198,6 +260,11 @@ export const useStore = create<AppState>((set, get) => ({
   players: [],
   lobbyPhase: 'lobby',
   gauntlet: false,
+  seedMode: 'random',
+  seedInput: '',
+  activeRunSeed: null,
+  hardcore: false,
+  activeHardcore: false,
 
   localName: loadName(),
   localClass: DEFAULT_CLASS,
@@ -210,6 +277,11 @@ export const useStore = create<AppState>((set, get) => ({
   cycle: 0,
   myUpgrades: [],
   myCharUpgrades: [],
+  mySubclassId: null,
+  mySubSkills: [],
+  myExtraClasses: [],
+  myCoins: 0,
+  myEphemeral: {},
   nextReadyReady: 0,
   nextReadyTotal: 0,
 
@@ -217,6 +289,7 @@ export const useStore = create<AppState>((set, get) => ({
   muted: false,
   volume: loadVolume(),
   autofire: loadAutofire(),
+  screenShake: loadScreenShake(),
   showControls: false,
 
   // Navigating always dismisses the transient Controls modal so it can't get
@@ -231,6 +304,11 @@ export const useStore = create<AppState>((set, get) => ({
   setNetHint: (netHint) => set({ netHint }),
   setMonster: (monsterId) => set({ monsterId }),
   setGauntlet: (gauntlet) => set({ gauntlet }),
+  setSeedMode: (seedMode) => set({ seedMode }),
+  setSeedInput: (seedInput) => set({ seedInput: seedInput.slice(0, 24) }),
+  setActiveRunSeed: (activeRunSeed) => set({ activeRunSeed }),
+  setHardcore: (hardcore) => set({ hardcore }),
+  setActiveHardcore: (activeHardcore) => set({ activeHardcore }),
   setLobby: (players, monsterId, lobbyPhase, gauntlet) =>
     set({ players, monsterId, lobbyPhase, gauntlet }),
   setLocalName: (localName) => {
@@ -246,7 +324,52 @@ export const useStore = create<AppState>((set, get) => ({
   setCycle: (cycle) => set({ cycle }),
   addMyUpgrade: (id) => set({ myUpgrades: [...get().myUpgrades, id] }),
   addMyCharUpgrade: (id) => set({ myCharUpgrades: [...get().myCharUpgrades, id] }),
-  clearMyUpgrades: () => set({ myUpgrades: [], myCharUpgrades: [] }),
+  clearMyUpgrades: () =>
+    set({
+      myUpgrades: [],
+      myCharUpgrades: [],
+      mySubclassId: null,
+      mySubSkills: [],
+      myExtraClasses: [],
+      myCoins: 0,
+      myEphemeral: {},
+    }),
+  addMySubSkill: (subclassId, skillId) =>
+    set({
+      mySubclassId: subclassId,
+      mySubSkills: [...get().mySubSkills, skillId].slice(0, 2),
+    }),
+  addMyExtraClass: (classId) =>
+    set({
+      myExtraClasses: get().myExtraClasses.includes(classId)
+        ? get().myExtraClasses
+        : [...get().myExtraClasses, classId],
+    }),
+  awardCoinsFromResult: (result) => {
+    const sess = get().session;
+    if (!sess) return;
+    const mine = result.stats?.find((st) => st.peerId === sess.selfId);
+    if (mine?.coins) set({ myCoins: get().myCoins + mine.coins });
+  },
+  buyEphemeral: (id) => {
+    const def = EPHEMERAL[id];
+    if (!def) return false;
+    const { myCoins, myEphemeral, session } = get();
+    if (myCoins < def.cost) return false;
+    // Optimistically mirror the host's stock so the shop reflects the buy at once;
+    // the host validates independently against its own coin ledger.
+    const stock: EphemeralStock = { ...myEphemeral };
+    if (id === 'speed') stock.speed = true;
+    else if (id === 'damage') stock.damage = true;
+    else if (id === 'defense') stock.defense = true;
+    else if (id === 'potion') stock.potions = (stock.potions ?? 0) + 1;
+    else if (id === 'revive') stock.revives = (stock.revives ?? 0) + 1;
+    // 'retry' banks host-side only (no per-fight stock field); nothing to mirror.
+    set({ myCoins: myCoins - def.cost, myEphemeral: stock });
+    session?.buyEphemeral(id);
+    return true;
+  },
+  resetEphemeralStock: () => set({ myEphemeral: {} }),
   setNextReadyState: (ready, total) => set({ nextReadyReady: ready, nextReadyTotal: total }),
   setResult: (result) => set({ result }),
   toggleMute: () => set({ muted: !get().muted }),
@@ -259,6 +382,11 @@ export const useStore = create<AppState>((set, get) => ({
   setAutofire: (autofire) => {
     persistAutofire(autofire);
     set({ autofire });
+  },
+  setScreenShake: (screenShake) => {
+    persistScreenShake(screenShake);
+    setShakeEnabled(screenShake);
+    set({ screenShake });
   },
   setShowControls: (showControls) => set({ showControls }),
 
@@ -288,6 +416,11 @@ export const useStore = create<AppState>((set, get) => ({
       cycle: 0,
       myUpgrades: [],
       myCharUpgrades: [],
+      mySubclassId: null,
+      mySubSkills: [],
+      myExtraClasses: [],
+      myCoins: 0,
+      myEphemeral: {},
       nextReadyReady: 0,
       nextReadyTotal: 0,
       result: null,
@@ -295,3 +428,7 @@ export const useStore = create<AppState>((set, get) => ({
     });
   },
 }));
+
+// Sync the render-layer shake flag with the persisted preference at startup so a
+// player who turned screen shake off stays shake-free before touching any toggle.
+setShakeEnabled(useStore.getState().screenShake);

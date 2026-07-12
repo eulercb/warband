@@ -23,6 +23,8 @@ function describe(
   switch (kind) {
     case 'stun':
       return { glyph: '💫', color: 0xffe14d, good: false, label: 'Stunned' };
+    case 'silence':
+      return { glyph: '🔇', color: 0xc06cff, good: false, label: 'Silenced' };
     case 'invuln':
       return { glyph: '✨', color: 0xbfe9ff, good: true, label: 'Invulnerable' };
     case 'moveSpeed':

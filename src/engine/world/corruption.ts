@@ -44,6 +44,10 @@ import {
   CORRUPTION_RIFT_DURATION,
   CORRUPTION_RIFT_TICK_HEAL,
   CORRUPTION_SWARM_COUNT,
+  HARDCORE_CORRUPTION_MULT,
+  HARDCORE_TIME_BUDGET,
+  HARDCORE_RAMP_TAU,
+  HARDCORE_MIN_INTERVAL,
 } from '../core/constants';
 import { addCount } from '../content/scaling';
 import { applyBuff, makeBuff } from '../combat/combat';
@@ -88,15 +92,28 @@ const COLORS: Record<CorruptionKind, number> = {
 
 /** Seeded delay before the first beat can fire (grace period + jitter). */
 export function firstCorruptionDelay(world: World): number {
-  return CORRUPTION_FIRST_DELAY + world.rng.range(0, CORRUPTION_INTERVAL_JITTER);
+  const base = CORRUPTION_FIRST_DELAY + world.rng.range(0, CORRUPTION_INTERVAL_JITTER);
+  // Hardcore opens the pressure early — the clock is already ticking.
+  return world.hardcore ? base * HARDCORE_CORRUPTION_MULT : base;
 }
 
-/** Seconds to the next beat — tightens each endless cycle, floored + jittered. */
+/**
+ * Seconds to the next beat — tightens each endless cycle, floored + jittered.
+ * In a HARDCORE run beats come far more often AND accelerate the longer the fight
+ * runs past the expected kill time (a death spiral for a party that can't close),
+ * always floored so the wall stays dodgeable rather than instant.
+ */
 function nextDelay(world: World): number {
   const speed = Math.min(0.7, Math.max(0, world.scaling.cycle) * CORRUPTION_CYCLE_SPEEDUP);
   const base = CORRUPTION_INTERVAL * (1 - speed);
   const jitter = world.rng.range(-CORRUPTION_INTERVAL_JITTER, CORRUPTION_INTERVAL_JITTER);
-  return Math.max(CORRUPTION_MIN_INTERVAL, base + jitter);
+  let delay = Math.max(CORRUPTION_MIN_INTERVAL, base + jitter);
+  if (world.hardcore) {
+    const over = Math.max(0, world.elapsed - HARDCORE_TIME_BUDGET);
+    const ramp = HARDCORE_RAMP_TAU / (HARDCORE_RAMP_TAU + over); // → 0 as time drags
+    delay = Math.max(HARDCORE_MIN_INTERVAL, delay * HARDCORE_CORRUPTION_MULT * ramp);
+  }
+  return delay;
 }
 
 /**
@@ -113,8 +130,10 @@ export function stepCorruption(world: World, dt: number): void {
 
 /** Weighted pick of the next beat, avoiding an immediate repeat of the last. */
 function pickKind(world: World): KindDef {
-  const pool = KINDS.filter((k) => k.kind !== world.lastCorruption);
-  const src = pool.length > 0 ? pool : KINDS;
+  // Hardcore shows no mercy — the benevolent healing rift never rolls.
+  const table = world.hardcore ? KINDS.filter((k) => !k.good) : KINDS;
+  const pool = table.filter((k) => k.kind !== world.lastCorruption);
+  const src = pool.length > 0 ? pool : table;
   const total = src.reduce((s, k) => s + k.weight, 0);
   let roll = world.rng.range(0, total);
   for (const k of src) {

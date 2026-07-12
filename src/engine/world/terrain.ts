@@ -43,6 +43,9 @@ const PROFILES: Record<TerrainKind, TerrainProfile> = {
   bog: { kind: 'bog', damagePerTick: 0, slowMult: 0.45, slowDuration: 1.8, weight: 2 },
   ice: { kind: 'ice', damagePerTick: 0, slowMult: 0.5, slowDuration: 0.6, weight: 3 },
   deathfog: { kind: 'deathfog', damagePerTick: 6, slowMult: 0.85, slowDuration: 1.0, weight: 2 },
+  // Signature terrains (item 28).
+  tide: { kind: 'tide', damagePerTick: 3, slowMult: 0.4, slowDuration: 1.4, weight: 3 },
+  abyss: { kind: 'abyss', damagePerTick: 11, slowMult: 0.7, slowDuration: 1.0, weight: 2 },
 };
 
 /**
@@ -66,11 +69,13 @@ const THEMES: Partial<Record<MonsterId, TerrainKind[]>> = {
   basilisk: ['swamp', 'bog'],
   mudGolem: ['swamp', 'bog'],
   goblin: ['bog', 'ember'],
-  bandit: ['bog', 'swamp'],
+  bandit: ['abyss', 'bog'],
   direwolf: ['bog', 'swamp'],
   minotaur: ['swamp', 'bog'],
   fae: ['swamp', 'ember'],
-  kraken: ['bog', 'swamp'],
+  // Signature arenas (item 28): the Kraken drags you into a surging ocean, the
+  // Bandit Captain fights on the lip of a black chasm.
+  kraken: ['tide', 'bog'],
   // Frost / undead
   lich: ['ice', 'deathfog'],
   archlich: ['ice', 'deathfog'],

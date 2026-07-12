@@ -21,6 +21,8 @@ import {
   STUN_DR_FACTOR,
   STUN_DR_WINDOW,
   TWIN_HP_FRAC,
+  BOSS_HP_SCALE,
+  TWIN_MAX_BOSSES,
   RUN_LENGTH,
   TERRAIN_MAX_PATCHES,
 } from '../src/engine/core/constants';
@@ -168,7 +170,9 @@ describe('twin-boss encounters', () => {
     expect(w.bosses.length).toBe(2);
     expect(w.bosses[0].monsterId).toBe('dragon');
     expect(w.bosses[1].monsterId).toBe('troll');
-    expect(w.bosses[0].maxHp).toBe(Math.round(MONSTERS.dragon.baseHp * TWIN_HP_FRAC));
+    expect(w.bosses[0].maxHp).toBe(
+      Math.round(MONSTERS.dragon.baseHp * BOSS_HP_SCALE * TWIN_HP_FRAC),
+    );
     expect(w.bosses[0].pos.x).not.toBeCloseTo(w.bosses[1].pos.x);
     expect(w.bosses[0].dmgScale).toBeLessThan(1);
   });
@@ -253,10 +257,10 @@ describe('twin-boss encounters', () => {
     let bandTwins = 0;
     for (let seed = 1; seed <= 60; seed++) {
       for (const slot of buildRunSlots('goblin', 1, new Rng(seed), 1)) {
-        if (slot.length === 2) soloTwins++;
+        if (slot.length >= 2) soloTwins++;
       }
       for (const slot of buildRunSlots('goblin', 1, new Rng(seed), 4)) {
-        if (slot.length === 2) bandTwins++;
+        if (slot.length >= 2) bandTwins++;
       }
     }
     expect(soloTwins).toBeLessThan(bandTwins);
@@ -283,18 +287,19 @@ describe('run assembly with twin slots', () => {
     expect(slots[0]).toEqual(['goblin']); // cycle-0 opener is always solo
     for (const slot of slots) {
       expect(slot.length).toBeGreaterThanOrEqual(1);
-      expect(slot.length).toBeLessThanOrEqual(2);
-      if (slot.length === 2) expect(slot[0]).not.toBe(slot[1]);
+      expect(slot.length).toBeLessThanOrEqual(TWIN_MAX_BOSSES);
+      // No boss appears twice within a shared-arena pack.
+      expect(new Set(slot).size).toBe(slot.length);
     }
   });
 
-  it('twin fights appear across seeds and never duplicate a boss in a slot', () => {
+  it('multi-boss fights appear across seeds and never duplicate a boss in a slot', () => {
     let twins = 0;
     for (let seed = 1; seed <= 40; seed++) {
       for (const slot of buildRunSlots('goblin', 2, new Rng(seed))) {
-        if (slot.length === 2) {
+        if (slot.length >= 2) {
           twins++;
-          expect(slot[0]).not.toBe(slot[1]);
+          expect(new Set(slot).size).toBe(slot.length);
         }
       }
     }

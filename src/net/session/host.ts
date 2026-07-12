@@ -20,6 +20,7 @@ import type {
   PauseMsg,
   PauseReqMsg,
   UpgradeMsg,
+  SpecialMsg,
   NextReadyMsg,
   NextReadyStateMsg,
   ByeMsg,
@@ -33,16 +34,30 @@ import {
   RESUME_COUNTDOWN_S,
   SCORE_BOSS_CLEAR,
 } from '../../engine/core/constants';
-import { computeBotInput, rollPersonality, BOT_PEER_PREFIX } from '../../engine/ai/bot';
+import {
+  computeBotInput,
+  rollPersonality,
+  pickBotUpgrades,
+  BOT_PEER_PREFIX,
+} from '../../engine/ai/bot';
 import type { BotPersonality } from '../../engine/ai/bot';
 import { CLASSES } from '../../engine/content/classes';
-import { buildRunSlots, modifierForCycle, getMonster } from '../../engine/content/monsters';
+import {
+  buildRunSlots,
+  modifierForCycle,
+  getMonster,
+  randomOpener,
+} from '../../engine/content/monsters';
 import type { RunSlot } from '../../engine/content/monsters';
 import { rollAffixes } from '../../engine/content/affixes';
-import { Rng } from '../../engine/core/math';
-import { isUpgradeId } from '../../engine/content/upgrades';
+import { Rng, mixSeed } from '../../engine/core/math';
+import { isUpgradeId, upgradeMaxStacks } from '../../engine/content/upgrades';
 import type { UpgradeId } from '../../engine/content/upgrades';
-import { isCharUpgradeId } from '../../engine/content/charUpgrades';
+import { isCharUpgradeId, charUpgradeMaxStacks } from '../../engine/content/charUpgrades';
+import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
+import { CLASS_IDS } from '../../engine/content/classes';
+import { EPHEMERAL, isEphemeralId } from '../../engine/content/ephemeral';
+import type { EphemeralId, EphemeralStock } from '../../engine/content/ephemeral';
 import type {
   MonsterId,
   ClassId,
@@ -92,12 +107,28 @@ export interface HostOpts {
   classId: ClassId;
   /** Start a sequence run (gauntlet) rather than a single boss. */
   gauntlet?: boolean;
+  /**
+   * Master seed governing EVERY random choice this session — the gauntlet's boss
+   * set, each boss's affixes, terrain, and the between-boss reward offers — so a
+   * seed can be shared to replay the exact same run (seed mode / run-of-the-day).
+   * Omitted = a fresh random seed is minted.
+   */
+  seed?: number;
+  /** Hardcore run (item 11): deadlier corruption cadence, limited revives, no free retry. */
+  hardcore?: boolean;
   /** Transport: peer-to-peer WebRTC (default) or the global-server relay. */
   net?: NetMode;
   /** Called whenever lobby state changes (including immediately in the ctor). */
   onLobby: (msg: LobbyMsg) => void;
   /** Called whenever a fight begins (manual start, retry or gauntlet advance). */
-  onStart?: (info: { runIndex: number; runTotal: number; cycle: number; modName?: string }) => void;
+  onStart?: (info: {
+    runIndex: number;
+    runTotal: number;
+    cycle: number;
+    modName?: string;
+    runSeed: number;
+    hardcore: boolean;
+  }) => void;
   /** Called when between-boss readiness changes (host UI shows "X/Y ready"). */
   onNextReady?: (info: { ready: number; total: number }) => void;
   /** Called once when the fight ends. */
@@ -138,6 +169,7 @@ export class Host implements NetSession {
   private readonly pauseAction: NetAction<PauseMsg>;
   private readonly pauseReqAction: NetAction<PauseReqMsg>;
   private readonly upgradeAction: NetAction<UpgradeMsg>;
+  private readonly specialAction: NetAction<SpecialMsg>;
   private readonly nextReadyAction: NetAction<NextReadyMsg>;
   private readonly nextReadyStateAction: NetAction<NextReadyStateMsg>;
   private readonly byeAction: NetAction<ByeMsg>;
@@ -148,6 +180,7 @@ export class Host implements NetSession {
   private hostClass: ClassId;
   private hostReady = false;
   private gauntlet: boolean;
+  private readonly hardcore: boolean;
   private phase: 'lobby' | 'inFight' = 'lobby';
   private readonly lobby = new Map<string, PeerEntry>();
   /** Host-added AI band members (in roster order after real peers). */
@@ -172,11 +205,23 @@ export class Host implements NetSession {
   private readonly upgrades = new Map<string, UpgradeId[]>();
   /** Accumulated between-boss character (class) upgrade picks per peerId. */
   private readonly charUpgrades = new Map<string, string[]>();
+  /** Chosen subclass id per peer (item 13). */
+  private readonly subclassByPeer = new Map<string, string>();
+  /** Chosen subclass-skill ids per peer (up to 2, same subclass; bound to sub1/sub2). */
+  private readonly subSkillsByPeer = new Map<string, string[]>();
+  /** Extra (multiclass) class ids per peer (item 14). */
+  private readonly extraClassesByPeer = new Map<string, ClassId[]>();
   /** Peers who already took a generic / character pick this interstitial. */
   private readonly roundPickedGeneric = new Set<string>();
   private readonly roundPickedChar = new Set<string>();
   /** Cumulative banked score per peer (prior bosses this run; endless keeps it). */
   private readonly scoreByPeer = new Map<string, number>();
+  /** Ephemeral-shop coin balance per peer (item 21; carries across the run). */
+  private readonly coinsByPeer = new Map<string, number>();
+  /** Ephemeral perks bought for the NEXT fight per peer (consumed at spawn). */
+  private readonly ephemeralByPeer = new Map<string, EphemeralStock>();
+  /** Banked hardcore retries (shared): a wipe can spend one to restart the boss. */
+  private hardcoreRetryBank = 0;
   /** Peers (including the host, keyed by selfId) marked ready for the next boss. */
   private readonly nextReadyPeers = new Set<string>();
   /**
@@ -187,10 +232,18 @@ export class Host implements NetSession {
    */
   private roundParticipants = new Set<string>();
 
-  // Run / endless state. Each slot is one encounter: [boss] or [boss, twin].
+  // Run / endless state. Each slot is one encounter: [boss] or [boss, ...co-bosses].
   private runOrder: RunSlot[] = [];
   private runIndex = 0;
   private cycle = 0;
+  /**
+   * Master seed for this session (see HostOpts.seed). Every RNG stream — run
+   * assembly, per-fight world seed, affixes, reward offers — derives from it, so
+   * the whole run is reproducible from this one number.
+   */
+  private readonly masterSeed: number;
+  /** Bosses fielded in the current run, so the next Endless run opens on a fresh set. */
+  private lastRunBosses = new Set<MonsterId>();
 
   // Sim-loop bookkeeping.
   private running = false;
@@ -212,6 +265,8 @@ export class Host implements NetSession {
     this.hostName = opts.name;
     this.hostClass = opts.classId;
     this.gauntlet = opts.gauntlet ?? false;
+    this.hardcore = (opts.hardcore ?? false) && this.gauntlet;
+    this.masterSeed = (opts.seed ?? (Math.random() * 2 ** 31) | 0) >>> 0 || 1;
 
     this.room = openRoom(opts.code, opts.onJoinError, opts.net ?? 'p2p');
     netLog('host', `hosting room "${opts.code}" as ${selfId.slice(0, 6)}`, {
@@ -239,6 +294,7 @@ export class Host implements NetSession {
     this.pauseAction = this.action(ACTIONS.pause);
     this.pauseReqAction = this.action(ACTIONS.pauseReq);
     this.upgradeAction = this.action(ACTIONS.upgrade);
+    this.specialAction = this.action(ACTIONS.special);
     this.nextReadyAction = this.action(ACTIONS.nextReady);
     this.nextReadyStateAction = this.action(ACTIONS.nextReadyState);
     this.byeAction = this.action(ACTIONS.bye);
@@ -285,6 +341,11 @@ export class Host implements NetSession {
     // --- Client -> host between-boss upgrade picks (generic and/or character) ---
     this.upgradeAction.onMessage = (data, ctx) => {
       this.recordUpgrade(ctx.peerId, data);
+    };
+
+    // --- Client -> host run-clear special picks (subclass skill / extra class) ---
+    this.specialAction.onMessage = (data, ctx) => {
+      this.recordSpecial(ctx.peerId, data);
     };
 
     // --- Client -> host "ready for next boss" during the interstitial ---
@@ -465,11 +526,18 @@ export class Host implements NetSession {
       return;
     }
     this.cycle = 0;
+    this.lastRunBosses.clear(); // a fresh run isn't constrained by a prior one
     this.runOrder = this.buildRunOrder();
     this.runIndex = 0;
     this.upgrades.clear(); // fresh run — nobody carries upgrades into boss 1
     this.charUpgrades.clear();
+    this.subclassByPeer.clear();
+    this.subSkillsByPeer.clear();
+    this.extraClassesByPeer.clear();
     this.scoreByPeer.clear();
+    this.coinsByPeer.clear();
+    this.ephemeralByPeer.clear();
+    this.hardcoreRetryBank = 0;
     this.roundPickedGeneric.clear();
     this.roundPickedChar.clear();
     this.nextReadyPeers.clear();
@@ -479,6 +547,12 @@ export class Host implements NetSession {
   /** Restart the current fight (same boss / same run position) after a loss. */
   retryFight(): void {
     if (this.phase === 'inFight') return;
+    // Hardcore has no FREE retry (item 11) — but a banked Second Chance from the
+    // ephemeral shop (item 21) can be spent to restart the boss.
+    if (this.hardcore) {
+      if (this.hardcoreRetryBank <= 0) return;
+      this.hardcoreRetryBank -= 1;
+    }
     if (this.runOrder.length === 0) {
       this.runOrder = this.buildRunOrder();
       this.runIndex = 0;
@@ -493,6 +567,8 @@ export class Host implements NetSession {
    */
   continueEndless(): void {
     if (this.phase === 'inFight') return;
+    // Bots bank a boon for the new cycle just like the humans' endless pick.
+    this.awardBotUpgrades();
     this.cycle += 1;
     this.runOrder = this.buildRunOrder();
     this.runIndex = 0;
@@ -505,9 +581,25 @@ export class Host implements NetSession {
   /** Encounters this run will fight, in order. Single boss when run mode is off. */
   private buildRunOrder(): RunSlot[] {
     if (!this.gauntlet) return [[this.monsterId]];
-    // Deterministic within a run but varied across cycles.
-    const rng = new Rng(((Date.now() & 0xffff) ^ (this.cycle * 2654435761)) >>> 0 || 1);
-    return buildRunSlots(this.monsterId, this.cycle, rng, this.partySize());
+    // Fully deterministic from the master seed + cycle: the same seed always
+    // yields the same boss set (seed mode / run-of-the-day). A gauntlet never
+    // lets you hand-pick the opener — it's a seeded random draw — and each Endless
+    // cycle avoids the previous run's bosses so the next lap opens on a fresh set.
+    const rng = new Rng(mixSeed(this.masterSeed, this.cycle, 0x51ac));
+    const opener = randomOpener(this.cycle, rng, this.lastRunBosses);
+    const slots = buildRunSlots(opener, this.cycle, rng, this.partySize(), this.lastRunBosses);
+    this.lastRunBosses = new Set<MonsterId>(slots.flat());
+    return slots;
+  }
+
+  /** Deterministic per-fight world seed (drives terrain, affixes, boss RNG). */
+  private fightSeed(): number {
+    return mixSeed(this.masterSeed, this.cycle, this.runIndex, 0xf16);
+  }
+
+  /** Deterministic per-interstitial reward seed (shipped so offers reproduce). */
+  private rewardSeed(): number {
+    return mixSeed(this.masterSeed, this.cycle, this.runIndex, 0x2ec0);
   }
 
   /**
@@ -528,32 +620,34 @@ export class Host implements NetSession {
     const monsterId = slot[0] ?? this.monsterId;
     const coBosses = slot.slice(1);
     const modifier = modifierForCycle(this.cycle);
-    // Boss affixes + mid-fight corruption ramp with the run (gauntlet/endless).
-    // A fresh party's opening boss stays clean (rollAffixes returns none and the
-    // corruption gate is false); slots past the opener and every endless cycle
-    // get spicier. Single fights stay pure — neither is enabled.
-    const spicy = this.gauntlet && (this.runIndex > 0 || this.cycle > 0);
-    const corruption = spicy;
+    // Boss affixes + mid-fight corruption are now STANDARD for every fight
+    // (single, opener and beyond). They still RAMP — affixBudget gives the opener
+    // a single light affix and the corruption grace delay holds the first beat —
+    // so a fresh boss is a small twist, not a wall, while later slots and Endless
+    // cycles pile it on.
+    const corruption = true;
 
     // World roster carries each hero's accumulated upgrades + carried score
-    // (host-authoritative); bots earn no upgrades and no score.
+    // (host-authoritative). Bots now progress too — their auto-awarded upgrades
+    // (see awardBotUpgrades) ride in through rosterEntry exactly like a human's.
     const roster: WorldPlayerInit[] = [this.rosterEntry(selfId, this.hostName, this.hostClass)];
     for (const [peerId, e] of this.lobby) {
       roster.push(this.rosterEntry(peerId, e.name, e.classId));
     }
     for (const b of this.bots) {
-      roster.push({ peerId: b.peerId, name: b.name, classId: b.classId });
+      roster.push(this.rosterEntry(b.peerId, b.name, b.classId));
     }
     // Clients only render snapshots, so the wire roster omits the upgrade lists.
     const wireRoster = roster.map(({ peerId, name, classId }) => ({ peerId, name, classId }));
+    // Ephemeral perks (item 21) are single-fight: now that they've ridden into the
+    // roster, clear the shop stock so they don't linger into the fight after this.
+    this.ephemeralByPeer.clear();
 
     const playerCount = roster.length;
-    const seed = (Math.random() * 2 ** 31) | 0;
-    // Roll each boss's affixes deterministically from the fight seed (the opener
-    // of a fresh run rolls none; later slots + endless cycles roll more).
-    const bossAffixes = this.gauntlet
-      ? this.rollBossAffixes([monsterId, ...coBosses], seed)
-      : undefined;
+    const seed = this.fightSeed();
+    // Roll each boss's affixes deterministically from the fight seed. Standard for
+    // every fight now (item 4); affixBudget keeps the opener to a single affix.
+    const bossAffixes = this.rollBossAffixes([monsterId, ...coBosses], seed);
 
     // Fresh fight state.
     this.latestInput.clear();
@@ -572,6 +666,7 @@ export class Host implements NetSession {
       coBosses,
       bossAffixes,
       corruption,
+      hardcore: this.hardcore,
     });
     this.localPlayerId = this.world.playerIdByPeer(selfId);
 
@@ -586,6 +681,8 @@ export class Host implements NetSession {
       runTotal: this.runOrder.length,
       cycle: this.cycle,
       modName: modifier?.prefix,
+      runSeed: this.masterSeed,
+      hardcore: this.hardcore,
     };
     netLog('host', `starting fight → ${playerCount} player(s)`, {
       seed,
@@ -602,6 +699,8 @@ export class Host implements NetSession {
       runTotal: this.runOrder.length,
       cycle: this.cycle,
       modName: modifier?.prefix,
+      runSeed: this.masterSeed,
+      hardcore: this.hardcore,
     });
     this.startLoop();
   }
@@ -614,6 +713,9 @@ export class Host implements NetSession {
       classId,
       upgrades: this.upgrades.get(peerId),
       charUpgrades: this.charUpgrades.get(peerId),
+      subSkills: this.subSkillsByPeer.get(peerId),
+      extraClasses: this.extraClassesByPeer.get(peerId),
+      ephemeral: this.ephemeralByPeer.get(peerId),
       baseScore: this.scoreByPeer.get(peerId) ?? 0,
     };
   }
@@ -719,6 +821,21 @@ export class Host implements NetSession {
     this.recordUpgrade(selfId, { char: upgradeId });
   }
 
+  /** NetSession: record the host's own run-clear subclass-skill pick (item 13). */
+  chooseSubSkill(subclassId: string, skillId: string): void {
+    this.recordSpecial(selfId, { subclassId, subSkillId: skillId });
+  }
+
+  /** NetSession: record the host's own run-clear extra-class pick (item 14). */
+  chooseExtraClass(classId: ClassId): void {
+    this.recordSpecial(selfId, { extraClass: classId });
+  }
+
+  /** NetSession: buy the host's own ephemeral-shop perk for the next fight (item 21). */
+  buyEphemeral(id: EphemeralId): void {
+    this.recordEphemeral(selfId, id);
+  }
+
   /** NetSession: host marks itself ready (or not) to advance to the next boss. */
   setNextReady(ready: boolean): void {
     this.recordNextReady(selfId, ready);
@@ -731,19 +848,125 @@ export class Host implements NetSession {
    */
   private recordUpgrade(peerId: string, msg: UpgradeMsg): void {
     if (isUpgradeId(msg.generic) && !this.roundPickedGeneric.has(peerId)) {
-      this.roundPickedGeneric.add(peerId);
       const arr = this.upgrades.get(peerId) ?? [];
-      arr.push(msg.generic);
-      this.upgrades.set(peerId, arr);
-      netLog('host', `upgrade "${msg.generic}" for ${peerId.slice(0, 6)}`, { total: arr.length });
+      // Reject a pick already at its stacking cap (defence-in-depth: the client
+      // filters maxed boons out of the offer, so a valid client never sends one).
+      const have = arr.reduce((n, id) => (id === msg.generic ? n + 1 : n), 0);
+      if (have < upgradeMaxStacks(msg.generic)) {
+        this.roundPickedGeneric.add(peerId);
+        arr.push(msg.generic);
+        this.upgrades.set(peerId, arr);
+        netLog('host', `upgrade "${msg.generic}" for ${peerId.slice(0, 6)}`, { total: arr.length });
+      }
     }
     if (isCharUpgradeId(msg.char) && !this.roundPickedChar.has(peerId)) {
-      this.roundPickedChar.add(peerId);
       const arr = this.charUpgrades.get(peerId) ?? [];
-      arr.push(msg.char);
-      this.charUpgrades.set(peerId, arr);
-      netLog('host', `char upgrade "${msg.char}" for ${peerId.slice(0, 6)}`, { total: arr.length });
+      const have = arr.reduce((n, id) => (id === msg.char ? n + 1 : n), 0);
+      if (have < charUpgradeMaxStacks(msg.char)) {
+        this.roundPickedChar.add(peerId);
+        arr.push(msg.char);
+        this.charUpgrades.set(peerId, arr);
+        netLog('host', `char upgrade "${msg.char}" for ${peerId.slice(0, 6)}`, {
+          total: arr.length,
+        });
+      }
     }
+  }
+
+  /**
+   * Auto-award each bot a generic + character upgrade for the coming boss, so an
+   * AI band member's power PROGRESSES between fights exactly like a human's — no
+   * diegetic walk into the reward room, just the same stat growth. The generic
+   * pick is biased by the bot's temperament (a Reckless bot hoards damage, a Timid
+   * one stacks health/mitigation); the class pick advances its kit. Deterministic
+   * from the master seed (independent of the movement RNG), and cap-respecting.
+   */
+  private awardBotUpgrades(): void {
+    this.bots.forEach((b, i) => {
+      const rng = new Rng(mixSeed(this.masterSeed, this.cycle, this.runIndex, 0xb07 + i));
+      const ownedGen = this.upgrades.get(b.peerId) ?? [];
+      const ownedChar = this.charUpgrades.get(b.peerId) ?? [];
+      const pick = pickBotUpgrades(b.classId, b.personality, ownedGen, ownedChar, rng);
+      if (pick.generic) {
+        ownedGen.push(pick.generic);
+        this.upgrades.set(b.peerId, ownedGen);
+      }
+      if (pick.char) {
+        ownedChar.push(pick.char);
+        this.charUpgrades.set(b.peerId, ownedChar);
+      }
+    });
+  }
+
+  /**
+   * Record a run-clear SPECIAL pick (item 13/14), host-authoritative and validated:
+   * a subclass skill (max two, same subclass) or an additional multiclass class
+   * (must be a real class the hero doesn't already field).
+   */
+  private recordSpecial(peerId: string, msg: SpecialMsg): void {
+    if (msg.subSkillId && msg.subclassId) {
+      const skill = getSubSkill(msg.subSkillId);
+      const sub = subclassOfSkill(msg.subSkillId);
+      const owned = this.subSkillsByPeer.get(peerId) ?? [];
+      const committed = this.subclassByPeer.get(peerId);
+      const okSubclass = sub?.id === msg.subclassId && (!committed || committed === msg.subclassId);
+      if (skill && okSubclass && owned.length < 2 && !owned.includes(msg.subSkillId)) {
+        this.subclassByPeer.set(peerId, msg.subclassId);
+        owned.push(msg.subSkillId);
+        this.subSkillsByPeer.set(peerId, owned);
+        netLog('host', `subclass skill "${msg.subSkillId}" for ${peerId.slice(0, 6)}`);
+      }
+    }
+    if (msg.extraClass && (CLASS_IDS as string[]).includes(msg.extraClass)) {
+      const primary = this.classForPeer(peerId);
+      const owned = this.extraClassesByPeer.get(peerId) ?? [];
+      if (msg.extraClass !== primary && !owned.includes(msg.extraClass)) {
+        owned.push(msg.extraClass);
+        this.extraClassesByPeer.set(peerId, owned);
+        netLog('host', `extra class "${msg.extraClass}" for ${peerId.slice(0, 6)}`);
+      }
+    }
+    if (msg.buyEphemeral) this.recordEphemeral(peerId, msg.buyEphemeral);
+  }
+
+  /**
+   * Buy an ephemeral-shop perk for a peer (item 21), host-authoritative: validates
+   * the id, checks the peer can afford it against their banked coins, deducts the
+   * cost and stocks the perk for the next fight. Hardcore-only perks are rejected
+   * outside a hardcore run. A retry is a shared bank; everything else is per-peer
+   * stock injected into the next roster.
+   */
+  private recordEphemeral(peerId: string, id: EphemeralId): void {
+    if (!isEphemeralId(id)) return;
+    const def = EPHEMERAL[id];
+    if (def.hardcoreOnly && !this.hardcore) return;
+    const coins = this.coinsByPeer.get(peerId) ?? 0;
+    if (coins < def.cost) return;
+    this.coinsByPeer.set(peerId, coins - def.cost);
+    if (id === 'retry') {
+      this.hardcoreRetryBank += 1;
+    } else {
+      const stock: EphemeralStock = { ...(this.ephemeralByPeer.get(peerId) ?? {}) };
+      if (id === 'speed') stock.speed = true;
+      else if (id === 'damage') stock.damage = true;
+      else if (id === 'defense') stock.defense = true;
+      else if (id === 'potion') stock.potions = (stock.potions ?? 0) + 1;
+      else if (id === 'revive') stock.revives = (stock.revives ?? 0) + 1;
+      this.ephemeralByPeer.set(peerId, stock);
+    }
+    netLog('host', `bought "${id}" for ${peerId.slice(0, 6)}`, {
+      coinsLeft: this.coinsByPeer.get(peerId),
+    });
+  }
+
+  /** The primary class of a peer (host, a connected client, or a bot). */
+  private classForPeer(peerId: string): ClassId {
+    if (peerId === selfId) return this.hostClass;
+    return (
+      this.lobby.get(peerId)?.classId ??
+      this.bots.find((b) => b.peerId === peerId)?.classId ??
+      'knight'
+    );
   }
 
   /** Record a player's "ready for next boss" flag, then re-check the advance gate. */
@@ -807,9 +1030,16 @@ export class Host implements NetSession {
     this.runOrder = [];
     this.runIndex = 0;
     this.cycle = 0;
+    this.lastRunBosses.clear();
     this.upgrades.clear();
     this.charUpgrades.clear();
+    this.subclassByPeer.clear();
+    this.subSkillsByPeer.clear();
+    this.extraClassesByPeer.clear();
     this.scoreByPeer.clear();
+    this.coinsByPeer.clear();
+    this.ephemeralByPeer.clear();
+    this.hardcoreRetryBank = 0;
     this.roundPickedGeneric.clear();
     this.roundPickedChar.clear();
     this.nextReadyPeers.clear();
@@ -953,6 +1183,10 @@ export class Host implements NetSession {
     // plain single-boss fight has no run to continue.
     result.endlessAvailable = victory && !hasNext && this.runOrder.length > 1;
     result.modName = modifierForCycle(this.cycle)?.prefix;
+    // Ship the deterministic reward seed so every client's between-boss offers
+    // reproduce for a shared seed, plus the master seed for display/sharing.
+    result.rewardSeed = this.rewardSeed();
+    result.runSeed = this.masterSeed;
 
     // Bank each hero's cumulative score (+ a boss-clear bonus on a win) so the
     // carried score keeps climbing across the run and into endless cycles.
@@ -960,7 +1194,14 @@ export class Host implements NetSession {
       for (const p of world.players) {
         this.scoreByPeer.set(p.peerId, world.playerScore(p) + SCORE_BOSS_CLEAR);
       }
+      // Bank ephemeral-shop coins earned this fight (item 21), ranked in result().
+      for (const s of result.stats) {
+        this.coinsByPeer.set(s.peerId, (this.coinsByPeer.get(s.peerId) ?? 0) + (s.coins ?? 0));
+      }
     }
+    // A hardcore wipe can still be retried if the band banked a Second Chance
+    // (item 21) — surface that so the result screen can offer the Retry button.
+    result.hardcoreRetryAvailable = this.hardcore && !victory && this.hardcoreRetryBank > 0;
 
     this.phase = 'lobby'; // out of the fight until the next begins
     netLog('host', `fight finished → ${result.outcome}`, {
@@ -980,6 +1221,8 @@ export class Host implements NetSession {
   advanceGauntlet(): void {
     if (this.phase === 'inFight') return;
     if (this.runIndex >= this.runOrder.length - 1) return;
+    // Bots grow their power alongside the humans who just picked in the reward room.
+    this.awardBotUpgrades();
     this.runIndex += 1;
     this.roundPickedGeneric.clear();
     this.roundPickedChar.clear();

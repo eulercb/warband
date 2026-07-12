@@ -47,6 +47,8 @@ export default function Controls() {
   const reset = useBindings((s) => s.reset);
   const autofire = useStore((s) => s.autofire);
   const setAutofire = useStore((s) => s.setAutofire);
+  const screenShake = useStore((s) => s.screenShake);
+  const setScreenShake = useStore((s) => s.setScreenShake);
   const [capture, setCapture] = useState<Capture>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   // While a rebind capture is pending, SUSPEND (don't disable) controller nav: the
@@ -214,6 +216,28 @@ export default function Controls() {
               {autofire
                 ? 'Holding an ability button repeats it automatically (fires as soon as it comes off cooldown).'
                 : 'Off: tap each ability button to use it. On: hold to keep firing.'}
+            </span>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          className={`wb-gauntlet-toggle${screenShake ? ' on' : ''}`}
+          onClick={() => {
+            playUiSound('uiClick');
+            setScreenShake(!screenShake);
+          }}
+          aria-pressed={screenShake}
+        >
+          <span className="wb-gauntlet-check" aria-hidden="true">
+            {screenShake ? '✓' : ''}
+          </span>
+          <span className="wb-gauntlet-text">
+            <span className="wb-gauntlet-title">Screen shake</span>
+            <span className="wb-gauntlet-sub">
+              {screenShake
+                ? 'The camera jolts on heavy hits, casts and deaths. Turn off if it causes discomfort.'
+                : 'Off: the camera stays perfectly steady (accessibility).'}
             </span>
           </span>
         </button>

@@ -16,13 +16,14 @@ import {
   abilityById,
   buildRun,
   buildRunSlots,
+  randomOpener,
   modifierForCycle,
   CYCLE_MODIFIERS,
 } from '../src/engine/content/monsters';
 import type { BossAbilityShape, BossDecisionCtx, MonsterDef } from '../src/engine/content/monsters';
 import type { MonsterId, BossTier, BossBodyShape, Boss, Player } from '../src/engine/core/types';
-import { Rng } from '../src/engine/core/math';
-import { RUN_LENGTH } from '../src/engine/core/constants';
+import { Rng, mixSeed } from '../src/engine/core/math';
+import { RUN_LENGTH, TWIN_MAX_BOSSES } from '../src/engine/core/constants';
 
 // ---------------------------------------------------------------------------
 // Fixtures / helpers
@@ -623,13 +624,56 @@ describe('buildRunSlots', () => {
     for (const slot of slots) {
       expect(slot[0]).toBeDefined();
       expect(slot.length).toBeGreaterThanOrEqual(1);
-      expect(slot.length).toBeLessThanOrEqual(2);
+      expect(slot.length).toBeLessThanOrEqual(TWIN_MAX_BOSSES);
     }
   });
 
   it('leads every slot list with the spine boss', () => {
     const slots = buildRunSlots('orc', 2, new Rng(5));
     expect(slots[0][0]).toBe('orc');
+  });
+
+  // --- Seed mode / run-of-the-day determinism (items 7, 8, 10) --------------
+  it('a shared master seed reproduces the exact boss set (opener + slots)', () => {
+    const build = (): MonsterId[][] => {
+      const rng = new Rng(mixSeed(123456, 0, 0x51ac));
+      const opener = randomOpener(0, rng);
+      return buildRunSlots(opener, 0, rng, 4);
+    };
+    expect(build()).toEqual(build()); // same seed → identical run
+  });
+
+  it('different master seeds generally yield different runs', () => {
+    const runFor = (s: number): string => {
+      const rng = new Rng(mixSeed(s, 0, 0x51ac));
+      const opener = randomOpener(0, rng);
+      return buildRunSlots(opener, 0, rng, 4)
+        .map((slot) => slot.join('+'))
+        .join(',');
+    };
+    const runs = new Set([runFor(1), runFor(2), runFor(3), runFor(4), runFor(5)]);
+    expect(runs.size).toBeGreaterThan(1);
+  });
+
+  it('randomOpener avoids the excluded (previous-run) bosses when it can', () => {
+    const easy = MONSTERS_BY_TIER.easy;
+    const exclude = new Set<MonsterId>(easy.slice(0, easy.length - 1)); // leave one free
+    for (let seed = 1; seed <= 30; seed++) {
+      const opener = randomOpener(0, new Rng(seed), exclude);
+      expect(exclude.has(opener)).toBe(false);
+    }
+  });
+
+  it('endless re-roll (exclude prior set) shares few bosses with the prior run', () => {
+    const rng = new Rng(mixSeed(777, 1, 0x51ac));
+    const opener = randomOpener(1, rng, undefined);
+    const prior = new Set<MonsterId>(buildRunSlots(opener, 1, rng, 4).flat());
+    const rng2 = new Rng(mixSeed(777, 2, 0x51ac));
+    const opener2 = randomOpener(2, rng2, prior);
+    const next = buildRunSlots(opener2, 2, rng2, 4, prior).flat();
+    const overlap = next.filter((id) => prior.has(id)).length;
+    // The exclusion only falls back when a tier can't fill, so most bosses differ.
+    expect(overlap).toBeLessThan(next.length);
   });
 
   it('is deterministic for a given seed + party size', () => {
@@ -646,20 +690,22 @@ describe('buildRunSlots', () => {
     }
   });
 
-  it('twin partners are distinct and drawn from the same or lower tier', () => {
+  it('co-bosses are distinct and drawn from the same or lower tier', () => {
     let twins = 0;
     for (let seed = 1; seed <= 60; seed++) {
       for (const slot of buildRunSlots('goblin', 2, new Rng(seed), 4)) {
-        if (slot.length !== 2) continue;
+        if (slot.length < 2) continue;
         twins++;
-        const [lead, partner] = slot;
-        expect(partner).not.toBe(lead);
-        expect(MONSTER_IDS).toContain(partner);
+        const [lead, ...partners] = slot;
         const allowed = [MONSTERS[lead].tier, lowerTier[MONSTERS[lead].tier]];
-        expect(allowed).toContain(MONSTERS[partner].tier);
+        for (const partner of partners) {
+          expect(partner).not.toBe(lead);
+          expect(MONSTER_IDS).toContain(partner);
+          expect(allowed).toContain(MONSTERS[partner].tier);
+        }
       }
     }
-    expect(twins).toBeGreaterThan(0); // the twin branch is actually exercised
+    expect(twins).toBeGreaterThan(0); // the multi-boss branch is actually exercised
   });
 
   it('scales twin odds down for small parties (party-factor branches)', () => {
@@ -667,7 +713,7 @@ describe('buildRunSlots', () => {
       let n = 0;
       for (let seed = 1; seed <= 80; seed++) {
         for (const slot of buildRunSlots('goblin', 2, new Rng(seed), partySize)) {
-          if (slot.length === 2) n++;
+          if (slot.length >= 2) n++;
         }
       }
       return n;

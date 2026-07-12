@@ -36,9 +36,18 @@ const DT = 0.05;
 // New classes
 // ---------------------------------------------------------------------------
 describe('expansion classes', () => {
-  it('adds four DnD-flavoured classes (8 total)', () => {
-    expect(CLASS_IDS).toHaveLength(8);
-    for (const id of ['barbarian', 'rogue', 'paladin', 'druid'] as const) {
+  it('adds eight DnD-flavoured classes (12 total)', () => {
+    expect(CLASS_IDS).toHaveLength(12);
+    for (const id of [
+      'barbarian',
+      'rogue',
+      'paladin',
+      'druid',
+      'bard',
+      'monk',
+      'sorcerer',
+      'warlock',
+    ] as const) {
       expect(CLASSES[id]).toBeTruthy();
       expect(CLASSES[id].abilities.basic).toBeTruthy();
     }

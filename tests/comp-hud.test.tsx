@@ -381,10 +381,10 @@ describe('<Controls>', () => {
     expect(screen.getAllByText('Basic Attack')).toHaveLength(2);
     expect(screen.getAllByText('Ability 1')).toHaveLength(2);
 
-    // Row counts: 9 keyboard actions, 5 controller buttons.
+    // Row counts: 4 move + 9 button actions = 13 keyboard rows, 9 controller buttons.
     const cols = container.querySelectorAll('.wb-controls-col');
-    expect(cols[0].querySelectorAll('.wb-bind-row')).toHaveLength(9);
-    expect(cols[1].querySelectorAll('.wb-bind-row')).toHaveLength(5);
+    expect(cols[0].querySelectorAll('.wb-bind-row')).toHaveLength(13);
+    expect(cols[1].querySelectorAll('.wb-bind-row')).toHaveLength(9);
 
     // Default keyboard labels (basic => "Space", a1 => "Q").
     expect(screen.getByText('Space')).toBeTruthy();
@@ -448,14 +448,14 @@ describe('<Controls>', () => {
   });
 
   it('reset-to-defaults restores the default bindings', () => {
-    // Pre-mutate: rebind a1 to Z so we can observe the reset.
-    useBindings.getState().setKey('a1', 0, 'KeyZ');
+    // Pre-mutate: rebind a1 to M (an otherwise-unbound key) to observe the reset.
+    useBindings.getState().setKey('a1', 0, 'KeyM');
     render(<Controls />);
-    expect(screen.getByText('Z')).toBeTruthy();
+    expect(screen.getByText('M')).toBeTruthy();
 
     fireEvent.click(screen.getByText('Reset to defaults'));
 
-    expect(screen.queryByText('Z')).toBeNull();
+    expect(screen.queryByText('M')).toBeNull();
     expect(screen.getByText('Q')).toBeTruthy();
     expect(useBindings.getState().bindings.keys.a1[0]).toBe('KeyQ');
   });

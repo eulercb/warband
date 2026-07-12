@@ -20,12 +20,14 @@ import type {
   PauseMsg,
   PauseReqMsg,
   UpgradeMsg,
+  SpecialMsg,
   NextReadyMsg,
   NextReadyStateMsg,
   ByeMsg,
   NetSession,
 } from '../protocol';
 import type { UpgradeId } from '../../engine/content/upgrades';
+import type { EphemeralId } from '../../engine/content/ephemeral';
 import { CLASSES } from '../../engine/content/classes';
 import { SnapshotInterpolator } from '../../render/pipeline/interpolate';
 import { ARENA_W, ARENA_H, INPUT_SEND_RATE } from '../../engine/core/constants';
@@ -100,6 +102,7 @@ export class Client implements NetSession {
   private readonly pauseAction: NetAction<PauseMsg>;
   private readonly pauseReqAction: NetAction<PauseReqMsg>;
   private readonly upgradeAction: NetAction<UpgradeMsg>;
+  private readonly specialAction: NetAction<SpecialMsg>;
   private readonly nextReadyAction: NetAction<NextReadyMsg>;
   private readonly nextReadyStateAction: NetAction<NextReadyStateMsg>;
   private readonly byeAction: NetAction<ByeMsg>;
@@ -160,6 +163,7 @@ export class Client implements NetSession {
     this.pauseAction = this.action(ACTIONS.pause);
     this.pauseReqAction = this.action(ACTIONS.pauseReq);
     this.upgradeAction = this.action(ACTIONS.upgrade);
+    this.specialAction = this.action(ACTIONS.special);
     this.nextReadyAction = this.action(ACTIONS.nextReady);
     this.nextReadyStateAction = this.action(ACTIONS.nextReadyState);
     this.byeAction = this.action(ACTIONS.bye);
@@ -328,6 +332,21 @@ export class Client implements NetSession {
   /** NetSession: relay this player's between-boss character upgrade pick. */
   chooseCharUpgrade(upgradeId: string): void {
     this.upgradeAction.send({ char: upgradeId });
+  }
+
+  /** NetSession: relay this player's run-clear subclass-skill pick (item 13). */
+  chooseSubSkill(subclassId: string, skillId: string): void {
+    this.specialAction.send({ subclassId, subSkillId: skillId });
+  }
+
+  /** NetSession: relay this player's run-clear extra-class pick (item 14). */
+  chooseExtraClass(classId: ClassId): void {
+    this.specialAction.send({ extraClass: classId });
+  }
+
+  /** NetSession: relay this player's ephemeral-shop purchase (item 21). */
+  buyEphemeral(id: EphemeralId): void {
+    this.specialAction.send({ buyEphemeral: id });
   }
 
   /** NetSession: relay this player's "ready for the next boss" flag. */

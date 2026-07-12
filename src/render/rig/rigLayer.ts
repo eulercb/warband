@@ -128,7 +128,8 @@ export class RigLayer {
         flash: this.fx.flashAmount(p.id),
         enraged: false,
         state: p.state,
-        castSlot: p.castSlot,
+        // Only base-kit rooted casts drive the cast pose (sub skills are instant).
+        castSlot: p.castSlot === 'sub1' || p.castSlot === 'sub2' ? null : p.castSlot,
         castT: castProgress(p),
         aim: p.aim,
         cheer: celebrate ? cheer : undefined,
@@ -183,6 +184,8 @@ function telegraphProgress(tg: Telegraph | null): number | undefined {
 /** 0..1 rooted-cast progress for a player, or undefined when not mid-cast. */
 function castProgress(p: PlayerView): number | undefined {
   if (!p.castSlot || p.castTimer <= 0) return undefined;
+  // Subclass skills are instant (never rooted-cast), so only base slots matter.
+  if (p.castSlot === 'sub1' || p.castSlot === 'sub2') return undefined;
   const slot: AbilitySlot = p.castSlot;
   const total = getClass(p.classId).abilities[slot].castTime ?? 0;
   if (total <= 0) return undefined;

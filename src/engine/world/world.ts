@@ -28,6 +28,9 @@ import type {
   Outcome,
   FightResult,
   AbilitySlot,
+  SubSlot,
+  ExtSlot,
+  Cooldowns,
   Vec2,
 } from '../core/types';
 import {
@@ -53,6 +56,9 @@ import {
   SCORE_PER_DEATH,
   TWIN_HP_FRAC,
   TWIN_DMG_FRAC,
+  BOSS_HP_SCALE,
+  BOSS_REGEN_MAX_FRAC,
+  HARDCORE_REVIVES_PER_FIGHT,
   ADD_HP,
   ADD_MOVE_SPEED,
   ADD_RADIUS,
@@ -98,10 +104,13 @@ import {
 // sub/dist/distSq/pointInSegment so combat measures the shortest path on the
 // torus. `wrapPos` canonicalises positions after they move (see §infinite-map).
 import { sub, dist, distSq, pointInSegment, wrapPos } from '../core/torus';
-import { getClass, cloneAbilities } from '../content/classes';
+import { getClass, cloneAbilities, slowAttackCooldowns } from '../content/classes';
 import { applyUpgrades } from '../content/upgrades';
 import type { UpgradeId } from '../content/upgrades';
-import { applyCharUpgrades } from '../content/charUpgrades';
+import { applyCharUpgrades, previewAbilityTable } from '../content/charUpgrades';
+import { getSubSkill } from '../content/subclasses';
+import { coinsForRank } from '../content/ephemeral';
+import type { EphemeralStock } from '../content/ephemeral';
 import { getMonster, abilityById } from '../content/monsters';
 import type { MonsterDef, BossModifier } from '../content/monsters';
 import { hasAffix, AFFIXES } from '../content/affixes';
@@ -121,13 +130,33 @@ import {
   healPlayer,
 } from '../combat/combat';
 import { decayThreat, nthThreatTarget } from '../combat/threat';
-import { resolvePlayerAbility, resolveBossAbility, beamTick, spawnZone } from '../combat/abilities';
+import {
+  resolvePlayerAbility,
+  resolveBossAbility,
+  beamTick,
+  spawnZone,
+  abilityForSlot,
+} from '../combat/abilities';
 import type { BossAbilityDef } from '../content/monsters';
 import { stepCorruption, firstCorruptionDelay } from './corruption';
 import { WALLING_SHAPES, overlapsActiveTelegraph } from './grammar';
 import { FAIR_TELEGRAPH_GAP } from '../core/constants';
 
 const SLOTS: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
+const SUB_SLOTS: SubSlot[] = ['sub1', 'sub2'];
+/** Cooldown gate (s) after a multiclass swap, so it can't be spammed for free casts. */
+const CLASS_SWAP_CD = 1.0;
+// Ephemeral shop consumables (item 21).
+/** Healing-vial restore, as a fraction of max HP. */
+const EPHEMERAL_POTION_HEAL = 0.4;
+/** Phoenix-charm auto-revive HP, as a fraction of max HP. */
+const EPHEMERAL_SELFREVIVE_HP = 0.5;
+/** Brief invulnerability after a self-revive so you don't instantly re-fall. */
+const EPHEMERAL_SELFREVIVE_GRACE = 1.5;
+// Passive next-fight perk magnitudes (folded into the stat multipliers at spawn).
+const EPHEMERAL_SPEED_MULT = 1.3;
+const EPHEMERAL_DAMAGE_MULT = 1.25;
+const EPHEMERAL_DEFENSE_MULT = 0.75;
 
 /** Blast-flash color for projectiles that detonate in an area on impact. */
 const PROJECTILE_IMPACT_COLOR: Partial<Record<import('../core/types').ProjectileKind, number>> = {
@@ -149,6 +178,12 @@ export interface WorldPlayerInit {
   upgrades?: UpgradeId[];
   /** Persistent character (class) upgrades this hero has earned this run. */
   charUpgrades?: string[];
+  /** Chosen subclass-skill ids bound to sub1/sub2 (item 13; up to two). */
+  subSkills?: string[];
+  /** Additional classes this hero can swap to (item 14). `classId` stays primary. */
+  extraClasses?: ClassId[];
+  /** Ephemeral-shop perks bought for THIS fight (item 21). Consumed on spawn. */
+  ephemeral?: EphemeralStock;
   /** Score carried in from prior bosses this run (endless accumulates it). */
   baseScore?: number;
 }
@@ -179,6 +214,12 @@ export interface WorldInit {
    * gauntlet slots past the opener and every endless cycle.
    */
   corruption?: boolean;
+  /**
+   * Hardcore run (item 11): corruption beats come far more often and accelerate
+   * the longer a fight drags past the expected kill time, revives are limited per
+   * fight, and a wipe has no free retry. A deadlier mode for aggressive players.
+   */
+  hardcore?: boolean;
   /**
    * Practice mode (the walkable menu playground): the dummy respawns instead of
    * granting victory, the party can never wipe to defeat, and interaction
@@ -231,6 +272,10 @@ export class World {
 
   /** Mid-fight corruption events enabled for this fight (host-gated). */
   corruptionEnabled: boolean;
+  /** Hardcore run: deadlier corruption cadence + limited revives (see item 11). */
+  hardcore = false;
+  /** Revives remaining this fight (hardcore only; Infinity otherwise). */
+  reviveBudget = Infinity;
   /** Seconds until the next corruption beat fires (see world/corruption.ts). */
   corruptionTimer = 0;
   /** How many corruption beats have fired (drives variety / anti-repeat). */
@@ -255,6 +300,10 @@ export class World {
     this.modifier = init.modifier ?? null;
     this.practice = init.practice ?? false;
     this.scene = init.scene ?? null;
+    // Hardcore only bites in a real fight; set it BEFORE the first corruption
+    // delay is computed so the opening beat already lands on the deadlier cadence.
+    this.hardcore = (init.hardcore ?? false) && !this.practice && this.scene === null;
+    this.reviveBudget = this.hardcore ? HARDCORE_REVIVES_PER_FIGHT : Infinity;
     // Corruption only runs in a real fight (never in the menu scenes / playground).
     this.corruptionEnabled = (init.corruption ?? false) && !this.practice && this.scene === null;
     this.corruptionTimer = this.corruptionEnabled ? firstCorruptionDelay(this) : 0;
@@ -353,17 +402,99 @@ export class World {
       // the class-specific character upgrades that retune the ability table.
       applyUpgrades(player, pi.upgrades);
       applyCharUpgrades(player, pi.charUpgrades);
+      // Global attack slow-down last, so character cooldown-reduction upgrades
+      // still shave a proportional slice off the (doubled) base.
+      if (player.abilities) slowAttackCooldowns(player.abilities);
+      // Subclass skills (item 13) — bind up to two to the sub1/sub2 slots.
+      this.bindSubSkills(player, pi.subSkills);
+      // Multiclass (item 14) — build a resolved kit for each owned class so a swap
+      // is instant, and seed per-class cooldown state.
+      this.buildMulticlass(player, pi);
+      // Ephemeral shop perks bought for THIS fight (item 21): passive combat
+      // bursts fold into the stat multipliers; potions/self-revives become
+      // in-fight resources. All gone next fight (a fresh World is built each boss).
+      this.applyEphemeral(player, pi.ephemeral);
       player.hp = player.maxHp;
       this.players.push(player);
     });
   }
 
+  /** Bind up to two chosen subclass skills to the hero's sub1/sub2 slots (item 13). */
+  private bindSubSkills(p: Player, ids?: string[]): void {
+    if (!ids || ids.length === 0) return;
+    const bound: string[] = [];
+    ids.slice(0, 2).forEach((id, i) => {
+      const skill = getSubSkill(id);
+      if (!skill) return;
+      const slot: SubSlot = i === 0 ? 'sub1' : 'sub2';
+      (p.subAbilities ??= {})[slot] = { ...skill.ability, slot };
+      p.cooldowns[slot] = 0;
+      bound.push(id);
+    });
+    if (bound.length > 0) p.subSkillIds = bound;
+  }
+
+  /**
+   * Build a ready-to-swap kit for each of a multiclass hero's classes (item 14).
+   * Each extra class's table is resolved (clone + that class's ability upgrades +
+   * the global attack slow-down) via previewAbilityTable, so a swap is instant and
+   * each class keeps its own cooldown bank.
+   */
+  private buildMulticlass(p: Player, pi: WorldPlayerInit): void {
+    const extra = [...new Set((pi.extraClasses ?? []).filter((c) => c !== pi.classId))];
+    if (extra.length === 0) return;
+    const zero = (): Cooldowns => ({ basic: 0, a1: 0, a2: 0, a3: 0 });
+    p.classes = [pi.classId, ...extra];
+    p.classTables = { [pi.classId]: p.abilities! };
+    p.classCooldowns = { [pi.classId]: zero() };
+    p.swapCd = 0;
+    for (const cid of extra) {
+      p.classTables[cid] = previewAbilityTable(cid, pi.charUpgrades ?? []);
+      p.classCooldowns[cid] = zero();
+    }
+  }
+
+  /**
+   * Apply a hero's ephemeral-shop purchases for this fight (item 21). Passive
+   * perks fold straight into the persistent stat multipliers (so they compose
+   * with class upgrades and are predicted correctly on clients via `moveSpeed`);
+   * potions and self-revives become live in-fight resources.
+   */
+  private applyEphemeral(p: Player, stock?: EphemeralStock): void {
+    if (!stock) return;
+    if (stock.speed) p.moveSpeed *= EPHEMERAL_SPEED_MULT;
+    if (stock.damage) p.damageMult *= EPHEMERAL_DAMAGE_MULT;
+    if (stock.defense) p.damageTakenMult *= EPHEMERAL_DEFENSE_MULT;
+    if (stock.potions && stock.potions > 0) p.potions = stock.potions;
+    if (stock.revives && stock.revives > 0) p.selfRevives = stock.revives;
+  }
+
+  /** Quaff a carried healing vial (item 21): heal a chunk of max HP, one charge. */
+  private tryUsePotion(p: Player): void {
+    if ((p.potions ?? 0) <= 0) return;
+    if (p.hp >= p.maxHp) return; // don't waste a vial at full health
+    p.potions = (p.potions ?? 0) - 1;
+    const before = p.hp;
+    p.hp = Math.min(p.maxHp, p.hp + p.maxHp * EPHEMERAL_POTION_HEAL);
+    const healed = p.hp - before;
+    p.stats.healingDone += healed;
+    this.events.push({ t: 'heal', pos: { ...p.pos }, amount: healed, targetId: p.id });
+  }
+
   private spawnBosses(ids: MonsterId[], bossAffixes?: AffixId[][]): void {
-    const twin = ids.length > 1;
+    const n = ids.length;
+    const twin = n > 1;
+    // A shared-arena pack splits its danger budget: each boss is weaker the more
+    // of them share the floor (twin ≈ 0.62 HP / 0.8 dmg; a triplet/quad even
+    // less), so N-at-once stays chaotic rather than simply N× lethal.
+    const hpFrac = twin ? TWIN_HP_FRAC * Math.sqrt(2 / n) : 1;
+    const dmgFrac = twin ? TWIN_DMG_FRAC * Math.pow(2 / n, 0.35) : 1;
     ids.forEach((id, i) => {
       const def = getMonster(id);
-      const frac = twin ? TWIN_HP_FRAC : 1;
-      const maxHp = Math.round(def.baseHp * this.scaling.hpMultiplier * frac);
+      // The practice dummy is a UI/training target, not a balance target — it
+      // keeps its full HP (and its brisk self-heal) so sparring stays smooth.
+      const hpScale = def.id === 'dummy' ? 1 : BOSS_HP_SCALE;
+      const maxHp = Math.round(def.baseHp * hpScale * this.scaling.hpMultiplier * hpFrac);
       const cooldowns: Record<string, number> = {};
       for (const ab of def.abilities) cooldowns[ab.id] = 0;
       // Spread a duo along the top of the arena so they don't spawn stacked.
@@ -394,12 +525,13 @@ export class World {
           channelAccum: 0,
         },
         cooldowns,
-        // Stagger twin decisions so their openers don't land the same tick.
+        // Stagger pack decisions so their openers don't land the same tick.
         decisionTimer: BOSS_DECISION_MIN * (1 + i * 0.5),
         regen: def.regen,
+        regenLockout: 0,
         blinkTimer,
         buffs: [],
-        dmgScale: twin ? TWIN_DMG_FRAC : 1,
+        dmgScale: dmgFrac,
         modAura: this.modifier?.aura,
         modColor: this.modifier?.color,
         modAuraTimer: 0,
@@ -516,6 +648,13 @@ export class World {
       p.cooldowns.a1 = Math.max(0, p.cooldowns.a1 - dt);
       p.cooldowns.a2 = Math.max(0, p.cooldowns.a2 - dt);
       p.cooldowns.a3 = Math.max(0, p.cooldowns.a3 - dt);
+      // Subclass-skill cooldowns (present only when a skill is bound).
+      if (p.cooldowns.sub1 != null) p.cooldowns.sub1 = Math.max(0, p.cooldowns.sub1 - dt);
+      if (p.cooldowns.sub2 != null) p.cooldowns.sub2 = Math.max(0, p.cooldowns.sub2 - dt);
+      // Multiclass swap gate + per-class cooldown decay for the INACTIVE classes,
+      // so a swapped-away kit keeps recovering while you fight with another.
+      if (p.swapCd != null && p.swapCd > 0) p.swapCd = Math.max(0, p.swapCd - dt);
+      this.tickInactiveClassCooldowns(p, dt);
 
       if (p.castTimer > 0) {
         const was = p.castTimer;
@@ -550,6 +689,13 @@ export class World {
       // aim (always allowed)
       if (cmd.aim.x !== 0 || cmd.aim.y !== 0) p.aim = normalize(cmd.aim);
 
+      // Ephemeral healing vial (item 21) — quaffed with the item button. A
+      // consumable, not an ability, so it works even while stunned or mid-cast
+      // (a clutch escape). Edge-triggered; inert in the calm reward scene.
+      if (this.scene === null && (cmd.buttons.item ?? false) && !(p.prevButtons.item ?? false)) {
+        this.tryUsePotion(p);
+      }
+
       const stunned = hasBuff(p, 'stun');
       const casting = p.castTimer > 0;
 
@@ -570,6 +716,17 @@ export class World {
             const fired = cmd.autofire ? held : held && !p.prevButtons[slot];
             if (fired) this.tryUseAbility(p, slot, moveDir);
           }
+          // Subclass skills (item 13) — same edge / autofire rules.
+          for (const slot of SUB_SLOTS) {
+            if (!p.subAbilities?.[slot]) continue;
+            const held = cmd.buttons[slot] ?? false;
+            const fired = cmd.autofire ? held : held && !(p.prevButtons[slot] ?? false);
+            if (fired) this.tryUseAbility(p, slot, moveDir);
+          }
+          // Multiclass swap (item 14) — a fresh press cycles to the next class.
+          if ((cmd.buttons.swap ?? false) && !(p.prevButtons.swap ?? false)) {
+            this.cycleClass(p);
+          }
         }
       }
 
@@ -577,9 +734,11 @@ export class World {
     }
   }
 
-  private tryUseAbility(p: Player, slot: AbilitySlot, moveDir: Vec2): void {
-    const ab = (p.abilities ?? getClass(p.classId).abilities)[slot];
-    if (p.cooldowns[slot] > 0) return;
+  private tryUseAbility(p: Player, slot: ExtSlot, moveDir: Vec2): void {
+    const ab = abilityForSlot(p, slot);
+    if (!ab) return; // sub slot with no bound skill
+    if ((p.cooldowns[slot] ?? 0) > 0) return;
+    if (hasBuff(p, 'silence') && slot !== 'basic') return; // silenced: only the basic works
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
 
     if (ab.castTime && ab.castTime > 0) {
@@ -600,7 +759,66 @@ export class World {
     }
   }
 
+  // --- Multiclass (item 14) --------------------------------------------------
+
+  /** Tap-swap to the NEXT owned class (per-class cooldowns preserved). */
+  private cycleClass(p: Player): void {
+    if (!p.classes || p.classes.length < 2) return;
+    const cur = p.classes.indexOf(p.classId);
+    const next = p.classes[(cur + 1) % p.classes.length];
+    this.setActiveClass(p, next);
+  }
+
+  /**
+   * Swap the hero's active class. The previous kit's cooldowns are stashed and the
+   * target kit's restored, so "all cooldowns are respected per class" (item 14).
+   * A short swap gate prevents free-cast spam. Subclass skills persist across swaps.
+   */
+  setActiveClass(p: Player, classId: ClassId): void {
+    if (p.classId === classId || !p.classTables || !p.classCooldowns) return;
+    if (p.swapCd != null && p.swapCd > 0) return;
+    const table = p.classTables[classId];
+    if (!table) return;
+    // Stash the current class's base-slot cooldowns.
+    p.classCooldowns[p.classId] = {
+      basic: p.cooldowns.basic,
+      a1: p.cooldowns.a1,
+      a2: p.cooldowns.a2,
+      a3: p.cooldowns.a3,
+    };
+    p.classId = classId;
+    p.abilities = table;
+    const cds = p.classCooldowns[classId] ?? { basic: 0, a1: 0, a2: 0, a3: 0 };
+    p.cooldowns = {
+      basic: cds.basic,
+      a1: cds.a1,
+      a2: cds.a2,
+      a3: cds.a3,
+      sub1: p.cooldowns.sub1, // subclass skills are the hero's, not per-class
+      sub2: p.cooldowns.sub2,
+    };
+    p.castTimer = 0;
+    p.castSlot = null;
+    p.swapCd = CLASS_SWAP_CD;
+  }
+
+  /** Decay the saved cooldowns of the classes the hero is NOT currently wielding. */
+  private tickInactiveClassCooldowns(p: Player, dt: number): void {
+    if (!p.classCooldowns) return;
+    for (const cid of Object.keys(p.classCooldowns)) {
+      if (cid === p.classId) continue;
+      const c: Cooldowns = p.classCooldowns[cid];
+      c.basic = Math.max(0, c.basic - dt);
+      c.a1 = Math.max(0, c.a1 - dt);
+      c.a2 = Math.max(0, c.a2 - dt);
+      c.a3 = Math.max(0, c.a3 - dt);
+    }
+  }
+
   private updateRevive(dt: number, inputs: Map<string, InputCommand>): void {
+    // Hardcore: once the fight's revive stock is spent, a downed hero can no
+    // longer be brought back — they're out for the rest of this boss.
+    if (this.reviveBudget <= 0) return;
     for (const d of this.players) {
       if (d.state !== 'downed') continue;
       let reviver: Player | null = null;
@@ -623,7 +841,9 @@ export class World {
           d.reviverId = null;
           d.downedTimer = 0;
           reviver.stats.revives += 1;
+          this.reviveBudget -= 1; // hardcore: spend from the fight's revive stock
           this.events.push({ t: 'revive', id: d.id, pos: { ...d.pos } });
+          if (this.reviveBudget <= 0) return; // stock spent — no more this fight
         }
       } else {
         d.reviveProgress = 0;
@@ -943,11 +1163,21 @@ export class World {
     }
     boss.blinkTimer = Math.max(0, boss.blinkTimer - dt);
 
-    // regen (troll)
-    if (boss.regen > 0) {
+    // regen (troll & other regenerators) — SUPPRESSED for a beat after taking
+    // damage, and hard-capped as a fraction of max HP/s, so a boss can never
+    // out-heal a committed band and drag the fight out.
+    boss.regenLockout = Math.max(0, (boss.regenLockout ?? 0) - dt);
+    if (boss.regen > 0 && boss.regenLockout <= 0) {
       const regenMult =
         this.scaling.trollRegenMult * (boss.phase === 'enraged' ? def.enrageRegenMult : 1);
-      boss.hp = Math.min(boss.maxHp, boss.hp + boss.regen * regenMult * dt);
+      // The practice dummy keeps its brisk, uncapped self-heal so it refills fast
+      // once you stop swinging — but it still honours the lockout, so a committed
+      // combo bursts it down (and it pops back up) instead of out-healing you.
+      const perSec =
+        def.id === 'dummy'
+          ? boss.regen * regenMult
+          : Math.min(boss.regen * regenMult, boss.maxHp * BOSS_REGEN_MAX_FRAC);
+      boss.hp = Math.min(boss.maxHp, boss.hp + perSec * dt);
     }
 
     // enrage transition
@@ -1722,6 +1952,16 @@ export class World {
   private checkDownedTransitions(): void {
     for (const p of this.players) {
       if (p.state === 'alive' && p.hp <= 0) {
+        // Phoenix charm (item 21): spend a self-revive to spring straight back up
+        // with a short invulnerability window instead of falling. Fires once per
+        // charge, before the normal downed transition.
+        if ((p.selfRevives ?? 0) > 0) {
+          p.selfRevives = (p.selfRevives ?? 0) - 1;
+          p.hp = Math.max(1, Math.round(p.maxHp * EPHEMERAL_SELFREVIVE_HP));
+          applyBuff(p, makeBuff('invuln', 0, EPHEMERAL_SELFREVIVE_GRACE, 'phoenixCharm'));
+          this.events.push({ t: 'revive', id: p.id, pos: { ...p.pos } });
+          continue;
+        }
         p.state = 'downed';
         p.hp = 0;
         p.downedTimer = DOWNED_BLEEDOUT;
@@ -1804,6 +2044,14 @@ export class World {
   }
 
   result(): FightResult {
+    const victory = (this.outcome ?? 'defeat') === 'victory';
+    // Ephemeral coins (item 21): rank heroes by this fight's participation score;
+    // the best performer banks the most, the tail banks none. A lost boss (defeat)
+    // pays nothing — the run's over anyway.
+    const coinByPeer = new Map<string, number>();
+    [...this.players]
+      .sort((a, b) => this.playerScore(b) - this.playerScore(a))
+      .forEach((p, i) => coinByPeer.set(p.peerId, victory ? coinsForRank(i) : 0));
     return {
       outcome: this.outcome ?? 'defeat',
       timeMs: Math.round(this.endMs),
@@ -1818,6 +2066,7 @@ export class World {
         revives: p.stats.revives,
         deaths: p.stats.deaths,
         score: Math.round(this.playerScore(p)),
+        coins: coinByPeer.get(p.peerId) ?? 0,
       })),
     };
   }
@@ -1889,6 +2138,9 @@ export class World {
       castSlot: p.castSlot,
       castTimer: p.castTimer,
       score: Math.round(this.playerScore(p)),
+      subSkills: p.subSkillIds,
+      classes: p.classes,
+      potions: p.potions,
     };
   }
 

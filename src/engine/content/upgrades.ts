@@ -8,9 +8,13 @@
  * data-driven and unit-testable without any UI or networking.
  */
 import type { Player } from '../core/types';
+import { MAX_SKILL_STACKS } from '../core/constants';
 
 export type UpgradeId =
   'swift' | 'vigor' | 'haste' | 'focus' | 'surefooted' | 'mighty' | 'bulwark' | 'renewal';
+
+/** Coarse role of a boon, used to bias personality-driven bot picks (item 6). */
+export type UpgradeRole = 'offense' | 'defense' | 'sustain' | 'tempo' | 'mobility';
 
 export interface UpgradeDef {
   id: UpgradeId;
@@ -19,6 +23,14 @@ export interface UpgradeDef {
   desc: string;
   /** Emoji shown on the upgrade card / accumulated badge. */
   icon: string;
+  /** What the boon is FOR — biases which bots (by temperament) favour it. */
+  role: UpgradeRole;
+  /**
+   * Most times this boon can be taken across a run. Once a hero owns this many,
+   * it stops being offered (a maxed pick — e.g. Surefooted at full terrain
+   * immunity — never clutters the shop again). Defaults to MAX_SKILL_STACKS.
+   */
+  maxStacks?: number;
   /** Mutate a freshly-spawned player to apply this upgrade. */
   apply: (p: Player) => void;
 }
@@ -31,6 +43,7 @@ export interface UpgradeDef {
 export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   swift: {
     id: 'swift',
+    role: 'mobility',
     name: 'Swift',
     icon: '🌀',
     desc: '+15% movement speed',
@@ -40,6 +53,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   },
   vigor: {
     id: 'vigor',
+    role: 'defense',
     name: 'Vigor',
     icon: '❤️',
     desc: '+20% maximum health',
@@ -50,6 +64,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   },
   haste: {
     id: 'haste',
+    role: 'tempo',
     name: 'Haste',
     icon: '⚡',
     desc: '-18% ability cooldowns',
@@ -59,6 +74,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   },
   focus: {
     id: 'focus',
+    role: 'tempo',
     name: 'Focus',
     icon: '🎯',
     desc: '-30% cast time',
@@ -68,15 +84,19 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   },
   surefooted: {
     id: 'surefooted',
+    role: 'mobility',
     name: 'Surefooted',
     icon: '🥾',
-    desc: 'Halve terrain slow & damage (stacks to immunity)',
+    // Two picks reach full immunity, after which it drops out of the offer pool.
+    maxStacks: 2,
+    desc: 'Halve terrain slow & damage (2 stacks = full immunity)',
     apply: (p) => {
       p.terrainResist = Math.min(1, p.terrainResist + 0.5);
     },
   },
   mighty: {
     id: 'mighty',
+    role: 'offense',
     name: 'Mighty',
     icon: '🔥',
     desc: '+15% damage dealt',
@@ -86,6 +106,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   },
   bulwark: {
     id: 'bulwark',
+    role: 'defense',
     name: 'Bulwark',
     icon: '🛡️',
     desc: '-15% damage taken',
@@ -95,6 +116,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   },
   renewal: {
     id: 'renewal',
+    role: 'sustain',
     name: 'Renewal',
     icon: '✨',
     desc: 'Regenerate 2% max HP per second',
@@ -121,12 +143,29 @@ export function applyUpgrades(p: Player, ids: UpgradeId[] | undefined): void {
   }
 }
 
+/** Most times a generic boon may be taken (its `maxStacks`, or the shared cap). */
+export function upgradeMaxStacks(id: UpgradeId): number {
+  return UPGRADES[id].maxStacks ?? MAX_SKILL_STACKS;
+}
+
+/** Whether the hero already owns `id` at its stacking cap (so it shouldn't reroll). */
+export function upgradeAtMax(id: UpgradeId, owned: readonly string[]): boolean {
+  const have = owned.reduce((n, o) => (o === id ? n + 1 : n), 0);
+  return have >= upgradeMaxStacks(id);
+}
+
 /**
  * Roll `n` distinct upgrades to offer this round. `rnd` returns a float in
- * [0,1) (Math.random in the UI). Pure aside from that injected randomness.
+ * [0,1) (Math.random in the UI). `owned` (the hero's picks so far) filters out
+ * any boon already at its stacking cap so a maxed pick never clutters the shop.
+ * Pure aside from the injected randomness.
  */
-export function rollUpgradeChoices(n: number, rnd: () => number): UpgradeId[] {
-  const pool = [...UPGRADE_IDS];
+export function rollUpgradeChoices(
+  n: number,
+  rnd: () => number,
+  owned: readonly string[] = [],
+): UpgradeId[] {
+  const pool = UPGRADE_IDS.filter((id) => !upgradeAtMax(id, owned));
   const out: UpgradeId[] = [];
   const count = Math.min(n, pool.length);
   while (out.length < count) {

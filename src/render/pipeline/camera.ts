@@ -17,6 +17,20 @@ import { lerp } from '../../engine/core/math';
 
 /** Maximum accumulated shake energy (in screen pixels of jitter amplitude). */
 const MAX_SHAKE = 24;
+
+/**
+ * Global accessibility switch for screen shake. When off, `addShake` is inert for
+ * every camera (menus, fights, reward room), so no view ever jolts. Toggled from
+ * the app store (setScreenShake) and persisted; defaults on. Kept module-level so
+ * a single call covers all the renderers without threading the flag through each.
+ */
+let shakeEnabled = true;
+export function setShakeEnabled(on: boolean): void {
+  shakeEnabled = on;
+}
+export function isShakeEnabled(): boolean {
+  return shakeEnabled;
+}
 /** Exponential decay rate of shake energy, per second. */
 const SHAKE_DECAY = 7;
 /**
@@ -131,8 +145,10 @@ export class Camera {
     });
   }
 
-  /** Add shake energy (clamped). Bigger events add more. */
+  /** Add shake energy (clamped). Bigger events add more. Inert when the
+   * accessibility toggle has disabled screen shake. */
   addShake(intensity: number): void {
+    if (!shakeEnabled) return;
     this.shakeEnergy = Math.min(MAX_SHAKE, this.shakeEnergy + intensity);
   }
 

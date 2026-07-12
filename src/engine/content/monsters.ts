@@ -12,6 +12,10 @@ import {
   TWIN_BASE_CHANCE,
   TWIN_CHANCE_PER_CYCLE,
   TWIN_CHANCE_MAX,
+  TWIN_EXTRA_CHANCE,
+  TWIN_EXTRA_FALLOFF,
+  TWIN_EXTRA_PER_CYCLE,
+  TWIN_MAX_BOSSES,
 } from '../core/constants';
 
 export type BossAbilityShape =
@@ -38,6 +42,7 @@ export interface BossAbilityDef {
   width?: number; // line half-width
   knockback?: number;
   stun?: number; // applied to players hit by cone/pbaoe
+  silence?: number; // seconds of SILENCE applied to players hit (item 28) — caster bosses
   slowMult?: number; // on-hit slow (frost bosses); applied to projectiles/zones too
   slowDuration?: number;
   projSpeed?: number;
@@ -1023,6 +1028,13 @@ const BEHOLDER: MonsterDef = {
   abilities: [
     A.proj('eyeRays', 'Eye Rays', 0.6, 5, 22, { projSpeed: 480, projCount: 8, spreadDeg: 320 }),
     A.circle('disintegrate', 'Disintegrate', 1.0, 6, 50, 700, 100),
+    // SIGNATURE (item 28): the central eye's antimagic cone SILENCES casters caught
+    // in its gaze — turn away or fight with your basic until it passes.
+    A.cone('antimagicEye', 'Antimagic Eye', 1.0, 12, 16, 440, 42, {
+      silence: 4,
+      slowMult: 0.6,
+      slowDuration: 1.5,
+    }),
     A.voids('antimagic', 'Antimagic Pools', 0.4, 10, {
       radius: 100,
       zoneTickDamage: 14,
@@ -1033,6 +1045,7 @@ const BEHOLDER: MonsterDef = {
   ],
   decide: decideBy([
     { id: 'eyeRays', chance: 0.6 },
+    { id: 'antimagicEye', cond: within(440), chance: 0.5 },
     { id: 'disintegrate' },
     { id: 'antimagic' },
     { id: 'deathRay', cond: (c) => c.target != null },
@@ -1136,11 +1149,19 @@ const MINDFLAYER: MonsterDef = {
   blink: { range: 280, threatenRange: 130, internalCd: 5 },
   abilities: [
     A.cone('mindBlast', 'Mind Blast', 1.0, 7, 30, 340, 34, { stun: 1.3 }),
+    // SIGNATURE (item 28): a psionic hush that SILENCES casters in a wide circle —
+    // no abilities but the basic attack while it lasts.
+    A.circle('psionicSilence', 'Psionic Silence', 1.1, 13, 18, 640, 150, {
+      silence: 4,
+      slowMult: 0.6,
+      slowDuration: 2,
+    }),
     A.beam('brainDrain', 'Brain Drain', 0.7, 9, 22, { healSelf: true, channelDuration: 2 }),
     A.voids('psychicRift', 'Psychic Rift', 0.5, 9, { radius: 100, zoneTickDamage: 14 }),
     A.summon('enthrall', 'Enthrall', 1.2, 14, { addHpMult: 1.0 }),
   ],
   decide: decideBy([
+    { id: 'psionicSilence', cond: (c) => c.target != null, chance: 0.5 },
     { id: 'mindBlast', cond: within(340), chance: 0.6 },
     { id: 'brainDrain', cond: (c) => c.target != null },
     { id: 'psychicRift' },
@@ -1473,7 +1494,12 @@ export function abilityById(def: MonsterDef, id: string): BossAbilityDef | undef
  * so a run climbs easy → medium → hard. Later cycles bias toward the harder end.
  * Pure aside from the injected RNG.
  */
-export function buildRun(startId: MonsterId, cycle: number, rng: Rng): MonsterId[] {
+export function buildRun(
+  startId: MonsterId,
+  cycle: number,
+  rng: Rng,
+  exclude?: ReadonlySet<MonsterId>,
+): MonsterId[] {
   // Difficulty pattern per slot, hardened by cycle.
   const patternC0: BossTier[] = ['easy', 'easy', 'medium', 'medium', 'hard'];
   const patternHard: BossTier[] = ['medium', 'medium', 'hard', 'hard', 'hard'];
@@ -1486,12 +1512,16 @@ export function buildRun(startId: MonsterId, cycle: number, rng: Rng): MonsterId
 
   const used = new Set<MonsterId>();
   const out: MonsterId[] = [];
-  // Lead with the host's featured boss.
+  // Lead with the given opener (host's pick for a single fight; a seeded random
+  // draw for a gauntlet — the run never lets you hand-pick the boss set).
   out.push(startId);
   used.add(startId);
 
   const pickFrom = (tier: BossTier): MonsterId => {
-    const pool = MONSTERS_BY_TIER[tier].filter((id) => !used.has(id));
+    // Prefer bosses neither used this run NOR seen last run (so Endless re-rolls a
+    // fresh set), falling back progressively if the tier can't fill that.
+    let pool = MONSTERS_BY_TIER[tier].filter((id) => !used.has(id) && !exclude?.has(id));
+    if (pool.length === 0) pool = MONSTERS_BY_TIER[tier].filter((id) => !used.has(id));
     const src = pool.length > 0 ? pool : MONSTERS_BY_TIER[tier];
     const id = src[Math.floor(rng.next() * src.length) % src.length];
     used.add(id);
@@ -1502,6 +1532,19 @@ export function buildRun(startId: MonsterId, cycle: number, rng: Rng): MonsterId
     out.push(pickFrom(pattern[Math.min(i, pattern.length - 1)]));
   }
   return out.slice(0, RUN_LENGTH);
+}
+
+/**
+ * Pick a seeded random opener for a gauntlet — the run never lets a player
+ * hand-pick the first boss. Drawn from the easy tier on a fresh run (medium once
+ * the difficulty has climbed), avoiding the previous run's bosses so Endless
+ * opens on something new.
+ */
+export function randomOpener(cycle: number, rng: Rng, exclude?: ReadonlySet<MonsterId>): MonsterId {
+  const tier: BossTier = cycle <= 0 ? 'easy' : 'medium';
+  let pool = MONSTERS_BY_TIER[tier].filter((id) => !exclude?.has(id));
+  if (pool.length === 0) pool = MONSTERS_BY_TIER[tier];
+  return pool[Math.floor(rng.next() * pool.length) % pool.length];
 }
 
 /**
@@ -1526,8 +1569,9 @@ export function buildRunSlots(
   cycle: number,
   rng: Rng,
   partySize = 4,
+  exclude?: ReadonlySet<MonsterId>,
 ): RunSlot[] {
-  const spine = buildRun(startId, cycle, rng);
+  const spine = buildRun(startId, cycle, rng, exclude);
   const partyFactor = partySize >= 3 ? 1 : partySize === 2 ? 0.6 : 0.3;
   const twinChance =
     Math.min(TWIN_CHANCE_MAX, TWIN_BASE_CHANCE + Math.max(0, cycle) * TWIN_CHANCE_PER_CYCLE) *
@@ -1536,7 +1580,7 @@ export function buildRunSlots(
 
   return spine.map((id, slot) => {
     // The opener stays solo on the first run so a fresh party learns one boss
-    // at a time; endless cycles throw twins at you from the very first gate.
+    // at a time; endless cycles throw packs at you from the very first gate.
     if (slot === 0 && cycle <= 0) return [id];
     if (rng.next() >= twinChance) return [id];
     const tier = MONSTERS[id].tier;
@@ -1544,8 +1588,22 @@ export function buildRunSlots(
       (x) => x !== id,
     );
     if (pool.length === 0) return [id];
-    const partner = pool[Math.floor(rng.next() * pool.length) % pool.length];
-    return [id, partner];
+    const pack: MonsterId[] = [id];
+    const taken = new Set<MonsterId>([id]);
+    // Second boss is guaranteed once we've committed to a multi-fight; each
+    // further co-boss is added with a tapering, cycle-scaled probability so
+    // triplets — and, rarely, quads — surface without becoming a wipe.
+    let extraChance = (TWIN_EXTRA_CHANCE + Math.max(0, cycle) * TWIN_EXTRA_PER_CYCLE) * partyFactor;
+    while (pack.length < TWIN_MAX_BOSSES) {
+      const candidates = pool.filter((x) => !taken.has(x));
+      if (candidates.length === 0) break;
+      const partner = candidates[Math.floor(rng.next() * candidates.length) % candidates.length];
+      pack.push(partner);
+      taken.add(partner);
+      if (pack.length >= 2 && rng.next() >= extraChance) break;
+      extraChance *= TWIN_EXTRA_FALLOFF;
+    }
+    return pack;
   });
 }
 

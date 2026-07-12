@@ -28,6 +28,16 @@ const TERRAIN_LEGEND: Record<TerrainKind, LegendEntry> = {
   bog: { label: 'Bog', color: '#5a7248', effect: 'Thick mud — heavy slow, no damage.' },
   ice: { label: 'Ice', color: '#74b3dc', effect: 'Slippery — strong slow, no damage.' },
   deathfog: { label: 'Death Fog', color: '#a084d6', effect: 'Creeping damage and a mild slow.' },
+  tide: {
+    label: 'Tide',
+    color: '#1f5f9e',
+    effect: 'Surging ocean — very heavy slow and slow drowning damage.',
+  },
+  abyss: {
+    label: 'Abyss',
+    color: '#7b5cff',
+    effect: 'A black chasm — heavy damage; the void drags at your steps.',
+  },
 };
 
 const OBSTACLE_ENTRY: LegendEntry = {

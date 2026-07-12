@@ -11,6 +11,7 @@ import type {
   ZoneKind,
   Vec2,
   AbilitySlot,
+  ExtSlot,
   BossAction,
   ProjectileKind,
   BuffKind,
@@ -72,6 +73,12 @@ function abilitiesOf(p: Player): Record<AbilitySlot, PlayerAbilityDef> {
   return p.abilities ?? getClass(p.classId).abilities;
 }
 
+/** Resolve the ability def for ANY slot — base kit or a subclass slot (item 13). */
+export function abilityForSlot(p: Player, slot: ExtSlot): PlayerAbilityDef | undefined {
+  if (slot === 'sub1' || slot === 'sub2') return p.subAbilities?.[slot];
+  return abilitiesOf(p)[slot];
+}
+
 function aliveAllies(world: World): Player[] {
   return world.players.filter((p) => p.state === 'alive');
 }
@@ -110,13 +117,9 @@ function applyStrikeRiders(world: World, target: Boss | Add, ab: PlayerAbilityDe
  * stun checks are handled by the World before calling this. `moveDir` is the
  * player's current movement input (used by dashes).
  */
-export function resolvePlayerAbility(
-  world: World,
-  p: Player,
-  slot: AbilitySlot,
-  moveDir: Vec2,
-): void {
-  const ab = abilitiesOf(p)[slot];
+export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, moveDir: Vec2): void {
+  const ab = abilityForSlot(p, slot);
+  if (!ab) return; // a sub slot with no bound skill — nothing to resolve
   const aimAngle = angleOf(p.aim);
   const color = CLASS_COLORS[p.classId] ?? 0xffffff;
 
@@ -386,7 +389,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
   });
 }
 
-function projectileKindFor(p: Player, slot: AbilitySlot): ProjectileKind {
+function projectileKindFor(p: Player, slot: ExtSlot): ProjectileKind {
   if (p.classId === 'mage') return slot === 'a1' ? 'fireball' : 'arcaneBolt';
   if (p.classId === 'cleric' || p.classId === 'paladin') return 'smite';
   if (
@@ -515,10 +518,14 @@ function knockback(world: World, p: Player, center: Vec2, distance: number): voi
   p.pos = clampToArena(world, vadd(p.pos, vscale(d, distance)), p.radius);
 }
 
-/** Apply a boss strike's on-hit slow rider to a player (frost bosses). */
+/** Apply a boss strike's on-hit riders to a player: a frost SLOW and/or a caster
+ * SILENCE (item 28 — a silenced hero can use only their basic attack). */
 function bossSlowRider(p: Player, ab: BossAbilityDef): void {
   if (ab.slowMult && ab.slowMult < 1) {
     applyBuff(p, makeBuff('moveSpeed', ab.slowMult, ab.slowDuration ?? 2, 'bossSlow'));
+  }
+  if (ab.silence && ab.silence > 0) {
+    applyBuff(p, makeBuff('silence', 0, ab.silence, 'bossSilence'));
   }
 }
 

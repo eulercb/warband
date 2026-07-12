@@ -18,7 +18,19 @@ export interface Vec2 {
 export type EntityId = number;
 
 export type ClassId =
-  'knight' | 'ranger' | 'mage' | 'cleric' | 'barbarian' | 'rogue' | 'paladin' | 'druid';
+  | 'knight'
+  | 'ranger'
+  | 'mage'
+  | 'cleric'
+  | 'barbarian'
+  | 'rogue'
+  | 'paladin'
+  | 'druid'
+  // Expansion — the remaining DnD base classes.
+  | 'bard'
+  | 'monk'
+  | 'sorcerer'
+  | 'warlock';
 
 export type MonsterId =
   // Originals
@@ -62,6 +74,12 @@ export type MonsterId =
   | 'fae';
 
 export type AbilitySlot = 'basic' | 'a1' | 'a2' | 'a3';
+
+/** The two extra ability slots a hero unlocks from a subclass (item 13). */
+export type SubSlot = 'sub1' | 'sub2';
+
+/** Any slot an ability can be cast from — the base kit plus subclass slots. */
+export type ExtSlot = AbilitySlot | SubSlot;
 
 /** Coarse difficulty tier used to assemble a run (see monsters.ts `buildRun`). */
 export type BossTier = 'easy' | 'medium' | 'hard';
@@ -129,7 +147,14 @@ export type CorruptionKind =
  *  - moveSpeed:   multiplies movement speed
  *  - stun / invuln: `mult` unused; presence for the duration is what matters
  */
-export type BuffKind = 'damageDealt' | 'damageTaken' | 'moveSpeed' | 'stun' | 'invuln';
+export type BuffKind =
+  | 'damageDealt'
+  | 'damageTaken'
+  | 'moveSpeed'
+  | 'stun'
+  | 'invuln'
+  /** Silenced (item 28): all abilities except the basic attack are disabled. */
+  | 'silence';
 
 export interface Buff {
   kind: BuffKind;
@@ -174,6 +199,9 @@ export interface Cooldowns {
   a1: number;
   a2: number;
   a3: number;
+  /** Subclass skill cooldowns (present only once the hero has that skill). */
+  sub1?: number;
+  sub2?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -211,7 +239,7 @@ export interface Player {
 
   cooldowns: Cooldowns;
   castTimer: number; // > 0 while rooted mid-cast (e.g. Fireball)
-  castSlot: AbilitySlot | null;
+  castSlot: ExtSlot | null;
   buffs: Buff[];
 
   // Persistent per-run upgrade modifiers (see engine/upgrades.ts). Applied once
@@ -234,6 +262,32 @@ export interface Player {
    * defaults). Typed via a type-only import to avoid a runtime import cycle.
    */
   abilities?: Record<AbilitySlot, import('../content/classes').PlayerAbilityDef>;
+  /**
+   * Subclass skills bound to the sub1/sub2 buttons (item 13). 0-2 entries; each is
+   * a resolved ability def (with its own accumulated boons). Absent = no subclass.
+   */
+  subAbilities?: Partial<Record<SubSlot, import('../content/classes').PlayerAbilityDef>>;
+  /** The chosen subclass-skill ids (serialized to PlayerView so clients label the buttons). */
+  subSkillIds?: string[];
+
+  // --- Multiclass (item 14). All absent for a single-class hero. ---
+  /** Every class this hero can swap between (index 0 = primary); `classId` is the ACTIVE one. */
+  classes?: ClassId[];
+  /** Resolved ability table per owned class (built at spawn), swapped in on class change. */
+  classTables?: Record<string, Record<AbilitySlot, import('../content/classes').PlayerAbilityDef>>;
+  /** Per-class cooldown state, saved/restored across swaps so each class's cds are respected. */
+  classCooldowns?: Record<string, Cooldowns>;
+  /** Global-ish cooldown gate on swapping classes (seconds). */
+  swapCd?: number;
+
+  // --- Ephemeral shop consumables (item 21). Bought between bosses with coins,
+  // last only this fight. Passive perks (speed/damage/defence) are folded into
+  // the stat multipliers at spawn and leave no field behind. ---
+  /** Healing vials carried into this fight (spent with the item button). */
+  potions?: number;
+  /** Phoenix charms — each auto-revives once when this hero would fall this fight. */
+  selfRevives?: number;
+
   /** Score carried in from prior bosses this run (endless accumulates it). */
   baseScore?: number;
 
@@ -277,6 +331,12 @@ export interface Boss {
 
   // monster-specific
   regen: number; // HP/s (troll); 0 otherwise
+  /**
+   * Host-only regen suppression timer (s). Set whenever the boss takes damage
+   * (combat.damageBoss) and counted down each tick; passive regen only applies
+   * while it is <= 0, so an actively-DPSed boss never heals. Never serialized.
+   */
+  regenLockout?: number;
   blinkTimer: number; // internal cooldown for Lich blink
 
   buffs: Buff[];
@@ -375,7 +435,10 @@ export type TerrainKind =
   | 'swamp' // troll: heavy slow + light poison
   | 'bog' // troll: heavy slow, no damage
   | 'ice' // lich: strong slow, no damage (slippery)
-  | 'deathfog'; // lich: creeping damage + mild slow
+  | 'deathfog' // lich: creeping damage + mild slow
+  // Signature terrains (item 28) — a boss's arena reads as its home.
+  | 'tide' // kraken: surging ocean — very heavy slow, light drowning damage
+  | 'abyss'; // bandit/void: a black chasm — heavy damage, strong pull-to-edge slow
 
 export interface TerrainPatch {
   id: EntityId;
@@ -614,6 +677,15 @@ export interface ButtonState {
   a2: boolean;
   a3: boolean;
   revive: boolean;
+  // Expansion buttons — optional so every existing neutral-literal stays valid;
+  // producers set them and consumers read `?? false`.
+  /** Fire subclass skill 1 / 2 (item 13). */
+  sub1?: boolean;
+  sub2?: boolean;
+  /** Swap active multiclass (tap) / open the class radial (hold) (item 14). */
+  swap?: boolean;
+  /** Spend the selected ephemeral shop item (item 21). */
+  item?: boolean;
 }
 
 /** Per-frame unified input produced by keyboard/gamepad. Buttons are HELD state;
@@ -669,7 +741,7 @@ export type GameEvent =
       pos: Vec2;
       side: Side;
       /** Slot the cast came from (players); absent for boss casts. */
-      slot?: AbilitySlot;
+      slot?: ExtSlot;
     }
   | {
       // A player/boss ability resolved — carries its effect geometry so the
@@ -741,10 +813,16 @@ export interface PlayerView {
   buffs: BuffView[];
   downedTimer: number;
   reviveProgress: number;
-  castSlot: AbilitySlot | null;
+  castSlot: ExtSlot | null;
   castTimer: number;
   /** Live participation score (prior bosses + this fight), for HUD / pause menu. */
   score: number;
+  /** Chosen subclass-skill ids (so clients render + label the sub1/sub2 buttons). */
+  subSkills?: string[];
+  /** Owned classes for a multiclass hero (index 0 primary; `classId` is active). */
+  classes?: ClassId[];
+  /** Healing vials carried this fight (item 21) — drives the HUD item pip. */
+  potions?: number;
 }
 
 export interface BossView {
@@ -869,6 +947,12 @@ export interface ResultPlayerStat {
   deaths: number;
   /** Cumulative participation score across the run (endless keeps accumulating). */
   score: number;
+  /**
+   * Ephemeral-shop coins earned in THIS fight, ranked by performance (item 21):
+   * the top performer banks the most, the tail banks none. 0 on a defeat (a lost
+   * boss pays nothing). Clients add their own row's coins to the shop balance.
+   */
+  coins?: number;
 }
 
 export interface FightResult {
@@ -898,4 +982,18 @@ export interface FightResult {
   cycle?: number;
   endlessAvailable?: boolean;
   modName?: string;
+  /**
+   * Hardcore only (items 11 + 21): a wipe is normally terminal, but if the band
+   * banked a Second Chance from the ephemeral shop the host can still retry. True
+   * = show the Retry button on a hardcore defeat.
+   */
+  hardcoreRetryAvailable?: boolean;
+  /**
+   * Deterministic seed for THIS interstitial's reward offers, derived host-side
+   * from the master run seed. Every client seeds its own offer roll from it so a
+   * shared seed reproduces the same boons between the same bosses (seed mode).
+   */
+  rewardSeed?: number;
+  /** The session's master seed (for display / sharing on the result screen). */
+  runSeed?: number;
 }

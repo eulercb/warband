@@ -2,8 +2,8 @@
  * Warband — data-driven class definitions (Knight / Ranger / Mage / Cleric).
  * All balance numbers per the build brief §7; tweak freely.
  */
-import type { ClassId, AbilitySlot, ZoneKind } from '../core/types';
-import { PLAYER_RADIUS, CLASS_COLORS } from '../core/constants';
+import type { ClassId, AbilitySlot, ExtSlot, ZoneKind } from '../core/types';
+import { PLAYER_RADIUS, CLASS_COLORS, ATTACK_CD_SCALE } from '../core/constants';
 
 /** How an ability resolves. Interpreted by abilities.ts. */
 export type AbilityKind =
@@ -19,7 +19,8 @@ export type AbilityKind =
   | 'taunt'; // force boss focus + top threat (Taunt)
 
 export interface PlayerAbilityDef {
-  slot: AbilitySlot;
+  /** Base kit slot, or a subclass slot (sub1/sub2) once a subclass skill is bound. */
+  slot: ExtSlot;
   name: string;
   kind: AbilityKind;
   cooldown: number; // s
@@ -502,6 +503,225 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       },
     },
   },
+
+  // -------------------------------------------------------------------------
+  // The remaining DnD base classes (Bard / Monk / Sorcerer / Warlock)
+  // -------------------------------------------------------------------------
+
+  bard: {
+    id: 'bard',
+    name: 'Bard',
+    color: CLASS_COLORS.bard,
+    role: 'Support / Control',
+    maxHp: 150,
+    moveSpeed: 212,
+    threatMult: 0.7,
+    radius: PLAYER_RADIUS,
+    blurb: 'Weaves song into war: mocks foes, mends allies, and rallies the band.',
+    abilities: {
+      basic: {
+        slot: 'basic',
+        name: 'Vicious Mockery',
+        kind: 'projectile',
+        cooldown: 0.55,
+        damage: 15,
+        projSpeed: 600,
+        projCount: 1,
+        slowMult: 0.8,
+        slowDuration: 1,
+      },
+      a1: {
+        slot: 'a1',
+        name: 'Inspiration',
+        kind: 'buffAlly',
+        cooldown: 12,
+        damage: 0,
+        range: 420,
+        buffDamageMult: 1.2,
+        buffDefMult: 0.85,
+        buffDuration: 6,
+      },
+      a2: {
+        slot: 'a2',
+        name: 'Healing Word',
+        kind: 'heal',
+        cooldown: 4,
+        damage: 50,
+        range: 420,
+      },
+      a3: {
+        slot: 'a3',
+        name: 'Dissonant Whispers',
+        kind: 'pbaoe',
+        cooldown: 10,
+        damage: 22,
+        radius: 150,
+        slowMult: 0.5,
+        slowDuration: 2,
+      },
+    },
+  },
+
+  monk: {
+    id: 'monk',
+    name: 'Monk',
+    color: CLASS_COLORS.monk,
+    role: 'Melee Skirmisher',
+    maxHp: 150,
+    moveSpeed: 250,
+    threatMult: 0.95,
+    radius: PLAYER_RADIUS,
+    blurb: 'Flowing martial artist — a blur of strikes that stuns, then vanishes.',
+    abilities: {
+      basic: {
+        slot: 'basic',
+        name: 'Flurry of Blows',
+        kind: 'meleeCone',
+        cooldown: 0.4,
+        damage: 15,
+        range: 66,
+        halfAngleDeg: 40,
+      },
+      a1: {
+        slot: 'a1',
+        name: 'Stunning Strike',
+        kind: 'meleeCone',
+        cooldown: 8,
+        damage: 34,
+        range: 62,
+        halfAngleDeg: 36,
+        stun: 0.9,
+      },
+      a2: {
+        slot: 'a2',
+        name: 'Step of the Wind',
+        kind: 'dash',
+        cooldown: 5,
+        damage: 0,
+        range: 250,
+        iframes: 0.3,
+        healOnUse: 18,
+      },
+      a3: {
+        slot: 'a3',
+        name: 'Quivering Palm',
+        kind: 'pbaoe',
+        cooldown: 9,
+        damage: 30,
+        radius: 130,
+      },
+    },
+  },
+
+  sorcerer: {
+    id: 'sorcerer',
+    name: 'Sorcerer',
+    color: CLASS_COLORS.sorcerer,
+    role: 'Burst DPS + Mobility',
+    maxHp: 105,
+    moveSpeed: 205,
+    threatMult: 1.0,
+    radius: PLAYER_RADIUS,
+    blurb: 'Raw innate magic — twin chaos bolts, a falling meteor, a blink to safety.',
+    abilities: {
+      basic: {
+        slot: 'basic',
+        name: 'Chaos Bolt',
+        kind: 'projectile',
+        cooldown: 0.5,
+        damage: 15,
+        projSpeed: 640,
+        projCount: 2,
+        spreadDeg: 10,
+      },
+      a1: {
+        slot: 'a1',
+        name: 'Meteor',
+        kind: 'projectile',
+        cooldown: 8,
+        damage: 78,
+        projSpeed: 460,
+        projCount: 1,
+        castTime: 0.75,
+        impactRadius: 110,
+      },
+      a2: {
+        slot: 'a2',
+        name: 'Mirror Image',
+        kind: 'selfBuff',
+        cooldown: 14,
+        damage: 0,
+        buffDefMult: 0.6,
+        buffMoveMult: 1.15,
+        buffDuration: 5,
+      },
+      a3: {
+        slot: 'a3',
+        name: 'Arcane Leap',
+        kind: 'blink',
+        cooldown: 6,
+        damage: 0,
+        range: 260,
+        iframes: 0.2,
+      },
+    },
+  },
+
+  warlock: {
+    id: 'warlock',
+    name: 'Warlock',
+    color: CLASS_COLORS.warlock,
+    role: 'Ranged Attrition',
+    maxHp: 130,
+    moveSpeed: 208,
+    threatMult: 1.0,
+    radius: PLAYER_RADIUS,
+    blurb: 'Pledged to a dark patron: eldritch blasts, cursed ground, and stolen life.',
+    abilities: {
+      basic: {
+        slot: 'basic',
+        name: 'Eldritch Blast',
+        kind: 'projectile',
+        cooldown: 0.55,
+        damage: 22,
+        projSpeed: 660,
+        projCount: 1,
+        lifestealFrac: 0.15,
+      },
+      a1: {
+        slot: 'a1',
+        name: 'Hex',
+        kind: 'groundZone',
+        cooldown: 11,
+        damage: 0,
+        range: 460,
+        radius: 120,
+        zoneDuration: 5,
+        zoneTickDamage: 12,
+        slowMult: 0.7,
+        slowDuration: 1,
+        zoneKind: 'poison',
+      },
+      a2: {
+        slot: 'a2',
+        name: 'Hellish Rebuke',
+        kind: 'pbaoe',
+        cooldown: 9,
+        damage: 30,
+        radius: 140,
+        lifestealFrac: 0.2,
+      },
+      a3: {
+        slot: 'a3',
+        name: "Dark One's Blessing",
+        kind: 'selfBuff',
+        cooldown: 14,
+        damage: 0,
+        buffDamageMult: 1.3,
+        buffDuration: 6,
+      },
+    },
+  },
 };
 
 export const CLASS_IDS: ClassId[] = [
@@ -513,11 +733,32 @@ export const CLASS_IDS: ClassId[] = [
   'rogue',
   'paladin',
   'druid',
+  'bard',
+  'monk',
+  'sorcerer',
+  'warlock',
 ];
 export const DEFAULT_CLASS: ClassId = 'knight';
 
 export function getClass(id: ClassId): ClassDef {
   return CLASSES[id];
+}
+
+/** Ability kinds that count as a twitchy "attack" for the global CD slow-down. */
+const ATTACK_KINDS = new Set<AbilityKind>(['meleeCone', 'projectile', 'pbaoe']);
+
+/**
+ * Slow down the direct-damage "attack" cooldowns by ATTACK_CD_SCALE so blows land
+ * less often but hit with more weight (see constants). Leaves heals, buffs, taunts
+ * and pure mobility untouched. Mutates the table in place; applied AFTER cloning
+ * (and after character upgrades) in BOTH the sim spawn and the HUD preview, so the
+ * numbers a player sees and the numbers the sim commits always agree.
+ */
+export function slowAttackCooldowns(abilities: Record<AbilitySlot, PlayerAbilityDef>): void {
+  for (const slot of ['basic', 'a1', 'a2', 'a3'] as AbilitySlot[]) {
+    const ab = abilities[slot];
+    if (slot === 'basic' || ATTACK_KINDS.has(ab.kind)) ab.cooldown *= ATTACK_CD_SCALE;
+  }
 }
 
 /**

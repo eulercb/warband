@@ -20,6 +20,7 @@ import {
   STUN_DR_FACTOR,
   STUN_DR_WINDOW,
   STUN_DR_FLOOR,
+  BOSS_REGEN_LOCKOUT_S,
 } from '../core/constants';
 
 /** Minimal structural sink so combat needn't import the World. */
@@ -169,6 +170,9 @@ export function damageBoss(
   // Record recently-soaked damage so a `barbed` affix can scale its thorn burst
   // to how hard the band is hitting (decays each tick in world.tickBossAffixes).
   boss.recentDamageTaken = (boss.recentDamageTaken ?? 0) + effective;
+  // Suppress passive regen while the band keeps up the pressure (world.updateBoss
+  // gates on this), so a regenerating boss can never out-heal a committed party.
+  if (effective > 0) boss.regenLockout = BOSS_REGEN_LOCKOUT_S;
   addDamageThreat(source, outgoing);
   sink.events.push({
     t: 'hit',

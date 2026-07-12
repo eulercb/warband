@@ -9,6 +9,7 @@ import {
   CHAR_UPGRADES_BY_CLASS,
   HYBRID_UPGRADES,
   HYBRID_OFFER_CHANCE,
+  GRAND_BY_CLASS,
 } from '../src/engine/content/charUpgrades';
 import { CLASSES, CLASS_IDS, cloneAbilities } from '../src/engine/content/classes';
 import type { PlayerAbilityDef, AbilityKind } from '../src/engine/content/classes';
@@ -63,8 +64,8 @@ function lcg(seed: number): () => number {
 // ---------------------------------------------------------------------------
 
 describe('character-upgrade catalog', () => {
-  it('has a 5-strong pool for every one of the 8 classes', () => {
-    expect(CLASS_IDS).toHaveLength(8);
+  it('has a 5-strong pool for every one of the 12 classes', () => {
+    expect(CLASS_IDS).toHaveLength(12);
     for (const classId of CLASS_IDS) {
       const pool = CHAR_UPGRADES_BY_CLASS[classId];
       expect(pool).toHaveLength(5);
@@ -86,10 +87,10 @@ describe('character-upgrade catalog', () => {
 
   it('tags each hybrid graft/heal with the classes it must skip', () => {
     const byId = Object.fromEntries(HYBRID_UPGRADES.map((d) => [d.id, d]));
-    expect(byId.hy_pyromancer.exclude).toEqual(['mage']);
-    expect(byId.hy_shadowpact.exclude).toEqual(['rogue', 'mage']);
+    expect(byId.hy_pyromancer.exclude).toEqual(['mage', 'sorcerer']);
+    expect(byId.hy_shadowpact.exclude).toEqual(['rogue', 'mage', 'sorcerer']);
     expect(byId.hy_warhowl.exclude).toEqual(['barbarian']);
-    expect(byId.hy_fieldmedic.exclude).toEqual(['cleric', 'paladin', 'druid']);
+    expect(byId.hy_fieldmedic.exclude).toEqual(['cleric', 'paladin', 'druid', 'bard']);
     // The pure combat-style hybrids graft nothing away, so they exclude nobody.
     for (const id of [
       'hy_vampiric',
@@ -102,13 +103,17 @@ describe('character-upgrade catalog', () => {
     }
   });
 
-  it('flat lookup covers every class + hybrid def with unique ids', () => {
-    const all = [...Object.values(CHAR_UPGRADES_BY_CLASS).flat(), ...HYBRID_UPGRADES];
-    expect(all).toHaveLength(8 * 5 + 9); // 49
+  it('flat lookup covers every class + hybrid + grand def with unique ids', () => {
+    const grand = Object.values(GRAND_BY_CLASS).flat();
+    expect(grand).toHaveLength(12 * 2); // 2 grand improvements per class
+    const all = [...Object.values(CHAR_UPGRADES_BY_CLASS).flat(), ...HYBRID_UPGRADES, ...grand];
+    expect(all).toHaveLength(12 * 5 + 9 + 12 * 2); // 93
     const ids = all.map((d) => d.id);
     expect(new Set(ids).size).toBe(ids.length); // no duplicates
-    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(49);
+    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(93);
     for (const id of ids) expect(CHAR_UPGRADES[id].id).toBe(id);
+    // Every grand improvement is uniquely capped at one stack.
+    for (const d of grand) expect(d.maxStacks).toBe(1);
   });
 });
 
@@ -640,14 +645,15 @@ describe('rollCharChoices', () => {
   });
 
   it('offers n distinct picks, capped at the pool size', () => {
-    // rng 0 => always index 0 of the shrinking pool => pool order; 0.9 => no hybrid.
-    expect(rollCharChoices('knight', 3, seq([0, 0, 0, 0.9]))).toEqual([
+    // rng 0 => always index 0 of the shrinking pool => pool order; 0.9 => no hybrid
+    // and (final draw) no grand swap.
+    expect(rollCharChoices('knight', 3, seq([0, 0, 0, 0.9, 0.9]))).toEqual([
       'kn_bulwark',
       'kn_concuss',
       'kn_widecleave',
     ]);
     // n beyond the 5-strong pool clamps to the whole pool, in order.
-    expect(rollCharChoices('knight', 10, seq([0, 0, 0, 0, 0, 0.9]))).toEqual([
+    expect(rollCharChoices('knight', 10, seq([0, 0, 0, 0, 0, 0.9, 0.9]))).toEqual([
       'kn_bulwark',
       'kn_concuss',
       'kn_widecleave',
@@ -674,7 +680,7 @@ describe('rollCharChoices', () => {
   it('swaps the last pick for a hybrid when the roll crosses the threshold', () => {
     // picks: index 0 x3 -> [kn_bulwark, kn_concuss, kn_widecleave];
     // 0.1 < 0.45 triggers the swap; hybrid index 0 -> first knight-eligible hybrid.
-    const offers = rollCharChoices('knight', 3, seq([0, 0, 0, 0.1, 0]));
+    const offers = rollCharChoices('knight', 3, seq([0, 0, 0, 0.1, 0, 0.9]));
     expect(offers.slice(0, 2)).toEqual(['kn_bulwark', 'kn_concuss']);
     expect(offers[2]).toBe('hy_pyromancer');
     expect(CHAR_UPGRADES[offers[2]].classId).toBe('any');
@@ -701,7 +707,8 @@ describe('rollCharChoices', () => {
 
   it('offers a valid, class-eligible set for every class (no-hybrid stream)', () => {
     for (const classId of CLASS_IDS) {
-      const offers = rollCharChoices(classId, 3, seq([0, 0, 0, 0.99]));
+      // trailing 0.99 also suppresses the grand-improvement swap.
+      const offers = rollCharChoices(classId, 3, seq([0, 0, 0, 0.99, 0.99]));
       expect(offers).toHaveLength(3);
       const poolIds = new Set(CHAR_UPGRADES_BY_CLASS[classId].map((d) => d.id));
       for (const id of offers) expect(poolIds.has(id)).toBe(true);
@@ -727,6 +734,35 @@ describe('rollCharChoices', () => {
       }
       expect(sawHybrid).toBe(true); // the ~45% swap does fire over 60 rolls
     }
+  });
+});
+
+describe('grand improvements (item 22)', () => {
+  it('surfaces a grand pick as the first offer when the grand roll fires', () => {
+    // picks(0,0,0); hybrid check 0.99 (none); grand check 0.1 (< 0.14, fires);
+    // grand index draw wraps to 0 => first grand improvement.
+    const offers = rollCharChoices('knight', 3, seq([0, 0, 0, 0.99, 0.1]));
+    expect(offers[0]).toBe('kn_grand_immovable');
+    expect(CHAR_UPGRADES[offers[0]].grand).toBe(true);
+  });
+
+  it('never re-offers an already-owned grand improvement (unique)', () => {
+    const owned = ['kn_grand_immovable'];
+    const offers = rollCharChoices('knight', 3, seq([0, 0, 0, 0.99, 0.1]), owned);
+    // The only remaining grand is kn_grand_wrath.
+    expect(offers[0]).toBe('kn_grand_wrath');
+    // With both owned, the grand swap has nothing to offer and leaves the base pick.
+    const both = ['kn_grand_immovable', 'kn_grand_wrath'];
+    const offers2 = rollCharChoices('knight', 3, seq([0, 0, 0, 0.99, 0.1]), both);
+    expect(offers2[0]).toBe('kn_bulwark');
+  });
+
+  it('a grand improvement applies its transformation and is capped at one stack', () => {
+    const p = makePlayer('knight');
+    const before = p.damageTakenMult;
+    applyCharUpgrades(p, ['kn_grand_immovable']);
+    expect(p.damageTakenMult).toBeLessThan(before); // −25% damage taken
+    expect(CHAR_UPGRADES.kn_grand_immovable.maxStacks).toBe(1);
   });
 });
 

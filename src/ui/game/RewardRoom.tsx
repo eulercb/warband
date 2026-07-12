@@ -20,22 +20,50 @@ import { chooseUpgrade, chooseCharUpgrade, setNextReady, playUiSound, sfx } from
 import { selfId } from '../../net/transport/room';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import HUD from './HUD';
+import TouchControls from './TouchControls';
+import EphemeralShop from '../screens/EphemeralShop';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
 import { RewardScene, type RewardOffers, type RelicFocus } from '../state/rewardScene';
 import { Renderer } from '../../render/pipeline/renderer';
 import { InputManager } from '../../input/input';
 import { ARENA_W, ARENA_H } from '../../engine/core/constants';
-import { CLASSES } from '../../engine/content/classes';
+import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
 import { MONSTERS } from '../../engine/content/monsters';
+import { Rng, mixSeed } from '../../engine/core/math';
 import { UPGRADES, rollUpgradeChoices, type UpgradeId } from '../../engine/content/upgrades';
-import { CHAR_UPGRADES, rollCharChoices } from '../../engine/content/charUpgrades';
+import {
+  CHAR_UPGRADES,
+  rollCharChoices,
+  previewAbilityTable,
+} from '../../engine/content/charUpgrades';
 import type { ClassId, FightResult } from '../../engine/core/types';
 
-/** Roll this round's offers (3 generic + 4 class) and hydrate them for the floor. */
-function rollOffers(classId: ClassId): RewardOffers {
-  const gen = rollUpgradeChoices(3, Math.random);
-  const chr = rollCharChoices(classId, 4, Math.random);
+/**
+ * Roll this round's offers (3 generic + 4 class) and hydrate them for the floor.
+ * Boons already at their stacking cap are filtered out (owned lists), and a graft
+ * offer names the REAL skill it would replace (e.g. "Replaces Fireball") using the
+ * hero's current, upgrade-resolved ability table.
+ */
+function rollOffers(
+  classId: ClassId,
+  ownedGen: UpgradeId[],
+  ownedChar: string[],
+  extraClasses: ClassId[],
+  rewardSeed?: number,
+): RewardOffers {
+  // With a shared seed, roll from a deterministic per-class stream so the same
+  // seed reproduces the same boons between the same bosses (seed mode / daily
+  // run). Without one (legacy single fights), fall back to Math.random.
+  let rnd: () => number = Math.random;
+  if (rewardSeed != null) {
+    const rng = new Rng(mixSeed(rewardSeed, CLASS_IDS.indexOf(classId) + 1));
+    rnd = () => rng.next();
+  }
+  const gen = rollUpgradeChoices(3, rnd, ownedGen);
+  // Multiclass heroes see every owned class's upgrades, weighted toward the main.
+  const chr = rollCharChoices(classId, 4, rnd, ownedChar, extraClasses);
+  const current = previewAbilityTable(classId, ownedChar);
   return {
     generic: gen.map((id) => {
       const u = UPGRADES[id];
@@ -45,7 +73,12 @@ function rollOffers(classId: ClassId): RewardOffers {
       .filter((id) => CHAR_UPGRADES[id])
       .map((id) => {
         const u = CHAR_UPGRADES[id];
-        return { id, label: `${u.icon} ${u.name}`, desc: u.desc };
+        const replaced = u.replaces ? current[u.replaces]?.name : null;
+        let desc = replaced ? `${u.desc}. Replaces ${replaced}.` : u.desc;
+        // A GRAND improvement is a rare one-of-a-kind capstone — flag it.
+        if (u.grand) desc = `GRAND — ${desc}`;
+        const label = u.grand ? `★ ${u.icon} ${u.name}` : `${u.icon} ${u.name}`;
+        return { id, label, desc };
       }),
   };
 }
@@ -56,10 +89,23 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
   const readyReady = useStore((s) => s.nextReadyReady);
   const readyTotal = useStore((s) => s.nextReadyTotal);
+  const myCoins = useStore((s) => s.myCoins);
 
   // Offers are rolled ONCE for this interstitial (the component remounts fresh
-  // each result phase, so this is stable for the room's whole lifetime).
-  const offers = useMemo(() => rollOffers(localClass), [localClass]);
+  // each result phase, so this is stable for the room's whole lifetime). The
+  // owned picks are snapshotted at mount so claiming here never re-rolls the
+  // floor — only maxed-out boons carried IN from prior bosses are filtered.
+  const offers = useMemo(
+    () =>
+      rollOffers(
+        localClass,
+        useStore.getState().myUpgrades,
+        useStore.getState().myCharUpgrades,
+        useStore.getState().myExtraClasses,
+        result.rewardSeed,
+      ),
+    [localClass, result.rewardSeed],
+  );
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<RewardScene | null>(null);
@@ -270,6 +316,8 @@ export default function RewardRoom({ result }: { result: FightResult }) {
     <div className="wb-playground-root wb-reward-root">
       <div ref={canvasRef} className="wb-playground-canvas" aria-hidden="true" />
       <HUD />
+      {/* Touch overlay so mobile players can walk to relics + the vortex. */}
+      {!showList ? <TouchControls /> : null}
 
       {/* Room banner: run progress + next boss. */}
       <div className="wb-reward-banner">
@@ -279,6 +327,19 @@ export default function RewardRoom({ result }: { result: FightResult }) {
             : 'Boss felled'}
         </span>
         {nextName ? <span className="wb-reward-banner-next">Next: {nextName}</span> : null}
+        {result.runSeed != null ? (
+          <span className="wb-reward-banner-seed" title="Share this seed to replay the exact run">
+            Seed: {result.runSeed.toString(36).toUpperCase()}
+          </span>
+        ) : null}
+        {myCoins > 0 ? (
+          <span
+            className="wb-reward-banner-coins"
+            title="Spend coins in the list view's Ephemeral Stall"
+          >
+            🪙 {myCoins} — spend in list view
+          </span>
+        ) : null}
         <span className="wb-reward-banner-hint">
           Walk onto a relic to claim it — then step into the vortex to descend. Or open the list
           view.
@@ -407,6 +468,10 @@ export default function RewardRoom({ result }: { result: FightResult }) {
                 );
               })}
             </div>
+
+            {/* Ephemeral coin shop (item 21) — spend this fight's coins on
+                one-off perks for the next boss. */}
+            <EphemeralShop />
 
             {myUpgrades.length > 0 || myCharUpgrades.length > 0 ? (
               <div className="wb-upgrade-owned">

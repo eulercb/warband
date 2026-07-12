@@ -112,7 +112,8 @@ describe('obstacles block ranged attacks', () => {
 });
 
 describe('hold-to-autofire', () => {
-  // Count the fresh fires by watching the basic cooldown go from ~0 back up.
+  // Count actual fires by the player-side basic casts the sim emits — robust to
+  // whatever the basic cooldown happens to be.
   function heldFires(autofire: boolean, ticks: number): number {
     const w = new World({
       monsterId: 'dragon',
@@ -121,21 +122,22 @@ describe('hold-to-autofire', () => {
     });
     let shots = 0;
     for (let i = 0; i < ticks; i++) {
-      const beforeCd = w.players[0].cooldowns.basic;
       w.step(DT, new Map([['a', inp({ autofire, buttons: buttons({ basic: true }) })]]));
-      if (beforeCd <= 1e-6 && w.players[0].cooldowns.basic > 0) shots++;
+      shots += w.events.filter((e) => e.t === 'cast' && e.side === 'player').length;
     }
     return shots;
   }
 
   it('holding fires exactly once with autofire off (edge-triggered), even past cooldown', () => {
-    // 40 ticks = 2s, far past the 0.5s basic cooldown — a held button must NOT
+    // 40 ticks = 2s, far past the basic cooldown — a held button must NOT
     // re-trigger without a release.
     expect(heldFires(false, 40)).toBe(1);
   });
 
   it('holding re-fires repeatedly with autofire on', () => {
-    expect(heldFires(true, 40)).toBeGreaterThan(1);
+    // Ranger basic is on a doubled attack cooldown now (see ATTACK_CD_SCALE), so
+    // widen the window to span several fresh fires.
+    expect(heldFires(true, 90)).toBeGreaterThan(1);
   });
 });
 

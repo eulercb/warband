@@ -61,6 +61,8 @@ export function buffGlow(kind: BuffKind, mult: number): BuffGlow | null {
   switch (kind) {
     case 'stun':
       return { color: 0xffe14d, good: false }; // yellow — crowd-controlled
+    case 'silence':
+      return { color: 0xc06cff, good: false }; // violet — abilities muted
     case 'invuln':
       return { color: 0xbfe9ff, good: true }; // pale cyan — untouchable
     case 'moveSpeed':
@@ -132,6 +134,9 @@ const TERRAIN_COLORS: Record<TerrainKind, { fill: number; edge: number; hot: boo
   bog: { fill: 0x3d5230, edge: 0x6f9050, hot: false },
   ice: { fill: 0x74b3dc, edge: 0xdcf3ff, hot: false },
   deathfog: { fill: 0x574a6e, edge: 0xa084d6, hot: true },
+  // Signature terrains (item 28): deep ocean and a black chasm.
+  tide: { fill: 0x1f5f9e, edge: 0x6cc6ff, hot: false },
+  abyss: { fill: 0x14101f, edge: 0x7b5cff, hot: true },
 };
 
 // ---------------------------------------------------------------------------
