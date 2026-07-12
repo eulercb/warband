@@ -169,9 +169,11 @@ describe('<RewardRoom>', () => {
     expect(within(dialog).getByText('Generic boon chosen')).toBeTruthy();
 
     const charCards = dialog.querySelectorAll('.wb-upgrade-char');
-    expect(charCards[0].textContent ?? '').toContain('Immovable Object'); // the grand pick
+    // Grands are no longer in the pool (item 20) — the first class card is an
+    // ordinary boon (kn_bulwark, "Impenetrable"), now with a current-stats preview.
+    expect(charCards[0].textContent ?? '').toContain('Impenetrable');
     fireEvent.click(charCards[0]);
-    expect(vi.mocked(chooseCharUpgrade)).toHaveBeenCalledWith('kn_grand_immovable');
+    expect(vi.mocked(chooseCharUpgrade)).toHaveBeenCalledWith('kn_bulwark');
     expect(within(dialog).getByText('Class boon chosen')).toBeTruthy();
   });
 

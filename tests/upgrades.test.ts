@@ -187,12 +187,12 @@ describe('individual upgrade effects', () => {
     expect(p.hp).toBe(121);
   });
 
-  it('haste: -18% cooldowns, multiplicative', () => {
+  it('haste: -10% cooldowns, multiplicative (toned down, item 25)', () => {
     const p = mkPlayer({ cooldownMult: 1 });
     UPGRADES.haste.apply(p);
-    expect(p.cooldownMult).toBeCloseTo(0.82);
+    expect(p.cooldownMult).toBeCloseTo(0.9);
     UPGRADES.haste.apply(p);
-    expect(p.cooldownMult).toBeCloseTo(0.6724);
+    expect(p.cooldownMult).toBeCloseTo(0.81);
   });
 
   it('focus: -30% cast time, multiplicative', () => {
@@ -325,7 +325,7 @@ describe('applyUpgrades', () => {
     applyUpgrades(p, [...UPGRADE_IDS]);
     expect(p.moveSpeed).toBeCloseTo(230); // swift
     expect(p.maxHp).toBe(120); // vigor
-    expect(p.cooldownMult).toBeCloseTo(0.82); // haste
+    expect(p.cooldownMult).toBeCloseTo(0.9); // haste (toned down, item 25)
     expect(p.castMult).toBeCloseTo(0.7); // focus
     expect(p.terrainResist).toBeCloseTo(0.5); // surefooted
     expect(p.damageMult).toBeCloseTo(1.15); // mighty

@@ -29,7 +29,6 @@ import {
   charUpgradeAtMax,
   REOFFER_CHANCE,
   HYBRID_OFFER_CHANCE,
-  GRAND_OFFER_CHANCE,
   MAIN_CLASS_WEIGHT,
   CHAR_UPGRADES,
   CHAR_UPGRADES_BY_CLASS,
@@ -149,7 +148,6 @@ describe('charUpgrades: catalog shape', () => {
     }
     expect(HYBRID_OFFER_CHANCE).toBeCloseTo(0.45, 5);
     expect(REOFFER_CHANCE).toBeCloseTo(0.5, 5);
-    expect(GRAND_OFFER_CHANCE).toBeCloseTo(0.14, 5);
     expect(MAIN_CLASS_WEIGHT).toBeCloseTo(2.5, 5);
   });
 });
@@ -397,9 +395,10 @@ describe('rollCharChoices: single-class path', () => {
     expect(boundary[2]).toBe('kn_widecleave');
   });
 
-  it('surfaces a grand improvement as the first pick when its roll fires', () => {
-    const off = rollCharChoices('knight', 3, seq([0, 0, 0, 0.99, 0.1]));
-    expect(off[0]).toBe('kn_grand_immovable');
+  it('never surfaces a grand improvement in the between-boss pool (item 20)', () => {
+    const off = rollCharChoices('knight', 3, seq([0, 0, 0, 0.99, 0.01]));
+    for (const id of off) expect(CHAR_UPGRADES[id].grand).not.toBe(true);
+    expect(off[0]).toBe('kn_bulwark'); // just the ordinary top pick
   });
 
   it('upholds distinctness + legality across a seeded sweep of every class', () => {
@@ -417,16 +416,14 @@ describe('rollCharChoices: single-class path', () => {
 
 describe('rollCharChoices: re-offer swap placement', () => {
   it('places a swapped re-offer at index 1 when there are 2+ base offers', () => {
-    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0.9, 0.9, 0.0, 0.0]), [
-      'hy_pyromancer',
-    ]);
-    expect(off[0]).toBe('kn_bulwark');
+    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0.9, 0.0, 0.0]), ['hy_pyromancer']);
+    expect(off[0]).toBe('kn_concuss'); // kn_bulwark filtered — it only upgraded a2 (item 26)
     expect(off[1]).toBe('restore:a2');
   });
 
-  it('places a swapped re-offer at index 0 when there is a single offer (line 1773)', () => {
+  it('places a swapped re-offer at index 0 when there is a single offer', () => {
     // n=1 → out.length===1 → the `out.length > 1 ? 1 : 0` ternary takes the 0 arm.
-    const off = rollCharChoices('knight', 1, seq([0, 0.99, 0.99, 0.0, 0.0]), ['hy_pyromancer']);
+    const off = rollCharChoices('knight', 1, seq([0, 0.99, 0.0, 0.0]), ['hy_pyromancer']);
     expect(off).toEqual(['restore:a2']);
   });
 

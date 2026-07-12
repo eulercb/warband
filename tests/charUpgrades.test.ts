@@ -302,7 +302,7 @@ describe('mage upgrades', () => {
   it('mg_arcane pumps Arcane Bolt', () => {
     const a = apply('mage', ['mg_arcane']).abilities!;
     expect(a.basic.damage).toBe(22);
-    expect(a.basic.cooldown).toBeCloseTo(0.369, 5); // 0.45 * 0.82
+    expect(a.basic.cooldown).toBeCloseTo(0.4095, 5); // 0.45 * 0.91 (toned down, item 25)
   });
   it('mg_blink upgrades Blink', () => {
     const a = apply('mage', ['mg_blink']).abilities!;
@@ -396,7 +396,7 @@ describe('rogue upgrades', () => {
   });
   it('ro_flurry speeds up Slash', () => {
     const a = apply('rogue', ['ro_flurry']).abilities!;
-    expect(a.basic.cooldown).toBeCloseTo(0.3276, 5); // 0.42 * 0.78
+    expect(a.basic.cooldown).toBeCloseTo(0.3738, 5); // 0.42 * 0.89 (toned down, item 25)
     expect(a.basic.damage).toBe(23);
   });
   it('ro_envenom gives Slash + Backstab lifesteal', () => {
@@ -743,24 +743,29 @@ describe('rollCharChoices', () => {
   });
 });
 
-describe('grand improvements (item 22)', () => {
-  it('surfaces a grand pick as the first offer when the grand roll fires', () => {
-    // picks(0,0,0); hybrid check 0.99 (none); grand check 0.1 (< 0.14, fires);
-    // grand index draw wraps to 0 => first grand improvement.
-    const offers = rollCharChoices('knight', 3, seq([0, 0, 0, 0.99, 0.1]));
-    expect(offers[0]).toBe('kn_grand_immovable');
-    expect(CHAR_UPGRADES[offers[0]].grand).toBe(true);
+describe('grand improvements — never in the between-boss pool (item 20)', () => {
+  it('the roll never surfaces a grand, whatever the rng', () => {
+    // Grands are reserved for the run-clear special reward; the between-boss shop
+    // only ever draws real class boons (± a hybrid).
+    for (const s of [
+      seq([0, 0, 0, 0.99, 0.01]),
+      seq([0.01, 0.01, 0.01, 0.01, 0.01]),
+      seq([0.5, 0.5, 0.5, 0, 0]),
+    ]) {
+      const offers = rollCharChoices('knight', 3, s);
+      for (const id of offers) expect(CHAR_UPGRADES[id].grand).not.toBe(true);
+    }
   });
 
-  it('never re-offers an already-owned grand improvement (unique)', () => {
-    const owned = ['kn_grand_immovable'];
-    const offers = rollCharChoices('knight', 3, seq([0, 0, 0, 0.99, 0.1]), owned);
-    // The only remaining grand is kn_grand_wrath.
-    expect(offers[0]).toBe('kn_grand_wrath');
-    // With both owned, the grand swap has nothing to offer and leaves the base pick.
-    const both = ['kn_grand_immovable', 'kn_grand_wrath'];
-    const offers2 = rollCharChoices('knight', 3, seq([0, 0, 0, 0.99, 0.1]), both);
-    expect(offers2[0]).toBe('kn_bulwark');
+  it('a full random sweep never yields a grand for any class', () => {
+    for (const classId of CLASS_IDS) {
+      const rng = lcg(0x9e3779b9 ^ classId.length);
+      for (let t = 0; t < 80; t++) {
+        for (const id of rollCharChoices(classId, 4, rng)) {
+          expect(CHAR_UPGRADES[id]?.grand).not.toBe(true);
+        }
+      }
+    }
   });
 
   it('a grand improvement applies its transformation and is capped at one stack', () => {
@@ -1026,28 +1031,34 @@ describe('rollCharChoices re-offer swap', () => {
   });
 
   it('swaps in a reclaim when the re-offer roll fires', () => {
-    // picks 0×4 → [bulwark, concuss, widecleave, bastion]; 0.9 skips hybrid + grand;
+    // With hy_pyromancer owned, kn_bulwark (a2-only) is filtered out (item 26), so
+    // the picks are [concuss, widecleave, bastion, secondwind]; 0.9 skips the hybrid;
     // 0.0 < 0.5 fires the re-offer; index 0.0 → reoffers[0] = restore:a2, placed at [1].
-    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0.9, 0.9, 0.0, 0.0]), [
-      'hy_pyromancer',
-    ]);
+    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0.9, 0.0, 0.0]), ['hy_pyromancer']);
     expect(off[1]).toBe('restore:a2');
-    expect(off[0]).toBe('kn_bulwark');
+    expect(off[0]).toBe('kn_concuss');
     expect(isCharUpgradeId(off[1])).toBe(true);
   });
 
   it('can swap in a graftup (index picks a grafted-skill upgrade)', () => {
     // index 0.9 → floor(0.9*3)=2 → reoffers[2] = graftup:a2:mg_combust.
-    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0.9, 0.9, 0.0, 0.9]), [
-      'hy_pyromancer',
-    ]);
+    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0.9, 0.0, 0.9]), ['hy_pyromancer']);
     expect(off[1]).toBe('graftup:a2:mg_combust');
   });
 
   it('does NOT swap when the re-offer roll is at/above the threshold', () => {
-    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0.9, 0.9, 0.5]), ['hy_pyromancer']);
-    expect(off[1]).toBe('kn_concuss'); // untouched base pick
+    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0.9, 0.5]), ['hy_pyromancer']);
+    expect(off[1]).toBe('kn_widecleave'); // untouched base pick (bulwark filtered, item 26)
     expect(off).not.toContain('restore:a2');
+  });
+
+  it('drops class boons that only upgrade a grafted-over skill (item 26)', () => {
+    // hy_pyromancer grafts Fireball onto the Knight's a2 (Shield Wall). kn_bulwark
+    // ONLY upgrades Shield Wall, so with that graft owned it must vanish from the
+    // pool — while a boon on a still-live skill (kn_widecleave → basic) stays.
+    const off = rollCharChoices('knight', 5, seq([0, 0, 0, 0, 0.99, 0.99]), ['hy_pyromancer']);
+    expect(off).not.toContain('kn_bulwark');
+    expect(off).toContain('kn_widecleave');
   });
 });
 

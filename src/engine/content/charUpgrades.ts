@@ -284,10 +284,10 @@ const MAGE: CharUpgradeDef[] = [
     'mg_arcane',
     'Arcane Surge',
     '✨',
-    'Arcane Bolt hits for 22 (+6, ~+38%) and fires 18% more often',
+    'Arcane Bolt hits for 22 (+6, ~+38%) and fires 9% more often',
     ({ abilities: a }) => {
       addN(a.basic, 'damage', 6);
-      mul(a.basic, 'cooldown', 0.82);
+      mul(a.basic, 'cooldown', 0.91);
     },
   ),
   u(
@@ -468,9 +468,9 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_flurry',
     'Flurry',
     '⚡',
-    'Slash strikes 22% faster and hits for 23 (+5)',
+    'Slash strikes 11% faster and hits for 23 (+5)',
     ({ abilities: a }) => {
-      mul(a.basic, 'cooldown', 0.78);
+      mul(a.basic, 'cooldown', 0.89);
       addN(a.basic, 'damage', 5);
     },
   ),
@@ -679,9 +679,9 @@ const MONK: CharUpgradeDef[] = [
     'mo_flurry',
     'Empty Body',
     '👊',
-    'Flurry of Blows strikes 20% faster and hits for 20 (+5)',
+    'Flurry of Blows strikes 10% faster and hits for 20 (+5)',
     ({ abilities: a }) => {
-      mul(a.basic, 'cooldown', 0.8);
+      mul(a.basic, 'cooldown', 0.9);
       addN(a.basic, 'damage', 5);
     },
   ),
@@ -1636,6 +1636,19 @@ function occupancyAfter(classId: ClassId, owned: readonly string[]): Record<Abil
  * unless a graft has displaced one of their native abilities (so heroes without
  * grafts never see these picks — and the offer roll's rng stays untouched).
  */
+/**
+ * Whether a CLASS boon still upgrades a skill the hero can actually use (item 26):
+ * a boon that touches ONLY slots whose native skill has been grafted over is dead
+ * — the replaced skill is gone, so it must drop out of the offer pool rather than
+ * level a skill that isn't in the kit. A stat-only boon (touches no slot) always
+ * qualifies. `occupant` is the replayed slot-occupancy map.
+ */
+function boonUpgradesLiveSkill(occupant: Record<AbilitySlot, SkillKey>, boonId: string): boolean {
+  const slots = BOON_SLOTS[boonId] ?? [];
+  if (slots.length === 0) return true; // stat-only boon — always relevant
+  return slots.some((s) => occupant[s] === s); // ≥1 native slot it touches is still live
+}
+
 export function reofferCandidates(classId: ClassId, owned: readonly string[]): string[] {
   if (!CLASSES[classId]) return []; // unrecognised class → no kit to reclaim
   const occupant = occupancyAfter(classId, owned);
@@ -1745,9 +1758,6 @@ export const HYBRID_OFFER_CHANCE = 0.45;
 /** Chance one offer is swapped for a reclaim / grafted-skill upgrade (items 15 & 17). */
 export const REOFFER_CHANCE = 0.5;
 
-/** Chance one class offer is swapped for a rare GRAND improvement (item 22). */
-export const GRAND_OFFER_CHANCE = 0.14;
-
 /**
  * Roll `n` distinct character-upgrade offers from a class's pool. `rnd` returns a
  * float in [0,1). Pure aside from the injected randomness (mirrors upgrades.ts).
@@ -1766,17 +1776,24 @@ export function rollCharChoices(
 ): string[] {
   const out: string[] = [];
   const extras = extraClasses.filter((c) => c !== classId);
+  // Slot occupancy after the hero's owned upgrades — drives the item-26 filter that
+  // drops boons which only upgrade a skill that's been grafted over. All-native for a
+  // graft-less hero, so it never filters anything for the common case.
+  const occupant = CLASSES[classId] ? occupancyAfter(classId, owned) : null;
+  const liveBoon = (id: string): boolean => !occupant || boonUpgradesLiveSkill(occupant, id);
   if (extras.length > 0) {
     // Multiclass (item 14/23): the pool spans EVERY owned class's upgrades, but the
     // MAIN class's picks are weighted heavier so they surface more often.
     const weighted: Array<{ id: string; w: number }> = [];
-    const push = (cid: ClassId, w: number): void => {
+    const push = (cid: ClassId, w: number, filterLive: boolean): void => {
       for (const d of CHAR_UPGRADES_BY_CLASS[cid] ?? []) {
-        if (!charUpgradeAtMax(d.id, owned)) weighted.push({ id: d.id, w });
+        if (charUpgradeAtMax(d.id, owned)) continue;
+        if (filterLive && !liveBoon(d.id)) continue; // item 26: replaced skill → drop
+        weighted.push({ id: d.id, w });
       }
     };
-    push(classId, MAIN_CLASS_WEIGHT);
-    for (const c of extras) push(c, 1);
+    push(classId, MAIN_CLASS_WEIGHT, true);
+    for (const c of extras) push(c, 1, false);
     const count = Math.min(n, weighted.length);
     while (out.length < count && weighted.length > 0) {
       const total = weighted.reduce((s, x) => s + x.w, 0);
@@ -1795,7 +1812,7 @@ export function rollCharChoices(
   } else {
     const pool = (CHAR_UPGRADES_BY_CLASS[classId] ?? [])
       .map((d) => d.id)
-      .filter((id) => !charUpgradeAtMax(id, owned));
+      .filter((id) => !charUpgradeAtMax(id, owned) && liveBoon(id)); // item 26 filter
     const count = Math.min(n, pool.length);
     while (out.length < count) {
       const i = Math.floor(rnd() * pool.length) % pool.length;
@@ -1810,14 +1827,10 @@ export function rollCharChoices(
     const hy = eligible[Math.floor(rnd() * eligible.length) % eligible.length];
     out[out.length - 1] = hy.id;
   }
-  // Rarely, surface a GRAND improvement (item 22) — a unique class capstone you
-  // can hold at most once — as a prominent first pick, if one is still un-owned.
-  const grandPool = (GRAND_BY_CLASS[classId] ?? [])
-    .map((d) => d.id)
-    .filter((id) => !charUpgradeAtMax(id, owned));
-  if (out.length > 0 && grandPool.length > 0 && rnd() < GRAND_OFFER_CHANCE) {
-    out[0] = grandPool[Math.floor(rnd() * grandPool.length) % grandPool.length];
-  }
+  // GRAND improvements are NEVER surfaced in the between-boss pool (item 20): they
+  // are prized, transformative capstones handed out only through the run-clear
+  // SPECIAL reward flow (see SpecialReward.tsx), so the ordinary shop stays a
+  // steady stream of incremental boons.
   // Re-offer (items 15 & 17): if a graft has displaced one of the hero's skills,
   // sometimes surface a reclaim of the original or an upgrade for the graft, so a
   // replaced ability isn't lost and a grafted one can still be levelled. Draws no

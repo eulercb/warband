@@ -142,8 +142,8 @@ beforeEach(() => {
   vi.stubGlobal('requestAnimationFrame', () => 1);
   vi.stubGlobal('cancelAnimationFrame', () => undefined);
   // Pin the (Math.random-driven) endless offer roll: at 0.1 the generic row is
-  // [swift, vigor, haste] and the knight character row leads with the grand pick
-  // kn_grand_immovable ("Immovable Object") — see rollUpgradeChoices / rollCharChoices.
+  // [swift, vigor, haste] and the knight character row leads with kn_bulwark
+  // ("Impenetrable") — grands are no longer offered in this pool (item 20).
   Math.random = () => 0.1;
 });
 
@@ -416,10 +416,11 @@ describe('<ResultScreen> branch coverage', () => {
 
     const cards = charCards(container);
     expect(cards.length).toBe(4);
-    expect(cards[0].textContent ?? '').toContain('Immovable Object'); // the grand pick
+    // Grands left the pool (item 20); the leading class pick is now an ordinary boon.
+    expect(cards[0].textContent ?? '').toContain('Impenetrable');
 
     fireEvent.click(cards[0]);
-    expect(vi.mocked(chooseCharUpgrade)).toHaveBeenCalledWith('kn_grand_immovable');
+    expect(vi.mocked(chooseCharUpgrade)).toHaveBeenCalledWith('kn_bulwark');
 
     expect(screen.getByText('Character upgrade chosen')).toBeTruthy();
     const picked = upgradesBlock(container).querySelector('.wb-upgrade-char.picked');
