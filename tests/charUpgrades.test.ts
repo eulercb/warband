@@ -1171,23 +1171,23 @@ describe('grand improvements apply real, measurable transformations (item 22)', 
   it('rg_grand_deadeye sharpens the ranger Arrow by exact amounts', () => {
     const arrow = CLASSES.ranger.abilities.basic;
     const a = apply('ranger', ['rg_grand_deadeye']).abilities!;
-    expect(a.basic.damage).toBe((arrow.damage ?? 0) + 15);
-    expect(a.basic.projSpeed).toBe((arrow.projSpeed ?? 0) + 150);
+    expect(a.basic.damage).toBe((arrow.damage ?? 0) + 20);
+    expect(a.basic.projSpeed).toBe((arrow.projSpeed ?? 0) + 250);
   });
 
-  it('mg_grand_archmage discounts the mage cooldowns and cast time', () => {
+  it('mg_grand_archmage slashes cast time and pumps damage + health', () => {
     const p = apply('mage', ['mg_grand_archmage']);
-    expect(p.cooldownMult).toBeCloseTo(0.75, 5); // 1 * 0.75
-    expect(p.castMult).toBeCloseTo(0.7, 5); // 1 * 0.7
+    expect(p.castMult).toBeCloseTo(0.4, 5); // spells snap out
+    expect(p.damageMult).toBeCloseTo(1.3, 5);
   });
 
   it('wa_grand_ruin deepens the warlock Hex and Hellish Rebuke', () => {
     const hex = CLASSES.warlock.abilities.a1;
     const rebuke = CLASSES.warlock.abilities.a2;
     const a = apply('warlock', ['wa_grand_ruin']).abilities!;
-    expect(a.a1.zoneTickDamage).toBe((hex.zoneTickDamage ?? 0) + 15);
-    expect(a.a1.radius).toBe((hex.radius ?? 0) + 40);
-    expect(a.a2.damage).toBe((rebuke.damage ?? 0) + 30);
+    expect(a.a1.zoneTickDamage).toBe((hex.zoneTickDamage ?? 0) + 22);
+    expect(a.a1.radius).toBe((hex.radius ?? 0) + 65);
+    expect(a.a2.damage).toBe((rebuke.damage ?? 0) + 40);
   });
 });
 
@@ -1218,7 +1218,7 @@ describe('previewPlayerStats', () => {
     // A knight grand that cuts damage-taken should move the stat; a mismatched
     // (ranger) id is skipped, exactly as the live sim does.
     const s = previewPlayerStats('knight', [], ['kn_grand_immovable', 'rg_grand_deadeye']);
-    expect(s.damageTakenMult).toBeCloseTo(0.75, 5);
-    expect(s.maxHp).toBe(Math.round(CLASSES.knight.maxHp * 1.15));
+    expect(s.damageTakenMult).toBeCloseTo(0.6, 5);
+    expect(s.maxHp).toBe(Math.round(CLASSES.knight.maxHp * 1.35));
   });
 });

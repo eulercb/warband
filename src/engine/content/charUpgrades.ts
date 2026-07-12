@@ -1048,11 +1048,12 @@ const GRAND: CharUpgradeDef[] = [
     'kn_grand_immovable',
     'Immovable Object',
     '🗿',
-    'Become a fortress: −25% damage taken and +15% max HP',
+    'Become a living fortress: −40% damage taken, +35% max HP, regenerate 2% HP/s',
     ({ player: p }) => {
-      p.damageTakenMult *= 0.75;
-      p.maxHp = Math.round(p.maxHp * 1.15);
+      p.damageTakenMult *= 0.6;
+      p.maxHp = Math.round(p.maxHp * 1.35);
       p.hp = p.maxHp;
+      p.regenPerSec += p.maxHp * 0.02;
     },
   ),
   g(
@@ -1060,11 +1061,12 @@ const GRAND: CharUpgradeDef[] = [
     'kn_grand_wrath',
     "Warlord's Wrath",
     '⚔️',
-    'Cleave hits for +12 and 20% faster; Shield Bash hits for +20',
+    'Cleave becomes a 360° whirlwind that drinks 20% as health (+14 dmg, +20 reach)',
     ({ abilities: a }) => {
-      addN(a.basic, 'damage', 12);
-      mul(a.basic, 'cooldown', 0.8);
-      addN(a.a3, 'damage', 20);
+      a.basic.halfAngleDeg = 180; // full circle
+      addN(a.basic, 'range', 20);
+      addN(a.basic, 'damage', 14);
+      addN(a.basic, 'lifestealFrac', 0.2);
     },
   ),
   g(
@@ -1072,10 +1074,11 @@ const GRAND: CharUpgradeDef[] = [
     'rg_grand_deadeye',
     'Deadeye',
     '🎯',
-    'Arrows hit for +15 and fly much faster (+150 speed)',
+    'Arrows become lightning bolts: +20 dmg, +250 speed, far longer range',
     ({ abilities: a }) => {
-      addN(a.basic, 'damage', 15);
-      addN(a.basic, 'projSpeed', 150);
+      addN(a.basic, 'damage', 20);
+      addN(a.basic, 'projSpeed', 250);
+      addN(a.basic, 'maxRange', 220);
     },
   ),
   g(
@@ -1083,10 +1086,11 @@ const GRAND: CharUpgradeDef[] = [
     'rg_grand_storm',
     'Arrow Storm',
     '🌩️',
-    'Multishot looses 3 extra arrows across a much wider fan',
+    'Multishot erupts into a storm — 5 extra arrows across a wide 40° fan (+6 each)',
     ({ abilities: a }) => {
-      addN(a.a1, 'projCount', 3);
-      addN(a.a1, 'spreadDeg', 15);
+      addN(a.a1, 'projCount', 5);
+      addN(a.a1, 'spreadDeg', 25);
+      addN(a.a1, 'damage', 6);
     },
   ),
   g(
@@ -1094,10 +1098,12 @@ const GRAND: CharUpgradeDef[] = [
     'mg_grand_archmage',
     'Archmage',
     '🧙',
-    'Mastery of magic: −25% ability cooldowns and −30% cast time',
+    'Spells snap out instantly: −60% cast time, +30% damage, +15% max HP',
     ({ player: p }) => {
-      p.cooldownMult *= 0.75;
-      p.castMult *= 0.7;
+      p.castMult *= 0.4;
+      p.damageMult *= 1.3;
+      p.maxHp = Math.round(p.maxHp * 1.15);
+      p.hp = p.maxHp;
     },
   ),
   g(
@@ -1105,10 +1111,10 @@ const GRAND: CharUpgradeDef[] = [
     'mg_grand_cataclysm',
     'Cataclysm',
     '☄️',
-    'Fireball erupts for +40 across a vastly wider blast (+60 radius)',
+    'Fireball becomes an apocalypse — +55 dmg across a colossal blast (+75 radius)',
     ({ abilities: a }) => {
-      addN(a.a1, 'impactRadius', 60);
-      addN(a.a1, 'damage', 40);
+      addN(a.a1, 'impactRadius', 75);
+      addN(a.a1, 'damage', 55);
     },
   ),
   g(
@@ -1116,10 +1122,13 @@ const GRAND: CharUpgradeDef[] = [
     'cl_grand_beacon',
     'Beacon of Hope',
     '🕯️',
-    'Heal restores +50 and Sanctuary mends +15 per tick',
+    'Heal pours for +70 at long range; Sanctuary becomes a vast font (+22/tick, +70 radius, +4s)',
     ({ abilities: a }) => {
-      addN(a.a1, 'damage', 50);
-      addN(a.a2, 'zoneTickHeal', 15);
+      addN(a.a1, 'damage', 70);
+      addN(a.a1, 'range', 120);
+      addN(a.a2, 'zoneTickHeal', 22);
+      addN(a.a2, 'radius', 70);
+      addN(a.a2, 'zoneDuration', 4);
     },
   ),
   g(
@@ -1127,11 +1136,13 @@ const GRAND: CharUpgradeDef[] = [
     'cl_grand_avatar',
     'Avatar of Faith',
     '👼',
-    '+20% max HP and Blessing grants +30% more damage',
+    'Ascend: +25% max HP; Blessing girds the band with +40% dmg AND 30% mitigation, 4s longer',
     ({ player: p, abilities: a }) => {
-      p.maxHp = Math.round(p.maxHp * 1.2);
+      p.maxHp = Math.round(p.maxHp * 1.25);
       p.hp = p.maxHp;
-      addN(a.a3, 'buffDamageMult', 0.3);
+      addN(a.a3, 'buffDamageMult', 0.4);
+      setMin(a.a3, 'buffDefMult', 0.7);
+      addN(a.a3, 'buffDuration', 4);
     },
   ),
   g(
@@ -1139,11 +1150,13 @@ const GRAND: CharUpgradeDef[] = [
     'bb_grand_unstoppable',
     'Unstoppable',
     '🐗',
-    '+20% max HP and Rage empowers to +30% more damage',
+    'Endless fury: +35% max HP; Rage grants +45% dmg, +20% move and lasts 6s longer',
     ({ player: p, abilities: a }) => {
-      p.maxHp = Math.round(p.maxHp * 1.2);
+      p.maxHp = Math.round(p.maxHp * 1.35);
       p.hp = p.maxHp;
-      addN(a.a1, 'buffDamageMult', 0.3);
+      addN(a.a1, 'buffDamageMult', 0.45);
+      addN(a.a1, 'buffMoveMult', 0.2);
+      addN(a.a1, 'buffDuration', 6);
     },
   ),
   g(
@@ -1151,10 +1164,11 @@ const GRAND: CharUpgradeDef[] = [
     'bb_grand_reaver',
     'Blood Reaver',
     '🩸',
-    'Swings drink 25% of the damage as health; Whirlwind hits for +25',
+    'Every swing drinks 40% as health; Whirlwind becomes a bloodbath (+30 dmg, +45 radius)',
     ({ abilities: a }) => {
-      addN(a.basic, 'lifestealFrac', 0.25);
-      addN(a.a3, 'damage', 25);
+      addN(a.basic, 'lifestealFrac', 0.4);
+      addN(a.a3, 'damage', 30);
+      addN(a.a3, 'radius', 45);
     },
   ),
   g(
@@ -1162,10 +1176,11 @@ const GRAND: CharUpgradeDef[] = [
     'ro_grand_shadow',
     'Shadow Master',
     '🌑',
-    'Shadowstep resets twice as fast; Backstab bursts for +40',
+    'Shadowstep resets almost instantly (−65% cd); Backstab annihilates for +60',
     ({ abilities: a }) => {
-      mul(a.a2, 'cooldown', 0.5);
-      addN(a.a1, 'damage', 40);
+      mul(a.a2, 'cooldown', 0.35);
+      addN(a.a1, 'damage', 60);
+      addN(a.a1, 'lifestealFrac', 0.25);
     },
   ),
   g(
@@ -1173,10 +1188,13 @@ const GRAND: CharUpgradeDef[] = [
     'ro_grand_venom',
     'Grand Venom',
     '☠️',
-    'Poison Vial festers for +15 per tick across a far wider cloud (+40)',
+    'Poison Vial becomes a creeping plague — +22/tick, +65 radius, +4s, slows to 50%',
     ({ abilities: a }) => {
-      addN(a.a3, 'zoneTickDamage', 15);
-      addN(a.a3, 'radius', 40);
+      addN(a.a3, 'zoneTickDamage', 22);
+      addN(a.a3, 'radius', 65);
+      addN(a.a3, 'zoneDuration', 4);
+      setMin(a.a3, 'slowMult', 0.5);
+      a.a3.slowDuration = Math.max(a.a3.slowDuration ?? 0, 1.5);
     },
   ),
   g(
@@ -1184,10 +1202,12 @@ const GRAND: CharUpgradeDef[] = [
     'pa_grand_aegis',
     'Eternal Aegis',
     '🛡️',
-    'Divine Shield blocks far more, and you take 15% less damage always',
+    'An unbreakable guardian: Divine Shield nears invulnerability, −20% dmg taken always, +20% max HP',
     ({ player: p, abilities: a }) => {
-      mul(a.a3, 'buffDefMult', 0.6);
-      p.damageTakenMult *= 0.85;
+      mul(a.a3, 'buffDefMult', 0.4);
+      p.damageTakenMult *= 0.8;
+      p.maxHp = Math.round(p.maxHp * 1.2);
+      p.hp = p.maxHp;
     },
   ),
   g(
@@ -1195,11 +1215,12 @@ const GRAND: CharUpgradeDef[] = [
     'pa_grand_dawn',
     'Dawnbringer',
     '🌅',
-    'Holy Strike hits for +15 and heals 20%; Lay on Hands restores +50',
+    'Holy Strike smites in a radiant arc healing 25% (+18 dmg, wider); Lay on Hands overflows (+60)',
     ({ abilities: a }) => {
-      addN(a.basic, 'damage', 15);
-      addN(a.basic, 'lifestealFrac', 0.2);
-      addN(a.a2, 'damage', 50);
+      addN(a.basic, 'damage', 18);
+      addN(a.basic, 'lifestealFrac', 0.25);
+      addN(a.basic, 'halfAngleDeg', 20);
+      addN(a.a2, 'damage', 60);
     },
   ),
   g(
@@ -1207,10 +1228,11 @@ const GRAND: CharUpgradeDef[] = [
     'dr_grand_wild',
     'Wild Shape',
     '🐾',
-    'Regrowth heals +50 and Thornlash splits into 2 extra thorns',
+    'Thornlash becomes a volley of 3 extra thorns (+6 each); Regrowth booms for +60',
     ({ abilities: a }) => {
-      addN(a.a2, 'damage', 50);
-      addN(a.basic, 'projCount', 2);
+      addN(a.a2, 'damage', 60);
+      addN(a.basic, 'projCount', 3);
+      addN(a.basic, 'damage', 6);
     },
   ),
   g(
@@ -1218,11 +1240,12 @@ const GRAND: CharUpgradeDef[] = [
     'dr_grand_grove',
     'Sacred Grove',
     '🌳',
-    'Entangle gnaws for +15 per tick across a far wider, longer snare',
+    'Entangle becomes a vast thornfield — +22/tick, +65 radius, +5s, slows to 40%',
     ({ abilities: a }) => {
-      addN(a.a1, 'zoneTickDamage', 15);
-      addN(a.a1, 'radius', 40);
-      addN(a.a1, 'zoneDuration', 3);
+      addN(a.a1, 'zoneTickDamage', 22);
+      addN(a.a1, 'radius', 65);
+      addN(a.a1, 'zoneDuration', 5);
+      setMin(a.a1, 'slowMult', 0.4);
     },
   ),
   g(
@@ -1230,10 +1253,11 @@ const GRAND: CharUpgradeDef[] = [
     'ba_grand_symphony',
     'Grand Symphony',
     '🎼',
-    'Inspiration grants +30% more damage and lasts 4s longer',
+    'Inspiration girds the band with +45% dmg AND 25% mitigation, lasting 6s longer',
     ({ abilities: a }) => {
-      addN(a.a1, 'buffDamageMult', 0.3);
-      addN(a.a1, 'buffDuration', 4);
+      addN(a.a1, 'buffDamageMult', 0.45);
+      setMin(a.a1, 'buffDefMult', 0.75);
+      addN(a.a1, 'buffDuration', 6);
     },
   ),
   g(
@@ -1241,10 +1265,12 @@ const GRAND: CharUpgradeDef[] = [
     'ba_grand_ballad',
     'Ballad of Heroes',
     '🎻',
-    'Healing Word restores +50 and Vicious Mockery hits for +15',
+    'Healing Word pours for +70; Vicious Mockery scatters into 3 mocking bolts (+8 each)',
     ({ abilities: a }) => {
-      addN(a.a2, 'damage', 50);
-      addN(a.basic, 'damage', 15);
+      addN(a.a2, 'damage', 70);
+      addN(a.basic, 'projCount', 2);
+      addN(a.basic, 'spreadDeg', 12);
+      addN(a.basic, 'damage', 8);
     },
   ),
   g(
@@ -1252,10 +1278,13 @@ const GRAND: CharUpgradeDef[] = [
     'mo_grand_ascend',
     'Ascendant',
     '🕉️',
-    '+20% move speed and Flurry of Blows strikes 30% faster',
+    'Transcend the flesh: +30% move speed, +8 Flurry dmg, Step of the Wind resets fast (+iframes)',
     ({ player: p, abilities: a }) => {
-      p.moveSpeed *= 1.2;
-      mul(a.basic, 'cooldown', 0.7);
+      p.moveSpeed *= 1.3;
+      addN(a.basic, 'damage', 8);
+      mul(a.a2, 'cooldown', 0.5);
+      addN(a.a2, 'iframes', 0.2);
+      addN(a.a2, 'healOnUse', 20);
     },
   ),
   g(
@@ -1263,11 +1292,12 @@ const GRAND: CharUpgradeDef[] = [
     'mo_grand_thousand',
     'Thousand Palms',
     '🙌',
-    'Flurry hits for +12; Stunning Strike stuns +0.8s and hits for +30',
+    'Stunning Strike locks foes down (+1.2s stun, +35 dmg); Quivering Palm devastates (+40 dmg, +55 radius)',
     ({ abilities: a }) => {
-      addN(a.basic, 'damage', 12);
-      addN(a.a1, 'stun', 0.8);
-      addN(a.a1, 'damage', 30);
+      addN(a.a1, 'stun', 1.2);
+      addN(a.a1, 'damage', 35);
+      addN(a.a3, 'damage', 40);
+      addN(a.a3, 'radius', 55);
     },
   ),
   g(
@@ -1275,10 +1305,11 @@ const GRAND: CharUpgradeDef[] = [
     'so_grand_wild',
     'Wild Magic Surge',
     '🎲',
-    'Chaos Bolt fires 2 extra bolts, each hitting for +8',
+    'Chaos Bolt splits into a fan of 3 extra bolts (+8 each) across a wide spread',
     ({ abilities: a }) => {
-      addN(a.basic, 'projCount', 2);
+      addN(a.basic, 'projCount', 3);
       addN(a.basic, 'damage', 8);
+      addN(a.basic, 'spreadDeg', 12);
     },
   ),
   g(
@@ -1286,10 +1317,10 @@ const GRAND: CharUpgradeDef[] = [
     'so_grand_cataclysm',
     'Meteor Swarm',
     '💥',
-    'Meteor erupts for +50 across a vastly wider blast (+60 radius)',
+    'Meteor becomes an extinction event — +65 dmg across a colossal blast (+75 radius)',
     ({ abilities: a }) => {
-      addN(a.a1, 'impactRadius', 60);
-      addN(a.a1, 'damage', 50);
+      addN(a.a1, 'impactRadius', 75);
+      addN(a.a1, 'damage', 65);
     },
   ),
   g(
@@ -1297,10 +1328,11 @@ const GRAND: CharUpgradeDef[] = [
     'wa_grand_pact',
     'Pact of the Fiend',
     '😈',
-    'Eldritch Blast hits for +15 and drinks 20% more of the damage',
+    'Eldritch Blast forks into 2 soul-draining bolts (+18 dmg, +35% lifesteal)',
     ({ abilities: a }) => {
-      addN(a.basic, 'damage', 15);
-      addN(a.basic, 'lifestealFrac', 0.2);
+      addN(a.basic, 'damage', 18);
+      addN(a.basic, 'projCount', 1);
+      addN(a.basic, 'lifestealFrac', 0.35);
     },
   ),
   g(
@@ -1308,11 +1340,13 @@ const GRAND: CharUpgradeDef[] = [
     'wa_grand_ruin',
     'Word of Ruin',
     '💀',
-    'Hex festers for +15 per tick across a wider curse; Hellish Rebuke +30',
+    'Hex becomes a vast, lingering curse (+22/tick, +65 radius, +4s); Hellish Rebuke erupts (+40)',
     ({ abilities: a }) => {
-      addN(a.a1, 'zoneTickDamage', 15);
-      addN(a.a1, 'radius', 40);
-      addN(a.a2, 'damage', 30);
+      addN(a.a1, 'zoneTickDamage', 22);
+      addN(a.a1, 'radius', 65);
+      addN(a.a1, 'zoneDuration', 4);
+      addN(a.a2, 'damage', 40);
+      addN(a.a2, 'radius', 30);
     },
   ),
 ];
