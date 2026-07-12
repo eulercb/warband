@@ -99,8 +99,9 @@ beforeEach(() => {
   // neither actually runs under jsdom (the DOM surface is what we test).
   vi.stubGlobal('requestAnimationFrame', () => 1);
   vi.stubGlobal('cancelAnimationFrame', () => undefined);
-  // Pin the offer roll so the first card in each row is deterministic
-  // (generic → swift, knight character → kn_bulwark).
+  // Pin the offer roll so the first card in each row is deterministic. At 0.1 the
+  // rare grand-improvement swap fires (0.1 < 0.14), so the first KNIGHT class card
+  // is the capstone kn_grand_immovable; the first generic card is still Swift.
   Math.random = () => 0.1;
   vi.clearAllMocks();
 });
@@ -166,8 +167,9 @@ describe('<RewardRoom>', () => {
     expect(within(dialog).getByText('Generic boon chosen')).toBeTruthy();
 
     const charCards = dialog.querySelectorAll('.wb-upgrade-char');
+    expect(charCards[0].textContent ?? '').toContain('Immovable Object'); // the grand pick
     fireEvent.click(charCards[0]);
-    expect(vi.mocked(chooseCharUpgrade)).toHaveBeenCalledWith('kn_bulwark');
+    expect(vi.mocked(chooseCharUpgrade)).toHaveBeenCalledWith('kn_grand_immovable');
     expect(within(dialog).getByText('Class boon chosen')).toBeTruthy();
   });
 

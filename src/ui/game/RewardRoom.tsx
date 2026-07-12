@@ -71,8 +71,11 @@ function rollOffers(
       .map((id) => {
         const u = CHAR_UPGRADES[id];
         const replaced = u.replaces ? current[u.replaces]?.name : null;
-        const desc = replaced ? `${u.desc}. Replaces ${replaced}.` : u.desc;
-        return { id, label: `${u.icon} ${u.name}`, desc };
+        let desc = replaced ? `${u.desc}. Replaces ${replaced}.` : u.desc;
+        // A GRAND improvement is a rare one-of-a-kind capstone — flag it.
+        if (u.grand) desc = `GRAND — ${desc}`;
+        const label = u.grand ? `★ ${u.icon} ${u.name}` : `${u.icon} ${u.name}`;
+        return { id, label, desc };
       }),
   };
 }
