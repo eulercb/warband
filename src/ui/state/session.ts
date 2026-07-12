@@ -160,6 +160,8 @@ export async function hostGame(): Promise<void> {
       s.setActiveRunSeed(info.runSeed);
       s.setActiveHardcore(info.hardcore);
       s.setNextReadyState(0, 0);
+      // A fresh fight consumes any ephemeral perks bought last interstitial (item 21).
+      s.resetEphemeralStock();
       // Fresh run (first boss of cycle 0) clears carried upgrade display.
       if (info.runIndex === 0 && info.cycle === 0) s.clearMyUpgrades();
       s.setPhase('game');
@@ -169,6 +171,7 @@ export async function hostGame(): Promise<void> {
     onResult: (result) => {
       const s = useStore.getState();
       s.setResult(result);
+      s.awardCoinsFromResult(result); // bank ephemeral coins earned this fight (item 21)
       resetPauseState(s);
       s.setPhase('result');
       sfx.resume();
@@ -216,6 +219,7 @@ export async function joinGame(code: string): Promise<void> {
       if (msg.runSeed != null) s.setActiveRunSeed(msg.runSeed);
       s.setActiveHardcore(msg.hardcore ?? false);
       s.setNextReadyState(0, 0);
+      s.resetEphemeralStock(); // a fresh fight consumes bought ephemeral perks (item 21)
       if (msg.runIndex === 0 && msg.cycle === 0) s.clearMyUpgrades(); // fresh run
       s.setPhase('game');
     },
@@ -224,6 +228,7 @@ export async function joinGame(code: string): Promise<void> {
     onResult: (result) => {
       const s = useStore.getState();
       s.setResult(result);
+      s.awardCoinsFromResult(result); // bank ephemeral coins earned this fight (item 21)
       resetPauseState(s);
       s.setPhase('result');
       sfx.resume();

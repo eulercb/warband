@@ -152,6 +152,7 @@ export default function TouchControls() {
   const hasHud = useHudStore((s) => s.classId !== null);
   const subSkills = useHudStore((s) => s.subSkills);
   const multiclass = useHudStore((s) => s.classes.length > 1);
+  const potions = useHudStore((s) => s.potions);
 
   useEffect(() => () => resetTouch(), []);
 
@@ -177,6 +178,7 @@ export default function TouchControls() {
         <TouchButton slot="basic" label={shortName('basic')} kind="basic" />
       </div>
       <div className="wb-touch-side">
+        {potions > 0 ? <TouchButton slot="item" label={`🧪${potions}`} kind="item" /> : null}
         {multiclass ? <TouchButton slot="swap" label="Swap" kind="swap" /> : null}
         <TouchButton slot="revive" label="Revive" kind="revive" />
       </div>

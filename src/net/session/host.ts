@@ -51,6 +51,8 @@ import type { UpgradeId } from '../../engine/content/upgrades';
 import { isCharUpgradeId, charUpgradeMaxStacks } from '../../engine/content/charUpgrades';
 import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
 import { CLASS_IDS } from '../../engine/content/classes';
+import { EPHEMERAL, isEphemeralId } from '../../engine/content/ephemeral';
+import type { EphemeralId, EphemeralStock } from '../../engine/content/ephemeral';
 import type {
   MonsterId,
   ClassId,
@@ -209,6 +211,12 @@ export class Host implements NetSession {
   private readonly roundPickedChar = new Set<string>();
   /** Cumulative banked score per peer (prior bosses this run; endless keeps it). */
   private readonly scoreByPeer = new Map<string, number>();
+  /** Ephemeral-shop coin balance per peer (item 21; carries across the run). */
+  private readonly coinsByPeer = new Map<string, number>();
+  /** Ephemeral perks bought for the NEXT fight per peer (consumed at spawn). */
+  private readonly ephemeralByPeer = new Map<string, EphemeralStock>();
+  /** Banked hardcore retries (shared): a wipe can spend one to restart the boss. */
+  private hardcoreRetryBank = 0;
   /** Peers (including the host, keyed by selfId) marked ready for the next boss. */
   private readonly nextReadyPeers = new Set<string>();
   /**
@@ -522,6 +530,9 @@ export class Host implements NetSession {
     this.subSkillsByPeer.clear();
     this.extraClassesByPeer.clear();
     this.scoreByPeer.clear();
+    this.coinsByPeer.clear();
+    this.ephemeralByPeer.clear();
+    this.hardcoreRetryBank = 0;
     this.roundPickedGeneric.clear();
     this.roundPickedChar.clear();
     this.nextReadyPeers.clear();
@@ -531,8 +542,12 @@ export class Host implements NetSession {
   /** Restart the current fight (same boss / same run position) after a loss. */
   retryFight(): void {
     if (this.phase === 'inFight') return;
-    // Hardcore has no free retry — a wipe ends the run (item 11).
-    if (this.hardcore) return;
+    // Hardcore has no FREE retry (item 11) — but a banked Second Chance from the
+    // ephemeral shop (item 21) can be spent to restart the boss.
+    if (this.hardcore) {
+      if (this.hardcoreRetryBank <= 0) return;
+      this.hardcoreRetryBank -= 1;
+    }
     if (this.runOrder.length === 0) {
       this.runOrder = this.buildRunOrder();
       this.runIndex = 0;
@@ -619,6 +634,9 @@ export class Host implements NetSession {
     }
     // Clients only render snapshots, so the wire roster omits the upgrade lists.
     const wireRoster = roster.map(({ peerId, name, classId }) => ({ peerId, name, classId }));
+    // Ephemeral perks (item 21) are single-fight: now that they've ridden into the
+    // roster, clear the shop stock so they don't linger into the fight after this.
+    this.ephemeralByPeer.clear();
 
     const playerCount = roster.length;
     const seed = this.fightSeed();
@@ -692,6 +710,7 @@ export class Host implements NetSession {
       charUpgrades: this.charUpgrades.get(peerId),
       subSkills: this.subSkillsByPeer.get(peerId),
       extraClasses: this.extraClassesByPeer.get(peerId),
+      ephemeral: this.ephemeralByPeer.get(peerId),
       baseScore: this.scoreByPeer.get(peerId) ?? 0,
     };
   }
@@ -807,6 +826,11 @@ export class Host implements NetSession {
     this.recordSpecial(selfId, { extraClass: classId });
   }
 
+  /** NetSession: buy the host's own ephemeral-shop perk for the next fight (item 21). */
+  buyEphemeral(id: EphemeralId): void {
+    this.recordEphemeral(selfId, id);
+  }
+
   /** NetSession: host marks itself ready (or not) to advance to the next boss. */
   setNextReady(ready: boolean): void {
     this.recordNextReady(selfId, ready);
@@ -897,6 +921,37 @@ export class Host implements NetSession {
         netLog('host', `extra class "${msg.extraClass}" for ${peerId.slice(0, 6)}`);
       }
     }
+    if (msg.buyEphemeral) this.recordEphemeral(peerId, msg.buyEphemeral);
+  }
+
+  /**
+   * Buy an ephemeral-shop perk for a peer (item 21), host-authoritative: validates
+   * the id, checks the peer can afford it against their banked coins, deducts the
+   * cost and stocks the perk for the next fight. Hardcore-only perks are rejected
+   * outside a hardcore run. A retry is a shared bank; everything else is per-peer
+   * stock injected into the next roster.
+   */
+  private recordEphemeral(peerId: string, id: EphemeralId): void {
+    if (!isEphemeralId(id)) return;
+    const def = EPHEMERAL[id];
+    if (def.hardcoreOnly && !this.hardcore) return;
+    const coins = this.coinsByPeer.get(peerId) ?? 0;
+    if (coins < def.cost) return;
+    this.coinsByPeer.set(peerId, coins - def.cost);
+    if (id === 'retry') {
+      this.hardcoreRetryBank += 1;
+    } else {
+      const stock: EphemeralStock = { ...(this.ephemeralByPeer.get(peerId) ?? {}) };
+      if (id === 'speed') stock.speed = true;
+      else if (id === 'damage') stock.damage = true;
+      else if (id === 'defense') stock.defense = true;
+      else if (id === 'potion') stock.potions = (stock.potions ?? 0) + 1;
+      else if (id === 'revive') stock.revives = (stock.revives ?? 0) + 1;
+      this.ephemeralByPeer.set(peerId, stock);
+    }
+    netLog('host', `bought "${id}" for ${peerId.slice(0, 6)}`, {
+      coinsLeft: this.coinsByPeer.get(peerId),
+    });
   }
 
   /** The primary class of a peer (host, a connected client, or a bot). */
@@ -973,6 +1028,9 @@ export class Host implements NetSession {
     this.subSkillsByPeer.clear();
     this.extraClassesByPeer.clear();
     this.scoreByPeer.clear();
+    this.coinsByPeer.clear();
+    this.ephemeralByPeer.clear();
+    this.hardcoreRetryBank = 0;
     this.roundPickedGeneric.clear();
     this.roundPickedChar.clear();
     this.nextReadyPeers.clear();
@@ -1127,7 +1185,14 @@ export class Host implements NetSession {
       for (const p of world.players) {
         this.scoreByPeer.set(p.peerId, world.playerScore(p) + SCORE_BOSS_CLEAR);
       }
+      // Bank ephemeral-shop coins earned this fight (item 21), ranked in result().
+      for (const s of result.stats) {
+        this.coinsByPeer.set(s.peerId, (this.coinsByPeer.get(s.peerId) ?? 0) + (s.coins ?? 0));
+      }
     }
+    // A hardcore wipe can still be retried if the band banked a Second Chance
+    // (item 21) — surface that so the result screen can offer the Retry button.
+    result.hardcoreRetryAvailable = this.hardcore && !victory && this.hardcoreRetryBank > 0;
 
     this.phase = 'lobby'; // out of the fight until the next begins
     netLog('host', `fight finished → ${result.outcome}`, {

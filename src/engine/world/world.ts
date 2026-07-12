@@ -109,6 +109,8 @@ import { applyUpgrades } from '../content/upgrades';
 import type { UpgradeId } from '../content/upgrades';
 import { applyCharUpgrades, previewAbilityTable } from '../content/charUpgrades';
 import { getSubSkill } from '../content/subclasses';
+import { coinsForRank } from '../content/ephemeral';
+import type { EphemeralStock } from '../content/ephemeral';
 import { getMonster, abilityById } from '../content/monsters';
 import type { MonsterDef, BossModifier } from '../content/monsters';
 import { hasAffix, AFFIXES } from '../content/affixes';
@@ -144,6 +146,17 @@ const SLOTS: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
 const SUB_SLOTS: SubSlot[] = ['sub1', 'sub2'];
 /** Cooldown gate (s) after a multiclass swap, so it can't be spammed for free casts. */
 const CLASS_SWAP_CD = 1.0;
+// Ephemeral shop consumables (item 21).
+/** Healing-vial restore, as a fraction of max HP. */
+const EPHEMERAL_POTION_HEAL = 0.4;
+/** Phoenix-charm auto-revive HP, as a fraction of max HP. */
+const EPHEMERAL_SELFREVIVE_HP = 0.5;
+/** Brief invulnerability after a self-revive so you don't instantly re-fall. */
+const EPHEMERAL_SELFREVIVE_GRACE = 1.5;
+// Passive next-fight perk magnitudes (folded into the stat multipliers at spawn).
+const EPHEMERAL_SPEED_MULT = 1.3;
+const EPHEMERAL_DAMAGE_MULT = 1.25;
+const EPHEMERAL_DEFENSE_MULT = 0.75;
 
 /** Blast-flash color for projectiles that detonate in an area on impact. */
 const PROJECTILE_IMPACT_COLOR: Partial<Record<import('../core/types').ProjectileKind, number>> = {
@@ -169,6 +182,8 @@ export interface WorldPlayerInit {
   subSkills?: string[];
   /** Additional classes this hero can swap to (item 14). `classId` stays primary. */
   extraClasses?: ClassId[];
+  /** Ephemeral-shop perks bought for THIS fight (item 21). Consumed on spawn. */
+  ephemeral?: EphemeralStock;
   /** Score carried in from prior bosses this run (endless accumulates it). */
   baseScore?: number;
 }
@@ -395,6 +410,10 @@ export class World {
       // Multiclass (item 14) — build a resolved kit for each owned class so a swap
       // is instant, and seed per-class cooldown state.
       this.buildMulticlass(player, pi);
+      // Ephemeral shop perks bought for THIS fight (item 21): passive combat
+      // bursts fold into the stat multipliers; potions/self-revives become
+      // in-fight resources. All gone next fight (a fresh World is built each boss).
+      this.applyEphemeral(player, pi.ephemeral);
       player.hp = player.maxHp;
       this.players.push(player);
     });
@@ -433,6 +452,33 @@ export class World {
       p.classTables[cid] = previewAbilityTable(cid, pi.charUpgrades ?? []);
       p.classCooldowns[cid] = zero();
     }
+  }
+
+  /**
+   * Apply a hero's ephemeral-shop purchases for this fight (item 21). Passive
+   * perks fold straight into the persistent stat multipliers (so they compose
+   * with class upgrades and are predicted correctly on clients via `moveSpeed`);
+   * potions and self-revives become live in-fight resources.
+   */
+  private applyEphemeral(p: Player, stock?: EphemeralStock): void {
+    if (!stock) return;
+    if (stock.speed) p.moveSpeed *= EPHEMERAL_SPEED_MULT;
+    if (stock.damage) p.damageMult *= EPHEMERAL_DAMAGE_MULT;
+    if (stock.defense) p.damageTakenMult *= EPHEMERAL_DEFENSE_MULT;
+    if (stock.potions && stock.potions > 0) p.potions = stock.potions;
+    if (stock.revives && stock.revives > 0) p.selfRevives = stock.revives;
+  }
+
+  /** Quaff a carried healing vial (item 21): heal a chunk of max HP, one charge. */
+  private tryUsePotion(p: Player): void {
+    if ((p.potions ?? 0) <= 0) return;
+    if (p.hp >= p.maxHp) return; // don't waste a vial at full health
+    p.potions = (p.potions ?? 0) - 1;
+    const before = p.hp;
+    p.hp = Math.min(p.maxHp, p.hp + p.maxHp * EPHEMERAL_POTION_HEAL);
+    const healed = p.hp - before;
+    p.stats.healingDone += healed;
+    this.events.push({ t: 'heal', pos: { ...p.pos }, amount: healed, targetId: p.id });
   }
 
   private spawnBosses(ids: MonsterId[], bossAffixes?: AffixId[][]): void {
@@ -642,6 +688,17 @@ export class World {
 
       // aim (always allowed)
       if (cmd.aim.x !== 0 || cmd.aim.y !== 0) p.aim = normalize(cmd.aim);
+
+      // Ephemeral healing vial (item 21) — quaffed with the item button. A
+      // consumable, not an ability, so it works even while stunned or mid-cast
+      // (a clutch escape). Edge-triggered; inert in the calm reward scene.
+      if (
+        this.scene === null &&
+        (cmd.buttons.item ?? false) &&
+        !(p.prevButtons.item ?? false)
+      ) {
+        this.tryUsePotion(p);
+      }
 
       const stunned = hasBuff(p, 'stun');
       const casting = p.castTimer > 0;
@@ -1899,6 +1956,16 @@ export class World {
   private checkDownedTransitions(): void {
     for (const p of this.players) {
       if (p.state === 'alive' && p.hp <= 0) {
+        // Phoenix charm (item 21): spend a self-revive to spring straight back up
+        // with a short invulnerability window instead of falling. Fires once per
+        // charge, before the normal downed transition.
+        if ((p.selfRevives ?? 0) > 0) {
+          p.selfRevives = (p.selfRevives ?? 0) - 1;
+          p.hp = Math.max(1, Math.round(p.maxHp * EPHEMERAL_SELFREVIVE_HP));
+          applyBuff(p, makeBuff('invuln', 0, EPHEMERAL_SELFREVIVE_GRACE, 'phoenixCharm'));
+          this.events.push({ t: 'revive', id: p.id, pos: { ...p.pos } });
+          continue;
+        }
         p.state = 'downed';
         p.hp = 0;
         p.downedTimer = DOWNED_BLEEDOUT;
@@ -1981,6 +2048,14 @@ export class World {
   }
 
   result(): FightResult {
+    const victory = (this.outcome ?? 'defeat') === 'victory';
+    // Ephemeral coins (item 21): rank heroes by this fight's participation score;
+    // the best performer banks the most, the tail banks none. A lost boss (defeat)
+    // pays nothing — the run's over anyway.
+    const coinByPeer = new Map<string, number>();
+    [...this.players]
+      .sort((a, b) => this.playerScore(b) - this.playerScore(a))
+      .forEach((p, i) => coinByPeer.set(p.peerId, victory ? coinsForRank(i) : 0));
     return {
       outcome: this.outcome ?? 'defeat',
       timeMs: Math.round(this.endMs),
@@ -1995,6 +2070,7 @@ export class World {
         revives: p.stats.revives,
         deaths: p.stats.deaths,
         score: Math.round(this.playerScore(p)),
+        coins: coinByPeer.get(p.peerId) ?? 0,
       })),
     };
   }
@@ -2068,6 +2144,7 @@ export class World {
       score: Math.round(this.playerScore(p)),
       subSkills: p.subSkillIds,
       classes: p.classes,
+      potions: p.potions,
     };
   }
 

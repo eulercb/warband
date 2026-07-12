@@ -33,6 +33,7 @@ function makeSession(onLeave: () => void = noop): NetSession {
     chooseCharUpgrade: noop,
     chooseSubSkill: noop,
     chooseExtraClass: noop,
+    buyEphemeral: noop,
     setNextReady: noop,
     leave: onLeave,
   };
@@ -390,6 +391,60 @@ describe('per-run upgrades', () => {
     expect(after.nextReadyReady).toBe(2);
     expect(after.nextReadyTotal).toBe(4);
     expect(changedKeys(before, after)).toEqual(['nextReadyReady', 'nextReadyTotal']);
+  });
+});
+
+describe('ephemeral shop (item 21)', () => {
+  it('awardCoinsFromResult banks this hero row\'s coins', () => {
+    const g = useStore.getState();
+    g.setSession(makeSession()); // selfId = 'self-id'
+    g.awardCoinsFromResult({
+      outcome: 'victory',
+      timeMs: 1,
+      monsterId: 'dragon',
+      stats: [
+        { peerId: 'self-id', name: 'Me', classId: 'knight', damageDealt: 0, healingDone: 0, revives: 0, deaths: 0, score: 0, coins: 5 },
+        { peerId: 'other', name: 'O', classId: 'mage', damageDealt: 0, healingDone: 0, revives: 0, deaths: 0, score: 0, coins: 3 },
+      ],
+    });
+    expect(useStore.getState().myCoins).toBe(5);
+  });
+
+  it('buyEphemeral deducts coins, mirrors the stock and relays to the host', () => {
+    const bought: string[] = [];
+    const session = { ...makeSession(), buyEphemeral: (id: string) => bought.push(id) };
+    const g = useStore.getState();
+    g.setSession(session as unknown as NetSession);
+    useStore.setState({ myCoins: 10 });
+    const ok = useStore.getState().buyEphemeral('potion');
+    expect(ok).toBe(true);
+    expect(useStore.getState().myCoins).toBe(7); // potion costs 3
+    expect(useStore.getState().myEphemeral.potions).toBe(1);
+    expect(bought).toEqual(['potion']);
+  });
+
+  it('buyEphemeral refuses a perk the hero cannot afford', () => {
+    const g = useStore.getState();
+    g.setSession(makeSession());
+    useStore.setState({ myCoins: 1 });
+    const ok = useStore.getState().buyEphemeral('revive'); // costs 6
+    expect(ok).toBe(false);
+    expect(useStore.getState().myCoins).toBe(1);
+    expect(useStore.getState().myEphemeral.revives).toBeUndefined();
+  });
+
+  it('resetEphemeralStock clears the pending stock but keeps coins', () => {
+    useStore.setState({ myCoins: 4, myEphemeral: { potions: 2, speed: true } });
+    useStore.getState().resetEphemeralStock();
+    expect(useStore.getState().myEphemeral).toEqual({});
+    expect(useStore.getState().myCoins).toBe(4);
+  });
+
+  it('clearMyUpgrades also wipes coins and pending stock', () => {
+    useStore.setState({ myCoins: 9, myEphemeral: { potions: 1 } });
+    useStore.getState().clearMyUpgrades();
+    expect(useStore.getState().myCoins).toBe(0);
+    expect(useStore.getState().myEphemeral).toEqual({});
   });
 });
 

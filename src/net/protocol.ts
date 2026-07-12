@@ -4,6 +4,7 @@
  */
 import type { ClassId, MonsterId, InputCommand, Snapshot, FightResult } from '../engine/core/types';
 import type { UpgradeId } from '../engine/content/upgrades';
+import type { EphemeralId } from '../engine/content/ephemeral';
 
 /** Trystero action ids (kept short; must match across peers). */
 export const ACTIONS = {
@@ -115,6 +116,8 @@ export interface SpecialMsg {
   subclassId?: string;
   subSkillId?: string;
   extraClass?: ClassId;
+  /** Ephemeral-shop purchase (item 21): the coin-priced perk this player is buying. */
+  buyEphemeral?: EphemeralId;
 }
 
 /** Client -> host: this player is ready to advance to the next boss. */
@@ -163,6 +166,8 @@ export interface NetSession {
   chooseSubSkill(subclassId: string, skillId: string): void;
   /** Submit a run-clear extra-class (multiclass) pick (item 14). */
   chooseExtraClass(classId: ClassId): void;
+  /** Buy a coin-priced ephemeral perk for the next fight (item 21). */
+  buyEphemeral(id: EphemeralId): void;
   /** Mark this player ready (or not) to advance to the next boss. */
   setNextReady(ready: boolean): void;
   leave(): void;

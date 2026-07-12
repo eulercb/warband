@@ -28,6 +28,7 @@ import { CHAR_UPGRADES, rollCharChoices } from '../../engine/content/charUpgrade
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import RewardRoom from '../game/RewardRoom';
 import SpecialReward from './SpecialReward';
+import EphemeralShop from './EphemeralShop';
 
 /** Format milliseconds as `m:ss.mmm` (>= 1 min) or `s.d`s (under a minute). */
 function formatTime(ms: number): string {
@@ -171,6 +172,8 @@ export function ResultScreen() {
         ) : null}
 
         {showUpgrades ? <SpecialReward /> : null}
+
+        {showUpgrades ? <EphemeralShop /> : null}
 
         {showUpgrades ? (
           <div className="wb-upgrades">
@@ -358,10 +361,12 @@ export function ResultScreen() {
             )
           ) : (
             <>
-              {/* Hardcore has no free retry on a wipe (item 11) — the run ends. */}
-              {isHost && !(activeHardcore && !victory) ? (
+              {/* Hardcore has no FREE retry on a wipe (item 11) — but a banked
+                  Second Chance from the ephemeral shop (item 21) buys one back. */}
+              {isHost &&
+              (!(activeHardcore && !victory) || result.hardcoreRetryAvailable) ? (
                 <button type="button" className="wb-btn wb-btn-danger" onClick={onRetry}>
-                  {victory ? 'Play Again' : 'Retry'}
+                  {victory ? 'Play Again' : result.hardcoreRetryAvailable ? 'Second Chance' : 'Retry'}
                 </button>
               ) : null}
               <button type="button" className="wb-btn wb-btn-primary" onClick={onReturn}>

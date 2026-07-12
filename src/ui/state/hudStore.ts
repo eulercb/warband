@@ -62,6 +62,8 @@ export interface HudState {
   subSkills: string[];
   /** Owned classes for a multiclass hero (drives the swap indicator). */
   classes: ClassId[];
+  /** Healing vials carried this fight (item 21) — drives the item-button pip. */
+  potions: number;
   /** Whether the local player is currently casting (rooted). */
   casting: boolean;
   /** Which device the local player last used (drives HUD button labels). */
@@ -102,6 +104,7 @@ const INITIAL: Omit<HudState, 'set' | 'resetHud'> = {
   cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 },
   subSkills: [],
   classes: [],
+  potions: 0,
   casting: false,
   inputSource: 'keyboard',
   buffs: [],

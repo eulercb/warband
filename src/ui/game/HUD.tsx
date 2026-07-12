@@ -311,6 +311,18 @@ export default function HUD() {
             })}
           </div>
         )}
+        {/* Ephemeral healing vials (item 21) — item button quaffs one. */}
+        {hud.potions > 0 && (
+          <div className="hud-item" role="status" title="Healing vial — heal 40% max HP">
+            <span className="hud-item-key">
+              {source === 'gamepad' ? padLabelFor('item') : keyLabelFor('item')}
+            </span>
+            <span className="hud-item-icon" aria-hidden="true">
+              🧪
+            </span>
+            <span className="hud-item-count">×{hud.potions}</span>
+          </div>
+        )}
         {/* Multiclass indicator (item 14) — current class + swap key. */}
         {hud.classes.length > 1 && (
           <div className="hud-multiclass" role="status">

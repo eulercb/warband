@@ -642,6 +642,10 @@
   background: rgba(90, 70, 130, 0.6);
   border-color: rgba(180, 150, 240, 0.5);
 }
+.wb-touch-side .wb-touch-btn-item {
+  background: rgba(40, 100, 70, 0.6);
+  border-color: rgba(125, 255, 160, 0.55);
+}
 
 /* --- HUD multiclass indicator (item 14) ---------------------------------- */
 .hud-multiclass {
@@ -672,6 +676,26 @@
   background: rgba(180, 150, 240, 0.35);
   color: #fff;
   font-weight: 700;
+}
+
+/* Ephemeral healing-vial pip (item 21). */
+.hud-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+.hud-item-key {
+  padding: 1px 6px;
+  border: 1px solid rgba(125, 255, 160, 0.6);
+  border-radius: 5px;
+  color: #b6ffcf;
+  font-weight: 700;
+}
+.hud-item-count {
+  font-weight: 800;
+  color: #7dffa0;
 }
 
 /* Class accents for the expansion classes (bard/monk/sorcerer/warlock). */

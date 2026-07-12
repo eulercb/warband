@@ -280,6 +280,14 @@ export interface Player {
   /** Global-ish cooldown gate on swapping classes (seconds). */
   swapCd?: number;
 
+  // --- Ephemeral shop consumables (item 21). Bought between bosses with coins,
+  // last only this fight. Passive perks (speed/damage/defence) are folded into
+  // the stat multipliers at spawn and leave no field behind. ---
+  /** Healing vials carried into this fight (spent with the item button). */
+  potions?: number;
+  /** Phoenix charms — each auto-revives once when this hero would fall this fight. */
+  selfRevives?: number;
+
   /** Score carried in from prior bosses this run (endless accumulates it). */
   baseScore?: number;
 
@@ -810,6 +818,8 @@ export interface PlayerView {
   subSkills?: string[];
   /** Owned classes for a multiclass hero (index 0 primary; `classId` is active). */
   classes?: ClassId[];
+  /** Healing vials carried this fight (item 21) — drives the HUD item pip. */
+  potions?: number;
 }
 
 export interface BossView {
@@ -934,6 +944,12 @@ export interface ResultPlayerStat {
   deaths: number;
   /** Cumulative participation score across the run (endless keeps accumulating). */
   score: number;
+  /**
+   * Ephemeral-shop coins earned in THIS fight, ranked by performance (item 21):
+   * the top performer banks the most, the tail banks none. 0 on a defeat (a lost
+   * boss pays nothing). Clients add their own row's coins to the shop balance.
+   */
+  coins?: number;
 }
 
 export interface FightResult {
@@ -963,6 +979,12 @@ export interface FightResult {
   cycle?: number;
   endlessAvailable?: boolean;
   modName?: string;
+  /**
+   * Hardcore only (items 11 + 21): a wipe is normally terminal, but if the band
+   * banked a Second Chance from the ephemeral shop the host can still retry. True
+   * = show the Retry button on a hardcore defeat.
+   */
+  hardcoreRetryAvailable?: boolean;
   /**
    * Deterministic seed for THIS interstitial's reward offers, derived host-side
    * from the master run seed. Every client seeds its own offer roll from it so a

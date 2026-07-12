@@ -21,6 +21,7 @@ import { selfId } from '../../net/transport/room';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import HUD from './HUD';
 import TouchControls from './TouchControls';
+import EphemeralShop from '../screens/EphemeralShop';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
 import { RewardScene, type RewardOffers, type RelicFocus } from '../state/rewardScene';
@@ -88,6 +89,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
   const readyReady = useStore((s) => s.nextReadyReady);
   const readyTotal = useStore((s) => s.nextReadyTotal);
+  const myCoins = useStore((s) => s.myCoins);
 
   // Offers are rolled ONCE for this interstitial (the component remounts fresh
   // each result phase, so this is stable for the room's whole lifetime). The
@@ -330,6 +332,11 @@ export default function RewardRoom({ result }: { result: FightResult }) {
             Seed: {result.runSeed.toString(36).toUpperCase()}
           </span>
         ) : null}
+        {myCoins > 0 ? (
+          <span className="wb-reward-banner-coins" title="Spend coins in the list view's Ephemeral Stall">
+            🪙 {myCoins} — spend in list view
+          </span>
+        ) : null}
         <span className="wb-reward-banner-hint">
           Walk onto a relic to claim it — then step into the vortex to descend. Or open the list
           view.
@@ -458,6 +465,10 @@ export default function RewardRoom({ result }: { result: FightResult }) {
                 );
               })}
             </div>
+
+            {/* Ephemeral coin shop (item 21) — spend this fight's coins on
+                one-off perks for the next boss. */}
+            <EphemeralShop />
 
             {myUpgrades.length > 0 || myCharUpgrades.length > 0 ? (
               <div className="wb-upgrade-owned">

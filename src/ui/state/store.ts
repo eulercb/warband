@@ -6,6 +6,8 @@
 import { create } from 'zustand';
 import type { ClassId, MonsterId, FightResult } from '../../engine/core/types';
 import type { UpgradeId } from '../../engine/content/upgrades';
+import { EPHEMERAL } from '../../engine/content/ephemeral';
+import type { EphemeralId, EphemeralStock } from '../../engine/content/ephemeral';
 import type { LobbyPlayer, NetSession } from '../../net/protocol';
 import type { NetMode } from '../../net/transport/room';
 import { DEFAULT_CLASS } from '../../engine/content/classes';
@@ -168,6 +170,10 @@ export interface AppState {
   mySubSkills: string[];
   /** Extra classes unlocked for multiclass swapping (item 14). */
   myExtraClasses: ClassId[];
+  /** Ephemeral-shop coin balance for this local hero (item 21; carries the run). */
+  myCoins: number;
+  /** Ephemeral perks this hero has bought for the next fight (item 21). */
+  myEphemeral: EphemeralStock;
   /** Between-boss readiness tally from the host (upgrade screen). */
   nextReadyReady: number;
   nextReadyTotal: number;
@@ -221,6 +227,12 @@ export interface AppState {
   clearMyUpgrades: () => void;
   addMySubSkill: (subclassId: string, skillId: string) => void;
   addMyExtraClass: (classId: ClassId) => void;
+  /** Bank this fight's ephemeral coins from a landed result (item 21). */
+  awardCoinsFromResult: (result: FightResult) => void;
+  /** Buy an ephemeral perk if affordable; returns true on success (item 21). */
+  buyEphemeral: (id: EphemeralId) => boolean;
+  /** Clear the pending ephemeral stock once a fight consumes it (item 21). */
+  resetEphemeralStock: () => void;
   setNextReadyState: (ready: number, total: number) => void;
   setResult: (r: FightResult | null) => void;
   toggleMute: () => void;
@@ -268,6 +280,8 @@ export const useStore = create<AppState>((set, get) => ({
   mySubclassId: null,
   mySubSkills: [],
   myExtraClasses: [],
+  myCoins: 0,
+  myEphemeral: {},
   nextReadyReady: 0,
   nextReadyTotal: 0,
 
@@ -311,7 +325,15 @@ export const useStore = create<AppState>((set, get) => ({
   addMyUpgrade: (id) => set({ myUpgrades: [...get().myUpgrades, id] }),
   addMyCharUpgrade: (id) => set({ myCharUpgrades: [...get().myCharUpgrades, id] }),
   clearMyUpgrades: () =>
-    set({ myUpgrades: [], myCharUpgrades: [], mySubclassId: null, mySubSkills: [], myExtraClasses: [] }),
+    set({
+      myUpgrades: [],
+      myCharUpgrades: [],
+      mySubclassId: null,
+      mySubSkills: [],
+      myExtraClasses: [],
+      myCoins: 0,
+      myEphemeral: {},
+    }),
   addMySubSkill: (subclassId, skillId) =>
     set({
       mySubclassId: subclassId,
@@ -323,6 +345,31 @@ export const useStore = create<AppState>((set, get) => ({
         ? get().myExtraClasses
         : [...get().myExtraClasses, classId],
     }),
+  awardCoinsFromResult: (result) => {
+    const sess = get().session;
+    if (!sess) return;
+    const mine = result.stats?.find((st) => st.peerId === sess.selfId);
+    if (mine?.coins) set({ myCoins: get().myCoins + mine.coins });
+  },
+  buyEphemeral: (id) => {
+    const def = EPHEMERAL[id];
+    if (!def) return false;
+    const { myCoins, myEphemeral, session } = get();
+    if (myCoins < def.cost) return false;
+    // Optimistically mirror the host's stock so the shop reflects the buy at once;
+    // the host validates independently against its own coin ledger.
+    const stock: EphemeralStock = { ...myEphemeral };
+    if (id === 'speed') stock.speed = true;
+    else if (id === 'damage') stock.damage = true;
+    else if (id === 'defense') stock.defense = true;
+    else if (id === 'potion') stock.potions = (stock.potions ?? 0) + 1;
+    else if (id === 'revive') stock.revives = (stock.revives ?? 0) + 1;
+    // 'retry' banks host-side only (no per-fight stock field); nothing to mirror.
+    set({ myCoins: myCoins - def.cost, myEphemeral: stock });
+    session?.buyEphemeral(id);
+    return true;
+  },
+  resetEphemeralStock: () => set({ myEphemeral: {} }),
   setNextReadyState: (ready, total) => set({ nextReadyReady: ready, nextReadyTotal: total }),
   setResult: (result) => set({ result }),
   toggleMute: () => set({ muted: !get().muted }),
@@ -372,6 +419,8 @@ export const useStore = create<AppState>((set, get) => ({
       mySubclassId: null,
       mySubSkills: [],
       myExtraClasses: [],
+      myCoins: 0,
+      myEphemeral: {},
       nextReadyReady: 0,
       nextReadyTotal: 0,
       result: null,
