@@ -50,6 +50,8 @@ import { SPRITE_FLAGS, SPRITE_ATLAS_URL } from '../sprites/manifest';
 import { RigLayer } from '../rig/rigLayer';
 import { bossUsesRig, playerUsesRig, addUsesRig } from '../rig/registry';
 import { buffLabel } from '../overlays/buffGlyphs';
+import { LightManager } from '../lighting/light';
+import { LIGHTING, AMBIENT_BY_THEME } from '../lighting/presets';
 
 const GRID_STEP = 100; // world units between grid lines
 
@@ -77,6 +79,7 @@ export class Renderer {
   private readonly sprites: SpriteLayer;
   private readonly rigs: RigLayer;
   private readonly particles: Particles;
+  private readonly lights: LightManager;
   private readonly labels: Text[] = [];
 
   private lastRenderMs = 0;
@@ -95,7 +98,10 @@ export class Renderer {
     this.fx = new Fx(this.fxTextLayer);
     this.balloons = new Balloons();
     this.sprites = new SpriteLayer(sheet, this.fx, app.renderer);
-    this.rigs = new RigLayer(this.fx);
+    // Shared dynamic-light buffer. Every lit rig mesh references this manager's
+    // uniform groups, so one update per frame lights the whole arena.
+    this.lights = new LightManager(LIGHTING.maxLights);
+    this.rigs = new RigLayer(this.fx, this.lights);
     this.particles = new Particles(app.renderer);
 
     this.root.addChild(
@@ -123,6 +129,10 @@ export class Renderer {
   static async create(container: HTMLElement, arena: { w: number; h: number }): Promise<Renderer> {
     const app = new Application();
     await app.init({
+      // Force WebGL (§4.0): Pixi 8 defaults to WebGPU-with-WebGL-fallback, but the
+      // lit-mesh programs are GLSL-only for v1, so pin the WebGL renderer. A WGSL
+      // port (re-enabling WebGPU) is a deliberate follow-up.
+      preference: 'webgl',
       background: '#0e0e14',
       antialias: true,
       resizeTo: container,
@@ -179,6 +189,7 @@ export class Renderer {
     this.drawEntities(state, now); // geometry for flag-off, non-rig actors
     this.sprites.update(state, this.camera, now, dtMs); // sprites for flag-on actors
     this.rigs.update(state, this.camera, now, dtMs); // articulated rigs for rig-opted actors
+    this.updateLights(dtMs); // cull + project the shared light set (after rig glows settle)
     this.drawOverlays(state, now); // vector bars/rings for sprite- and rig-driven actors
     this.drawProjectiles(state); // geometry for flag-off projectiles
 
@@ -194,6 +205,29 @@ export class Renderer {
     this.particles.draw(this.camera);
 
     this.updateLabels(state);
+  }
+
+  /**
+   * Cull the shared lights to the budget and project them into the shader's
+   * space. This codebase projects world→screen on the CPU (see `Camera`), so no
+   * GPU container carries the camera transform and the shader's `vScenePos` is
+   * SCREEN space (§4.4, the "drifts" case — knowable here by construction). Lights
+   * are therefore transformed to screen px, z/radius scaled by the zoom, and the
+   * root screen-shake added so they stay locked to bodies during a hit. Verified
+   * against PixiJS 8.19.0 (2026-07); revisit if the scene graph is restructured.
+   */
+  private updateLights(dtMs: number): void {
+    if (!LIGHTING.enabled) return;
+    const cam = this.camera;
+    this.lights.update(dtMs / 1000, cam.center, (l) => {
+      const s = cam.worldToScreen(l);
+      return {
+        x: s.x + cam.shakeOffset.x,
+        y: s.y + cam.shakeOffset.y,
+        z: l.z * cam.scale,
+        radius: l.radius * cam.scale,
+      };
+    });
   }
 
   worldToScreen(v: Vec2): Vec2 {
@@ -299,6 +333,13 @@ export class Renderer {
     const theme = themeFor([lead])[0] ?? 'ember';
     const pal = GROUND_PALETTES[theme] ?? GROUND_PALETTES.ember;
     this.groundBase = pal.base;
+
+    // Per-arena ambient mood (§7.5): warm for fire arenas, cold for crypts. The
+    // lit meshes read this as their shadow tint; unthemed arenas keep the default.
+    if (LIGHTING.enabled) {
+      const amb = AMBIENT_BY_THEME[theme];
+      if (amb) this.lights.setAmbient(amb[0], amb[1], amb[2]);
+    }
 
     const rng = new Rng((state.seed ^ 0xc0ffee) >>> 0 || 1);
     const out: GroundDecor[] = [];
