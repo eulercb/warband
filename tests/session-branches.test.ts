@@ -272,7 +272,7 @@ describe('Host callbacks drive the store', () => {
     expect(st().activeHardcore).toBe(true);
   });
 
-  it('onStart records the host hero\'s Chaos-Draft class, and clears it when off (item 10)', () => {
+  it("onStart records the host hero's Chaos-Draft class, and clears it when off (item 10)", () => {
     useStore.setState({ activeRandomKits: false, activeDraftedClass: null });
     hosts[0].opts.onStart({
       runIndex: 0,
@@ -384,7 +384,7 @@ describe('Client callbacks drive the store', () => {
     expect(st().myEphemeral).toEqual({});
   });
 
-  it('onStart adopts THIS client\'s Chaos-Draft class from the roster (item 10)', () => {
+  it("onStart adopts THIS client's Chaos-Draft class from the roster (item 10)", () => {
     useStore.setState({ activeRandomKits: false, activeDraftedClass: null });
     clients[0].opts.onStart({
       runIndex: 1,

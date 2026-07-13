@@ -931,8 +931,7 @@ describe('rollCharChoices', () => {
 describe('rollCharChoices — multiclass weighting + fill-to-max (item 8)', () => {
   it('spans every owned class, weighted toward the main class', () => {
     const extras: ClassId[] = ['mage', 'cleric'];
-    const idsOf = (c: ClassId): Set<string> =>
-      new Set(CHAR_UPGRADES_BY_CLASS[c].map((d) => d.id));
+    const idsOf = (c: ClassId): Set<string> => new Set(CHAR_UPGRADES_BY_CLASS[c].map((d) => d.id));
     const mainIds = idsOf('knight');
     const mageIds = idsOf('mage');
     const clericIds = idsOf('cleric');
@@ -1826,9 +1825,9 @@ describe('grandCount (item 5)', () => {
 
   it('reaches the ≥3 strong-party bar only with three genuine grands', () => {
     expect(grandCount(['kn_grand_immovable', 'rg_grand_deadeye']) >= 3).toBe(false);
-    expect(
-      grandCount(['kn_grand_immovable', 'rg_grand_deadeye', 'mg_grand_archmage']) >= 3,
-    ).toBe(true);
+    expect(grandCount(['kn_grand_immovable', 'rg_grand_deadeye', 'mg_grand_archmage']) >= 3).toBe(
+      true,
+    );
   });
 });
 

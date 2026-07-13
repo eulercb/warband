@@ -4104,7 +4104,8 @@ function describeStatReadout(classId: ClassId, ownedChar: readonly string[], id:
   if (after.damageTakenMult !== before.damageTakenMult) {
     parts.push(`${pct(after.damageTakenMult)} dmg taken`);
   }
-  if (after.cooldownMult !== before.cooldownMult) parts.push(`${pct(after.cooldownMult)} cooldowns`);
+  if (after.cooldownMult !== before.cooldownMult)
+    parts.push(`${pct(after.cooldownMult)} cooldowns`);
   if (after.castMult !== before.castMult) parts.push(`${pct(after.castMult)} cast time`);
   if (after.regenPerSec !== before.regenPerSec) {
     parts.push(`${Math.round(after.regenPerSec * 10) / 10}/s regen`);

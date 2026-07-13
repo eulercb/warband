@@ -116,7 +116,9 @@ export function ResultScreen() {
       mySubSkills.length,
     );
     // item 6: equipped sub skills bring their per-sub-skill boons into the pool.
-    setCharOffers(rollCharChoices(localClass, 4, rnd, st.myCharUpgrades, myExtraClasses, mySubSkills));
+    setCharOffers(
+      rollCharChoices(localClass, 4, rnd, st.myCharUpgrades, myExtraClasses, mySubSkills),
+    );
   }, [showUpgrades, localClass, result, myExtraClasses, mySubSkills, pickedChar]);
   /* eslint-enable react-hooks/set-state-in-effect */
 

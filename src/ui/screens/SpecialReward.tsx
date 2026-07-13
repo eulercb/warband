@@ -23,7 +23,11 @@ import {
   type SubclassDef,
 } from '../../engine/content/subclasses';
 import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
-import { offerableGrands, describeCharOffer, CHAR_UPGRADES } from '../../engine/content/charUpgrades';
+import {
+  offerableGrands,
+  describeCharOffer,
+  CHAR_UPGRADES,
+} from '../../engine/content/charUpgrades';
 import { hashStr } from '../../engine/content/procgen';
 import { Rng, mixSeed, shuffled } from '../../engine/core/math';
 import type { ClassId } from '../../engine/core/types';

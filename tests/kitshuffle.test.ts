@@ -52,7 +52,7 @@ describe('kitshuffle — Chaos Draft (item 10)', () => {
     );
   });
 
-  it('a drafted hero is offered its DRAFTED class\'s correct upgrades (foreign kit → correct upgrade)', () => {
+  it("a drafted hero is offered its DRAFTED class's correct upgrades (foreign kit → correct upgrade)", () => {
     // The core item-10 invariant: whatever class the seed deals you, the reward
     // offers are THAT class's own boons (keyed by the effective class), so a hero
     // dealt the Mage kit is offered the Mage's Fireball upgrade, never a mismatch.
@@ -63,7 +63,7 @@ describe('kitshuffle — Chaos Draft (item 10)', () => {
         // The between-boss roll for the drafted class draws only that class's boons.
         const rng = (() => {
           let s = seed >>> 0;
-          return () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+          return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
         })();
         for (const id of rollCharChoices(drafted, 3, rng)) {
           // The card resolves against the drafted class (its correct "Now →" values).
