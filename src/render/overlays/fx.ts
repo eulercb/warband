@@ -128,10 +128,25 @@ export class Fx {
     for (const e of events) {
       switch (e.t) {
         case 'hit': {
-          const color = e.side === 'player' ? 0xff5a5a : 0xffe066;
-          this.spawnFloater(e.pos, String(Math.round(e.amount)), color);
+          const dmg = Math.round(e.amount);
+          // item 5: crits and backstabs read distinctly in the floating combat text —
+          // crits pop bigger + gold with a bang; backstabs flash a sharper orange.
+          let color = e.side === 'player' ? 0xff5a5a : 0xffe066;
+          let str = String(dmg);
+          let scale = 1;
+          if (e.crit) {
+            color = 0xffd23f;
+            str = `${dmg}!`;
+            scale = 1.5;
+          } else if (e.backstab) {
+            color = 0xff8a3d;
+            scale = 1.25;
+          }
+          this.spawnFloater(e.pos, str, color, scale);
           this.flashes.set(e.targetId, HIT_FLASH_TIME);
-          if (e.amount >= 40) camera.addShake(clamp(e.amount * 0.08, 2, 8));
+          if (e.amount >= 40 || e.crit) {
+            camera.addShake(clamp(e.amount * (e.crit ? 0.12 : 0.08), 2, 10));
+          }
           break;
         }
         case 'heal': {
@@ -527,7 +542,7 @@ export class Fx {
 
   // --- Pool helpers ---------------------------------------------------------
 
-  private spawnFloater(pos: Vec2, str: string, color: number): void {
+  private spawnFloater(pos: Vec2, str: string, color: number, scale = 1): void {
     const f = this.acquireFloater();
     f.active = true;
     f.age = 0;
@@ -535,6 +550,7 @@ export class Fx {
     f.world.y = pos.y;
     f.text.text = str;
     f.text.style.fill = color;
+    f.text.scale.set(scale); // item 5: crits/backstabs pop larger (default 1)
     f.text.visible = true;
   }
 

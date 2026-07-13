@@ -8,11 +8,19 @@
  * data-driven and unit-testable without any UI or networking.
  */
 import type { Player } from '../core/types';
-import { MAX_SKILL_STACKS } from '../core/constants';
+import { MAX_SKILL_STACKS, CRIT_CHANCE_PER_DEADEYE } from '../core/constants';
 import { procVariant, upgradeVariant } from './procgen';
 
 export type UpgradeId =
-  'swift' | 'vigor' | 'haste' | 'focus' | 'surefooted' | 'mighty' | 'bulwark' | 'renewal';
+  | 'swift'
+  | 'vigor'
+  | 'haste'
+  | 'focus'
+  | 'surefooted'
+  | 'mighty'
+  | 'bulwark'
+  | 'renewal'
+  | 'deadeye';
 
 /** Coarse role of a boon, used to bias personality-driven bot picks (item 6). */
 export type UpgradeRole = 'offense' | 'defense' | 'sustain' | 'tempo' | 'mobility';
@@ -125,6 +133,19 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
     apply: (p) => {
       // Computed off the (possibly Vigor-boosted) maxHp at spawn time.
       p.regenPerSec += p.maxHp * 0.02;
+    },
+  },
+  // item 5: crit chance boon — the "upgrade" source of critical hits (on top of the
+  // base crit every hero carries). Additive, defensive read so it applies cleanly to
+  // any player stub.
+  deadeye: {
+    id: 'deadeye',
+    role: 'offense',
+    name: 'Deadeye',
+    icon: '💥',
+    desc: '+8% critical hit chance',
+    apply: (p) => {
+      p.critChance = (p.critChance ?? 0) + CRIT_CHANCE_PER_DEADEYE;
     },
   },
 };

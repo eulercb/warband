@@ -188,6 +188,7 @@ export const UPGRADE_NAME_BANKS: Record<string, string[]> = {
   mighty: ['Mighty', 'Savage', 'Brutal', 'Empowered'],
   bulwark: ['Bulwark', 'Stoneskin', 'Warded', 'Unyielding'],
   renewal: ['Renewal', 'Mending', 'Everbloom', 'Second Breath'],
+  deadeye: ['Deadeye', 'Keen Eye', 'Lethal', 'Killer Instinct'],
 };
 
 // ---------------------------------------------------------------------------
@@ -557,6 +558,17 @@ export function upgradeVariant(seed: number, base: UpgradeDef): UpgradeDef {
         desc: `Regenerate ${Math.round(b * 1000) / 10}% max HP per second`,
         apply: (p) => {
           p.regenPerSec += p.maxHp * b;
+        },
+      };
+      break;
+    }
+    case 'deadeye': {
+      const b = q01(clamp(0.08 * u(r[0], 0.7, 1.4), 0.06, 0.12));
+      roll = {
+        name,
+        desc: `+${pct(b)}% critical hit chance`,
+        apply: (p) => {
+          p.critChance = (p.critChance ?? 0) + b;
         },
       };
       break;

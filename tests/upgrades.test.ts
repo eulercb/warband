@@ -40,6 +40,8 @@ function mkPlayer(over: Partial<Player> = {}): Player {
     damageTakenMult: 1,
     terrainResist: 0,
     regenPerSec: 0,
+    critChance: 0,
+    critMult: 1.5,
     threat: 0,
     stats: { damageDealt: 0, healingDone: 0, revives: 0, deaths: 0 },
     prevButtons: { basic: false, a1: false, a2: false, a3: false, revive: false },
@@ -73,6 +75,7 @@ const EXPECTED_IDS: UpgradeId[] = [
   'mighty',
   'bulwark',
   'renewal',
+  'deadeye', // item 5: crit-chance boon
 ];
 
 // ---------------------------------------------------------------------------
@@ -94,7 +97,7 @@ describe('UPGRADES catalog', () => {
     }
   });
 
-  it('contains exactly the eight expected upgrades', () => {
+  it('contains exactly the nine expected upgrades', () => {
     expect(Object.keys(UPGRADES).sort()).toEqual([...EXPECTED_IDS].sort());
   });
 });
@@ -107,7 +110,7 @@ describe('UPGRADE_IDS', () => {
   it('lists the catalog keys in insertion order', () => {
     expect(UPGRADE_IDS).toEqual(EXPECTED_IDS);
     expect(UPGRADE_IDS).toEqual(Object.keys(UPGRADES));
-    expect(UPGRADE_IDS).toHaveLength(8);
+    expect(UPGRADE_IDS).toHaveLength(9);
   });
 
   it('every listed id passes the type guard', () => {
@@ -129,6 +132,7 @@ describe('isUpgradeId', () => {
     expect(isUpgradeId('mighty')).toBe(true);
     expect(isUpgradeId('bulwark')).toBe(true);
     expect(isUpgradeId('renewal')).toBe(true);
+    expect(isUpgradeId('deadeye')).toBe(true);
   });
 
   it('rejects unknown / mis-cased strings', () => {
@@ -248,6 +252,14 @@ describe('individual upgrade effects', () => {
     UPGRADES.renewal.apply(p); // 1 + 250 * 0.02 = 6
     expect(p.regenPerSec).toBeCloseTo(6);
   });
+
+  it('deadeye: +8% crit chance, additive (item 5)', () => {
+    const p = mkPlayer({ critChance: 0.05 });
+    UPGRADES.deadeye.apply(p);
+    expect(p.critChance).toBeCloseTo(0.13);
+    UPGRADES.deadeye.apply(p);
+    expect(p.critChance).toBeCloseTo(0.21);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -349,16 +361,17 @@ describe('rollUpgradeChoices', () => {
 
   it('a constant-0 rng draws the pool head each time (source order)', () => {
     expect(rollUpgradeChoices(3, () => 0)).toEqual(['swift', 'vigor', 'haste']);
-    expect(rollUpgradeChoices(8, () => 0)).toEqual([...UPGRADE_IDS]);
+    expect(rollUpgradeChoices(UPGRADE_IDS.length, () => 0)).toEqual([...UPGRADE_IDS]);
   });
 
   it('a near-1 rng draws the pool tail each time (reverse order)', () => {
-    expect(rollUpgradeChoices(8, () => 0.999)).toEqual([...UPGRADE_IDS].reverse());
+    expect(rollUpgradeChoices(UPGRADE_IDS.length, () => 0.999)).toEqual([...UPGRADE_IDS].reverse());
   });
 
   it('follows a deterministic cycling rng exactly', () => {
     const rng = cyclingRng([0.3, 0.9, 0.0, 0.5]);
-    expect(rollUpgradeChoices(4, rng)).toEqual(['haste', 'renewal', 'swift', 'surefooted']);
+    // Pool 9: 0.3→idx2 'haste'; 0.9→idx7 'deadeye'; 0.0→idx0 'swift'; 0.5→idx3 'mighty'.
+    expect(rollUpgradeChoices(4, rng)).toEqual(['haste', 'deadeye', 'swift', 'mighty']);
   });
 
   it('clamps a count larger than the pool to the whole pool (a permutation)', () => {
@@ -369,7 +382,7 @@ describe('rollUpgradeChoices', () => {
 
   it('returns the full pool when n equals the pool size', () => {
     const out = rollUpgradeChoices(UPGRADE_IDS.length, lcg(3));
-    expect(out).toHaveLength(8);
+    expect(out).toHaveLength(UPGRADE_IDS.length);
     expect(new Set(out)).toEqual(new Set(UPGRADE_IDS));
   });
 
@@ -391,7 +404,7 @@ describe('rollUpgradeChoices', () => {
     rollUpgradeChoices(4, lcg(11));
     rollUpgradeChoices(100, lcg(12));
     expect(UPGRADE_IDS).toEqual(before);
-    expect(UPGRADE_IDS).toHaveLength(8);
+    expect(UPGRADE_IDS).toHaveLength(9);
   });
 
   it('produces distinct, in-pool picks across many seeded rolls', () => {
@@ -410,6 +423,6 @@ describe('rollUpgradeChoices', () => {
     // the `% pool.length` guard, splice nothing and loop forever. The guard wraps
     // the pick back to index 0.
     expect(rollUpgradeChoices(2, () => 1)).toEqual(['swift', 'vigor']);
-    expect(rollUpgradeChoices(8, () => 1)).toEqual([...UPGRADE_IDS]);
+    expect(rollUpgradeChoices(UPGRADE_IDS.length, () => 1)).toEqual([...UPGRADE_IDS]);
   });
 });

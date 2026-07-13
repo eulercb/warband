@@ -267,6 +267,42 @@ describe('world: root immobilises the boss (item 9)', () => {
   });
 });
 
+describe('world: flying creatures ignore ground zones (item 5)', () => {
+  const zoneDamageOver = (monsterId: 'harpy' | 'dragon'): number => {
+    const w = new World({
+      monsterId,
+      seed: 2,
+      players: [{ peerId: 'a', name: 'A', classId: 'druid' }],
+    });
+    w.terrain = [];
+    const boss = w.boss!;
+    // A wide, damaging player ground zone centred on the boss.
+    spawnZone(w, {
+      kind: 'poison',
+      pos: { ...boss.pos },
+      radius: 320,
+      side: 'player',
+      ownerId: w.players[0].id,
+      damagePerTick: 40,
+      healPerTick: 0,
+      slowMult: 0.5,
+      slowDuration: 1,
+      duration: 5,
+    });
+    const before = boss.hp;
+    for (let i = 0; i < 16; i++) w.step(DT, new Map([['a', inp()]]));
+    return before - boss.hp;
+  };
+
+  it('a FLYING boss takes no damage from a player ground zone', () => {
+    expect(zoneDamageOver('harpy')).toBe(0);
+  });
+
+  it('a grounded boss DOES take ground-zone damage (control)', () => {
+    expect(zoneDamageOver('dragon')).toBeGreaterThan(0);
+  });
+});
+
 describe('world: victory + robustness', () => {
   it('boss at 0 HP produces a victory', () => {
     const w = new World({

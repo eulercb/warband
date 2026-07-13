@@ -1803,3 +1803,47 @@ describe('root gates boss mobility (item 9)', () => {
     expect(p.hp).toBe(before); // …and no path damage
   });
 });
+
+// ===========================================================================
+// Crit + backstab in ability resolution (item 5)
+// ===========================================================================
+describe('crit + backstab (item 5)', () => {
+  it('a forced crit multiplies a melee cone strike and flags it (front → no backstab)', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    const boss = w.boss!;
+    p.critChance = 1; // always crit
+    p.critMult = 2; // clean ×2
+    boss.facing = 0; // faces +x, toward the player → the player is in FRONT
+    p.pos = { x: 800, y: 500 };
+    p.aim = { x: -1, y: 0 };
+    boss.pos = { x: 760, y: 500 }; // inside the player's cone, on the boss's front side
+    const before = boss.hp;
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    const hit = w.events.find((e) => e.t === 'hit' && e.targetId === boss.id) as
+      | { crit?: boolean; backstab?: boolean }
+      | undefined;
+    expect(hit?.crit).toBe(true);
+    expect(hit?.backstab).toBeFalsy();
+    expect(before - boss.hp).toBeCloseTo(44, 5); // Cleave 22 × critMult 2
+  });
+
+  it('a rear-arc melee cone backstabs for bonus damage (crit suppressed)', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    const boss = w.boss!;
+    p.critChance = 0; // isolate the backstab bonus
+    boss.facing = 0; // faces +x (AWAY from the player)
+    p.pos = { x: 720, y: 500 };
+    p.aim = { x: 1, y: 0 };
+    boss.pos = { x: 760, y: 500 }; // player stands behind the boss, inside the cone
+    const before = boss.hp;
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    const hit = w.events.find((e) => e.t === 'hit' && e.targetId === boss.id) as
+      | { crit?: boolean; backstab?: boolean }
+      | undefined;
+    expect(hit?.backstab).toBe(true);
+    expect(hit?.crit).toBeFalsy();
+    expect(before - boss.hp).toBeCloseTo(22 * 1.4, 4); // Cleave 22 × BACKSTAB_MULT
+  });
+});

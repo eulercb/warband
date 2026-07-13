@@ -71,6 +71,18 @@ export const REVIVE_COREVIVE_BONUS = 0.8; // first extra reviver: +80% revive ra
 export const REVIVE_COREVIVE_FALLOFF = 0.5; // each further reviver contributes half as much
 export const REVIVE_MIN_TIME = 1.5; // s — hard floor, no matter how many revive at once
 
+// --- Critical hits + backstab (item 5) ---
+/** Base crit chance every hero carries before any Deadeye boons stack on top. */
+export const CRIT_CHANCE_BASE = 0.05;
+/** Outgoing-damage multiplier on a critical hit. */
+export const CRIT_MULT_BASE = 1.5;
+/** Deadeye boon: crit chance added per stack (generic upgrade, item 5). */
+export const CRIT_CHANCE_PER_DEADEYE = 0.08;
+/** Backstab: bonus damage multiplier for a MELEE hit from a target's rear arc. */
+export const BACKSTAB_MULT = 1.4;
+/** Total width (degrees) of the rear arc that counts as "behind" for a backstab. */
+export const BACKSTAB_REAR_ARC_DEG = 120;
+
 // --- Threat ---
 export const THREAT_DECAY = 0.05; // fraction/s
 export const HEAL_THREAT_FACTOR = 0.5; // heal * this * classThreatMult

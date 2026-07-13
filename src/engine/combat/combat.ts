@@ -33,6 +33,18 @@ export interface EventSink {
 }
 
 /**
+ * item 5 — per-hit modifiers a caller (the World, which owns the seeded RNG +
+ * positions) computes and hands to the damage functions: an extra outgoing-damage
+ * `mult` (crit × backstab) and the flags that drive the floating-combat-text
+ * styling. All optional; absent = an ordinary hit.
+ */
+export interface HitMods {
+  mult?: number;
+  crit?: boolean;
+  backstab?: boolean;
+}
+
+/**
  * item 10 — co-revive rate multiplier for `reviverCount` allies reviving the SAME
  * downed hero at once. One reviver is the baseline (1×). Each ADDITIONAL reviver adds
  * a share of REVIVE_COREVIVE_BONUS that decays geometrically by REVIVE_COREVIVE_FALLOFF
@@ -188,11 +200,14 @@ export function damageBoss(
   source: Player,
   boss: Boss,
   baseDamage: number,
+  mods?: HitMods,
 ): number {
   // Honor the boss's own damage-taken buffs (Brace / Petrify / Regrow / Aegis…),
-  // so a boss defensive cooldown actually mitigates incoming damage.
+  // so a boss defensive cooldown actually mitigates incoming damage. `mods.mult`
+  // folds in the crit × backstab bonus (item 5).
   const outgoing =
     baseDamage *
+    (mods?.mult ?? 1) *
     buffMult(source, 'damageDealt') *
     source.damageMult *
     buffMult(boss, 'damageTaken');
@@ -213,13 +228,21 @@ export function damageBoss(
     amount: outgoing,
     targetId: boss.id,
     side: 'boss',
+    crit: mods?.crit,
+    backstab: mods?.backstab,
   });
   return outgoing;
 }
 
 /** Player deals damage to an add (no boss threat). Returns outgoing damage. */
-export function damageAdd(sink: EventSink, source: Player, add: Add, baseDamage: number): number {
-  const outgoing = baseDamage * buffMult(source, 'damageDealt') * source.damageMult;
+export function damageAdd(
+  sink: EventSink,
+  source: Player,
+  add: Add,
+  baseDamage: number,
+  mods?: HitMods,
+): number {
+  const outgoing = baseDamage * (mods?.mult ?? 1) * buffMult(source, 'damageDealt') * source.damageMult;
   const before = add.hp;
   add.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(add.hp, 0));
@@ -230,6 +253,8 @@ export function damageAdd(sink: EventSink, source: Player, add: Add, baseDamage:
     amount: outgoing,
     targetId: add.id,
     side: 'boss',
+    crit: mods?.crit,
+    backstab: mods?.backstab,
   });
   return outgoing;
 }

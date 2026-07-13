@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Player, Boss, GameEvent } from '../src/engine/core/types';
 import {
   damageBoss,
+  damageAdd,
   damagePlayer,
   healPlayer,
   applyBuff,
@@ -40,6 +41,8 @@ function mkPlayer(over: Partial<Player> = {}): Player {
     damageTakenMult: 1,
     terrainResist: 0,
     regenPerSec: 0,
+    critChance: 0,
+    critMult: 1.5,
     threat: 0,
     stats: { damageDealt: 0, healingDone: 0, revives: 0, deaths: 0 },
     prevButtons: { basic: false, a1: false, a2: false, a3: false, revive: false },
@@ -241,5 +244,48 @@ describe('isRooted (item 9)', () => {
     // Expires with its buff.
     tickBuffs(boss, 3);
     expect(isRooted(boss)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hit modifiers — crit / backstab flags + multiplier on the damage functions (item 5)
+// ---------------------------------------------------------------------------
+
+describe('damage hit modifiers (item 5)', () => {
+  it('applies the crit multiplier to a boss hit and flags the event', () => {
+    const p = mkPlayer({ classId: 'ranger' });
+    const boss = mkBoss();
+    const s = sink();
+    const out = damageBoss(s, p, boss, 20, { mult: 1.5, crit: true });
+    expect(out).toBe(30); // 20 × 1.5
+    expect(s.events.find((e) => e.t === 'hit')).toMatchObject({ crit: true });
+  });
+
+  it('flags a backstab on a boss hit', () => {
+    const p = mkPlayer({ classId: 'rogue' });
+    const boss = mkBoss();
+    const s = sink();
+    damageBoss(s, p, boss, 20, { mult: 1.4, backstab: true });
+    expect(s.events.find((e) => e.t === 'hit')).toMatchObject({ backstab: true });
+  });
+
+  it('crits an add too (crit multiplier + flag)', () => {
+    const p = mkPlayer({ classId: 'ranger' });
+    const add = { id: 5, pos: { x: 0, y: 0 }, hp: 100, maxHp: 100, radius: 12, buffs: [] } as never;
+    const s = sink();
+    const out = damageAdd(s, p, add, 10, { mult: 2, crit: true });
+    expect(out).toBe(20);
+    expect(s.events.find((e) => e.t === 'hit')).toMatchObject({ crit: true });
+  });
+
+  it('an ordinary hit (no mods) carries neither flag and no bonus', () => {
+    const p = mkPlayer({ classId: 'ranger' });
+    const boss = mkBoss();
+    const s = sink();
+    const out = damageBoss(s, p, boss, 20);
+    expect(out).toBe(20); // no multiplier
+    const hit = s.events.find((e) => e.t === 'hit');
+    expect(hit && 'crit' in hit ? hit.crit : undefined).toBeUndefined();
+    expect(hit && 'backstab' in hit ? hit.backstab : undefined).toBeUndefined();
   });
 });

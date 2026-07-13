@@ -149,14 +149,15 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
       for (const b of world.bosses) {
         if (b.hp <= 0) continue;
         if (pointInCone(b.pos, p.pos, aimAngle, range, half, b.radius)) {
-          dealt += damageBoss(world, p, b, ab.damage);
+          // item 5: a directional cone strike can crit AND backstab (rear arc).
+          dealt += damageBoss(world, p, b, ab.damage, world.meleeHit(p, b));
           applyStrikeRiders(world, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
-          dealt += damageAdd(world, p, a, ab.damage);
+          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p));
           applyStrikeRiders(world, a, ab);
         }
       }
@@ -210,14 +211,15 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
       for (const b of world.bosses) {
         if (b.hp <= 0) continue;
         if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
-          dealt += damageBoss(world, p, b, ab.damage);
+          // item 5: a point-blank burst can crit (omnidirectional → no backstab).
+          dealt += damageBoss(world, p, b, ab.damage, world.critRoll(p));
           applyStrikeRiders(world, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-          dealt += damageAdd(world, p, a, ab.damage);
+          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p));
           applyStrikeRiders(world, a, ab);
         }
       }
@@ -247,14 +249,14 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
         for (const b of world.bosses) {
           if (b.hp <= 0) continue;
           if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
-            damageBoss(world, p, b, ab.landingDamage);
+            damageBoss(world, p, b, ab.landingDamage, world.critRoll(p)); // item 5: crit
             applyStrikeRiders(world, b, ab);
           }
         }
         for (const a of world.adds) {
           if (a.hp <= 0) continue;
           if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-            damageAdd(world, p, a, ab.landingDamage);
+            damageAdd(world, p, a, ab.landingDamage, world.critRoll(p));
             applyStrikeRiders(world, a, ab);
           }
         }

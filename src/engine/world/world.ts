@@ -38,6 +38,10 @@ import {
   SIM_DT,
   ARENA_W,
   ARENA_H,
+  BACKSTAB_MULT,
+  BACKSTAB_REAR_ARC_DEG,
+  CRIT_CHANCE_BASE,
+  CRIT_MULT_BASE,
   BOSS_DECISION_MIN,
   BOSS_RECOVER_TIME,
   DOWNED_BLEEDOUT,
@@ -123,6 +127,7 @@ import { generateTerrain } from './terrain';
 import { generateObstacles } from './obstacles';
 import {
   Rng,
+  mixSeed,
   vec,
   add as vadd,
   scale as vscale,
@@ -130,6 +135,7 @@ import {
   clampLength,
   fromAngle,
   angleOf,
+  inRearArc,
 } from '../core/math';
 // Toroidal (wrap-around) geometry — drop-in replacements for the Euclidean
 // sub/dist/distSq/pointInSegment so combat measures the shortest path on the
@@ -167,6 +173,7 @@ import {
   healPlayer,
   coReviveSpeed,
   isRooted,
+  type HitMods,
 } from '../combat/combat';
 import { decayThreat, nthThreatTarget } from '../combat/threat';
 import {
@@ -377,6 +384,12 @@ export class World {
   events: GameEvent[] = [];
 
   rng: Rng;
+  /**
+   * item 5 — a dedicated seeded stream for crit rolls, kept SEPARATE from the main
+   * `rng` (boss AI / blinks) so how often the band crits can never perturb boss
+   * behaviour. Host-only and deterministic, so a seeded run replays identically.
+   */
+  private critRng: Rng;
   arena = { w: ARENA_W, h: ARENA_H };
   tick = 0;
   elapsed = 0; // seconds
@@ -441,6 +454,7 @@ export class World {
 
   constructor(init: WorldInit) {
     this.rng = new Rng(init.seed);
+    this.critRng = new Rng(mixSeed(init.seed, 0xc217)); // item 5: isolated crit stream
     this.seed = init.seed;
     this.scaling = computeScaling(init.players.length, init.cycle ?? 0);
     this.cycle = init.cycle ?? 0;
@@ -695,6 +709,8 @@ export class World {
         damageTakenMult: 1,
         terrainResist: 0,
         regenPerSec: 0,
+        critChance: CRIT_CHANCE_BASE, // item 5: base crit; Deadeye boons stack on top
+        critMult: CRIT_MULT_BASE,
         threat: 0,
         stats: { damageDealt: 0, healingDone: 0, revives: 0, deaths: 0 },
         // Private ability table so character upgrades can retune this hero's kit
@@ -1305,7 +1321,8 @@ export class World {
       const center = proj.pos;
       for (const b of this.aliveBosses()) {
         if (dist(center, b.pos) <= proj.impactRadius + b.radius) {
-          this.applyProjDamageBoss(owner, proj.damage, b);
+          // item 5: ranged impacts can crit (per target); no backstab on a shot.
+          this.applyProjDamageBoss(owner, proj.damage, b, owner ? this.critRoll(owner) : undefined);
           dealt += proj.damage;
           this.applyProjRiders(b, proj);
         }
@@ -1313,7 +1330,7 @@ export class World {
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
         if (dist(center, a.pos) <= proj.impactRadius + a.radius) {
-          if (owner) damageAdd(this, owner, a, proj.damage);
+          if (owner) damageAdd(this, owner, a, proj.damage, this.critRoll(owner));
           else a.hp -= proj.damage;
           dealt += proj.damage;
           this.applyProjRiders(a, proj);
@@ -1336,11 +1353,11 @@ export class World {
         },
       });
     } else if (hitBoss) {
-      this.applyProjDamageBoss(owner, proj.damage, hitBoss);
+      this.applyProjDamageBoss(owner, proj.damage, hitBoss, owner ? this.critRoll(owner) : undefined);
       dealt += proj.damage;
       this.applyProjRiders(hitBoss, proj);
     } else if (hitAdd) {
-      if (owner) damageAdd(this, owner, hitAdd, proj.damage);
+      if (owner) damageAdd(this, owner, hitAdd, proj.damage, this.critRoll(owner));
       else hitAdd.hp -= proj.damage;
       dealt += proj.damage;
       this.applyProjRiders(hitAdd, proj);
@@ -1362,11 +1379,35 @@ export class World {
     }
   }
 
-  private applyProjDamageBoss(owner: Player | null, base: number, boss?: Boss | null): void {
+  /** item 5 — roll a crit for `source` on the isolated crit stream (no backstab).
+   *  Public so ability resolution (combat/abilities.ts) shares the one crit stream. */
+  critRoll(source: Player): HitMods {
+    const crit = this.critRng.next() < (source.critChance ?? 0);
+    return { crit, mult: crit ? (source.critMult ?? 1) : 1 };
+  }
+
+  /**
+   * item 5 — full modifiers for a MELEE player hit on a boss: a seeded crit plus a
+   * backstab bonus when the attacker stands in the boss's rear arc. Adds carry no
+   * facing, so they take crits only (use `critRoll` for those).
+   */
+  meleeHit(source: Player, boss: Boss): HitMods {
+    const { crit, mult } = this.critRoll(source);
+    const toAttacker = angleOf(sub(source.pos, boss.pos));
+    const backstab = inRearArc(boss.facing, toAttacker, BACKSTAB_REAR_ARC_DEG);
+    return { crit, backstab, mult: (mult ?? 1) * (backstab ? BACKSTAB_MULT : 1) };
+  }
+
+  private applyProjDamageBoss(
+    owner: Player | null,
+    base: number,
+    boss?: Boss | null,
+    mods?: HitMods,
+  ): void {
     const target = boss ?? this.boss;
     if (!target) return;
     if (owner) {
-      damageBoss(this, owner, target, base);
+      damageBoss(this, owner, target, base, mods);
     } else {
       // Ownerless (disconnected caster): still honor the boss's mitigation buffs.
       const dealt = base * buffMult(target, 'damageTaken');
@@ -1444,6 +1485,9 @@ export class World {
     if (z.damagePerTick > 0 || slows || z.roots) {
       for (const b of this.aliveBosses()) {
         if (dist(z.pos, b.pos) > z.radius + b.radius) continue;
+        // item 5: a FLYING boss hovers above ground-targeted zones — no damage,
+        // slow or root reaches it (direct attacks still connect).
+        if (this.defOf(b).flying) continue;
         if (z.damagePerTick > 0) this.applyProjDamageBoss(owner, z.damagePerTick, b);
         if (slows) applyBuff(b, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
         if (z.roots) applyBuff(b, makeBuff('root', 0, rootDur, 'zoneRoot'));

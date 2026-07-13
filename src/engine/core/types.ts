@@ -254,6 +254,8 @@ export interface Player {
   damageTakenMult: number; // incoming damage multiplier (1 = normal, <1 = tankier)
   terrainResist: number; // 0 = full terrain effect, 1 = immune to slow + burn
   regenPerSec: number; // passive HP regenerated per second while alive
+  critChance: number; // item 5: chance [0,1) a hit crits (base + Deadeye boons)
+  critMult: number; // item 5: outgoing-damage multiplier on a crit (e.g. 1.5)
 
   threat: number; // cached threat contribution (mirror of boss table)
   stats: PlayerStats;
@@ -803,7 +805,17 @@ export interface SkillArea {
 }
 
 export type GameEvent =
-  | { t: 'hit'; pos: Vec2; amount: number; targetId: EntityId; side: Side }
+  | {
+      t: 'hit';
+      pos: Vec2;
+      amount: number;
+      targetId: EntityId;
+      side: Side;
+      /** item 5: a critical hit — the floating combat text reads it for emphasis. */
+      crit?: boolean;
+      /** item 5: a backstab (rear-arc melee bonus) — also styled distinctly. */
+      backstab?: boolean;
+    }
   | { t: 'heal'; pos: Vec2; amount: number; targetId: EntityId }
   | {
       t: 'cast';

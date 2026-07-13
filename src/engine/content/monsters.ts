@@ -111,6 +111,14 @@ export interface MonsterDef {
   abilities: BossAbilityDef[];
   decide: (ctx: BossDecisionCtx) => string | null;
   blink?: { range: number; threatenRange: number; internalCd: number };
+  /**
+   * item 5 — a FLYING creature. It fights from the air, so it is immune to
+   * ground-targeted area effects: player-placed ground zones (Entangle / Poison /
+   * Consecration…) and ground hazards pass right under it. Direct attacks (melee
+   * swings, cones, projectiles) still connect. Purely a trait flag; the World reads
+   * it (see applyZoneTick). Preserved across procedural rolls.
+   */
+  flying?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -605,6 +613,7 @@ const HARPY: MonsterDef = {
   enrageThreshold: 0.3,
   enrageCooldownMult: 0.65,
   enrageRegenMult: 1,
+  flying: true, // item 5: a shrieking flyer — ground zones pass under her
   blink: { range: 260, threatenRange: 140, internalCd: 5 },
   abilities: [
     A.cone('rake', 'Talon Rake', 0.5, 2.0, 30, 100, 45),
@@ -980,6 +989,7 @@ const WISP: MonsterDef = {
   enrageThreshold: 0.25,
   enrageCooldownMult: 0.7,
   enrageRegenMult: 1,
+  flying: true, // item 5: a dancing light — hovers above ground zones
   blink: { range: 340, threatenRange: 150, internalCd: 3.5 },
   abilities: [
     A.proj('emberBolt', 'Ember Bolt', 0, 1.6, 26, { projSpeed: 500 }),
