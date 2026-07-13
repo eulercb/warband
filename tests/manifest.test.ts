@@ -2,10 +2,12 @@ import { describe, it, expect } from 'vitest';
 import {
   animKey,
   resolveTextures,
+  packedFrameUV,
   MANIFEST,
   ACTOR_PALETTE,
   SPRITE_FLAGS,
   SPRITE_ATLAS_URL,
+  NORMAL_MAP,
 } from '../src/render/sprites/manifest';
 import type { ActorKey } from '../src/render/sprites/manifest';
 import type { Texture, Spritesheet } from 'pixi.js';
@@ -77,5 +79,56 @@ describe('MANIFEST + palette config', () => {
   it('ships with all sprite categories OFF and no atlas by default', () => {
     expect(Object.values(SPRITE_FLAGS).every((v) => v === false)).toBe(true);
     expect(SPRITE_ATLAS_URL).toBeNull();
+  });
+
+  it('ships the normal-map path dormant but flips green by default (Blender→Pixi)', () => {
+    // Dormant until real normal-mapped art lands (no atlas ships), but the correct
+    // Blender→Pixi green flip is the baked-in default so it's right the moment art
+    // arrives — the gotcha that "costs an afternoon" can't bite.
+    expect(NORMAL_MAP.enabled).toBe(false);
+    expect(NORMAL_MAP.flipG).toBe(true);
+    expect(['right', 'bottom']).toContain(NORMAL_MAP.half);
+  });
+});
+
+describe('packedFrameUV', () => {
+  it('splits a right-packed frame into albedo (left) + a constant normal delta', () => {
+    // 64×32 frame at the atlas origin in a 128×128 atlas: albedo is the left 32px
+    // (U 0→0.25), normal the right 32px reached by +0.25 in U.
+    const { atlasUV, normalDelta } = packedFrameUV({ x: 0, y: 0, w: 64, h: 32 }, 128, 128, 'right');
+    expect(atlasUV).toEqual([0.25, 0.25, 0, 0]);
+    expect(normalDelta).toEqual([0.25, 0]);
+  });
+
+  it('splits a bottom-packed frame into albedo (top) + a downward normal delta', () => {
+    const { atlasUV, normalDelta } = packedFrameUV(
+      { x: 0, y: 0, w: 32, h: 64 },
+      128,
+      128,
+      'bottom',
+    );
+    expect(atlasUV).toEqual([0.25, 0.25, 0, 0]);
+    expect(normalDelta).toEqual([0, 0.25]);
+  });
+
+  it('honours a frame offset within a non-square atlas', () => {
+    const { atlasUV, normalDelta } = packedFrameUV(
+      { x: 64, y: 32, w: 64, h: 32 },
+      256,
+      128,
+      'right',
+    );
+    // scale = half-width/atlasW, height/atlasH ; offset = frame origin / atlas size
+    expect(atlasUV[0]).toBeCloseTo(32 / 256, 6);
+    expect(atlasUV[1]).toBeCloseTo(32 / 128, 6);
+    expect(atlasUV[2]).toBeCloseTo(64 / 256, 6);
+    expect(atlasUV[3]).toBeCloseTo(32 / 128, 6);
+    expect(normalDelta[0]).toBeCloseTo(32 / 256, 6);
+    expect(normalDelta[1]).toBe(0);
+  });
+
+  it('never divides by zero for a not-yet-uploaded (0×0) atlas', () => {
+    const { atlasUV, normalDelta } = packedFrameUV({ x: 0, y: 0, w: 64, h: 32 }, 0, 0, 'right');
+    for (const v of [...atlasUV, ...normalDelta]) expect(Number.isFinite(v)).toBe(true);
   });
 });

@@ -61,12 +61,43 @@ describe('litFragmentSource', () => {
     expect(src).toContain('* alpha;');
   });
 
-  it('declares the normal-map sampler only for the textured variant', () => {
-    // The #else branch references uNormalTex in every variant's source string,
-    // but the DECLARATION is conditional (only textured compiles that branch).
-    expect(litFragmentSource('textured', 8)).toContain('uniform sampler2D uNormalTex;');
-    expect(litFragmentSource('sphere', 8)).not.toContain('uniform sampler2D uNormalTex;');
-    expect(litFragmentSource('limb', 8)).not.toContain('uniform sampler2D uNormalTex;');
+  it('declares the normal-map sampler + atlas uniforms only for the textured variant', () => {
+    // The #else branch references these in every variant's source string, but the
+    // DECLARATIONS are conditional (only textured compiles that branch).
+    const textured = litFragmentSource('textured', 8);
+    expect(textured).toContain('uniform sampler2D uNormalTex;');
+    expect(textured).toContain('uniform vec4  uAtlasUV;');
+    expect(textured).toContain('uniform vec2  uNormalDelta;');
+    expect(textured).toContain('uniform float uNormalFlipG;');
+    for (const v of ['sphere', 'limb'] as NormalVariant[]) {
+      const src = litFragmentSource(v, 8);
+      expect(src).not.toContain('uniform sampler2D uNormalTex;');
+      expect(src).not.toContain('uniform vec4  uAtlasUV;');
+      expect(src).not.toContain('uniform vec2  uNormalDelta;');
+      expect(src).not.toContain('uniform float uNormalFlipG;');
+    }
+  });
+
+  it('handles the two §3 normal-map gotchas structurally (textured only)', () => {
+    const textured = litFragmentSource('textured', 8);
+    // Gotcha 1 — flip green (Blender +Y up vs Pixi Y down), gated by a uniform so
+    // art that already ships DirectX-convention normals can turn it off.
+    expect(textured).toContain('mix(nTex.g, 1.0 - nTex.g, uNormalFlipG)');
+    // Gotcha 2 — albedo + normal read through the SAME packed-frame transform, so
+    // the normal is albedo's UV plus a constant delta (no independent-trim desync).
+    expect(textured).toContain('vUV * uAtlasUV.xy + uAtlasUV.zw + uNormalDelta');
+    // The renormalize the brief calls for is already present.
+    expect(textured).toContain('normalize(nTex * 2.0 - 1.0)');
+  });
+
+  it('routes albedo through the atlas frame transform only for the textured variant', () => {
+    // Textured bodies live in an atlas sub-rect, so their albedo is sampled through
+    // the frame transform; sphere/limb use the full-texture unit quad at raw UV.
+    expect(litFragmentSource('textured', 8)).toContain(
+      'texture(uTexture, vUV * uAtlasUV.xy + uAtlasUV.zw);',
+    );
+    expect(litFragmentSource('sphere', 8)).toContain('texture(uTexture, vUV);');
+    expect(litFragmentSource('limb', 8)).toContain('texture(uTexture, vUV);');
   });
 
   it('selects the sphere disc-discard math and the limb perpendicular math', () => {

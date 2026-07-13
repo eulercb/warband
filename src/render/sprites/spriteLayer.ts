@@ -1,17 +1,23 @@
 /**
  * Warband — retained sprite layer.
  *
- * Owns a Container of pooled `AnimatedSprite`s keyed by `EntityId` and reconciles
- * it against `RenderState` each frame: create on appear, update
- * pos/anim/tint/flip on persist, remove on vanish. This is the retained
- * counterpart to the immediate-mode Graphics in entityView.ts (see brief §1).
+ * Owns a Container of pooled bodies keyed by `EntityId` and reconciles it against
+ * `RenderState` each frame: create on appear, update pos/anim/tint/flip on persist,
+ * remove on vanish. This is the retained counterpart to the immediate-mode Graphics
+ * in entityView.ts (see brief §1).
  *
- * Atlas-optional: if no `Spritesheet` is supplied (or a clip is missing from it)
- * the layer renders a procedurally-generated white silhouette per actor, tinted
- * by `ACTOR_PALETTE`. That is Phase 0 — it proves reconciliation, z-order,
- * scaling, flipping and tint without any art assets. Only categories whose
- * `SPRITE_FLAGS` entry is true are reconciled here; the rest keep their
- * immediate-mode geometry in `renderer.ts`/`entityView.ts`.
+ * Two body backends, chosen once at construction:
+ *   - **flat** `AnimatedSprite` — the default. Atlas-optional: with no `Spritesheet`
+ *     (or a missing clip) it renders a procedural white silhouette per actor, tinted
+ *     by `ACTOR_PALETTE` (Phase 0 — proves reconciliation without art).
+ *   - **lit** `LitMesh({ variant: 'textured' })` — "Path B" (issue #43). When a real
+ *     atlas ships whose frames pack a tangent-space normal beside each albedo
+ *     (`NORMAL_MAP.enabled`) and lighting is on, bodies sample that normal and catch
+ *     the arena's dynamic point lights, exactly like the procedural rigs. The source
+ *     atlas stays bound; each frame just slides the UV window (`LitMesh.setFrame`).
+ *
+ * Only categories whose `SPRITE_FLAGS` entry is true are reconciled here; the rest
+ * keep their immediate-mode geometry in `renderer.ts`/`entityView.ts`.
  */
 import {
   AnimatedSprite,
@@ -35,7 +41,9 @@ import {
   MANIFEST,
   ACTOR_PALETTE,
   SPRITE_FLAGS,
+  NORMAL_MAP,
   resolveTextures,
+  packedFrameUV,
   type ActorKey,
   type ActorConfig,
 } from './manifest';
@@ -48,18 +56,28 @@ import {
   type AnimSelection,
 } from './entityAnim';
 import { getClass } from '../../engine/content/classes';
+import { LitMesh } from '../lighting/litMesh';
+import type { LightManager } from '../lighting/light';
+import { LIGHTING } from '../lighting/presets';
 
 /** One-shot instant-attack clip length (ms). Author to match the chosen art. */
 const ATTACK_CLIP_MS = 320;
+
+/** Enraged-boss body tint (red), matching the flat path's `tintFor`. */
+const ENRAGED_TINT = 0xff6a5a;
 
 /** z-index category biases so players stay above the boss/adds and projectiles
  * above everything (screen-y is added on top for natural top-down depth). */
 const Z_BIAS = { add: 0, boss: 20000, player: 40000, projectile: 60000 } as const;
 
 interface Node {
-  sprite: AnimatedSprite;
+  /** Exactly one backend is set, per the layer's chosen path. */
+  sprite: AnimatedSprite | null; // flat path
+  lit: LitMesh | null; // lit (textured normal-map) path
   actor: ActorKey;
   clipKey: string; // last applied `${clip}|${dir}` — swap textures only on change
+  frames: Texture[]; // current clip's frames (lit path selects among these)
+  clipStartMs: number; // lit path: when the current clip began (frame timing)
   lastX: number; // screen-space, for motion derivation (NaN until seeded)
   lastY: number;
   attack: { slot: AbilitySlot; startMs: number } | null;
@@ -71,15 +89,26 @@ export class SpriteLayer {
   private readonly seen = new Set<EntityId>();
   private readonly placeholders = new Map<ActorKey, Texture[]>();
 
+  /** True when bodies render through the lit `textured` path. Requires a real
+   * atlas (normals packed per frame), the normal-map switch, lighting on, and a
+   * `LightManager` to bind — otherwise the flat `AnimatedSprite` path is used. */
+  private readonly lit: boolean;
+  /** A representative texture from the atlas (any frame shares the atlas source),
+   * bound once to each lit body; per-frame animation only slides the UV window. */
+  private readonly atlasTex: Texture | null;
+
   constructor(
     private readonly sheet: Spritesheet | null,
     private readonly fx: Fx,
     renderer: PixiRenderer,
+    private readonly lights: LightManager | null = null,
   ) {
     this.container.sortableChildren = true; // zIndex = screen y for top-down depth
     for (const actor of Object.keys(MANIFEST) as ActorKey[]) {
       this.placeholders.set(actor, [buildPlaceholder(renderer, actor, MANIFEST[actor])]);
     }
+    this.atlasTex = sheet ? (Object.values(sheet.textures)[0] ?? null) : null;
+    this.lit = LIGHTING.enabled && NORMAL_MAP.enabled && lights != null && this.atlasTex != null;
   }
 
   /** Consume one-shot player `cast` events into per-entity attack triggers. */
@@ -116,8 +145,8 @@ export class SpriteLayer {
           attackClipMs: ATTACK_CLIP_MS,
           castTotalMs,
         });
-        this.apply(n, sel, scr, s, Z_BIAS.player);
-        n.sprite.tint = tintFor(p.classId as ActorKey, this.fx.flashAmount(p.id), false);
+        this.apply(n, sel, scr, s, Z_BIAS.player, nowMs);
+        this.paint(n, this.fx.flashAmount(p.id), false);
         this.seen.add(p.id);
       }
     }
@@ -129,8 +158,8 @@ export class SpriteLayer {
         const scr = camera.worldToScreen(b.pos);
         this.speed(n, scr, dtMs); // keep lastX/Y fresh (unused: boss anim is action-driven)
         const sel = bossAnim(b, MANIFEST[actor].dirMode);
-        this.apply(n, sel, scr, s, Z_BIAS.boss);
-        n.sprite.tint = tintFor(actor, this.fx.flashAmount(b.id), b.phase === 'enraged');
+        this.apply(n, sel, scr, s, Z_BIAS.boss, nowMs);
+        this.paint(n, this.fx.flashAmount(b.id), b.phase === 'enraged');
         this.seen.add(b.id);
       }
     }
@@ -140,8 +169,8 @@ export class SpriteLayer {
         const n = this.ensure(a.id, 'skeleton');
         const scr = camera.worldToScreen(a.pos);
         const moving = this.speed(n, scr, dtMs) > EPS_MOVE;
-        this.apply(n, addAnim(a, moving), scr, s, Z_BIAS.add);
-        n.sprite.tint = tintFor('skeleton', this.fx.flashAmount(a.id), false);
+        this.apply(n, addAnim(a, moving), scr, s, Z_BIAS.add, nowMs);
+        this.paint(n, this.fx.flashAmount(a.id), false);
         this.seen.add(a.id);
       }
     }
@@ -151,9 +180,17 @@ export class SpriteLayer {
         const actor = pr.kind as ActorKey;
         const n = this.ensure(pr.id, actor);
         const scr = camera.worldToScreen(pr.pos);
-        this.apply(n, projectileAnim(pr), scr, s, Z_BIAS.projectile);
-        n.sprite.rotation = Math.atan2(pr.vel.y, pr.vel.x); // projectiles may rotate
-        n.sprite.tint = tintFor(actor, 0, false);
+        // projectiles free-rotate to their velocity
+        this.apply(
+          n,
+          projectileAnim(pr),
+          scr,
+          s,
+          Z_BIAS.projectile,
+          nowMs,
+          Math.atan2(pr.vel.y, pr.vel.x),
+        );
+        this.paint(n, 0, false);
         this.seen.add(pr.id);
       }
     }
@@ -161,15 +198,14 @@ export class SpriteLayer {
     // Remove vanished entities (immediate; particle bursts cover the death FX).
     for (const [id, n] of this.nodes) {
       if (this.seen.has(id)) continue;
-      this.container.removeChild(n.sprite);
-      n.sprite.destroy();
+      this.disposeNode(n);
       this.nodes.delete(id);
     }
   }
 
-  /** Free GPU resources for the pooled sprites and placeholder textures. */
+  /** Free GPU resources for the pooled bodies and placeholder textures. */
   destroy(): void {
-    for (const [, n] of this.nodes) n.sprite.destroy();
+    for (const [, n] of this.nodes) this.disposeNode(n);
     this.nodes.clear();
     for (const [, tex] of this.placeholders) for (const t of tex) t.destroy(true);
     this.placeholders.clear();
@@ -182,17 +218,47 @@ export class SpriteLayer {
     let n = this.nodes.get(id);
     if (n) return n;
     const cfg = MANIFEST[actor];
-    const sprite = new AnimatedSprite(this.texturesFor(actor, 'idle', null));
-    sprite.anchor.set(cfg.anchor.x, cfg.anchor.y);
-    sprite.animationSpeed = cfg.defaultFps / 60;
-    sprite.play();
-    this.container.addChild(sprite);
-    n = { sprite, actor, clipKey: '', lastX: NaN, lastY: NaN, attack: null };
+    const frames = this.texturesFor(actor, 'idle', null);
+    let sprite: AnimatedSprite | null = null;
+    let lit: LitMesh | null = null;
+    if (this.lit) {
+      // One lit quad, atlas bound once; the normal lives beside the albedo in each
+      // packed frame, so the same atlas is both albedo and normal source.
+      lit = new LitMesh({
+        variant: 'textured',
+        maxLights: this.lights!.maxLights,
+        lights: this.lights!,
+        preset: 'flesh', // pre-rendered characters read as flesh by default; tune per actor if needed
+        texture: this.atlasTex!,
+        normalTexture: this.atlasTex!,
+        flipG: NORMAL_MAP.flipG,
+      });
+      this.container.addChild(lit);
+    } else {
+      sprite = new AnimatedSprite(frames);
+      sprite.anchor.set(cfg.anchor.x, cfg.anchor.y);
+      sprite.animationSpeed = cfg.defaultFps / 60;
+      sprite.play();
+      this.container.addChild(sprite);
+    }
+    n = {
+      sprite,
+      lit,
+      actor,
+      clipKey: '',
+      frames,
+      clipStartMs: 0,
+      lastX: NaN,
+      lastY: NaN,
+      attack: null,
+    };
     this.nodes.set(id, n);
     return n;
   }
 
-  /** Textures for a semantic clip: atlas if present + populated, else placeholder. */
+  /** Textures for a semantic clip: atlas if present + populated, else placeholder.
+   * The lit path never falls back to a placeholder (its source isn't the bound
+   * atlas), so callers there keep the last atlas frames if a clip is missing. */
   private texturesFor(actor: ActorKey, clip: string, dir: AnimSelection['dir']): Texture[] {
     if (this.sheet) {
       const t = resolveTextures(this.sheet, actor, clip, dir);
@@ -201,35 +267,120 @@ export class SpriteLayer {
     return this.placeholders.get(actor)!;
   }
 
-  /** Apply a semantic selection: swap textures only on change, then scale/pos. */
+  /**
+   * Apply a semantic selection to whichever backend this node uses: swap the
+   * clip on change, drive the current frame, then pose/scale/z-order it.
+   */
   private apply(
     n: Node,
     sel: AnimSelection,
     scr: { x: number; y: number },
     camScale: number,
     zBias: number,
+    nowMs: number,
+    rotation = 0,
   ): void {
     const key = `${sel.clip}|${sel.dir ?? ''}`;
+    if (n.lit) this.applyLit(n, sel, key, scr, camScale, zBias, nowMs, rotation);
+    else this.applyFlat(n, sel, key, scr, camScale, zBias, rotation);
+  }
+
+  /** Flat `AnimatedSprite` backend (unchanged Phase-0 behaviour). */
+  private applyFlat(
+    n: Node,
+    sel: AnimSelection,
+    key: string,
+    scr: { x: number; y: number },
+    camScale: number,
+    zBias: number,
+    rotation: number,
+  ): void {
+    const sprite = n.sprite!;
     if (key !== n.clipKey) {
-      n.sprite.textures = this.texturesFor(n.actor, sel.clip, sel.dir);
+      sprite.textures = this.texturesFor(n.actor, sel.clip, sel.dir);
       n.clipKey = key;
       if (sel.progress === null) {
-        n.sprite.loop = sel.loop;
-        n.sprite.gotoAndPlay(0);
+        sprite.loop = sel.loop;
+        sprite.gotoAndPlay(0);
       } else {
-        n.sprite.loop = false;
+        sprite.loop = false;
       }
     }
     // Progress-driven frame (windups, rooted casts) — see brief §6.
     if (sel.progress !== null) {
-      const frames = n.sprite.textures.length;
-      n.sprite.gotoAndStop(Math.min(frames - 1, Math.floor(sel.progress * (frames - 1))));
+      const frames = sprite.textures.length;
+      sprite.gotoAndStop(Math.min(frames - 1, Math.floor(sel.progress * (frames - 1))));
     }
     // Scale so drawn radius ≈ targetRadiusPx * camScale (placeholders and art are
     // authored at 1px = 1 world unit); mirror left/right via a negative scale.x.
-    n.sprite.scale.set(sel.flipX ? -camScale : camScale, camScale);
-    n.sprite.position.set(scr.x, scr.y);
-    n.sprite.zIndex = scr.y + zBias;
+    sprite.scale.set(sel.flipX ? -camScale : camScale, camScale);
+    sprite.position.set(scr.x, scr.y);
+    sprite.rotation = rotation;
+    sprite.zIndex = scr.y + zBias;
+  }
+
+  /** Lit `textured` backend: pick the frame, slide the atlas UV window (albedo +
+   * its side-by-side normal), then pose the quad to match the sprite's anchor. */
+  private applyLit(
+    n: Node,
+    sel: AnimSelection,
+    key: string,
+    scr: { x: number; y: number },
+    camScale: number,
+    zBias: number,
+    nowMs: number,
+    rotation: number,
+  ): void {
+    const lit = n.lit!;
+    if (key !== n.clipKey) {
+      const t = this.sheet ? resolveTextures(this.sheet, n.actor, sel.clip, sel.dir) : null;
+      if (t && t.length > 0) n.frames = t; // keep last atlas frames if a clip is missing
+      n.clipKey = key;
+      n.clipStartMs = nowMs;
+    }
+    const tex = n.frames[litFrameIndex(n, sel, nowMs)] ?? n.frames[0];
+    const f = tex.frame;
+    const src = tex.source;
+    const { atlasUV, normalDelta } = packedFrameUV(
+      { x: f.x, y: f.y, w: f.width, h: f.height },
+      src.width,
+      src.height,
+      NORMAL_MAP.half,
+    );
+    lit.setFrame(atlasUV, normalDelta);
+
+    // The albedo occupies one half of each packed frame; size the quad to it and
+    // place the sprite's anchor point on the entity's screen position.
+    const cfg = MANIFEST[n.actor];
+    const albedoW = (NORMAL_MAP.half === 'right' ? f.width / 2 : f.width) * camScale;
+    const albedoH = (NORMAL_MAP.half === 'bottom' ? f.height / 2 : f.height) * camScale;
+    const cx = scr.x + (sel.flipX ? -1 : 1) * (0.5 - cfg.anchor.x) * albedoW;
+    const cy = scr.y + (0.5 - cfg.anchor.y) * albedoH;
+    lit.setPose(cx, cy, (sel.flipX ? -albedoW : albedoW) / 2, albedoH / 2, rotation);
+    lit.zIndex = scr.y + zBias;
+  }
+
+  /** Apply the body's colour: a lerp-to-white hit flash on the flat path's tint,
+   * or the lit path's base-colour + shader-composited flash. */
+  private paint(n: Node, flash: number, enraged: boolean): void {
+    if (n.lit) {
+      const base = enraged ? ENRAGED_TINT : ACTOR_PALETTE[n.actor];
+      n.lit.setMaterial(base, 0, flash, 0xffffff);
+    } else {
+      n.sprite!.tint = tintFor(n.actor, flash, enraged);
+    }
+  }
+
+  /** Destroy whichever backend a node holds. */
+  private disposeNode(n: Node): void {
+    if (n.lit) {
+      this.container.removeChild(n.lit);
+      n.lit.destroy();
+    }
+    if (n.sprite) {
+      this.container.removeChild(n.sprite);
+      n.sprite.destroy();
+    }
   }
 
   /** Screen-space speed (px/s) since last frame; seeds lastX/Y on first sight. */
@@ -248,6 +399,24 @@ export class SpriteLayer {
 }
 
 // --- Free helpers ------------------------------------------------------------
+
+/**
+ * The current frame index for the lit path (the flat path lets `AnimatedSprite`
+ * do this internally): progress-driven clips map gameplay progress across the
+ * frames; loops cycle at the actor's fps; one-shots hold the last frame.
+ */
+function litFrameIndex(n: Node, sel: AnimSelection, nowMs: number): number {
+  const count = n.frames.length;
+  if (count <= 1) return 0;
+  if (sel.progress !== null) {
+    const p = sel.progress < 0 ? 0 : sel.progress > 1 ? 1 : sel.progress;
+    return Math.min(count - 1, Math.floor(p * (count - 1)));
+  }
+  const fps = MANIFEST[n.actor].defaultFps;
+  const raw = Math.floor(((nowMs - n.clipStartMs) / 1000) * fps);
+  if (raw <= 0) return 0;
+  return sel.loop ? raw % count : Math.min(count - 1, raw);
+}
 
 /** Ability cast time (ms) for a (class, slot); null when not a rooted cast. */
 function castMs(classId: ClassId, slot: AbilitySlot | null): number | null {
@@ -274,7 +443,7 @@ const CAST_SUFFIX = ' (cast)';
  * read red before the flash is applied. Placeholder silhouettes are white, so
  * the tint both palette-swaps and drives the hit-flash brighten. */
 function tintFor(actor: ActorKey, flash: number, enraged: boolean): number {
-  const base = enraged ? 0xff6a5a : ACTOR_PALETTE[actor];
+  const base = enraged ? ENRAGED_TINT : ACTOR_PALETTE[actor];
   return flash > 0 ? lerpColor(base, 0xffffff, flash) : base;
 }
 

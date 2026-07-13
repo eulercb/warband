@@ -6,8 +6,10 @@
  * geometry, a small per-mesh `model` group (base colour / emissive / hit-flash)
  * and a `Shader`:
  *   - `LitMesh`  a unit quad — drop-in for a shaded body sprite. Its fragment
- *                shader derives the normal from the quad UV (sphere imposter) or a
- *                normal map, and it's positioned by a transform (`setPose`).
+ *                shader derives the normal from the quad UV (sphere imposter) or,
+ *                for the `textured` variant, samples a tangent-space normal packed
+ *                beside the albedo in one atlas frame (`setFrame` slides the UV
+ *                window per animation frame). Positioned by a transform (`setPose`).
  *   - `LitLimb`  a dynamic quad-strip for the `limb` variant — a leg / arm /
  *                tentacle extruded along its bone. The centre-line moves every
  *                frame, so the geometry is rewritten in place (`setStrip`) rather
@@ -33,8 +35,13 @@ export interface LitMeshOptions {
   preset: MaterialPreset;
   /** Albedo texture. Defaults to white (flat-colour parts tinted by uBaseColor). */
   texture?: Texture;
-  /** Tangent-space normal map — required for the `textured` variant. */
+  /** Tangent-space normal map — required for the `textured` variant. For
+   * side-by-side packing it's the SAME atlas as `texture` (the normal lives in the
+   * other half of each frame; `setFrame` selects the halves). */
   normalTexture?: Texture;
+  /** `textured` only: flip the normal's green channel (Blender +Y up → Pixi Y
+   * down). Defaults to true — the common case; set false for Y-down source art. */
+  flipG?: boolean;
 }
 
 /**
@@ -48,17 +55,38 @@ abstract class LitMeshBase extends Mesh<MeshGeometry, Shader> {
   /** Live-mutated uploaded buffers (same references held by the model group). */
   private readonly baseColor: Float32Array;
   private readonly flashRGBA: Float32Array; // rgb flash colour, a = amount
+  /** Textured variant only: the atlas-UV window (albedo half) + the albedo→normal
+   * UV delta the shader reads; null for the analytic sphere/limb imposters. */
+  private readonly atlasUV: Float32Array | null;
+  private readonly normalDelta: Float32Array | null;
 
   protected constructor(geometry: MeshGeometry, opts: LitMeshOptions) {
     const albedo = opts.texture ?? Texture.WHITE;
     // These arrays ARE the uploaded uniform values; mutate + `model.update()`.
     const baseColor = new Float32Array([1, 1, 1]);
     const flashRGBA = new Float32Array([1, 1, 1, 0]);
-    const model = new UniformGroup({
-      uBaseColor: { value: baseColor, type: 'vec3<f32>' },
-      uEmissive: { value: 0, type: 'f32' },
-      uTint: { value: flashRGBA, type: 'vec4<f32>' },
-    });
+    // The textured variant adds the per-frame atlas window, the albedo→normal
+    // delta and the green-flip flag. Sphere/limb derive their normal analytically
+    // and never declare these uniforms, so they're omitted from the model group.
+    const textured = opts.variant === 'textured';
+    const atlasUV = textured ? new Float32Array([1, 1, 0, 0]) : null;
+    const normalDelta = textured ? new Float32Array([0, 0]) : null;
+    const model = new UniformGroup(
+      atlasUV && normalDelta
+        ? {
+            uBaseColor: { value: baseColor, type: 'vec3<f32>' },
+            uEmissive: { value: 0, type: 'f32' },
+            uTint: { value: flashRGBA, type: 'vec4<f32>' },
+            uAtlasUV: { value: atlasUV, type: 'vec4<f32>' },
+            uNormalDelta: { value: normalDelta, type: 'vec2<f32>' },
+            uNormalFlipG: { value: opts.flipG === false ? 0 : 1, type: 'f32' },
+          }
+        : {
+            uBaseColor: { value: baseColor, type: 'vec3<f32>' },
+            uEmissive: { value: 0, type: 'f32' },
+            uTint: { value: flashRGBA, type: 'vec4<f32>' },
+          },
+    );
 
     const resources: Record<string, unknown> = {
       uTexture: albedo.source,
@@ -67,8 +95,10 @@ abstract class LitMeshBase extends Mesh<MeshGeometry, Shader> {
       material: materialGroup(opts.preset),
       model,
     };
-    if (opts.variant === 'textured') {
-      resources.uNormalTex = (opts.normalTexture ?? Texture.WHITE).source;
+    if (textured) {
+      // Same source as the albedo for side-by-side packing; a separate normal
+      // atlas can be passed instead (then normalDelta stays 0).
+      resources.uNormalTex = (opts.normalTexture ?? albedo).source;
     }
 
     const src = litProgramSource(opts.variant, opts.maxLights);
@@ -79,6 +109,26 @@ abstract class LitMeshBase extends Mesh<MeshGeometry, Shader> {
     this.model = model;
     this.baseColor = baseColor;
     this.flashRGBA = flashRGBA;
+    this.atlasUV = atlasUV;
+    this.normalDelta = normalDelta;
+  }
+
+  /**
+   * Point the `textured` variant at one packed atlas frame: `atlasUV`
+   * (`[scaleX, scaleY, offsetX, offsetY]`, mapping the unit quad onto the albedo
+   * half) and `normalDelta` (`[du, dv]` to the normal half) — see `packedFrameUV`.
+   * This is how a textured body "animates": the source atlas stays bound and each
+   * frame just slides the UV window. No-op for the sphere/limb imposters.
+   */
+  setFrame(atlasUV: ArrayLike<number>, normalDelta: ArrayLike<number>): void {
+    if (!this.atlasUV || !this.normalDelta) return;
+    this.atlasUV[0] = atlasUV[0];
+    this.atlasUV[1] = atlasUV[1];
+    this.atlasUV[2] = atlasUV[2];
+    this.atlasUV[3] = atlasUV[3];
+    this.normalDelta[0] = normalDelta[0];
+    this.normalDelta[1] = normalDelta[1];
+    this.model.update();
   }
 
   /**
