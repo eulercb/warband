@@ -97,10 +97,11 @@ export class Renderer {
 
     this.fx = new Fx(this.fxTextLayer);
     this.balloons = new Balloons();
-    this.sprites = new SpriteLayer(sheet, this.fx, app.renderer);
-    // Shared dynamic-light buffer. Every lit rig mesh references this manager's
-    // uniform groups, so one update per frame lights the whole arena.
+    // Shared dynamic-light buffer. Every lit rig mesh — and every lit sprite body
+    // (the `textured` normal-map path) — references this manager's uniform groups,
+    // so one update per frame lights the whole arena.
     this.lights = new LightManager(LIGHTING.maxLights);
+    this.sprites = new SpriteLayer(sheet, this.fx, app.renderer, this.lights);
     this.rigs = new RigLayer(this.fx, this.lights);
     this.particles = new Particles(app.renderer);
 

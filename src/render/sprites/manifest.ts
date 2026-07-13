@@ -14,6 +14,8 @@ import { CLASS_COLORS, MONSTER_COLORS, ADD_RADIUS } from '../../engine/core/cons
 
 export type DirMode = '8dir' | '4dir' | 'flip' | 'single';
 export type DirToken = 'e' | 'se' | 's' | 'sw' | 'w' | 'nw' | 'n' | 'ne' | 'side';
+/** Which half of a side-by-side packed atlas frame holds the tangent-space normal. */
+export type NormalPackHalf = 'right' | 'bottom';
 
 /** Logical actor keys in the atlas. Palette-swapped classes share a base name. */
 export type ActorKey =
@@ -50,6 +52,33 @@ export const SPRITE_FLAGS: Record<SpriteCategory, boolean> = {
  * this at a real `Assets.load`-able atlas JSON once art exists.
  */
 export const SPRITE_ATLAS_URL: string | null = null;
+
+/**
+ * Normal-map wiring for the lit sprite path — "Path B" (issue #43, follow-up to
+ * the lighting brief §3). Pre-rendered sprite art is authored with a tangent-space
+ * normal map packed into the SAME atlas frame as its albedo, side by side, so the
+ * packer trims/rotates both as one image and their UVs can never desync. With this
+ * on (and `LIGHTING.enabled`), `SpriteLayer` renders flagged bodies through
+ * `LitMesh({ variant: 'textured' })`, sampling the normal beside the albedo, so a
+ * pre-rendered sprite catches the arena's dynamic lights like the procedural rigs.
+ *
+ * `enabled` defaults OFF and `SPRITE_ATLAS_URL` is `null`, so nothing changes until
+ * real normal-mapped art is dropped in — activating it is a one-line edit here,
+ * exactly like `SPRITE_FLAGS` / `SPRITE_ATLAS_URL`.
+ */
+export const NORMAL_MAP: {
+  enabled: boolean;
+  flipG: boolean;
+  half: NormalPackHalf;
+} = {
+  enabled: false,
+  // Blender's normal pass is camera-space +Y up; Pixi's Y is down. Flip green
+  // (G = 1 − G) or every top-lit surface shades bottom-lit — the OpenGL-vs-DirectX
+  // convention, and the single most common bug in this system (brief §3). Off only
+  // for art that already ships DirectX-convention (Y-down) normals.
+  flipG: true,
+  half: 'right',
+};
 
 /**
  * Tint applied to each actor's (white) placeholder silhouette, and to real art
@@ -107,6 +136,44 @@ export function resolveTextures(
     a[animKey(actor, 'idle', null)] ??
     null
   );
+}
+
+/** The albedo-half UV transform and albedo→normal UV delta the `textured` shader
+ * reads for one side-by-side packed atlas frame.
+ * - `atlasUV` (`[scaleX, scaleY, offsetX, offsetY]`) maps the unit quad's `[0,1]`
+ *   UV onto the ALBEDO half of the frame within the atlas.
+ * - `normalDelta` (`[du, dv]`) is the constant shift from that albedo UV to the
+ *   normal half — the "one UV + a constant offset" that makes packer desync
+ *   structurally impossible (brief §3, gotcha 2). */
+export interface FrameUV {
+  atlasUV: [number, number, number, number];
+  normalDelta: [number, number];
+}
+
+/**
+ * Compute the {@link FrameUV} for an atlas frame `{x,y,w,h}` (pixels) in an
+ * `atlasW×atlasH` atlas whose `half` holds the normal map. Pure — the runtime
+ * reads a Pixi `Texture`'s `frame`/`source` size and hands the numbers here, so
+ * the packing convention lives in one testable place. `atlasW`/`atlasH` of 0 are
+ * clamped to 1 so a not-yet-uploaded texture yields finite UVs instead of NaN.
+ */
+export function packedFrameUV(
+  frame: { x: number; y: number; w: number; h: number },
+  atlasW: number,
+  atlasH: number,
+  half: NormalPackHalf,
+): FrameUV {
+  const aw = atlasW || 1;
+  const ah = atlasH || 1;
+  const ox = frame.x / aw;
+  const oy = frame.y / ah;
+  if (half === 'bottom') {
+    const hh = frame.h / 2 / ah;
+    return { atlasUV: [frame.w / aw, hh, ox, oy], normalDelta: [0, hh] };
+  }
+  // 'right' (default): albedo in the left half, normal in the right half.
+  const hw = frame.w / 2 / aw;
+  return { atlasUV: [hw, frame.h / ah, ox, oy], normalDelta: [hw, 0] };
 }
 
 // --- Config presets ---------------------------------------------------------

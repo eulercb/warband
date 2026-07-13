@@ -17,7 +17,8 @@
  *   lights  (shared): uLightPosR[N], uLightColI[N], uLightCount
  *   env     (shared): uAmbient, uKeyDir, uKeyColor, uKeyAmount
  *   material(shared): uRimColor, uRimPower, uRimStrength, uSpecStrength, uShininess
- *   model   (per mesh): uBaseColor, uEmissive, uTint, uTexture (+ uNormalTex)
+ *   model   (per mesh): uBaseColor, uEmissive, uTint, uTexture
+ *                       (textured also: uNormalTex, uAtlasUV, uNormalDelta, uNormalFlipG)
  *
  * Author `#version 300 es` first: Pixi strips + re-inserts the version, injects
  * `precision` (downgrading highp→mediump on weak devices), and leaves our
@@ -71,6 +72,10 @@ ${
 export function litFragmentSource(variant: NormalVariant, maxLights: number): string {
   const limb = variant === 'limb';
   const textured = variant === 'textured';
+  // Textured sprites are packed albedo+normal side-by-side in ONE atlas frame, so
+  // the albedo is read through the same frame transform the normal is (see below),
+  // never at raw quad UV — that's what keeps the two structurally in lock-step.
+  const albedoUV = textured ? 'vUV * uAtlasUV.xy + uAtlasUV.zw' : 'vUV';
   return `#version 300 es
 #define ${VARIANT_DEFINE[variant]}
 #define MAX_LIGHTS ${maxLights}
@@ -81,7 +86,14 @@ ${limb ? 'in vec2 vPerp;\nin float vV;' : ''}
 out vec4 fragColor;
 
 uniform sampler2D uTexture;
-${textured ? 'uniform sampler2D uNormalTex;' : ''}
+${
+  textured
+    ? `uniform sampler2D uNormalTex;   // tangent-space normals (may be the albedo atlas)
+uniform vec4  uAtlasUV;         // xy = albedo frame scale, zw = frame offset (atlas UV)
+uniform vec2  uNormalDelta;     // constant UV offset albedo->normal in the packed frame
+uniform float uNormalFlipG;     // 1 = flip green (Blender +Y up -> Pixi Y down)`
+    : ''
+}
 
 // shared light group
 uniform vec4  uLightPosR[MAX_LIGHTS];   // xy = pos, z = height, w = radius
@@ -117,12 +129,20 @@ vec3 surfaceNormal() {
     if (r2 > 1.0) discard;
     return normalize(vec3(e, sqrt(1.0 - r2)));
 #else // NORMAL_TEXTURED
-    return normalize(texture(uNormalTex, vUV).rgb * 2.0 - 1.0);
+    // Sample the normal at the SAME frame transform as the albedo, plus the fixed
+    // albedo->normal delta (§3 gotcha 2: albedo + normal share one packed frame, so
+    // one UV + a constant offset — trim/rotate desync is structurally impossible).
+    vec2 nUV = vUV * uAtlasUV.xy + uAtlasUV.zw + uNormalDelta;
+    vec3 nTex = texture(uNormalTex, nUV).rgb;
+    // §3 gotcha 1: Blender bakes +Y up, Pixi's Y is down — flip green or every
+    // top-lit surface shades bottom-lit (the OpenGL-vs-DirectX convention).
+    nTex.g = mix(nTex.g, 1.0 - nTex.g, uNormalFlipG);
+    return normalize(nTex * 2.0 - 1.0);
 #endif
 }
 
 void main() {
-    vec4 tex = texture(uTexture, vUV);
+    vec4 tex = texture(uTexture, ${albedoUV});
     if (tex.a < 0.004) discard;
 
     vec3  N = surfaceNormal();

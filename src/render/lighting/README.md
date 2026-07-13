@@ -67,13 +67,24 @@ emissive, hit-flash) and binds the shared `lights` / `env` / `material` groups.
 - **Per-arena ambient** (§7.5) — mood tint keyed to the lead boss's terrain theme.
 - A constant **key light** reproduces the old baked top-left volume, so a surface
   with no dynamic light nearby still reads as a lit sphere.
+- **Textured normal-map path** (Path B, §3) — pre-rendered sprite bodies. The
+  `textured` variant is wired into `SpriteLayer`: a flagged actor renders as a
+  `LitMesh({ variant: 'textured' })` that samples a tangent-space normal packed
+  beside its albedo (one atlas frame → `setFrame` slides the UV window per
+  animation frame), so a sprite catches the same dynamic lights as the rigs. The
+  two §3 gotchas are handled **structurally** in the shader: the green channel is
+  flipped (Blender +Y-up → Pixi Y-down) under a uniform, and albedo + normal share
+  one packed frame read through one UV + a constant offset, so packer trim/rotate
+  desync is impossible. Dormant until real normal-mapped art ships — see
+  `sprites/manifest.ts` (`NORMAL_MAP`) and the sprites README.
 
 ## Deliberately deferred (follow-ups)
 
 - **Weapons** stay flat-shaded `Graphics` strokes (thin, low visual mass — folding
   them into the lit path is optional polish, not part of M3).
-- **Textured / normal-map path** (Path B) — the `textured` variant is complete but
-  unused (no sprite atlas ships yet; see `sprites/manifest.ts`).
+- **Normal-mapped art itself** — Path B is wired but no atlas with packed normals
+  ships yet, so it's inert (`NORMAL_MAP.enabled = false`); on-GPU tuning of anchor
+  offset / material preset per actor waits for real art.
 - **WGSL port** (re-enable WebGPU), **bloom** on the emissive/overbright channel,
   **desktop 16-light variant**, on-device perf pass — brief §12 / M6.
 
