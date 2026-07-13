@@ -378,12 +378,13 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'mg_abjurer_bind',
           'Otiluke Bind',
           '🌀',
-          'Snares a zone to 30% speed',
+          'Roots foes in a zone — holds them fast',
           zone('Otiluke Bind', 10, {
             slowMult: 0.3,
             slowDuration: 1.5,
             zoneTickDamage: 8,
             zoneKind: 'entangle',
+            roots: true, // item 3: a true bind — immobilises + locks out blink/charge/teleport
           }),
         ),
         sk(
@@ -604,12 +605,13 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'ro_trickster_snare',
           'Ensnaring Strike',
           '🕸️',
-          'A snare-zone to 30% speed',
+          'A web that roots foes in place',
           zone('Ensnaring Strike', 10, {
             slowMult: 0.3,
             slowDuration: 1.5,
             zoneTickDamage: 8,
             zoneKind: 'entangle',
+            roots: true, // item 3: a web holds fast — immobilises + locks out blink/charge/teleport
           }),
         ),
         sk(

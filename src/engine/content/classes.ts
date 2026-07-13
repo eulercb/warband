@@ -842,7 +842,11 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>): string {
   if (def.castTime) parts.push(`${s(def.castTime)} cast`);
   if (def.stun) parts.push(`${s(def.stun)} stun`);
   if (def.freeze) parts.push(`${s(def.freeze)} freeze`);
-  if (def.slowMult != null && def.slowMult < 1) {
+  // A true root (item 3) supersedes its slow — the target is held fast (no move,
+  // blink, charge or teleport), so read it as "roots" rather than a % slow.
+  if (def.roots) {
+    parts.push('roots');
+  } else if (def.slowMult != null && def.slowMult < 1) {
     const dur = def.slowDuration ? ` for ${s(def.slowDuration)}` : '';
     parts.push(`slow to ${n(def.slowMult * 100)}%${dur}`);
   }
