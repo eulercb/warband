@@ -9,7 +9,8 @@
  * standing on the rune can't flip-flop readiness.
  */
 import { World } from '../../engine/world/world';
-import { SIM_DT } from '../../engine/core/constants';
+import { SIM_DT, CLASS_COLORS } from '../../engine/core/constants';
+import { CLASS_IDS, CLASSES } from '../../engine/content/classes';
 import { dist } from '../../engine/core/torus';
 import type {
   ClassId,
@@ -26,6 +27,17 @@ const LOCAL_PEER = 'local:muster';
 /** Seconds to dwell on the rune (ready) / war-horn (start) before it fires. */
 export const MUSTER_DWELL_S = 0.4;
 export const START_DWELL_S = 0.7;
+/** Dwell to add a bot from a class effigy (item 1) — a quick, repeatable tap. */
+export const ADDBOT_DWELL_S = 0.4;
+
+// item 1: a top-of-hall row of class effigies (host only). Placed above the rune /
+// war-horn (right column) and clear of the left-docked lobby panel, within the
+// torus-safe band above the y=780 spawn (see rewardScene's geometry note).
+const BOT_ROW_Y = 330;
+const BOT_ROW_X0 = 480;
+const BOT_ROW_X1 = 1260;
+const BOT_EFFIGY_RADIUS = 28;
+const BOT_EFFIGY_TRIGGER = 46;
 
 const ZERO_INPUT: InputCommand = {
   seq: 0,
@@ -42,6 +54,8 @@ const PORTAL_TRIGGER = 88;
 
 export interface MusterTrigger {
   kind: StationKind;
+  /** For an 'addbot' effigy: the ClassId of the bot to add (item 1). */
+  refId?: string;
 }
 
 interface MusterStation {
@@ -53,6 +67,8 @@ interface MusterStation {
   label: string;
   color: number;
   dwell: number;
+  /** Selection payload — the ClassId for an 'addbot' effigy (item 1). */
+  refId?: string;
 }
 
 export class MusterScene {
@@ -66,6 +82,8 @@ export class MusterScene {
   private classId: ClassId;
   private ready = false;
   private canStart = false;
+  /** item 1: the warband is full — the add-bot effigies grey out. */
+  private partyFull = false;
 
   private readonly stations: MusterStation[] = [];
   private dwellId: number | null = null;
@@ -99,7 +117,30 @@ export class MusterScene {
         color: 0xf2c14e,
         dwell: START_DWELL_S,
       });
+      this.layoutBotEffigies();
     }
+  }
+
+  /** item 1: a row of class effigies (host only) — walk onto one to add a bot of
+   *  that class. Mirrors the menu playground's class effigies. */
+  private layoutBotEffigies(): void {
+    const n = CLASS_IDS.length;
+    CLASS_IDS.forEach((id, i) => {
+      const x = BOT_ROW_X0 + ((BOT_ROW_X1 - BOT_ROW_X0) * i) / (n - 1);
+      const t = (i / (n - 1)) * 2 - 1; // -1..1 across the row
+      const y = BOT_ROW_Y + 34 * (t * t) - 17; // gentle forward-bowed arc
+      this.stations.push({
+        id: 100 + i, // clear of the rune/horn (1,2) and world entity ids
+        kind: 'addbot',
+        pos: { x, y },
+        refId: id,
+        radius: BOT_EFFIGY_RADIUS,
+        triggerRadius: BOT_EFFIGY_TRIGGER,
+        label: `+ ${CLASSES[id].name}`,
+        color: CLASS_COLORS[id] ?? 0xffffff,
+        dwell: ADDBOT_DWELL_S,
+      });
+    });
   }
 
   private build(keepPos: Vec2 | null): World {
@@ -137,6 +178,11 @@ export class MusterScene {
   /** Mirror whether the host may start (the war-horn greys out until then). */
   setCanStart(on: boolean): void {
     this.canStart = on;
+  }
+
+  /** item 1: mirror whether the warband is full (add-bot effigies grey out). */
+  setPartyFull(on: boolean): void {
+    this.partyFull = on;
   }
 
   frame(nowMs: number, frozen = false): RenderState {
@@ -189,6 +235,7 @@ export class MusterScene {
     for (const s of this.stations) {
       if (s.id === this.armedId) continue;
       if (s.kind === 'start' && !this.canStart) continue; // war-horn sealed until ready
+      if (s.kind === 'addbot' && this.partyFull) continue; // item 1: no room for more bots
       const d = dist(hp, s.pos);
       if (d > s.triggerRadius) continue;
       const frac = d / s.triggerRadius;
@@ -218,7 +265,7 @@ export class MusterScene {
       this.dwellId = null;
       this.dwellS = 0;
       this.armedId = target.id; // don't re-fire until the hero steps off
-      this.pendingTriggers.push({ kind: target.kind });
+      this.pendingTriggers.push({ kind: target.kind, refId: target.refId });
     }
   }
 
@@ -227,19 +274,23 @@ export class MusterScene {
     const near = hp != null && dist(hp, s.pos) <= s.triggerRadius;
     const channel = this.dwellId === s.id ? Math.min(1, this.dwellS / s.dwell) : 0;
     const selected = s.kind === 'muster' ? this.ready : false;
-    const disabled = s.kind === 'start' && !this.canStart;
+    const disabled =
+      (s.kind === 'start' && !this.canStart) || (s.kind === 'addbot' && this.partyFull);
     let label = s.label;
     if (s.kind === 'muster') label = this.ready ? 'READY ✓ — STAND DOWN' : 'MUSTER — READY UP';
     else if (s.kind === 'start') label = disabled ? 'WAITING FOR THE BAND' : 'SOUND THE WAR-HORN';
+    else if (s.kind === 'addbot') label = disabled ? 'BAND FULL' : s.label;
     return {
       id: s.id,
       kind: s.kind,
       pos: { ...s.pos },
       radius: s.radius,
       triggerRadius: s.triggerRadius,
+      refId: s.refId,
       label,
       color: s.color,
-      portal: true,
+      // The rune / war-horn are walk-INTO portals; the bot effigies are pedestals.
+      portal: s.kind !== 'addbot',
       selected,
       disabled,
       active: near && !disabled,

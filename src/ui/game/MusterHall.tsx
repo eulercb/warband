@@ -9,7 +9,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { useStore } from '../state/store';
-import { setReady, startFight, playUiSound } from '../state/session';
+import { setReady, startFight, playUiSound, addBot } from '../state/session';
 import Lobby from '../screens/Lobby';
 import HUD from './HUD';
 import { useHudStore } from '../state/hudStore';
@@ -17,7 +17,8 @@ import { pushHud } from '../state/hudBridge';
 import { MusterScene } from '../state/musterScene';
 import { Renderer } from '../../render/pipeline/renderer';
 import { InputManager } from '../../input/input';
-import { ARENA_W, ARENA_H } from '../../engine/core/constants';
+import { ARENA_W, ARENA_H, MAX_PLAYERS } from '../../engine/core/constants';
+import type { ClassId } from '../../engine/core/types';
 import type { AppState } from '../state/store';
 
 /** Whether the host may start now (no other humans, or all of them are ready). */
@@ -28,6 +29,7 @@ function computeCanStart(s: Pick<AppState, 'players' | 'isHost'>): boolean {
 
 export default function MusterHall() {
   const canvasRef = useRef<HTMLDivElement>(null);
+  const isHost = useStore((s) => s.isHost);
 
   useEffect(() => {
     const container = canvasRef.current;
@@ -69,6 +71,7 @@ export default function MusterHall() {
         // Keep the rune/horn + avatar in sync with the shared lobby state.
         scene.setReady(store.localReady);
         scene.setCanStart(computeCanStart(store));
+        scene.setPartyFull(store.players.length >= MAX_PLAYERS); // item 1: grey out add-bot effigies
         if (store.localClass !== lastClass) {
           lastClass = store.localClass;
           scene.setClass(store.localClass);
@@ -97,6 +100,12 @@ export default function MusterHall() {
             playUiSound('uiConfirm');
           } else if (trig.kind === 'start') {
             if (computeCanStart(useStore.getState())) startFight();
+          } else if (trig.kind === 'addbot' && trig.refId) {
+            // item 1: walk onto a class effigy to add a bot of that class.
+            if (useStore.getState().players.length < MAX_PLAYERS) {
+              addBot(trig.refId as ClassId);
+              playUiSound('uiConfirm');
+            }
           }
         }
 
@@ -124,6 +133,7 @@ export default function MusterHall() {
       <HUD />
       <div className="wb-muster-hint" aria-hidden="true">
         Step onto the muster rune to ready up — the war-horn starts the fight.
+        {isHost ? ' Walk onto a class effigy to add a bot of that class.' : ''}
       </div>
       <Lobby />
     </div>

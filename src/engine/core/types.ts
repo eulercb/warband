@@ -641,7 +641,8 @@ export type StationKind =
   | 'join' // walk into the join portal
   | 'controls' // open the controls/rebinding overlay
   | 'muster' // lobby: step on to ready up
-  | 'start'; // lobby: host steps on to start the fight
+  | 'start' // lobby: host steps on to start the fight
+  | 'addbot'; // lobby: host steps on a class effigy to add a bot of that class (item 1, refId = ClassId)
 
 /** Render view of a menu station (local scene worlds only; never crosses the wire). */
 export interface StationView {

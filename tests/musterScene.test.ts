@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { MusterScene, MUSTER_DWELL_S, START_DWELL_S } from '../src/ui/state/musterScene';
+import { CLASS_IDS } from '../src/engine/content/classes';
+import { ARENA_W, ARENA_H } from '../src/engine/core/constants';
 import type { InputCommand, RenderState, Vec2 } from '../src/engine/core/types';
 
 function inp(over: Partial<InputCommand> = {}): InputCommand {
@@ -126,6 +128,45 @@ describe('MusterScene: war-horn (host)', () => {
     const horn = (first.stations ?? []).find((s) => s.kind === 'start')!;
     walkOnto(scene, horn.pos, 1000, START_DWELL_S + 0.3);
     expect(scene.takeTriggers().some((t) => t.kind === 'start')).toBe(true);
+  });
+});
+
+describe('MusterScene: add-bot effigies (item 1)', () => {
+  it('lays one class effigy per class for the host (none for a client)', () => {
+    const client = new MusterScene('Aria', 'knight', false);
+    expect((client.frame(1000).stations ?? []).filter((s) => s.kind === 'addbot')).toHaveLength(0);
+
+    const host = new MusterScene('Aria', 'knight', true);
+    const effigies = (host.frame(1000).stations ?? []).filter((s) => s.kind === 'addbot');
+    expect(effigies).toHaveLength(CLASS_IDS.length);
+    expect(new Set(effigies.map((e) => e.refId))).toEqual(new Set(CLASS_IDS));
+    for (const e of effigies) {
+      expect(e.portal).toBe(false); // pedestals, not walk-into portals
+      // On the same torus tile as the y=780 / x=800 spawn (no nearest-copy flip).
+      expect(Math.abs(780 - e.pos.y)).toBeLessThan(ARENA_H / 2);
+      expect(Math.abs(800 - e.pos.x)).toBeLessThan(ARENA_W / 2);
+    }
+  });
+
+  it('fires an addbot trigger carrying the class when the host walks onto an effigy', () => {
+    const scene = new MusterScene('Aria', 'knight', true);
+    const first = scene.frame(1000);
+    const mage = (first.stations ?? []).find((s) => s.kind === 'addbot' && s.refId === 'mage')!;
+    walkOnto(scene, mage.pos, 1000);
+    const trigs = scene.takeTriggers().filter((t) => t.kind === 'addbot');
+    expect(trigs).toHaveLength(1);
+    expect(trigs[0].refId).toBe('mage');
+  });
+
+  it('greys out and refuses the effigies once the band is full', () => {
+    const scene = new MusterScene('Aria', 'knight', true);
+    scene.setPartyFull(true);
+    const first = scene.frame(1000);
+    const eff = (first.stations ?? []).find((s) => s.kind === 'addbot')!;
+    expect(eff.disabled).toBe(true);
+    expect(eff.label).toBe('BAND FULL');
+    walkOnto(scene, eff.pos, 1000);
+    expect(scene.takeTriggers().some((t) => t.kind === 'addbot')).toBe(false);
   });
 });
 
