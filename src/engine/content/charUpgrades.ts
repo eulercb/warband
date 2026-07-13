@@ -12,7 +12,7 @@
  */
 import type { ClassId, AbilitySlot, SubSlot, Player } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
-import { CLASSES, cloneAbilities, slowAttackCooldowns, describeAbility } from './classes';
+import { CLASSES, getClass, cloneAbilities, slowAttackCooldowns, describeAbility } from './classes';
 import { getSubclass, subclassOfSkill } from './subclasses';
 import { applyUpgrades, type UpgradeId } from './upgrades';
 import { MAX_SKILL_STACKS } from '../core/constants';
@@ -142,7 +142,9 @@ function graft(
   fromSlot: AbilitySlot,
   tweak?: (ab: PlayerAbilityDef) => void,
 ): void {
-  const src = CLASSES[from].abilities[fromSlot];
+  // Run-aware source: a graft copies the RUN'S rolled version of the foreign
+  // skill (a Knight who learns this run's Fireball gets this run's Fireball).
+  const src = getClass(from).abilities[fromSlot];
   const copy: PlayerAbilityDef = { ...src, slot };
   if (tweak) tweak(copy);
   abilities[slot] = copy;
@@ -3633,9 +3635,11 @@ function parseGraftup(id: string): { slot: AbilitySlot; boonId: string } | null 
   return { slot, boonId };
 }
 
-/** A throwaway hero stub with a fresh cloned ability table (preview / occupancy). */
+/** A throwaway hero stub with a fresh cloned ability table (preview / occupancy).
+ *  Resolves the class through `getClass`, so every preview (HUD, reward cards,
+ *  balance estimator, multiclass tables) follows the active run's rolled kit. */
 function stubPlayer(classId: ClassId): Player {
-  const cls = CLASSES[classId];
+  const cls = getClass(classId);
   return {
     classId,
     maxHp: cls.maxHp,
@@ -4004,7 +4008,7 @@ export function describeCharOffer(
   const current = previewAbilityTable(classId, [...ownedChar]);
   const restoreSlot = parseRestore(id);
   if (restoreSlot) {
-    const nativeName = CLASSES[classId].abilities[restoreSlot].name;
+    const nativeName = getClass(classId).abilities[restoreSlot].name;
     const cur = current[restoreSlot]?.name;
     const tail = cur && cur !== nativeName ? `, dropping ${cur}` : '';
     return {

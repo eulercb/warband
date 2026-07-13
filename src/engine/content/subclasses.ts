@@ -11,6 +11,8 @@
  */
 import type { ClassId } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
+import { describeAbility } from './classes';
+import { procVariant, subSkillAbilityVariant } from './procgen';
 
 /** One pickable subclass skill (an ability minus its slot assignment). */
 export interface SubSkillDef {
@@ -1076,11 +1078,37 @@ for (const sub of ALL_SUBCLASSES) {
   for (const skill of sub.skills) SKILL_INDEX[skill.id] = { skill, subclass: sub };
 }
 
+/**
+ * A subclass skill, resolved for the active run: while a procedural run is
+ * active its ability numbers re-roll within the same identity envelope as the
+ * base kits (content/procgen.ts) and the card description is regenerated from
+ * the ROLLED numbers so it never lies; the skill's NAME is the identity of the
+ * pick and never re-rolls. Canonical def otherwise.
+ */
+function skillVariant(base: SubSkillDef): SubSkillDef {
+  return (
+    procVariant('subskill', base.id, (seed) => {
+      const ability = subSkillAbilityVariant(seed, base.id, base.ability);
+      return { ...base, ability, desc: describeAbility(ability) };
+    }) ?? base
+  );
+}
+
+/** A subclass with its skills resolved for the active run (see skillVariant). */
+function subclassVariant(base: SubclassDef): SubclassDef {
+  return (
+    procVariant('subclass', base.id, () => ({ ...base, skills: base.skills.map(skillVariant) })) ??
+    base
+  );
+}
+
 export function getSubclass(id: string): SubclassDef | undefined {
-  return SUBCLASS_BY_ID[id];
+  const base = SUBCLASS_BY_ID[id];
+  return base ? subclassVariant(base) : undefined;
 }
 export function getSubSkill(id: string): SubSkillDef | undefined {
-  return SKILL_INDEX[id]?.skill;
+  const base = SKILL_INDEX[id]?.skill;
+  return base ? skillVariant(base) : undefined;
 }
 export function subclassOfSkill(id: string): SubclassDef | undefined {
   return SKILL_INDEX[id]?.subclass;
@@ -1089,7 +1117,7 @@ export function isSubSkillId(x: unknown): x is string {
   return typeof x === 'string' && x in SKILL_INDEX;
 }
 export function subclassesFor(classId: ClassId): SubclassDef[] {
-  return SUBCLASSES[classId] ?? [];
+  return (SUBCLASSES[classId] ?? []).map(subclassVariant);
 }
 
 /** The subclass skills a hero owns for a specific class (from their flat pick list). */

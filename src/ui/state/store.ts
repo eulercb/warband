@@ -12,6 +12,7 @@ import type { LobbyPlayer, NetSession } from '../../net/protocol';
 import type { NetMode } from '../../net/transport/room';
 import { DEFAULT_CLASS } from '../../engine/content/classes';
 import { DEFAULT_MONSTER } from '../../engine/content/monsters';
+import { setProceduralSeed } from '../../engine/content/procgen';
 import { setShakeEnabled } from '../../render/pipeline/camera';
 
 // --- Persisted local preferences (survive reloads / future runs) -----------
@@ -309,7 +310,13 @@ export const useStore = create<AppState>((set, get) => ({
   setGauntlet: (gauntlet) => set({ gauntlet }),
   setSeedMode: (seedMode) => set({ seedMode }),
   setSeedInput: (seedInput) => set({ seedInput: seedInput.slice(0, 24) }),
-  setActiveRunSeed: (activeRunSeed) => set({ activeRunSeed }),
+  setActiveRunSeed: (activeRunSeed) => {
+    // The single choke point that activates/clears the run's PROCEDURAL content
+    // (rolled kits, monsters, boons): host and clients both land here with the
+    // shared master seed, so every peer derives identical variants.
+    setProceduralSeed(activeRunSeed);
+    set({ activeRunSeed });
+  },
   setHardcore: (hardcore) => set({ hardcore }),
   setActiveHardcore: (activeHardcore) => set({ activeHardcore }),
   setLobby: (players, monsterId, lobbyPhase, gauntlet) =>
@@ -404,6 +411,9 @@ export const useStore = create<AppState>((set, get) => ({
     } catch {
       /* ignore */
     }
+    // Leaving the session ends the procedural run — the menu playground and the
+    // next lobby serve canonical content until a new run seed arrives.
+    setProceduralSeed(null);
     set({
       phase: 'menu',
       error: null,
@@ -416,6 +426,7 @@ export const useStore = create<AppState>((set, get) => ({
       players: [],
       lobbyPhase: 'lobby',
       localReady: false,
+      activeRunSeed: null,
       paused: false,
       pausedBy: null,
       resumeCountdown: null,

@@ -155,6 +155,11 @@ export class Host implements NetSession {
   readonly selfId = selfId;
   localPlayerId: number | null = null;
 
+  /** The session's master seed (drives the run's procedural content + RNG streams). */
+  get runSeed(): number {
+    return this.masterSeed;
+  }
+
   private readonly opts: HostOpts;
   private readonly room: ReturnType<typeof openRoom>;
 
@@ -451,6 +456,9 @@ export class Host implements NetSession {
       players: [host, ...peers, ...bots],
       phase: this.phase,
       gauntlet: this.gauntlet,
+      // Share the master seed from the lobby on, so every peer's procedural
+      // content (rolled kits / monsters / boons) resolves before the first fight.
+      runSeed: this.masterSeed,
     };
   }
 

@@ -6,6 +6,7 @@
  */
 import type { MonsterId, Boss, Player, BossTier, BossBodyShape, ZoneKind } from '../core/types';
 import type { Rng } from '../core/math';
+import { procVariant, monsterVariant } from './procgen';
 import {
   MONSTER_COLORS,
   RUN_LENGTH,
@@ -1540,8 +1541,15 @@ export const MONSTERS_BY_TIER: Record<BossTier, MonsterId[]> = {
   hard: MONSTER_IDS.filter((id) => MONSTERS[id].tier === 'hard'),
 };
 
+/**
+ * Resolve a monster def — the RUN'S rolled variant while a procedural run is
+ * active (see content/procgen.ts; stats/ability numbers jittered within the
+ * monster's identity envelope + a rolled epithet), else the canonical authored
+ * def. The sim (world.ts), the HUD bridge and the reward-room banner all
+ * resolve through here; AI, shapes, colours and tiers never change.
+ */
 export function getMonster(id: MonsterId): MonsterDef {
-  return MONSTERS[id];
+  return procVariant('monster', id, (seed) => monsterVariant(seed, MONSTERS[id])) ?? MONSTERS[id];
 }
 
 export function abilityById(def: MonsterDef, id: string): BossAbilityDef | undefined {

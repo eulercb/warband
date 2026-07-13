@@ -4,6 +4,7 @@
  */
 import type { ClassId, AbilitySlot, ExtSlot, ZoneKind } from '../core/types';
 import { PLAYER_RADIUS, CLASS_COLORS, ATTACK_CD_SCALE } from '../core/constants';
+import { procVariant, classVariant } from './procgen';
 
 /** How an ability resolves. Interpreted by abilities.ts. */
 export type AbilityKind =
@@ -740,8 +741,17 @@ export const CLASS_IDS: ClassId[] = [
 ];
 export const DEFAULT_CLASS: ClassId = 'knight';
 
+/**
+ * Resolve a class def — the RUN'S rolled variant while a procedural run is
+ * active (see content/procgen.ts; numbers + skill names re-rolled from the
+ * shared master seed within the class's identity envelope), else the canonical
+ * authored def. Every consumer that should follow the run (the sim spawn, the
+ * HUD/preview paths, grafts, the balance estimator) resolves through here;
+ * identity fields (id/name/colour/role) are unchanged either way, so static
+ * `CLASSES[...]` reads of those stay valid.
+ */
 export function getClass(id: ClassId): ClassDef {
-  return CLASSES[id];
+  return procVariant('class', id, (seed) => classVariant(seed, CLASSES[id])) ?? CLASSES[id];
 }
 
 /** Ability kinds that count as a twitchy "attack" for the global CD slow-down. */

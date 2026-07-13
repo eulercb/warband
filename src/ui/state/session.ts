@@ -190,6 +190,9 @@ export async function hostGame(): Promise<void> {
   const s = useStore.getState();
   s.setRoom(code, true);
   s.setSession(host);
+  // Activate the run's procedural content (rolled kits / monsters / boons) from
+  // the master seed right away, so the lobby's class previews match the fight.
+  s.setActiveRunSeed(host.runSeed);
   s.setError(null);
   s.setPeerCount(0);
   s.setNetHint(null);
@@ -209,6 +212,9 @@ export async function joinGame(code: string): Promise<void> {
     onLobby: (msg) => {
       const s = useStore.getState();
       s.setLobby(msg.players, msg.monsterId, msg.phase, msg.gauntlet);
+      // The host shares its master seed with the lobby: activate the run's
+      // procedural content now so class previews already show the rolled kits.
+      if (msg.runSeed != null) s.setActiveRunSeed(msg.runSeed);
       if (msg.phase === 'inFight' && s.phase !== 'game') {
         s.setPhase('waiting');
       } else if (msg.phase === 'lobby' && (s.phase === 'join' || s.phase === 'waiting')) {
@@ -259,10 +265,11 @@ export async function joinGame(code: string): Promise<void> {
       s.setPeerCount(0);
       s.setNetHint(null);
       // Scrub run/fight residue so the menu playground doesn't show stale run
-      // tags or grafted ability buttons from the dead session.
+      // tags, grafted ability buttons or the dead run's procedural kits.
       s.setResult(null);
       s.setRun(null);
       s.setCycle(0);
+      s.setActiveRunSeed(null);
       s.clearMyUpgrades();
       resetPauseState(s);
       s.setPhase('menu');

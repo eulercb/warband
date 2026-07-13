@@ -9,6 +9,7 @@
  */
 import type { Player } from '../core/types';
 import { MAX_SKILL_STACKS } from '../core/constants';
+import { procVariant, upgradeVariant } from './procgen';
 
 export type UpgradeId =
   'swift' | 'vigor' | 'haste' | 'focus' | 'surefooted' | 'mighty' | 'bulwark' | 'renewal';
@@ -130,6 +131,17 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
 
 export const UPGRADE_IDS = Object.keys(UPGRADES) as UpgradeId[];
 
+/**
+ * Resolve a boon def — the RUN'S rolled variant while a procedural run is
+ * active (see content/procgen.ts; magnitude/name/desc re-rolled within the
+ * boon's role envelope), else the canonical authored def. The reward cards,
+ * the owned-boon badges and `applyUpgrades` all resolve through here so what
+ * a card promises is exactly what the spawn applies.
+ */
+export function getUpgrade(id: UpgradeId): UpgradeDef {
+  return procVariant('upgrade', id, (seed) => upgradeVariant(seed, UPGRADES[id])) ?? UPGRADES[id];
+}
+
 /** Type guard for an untrusted (e.g. networked) upgrade id. */
 export function isUpgradeId(x: unknown): x is UpgradeId {
   return typeof x === 'string' && Object.prototype.hasOwnProperty.call(UPGRADES, x);
@@ -139,8 +151,7 @@ export function isUpgradeId(x: unknown): x is UpgradeId {
 export function applyUpgrades(p: Player, ids: UpgradeId[] | undefined): void {
   if (!ids) return;
   for (const id of ids) {
-    const u = UPGRADES[id];
-    if (u) u.apply(p);
+    if (isUpgradeId(id)) getUpgrade(id).apply(p);
   }
 }
 
