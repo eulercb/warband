@@ -67,9 +67,10 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
     role: 'tempo',
     name: 'Haste',
     icon: '⚡',
-    desc: '-18% ability cooldowns',
+    // Toned down (item 25): keep attacks impactful, not a blur of near-instant hits.
+    desc: '-10% ability cooldowns',
     apply: (p) => {
-      p.cooldownMult *= 0.82;
+      p.cooldownMult *= 0.9;
     },
   },
   focus: {

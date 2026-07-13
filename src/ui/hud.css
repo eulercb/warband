@@ -81,56 +81,8 @@
   text-shadow: 0 1px 3px #000;
 }
 
-/* Hardcore kill-deadline countdown (item 11) — an enrage-timer under the boss
-   bar. Reddens and throbs in the final HARDCORE_DEADLINE_WARN seconds. */
-.hud-deadline {
-  align-self: center;
-  margin-top: 2px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 3px 14px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid rgba(255, 170, 60, 0.55);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-}
-.hud-deadline-tag {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #ffb545;
-  text-shadow: 0 1px 3px #000;
-}
-.hud-deadline-time {
-  font-size: 20px;
-  font-weight: 800;
-  line-height: 1;
-  /* Tabular figures so the ticking seconds don't jitter the pill's width. */
-  font-variant-numeric: tabular-nums;
-  color: #ffe0a0;
-  text-shadow: 0 2px 6px #000;
-}
-.hud-deadline.urgent {
-  border-color: #ff5a4d;
-  background: rgba(60, 0, 0, 0.6);
-  animation: hud-deadline-throb 0.7s infinite alternate;
-}
-.hud-deadline.urgent .hud-deadline-tag,
-.hud-deadline.urgent .hud-deadline-time {
-  color: #ff6a5a;
-}
-@keyframes hud-deadline-throb {
-  from {
-    transform: scale(1);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-  }
-  to {
-    transform: scale(1.06);
-    box-shadow: 0 0 18px rgba(255, 70, 60, 0.65);
-  }
-}
+/* (The hardcore kill-deadline is no longer a visual timer — item 24. It warns via
+   the transient corruption banner instead; see world.stepDeadline + CorruptionBanner.) */
 
 /* Teammate frames (top left) */
 .hud-teammates {
@@ -344,6 +296,40 @@
   pointer-events: auto;
 }
 
+/* Touch pause button (mobile overlay's way into the pause menu). */
+.hud-pause-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 50;
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 22, 34, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  cursor: pointer;
+}
+.hud-pause-btn:active {
+  background: rgba(40, 44, 66, 0.8);
+}
+.hud-pause-glyph {
+  width: 14px;
+  height: 16px;
+  border-left: 4px solid #fff;
+  border-right: 4px solid #fff;
+  box-sizing: border-box;
+}
+/* On touch devices the volume moves left so it clears the pause button. */
+@media (pointer: coarse) {
+  .hud-volume {
+    right: 64px;
+  }
+}
+
 /* Class accent colors for teammate frames + local health bar. One colour per
  * class, sourced from the shared --cls-* tokens (styles.css :root, mirroring
  * engine/core/constants.ts CLASS_COLORS) so all eight classes stay in sync. */
@@ -371,6 +357,18 @@
 .hud-teammate.cls-druid {
   border-left-color: var(--cls-druid);
 }
+.hud-teammate.cls-bard {
+  border-left-color: var(--cls-bard);
+}
+.hud-teammate.cls-monk {
+  border-left-color: var(--cls-monk);
+}
+.hud-teammate.cls-sorcerer {
+  border-left-color: var(--cls-sorcerer);
+}
+.hud-teammate.cls-warlock {
+  border-left-color: var(--cls-warlock);
+}
 .hud-selfhp.cls-knight .hud-healthbar {
   border-color: var(--cls-knight);
 }
@@ -395,6 +393,18 @@
 .hud-selfhp.cls-druid .hud-healthbar {
   border-color: var(--cls-druid);
 }
+.hud-selfhp.cls-bard .hud-healthbar {
+  border-color: var(--cls-bard);
+}
+.hud-selfhp.cls-monk .hud-healthbar {
+  border-color: var(--cls-monk);
+}
+.hud-selfhp.cls-sorcerer .hud-healthbar {
+  border-color: var(--cls-sorcerer);
+}
+.hud-selfhp.cls-warlock .hud-healthbar {
+  border-color: var(--cls-warlock);
+}
 
 @keyframes hud-pulse {
   from {
@@ -413,8 +423,36 @@
     width: 52px;
     height: 52px;
   }
+  /* Small screens: the boss bar is the priority read — shrink it, and keep it
+     ABOVE the party frames so its health is never covered (item: boss health
+     hidden by party bars). Party frames drop BELOW the boss bar and go compact. */
+  .hud-bossbars {
+    width: min(94vw, 520px);
+    z-index: 30;
+  }
+  .hud-bossbar-label {
+    font-size: 12px;
+  }
+  .hud-bossbar-track {
+    height: 14px;
+  }
+  .hud-bossbar-num {
+    font-size: 10px;
+  }
   .hud-teammates {
-    width: 168px;
+    top: 84px;
+    left: 8px;
+    width: 150px;
+    max-width: 42vw;
+    gap: 4px;
+    z-index: 10;
+  }
+  .hud-teammate {
+    padding: 3px 7px 4px;
+    font-size: 11px;
+  }
+  .hud-teammate-hp {
+    height: 12px;
   }
   .hud-teammate-class {
     display: none;
@@ -598,6 +636,9 @@
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  /* Suppress the iOS long-press callout / copy-paste selection menu that pops
+     when a finger holds a stick or button (item: sticks trigger copy/paste). */
+  -webkit-touch-callout: none;
 }
 .wb-touch-controls > * {
   pointer-events: auto;
@@ -611,6 +652,9 @@
   background: radial-gradient(circle, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
   border: 2px solid rgba(255, 255, 255, 0.18);
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -659,6 +703,9 @@
   line-height: 1.05;
   padding: 4px;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   transition:
     transform 0.05s ease,
     background 0.05s ease;

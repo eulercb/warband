@@ -4,12 +4,66 @@
  * hit Resume, which starts a shared countdown before control returns. The host
  * additionally sees an "End Run" control to finish the fight early.
  */
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useStore } from '../state/store';
 import { useHudStore } from '../state/hudStore';
 import { endRun, leaveToMenu, openControls, playUiSound } from '../state/session';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
+import { previewPlayerStats } from '../../engine/content/charUpgrades';
+import { CLASSES } from '../../engine/content/classes';
 import TerrainLegend from './TerrainLegend';
+
+/** Signed percentage from a multiplier delta (0 → "—", 0.3 → "+30%", -0.18 → "-18%"). */
+function pctDelta(delta: number): string {
+  const n = Math.round(delta * 100);
+  if (n === 0) return '—';
+  return `${n > 0 ? '+' : ''}${n}%`;
+}
+
+/**
+ * The local hero's live character sheet (item: know your current stats). Resolved
+ * from the owned run boons for the ACTIVE class — no per-frame data, no wire cost.
+ * Exported so the (local, no-sim) reward-room pause overlay can reuse it.
+ */
+export function CharacterSheet() {
+  const classId = useHudStore((s) => s.classId);
+  const hp = useHudStore((s) => s.hp);
+  const maxHp = useHudStore((s) => s.maxHp);
+  const myUpgrades = useStore((s) => s.myUpgrades);
+  const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  const stats = useMemo(
+    () => (classId ? previewPlayerStats(classId, myUpgrades, myCharUpgrades) : null),
+    [classId, myUpgrades, myCharUpgrades],
+  );
+  if (!classId || !stats) return null;
+  const baseMove = CLASSES[classId].moveSpeed;
+  const rows: Array<[string, string, boolean]> = [
+    ['Damage', pctDelta(stats.damageMult - 1), stats.damageMult >= 1],
+    ['Damage taken', pctDelta(stats.damageTakenMult - 1), stats.damageTakenMult <= 1],
+    ['Cooldowns', pctDelta(stats.cooldownMult - 1), stats.cooldownMult <= 1],
+    ['Cast time', pctDelta(stats.castMult - 1), stats.castMult <= 1],
+    ['Move speed', pctDelta(stats.moveSpeed / baseMove - 1), stats.moveSpeed >= baseMove],
+  ];
+  if (stats.regenPerSec > 0) rows.push(['Regen', `${stats.regenPerSec.toFixed(1)} HP/s`, true]);
+  if (stats.terrainResist > 0) rows.push(['Terrain resist', pctDelta(stats.terrainResist), true]);
+  return (
+    <div className="wb-pause-stats">
+      <span className="wb-field-label">
+        {CLASSES[classId].name} — {Math.round(hp)}/{Math.round(maxHp)} HP
+      </span>
+      <div className="wb-pause-stat-grid">
+        {rows.map(([label, val, good]) => (
+          <div key={label} className="wb-pause-stat">
+            <span className="wb-pause-stat-label">{label}</span>
+            <span className={`wb-pause-stat-val${val === '—' ? '' : good ? ' good' : ' bad'}`}>
+              {val}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function PauseMenu({ onResume }: { onResume: () => void }) {
   const isHost = useStore((s) => s.isHost);
@@ -72,6 +126,8 @@ export default function PauseMenu({ onResume }: { onResume: () => void }) {
             </ul>
           ) : null}
         </div>
+
+        <CharacterSheet />
 
         <div className="wb-pause-actions">
           <button type="button" className="wb-btn wb-btn-primary wb-btn-lg" onClick={onResumeClick}>

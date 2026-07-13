@@ -279,7 +279,7 @@ function wanderDrift(p: BotPersonality, tick: number): Vec2 {
 // ---------------------------------------------------------------------------
 
 /** Melee-role classes close the distance; the rest hold a ranged standoff. */
-const MELEE_CLASSES = new Set(['knight', 'barbarian', 'rogue', 'paladin']);
+const MELEE_CLASSES = new Set(['knight', 'barbarian', 'rogue', 'paladin', 'monk']);
 
 /** Desired movement vector for the bot's role (not yet normalized). */
 function positioning(bot: Player, focus: Vec2 | null, p: BotPersonality): Vec2 {
@@ -527,6 +527,38 @@ function decideAbilities(
       if (bossPos && cd.a1 <= 0) want.a1 = true; // Entangle toward boss
       if (cd.a3 <= 0 && distBoss <= reach(170)) want.a3 = true; // Cyclone
       if (hasTarget && cd.basic <= 0) want.basic = true; // Thornlash
+      break;
+    }
+    case 'bard': {
+      const wounded = mostWounded(world);
+      const needHeal = wounded ? wounded.hp / wounded.maxHp < 0.45 + p.smart * 0.25 : false;
+      if (hasTarget && cd.basic <= 0) want.basic = true; // Vicious Mockery
+      if (needHeal && cd.a2 <= 0) want.a2 = true; // Healing Word
+      if (cd.a1 <= 0) want.a1 = true; // Inspiration on cooldown
+      if (bossPos && cd.a3 <= 0 && distBoss <= reach(150)) want.a3 = true; // Dissonant Whispers
+      break;
+    }
+    case 'monk': {
+      if (hasTarget && cd.basic <= 0) want.basic = true; // Flurry of Blows
+      if (bossPos && cd.a1 <= 0 && distBoss <= reach(BOT_MELEE_RANGE + 20)) want.a1 = true; // Stunning Strike
+      if (cd.a2 <= 0 && (inDanger || distBoss > 240)) want.a2 = true; // Step of the Wind (dash, self-heal)
+      if (bossPos && cd.a3 <= 0 && distBoss <= reach(130)) want.a3 = true; // Quivering Palm
+      break;
+    }
+    case 'sorcerer': {
+      if (hasTarget && cd.basic <= 0) want.basic = true; // Chaos Bolt
+      // Meteor roots mid-cast — smart sorcerers only cast when it's safe to stand still.
+      const greedy = p.smart < 0.45;
+      if (bossPos && cd.a1 <= 0 && (greedy || !inDanger) && distBoss > 150) want.a1 = true; // Meteor
+      if (cd.a2 <= 0 && (hpFrac < panicAt || inDanger)) want.a2 = true; // Mirror Image
+      if (inDanger && cd.a3 <= 0) want.a3 = true; // Arcane Leap out of danger
+      break;
+    }
+    case 'warlock': {
+      if (hasTarget && cd.basic <= 0) want.basic = true; // Eldritch Blast
+      if (bossPos && cd.a1 <= 0) want.a1 = true; // Hex toward boss
+      if (bossPos && cd.a2 <= 0 && distBoss <= reach(140)) want.a2 = true; // Hellish Rebuke
+      if (cd.a3 <= 0) want.a3 = true; // Dark One's Blessing on cooldown
       break;
     }
   }

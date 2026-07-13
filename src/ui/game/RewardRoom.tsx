@@ -16,10 +16,19 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
-import { chooseUpgrade, chooseCharUpgrade, setNextReady, playUiSound, sfx } from '../state/session';
+import {
+  chooseUpgrade,
+  chooseCharUpgrade,
+  setNextReady,
+  playUiSound,
+  openControls,
+  leaveToMenu,
+  sfx,
+} from '../state/session';
 import { selfId } from '../../net/transport/room';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import HUD from './HUD';
+import { CharacterSheet } from './PauseMenu';
 import TouchControls from './TouchControls';
 import EphemeralShop from '../screens/EphemeralShop';
 import { useHudStore } from '../state/hudStore';
@@ -117,11 +126,31 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   const [vortexOpen, setVortexOpen] = useState(false);
   const [descending, setDescending] = useState(false);
   const [descentCharge, setDescentCharge] = useState(0);
+  // Local pause (item: enable the pause menu in the reward room). The reward room
+  // is a LOCAL scene with no shared sim, so this just freezes the hero and shows a
+  // menu — no networked pause. Mirrored into a ref so the render loop can freeze.
+  const [paused, setPaused] = useState(false);
 
   const showListRef = useRef(showList);
   useEffect(() => {
     showListRef.current = showList;
   }, [showList]);
+  const pausedRef = useRef(paused);
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
+
+  // Esc opens/closes the local pause menu (keyboard parity with the fight).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape') return;
+      if (useStore.getState().showControls) return; // Controls owns Esc while open
+      e.preventDefault();
+      setPaused((v) => !v);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // Gamepad drives the list overlay when it's open; otherwise the pad belongs to
   // the hero (walk to a relic / the vortex instead of scrolling a menu).
@@ -147,7 +176,12 @@ export default function RewardRoom({ result }: { result: FightResult }) {
 
     const st = useStore.getState();
     const myScore = result.stats.find((s) => s.peerId === selfId)?.score ?? 0;
-    const scene = new RewardScene(st.localName || 'Hero', st.localClass, offers, myScore);
+    // Carry the hero's earned subclass skills + extra classes into the room so the
+    // sub1/sub2 and Swap buttons show here too, not only in the fight (item 13).
+    const scene = new RewardScene(st.localName || 'Hero', st.localClass, offers, myScore, {
+      subSkills: st.mySubSkills,
+      extraClasses: st.myExtraClasses,
+    });
     sceneRef.current = scene;
 
     let renderer: Renderer | null = null;
@@ -202,8 +236,8 @@ export default function RewardRoom({ result }: { result: FightResult }) {
         if (!renderer || !input) return;
         const now = performance.now();
 
-        // Freeze the hero while the list overlay (or Controls) is up.
-        const uiOpen = showListRef.current || useStore.getState().showControls;
+        // Freeze the hero while the list overlay, the pause menu, or Controls is up.
+        const uiOpen = showListRef.current || pausedRef.current || useStore.getState().showControls;
 
         // Gamepad Options/Start toggles the accessible list view (walk-free path).
         const padMenu = padMenuPressed();
@@ -310,9 +344,12 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   return (
     <div className="wb-playground-root wb-reward-root">
       <div ref={canvasRef} className="wb-playground-canvas" aria-hidden="true" />
-      <HUD />
+      <HUD onPause={() => setPaused(true)} />
       {/* Touch overlay so mobile players can walk to relics + the vortex. */}
-      {!showList ? <TouchControls /> : null}
+      {!showList && !paused ? <TouchControls /> : null}
+
+      {/* Local pause menu (no shared sim — freezes the hero + shows your stats). */}
+      {paused ? <RewardPauseOverlay onResume={() => setPaused(false)} /> : null}
 
       {/* Room banner: run progress + next boss. */}
       <div className="wb-reward-banner">
@@ -332,7 +369,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
             className="wb-reward-banner-coins"
             title="Spend coins in the list view's Ephemeral Stall"
           >
-            🪙 {myCoins} — spend in list view
+            💰 {myCoins} — spend in list view
           </span>
         ) : null}
         <span className="wb-reward-banner-hint">
@@ -531,6 +568,57 @@ export default function RewardRoom({ result }: { result: FightResult }) {
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * The reward room's LOCAL pause menu. Unlike the fight's networked pause this only
+ * freezes the local hero and surfaces the character sheet + escape hatches (item:
+ * enable the pause menu on the reward room). Gamepad-navigable; B / Esc resumes.
+ */
+function RewardPauseOverlay({ onResume }: { onResume: () => void }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useGamepadMenu(panelRef, { onBack: onResume });
+  return (
+    <div className="wb-overlay" role="dialog" aria-modal="true" aria-label="Paused">
+      <div className="wb-panel wb-pause-panel" ref={panelRef}>
+        <h2 className="wb-title wb-title-sm">Paused</h2>
+        <p className="wb-subtitle">Take your time — the descent waits for you.</p>
+        <CharacterSheet />
+        <div className="wb-pause-actions">
+          <button
+            type="button"
+            className="wb-btn wb-btn-primary wb-btn-lg"
+            onClick={() => {
+              playUiSound('uiClick');
+              onResume();
+            }}
+          >
+            Resume
+          </button>
+          <button
+            type="button"
+            className="wb-btn wb-btn-ghost"
+            onClick={() => {
+              playUiSound('uiClick');
+              openControls();
+            }}
+          >
+            Controls
+          </button>
+          <button
+            type="button"
+            className="wb-btn wb-btn-ghost"
+            onClick={() => {
+              playUiSound('uiClick');
+              leaveToMenu();
+            }}
+          >
+            Leave to Menu
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

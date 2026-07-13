@@ -444,6 +444,28 @@ export class Sfx {
         }
         break;
 
+      case 'deadlineWarn':
+        // Hardcore deadline warning / chasm escalation (items 24/21/27): a low,
+        // ominous swell so the fading clock is felt, not read off a timer.
+        if (this.throttle('deadlineWarn', 0.1)) {
+          this.voice({
+            type: 'sawtooth',
+            freq: 55,
+            freqEnd: 110,
+            dur: 0.45,
+            peak: 0.2,
+            attack: 0.02,
+          });
+          this.noiseVoice({
+            dur: 0.35,
+            peak: 0.12,
+            filterType: 'bandpass',
+            filterFreq: 300,
+            filterFreqEnd: 900,
+          });
+        }
+        break;
+
       // 'hit' player/boss handled above; no default sound for the rest.
       default:
         break;

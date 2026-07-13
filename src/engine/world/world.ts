@@ -56,6 +56,7 @@ import {
   SCORE_PER_REVIVE,
   SCORE_PER_DEATH,
   TWIN_HP_FRAC,
+  PACK_EARLY_DMG_EASE,
   TWIN_DMG_FRAC,
   BOSS_HP_SCALE,
   BOSS_REGEN_MAX_FRAC,
@@ -63,6 +64,15 @@ import {
   HARDCORE_TIME_BUDGET,
   HARDCORE_DEADLINE_MULT,
   HARDCORE_DEADLINE_PACK_BONUS,
+  HARDCORE_DEADLINE_WARN_TIMES,
+  DEADLINE_CHASM_START,
+  DEADLINE_CHASM_CLOSE_RATE,
+  DEADLINE_CHASM_MIN,
+  DEADLINE_CHASM_DPS_FRAC,
+  DEADLINE_CHASM_PULSE,
+  DEADLINE_CHASM_RING_COUNT,
+  DEADLINE_CORRUPTION_INTERVAL,
+  CORRUPTION_COLLAPSE_DAMAGE,
   ADD_HP,
   ADD_MOVE_SPEED,
   ADD_RADIUS,
@@ -129,7 +139,7 @@ import { getClass, cloneAbilities, slowAttackCooldowns } from '../content/classe
 import { applyUpgrades } from '../content/upgrades';
 import type { UpgradeId } from '../content/upgrades';
 import { applyCharUpgrades, previewAbilityTable } from '../content/charUpgrades';
-import { getSubSkill } from '../content/subclasses';
+import { getSubSkill, subclassOfSkill } from '../content/subclasses';
 import { coinsForRank } from '../content/ephemeral';
 import type { EphemeralStock } from '../content/ephemeral';
 import { getMonster, abilityById } from '../content/monsters';
@@ -166,6 +176,29 @@ import { FAIR_TELEGRAPH_GAP } from '../core/constants';
 
 const SLOTS: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
 const SUB_SLOTS: SubSlot[] = ['sub1', 'sub2'];
+
+/**
+ * Whether a hero's sub-slot skill is usable with their ACTIVE class (item 14). A
+ * subclass skill belongs to exactly one class; a multiclass hero who swaps to a
+ * different class should not be able to cast (or see) it. A single-class hero — or
+ * a skill whose owning class we can't resolve — always passes, so nothing regresses.
+ */
+function subSlotForActiveClass(p: Player, slot: SubSlot): boolean {
+  const idx = slot === 'sub1' ? 0 : 1;
+  const id = activeSubSkillIds(p)[idx];
+  if (!id) return false;
+  const owner = subclassOfSkill(id)?.classId;
+  return owner == null || owner === p.classId;
+}
+
+/** The (≤2) subclass-skill ids belonging to the hero's ACTIVE class (item 15): a
+ *  multiclass hero can hold a full subclass per class, but only wields one at a
+ *  time. Drives which two skills bind to sub1/sub2 and what the client is told. */
+function activeSubSkillIds(p: Player): string[] {
+  return (p.subSkillIds ?? [])
+    .filter((id) => subclassOfSkill(id)?.classId === p.classId)
+    .slice(0, 2);
+}
 /** Cooldown gate (s) after a multiclass swap, so it can't be spammed for free casts. */
 const CLASS_SWAP_CD = 1.0;
 // Ephemeral shop consumables (item 21).
@@ -216,6 +249,10 @@ export interface WorldInit {
   players: WorldPlayerInit[];
   /** Endless cycle (0 = first run) — scales boss HP/damage (scaling.ts). */
   cycle?: number;
+  /** Slot within the current run (0-based) and the run's length, so a multi-boss
+   *  pack can be eased against party progression early on (item 10). Default 0/1. */
+  runIndex?: number;
+  runTotal?: number;
   /** Endless "type" modifier layered on the boss (Frost, Dark, …). */
   modifier?: BossModifier | null;
   /**
@@ -329,6 +366,11 @@ export class World {
   seed: number;
 
   scaling: ScalingResult;
+  /** Endless cycle + this encounter's slot in the run, for progression-aware pack
+   *  easing (item 10). Default cycle 0, slot 0 of a length-1 run. */
+  private readonly cycle: number;
+  private readonly runIndex: number;
+  private readonly runTotal: number;
   /** Def of the encounter's LEAD boss (terrain theme, legacy single-boss paths). */
   monsterDef: MonsterDef;
   modifier: BossModifier | null;
@@ -355,6 +397,10 @@ export class World {
   corruptionCount = 0;
   /** The last corruption kind fired, so a beat doesn't immediately repeat. */
   lastCorruption: string | null = null;
+  /** Deadline warning marks already announced (seconds-remaining) — each fires once. */
+  private deadlineWarned = new Set<number>();
+  /** Closing-chasm escalation once the deadline passes (items 21/27), or null. */
+  private deadlineChasm: { center: Vec2; radius: number; pulse: number } | null = null;
 
   tauntTargetId: EntityId | null = null;
   tauntTimer = 0;
@@ -374,6 +420,9 @@ export class World {
     this.rng = new Rng(init.seed);
     this.seed = init.seed;
     this.scaling = computeScaling(init.players.length, init.cycle ?? 0);
+    this.cycle = init.cycle ?? 0;
+    this.runIndex = init.runIndex ?? 0;
+    this.runTotal = init.runTotal ?? 1;
     this.monsterDef = getMonster(init.monsterId);
     this.modifier = init.modifier ?? null;
     this.practice = init.practice ?? false;
@@ -427,6 +476,123 @@ export class World {
   deadlineRemaining(): number {
     if (!Number.isFinite(this.hardcoreDeadline)) return Infinity;
     return Math.max(0, this.hardcoreDeadline - this.elapsed);
+  }
+
+  /**
+   * Hardcore kill-deadline (items 21/24/27). The deadline is neither a visual
+   * timer nor an instant wipe: the band gets escalating spoken-banner WARNINGS as
+   * it nears (30/15/5s), and when it passes a bottomless CHASM opens and closes in
+   * a shrinking ring around the party while corruption redoubles — so everyone is
+   * swallowed within a few desperate seconds. No-op outside a hardcore fight, and
+   * a kill (no boss alive) stops the clock so victory still wins on the wire.
+   */
+  private stepDeadline(dt: number): void {
+    if (!Number.isFinite(this.hardcoreDeadline)) return;
+    if (!this.bosses.some((b) => b.hp > 0)) return;
+    const remaining = this.deadlineRemaining();
+
+    // Before the deadline: spoken warnings at 30 / 15 / 5s (item 24, no visual timer).
+    if (remaining > 0) {
+      const center = { x: this.arena.w / 2, y: this.arena.h / 2 };
+      for (const mark of HARDCORE_DEADLINE_WARN_TIMES) {
+        if (remaining <= mark && !this.deadlineWarned.has(mark)) {
+          this.deadlineWarned.add(mark);
+          this.events.push({
+            t: 'deadlineWarn',
+            pos: center,
+            text: `${mark}s — fell it or the Abyss opens`,
+          });
+        }
+      }
+      return;
+    }
+
+    // Deadline passed: open + close the chasm (items 21/27).
+    if (!this.deadlineChasm) {
+      this.deadlineChasm = { center: this.aliveCentroid(), radius: DEADLINE_CHASM_START, pulse: 0 };
+      this.events.push({
+        t: 'deadlineWarn',
+        pos: { ...this.deadlineChasm.center },
+        text: 'The Abyss opens — flee to the centre!',
+      });
+      // Corruption redoubles from here on (item 27): force a tight cadence.
+      this.corruptionTimer = Math.min(this.corruptionTimer, DEADLINE_CORRUPTION_INTERVAL);
+    }
+    const chasm = this.deadlineChasm;
+    chasm.radius = Math.max(DEADLINE_CHASM_MIN, chasm.radius - DEADLINE_CHASM_CLOSE_RATE * dt);
+    const closed = chasm.radius <= DEADLINE_CHASM_MIN + 0.5;
+
+    // Plunge a hero into the void — killed outright (swallowed, not merely downed),
+    // so the escalation is truly terminal. The wipe check emits the time's-up cue.
+    const swallow = (p: Player): void => {
+      if (p.state === 'dead') return;
+      if (p.state === 'alive') p.stats.deaths += 1;
+      p.state = 'dead';
+      p.hp = 0;
+      this.events.push({ t: 'death', id: p.id, kind: 'player', pos: { ...p.pos } });
+    };
+
+    if (closed) {
+      // The ring has bottomed out: the band is fully swallowed, centred stragglers
+      // and all. checkEndConditions then ends the run as a defeat + deadline cue.
+      for (const p of this.players) swallow(p);
+      return;
+    }
+
+    // Telegraphed ring of strikes at the closing edge so clients see it squeeze in.
+    chasm.pulse -= dt;
+    if (chasm.pulse <= 0) {
+      chasm.pulse = DEADLINE_CHASM_PULSE;
+      this.spawnChasmRing(chasm.center, chasm.radius);
+    }
+
+    // Anyone OUTSIDE the shrinking safe circle is being devoured — a heavy fraction
+    // of max HP per second (ignores mitigation), killed outright once it bites deep.
+    for (const p of this.players) {
+      if (p.state === 'dead') continue;
+      if (dist(p.pos, chasm.center) > chasm.radius + p.radius) {
+        p.hp -= p.maxHp * DEADLINE_CHASM_DPS_FRAC * dt;
+        this.events.push({
+          t: 'hit',
+          pos: { ...p.pos },
+          amount: p.maxHp * DEADLINE_CHASM_DPS_FRAC * dt,
+          targetId: p.id,
+          side: 'player',
+        });
+        if (p.hp <= 0) swallow(p);
+      }
+    }
+  }
+
+  /** Average position of the still-standing heroes (chasm centre), arena mid if none. */
+  private aliveCentroid(): Vec2 {
+    const alive = this.players.filter((p) => p.state === 'alive');
+    if (alive.length === 0) return { x: this.arena.w / 2, y: this.arena.h / 2 };
+    let x = 0;
+    let y = 0;
+    for (const p of alive) {
+      x += p.pos.x;
+      y += p.pos.y;
+    }
+    return { x: x / alive.length, y: y / alive.length };
+  }
+
+  /** A telegraphed ring of strikes marking the chasm's closing edge (item 21/27). */
+  private spawnChasmRing(center: Vec2, radius: number): void {
+    const n = DEADLINE_CHASM_RING_COUNT;
+    const dmg = CORRUPTION_COLLAPSE_DAMAGE * this.bossDamageScalar();
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * Math.PI * 2;
+      this.addPendingStrike({
+        pos: { x: center.x + Math.cos(ang) * radius, y: center.y + Math.sin(ang) * radius },
+        radius: 92,
+        fuse: 0.9,
+        damage: dmg,
+        color: 0x6a2fa0, // void purple
+        slowMult: 0.5,
+        slowDuration: 1,
+      });
+    }
   }
 
   /**
@@ -522,19 +688,32 @@ export class World {
     });
   }
 
-  /** Bind up to two chosen subclass skills to the hero's sub1/sub2 slots (item 13). */
+  /**
+   * Record the hero's chosen subclass skills and bind the ACTIVE class's two to the
+   * sub1/sub2 slots (items 13/15). A multiclass hero can hold a full subclass per
+   * class; only the class they're currently wielding contributes usable sub skills,
+   * and a class swap re-binds via `rebindActiveSubs`.
+   */
   private bindSubSkills(p: Player, ids?: string[]): void {
     if (!ids || ids.length === 0) return;
-    const bound: string[] = [];
-    ids.slice(0, 2).forEach((id, i) => {
+    const valid = ids.filter((id) => getSubSkill(id));
+    if (valid.length === 0) return;
+    p.subSkillIds = valid;
+    p.cooldowns.sub1 = 0;
+    p.cooldowns.sub2 = 0;
+    this.rebindActiveSubs(p);
+  }
+
+  /** Rebuild sub1/sub2 from the sub skills belonging to the hero's ACTIVE class. */
+  private rebindActiveSubs(p: Player): void {
+    const active = activeSubSkillIds(p);
+    p.subAbilities = {};
+    active.forEach((id, i) => {
       const skill = getSubSkill(id);
       if (!skill) return;
       const slot: SubSlot = i === 0 ? 'sub1' : 'sub2';
-      (p.subAbilities ??= {})[slot] = { ...skill.ability, slot };
-      p.cooldowns[slot] = 0;
-      bound.push(id);
+      p.subAbilities![slot] = { ...skill.ability, slot };
     });
-    if (bound.length > 0) p.subSkillIds = bound;
   }
 
   /**
@@ -584,6 +763,15 @@ export class World {
     this.events.push({ t: 'heal', pos: { ...p.pos }, amount: healed, targetId: p.id });
   }
 
+  /** Damage ease for a multi-boss pack, tied to party progression (item 10): full
+   *  (1) in endless or by the run's end; softer for an early first-run pack. */
+  private packDamageEase(): number {
+    if (this.cycle > 0) return 1; // a built endless party takes packs at full strength
+    const progress = this.runTotal > 1 ? this.runIndex / (this.runTotal - 1) : 1;
+    const p = Math.max(0, Math.min(1, progress));
+    return PACK_EARLY_DMG_EASE + (1 - PACK_EARLY_DMG_EASE) * p;
+  }
+
   private spawnBosses(ids: MonsterId[], bossAffixes?: AffixId[][]): void {
     const n = ids.length;
     const twin = n > 1;
@@ -591,7 +779,10 @@ export class World {
     // of them share the floor (twin ≈ 0.62 HP / 0.8 dmg; a triplet/quad even
     // less), so N-at-once stays chaotic rather than simply N× lethal.
     const hpFrac = twin ? TWIN_HP_FRAC * Math.sqrt(2 / n) : 1;
-    const dmgFrac = twin ? TWIN_DMG_FRAC * Math.pow(2 / n, 0.35) : 1;
+    // Ease a pack's damage against party progression (item 10): a multi-boss event
+    // early in the FIRST run (cycle 0), when the band has barely any upgrades, hits
+    // softer, ramping to full by the run's end. Endless cycles pay full (built party).
+    const dmgFrac = twin ? TWIN_DMG_FRAC * Math.pow(2 / n, 0.35) * this.packDamageEase() : 1;
     ids.forEach((id, i) => {
       const def = getMonster(id);
       // The practice dummy is a UI/training target, not a balance target — it
@@ -733,6 +924,8 @@ export class World {
     // Mid-fight corruption beats (host-gated) — may add pending strikes, zones,
     // adds or boss buffs that resolve on subsequent ticks.
     if (this.corruptionEnabled) stepCorruption(this, dt);
+    // Hardcore kill-deadline warnings + closing-chasm escalation (items 21/24/27).
+    this.stepDeadline(dt);
     decayThreat(this.players, dt);
     this.tauntTimer = Math.max(0, this.tauntTimer - dt);
     this.separateAndClamp();
@@ -760,6 +953,10 @@ export class World {
       // Multiclass swap gate + per-class cooldown decay for the INACTIVE classes,
       // so a swapped-away kit keeps recovering while you fight with another.
       if (p.swapCd != null && p.swapCd > 0) p.swapCd = Math.max(0, p.swapCd - dt);
+      // Decay the purely-visual knockback/pull slide (item 28); logic never reads it.
+      if (p.slideRemaining != null && p.slideRemaining > 0) {
+        p.slideRemaining = Math.max(0, p.slideRemaining - dt);
+      }
       this.tickInactiveClassCooldowns(p, dt);
 
       if (p.castTimer > 0) {
@@ -822,9 +1019,12 @@ export class World {
             const fired = cmd.autofire ? held : held && !p.prevButtons[slot];
             if (fired) this.tryUseAbility(p, slot, moveDir);
           }
-          // Subclass skills (item 13) — same edge / autofire rules.
+          // Subclass skills (item 13) — same edge / autofire rules, but only while
+          // wielding the class the skill belongs to (item 14: a multiclass hero's
+          // sub skills go dormant when they swap to a class that doesn't own them).
           for (const slot of SUB_SLOTS) {
             if (!p.subAbilities?.[slot]) continue;
+            if (!subSlotForActiveClass(p, slot)) continue;
             const held = cmd.buttons[slot] ?? false;
             const fired = cmd.autofire ? held : held && !(p.prevButtons[slot] ?? false);
             if (fired) this.tryUseAbility(p, slot, moveDir);
@@ -907,12 +1107,15 @@ export class World {
     if (p.swapCd != null && p.swapCd > 0) return;
     const table = p.classTables[classId];
     if (!table) return;
-    // Stash the current class's base-slot cooldowns.
+    // Stash the current class's base-slot AND subclass-slot cooldowns: each class
+    // carries its own subclass (item 15), so sub1/sub2 are per-class too now.
     p.classCooldowns[p.classId] = {
       basic: p.cooldowns.basic,
       a1: p.cooldowns.a1,
       a2: p.cooldowns.a2,
       a3: p.cooldowns.a3,
+      sub1: p.cooldowns.sub1,
+      sub2: p.cooldowns.sub2,
     };
     p.classId = classId;
     p.abilities = table;
@@ -922,9 +1125,11 @@ export class World {
       a1: cds.a1,
       a2: cds.a2,
       a3: cds.a3,
-      sub1: p.cooldowns.sub1, // subclass skills are the hero's, not per-class
-      sub2: p.cooldowns.sub2,
+      sub1: cds.sub1 ?? 0,
+      sub2: cds.sub2 ?? 0,
     };
+    // Swap sub1/sub2 to the new class's subclass skills (or clear if it has none).
+    this.rebindActiveSubs(p);
     p.castTimer = 0;
     p.castSlot = null;
     p.swapCd = CLASS_SWAP_CD;
@@ -940,6 +1145,8 @@ export class World {
       c.a1 = Math.max(0, c.a1 - dt);
       c.a2 = Math.max(0, c.a2 - dt);
       c.a3 = Math.max(0, c.a3 - dt);
+      if (c.sub1 != null) c.sub1 = Math.max(0, c.sub1 - dt);
+      if (c.sub2 != null) c.sub2 = Math.max(0, c.sub2 - dt);
     }
   }
 
@@ -2320,29 +2527,21 @@ export class World {
       this.events.push({ t: 'victory', pos: center });
       return;
     }
-    // Hardcore kill-DEADLINE (item 11): a boss is still standing (victory would
-    // have returned) and the clock has run out — the abyss claims the whole band.
-    // Checked AFTER victory so a kill landing on the very tick the deadline passes
-    // still wins. Host-authoritative and deterministic (deadline fixed at spawn).
-    if (anyBossAlive && this.elapsed >= this.hardcoreDeadline) {
-      for (const p of this.players) {
-        if (p.state === 'dead') continue;
-        if (p.state === 'alive') p.stats.deaths += 1; // downed heroes already counted
-        p.state = 'dead';
-        p.hp = 0;
-        this.events.push({ t: 'death', id: p.id, kind: 'player', pos: { ...p.pos } });
-      }
-      this.finished = true;
-      this.outcome = 'defeat';
-      this.endMs = this.elapsed * 1000;
-      this.events.push({ t: 'deadline', pos: { x: this.arena.w / 2, y: this.arena.h / 2 } });
-      return;
-    }
+    // Hardcore kill-DEADLINE (items 11/21/24/27): past the deadline the band is no
+    // longer instantly wiped — the closing chasm in `stepDeadline` devours them over
+    // a few seconds, downing/killing everyone (which the wipe check below then ends
+    // as a defeat). anyBossAlive is referenced there; kept local for readability.
+    void anyBossAlive;
     const anyAlive = this.players.some((p) => p.state === 'alive');
     if (!anyAlive && this.players.length > 0) {
       this.finished = true;
       this.outcome = 'defeat';
       this.endMs = this.elapsed * 1000;
+      // If the closing chasm caused this wipe, fire the classic time's-up cue at
+      // its centre (items 21/24/27) — the render layer flashes the "TIME'S UP" burst.
+      if (this.deadlineChasm) {
+        this.events.push({ t: 'deadline', pos: { ...this.deadlineChasm.center } });
+      }
     }
   }
 
@@ -2423,12 +2622,20 @@ export class World {
   }
 
   private playerView(p: Player): PlayerView {
+    // Purely-visual knockback/pull slide (item 28): the RENDERED position eases in
+    // from the pre-shove offset while `slideRemaining` burns down, so the hero
+    // travels rather than teleporting. `p.pos` (logic) is untouched.
+    const ease = p.slideRemaining && p.slideTotal ? p.slideRemaining / p.slideTotal : 0;
+    const rpos =
+      p.slideOff && ease > 0
+        ? wrapPos({ x: p.pos.x + p.slideOff.x * ease, y: p.pos.y + p.slideOff.y * ease })
+        : p.pos;
     return {
       id: p.id,
       peerId: p.peerId,
       name: p.name,
       classId: p.classId,
-      pos: { ...p.pos },
+      pos: { ...rpos },
       aim: { ...p.aim },
       hp: Math.max(0, Math.round(p.hp)),
       maxHp: p.maxHp,
@@ -2441,7 +2648,9 @@ export class World {
       castSlot: p.castSlot,
       castTimer: p.castTimer,
       score: Math.round(this.playerScore(p)),
-      subSkills: p.subSkillIds,
+      // Only the ACTIVE class's subclass skills cross the wire (item 15): the HUD
+      // binds them to sub1/sub2 by index, so a multiclass hero shows the right two.
+      subSkills: activeSubSkillIds(p),
       classes: p.classes,
       swapCd: p.swapCd,
       potions: p.potions,

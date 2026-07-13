@@ -1160,4 +1160,25 @@ describe('bot: integrated all-class fights stay finite and land damage', () => {
 
   it('knight/ranger/mage/cleric', () => runBand(['knight', 'ranger', 'mage', 'cleric'], 8));
   it('barbarian/rogue/paladin/druid', () => runBand(['barbarian', 'rogue', 'paladin', 'druid'], 5));
+  // The four expansion classes must fight too — before their bot AI was wired
+  // they pressed no buttons and never scratched the boss (item: bots broken).
+  it('bard/monk/sorcerer/warlock', () => runBand(['bard', 'monk', 'sorcerer', 'warlock'], 12));
+});
+
+describe('bot: expansion classes press their abilities', () => {
+  // Each new class, with a boss in melee reach and every cooldown ready, must
+  // want at least its basic attack (the pre-fix bug left them button-dead).
+  for (const c of ['bard', 'monk', 'sorcerer', 'warlock'] as const) {
+    it(`${c} presses its basic attack against a boss`, () => {
+      const w = mkWorld([c]);
+      const bot = w.players[0];
+      // Stand right on top of the boss so melee/pbaoe ranges are satisfied too.
+      bot.pos = { x: w.boss!.pos.x, y: w.boss!.pos.y + 40 };
+      readyCds(bot);
+      const cmd = computeBotInput(w, bot, w.tick, persona());
+      const pressedSomething =
+        cmd.buttons.basic || cmd.buttons.a1 || cmd.buttons.a2 || cmd.buttons.a3;
+      expect(pressedSomething).toBe(true);
+    });
+  }
 });

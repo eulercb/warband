@@ -223,6 +223,11 @@ export default function GameView() {
           if (e.t === 'corruption') {
             bannerSeq += 1;
             hudSet({ banner: { text: e.name, good: e.good === true, seq: bannerSeq } });
+          } else if (e.t === 'deadlineWarn') {
+            // Hardcore deadline warnings + chasm escalation (items 24/21/27) reuse
+            // the transient banner instead of a ticking on-screen timer.
+            bannerSeq += 1;
+            hudSet({ banner: { text: e.text, good: e.good === true, seq: bannerSeq } });
           }
         }
 

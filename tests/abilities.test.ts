@@ -4,6 +4,7 @@ import {
   resolveBossAbility,
   beamTick,
   withLength,
+  applyImpulse,
   PLAYER_RADIUS,
 } from '../src/engine/combat/abilities';
 import { World } from '../src/engine/world/world';
@@ -1690,5 +1691,41 @@ describe('player ability resolution defaults', () => {
     const before = boss.hp;
     resolvePlayerAbility(w, p, 'a2', ZERO);
     expect(before - boss.hp).toBeCloseTo(12, 6);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyImpulse — knockback/pull VISUAL slide (item 28)
+// ---------------------------------------------------------------------------
+describe('applyImpulse visual slide', () => {
+  it('moves the logical pos instantly but slides the RENDERED pos in from the origin', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    p.pos = { x: 800, y: 500 };
+    applyImpulse(w, p, { x: 1, y: 0 }, 100); // shove +x by 100u
+
+    // The authoritative position jumps to the final spot (logic/collisions intact).
+    expect(p.pos.x).toBeCloseTo(900, 3);
+    expect(p.slideOff).toBeTruthy();
+    expect(p.slideRemaining).toBeGreaterThan(0);
+
+    // Right after the shove (ease ≈ 1) the RENDERED pos is still back at the origin,
+    // so the hero visibly travels rather than teleporting.
+    const rendered0 = w.serialize().players[0].pos.x;
+    expect(rendered0).toBeCloseTo(800, 0);
+
+    // Once the slide settles, the rendered pos catches up to the logical pos.
+    p.slideRemaining = 0;
+    expect(w.serialize().players[0].pos.x).toBeCloseTo(900, 0);
+  });
+
+  it('does not animate a tiny shove (below the SHOVE_MIN threshold)', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    p.pos = { x: 800, y: 500 };
+    applyImpulse(w, p, { x: 1, y: 0 }, 10); // < SHOVE_MIN
+    expect(p.pos.x).toBeCloseTo(810, 3);
+    expect(p.slideRemaining).toBeUndefined(); // no slide recorded
+    expect(w.serialize().players[0].pos.x).toBeCloseTo(810, 0);
   });
 });

@@ -210,6 +210,27 @@ describe('Camera: zoom band (party-spread framing)', () => {
     runUpdates(cam, 200, 100);
     expect(cam.scale).toBeCloseTo(2 * ZOOM_MIN); // 2.0 = coverScale * ZOOM_MIN
   });
+
+  // Aspect-aware floor (mobile framing): a strongly non-square viewport may
+  // loosen BELOW a whole-arena cover fit so a spread party+boss stays on screen.
+  it('a portrait viewport loosens below cover to keep a spread group framed', () => {
+    const cam = new Camera(ARENA_W, ARENA_H);
+    cam.fit(500, 1000); // portrait: rw=0.3125, rh=1 -> coverScale=1
+    cam.frameGroup(100000); // huge spread -> target the aspect-aware floor
+    runUpdates(cam, 300, 100);
+    // Floor = min(1, max(contain/cover=0.3125, 1/OVERSCAN=0.4)) = 0.4, which is
+    // BELOW the cover fit (1.0) the old fixed ZOOM_MIN would have clamped to.
+    expect(cam.scale).toBeCloseTo(0.4);
+    expect(cam.scale).toBeLessThan(ZOOM_MIN);
+  });
+
+  it('an arena-aspect viewport still floors exactly at cover (no over-zoom-out)', () => {
+    const cam = new Camera(ARENA_W, ARENA_H);
+    cam.fit(ARENA_W, ARENA_H); // arena aspect -> contain == cover
+    cam.frameGroup(100000);
+    runUpdates(cam, 300, 100);
+    expect(cam.scale).toBeCloseTo(ZOOM_MIN); // never looser than cover
+  });
 });
 
 describe('Camera: world -> screen projection', () => {

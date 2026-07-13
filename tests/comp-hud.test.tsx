@@ -403,8 +403,9 @@ describe('<HUD>', () => {
     affixes: [],
   };
 
-  it('renders the hardcore kill-deadline clock (non-urgent) as mm:ss beneath the boss bar', () => {
-    // 90s remaining (> HARDCORE_DEADLINE_WARN of 30) → present but not urgent.
+  it('shows NO ticking deadline timer — the deadline warns via banners now (item 24)', () => {
+    // Even in a hardcore fight with time left, the HUD no longer paints a visual
+    // countdown clock; warnings arrive as transient banners (see world.stepDeadline).
     useHudStore.getState().set({
       active: true,
       classId: 'knight',
@@ -415,47 +416,8 @@ describe('<HUD>', () => {
     });
     const { container } = render(<HUD />);
 
-    const timer = container.querySelector('.hud-deadline');
-    expect(timer).toBeTruthy();
-    expect(timer?.classList.contains('urgent')).toBe(false);
-    expect(timer?.getAttribute('role')).toBe('timer');
-    expect(timer?.getAttribute('aria-label')).toBe('Kill deadline: 1:30 remaining');
-    expect(container.querySelector('.hud-deadline-time')?.textContent).toBe('1:30');
-    expect(container.querySelector('.hud-deadline-tag')?.textContent).toContain('DEADLINE');
-  });
-
-  it('reddens the kill-deadline clock in the final seconds (urgent)', () => {
-    // 15s remaining (<= HARDCORE_DEADLINE_WARN of 30) → the urgent modifier is set.
-    useHudStore.getState().set({
-      active: true,
-      classId: 'knight',
-      hp: 10,
-      maxHp: 100,
-      bosses: [deadlineBoss],
-      deadlineRemaining: 15,
-    });
-    const { container } = render(<HUD />);
-
-    const timer = container.querySelector('.hud-deadline');
-    expect(timer?.classList.contains('urgent')).toBe(true);
-    expect(container.querySelector('.hud-deadline-time')?.textContent).toBe('0:15');
-  });
-
-  it('renders no deadline clock when the remaining time is non-finite', () => {
-    // deadlineRemaining != null so DeadlineTimer mounts, but a non-finite value
-    // makes it render nothing (guard against a stale Infinity leaking in).
-    useHudStore.getState().set({
-      active: true,
-      classId: 'knight',
-      hp: 10,
-      maxHp: 100,
-      bosses: [deadlineBoss],
-      deadlineRemaining: Infinity,
-    });
-    const { container } = render(<HUD />);
-
     expect(container.querySelector('.hud-deadline')).toBeNull();
-    // The boss bar it would flow beneath is still present (we ARE in that branch).
+    // The boss bar is still there — only the clock beneath it is gone.
     expect(container.querySelector('.hud-bossbar')).toBeTruthy();
   });
 });
@@ -464,40 +426,42 @@ describe('<HUD>', () => {
 // Controls
 // ---------------------------------------------------------------------------
 
-/** The Controller `<section>` (index 1); index 0 is the Keyboard section. */
+/** The Controller bind section. Controls is tabbed now, so switch to the
+ * Controller tab first (idempotent), then return its single bind column. */
 function controllerSection(container: HTMLElement): Element {
-  const cols = container.querySelectorAll('.wb-controls-col');
-  return cols[1];
+  const tab = screen.getByRole('tab', { name: 'Controller' });
+  if (tab.getAttribute('aria-selected') !== 'true') fireEvent.click(tab);
+  return container.querySelector('.wb-controls-col') as Element;
 }
 
 describe('<Controls>', () => {
-  it('renders the rebindable actions and their default bindings', () => {
+  it('renders the rebindable actions and their default bindings across tabs', () => {
     const { container } = render(<Controls />);
 
-    // Title + action labels. Movement actions are keyboard-only (one row); the
-    // button actions (Basic Attack, Ability 1…) appear in BOTH columns (two rows).
+    // The Keyboard tab is default: title, a movement action, and 13 keyboard rows
+    // (4 move + 9 button actions). Default keyboard labels (basic => Space, a1 => Q).
     expect(screen.getByText('Controls')).toBeTruthy();
     expect(screen.getByText('Move Up')).toBeTruthy();
-    expect(screen.getAllByText('Basic Attack')).toHaveLength(2);
-    expect(screen.getAllByText('Ability 1')).toHaveLength(2);
-
-    // Row counts: 4 move + 9 button actions = 13 keyboard rows, 9 controller buttons.
-    const cols = container.querySelectorAll('.wb-controls-col');
-    expect(cols[0].querySelectorAll('.wb-bind-row')).toHaveLength(13);
-    expect(cols[1].querySelectorAll('.wb-bind-row')).toHaveLength(9);
-
-    // Default keyboard labels (basic => "Space", a1 => "Q").
+    expect(screen.getByText('Basic Attack')).toBeTruthy();
+    expect(
+      container.querySelector('.wb-controls-col')?.querySelectorAll('.wb-bind-row'),
+    ).toHaveLength(13);
     expect(screen.getByText('Space')).toBeTruthy();
     expect(screen.getByText('Q')).toBeTruthy();
-    // Default controller label for the first button (basic) is ✕ (PlayStation).
-    expect(controllerSection(container).querySelector('.wb-bind-key')?.textContent).toBe('✕');
 
-    // Pad-scheme chips + auto-detect selected by default.
+    // Controller tab: 9 button rows + the pad-scheme chips (auto-detect default),
+    // and the first button (basic) glyph is ✕ (PlayStation).
+    fireEvent.click(screen.getByRole('tab', { name: 'Controller' }));
+    expect(
+      container.querySelector('.wb-controls-col')?.querySelectorAll('.wb-bind-row'),
+    ).toHaveLength(9);
     expect(screen.getByText('Auto-detect')).toBeTruthy();
     expect(screen.getByText('Xbox (A B X Y)')).toBeTruthy();
     expect(screen.getByText('Auto-detect').getAttribute('aria-pressed')).toBe('true');
+    expect(container.querySelector('.wb-controls-col .wb-bind-key')?.textContent).toBe('✕');
 
-    // Auto-fire toggle defaults off.
+    // Options tab: the auto-fire toggle, defaulting off.
+    fireEvent.click(screen.getByRole('tab', { name: 'Options' }));
     expect(screen.getByText('Hold to auto-fire')).toBeTruthy();
     expect(useStore.getState().autofire).toBe(false);
   });
@@ -568,6 +532,7 @@ describe('<Controls>', () => {
 
   it('toggling auto-fire updates the store and shows the checkmark', () => {
     const { container } = render(<Controls />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Options' }));
     const toggle = container.querySelector('.wb-gauntlet-toggle');
     expect(toggle).toBeTruthy();
     if (toggle) fireEvent.click(toggle);
@@ -654,6 +619,7 @@ describe('<Controls>', () => {
   it('toggles screen-shake off→on and shows the accessibility copy while off', () => {
     useStore.setState({ screenShake: false });
     const { container } = render(<Controls />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Options' }));
     const toggle = screen.getByText('Screen shake').closest('button');
     if (!toggle) throw new Error('screen-shake toggle not found');
 

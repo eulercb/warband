@@ -294,6 +294,17 @@ export interface Player {
   /** Stun diminishing-returns state (see combat.applyStun). Lazily created. */
   stunDr?: StunDr;
 
+  /**
+   * Purely-visual slide (item 28). A knockback / pull sets the authoritative `pos`
+   * instantly (so all logic — collisions, the lethal-chasm plunge — is unaffected),
+   * but records the pre-move offset here so the RENDERED position eases in from it
+   * over `slideTotal` seconds — the hero visibly travels instead of teleporting,
+   * like the Rogue roll. Never read by the simulation; only `playerView` uses it.
+   */
+  slideOff?: Vec2;
+  slideRemaining?: number;
+  slideTotal?: number;
+
   /** Host-side edge-detection of the previous button state for this player. */
   prevButtons: ButtonState;
   lastSeq: number;
@@ -815,6 +826,10 @@ export type GameEvent =
   // Hardcore kill-deadline expired (item 11) — the clock ran out with a boss
   // still up and the band wiped. Drives a "time's up" cue on the final frame.
   | { t: 'deadline'; pos: Vec2 }
+  // Hardcore deadline WARNING / escalation banner (items 24/21/27): the countdown
+  // is no longer a visual timer — instead the band is warned at 30/15/5s, and told
+  // when the chasm opens and closes. Drives a transient center-screen banner.
+  | { t: 'deadlineWarn'; pos: Vec2; text: string; good?: boolean }
   // A mid-fight corruption beat just fired (enrage surge, telegraph rain, a
   // healing rift…). Drives a center-screen banner + a world-anchored burst.
   | { t: 'corruption'; kind: CorruptionKind; name: string; pos: Vec2; good?: boolean }

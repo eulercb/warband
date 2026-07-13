@@ -16,6 +16,8 @@ vi.mock('../src/ui/state/session', () => ({
   chooseCharUpgrade: vi.fn(),
   setNextReady: vi.fn(),
   playUiSound: vi.fn(),
+  openControls: vi.fn(),
+  leaveToMenu: vi.fn(),
   sfx: { play: vi.fn(), handleEvents: vi.fn() },
 }));
 
@@ -167,9 +169,11 @@ describe('<RewardRoom>', () => {
     expect(within(dialog).getByText('Generic boon chosen')).toBeTruthy();
 
     const charCards = dialog.querySelectorAll('.wb-upgrade-char');
-    expect(charCards[0].textContent ?? '').toContain('Immovable Object'); // the grand pick
+    // Grands are no longer in the pool (item 20) — the first class card is an
+    // ordinary boon (kn_bulwark, "Impenetrable"), now with a current-stats preview.
+    expect(charCards[0].textContent ?? '').toContain('Impenetrable');
     fireEvent.click(charCards[0]);
-    expect(vi.mocked(chooseCharUpgrade)).toHaveBeenCalledWith('kn_grand_immovable');
+    expect(vi.mocked(chooseCharUpgrade)).toHaveBeenCalledWith('kn_bulwark');
     expect(within(dialog).getByText('Class boon chosen')).toBeTruthy();
   });
 
@@ -197,5 +201,19 @@ describe('<RewardRoom>', () => {
     const owned = container.querySelector('.wb-upgrade-owned')?.textContent ?? '';
     expect(owned).toContain('Swift');
     expect(owned).toContain('Impenetrable');
+  });
+
+  it('opens a local pause menu on Escape and resumes on Resume (item: pause in reward room)', () => {
+    useHudStore.setState({ classId: 'knight', hp: 200, maxHp: 240 });
+    render(<RewardRoom result={makeResult()} />);
+    // No pause dialog until Esc.
+    expect(screen.queryByRole('dialog', { name: 'Paused' })).toBeNull();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByRole('dialog', { name: 'Paused' })).toBeTruthy();
+    // The character sheet rides along so you can read your stats.
+    expect(screen.getByText('Knight — 200/240 HP')).toBeTruthy();
+    // Resume closes it again.
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+    expect(screen.queryByRole('dialog', { name: 'Paused' })).toBeNull();
   });
 });

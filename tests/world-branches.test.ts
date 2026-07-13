@@ -170,8 +170,10 @@ describe('world-branches: subclass binding', () => {
       ],
     });
     const p = w.players[0];
-    // First (invalid) skipped; second (valid) bound to sub2.
-    expect(p.subAbilities?.sub2).toBeTruthy();
+    // The invalid id is dropped entirely (not just skipped), so the valid skill
+    // takes the first slot rather than wasting sub1 (item 15 binding).
+    expect(p.subAbilities?.sub1).toBeTruthy();
+    expect(p.subAbilities?.sub2).toBeUndefined();
     expect(p.subSkillIds).toEqual(['kn_champion_slam']);
   });
 
@@ -1963,15 +1965,20 @@ describe('world-branches: subclass slot edges', () => {
   it('a bound sub2 skill decays its cooldown and is not fired without its button', () => {
     const w = makeWorld({
       players: [
-        { peerId: 'a', name: 'A', classId: 'knight', subSkills: ['nope', 'kn_champion_slam'] },
+        {
+          peerId: 'a',
+          name: 'A',
+          classId: 'knight',
+          subSkills: ['kn_champion_slam', 'kn_champion_riposte'],
+        },
       ],
     });
     w.boss = null;
     w.terrain = [];
     const p = w.players[0];
-    // The single valid id lands in sub2 (the invalid first id is skipped).
+    // Two skills of the same subclass fill sub1 + sub2.
+    expect(p.subAbilities?.sub1).toBeTruthy();
     expect(p.subAbilities?.sub2).toBeTruthy();
-    expect(p.subAbilities?.sub1).toBeUndefined();
     p.cooldowns.sub2 = 5;
     // inp() carries no sub2 button → the `cmd.buttons[slot] ?? false` nullish path.
     w.step(DT, new Map([['a', inp()]]));
@@ -2542,14 +2549,19 @@ describe('world-branches: hardcore kill deadline', () => {
     deadHero.hp = 0;
     const aliveDeathsBefore = aliveHero.stats.deaths;
     const downedDeathsBefore = downedHero.stats.deaths;
-    w.hardcoreDeadline = 0; // clock already blown
-    w.step(DT, new Map());
+    w.hardcoreDeadline = 0; // clock already blown → the chasm opens at once
+    // The closing chasm devours the band over a few seconds (not an instant wipe).
+    let sawDeadline = false;
+    for (let i = 0; i < 600 && !w.finished; i++) {
+      w.step(DT, new Map());
+      if (w.events.some((e) => e.t === 'deadline')) sawDeadline = true;
+    }
     expect(w.finished).toBe(true);
     expect(w.outcome).toBe('defeat');
-    expect(w.events.some((e) => e.t === 'deadline')).toBe(true);
+    expect(sawDeadline).toBe(true);
     expect(aliveHero.state).toBe('dead');
     expect(downedHero.state).toBe('dead');
-    expect(deadHero.state).toBe('dead'); // already dead → skipped by the wipe loop
+    expect(deadHero.state).toBe('dead'); // already dead → skipped by the swallow
     expect(aliveHero.stats.deaths).toBe(aliveDeathsBefore + 1); // alive → newly counted
     expect(downedHero.stats.deaths).toBe(downedDeathsBefore); // downed → not double-counted
   });

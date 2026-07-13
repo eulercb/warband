@@ -131,7 +131,7 @@ describe('hardcore kill-deadline', () => {
     expect(w.deadlineRemaining()).toBeCloseTo(w.hardcoreDeadline, 5);
   });
 
-  it('wipes the band to defeat when the deadline passes with a boss still up', () => {
+  it('opens a closing chasm that devours the band when the deadline passes (items 21/27)', () => {
     const w = new World({
       monsterId: 'dragon',
       seed: 9,
@@ -144,16 +144,38 @@ describe('hardcore kill-deadline', () => {
     expect(w.boss!.hp).toBeGreaterThan(0);
     expect(w.finished).toBe(false);
 
-    // Jump the clock to the brink; a single tick then tips it over the deadline.
+    // Cross the deadline: the Abyss opens (a warning banner) — but the band is NOT
+    // instantly wiped; the chasm now has to close in on them.
     w.elapsed = w.hardcoreDeadline - SIM_DT / 2;
     w.step(SIM_DT, new Map());
+    expect(w.events.some((e) => e.t === 'deadlineWarn')).toBe(true);
+    expect(w.finished).toBe(false);
 
+    // Let the ring close over the next several seconds — it eventually swallows the
+    // whole band, ending the run as a defeat with the classic time's-up cue.
+    let sawDeadline = false;
+    for (let i = 0; i < 600 && !w.finished; i++) {
+      w.step(SIM_DT, new Map());
+      if (w.events.some((e) => e.t === 'deadline')) sawDeadline = true;
+    }
     expect(w.finished).toBe(true);
     expect(w.outcome).toBe('defeat');
     expect(w.result().outcome).toBe('defeat');
-    // The whole band is wiped and the moment emits a deadline cue.
     expect(w.players.every((p) => p.state === 'dead')).toBe(true);
-    expect(w.events.some((e) => e.t === 'deadline')).toBe(true);
+    expect(sawDeadline).toBe(true);
+  });
+
+  it('warns the band at 30 / 15 / 5s before the deadline instead of a ticking timer (item 24)', () => {
+    const w = hcWorld();
+    const marks: number[] = [];
+    // Sample near each warning threshold and collect the spoken-banner texts.
+    for (const mark of [30, 15, 5]) {
+      w.elapsed = w.hardcoreDeadline - mark - SIM_DT; // a hair before the mark…
+      w.step(SIM_DT, new Map()); // …this tick crosses it
+      for (const e of w.events) if (e.t === 'deadlineWarn') marks.push(mark);
+    }
+    // All three warnings fired, once each.
+    expect(marks).toEqual([30, 15, 5]);
   });
 
   it('does NOT fail the fight one tick before the deadline', () => {

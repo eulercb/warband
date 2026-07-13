@@ -16,21 +16,22 @@
  */
 
 import type { InputState, Vec2 } from '../engine/core/types';
-import { DEAD_ZONE } from '../engine/core/constants';
+import { DEAD_ZONE, AIM_DEAD_ZONE } from '../engine/core/constants';
 import { getBindings } from './bindings';
 
 /**
  * Apply a radial dead-zone to a raw stick vector. Returns a vector whose
  * magnitude is either 0 (inside the dead-zone) or rescaled into (0, 1] so the
- * response starts cleanly at the dead-zone edge with no jump. Never NaN.
+ * response starts cleanly at the dead-zone edge with no jump. Never NaN. The
+ * aim stick passes a deeper `dz` so idle stick drift never steals the reticle.
  */
-function applyDeadzone(x: number, y: number): Vec2 {
+function applyDeadzone(x: number, y: number, dz: number = DEAD_ZONE): Vec2 {
   const mag = Math.hypot(x, y);
-  if (!Number.isFinite(mag) || mag < DEAD_ZONE) {
+  if (!Number.isFinite(mag) || mag < dz) {
     return { x: 0, y: 0 };
   }
-  // Rescale [DEAD_ZONE, 1] -> (0, 1] so there's no discontinuity at the edge.
-  const scaled = Math.min((mag - DEAD_ZONE) / (1 - DEAD_ZONE), 1);
+  // Rescale [dz, 1] -> (0, 1] so there's no discontinuity at the edge.
+  const scaled = Math.min((mag - dz) / (1 - dz), 1);
   return { x: (x / mag) * scaled, y: (y / mag) * scaled };
 }
 
@@ -74,9 +75,10 @@ export function sampleGamepad(): { state: InputState; connected: boolean; active
     moveLen = 1;
   }
 
-  // Aim: unit vector of the right stick. Inside the dead-zone the aim is
-  // {0,0} = "no new aim" (the InputManager keeps the last reticle direction).
-  const aimVec = applyDeadzone(rawRx, rawRy);
+  // Aim: unit vector of the right stick. Inside the (deeper) aim dead-zone the
+  // aim is {0,0} = "no new aim" (the InputManager keeps the last reticle
+  // direction), so a resting/drifting stick can't twitch the reticle.
+  const aimVec = applyDeadzone(rawRx, rawRy, AIM_DEAD_ZONE);
   const aimLen = Math.hypot(aimVec.x, aimVec.y);
   const aim: Vec2 = aimLen > 0 ? { x: aimVec.x / aimLen, y: aimVec.y / aimLen } : { x: 0, y: 0 };
 

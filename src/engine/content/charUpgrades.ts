@@ -12,7 +12,8 @@
  */
 import type { ClassId, AbilitySlot, Player } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
-import { CLASSES, cloneAbilities, slowAttackCooldowns } from './classes';
+import { CLASSES, cloneAbilities, slowAttackCooldowns, describeAbility } from './classes';
+import { applyUpgrades, type UpgradeId } from './upgrades';
 import { MAX_SKILL_STACKS } from '../core/constants';
 
 /** What an upgrade's `apply` receives: the hero and their private ability table. */
@@ -283,10 +284,10 @@ const MAGE: CharUpgradeDef[] = [
     'mg_arcane',
     'Arcane Surge',
     '✨',
-    'Arcane Bolt hits for 22 (+6, ~+38%) and fires 18% more often',
+    'Arcane Bolt hits for 22 (+6, ~+38%) and fires 9% more often',
     ({ abilities: a }) => {
       addN(a.basic, 'damage', 6);
-      mul(a.basic, 'cooldown', 0.82);
+      mul(a.basic, 'cooldown', 0.91);
     },
   ),
   u(
@@ -467,9 +468,9 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_flurry',
     'Flurry',
     '⚡',
-    'Slash strikes 22% faster and hits for 23 (+5)',
+    'Slash strikes 11% faster and hits for 23 (+5)',
     ({ abilities: a }) => {
-      mul(a.basic, 'cooldown', 0.78);
+      mul(a.basic, 'cooldown', 0.89);
       addN(a.basic, 'damage', 5);
     },
   ),
@@ -678,9 +679,9 @@ const MONK: CharUpgradeDef[] = [
     'mo_flurry',
     'Empty Body',
     '👊',
-    'Flurry of Blows strikes 20% faster and hits for 20 (+5)',
+    'Flurry of Blows strikes 10% faster and hits for 20 (+5)',
     ({ abilities: a }) => {
-      mul(a.basic, 'cooldown', 0.8);
+      mul(a.basic, 'cooldown', 0.9);
       addN(a.basic, 'damage', 5);
     },
   ),
@@ -1047,11 +1048,12 @@ const GRAND: CharUpgradeDef[] = [
     'kn_grand_immovable',
     'Immovable Object',
     '🗿',
-    'Become a fortress: −25% damage taken and +15% max HP',
+    'Become a living fortress: −40% damage taken, +35% max HP, regenerate 2% HP/s',
     ({ player: p }) => {
-      p.damageTakenMult *= 0.75;
-      p.maxHp = Math.round(p.maxHp * 1.15);
+      p.damageTakenMult *= 0.6;
+      p.maxHp = Math.round(p.maxHp * 1.35);
       p.hp = p.maxHp;
+      p.regenPerSec += p.maxHp * 0.02;
     },
   ),
   g(
@@ -1059,11 +1061,12 @@ const GRAND: CharUpgradeDef[] = [
     'kn_grand_wrath',
     "Warlord's Wrath",
     '⚔️',
-    'Cleave hits for +12 and 20% faster; Shield Bash hits for +20',
+    'Cleave becomes a 360° whirlwind that drinks 20% as health (+14 dmg, +20 reach)',
     ({ abilities: a }) => {
-      addN(a.basic, 'damage', 12);
-      mul(a.basic, 'cooldown', 0.8);
-      addN(a.a3, 'damage', 20);
+      a.basic.halfAngleDeg = 180; // full circle
+      addN(a.basic, 'range', 20);
+      addN(a.basic, 'damage', 14);
+      addN(a.basic, 'lifestealFrac', 0.2);
     },
   ),
   g(
@@ -1071,10 +1074,11 @@ const GRAND: CharUpgradeDef[] = [
     'rg_grand_deadeye',
     'Deadeye',
     '🎯',
-    'Arrows hit for +15 and fly much faster (+150 speed)',
+    'Arrows become lightning bolts: +20 dmg, +250 speed, far longer range',
     ({ abilities: a }) => {
-      addN(a.basic, 'damage', 15);
-      addN(a.basic, 'projSpeed', 150);
+      addN(a.basic, 'damage', 20);
+      addN(a.basic, 'projSpeed', 250);
+      addN(a.basic, 'maxRange', 220);
     },
   ),
   g(
@@ -1082,10 +1086,11 @@ const GRAND: CharUpgradeDef[] = [
     'rg_grand_storm',
     'Arrow Storm',
     '🌩️',
-    'Multishot looses 3 extra arrows across a much wider fan',
+    'Multishot erupts into a storm — 5 extra arrows across a wide 40° fan (+6 each)',
     ({ abilities: a }) => {
-      addN(a.a1, 'projCount', 3);
-      addN(a.a1, 'spreadDeg', 15);
+      addN(a.a1, 'projCount', 5);
+      addN(a.a1, 'spreadDeg', 25);
+      addN(a.a1, 'damage', 6);
     },
   ),
   g(
@@ -1093,10 +1098,12 @@ const GRAND: CharUpgradeDef[] = [
     'mg_grand_archmage',
     'Archmage',
     '🧙',
-    'Mastery of magic: −25% ability cooldowns and −30% cast time',
+    'Spells snap out instantly: −60% cast time, +30% damage, +15% max HP',
     ({ player: p }) => {
-      p.cooldownMult *= 0.75;
-      p.castMult *= 0.7;
+      p.castMult *= 0.4;
+      p.damageMult *= 1.3;
+      p.maxHp = Math.round(p.maxHp * 1.15);
+      p.hp = p.maxHp;
     },
   ),
   g(
@@ -1104,10 +1111,10 @@ const GRAND: CharUpgradeDef[] = [
     'mg_grand_cataclysm',
     'Cataclysm',
     '☄️',
-    'Fireball erupts for +40 across a vastly wider blast (+60 radius)',
+    'Fireball becomes an apocalypse — +55 dmg across a colossal blast (+75 radius)',
     ({ abilities: a }) => {
-      addN(a.a1, 'impactRadius', 60);
-      addN(a.a1, 'damage', 40);
+      addN(a.a1, 'impactRadius', 75);
+      addN(a.a1, 'damage', 55);
     },
   ),
   g(
@@ -1115,10 +1122,13 @@ const GRAND: CharUpgradeDef[] = [
     'cl_grand_beacon',
     'Beacon of Hope',
     '🕯️',
-    'Heal restores +50 and Sanctuary mends +15 per tick',
+    'Heal pours for +70 at long range; Sanctuary becomes a vast font (+22/tick, +70 radius, +4s)',
     ({ abilities: a }) => {
-      addN(a.a1, 'damage', 50);
-      addN(a.a2, 'zoneTickHeal', 15);
+      addN(a.a1, 'damage', 70);
+      addN(a.a1, 'range', 120);
+      addN(a.a2, 'zoneTickHeal', 22);
+      addN(a.a2, 'radius', 70);
+      addN(a.a2, 'zoneDuration', 4);
     },
   ),
   g(
@@ -1126,11 +1136,13 @@ const GRAND: CharUpgradeDef[] = [
     'cl_grand_avatar',
     'Avatar of Faith',
     '👼',
-    '+20% max HP and Blessing grants +30% more damage',
+    'Ascend: +25% max HP; Blessing girds the band with +40% dmg AND 30% mitigation, 4s longer',
     ({ player: p, abilities: a }) => {
-      p.maxHp = Math.round(p.maxHp * 1.2);
+      p.maxHp = Math.round(p.maxHp * 1.25);
       p.hp = p.maxHp;
-      addN(a.a3, 'buffDamageMult', 0.3);
+      addN(a.a3, 'buffDamageMult', 0.4);
+      setMin(a.a3, 'buffDefMult', 0.7);
+      addN(a.a3, 'buffDuration', 4);
     },
   ),
   g(
@@ -1138,11 +1150,13 @@ const GRAND: CharUpgradeDef[] = [
     'bb_grand_unstoppable',
     'Unstoppable',
     '🐗',
-    '+20% max HP and Rage empowers to +30% more damage',
+    'Endless fury: +35% max HP; Rage grants +45% dmg, +20% move and lasts 6s longer',
     ({ player: p, abilities: a }) => {
-      p.maxHp = Math.round(p.maxHp * 1.2);
+      p.maxHp = Math.round(p.maxHp * 1.35);
       p.hp = p.maxHp;
-      addN(a.a1, 'buffDamageMult', 0.3);
+      addN(a.a1, 'buffDamageMult', 0.45);
+      addN(a.a1, 'buffMoveMult', 0.2);
+      addN(a.a1, 'buffDuration', 6);
     },
   ),
   g(
@@ -1150,10 +1164,11 @@ const GRAND: CharUpgradeDef[] = [
     'bb_grand_reaver',
     'Blood Reaver',
     '🩸',
-    'Swings drink 25% of the damage as health; Whirlwind hits for +25',
+    'Every swing drinks 40% as health; Whirlwind becomes a bloodbath (+30 dmg, +45 radius)',
     ({ abilities: a }) => {
-      addN(a.basic, 'lifestealFrac', 0.25);
-      addN(a.a3, 'damage', 25);
+      addN(a.basic, 'lifestealFrac', 0.4);
+      addN(a.a3, 'damage', 30);
+      addN(a.a3, 'radius', 45);
     },
   ),
   g(
@@ -1161,10 +1176,11 @@ const GRAND: CharUpgradeDef[] = [
     'ro_grand_shadow',
     'Shadow Master',
     '🌑',
-    'Shadowstep resets twice as fast; Backstab bursts for +40',
+    'Shadowstep resets almost instantly (−65% cd); Backstab annihilates for +60',
     ({ abilities: a }) => {
-      mul(a.a2, 'cooldown', 0.5);
-      addN(a.a1, 'damage', 40);
+      mul(a.a2, 'cooldown', 0.35);
+      addN(a.a1, 'damage', 60);
+      addN(a.a1, 'lifestealFrac', 0.25);
     },
   ),
   g(
@@ -1172,10 +1188,13 @@ const GRAND: CharUpgradeDef[] = [
     'ro_grand_venom',
     'Grand Venom',
     '☠️',
-    'Poison Vial festers for +15 per tick across a far wider cloud (+40)',
+    'Poison Vial becomes a creeping plague — +22/tick, +65 radius, +4s, slows to 50%',
     ({ abilities: a }) => {
-      addN(a.a3, 'zoneTickDamage', 15);
-      addN(a.a3, 'radius', 40);
+      addN(a.a3, 'zoneTickDamage', 22);
+      addN(a.a3, 'radius', 65);
+      addN(a.a3, 'zoneDuration', 4);
+      setMin(a.a3, 'slowMult', 0.5);
+      a.a3.slowDuration = Math.max(a.a3.slowDuration ?? 0, 1.5);
     },
   ),
   g(
@@ -1183,10 +1202,12 @@ const GRAND: CharUpgradeDef[] = [
     'pa_grand_aegis',
     'Eternal Aegis',
     '🛡️',
-    'Divine Shield blocks far more, and you take 15% less damage always',
+    'An unbreakable guardian: Divine Shield nears invulnerability, −20% dmg taken always, +20% max HP',
     ({ player: p, abilities: a }) => {
-      mul(a.a3, 'buffDefMult', 0.6);
-      p.damageTakenMult *= 0.85;
+      mul(a.a3, 'buffDefMult', 0.4);
+      p.damageTakenMult *= 0.8;
+      p.maxHp = Math.round(p.maxHp * 1.2);
+      p.hp = p.maxHp;
     },
   ),
   g(
@@ -1194,11 +1215,12 @@ const GRAND: CharUpgradeDef[] = [
     'pa_grand_dawn',
     'Dawnbringer',
     '🌅',
-    'Holy Strike hits for +15 and heals 20%; Lay on Hands restores +50',
+    'Holy Strike smites in a radiant arc healing 25% (+18 dmg, wider); Lay on Hands overflows (+60)',
     ({ abilities: a }) => {
-      addN(a.basic, 'damage', 15);
-      addN(a.basic, 'lifestealFrac', 0.2);
-      addN(a.a2, 'damage', 50);
+      addN(a.basic, 'damage', 18);
+      addN(a.basic, 'lifestealFrac', 0.25);
+      addN(a.basic, 'halfAngleDeg', 20);
+      addN(a.a2, 'damage', 60);
     },
   ),
   g(
@@ -1206,10 +1228,11 @@ const GRAND: CharUpgradeDef[] = [
     'dr_grand_wild',
     'Wild Shape',
     '🐾',
-    'Regrowth heals +50 and Thornlash splits into 2 extra thorns',
+    'Thornlash becomes a volley of 3 extra thorns (+6 each); Regrowth booms for +60',
     ({ abilities: a }) => {
-      addN(a.a2, 'damage', 50);
-      addN(a.basic, 'projCount', 2);
+      addN(a.a2, 'damage', 60);
+      addN(a.basic, 'projCount', 3);
+      addN(a.basic, 'damage', 6);
     },
   ),
   g(
@@ -1217,11 +1240,12 @@ const GRAND: CharUpgradeDef[] = [
     'dr_grand_grove',
     'Sacred Grove',
     '🌳',
-    'Entangle gnaws for +15 per tick across a far wider, longer snare',
+    'Entangle becomes a vast thornfield — +22/tick, +65 radius, +5s, slows to 40%',
     ({ abilities: a }) => {
-      addN(a.a1, 'zoneTickDamage', 15);
-      addN(a.a1, 'radius', 40);
-      addN(a.a1, 'zoneDuration', 3);
+      addN(a.a1, 'zoneTickDamage', 22);
+      addN(a.a1, 'radius', 65);
+      addN(a.a1, 'zoneDuration', 5);
+      setMin(a.a1, 'slowMult', 0.4);
     },
   ),
   g(
@@ -1229,10 +1253,11 @@ const GRAND: CharUpgradeDef[] = [
     'ba_grand_symphony',
     'Grand Symphony',
     '🎼',
-    'Inspiration grants +30% more damage and lasts 4s longer',
+    'Inspiration girds the band with +45% dmg AND 25% mitigation, lasting 6s longer',
     ({ abilities: a }) => {
-      addN(a.a1, 'buffDamageMult', 0.3);
-      addN(a.a1, 'buffDuration', 4);
+      addN(a.a1, 'buffDamageMult', 0.45);
+      setMin(a.a1, 'buffDefMult', 0.75);
+      addN(a.a1, 'buffDuration', 6);
     },
   ),
   g(
@@ -1240,10 +1265,12 @@ const GRAND: CharUpgradeDef[] = [
     'ba_grand_ballad',
     'Ballad of Heroes',
     '🎻',
-    'Healing Word restores +50 and Vicious Mockery hits for +15',
+    'Healing Word pours for +70; Vicious Mockery scatters into 3 mocking bolts (+8 each)',
     ({ abilities: a }) => {
-      addN(a.a2, 'damage', 50);
-      addN(a.basic, 'damage', 15);
+      addN(a.a2, 'damage', 70);
+      addN(a.basic, 'projCount', 2);
+      addN(a.basic, 'spreadDeg', 12);
+      addN(a.basic, 'damage', 8);
     },
   ),
   g(
@@ -1251,10 +1278,13 @@ const GRAND: CharUpgradeDef[] = [
     'mo_grand_ascend',
     'Ascendant',
     '🕉️',
-    '+20% move speed and Flurry of Blows strikes 30% faster',
+    'Transcend the flesh: +30% move speed, +8 Flurry dmg, Step of the Wind resets fast (+iframes)',
     ({ player: p, abilities: a }) => {
-      p.moveSpeed *= 1.2;
-      mul(a.basic, 'cooldown', 0.7);
+      p.moveSpeed *= 1.3;
+      addN(a.basic, 'damage', 8);
+      mul(a.a2, 'cooldown', 0.5);
+      addN(a.a2, 'iframes', 0.2);
+      addN(a.a2, 'healOnUse', 20);
     },
   ),
   g(
@@ -1262,11 +1292,12 @@ const GRAND: CharUpgradeDef[] = [
     'mo_grand_thousand',
     'Thousand Palms',
     '🙌',
-    'Flurry hits for +12; Stunning Strike stuns +0.8s and hits for +30',
+    'Stunning Strike locks foes down (+1.2s stun, +35 dmg); Quivering Palm devastates (+40 dmg, +55 radius)',
     ({ abilities: a }) => {
-      addN(a.basic, 'damage', 12);
-      addN(a.a1, 'stun', 0.8);
-      addN(a.a1, 'damage', 30);
+      addN(a.a1, 'stun', 1.2);
+      addN(a.a1, 'damage', 35);
+      addN(a.a3, 'damage', 40);
+      addN(a.a3, 'radius', 55);
     },
   ),
   g(
@@ -1274,10 +1305,11 @@ const GRAND: CharUpgradeDef[] = [
     'so_grand_wild',
     'Wild Magic Surge',
     '🎲',
-    'Chaos Bolt fires 2 extra bolts, each hitting for +8',
+    'Chaos Bolt splits into a fan of 3 extra bolts (+8 each) across a wide spread',
     ({ abilities: a }) => {
-      addN(a.basic, 'projCount', 2);
+      addN(a.basic, 'projCount', 3);
       addN(a.basic, 'damage', 8);
+      addN(a.basic, 'spreadDeg', 12);
     },
   ),
   g(
@@ -1285,10 +1317,10 @@ const GRAND: CharUpgradeDef[] = [
     'so_grand_cataclysm',
     'Meteor Swarm',
     '💥',
-    'Meteor erupts for +50 across a vastly wider blast (+60 radius)',
+    'Meteor becomes an extinction event — +65 dmg across a colossal blast (+75 radius)',
     ({ abilities: a }) => {
-      addN(a.a1, 'impactRadius', 60);
-      addN(a.a1, 'damage', 50);
+      addN(a.a1, 'impactRadius', 75);
+      addN(a.a1, 'damage', 65);
     },
   ),
   g(
@@ -1296,10 +1328,11 @@ const GRAND: CharUpgradeDef[] = [
     'wa_grand_pact',
     'Pact of the Fiend',
     '😈',
-    'Eldritch Blast hits for +15 and drinks 20% more of the damage',
+    'Eldritch Blast forks into 2 soul-draining bolts (+18 dmg, +35% lifesteal)',
     ({ abilities: a }) => {
-      addN(a.basic, 'damage', 15);
-      addN(a.basic, 'lifestealFrac', 0.2);
+      addN(a.basic, 'damage', 18);
+      addN(a.basic, 'projCount', 1);
+      addN(a.basic, 'lifestealFrac', 0.35);
     },
   ),
   g(
@@ -1307,11 +1340,13 @@ const GRAND: CharUpgradeDef[] = [
     'wa_grand_ruin',
     'Word of Ruin',
     '💀',
-    'Hex festers for +15 per tick across a wider curse; Hellish Rebuke +30',
+    'Hex becomes a vast, lingering curse (+22/tick, +65 radius, +4s); Hellish Rebuke erupts (+40)',
     ({ abilities: a }) => {
-      addN(a.a1, 'zoneTickDamage', 15);
-      addN(a.a1, 'radius', 40);
-      addN(a.a2, 'damage', 30);
+      addN(a.a1, 'zoneTickDamage', 22);
+      addN(a.a1, 'radius', 65);
+      addN(a.a1, 'zoneDuration', 4);
+      addN(a.a2, 'damage', 40);
+      addN(a.a2, 'radius', 30);
     },
   ),
 ];
@@ -1542,6 +1577,51 @@ export function previewAbilityTable(
   return abilities;
 }
 
+/**
+ * A hero's resolved persistent stat block after a run's boons are applied. Mirrors
+ * the mutable stat fields the World applies at spawn (generic upgrades first, then
+ * class-specific ones — the same order), so the pause-menu character sheet can show
+ * a player exactly what their picks add up to WITHOUT any of it crossing the wire.
+ */
+export interface PreviewedStats {
+  maxHp: number;
+  moveSpeed: number;
+  damageMult: number;
+  cooldownMult: number;
+  castMult: number;
+  damageTakenMult: number;
+  terrainResist: number;
+  regenPerSec: number;
+}
+
+/**
+ * Resolve the stat block a hero of `classId` ends up with after taking the given
+ * generic + character upgrades, off a throwaway stub (no World). For a multiclass
+ * hero pass the ACTIVE class — only that class's character boons apply, matching the
+ * live sim. Pure.
+ */
+export function previewPlayerStats(
+  classId: ClassId,
+  upgrades: string[],
+  charUpgrades: string[],
+): PreviewedStats {
+  const stub = stubPlayer(classId);
+  // Generic boons first, then class ones — the exact order World.spawn uses.
+  // applyUpgrades skips ids it doesn't recognise, so the loose cast is safe.
+  applyUpgrades(stub, upgrades as UpgradeId[]);
+  applyCharUpgrades(stub, charUpgrades);
+  return {
+    maxHp: stub.maxHp,
+    moveSpeed: stub.moveSpeed,
+    damageMult: stub.damageMult,
+    cooldownMult: stub.cooldownMult,
+    castMult: stub.castMult,
+    damageTakenMult: stub.damageTakenMult,
+    terrainResist: stub.terrainResist,
+    regenPerSec: stub.regenPerSec,
+  };
+}
+
 /** Most times a character upgrade may be taken (its `maxStacks`, or the shared cap). */
 export function charUpgradeMaxStacks(id: string): number {
   const graftup = parseGraftup(id);
@@ -1590,6 +1670,19 @@ function occupancyAfter(classId: ClassId, owned: readonly string[]): Record<Abil
  * unless a graft has displaced one of their native abilities (so heroes without
  * grafts never see these picks — and the offer roll's rng stays untouched).
  */
+/**
+ * Whether a CLASS boon still upgrades a skill the hero can actually use (item 26):
+ * a boon that touches ONLY slots whose native skill has been grafted over is dead
+ * — the replaced skill is gone, so it must drop out of the offer pool rather than
+ * level a skill that isn't in the kit. A stat-only boon (touches no slot) always
+ * qualifies. `occupant` is the replayed slot-occupancy map.
+ */
+function boonUpgradesLiveSkill(occupant: Record<AbilitySlot, SkillKey>, boonId: string): boolean {
+  const slots = BOON_SLOTS[boonId] ?? [];
+  if (slots.length === 0) return true; // stat-only boon — always relevant
+  return slots.some((s) => occupant[s] === s); // ≥1 native slot it touches is still live
+}
+
 export function reofferCandidates(classId: ClassId, owned: readonly string[]): string[] {
   if (!CLASSES[classId]) return []; // unrecognised class → no kit to reclaim
   const occupant = occupancyAfter(classId, owned);
@@ -1659,6 +1752,17 @@ export function describeCharOffer(
   const replaced = def.replaces ? current[def.replaces]?.name : null;
   let desc = replaced ? `${def.desc}. Replaces ${replaced}.` : def.desc;
   if (def.grand) desc = `GRAND — ${desc}`;
+  // Current-stats preview (item 4): if this boon retunes ability numbers, append
+  // the affected ability's resolved effect line AFTER stacking it on the hero's
+  // CURRENT kit — so a repeat pick shows real values ("Arrow → 3× 30 dmg · 0.5s
+  // cooldown") instead of a fixed "+5 damage". Grafts already name what they swap.
+  if (!def.replaces) {
+    const after = previewAbilityTable(classId, [...ownedChar, id]);
+    const preview = SLOTS.filter((s) => JSON.stringify(current[s]) !== JSON.stringify(after[s]))
+      .map((s) => `${after[s].name}: ${describeAbility(after[s])}`)
+      .join(' · ');
+    if (preview) desc = `${desc}. Now → ${preview}`;
+  }
   const label = def.grand ? `★ ${def.icon} ${def.name}` : `${def.icon} ${def.name}`;
   return { id, label, desc };
 }
@@ -1688,9 +1792,6 @@ export const HYBRID_OFFER_CHANCE = 0.45;
 /** Chance one offer is swapped for a reclaim / grafted-skill upgrade (items 15 & 17). */
 export const REOFFER_CHANCE = 0.5;
 
-/** Chance one class offer is swapped for a rare GRAND improvement (item 22). */
-export const GRAND_OFFER_CHANCE = 0.14;
-
 /**
  * Roll `n` distinct character-upgrade offers from a class's pool. `rnd` returns a
  * float in [0,1). Pure aside from the injected randomness (mirrors upgrades.ts).
@@ -1709,17 +1810,24 @@ export function rollCharChoices(
 ): string[] {
   const out: string[] = [];
   const extras = extraClasses.filter((c) => c !== classId);
+  // Slot occupancy after the hero's owned upgrades — drives the item-26 filter that
+  // drops boons which only upgrade a skill that's been grafted over. All-native for a
+  // graft-less hero, so it never filters anything for the common case.
+  const occupant = CLASSES[classId] ? occupancyAfter(classId, owned) : null;
+  const liveBoon = (id: string): boolean => !occupant || boonUpgradesLiveSkill(occupant, id);
   if (extras.length > 0) {
     // Multiclass (item 14/23): the pool spans EVERY owned class's upgrades, but the
     // MAIN class's picks are weighted heavier so they surface more often.
     const weighted: Array<{ id: string; w: number }> = [];
-    const push = (cid: ClassId, w: number): void => {
+    const push = (cid: ClassId, w: number, filterLive: boolean): void => {
       for (const d of CHAR_UPGRADES_BY_CLASS[cid] ?? []) {
-        if (!charUpgradeAtMax(d.id, owned)) weighted.push({ id: d.id, w });
+        if (charUpgradeAtMax(d.id, owned)) continue;
+        if (filterLive && !liveBoon(d.id)) continue; // item 26: replaced skill → drop
+        weighted.push({ id: d.id, w });
       }
     };
-    push(classId, MAIN_CLASS_WEIGHT);
-    for (const c of extras) push(c, 1);
+    push(classId, MAIN_CLASS_WEIGHT, true);
+    for (const c of extras) push(c, 1, false);
     const count = Math.min(n, weighted.length);
     while (out.length < count && weighted.length > 0) {
       const total = weighted.reduce((s, x) => s + x.w, 0);
@@ -1738,7 +1846,7 @@ export function rollCharChoices(
   } else {
     const pool = (CHAR_UPGRADES_BY_CLASS[classId] ?? [])
       .map((d) => d.id)
-      .filter((id) => !charUpgradeAtMax(id, owned));
+      .filter((id) => !charUpgradeAtMax(id, owned) && liveBoon(id)); // item 26 filter
     const count = Math.min(n, pool.length);
     while (out.length < count) {
       const i = Math.floor(rnd() * pool.length) % pool.length;
@@ -1753,14 +1861,10 @@ export function rollCharChoices(
     const hy = eligible[Math.floor(rnd() * eligible.length) % eligible.length];
     out[out.length - 1] = hy.id;
   }
-  // Rarely, surface a GRAND improvement (item 22) — a unique class capstone you
-  // can hold at most once — as a prominent first pick, if one is still un-owned.
-  const grandPool = (GRAND_BY_CLASS[classId] ?? [])
-    .map((d) => d.id)
-    .filter((id) => !charUpgradeAtMax(id, owned));
-  if (out.length > 0 && grandPool.length > 0 && rnd() < GRAND_OFFER_CHANCE) {
-    out[0] = grandPool[Math.floor(rnd() * grandPool.length) % grandPool.length];
-  }
+  // GRAND improvements are NEVER surfaced in the between-boss pool (item 20): they
+  // are prized, transformative capstones handed out only through the run-clear
+  // SPECIAL reward flow (see SpecialReward.tsx), so the ordinary shop stays a
+  // steady stream of incremental boons.
   // Re-offer (items 15 & 17): if a graft has displaced one of the hero's skills,
   // sometimes surface a reclaim of the original or an upgrade for the graft, so a
   // replaced ability isn't lost and a grafted one can still be levelled. Draws no

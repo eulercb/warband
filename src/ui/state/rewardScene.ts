@@ -125,11 +125,31 @@ export class RewardScene {
 
   private nextId = 1;
 
-  constructor(name: string, classId: ClassId, offers: RewardOffers, baseScore = 0) {
+  constructor(
+    name: string,
+    classId: ClassId,
+    offers: RewardOffers,
+    baseScore = 0,
+    /**
+     * The hero's EARNED loadout so far (item 13): their subclass skills and extra
+     * classes, so the reward-room hero shows the same sub1/sub2 + Swap buttons the
+     * fight does. Absent for a plain (no-subclass, single-class) hero.
+     */
+    loadout: { subSkills?: string[]; extraClasses?: ClassId[] } = {},
+  ) {
     this.world = new World({
       monsterId: 'dummy', // required by World init; no boss spawns in reward mode
       seed: (Math.random() * 2 ** 31) | 0,
-      players: [{ peerId: LOCAL_PEER, name: name || 'Hero', classId, baseScore }],
+      players: [
+        {
+          peerId: LOCAL_PEER,
+          name: name || 'Hero',
+          classId,
+          baseScore,
+          subSkills: loadout.subSkills,
+          extraClasses: loadout.extraClasses,
+        },
+      ],
       scene: 'reward',
     });
     this.layoutRelics(offers);

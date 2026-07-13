@@ -162,8 +162,13 @@ export async function hostGame(): Promise<void> {
       s.setNextReadyState(0, 0);
       // A fresh fight consumes any ephemeral perks bought last interstitial (item 21).
       s.resetEphemeralStock();
-      // Fresh run (first boss of cycle 0) clears carried upgrade display.
-      if (info.runIndex === 0 && info.cycle === 0) s.clearMyUpgrades();
+      // Fresh run (first boss of cycle 0) clears carried upgrade display. Every new
+      // gauntlet (item 23) resets the ephemeral coin purse — coins accumulate across
+      // a 5-boss run, then reset at the next gauntlet — while the build persists.
+      if (info.runIndex === 0) {
+        if (info.cycle === 0) s.clearMyUpgrades();
+        else s.resetCoins();
+      }
       s.setPhase('game');
     },
     onNextReady: (info) => useStore.getState().setNextReadyState(info.ready, info.total),
@@ -220,7 +225,11 @@ export async function joinGame(code: string): Promise<void> {
       s.setActiveHardcore(msg.hardcore ?? false);
       s.setNextReadyState(0, 0);
       s.resetEphemeralStock(); // a fresh fight consumes bought ephemeral perks (item 21)
-      if (msg.runIndex === 0 && msg.cycle === 0) s.clearMyUpgrades(); // fresh run
+      // Fresh run wipes the build; each later gauntlet resets only coins (item 23).
+      if (msg.runIndex === 0) {
+        if (msg.cycle === 0) s.clearMyUpgrades();
+        else s.resetCoins();
+      }
       s.setPhase('game');
     },
     onNextReady: (info) => useStore.getState().setNextReadyState(info.ready, info.total),

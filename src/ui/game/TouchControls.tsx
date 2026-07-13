@@ -23,21 +23,26 @@ import {
   isTouchCapable,
 } from '../../input/touch';
 import { previewAbilityTable } from '../../engine/content/charUpgrades';
-import { getSubSkill } from '../../engine/content/subclasses';
+import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
+import { AIM_DEAD_ZONE } from '../../engine/core/constants';
 import type { AbilitySlot, ButtonState } from '../../engine/core/types';
 
 /** Radius (px) of a virtual stick's active area; the knob clamps to this. */
 const STICK_R = 56;
 
-/** A draggable virtual stick that reports a normalized [-1,1] vector on drag. */
+/** A draggable virtual stick that reports a normalized [-1,1] vector on drag.
+ * `deadzone` (0..1) suppresses sub-threshold drags so a resting finger/tremor on
+ * the aim stick doesn't twitch the reticle (item: aim changes for no reason). */
 function VirtualStick({
   side,
   label,
   onVec,
+  deadzone = 0,
 }: {
   side: 'left' | 'right';
   label: string;
   onVec: (x: number, y: number) => void;
+  deadzone?: number;
 }) {
   const baseRef = useRef<HTMLDivElement>(null);
   const knobRef = useRef<HTMLDivElement>(null);
@@ -54,6 +59,9 @@ function VirtualStick({
     };
     const down = (e: PointerEvent): void => {
       if (pointerId.current !== null) return;
+      // Swallow the gesture so the browser never starts a text-selection / long-
+      // press callout on the stick (item: holding a stick opens copy/paste).
+      e.preventDefault();
       pointerId.current = e.pointerId;
       base.setPointerCapture(e.pointerId);
       // Re-centre the stick under the finger for a "floating" stick feel.
@@ -63,6 +71,7 @@ function VirtualStick({
     };
     const move = (e: PointerEvent): void => {
       if (pointerId.current !== e.pointerId) return;
+      e.preventDefault();
       let dx = e.clientX - origin.current.x;
       let dy = e.clientY - origin.current.y;
       const len = Math.hypot(dx, dy);
@@ -71,6 +80,12 @@ function VirtualStick({
         dy = (dy / len) * STICK_R;
       }
       setKnob(dx, dy);
+      // Below the dead-zone report {0,0}: for aim that means "keep the last
+      // reticle" (the sanitizer persists it), so idle jitter never re-aims.
+      if (len < deadzone * STICK_R) {
+        onVec(0, 0);
+        return;
+      }
       onVec(dx / STICK_R, dy / STICK_R);
     };
     const up = (e: PointerEvent): void => {
@@ -89,7 +104,7 @@ function VirtualStick({
       base.removeEventListener('pointerup', up);
       base.removeEventListener('pointercancel', up);
     };
-  }, [onVec]);
+  }, [onVec, deadzone]);
 
   return (
     <div ref={baseRef} className={`wb-touch-stick wb-touch-stick-${side}`} aria-hidden="true">
@@ -223,6 +238,7 @@ export default function TouchControls() {
     [localClass, myCharUpgrades],
   );
   const hasHud = useHudStore((s) => s.classId !== null);
+  const activeClass = useHudStore((s) => s.classId);
   const subSkills = useHudStore((s) => s.subSkills);
   const multiclass = useHudStore((s) => s.classes.length > 1);
   const potions = useHudStore((s) => s.potions);
@@ -238,14 +254,24 @@ export default function TouchControls() {
     const sk = id ? getSubSkill(id) : undefined;
     return sk ? clip(sk.name) : '';
   };
+  // A sub skill only shows while its owning class is the active one (item 14).
+  const subVisible = (id: string | undefined): boolean => {
+    if (!id) return false;
+    const owner = subclassOfSkill(id)?.classId;
+    return owner == null || owner === activeClass;
+  };
 
   return (
     <div className="wb-touch-controls" role="group" aria-label="Touch controls">
       <VirtualStick side="left" label="MOVE" onVec={setTouchMove} />
-      <VirtualStick side="right" label="AIM" onVec={setTouchAim} />
+      <VirtualStick side="right" label="AIM" onVec={setTouchAim} deadzone={AIM_DEAD_ZONE} />
       <div className="wb-touch-buttons">
-        {subSkills[1] ? <TouchButton slot="sub2" label={subName(subSkills[1])} kind="sub" /> : null}
-        {subSkills[0] ? <TouchButton slot="sub1" label={subName(subSkills[0])} kind="sub" /> : null}
+        {subVisible(subSkills[1]) ? (
+          <TouchButton slot="sub2" label={subName(subSkills[1])} kind="sub" />
+        ) : null}
+        {subVisible(subSkills[0]) ? (
+          <TouchButton slot="sub1" label={subName(subSkills[0])} kind="sub" />
+        ) : null}
         <TouchButton slot="a3" label={shortName('a3')} kind="a3" />
         <TouchButton slot="a2" label={shortName('a2')} kind="a2" />
         <TouchButton slot="a1" label={shortName('a1')} kind="a1" />

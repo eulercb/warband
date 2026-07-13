@@ -268,4 +268,21 @@ describe('<PauseMenu>', () => {
     expect(screen.getByText('Map legend')).toBeTruthy();
     expect(screen.getByText('Ice')).toBeTruthy();
   });
+
+  it('shows a character sheet with the active class, HP and resolved stat deltas', () => {
+    useHudStore.setState({ classId: 'knight', hp: 120, maxHp: 240 });
+    // Mighty = +15% damage; Bulwark = -15% damage taken.
+    useStore.setState({ myUpgrades: ['mighty', 'bulwark'], myCharUpgrades: [] });
+    renderMenu();
+    expect(screen.getByText('Knight — 120/240 HP')).toBeTruthy();
+    expect(screen.getByText('Damage')).toBeTruthy();
+    expect(screen.getByText('+15%')).toBeTruthy(); // damage
+    expect(screen.getByText('-15%')).toBeTruthy(); // damage taken
+  });
+
+  it('omits the character sheet when no class is active', () => {
+    useHudStore.setState({ classId: null });
+    const { container } = renderMenu();
+    expect(container.querySelector('.wb-pause-stats')).toBeNull();
+  });
 });

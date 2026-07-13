@@ -41,6 +41,14 @@ export const PLAYER_RADIUS = 16;
 
 // --- Input / netcode ---
 export const DEAD_ZONE = 0.15;
+/**
+ * Larger dead-zone for the AIM stick than for movement. Aim is normalized to a
+ * full-strength unit vector regardless of magnitude, so a worn/drifting stick (or
+ * an involuntary finger tremor on a touch stick) that leaks past the movement
+ * dead-zone would otherwise snap the reticle to a noisy heading — the "aim
+ * changes for no reason" bug. A deeper aim dead-zone rejects that idle noise.
+ */
+export const AIM_DEAD_ZONE = 0.28;
 export const INTERP_DELAY_MS = 100;
 export const INPUT_SEND_RATE = 30; // Hz (client -> host)
 
@@ -178,6 +186,13 @@ export const STUN_DR_FLOOR = 0.2; // s — anything shorter is resisted outright
 // chaotic but survivable.
 export const TWIN_HP_FRAC = 0.62;
 export const TWIN_DMG_FRAC = 0.8;
+/**
+ * Multi-boss packs are eased against PARTY PROGRESSION (item 10). The party grows
+ * a boss's worth of upgrades per slot, so a pack that lands early in a run — when
+ * the band is barely kitted — hits at this fraction of its damage, ramping to full
+ * (1.0) by the run's end. Endless cycles (a fully-built party) always pay full.
+ */
+export const PACK_EARLY_DMG_EASE = 0.78;
 /** Chance a mid-run slot rolls a MULTI-boss encounter (scales up in endless). */
 export const TWIN_BASE_CHANCE = 0.38;
 export const TWIN_CHANCE_PER_CYCLE = 0.14;
@@ -337,6 +352,28 @@ export const HARDCORE_DEADLINE_MULT = 2.4;
 export const HARDCORE_DEADLINE_PACK_BONUS = 0.6;
 /** Seconds-remaining under which the HUD countdown flips to its urgent (red) state. */
 export const HARDCORE_DEADLINE_WARN = 30;
+/**
+ * The deadline is no longer a ticking visual timer (item 24): instead the band
+ * gets escalating spoken-banner warnings at these seconds-remaining marks.
+ */
+export const HARDCORE_DEADLINE_WARN_TIMES = [30, 15, 5];
+// When the clock runs out (item 21/27) the boss doesn't instant-wipe the band —
+// a bottomless CHASM opens and closes in a shrinking ring around them, and
+// corruption redoubles, so everyone is swallowed within a few desperate seconds.
+/** Starting safe-circle radius (u) when the chasm opens around the party. */
+export const DEADLINE_CHASM_START = 560;
+/** How fast the safe circle closes inward (u/s). */
+export const DEADLINE_CHASM_CLOSE_RATE = 95;
+/** Safe radius (u) at which the band is fully swallowed (everyone left dies). */
+export const DEADLINE_CHASM_MIN = 54;
+/** Damage/s dealt to a hero standing OUTSIDE the safe circle, as a fraction of max HP. */
+export const DEADLINE_CHASM_DPS_FRAC = 0.6;
+/** Seconds between the chasm's telegraphed edge pulses (the closing ring of strikes). */
+export const DEADLINE_CHASM_PULSE = 1.6;
+/** Strikes spread around the ring each pulse (telegraphs the closing edge for clients). */
+export const DEADLINE_CHASM_RING_COUNT = 12;
+/** Corruption beat interval (s) forced while the chasm is closing — beats redouble. */
+export const DEADLINE_CORRUPTION_INTERVAL = 4;
 
 // --- Adds (skeletons) ---
 export const ADD_HP = 60;

@@ -88,15 +88,15 @@ describe('SpecialReward — tiered run-clear pick', () => {
     }
   });
 
-  it('tier 1: offers no second skill when the banked subclass id is unknown', () => {
-    // getSubclass() returns undefined for an unrecognised id, so the skill list
-    // falls back to `[]` (the `?? []` branch) — the panel renders with no cards.
+  it('ignores an unrecognised sub skill and falls back to offering a subclass', () => {
+    // A bogus skill id counts toward no class (subclassOfSkill → undefined), so the
+    // hero is treated as sub-less and the panel offers a subclass choice (item 15).
     useStore.setState({ mySubclassId: 'ghost_subclass', mySubSkills: ['ghost_skill'] });
-    const { container } = render(<SpecialReward />);
+    render(<SpecialReward />);
 
-    // We're in the tier-1 "pick a second skill" view, but with nothing to offer.
-    expect(screen.getByRole('group', { name: 'Choose a second subclass skill' })).toBeTruthy();
-    expect(container.querySelectorAll('.wb-special-card').length).toBe(0);
+    expect(screen.getByRole('group', { name: 'Choose a subclass' })).toBeTruthy();
+    const subs = subclassesFor('knight');
+    expect(screen.getByText(subs[0].name)).toBeTruthy();
     expect(chooseSubSkill).not.toHaveBeenCalled();
   });
 });
@@ -105,7 +105,7 @@ describe('EphemeralShop — coin stall (item 21)', () => {
   it('shows the coin balance and one card per non-hardcore perk', () => {
     useStore.setState({ myCoins: 12, activeHardcore: false });
     const { container } = render(<EphemeralShop />);
-    expect(screen.getByText(/🪙 12/)).toBeTruthy();
+    expect(screen.getByText(/💰 12/)).toBeTruthy();
     // The hardcore-only Second Chance is hidden outside a hardcore run.
     expect(screen.queryByText(EPHEMERAL.retry.name)).toBeNull();
     expect(screen.getByText(EPHEMERAL.potion.name)).toBeTruthy();

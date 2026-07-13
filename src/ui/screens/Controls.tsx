@@ -50,6 +50,10 @@ export default function Controls() {
   const screenShake = useStore((s) => s.screenShake);
   const setScreenShake = useStore((s) => s.setScreenShake);
   const [capture, setCapture] = useState<Capture>(null);
+  // Tabbed panel (item: the controls menu grew too big). One list at a time —
+  // Keyboard / Controller binds and the gameplay/accessibility Options — so the
+  // overlay stays compact on a phone without dropping any functionality.
+  const [tab, setTab] = useState<'keyboard' | 'controller' | 'options'>('keyboard');
   const panelRef = useRef<HTMLDivElement>(null);
   // While a rebind capture is pending, SUSPEND (don't disable) controller nav: the
   // handler stays topmost and swallows the assignment press so it can't leak down
@@ -121,33 +125,40 @@ export default function Controls() {
       <div className="wb-panel wb-controls-panel" ref={panelRef}>
         <h2 className="wb-title wb-title-sm">Controls</h2>
         <p className="wb-subtitle">
-          Click a button to rebind it, then press the key or gamepad button.
-          {capture ? ' Press Esc to cancel.' : ''}
+          {tab === 'options'
+            ? 'Gameplay and accessibility options.'
+            : `Click a button to rebind it, then press the key or gamepad button.${
+                capture ? ' Press Esc to cancel.' : ''
+              }`}
         </p>
 
-        <div className="wb-pad-scheme">
-          <span className="wb-field-label">Controller icons</span>
-          <div className="wb-pad-scheme-row" role="group" aria-label="Controller icon style">
-            {PAD_SCHEMES.map((scheme) => (
-              <button
-                type="button"
-                key={scheme}
-                className={`wb-btn wb-btn-chip${bindings.padScheme === scheme ? ' selected' : ''}`}
-                onClick={() => {
-                  playUiSound('uiClick');
-                  setPadScheme(scheme);
-                }}
-                aria-pressed={bindings.padScheme === scheme}
-              >
-                {PAD_SCHEME_LABELS[scheme]}
-              </button>
-            ))}
-          </div>
+        {/* Tab bar — one pane at a time keeps the panel compact. */}
+        <div className="wb-controls-tabs" role="tablist" aria-label="Controls sections">
+          {(
+            [
+              ['keyboard', 'Keyboard'],
+              ['controller', 'Controller'],
+              ['options', 'Options'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              type="button"
+              key={id}
+              role="tab"
+              aria-selected={tab === id}
+              className={`wb-controls-tab${tab === id ? ' selected' : ''}`}
+              onClick={() => {
+                playUiSound('uiClick');
+                setTab(id);
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        <div className="wb-controls-cols">
-          <section className="wb-controls-col">
-            <h3 className="wb-section-title">Keyboard</h3>
+        {tab === 'keyboard' ? (
+          <section className="wb-controls-col" aria-label="Keyboard bindings">
             <ul className="wb-bind-list">
               {(Object.keys(ACTION_LABELS) as KeyAction[]).map((action) => (
                 <li key={action} className="wb-bind-row">
@@ -165,10 +176,34 @@ export default function Controls() {
                 </li>
               ))}
             </ul>
+            {/* MOVE_ACTIONS referenced so movement rows stay grouped visually. */}
+            <div className="wb-controls-hint" aria-hidden="true">
+              Movement keys: {MOVE_ACTIONS.map((a) => codeToLabel(bindings.keys[a][0])).join(' · ')}
+            </div>
           </section>
+        ) : null}
 
-          <section className="wb-controls-col">
-            <h3 className="wb-section-title">Controller</h3>
+        {tab === 'controller' ? (
+          <section className="wb-controls-col" aria-label="Controller bindings">
+            <div className="wb-pad-scheme">
+              <span className="wb-field-label">Controller icons</span>
+              <div className="wb-pad-scheme-row" role="group" aria-label="Controller icon style">
+                {PAD_SCHEMES.map((scheme) => (
+                  <button
+                    type="button"
+                    key={scheme}
+                    className={`wb-btn wb-btn-chip${bindings.padScheme === scheme ? ' selected' : ''}`}
+                    onClick={() => {
+                      playUiSound('uiClick');
+                      setPadScheme(scheme);
+                    }}
+                    aria-pressed={bindings.padScheme === scheme}
+                  >
+                    {PAD_SCHEME_LABELS[scheme]}
+                  </button>
+                ))}
+              </div>
+            </div>
             <p className="wb-controls-note">
               Left stick moves, right stick aims. Rebind the action buttons below.
             </p>
@@ -192,55 +227,55 @@ export default function Controls() {
               ))}
             </ul>
           </section>
-        </div>
-        {/* MOVE_ACTIONS referenced so movement rows stay grouped visually. */}
-        <div className="wb-controls-hint" aria-hidden="true">
-          Movement keys: {MOVE_ACTIONS.map((a) => codeToLabel(bindings.keys[a][0])).join(' · ')}
-        </div>
+        ) : null}
 
-        <button
-          type="button"
-          className={`wb-gauntlet-toggle${autofire ? ' on' : ''}`}
-          onClick={() => {
-            playUiSound('uiClick');
-            setAutofire(!autofire);
-          }}
-          aria-pressed={autofire}
-        >
-          <span className="wb-gauntlet-check" aria-hidden="true">
-            {autofire ? '✓' : ''}
-          </span>
-          <span className="wb-gauntlet-text">
-            <span className="wb-gauntlet-title">Hold to auto-fire</span>
-            <span className="wb-gauntlet-sub">
-              {autofire
-                ? 'Holding an ability button repeats it automatically (fires as soon as it comes off cooldown).'
-                : 'Off: tap each ability button to use it. On: hold to keep firing.'}
-            </span>
-          </span>
-        </button>
+        {tab === 'options' ? (
+          <section className="wb-controls-options" aria-label="Options">
+            <button
+              type="button"
+              className={`wb-gauntlet-toggle${autofire ? ' on' : ''}`}
+              onClick={() => {
+                playUiSound('uiClick');
+                setAutofire(!autofire);
+              }}
+              aria-pressed={autofire}
+            >
+              <span className="wb-gauntlet-check" aria-hidden="true">
+                {autofire ? '✓' : ''}
+              </span>
+              <span className="wb-gauntlet-text">
+                <span className="wb-gauntlet-title">Hold to auto-fire</span>
+                <span className="wb-gauntlet-sub">
+                  {autofire
+                    ? 'Holding an ability button repeats it automatically (fires as soon as it comes off cooldown).'
+                    : 'Off: tap each ability button to use it. On: hold to keep firing.'}
+                </span>
+              </span>
+            </button>
 
-        <button
-          type="button"
-          className={`wb-gauntlet-toggle${screenShake ? ' on' : ''}`}
-          onClick={() => {
-            playUiSound('uiClick');
-            setScreenShake(!screenShake);
-          }}
-          aria-pressed={screenShake}
-        >
-          <span className="wb-gauntlet-check" aria-hidden="true">
-            {screenShake ? '✓' : ''}
-          </span>
-          <span className="wb-gauntlet-text">
-            <span className="wb-gauntlet-title">Screen shake</span>
-            <span className="wb-gauntlet-sub">
-              {screenShake
-                ? 'The camera jolts on heavy hits, casts and deaths. Turn off if it causes discomfort.'
-                : 'Off: the camera stays perfectly steady (accessibility).'}
-            </span>
-          </span>
-        </button>
+            <button
+              type="button"
+              className={`wb-gauntlet-toggle${screenShake ? ' on' : ''}`}
+              onClick={() => {
+                playUiSound('uiClick');
+                setScreenShake(!screenShake);
+              }}
+              aria-pressed={screenShake}
+            >
+              <span className="wb-gauntlet-check" aria-hidden="true">
+                {screenShake ? '✓' : ''}
+              </span>
+              <span className="wb-gauntlet-text">
+                <span className="wb-gauntlet-title">Screen shake</span>
+                <span className="wb-gauntlet-sub">
+                  {screenShake
+                    ? 'The camera jolts on heavy hits, casts and deaths. Turn off if it causes discomfort.'
+                    : 'Off: the camera stays perfectly steady (accessibility).'}
+                </span>
+              </span>
+            </button>
+          </section>
+        ) : null}
 
         <div className="wb-row wb-actions-row">
           <button

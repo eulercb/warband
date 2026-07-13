@@ -50,7 +50,7 @@ export const EPHEMERAL: Record<EphemeralId, EphemeralDef> = {
   defense: {
     id: 'defense',
     name: 'Stoneskin Tonic',
-    icon: '🪨',
+    icon: '🛡️',
     desc: '−25% damage taken for the next fight',
     cost: 4,
     kind: 'passive',
@@ -66,7 +66,7 @@ export const EPHEMERAL: Record<EphemeralId, EphemeralDef> = {
   revive: {
     id: 'revive',
     name: 'Phoenix Charm',
-    icon: '🪶',
+    icon: '🕊️',
     desc: 'Auto-revive once when you fall this fight',
     cost: 6,
     kind: 'auto',

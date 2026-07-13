@@ -431,6 +431,21 @@ describe('ephemeral shop (item 21)', () => {
     expect(useStore.getState().myCoins).toBe(5);
   });
 
+  it('resetCoins zeroes the purse + carried stock but keeps the build (item 23)', () => {
+    useStore.setState({
+      myCoins: 12,
+      myEphemeral: { speed: true, potions: 2 },
+      myUpgrades: ['swift'],
+      myCharUpgrades: ['kn_bulwark'],
+    });
+    useStore.getState().resetCoins();
+    expect(useStore.getState().myCoins).toBe(0);
+    expect(useStore.getState().myEphemeral).toEqual({});
+    // The persistent build survives a gauntlet-boundary coin reset.
+    expect(useStore.getState().myUpgrades).toEqual(['swift']);
+    expect(useStore.getState().myCharUpgrades).toEqual(['kn_bulwark']);
+  });
+
   it('buyEphemeral deducts coins, mirrors the stock and relays to the host', () => {
     const bought: string[] = [];
     const session: NetSession = {

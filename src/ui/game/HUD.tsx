@@ -6,11 +6,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useHudStore } from '../state/hudStore';
 import type { HudBoss } from '../state/hudStore';
 import { useStore } from '../state/store';
+import { isTouchCapable } from '../../input/touch';
+import { requestPause, playUiSound } from '../state/session';
 import VolumeControl from './VolumeControl';
 import { previewAbilityTable } from '../../engine/content/charUpgrades';
-import { getSubSkill } from '../../engine/content/subclasses';
+import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
 import { AFFIXES } from '../../engine/content/affixes';
-import { HARDCORE_DEADLINE_WARN } from '../../engine/core/constants';
 import {
   useBindings,
   keyLabelFor,
@@ -189,35 +190,18 @@ function BossBar({
   );
 }
 
-/**
- * Hardcore kill-deadline countdown (item 11). A Furi/enrage-timer-style clock at
- * the top of the screen so the pressure is legible — the band must fell the boss
- * before it hits 0:00 or the fight is lost. Reddens and pulses in the final
- * seconds. Only present in a hardcore fight (`deadlineRemaining` is otherwise null).
- */
-function DeadlineTimer({ remaining }: { remaining: number }) {
-  if (!Number.isFinite(remaining)) return null;
-  const secs = Math.ceil(Math.max(0, remaining));
-  const label = `${Math.floor(secs / 60)}:${(secs % 60).toString().padStart(2, '0')}`;
-  const urgent = remaining <= HARDCORE_DEADLINE_WARN;
-  return (
-    <div
-      className={`hud-deadline${urgent ? ' urgent' : ''}`}
-      role="timer"
-      aria-label={`Kill deadline: ${label} remaining`}
-    >
-      <span className="hud-deadline-tag">☠ DEADLINE</span>
-      <span className="hud-deadline-time">{label}</span>
-    </div>
-  );
-}
-
-export default function HUD() {
+/** HUD props. `onPause` overrides the default fight-pause (the reward room, which
+ * has no shared sim, passes a handler that opens its own local pause overlay). */
+export default function HUD({ onPause }: { onPause?: () => void } = {}) {
   const hud = useHudStore();
   const run = useStore((s) => s.run);
   const cycle = useStore((s) => s.cycle);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
   const source = hud.inputSource;
+  // Touch has no Esc / Options button, so the overlay needs its own pause control
+  // (item: mobile overlay can't pause). The HUD stays mounted while paused, so a
+  // button here survives the pause state (TouchControls unmounts).
+  const touchCapable = useMemo(() => isTouchCapable(), []);
   // Re-render on binding / pad-scheme changes so glyph hints stay in sync.
   useBindings((s) => s.bindings);
 
@@ -238,6 +222,21 @@ export default function HUD() {
 
   return (
     <div className="hud-root">
+      {/* Touch pause button — the mobile overlay's only way into the pause menu. */}
+      {touchCapable && (
+        <button
+          type="button"
+          className="hud-pause-btn"
+          aria-label="Pause"
+          onClick={() => {
+            playUiSound('uiClick');
+            if (onPause) onPause();
+            else requestPause(true);
+          }}
+        >
+          <span className="hud-pause-glyph" aria-hidden="true" />
+        </button>
+      )}
       {/* Boss bars (one per boss — twin encounters stack two), with the hardcore
           kill-deadline countdown flowing beneath them when it's a hardcore fight. */}
       {hud.bosses.length > 0 && (
@@ -245,7 +244,6 @@ export default function HUD() {
           {hud.bosses.map((b, i) => (
             <BossBar key={b.id} boss={b} run={run} cycle={cycle} first={i === 0} />
           ))}
-          {hud.deadlineRemaining != null && <DeadlineTimer remaining={hud.deadlineRemaining} />}
         </div>
       )}
 
@@ -331,10 +329,14 @@ export default function HUD() {
             {SLOT_ORDER.map((slot) => (
               <AbilityIcon key={slot} slot={slot} def={abilityTable[slot]} source={source} />
             ))}
-            {/* Subclass skills (item 13) — bound to sub1/sub2. */}
+            {/* Subclass skills (item 13) — bound to sub1/sub2. Only shown while the
+                hero wields the class the skill belongs to (item 14): a multiclass
+                hero's sub buttons vanish when they swap to a class without them. */}
             {hud.subSkills.map((id, i) => {
               const sk = getSubSkill(id);
               if (!sk) return null;
+              const owner = subclassOfSkill(id)?.classId;
+              if (owner != null && owner !== hud.classId) return null;
               return (
                 <AbilityIcon
                   key={id}
