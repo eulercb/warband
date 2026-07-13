@@ -20,6 +20,7 @@ import {
   angleOf,
   fromAngle,
   angleDelta,
+  mixSeed,
   Rng,
   pointInCircle,
   pointInCone,
@@ -334,6 +335,44 @@ describe('angleDelta', () => {
   it('is (approximately) antisymmetric for non-boundary inputs', () => {
     expect(angleDelta(1.2, 0.3)).toBeCloseTo(0.9);
     expect(angleDelta(0.3, 1.2)).toBeCloseTo(-0.9);
+  });
+});
+
+describe('mixSeed', () => {
+  it('folds a list of ints into a non-zero 32-bit seed', () => {
+    const h = mixSeed(1, 2, 3);
+    expect(Number.isInteger(h)).toBe(true);
+    expect(h).toBeGreaterThanOrEqual(1);
+    expect(h).toBeLessThanOrEqual(0xffffffff); // always an unsigned 32-bit value
+  });
+
+  it('is deterministic: identical arguments fold to the same seed', () => {
+    expect(mixSeed(42, 7, 99)).toBe(mixSeed(42, 7, 99));
+  });
+
+  it('is order-sensitive (the fold depends on argument order)', () => {
+    expect(mixSeed(1, 2)).not.toBe(mixSeed(2, 1));
+  });
+
+  it('with no arguments returns the raw FNV offset basis (loop skipped, no ?? 1)', () => {
+    // The for-loop body never runs, so the offset basis is returned verbatim.
+    expect(mixSeed()).toBe(0x811c9dc5); // 2166136261, already non-zero
+  });
+
+  it('a single value that cancels the basis folds to 0 and hits the `|| 1` guard', () => {
+    // h starts at the FNV offset basis; XORing that exact value zeroes h, and
+    // Math.imul(0, prime) ^ (0 >>> 15) stays 0 — so `h >>> 0` is 0 and the
+    // `|| 1` fallback returns 1 (a seed must never be zero).
+    expect(mixSeed(0x811c9dc5)).toBe(1);
+  });
+
+  it('mixed values produce a stable, well-distributed non-zero seed', () => {
+    for (const args of [[0], [0, 0], [-1], [123456789, 987654321], [0xffffffff, 0]]) {
+      const h = mixSeed(...args);
+      expect(Number.isInteger(h)).toBe(true);
+      expect(h).toBeGreaterThan(0); // never zero
+      expect(h).toBeLessThanOrEqual(0xffffffff);
+    }
   });
 });
 

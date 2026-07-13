@@ -612,6 +612,19 @@ describe('buildRun', () => {
     const c2 = buildRun('goblin', 2, new Rng(3)).map((id) => MONSTERS[id].tier);
     expect(c2.slice(1)).toEqual(['medium', 'hard', 'hard', 'hard']);
   });
+
+  it('refills from the used-only pool when a whole tier is excluded (line 1588)', () => {
+    // Exclude the ENTIRE easy tier. The cycle-0 spine still wants an easy boss at
+    // slot 1, so pickFrom's primary filter (not-used AND not-excluded) comes back
+    // empty and the fallback re-filters on not-used only.
+    const excludeEasy = new Set<MonsterId>(MONSTERS_BY_TIER.easy);
+    const run = buildRun(MONSTERS_BY_TIER.easy[0], 0, new Rng(4), excludeEasy);
+    expect(run).toHaveLength(RUN_LENGTH);
+    // Slot 1 was still filled from a real (unused) easy boss, never left blank.
+    expect(MONSTERS[run[1]].tier).toBe('easy');
+    expect(MONSTER_IDS).toContain(run[1]);
+    for (const id of run) expect(id).not.toBe('dummy');
+  });
 });
 
 describe('buildRunSlots', () => {

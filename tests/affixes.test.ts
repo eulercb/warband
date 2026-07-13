@@ -134,4 +134,17 @@ describe('rollAffixes', () => {
     const got = rollAffixes('hard', 5, 4, new Rng(7));
     expect(got.length).toBeLessThanOrEqual(MAX_AFFIXES);
   });
+
+  it('takes weightedTake’s last-element fallback when the roll overshoots the weight sum (line 184)', () => {
+    // weightedTake normally returns the instant its running roll crosses 0. Driven
+    // by an injected rng whose range() overshoots the total weight, the roll never
+    // crosses 0, so the loop runs to completion and the defensive `splice(last)`
+    // fallback fires for every pick — a real seeded Rng (range ∈ [0,total)) can't
+    // reach it, so we prove it with an rng stand-in, the way the suite injects rngs.
+    const overshoot = { range: (): number => 1e9 } as unknown as Rng;
+    const got = rollAffixes('hard', 2, 4, overshoot); // budget 3 over the full hard pool
+    expect(got).toHaveLength(3);
+    expect(new Set(got).size).toBe(3); // splice removes each pick -> still distinct
+    for (const id of got) expect(AFFIX_IDS).toContain(id);
+  });
 });

@@ -169,3 +169,83 @@ describe('startNetDiagnostics — already-watched peer + unchanged signature', (
     stop();
   });
 });
+
+describe('readInputs — localStorage.getItem throwing at module load', () => {
+  it('swallows a throwing getItem (private mode / sandboxed iframe) without crashing the import', async () => {
+    // The node env has no localStorage, so `setNetDebug`'s persist guard is the
+    // reachable case there — but the module-init read of localStorage.getItem can
+    // only THROW when localStorage EXISTS and is blocked. Stub such a localStorage
+    // and re-run module init: readInputs must catch it (stored = null) so the
+    // import never throws and the flag still resolves.
+    const throwing = {
+      getItem: () => {
+        throw new Error('access denied');
+      },
+      setItem: () => {},
+    };
+    try {
+      vi.stubGlobal('localStorage', throwing);
+      vi.resetModules();
+      const mod = await import('../src/net/log');
+      // Import succeeded (the throw was caught); with no usable stored override the
+      // flag resolves to a plain boolean rather than propagating the error.
+      expect(typeof mod.isNetDebugEnabled()).toBe('boolean');
+      // …and the module is still fully functional afterwards.
+      expect(mod.setNetDebug(true)).toBe(true);
+      expect(mod.isNetDebugEnabled()).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe('startNetDiagnostics snapshot — connected-peer tally', () => {
+  it('counts the connected peers when a snapshot is taken (drives the peersConnected filter)', async () => {
+    // `snapshot()` (the backing of warband.diagnose()) filters the peer list for
+    // connectionState === 'connected'. That filter predicate only runs with a
+    // NON-EMPTY peer map AND a reachable diagnose(). The node env has no window,
+    // so re-import the module with a stubbed window to wire up warband.diagnose().
+    try {
+      vi.stubGlobal('window', {});
+      vi.useFakeTimers();
+      vi.resetModules();
+      const mod = await import('../src/net/log');
+      // Keep verbose logging OFF so the poller's per-peer listener attach (which a
+      // plain fake peer lacks) is skipped; snapshot() itself is ungated and still
+      // runs the peersConnected filter.
+      mod.setNetDebug(false);
+
+      const peers: Record<string, RTCPeerConnection> = {
+        aaaaaa1: {
+          connectionState: 'connected',
+          iceConnectionState: 'completed',
+        } as unknown as RTCPeerConnection,
+        bbbbbb2: {
+          connectionState: 'connecting',
+          iceConnectionState: 'checking',
+        } as unknown as RTCPeerConnection,
+      };
+      const sockets: Record<string, { readyState: number }> = { 'wss://a': { readyState: 1 } };
+
+      const stop = mod.startNetDiagnostics({
+        scope: 'host',
+        getSockets: () => sockets,
+        getPeers: () => peers,
+        intervalMs: 1000,
+      });
+
+      const w = window as unknown as { warband?: { diagnose: () => void } };
+      w.warband?.diagnose(); // → snapshot() → peerList.filter(p => connected).length
+
+      // Exactly one of the two peers is 'connected', so the verdict is the
+      // transport-up line naming a single connected peer.
+      expect(infoSpy).toHaveBeenCalledWith(
+        expect.stringContaining('connected to 1 peer'),
+        expect.anything(),
+      );
+      stop();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

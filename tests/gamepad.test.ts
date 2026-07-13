@@ -234,6 +234,13 @@ describe('gamepad: rawGamepadAim (class-radial direction)', () => {
     stubPads([makePad({ axes: [0, 0, 0.1, 0.05] })]);
     expect(rawGamepadAim()).toEqual({ x: 0, y: 0 });
   });
+
+  it('treats missing right-stick axes as centred (?? 0 fallback on axes[2]/[3])', () => {
+    // A pad reporting an empty axes array: `pad.axes[2] ?? 0` and `pad.axes[3] ?? 0`
+    // both take the nullish-fallback arm, so the dead-zone sees (0,0) → {0,0}.
+    stubPads([makePad({ axes: [] })]);
+    expect(rawGamepadAim()).toEqual({ x: 0, y: 0 });
+  });
 });
 
 describe('gamepad: action buttons (default standard mapping)', () => {

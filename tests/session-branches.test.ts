@@ -272,6 +272,17 @@ describe('Host callbacks drive the store', () => {
     expect(st().activeHardcore).toBe(true);
   });
 
+  it('onStart resets only the coin purse on a fresh CYCLE (index 0, cycle > 0)', () => {
+    useStore.setState({ myUpgrades: ['swift'], myCoins: 50, myEphemeral: { potions: 2 } });
+    // index 0 with cycle > 0 takes the `else s.resetCoins()` arm: the build persists,
+    // only coins + ephemeral stock reset (item 23).
+    hosts[0].opts.onStart({ runIndex: 0, runTotal: 3, cycle: 1, runSeed: 7, hardcore: false });
+    expect(st().phase).toBe('game');
+    expect(st().myUpgrades).toEqual(['swift']); // NOT cleared -> the else arm, not clearMyUpgrades
+    expect(st().myCoins).toBe(0);
+    expect(st().myEphemeral).toEqual({});
+  });
+
   it('onPause mirrors named, anonymous, and resumed shared-pause states', () => {
     hosts[0].opts.onPause(true, { byName: 'Bob', countdown: 3 });
     expect(st().paused).toBe(true);
@@ -342,6 +353,16 @@ describe('Client callbacks drive the store', () => {
     expect(st().activeHardcore).toBe(false); // hardcore ?? false
     expect(st().myUpgrades).toEqual(['swift']); // not a fresh run -> kept
     expect(st().phase).toBe('game');
+  });
+
+  it('onStart resets only the coin purse on a fresh CYCLE (index 0, cycle > 0)', () => {
+    useStore.setState({ myUpgrades: ['swift'], myCoins: 50, myEphemeral: { potions: 2 } });
+    // Mirrors the host path: index 0 + cycle > 0 keeps the build but resets coins.
+    clients[0].opts.onStart({ runIndex: 0, runTotal: 3, cycle: 1, runSeed: 7, hardcore: false });
+    expect(st().phase).toBe('game');
+    expect(st().myUpgrades).toEqual(['swift']); // NOT cleared -> the else arm
+    expect(st().myCoins).toBe(0);
+    expect(st().myEphemeral).toEqual({});
   });
 
   it('onResult plays victory then defeat stings and shows the result', () => {

@@ -18,6 +18,15 @@ vi.mock('../src/ui/state/session', () => ({
   playUiSound: vi.fn(),
 }));
 
+// Spy on specialRewardStep but keep the real behaviour by default (so every other
+// test drives the genuine store→step logic). One test overrides it to inject a
+// skill2 step with an unresolvable subclass id and exercise SpecialReward's
+// defensive `?? []` fallback (a corruption the real step function never yields).
+vi.mock('../src/engine/content/subclasses', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/engine/content/subclasses')>();
+  return { ...actual, specialRewardStep: vi.fn(actual.specialRewardStep) };
+});
+
 import SpecialReward from '../src/ui/screens/SpecialReward';
 import EphemeralShop from '../src/ui/screens/EphemeralShop';
 import { useStore } from '../src/ui/state/store';
@@ -28,7 +37,8 @@ import {
   chooseCharUpgrade,
   playUiSound,
 } from '../src/ui/state/session';
-import { subclassesFor } from '../src/engine/content/subclasses';
+import { subclassesFor, specialRewardStep } from '../src/engine/content/subclasses';
+import { offerableGrands } from '../src/engine/content/charUpgrades';
 import { EPHEMERAL } from '../src/engine/content/ephemeral';
 
 const initial: AppState = { ...useStore.getState() };
@@ -116,6 +126,82 @@ describe('SpecialReward — tiered run-clear pick', () => {
     const subs = subclassesFor('knight');
     expect(screen.getByText(subs[0].name)).toBeTruthy();
     expect(chooseSubSkill).not.toHaveBeenCalled();
+  });
+
+  it('subclass step for an EXTRA class tags the title with that class name (L67 false side)', () => {
+    // Primary class complete (2 knight skills), an owned extra class (mage) with no
+    // subclass yet → the step is a SUBCLASS pick FOR mage, so forClass !== localClass.
+    const champ = subclassesFor('knight')[0];
+    useStore.setState({
+      mySubSkills: [champ.skills[0].id, champ.skills[1].id],
+      myExtraClasses: ['mage'],
+    });
+    render(<SpecialReward />);
+
+    expect(screen.getByRole('group', { name: 'Choose a subclass' })).toBeTruthy();
+    // The `(Mage)` suffix only renders on the false side of forClass === localClass.
+    expect(screen.getByText(/Choose a subclass \(Mage\)/)).toBeTruthy();
+    expect(screen.getByText(subclassesFor('mage')[0].name)).toBeTruthy();
+  });
+
+  it('second-skill step for an EXTRA class tags the title with that class name (L118 false side)', () => {
+    // Knight complete; mage owns exactly one of its subclass skills → a skill2 step
+    // FOR mage, so step.classId !== localClass and the `(Mage)` suffix shows.
+    const champ = subclassesFor('knight')[0];
+    const evoker = subclassesFor('mage')[0];
+    useStore.setState({
+      mySubSkills: [champ.skills[0].id, champ.skills[1].id, evoker.skills[0].id],
+      myExtraClasses: ['mage'],
+    });
+    render(<SpecialReward />);
+
+    expect(screen.getByRole('group', { name: 'Choose a second subclass skill' })).toBeTruthy();
+    expect(screen.getByText(/pick a second skill \(Mage\)/)).toBeTruthy();
+  });
+
+  it('classOrGrand shows the whole grand pool directly when it fits (L167 false, L163 non-grand else)', () => {
+    // Knight complete → classOrGrand. Owning all ten knight base+class grands leaves
+    // only the two Champion subclass grands offerable — a pool of 2 (≤ GRAND_SHOWN),
+    // so the rotating window is NOT used (L167 false side). The lone non-grand boon
+    // (kn_bulwark) drives the owned-grand reducer's `… ? n + 1 : n` else side (L163).
+    const mySubSkills = ['kn_champion_slam', 'kn_champion_charge'];
+    const myCharUpgrades = [
+      'kn_grand_immovable',
+      'kn_grand_wrath',
+      'kn_gk_basic_a',
+      'kn_gk_basic_b',
+      'kn_gk_a1_a',
+      'kn_gk_a1_b',
+      'kn_gk_a2_a',
+      'kn_gk_a2_b',
+      'kn_gk_a3_a',
+      'kn_gk_a3_b',
+      'kn_bulwark',
+    ];
+    useStore.setState({ mySubSkills, myCharUpgrades });
+    render(<SpecialReward />);
+
+    const expected = offerableGrands('knight', myCharUpgrades, mySubSkills);
+    expect(expected.length).toBeGreaterThan(0);
+    expect(expected.length).toBeLessThanOrEqual(4); // precondition: no rotation window
+    // Every offerable grand renders (a ★ card) — the count matches the pool exactly.
+    expect(screen.getAllByText(/^★ /).length).toBe(expected.length);
+  });
+
+  it('survives a skill2 step whose subclass id resolves to nothing (defensive `?? []`, L117)', () => {
+    // The real specialRewardStep never yields an unresolvable subclassId, so inject
+    // one: getSubclass() then returns undefined and `sub?.skills… ?? []` must hold,
+    // rendering the panel with no skill cards rather than throwing.
+    const spy = vi.mocked(specialRewardStep);
+    const original = spy.getMockImplementation();
+    spy.mockReturnValue({ kind: 'skill2', classId: 'knight', subclassId: 'ghost_subclass' });
+    try {
+      render(<SpecialReward />);
+      expect(screen.getByRole('group', { name: 'Choose a second subclass skill' })).toBeTruthy();
+      expect(screen.queryByRole('button')).toBeNull();
+    } finally {
+      spy.mockImplementation(original!);
+    }
   });
 });
 

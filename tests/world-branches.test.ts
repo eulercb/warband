@@ -2595,3 +2595,178 @@ describe('world-branches: player score without a base score', () => {
     expect(w.playerScore(p)).toBe(100);
   });
 });
+
+// ---------------------------------------------------------------------------
+// dormant subclass slot: the active class does not own the bound skill
+// ---------------------------------------------------------------------------
+
+describe('world-branches: dormant subclass slot', () => {
+  it('a sub slot with no active-class skill id stays dormant (subSlotForActiveClass → false)', () => {
+    const w = makeWorld({
+      players: [{ peerId: 'a', name: 'A', classId: 'knight', subSkills: ['kn_champion_slam'] }],
+    });
+    w.terrain = [];
+    w.obstacles = [];
+    const p = w.players[0];
+    // Hand-bind a second ability into sub2 while the hero still owns only ONE
+    // active-class sub-skill id, so activeSubSkillIds(p)[1] is undefined. Pressing
+    // sub2 must find no id (subSlotForActiveClass returns false at the `!id` guard)
+    // and leave the slot dormant (item 14) rather than casting.
+    p.subAbilities!.sub2 = { ...p.subAbilities!.sub1!, slot: 'sub2' };
+    p.cooldowns.sub2 = 0;
+    w.step(DT, new Map([['a', inp({ autofire: true, buttons: buttons({ sub2: true }) })]]));
+    // Dormant: the press neither cast the skill nor put sub2 on cooldown.
+    expect(p.cooldowns.sub2 ?? 0).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// hardcore closing-chasm edges (stragglers + a fully-downed band)
+// ---------------------------------------------------------------------------
+
+describe('world-branches: hardcore chasm edges', () => {
+  it('devours a straggler standing outside the shrinking ring (per-hero chasm DPS → swallow)', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 9,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'cleric' },
+      ],
+      hardcore: true,
+    });
+    expect(w.hardcore).toBe(true);
+    const a = w.players[0];
+    const b = w.players[1];
+    // Both start at the arena centre so the chasm opens centred there.
+    a.pos = { x: w.arena.w / 2, y: w.arena.h / 2 };
+    b.pos = { x: w.arena.w / 2, y: w.arena.h / 2 };
+
+    // Cross the deadline: the chasm opens (radius DEADLINE_CHASM_START = 560).
+    w.elapsed = w.hardcoreDeadline - DT / 2;
+    w.step(DT, new Map());
+
+    // Strand B in the far corner — a full toroidal diagonal (~943) from centre, so
+    // it sits well outside the ring — with a sliver of HP, while A stays safe at the
+    // centre so the run does not simply wipe.
+    b.pos = { x: 0, y: 0 };
+    b.hp = 1;
+    w.step(DT, new Map());
+
+    expect(b.state).toBe('dead');
+    expect(w.events.some((e) => e.t === 'death' && e.id === b.id)).toBe(true);
+    // A, standing in the safe centre, is untouched and the run is still live.
+    expect(a.state).toBe('alive');
+    expect(w.finished).toBe(false);
+  });
+
+  it('bleeds — but does not yet swallow — a healthy straggler outside the ring', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 9,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'cleric' },
+      ],
+      hardcore: true,
+    });
+    const a = w.players[0];
+    const b = w.players[1];
+    a.pos = { x: w.arena.w / 2, y: w.arena.h / 2 };
+    b.pos = { x: w.arena.w / 2, y: w.arena.h / 2 };
+    w.elapsed = w.hardcoreDeadline - DT / 2;
+    w.step(DT, new Map());
+
+    // Same corner straggle, but at FULL health: one chasm tick (~3% max HP) chips
+    // it without felling it, so the `p.hp <= 0` swallow guard takes its false arm.
+    b.pos = { x: 0, y: 0 };
+    b.hp = b.maxHp;
+    w.step(DT, new Map());
+
+    expect(b.hp).toBeLessThan(b.maxHp); // it was bitten…
+    expect(b.hp).toBeGreaterThan(0); // …but survived this tick.
+    expect(b.state).toBe('alive');
+    expect(w.events.some((e) => e.t === 'death' && e.id === b.id)).toBe(false);
+  });
+
+  it('centres the chasm on the arena when the whole band is already down (aliveCentroid → arena mid)', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 4,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight' },
+        { peerId: 'b', name: 'B', classId: 'ranger' },
+      ],
+      hardcore: true,
+    });
+    // Whole band is down before the deadline lands: no hero counts as "alive", so
+    // aliveCentroid falls back to the arena midpoint for the chasm's centre.
+    for (const p of w.players) {
+      p.state = 'downed';
+      p.hp = 0;
+      p.pos = { x: 40, y: 40 };
+    }
+    w.elapsed = w.hardcoreDeadline - DT / 2;
+    w.step(DT, new Map());
+
+    const opening = w.events.find(
+      (e) => e.t === 'deadlineWarn' && /Abyss opens/.test(e.text ?? ''),
+    );
+    expect(opening?.t).toBe('deadlineWarn');
+    // Narrow to the deadlineWarn variant (which carries `pos`) before asserting.
+    if (opening?.t === 'deadlineWarn') {
+      expect(opening.pos.x).toBeCloseTo(w.arena.w / 2, 5);
+      expect(opening.pos.y).toBeCloseTo(w.arena.h / 2, 5);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// a player projectile whose first collision is an add (not a boss)
+// ---------------------------------------------------------------------------
+
+describe('world-branches: player projectile strikes an add', () => {
+  it('a player-owned arrow routes through damageAdd (owner path)', () => {
+    const w = solo();
+    w.terrain = [];
+    w.obstacles = [];
+    const p = w.players[0];
+    // Add + arrow share a far corner, away from the boss, so the add is the first
+    // (and only) collision — driving the `else if (hitAdd)` arm of the resolver.
+    const add = mkAdd(w, { pos: { x: 100, y: 100 }, hp: 60, maxHp: 60 });
+    w.adds.push(add);
+    w.projectiles.push(
+      mkProj(w, {
+        pos: { x: 100, y: 100 },
+        vel: { x: 0, y: 0 },
+        ownerId: p.id,
+        side: 'player',
+        damage: 25,
+        impactRadius: 0,
+      }),
+    );
+    w.step(DT, new Map());
+    expect(add.hp).toBeLessThan(60);
+  });
+
+  it('an ownerless arrow subtracts raw damage from the add (no-owner path)', () => {
+    const w = solo();
+    w.terrain = [];
+    w.obstacles = [];
+    const add = mkAdd(w, { pos: { x: 120, y: 120 }, hp: 60, maxHp: 60 });
+    w.adds.push(add);
+    w.projectiles.push(
+      mkProj(w, {
+        pos: { x: 120, y: 120 },
+        vel: { x: 0, y: 0 },
+        ownerId: 999999, // no such player → owner resolves to null
+        side: 'player',
+        damage: 25,
+        impactRadius: 0,
+      }),
+    );
+    w.step(DT, new Map());
+    // No owner ⇒ no crit / threat bookkeeping: exactly base damage comes off.
+    expect(add.hp).toBe(35);
+  });
+});
