@@ -237,8 +237,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
         const now = performance.now();
 
         // Freeze the hero while the list overlay, the pause menu, or Controls is up.
-        const uiOpen =
-          showListRef.current || pausedRef.current || useStore.getState().showControls;
+        const uiOpen = showListRef.current || pausedRef.current || useStore.getState().showControls;
 
         // Gamepad Options/Start toggles the accessible list view (walk-free path).
         const padMenu = padMenuPressed();
@@ -350,9 +349,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
       {!showList && !paused ? <TouchControls /> : null}
 
       {/* Local pause menu (no shared sim — freezes the hero + shows your stats). */}
-      {paused ? (
-        <RewardPauseOverlay onResume={() => setPaused(false)} />
-      ) : null}
+      {paused ? <RewardPauseOverlay onResume={() => setPaused(false)} /> : null}
 
       {/* Room banner: run progress + next boss. */}
       <div className="wb-reward-banner">

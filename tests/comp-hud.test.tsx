@@ -443,18 +443,18 @@ describe('<Controls>', () => {
     expect(screen.getByText('Controls')).toBeTruthy();
     expect(screen.getByText('Move Up')).toBeTruthy();
     expect(screen.getByText('Basic Attack')).toBeTruthy();
-    expect(container.querySelector('.wb-controls-col')?.querySelectorAll('.wb-bind-row')).toHaveLength(
-      13,
-    );
+    expect(
+      container.querySelector('.wb-controls-col')?.querySelectorAll('.wb-bind-row'),
+    ).toHaveLength(13);
     expect(screen.getByText('Space')).toBeTruthy();
     expect(screen.getByText('Q')).toBeTruthy();
 
     // Controller tab: 9 button rows + the pad-scheme chips (auto-detect default),
     // and the first button (basic) glyph is ✕ (PlayStation).
     fireEvent.click(screen.getByRole('tab', { name: 'Controller' }));
-    expect(container.querySelector('.wb-controls-col')?.querySelectorAll('.wb-bind-row')).toHaveLength(
-      9,
-    );
+    expect(
+      container.querySelector('.wb-controls-col')?.querySelectorAll('.wb-bind-row'),
+    ).toHaveLength(9);
     expect(screen.getByText('Auto-detect')).toBeTruthy();
     expect(screen.getByText('Xbox (A B X Y)')).toBeTruthy();
     expect(screen.getByText('Auto-detect').getAttribute('aria-pressed')).toBe('true');

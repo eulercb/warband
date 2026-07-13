@@ -927,13 +927,17 @@ export class Host implements NetSession {
       const owner = sub?.classId; // the class this subclass belongs to
       const owned = this.subSkillsByPeer.get(peerId) ?? [];
       // The subclass must belong to a class the hero actually fields (item 19).
-      const heroClasses = [this.classForPeer(peerId), ...(this.extraClassesByPeer.get(peerId) ?? [])];
+      const heroClasses = [
+        this.classForPeer(peerId),
+        ...(this.extraClassesByPeer.get(peerId) ?? []),
+      ];
       const classOwned = owner != null && heroClasses.includes(owner);
       // One subclass per class: skills already held for the SAME class must share it,
       // and each subclass caps at two skills.
       const sameClass = owned.filter((id) => subclassOfSkill(id)?.classId === owner);
       const committedSub = sameClass.length > 0 ? subclassOfSkill(sameClass[0])?.id : null;
-      const okSubclass = sub?.id === msg.subclassId && (!committedSub || committedSub === msg.subclassId);
+      const okSubclass =
+        sub?.id === msg.subclassId && (!committedSub || committedSub === msg.subclassId);
       if (
         skill &&
         classOwned &&
