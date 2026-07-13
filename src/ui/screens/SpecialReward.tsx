@@ -23,7 +23,7 @@ import {
   type SubclassDef,
 } from '../../engine/content/subclasses';
 import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
-import { GRAND_BY_CLASS, charUpgradeAtMax } from '../../engine/content/charUpgrades';
+import { offerableGrands, CHAR_UPGRADES } from '../../engine/content/charUpgrades';
 import type { ClassId } from '../../engine/core/types';
 
 export default function SpecialReward() {
@@ -143,10 +143,26 @@ export default function SpecialReward() {
   // --- Every owned class complete: multiclass OR a grand improvement --------
   const ownedClasses = new Set<ClassId>([localClass, ...myExtraClasses]);
   const classOptions = CLASS_IDS.filter((c) => !ownedClasses.has(c)).slice(0, 4);
-  // Grands are only ever offered for classes the hero actually fields (item 19).
-  const grands = [...ownedClasses]
-    .flatMap((c) => GRAND_BY_CLASS[c] ?? [])
-    .filter((g) => !charUpgradeAtMax(g.id, myCharUpgrades));
+  // Grands are only ever offered for classes the hero actually fields (item 19), and
+  // now also cover base skills + subclasses (item 17): a skill grand only while its
+  // native slot is still equipped, a subclass grand only for a picked subclass.
+  const allGrands = [...ownedClasses].flatMap((c) =>
+    offerableGrands(c, myCharUpgrades, mySubSkills),
+  );
+  // The grand pool is now large; show a rotating window so repeat clears surface
+  // different capstones (skill + subclass grands too) instead of always the first few.
+  const GRAND_SHOWN = 4;
+  const ownedGrandCount = myCharUpgrades.reduce(
+    (n, id) => (CHAR_UPGRADES[id]?.grand ? n + 1 : n),
+    0,
+  );
+  const grands =
+    allGrands.length > GRAND_SHOWN
+      ? Array.from(
+          { length: GRAND_SHOWN },
+          (_, i) => allGrands[(ownedGrandCount + i) % allGrands.length],
+        )
+      : allGrands;
   return (
     <div className="wb-special-reward" role="group" aria-label="Add a class or a grand improvement">
       <span className="wb-special-title">✦ Add a class — or take a Grand improvement instead</span>
@@ -162,7 +178,7 @@ export default function SpecialReward() {
             <span className="wb-upgrade-desc">{CLASSES[c].role} — swap to it in the fight</span>
           </button>
         ))}
-        {grands.slice(0, 3).map((g) => (
+        {grands.map((g) => (
           <button
             key={g.id}
             type="button"

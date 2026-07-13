@@ -10,16 +10,21 @@ import {
   describeCharOffer,
   charUpgradeBadge,
   charUpgradeMaxStacks,
+  applySubclassGrands,
+  offerableGrands,
   REOFFER_CHANCE,
   CHAR_UPGRADES,
   CHAR_UPGRADES_BY_CLASS,
   HYBRID_UPGRADES,
   HYBRID_OFFER_CHANCE,
   GRAND_BY_CLASS,
+  SKILL_GRANDS,
+  SUBCLASS_GRANDS,
 } from '../src/engine/content/charUpgrades';
 import { CLASSES, CLASS_IDS, cloneAbilities } from '../src/engine/content/classes';
 import type { PlayerAbilityDef, AbilityKind } from '../src/engine/content/classes';
-import type { ClassId, Player, AbilitySlot } from '../src/engine/core/types';
+import { SUBCLASSES, getSubSkill, subclassOfSkill } from '../src/engine/content/subclasses';
+import type { ClassId, Player, AbilitySlot, SubSlot } from '../src/engine/core/types';
 
 // ---------------------------------------------------------------------------
 // Fixtures / helpers
@@ -109,17 +114,57 @@ describe('character-upgrade catalog', () => {
     }
   });
 
-  it('flat lookup covers every class + hybrid + grand def with unique ids', () => {
-    const grand = Object.values(GRAND_BY_CLASS).flat();
-    expect(grand).toHaveLength(12 * 2); // 2 grand improvements per class
-    const all = [...Object.values(CHAR_UPGRADES_BY_CLASS).flat(), ...HYBRID_UPGRADES, ...grand];
-    expect(all).toHaveLength(12 * 5 + 9 + 12 * 2); // 93
+  it('flat lookup covers every class + hybrid + all grand kinds with unique ids', () => {
+    const classGrand = Object.values(GRAND_BY_CLASS).flat();
+    expect(classGrand).toHaveLength(12 * 2); // 2 class capstones per class (item 22)
+    expect(SKILL_GRANDS).toHaveLength(12 * 4 * 2); // 2 per base skill: 12 × (basic/a1/a2/a3) × 2 = 96
+    expect(SUBCLASS_GRANDS).toHaveLength(12 * 2 * 2); // 2 per subclass: 24 subclasses × 2 = 48
+    const all = [
+      ...Object.values(CHAR_UPGRADES_BY_CLASS).flat(),
+      ...HYBRID_UPGRADES,
+      ...classGrand,
+      ...SKILL_GRANDS,
+      ...SUBCLASS_GRANDS,
+    ];
+    expect(all).toHaveLength(12 * 5 + 9 + 24 + 96 + 48); // 237
     const ids = all.map((d) => d.id);
     expect(new Set(ids).size).toBe(ids.length); // no duplicates
-    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(93);
+    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(237);
     for (const id of ids) expect(CHAR_UPGRADES[id].id).toBe(id);
-    // Every grand improvement is uniquely capped at one stack.
-    for (const d of grand) expect(d.maxStacks).toBe(1);
+    // Every grand improvement (class, skill, subclass) is uniquely capped at one stack.
+    for (const d of [...classGrand, ...SKILL_GRANDS, ...SUBCLASS_GRANDS]) {
+      expect(d.grand).toBe(true);
+      expect(d.maxStacks).toBe(1);
+    }
+  });
+
+  it('tags every base-skill grand with the class + base slot it twists (item 17)', () => {
+    // 2 grands for each of the 48 base skills, keyed by (classId, skillSlot).
+    const bySlot = new Map<string, number>();
+    for (const d of SKILL_GRANDS) {
+      expect(d.classId).not.toBe('any');
+      expect(['basic', 'a1', 'a2', 'a3']).toContain(d.skillSlot);
+      expect(d.subclassId).toBeUndefined();
+      const key = `${d.classId}:${d.skillSlot}`;
+      bySlot.set(key, (bySlot.get(key) ?? 0) + 1);
+    }
+    expect(bySlot.size).toBe(48); // every class × slot represented
+    for (const [, n] of bySlot) expect(n).toBe(2); // exactly two per skill
+  });
+
+  it('tags every subclass grand with its subclass + parent class (item 17)', () => {
+    const bySub = new Map<string, number>();
+    for (const d of SUBCLASS_GRANDS) {
+      const sub = subclassOfSkill(
+        SUBCLASSES[d.classId as ClassId].find((s) => s.id === d.subclassId)!.skills[0].id,
+      );
+      expect(sub?.id).toBe(d.subclassId); // subclassId names a real subclass
+      expect(sub?.classId).toBe(d.classId); // classId is that subclass's parent class
+      expect(d.skillSlot).toBeUndefined();
+      bySub.set(d.subclassId!, (bySub.get(d.subclassId!) ?? 0) + 1);
+    }
+    expect(bySub.size).toBe(24); // every subclass represented
+    for (const [, n] of bySub) expect(n).toBe(2); // exactly two per subclass
   });
 });
 
@@ -1220,5 +1265,214 @@ describe('previewPlayerStats', () => {
     const s = previewPlayerStats('knight', [], ['kn_grand_immovable', 'rg_grand_deadeye']);
     expect(s.damageTakenMult).toBeCloseTo(0.6, 5);
     expect(s.maxHp).toBe(Math.round(CLASSES.knight.maxHp * 1.35));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Base-SKILL grands (item 17) — two radical capstones per base skill. Each must
+// twist ONLY its own slot (keyed by skillSlot), never bleed onto a sibling slot.
+// ---------------------------------------------------------------------------
+
+describe('base-skill grands apply, and touch only their own slot (item 17)', () => {
+  it('every base-skill grand transforms its slot and leaves the other three intact', () => {
+    for (const d of SKILL_GRANDS) {
+      const classId = d.classId as ClassId;
+      const base = cloneAbilities(CLASSES[classId].abilities);
+      const after = apply(classId, [d.id]).abilities!;
+      const slot = d.skillSlot!;
+      // The targeted slot changed...
+      expect(JSON.stringify(after[slot])).not.toBe(JSON.stringify(base[slot]));
+      // ...and no other base slot did (progression stays keyed to the one skill).
+      for (const s of ['basic', 'a1', 'a2', 'a3'] as AbilitySlot[]) {
+        if (s === slot) continue;
+        expect(JSON.stringify(after[s])).toBe(JSON.stringify(base[s]));
+      }
+    }
+  });
+
+  it('kn_gk_basic_a turns Cleave into a lifestealing 360° whirlwind (exact)', () => {
+    const a = apply('knight', ['kn_gk_basic_a']).abilities!;
+    expect(a.basic.halfAngleDeg).toBe(180); // full circle
+    expect(a.basic.range).toBe(95); // 70 + 25
+    expect(a.basic.damage).toBe(34); // 22 + 12
+    expect(a.basic.lifestealFrac!).toBeCloseTo(0.2, 5);
+  });
+
+  it('mg_gk_a1_a makes Fireball a Supernova; mg_gk_a2_a freezes Frost Nova solid', () => {
+    const nova = apply('mage', ['mg_gk_a1_a']).abilities!;
+    expect(nova.a1.damage).toBe(125); // 70 + 55
+    expect(nova.a1.impactRadius).toBe(180); // 100 + 80
+    const zero = apply('mage', ['mg_gk_a2_a']).abilities!;
+    expect(zero.a2.freeze!).toBeCloseTo(1.5, 5);
+    expect(zero.a2.damage).toBe(40); // 20 + 20
+    expect(zero.a2.radius).toBe(190); // 150 + 40
+  });
+
+  it('a taunt grand tunes only the shield + duration levers taunt honours', () => {
+    // kn_gk_a1_a — Taunt reads only buffDefMult (shield) + buffDuration + cooldown.
+    const a = apply('knight', ['kn_gk_a1_a']).abilities!;
+    expect(a.a1.buffDefMult!).toBeCloseTo(0.45, 5); // was unset → 55% mitigation
+    expect(a.a1.buffDuration).toBe(8); // 4 + 4
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SUBCLASS grands (item 17) — transform the hero's BOUND sub1/sub2 skills of the
+// grand's subclass via the applySubclassGrands path (world.rebindActiveSubs).
+// ---------------------------------------------------------------------------
+
+/** A hero of `classId` with `subSkillIds` bound to sub1/sub2 (active-class only,
+ *  first two — mirrors world.rebindActiveSubs) and `charUpgrades` applied, incl.
+ *  the subclass-grand pass that tunes the bound sub-abilities. */
+function makePlayerWithSubs(
+  classId: ClassId,
+  subSkillIds: string[],
+  charUpgrades: string[] = [],
+): Player {
+  const p = makePlayer(classId);
+  applyCharUpgrades(p, charUpgrades);
+  p.charUpgradeIds = charUpgrades;
+  p.subSkillIds = subSkillIds;
+  const active = subSkillIds.filter((id) => subclassOfSkill(id)?.classId === classId).slice(0, 2);
+  p.subAbilities = {};
+  active.forEach((id, i) => {
+    const skill = getSubSkill(id);
+    if (!skill) return;
+    const slot: SubSlot = i === 0 ? 'sub1' : 'sub2';
+    p.subAbilities![slot] = { ...skill.ability, slot };
+  });
+  applySubclassGrands(p, charUpgrades);
+  return p;
+}
+
+describe('subclass grands transform the bound sub-abilities (item 17)', () => {
+  it('Unbroken Champion amplifies BOTH bound Champion skills and adds lifesteal', () => {
+    // sub1 = Earthshaker (pbaoe dmg 40, r150); sub2 = Riposte (melee dmg 46, range 80).
+    const p = makePlayerWithSubs(
+      'knight',
+      ['kn_champion_slam', 'kn_champion_riposte'],
+      ['kn_champion_g_a'],
+    );
+    expect(p.subAbilities!.sub1!.damage).toBe(60); // round(40 * 1.5)
+    expect(p.subAbilities!.sub1!.radius).toBe(195); // round(150 * 1.3)
+    expect(p.subAbilities!.sub1!.lifestealFrac!).toBeCloseTo(0.25, 5);
+    expect(p.subAbilities!.sub2!.damage).toBe(69); // round(46 * 1.5)
+    expect(p.subAbilities!.sub2!.range).toBe(104); // round(80 * 1.3)
+    expect(p.subAbilities!.sub2!.lifestealFrac!).toBeCloseTo(0.25, 5);
+  });
+
+  it("Warlord's Tempo cuts sub cooldowns, amplifies, and stuns a pbaoe", () => {
+    const p = makePlayerWithSubs(
+      'knight',
+      ['kn_champion_slam', 'kn_champion_riposte'],
+      ['kn_champion_g_b'],
+    );
+    expect(p.subAbilities!.sub1!.cooldown).toBeCloseTo(4.8, 5); // 8 * 0.6
+    expect(p.subAbilities!.sub1!.damage).toBe(52); // round(40 * 1.3)
+    expect(p.subAbilities!.sub1!.stun!).toBeCloseTo(0.6, 5); // pbaoe gets a stun rider
+  });
+
+  it('leaves the base kit untouched and no-ops for an unpicked subclass', () => {
+    const p = makePlayerWithSubs(
+      'knight',
+      ['kn_champion_slam', 'kn_champion_riposte'],
+      ['kn_champion_g_a'],
+    );
+    expect(p.abilities!.basic.damage).toBe(CLASSES.knight.abilities.basic.damage); // base kit intact
+    // A grand for a subclass the hero did NOT pick tunes nothing.
+    const q = makePlayerWithSubs(
+      'knight',
+      ['kn_champion_slam', 'kn_champion_riposte'],
+      ['kn_battlemaster_g_a'],
+    );
+    expect(q.subAbilities!.sub1!.damage).toBe(40); // Earthshaker untouched
+  });
+
+  it('is a harmless no-op in the base replay (no sub-abilities present)', () => {
+    const before = JSON.stringify(makePlayer('knight').abilities);
+    const p = apply('knight', ['kn_champion_g_a']); // no subAbilities on this hero
+    expect(JSON.stringify(p.abilities)).toBe(before);
+  });
+
+  it('every subclass grand measurably transforms a bound skill of its subclass', () => {
+    for (const d of SUBCLASS_GRANDS) {
+      const sub = SUBCLASSES[d.classId as ClassId].find((s) => s.id === d.subclassId)!;
+      const p = makePlayerWithSubs(
+        d.classId as ClassId,
+        [sub.skills[0].id, sub.skills[1].id],
+        [d.id],
+      );
+      const pristine = JSON.stringify({ ...sub.skills[0].ability, slot: 'sub1' });
+      expect(JSON.stringify(p.subAbilities!.sub1)).not.toBe(pristine);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// offerableGrands — the run-clear offer, with item-19 accessibility gates.
+// ---------------------------------------------------------------------------
+
+describe('offerableGrands (items 17 & 19)', () => {
+  it('offers class capstones + all live base-skill grands, but no unpicked subclass grands', () => {
+    const offered = offerableGrands('knight', [], []);
+    const ids = offered.map((d) => d.id);
+    expect(ids).toContain('kn_grand_immovable'); // class capstone (item 22)
+    expect(ids).toContain('kn_gk_basic_a'); // base-skill grand, native slot live
+    expect(ids).toContain('kn_gk_a2_a');
+    expect(ids).not.toContain('kn_champion_g_a'); // no subclass picked yet
+    for (const d of offered) expect(d.classId).toBe('knight'); // only this class's grands
+  });
+
+  it('surfaces a subclass grand only once its subclass is picked', () => {
+    expect(offerableGrands('knight', [], []).map((d) => d.id)).not.toContain('kn_champion_g_a');
+    const picked = offerableGrands('knight', [], ['kn_champion_slam']).map((d) => d.id);
+    expect(picked).toContain('kn_champion_g_a');
+    expect(picked).toContain('kn_champion_g_b');
+    expect(picked).not.toContain('kn_battlemaster_g_a'); // the other subclass stays hidden
+  });
+
+  it('hides a base-skill grand whose native slot has been grafted over (item 19)', () => {
+    // hy_pyromancer grafts Fireball over the Knight's a2 (Shield Wall).
+    const ids = offerableGrands('knight', ['hy_pyromancer'], []).map((d) => d.id);
+    expect(ids).not.toContain('kn_gk_a2_a'); // a2 native displaced → its grand is dead
+    expect(ids).not.toContain('kn_gk_a2_b');
+    expect(ids).toContain('kn_gk_basic_a'); // other slots still native → still offered
+    expect(ids).toContain('kn_gk_a1_a');
+  });
+
+  it('re-offers a base-skill grand once its native skill is reclaimed', () => {
+    const ids = offerableGrands('knight', ['hy_pyromancer', 'restore:a2'], []).map((d) => d.id);
+    expect(ids).toContain('kn_gk_a2_a'); // a2 native back → grand offerable again
+  });
+
+  it('drops any grand already held at its (1) cap', () => {
+    expect(offerableGrands('knight', ['kn_grand_immovable'], []).map((d) => d.id)).not.toContain(
+      'kn_grand_immovable',
+    );
+    expect(offerableGrands('knight', ['kn_gk_basic_a'], []).map((d) => d.id)).not.toContain(
+      'kn_gk_basic_a',
+    );
+    expect(
+      offerableGrands('knight', ['kn_champion_g_a'], ['kn_champion_slam']).map((d) => d.id),
+    ).not.toContain('kn_champion_g_a');
+  });
+
+  it('is empty for an unrecognised class', () => {
+    expect(offerableGrands('nope' as ClassId, [], [])).toEqual([]);
+  });
+});
+
+describe('base-skill + subclass grands never enter the between-boss pool (item 20)', () => {
+  it('a random sweep never yields a skill or subclass grand for any class', () => {
+    const grandIds = new Set([...SKILL_GRANDS, ...SUBCLASS_GRANDS].map((d) => d.id));
+    for (const classId of CLASS_IDS) {
+      const rng = lcg(0x51de ^ classId.length);
+      for (let t = 0; t < 80; t++) {
+        for (const id of rollCharChoices(classId, 4, rng, [], [])) {
+          expect(grandIds.has(id)).toBe(false);
+          expect(CHAR_UPGRADES[id]?.grand).not.toBe(true);
+        }
+      }
+    }
   });
 });

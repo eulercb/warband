@@ -252,3 +252,55 @@ describe('per-class subclass binding (item 15)', () => {
     expect(w.serialize().players[0].subSkills).toEqual([mSkill]);
   });
 });
+
+describe('subclass grands transform bound sub-abilities at spawn + across a swap (item 17)', () => {
+  it('applies an owned subclass grand to the bound sub-abilities at spawn', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 7,
+      players: [
+        {
+          peerId: 'a',
+          name: 'A',
+          classId: 'knight',
+          subSkills: ['kn_champion_slam', 'kn_champion_riposte'],
+          charUpgrades: ['kn_champion_g_a'], // Unbroken Champion
+        },
+      ],
+    });
+    const p = w.players[0];
+    // Earthshaker (pbaoe dmg 40, r150) → +50% magnitude, +30% area, +25% lifesteal.
+    expect(p.subAbilities?.sub1?.damage).toBe(60);
+    expect(p.subAbilities?.sub1?.radius).toBe(195);
+    expect(p.subAbilities?.sub1?.lifestealFrac).toBeCloseTo(0.25, 5);
+    // Riposte (melee dmg 46, range 80) is the second bound Champion skill.
+    expect(p.subAbilities?.sub2?.damage).toBe(69);
+  });
+
+  it('re-applies each class’s subclass grand when the hero swaps class', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 8,
+      players: [
+        {
+          peerId: 'a',
+          name: 'A',
+          classId: 'knight',
+          extraClasses: ['mage'],
+          subSkills: ['kn_champion_slam', 'mg_evoker_lightning'],
+          charUpgrades: ['kn_champion_g_a', 'mg_evoker_g_a'],
+        },
+      ],
+    });
+    const p = w.players[0];
+    // On knight: the Champion grand transforms Earthshaker (dmg 40 → 60).
+    expect(p.subAbilities?.sub1?.name).toBe('Earthshaker');
+    expect(p.subAbilities?.sub1?.damage).toBe(60);
+    // Swap to mage: sub1 rebinds to Lightning Bolt and the Evoker grand transforms it
+    // (dmg 40 → round(40 * 1.6) = 64, and a projectile gains a freeze rider).
+    w.setActiveClass(p, 'mage');
+    expect(p.subAbilities?.sub1?.name).toBe('Lightning Bolt');
+    expect(p.subAbilities?.sub1?.damage).toBe(64);
+    expect(p.subAbilities?.sub1?.freeze).toBeCloseTo(0.6, 5);
+  });
+});

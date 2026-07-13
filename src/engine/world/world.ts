@@ -138,7 +138,11 @@ import { sub, dist, distSq, pointInSegment, wrapPos } from '../core/torus';
 import { getClass, cloneAbilities, slowAttackCooldowns } from '../content/classes';
 import { applyUpgrades } from '../content/upgrades';
 import type { UpgradeId } from '../content/upgrades';
-import { applyCharUpgrades, previewAbilityTable } from '../content/charUpgrades';
+import {
+  applyCharUpgrades,
+  applySubclassGrands,
+  previewAbilityTable,
+} from '../content/charUpgrades';
 import { getSubSkill, subclassOfSkill } from '../content/subclasses';
 import { coinsForRank } from '../content/ephemeral';
 import type { EphemeralStock } from '../content/ephemeral';
@@ -671,6 +675,9 @@ export class World {
       // the class-specific character upgrades that retune the ability table.
       applyUpgrades(player, pi.upgrades);
       applyCharUpgrades(player, pi.charUpgrades);
+      // Stash the picked char upgrades so subclass grands (item 17) among them can be
+      // re-applied to the bound sub-abilities on every rebind (here + on a class swap).
+      player.charUpgradeIds = pi.charUpgrades ?? [];
       // Global attack slow-down last, so character cooldown-reduction upgrades
       // still shave a proportional slice off the (doubled) base.
       if (player.abilities) slowAttackCooldowns(player.abilities);
@@ -714,6 +721,9 @@ export class World {
       const slot: SubSlot = i === 0 ? 'sub1' : 'sub2';
       p.subAbilities![slot] = { ...skill.ability, slot };
     });
+    // Re-apply any owned SUBCLASS grands (item 17) to the freshly-bound sub-abilities
+    // — the sub skills are rebuilt from scratch each rebind, so this stays idempotent.
+    applySubclassGrands(p, p.charUpgradeIds);
   }
 
   /**

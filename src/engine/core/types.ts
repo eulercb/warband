@@ -269,6 +269,13 @@ export interface Player {
   subAbilities?: Partial<Record<SubSlot, import('../content/classes').PlayerAbilityDef>>;
   /** The chosen subclass-skill ids (serialized to PlayerView so clients label the buttons). */
   subSkillIds?: string[];
+  /**
+   * The hero's chosen character-upgrade ids (item 17), stashed host-side at spawn so
+   * the subclass grands among them can be re-applied to the bound sub-abilities on
+   * every rebind (spawn + class swap) — see charUpgrades.applySubclassGrands. Not
+   * serialized (host-only bookkeeping; the base kit is resolved into `abilities`).
+   */
+  charUpgradeIds?: string[];
 
   // --- Multiclass (item 14). All absent for a single-class hero. ---
   /** Every class this hero can swap between (index 0 = primary); `classId` is the ACTIVE one. */

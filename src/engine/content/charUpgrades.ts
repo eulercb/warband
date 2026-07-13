@@ -10,9 +10,10 @@
  * applied to a hero's private (cloned) ability table when the next fight spawns,
  * so the whole system stays data-driven and unit-testable without any UI.
  */
-import type { ClassId, AbilitySlot, Player } from '../core/types';
+import type { ClassId, AbilitySlot, SubSlot, Player } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
 import { CLASSES, cloneAbilities, slowAttackCooldowns, describeAbility } from './classes';
+import { getSubclass, subclassOfSkill } from './subclasses';
 import { applyUpgrades, type UpgradeId } from './upgrades';
 import { MAX_SKILL_STACKS } from '../core/constants';
 
@@ -20,6 +21,14 @@ import { MAX_SKILL_STACKS } from '../core/constants';
 export interface CharUpgradeCtx {
   player: Player;
   abilities: Record<AbilitySlot, PlayerAbilityDef>;
+  /**
+   * The hero's bound subclass abilities (sub1/sub2), present ONLY while applying a
+   * SUBCLASS grand (item 17). The base-ability replay never sets it, so ordinary
+   * boons/grands (which read `abilities`) are unaffected — and a subclass grand is
+   * a harmless no-op there. The apply is handed only the sub-abilities that belong
+   * to that grand's subclass, so it can tune each one blindly. Mutated in place.
+   */
+  subAbilities?: Partial<Record<SubSlot, PlayerAbilityDef>>;
 }
 
 export interface CharUpgradeDef {
@@ -61,11 +70,25 @@ export interface CharUpgradeDef {
    */
   graftSource?: { classId: ClassId; slot: AbilitySlot };
   /**
-   * A GRAND improvement (item 22): a rare, transformative class capstone that can
-   * never stack with itself (maxStacks is forced to 1) and is offered as a special
-   * one-of-a-kind pick. Each class has a small set; you can hold each at most once.
+   * A GRAND improvement (item 22): a rare, transformative capstone that can never
+   * stack with itself (maxStacks is forced to 1) and is offered only through the
+   * run-clear special reward. Three flavours (item 17): a CLASS grand (neither
+   * field below), a base-SKILL grand (`skillSlot` set), or a SUBCLASS grand
+   * (`subclassId` set). All carry `grand: true`.
    */
   grand?: boolean;
+  /**
+   * A base-SKILL grand (item 17): tied to exactly one base slot. Offered only while
+   * that slot still holds its NATIVE skill — a grafted-over slot hides its native
+   * skill's grand (item 19). Set by the `gk` builder.
+   */
+  skillSlot?: AbilitySlot;
+  /**
+   * A SUBCLASS grand (item 17): tied to a subclass id. Its `apply` mutates the
+   * hero's bound sub-abilities from that subclass (via `ctx.subAbilities`), and it
+   * is offered only for subclasses the hero has actually picked. Set by `gs`.
+   */
+  subclassId?: string;
   apply: (ctx: CharUpgradeCtx) => void;
 }
 
@@ -1351,6 +1374,1990 @@ const GRAND: CharUpgradeDef[] = [
   ),
 ];
 
+// ---------------------------------------------------------------------------
+// BASE-SKILL grands (item 17) — two radical capstones for each of the 48 base
+// skills (12 classes × basic/a1/a2/a3). Each is a build-defining twist on that
+// SPECIFIC skill (a 360° cleave, an instant Fireball, a freezing nova), not a
+// formulaic +X%. Keyed by the slot they touch via the `gk` builder, so the
+// offer roll can hide a slot whose native skill has been grafted over (item 19).
+// Effects only ever tug levers the sim honours for that ability's kind (see
+// combat/abilities.ts): projectiles freeze/chill/pierce but never stun; only a
+// dash lands an AoE (a blink can't); a taunt reads only its shield + duration.
+// ---------------------------------------------------------------------------
+
+const SUB_SLOTS: readonly SubSlot[] = ['sub1', 'sub2'];
+
+/** Base-skill grand builder — a grand tied to one base slot (forces grand +
+ *  maxStacks 1). `tune` mutates the ability that currently sits in that slot. */
+function gk(
+  classId: ClassId,
+  skillSlot: AbilitySlot,
+  id: string,
+  name: string,
+  icon: string,
+  desc: string,
+  tune: (ab: PlayerAbilityDef) => void,
+): CharUpgradeDef {
+  return {
+    id,
+    classId,
+    name,
+    icon,
+    desc,
+    grand: true,
+    maxStacks: 1,
+    skillSlot,
+    apply: ({ abilities }) => tune(abilities[skillSlot]),
+  };
+}
+
+export const SKILL_GRANDS: CharUpgradeDef[] = [
+  // --- Knight ---------------------------------------------------------------
+  gk(
+    'knight',
+    'basic',
+    'kn_gk_basic_a',
+    'Whirlwind of Steel',
+    '🌀',
+    'Cleave sweeps a full 360° circle, reaches +25u, hits for +12, and drinks 20% as health',
+    (ab) => {
+      ab.halfAngleDeg = 180;
+      addN(ab, 'range', 25);
+      addN(ab, 'damage', 12);
+      addN(ab, 'lifestealFrac', 0.2);
+    },
+  ),
+  gk(
+    'knight',
+    'basic',
+    'kn_gk_basic_b',
+    'Executioner',
+    '🪓',
+    "Cleave falls like a headsman's axe: +28 damage, +20u reach, and a 0.6s stun",
+    (ab) => {
+      addN(ab, 'damage', 28);
+      addN(ab, 'range', 20);
+      addN(ab, 'stun', 0.6);
+    },
+  ),
+  gk(
+    'knight',
+    'a1',
+    'kn_gk_a1_a',
+    "Bulwark's Call",
+    '🛡️',
+    'Taunt wraps you in a lasting 55%-mitigation shield and holds 4s longer',
+    (ab) => {
+      setMin(ab, 'buffDefMult', 0.45);
+      addN(ab, 'buffDuration', 4);
+    },
+  ),
+  gk(
+    'knight',
+    'a1',
+    'kn_gk_a1_b',
+    'Vortex of War',
+    '🌀',
+    'Taunt recharges in a heartbeat (−55% cooldown) and still shields you 30%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.45);
+      setMin(ab, 'buffDefMult', 0.7);
+    },
+  ),
+  gk(
+    'knight',
+    'a2',
+    'kn_gk_a2_a',
+    'Aegis Eternal',
+    '✨',
+    'Shield Wall nears invulnerability (85% mitigation) and holds 3s longer',
+    (ab) => {
+      mul(ab, 'buffDefMult', 0.3);
+      addN(ab, 'buffDuration', 3);
+    },
+  ),
+  gk(
+    'knight',
+    'a2',
+    'kn_gk_a2_b',
+    'Living Fortress',
+    '🏰',
+    'Shield Wall is up far more often (−40% cd), deepens to 25% taken, and lasts +5s',
+    (ab) => {
+      mul(ab, 'buffDefMult', 0.5);
+      addN(ab, 'buffDuration', 5);
+      mul(ab, 'cooldown', 0.6);
+    },
+  ),
+  gk(
+    'knight',
+    'a3',
+    'kn_gk_a3_a',
+    'Skullcracker',
+    '💫',
+    'Shield Bash concusses for +1.4s stun and +25 damage',
+    (ab) => {
+      addN(ab, 'stun', 1.4);
+      addN(ab, 'damage', 25);
+    },
+  ),
+  gk(
+    'knight',
+    'a3',
+    'kn_gk_a3_b',
+    'Thunderclap',
+    '⚡',
+    'Shield Bash erupts into a 90°-wide shock: +20 damage, +30u reach, +0.5s stun',
+    (ab) => {
+      ab.halfAngleDeg = 90;
+      addN(ab, 'range', 30);
+      addN(ab, 'damage', 20);
+      addN(ab, 'stun', 0.5);
+    },
+  ),
+
+  // --- Ranger ---------------------------------------------------------------
+  gk(
+    'ranger',
+    'basic',
+    'rg_gk_basic_a',
+    'Splitshaft',
+    '🏹',
+    'Every Arrow splits into 3 across a 16° fan, each +6 damage',
+    (ab) => {
+      addN(ab, 'projCount', 2);
+      ab.spreadDeg = Math.max(ab.spreadDeg ?? 0, 16);
+      addN(ab, 'damage', 6);
+    },
+  ),
+  gk(
+    'ranger',
+    'basic',
+    'rg_gk_basic_b',
+    'Railshot',
+    '🎯',
+    'Arrow becomes a hypersonic lance: +26 damage, +300 speed, far greater range',
+    (ab) => {
+      addN(ab, 'damage', 26);
+      addN(ab, 'projSpeed', 300);
+      addN(ab, 'maxRange', 260);
+    },
+  ),
+  gk(
+    'ranger',
+    'a1',
+    'rg_gk_a1_a',
+    'Arrowfall',
+    '🌩️',
+    'Multishot becomes a wall of 6 extra arrows across a 20°-wider fan (+5 each)',
+    (ab) => {
+      addN(ab, 'projCount', 6);
+      addN(ab, 'spreadDeg', 20);
+      addN(ab, 'damage', 5);
+    },
+  ),
+  gk(
+    'ranger',
+    'a1',
+    'rg_gk_a1_b',
+    'Frostvolley',
+    '❄️',
+    'Multishot bites deep (+2 arrows, +12 each) and freezes what it strikes for 0.6s',
+    (ab) => {
+      addN(ab, 'projCount', 2);
+      addN(ab, 'damage', 12);
+      addN(ab, 'freeze', 0.6);
+    },
+  ),
+  gk(
+    'ranger',
+    'a2',
+    'rg_gk_a2_a',
+    'Meteoric Barrage',
+    '☄️',
+    'Rain of Arrows pours for +16/tick across +50u for +2.5s',
+    (ab) => {
+      addN(ab, 'zoneTickDamage', 16);
+      addN(ab, 'radius', 50);
+      addN(ab, 'zoneDuration', 2.5);
+    },
+  ),
+  gk(
+    'ranger',
+    'a2',
+    'rg_gk_a2_b',
+    'Tar Volley',
+    '🕸️',
+    'Rain of Arrows mires the ground: +8/tick and slows to 40% for +2s',
+    (ab) => {
+      addN(ab, 'zoneTickDamage', 8);
+      setMin(ab, 'slowMult', 0.4);
+      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.5);
+      addN(ab, 'zoneDuration', 2);
+    },
+  ),
+  gk(
+    'ranger',
+    'a3',
+    'rg_gk_a3_a',
+    'Phantom Step',
+    '💨',
+    'Roll flickers +130u with +0.4s i-frames and recharges twice as fast',
+    (ab) => {
+      addN(ab, 'range', 130);
+      addN(ab, 'iframes', 0.4);
+      mul(ab, 'cooldown', 0.5);
+    },
+  ),
+  gk(
+    'ranger',
+    'a3',
+    'rg_gk_a3_b',
+    'Detonating Roll',
+    '💥',
+    'Roll erupts on landing for 40 across a 130u blast, and travels +80u',
+    (ab) => {
+      ab.landingDamage = (ab.landingDamage ?? 0) + 40;
+      ab.radius = (ab.radius ?? 0) + 130;
+      addN(ab, 'range', 80);
+    },
+  ),
+
+  // --- Mage -----------------------------------------------------------------
+  gk(
+    'mage',
+    'basic',
+    'mg_gk_basic_a',
+    'Arcane Barrage',
+    '✨',
+    'Arcane Bolt splits into 3 across a 14° fan (+5 each)',
+    (ab) => {
+      addN(ab, 'projCount', 2);
+      ab.spreadDeg = Math.max(ab.spreadDeg ?? 0, 14);
+      addN(ab, 'damage', 5);
+    },
+  ),
+  gk(
+    'mage',
+    'basic',
+    'mg_gk_basic_b',
+    'Frostlance',
+    '❄️',
+    'Arcane Bolt becomes a piercing lance: +18 damage, +350 speed, freezes for 0.4s',
+    (ab) => {
+      addN(ab, 'damage', 18);
+      addN(ab, 'projSpeed', 350);
+      addN(ab, 'maxRange', 200);
+      addN(ab, 'freeze', 0.4);
+    },
+  ),
+  gk(
+    'mage',
+    'a1',
+    'mg_gk_a1_a',
+    'Supernova',
+    '🌟',
+    'Fireball detonates for +55 across a colossal +80u blast',
+    (ab) => {
+      addN(ab, 'damage', 55);
+      addN(ab, 'impactRadius', 80);
+    },
+  ),
+  gk(
+    'mage',
+    'a1',
+    'mg_gk_a1_b',
+    'Chain Ignition',
+    '🔥',
+    'Fireball snaps out instantly (−80% cast), recharges twice as fast, +20 damage',
+    (ab) => {
+      mul(ab, 'castTime', 0.2);
+      mul(ab, 'cooldown', 0.5);
+      addN(ab, 'damage', 20);
+    },
+  ),
+  gk(
+    'mage',
+    'a2',
+    'mg_gk_a2_a',
+    'Absolute Zero',
+    '🧊',
+    'Frost Nova freezes solid for 1.5s, +20 damage, +40u',
+    (ab) => {
+      addN(ab, 'freeze', 1.5);
+      addN(ab, 'damage', 20);
+      addN(ab, 'radius', 40);
+    },
+  ),
+  gk(
+    'mage',
+    'a2',
+    'mg_gk_a2_b',
+    'Blizzard',
+    '🌨️',
+    'Frost Nova swells +60u and locks foes to 30% speed for +2s (+12 damage)',
+    (ab) => {
+      addN(ab, 'radius', 60);
+      setMin(ab, 'slowMult', 0.3);
+      addN(ab, 'slowDuration', 2);
+      addN(ab, 'damage', 12);
+    },
+  ),
+  gk(
+    'mage',
+    'a3',
+    'mg_gk_a3_a',
+    'Fold Space',
+    '🌀',
+    'Blink leaps +150u, recharges in a blink (−60% cd), and phases you 0.4s',
+    (ab) => {
+      addN(ab, 'range', 150);
+      mul(ab, 'cooldown', 0.4);
+      addN(ab, 'iframes', 0.4);
+    },
+  ),
+  gk(
+    'mage',
+    'a3',
+    'mg_gk_a3_b',
+    'Displacement Ward',
+    '🛡️',
+    'Blink knits +60 HP on use, phases you 0.5s, and reaches +80u',
+    (ab) => {
+      addN(ab, 'healOnUse', 60);
+      addN(ab, 'iframes', 0.5);
+      addN(ab, 'range', 80);
+    },
+  ),
+
+  // --- Cleric ---------------------------------------------------------------
+  gk(
+    'cleric',
+    'basic',
+    'cl_gk_basic_a',
+    'Wrath of the Heavens',
+    '🌟',
+    'Smite splits into 3 holy bolts (+8 each) and dazes struck foes for 0.6s',
+    (ab) => {
+      addN(ab, 'projCount', 2);
+      ab.spreadDeg = Math.max(ab.spreadDeg ?? 0, 12);
+      addN(ab, 'damage', 8);
+      addN(ab, 'freeze', 0.6);
+    },
+  ),
+  gk(
+    'cleric',
+    'basic',
+    'cl_gk_basic_b',
+    'Judgment',
+    '☀️',
+    'Smite becomes a searing lance: +24 damage, +300 speed, far greater range',
+    (ab) => {
+      addN(ab, 'damage', 24);
+      addN(ab, 'projSpeed', 300);
+      addN(ab, 'maxRange', 200);
+    },
+  ),
+  gk(
+    'cleric',
+    'a1',
+    'cl_gk_a1_a',
+    'Miracle',
+    '💚',
+    'Heal pours for +80 HP across almost the whole arena (+250u)',
+    (ab) => {
+      addN(ab, 'damage', 80);
+      addN(ab, 'range', 250);
+    },
+  ),
+  gk(
+    'cleric',
+    'a1',
+    'cl_gk_a1_b',
+    'Rapid Mending',
+    '✨',
+    'Heal recharges almost instantly (−60% cd) and mends +25',
+    (ab) => {
+      mul(ab, 'cooldown', 0.4);
+      addN(ab, 'damage', 25);
+    },
+  ),
+  gk(
+    'cleric',
+    'a2',
+    'cl_gk_a2_a',
+    'Hallowed Ground',
+    '⛪',
+    'Sanctuary mends +22/tick across +70u for +4s',
+    (ab) => {
+      addN(ab, 'zoneTickHeal', 22);
+      addN(ab, 'radius', 70);
+      addN(ab, 'zoneDuration', 4);
+    },
+  ),
+  gk(
+    'cleric',
+    'a2',
+    'cl_gk_a2_b',
+    'Consecrated Bastion',
+    '🛡️',
+    'Sanctuary also scorches enemies 16/tick, slows them to 50%, and mends +8',
+    (ab) => {
+      addN(ab, 'zoneTickDamage', 16);
+      setMin(ab, 'slowMult', 0.5);
+      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1);
+      addN(ab, 'zoneTickHeal', 8);
+    },
+  ),
+  gk(
+    'cleric',
+    'a3',
+    'cl_gk_a3_a',
+    'Divine Favor',
+    '🙏',
+    'Blessing girds an ally with +45% damage AND 40% mitigation, lasting 4s longer',
+    (ab) => {
+      addN(ab, 'buffDamageMult', 0.45);
+      setMin(ab, 'buffDefMult', 0.6);
+      addN(ab, 'buffDuration', 4);
+    },
+  ),
+  gk(
+    'cleric',
+    'a3',
+    'cl_gk_a3_b',
+    'Zealotry',
+    '⚡',
+    'Blessing also grants +25% move speed, +15% damage, and returns twice as fast',
+    (ab) => {
+      ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.25);
+      mul(ab, 'cooldown', 0.5);
+      addN(ab, 'buffDamageMult', 0.15);
+    },
+  ),
+
+  // --- Barbarian ------------------------------------------------------------
+  gk(
+    'barbarian',
+    'basic',
+    'bb_gk_basic_a',
+    'Bloodstorm',
+    '🩸',
+    'Reckless Swing becomes a 360° blood-whirl: +12 damage, +25u, drinks 30% as health',
+    (ab) => {
+      ab.halfAngleDeg = 180;
+      addN(ab, 'range', 25);
+      addN(ab, 'damage', 12);
+      addN(ab, 'lifestealFrac', 0.3);
+    },
+  ),
+  gk(
+    'barbarian',
+    'basic',
+    'bb_gk_basic_b',
+    'Cleaving Fury',
+    '🪓',
+    'Reckless Swing hits for +22 across a wider 75° arc, +18u reach',
+    (ab) => {
+      addN(ab, 'damage', 22);
+      addN(ab, 'halfAngleDeg', 20);
+      addN(ab, 'range', 18);
+    },
+  ),
+  gk(
+    'barbarian',
+    'a1',
+    'bb_gk_a1_a',
+    'Undying Rage',
+    '😤',
+    'Rage swells with +55% damage and +40% move, and lasts 5s longer',
+    (ab) => {
+      addN(ab, 'buffDamageMult', 0.55);
+      addN(ab, 'buffMoveMult', 0.4);
+      addN(ab, 'buffDuration', 5);
+    },
+  ),
+  gk(
+    'barbarian',
+    'a1',
+    'bb_gk_a1_b',
+    'Bloodlust',
+    '🔥',
+    'Rage is nearly always up (−45% cd), adds +35% damage, and lasts +2s',
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      addN(ab, 'buffDamageMult', 0.35);
+      addN(ab, 'buffDuration', 2);
+    },
+  ),
+  gk(
+    'barbarian',
+    'a2',
+    'bb_gk_a2_a',
+    'Seismic Crash',
+    '💥',
+    'Leap slams for +45 landing damage across +50u',
+    (ab) => {
+      addN(ab, 'landingDamage', 45);
+      addN(ab, 'radius', 50);
+    },
+  ),
+  gk(
+    'barbarian',
+    'a2',
+    'bb_gk_a2_b',
+    'Thunderous Leap',
+    '⚡',
+    'Leap lands stunning foes for 1s and +25 damage, and recharges 40% faster',
+    (ab) => {
+      addN(ab, 'landingDamage', 25);
+      addN(ab, 'stun', 1);
+      mul(ab, 'cooldown', 0.6);
+    },
+  ),
+  gk(
+    'barbarian',
+    'a3',
+    'bb_gk_a3_a',
+    'Endless Whirlwind',
+    '🌀',
+    'Whirlwind roars to +55u and +26 damage, drinking 25% as health',
+    (ab) => {
+      addN(ab, 'radius', 55);
+      addN(ab, 'damage', 26);
+      addN(ab, 'lifestealFrac', 0.25);
+    },
+  ),
+  gk(
+    'barbarian',
+    'a3',
+    'bb_gk_a3_b',
+    'Cyclonic Fury',
+    '🌪️',
+    'Whirlwind hits +18, slows to 45%, widens +20u, and spins up 40% faster',
+    (ab) => {
+      addN(ab, 'damage', 18);
+      setMin(ab, 'slowMult', 0.45);
+      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.5);
+      addN(ab, 'radius', 20);
+      mul(ab, 'cooldown', 0.6);
+    },
+  ),
+
+  // --- Rogue ----------------------------------------------------------------
+  gk(
+    'rogue',
+    'basic',
+    'ro_gk_basic_a',
+    'Thousand Cuts',
+    '⚡',
+    'Slash strikes twice as fast (−50% cd) for +6 and drinks 15% as health',
+    (ab) => {
+      mul(ab, 'cooldown', 0.5);
+      addN(ab, 'damage', 6);
+      addN(ab, 'lifestealFrac', 0.15);
+    },
+  ),
+  gk(
+    'rogue',
+    'basic',
+    'ro_gk_basic_b',
+    'Whirling Blades',
+    '🌀',
+    'Slash sweeps a full 360° circle: +8 damage, +25u reach',
+    (ab) => {
+      ab.halfAngleDeg = 180;
+      addN(ab, 'damage', 8);
+      addN(ab, 'range', 25);
+    },
+  ),
+  gk(
+    'rogue',
+    'a1',
+    'ro_gk_a1_a',
+    'Assassinate',
+    '🗡️',
+    'Backstab annihilates for +70 and heals you 25% of the damage dealt',
+    (ab) => {
+      addN(ab, 'damage', 70);
+      addN(ab, 'lifestealFrac', 0.25);
+    },
+  ),
+  gk(
+    'rogue',
+    'a1',
+    'ro_gk_a1_b',
+    'Deathblow',
+    '💀',
+    'Backstab hits for +40, dazes 0.8s, and returns 45% sooner',
+    (ab) => {
+      addN(ab, 'damage', 40);
+      addN(ab, 'stun', 0.8);
+      mul(ab, 'cooldown', 0.55);
+    },
+  ),
+  gk(
+    'rogue',
+    'a2',
+    'ro_gk_a2_a',
+    'Nightstalker',
+    '🌑',
+    'Shadowstep resets almost at once (−65% cd), phases +0.4s, and heals 25',
+    (ab) => {
+      mul(ab, 'cooldown', 0.35);
+      addN(ab, 'iframes', 0.4);
+      addN(ab, 'healOnUse', 25);
+    },
+  ),
+  gk(
+    'rogue',
+    'a2',
+    'ro_gk_a2_b',
+    'Death from Shadow',
+    '🥷',
+    'Shadowstep leaps +160u, phases +0.5s, and mends +40',
+    (ab) => {
+      addN(ab, 'range', 160);
+      addN(ab, 'iframes', 0.5);
+      addN(ab, 'healOnUse', 40);
+    },
+  ),
+  gk(
+    'rogue',
+    'a3',
+    'ro_gk_a3_a',
+    'Plaguebringer',
+    '☠️',
+    'Poison Vial festers for +22/tick across +65u for +4s',
+    (ab) => {
+      addN(ab, 'zoneTickDamage', 22);
+      addN(ab, 'radius', 65);
+      addN(ab, 'zoneDuration', 4);
+    },
+  ),
+  gk(
+    'rogue',
+    'a3',
+    'ro_gk_a3_b',
+    'Crippling Toxin',
+    '🕸️',
+    'Poison Vial slows foes to 40%, ticks +10, and spreads +40u',
+    (ab) => {
+      setMin(ab, 'slowMult', 0.4);
+      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.5);
+      addN(ab, 'zoneTickDamage', 10);
+      addN(ab, 'radius', 40);
+    },
+  ),
+
+  // --- Paladin --------------------------------------------------------------
+  gk(
+    'paladin',
+    'basic',
+    'pa_gk_basic_a',
+    'Radiant Arc',
+    '🌟',
+    'Holy Strike sweeps a wide 90° arc for +16, +15u, healing 20% of the damage',
+    (ab) => {
+      addN(ab, 'halfAngleDeg', 45);
+      addN(ab, 'damage', 16);
+      addN(ab, 'range', 15);
+      addN(ab, 'lifestealFrac', 0.2);
+    },
+  ),
+  gk(
+    'paladin',
+    'basic',
+    'pa_gk_basic_b',
+    'Hammer of Justice',
+    '🔨',
+    'Holy Strike smites for +22 and stuns for 0.8s',
+    (ab) => {
+      addN(ab, 'damage', 22);
+      addN(ab, 'stun', 0.8);
+    },
+  ),
+  gk(
+    'paladin',
+    'a1',
+    'pa_gk_a1_a',
+    'Hallowed Sanctuary',
+    '⛪',
+    'Consecration scorches +14 and mends +14 per tick across +60u, lasting +3s',
+    (ab) => {
+      addN(ab, 'zoneTickDamage', 14);
+      addN(ab, 'zoneTickHeal', 14);
+      addN(ab, 'radius', 60);
+      addN(ab, 'zoneDuration', 3);
+    },
+  ),
+  gk(
+    'paladin',
+    'a1',
+    'pa_gk_a1_b',
+    'Searing Ground',
+    '🔥',
+    'Consecration burns +18/tick, holds foes to 50% speed, and widens +30u',
+    (ab) => {
+      addN(ab, 'zoneTickDamage', 18);
+      setMin(ab, 'slowMult', 0.5);
+      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1);
+      addN(ab, 'radius', 30);
+    },
+  ),
+  gk(
+    'paladin',
+    'a2',
+    'pa_gk_a2_a',
+    'Miraculous Mending',
+    '💛',
+    'Lay on Hands overflows for +90 HP at far greater range',
+    (ab) => {
+      addN(ab, 'damage', 90);
+      addN(ab, 'range', 200);
+    },
+  ),
+  gk(
+    'paladin',
+    'a2',
+    'pa_gk_a2_b',
+    'Blessed Hands',
+    '✨',
+    'Lay on Hands recharges more than twice as fast (−55% cd) and mends +30',
+    (ab) => {
+      mul(ab, 'cooldown', 0.45);
+      addN(ab, 'damage', 30);
+    },
+  ),
+  gk(
+    'paladin',
+    'a3',
+    'pa_gk_a3_a',
+    'Unbreakable',
+    '🛡️',
+    'Divine Shield nears invulnerability (86% mitigation) and holds 3s longer',
+    (ab) => {
+      mul(ab, 'buffDefMult', 0.4);
+      addN(ab, 'buffDuration', 3);
+    },
+  ),
+  gk(
+    'paladin',
+    'a3',
+    'pa_gk_a3_b',
+    'Bastion of Light',
+    '🌅',
+    'Divine Shield is up far more often (−45% cd), deepens, and holds +4s',
+    (ab) => {
+      mul(ab, 'buffDefMult', 0.6);
+      addN(ab, 'buffDuration', 4);
+      mul(ab, 'cooldown', 0.55);
+    },
+  ),
+
+  // --- Druid ----------------------------------------------------------------
+  gk(
+    'druid',
+    'basic',
+    'dr_gk_basic_a',
+    'Thorn Barrage',
+    '🌵',
+    'Thornlash splits into 4 thorns across a 16° fan (+6 each)',
+    (ab) => {
+      addN(ab, 'projCount', 3);
+      ab.spreadDeg = Math.max(ab.spreadDeg ?? 0, 16);
+      addN(ab, 'damage', 6);
+    },
+  ),
+  gk(
+    'druid',
+    'basic',
+    'dr_gk_basic_b',
+    'Bramble Spear',
+    '🌿',
+    'Thornlash becomes a heavy spear: +22 damage, +250 speed, slows to 55%',
+    (ab) => {
+      addN(ab, 'damage', 22);
+      addN(ab, 'projSpeed', 250);
+      setMin(ab, 'slowMult', 0.55);
+      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.5);
+    },
+  ),
+  gk(
+    'druid',
+    'a1',
+    'dr_gk_a1_a',
+    'Strangleroots',
+    '🌳',
+    'Entangle roots to 15% speed and gnaws +18/tick across +60u for +3s',
+    (ab) => {
+      setMin(ab, 'slowMult', 0.15);
+      addN(ab, 'zoneTickDamage', 18);
+      addN(ab, 'radius', 60);
+      addN(ab, 'zoneDuration', 3);
+    },
+  ),
+  gk(
+    'druid',
+    'a1',
+    'dr_gk_a1_b',
+    'Ancient Grove',
+    '🍃',
+    'Entangle sprawls +65u and lingers +5s, biting +12/tick',
+    (ab) => {
+      addN(ab, 'radius', 65);
+      addN(ab, 'zoneDuration', 5);
+      addN(ab, 'zoneTickDamage', 12);
+    },
+  ),
+  gk(
+    'druid',
+    'a2',
+    'dr_gk_a2_a',
+    'Wild Bloom',
+    '💚',
+    'Regrowth surges for +75 HP at far greater range',
+    (ab) => {
+      addN(ab, 'damage', 75);
+      addN(ab, 'range', 200);
+    },
+  ),
+  gk(
+    'druid',
+    'a2',
+    'dr_gk_a2_b',
+    'Rapid Regrowth',
+    '✨',
+    'Regrowth mends +30 and recharges twice as fast',
+    (ab) => {
+      addN(ab, 'damage', 30);
+      mul(ab, 'cooldown', 0.5);
+    },
+  ),
+  gk(
+    'druid',
+    'a3',
+    'dr_gk_a3_a',
+    'Tempest',
+    '🌪️',
+    'Cyclone widens +60u, hits +24, and rips foes to 30% speed',
+    (ab) => {
+      addN(ab, 'radius', 60);
+      addN(ab, 'damage', 24);
+      setMin(ab, 'slowMult', 0.3);
+      addN(ab, 'slowDuration', 1);
+    },
+  ),
+  gk(
+    'druid',
+    'a3',
+    'dr_gk_a3_b',
+    'Hurricane',
+    '🌀',
+    'Cyclone hits +14, freezes for 0.8s, widens +20u, and recharges 40% faster',
+    (ab) => {
+      addN(ab, 'damage', 14);
+      addN(ab, 'freeze', 0.8);
+      addN(ab, 'radius', 20);
+      mul(ab, 'cooldown', 0.6);
+    },
+  ),
+
+  // --- Bard -----------------------------------------------------------------
+  gk(
+    'bard',
+    'basic',
+    'ba_gk_basic_a',
+    'Cacophony',
+    '🎭',
+    'Vicious Mockery scatters 3 bolts (+7 each) and chills to 50%',
+    (ab) => {
+      addN(ab, 'projCount', 2);
+      ab.spreadDeg = Math.max(ab.spreadDeg ?? 0, 14);
+      addN(ab, 'damage', 7);
+      setMin(ab, 'slowMult', 0.5);
+      addN(ab, 'slowDuration', 1);
+    },
+  ),
+  gk(
+    'bard',
+    'basic',
+    'ba_gk_basic_b',
+    'Soul-Rending Insult',
+    '💔',
+    'Vicious Mockery cuts for +18, +200 speed, and freezes for 0.5s',
+    (ab) => {
+      addN(ab, 'damage', 18);
+      addN(ab, 'projSpeed', 200);
+      addN(ab, 'freeze', 0.5);
+    },
+  ),
+  gk(
+    'bard',
+    'a1',
+    'ba_gk_a1_a',
+    'Anthem of Legends',
+    '🎺',
+    'Inspiration girds an ally with +45% damage AND 35% mitigation, lasting +4s',
+    (ab) => {
+      addN(ab, 'buffDamageMult', 0.45);
+      setMin(ab, 'buffDefMult', 0.65);
+      addN(ab, 'buffDuration', 4);
+    },
+  ),
+  gk(
+    'bard',
+    'a1',
+    'ba_gk_a1_b',
+    'Marching Cadence',
+    '🥁',
+    'Inspiration also grants +30% move, +15% damage, and returns twice as fast',
+    (ab) => {
+      ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.3);
+      mul(ab, 'cooldown', 0.5);
+      addN(ab, 'buffDamageMult', 0.15);
+    },
+  ),
+  gk(
+    'bard',
+    'a2',
+    'ba_gk_a2_a',
+    'Song of Rebirth',
+    '🎶',
+    'Healing Word pours for +75 HP across the whole arena',
+    (ab) => {
+      addN(ab, 'damage', 75);
+      addN(ab, 'range', 200);
+    },
+  ),
+  gk(
+    'bard',
+    'a2',
+    'ba_gk_a2_b',
+    'Rapid Refrain',
+    '✨',
+    'Healing Word mends +28 and recharges twice as fast',
+    (ab) => {
+      addN(ab, 'damage', 28);
+      mul(ab, 'cooldown', 0.5);
+    },
+  ),
+  gk(
+    'bard',
+    'a3',
+    'ba_gk_a3_a',
+    'Thunderous Crescendo',
+    '⚡',
+    'Dissonant Whispers swells +60u, hits +18, and rips foes to 30% speed',
+    (ab) => {
+      addN(ab, 'radius', 60);
+      addN(ab, 'damage', 18);
+      setMin(ab, 'slowMult', 0.3);
+      addN(ab, 'slowDuration', 1);
+    },
+  ),
+  gk(
+    'bard',
+    'a3',
+    'ba_gk_a3_b',
+    'Maddening Dirge',
+    '🎻',
+    'Dissonant Whispers hits +12, freezes 0.7s, widens +20u, and recharges 40% faster',
+    (ab) => {
+      addN(ab, 'damage', 12);
+      addN(ab, 'freeze', 0.7);
+      addN(ab, 'radius', 20);
+      mul(ab, 'cooldown', 0.6);
+    },
+  ),
+
+  // --- Monk -----------------------------------------------------------------
+  gk(
+    'monk',
+    'basic',
+    'mo_gk_basic_a',
+    'Hundred Hands',
+    '👊',
+    'Flurry of Blows strikes twice as fast (−50% cd) for +5 and drinks 15% as health',
+    (ab) => {
+      mul(ab, 'cooldown', 0.5);
+      addN(ab, 'damage', 5);
+      addN(ab, 'lifestealFrac', 0.15);
+    },
+  ),
+  gk(
+    'monk',
+    'basic',
+    'mo_gk_basic_b',
+    'Whirling Fists',
+    '🌀',
+    'Flurry of Blows sweeps a full 360° circle for +8, +25u reach',
+    (ab) => {
+      ab.halfAngleDeg = 180;
+      addN(ab, 'damage', 8);
+      addN(ab, 'range', 25);
+    },
+  ),
+  gk(
+    'monk',
+    'a1',
+    'mo_gk_a1_a',
+    'Paralyzing Blow',
+    '💫',
+    'Stunning Strike locks foes for +1.4s and hits for +25',
+    (ab) => {
+      addN(ab, 'stun', 1.4);
+      addN(ab, 'damage', 25);
+    },
+  ),
+  gk(
+    'monk',
+    'a1',
+    'mo_gk_a1_b',
+    'Palm of Ruin',
+    '👊',
+    'Stunning Strike widens to an 80° arc, hits +18, +15u, +0.5s stun',
+    (ab) => {
+      addN(ab, 'halfAngleDeg', 44);
+      addN(ab, 'damage', 18);
+      addN(ab, 'range', 15);
+      addN(ab, 'stun', 0.5);
+    },
+  ),
+  gk(
+    'monk',
+    'a2',
+    'mo_gk_a2_a',
+    'Gale Walker',
+    '🍃',
+    'Step of the Wind travels +130u, mends +40, and resets 50% faster',
+    (ab) => {
+      addN(ab, 'range', 130);
+      addN(ab, 'healOnUse', 40);
+      mul(ab, 'cooldown', 0.5);
+    },
+  ),
+  gk(
+    'monk',
+    'a2',
+    'mo_gk_a2_b',
+    'Comet Step',
+    '💫',
+    'Step of the Wind slams on landing for 34 across a 130u blast (+70u travel)',
+    (ab) => {
+      ab.landingDamage = (ab.landingDamage ?? 0) + 34;
+      ab.radius = (ab.radius ?? 0) + 130;
+      addN(ab, 'range', 70);
+    },
+  ),
+  gk(
+    'monk',
+    'a3',
+    'mo_gk_a3_a',
+    'Death Touch',
+    '💀',
+    'Quivering Palm devastates for +40 across +55u',
+    (ab) => {
+      addN(ab, 'damage', 40);
+      addN(ab, 'radius', 55);
+    },
+  ),
+  gk(
+    'monk',
+    'a3',
+    'mo_gk_a3_b',
+    'Quaking Palm',
+    '💥',
+    'Quivering Palm hits +18, stuns 1s, widens +20u, and recharges 40% faster',
+    (ab) => {
+      addN(ab, 'damage', 18);
+      addN(ab, 'stun', 1);
+      addN(ab, 'radius', 20);
+      mul(ab, 'cooldown', 0.6);
+    },
+  ),
+
+  // --- Sorcerer -------------------------------------------------------------
+  gk(
+    'sorcerer',
+    'basic',
+    'so_gk_basic_a',
+    'Chaos Storm',
+    '🎲',
+    'Chaos Bolt hurls 5 bolts across a wide fan (+5 each)',
+    (ab) => {
+      addN(ab, 'projCount', 3);
+      addN(ab, 'spreadDeg', 18);
+      addN(ab, 'damage', 5);
+    },
+  ),
+  gk(
+    'sorcerer',
+    'basic',
+    'so_gk_basic_b',
+    'Chaos Lance',
+    '💠',
+    'Chaos Bolt screams out +20 harder and +300 faster, freezing for 0.4s',
+    (ab) => {
+      addN(ab, 'damage', 20);
+      addN(ab, 'projSpeed', 300);
+      addN(ab, 'maxRange', 200);
+      addN(ab, 'freeze', 0.4);
+    },
+  ),
+  gk(
+    'sorcerer',
+    'a1',
+    'so_gk_a1_a',
+    'Extinction',
+    '☄️',
+    'Meteor falls for +65 across a cataclysmic +80u blast',
+    (ab) => {
+      addN(ab, 'damage', 65);
+      addN(ab, 'impactRadius', 80);
+    },
+  ),
+  gk(
+    'sorcerer',
+    'a1',
+    'so_gk_a1_b',
+    'Meteor Shower',
+    '💥',
+    'Meteor snaps down instantly (−75% cast), recharges twice as fast, +22 damage',
+    (ab) => {
+      mul(ab, 'castTime', 0.25);
+      mul(ab, 'cooldown', 0.5);
+      addN(ab, 'damage', 22);
+    },
+  ),
+  gk(
+    'sorcerer',
+    'a2',
+    'so_gk_a2_a',
+    'Legion of Mirrors',
+    '🪞',
+    'Mirror Image blocks 76%, grants +35% move, and holds 4s longer',
+    (ab) => {
+      mul(ab, 'buffDefMult', 0.4);
+      ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.35);
+      addN(ab, 'buffDuration', 4);
+    },
+  ),
+  gk(
+    'sorcerer',
+    'a2',
+    'so_gk_a2_b',
+    'Blurred Form',
+    '💨',
+    'Mirror Image is up far more often (−45% cd), deepens to ~35% taken, +30% move',
+    (ab) => {
+      mul(ab, 'buffDefMult', 0.58);
+      mul(ab, 'cooldown', 0.55);
+      ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.3);
+      addN(ab, 'buffDuration', 2);
+    },
+  ),
+  gk(
+    'sorcerer',
+    'a3',
+    'so_gk_a3_a',
+    'Warp',
+    '🌀',
+    'Arcane Leap jumps +150u, phases +0.4s, and recharges 60% faster',
+    (ab) => {
+      addN(ab, 'range', 150);
+      addN(ab, 'iframes', 0.4);
+      mul(ab, 'cooldown', 0.4);
+    },
+  ),
+  gk(
+    'sorcerer',
+    'a3',
+    'so_gk_a3_b',
+    'Phase Shift',
+    '✨',
+    'Arcane Leap mends +50 on use, phases +0.5s, and reaches +80u',
+    (ab) => {
+      addN(ab, 'healOnUse', 50);
+      addN(ab, 'iframes', 0.5);
+      addN(ab, 'range', 80);
+    },
+  ),
+
+  // --- Warlock --------------------------------------------------------------
+  gk(
+    'warlock',
+    'basic',
+    'wa_gk_basic_a',
+    'Eldritch Barrage',
+    '💥',
+    'Eldritch Blast forks into 3 soul-bolts (+8 each), draining 30% total',
+    (ab) => {
+      addN(ab, 'projCount', 2);
+      ab.spreadDeg = Math.max(ab.spreadDeg ?? 0, 14);
+      addN(ab, 'damage', 8);
+      addN(ab, 'lifestealFrac', 0.15);
+    },
+  ),
+  gk(
+    'warlock',
+    'basic',
+    'wa_gk_basic_b',
+    'Soul Ruin',
+    '💀',
+    'Eldritch Blast hits for +24, +300 speed, and drinks 40% as health',
+    (ab) => {
+      addN(ab, 'damage', 24);
+      addN(ab, 'projSpeed', 300);
+      addN(ab, 'lifestealFrac', 0.25);
+    },
+  ),
+  gk(
+    'warlock',
+    'a1',
+    'wa_gk_a1_a',
+    'Word of Ruin',
+    '☠️',
+    'Hex festers for +22/tick across +65u for +4s',
+    (ab) => {
+      addN(ab, 'zoneTickDamage', 22);
+      addN(ab, 'radius', 65);
+      addN(ab, 'zoneDuration', 4);
+    },
+  ),
+  gk(
+    'warlock',
+    'a1',
+    'wa_gk_a1_b',
+    'Crippling Curse',
+    '🕸️',
+    'Hex locks foes to 35% speed and festers +12/tick over +55u',
+    (ab) => {
+      setMin(ab, 'slowMult', 0.35);
+      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.5);
+      addN(ab, 'zoneTickDamage', 12);
+      addN(ab, 'radius', 55);
+    },
+  ),
+  gk(
+    'warlock',
+    'a2',
+    'wa_gk_a2_a',
+    'Infernal Cataclysm',
+    '🔥',
+    'Hellish Rebuke erupts for +40 across +55u, drinking 35% total',
+    (ab) => {
+      addN(ab, 'damage', 40);
+      addN(ab, 'radius', 55);
+      addN(ab, 'lifestealFrac', 0.15);
+    },
+  ),
+  gk(
+    'warlock',
+    'a2',
+    'wa_gk_a2_b',
+    'Searing Retort',
+    '💥',
+    'Hellish Rebuke hits +18, freezes 0.7s, widens +20u, and recharges 40% faster',
+    (ab) => {
+      addN(ab, 'damage', 18);
+      addN(ab, 'freeze', 0.7);
+      addN(ab, 'radius', 20);
+      mul(ab, 'cooldown', 0.6);
+    },
+  ),
+  gk(
+    'warlock',
+    'a3',
+    'wa_gk_a3_a',
+    'Fiendish Ascension',
+    '😈',
+    "Dark One's Blessing swells to +50% damage, +25% move, and lasts 5s longer",
+    (ab) => {
+      addN(ab, 'buffDamageMult', 0.5);
+      ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.25);
+      addN(ab, 'buffDuration', 5);
+    },
+  ),
+  gk(
+    'warlock',
+    'a3',
+    'wa_gk_a3_b',
+    'Eternal Pact',
+    '🕯️',
+    "Dark One's Blessing is nearly always up (−45% cd), +30% damage, 30% mitigation",
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      addN(ab, 'buffDamageMult', 0.3);
+      setMin(ab, 'buffDefMult', 0.7);
+      addN(ab, 'buffDuration', 2);
+    },
+  ),
+];
+
+// ---------------------------------------------------------------------------
+// SUBCLASS grands (item 17) — two capstones for each of the 24 subclasses, each
+// transforming the hero's BOUND sub1/sub2 skills of that subclass. A subclass
+// grand can't know which two of the four skills a hero picked, so its `apply`
+// tunes each bound sub-ability adaptively (`amplify` scales whatever magnitude/
+// area/buff the skill carries; riders add lifesteal/control/slow only where the
+// skill's kind honours them). Applied host-side after the sub skills bind (see
+// applySubclassGrands + world.rebindActiveSubs), never through the base replay.
+// ---------------------------------------------------------------------------
+
+/** True for a hit-landing ability that can carry a lifesteal / stun / freeze rider. */
+function isStrike(ab: PlayerAbilityDef): boolean {
+  return ab.kind === 'meleeCone' || ab.kind === 'pbaoe' || ab.kind === 'projectile';
+}
+
+/** Scale one numeric field by `frac` (rounded), leaving an absent field absent. */
+function scaleField(ab: PlayerAbilityDef, k: keyof PlayerAbilityDef, frac: number): void {
+  const v = ab[k] as number | undefined;
+  if (v) (ab[k] as number) = Math.round(v * (1 + frac));
+}
+
+/**
+ * Adaptively enlarge a subclass skill — the "make it huge" lever a subclass grand
+ * pulls regardless of the skill's kind. `mag` scales its magnitude (damage, heal,
+ * zone ticks, landing/on-use heal) and deepens its buffs; `size` scales its
+ * footprint (radius, blast, melee reach) and — for a dash/blink — its leap and
+ * i-frames, so even a magnitude-less mobility skill transforms measurably.
+ */
+function amplify(ab: PlayerAbilityDef, mag: number, size: number): void {
+  scaleField(ab, 'damage', mag);
+  scaleField(ab, 'landingDamage', mag);
+  scaleField(ab, 'zoneTickDamage', mag);
+  scaleField(ab, 'zoneTickHeal', mag);
+  scaleField(ab, 'healOnUse', mag);
+  scaleField(ab, 'radius', size);
+  scaleField(ab, 'impactRadius', size);
+  if (ab.kind === 'meleeCone') scaleField(ab, 'range', size);
+  if (ab.kind === 'dash' || ab.kind === 'blink') {
+    scaleField(ab, 'range', Math.max(size, mag * 0.5));
+    ab.iframes = Math.round(((ab.iframes ?? 0) + 0.15) * 100) / 100;
+  }
+  if (ab.buffDamageMult)
+    ab.buffDamageMult = Math.round((ab.buffDamageMult + mag * 0.6) * 100) / 100;
+  if (ab.buffMoveMult) ab.buffMoveMult = Math.round((ab.buffMoveMult + mag * 0.4) * 100) / 100;
+  if (ab.buffDefMult) ab.buffDefMult = Math.round(ab.buffDefMult * (1 - mag * 0.4) * 100) / 100;
+}
+
+/** Lifesteal rider — only on a damage-dealing strike (heals/buffs/zones can't drink). */
+function lifeRider(ab: PlayerAbilityDef, frac: number): void {
+  if (isStrike(ab) && ab.damage > 0) addN(ab, 'lifestealFrac', frac);
+}
+/** Control rider — a stun on a melee/pbaoe strike, a freeze on a projectile (the
+ *  only riders the sim applies for each; projectiles never stun). */
+function ctrlRider(ab: PlayerAbilityDef, secs: number): void {
+  if (ab.kind === 'meleeCone' || ab.kind === 'pbaoe') addN(ab, 'stun', secs);
+  else if (ab.kind === 'projectile') addN(ab, 'freeze', secs);
+}
+/** Slow rider — chills whatever the skill can slow (a struck foe, or a hazard zone). */
+function slowRider(ab: PlayerAbilityDef, mult: number, dur: number): void {
+  if ((ab.damage ?? 0) > 0 || (ab.zoneTickDamage ?? 0) > 0) {
+    setMin(ab, 'slowMult', mult);
+    ab.slowDuration = Math.max(ab.slowDuration ?? 0, dur);
+  }
+}
+
+/** Subclass-grand builder — a grand tied to a subclass (forces grand + maxStacks
+ *  1). Its `apply` tunes each bound sub-ability of that subclass (ctx.subAbilities,
+ *  filled only by applySubclassGrands); a harmless no-op anywhere else. */
+function gs(
+  subclassId: string,
+  id: string,
+  name: string,
+  icon: string,
+  desc: string,
+  tune: (ab: PlayerAbilityDef) => void,
+): CharUpgradeDef {
+  const classId = getSubclass(subclassId)!.classId;
+  return {
+    id,
+    classId,
+    subclassId,
+    name,
+    icon,
+    desc,
+    grand: true,
+    maxStacks: 1,
+    apply: ({ subAbilities }) => {
+      if (!subAbilities) return;
+      for (const slot of SUB_SLOTS) {
+        const ab = subAbilities[slot];
+        if (ab) tune(ab);
+      }
+    },
+  };
+}
+
+export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
+  // Knight
+  gs(
+    'kn_champion',
+    'kn_champion_g_a',
+    'Unbroken Champion',
+    '⚔️',
+    'Your Champion skills strike 50% harder across a wider field and drink 25% as health',
+    (ab) => {
+      amplify(ab, 0.5, 0.3);
+      lifeRider(ab, 0.25);
+    },
+  ),
+  gs(
+    'kn_champion',
+    'kn_champion_g_b',
+    "Warlord's Tempo",
+    '🥁',
+    'Your Champion skills recharge 40% faster, hit 30% harder, and stun on impact',
+    (ab) => {
+      mul(ab, 'cooldown', 0.6);
+      amplify(ab, 0.3, 0.15);
+      ctrlRider(ab, 0.6);
+    },
+  ),
+  gs(
+    'kn_battlemaster',
+    'kn_battlemaster_g_a',
+    'Grand Tactician',
+    '🎖️',
+    "Your Battlemaster skills hit 50% harder, spread wider, and shatter foes' footing to 45%",
+    (ab) => {
+      amplify(ab, 0.5, 0.3);
+      slowRider(ab, 0.45, 1.5);
+    },
+  ),
+  gs(
+    'kn_battlemaster',
+    'kn_battlemaster_g_b',
+    'Perfect Maneuver',
+    '⚙️',
+    'Your Battlemaster skills recharge 40% faster, hit 30% harder, and stun on impact',
+    (ab) => {
+      mul(ab, 'cooldown', 0.6);
+      amplify(ab, 0.3, 0.15);
+      ctrlRider(ab, 0.7);
+    },
+  ),
+
+  // Ranger
+  gs(
+    'rg_hunter',
+    'rg_hunter_g_a',
+    'Apex Predator',
+    '🎯',
+    'Your Hunter skills hit 50% harder over a wider area and pin the quarry (0.7s)',
+    (ab) => {
+      amplify(ab, 0.5, 0.3);
+      ctrlRider(ab, 0.7);
+    },
+  ),
+  gs(
+    'rg_hunter',
+    'rg_hunter_g_b',
+    'Relentless Hunt',
+    '🐾',
+    'Your Hunter skills recharge 40% faster, hit 30% harder, and cripple prey to 50%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.6);
+      amplify(ab, 0.3, 0.15);
+      slowRider(ab, 0.5, 1.5);
+    },
+  ),
+  gs(
+    'rg_beastmaster',
+    'rg_beastmaster_g_a',
+    "Alpha's Fury",
+    '🐺',
+    'Your Beast Master skills maul 50% harder over a wider area and drink 25% as health',
+    (ab) => {
+      amplify(ab, 0.5, 0.3);
+      lifeRider(ab, 0.25);
+    },
+  ),
+  gs(
+    'rg_beastmaster',
+    'rg_beastmaster_g_b',
+    'Pack Tactics',
+    '🐾',
+    'Your Beast Master skills recharge 40% faster, hit 30% harder, and hamstring foes to 50%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.6);
+      amplify(ab, 0.3, 0.15);
+      slowRider(ab, 0.5, 1.5);
+    },
+  ),
+
+  // Mage
+  gs(
+    'mg_evoker',
+    'mg_evoker_g_a',
+    'Arch-Evoker',
+    '🔥',
+    'Your Evoker skills detonate 60% harder across a vast area, freezing/stunning struck foes',
+    (ab) => {
+      amplify(ab, 0.6, 0.35);
+      ctrlRider(ab, 0.6);
+    },
+  ),
+  gs(
+    'mg_evoker',
+    'mg_evoker_g_b',
+    'Overchannel',
+    '⚡',
+    'Your Evoker skills recharge 45% faster and hit 30% harder',
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      amplify(ab, 0.3, 0.15);
+    },
+  ),
+  gs(
+    'mg_abjurer',
+    'mg_abjurer_g_a',
+    'Grand Warding',
+    '🛡️',
+    'Your Abjurer skills swell 50%, their wards deepen, and their snares lock to 30%',
+    (ab) => {
+      amplify(ab, 0.5, 0.3);
+      slowRider(ab, 0.3, 1.5);
+    },
+  ),
+  gs(
+    'mg_abjurer',
+    'mg_abjurer_g_b',
+    'Ceaseless Ward',
+    '♾️',
+    'Your Abjurer skills recharge 45% faster and their wards/blasts grow 30%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      amplify(ab, 0.3, 0.15);
+    },
+  ),
+
+  // Cleric
+  gs(
+    'cl_light',
+    'cl_light_g_a',
+    'Dawnbreaker',
+    '☀️',
+    'Your Light skills blaze 55% brighter over a wider area, dazing/freezing foes',
+    (ab) => {
+      amplify(ab, 0.55, 0.3);
+      ctrlRider(ab, 0.6);
+    },
+  ),
+  gs(
+    'cl_light',
+    'cl_light_g_b',
+    'Endless Radiance',
+    '🌟',
+    'Your Light skills recharge 45% faster and burn 30% brighter',
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      amplify(ab, 0.3, 0.15);
+    },
+  ),
+  gs(
+    'cl_life',
+    'cl_life_g_a',
+    'Font of Life',
+    '💚',
+    'Your Life skills heal and shield 60% more across a wider field',
+    (ab) => {
+      amplify(ab, 0.6, 0.3);
+    },
+  ),
+  gs(
+    'cl_life',
+    'cl_life_g_b',
+    'Ceaseless Mending',
+    '✨',
+    'Your Life skills recharge 45% faster and mend 35% more',
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      amplify(ab, 0.35, 0.15);
+    },
+  ),
+
+  // Barbarian
+  gs(
+    'bb_berserker',
+    'bb_berserker_g_a',
+    'Avatar of Fury',
+    '😤',
+    'Your Berserker skills hit 55% harder over a wider area and drink 30% as health',
+    (ab) => {
+      amplify(ab, 0.55, 0.3);
+      lifeRider(ab, 0.3);
+    },
+  ),
+  gs(
+    'bb_berserker',
+    'bb_berserker_g_b',
+    'Blood Frenzy',
+    '🩸',
+    'Your Berserker skills recharge 40% faster, hit 30% harder, and leech 20%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.6);
+      amplify(ab, 0.3, 0.15);
+      lifeRider(ab, 0.2);
+    },
+  ),
+  gs(
+    'bb_totem',
+    'bb_totem_g_a',
+    'Great Spirit',
+    '🐻',
+    'Your Totem skills swell 50%, deepen their wards, and root foes to 45%',
+    (ab) => {
+      amplify(ab, 0.5, 0.3);
+      slowRider(ab, 0.45, 1.5);
+    },
+  ),
+  gs(
+    'bb_totem',
+    'bb_totem_g_b',
+    'Ancestral Might',
+    '🌍',
+    'Your Totem skills recharge 40% faster and grow 35% stronger',
+    (ab) => {
+      mul(ab, 'cooldown', 0.6);
+      amplify(ab, 0.35, 0.15);
+    },
+  ),
+
+  // Rogue
+  gs(
+    'ro_assassin',
+    'ro_assassin_g_a',
+    'Death Incarnate',
+    '💀',
+    'Your Assassin skills devastate for 55% more over a wider area and drink 30% as health',
+    (ab) => {
+      amplify(ab, 0.55, 0.3);
+      lifeRider(ab, 0.3);
+    },
+  ),
+  gs(
+    'ro_assassin',
+    'ro_assassin_g_b',
+    'One with Shadow',
+    '🌑',
+    'Your Assassin skills recharge 40% faster, hit 30% harder, and daze on strike',
+    (ab) => {
+      mul(ab, 'cooldown', 0.6);
+      amplify(ab, 0.3, 0.15);
+      ctrlRider(ab, 0.6);
+    },
+  ),
+  gs(
+    'ro_trickster',
+    'ro_trickster_g_a',
+    "Archmage's Cunning",
+    '✨',
+    'Your Trickster skills hit 50% harder over a wider area and ensnare foes to 40%',
+    (ab) => {
+      amplify(ab, 0.5, 0.3);
+      slowRider(ab, 0.4, 1.5);
+      ctrlRider(ab, 0.5);
+    },
+  ),
+  gs(
+    'ro_trickster',
+    'ro_trickster_g_b',
+    'Sleight of Time',
+    '⏳',
+    'Your Trickster skills recharge 45% faster and grow 30%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      amplify(ab, 0.3, 0.15);
+    },
+  ),
+
+  // Paladin
+  gs(
+    'pa_devotion',
+    'pa_devotion_g_a',
+    'Avatar of Devotion',
+    '🌟',
+    'Your Devotion skills strike 50% harder over a wider area and heal 20% of the damage',
+    (ab) => {
+      amplify(ab, 0.5, 0.3);
+      lifeRider(ab, 0.2);
+    },
+  ),
+  gs(
+    'pa_devotion',
+    'pa_devotion_g_b',
+    'Unyielding Faith',
+    '🛡️',
+    'Your Devotion skills recharge 40% faster and their blessings/blows grow 30%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.6);
+      amplify(ab, 0.3, 0.15);
+    },
+  ),
+  gs(
+    'pa_vengeance',
+    'pa_vengeance_g_a',
+    'Avenging Wrath',
+    '🔥',
+    'Your Vengeance skills hit 55% harder over a wider area and stun the wicked',
+    (ab) => {
+      amplify(ab, 0.55, 0.3);
+      ctrlRider(ab, 0.7);
+    },
+  ),
+  gs(
+    'pa_vengeance',
+    'pa_vengeance_g_b',
+    'Relentless Vengeance',
+    '⚡',
+    'Your Vengeance skills recharge 40% faster, hit 30% harder, and leech 20%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.6);
+      amplify(ab, 0.3, 0.15);
+      lifeRider(ab, 0.2);
+    },
+  ),
+
+  // Druid
+  gs(
+    'dr_moon',
+    'dr_moon_g_a',
+    'Primal Avatar',
+    '🐾',
+    'Your Moon skills maul 55% harder over a wider area and drink 25% as health',
+    (ab) => {
+      amplify(ab, 0.55, 0.3);
+      lifeRider(ab, 0.25);
+    },
+  ),
+  gs(
+    'dr_moon',
+    'dr_moon_g_b',
+    'Feral Swiftness',
+    '🐆',
+    'Your Moon skills recharge 40% faster, hit 30% harder, and stagger on strike',
+    (ab) => {
+      mul(ab, 'cooldown', 0.6);
+      amplify(ab, 0.3, 0.15);
+      ctrlRider(ab, 0.5);
+    },
+  ),
+  gs(
+    'dr_land',
+    'dr_land_g_a',
+    'Wrath of the Land',
+    '🌋',
+    'Your Land skills erupt 55% harder across a vast area and root foes to 40%',
+    (ab) => {
+      amplify(ab, 0.55, 0.35);
+      slowRider(ab, 0.4, 1.5);
+    },
+  ),
+  gs(
+    'dr_land',
+    'dr_land_g_b',
+    'Eternal Season',
+    '🍃',
+    'Your Land skills recharge 45% faster and their zones/blasts grow 30%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      amplify(ab, 0.3, 0.15);
+    },
+  ),
+
+  // Bard
+  gs(
+    'ba_valor',
+    'ba_valor_g_a',
+    "Hero's Ballad",
+    '🎺',
+    'Your Valor skills hit 50% harder over a wider area and empower the band far more',
+    (ab) => {
+      amplify(ab, 0.5, 0.3);
+      lifeRider(ab, 0.15);
+    },
+  ),
+  gs(
+    'ba_valor',
+    'ba_valor_g_b',
+    'Battle Rhapsody',
+    '🥁',
+    'Your Valor skills recharge 45% faster and grow 30%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      amplify(ab, 0.3, 0.15);
+    },
+  ),
+  gs(
+    'ba_whispers',
+    'ba_whispers_g_a',
+    'Voice of Madness',
+    '😱',
+    'Your Whispers skills hit 50% harder over a wider area and terrify foes to 35%',
+    (ab) => {
+      amplify(ab, 0.5, 0.3);
+      slowRider(ab, 0.35, 1.5);
+      ctrlRider(ab, 0.5);
+    },
+  ),
+  gs(
+    'ba_whispers',
+    'ba_whispers_g_b',
+    'Unheard Dirge',
+    '🌫️',
+    'Your Whispers skills recharge 45% faster and grow 30%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      amplify(ab, 0.3, 0.15);
+    },
+  ),
+
+  // Monk
+  gs(
+    'mo_openhand',
+    'mo_openhand_g_a',
+    'Perfect Harmony',
+    '👊',
+    'Your Open Hand skills strike 50% harder over a wider area and stun with each blow',
+    (ab) => {
+      amplify(ab, 0.5, 0.3);
+      ctrlRider(ab, 0.7);
+    },
+  ),
+  gs(
+    'mo_openhand',
+    'mo_openhand_g_b',
+    'Flowing Water',
+    '🌊',
+    'Your Open Hand skills recharge 45% faster, hit 30% harder, and mend you',
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      amplify(ab, 0.3, 0.15);
+      lifeRider(ab, 0.15);
+    },
+  ),
+  gs(
+    'mo_shadow',
+    'mo_shadow_g_a',
+    'Shadow Incarnate',
+    '🌑',
+    'Your Shadow skills strike 55% harder from the dark over a wider area and leech 20%',
+    (ab) => {
+      amplify(ab, 0.55, 0.3);
+      lifeRider(ab, 0.2);
+    },
+  ),
+  gs(
+    'mo_shadow',
+    'mo_shadow_g_b',
+    'Silent Death',
+    '🥷',
+    'Your Shadow skills recharge 40% faster, hit 30% harder, and daze on strike',
+    (ab) => {
+      mul(ab, 'cooldown', 0.6);
+      amplify(ab, 0.3, 0.15);
+      ctrlRider(ab, 0.6);
+    },
+  ),
+
+  // Sorcerer
+  gs(
+    'so_draconic',
+    'so_draconic_g_a',
+    'True Dragon',
+    '🐉',
+    'Your Draconic skills erupt 55% harder across a vast area, freezing/stunning struck foes',
+    (ab) => {
+      amplify(ab, 0.55, 0.35);
+      ctrlRider(ab, 0.6);
+    },
+  ),
+  gs(
+    'so_draconic',
+    'so_draconic_g_b',
+    "Dragon's Cadence",
+    '🪽',
+    'Your Draconic skills recharge 45% faster and grow 30%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      amplify(ab, 0.3, 0.15);
+    },
+  ),
+  gs(
+    'so_wild',
+    'so_wild_g_a',
+    'Unbound Chaos',
+    '🎲',
+    'Your Wild Magic skills surge 60% harder across a chaotic, wide area',
+    (ab) => {
+      amplify(ab, 0.6, 0.35);
+    },
+  ),
+  gs(
+    'so_wild',
+    'so_wild_g_b',
+    'Cascading Surge',
+    '🌀',
+    'Your Wild Magic skills recharge 45% faster, hit 35% harder, and freeze/stun foes',
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      amplify(ab, 0.35, 0.15);
+      ctrlRider(ab, 0.5);
+    },
+  ),
+
+  // Warlock
+  gs(
+    'wa_fiend',
+    'wa_fiend_g_a',
+    'Hellfire Ascendant',
+    '🔥',
+    'Your Fiend skills scorch 55% harder over a wider area and drink 25% as health',
+    (ab) => {
+      amplify(ab, 0.55, 0.3);
+      lifeRider(ab, 0.25);
+    },
+  ),
+  gs(
+    'wa_fiend',
+    'wa_fiend_g_b',
+    'Infernal Pact',
+    '😈',
+    'Your Fiend skills recharge 40% faster, hit 30% harder, and leech 20%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.6);
+      amplify(ab, 0.3, 0.15);
+      lifeRider(ab, 0.2);
+    },
+  ),
+  gs(
+    'wa_great_old_one',
+    'wa_great_old_one_g_a',
+    'Elder Mind',
+    '🐙',
+    'Your Great Old One skills hit 50% harder over a wider area and madden foes to 35%',
+    (ab) => {
+      amplify(ab, 0.5, 0.3);
+      slowRider(ab, 0.35, 1.5);
+      ctrlRider(ab, 0.5);
+    },
+  ),
+  gs(
+    'wa_great_old_one',
+    'wa_great_old_one_g_b',
+    'Whispered Doom',
+    '🔮',
+    'Your Great Old One skills recharge 45% faster and grow 30%',
+    (ab) => {
+      mul(ab, 'cooldown', 0.55);
+      amplify(ab, 0.3, 0.15);
+    },
+  ),
+];
+
 /** Grand improvements grouped by class (item 22). */
 export const GRAND_BY_CLASS: Record<ClassId, CharUpgradeDef[]> = GRAND.reduce(
   (acc, d) => {
@@ -1379,9 +3386,32 @@ export const CHAR_UPGRADES_BY_CLASS: Record<ClassId, CharUpgradeDef[]> = {
 /** The class-agnostic hybrid pool (cross-class powers + combat styles). */
 export const HYBRID_UPGRADES: CharUpgradeDef[] = HYBRID;
 
-/** Flat lookup by id (across every class + the hybrid pool + grand improvements). */
+/**
+ * Every grand grouped by class — the class capstones (GRAND_BY_CLASS) plus the
+ * base-skill and subclass grands (item 17). Consumed by `offerableGrands` to
+ * assemble the run-clear special-reward offer with the right accessibility gates.
+ */
+const GRAND_ALL_BY_CLASS: Record<ClassId, CharUpgradeDef[]> = [
+  ...GRAND,
+  ...SKILL_GRANDS,
+  ...SUBCLASS_GRANDS,
+].reduce(
+  (acc, d) => {
+    (acc[d.classId as ClassId] ??= []).push(d);
+    return acc;
+  },
+  {} as Record<ClassId, CharUpgradeDef[]>,
+);
+
+/** Flat lookup by id (across every class + the hybrid pool + all grand kinds). */
 export const CHAR_UPGRADES: Record<string, CharUpgradeDef> = Object.fromEntries(
-  [...Object.values(CHAR_UPGRADES_BY_CLASS).flat(), ...HYBRID, ...GRAND].map((d) => [d.id, d]),
+  [
+    ...Object.values(CHAR_UPGRADES_BY_CLASS).flat(),
+    ...HYBRID,
+    ...GRAND,
+    ...SKILL_GRANDS,
+    ...SUBCLASS_GRANDS,
+  ].map((d) => [d.id, d]),
 );
 
 // ---------------------------------------------------------------------------
@@ -1558,6 +3588,46 @@ export function applyCharUpgrades(player: Player, ids: string[] | undefined): vo
 }
 
 /**
+ * Apply a hero's owned SUBCLASS grands (item 17) to their bound sub-abilities.
+ * Called AFTER the sub skills are bound (world.rebindActiveSubs — so it re-runs on
+ * every spawn and every class swap). Each subclass grand is handed only the bound
+ * sub-abilities whose skill belongs to its subclass, so a grand for a subclass the
+ * hero isn't currently wielding is a no-op. Sub-abilities are rebuilt fresh on each
+ * rebind, so re-applying the ordered grand list is idempotent. Pure aside from the
+ * in-place mutation of `player.subAbilities`.
+ */
+export function applySubclassGrands(player: Player, ids: readonly string[] | undefined): void {
+  const subs = player.subAbilities;
+  if (!ids || ids.length === 0 || !subs) return;
+  // Which chosen sub-skill sits in each bound slot: the hero's ACTIVE-class skills,
+  // in order (sub1, then sub2) — mirrors world.rebindActiveSubs' binding.
+  const active = (player.subSkillIds ?? [])
+    .filter((sid) => subclassOfSkill(sid)?.classId === player.classId)
+    .slice(0, 2);
+  const slotSubclass: Partial<Record<SubSlot, string>> = {};
+  active.forEach((sid, i) => {
+    const scId = subclassOfSkill(sid)?.id;
+    if (scId) slotSubclass[i === 0 ? 'sub1' : 'sub2'] = scId;
+  });
+  for (const id of ids) {
+    const def = CHAR_UPGRADES[id];
+    if (!def?.subclassId || !upgradeAllowedFor(def, player.classId)) continue;
+    // Hand the grand only the sub-abilities that belong to its subclass.
+    const targeted: Partial<Record<SubSlot, PlayerAbilityDef>> = {};
+    for (const slot of SUB_SLOTS) {
+      if (subs[slot] && slotSubclass[slot] === def.subclassId) targeted[slot] = subs[slot];
+    }
+    if (targeted.sub1 || targeted.sub2) {
+      def.apply({
+        player,
+        abilities: (player.abilities ?? {}) as Record<AbilitySlot, PlayerAbilityDef>,
+        subAbilities: targeted,
+      });
+    }
+  }
+}
+
+/**
  * Preview the ability table a hero of `classId` ends up with after taking the
  * given character/hybrid upgrades — WITHOUT a live World. Used by the HUD so
  * ability names/cooldowns follow hybrid grafts (a Knight who learned Fireball
@@ -1702,6 +3772,40 @@ export function reofferCandidates(classId: ClassId, owned: readonly string[]): s
       const gid = `${GRAFTUP_PREFIX}${slot}:${b.id}`;
       if (!charUpgradeAtMax(gid, owned)) out.push(gid);
     }
+  }
+  return out;
+}
+
+/**
+ * The grand improvements a hero of `classId` may be OFFERED at a run-clear, given
+ * their owned character upgrades (grafts) + subclass skills (items 17 & 19):
+ *   • CLASS capstones — always (item 19 only gates them to owned classes, done by
+ *     the caller iterating the hero's classes);
+ *   • base-SKILL grands — only while that slot still holds its NATIVE skill, so a
+ *     grafted-over slot never offers its lost skill's grand;
+ *   • SUBCLASS grands — only for subclasses the hero has actually picked.
+ * A grand already held at its (1) cap drops out. Pure; the caller flat-maps this
+ * across the hero's owned classes (a grand belongs to exactly one class, so no
+ * duplicates arise). See SpecialReward.tsx.
+ */
+export function offerableGrands(
+  classId: ClassId,
+  ownedChar: readonly string[],
+  ownedSubSkills: readonly string[],
+): CharUpgradeDef[] {
+  if (!CLASSES[classId]) return [];
+  const occupant = occupancyAfter(classId, ownedChar);
+  const pickedSubclasses = new Set(
+    ownedSubSkills.map((s) => subclassOfSkill(s)?.id).filter((x): x is string => x != null),
+  );
+  const out: CharUpgradeDef[] = [];
+  for (const d of GRAND_ALL_BY_CLASS[classId] ?? []) {
+    if (charUpgradeAtMax(d.id, ownedChar)) continue;
+    // A base-skill grand whose native slot has been grafted over is dead (item 19).
+    if (d.skillSlot && occupant[d.skillSlot] !== d.skillSlot) continue;
+    // A subclass grand only surfaces once the hero holds a skill of that subclass.
+    if (d.subclassId && !pickedSubclasses.has(d.subclassId)) continue;
+    out.push(d);
   }
   return out;
 }

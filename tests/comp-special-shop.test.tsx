@@ -88,6 +88,24 @@ describe('SpecialReward — tiered run-clear pick', () => {
     }
   });
 
+  it('tier 2: surfaces skill + subclass grands once a subclass is committed (items 17/19)', () => {
+    const sub = subclassesFor('knight')[0]; // Champion
+    // A committed subclass + an already-owned grand: the owned grand rotates the
+    // display window (exercising the rotation path) and gates itself out at cap.
+    useStore.setState({
+      mySubclassId: sub.id,
+      mySubSkills: [sub.skills[0].id, sub.skills[1].id],
+      myCharUpgrades: ['kn_grand_immovable'],
+    });
+    render(<SpecialReward />);
+    // Base-skill grands + the Champion subclass grands are now offerable, so at least
+    // one grand card renders; clicking it relays a character upgrade.
+    const grands = screen.getAllByText(/^★ /);
+    expect(grands.length).toBeGreaterThan(0);
+    fireEvent.click(grands[0]);
+    expect(chooseCharUpgrade).toHaveBeenCalled();
+  });
+
   it('ignores an unrecognised sub skill and falls back to offering a subclass', () => {
     // A bogus skill id counts toward no class (subclassOfSkill → undefined), so the
     // hero is treated as sub-less and the panel offers a subclass choice (item 15).
