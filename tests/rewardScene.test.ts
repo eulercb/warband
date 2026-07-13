@@ -3,7 +3,9 @@ import {
   RewardScene,
   CLAIM_DWELL_S,
   DESCENT_DWELL_S,
+  BUY_DWELL_S,
   type RewardOffers,
+  type ShopOffer,
 } from '../src/ui/state/rewardScene';
 import { ARENA_W, ARENA_H } from '../src/engine/core/constants';
 import type { InputCommand, RenderState, Vec2 } from '../src/engine/core/types';
@@ -35,6 +37,14 @@ function offers(): RewardOffers {
       { id: 'c2', label: '❄ Frost', desc: 'chill' },
     ],
   };
+}
+
+/** Two shop stalls (a single-buy passive + a stackable), both costing 3. */
+function shop(): ShopOffer[] {
+  return [
+    { id: 'speed', label: '💨 Swiftness · 💰3', desc: 'faster', cost: 3 },
+    { id: 'potion', label: '🧪 Vial · 💰3', desc: 'heal', cost: 3 },
+  ];
 }
 
 function heroPos(state: RenderState): Vec2 {
@@ -88,7 +98,7 @@ describe('RewardScene: construction', () => {
     expect(s.totems).toBeUndefined();
   });
 
-  it('lays relics on the floor (one per offer) and a sealed vortex', () => {
+  it('lays relics on the floor (one per offer) and an always-open vortex (item 11)', () => {
     const scene = new RewardScene('Aria', 'knight', offers());
     const s = scene.frame(1000);
     expect(s.loot).toHaveLength(4); // 2 generic + 2 char
@@ -96,11 +106,12 @@ describe('RewardScene: construction', () => {
     const chars = (s.loot ?? []).filter((l) => l.kind === 'char');
     expect(generic).toHaveLength(2);
     expect(chars).toHaveLength(2);
-    // Vortex present but not yet open (nothing claimed).
+    // The vortex is ALWAYS open (item 11) so the room can never soft-lock, but its
+    // charge starts below 1 until boons are claimed (a visual nudge, not a gate).
     expect(s.vortex).not.toBeNull();
-    expect(s.vortex?.open).toBe(false);
+    expect(s.vortex?.open).toBe(true);
     expect(s.vortex?.charge).toBeLessThan(1);
-    expect(scene.vortexOpen()).toBe(false);
+    expect(scene.vortexOpen()).toBe(true);
   });
 
   it('keeps every relic + the vortex on the spawn tile (no torus wrap flip)', () => {
@@ -209,14 +220,18 @@ describe('RewardScene: claiming relics', () => {
 });
 
 describe('RewardScene: vortex gating + descent', () => {
-  it('opens the vortex only after both a generic AND a class boon are claimed', () => {
+  it('keeps the vortex open throughout and fills its charge as boons are claimed (item 11)', () => {
     const scene = new RewardScene('Aria', 'knight', offers());
     let s = scene.frame(1000);
     const gen = (s.loot ?? []).find((l) => l.kind === 'generic')!;
     const chr = (s.loot ?? []).find((l) => l.kind === 'char')!;
 
+    expect(scene.vortexOpen()).toBe(true); // open from the very start — never gated
+
     let now = walkOnto(scene, gen.pos, 1000);
-    expect(scene.vortexOpen()).toBe(false); // only generic so far
+    expect(scene.vortexOpen()).toBe(true); // still open with only a generic claimed
+    s = scene.frame(now + 50);
+    expect(s.vortex?.charge).toBeCloseTo(0.5, 5); // one of two kinds claimed
 
     now = walkOnto(scene, chr.pos, now + 50);
     expect(scene.vortexOpen()).toBe(true);
@@ -243,15 +258,17 @@ describe('RewardScene: vortex gating + descent', () => {
     expect(s.vortex?.standing).toBe(true);
   });
 
-  it('keeps the vortex sealed while a boon is unclaimed (cannot descend early)', () => {
+  it('lets the hero descend WITHOUT claiming — the vortex never soft-locks (item 11)', () => {
     const scene = new RewardScene('Aria', 'knight', offers());
     const s = scene.frame(1000);
-    const gen = (s.loot ?? []).find((l) => l.kind === 'generic')!;
-    walkOnto(scene, gen.pos, 1000);
-    // Walk into the vortex position with only one boon claimed.
-    walkOnto(scene, s.vortex!.pos, 5000);
-    expect(scene.vortexOpen()).toBe(false);
-    expect(scene.standingInVortex()).toBe(false); // sealed vortex ignores standing
+    // Claim nothing at all; walk straight into the vortex and hold the descent dwell.
+    walkOnto(scene, s.vortex!.pos, 1000, DESCENT_DWELL_S + 0.3);
+    expect(scene.vortexOpen()).toBe(true);
+    expect(scene.standingInVortex()).toBe(true);
+    expect(scene.readyToDescend()).toBe(true); // a skipped pick still descends
+    // And nothing was force-claimed on the way in.
+    expect(scene.progress().claimedGeneric).toBe(0);
+    expect(scene.progress().claimedChar).toBe(0);
   });
 });
 
@@ -333,6 +350,55 @@ describe('RewardScene: descent dwell + overlay freeze', () => {
       scene.frame(now, false);
     }
     expect(scene.progress().claimedGeneric).toBe(1);
+  });
+});
+
+describe('RewardScene: walk-up coin shop (item 2)', () => {
+  it('lays a stall per shop offer on the safe row, dimmed until affordable', () => {
+    const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
+    const s = scene.frame(1000);
+    const stalls = (s.loot ?? []).filter((l) => l.kind === 'shop');
+    expect(stalls).toHaveLength(2);
+    expect(stalls.every((l) => l.locked)).toBe(true); // no coins mirrored yet
+    for (const l of stalls) {
+      expect(Math.abs(SPAWN.y - l.pos.y)).toBeLessThan(ARENA_H / 2);
+      expect(Math.abs(SPAWN.x - l.pos.x)).toBeLessThan(ARENA_W / 2);
+    }
+  });
+
+  it('buys the stall the hero dwells on when affordable (armed-latch: once)', () => {
+    const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
+    scene.setShopState(10, []); // plenty of coins, nothing sold out
+    const s = scene.frame(1000);
+    const stall = (s.loot ?? []).find((l) => l.kind === 'shop' && /Swiftness/.test(l.label ?? ''))!;
+    expect(stall.locked).toBe(false); // affordable now
+    walkOnto(scene, stall.pos, 1000, BUY_DWELL_S + 0.2);
+    const buys = scene.takeShopBuys();
+    expect(buys).toHaveLength(1);
+    expect(buys[0].id).toBe('speed');
+    // Standing on it does not re-buy (armed until the hero steps off).
+    scene.frame(9000);
+    expect(scene.takeShopBuys()).toHaveLength(0);
+  });
+
+  it('will not buy a stall the hero cannot afford', () => {
+    const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
+    scene.setShopState(1, []); // 1 coin, stalls cost 3
+    const s = scene.frame(1000);
+    const stall = (s.loot ?? []).find((l) => l.kind === 'shop')!;
+    expect(stall.locked).toBe(true);
+    walkOnto(scene, stall.pos, 1000, BUY_DWELL_S + 0.2);
+    expect(scene.takeShopBuys()).toHaveLength(0);
+  });
+
+  it('will not buy a sold-out stall (a single-buy passive already owned)', () => {
+    const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
+    scene.setShopState(10, ['speed']); // affordable, but speed is sold out
+    const s = scene.frame(1000);
+    const speed = (s.loot ?? []).find((l) => l.kind === 'shop' && /Swiftness/.test(l.label ?? ''))!;
+    expect(speed.locked).toBe(true);
+    walkOnto(scene, speed.pos, 1000, BUY_DWELL_S + 0.2);
+    expect(scene.takeShopBuys()).toHaveLength(0);
   });
 });
 

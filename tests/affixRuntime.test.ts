@@ -14,7 +14,7 @@ import {
   AFFIX_ACCEL_MAX,
   AFFIX_OVERCHARGE_SCALE,
 } from '../src/engine/core/constants';
-import { buffMult } from '../src/engine/combat/combat';
+import { buffMult, applyBuff, makeBuff } from '../src/engine/combat/combat';
 import { AFFIXES } from '../src/engine/content/affixes';
 
 // These sims run without player input; an empty input map suffices each tick.
@@ -187,6 +187,18 @@ describe('teleporting', () => {
     w.players[0].pos = { x: boss.pos.x + 40, y: boss.pos.y }; // inside threaten range
     w.step(DT, new Map());
     expect(w.events.some((e) => e.t === 'blink')).toBe(true);
+  });
+
+  it('a ROOTED boss cannot teleport away (item 9)', () => {
+    const w = world(['teleporting']);
+    const boss = w.boss!;
+    boss.blinkTimer = 0; // ready to blink…
+    applyBuff(boss, makeBuff('root', 0, 2, 'zoneRoot')); // …but rooted
+    w.players[0].pos = { x: boss.pos.x + 40, y: boss.pos.y }; // inside threaten range
+    const before = { ...boss.pos };
+    w.step(DT, new Map());
+    expect(w.events.some((e) => e.t === 'blink')).toBe(false); // no teleport while rooted
+    expect(boss.pos).toEqual(before); // and it didn't relocate
   });
 });
 

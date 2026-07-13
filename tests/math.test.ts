@@ -20,6 +20,7 @@ import {
   angleOf,
   fromAngle,
   angleDelta,
+  inRearArc,
   mixSeed,
   Rng,
   pointInCircle,
@@ -641,5 +642,30 @@ describe('pointInSegment', () => {
     expect(pointInSegment(vec(3, 4), s, e, 1)).toBe(true);
     // clearly off to the side
     expect(pointInSegment(vec(0, 5), s, e, 1)).toBe(false);
+  });
+});
+
+describe('inRearArc (item 5 backstab)', () => {
+  const ARC = 120; // total rear-arc width in degrees
+  it('is true when the attacker is directly behind the facing', () => {
+    // Facing +x (0 rad); attacker directly behind = coming from the -x direction (π).
+    expect(inRearArc(0, Math.PI, ARC)).toBe(true);
+  });
+  it('is false when the attacker is directly in front', () => {
+    expect(inRearArc(0, 0, ARC)).toBe(false);
+  });
+  it('is false at the side (90° off) — outside a 120° rear arc', () => {
+    expect(inRearArc(0, Math.PI / 2, ARC)).toBe(false);
+  });
+  it('respects the arc boundary (just inside vs just outside the rear 60° half)', () => {
+    const behind = Math.PI;
+    const half = (ARC * Math.PI) / 360; // 60°
+    expect(inRearArc(0, behind - half + 0.01, ARC)).toBe(true);
+    expect(inRearArc(0, behind - half - 0.01, ARC)).toBe(false);
+  });
+  it('works for a non-zero facing', () => {
+    // Facing straight up (-y, i.e. -π/2). Behind = +y (π/2). Attacker from +y → backstab.
+    expect(inRearArc(-Math.PI / 2, Math.PI / 2, ARC)).toBe(true);
+    expect(inRearArc(-Math.PI / 2, -Math.PI / 2, ARC)).toBe(false);
   });
 });

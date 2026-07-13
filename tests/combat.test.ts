@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Player, Boss, GameEvent } from '../src/engine/core/types';
 import {
   damageBoss,
+  damageAdd,
   damagePlayer,
   healPlayer,
   applyBuff,
@@ -9,7 +10,10 @@ import {
   makeBuff,
   buffMult,
   tickBuffs,
+  coReviveSpeed,
+  isRooted,
 } from '../src/engine/combat/combat';
+import { REVIVE_TIME, REVIVE_MIN_TIME } from '../src/engine/core/constants';
 
 function mkPlayer(over: Partial<Player> = {}): Player {
   return {
@@ -37,6 +41,8 @@ function mkPlayer(over: Partial<Player> = {}): Player {
     damageTakenMult: 1,
     terrainResist: 0,
     regenPerSec: 0,
+    critChance: 0,
+    critMult: 1.5,
     threat: 0,
     stats: { damageDealt: 0, healingDone: 0, revives: 0, deaths: 0 },
     prevButtons: { basic: false, a1: false, a2: false, a3: false, revive: false },
@@ -192,5 +198,94 @@ describe('combat: regen lockout', () => {
     const boss = mkBoss();
     damageBoss(sink(), p, boss, 20);
     expect(boss.regenLockout).toBeGreaterThan(0); // the taken branch, for contrast
+  });
+});
+
+// ---------------------------------------------------------------------------
+// coReviveSpeed — co-revive speed-up with diminishing returns + a floor (item 10)
+// ---------------------------------------------------------------------------
+
+describe('coReviveSpeed (item 10)', () => {
+  it('is 1× for a lone (or no) reviver and rises with each additional reviver', () => {
+    expect(coReviveSpeed(0)).toBe(1);
+    expect(coReviveSpeed(1)).toBe(1);
+    expect(coReviveSpeed(2)).toBeGreaterThan(1);
+    expect(coReviveSpeed(3)).toBeGreaterThan(coReviveSpeed(2) - 1e-9);
+  });
+
+  it('has diminishing returns — each extra reviver helps less than the last', () => {
+    const gain2 = coReviveSpeed(2) - coReviveSpeed(1);
+    const gain3 = coReviveSpeed(3) - coReviveSpeed(2);
+    expect(gain2).toBeGreaterThan(0);
+    expect(gain3).toBeLessThan(gain2); // the 2nd extra reviver adds less than the 1st
+  });
+
+  it('clamps so the revive can NEVER complete faster than the minimum time', () => {
+    const cap = REVIVE_TIME / REVIVE_MIN_TIME;
+    expect(coReviveSpeed(3)).toBeLessThanOrEqual(cap);
+    expect(coReviveSpeed(50)).toBeLessThanOrEqual(cap); // saturates, never exceeds the cap
+    // Effective revive time (REVIVE_TIME / speed) is floored at REVIVE_MIN_TIME.
+    for (const n of [2, 3, 4, 10, 100]) {
+      expect(REVIVE_TIME / coReviveSpeed(n)).toBeGreaterThanOrEqual(REVIVE_MIN_TIME - 1e-9);
+    }
+  });
+});
+
+describe('isRooted (item 9)', () => {
+  it('is true only while a root buff is present', () => {
+    const boss = mkBoss();
+    expect(isRooted(boss)).toBe(false);
+    applyBuff(boss, makeBuff('root', 0, 2, 'zoneRoot'));
+    expect(isRooted(boss)).toBe(true);
+    // A moveSpeed slow is NOT a root.
+    const slowed = mkBoss();
+    applyBuff(slowed, makeBuff('moveSpeed', 0.3, 2, 'zoneSlow'));
+    expect(isRooted(slowed)).toBe(false);
+    // Expires with its buff.
+    tickBuffs(boss, 3);
+    expect(isRooted(boss)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hit modifiers — crit / backstab flags + multiplier on the damage functions (item 5)
+// ---------------------------------------------------------------------------
+
+describe('damage hit modifiers (item 5)', () => {
+  it('applies the crit multiplier to a boss hit and flags the event', () => {
+    const p = mkPlayer({ classId: 'ranger' });
+    const boss = mkBoss();
+    const s = sink();
+    const out = damageBoss(s, p, boss, 20, { mult: 1.5, crit: true });
+    expect(out).toBe(30); // 20 × 1.5
+    expect(s.events.find((e) => e.t === 'hit')).toMatchObject({ crit: true });
+  });
+
+  it('flags a backstab on a boss hit', () => {
+    const p = mkPlayer({ classId: 'rogue' });
+    const boss = mkBoss();
+    const s = sink();
+    damageBoss(s, p, boss, 20, { mult: 1.4, backstab: true });
+    expect(s.events.find((e) => e.t === 'hit')).toMatchObject({ backstab: true });
+  });
+
+  it('crits an add too (crit multiplier + flag)', () => {
+    const p = mkPlayer({ classId: 'ranger' });
+    const add = { id: 5, pos: { x: 0, y: 0 }, hp: 100, maxHp: 100, radius: 12, buffs: [] } as never;
+    const s = sink();
+    const out = damageAdd(s, p, add, 10, { mult: 2, crit: true });
+    expect(out).toBe(20);
+    expect(s.events.find((e) => e.t === 'hit')).toMatchObject({ crit: true });
+  });
+
+  it('an ordinary hit (no mods) carries neither flag and no bonus', () => {
+    const p = mkPlayer({ classId: 'ranger' });
+    const boss = mkBoss();
+    const s = sink();
+    const out = damageBoss(s, p, boss, 20);
+    expect(out).toBe(20); // no multiplier
+    const hit = s.events.find((e) => e.t === 'hit');
+    expect(hit && 'crit' in hit ? hit.crit : undefined).toBeUndefined();
+    expect(hit && 'backstab' in hit ? hit.backstab : undefined).toBeUndefined();
   });
 });

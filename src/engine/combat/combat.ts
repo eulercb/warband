@@ -21,11 +21,47 @@ import {
   STUN_DR_WINDOW,
   STUN_DR_FLOOR,
   BOSS_REGEN_LOCKOUT_S,
+  REVIVE_TIME,
+  REVIVE_MIN_TIME,
+  REVIVE_COREVIVE_BONUS,
+  REVIVE_COREVIVE_FALLOFF,
 } from '../core/constants';
 
 /** Minimal structural sink so combat needn't import the World. */
 export interface EventSink {
   events: GameEvent[];
+}
+
+/**
+ * item 5 — per-hit modifiers a caller (the World, which owns the seeded RNG +
+ * positions) computes and hands to the damage functions: an extra outgoing-damage
+ * `mult` (crit × backstab) and the flags that drive the floating-combat-text
+ * styling. All optional; absent = an ordinary hit.
+ */
+export interface HitMods {
+  mult?: number;
+  crit?: boolean;
+  backstab?: boolean;
+}
+
+/**
+ * item 10 — co-revive rate multiplier for `reviverCount` allies reviving the SAME
+ * downed hero at once. One reviver is the baseline (1×). Each ADDITIONAL reviver adds
+ * a share of REVIVE_COREVIVE_BONUS that decays geometrically by REVIVE_COREVIVE_FALLOFF
+ * (the k-th extra reviver contributes BONUS·FALLOFF^(k-1)), so co-reviving helps with
+ * diminishing returns rather than stacking without bound. The multiplier is capped so
+ * the effective revive can never complete faster than REVIVE_MIN_TIME — never instant.
+ * Pure + deterministic (no RNG). `reviverCount <= 1` → 1 (no bonus).
+ */
+export function coReviveSpeed(reviverCount: number): number {
+  const extra = Math.max(0, Math.floor(reviverCount) - 1);
+  if (extra === 0) return 1;
+  // Closed-form geometric sum of the diminishing per-reviver bonuses.
+  const bonus =
+    (REVIVE_COREVIVE_BONUS * (1 - Math.pow(REVIVE_COREVIVE_FALLOFF, extra))) /
+    (1 - REVIVE_COREVIVE_FALLOFF);
+  const maxSpeed = REVIVE_TIME / REVIVE_MIN_TIME; // cap → the minimum-time floor
+  return Math.min(1 + bonus, maxSpeed);
 }
 
 // ---------------------------------------------------------------------------
@@ -41,6 +77,15 @@ export function buffMult(entity: { buffs: Buff[] }, kind: BuffKind): number {
 export function hasBuff(entity: { buffs: Buff[] }, kind: BuffKind): boolean {
   for (const b of entity.buffs) if (b.kind === kind) return true;
   return false;
+}
+
+/**
+ * item 9 — is this entity ROOTED? A rooted boss/add cannot self-move: base
+ * movement AND blink / charge / teleport abilities (including the Teleporting
+ * affix) are gated while the root holds. It can still turn, cast and be shoved.
+ */
+export function isRooted(entity: { buffs: Buff[] }): boolean {
+  return hasBuff(entity, 'root');
 }
 
 /** Apply/refresh a buff, de-duping by `source`. */
@@ -155,11 +200,14 @@ export function damageBoss(
   source: Player,
   boss: Boss,
   baseDamage: number,
+  mods?: HitMods,
 ): number {
   // Honor the boss's own damage-taken buffs (Brace / Petrify / Regrow / Aegis…),
-  // so a boss defensive cooldown actually mitigates incoming damage.
+  // so a boss defensive cooldown actually mitigates incoming damage. `mods.mult`
+  // folds in the crit × backstab bonus (item 5).
   const outgoing =
     baseDamage *
+    (mods?.mult ?? 1) *
     buffMult(source, 'damageDealt') *
     source.damageMult *
     buffMult(boss, 'damageTaken');
@@ -180,13 +228,22 @@ export function damageBoss(
     amount: outgoing,
     targetId: boss.id,
     side: 'boss',
+    crit: mods?.crit,
+    backstab: mods?.backstab,
   });
   return outgoing;
 }
 
 /** Player deals damage to an add (no boss threat). Returns outgoing damage. */
-export function damageAdd(sink: EventSink, source: Player, add: Add, baseDamage: number): number {
-  const outgoing = baseDamage * buffMult(source, 'damageDealt') * source.damageMult;
+export function damageAdd(
+  sink: EventSink,
+  source: Player,
+  add: Add,
+  baseDamage: number,
+  mods?: HitMods,
+): number {
+  const outgoing =
+    baseDamage * (mods?.mult ?? 1) * buffMult(source, 'damageDealt') * source.damageMult;
   const before = add.hp;
   add.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(add.hp, 0));
@@ -197,6 +254,8 @@ export function damageAdd(sink: EventSink, source: Player, add: Add, baseDamage:
     amount: outgoing,
     targetId: add.id,
     side: 'boss',
+    crit: mods?.crit,
+    backstab: mods?.backstab,
   });
   return outgoing;
 }

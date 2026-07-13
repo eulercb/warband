@@ -84,7 +84,10 @@ export function ResultScreen() {
       rnd = () => rng.next();
     }
     setGenOffers(rollUpgradeChoices(3, rnd, st.myUpgrades));
-    setCharOffers(rollCharChoices(localClass, 4, rnd, st.myCharUpgrades));
+    // item 6: pass the hero's equipped sub skills so their per-sub-skill boons can surface.
+    setCharOffers(
+      rollCharChoices(localClass, 4, rnd, st.myCharUpgrades, st.myExtraClasses, st.mySubSkills),
+    );
     setPickedGen(null);
     setPickedChar(null);
   }, [showUpgrades, localClass, result]);

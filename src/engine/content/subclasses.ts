@@ -80,6 +80,27 @@ const nova = (
   radius: number,
   x: Partial<PlayerAbilityDef> = {},
 ): Omit<PlayerAbilityDef, 'slot'> => ({ name, kind: 'pbaoe', cooldown, damage, radius, ...x });
+// A ranged frontal CONE AoE (item 3). `meleeCone` is the engine's generic
+// frontal-cone primitive — a `pointInCone` hit-test plus a cone-shaped skill-area
+// flash — and is NOT gated to melee reach, so a "breath"/"cone" ability resolves and
+// telegraphs as a true wedge instead of the circle a `nova` (pbaoe) draws. The
+// explicit reach + arc keep the cone from collapsing to the melee defaults.
+const cone = (
+  name: string,
+  cooldown: number,
+  damage: number,
+  range: number,
+  halfAngleDeg: number,
+  x: Partial<PlayerAbilityDef> = {},
+): Omit<PlayerAbilityDef, 'slot'> => ({
+  name,
+  kind: 'meleeCone',
+  cooldown,
+  damage,
+  range,
+  halfAngleDeg,
+  ...x,
+});
 const zone = (
   name: string,
   cooldown: number,
@@ -321,8 +342,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'mg_evoker_cone',
           'Cone of Cold',
           '❄️',
-          'A freezing 150u burst for 30',
-          nova('Cone of Cold', 8, 30, 150, { slowMult: 0.5, slowDuration: 2 }),
+          'A freezing 210u cone for 30', // item 3: a cone, not a circle
+          cone('Cone of Cold', 8, 30, 210, 45, { slowMult: 0.5, slowDuration: 2 }),
         ),
         sk(
           'mg_evoker_sculpt',
@@ -334,7 +355,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
         sk(
           'mg_evoker_shield',
           'Arcane Shield',
-          '🔵',
+          '🛡️', // item 4: was a 🔵 placeholder (a shield skill now reads as a shield)
           'Take 50% less damage for 4s',
           buff('Arcane Shield', 12, { buffDefMult: 0.5, buffDuration: 4 }),
         ),
@@ -601,7 +622,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
         sk(
           'ro_trickster_shield',
           'Shield Spell',
-          '🔵',
+          '🛡️', // item 4: was a 🔵 placeholder
           'Take 50% less damage for 4s',
           buff('Shield Spell', 12, { buffDefMult: 0.5, buffDuration: 4 }),
         ),
@@ -925,8 +946,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'so_draconic_breath',
           'Dragon Breath',
           '🐉',
-          'A 160u cone-burst for 42',
-          nova('Dragon Breath', 8, 42, 160),
+          'A 240u breath cone for 42', // item 3: a cone, not a circle
+          cone('Dragon Breath', 8, 42, 240, 42),
         ),
         sk(
           'so_draconic_wing',
@@ -981,7 +1002,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
         sk(
           'so_wild_font',
           'Wild Ward',
-          '🔵',
+          '🛡️', // item 4: was a 🔵 placeholder
           'Take 45% less damage for 5s',
           buff('Wild Ward', 12, { buffDefMult: 0.55 }),
         ),

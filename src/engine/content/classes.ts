@@ -52,6 +52,13 @@ export interface PlayerAbilityDef {
   zoneTickHeal?: number; // to allies inside
   /** Explicit zone flavour (drives colour + placement). Inferred if omitted. */
   zoneKind?: ZoneKind;
+  /**
+   * item 9 — a true ROOT zone: an enemy standing inside is immobilised (base
+   * movement AND blink / charge / teleport disabled), not merely slowed. Set on
+   * abilities described as roots (Druid's Entangle); ordinary snare zones keep just
+   * their `slowMult`. Applied per tick alongside the slow (see world.applyZoneTick).
+   */
+  roots?: boolean;
 
   // --- extended mechanics (also the levers character upgrades tug on) ---
   /** Ranged travel cap (world units); falls back to PROJECTILE_MAX_RANGE. */
@@ -483,6 +490,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         slowMult: 0.3,
         slowDuration: 1.2,
         zoneKind: 'entangle',
+        roots: true, // item 9: a true root — immobilises + locks out blink/charge/teleport
       },
       a2: {
         slot: 'a2',

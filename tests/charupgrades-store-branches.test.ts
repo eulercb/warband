@@ -379,13 +379,24 @@ describe('rollCharChoices: single-class path', () => {
     expect(rollCharChoices('nope' as ClassId, 3, seq([0.1]))).toEqual([]);
   });
 
-  it('offers n distinct picks, clamped to the pool, in draw order', () => {
+  it('offers n distinct picks in draw order, degrading past the pool (items 12 & 14)', () => {
     expect(rollCharChoices('knight', 3, seq([0, 0, 0, 0.9, 0.9]))).toEqual([
       'kn_bulwark',
       'kn_concuss',
       'kn_widecleave',
     ]);
-    expect(rollCharChoices('knight', 10, seq([0, 0, 0, 0, 0, 0.9, 0.9]))).toHaveLength(5);
+    // n beyond the 5-strong base pool no longer clamps to 5 — it degrades gracefully
+    // to the rare cross-class hybrids so the offer is never short while eligible.
+    const wide = rollCharChoices('knight', 10, seq([0, 0, 0, 0, 0, 0.9, 0.9]));
+    expect(wide.slice(0, 5)).toEqual([
+      'kn_bulwark',
+      'kn_concuss',
+      'kn_widecleave',
+      'kn_bastion',
+      'kn_secondwind',
+    ]);
+    expect(wide.length).toBeGreaterThan(5); // degraded fill
+    expect(new Set(wide).size).toBe(wide.length); // still distinct
   });
 
   it('swaps the last pick for a hybrid when the roll fires (but not at the boundary)', () => {

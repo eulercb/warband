@@ -80,6 +80,8 @@ function mkPlayer(): Player {
     damageTakenMult: 1,
     terrainResist: 0,
     regenPerSec: 0,
+    critChance: 0,
+    critMult: 1.5,
     threat: 0,
     stats: { damageDealt: 0, healingDone: 0, revives: 0, deaths: 0 },
     prevButtons: { basic: false, a1: false, a2: false, a3: false, revive: false },

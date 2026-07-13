@@ -151,6 +151,10 @@ export type BuffKind =
   | 'damageDealt'
   | 'damageTaken'
   | 'moveSpeed'
+  /** Rooted (item 9): immobilised in place — base movement AND blink / charge /
+   * teleport abilities (incl. the Teleporting affix) are disabled while it holds.
+   * `mult` is unused (presence is what matters); the entity can still turn + cast. */
+  | 'root'
   | 'stun'
   | 'invuln'
   /** Silenced (item 28): all abilities except the basic attack are disabled. */
@@ -250,6 +254,8 @@ export interface Player {
   damageTakenMult: number; // incoming damage multiplier (1 = normal, <1 = tankier)
   terrainResist: number; // 0 = full terrain effect, 1 = immune to slow + burn
   regenPerSec: number; // passive HP regenerated per second while alive
+  critChance: number; // item 5: chance [0,1) a hit crits (base + Deadeye boons)
+  critMult: number; // item 5: outgoing-damage multiplier on a crit (e.g. 1.5)
 
   threat: number; // cached threat contribution (mirror of boss table)
   stats: PlayerStats;
@@ -575,7 +581,7 @@ export interface TotemView {
  * upgrade screen's one-generic-one-character rule). Content-agnostic by design:
  * the engine only knows position/geometry, the UI maps it to a rolled offer.
  */
-export type LootKind = 'generic' | 'char';
+export type LootKind = 'generic' | 'char' | 'shop';
 
 /** Render view of a reward-room relic (local only; never crosses the wire). */
 export interface LootView {
@@ -635,7 +641,8 @@ export type StationKind =
   | 'join' // walk into the join portal
   | 'controls' // open the controls/rebinding overlay
   | 'muster' // lobby: step on to ready up
-  | 'start'; // lobby: host steps on to start the fight
+  | 'start' // lobby: host steps on to start the fight
+  | 'addbot'; // lobby: host steps on a class effigy to add a bot of that class (item 1, refId = ClassId)
 
 /** Render view of a menu station (local scene worlds only; never crosses the wire). */
 export interface StationView {
@@ -716,6 +723,9 @@ export interface GroundZone {
   /** Move-speed multiplier applied to enemies standing inside (1 = none). */
   slowMult: number;
   slowDuration: number; // s the slow lingers after leaving
+  /** item 9 — a true ROOT zone: enemies inside are immobilised (movement + blink /
+   * charge / teleport disabled), re-applied each tick so it clears after leaving. */
+  roots?: boolean;
   /**
    * SILENCE zone (item 28 follow-up): seconds of silence re-applied every tick to
    * an opposing-side creature standing inside, so an antimagic pool is a standable
@@ -796,7 +806,17 @@ export interface SkillArea {
 }
 
 export type GameEvent =
-  | { t: 'hit'; pos: Vec2; amount: number; targetId: EntityId; side: Side }
+  | {
+      t: 'hit';
+      pos: Vec2;
+      amount: number;
+      targetId: EntityId;
+      side: Side;
+      /** item 5: a critical hit — the floating combat text reads it for emphasis. */
+      crit?: boolean;
+      /** item 5: a backstab (rear-arc melee bonus) — also styled distinctly. */
+      backstab?: boolean;
+    }
   | { t: 'heal'; pos: Vec2; amount: number; targetId: EntityId }
   | {
       t: 'cast';

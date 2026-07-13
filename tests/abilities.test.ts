@@ -8,6 +8,7 @@ import {
   PLAYER_RADIUS,
 } from '../src/engine/combat/abilities';
 import { World } from '../src/engine/world/world';
+import { getSubSkill } from '../src/engine/content/subclasses';
 import { getMonster, abilityById } from '../src/engine/content/monsters';
 import type { BossAbilityDef } from '../src/engine/content/monsters';
 import { makeBuff, applyBuff } from '../src/engine/combat/combat';
@@ -1727,5 +1728,120 @@ describe('applyImpulse visual slide', () => {
     expect(p.pos.x).toBeCloseTo(810, 3);
     expect(p.slideRemaining).toBeUndefined(); // no slide recorded
     expect(w.serialize().players[0].pos.x).toBeCloseTo(810, 0);
+  });
+});
+
+// ===========================================================================
+// Player cone AoE — cone-described abilities resolve/telegraph as CONES (item 3)
+// ===========================================================================
+describe('player cone AoE (item 3)', () => {
+  it('Cone of Cold and Dragon Breath are frontal cones, not circles', () => {
+    for (const id of ['mg_evoker_cone', 'so_draconic_breath']) {
+      const ab = getSubSkill(id)!.ability;
+      expect(ab.kind).toBe('meleeCone'); // the engine's frontal-cone primitive
+      expect(ab.range).toBeGreaterThan(70); // a RANGED cone (beyond melee reach)
+      expect(ab.halfAngleDeg).toBeGreaterThan(0); // has an arc
+      expect(ab.radius).toBeUndefined(); // NOT a circle
+    }
+  });
+
+  it('a ranged cone hits a target in front at range and flashes a cone area', () => {
+    const w = mkWorld('mage');
+    const p = w.players[0];
+    const boss = w.boss!;
+    tableOf(p).a1 = { ...getSubSkill('mg_evoker_cone')!.ability, slot: 'a1' };
+    p.pos = { x: 800, y: 500 };
+    p.aim = { ...UP };
+    boss.pos = { x: 800, y: 340 }; // 160u dead ahead — inside a 210u cone, beyond melee
+    const before = boss.hp;
+    resolvePlayerAbility(w, p, 'a1', UP);
+    expect(boss.hp).toBeLessThan(before); // hit
+    expect(w.events.some((e) => e.t === 'skillArea' && e.area.kind === 'cone')).toBe(true);
+  });
+
+  it('a ranged cone misses a target off to the side (outside the arc)', () => {
+    const w = mkWorld('mage');
+    const p = w.players[0];
+    const boss = w.boss!;
+    tableOf(p).a1 = { ...getSubSkill('mg_evoker_cone')!.ability, slot: 'a1' };
+    p.pos = { x: 800, y: 500 };
+    p.aim = { ...UP }; // facing up (−y)
+    boss.pos = { x: 970, y: 500 }; // 170u directly to the RIGHT — 90° off the aim axis
+    const before = boss.hp;
+    resolvePlayerAbility(w, p, 'a1', UP);
+    expect(boss.hp).toBe(before); // outside the cone arc → no hit
+    expect(w.events.some((e) => e.t === 'skillArea' && e.area.kind === 'cone')).toBe(true);
+  });
+});
+
+// ===========================================================================
+// Root gates boss mobility — charge/dash fizzles while rooted (item 9)
+// ===========================================================================
+describe('root gates boss mobility (item 9)', () => {
+  it("a rooted boss's charge (line) fizzles — no reposition and no path damage", () => {
+    const w = mkWorld('knight', 'troll');
+    const boss = w.boss!;
+    const p = w.players[0];
+    const ab = bossAb('troll', 'charge');
+    const targetPos = { x: 900, y: 500 };
+
+    // Unrooted: the charge dashes the boss to the target and hits a hero in the path.
+    boss.pos = { x: 400, y: 500 };
+    p.pos = { x: 900, y: 500 };
+    let before = p.hp;
+    resolveBossAbility(w, boss, ab, mkAction({ targetPos, aimAngle: 0 }));
+    expect(boss.pos.x).toBeGreaterThan(400); // relocated toward the target
+    expect(p.hp).toBeLessThan(before); // path damage landed
+
+    // Rooted: the whole charge fizzles.
+    boss.pos = { x: 400, y: 500 };
+    p.hp = p.maxHp;
+    before = p.hp;
+    applyBuff(boss, makeBuff('root', 0, 2, 'zoneRoot'));
+    resolveBossAbility(w, boss, ab, mkAction({ targetPos, aimAngle: 0 }));
+    expect(boss.pos).toEqual({ x: 400, y: 500 }); // no reposition while rooted
+    expect(p.hp).toBe(before); // …and no path damage
+  });
+});
+
+// ===========================================================================
+// Crit + backstab in ability resolution (item 5)
+// ===========================================================================
+describe('crit + backstab (item 5)', () => {
+  it('a forced crit multiplies a melee cone strike and flags it (front → no backstab)', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    const boss = w.boss!;
+    p.critChance = 1; // always crit
+    p.critMult = 2; // clean ×2
+    boss.facing = 0; // faces +x, toward the player → the player is in FRONT
+    p.pos = { x: 800, y: 500 };
+    p.aim = { x: -1, y: 0 };
+    boss.pos = { x: 760, y: 500 }; // inside the player's cone, on the boss's front side
+    const before = boss.hp;
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    const hit = w.events.find((e) => e.t === 'hit' && e.targetId === boss.id) as
+      { crit?: boolean; backstab?: boolean } | undefined;
+    expect(hit?.crit).toBe(true);
+    expect(hit?.backstab).toBeFalsy();
+    expect(before - boss.hp).toBeCloseTo(44, 5); // Cleave 22 × critMult 2
+  });
+
+  it('a rear-arc melee cone backstabs for bonus damage (crit suppressed)', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    const boss = w.boss!;
+    p.critChance = 0; // isolate the backstab bonus
+    boss.facing = 0; // faces +x (AWAY from the player)
+    p.pos = { x: 720, y: 500 };
+    p.aim = { x: 1, y: 0 };
+    boss.pos = { x: 760, y: 500 }; // player stands behind the boss, inside the cone
+    const before = boss.hp;
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    const hit = w.events.find((e) => e.t === 'hit' && e.targetId === boss.id) as
+      { crit?: boolean; backstab?: boolean } | undefined;
+    expect(hit?.backstab).toBe(true);
+    expect(hit?.crit).toBeFalsy();
+    expect(before - boss.hp).toBeCloseTo(22 * 1.4, 4); // Cleave 22 × BACKSTAB_MULT
   });
 });

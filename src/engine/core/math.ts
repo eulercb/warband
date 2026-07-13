@@ -65,6 +65,18 @@ export function angleDelta(a: number, b: number): number {
   return d;
 }
 
+/**
+ * item 5 — does an attack coming from `attackerAngle` (the direction FROM the
+ * target TO the attacker) land in the target's REAR arc? True when that direction
+ * is within a rear cone of `arcDeg` total width centred directly behind `facing`.
+ * Pure angle math — the caller supplies the (torus-aware) direction. Used for the
+ * backstab bonus.
+ */
+export function inRearArc(facing: number, attackerAngle: number, arcDeg: number): boolean {
+  const behind = facing + Math.PI;
+  return Math.abs(angleDelta(attackerAngle, behind)) <= (arcDeg * Math.PI) / 360;
+}
+
 // ---------------------------------------------------------------------------
 // Seeded RNG (mulberry32). Deterministic; only the host runs it.
 // ---------------------------------------------------------------------------

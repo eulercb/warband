@@ -29,6 +29,13 @@ describe('buffBadges', () => {
     expect(sil.label).toBe('Silenced');
   });
 
+  it('describes root (item 9)', () => {
+    const [rooted] = buffBadges([buff('root', 3)]);
+    expect(rooted.glyph).toBe('🌿');
+    expect(rooted.good).toBe(false);
+    expect(rooted.label).toBe('Rooted');
+  });
+
   it('splits moveSpeed into slow (mult<1) vs haste (mult>=1)', () => {
     expect(buffBadges([buff('moveSpeed', 3, 0.5)])[0]).toMatchObject({
       glyph: '🐌',

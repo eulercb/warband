@@ -38,6 +38,10 @@ import {
   SIM_DT,
   ARENA_W,
   ARENA_H,
+  BACKSTAB_MULT,
+  BACKSTAB_REAR_ARC_DEG,
+  CRIT_CHANCE_BASE,
+  CRIT_MULT_BASE,
   BOSS_DECISION_MIN,
   BOSS_RECOVER_TIME,
   DOWNED_BLEEDOUT,
@@ -123,6 +127,7 @@ import { generateTerrain } from './terrain';
 import { generateObstacles } from './obstacles';
 import {
   Rng,
+  mixSeed,
   vec,
   add as vadd,
   scale as vscale,
@@ -130,6 +135,7 @@ import {
   clampLength,
   fromAngle,
   angleOf,
+  inRearArc,
 } from '../core/math';
 // Toroidal (wrap-around) geometry — drop-in replacements for the Euclidean
 // sub/dist/distSq/pointInSegment so combat measures the shortest path on the
@@ -141,6 +147,7 @@ import type { UpgradeId } from '../content/upgrades';
 import {
   applyCharUpgrades,
   applySubclassGrands,
+  applySubSkillUpgrades,
   previewAbilityTable,
 } from '../content/charUpgrades';
 import { getSubSkill, subclassOfSkill } from '../content/subclasses';
@@ -165,6 +172,9 @@ import {
   damageAdd,
   damagePlayer,
   healPlayer,
+  coReviveSpeed,
+  isRooted,
+  type HitMods,
 } from '../combat/combat';
 import { decayThreat, nthThreatTarget } from '../combat/threat';
 import {
@@ -375,6 +385,12 @@ export class World {
   events: GameEvent[] = [];
 
   rng: Rng;
+  /**
+   * item 5 — a dedicated seeded stream for crit rolls, kept SEPARATE from the main
+   * `rng` (boss AI / blinks) so how often the band crits can never perturb boss
+   * behaviour. Host-only and deterministic, so a seeded run replays identically.
+   */
+  private critRng: Rng;
   arena = { w: ARENA_W, h: ARENA_H };
   tick = 0;
   elapsed = 0; // seconds
@@ -439,6 +455,7 @@ export class World {
 
   constructor(init: WorldInit) {
     this.rng = new Rng(init.seed);
+    this.critRng = new Rng(mixSeed(init.seed, 0xc217)); // item 5: isolated crit stream
     this.seed = init.seed;
     this.scaling = computeScaling(init.players.length, init.cycle ?? 0);
     this.cycle = init.cycle ?? 0;
@@ -693,6 +710,8 @@ export class World {
         damageTakenMult: 1,
         terrainResist: 0,
         regenPerSec: 0,
+        critChance: CRIT_CHANCE_BASE, // item 5: base crit; Deadeye boons stack on top
+        critMult: CRIT_MULT_BASE,
         threat: 0,
         stats: { damageDealt: 0, healingDone: 0, revives: 0, deaths: 0 },
         // Private ability table so character upgrades can retune this hero's kit
@@ -756,6 +775,8 @@ export class World {
     // Re-apply any owned SUBCLASS grands (item 17) to the freshly-bound sub-abilities
     // — the sub skills are rebuilt from scratch each rebind, so this stays idempotent.
     applySubclassGrands(p, p.charUpgradeIds);
+    // …then any owned per-sub-skill upgrades (item 6), keyed to the exact bound skill.
+    applySubSkillUpgrades(p, p.charUpgradeIds);
   }
 
   /**
@@ -1198,18 +1219,24 @@ export class World {
     if (this.reviveBudget <= 0) return;
     for (const d of this.players) {
       if (d.state !== 'downed') continue;
+      // item 10: count EVERY ally reviving this hero (not just the first), so more
+      // hands make the revive faster. The first in-range ally is credited with the
+      // revive for score; the tally drives the co-revive speed-up.
       let reviver: Player | null = null;
+      let reviverCount = 0;
       for (const p of this.players) {
         if (p.state !== 'alive') continue;
         const cmd = inputs.get(p.peerId);
         if (!cmd || !cmd.buttons.revive) continue;
         if (dist(p.pos, d.pos) <= REVIVE_RANGE + p.radius + d.radius) {
-          reviver = p;
-          break;
+          reviverCount += 1;
+          if (!reviver) reviver = p;
         }
       }
       if (reviver) {
-        d.reviveProgress += dt;
+        // Each extra concurrent reviver speeds the fill (diminishing returns, floored
+        // so it can never be instant — see coReviveSpeed / REVIVE_MIN_TIME).
+        d.reviveProgress += dt * coReviveSpeed(reviverCount);
         d.reviverId = reviver.id;
         if (d.reviveProgress >= REVIVE_TIME) {
           d.state = 'alive';
@@ -1297,7 +1324,8 @@ export class World {
       const center = proj.pos;
       for (const b of this.aliveBosses()) {
         if (dist(center, b.pos) <= proj.impactRadius + b.radius) {
-          this.applyProjDamageBoss(owner, proj.damage, b);
+          // item 5: ranged impacts can crit (per target); no backstab on a shot.
+          this.applyProjDamageBoss(owner, proj.damage, b, owner ? this.critRoll(owner) : undefined);
           dealt += proj.damage;
           this.applyProjRiders(b, proj);
         }
@@ -1305,7 +1333,7 @@ export class World {
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
         if (dist(center, a.pos) <= proj.impactRadius + a.radius) {
-          if (owner) damageAdd(this, owner, a, proj.damage);
+          if (owner) damageAdd(this, owner, a, proj.damage, this.critRoll(owner));
           else a.hp -= proj.damage;
           dealt += proj.damage;
           this.applyProjRiders(a, proj);
@@ -1328,11 +1356,16 @@ export class World {
         },
       });
     } else if (hitBoss) {
-      this.applyProjDamageBoss(owner, proj.damage, hitBoss);
+      this.applyProjDamageBoss(
+        owner,
+        proj.damage,
+        hitBoss,
+        owner ? this.critRoll(owner) : undefined,
+      );
       dealt += proj.damage;
       this.applyProjRiders(hitBoss, proj);
     } else if (hitAdd) {
-      if (owner) damageAdd(this, owner, hitAdd, proj.damage);
+      if (owner) damageAdd(this, owner, hitAdd, proj.damage, this.critRoll(owner));
       else hitAdd.hp -= proj.damage;
       dealt += proj.damage;
       this.applyProjRiders(hitAdd, proj);
@@ -1354,11 +1387,35 @@ export class World {
     }
   }
 
-  private applyProjDamageBoss(owner: Player | null, base: number, boss?: Boss | null): void {
+  /** item 5 — roll a crit for `source` on the isolated crit stream (no backstab).
+   *  Public so ability resolution (combat/abilities.ts) shares the one crit stream. */
+  critRoll(source: Player): HitMods {
+    const crit = this.critRng.next() < (source.critChance ?? 0);
+    return { crit, mult: crit ? (source.critMult ?? 1) : 1 };
+  }
+
+  /**
+   * item 5 — full modifiers for a MELEE player hit on a boss: a seeded crit plus a
+   * backstab bonus when the attacker stands in the boss's rear arc. Adds carry no
+   * facing, so they take crits only (use `critRoll` for those).
+   */
+  meleeHit(source: Player, boss: Boss): HitMods {
+    const { crit, mult } = this.critRoll(source);
+    const toAttacker = angleOf(sub(source.pos, boss.pos));
+    const backstab = inRearArc(boss.facing, toAttacker, BACKSTAB_REAR_ARC_DEG);
+    return { crit, backstab, mult: (mult ?? 1) * (backstab ? BACKSTAB_MULT : 1) };
+  }
+
+  private applyProjDamageBoss(
+    owner: Player | null,
+    base: number,
+    boss?: Boss | null,
+    mods?: HitMods,
+  ): void {
     const target = boss ?? this.boss;
     if (!target) return;
     if (owner) {
-      damageBoss(this, owner, target, base);
+      damageBoss(this, owner, target, base, mods);
     } else {
       // Ownerless (disconnected caster): still honor the boss's mitigation buffs.
       const dealt = base * buffMult(target, 'damageTaken');
@@ -1427,11 +1484,21 @@ export class World {
     // player-side zone
     const owner = this.players.find((p) => p.id === z.ownerId) ?? null;
     const slows = z.slowMult < 1;
-    if (z.damagePerTick > 0 || slows) {
+    // item 9: a true-root zone (Druid's Entangle) immobilises enemies inside — the
+    // `root` buff is what world.bossMove / handleBlink / the charge resolution gate
+    // on, so movement AND blink/charge/teleport stop while the boss stands in it.
+    // Re-applied each tick and floored above the tick interval so it clears shortly
+    // after the boss leaves (or the zone expires).
+    const rootDur = z.roots ? Math.max(z.slowDuration, ZONE_TICK_INTERVAL * 1.5) : 0;
+    if (z.damagePerTick > 0 || slows || z.roots) {
       for (const b of this.aliveBosses()) {
         if (dist(z.pos, b.pos) > z.radius + b.radius) continue;
+        // item 5: a FLYING boss hovers above ground-targeted zones — no damage,
+        // slow or root reaches it (direct attacks still connect).
+        if (this.defOf(b).flying) continue;
         if (z.damagePerTick > 0) this.applyProjDamageBoss(owner, z.damagePerTick, b);
         if (slows) applyBuff(b, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
+        if (z.roots) applyBuff(b, makeBuff('root', 0, rootDur, 'zoneRoot'));
       }
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
@@ -1441,6 +1508,7 @@ export class World {
             else a.hp -= z.damagePerTick;
           }
           if (slows) applyBuff(a, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
+          if (z.roots) applyBuff(a, makeBuff('root', 0, rootDur, 'zoneRoot'));
         }
       }
     }
@@ -2172,7 +2240,9 @@ export class World {
   private bossMove(dt: number, boss: Boss, def: MonsterDef, target: Player | null): void {
     if (!target) return;
     const d = dist(boss.pos, target.pos);
-    const speed = boss.moveSpeed * buffMult(boss, 'moveSpeed');
+    // item 9: a rooted boss can't walk (it can still turn to face). Speed 0 freezes
+    // its position while it stands in the root zone.
+    const speed = isRooted(boss) ? 0 : boss.moveSpeed * buffMult(boss, 'moveSpeed');
 
     if (def.blink) {
       // kiter: keep within casting range but don't crowd the target
@@ -2196,6 +2266,10 @@ export class World {
   }
 
   private handleBlink(boss: Boss, def: MonsterDef): void {
+    // item 9: a rooted boss can't blink OR teleport. Because both a native blink and
+    // the Teleporting affix resolve through this one path (blinkConfigFor), gating
+    // here disables the affix teleport too.
+    if (isRooted(boss)) return;
     const cfg = this.blinkConfigFor(boss, def);
     if (!cfg) return;
     if (boss.blinkTimer > 0) return;

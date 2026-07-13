@@ -41,6 +41,7 @@ import {
   applyStun,
   makeBuff,
   buffMult,
+  isRooted,
 } from './combat';
 import { forceTopThreat } from './threat';
 import { addCount, zoneCount } from '../content/scaling';
@@ -148,14 +149,15 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
       for (const b of world.bosses) {
         if (b.hp <= 0) continue;
         if (pointInCone(b.pos, p.pos, aimAngle, range, half, b.radius)) {
-          dealt += damageBoss(world, p, b, ab.damage);
+          // item 5: a directional cone strike can crit AND backstab (rear arc).
+          dealt += damageBoss(world, p, b, ab.damage, world.meleeHit(p, b));
           applyStrikeRiders(world, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
-          dealt += damageAdd(world, p, a, ab.damage);
+          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p));
           applyStrikeRiders(world, a, ab);
         }
       }
@@ -209,14 +211,15 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
       for (const b of world.bosses) {
         if (b.hp <= 0) continue;
         if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
-          dealt += damageBoss(world, p, b, ab.damage);
+          // item 5: a point-blank burst can crit (omnidirectional → no backstab).
+          dealt += damageBoss(world, p, b, ab.damage, world.critRoll(p));
           applyStrikeRiders(world, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-          dealt += damageAdd(world, p, a, ab.damage);
+          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p));
           applyStrikeRiders(world, a, ab);
         }
       }
@@ -246,14 +249,14 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
         for (const b of world.bosses) {
           if (b.hp <= 0) continue;
           if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
-            damageBoss(world, p, b, ab.landingDamage);
+            damageBoss(world, p, b, ab.landingDamage, world.critRoll(p)); // item 5: crit
             applyStrikeRiders(world, b, ab);
           }
         }
         for (const a of world.adds) {
           if (a.hp <= 0) continue;
           if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-            damageAdd(world, p, a, ab.landingDamage);
+            damageAdd(world, p, a, ab.landingDamage, world.critRoll(p));
             applyStrikeRiders(world, a, ab);
           }
         }
@@ -385,6 +388,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     healPerTick,
     slowMult,
     slowDuration,
+    roots: ab.roots, // item 9: carry the true-root flag onto the spawned zone
     duration: ab.zoneDuration ?? 4,
   });
 }
@@ -479,6 +483,8 @@ export interface SpawnZoneOpts {
   healPerTick: number;
   slowMult?: number;
   slowDuration?: number;
+  /** item 9 — a true-root zone (immobilises enemies inside). See GroundZone.roots. */
+  roots?: boolean;
   /** Seconds of silence re-applied per tick to opposing creatures inside (a
    * standable antimagic pool). Absent = a plain hazard. See GroundZone.silence. */
   silence?: number;
@@ -502,6 +508,7 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     healPerTick: o.healPerTick,
     slowMult: o.slowMult ?? 1,
     slowDuration: o.slowDuration ?? 0,
+    roots: o.roots, // item 9
     silence: o.silence,
     duration: o.duration,
     remaining: o.duration,
@@ -664,6 +671,9 @@ export function resolveBossAbility(
     case 'line': {
       // Charge: dash from boss to the locked target position, hitting anyone
       // along the path, then relocate the boss to the target.
+      // item 9: a rooted boss can't charge — the whole dash (its path damage AND the
+      // relocation) fizzles while the roots hold.
+      if (isRooted(boss)) break;
       const from = { ...boss.pos };
       const to = action.targetPos ?? vadd(boss.pos, fromAngle(action.aimAngle, ab.range ?? 600));
       const halfWidth = (ab.width ?? 45) + boss.radius * 0.5;
