@@ -11,7 +11,7 @@ import { setProceduralSeed } from '../src/engine/content/procgen';
 import { MONSTERS, MONSTER_IDS, getMonster } from '../src/engine/content/monsters';
 import { World } from '../src/engine/world/world';
 import { Rng } from '../src/engine/core/math';
-import type { BossDecisionCtx, MonsterDef } from '../src/engine/content/monsters';
+import type { BossAbilityDef, BossDecisionCtx, MonsterDef } from '../src/engine/content/monsters';
 import type { Boss } from '../src/engine/core/types';
 
 afterEach(() => {
@@ -47,7 +47,9 @@ describe('synthesizeMonster', () => {
   });
 
   it('every monster fuses a valid, castable kit with preserved identity', () => {
-    for (const seed of [3, 77]) {
+    // A wide seed sweep also exercises the rider-graft variants (slow / stun /
+    // knockback / no-rider) across the whole donor corpus.
+    for (const seed of [1, 3, 7, 13, 42, 77, 101, 512, 999, 4242]) {
       for (const id of MONSTER_IDS) {
         const base = MONSTERS[id];
         const m = synthesizeMonster(seed, base, DONORS);
@@ -86,6 +88,61 @@ describe('synthesizeMonster', () => {
 
   it('leaves the hidden practice dummy untouched', () => {
     expect(synthesizeMonster(1, MONSTERS.dummy, DONORS)).toBe(MONSTERS.dummy);
+  });
+});
+
+describe('rider grafting + decide conds (crafted donor pools)', () => {
+  const cone = (id: string, x: Partial<BossAbilityDef> = {}): BossAbilityDef => ({
+    id,
+    name: id,
+    shape: 'cone',
+    windup: 0.6,
+    cooldown: 5,
+    damage: 20,
+    range: 200,
+    halfAngleDeg: 40,
+    ...x,
+  });
+  const mon = (id: string, abilities: BossAbilityDef[]): MonsterDef => ({
+    ...MONSTERS.goblin,
+    id: 'goblin',
+    name: id,
+    abilities,
+  });
+
+  it('grafts each rider type and handles a rider-less pool', () => {
+    // A slow-only donor pool → every strike ability gets a slow (with a duration
+    // fallback), from the slow branch.
+    const slow = synthesizeMonster(1, MONSTERS.goblin, [mon('S', [cone('a', { slowMult: 0.6 })])]);
+    expect(slow.abilities.some((ab) => ab.slowMult != null && ab.slowMult < 1)).toBe(true);
+    // A stun-only pool → the stun branch.
+    const stun = synthesizeMonster(1, MONSTERS.goblin, [mon('T', [cone('a', { stun: 0.9 })])]);
+    expect(stun.abilities.some((ab) => (ab.stun ?? 0) > 0)).toBe(true);
+    // A knockback-only pool → the knockback branch.
+    const knock = synthesizeMonster(1, MONSTERS.goblin, [
+      mon('K', [{ id: 'a', name: 'a', shape: 'line', windup: 0.6, cooldown: 6, damage: 20, range: 400, width: 40, knockback: 100 }]),
+    ]);
+    expect(knock.abilities.some((ab) => (ab.knockback ?? 0) > 0)).toBe(true);
+    // A rider-less strike pool → no rider grafted (graft returns null).
+    const bare = synthesizeMonster(1, MONSTERS.goblin, [mon('B', [cone('a')])]);
+    expect(bare.abilities.every((ab) => ab.stun == null && (ab.slowMult == null || ab.slowMult >= 1))).toBe(true);
+  });
+
+  it('derives melee / charge / low-HP conds and guarantees an unconditional fallback', () => {
+    // All-cone pool → every ability is melee-conditioned, so generateBossDecide
+    // must force one unconditional fallback (else the boss could idle).
+    const m = synthesizeMonster(2, MONSTERS.goblin, [mon('C', [cone('a')])]);
+    expect(m.decide(ctx({ anyInMelee: false, distToTarget: 999 }))).not.toBeNull();
+    // A charge (line) is gated on distance; a self-heal on low HP.
+    const line = synthesizeMonster(2, MONSTERS.goblin, [
+      mon('L', [{ id: 'a', name: 'a', shape: 'line', windup: 0.6, cooldown: 6, damage: 20, range: 400, width: 40 }]),
+    ]);
+    expect(line.decide(ctx({ distToTarget: 400 }))).not.toBeNull();
+    const heal = synthesizeMonster(2, MONSTERS.goblin, [
+      mon('H', [{ id: 'a', name: 'a', shape: 'buffSelf', windup: 0, cooldown: 10, damage: 0, selfHealFrac: 0.1 }]),
+    ]);
+    // Low HP → the self-heal is eligible; the fallback still guarantees an action.
+    expect(heal.decide(ctx({ hpFrac: 0.3 }))).not.toBeNull();
   });
 });
 

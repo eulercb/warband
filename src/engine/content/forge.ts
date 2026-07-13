@@ -731,7 +731,7 @@ export function synthesizeAbility(
 
   // 4. Secondary effects — 1..2 more that FIT, from fresh sources, CC-capped.
   const extra = rng.int(1, 2);
-  let hardCC = chosen.some((x) => isHardCC(x.effect)) ? 1 : 0;
+  let hardCC = 0; // the primary is never a hard CC (see primaryWant), so start at 0
   for (let i = 0; i < extra; i++) {
     const options = pool.filter(
       (x) =>
@@ -766,7 +766,7 @@ export function synthesizeAbility(
 
   // 8. Blend a name from the contributing donor names.
   const donorNames = [deliveryDonor.name, ...chosen.map((c) => c.donor.name)];
-  const name = forgeName(donorNames, (k) => (k <= 0 ? 0 : rng.int(0, k - 1)));
+  const name = forgeName(donorNames, (k) => rng.int(0, k - 1));
 
   const def = recompose(comp, { slot, name, cooldown });
   return {
@@ -992,7 +992,7 @@ export function synthesizeClass(seed: number, base: ClassDef, donors: Donor[]): 
     .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
     .map((e) => classNames.get(e[0])!);
   const rng = new Rng(mixSeed(seed, FORGE_SALT.className, hashStr(base.id)));
-  const name = forgeName(top, (k) => (k <= 0 ? 0 : rng.int(0, k - 1)), { connectiveChance: 0.35 });
+  const name = forgeName(top, (k) => rng.int(0, k - 1), { connectiveChance: 0.35 });
   return { ...base, name, abilities };
 }
 
@@ -1044,7 +1044,7 @@ export function synthesizeMonster(seed: number, base: MonsterDef, donors: Monste
     abilities.push(composeBossAbility(seed, rng, primary, pool, `f${i}`, dmgComp));
   }
   const decide = generateBossDecide(abilities);
-  const blended = forgeName([...donorNames, base.name], (k) => (k <= 0 ? 0 : rng.int(0, k - 1)), {
+  const blended = forgeName([...donorNames, base.name], (k) => rng.int(0, k - 1), {
     connectiveChance: 0,
   });
   const epithet = MONSTER_EPITHETS[rng.int(0, MONSTER_EPITHETS.length - 1)];
@@ -1076,7 +1076,7 @@ function composeBossAbility(
   }
   out.name = forgeName(
     [primary.ab.name, riderName ?? primary.monsterName],
-    (k) => (k <= 0 ? 0 : rng.int(0, k - 1)),
+    (k) => rng.int(0, k - 1),
     { connectiveChance: 0.3 },
   );
   return out;
@@ -1094,15 +1094,15 @@ function graftBossRider(rng: Rng, out: BossAbilityDef, pool: BossDonor[]): strin
   );
   if (donors.length === 0) return null;
   const d = rng.pick(donors);
-  if (d.ab.slowMult != null && d.ab.slowMult < 1 && (out.slowMult == null || out.slowMult >= 1)) {
+  // Apply the donor's dominant rider (slow > stun > knockback), overwriting any
+  // the jittered ability already had — clamped to identity-true windows.
+  if (d.ab.slowMult != null && d.ab.slowMult < 1) {
     out.slowMult = clamp(round05(d.ab.slowMult), 0.5, 0.9);
     out.slowDuration = clamp(round1(d.ab.slowDuration ?? 2), 1, 3);
-  } else if (d.ab.stun != null && out.stun == null) {
+  } else if (d.ab.stun != null) {
     out.stun = clamp(round05(d.ab.stun), 0.3, 1.2);
-  } else if (d.ab.knockback != null && out.knockback == null && out.pull == null) {
-    out.knockback = clamp(round5(d.ab.knockback), 40, 120);
   } else {
-    return null; // the chosen donor's rider didn't fit — leave the ability as-is
+    out.knockback = clamp(round5(d.ab.knockback!), 40, 120);
   }
   return d.monsterName;
 }
