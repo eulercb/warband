@@ -38,9 +38,9 @@ import { Renderer } from '../../render/pipeline/renderer';
 import { InputManager } from '../../input/input';
 import { ARENA_W, ARENA_H } from '../../engine/core/constants';
 import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
-import { MONSTERS } from '../../engine/content/monsters';
+import { getMonster } from '../../engine/content/monsters';
 import { Rng, mixSeed } from '../../engine/core/math';
-import { UPGRADES, rollUpgradeChoices, type UpgradeId } from '../../engine/content/upgrades';
+import { getUpgrade, rollUpgradeChoices, type UpgradeId } from '../../engine/content/upgrades';
 import {
   rollCharChoices,
   describeCharOffer,
@@ -75,7 +75,7 @@ function rollOffers(
   const chr = rollCharChoices(classId, 4, rnd, ownedChar, extraClasses);
   return {
     generic: gen.map((id) => {
-      const u = UPGRADES[id];
+      const u = getUpgrade(id);
       return { id, label: `${u.icon} ${u.name}`, desc: u.desc };
     }),
     // describeCharOffer resolves each id — a real boon, a `restore:` reclaim, or a
@@ -166,8 +166,8 @@ export default function RewardRoom({ result }: { result: FightResult }) {
           : [];
     if (ids.length === 0) return '';
     const prefix = result.modName ? `${result.modName} ` : '';
-    if (ids.length > 1) return `${ids.map((id) => MONSTERS[id].name).join(' & ')} — TWIN fight!`;
-    return `${prefix}${MONSTERS[ids[0]].name}`;
+    if (ids.length > 1) return `${ids.map((id) => getMonster(id).name).join(' & ')} — TWIN fight!`;
+    return `${prefix}${getMonster(ids[0]).name}`;
   }, [result]);
 
   useEffect(() => {
@@ -509,15 +509,14 @@ export default function RewardRoom({ result }: { result: FightResult }) {
               <div className="wb-upgrade-owned">
                 <span className="wb-field-label">Your boons this run</span>
                 <span className="wb-upgrade-badges">
-                  {myUpgrades.map((id, i) => (
-                    <span
-                      key={`g-${id}-${i}`}
-                      className="wb-upgrade-badge"
-                      title={UPGRADES[id].desc}
-                    >
-                      {UPGRADES[id].icon} {UPGRADES[id].name}
-                    </span>
-                  ))}
+                  {myUpgrades.map((id, i) => {
+                    const u = getUpgrade(id);
+                    return (
+                      <span key={`g-${id}-${i}`} className="wb-upgrade-badge" title={u.desc}>
+                        {u.icon} {u.name}
+                      </span>
+                    );
+                  })}
                   {myCharUpgrades.map((id, i) => {
                     const b = charUpgradeBadge(id);
                     return b ? (

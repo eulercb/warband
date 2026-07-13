@@ -10,7 +10,7 @@ import { useHudStore } from '../state/hudStore';
 import { endRun, leaveToMenu, openControls, playUiSound } from '../state/session';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import { previewPlayerStats } from '../../engine/content/charUpgrades';
-import { CLASSES } from '../../engine/content/classes';
+import { CLASSES, getClass } from '../../engine/content/classes';
 import TerrainLegend from './TerrainLegend';
 
 /** Signed percentage from a multiplier delta (0 → "—", 0.3 → "+30%", -0.18 → "-18%"). */
@@ -36,7 +36,8 @@ export function CharacterSheet() {
     [classId, myUpgrades, myCharUpgrades],
   );
   if (!classId || !stats) return null;
-  const baseMove = CLASSES[classId].moveSpeed;
+  // Run-aware base (getClass): the delta shows what the BOONS added, not the roll.
+  const baseMove = getClass(classId).moveSpeed;
   const rows: Array<[string, string, boolean]> = [
     ['Damage', pctDelta(stats.damageMult - 1), stats.damageMult >= 1],
     ['Damage taken', pctDelta(stats.damageTakenMult - 1), stats.damageTakenMult <= 1],

@@ -59,6 +59,13 @@ export interface LobbyMsg {
   phase: 'lobby' | 'inFight';
   /** Whether the host has enabled a sequence run (gauntlet). */
   gauntlet: boolean;
+  /**
+   * The session's master seed. Shared already in the LOBBY (not just StartMsg)
+   * so clients can derive the run's PROCEDURAL content — rolled class kits,
+   * monster variants, boon magnitudes (content/procgen.ts) — while picking a
+   * class, and so the kit they preview is exactly the kit the sim will spawn.
+   */
+  runSeed?: number;
 }
 
 export interface StartMsg {

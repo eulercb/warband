@@ -21,9 +21,9 @@ import {
   playUiSound,
 } from '../state/session';
 import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
-import { MONSTERS } from '../../engine/content/monsters';
+import { getMonster } from '../../engine/content/monsters';
 import { Rng, mixSeed } from '../../engine/core/math';
-import { UPGRADES, rollUpgradeChoices, type UpgradeId } from '../../engine/content/upgrades';
+import { getUpgrade, rollUpgradeChoices, type UpgradeId } from '../../engine/content/upgrades';
 import {
   rollCharChoices,
   describeCharOffer,
@@ -160,8 +160,8 @@ export function ResultScreen() {
 
         {isRun ? (
           <p className="wb-run-progress">
-            {(result.modName ? `${result.modName} ` : '') + MONSTERS[result.monsterId].name} — Boss{' '}
-            {runIndex + 1} of {runTotal}
+            {(result.modName ? `${result.modName} ` : '') + getMonster(result.monsterId).name} —
+            Boss {runIndex + 1} of {runTotal}
             {cycle > 0 ? ` · Cycle ${cycle + 1}` : ''}
           </p>
         ) : null}
@@ -186,7 +186,7 @@ export function ResultScreen() {
             </h3>
             <div className="wb-upgrade-cards">
               {genOffers.map((id) => {
-                const u = UPGRADES[id];
+                const u = getUpgrade(id);
                 const isPicked = pickedGen === id;
                 const dimmed = pickedGen && !isPicked;
                 return (
@@ -251,15 +251,14 @@ export function ResultScreen() {
               <div className="wb-upgrade-owned">
                 <span className="wb-field-label">Your upgrades</span>
                 <span className="wb-upgrade-badges">
-                  {myUpgrades.map((id, i) => (
-                    <span
-                      key={`g-${id}-${i}`}
-                      className="wb-upgrade-badge"
-                      title={UPGRADES[id].desc}
-                    >
-                      {UPGRADES[id].icon} {UPGRADES[id].name}
-                    </span>
-                  ))}
+                  {myUpgrades.map((id, i) => {
+                    const u = getUpgrade(id);
+                    return (
+                      <span key={`g-${id}-${i}`} className="wb-upgrade-badge" title={u.desc}>
+                        {u.icon} {u.name}
+                      </span>
+                    );
+                  })}
                   {myCharUpgrades.map((id, i) => {
                     const b = charUpgradeBadge(id);
                     return b ? (
