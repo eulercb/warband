@@ -33,7 +33,18 @@ import TouchControls from './TouchControls';
 import EphemeralShop from '../screens/EphemeralShop';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
-import { RewardScene, type RewardOffers, type RelicFocus } from '../state/rewardScene';
+import {
+  RewardScene,
+  type RewardOffers,
+  type RelicFocus,
+  type ShopOffer,
+} from '../state/rewardScene';
+import {
+  EPHEMERAL,
+  EPHEMERAL_IDS,
+  type EphemeralId,
+  type EphemeralStock,
+} from '../../engine/content/ephemeral';
 import { Renderer } from '../../render/pipeline/renderer';
 import { InputManager } from '../../input/input';
 import { ARENA_W, ARENA_H } from '../../engine/core/constants';
@@ -87,6 +98,27 @@ function rollOffers(
       .map((id) => describeCharOffer(classId, ownedChar, id))
       .filter((o): o is CharOfferView => o !== null),
   };
+}
+
+/**
+ * item 2 — the ephemeral-shop perks to lay on the reward-room floor as buyable
+ * stalls (hardcore-only perks hidden outside a hardcore run). Stable for the room's
+ * lifetime; affordability + sold-out state are mirrored in each frame instead.
+ */
+function buildShopOffers(hardcore: boolean): ShopOffer[] {
+  return EPHEMERAL_IDS.filter((id) => !EPHEMERAL[id].hardcoreOnly || hardcore).map((id) => {
+    const def = EPHEMERAL[id];
+    return { id, label: `${def.icon} ${def.name} · 💰${def.cost}`, desc: def.desc, cost: def.cost };
+  });
+}
+
+/** Which shop ids can't be bought again — single-buy passives already owned (item 2). */
+function soldOutIds(stock: EphemeralStock): string[] {
+  const out: string[] = [];
+  if (stock.speed) out.push('speed');
+  if (stock.damage) out.push('damage');
+  if (stock.defense) out.push('defense');
+  return out;
 }
 
 export default function RewardRoom({ result }: { result: FightResult }) {
@@ -181,10 +213,14 @@ export default function RewardRoom({ result }: { result: FightResult }) {
     const myScore = result.stats.find((s) => s.peerId === selfId)?.score ?? 0;
     // Carry the hero's earned subclass skills + extra classes into the room so the
     // sub1/sub2 and Swap buttons show here too, not only in the fight (item 13).
-    const scene = new RewardScene(st.localName || 'Hero', st.localClass, offers, myScore, {
-      subSkills: st.mySubSkills,
-      extraClasses: st.myExtraClasses,
-    });
+    const scene = new RewardScene(
+      st.localName || 'Hero',
+      st.localClass,
+      offers,
+      myScore,
+      { subSkills: st.mySubSkills, extraClasses: st.myExtraClasses },
+      buildShopOffers(st.activeHardcore), // item 2: walkable coin stalls
+    );
     sceneRef.current = scene;
 
     let renderer: Renderer | null = null;
@@ -249,6 +285,11 @@ export default function RewardRoom({ result }: { result: FightResult }) {
         }
         padMenuPrev = padMenu;
 
+        // item 2: mirror the coin purse + sold-out passives so the walk-up shop gates
+        // buys exactly like the List-view stall.
+        const shopState = useStore.getState();
+        scene.setShopState(shopState.myCoins, soldOutIds(shopState.myEphemeral));
+
         const state = scene.frame(now, uiOpen);
         const localId = state.localPlayerId;
         const lp = localId != null ? state.players.find((p) => p.id === localId) : null;
@@ -283,6 +324,12 @@ export default function RewardRoom({ result }: { result: FightResult }) {
             chooseCharUpgrade(c.offer.id);
           }
           sfx.play('uiConfirm');
+        }
+
+        // item 2: walk-up shop buys → the same optimistic store.buyEphemeral the
+        // List-view stall uses (host validates against its coin ledger).
+        for (const b of scene.takeShopBuys()) {
+          if (useStore.getState().buyEphemeral(b.id as EphemeralId)) sfx.play('uiConfirm');
         }
 
         // Readiness follows a committed vortex descent (or a list-view toggle).
@@ -370,9 +417,9 @@ export default function RewardRoom({ result }: { result: FightResult }) {
         {myCoins > 0 ? (
           <span
             className="wb-reward-banner-coins"
-            title="Spend coins in the list view's Ephemeral Stall"
+            title="Walk onto a teal shop stall to buy it — or open the list view"
           >
-            💰 {myCoins} — spend in list view
+            💰 {myCoins} — walk onto a stall to spend
           </span>
         ) : null}
         <span className="wb-reward-banner-hint">

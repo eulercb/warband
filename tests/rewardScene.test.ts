@@ -3,7 +3,9 @@ import {
   RewardScene,
   CLAIM_DWELL_S,
   DESCENT_DWELL_S,
+  BUY_DWELL_S,
   type RewardOffers,
+  type ShopOffer,
 } from '../src/ui/state/rewardScene';
 import { ARENA_W, ARENA_H } from '../src/engine/core/constants';
 import type { InputCommand, RenderState, Vec2 } from '../src/engine/core/types';
@@ -35,6 +37,14 @@ function offers(): RewardOffers {
       { id: 'c2', label: '❄ Frost', desc: 'chill' },
     ],
   };
+}
+
+/** Two shop stalls (a single-buy passive + a stackable), both costing 3. */
+function shop(): ShopOffer[] {
+  return [
+    { id: 'speed', label: '💨 Swiftness · 💰3', desc: 'faster', cost: 3 },
+    { id: 'potion', label: '🧪 Vial · 💰3', desc: 'heal', cost: 3 },
+  ];
 }
 
 function heroPos(state: RenderState): Vec2 {
@@ -340,6 +350,59 @@ describe('RewardScene: descent dwell + overlay freeze', () => {
       scene.frame(now, false);
     }
     expect(scene.progress().claimedGeneric).toBe(1);
+  });
+});
+
+describe('RewardScene: walk-up coin shop (item 2)', () => {
+  it('lays a stall per shop offer on the safe row, dimmed until affordable', () => {
+    const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
+    const s = scene.frame(1000);
+    const stalls = (s.loot ?? []).filter((l) => l.kind === 'shop');
+    expect(stalls).toHaveLength(2);
+    expect(stalls.every((l) => l.locked)).toBe(true); // no coins mirrored yet
+    for (const l of stalls) {
+      expect(Math.abs(SPAWN.y - l.pos.y)).toBeLessThan(ARENA_H / 2);
+      expect(Math.abs(SPAWN.x - l.pos.x)).toBeLessThan(ARENA_W / 2);
+    }
+  });
+
+  it('buys the stall the hero dwells on when affordable (armed-latch: once)', () => {
+    const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
+    scene.setShopState(10, []); // plenty of coins, nothing sold out
+    const s = scene.frame(1000);
+    const stall = (s.loot ?? []).find(
+      (l) => l.kind === 'shop' && /Swiftness/.test(l.label ?? ''),
+    )!;
+    expect(stall.locked).toBe(false); // affordable now
+    walkOnto(scene, stall.pos, 1000, BUY_DWELL_S + 0.2);
+    const buys = scene.takeShopBuys();
+    expect(buys).toHaveLength(1);
+    expect(buys[0].id).toBe('speed');
+    // Standing on it does not re-buy (armed until the hero steps off).
+    scene.frame(9000);
+    expect(scene.takeShopBuys()).toHaveLength(0);
+  });
+
+  it('will not buy a stall the hero cannot afford', () => {
+    const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
+    scene.setShopState(1, []); // 1 coin, stalls cost 3
+    const s = scene.frame(1000);
+    const stall = (s.loot ?? []).find((l) => l.kind === 'shop')!;
+    expect(stall.locked).toBe(true);
+    walkOnto(scene, stall.pos, 1000, BUY_DWELL_S + 0.2);
+    expect(scene.takeShopBuys()).toHaveLength(0);
+  });
+
+  it('will not buy a sold-out stall (a single-buy passive already owned)', () => {
+    const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
+    scene.setShopState(10, ['speed']); // affordable, but speed is sold out
+    const s = scene.frame(1000);
+    const speed = (s.loot ?? []).find(
+      (l) => l.kind === 'shop' && /Swiftness/.test(l.label ?? ''),
+    )!;
+    expect(speed.locked).toBe(true);
+    walkOnto(scene, speed.pos, 1000, BUY_DWELL_S + 0.2);
+    expect(scene.takeShopBuys()).toHaveLength(0);
   });
 });
 

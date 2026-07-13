@@ -32,6 +32,9 @@ const LOCAL_PEER = 'local:reward';
 /** Seconds the hero must dwell on a relic before it is claimed (anti-misgrab). */
 export const CLAIM_DWELL_S = 0.4;
 
+/** Seconds the hero must dwell on a shop item before it is bought (item 2). */
+export const BUY_DWELL_S = 0.45;
+
 /**
  * Seconds the hero must stand inside the OPEN vortex before descending. A commit
  * dwell (not instant on-enter) so a hero can't accidentally clip the ring and
@@ -62,6 +65,13 @@ const RELIC_READ_RADIUS = 150;
 /** Relics sit on this row (between the hero's spawn and the vortex). */
 const RELIC_ROW_Y = 560;
 
+// item 2: the walk-up coin shop. Buyable stalls sit on a row between the hero's
+// spawn (y=780) and the relic row, so a hero passes them on the way up; a dwell +
+// moving-guard means walking through never buys.
+const SHOP_ROW_Y = 700;
+const SHOP_PICKUP_RADIUS = 52;
+const SHOP_READ_RADIUS = 150;
+
 /** One rolled upgrade offer placed on the floor as a relic. */
 export interface RewardOffer {
   /** Upgrade id relayed on claim (UpgradeId or char-upgrade id). */
@@ -77,6 +87,18 @@ export interface RewardOffers {
   char: RewardOffer[];
 }
 
+/** One ephemeral-shop perk placed on the floor as a buyable stall (item 2). */
+export interface ShopOffer {
+  /** EphemeralId relayed on buy. */
+  id: string;
+  /** Short caption drawn under the stall (icon + name + cost). */
+  label: string;
+  /** Full description (for the inspector). */
+  desc: string;
+  /** Coin cost — the scene gates the buy on the hero's mirrored coins. */
+  cost: number;
+}
+
 /** Internal relic model (view + the offer it carries + claim bookkeeping). */
 interface Relic {
   id: number;
@@ -85,6 +107,13 @@ interface Relic {
   offer: RewardOffer;
   claimed: boolean;
   locked: boolean;
+}
+
+/** Internal shop-stall model (view + the ephemeral offer it sells) (item 2). */
+interface ShopItem {
+  id: number;
+  pos: Vec2;
+  offer: ShopOffer;
 }
 
 /** A relic the hero can currently read (for the inspector chip). */
@@ -113,6 +142,7 @@ export class RewardScene {
   private acc = 0;
   private input: InputCommand = ZERO_INPUT;
   private readonly relics: Relic[] = [];
+  private readonly shopItems: ShopItem[] = [];
   private pendingEvents: GameEvent[] = [];
 
   /** Relic the hero is actively dwelling on, and how long (seconds). */
@@ -122,6 +152,16 @@ export class RewardScene {
   private vortexDwellS = 0;
   /** Claims not yet drained by the UI (each maps to a chooseUpgrade call). */
   private pendingClaims: Array<{ kind: LootKind; offer: RewardOffer }> = [];
+
+  // item 2: walk-up coin shop bookkeeping. Coins + sold-out state are mirrored in
+  // from the store each frame; a shop stall fires (armed-latch, so re-buyable after
+  // stepping off) once dwelt on, gated on affordability.
+  private coins = 0;
+  private soldOut = new Set<string>();
+  private shopDwellId: number | null = null;
+  private shopDwellS = 0;
+  private shopArmedId: number | null = null;
+  private pendingBuys: ShopOffer[] = [];
 
   private nextId = 1;
 
@@ -136,6 +176,8 @@ export class RewardScene {
      * fight does. Absent for a plain (no-subclass, single-class) hero.
      */
     loadout: { subSkills?: string[]; extraClasses?: ClassId[] } = {},
+    /** item 2: the ephemeral-shop perks to lay out as buyable stalls (may be empty). */
+    shop: ShopOffer[] = [],
   ) {
     this.world = new World({
       monsterId: 'dummy', // required by World init; no boss spawns in reward mode
@@ -153,6 +195,28 @@ export class RewardScene {
       scene: 'reward',
     });
     this.layoutRelics(offers);
+    this.layoutShop(shop);
+  }
+
+  /** Lay the shop stalls in a row between the spawn and the relics (item 2). */
+  private layoutShop(shop: ShopOffer[]): void {
+    const n = shop.length;
+    if (n === 0) return;
+    const spread = Math.min(760, 130 * (n - 1));
+    const startX = ARENA_W / 2 - spread / 2;
+    shop.forEach((offer, i) => {
+      const x = n === 1 ? ARENA_W / 2 : startX + (spread * i) / (n - 1);
+      this.shopItems.push({ id: this.nextId++, pos: { x, y: SHOP_ROW_Y }, offer });
+    });
+  }
+
+  /**
+   * Mirror the store's coin purse + which stalls are sold out (single-buy passives
+   * already owned) so the walk-up shop gates buys exactly like the List view (item 2).
+   */
+  setShopState(coins: number, soldOut: readonly string[]): void {
+    this.coins = coins;
+    this.soldOut = new Set(soldOut);
   }
 
   get localPlayerId(): number | null {
@@ -187,11 +251,15 @@ export class RewardScene {
     const step = frozen ? 0 : Math.max(0, dt);
     this.updateDwell(step);
     this.updateVortexDwell(step);
+    this.updateShopDwell(step); // item 2
 
     const state = this.world.toRenderState(this.localPlayerId);
     state.events = this.pendingEvents;
     this.pendingEvents = [];
-    state.loot = this.relics.map((r) => this.lootView(r));
+    state.loot = [
+      ...this.relics.map((r) => this.lootView(r)),
+      ...this.shopItems.map((s) => this.shopView(s)), // item 2
+    ];
     state.vortex = this.vortexView();
     return state;
   }
@@ -320,6 +388,65 @@ export class RewardScene {
   }
 
   // -------------------------------------------------------------------------
+  // Walk-up coin shop (item 2) — dwell to buy, armed-latch so it's re-buyable,
+  // gated on affordability + sold-out state mirrored from the store.
+  // -------------------------------------------------------------------------
+
+  /** The nearest AFFORDABLE, not-sold-out stall under the hero (not armed), or null. */
+  private buyableUnder(): ShopItem | null {
+    let best: ShopItem | null = null;
+    let bestD = SHOP_PICKUP_RADIUS;
+    for (const s of this.shopItems) {
+      if (s.id === this.shopArmedId) continue;
+      if (this.soldOut.has(s.offer.id) || this.coins < s.offer.cost) continue;
+      const d = this.heroDist(s.pos);
+      if (d <= bestD) {
+        bestD = d;
+        best = s;
+      }
+    }
+    return best;
+  }
+
+  /** Clear the armed latch once the hero has stepped fully off the bought stall. */
+  private clearShopArmed(): void {
+    if (this.shopArmedId == null) return;
+    const armed = this.shopItems.find((s) => s.id === this.shopArmedId);
+    if (!armed || this.heroDist(armed.pos) > SHOP_PICKUP_RADIUS) this.shopArmedId = null;
+  }
+
+  /** Advance the dwell-to-buy on the stall the hero stands on (moving = no buy). */
+  private updateShopDwell(dt: number): void {
+    this.clearShopArmed();
+    const moving = Math.hypot(this.input.move.x, this.input.move.y) > 0.35;
+    const target = moving ? null : this.buyableUnder();
+    if (!target) {
+      this.shopDwellId = null;
+      this.shopDwellS = 0;
+      return;
+    }
+    if (this.shopDwellId !== target.id) {
+      this.shopDwellId = target.id;
+      this.shopDwellS = 0;
+    }
+    this.shopDwellS += dt;
+    if (this.shopDwellS >= BUY_DWELL_S) {
+      this.shopDwellId = null;
+      this.shopDwellS = 0;
+      this.shopArmedId = target.id; // don't re-buy until the hero steps off
+      this.pendingBuys.push(target.offer);
+    }
+  }
+
+  /** Drain shop buys since the last call (each maps to a buyEphemeral call). */
+  takeShopBuys(): ShopOffer[] {
+    if (this.pendingBuys.length === 0) return [];
+    const out = this.pendingBuys;
+    this.pendingBuys = [];
+    return out;
+  }
+
+  // -------------------------------------------------------------------------
   // Queries for the UI (proximity / progress / vortex)
   // -------------------------------------------------------------------------
 
@@ -415,6 +542,24 @@ export class RewardScene {
       locked: r.locked,
       active: !r.claimed && !r.locked && (focused || this.heroDist(r.pos) <= RELIC_READ_RADIUS),
       label: r.offer.label,
+    };
+  }
+
+  /** item 2: a shop stall projected as a loot view — dims (locked) when the hero
+   *  can't afford it or it's sold out, glows when affordable + near. */
+  private shopView(s: ShopItem): LootView {
+    const affordable = this.coins >= s.offer.cost && !this.soldOut.has(s.offer.id);
+    const focused = this.shopDwellId === s.id;
+    return {
+      id: s.id,
+      kind: 'shop',
+      pos: { ...s.pos },
+      radius: RELIC_RADIUS,
+      pickupRadius: SHOP_PICKUP_RADIUS,
+      claimed: false,
+      locked: !affordable,
+      active: affordable && (focused || this.heroDist(s.pos) <= SHOP_READ_RADIUS),
+      label: s.offer.label,
     };
   }
 

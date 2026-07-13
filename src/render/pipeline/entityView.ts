@@ -716,10 +716,12 @@ export function drawTotem(
   }
 }
 
-/** Reward-room relic colors: gold for generic boons, violet for class boons. */
+/** Reward-room relic colors: gold for generic boons, violet for class boons,
+ *  teal for the walk-up coin shop (item 2). */
 export const LOOT_COLORS: Record<LootView['kind'], number> = {
   generic: 0xf2c14e, // gold
   char: 0x9c5cf0, // violet
+  shop: 0x2fb8a6, // teal — the coin stall
 };
 
 /**

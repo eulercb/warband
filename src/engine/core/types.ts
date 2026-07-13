@@ -581,7 +581,7 @@ export interface TotemView {
  * upgrade screen's one-generic-one-character rule). Content-agnostic by design:
  * the engine only knows position/geometry, the UI maps it to a rolled offer.
  */
-export type LootKind = 'generic' | 'char';
+export type LootKind = 'generic' | 'char' | 'shop';
 
 /** Render view of a reward-room relic (local only; never crosses the wire). */
 export interface LootView {
