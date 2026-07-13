@@ -219,16 +219,15 @@ describe('hardcore kill-deadline', () => {
     expect(w.outcome).toBeNull();
   });
 
-  it('ships the countdown in a hardcore snapshot and nothing in a standard one', () => {
+  it('counts the deadline down as a hardcore fight runs; a standard fight never has one', () => {
     const hc = hcWorld(4);
     const std = hcWorld(4, false);
-    // Present + full at spawn for hardcore; absent for a standard fight.
-    expect(hc.serialize().deadlineRemaining).toBeCloseTo(hc.hardcoreDeadline, 5);
-    expect(std.serialize().deadlineRemaining).toBeUndefined();
-    // It counts down as the fight runs, and reaches the render state the HUD reads.
+    // Full at spawn for hardcore; infinite (no deadline) for a standard fight.
+    expect(hc.deadlineRemaining()).toBeCloseTo(hc.hardcoreDeadline, 5);
+    expect(std.deadlineRemaining()).toBe(Infinity);
+    // It counts down as the fight runs — this drives the 30/15/5s warnings, not a
+    // HUD clock; the deadline is no longer serialized into the snapshot at all.
     hc.step(SIM_DT, new Map());
-    expect(hc.serialize().deadlineRemaining!).toBeLessThan(hc.hardcoreDeadline);
-    expect(hc.toRenderState(null).deadlineRemaining!).toBeGreaterThan(0);
-    expect(std.toRenderState(null).deadlineRemaining).toBeUndefined();
+    expect(hc.deadlineRemaining()).toBeLessThan(hc.hardcoreDeadline);
   });
 });

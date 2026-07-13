@@ -404,15 +404,15 @@ describe('<HUD>', () => {
   };
 
   it('shows NO ticking deadline timer — the deadline warns via banners now (item 24)', () => {
-    // Even in a hardcore fight with time left, the HUD no longer paints a visual
-    // countdown clock; warnings arrive as transient banners (see world.stepDeadline).
+    // Even in a hardcore fight the HUD paints no visual countdown clock; warnings
+    // arrive as transient banners (see world.stepDeadline). The deadline is no
+    // longer plumbed to the HUD at all — there is nothing here to render.
     useHudStore.getState().set({
       active: true,
       classId: 'knight',
       hp: 10,
       maxHp: 100,
       bosses: [deadlineBoss],
-      deadlineRemaining: 90,
     });
     const { container } = render(<HUD />);
 

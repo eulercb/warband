@@ -76,12 +76,6 @@ export interface HudState {
   /** Every boss in the arena (twin encounters show one bar each). */
   bosses: HudBoss[];
 
-  /**
-   * Hardcore kill-deadline countdown (item 11): seconds left before the fight is
-   * lost on the clock, or `null` outside a hardcore fight (no timer shown).
-   */
-  deadlineRemaining: number | null;
-
   /** Latest mid-fight corruption beat to announce, or null. Set per-frame by the
    * render loop (not the throttled bridge) so a one-frame beat is never dropped. */
   banner: HudBanner | null;
@@ -116,7 +110,6 @@ const INITIAL: Omit<HudState, 'set' | 'resetHud'> = {
   buffs: [],
   score: 0,
   bosses: [],
-  deadlineRemaining: null,
   banner: null,
   teammates: [],
   terrainKinds: [],
