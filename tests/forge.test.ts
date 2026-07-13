@@ -613,14 +613,16 @@ describe('name blending', () => {
     expect(trailing).toMatch(/ of /);
   });
 
-  it('forgeName dedupes donors and tolerates a missing third donor', () => {
+  it('forgeName dedupes donors and avoids echoing a donor with no distinct third', () => {
     // Two identical donors dedupe to one → single-donor path.
     expect(forgeName(['Fireball', 'Fireball'], seqPick([0]))).toBe('Fireball');
-    // Trailing connective with only two unique donors reuses the first as "third".
+    // With only two unique donors, the trailing "… of X" form (which needs a
+    // distinct third donor) falls back to the leading form — never "X of … X".
     const t = forgeName(['Multishot', 'Fireball'], seqPick([0, 0, 0, 1, 0]), {
       connectiveChance: 1,
     });
-    expect(t).toMatch(/ of /);
+    expect(t).not.toMatch(/ of /);
+    expect(t.split(' ').length).toBeGreaterThanOrEqual(2); // a leading connective
   });
 });
 

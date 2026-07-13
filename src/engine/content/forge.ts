@@ -547,14 +547,14 @@ export function forgeName(
   // pick(1000)/1000 gives a stable uniform in [0,1).
   const roll = pick(1000) / 1000;
   if (roll >= chance) return blended;
-  // Half the connectives lead ("Exalted Vollustion"), half trail using a third
-  // donor's flavour ("Multiball of Resisting Bless").
-  if (pick(2) === 0) {
+  // The trailing "… of Resisting Bless" form names a THIRD, distinct donor (the
+  // two blended ones are already in the stem); without one, use the leading form
+  // so a name never echoes a donor it already spliced ("Rage of Resisting Rage").
+  if (pick(2) === 0 || uniq.length < 3) {
     return `${CONNECTIVE_PREFIX[pick(CONNECTIVE_PREFIX.length)]} ${blended}`;
   }
   const of = CONNECTIVE_OF[pick(CONNECTIVE_OF.length)];
-  const third = uniq[2] ?? uniq[0];
-  return `${blended} of ${of} ${capitalize(firstWord(third))}`;
+  return `${blended} of ${of} ${capitalize(firstWord(uniq[2]))}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -739,8 +739,10 @@ export function synthesizeAbility(
         slotAllowsEffect(slot, x.effect) &&
         !usedSources.has(x.donor.name) &&
         !(isHardCC(x.effect) && hardCC >= 1) &&
-        // avoid a second zone / a duplicate primary damage pile-up
-        !(x.effect.kind === 'zone' && chosen.some((c) => c.effect.kind === 'zone')),
+        // At most one of each NON-buff kind: two `damage` (or heal/slow/zone…)
+        // effects would collapse in recompose (only the last resolves) and mislead
+        // the card + the price. Buffs may repeat — they merge per axis / rally.
+        !(x.effect.kind !== 'buff' && chosen.some((c) => c.effect.kind === x.effect.kind)),
     );
     if (options.length === 0) break;
     const pick = rng.pick(options);
