@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import type { Player, ClassId, AbilitySlot } from '../src/engine/core/types';
+import type { Player, AbilitySlot } from '../src/engine/core/types';
 import {
   hashStr,
   abilityVariant,
@@ -11,7 +11,6 @@ import {
   setProceduralSeed,
   proceduralSeed,
   procVariant,
-  SKILL_NAME_BANKS,
   MONSTER_EPITHETS,
   UPGRADE_NAME_BANKS,
 } from '../src/engine/content/procgen';
@@ -198,10 +197,9 @@ describe('classVariant identity envelope', () => {
           }
           if (b.stun) expect(r.stun!).toBeLessThanOrEqual(b.stun + 0.4);
           if (b.castTime) expect(r.castTime!).toBeGreaterThanOrEqual(0.3);
-          // The rolled name comes from the skill's own bank.
-          const bank = SKILL_NAME_BANKS[`${id}.${slot}`];
-          expect(bank).toBeDefined();
-          expect(bank).toContain(r.name);
+          // The display NAME never rolls — it stays canonical (item 9) so upgrade
+          // cards and tooltips never mix a base name with a re-flavoured one.
+          expect(r.name).toBe(b.name);
           // Rolled tooltips stay well-formed.
           expect(describeAbility(r)).not.toMatch(/NaN|undefined/);
         }
@@ -232,19 +230,25 @@ describe('classVariant identity envelope', () => {
     }
   });
 
-  it('name banks are canonical-anchored and HUD-sized', () => {
-    for (const [key, bank] of Object.entries(SKILL_NAME_BANKS)) {
-      const [classId, slot] = key.split('.') as [ClassId, AbilitySlot];
-      expect(bank[0]).toBe(CLASSES[classId].abilities[slot].name); // canonical first
-      expect(new Set(bank).size).toBe(bank.length); // no dupes
-      for (const n of bank) {
-        expect(n.length).toBeGreaterThan(0);
-        expect(n.length).toBeLessThanOrEqual(20);
+  it('never re-rolls a base-skill display name (item 9)', () => {
+    for (const seed of SEEDS) {
+      for (const id of CLASS_IDS) {
+        const base = CLASSES[id];
+        const v = classVariant(seed, base);
+        for (const slot of SLOTS) {
+          // Every rolled kit keeps the canonical, recognisable skill names.
+          expect(v.abilities[slot].name).toBe(base.abilities[slot].name);
+        }
       }
     }
-    // Every base-kit skill has a bank.
-    for (const id of CLASS_IDS) {
-      for (const slot of SLOTS) expect(SKILL_NAME_BANKS[`${id}.${slot}`]).toBeDefined();
+    // Subclass skills likewise keep their canonical name through the value roll.
+    for (const seed of SEEDS) {
+      for (const sub of ALL_SUBCLASSES) {
+        for (const skill of sub.skills) {
+          const r = subSkillAbilityVariant(seed, skill.id, skill.ability);
+          expect(r.name).toBe(skill.ability.name);
+        }
+      }
     }
   });
 });

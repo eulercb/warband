@@ -8,7 +8,7 @@ import {
   REVIVE_HP_FRAC,
   REVIVE_MIN_TIME,
 } from '../src/engine/core/constants';
-import { coReviveSpeed, hasBuff } from '../src/engine/combat/combat';
+import { coReviveSpeed, hasBuff, damageBoss } from '../src/engine/combat/combat';
 import { spawnZone } from '../src/engine/combat/abilities';
 
 function buttons(over: Partial<ButtonState> = {}): ButtonState {
@@ -264,6 +264,106 @@ describe('world: root immobilises the boss (item 9)', () => {
     expect(hasBuff(boss, 'root')).toBe(true);
     expect(boss.pos.x).toBeCloseTo(rootedAt.x, 3);
     expect(boss.pos.y).toBeCloseTo(rootedAt.y, 3);
+  });
+});
+
+describe('world: progression-aware boss sustain + invuln (items 2 & 5)', () => {
+  /** A "strong band": a knight who has multiclassed into mage with its 2 sub-skills. */
+  function strongWorld(monsterId: 'treant' | 'dragon'): World {
+    const w = new World({
+      monsterId,
+      seed: 3,
+      players: [
+        {
+          peerId: 'a',
+          name: 'A',
+          classId: 'knight',
+          extraClasses: ['mage'],
+          subSkills: ['mg_evoker_lightning', 'mg_evoker_cone'],
+        },
+      ],
+    });
+    w.terrain = [];
+    return w;
+  }
+
+  it('a fresh/weak band never turns a boss immune, and out-DPSes its damped heals (items 2 & 5)', () => {
+    const w = new World({
+      monsterId: 'treant',
+      seed: 5,
+      players: [{ peerId: 'a', name: 'A', classId: 'barbarian' }],
+    });
+    w.terrain = [];
+    const boss = w.boss!;
+    expect(boss.invulnThresholds).toBeUndefined(); // weak party → mechanic disabled
+    expect(boss.healScale).toBeCloseTo(0.35, 6); // earliest-run active-heal floor
+    const p = w.players[0];
+    p.maxHp = 1e9;
+    p.hp = 1e9;
+    p.damageTakenMult = 0; // survive the grind so we can measure the boss
+    let steps = 0;
+    while (boss.hp > 0 && steps < 8000) {
+      damageBoss(w, p, boss, boss.maxHp * 0.005);
+      expect(hasBuff(boss, 'invuln')).toBe(false); // never immune for a weak band
+      w.step(DT, new Map([['a', inp()]]));
+      steps++;
+    }
+    expect(boss.hp).toBeLessThanOrEqual(0); // killable — no infinite fight
+  });
+
+  it('a strong band on a hard boss meets a telegraphed, damage-proof invuln window (item 5)', () => {
+    const w = strongWorld('treant');
+    const boss = w.boss!;
+    expect(boss.invulnThresholds).toEqual([0.5, 0.25]);
+    expect(boss.invulnNextIdx).toBe(0);
+    // Cross the first threshold → next tick arms the window (a boss aura telegraphs it).
+    boss.hp = boss.maxHp * 0.49;
+    w.step(DT, new Map([['a', inp()]]));
+    expect(hasBuff(boss, 'invuln')).toBe(true);
+    expect(boss.invulnNextIdx).toBe(1);
+    // Immune while the window is up — even a huge hit soaks nothing.
+    const hp = boss.hp;
+    expect(damageBoss(w, w.players[0], boss, boss.maxHp)).toBe(0);
+    expect(boss.hp).toBe(hp);
+  });
+
+  it('boss invuln fires ≥once, is bounded to two windows, and never walls the kill (item 5)', () => {
+    const w = strongWorld('treant');
+    const boss = w.boss!;
+    boss.healScale = 0; // isolate the invuln from any healing
+    boss.regen = 0;
+    const p = w.players[0];
+    p.maxHp = 1e9;
+    p.hp = 1e9;
+    p.damageTakenMult = 0;
+    let windows = 0;
+    let wasInvuln = false;
+    let steps = 0;
+    while (boss.hp > 0 && steps < 8000) {
+      if (!hasBuff(boss, 'invuln')) damageBoss(w, p, boss, boss.maxHp * 0.01);
+      const now = hasBuff(boss, 'invuln');
+      if (now && !wasInvuln) windows++;
+      wasInvuln = now;
+      w.step(DT, new Map([['a', inp()]]));
+      steps++;
+    }
+    expect(boss.hp).toBeLessThanOrEqual(0); // killable — invuln never makes it infinite
+    expect(windows).toBeGreaterThanOrEqual(1); // triggered at least once before death
+    expect(windows).toBeLessThanOrEqual(2); // hard-bounded to the two thresholds
+  });
+
+  it('late in a run a boss keeps its full sustain (item 2)', () => {
+    // Many clears (deep endless) → active-heal damping fully lifts.
+    const w = new World({
+      monsterId: 'treant',
+      seed: 5,
+      cycle: 3,
+      runIndex: 2,
+      runTotal: 4,
+      pace: 1,
+      players: [{ peerId: 'a', name: 'A', classId: 'barbarian' }],
+    });
+    expect(w.boss!.healScale).toBeCloseTo(1, 6);
   });
 });
 

@@ -3616,6 +3616,19 @@ export const CHAR_UPGRADES: Record<string, CharUpgradeDef> = Object.fromEntries(
   ].map((d) => [d.id, d]),
 );
 
+/**
+ * How many GRAND capstones a hero holds (item 5 progression gate). Counts real
+ * catalog grands of every kind — class, skill, subclass and graft — since
+ * CHAR_UPGRADES flattens them all; synthetic ids (`restore:`/`graftup:`) resolve
+ * to no def and never count.
+ */
+export function grandCount(charUpgradeIds: readonly string[] | undefined): number {
+  if (!charUpgradeIds) return 0;
+  let n = 0;
+  for (const id of charUpgradeIds) if (CHAR_UPGRADES[id]?.grand) n++;
+  return n;
+}
+
 // ---------------------------------------------------------------------------
 // Skill-keyed progression (items 15 & 17) — the "model change" flagged in #22.
 //
@@ -4072,6 +4085,36 @@ export function offerableGrands(
   return out;
 }
 
+/**
+ * Resolved before→after readout for a PLAYER-STAT boon (item 6): the boons that
+ * tug maxHp / move / damage / mitigation / regen rather than an ability slot, and
+ * so never produce a "Now →" ability line. Diffs the hero's resolved stats with vs
+ * without the pick and lists each CHANGED stat's RESULTING absolute — so the card
+ * shows the value you'll have, not just the prose delta. '' when nothing moved.
+ */
+function describeStatReadout(classId: ClassId, ownedChar: readonly string[], id: string): string {
+  const before = previewPlayerStats(classId, [], [...ownedChar]);
+  const after = previewPlayerStats(classId, [], [...ownedChar, id]);
+  const parts: string[] = [];
+  const whole = (v: number): string => `${Math.round(v)}`;
+  const pct = (v: number): string => `${Math.round(v * 100)}%`;
+  if (after.maxHp !== before.maxHp) parts.push(`${whole(after.maxHp)} max HP`);
+  if (after.moveSpeed !== before.moveSpeed) parts.push(`${whole(after.moveSpeed)} move`);
+  if (after.damageMult !== before.damageMult) parts.push(`${pct(after.damageMult)} dmg`);
+  if (after.damageTakenMult !== before.damageTakenMult) {
+    parts.push(`${pct(after.damageTakenMult)} dmg taken`);
+  }
+  if (after.cooldownMult !== before.cooldownMult)
+    parts.push(`${pct(after.cooldownMult)} cooldowns`);
+  if (after.castMult !== before.castMult) parts.push(`${pct(after.castMult)} cast time`);
+  if (after.regenPerSec !== before.regenPerSec) {
+    parts.push(`${Math.round(after.regenPerSec * 10) / 10}/s regen`);
+  }
+  // (terrainResist is only tugged by GENERIC boons like Surefooted, never a class
+  // upgrade, so it never moves here — and those have their own reward-card path.)
+  return parts.join(' · ');
+}
+
 /** A resolved label + description for an offer (a real, reclaim, or graftup id). */
 export interface CharOfferView {
   id: string;
@@ -4124,9 +4167,14 @@ export function describeCharOffer(
   // cooldown") instead of a fixed "+5 damage". Grafts already name what they swap.
   if (!def.replaces) {
     const after = previewAbilityTable(classId, [...ownedChar, id]);
-    const preview = SLOTS.filter((s) => JSON.stringify(current[s]) !== JSON.stringify(after[s]))
+    const slotPreview = SLOTS.filter((s) => JSON.stringify(current[s]) !== JSON.stringify(after[s]))
       .map((s) => `${after[s].name}: ${describeAbility(after[s])}`)
       .join(' · ');
+    // A player-stat boon (Thick Hide, War Priest, Second Wind…) touches no slot, so
+    // also resolve its stat readout (item 6) — cards show the resulting values, not
+    // just the prose delta. A boon that moves both a slot and a stat shows both.
+    const statPreview = describeStatReadout(classId, ownedChar, id);
+    const preview = [slotPreview, statPreview].filter(Boolean).join(' · ');
     if (preview) desc = `${desc}. Now → ${preview}`;
   }
   const label = def.grand ? `★ ${def.icon} ${def.name}` : `${def.icon} ${def.name}`;

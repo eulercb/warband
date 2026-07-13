@@ -11,6 +11,7 @@ import {
   charUpgradeBadge,
   charUpgradeMaxStacks,
   charUpgradeAtMax,
+  grandCount,
   applySubclassGrands,
   offerableGrands,
   REOFFER_CHANCE,
@@ -25,9 +26,10 @@ import {
   SUB_SKILL_UPGRADES,
   applySubSkillUpgrades,
 } from '../src/engine/content/charUpgrades';
-import { CLASSES, CLASS_IDS, cloneAbilities } from '../src/engine/content/classes';
+import { CLASSES, CLASS_IDS, cloneAbilities, getClass } from '../src/engine/content/classes';
 import type { PlayerAbilityDef, AbilityKind } from '../src/engine/content/classes';
 import { SUBCLASSES, getSubSkill, subclassOfSkill } from '../src/engine/content/subclasses';
+import { setProceduralSeed } from '../src/engine/content/procgen';
 import type { ClassId, Player, AbilitySlot, SubSlot } from '../src/engine/core/types';
 
 // ---------------------------------------------------------------------------
@@ -926,6 +928,59 @@ describe('rollCharChoices', () => {
   });
 });
 
+describe('rollCharChoices — multiclass weighting + fill-to-max (item 8)', () => {
+  it('spans every owned class, weighted toward the main class', () => {
+    const extras: ClassId[] = ['mage', 'cleric'];
+    const idsOf = (c: ClassId): Set<string> => new Set(CHAR_UPGRADES_BY_CLASS[c].map((d) => d.id));
+    const mainIds = idsOf('knight');
+    const mageIds = idsOf('mage');
+    const clericIds = idsOf('cleric');
+    let main = 0;
+    let extra = 0;
+    let sawMage = false;
+    let sawCleric = false;
+    const rng = lcg(0x51ee7);
+    for (let t = 0; t < 400; t++) {
+      for (const id of rollCharChoices('knight', 4, rng, [], extras, [])) {
+        if (mainIds.has(id)) main++;
+        else if (mageIds.has(id)) {
+          extra++;
+          sawMage = true;
+        } else if (clericIds.has(id)) {
+          extra++;
+          sawCleric = true;
+        }
+      }
+    }
+    expect(sawMage).toBe(true); // extra-class boons DO surface (item 8: all classes)
+    expect(sawCleric).toBe(true);
+    expect(main).toBeGreaterThan(extra); // …but the main class is weighted heavier
+  });
+
+  it('fills to the max option count while any eligible upgrade remains', () => {
+    // Own all-but-one knight boon at cap: the native pool is nearly dry, but the
+    // top-up from hybrids/reoffers still fills the offer to the max (item 8) — across
+    // any rng, so a near-exhausted single-class hero is never left with a short list.
+    const nearlyAll = CHAR_UPGRADES_BY_CLASS.knight
+      .slice(0, -1)
+      .flatMap((d) => Array<string>(charUpgradeMaxStacks(d.id)).fill(d.id));
+    for (const s of [lcg(1), lcg(2), lcg(0xbeef)]) {
+      expect(rollCharChoices('knight', 4, s, nearlyAll)).toHaveLength(4);
+    }
+  });
+
+  it('a multiclass hero fills to max spanning classes even when the main pool is thin', () => {
+    // Main (knight) pool fully capped, but two extra classes keep the offer full.
+    const cappedKnight = CHAR_UPGRADES_BY_CLASS.knight.flatMap((d) =>
+      Array<string>(charUpgradeMaxStacks(d.id)).fill(d.id),
+    );
+    const offers = rollCharChoices('knight', 4, lcg(9), cappedKnight, ['mage', 'cleric'], []);
+    expect(offers).toHaveLength(4);
+    // Every pick is a live, class-eligible id (from an owned class or a hybrid).
+    for (const id of offers) expect(CHAR_UPGRADES[id]).toBeTruthy();
+  });
+});
+
 describe('grand improvements — never in the between-boss pool (item 20)', () => {
   it('the roll never surfaces a grand, whatever the rng', () => {
     // Grands are reserved for the run-clear special reward; the between-boss shop
@@ -1415,6 +1470,82 @@ describe('describeCharOffer', () => {
     expect(describeCharOffer('knight', [], 'bogus')).toBeNull();
   });
 
+  // A "resolved post-value" = a "Now →" segment that carries a digit (a resolved
+  // ability stat and/or player stat). This is the item-6 regression guard: every
+  // offer card must show the RESULTING value, not just a prose delta — or be an
+  // explicitly whitelisted prose-only case with the reason recorded below.
+  const resolvesPostValue = (desc: string): boolean => {
+    const now = desc.split('Now →')[1];
+    return now !== undefined && /\d/.test(now);
+  };
+
+  it('every between-boss class boon resolves a Now → post-value (item 6)', () => {
+    for (const classId of CLASS_IDS) {
+      for (const def of CHAR_UPGRADES_BY_CLASS[classId]) {
+        const v = describeCharOffer(classId, [], def.id)!;
+        expect(resolvesPostValue(v.desc), `${classId}/${def.id}: ${v.desc}`).toBe(true);
+      }
+    }
+  });
+
+  it('every class capstone + base-skill grand resolves a Now → post-value (item 6)', () => {
+    for (const g of [...Object.values(GRAND_BY_CLASS).flat(), ...SKILL_GRANDS]) {
+      const classId = g.classId === 'any' ? 'knight' : g.classId;
+      const v = describeCharOffer(classId, [], g.id)!;
+      expect(resolvesPostValue(v.desc), `${g.id}: ${v.desc}`).toBe(true);
+    }
+  });
+
+  it('every graft grand resolves a Now → post-value once its graft is held (item 6)', () => {
+    for (const g of GRAFT_GRANDS) {
+      const graft = HYBRID_UPGRADES.find((h) => h.id === g.graftId)!;
+      const classId = CLASS_IDS.find((c) => !(graft.exclude ?? []).includes(c))!;
+      const v = describeCharOffer(classId, [g.graftId!], g.id)!;
+      expect(resolvesPostValue(v.desc), `${g.id}: ${v.desc}`).toBe(true);
+    }
+  });
+
+  it('subclass grands are whitelisted prose-only but still state a concrete change (item 6)', () => {
+    // WHITELIST + justification: a subclass grand retunes SUB-abilities (sub1/sub2),
+    // which live outside previewAbilityTable's base-slot preview, so describeCharOffer
+    // cannot resolve a "Now →" for them. Their hand-authored prose still carries the
+    // concrete delta (a % or number), which this asserts so they never go vague.
+    for (const g of SUBCLASS_GRANDS) {
+      expect(/\d/.test(g.desc), `${g.id}: ${g.desc}`).toBe(true);
+    }
+  });
+
+  it('never mixes a re-flavoured skill name into an upgrade card, even mid-run (items 1/9)', () => {
+    // Item 1's report: the headline named "Fireball" while the "Now →" preview
+    // named the rolled variant ("Pyroclasm"). With name-rolling reverted (item 9)
+    // every ability keeps its canonical name, so the two halves always agree.
+    for (const seed of [1, 42, 1337, 987654321]) {
+      setProceduralSeed(seed);
+      try {
+        for (const classId of CLASS_IDS) {
+          const canon = new Set(
+            (['basic', 'a1', 'a2', 'a3'] as AbilitySlot[]).map(
+              (s) => getClass(classId).abilities[s].name,
+            ),
+          );
+          for (const [id, def] of Object.entries(CHAR_UPGRADES)) {
+            if (def.classId !== classId || def.replaces) continue;
+            const v = describeCharOffer(classId, [], id);
+            if (!v || !v.desc.includes('Now →')) continue;
+            // Every "Name: …" prefix in the preview must be a canonical skill name
+            // of this class — never a re-flavoured bank variant.
+            const preview = v.desc.split('Now →')[1];
+            for (const m of preview.matchAll(/(?:^|·)\s*([^:·]+):/g)) {
+              expect(canon.has(m[1].trim())).toBe(true);
+            }
+          }
+        }
+      } finally {
+        setProceduralSeed(null);
+      }
+    }
+  });
+
   it('appends a current-stats preview naming the retuned ability (item 4)', () => {
     const v = describeCharOffer('ranger', [], 'rg_pierce')!;
     // The boon retunes Arrow + Multishot, so the tooltip shows their resolved line.
@@ -1675,6 +1806,28 @@ describe('subclass grands transform the bound sub-abilities (item 17)', () => {
       const pristine = JSON.stringify({ ...sub.skills[0].ability, slot: 'sub1' });
       expect(JSON.stringify(p.subAbilities!.sub1)).not.toBe(pristine);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// grandCount — the "strong party" progression gate (item 5)
+// ---------------------------------------------------------------------------
+
+describe('grandCount (item 5)', () => {
+  it('counts held GRAND capstones and ignores plain boons + synthetic ids', () => {
+    expect(grandCount(undefined)).toBe(0);
+    expect(grandCount([])).toBe(0);
+    expect(grandCount(['kn_bulwark'])).toBe(0); // an ordinary class boon
+    expect(grandCount(['kn_grand_immovable'])).toBe(1); // a real class capstone
+    expect(grandCount(['kn_grand_immovable', 'rg_grand_deadeye', 'kn_bulwark'])).toBe(2);
+    expect(grandCount(['restore:a2', 'graftup:a2:mg_combust'])).toBe(0); // synthetic → no def
+  });
+
+  it('reaches the ≥3 strong-party bar only with three genuine grands', () => {
+    expect(grandCount(['kn_grand_immovable', 'rg_grand_deadeye']) >= 3).toBe(false);
+    expect(grandCount(['kn_grand_immovable', 'rg_grand_deadeye', 'mg_grand_archmage']) >= 3).toBe(
+      true,
+    );
   });
 });
 

@@ -102,9 +102,11 @@ describe('multiclass swap', () => {
     expect(p.classId).toBe('mage');
     expect(p.abilities?.a1.name).toBe('Fireball'); // now wielding the mage kit
     expect(p.classCooldowns?.knight?.a1).toBe(8); // knight's Taunt cd was stashed
-    // The swap gate blocks an immediate re-swap.
+    // Swaps are instant now (item 7) — an immediate re-swap succeeds and restores
+    // the stashed per-class cooldowns (Taunt isn't a damaging slot, so no floor).
     w.setActiveClass(p, 'knight');
-    expect(p.classId).toBe('mage');
+    expect(p.classId).toBe('knight');
+    expect(p.cooldowns.a1).toBe(8);
   });
 
   it('requestClassSwap without a target cycles to the next owned class (a tap)', () => {

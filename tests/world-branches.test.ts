@@ -385,16 +385,17 @@ describe('world-branches: multiclass swap (requestClassSwap)', () => {
     return w;
   }
 
-  it('a targetless request cycles to the next owned class and arms the swap gate', () => {
+  it('a targetless request cycles to the next owned class and sets the cosmetic swap timer', () => {
     const w = multi();
     const p = w.players[0];
     expect(p.classes).toEqual(['knight', 'mage', 'cleric']);
     expect(p.swapCd).toBe(0);
     w.requestClassSwap('a'); // tap → cycle
     expect(p.classId).toBe('mage');
+    // swapCd is now a brief cosmetic "just swapped" timer (item 7) — it no longer
+    // gates the swap, just drives HUD feedback, and decays on subsequent ticks.
     expect(p.swapCd).toBeGreaterThan(0);
     const cd1 = p.swapCd!;
-    // The gate decays on subsequent ticks (and blocks an immediate re-cycle).
     w.step(DT, new Map([['a', inp()]]));
     expect(p.swapCd!).toBeLessThan(cd1);
   });
@@ -407,13 +408,52 @@ describe('world-branches: multiclass swap (requestClassSwap)', () => {
     expect(p.abilities?.a2.name).toBe(w.players[0].classTables?.cleric?.a2.name);
   });
 
-  it('the swap gate blocks a second swap until it decays', () => {
+  it('swaps are instant — a rapid A→B→A registers immediately (item 7)', () => {
     const w = multi();
     const p = w.players[0];
     w.requestClassSwap('a', 'mage');
     expect(p.classId).toBe('mage');
-    w.requestClassSwap('a', 'cleric'); // gated — swapCd still > 0
-    expect(p.classId).toBe('mage');
+    w.requestClassSwap('a', 'cleric'); // immediate second swap — NOT blocked any more
+    expect(p.classId).toBe('cleric');
+    w.requestClassSwap('a', 'knight'); // …and straight back, still same tick
+    expect(p.classId).toBe('knight');
+  });
+
+  it('swapping in floors the offensive kit but leaves utility/mobility instant (item 7)', () => {
+    const w = multi();
+    const p = w.players[0];
+    // Fresh mage kit (its cooldowns start at 0). Damaging slots are floored so you
+    // can't dump a second fresh burst by ping-ponging classes; the pure-mobility
+    // Blink (mage a3) stays hot so a defensive dip is still snappy.
+    w.requestClassSwap('a', 'mage');
+    const table = p.abilities!;
+    const offensive = (ab: (typeof table)['a1']): boolean =>
+      ab.kind !== 'heal' &&
+      ab.kind !== 'buffAlly' &&
+      ((ab.damage ?? 0) > 0 || (ab.zoneTickDamage ?? 0) > 0 || (ab.landingDamage ?? 0) > 0);
+    let sawOffensive = false;
+    let sawUtility = false;
+    for (const slot of ['basic', 'a1', 'a2', 'a3'] as const) {
+      if (offensive(table[slot])) {
+        expect(p.cooldowns[slot]).toBeGreaterThanOrEqual(1.0); // floored
+        sawOffensive = true;
+      } else {
+        expect(p.cooldowns[slot]).toBe(0); // utility/mobility stays ready
+        sawUtility = true;
+      }
+    }
+    expect(sawOffensive).toBe(true); // mage bolt/fireball/nova
+    expect(sawUtility).toBe(true); // mage blink
+  });
+
+  it('the swap floor only raises a cooldown, never lowers one (item 7)', () => {
+    const w = multi();
+    const p = w.players[0];
+    // Park the mage kit's fireball deep on cooldown, then swap in: the floor must
+    // not refresh it down to 1s — the real (longer) cooldown is preserved.
+    p.classCooldowns!.mage = { basic: 0, a1: 8, a2: 0, a3: 0, sub1: 0, sub2: 0 };
+    w.requestClassSwap('a', 'mage');
+    expect(p.cooldowns.a1).toBe(8); // untouched — floor can only raise
   });
 
   it('ignores a target the hero does not own', () => {
@@ -2031,7 +2071,8 @@ describe('world-branches: setActiveClass fallbacks', () => {
     p.classCooldowns = { knight: { basic: 0, a1: 0, a2: 0, a3: 0 } };
     w.setActiveClass(p, 'mage');
     expect(p.classId).toBe('mage'); // table present → swap proceeds
-    expect(p.cooldowns.a1).toBe(0); // ?? default zeroed bank
+    expect(p.cooldowns.a3).toBe(0); // ?? default zeroed bank (Blink isn't a damaging slot)
+    expect(p.cooldowns.a1).toBeGreaterThanOrEqual(1.0); // …offensive slot floored (item 7)
     expect(p.swapCd).toBeGreaterThan(0);
   });
 });

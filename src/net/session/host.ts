@@ -29,6 +29,7 @@ import type {
 } from '../protocol';
 import { World } from '../../engine/world/world';
 import type { WorldPlayerInit } from '../../engine/world/world';
+import { draftedClassFor, draftedMonsterFor } from '../../engine/content/kitshuffle';
 import {
   SIM_DT,
   MAX_PLAYERS,
@@ -118,6 +119,9 @@ export interface HostOpts {
   seed?: number;
   /** Hardcore run (item 11): deadlier corruption cadence, limited revives, no free retry. */
   hardcore?: boolean;
+  /** Chaos Draft (item 10): every hero/bot/boss drafts a random kit. Independent of
+   *  the gauntlet gate — it composes freely with Hardcore or a single fight. */
+  randomKits?: boolean;
   /**
    * item 8 — an up-front loadout for the HOST hero, applied at the FIRST fight so
    * Single-fight mode can test specific builds (granted subclass skills, an extra
@@ -144,6 +148,10 @@ export interface HostOpts {
     modName?: string;
     runSeed: number;
     hardcore: boolean;
+    /** Chaos Draft (item 10): whether this run drafts random kits… */
+    randomKits: boolean;
+    /** …and, if so, the class THIS host hero was drafted into (its effective kit). */
+    draftedClass: ClassId;
   }) => void;
   /** Called when between-boss readiness changes (host UI shows "X/Y ready"). */
   onNextReady?: (info: { ready: number; total: number }) => void;
@@ -203,6 +211,7 @@ export class Host implements NetSession {
   private hostReady = false;
   private gauntlet: boolean;
   private readonly hardcore: boolean;
+  private readonly randomKits: boolean;
   private phase: 'lobby' | 'inFight' = 'lobby';
   private readonly lobby = new Map<string, PeerEntry>();
   /** Host-added AI band members (in roster order after real peers). */
@@ -296,6 +305,9 @@ export class Host implements NetSession {
     this.hostClass = opts.classId;
     this.gauntlet = opts.gauntlet ?? false;
     this.hardcore = (opts.hardcore ?? false) && this.gauntlet;
+    // Chaos Draft is independent of the gauntlet gate (item 10) — it works for a
+    // single fight or a full run, alone or alongside Hardcore.
+    this.randomKits = opts.randomKits ?? false;
     this.masterSeed = (opts.seed ?? (Math.random() * 2 ** 31) | 0) >>> 0 || 1;
 
     this.room = openRoom(opts.code, opts.onJoinError, opts.net ?? 'p2p');
@@ -668,8 +680,13 @@ export class Host implements NetSession {
     this.clearResumeCountdown();
     this.clearVictoryLap();
     const slot = this.runOrder[this.runIndex] ?? [this.monsterId];
-    const monsterId = slot[0] ?? this.monsterId;
-    const coBosses = slot.slice(1);
+    const seed = this.fightSeed();
+    // Chaos Draft (item 10): each boss slot drafts a random monster off the fight
+    // seed, so every boss of a run is its own surprise. Affixes below then roll for
+    // the DRAFTED monster. A normal run leaves the slot untouched.
+    const draft = (m: MonsterId): MonsterId => (this.randomKits ? draftedMonsterFor(seed, m) : m);
+    const monsterId = draft(slot[0] ?? this.monsterId);
+    const coBosses = slot.slice(1).map(draft);
     const modifier = modifierForCycle(this.cycle);
     // Boss affixes + mid-fight corruption are now STANDARD for every fight
     // (single, opener and beyond). They still RAMP — affixBudget gives the opener
@@ -681,12 +698,19 @@ export class Host implements NetSession {
     // World roster carries each hero's accumulated upgrades + carried score
     // (host-authoritative). Bots now progress too — their auto-awarded upgrades
     // (see awardBotUpgrades) ride in through rosterEntry exactly like a human's.
-    const roster: WorldPlayerInit[] = [this.rosterEntry(selfId, this.hostName, this.hostClass)];
+    // Chaos Draft (item 10): each hero/bot plays a class drafted off the MASTER seed
+    // (stable across the whole run, so their accumulated upgrades keep matching the
+    // drafted class). A normal run keeps the picked class. Bots are drafted too.
+    const draftClass = (peerId: string, picked: ClassId): ClassId =>
+      this.randomKits ? draftedClassFor(this.masterSeed, peerId) : picked;
+    const roster: WorldPlayerInit[] = [
+      this.rosterEntry(selfId, this.hostName, draftClass(selfId, this.hostClass)),
+    ];
     for (const [peerId, e] of this.lobby) {
-      roster.push(this.rosterEntry(peerId, e.name, e.classId));
+      roster.push(this.rosterEntry(peerId, e.name, draftClass(peerId, e.classId)));
     }
     for (const b of this.bots) {
-      roster.push(this.rosterEntry(b.peerId, b.name, b.classId));
+      roster.push(this.rosterEntry(b.peerId, b.name, draftClass(b.peerId, b.classId)));
     }
     // Clients only render snapshots, so the wire roster omits the upgrade lists.
     const wireRoster = roster.map(({ peerId, name, classId }) => ({ peerId, name, classId }));
@@ -695,9 +719,9 @@ export class Host implements NetSession {
     this.ephemeralByPeer.clear();
 
     const playerCount = roster.length;
-    const seed = this.fightSeed();
-    // Roll each boss's affixes deterministically from the fight seed. Standard for
-    // every fight now (item 4); affixBudget keeps the opener to a single affix.
+    // Roll each boss's affixes deterministically from the fight seed (computed above
+    // so the Chaos-Draft monster is chosen first). Standard for every fight now
+    // (item 4); affixBudget keeps the opener to a single affix.
     const bossAffixes = this.rollBossAffixes([monsterId, ...coBosses], seed);
 
     // Fresh fight state.
@@ -731,7 +755,7 @@ export class Host implements NetSession {
       seed,
       playerCount,
       monsterId,
-      monsterIds: slot,
+      monsterIds: [monsterId, ...coBosses], // the DRAFTED slot (== the picked slot in a normal run)
       roster: wireRoster,
       gauntlet: this.gauntlet,
       runIndex: this.runIndex,
@@ -740,10 +764,11 @@ export class Host implements NetSession {
       modName: modifier?.prefix,
       runSeed: this.masterSeed,
       hardcore: this.hardcore,
+      randomKits: this.randomKits,
     };
     netLog('host', `starting fight → ${playerCount} player(s)`, {
       seed,
-      monster: slot.join('+'),
+      monster: [monsterId, ...coBosses].join('+'),
       run: `${this.runIndex + 1}/${this.runOrder.length}`,
       cycle: this.cycle,
     });
@@ -758,6 +783,8 @@ export class Host implements NetSession {
       modName: modifier?.prefix,
       runSeed: this.masterSeed,
       hardcore: this.hardcore,
+      randomKits: this.randomKits,
+      draftedClass: draftClass(selfId, this.hostClass),
     });
     this.startLoop();
   }

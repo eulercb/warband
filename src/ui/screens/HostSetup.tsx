@@ -39,6 +39,8 @@ export function HostSetup() {
   const setSeedInput = useStore((s) => s.setSeedInput);
   const hardcore = useStore((s) => s.hardcore);
   const setHardcore = useStore((s) => s.setHardcore);
+  const randomKits = useStore((s) => s.randomKits);
+  const setRandomKits = useStore((s) => s.setRandomKits);
   const netMode = useStore((s) => s.netMode);
   const error = useStore((s) => s.error);
   const setMonster = useStore((s) => s.setMonster);
@@ -208,6 +210,30 @@ export function HostSetup() {
             </span>
           </button>
         ) : null}
+
+        {/* Chaos Draft (item 10) — independent of the gauntlet gate, so it composes
+            with a single fight, a gauntlet and/or Hardcore, in any combination. */}
+        <button
+          type="button"
+          className={`wb-gauntlet-toggle${randomKits ? ' on' : ''}`}
+          onClick={() => {
+            playUiSound('uiClick');
+            setRandomKits(!randomKits);
+          }}
+          aria-pressed={randomKits}
+        >
+          <span className="wb-gauntlet-check" aria-hidden="true">
+            {randomKits ? '🎲' : ''}
+          </span>
+          <span className="wb-gauntlet-text">
+            <span className="wb-gauntlet-title">Chaos Draft</span>
+            <span className="wb-gauntlet-sub">
+              {randomKits
+                ? 'Nobody plays what they picked: every hero and bot is dealt a random class, and every boss is a random monster — all drawn from the shared run seed, so the whole band sees the same wild draft and a shared seed replays it. Your reward offers still match the class you were dealt.'
+                : 'Off: everyone plays their chosen class against the chosen boss. On: heroes, bots and bosses all draft random kits from the seed.'}
+            </span>
+          </span>
+        </button>
 
         {relayConfigured && (
           <button

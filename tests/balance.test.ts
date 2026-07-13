@@ -14,8 +14,17 @@ import {
   encounterPace,
   recordEncounter,
   balanceAdjust,
+  bossHealScale,
+  bossInvulnThresholds,
+  tierRank,
   NEUTRAL_BALANCE,
 } from '../src/engine/content/balance';
+import {
+  BOSS_HEAL_SCALE_MIN,
+  BOSS_HEAL_SCALE_FULL_CLEARS,
+  BOSS_INVULN_THRESHOLD_1,
+  BOSS_INVULN_THRESHOLD_2,
+} from '../src/engine/core/constants';
 import { CLASS_IDS } from '../src/engine/content/classes';
 import type { ClassId } from '../src/engine/core/types';
 import type { Player } from '../src/engine/core/types';
@@ -312,5 +321,70 @@ describe('balance: World integration', () => {
       Math.round(MONSTERS.dragon.baseHp * BOSS_HP_SCALE * 1.75 * 1.35 * w.balance.hpMult),
     );
     expect(w.balance.hpMult).toBeGreaterThan(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Progression-aware boss sustain / invuln (items 2 & 5)
+// ---------------------------------------------------------------------------
+
+describe('bossHealScale (item 2)', () => {
+  it('floors at the earliest/weakest run and lifts fully by FULL_CLEARS clears', () => {
+    expect(bossHealScale(0, 1)).toBeCloseTo(BOSS_HEAL_SCALE_MIN, 6);
+    expect(bossHealScale(BOSS_HEAL_SCALE_FULL_CLEARS, 1)).toBeCloseTo(1, 6);
+    expect(bossHealScale(999, 1)).toBeCloseTo(1, 6); // clamped, never past full
+  });
+
+  it('rises monotonically with run depth', () => {
+    let prev = -1;
+    for (let clears = 0; clears <= BOSS_HEAL_SCALE_FULL_CLEARS; clears++) {
+      const s = bossHealScale(clears, 1);
+      expect(s).toBeGreaterThanOrEqual(prev);
+      prev = s;
+    }
+  });
+
+  it('keeps more sustain when the band is ahead of the tuned curve', () => {
+    expect(bossHealScale(0, 1.4)).toBeGreaterThan(bossHealScale(0, 1));
+    // A band BEHIND the curve gets no bonus — the boss heals the least.
+    expect(bossHealScale(0, 0.7)).toBeCloseTo(BOSS_HEAL_SCALE_MIN, 6);
+  });
+});
+
+describe('bossInvulnThresholds (item 5)', () => {
+  it('never triggers for a weak band, whatever the difficulty', () => {
+    expect(bossInvulnThresholds(false, 'hard', 3, 2)).toEqual([]);
+  });
+
+  it('never triggers on an easy, early, on-curve fight even for a strong band', () => {
+    expect(bossInvulnThresholds(true, 'easy', 0, 1)).toEqual([]);
+  });
+
+  it('a strong band on a medium boss gets one guaranteed window', () => {
+    expect(bossInvulnThresholds(true, 'medium', 0, 1)).toEqual([BOSS_INVULN_THRESHOLD_1]);
+  });
+
+  it('a strong band on a hard boss / in endless gets a second, deeper window', () => {
+    expect(bossInvulnThresholds(true, 'hard', 0, 1)).toEqual([
+      BOSS_INVULN_THRESHOLD_1,
+      BOSS_INVULN_THRESHOLD_2,
+    ]);
+    expect(bossInvulnThresholds(true, 'easy', 1, 1)).toEqual([
+      BOSS_INVULN_THRESHOLD_1,
+      BOSS_INVULN_THRESHOLD_2,
+    ]);
+  });
+
+  it('a band far ahead of the curve makes even an easy boss a hard fight', () => {
+    expect(bossInvulnThresholds(true, 'easy', 0, 1.25)).toEqual([BOSS_INVULN_THRESHOLD_1]);
+    // …and never more than two windows (bounded uptime).
+    for (const t of ['easy', 'medium', 'hard'] as const) {
+      expect(bossInvulnThresholds(true, t, 3, 3).length).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('tierRank orders easy < medium < hard', () => {
+    expect(tierRank('easy')).toBeLessThan(tierRank('medium'));
+    expect(tierRank('medium')).toBeLessThan(tierRank('hard'));
   });
 });

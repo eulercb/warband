@@ -1304,11 +1304,15 @@ const TREANT: MonsterDef = {
   baseHp: 3400,
   radius: 74,
   moveSpeed: 105,
-  regen: 10,
+  // item 2: the Treant was the sustain outlier (highest regen, only 2× enrage
+  // regen, a 10%-max-HP burst heal), so an early pick just wouldn't die. Trimmed
+  // toward the pack; progression-aware heal damping (balance.bossHealScale) does
+  // the rest so a fresh band out-DPSes it while a late one still meets real bark.
+  regen: 7,
   meleeRange: 165,
   enrageThreshold: 0.3,
   enrageCooldownMult: 0.7,
-  enrageRegenMult: 2,
+  enrageRegenMult: 1.5,
   abilities: [
     A.cone('branchSwipe', 'Branch Swipe', 0.9, 2.6, 48, 150, 52, { knockback: 100 }),
     A.voids('roots', 'Grasping Roots', 0.5, 8, {
@@ -1320,7 +1324,7 @@ const TREANT: MonsterDef = {
     A.summon('saplings', 'Spawn Saplings', 1.2, 13, { addHpMult: 0.8 }),
     A.buff('regrow', 'Regrow Bark', 0.6, 14, {
       buffDefMult: 0.5,
-      selfHealFrac: 0.1,
+      selfHealFrac: 0.07,
       buffDuration: 5,
     }),
   ],

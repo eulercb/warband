@@ -31,6 +31,32 @@ export const BOSS_HP_SCALE = 0.6;
 export const BOSS_REGEN_LOCKOUT_S = 3.5;
 export const BOSS_REGEN_MAX_FRAC = 0.006; // ≤ 0.6% max HP / s regardless of `regen`
 
+/**
+ * ACTIVE-heal damping (item 2): the fraction of a boss's deliberate healing —
+ * burst self-heal (Regrow Bark), Life-Drain beams and the Vampiric affix — that
+ * survives, scaled by run progression. `MIN` is the earliest/weakest floor (a
+ * fresh band clearing a boss it picked too soon heals little, so a committed party
+ * always out-DPSes it); damping lifts fully by `FULL_CLEARS` cleared encounters so
+ * late fights keep their sustain. Passive regen is already lockout-gated, so this
+ * only touches the un-gated burst/lifesteal paths that could reproduce the
+ * "infinite fight". Never scales below MIN or above 1.
+ */
+export const BOSS_HEAL_SCALE_MIN = 0.35;
+export const BOSS_HEAL_SCALE_FULL_CLEARS = 8;
+
+/**
+ * Boss temporary-invulnerability (item 5). A strong band in a harder/later fight
+ * meets a brief, telegraphed immunity window at each of these descending HP
+ * fractions — the first is guaranteed to fire before death, the second only for
+ * the hardest fights. Each window lasts BOSS_INVULN_WINDOW_S, so total immunity is
+ * hard-bounded (≤ 2 windows) and a DPS check always stays winnable.
+ */
+export const BOSS_INVULN_WINDOW_S = 1.6;
+export const BOSS_INVULN_THRESHOLD_1 = 0.5;
+export const BOSS_INVULN_THRESHOLD_2 = 0.25;
+/** Band power ÷ tuned curve at/above which a fight counts as "hard" for the invuln gate. */
+export const BOSS_INVULN_POWER_HARD = 1.2;
+
 /** Class SKILL stacking cap: the same class/graft upgrade can be taken at most this many times. */
 export const MAX_SKILL_STACKS = 5;
 

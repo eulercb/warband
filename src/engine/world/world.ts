@@ -64,6 +64,7 @@ import {
   TWIN_DMG_FRAC,
   BOSS_HP_SCALE,
   BOSS_REGEN_MAX_FRAC,
+  BOSS_INVULN_WINDOW_S,
   HARDCORE_REVIVES_PER_FIGHT,
   HARDCORE_TIME_BUDGET,
   HARDCORE_DEADLINE_MULT,
@@ -142,6 +143,7 @@ import {
 // torus. `wrapPos` canonicalises positions after they move (see §infinite-map).
 import { sub, dist, distSq, pointInSegment, wrapPos } from '../core/torus';
 import { getClass, cloneAbilities, slowAttackCooldowns } from '../content/classes';
+import type { PlayerAbilityDef } from '../content/classes';
 import { applyUpgrades } from '../content/upgrades';
 import type { UpgradeId } from '../content/upgrades';
 import {
@@ -149,8 +151,9 @@ import {
   applySubclassGrands,
   applySubSkillUpgrades,
   previewAbilityTable,
+  grandCount,
 } from '../content/charUpgrades';
-import { getSubSkill, subclassOfSkill } from '../content/subclasses';
+import { getSubSkill, subclassOfSkill, subSkillsForClass } from '../content/subclasses';
 import { coinsForRank } from '../content/ephemeral';
 import type { EphemeralStock } from '../content/ephemeral';
 import { getMonster, abilityById } from '../content/monsters';
@@ -158,7 +161,14 @@ import type { MonsterDef, BossModifier } from '../content/monsters';
 import { hasAffix, AFFIXES } from '../content/affixes';
 import { computeScaling, addCount } from '../content/scaling';
 import type { ScalingResult } from '../content/scaling';
-import { balanceAdjust, bandPowerRatio, runClears, NEUTRAL_BALANCE } from '../content/balance';
+import {
+  balanceAdjust,
+  bandPowerRatio,
+  runClears,
+  bossHealScale,
+  bossInvulnThresholds,
+  NEUTRAL_BALANCE,
+} from '../content/balance';
 import type { BalanceAdjust } from '../content/balance';
 import {
   tickBuffs,
@@ -215,8 +225,17 @@ function activeSubSkillIds(p: Player): string[] {
     .filter((id) => subclassOfSkill(id)?.classId === p.classId)
     .slice(0, 2);
 }
-/** Cooldown gate (s) after a multiclass swap, so it can't be spammed for free casts. */
-const CLASS_SWAP_CD = 1.0;
+/**
+ * A multiclass swap is INSTANT (item 7) — the gesture never silently rejects, so a
+ * rapid A→B→A registers on the fast second press. The anti-exploit lever moved off
+ * the swap gesture and onto the kit it hands you: swapping in floors each DAMAGING
+ * slot's cooldown to `SWAP_CAST_FLOOR` seconds, so you still can't pump two fresh
+ * offensive kits by ping-ponging classes. Utility/mobility slots (dash, blink, heal,
+ * buffs, taunt) keep their real cooldown, so a quick defensive dip stays snappy.
+ */
+const SWAP_CAST_FLOOR = 1.0;
+/** Brief cosmetic "just swapped" timer (s) — drives HUD feedback only; never gates. */
+const SWAP_FX_CD = 0.3;
 // Ephemeral shop consumables (item 21).
 /** Healing-vial restore, as a fraction of max HP. */
 const EPHEMERAL_POTION_HEAL = 0.4;
@@ -846,6 +865,12 @@ export class World {
     // early in the FIRST run (cycle 0), when the band has barely any upgrades, hits
     // softer, ramping to full by the run's end. Endless cycles pay full (built party).
     const dmgFrac = twin ? TWIN_DMG_FRAC * Math.pow(2 / n, 0.35) * this.packDamageEase() : 1;
+    // Progression-aware sustain (item 2) + temp-invuln gate (item 5), measured off
+    // the realized band and this fight's difficulty. The practice dummy opts out so
+    // sparring keeps its brisk, uncapped self-heal and never turns immune.
+    const clears = runClears(this.cycle, this.runIndex, this.runTotal);
+    const healScale = bossHealScale(clears, this.balance.powerExcess);
+    const strongParty = this.bandIsStrong();
     ids.forEach((id, i) => {
       const def = getMonster(id);
       // The practice dummy is a UI/training target, not a balance target — it
@@ -896,7 +921,47 @@ export class World {
         // Stagger affix cadences per boss so a duo's waves/pools don't sync up.
         affixTimers: affixes ? this.initialAffixTimers(i) : undefined,
         recentDamageTaken: 0,
+        ...this.bossProgressionFields(def, healScale, strongParty),
       });
+    });
+  }
+
+  /**
+   * Item 2 + 5 boss fields: the active-heal damping scale and (for a strong band
+   * in a harder/later fight) the descending invuln thresholds. The practice dummy
+   * opts out entirely — it keeps full sustain and never turns immune.
+   */
+  private bossProgressionFields(
+    def: MonsterDef,
+    healScale: number,
+    strongParty: boolean,
+  ): { healScale?: number; invulnThresholds?: number[]; invulnNextIdx?: number } {
+    if (this.practice || def.id === 'dummy') return {};
+    const thresholds = bossInvulnThresholds(
+      strongParty,
+      def.tier,
+      this.cycle,
+      this.balance.powerExcess,
+    );
+    return {
+      healScale,
+      invulnThresholds: thresholds.length ? thresholds : undefined,
+      invulnNextIdx: thresholds.length ? 0 : undefined,
+    };
+  }
+
+  /**
+   * Item 5 — does ANY hero clear the "strong party" bar: a completed multiclass
+   * (an extra class carrying its two subclass skills) OR ≥3 grand improvements?
+   * Bots count, since they earn upgrades too. Gates the boss invuln mechanic.
+   */
+  private bandIsStrong(): boolean {
+    return this.players.some((p) => {
+      if (grandCount(p.charUpgradeIds) >= 3) return true;
+      const primary = p.classes?.[0];
+      return (p.classes ?? []).some(
+        (c) => c !== primary && subSkillsForClass(c, p.subSkillIds ?? []).length >= 2,
+      );
     });
   }
 
@@ -1163,11 +1228,13 @@ export class World {
   /**
    * Swap the hero's active class. The previous kit's cooldowns are stashed and the
    * target kit's restored, so "all cooldowns are respected per class" (item 14).
-   * A short swap gate prevents free-cast spam. Subclass skills persist across swaps.
+   * The swap itself is INSTANT (item 7) — it never rejects on a timer, so a rapid
+   * A→B→A registers immediately. Free-cast spam is instead blocked by flooring the
+   * restored offensive cooldowns (see floorSwapOffensiveCooldowns). Subclass skills
+   * persist across swaps.
    */
   setActiveClass(p: Player, classId: ClassId): void {
     if (p.classId === classId || !p.classTables || !p.classCooldowns) return;
-    if (p.swapCd != null && p.swapCd > 0) return;
     const table = p.classTables[classId];
     if (!table) return;
     // Stash the current class's base-slot AND subclass-slot cooldowns: each class
@@ -1193,9 +1260,37 @@ export class World {
     };
     // Swap sub1/sub2 to the new class's subclass skills (or clear if it has none).
     this.rebindActiveSubs(p);
+    // Anti-exploit (item 7): the swap is free, but the OFFENSIVE kit it hands you is
+    // not hot on arrival — floor each damaging slot so ping-ponging classes can't
+    // stack two fresh bursts. Runs after rebindActiveSubs so the sub slots exist.
+    this.floorSwapOffensiveCooldowns(p);
     p.castTimer = 0;
     p.castSlot = null;
-    p.swapCd = CLASS_SWAP_CD;
+    p.swapCd = SWAP_FX_CD; // cosmetic only — the swap already happened
+  }
+
+  /**
+   * Floor every DAMAGING slot of the freshly-swapped-in kit to `SWAP_CAST_FLOOR`
+   * (item 7). Only raises a cooldown, never lowers one, so a slot already deeper on
+   * cooldown is untouched. Heals, buffs, taunts and pure mobility (dash/blink with
+   * no landing damage) are left instant so a quick defensive dip stays responsive.
+   */
+  private floorSwapOffensiveCooldowns(p: Player): void {
+    const isOffensive = (ab?: PlayerAbilityDef): boolean => {
+      if (!ab || ab.kind === 'heal' || ab.kind === 'buffAlly') return false;
+      return (ab.damage ?? 0) > 0 || (ab.zoneTickDamage ?? 0) > 0 || (ab.landingDamage ?? 0) > 0;
+    };
+    const table = p.abilities ?? getClass(p.classId).abilities;
+    for (const slot of SLOTS) {
+      if (isOffensive(table[slot])) {
+        p.cooldowns[slot] = Math.max(p.cooldowns[slot], SWAP_CAST_FLOOR);
+      }
+    }
+    for (const slot of SUB_SLOTS) {
+      if (isOffensive(p.subAbilities?.[slot])) {
+        p.cooldowns[slot] = Math.max(p.cooldowns[slot] ?? 0, SWAP_CAST_FLOOR);
+      }
+    }
   }
 
   /** Decay the saved cooldowns of the classes the hero is NOT currently wielding. */
@@ -1754,6 +1849,9 @@ export class World {
       this.events.push({ t: 'enrage', id: boss.id, pos: { ...boss.pos } });
     }
 
+    // Temporary-invulnerability beat (item 5) — fire the next telegraphed window.
+    this.tickBossInvuln(boss);
+
     // Passive affix upkeep (trails, wards, waves, thorns, ramping haste). Runs
     // whether or not the boss is stunned; the "active" ones pause while stunned.
     const stunned = hasBuff(boss, 'stun');
@@ -2019,10 +2117,32 @@ export class World {
   private applyVampiric(boss: Boss, dealtToPlayers: number): void {
     if (dealtToPlayers <= 0 || !hasAffix(boss, 'vampiric')) return;
     const before = boss.hp;
-    boss.hp = Math.min(boss.maxHp, boss.hp + dealtToPlayers * AFFIX_VAMPIRIC_FRAC);
+    // Progression-aware damping (item 2): Vampiric is an active heal, so an
+    // early/weak fight keeps only a fraction — a party can't be out-sustained on
+    // the opener — while a late fight keeps the full lifesteal.
+    const gain = dealtToPlayers * AFFIX_VAMPIRIC_FRAC * (boss.healScale ?? 1);
+    boss.hp = Math.min(boss.maxHp, boss.hp + gain);
     const healed = boss.hp - before;
     if (healed > 0) {
       this.events.push({ t: 'heal', pos: { ...boss.pos }, amount: healed, targetId: boss.id });
+    }
+  }
+
+  /**
+   * Item 5 — fire the next telegraphed invuln window once the boss crosses its
+   * threshold. One window at a time (bounds total uptime), at most two per boss,
+   * and the first threshold sits high enough that it's reached before death — so a
+   * qualifying boss always shows the mechanic, yet a DPS check can never wall out.
+   */
+  private tickBossInvuln(boss: Boss): void {
+    const thresholds = boss.invulnThresholds;
+    if (!thresholds) return;
+    const idx = boss.invulnNextIdx ?? 0;
+    if (idx >= thresholds.length || boss.hp <= 0) return;
+    if (hasBuff(boss, 'invuln')) return; // one window at a time
+    if (boss.hp / boss.maxHp <= thresholds[idx]) {
+      applyBuff(boss, makeBuff('invuln', 0, BOSS_INVULN_WINDOW_S, 'bossInvuln'));
+      boss.invulnNextIdx = idx + 1;
     }
   }
 

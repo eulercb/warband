@@ -35,11 +35,16 @@
  * Deliberately un-modelled (utility, not raw power): terrain resist, i-frames,
  * stuns/slows, knockbacks and lifesteal.
  */
-import type { Player } from '../core/types';
+import type { Player, BossTier } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
 import { getClass } from './classes';
 import { previewAbilityTable } from './charUpgrades';
 import {
+  BOSS_HEAL_SCALE_MIN,
+  BOSS_HEAL_SCALE_FULL_CLEARS,
+  BOSS_INVULN_THRESHOLD_1,
+  BOSS_INVULN_THRESHOLD_2,
+  BOSS_INVULN_POWER_HARD,
   ZONE_TICK_INTERVAL,
   BALANCE_TARGET_TTK,
   BALANCE_PACK_TTK_BONUS,
@@ -178,6 +183,58 @@ export function runClears(cycle: number, runIndex: number, runTotal: number): nu
 /** The band power the run is TUNED for after `clears` cleared encounters. */
 export function expectedBandPower(clears: number): number {
   return Math.pow(1 + BALANCE_EXPECTED_GROWTH, Math.max(0, clears));
+}
+
+// ---------------------------------------------------------------------------
+// Progression-aware boss sustain / invulnerability (items 2 & 5)
+// ---------------------------------------------------------------------------
+
+/** Numeric rank of a boss tier (easy < medium < hard) for difficulty gating. */
+export function tierRank(tier: BossTier): number {
+  return tier === 'hard' ? 2 : tier === 'medium' ? 1 : 0;
+}
+
+/**
+ * Item 2 — the fraction of a boss's ACTIVE healing (burst self-heal, Life-Drain,
+ * Vampiric) that survives this fight. Low early, so a fresh band that took on a
+ * boss too soon (the Ancient Treant is the poster child) can always out-DPS its
+ * sustain; ramps to 1 by `BOSS_HEAL_SCALE_FULL_CLEARS` cleared encounters, plus a
+ * nudge from how far the band's realized power sits above the tuned curve — so late
+ * or over-strong bands keep their sustain intact. Bounded to [MIN, 1].
+ */
+export function bossHealScale(clears: number, powerExcess: number): number {
+  const progress = clamp(
+    Math.max(0, clears) / BOSS_HEAL_SCALE_FULL_CLEARS + Math.max(0, powerExcess - 1) * 0.5,
+    0,
+    1,
+  );
+  return BOSS_HEAL_SCALE_MIN + (1 - BOSS_HEAL_SCALE_MIN) * progress;
+}
+
+/**
+ * Item 5 — the descending HP-fraction windows at which a boss turns briefly
+ * invulnerable, or `[]` when the mechanic is disabled. It fires only when BOTH:
+ *   • the band is STRONG — some hero has a completed multiclass (an extra class
+ *     with its two subclass skills) or ≥3 grand improvements (caller decides), and
+ *   • the fight is HARDER / LATER — a medium+ tier boss, an endless cycle, or the
+ *     band well ahead of the tuned curve.
+ * A qualifying boss always gets the first window (guaranteed to fire before death);
+ * the hardest fights (hard tier / endless / band far ahead) add a second, deeper
+ * one. Never more than two, so total invuln uptime stays hard-bounded and winnable.
+ */
+export function bossInvulnThresholds(
+  strongParty: boolean,
+  tier: BossTier,
+  cycle: number,
+  powerExcess: number,
+): number[] {
+  const rank = tierRank(tier);
+  const hardFight = rank >= 1 || cycle >= 1 || powerExcess >= BOSS_INVULN_POWER_HARD;
+  if (!strongParty || !hardFight) return [];
+  const out = [BOSS_INVULN_THRESHOLD_1];
+  const veryHard = rank >= 2 || cycle >= 1 || powerExcess >= BOSS_INVULN_POWER_HARD + 0.15;
+  if (veryHard) out.push(BOSS_INVULN_THRESHOLD_2);
+  return out;
 }
 
 // ---------------------------------------------------------------------------

@@ -98,6 +98,18 @@ describe('<HostSetup> default single-fight view', () => {
     expect(create.disabled).toBe(false);
   });
 
+  it('shows the Chaos Draft toggle even for a single fight (ungated) and flips randomKits (item 10)', () => {
+    render(<HostSetup />);
+    // Unlike Hardcore, Chaos Draft is NOT gated on the gauntlet — it's here for a
+    // single fight too, so it composes with any run type.
+    const btn = screen.getByRole('button', { name: /Chaos Draft/ });
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+    expect(useStore.getState().randomKits).toBe(false);
+    fireEvent.click(btn);
+    expect(useStore.getState().randomKits).toBe(true);
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('pre-selects the default boss and toggles selection on another card', () => {
     render(<HostSetup />);
 

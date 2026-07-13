@@ -202,6 +202,19 @@ export function damageBoss(
   baseDamage: number,
   mods?: HitMods,
 ): number {
+  // Boss temporary-invulnerability (item 5): while an 'invuln' window is up the
+  // boss soaks nothing — no HP change, no threat, no regen-lockout. A muted "0"
+  // hit still spawns so the strike reads as absorbed rather than dropped.
+  if (hasBuff(boss, 'invuln')) {
+    sink.events.push({
+      t: 'hit',
+      pos: { x: boss.pos.x, y: boss.pos.y },
+      amount: 0,
+      targetId: boss.id,
+      side: 'boss',
+    });
+    return 0;
+  }
   // Honor the boss's own damage-taken buffs (Brace / Petrify / Regrow / Aegis…),
   // so a boss defensive cooldown actually mitigates incoming damage. `mods.mult`
   // folds in the crit × backstab bonus (item 5).
@@ -310,9 +323,14 @@ export function healPlayer(
   return effective;
 }
 
-/** Heal the boss (Lich Life Drain). */
+/**
+ * Heal the boss (burst self-heal / Life-Drain). The single choke point for a
+ * boss's ACTIVE healing, so progression-aware damping (item 2, `boss.healScale`)
+ * applies here — an early/weak fight keeps only a fraction of the heal, a late
+ * fight keeps it all. Passive regen has its own lockout+cap path and is untouched.
+ */
 export function healBoss(boss: Boss, amount: number): void {
-  boss.hp = Math.min(boss.maxHp, boss.hp + amount);
+  boss.hp = Math.min(boss.maxHp, boss.hp + amount * (boss.healScale ?? 1));
 }
 
 // ---------------------------------------------------------------------------

@@ -121,6 +121,22 @@ export class Rng {
   }
 }
 
+/**
+ * A seeded Fisher-Yates shuffle — pure, returns a NEW array (the input is left
+ * untouched). Drawing the first N of the result is a draw-without-replacement, so
+ * a seeded RNG yields the same random subset + order for every peer (item 4).
+ */
+export function shuffled<T>(rng: Rng, arr: readonly T[]): T[] {
+  const out = arr.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = rng.int(0, i);
+    const tmp = out[i];
+    out[i] = out[j];
+    out[j] = tmp;
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Hit tests. Each returns whether `point` (with optional target radius) is
 // inside the shape.

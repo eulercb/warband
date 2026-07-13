@@ -87,6 +87,8 @@ export interface StartMsg {
   runSeed?: number;
   /** Hardcore run (item 11) — clients hide the retry option and show the mode. */
   hardcore?: boolean;
+  /** Chaos Draft (item 10) — a client adopts its drafted class from the roster. */
+  randomKits?: boolean;
 }
 
 /**

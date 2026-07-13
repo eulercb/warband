@@ -16,7 +16,7 @@
  * getBy/queryBy queries and toBeTruthy()/toBeNull().
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 
 // Mock the session control layer so rendering pulls in no audio / WebRTC. Every
 // name ResultScreen AND its children (RewardRoom, SpecialReward, EphemeralShop)
@@ -430,6 +430,54 @@ describe('<ResultScreen> branch coverage', () => {
 
     fireEvent.click(cards[0]);
     expect(vi.mocked(chooseCharUpgrade)).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-rolls the character offers, spanning the new class, when one is multiclassed on this screen (item 8)', () => {
+    const spy = vi.mocked(rollCharChoices);
+    useStore.setState({
+      isHost: true,
+      localClass: 'knight',
+      myExtraClasses: [],
+      mySubSkills: [],
+      result: makeResult({ endlessAvailable: true, rewardSeed: 4242 }),
+    });
+    spy.mockClear();
+    render(<ResultScreen />);
+    // The initial roll spans only the primary class (no extras yet).
+    const firstCall = spy.mock.calls.find((c) => c[0] === 'knight');
+    expect(firstCall?.[4]).toEqual([]); // extraClasses arg
+
+    spy.mockClear();
+    // Simulate acquiring a class on THIS screen (SpecialReward → chooseExtraClass mirror).
+    act(() => {
+      useStore.setState({ myExtraClasses: ['mage'] });
+    });
+    // The character offers re-roll, now spanning the newly-acquired class.
+    const reroll = spy.mock.calls.find((c) => c[0] === 'knight');
+    expect(reroll).toBeTruthy();
+    expect(reroll?.[4]).toEqual(['mage']);
+  });
+
+  it('does NOT re-roll (or reset) the character pick once it is committed (item 8 guard)', () => {
+    useStore.setState({
+      isHost: true,
+      localClass: 'knight',
+      myExtraClasses: [],
+      mySubSkills: [],
+      result: makeResult({ endlessAvailable: true, rewardSeed: 4242 }),
+    });
+    const { container } = render(<ResultScreen />);
+    fireEvent.click(charCards(container)[0]); // commit a char pick
+    expect(vi.mocked(chooseCharUpgrade)).toHaveBeenCalledTimes(1);
+
+    const spy = vi.mocked(rollCharChoices);
+    spy.mockClear();
+    // A late multiclass must not disturb the banked pick (would double-bank it).
+    act(() => {
+      useStore.setState({ myExtraClasses: ['mage'] });
+    });
+    expect(spy).not.toHaveBeenCalled(); // char offers frozen once picked
+    expect(screen.getByText('Character upgrade chosen')).toBeTruthy();
   });
 
   it('skips a character offer whose id resolves to no view (describeCharOffer → null)', () => {

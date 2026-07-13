@@ -9,6 +9,7 @@ import {
 } from '../src/engine/combat/abilities';
 import { World } from '../src/engine/world/world';
 import { getSubSkill } from '../src/engine/content/subclasses';
+import { getClass, describeAbility } from '../src/engine/content/classes';
 import { getMonster, abilityById } from '../src/engine/content/monsters';
 import type { BossAbilityDef } from '../src/engine/content/monsters';
 import { makeBuff, applyBuff } from '../src/engine/combat/combat';
@@ -1460,6 +1461,7 @@ describe('boss buffSelf', () => {
       // buffDuration omitted -> the buffs use their 5s default
       selfHealFrac: 0.1,
     };
+    boss.healScale = 1; // isolate the raw self-heal from item-2 progression damping
     const before = boss.hp;
     resolveBossAbility(w, boss, ab, mkAction());
     expect(
@@ -1534,6 +1536,7 @@ describe('beamTick', () => {
     const boss = w.boss!;
     const p = w.players[0];
     boss.dmgScale = undefined; // exercise the `dmgScale ?? 1` fallback in beamTick
+    boss.healScale = 1; // isolate the raw lifedrain from item-2 progression damping
     boss.pos = { x: 800, y: 400 };
     boss.hp = boss.maxHp - 100;
     p.pos = { x: 800, y: 450 };
@@ -1802,6 +1805,55 @@ describe('root gates boss mobility (item 9)', () => {
     expect(boss.pos).toEqual({ x: 400, y: 500 }); // no reposition while rooted
     expect(p.hp).toBe(before); // …and no path damage
   });
+});
+
+// ===========================================================================
+// Root/bind sweep (item 3) — every root/bind ability truly immobilises a boss
+// ===========================================================================
+describe('root/bind sweep (item 3)', () => {
+  it('flags the true roots and keeps intentional snares/thorns as slows', () => {
+    // True roots: Druid Entangle (base), Mage Abjurer Otiluke Bind, Rogue
+    // Trickster Ensnaring Strike — a bind/web holds the target fast.
+    expect(getClass('druid').abilities.a1.roots).toBe(true);
+    expect(getSubSkill('mg_abjurer_bind')!.ability.roots).toBe(true);
+    expect(getSubSkill('ro_trickster_snare')!.ability.roots).toBe(true);
+    // Documented product call — a "snare"/thorn-barrier/nova-burst stays a soft
+    // slow, never a hard root (still slows, never immobilises).
+    for (const id of ['rg_beast_snare', 'dr_land_wall', 'bb_totem_quake', 'pa_vengeance_shackle']) {
+      const ab = getSubSkill(id)!.ability;
+      expect(ab.roots ?? false).toBe(false);
+      expect(ab.slowMult!).toBeLessThan(1);
+    }
+  });
+
+  it('describeAbility reads a rooting zone as "roots" and a snare as a % slow', () => {
+    expect(describeAbility(getClass('druid').abilities.a1)).toContain('roots');
+    expect(describeAbility(getSubSkill('mg_abjurer_bind')!.ability)).toContain('roots');
+    const snare = describeAbility(getSubSkill('rg_beast_snare')!.ability);
+    expect(snare).toContain('slow to');
+    expect(snare).not.toContain('roots');
+  });
+
+  // Each newly-rooting subclass ability must spawn a TRUE-root zone (roots:true),
+  // which the engine's root contract turns into a full immobilise (move + blink +
+  // Teleporting affix + charge, all covered generically by the root-buff tests).
+  for (const [name, id] of [
+    ['Otiluke Bind', 'mg_abjurer_bind'],
+    ['Ensnaring Strike', 'ro_trickster_snare'],
+  ] as const) {
+    it(`${name} spawns a true-root entangle zone`, () => {
+      const w = mkWorld('mage');
+      const p = w.players[0];
+      p.subAbilities = { sub1: { ...getSubSkill(id)!.ability, slot: 'sub1' } };
+      p.pos = { x: 400, y: 500 };
+      p.aim = { ...RIGHT };
+      resolvePlayerAbility(w, p, 'sub1', ZERO);
+      const z = w.groundZones[0];
+      expect(z.kind).toBe('entangle');
+      expect(z.roots).toBe(true);
+      expect(z.slowMult).toBeCloseTo(0.3, 6);
+    });
+  }
 });
 
 // ===========================================================================
