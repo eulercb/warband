@@ -71,6 +71,18 @@ export interface PlayerAbilityDef {
   healOnUse?: number;
   /** Point-blank AoE damage dealt on a dash/leap landing (0 = none). */
   landingDamage?: number;
+
+  /**
+   * Chaos Forge (docs/CHAOS_FORGE.md) — the recombined component form of a
+   * SYNTHESIZED ability: a delivery + an ordered payload of effect components.
+   * Present ONLY on procedurally-fused skills; the executor (combat/abilities.ts)
+   * dispatches to the component path when it is set, and `describeAbility`
+   * regenerates the card text from it. Canonical/authored and numeric-variance
+   * content never carries it, so those paths stay byte-for-byte unchanged. The
+   * flat fields above are kept in sync (delivery kind + implied numbers) so every
+   * component-unaware consumer (cooldown gating, HUD, previews) still works. Typed
+   * via a type-only import to avoid a runtime import cycle. */
+  components?: import('./forge').AbilityComponents;
 }
 
 export interface ClassDef {
