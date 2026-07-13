@@ -370,9 +370,7 @@ describe('RewardScene: walk-up coin shop (item 2)', () => {
     const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
     scene.setShopState(10, []); // plenty of coins, nothing sold out
     const s = scene.frame(1000);
-    const stall = (s.loot ?? []).find(
-      (l) => l.kind === 'shop' && /Swiftness/.test(l.label ?? ''),
-    )!;
+    const stall = (s.loot ?? []).find((l) => l.kind === 'shop' && /Swiftness/.test(l.label ?? ''))!;
     expect(stall.locked).toBe(false); // affordable now
     walkOnto(scene, stall.pos, 1000, BUY_DWELL_S + 0.2);
     const buys = scene.takeShopBuys();
@@ -397,9 +395,7 @@ describe('RewardScene: walk-up coin shop (item 2)', () => {
     const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
     scene.setShopState(10, ['speed']); // affordable, but speed is sold out
     const s = scene.frame(1000);
-    const speed = (s.loot ?? []).find(
-      (l) => l.kind === 'shop' && /Swiftness/.test(l.label ?? ''),
-    )!;
+    const speed = (s.loot ?? []).find((l) => l.kind === 'shop' && /Swiftness/.test(l.label ?? ''))!;
     expect(speed.locked).toBe(true);
     walkOnto(scene, speed.pos, 1000, BUY_DWELL_S + 0.2);
     expect(scene.takeShopBuys()).toHaveLength(0);

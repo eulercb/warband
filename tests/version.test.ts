@@ -8,9 +8,9 @@ import { readFileSync } from 'node:fs';
  */
 describe('app version (item 7)', () => {
   it('exposes package.json version as the __APP_VERSION__ build constant', () => {
-    const pkg = JSON.parse(
-      readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
-    ) as { version: string };
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      version: string;
+    };
     expect(typeof __APP_VERSION__).toBe('string');
     expect(__APP_VERSION__).toBe(pkg.version);
     expect(__APP_VERSION__).toMatch(/^\d+\.\d+\.\d+/); // semver-ish, never empty

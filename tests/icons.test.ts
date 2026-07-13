@@ -24,7 +24,8 @@ function assertIcon(icon: string, where: string): void {
 describe('content icons are present and not placeholders (item 4)', () => {
   it('every subclass skill has a real icon', () => {
     for (const list of Object.values(SUBCLASSES))
-      for (const sub of list) for (const sk of sub.skills) assertIcon(sk.icon, `${sub.id}/${sk.id}`);
+      for (const sub of list)
+        for (const sk of sub.skills) assertIcon(sk.icon, `${sub.id}/${sk.id}`);
   });
 
   it('every character / hybrid / grand upgrade has a real icon', () => {

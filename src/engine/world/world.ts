@@ -1356,7 +1356,12 @@ export class World {
         },
       });
     } else if (hitBoss) {
-      this.applyProjDamageBoss(owner, proj.damage, hitBoss, owner ? this.critRoll(owner) : undefined);
+      this.applyProjDamageBoss(
+        owner,
+        proj.damage,
+        hitBoss,
+        owner ? this.critRoll(owner) : undefined,
+      );
       dealt += proj.damage;
       this.applyProjRiders(hitBoss, proj);
     } else if (hitAdd) {

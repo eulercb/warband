@@ -242,7 +242,8 @@ export function damageAdd(
   baseDamage: number,
   mods?: HitMods,
 ): number {
-  const outgoing = baseDamage * (mods?.mult ?? 1) * buffMult(source, 'damageDealt') * source.damageMult;
+  const outgoing =
+    baseDamage * (mods?.mult ?? 1) * buffMult(source, 'damageDealt') * source.damageMult;
   const before = add.hp;
   add.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(add.hp, 0));

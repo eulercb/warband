@@ -1821,8 +1821,7 @@ describe('crit + backstab (item 5)', () => {
     const before = boss.hp;
     resolvePlayerAbility(w, p, 'basic', ZERO);
     const hit = w.events.find((e) => e.t === 'hit' && e.targetId === boss.id) as
-      | { crit?: boolean; backstab?: boolean }
-      | undefined;
+      { crit?: boolean; backstab?: boolean } | undefined;
     expect(hit?.crit).toBe(true);
     expect(hit?.backstab).toBeFalsy();
     expect(before - boss.hp).toBeCloseTo(44, 5); // Cleave 22 × critMult 2
@@ -1840,8 +1839,7 @@ describe('crit + backstab (item 5)', () => {
     const before = boss.hp;
     resolvePlayerAbility(w, p, 'basic', ZERO);
     const hit = w.events.find((e) => e.t === 'hit' && e.targetId === boss.id) as
-      | { crit?: boolean; backstab?: boolean }
-      | undefined;
+      { crit?: boolean; backstab?: boolean } | undefined;
     expect(hit?.backstab).toBe(true);
     expect(hit?.crit).toBeFalsy();
     expect(before - boss.hp).toBeCloseTo(22 * 1.4, 4); // Cleave 22 × BACKSTAB_MULT

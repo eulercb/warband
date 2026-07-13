@@ -229,7 +229,7 @@ describe('world: downed / revive / wipe', () => {
 });
 
 describe('world: root immobilises the boss (item 9)', () => {
-  it("a true-root entangle zone gives the boss a root buff and stops it walking", () => {
+  it('a true-root entangle zone gives the boss a root buff and stops it walking', () => {
     const w = new World({
       monsterId: 'dragon', // no native blink/charge — isolates the walk gate
       seed: 4,
