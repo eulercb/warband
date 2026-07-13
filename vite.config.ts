@@ -89,15 +89,19 @@ export default defineConfig({
       ],
       reporter: ['text', 'text-summary', 'lcov'],
       // Ratchet floor for the unit-testable surface. Achieved coverage is
-      // currently ~99% statements/functions/lines and ~98% branches; all four
-      // gates sit at 95 — a few points below the branch number so ordinary v8
-      // variance never fails CI, while a real coverage regression does. Raise
-      // these as coverage climbs.
+      // currently ~99.6% statements/functions/lines and ~98.8% branches; all
+      // four gates sit at 98 — a point or two below the achieved numbers so
+      // ordinary v8 variance never fails CI, while a real coverage regression
+      // does. Branches is the limiting metric: the remaining uncovered branches
+      // are unreachable defensive fallbacks (factory-guaranteed ability fields,
+      // guards behind disabled buttons, ref-null checks inside effects, and
+      // data-driven caps that fixed run/tier sizes never hit), so ~98.8% is
+      // effectively the branch ceiling. Raise these as coverage climbs.
       thresholds: {
-        statements: 95,
-        branches: 95,
-        functions: 95,
-        lines: 95,
+        statements: 98,
+        branches: 98,
+        functions: 98,
+        lines: 98,
       },
     },
   },
