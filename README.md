@@ -38,6 +38,7 @@ Warband is a browser-hosted, peer-to-peer co-op boss fight game. One player host
 - **Shared pause** — any player can freeze the fight for everyone; the pause menu (with the map legend) shows for all, and resuming runs a 3-2-1 countdown so nobody is caught off guard. End a run early or retry a wipe without going back to the lobby.
 - **Remappable controls** — rebind every keyboard key and gamepad button for movement and abilities from the Controls screen; binding a key already in use clears its old owner, and the HUD labels follow your bindings and the device you're using. Optional hold-to-auto-fire repeats an ability while its button is held.
 - **Player-count scaling** — boss health and pressure scale to the size of your warband (bots included).
+- **Adaptive match balance** — the engine watches how each run is actually going and keeps it steadily challenging: every encounter's **time-to-kill** feeds a smoothed kill-pace signal (a wipe counts as a "struggling" sample, easing the retry), and each fight measures the **band's overall power** as it spawns — every boon, graft, grand, subclass skill, multiclass kit and elixir counted — against the growth curve the run is tuned for. Kill fast or stack rewards past that curve and the next bosses come tougher; fall behind and they ease off. The adjustment only turns the HP/damage pressure knobs, is hard-capped in both directions (never a wall, never a pushover, and ordinary progression stays rewarding), and touches no RNG — the boss set, affixes, terrain and reward offers stay purely seed-derived.
 - **Gamepad + keyboard/mouse** — play with either; the last-used device wins seamlessly. Controller **type is auto-detected** (PlayStation ✕◯▢△ vs. Xbox/Nintendo A B X Y) and the glyph set is **customisable** from Controls; the HUD button labels follow it.
 - **Fully controller-navigable menus** — every screen (main menu, host setup, join, lobby, the between-boss upgrade phase, and the pause menu) can be driven entirely with a gamepad: d-pad/stick to move focus, A/✕ to confirm, B/◯ to go back.
 - **Volume control** — a real master-volume slider (not just mute), remembered between sessions along with your hero name.
@@ -131,8 +132,9 @@ A run assembles five of them in climbing difficulty; Endless cycles re-roll the 
 
 All balance numbers live in plain data files and are easy to tweak:
 
-- `src/engine/core/constants.ts` — global simulation constants (tick rate, arena size, radii, revive/bleedout timings, run length, endless + score coefficients, projectile range cap, colors).
+- `src/engine/core/constants.ts` — global simulation constants (tick rate, arena size, radii, revive/bleedout timings, run length, endless + score coefficients, match-balance knobs, projectile range cap, colors).
 - `src/engine/content/classes.ts` — per-class stats and ability definitions.
+- `src/engine/content/balance.ts` — the adaptive match balance engine (kill-pace target + EMA, band-power index, expected-growth curve, hard caps).
 - `src/engine/content/charUpgrades.ts` — per-class character upgrades earned between bosses.
 - `src/engine/content/monsters.ts` — per-boss stats, difficulty tiers, run assembly and endless type modifiers.
 

@@ -129,6 +129,62 @@ export const ENDLESS_DMG_PER_CYCLE = 0.18; // +18% boss damage per completed cyc
  */
 export const GAUNTLET_INTERSTITIAL_S = 12;
 
+// --- Match balance engine (adaptive difficulty; see content/balance.ts) ---
+// Two signals bend each encounter's boss HP / damage scaling so a run FEELS
+// steadily challenging: the band's smoothed KILL PACE across the fights so far
+// (feedback — converges fight length toward a target), and the band's realized
+// POWER at spawn measured against the growth curve the run is tuned for
+// (feed-forward — answers over-stacked rewards one fight before pace could).
+// Everything is hard-capped so the adaptation can never wall a struggling band
+// or trivialize a boss, and it never touches any RNG stream — the boss set,
+// affixes, terrain and reward offers stay purely seed-derived.
+/** Target seconds to fell a lone boss (shares HARDCORE_TIME_BUDGET's anchor). */
+export const BALANCE_TARGET_TTK = 75;
+/** The TTK target stretches this much per EXTRA boss in a shared-arena pack. */
+export const BALANCE_PACK_TTK_BONUS = 0.25;
+/** Kill times are clamped up to this before pace math (a cheese kill isn't 20×). */
+export const BALANCE_TTK_FLOOR = 10; // s
+/** EMA weight of the newest encounter in the smoothed pace signal. */
+export const BALANCE_PACE_ALPHA = 0.5;
+/** A single encounter's pace sample is clamped into this band. */
+export const BALANCE_PACE_SAMPLE_MIN = 0.55;
+export const BALANCE_PACE_SAMPLE_MAX = 2.2;
+/** A wipe records this fixed "struggling" pace sample (eases the retry). */
+export const BALANCE_DEFEAT_PACE = 0.7;
+/** Band-power growth per cleared encounter the run is TUNED for (~1 generic +
+ *  1 class boon per hero); only deviation from this curve is compensated, so
+ *  ordinary progression keeps feeling rewarding. */
+export const BALANCE_EXPECTED_GROWTH = 0.09;
+/** Power deviation (band power ÷ expected curve) is clamped into this band. */
+export const BALANCE_POWER_EXCESS_MIN = 0.5;
+export const BALANCE_POWER_EXCESS_MAX = 3;
+/** Compensation exponents: firm on over-stacked power, gentle slack under it. */
+export const BALANCE_POWER_COMP_UP = 0.8;
+export const BALANCE_POWER_COMP_DOWN = 0.35;
+/** Fraction (as an exponent) of the power compensation applied to boss DAMAGE —
+ *  extra damage punishes harder than extra HP, so it moves half as far. */
+export const BALANCE_POWER_DMG_FRAC = 0.5;
+/** Pace response exponents (HP soaks most of the adjustment, damage less). */
+export const BALANCE_PACE_HP_EXP = 0.6;
+export const BALANCE_PACE_DMG_EXP = 0.3;
+/** Hard caps on the final adjustment — the run can drift, never run away. */
+export const BALANCE_HP_MIN = 0.8;
+export const BALANCE_HP_MAX = 1.75;
+export const BALANCE_DMG_MIN = 0.85;
+export const BALANCE_DMG_MAX = 1.4;
+/** Hero-power blend weights (exponents; offense dominates kill pace). */
+export const BALANCE_W_OFFENSE = 0.6;
+export const BALANCE_W_DURABILITY = 0.3;
+export const BALANCE_W_MOBILITY = 0.1;
+/** Seconds of regen/heal output valued as effective HP in the durability score. */
+export const BALANCE_SUSTAIN_HORIZON_S = 10;
+/** Ground-zone damage/heal is discounted (targets don't stand in zones all day). */
+export const BALANCE_ZONE_COMMIT = 0.5;
+/** Floor on an ability's estimated use cycle (cd + cast), for rate math. */
+export const BALANCE_MIN_CYCLE_S = 0.25;
+/** Flat multiplicative power bonus per EXTRA owned class (multiclass flexibility). */
+export const BALANCE_EXTRA_CLASS_BONUS = 0.1;
+
 // --- Player score (participation, accumulates across a run / endless) ---
 export const SCORE_HEAL_FACTOR = 1.0; // effective healing counts 1:1 with damage
 export const SCORE_PER_REVIVE = 250; // each revive
