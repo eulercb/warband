@@ -12,9 +12,20 @@
  * Recomputed once per sim step, this naturally pulses (fire / release / fire)
  * so a "want" that persists across ticks re-triggers as each cooldown clears.
  */
-import type { Player, Boss, InputCommand, ButtonState, Vec2, ClassId } from '../core/types';
+import type {
+  Player,
+  Boss,
+  InputCommand,
+  ButtonState,
+  Vec2,
+  ClassId,
+  ExtSlot,
+} from '../core/types';
 import type { World } from '../world/world';
+import type { PlayerAbilityDef } from '../content/classes';
 import { abilityById } from '../content/monsters';
+import { abilityForSlot } from '../combat/abilities';
+import { forgeSeed } from '../content/forge';
 import {
   UPGRADE_IDS,
   UPGRADES,
@@ -186,6 +197,10 @@ const NO_BUTTONS: ButtonState = {
   a2: false,
   a3: false,
   revive: false,
+  // Subclass slots — only the Chaos Forge generic policy ever sets these; the
+  // canonical per-class switch leaves them false, so its behaviour is unchanged.
+  sub1: false,
+  sub2: false,
 };
 
 /**
@@ -439,6 +454,138 @@ function telegraphFlee(world: World, boss: Boss, bot: Player, p: BotPersonality)
 // Ability decisions
 // ---------------------------------------------------------------------------
 
+/** How a bot should reason about an ability (derived from its components). */
+type BotRole =
+  | 'heal'
+  | 'allyBuff'
+  | 'selfDefense'
+  | 'mobility'
+  | 'control'
+  | 'offensiveMelee'
+  | 'offensiveRanged';
+
+interface BotCap {
+  role: BotRole;
+  /** A rooted cast (Fireball-style) — don't commit to it while dodging. */
+  rooted: boolean;
+  /** Reach/footprint (world units) for range-gating the cast. */
+  reach: number;
+}
+
+/**
+ * Classify an ability for bot casting by reading its COMPONENTS (falling back to
+ * the flat fields for canonical content) — so a bot casts a synthesized ally-buff
+ * zone as support, a fused control shot as control, a heal-fusion as a heal, etc.
+ * Chaos Forge (docs/CHAOS_FORGE.md §8). PURE.
+ */
+export function classifyForBot(ab: PlayerAbilityDef): BotCap {
+  const kind = ab.kind;
+  const rooted = (ab.castTime ?? 0) > 0;
+  const reach = ab.range ?? ab.radius ?? ab.impactRadius ?? 150;
+  // Flat-field defaults (always present; the only path for canonical abilities).
+  let heal = kind === 'heal';
+  let allyBuff = kind === 'buffAlly';
+  let selfDef = kind === 'selfBuff' || kind === 'taunt';
+  const control =
+    (ab.stun ?? 0) > 0 ||
+    (ab.freeze ?? 0) > 0 ||
+    ab.roots === true ||
+    (ab.slowMult != null && ab.slowMult < 1);
+  const damage = ab.damage > 0 || (ab.landingDamage ?? 0) > 0 || (ab.zoneTickDamage ?? 0) > 0;
+  // Refine from the recombined payload (buff targeting + a zone's ally-buff/heal
+  // that the flat fields can't express).
+  const comp = ab.components;
+  if (comp) {
+    heal = comp.effects.some((e) => e.kind === 'heal');
+    allyBuff = comp.effects.some(
+      (e) =>
+        (e.kind === 'buff' && e.target === 'allies') ||
+        (e.kind === 'zone' && (e.zone.allyBuff != null || (e.zone.tickHeal ?? 0) > 0)),
+    );
+    selfDef =
+      kind === 'taunt' ||
+      comp.effects.some((e) => e.kind === 'buff' && e.target === 'self' && e.defMult != null);
+  }
+  let role: BotRole;
+  if (heal) role = 'heal';
+  else if (allyBuff) role = 'allyBuff';
+  else if (selfDef || kind === 'selfBuff') role = 'selfDefense';
+  else if (kind === 'dash' || kind === 'blink') role = 'mobility';
+  else if (control && !damage) role = 'control';
+  else role = kind === 'meleeCone' || kind === 'pbaoe' ? 'offensiveMelee' : 'offensiveRanged';
+  return { role, rooted, reach };
+}
+
+/** World signals a bot weighs when deciding whether to cast. */
+interface CastSignals {
+  distBoss: number;
+  hpFrac: number;
+  inDanger: boolean;
+  hasTarget: boolean;
+  panicAt: number;
+  woundedAlly: boolean;
+  reachMul: number;
+}
+
+/** Should a bot cast an ability of capability `cap` given the world `s`ignals? */
+function wantCast(cap: BotCap, s: CastSignals): boolean {
+  switch (cap.role) {
+    case 'heal':
+      return s.woundedAlly;
+    case 'allyBuff':
+      return s.hasTarget || s.woundedAlly; // keep the band buffed while engaged
+    case 'selfDefense':
+      return s.inDanger || s.hpFrac < s.panicAt;
+    case 'mobility':
+      return s.inDanger;
+    case 'control':
+      return s.hasTarget && s.distBoss <= cap.reach * s.reachMul + 200;
+    case 'offensiveMelee':
+      return s.hasTarget && s.distBoss <= cap.reach * s.reachMul + 60;
+    case 'offensiveRanged':
+      // Don't root yourself mid-cast while dodging; otherwise fire when engaged.
+      return s.hasTarget && (!cap.rooted || !s.inDanger);
+  }
+}
+
+/** Slots a Forge bot considers — the base kit AND the subclass skills (item 13). */
+const FORGE_SLOTS: ExtSlot[] = ['basic', 'a1', 'a2', 'a3', 'sub1', 'sub2'];
+
+/**
+ * Chaos Forge bot casting: a generic policy over each ability's capability + the
+ * world signals, covering every slot INCLUDING sub1/sub2 (which the canonical
+ * switch never fires). Replaces the per-classId positional heuristics whenever
+ * Forge content is live. PURE aside from reading the world.
+ */
+function decideAbilitiesForged(
+  world: World,
+  bot: Player,
+  bossPos: Vec2 | null,
+  focus: Vec2 | null,
+  inDanger: boolean,
+  p: BotPersonality,
+): ButtonState {
+  const want: ButtonState = { ...NO_BUTTONS };
+  const cd = bot.cooldowns;
+  const mw = mostWounded(world);
+  const s: CastSignals = {
+    distBoss: bossPos ? dist(bot.pos, bossPos) : Infinity,
+    hpFrac: bot.hp / bot.maxHp,
+    inDanger,
+    hasTarget: focus !== null,
+    panicAt: 0.28 + p.smart * 0.27,
+    woundedAlly: mw !== null && mw.hp / mw.maxHp < 0.55,
+    reachMul: 0.85 + p.aggression * 0.4,
+  };
+  for (const slot of FORGE_SLOTS) {
+    const ab = abilityForSlot(bot, slot);
+    if (!ab) continue; // an empty subclass slot
+    if ((cd[slot] ?? 0) > 0) continue; // still on cooldown
+    if (wantCast(classifyForBot(ab), s)) want[slot] = true;
+  }
+  return want;
+}
+
 function decideAbilities(
   world: World,
   bot: Player,
@@ -447,6 +594,12 @@ function decideAbilities(
   inDanger: boolean,
   p: BotPersonality,
 ): ButtonState {
+  // Chaos Forge — synthesized kits don't map to the per-class positional
+  // heuristics below (a fused a1 could be anything), so cast by reasoning over
+  // each ability's COMPONENTS instead. Engages whenever Forge content is live;
+  // canonical runs keep the hand-tuned switch (and its tests) untouched.
+  if (forgeSeed() !== null) return decideAbilitiesForged(world, bot, bossPos, focus, inDanger, p);
+
   const want: ButtonState = { ...NO_BUTTONS };
   const cd = bot.cooldowns;
   const distBoss = bossPos ? dist(bot.pos, bossPos) : Infinity;
@@ -577,6 +730,10 @@ function edge(want: ButtonState, prev: ButtonState): ButtonState {
     a2: want.a2 && !prev.a2,
     a3: want.a3 && !prev.a3,
     revive: want.revive, // held, not edge-triggered (revive is a channel)
+    // Subclass slots (Chaos Forge generic policy). `want` always carries them
+    // (NO_BUTTONS defaults them false); `prev` may be a bare literal, so guard it.
+    sub1: want.sub1 && !(prev.sub1 ?? false),
+    sub2: want.sub2 && !(prev.sub2 ?? false),
   };
 }
 

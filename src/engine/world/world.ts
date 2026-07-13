@@ -1469,7 +1469,31 @@ export class World {
     if (proj.lifesteal && proj.lifesteal > 0 && dealt > 0 && owner) {
       healPlayer(this, null, owner, dealt * proj.lifesteal);
     }
+    // Chaos Forge — a synthesized shot blooms a ground zone where it lands (the
+    // projectile→area→ally-buff fusion). Gated by the optional field, so
+    // canonical shots never take this branch.
+    if (proj.onImpact) this.spawnImpactZone(proj);
     return true;
+  }
+
+  /** Chaos Forge — spawn a synthesized projectile's on-impact ground zone. */
+  private spawnImpactZone(proj: Projectile): void {
+    const oi = proj.onImpact;
+    if (!oi) return;
+    spawnZone(this, {
+      kind: oi.kind,
+      pos: { ...proj.pos },
+      radius: oi.radius,
+      side: 'player',
+      ownerId: proj.ownerId,
+      damagePerTick: oi.tickDamage ?? 0,
+      healPerTick: oi.tickHeal ?? 0,
+      slowMult: oi.slowMult,
+      slowDuration: oi.slowDuration,
+      roots: oi.roots,
+      allyBuff: oi.allyBuff,
+      duration: oi.duration,
+    });
   }
 
   /** Apply a hostile projectile's on-hit riders (frost slow, freeze) to a target. */
@@ -1614,6 +1638,22 @@ export class World {
           // heal via combat.healPlayer for stats/threat
           this.healViaZone(owner, p, z.healPerTick);
         }
+      }
+    }
+    // Chaos Forge — a synthesized "sanctuary of resistance" refreshes its buff on
+    // allies standing inside, tick by tick (so it clears shortly after leaving).
+    // Gated by the optional field: canonical zones never carry it.
+    if (z.allyBuff) {
+      const b = z.allyBuff;
+      for (const p of this.players) {
+        if (p.state !== 'alive') continue;
+        if (dist(z.pos, p.pos) > z.radius + p.radius) continue;
+        if (b.defMult != null)
+          applyBuff(p, makeBuff('damageTaken', b.defMult, b.duration, 'zoneAllyDef'));
+        if (b.dmgMult != null)
+          applyBuff(p, makeBuff('damageDealt', b.dmgMult, b.duration, 'zoneAllyDmg'));
+        if (b.moveMult != null)
+          applyBuff(p, makeBuff('moveSpeed', b.moveMult, b.duration, 'zoneAllyMove'));
       }
     }
   }

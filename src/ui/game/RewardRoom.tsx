@@ -40,7 +40,7 @@ import {
   type ShopOffer,
 } from '../state/rewardScene';
 import {
-  EPHEMERAL,
+  getEphemeral,
   EPHEMERAL_IDS,
   type EphemeralId,
   type EphemeralStock,
@@ -106,8 +106,8 @@ function rollOffers(
  * lifetime; affordability + sold-out state are mirrored in each frame instead.
  */
 function buildShopOffers(hardcore: boolean): ShopOffer[] {
-  return EPHEMERAL_IDS.filter((id) => !EPHEMERAL[id].hardcoreOnly || hardcore).map((id) => {
-    const def = EPHEMERAL[id];
+  return EPHEMERAL_IDS.filter((id) => !getEphemeral(id).hardcoreOnly || hardcore).map((id) => {
+    const def = getEphemeral(id);
     return { id, label: `${def.icon} ${def.name} · 💰${def.cost}`, desc: def.desc, cost: def.cost };
   });
 }

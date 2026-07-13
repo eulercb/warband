@@ -167,6 +167,7 @@ export async function hostGame(loadout?: SingleFightLoadout): Promise<void> {
     gauntlet: st.gauntlet,
     hardcore: st.hardcore,
     randomKits: st.randomKits,
+    chaosForge: st.chaosForge,
     loadout: st.gauntlet || !hasLoadout ? undefined : loadout,
     seed: resolveHostSeed(),
     name: nameOrDefault(),
@@ -185,6 +186,9 @@ export async function hostGame(loadout?: SingleFightLoadout): Promise<void> {
       // its kit + upgrade offers resolve against the effective class, not the pick.
       s.setActiveRandomKits(info.randomKits ?? false);
       s.setActiveDraftedClass(info.randomKits ? (info.draftedClass ?? null) : null);
+      // Chaos Forge: activate component synthesis for this run (all peers derive
+      // identical content from the shared runSeed).
+      s.setActiveChaosForge(info.chaosForge ?? false);
       s.setNextReadyState(0, 0);
       // A fresh fight consumes any ephemeral perks bought last interstitial (item 21).
       s.resetEphemeralStock();
@@ -219,6 +223,9 @@ export async function hostGame(loadout?: SingleFightLoadout): Promise<void> {
   // Activate the run's procedural content (rolled kits / monsters / boons) from
   // the master seed right away, so the lobby's class previews match the fight.
   s.setActiveRunSeed(host.runSeed);
+  // If this is a Chaos Forge run, synthesize from the same seed now too, so the
+  // host's lobby previews already show the fused kits it will fight with.
+  s.setActiveChaosForge(st.chaosForge);
   s.setError(null);
   s.setPeerCount(0);
   s.setNetHint(null);
@@ -260,6 +267,8 @@ export async function joinGame(code: string): Promise<void> {
       const drafted = msg.roster?.find((r) => r.peerId === selfId)?.classId ?? null;
       s.setActiveRandomKits(msg.randomKits ?? false);
       s.setActiveDraftedClass(msg.randomKits ? drafted : null);
+      // Chaos Forge: synthesize the same content the host does from runSeed.
+      s.setActiveChaosForge(msg.chaosForge ?? false);
       s.setNextReadyState(0, 0);
       s.resetEphemeralStock(); // a fresh fight consumes bought ephemeral perks (item 21)
       // Fresh run wipes the build; each later gauntlet resets only coins (item 23).

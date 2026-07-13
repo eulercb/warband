@@ -89,6 +89,9 @@ export interface StartMsg {
   hardcore?: boolean;
   /** Chaos Draft (item 10) — a client adopts its drafted class from the roster. */
   randomKits?: boolean;
+  /** Chaos Forge (docs/CHAOS_FORGE.md) — clients synthesize the same content from
+   * the shared runSeed when this run is a Chaos Forge. */
+  chaosForge?: boolean;
 }
 
 /**

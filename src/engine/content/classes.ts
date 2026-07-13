@@ -5,6 +5,7 @@
 import type { ClassId, AbilitySlot, ExtSlot, ZoneKind } from '../core/types';
 import { PLAYER_RADIUS, CLASS_COLORS, ATTACK_CD_SCALE } from '../core/constants';
 import { procVariant, classVariant } from './procgen';
+import { describeComposed, forgeVariant, synthesizeClass, type Donor } from './forge';
 
 /** How an ability resolves. Interpreted by abilities.ts. */
 export type AbilityKind =
@@ -71,6 +72,18 @@ export interface PlayerAbilityDef {
   healOnUse?: number;
   /** Point-blank AoE damage dealt on a dash/leap landing (0 = none). */
   landingDamage?: number;
+
+  /**
+   * Chaos Forge (docs/CHAOS_FORGE.md) — the recombined component form of a
+   * SYNTHESIZED ability: a delivery + an ordered payload of effect components.
+   * Present ONLY on procedurally-fused skills; the executor (combat/abilities.ts)
+   * dispatches to the component path when it is set, and `describeAbility`
+   * regenerates the card text from it. Canonical/authored and numeric-variance
+   * content never carries it, so those paths stay byte-for-byte unchanged. The
+   * flat fields above are kept in sync (delivery kind + implied numbers) so every
+   * component-unaware consumer (cooldown gating, HUD, previews) still works. Typed
+   * via a type-only import to avoid a runtime import cycle. */
+  components?: import('./forge').AbilityComponents;
 }
 
 export interface ClassDef {
@@ -759,7 +772,41 @@ export const DEFAULT_CLASS: ClassId = 'knight';
  * `CLASSES[...]` reads of those stay valid.
  */
 export function getClass(id: ClassId): ClassDef {
+  // Chaos Forge (docs/CHAOS_FORGE.md) takes precedence when its run is active:
+  // the class is a component-recombined FUSION (fused kit + fused name) keyed by
+  // id, so every "knight" this run plays the same synthesized kit. Falls through
+  // to numeric-variance (procgen) then canonical when Forge is off — Forge layers
+  // on top of the other modes, it never mutates the canonical data.
+  const forged = forgeVariant('class', id, (seed) =>
+    synthesizeClass(seed, CLASSES[id], forgeDonors()),
+  );
+  if (forged) return forged;
   return procVariant('class', id, (seed) => classVariant(seed, CLASSES[id])) ?? CLASSES[id];
+}
+
+/**
+ * The component library Chaos Forge draws from: every CANONICAL class ability,
+ * tagged with its source. Built from the static CLASSES table (NOT getClass, to
+ * avoid recursion) and memoized — it is stable for the process, and a class
+ * added in a future update joins the pool automatically (req. 10). */
+let FORGE_DONORS: Donor[] | null = null;
+function forgeDonors(): Donor[] {
+  if (FORGE_DONORS) return FORGE_DONORS;
+  const out: Donor[] = [];
+  for (const cid of CLASS_IDS) {
+    const c = CLASSES[cid];
+    for (const slot of ['basic', 'a1', 'a2', 'a3'] as AbilitySlot[]) {
+      out.push({
+        name: c.abilities[slot].name,
+        classId: cid,
+        className: c.name,
+        slot,
+        def: c.abilities[slot],
+      });
+    }
+  }
+  FORGE_DONORS = out;
+  return out;
 }
 
 /** Ability kinds that count as a twitchy "attack" for the global CD slow-down. */
@@ -809,6 +856,11 @@ export function cloneAbilities(
  * seconds to one decimal, ratios to whole percents.
  */
 export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>): string {
+  // Chaos Forge — a synthesized ability regenerates its card text from its
+  // recombined component list (there is no author to write copy for a fused
+  // skill). Canonical/variance content carries no components and keeps the
+  // authored flat-field walk below, so its cards are byte-for-byte unchanged.
+  if (def.components) return describeComposed(def.components, def.cooldown);
   const n = (v: number): string => `${Math.round(v)}`;
   // Up to two decimals (trailing zeros drop naturally), so a 0.25s i-frame or a
   // 1.1s cooldown both read exactly, matching the reward cards' precision.

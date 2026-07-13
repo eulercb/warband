@@ -291,6 +291,21 @@ describe('Host callbacks drive the store', () => {
     expect(st().activeDraftedClass).toBeNull();
   });
 
+  it('onStart activates Chaos Forge synthesis, and clears it when off', () => {
+    useStore.setState({ activeChaosForge: false });
+    hosts[0].opts.onStart({
+      runIndex: 0,
+      runTotal: 1,
+      cycle: 0,
+      runSeed: 3,
+      hardcore: false,
+      chaosForge: true,
+    });
+    expect(st().activeChaosForge).toBe(true);
+    hosts[0].opts.onStart({ runIndex: 0, runTotal: 1, cycle: 0, runSeed: 3, hardcore: false });
+    expect(st().activeChaosForge).toBe(false);
+  });
+
   it('onStart resets only the coin purse on a fresh CYCLE (index 0, cycle > 0)', () => {
     useStore.setState({ myUpgrades: ['swift'], myCoins: 50, myEphemeral: { potions: 2 } });
     // index 0 with cycle > 0 takes the `else s.resetCoins()` arm: the build persists,
@@ -400,6 +415,22 @@ describe('Client callbacks drive the store', () => {
     });
     expect(st().activeRandomKits).toBe(true);
     expect(st().activeDraftedClass).toBe('mage');
+  });
+
+  it('onStart activates Chaos Forge synthesis for this client (from the shared seed)', () => {
+    useStore.setState({ activeChaosForge: false });
+    clients[0].opts.onStart({
+      runIndex: 0,
+      runTotal: 1,
+      cycle: 0,
+      runSeed: 5,
+      hardcore: false,
+      chaosForge: true,
+      roster: [{ peerId: 'selfpeerid', name: 'Me', classId: 'mage' }],
+    });
+    expect(st().activeChaosForge).toBe(true);
+    clients[0].opts.onStart({ runIndex: 0, runTotal: 1, cycle: 0, runSeed: 5, hardcore: false });
+    expect(st().activeChaosForge).toBe(false);
   });
 
   it('onStart clears the drafted class when Chaos Draft is off (item 10)', () => {

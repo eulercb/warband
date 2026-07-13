@@ -15,7 +15,7 @@
  */
 import { useStore } from '../state/store';
 import { playUiSound } from '../state/session';
-import { EPHEMERAL, EPHEMERAL_IDS, type EphemeralId } from '../../engine/content/ephemeral';
+import { getEphemeral, EPHEMERAL_IDS, type EphemeralId } from '../../engine/content/ephemeral';
 
 /** How many of this perk the hero has already banked for the next fight. */
 function owned(
@@ -46,7 +46,7 @@ export default function EphemeralShop() {
 
   // Passive perks (speed/damage/defence) are one-and-done for a fight; potions and
   // revives stack. Hardcore-only perks stay hidden outside a hardcore run.
-  const ids = EPHEMERAL_IDS.filter((id) => !EPHEMERAL[id].hardcoreOnly || hardcore);
+  const ids = EPHEMERAL_IDS.filter((id) => !getEphemeral(id).hardcoreOnly || hardcore);
   const onBuy = (id: EphemeralId): void => {
     if (buy(id)) playUiSound('uiConfirm');
     else playUiSound('uiClick');
@@ -65,7 +65,7 @@ export default function EphemeralShop() {
       </p>
       <div className="wb-shop-cards">
         {ids.map((id) => {
-          const def = EPHEMERAL[id];
+          const def = getEphemeral(id);
           const have = owned(id, stock);
           // A single-shot passive can't be double-bought; stackables always can.
           const single = def.kind === 'passive';
