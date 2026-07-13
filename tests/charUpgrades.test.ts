@@ -22,6 +22,8 @@ import {
   SKILL_GRANDS,
   SUBCLASS_GRANDS,
   GRAFT_GRANDS,
+  SUB_SKILL_UPGRADES,
+  applySubSkillUpgrades,
 } from '../src/engine/content/charUpgrades';
 import { CLASSES, CLASS_IDS, cloneAbilities } from '../src/engine/content/classes';
 import type { PlayerAbilityDef, AbilityKind } from '../src/engine/content/classes';
@@ -129,11 +131,13 @@ describe('character-upgrade catalog', () => {
       ...SKILL_GRANDS,
       ...SUBCLASS_GRANDS,
       ...GRAFT_GRANDS,
+      ...SUB_SKILL_UPGRADES, // item 6: one per subclass skill (24 subclasses × 4 = 96)
     ];
-    expect(all).toHaveLength(12 * 5 + 9 + 24 + 96 + 48 + 8); // 245
+    expect(all).toHaveLength(12 * 5 + 9 + 24 + 96 + 48 + 8 + 96); // 341
+    expect(SUB_SKILL_UPGRADES).toHaveLength(96);
     const ids = all.map((d) => d.id);
     expect(new Set(ids).size).toBe(ids.length); // no duplicates
-    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(245);
+    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(341);
     for (const id of ids) expect(CHAR_UPGRADES[id].id).toBe(id);
     // Every grand improvement (class, skill, subclass, graft) is uniquely capped at one stack.
     for (const d of [...classGrand, ...SKILL_GRANDS, ...SUBCLASS_GRANDS, ...GRAFT_GRANDS]) {
@@ -1607,6 +1611,7 @@ function makePlayerWithSubs(
     p.subAbilities![slot] = { ...skill.ability, slot };
   });
   applySubclassGrands(p, charUpgrades);
+  applySubSkillUpgrades(p, charUpgrades); // item 6: mirror world.rebindActiveSubs
   return p;
 }
 
@@ -1786,5 +1791,80 @@ describe('base-skill + subclass + graft grands never enter the between-boss pool
         expect(CHAR_UPGRADES[id]?.grand).not.toBe(true);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Per-subclass-skill upgrades (item 6)
+// ---------------------------------------------------------------------------
+
+describe('per-subclass-skill upgrades (item 6)', () => {
+  it('generates exactly one boon per subclass skill, keyed by sub skill id', () => {
+    expect(SUB_SKILL_UPGRADES).toHaveLength(96);
+    for (const def of SUB_SKILL_UPGRADES) {
+      expect(def.subSkillId).toBeTruthy();
+      expect(def.id).toBe(`subup_${def.subSkillId}`);
+      expect(def.grand).toBeFalsy(); // a normal boon, not a grand
+      expect(charUpgradeMaxStacks(def.id)).toBe(5); // shared cap
+      expect(CHAR_UPGRADES[def.id]).toBe(def); // resolvable in the flat lookup
+    }
+  });
+
+  it('hones the exact bound sub skill (magnitude, footprint, cooldown)', () => {
+    const p = makePlayerWithSubs(
+      'knight',
+      ['kn_champion_slam', 'kn_champion_riposte'],
+      ['subup_kn_champion_slam'],
+    );
+    // Earthshaker (sub1): base dmg 40, radius 150, cooldown 8.
+    expect(p.subAbilities!.sub1!.damage).toBe(45); // round(40 × 1.12)
+    expect(p.subAbilities!.sub1!.radius).toBe(162); // round(150 × 1.08)
+    expect(p.subAbilities!.sub1!.cooldown).toBeCloseTo(7.36, 5); // 8 × 0.92
+    // The OTHER bound sub skill is untouched — the boon is skill-specific.
+    expect(p.subAbilities!.sub2!.damage).toBe(46); // Riposte base dmg unchanged
+  });
+
+  it('stacks across multiple picks (compounding), up to the shared cap', () => {
+    const p = makePlayerWithSubs(
+      'knight',
+      ['kn_champion_slam'],
+      ['subup_kn_champion_slam', 'subup_kn_champion_slam'],
+    );
+    // Two stacks: 40 → 45 → round(45 × 1.12)=50.
+    expect(p.subAbilities!.sub1!.damage).toBe(50);
+    const id = 'subup_kn_champion_slam';
+    expect(charUpgradeAtMax(id, [id, id, id, id])).toBe(false);
+    expect(charUpgradeAtMax(id, [id, id, id, id, id])).toBe(true);
+  });
+
+  it('is a no-op for a sub skill the hero has NOT equipped', () => {
+    const p = makePlayerWithSubs('knight', ['kn_champion_slam'], ['subup_kn_champion_riposte']);
+    expect(p.subAbilities!.sub1!.damage).toBe(40); // Earthshaker untouched (Riposte not bound)
+  });
+
+  it('is a harmless no-op in the base-ability replay', () => {
+    const p = makePlayer('knight');
+    applyCharUpgrades(p, ['subup_kn_champion_slam']); // no subAbilities → nothing happens
+    expect(p.abilities!.basic.damage).toBe(CLASSES.knight.abilities.basic.damage);
+  });
+
+  it('only enters the roll once the hero has that sub skill equipped', () => {
+    const id = 'subup_kn_champion_slam';
+    // Not equipped → never offered, even across a long rng sweep.
+    const rng1 = lcg(0xabc);
+    let sawWithout = false;
+    for (let t = 0; t < 120; t++) {
+      if (rollCharChoices('knight', 4, rng1, [], [], []).includes(id)) sawWithout = true;
+    }
+    expect(sawWithout).toBe(false);
+    // Equipped → it can surface.
+    const rng2 = lcg(0xabc);
+    let sawWith = false;
+    for (let t = 0; t < 300 && !sawWith; t++) {
+      if (rollCharChoices('knight', 4, rng2, [], [], ['kn_champion_slam']).includes(id)) {
+        sawWith = true;
+      }
+    }
+    expect(sawWith).toBe(true);
   });
 });

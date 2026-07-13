@@ -13,7 +13,7 @@
 import type { ClassId, AbilitySlot, SubSlot, Player } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
 import { CLASSES, getClass, cloneAbilities, slowAttackCooldowns, describeAbility } from './classes';
-import { getSubclass, subclassOfSkill } from './subclasses';
+import { getSubclass, subclassOfSkill, ALL_SUBCLASSES } from './subclasses';
 import { applyUpgrades, type UpgradeId } from './upgrades';
 import { MAX_SKILL_STACKS } from '../core/constants';
 
@@ -89,6 +89,14 @@ export interface CharUpgradeDef {
    * is offered only for subclasses the hero has actually picked. Set by `gs`.
    */
   subclassId?: string;
+  /**
+   * A per-SUBCLASS-SKILL upgrade (item 6): tied to exactly one subclass skill id. A
+   * normal (non-grand, cap-5) boon that only enters the between-boss pool once the
+   * hero has that sub skill EQUIPPED, and whose `apply` tunes just that bound
+   * sub-ability (via `ctx.subAbilities`, filled only by `applySubSkillUpgrades`). A
+   * harmless no-op in the base-ability replay. Set by `us`.
+   */
+  subSkillId?: string;
   /**
    * A GRAFT grand (item 18): tied to a skill-replacing hybrid graft by its id (e.g.
    * `hy_pyromancer`). Offered only while the hero currently holds that graft (its id
@@ -3370,6 +3378,44 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Per-subclass-SKILL upgrades (item 6) — a normal (non-grand, cap-5) boon for each
+// of the subclass skills, generated from the subclass catalogue. Each hones ONE
+// specific sub skill (harder, wider, quicker) and only enters the between-boss pool
+// once the hero has EQUIPPED that skill (rollCharChoices gates on the passed-in
+// subSkills). Applied — like the subclass grands — to the hero's bound sub-abilities
+// via `applySubSkillUpgrades`, so it is a harmless no-op in the base-ability replay.
+// ---------------------------------------------------------------------------
+
+/** Modest, kind-adaptive tune for a per-stack sub-skill boon (stacks compound). */
+function subSkillTune(ab: PlayerAbilityDef): void {
+  amplify(ab, 0.12, 0.08); // +12% magnitude, +8% footprint
+  mul(ab, 'cooldown', 0.92); // -8% cooldown
+}
+
+/** Per-subclass-skill upgrade builder — tied to one sub skill id (non-grand, cap 5). */
+function us(subSkillId: string, classId: ClassId, name: string, icon: string): CharUpgradeDef {
+  return {
+    id: `subup_${subSkillId}`,
+    classId,
+    subSkillId,
+    name: `Honed ${name}`,
+    icon,
+    desc: `Hone ${name} — it strikes harder, reaches wider and recharges faster (stacks to ${MAX_SKILL_STACKS}).`,
+    apply: ({ subAbilities }) => {
+      if (!subAbilities) return;
+      for (const slot of SUB_SLOTS) {
+        const ab = subAbilities[slot];
+        if (ab) subSkillTune(ab);
+      }
+    },
+  };
+}
+
+export const SUB_SKILL_UPGRADES: CharUpgradeDef[] = ALL_SUBCLASSES.flatMap((sub) =>
+  sub.skills.map((sk) => us(sk.id, sub.classId, sk.name, sk.icon)),
+);
+
+// ---------------------------------------------------------------------------
 // GRAFT grands (item 18) — two radical capstones for each skill-replacing hybrid
 // graft (a graft with a `replaces` slot: Pyromancer's Pact, Shadow Pact,
 // Berserker's Howl, Field Medic). Where a class capstone owns a native skill, a
@@ -3566,6 +3612,7 @@ export const CHAR_UPGRADES: Record<string, CharUpgradeDef> = Object.fromEntries(
     ...SKILL_GRANDS,
     ...SUBCLASS_GRANDS,
     ...GRAFT_GRANDS,
+    ...SUB_SKILL_UPGRADES, // item 6: resolvable by id, but NOT in the always-on class pool
   ].map((d) => [d.id, d]),
 );
 
@@ -3783,6 +3830,44 @@ export function applySubclassGrands(player: Player, ids: readonly string[] | und
     const targeted: Partial<Record<SubSlot, PlayerAbilityDef>> = {};
     for (const slot of SUB_SLOTS) {
       if (subs[slot] && slotSubclass[slot] === def.subclassId) targeted[slot] = subs[slot];
+    }
+    if (targeted.sub1 || targeted.sub2) {
+      def.apply({
+        player,
+        abilities: (player.abilities ?? {}) as Record<AbilitySlot, PlayerAbilityDef>,
+        subAbilities: targeted,
+      });
+    }
+  }
+}
+
+/**
+ * Apply a hero's owned per-SUBCLASS-SKILL upgrades (item 6) to their bound
+ * sub-abilities. Sibling of `applySubclassGrands` — called right after it on every
+ * rebind (world.rebindActiveSubs) — but keyed by the EXACT sub skill in each bound
+ * slot rather than by subclass, so a boon only tunes the one skill it hones. Each
+ * occurrence in `ids` applies once (so a boon taken up to its cap stacks that many
+ * times). Idempotent because sub-abilities are rebuilt fresh on each rebind. A no-op
+ * for a skill the hero isn't currently wielding.
+ */
+export function applySubSkillUpgrades(player: Player, ids: readonly string[] | undefined): void {
+  const subs = player.subAbilities;
+  if (!ids || ids.length === 0 || !subs) return;
+  // The exact sub-skill id in each bound slot (active-class skills, in order).
+  const active = (player.subSkillIds ?? [])
+    .filter((sid) => subclassOfSkill(sid)?.classId === player.classId)
+    .slice(0, 2);
+  const slotSkill: Partial<Record<SubSlot, string>> = {};
+  active.forEach((sid, i) => {
+    slotSkill[i === 0 ? 'sub1' : 'sub2'] = sid;
+  });
+  for (const id of ids) {
+    const def = CHAR_UPGRADES[id];
+    if (!def?.subSkillId || !upgradeAllowedFor(def, player.classId)) continue;
+    // Hand the boon only the sub-ability whose skill id it hones.
+    const targeted: Partial<Record<SubSlot, PlayerAbilityDef>> = {};
+    for (const slot of SUB_SLOTS) {
+      if (subs[slot] && slotSkill[slot] === def.subSkillId) targeted[slot] = subs[slot];
     }
     if (targeted.sub1 || targeted.sub2) {
       def.apply({
@@ -4088,6 +4173,7 @@ export function rollCharChoices(
   rnd: () => number,
   owned: readonly string[] = [],
   extraClasses: readonly ClassId[] = [],
+  subSkills: readonly string[] = [],
 ): string[] {
   const out: string[] = [];
   const extras = extraClasses.filter((c) => c !== classId);
@@ -4096,6 +4182,16 @@ export function rollCharChoices(
   // graft-less hero, so it never filters anything for the common case.
   const occupant = CLASSES[classId] ? occupancyAfter(classId, owned) : null;
   const liveBoon = (id: string): boolean => !occupant || boonUpgradesLiveSkill(occupant, id);
+  // item 6: per-subclass-skill upgrades enter the pool ONLY for sub skills the hero
+  // has equipped (and for the active class). Empty for a hero with no sub skills, so
+  // the common case is untouched.
+  const subEligible = SUB_SKILL_UPGRADES.filter(
+    (u) =>
+      u.subSkillId != null &&
+      subSkills.includes(u.subSkillId) &&
+      upgradeAllowedFor(u, classId) &&
+      !charUpgradeAtMax(u.id, owned),
+  ).map((u) => u.id);
   if (extras.length > 0) {
     // Multiclass (item 14/23): the pool spans EVERY owned class's upgrades, but the
     // MAIN class's picks are weighted heavier so they surface more often.
@@ -4109,6 +4205,8 @@ export function rollCharChoices(
     };
     push(classId, MAIN_CLASS_WEIGHT, true);
     for (const c of extras) push(c, 1, false);
+    // item 6: equipped-sub-skill boons weight with the main class.
+    for (const id of subEligible) weighted.push({ id, w: MAIN_CLASS_WEIGHT });
     const count = Math.min(n, weighted.length);
     while (out.length < count && weighted.length > 0) {
       const total = weighted.reduce((s, x) => s + x.w, 0);
@@ -4125,8 +4223,7 @@ export function rollCharChoices(
       weighted.splice(idx, 1);
     }
   } else {
-    const pool = (CHAR_UPGRADES_BY_CLASS[classId] ?? [])
-      .map((d) => d.id)
+    const pool = [...(CHAR_UPGRADES_BY_CLASS[classId] ?? []).map((d) => d.id), ...subEligible] // item 6
       .filter((id) => !charUpgradeAtMax(id, owned) && liveBoon(id)); // item 26 filter
     const count = Math.min(n, pool.length);
     while (out.length < count) {

@@ -147,6 +147,7 @@ import type { UpgradeId } from '../content/upgrades';
 import {
   applyCharUpgrades,
   applySubclassGrands,
+  applySubSkillUpgrades,
   previewAbilityTable,
 } from '../content/charUpgrades';
 import { getSubSkill, subclassOfSkill } from '../content/subclasses';
@@ -774,6 +775,8 @@ export class World {
     // Re-apply any owned SUBCLASS grands (item 17) to the freshly-bound sub-abilities
     // — the sub skills are rebuilt from scratch each rebind, so this stays idempotent.
     applySubclassGrands(p, p.charUpgradeIds);
+    // …then any owned per-sub-skill upgrades (item 6), keyed to the exact bound skill.
+    applySubSkillUpgrades(p, p.charUpgradeIds);
   }
 
   /**
