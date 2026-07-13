@@ -399,6 +399,21 @@ export interface Boss {
    * recorded in combat.damageBoss. Absent = 0.
    */
   recentDamageTaken?: number;
+
+  /**
+   * Item 2 — the fraction of this boss's ACTIVE healing (burst self-heal,
+   * Life-Drain, Vampiric) that survives, set at spawn from run progression
+   * (balance.bossHealScale). Absent / 1 = full sustain. Host-only, never serialized.
+   */
+  healScale?: number;
+  /**
+   * Item 5 — descending HP fractions at which this boss turns briefly invulnerable
+   * (balance.bossInvulnThresholds). Absent / empty on non-qualifying bosses (weak
+   * band or easy/early fight). Host-only.
+   */
+  invulnThresholds?: number[];
+  /** Item 5 — index of the next invuln window to fire from `invulnThresholds`. */
+  invulnNextIdx?: number;
 }
 
 export interface Add {

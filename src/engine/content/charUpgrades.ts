@@ -3616,6 +3616,19 @@ export const CHAR_UPGRADES: Record<string, CharUpgradeDef> = Object.fromEntries(
   ].map((d) => [d.id, d]),
 );
 
+/**
+ * How many GRAND capstones a hero holds (item 5 progression gate). Counts real
+ * catalog grands of every kind — class, skill, subclass and graft — since
+ * CHAR_UPGRADES flattens them all; synthetic ids (`restore:`/`graftup:`) resolve
+ * to no def and never count.
+ */
+export function grandCount(charUpgradeIds: readonly string[] | undefined): number {
+  if (!charUpgradeIds) return 0;
+  let n = 0;
+  for (const id of charUpgradeIds) if (CHAR_UPGRADES[id]?.grand) n++;
+  return n;
+}
+
 // ---------------------------------------------------------------------------
 // Skill-keyed progression (items 15 & 17) — the "model change" flagged in #22.
 //

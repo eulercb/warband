@@ -1461,6 +1461,7 @@ describe('boss buffSelf', () => {
       // buffDuration omitted -> the buffs use their 5s default
       selfHealFrac: 0.1,
     };
+    boss.healScale = 1; // isolate the raw self-heal from item-2 progression damping
     const before = boss.hp;
     resolveBossAbility(w, boss, ab, mkAction());
     expect(
@@ -1535,6 +1536,7 @@ describe('beamTick', () => {
     const boss = w.boss!;
     const p = w.players[0];
     boss.dmgScale = undefined; // exercise the `dmgScale ?? 1` fallback in beamTick
+    boss.healScale = 1; // isolate the raw lifedrain from item-2 progression damping
     boss.pos = { x: 800, y: 400 };
     boss.hp = boss.maxHp - 100;
     p.pos = { x: 800, y: 450 };

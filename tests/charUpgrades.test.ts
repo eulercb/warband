@@ -11,6 +11,7 @@ import {
   charUpgradeBadge,
   charUpgradeMaxStacks,
   charUpgradeAtMax,
+  grandCount,
   applySubclassGrands,
   offerableGrands,
   REOFFER_CHANCE,
@@ -1707,6 +1708,28 @@ describe('subclass grands transform the bound sub-abilities (item 17)', () => {
       const pristine = JSON.stringify({ ...sub.skills[0].ability, slot: 'sub1' });
       expect(JSON.stringify(p.subAbilities!.sub1)).not.toBe(pristine);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// grandCount — the "strong party" progression gate (item 5)
+// ---------------------------------------------------------------------------
+
+describe('grandCount (item 5)', () => {
+  it('counts held GRAND capstones and ignores plain boons + synthetic ids', () => {
+    expect(grandCount(undefined)).toBe(0);
+    expect(grandCount([])).toBe(0);
+    expect(grandCount(['kn_bulwark'])).toBe(0); // an ordinary class boon
+    expect(grandCount(['kn_grand_immovable'])).toBe(1); // a real class capstone
+    expect(grandCount(['kn_grand_immovable', 'rg_grand_deadeye', 'kn_bulwark'])).toBe(2);
+    expect(grandCount(['restore:a2', 'graftup:a2:mg_combust'])).toBe(0); // synthetic → no def
+  });
+
+  it('reaches the ≥3 strong-party bar only with three genuine grands', () => {
+    expect(grandCount(['kn_grand_immovable', 'rg_grand_deadeye']) >= 3).toBe(false);
+    expect(
+      grandCount(['kn_grand_immovable', 'rg_grand_deadeye', 'mg_grand_archmage']) >= 3,
+    ).toBe(true);
   });
 });
 

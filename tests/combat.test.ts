@@ -5,6 +5,7 @@ import {
   damageAdd,
   damagePlayer,
   healPlayer,
+  healBoss,
   applyBuff,
   applyStun,
   makeBuff,
@@ -81,6 +82,55 @@ function mkBoss(): Boss {
 }
 
 const sink = (): { events: GameEvent[] } => ({ events: [] });
+
+describe('combat: boss active-heal damping + invuln (items 2 & 5)', () => {
+  it('healBoss scales an active heal by boss.healScale (item 2)', () => {
+    const boss = mkBoss();
+    boss.hp = 100;
+    boss.healScale = 0.35;
+    healBoss(boss, 200);
+    expect(boss.hp).toBeCloseTo(100 + 70, 6); // 200 × 0.35
+  });
+
+  it('healBoss defaults to the full heal when healScale is unset', () => {
+    const boss = mkBoss();
+    boss.hp = 100;
+    healBoss(boss, 50);
+    expect(boss.hp).toBe(150);
+  });
+
+  it('healBoss never overheals past maxHp', () => {
+    const boss = mkBoss();
+    boss.hp = boss.maxHp - 10;
+    boss.healScale = 1;
+    healBoss(boss, 999);
+    expect(boss.hp).toBe(boss.maxHp);
+  });
+
+  it('a boss with an invuln buff soaks no damage — no HP, threat or regen-lockout (item 5)', () => {
+    const p = mkPlayer();
+    const boss = mkBoss();
+    applyBuff(boss, makeBuff('invuln', 0, 2, 'bossInvuln'));
+    const before = boss.hp;
+    const s = sink();
+    const out = damageBoss(s, p, boss, 500);
+    expect(out).toBe(0);
+    expect(boss.hp).toBe(before); // fully immune
+    expect(boss.regenLockout ?? 0).toBe(0); // no pressure recorded while immune
+    expect(boss.recentDamageTaken ?? 0).toBe(0);
+    // A muted "0" hit still spawns so the strike reads as absorbed, not dropped.
+    expect(s.events.some((e) => e.t === 'hit' && e.amount === 0)).toBe(true);
+  });
+
+  it('damage resumes the instant the invuln buff is gone', () => {
+    const p = mkPlayer();
+    const boss = mkBoss();
+    boss.buffs = []; // no invuln
+    const out = damageBoss(sink(), p, boss, 40);
+    expect(out).toBe(40);
+    expect(boss.hp).toBe(boss.maxHp - 40);
+  });
+});
 
 describe('combat: damage', () => {
   it('applies base damage and tracks dealt', () => {

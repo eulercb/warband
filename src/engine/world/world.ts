@@ -64,6 +64,7 @@ import {
   TWIN_DMG_FRAC,
   BOSS_HP_SCALE,
   BOSS_REGEN_MAX_FRAC,
+  BOSS_INVULN_WINDOW_S,
   HARDCORE_REVIVES_PER_FIGHT,
   HARDCORE_TIME_BUDGET,
   HARDCORE_DEADLINE_MULT,
@@ -150,8 +151,9 @@ import {
   applySubclassGrands,
   applySubSkillUpgrades,
   previewAbilityTable,
+  grandCount,
 } from '../content/charUpgrades';
-import { getSubSkill, subclassOfSkill } from '../content/subclasses';
+import { getSubSkill, subclassOfSkill, subSkillsForClass } from '../content/subclasses';
 import { coinsForRank } from '../content/ephemeral';
 import type { EphemeralStock } from '../content/ephemeral';
 import { getMonster, abilityById } from '../content/monsters';
@@ -159,7 +161,14 @@ import type { MonsterDef, BossModifier } from '../content/monsters';
 import { hasAffix, AFFIXES } from '../content/affixes';
 import { computeScaling, addCount } from '../content/scaling';
 import type { ScalingResult } from '../content/scaling';
-import { balanceAdjust, bandPowerRatio, runClears, NEUTRAL_BALANCE } from '../content/balance';
+import {
+  balanceAdjust,
+  bandPowerRatio,
+  runClears,
+  bossHealScale,
+  bossInvulnThresholds,
+  NEUTRAL_BALANCE,
+} from '../content/balance';
 import type { BalanceAdjust } from '../content/balance';
 import {
   tickBuffs,
@@ -856,6 +865,12 @@ export class World {
     // early in the FIRST run (cycle 0), when the band has barely any upgrades, hits
     // softer, ramping to full by the run's end. Endless cycles pay full (built party).
     const dmgFrac = twin ? TWIN_DMG_FRAC * Math.pow(2 / n, 0.35) * this.packDamageEase() : 1;
+    // Progression-aware sustain (item 2) + temp-invuln gate (item 5), measured off
+    // the realized band and this fight's difficulty. The practice dummy opts out so
+    // sparring keeps its brisk, uncapped self-heal and never turns immune.
+    const clears = runClears(this.cycle, this.runIndex, this.runTotal);
+    const healScale = bossHealScale(clears, this.balance.powerExcess);
+    const strongParty = this.bandIsStrong();
     ids.forEach((id, i) => {
       const def = getMonster(id);
       // The practice dummy is a UI/training target, not a balance target — it
@@ -906,7 +921,47 @@ export class World {
         // Stagger affix cadences per boss so a duo's waves/pools don't sync up.
         affixTimers: affixes ? this.initialAffixTimers(i) : undefined,
         recentDamageTaken: 0,
+        ...this.bossProgressionFields(def, healScale, strongParty),
       });
+    });
+  }
+
+  /**
+   * Item 2 + 5 boss fields: the active-heal damping scale and (for a strong band
+   * in a harder/later fight) the descending invuln thresholds. The practice dummy
+   * opts out entirely — it keeps full sustain and never turns immune.
+   */
+  private bossProgressionFields(
+    def: MonsterDef,
+    healScale: number,
+    strongParty: boolean,
+  ): { healScale?: number; invulnThresholds?: number[]; invulnNextIdx?: number } {
+    if (this.practice || def.id === 'dummy') return {};
+    const thresholds = bossInvulnThresholds(
+      strongParty,
+      def.tier,
+      this.cycle,
+      this.balance.powerExcess,
+    );
+    return {
+      healScale,
+      invulnThresholds: thresholds.length ? thresholds : undefined,
+      invulnNextIdx: thresholds.length ? 0 : undefined,
+    };
+  }
+
+  /**
+   * Item 5 — does ANY hero clear the "strong party" bar: a completed multiclass
+   * (an extra class carrying its two subclass skills) OR ≥3 grand improvements?
+   * Bots count, since they earn upgrades too. Gates the boss invuln mechanic.
+   */
+  private bandIsStrong(): boolean {
+    return this.players.some((p) => {
+      if (grandCount(p.charUpgradeIds) >= 3) return true;
+      const primary = p.classes?.[0];
+      return (p.classes ?? []).some(
+        (c) => c !== primary && subSkillsForClass(c, p.subSkillIds ?? []).length >= 2,
+      );
     });
   }
 
@@ -1794,6 +1849,9 @@ export class World {
       this.events.push({ t: 'enrage', id: boss.id, pos: { ...boss.pos } });
     }
 
+    // Temporary-invulnerability beat (item 5) — fire the next telegraphed window.
+    this.tickBossInvuln(boss);
+
     // Passive affix upkeep (trails, wards, waves, thorns, ramping haste). Runs
     // whether or not the boss is stunned; the "active" ones pause while stunned.
     const stunned = hasBuff(boss, 'stun');
@@ -2059,10 +2117,32 @@ export class World {
   private applyVampiric(boss: Boss, dealtToPlayers: number): void {
     if (dealtToPlayers <= 0 || !hasAffix(boss, 'vampiric')) return;
     const before = boss.hp;
-    boss.hp = Math.min(boss.maxHp, boss.hp + dealtToPlayers * AFFIX_VAMPIRIC_FRAC);
+    // Progression-aware damping (item 2): Vampiric is an active heal, so an
+    // early/weak fight keeps only a fraction — a party can't be out-sustained on
+    // the opener — while a late fight keeps the full lifesteal.
+    const gain = dealtToPlayers * AFFIX_VAMPIRIC_FRAC * (boss.healScale ?? 1);
+    boss.hp = Math.min(boss.maxHp, boss.hp + gain);
     const healed = boss.hp - before;
     if (healed > 0) {
       this.events.push({ t: 'heal', pos: { ...boss.pos }, amount: healed, targetId: boss.id });
+    }
+  }
+
+  /**
+   * Item 5 — fire the next telegraphed invuln window once the boss crosses its
+   * threshold. One window at a time (bounds total uptime), at most two per boss,
+   * and the first threshold sits high enough that it's reached before death — so a
+   * qualifying boss always shows the mechanic, yet a DPS check can never wall out.
+   */
+  private tickBossInvuln(boss: Boss): void {
+    const thresholds = boss.invulnThresholds;
+    if (!thresholds) return;
+    const idx = boss.invulnNextIdx ?? 0;
+    if (idx >= thresholds.length || boss.hp <= 0) return;
+    if (hasBuff(boss, 'invuln')) return; // one window at a time
+    if (boss.hp / boss.maxHp <= thresholds[idx]) {
+      applyBuff(boss, makeBuff('invuln', 0, BOSS_INVULN_WINDOW_S, 'bossInvuln'));
+      boss.invulnNextIdx = idx + 1;
     }
   }
 
