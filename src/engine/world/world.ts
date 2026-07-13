@@ -142,6 +142,7 @@ import {
 // torus. `wrapPos` canonicalises positions after they move (see §infinite-map).
 import { sub, dist, distSq, pointInSegment, wrapPos } from '../core/torus';
 import { getClass, cloneAbilities, slowAttackCooldowns } from '../content/classes';
+import type { PlayerAbilityDef } from '../content/classes';
 import { applyUpgrades } from '../content/upgrades';
 import type { UpgradeId } from '../content/upgrades';
 import {
@@ -215,8 +216,17 @@ function activeSubSkillIds(p: Player): string[] {
     .filter((id) => subclassOfSkill(id)?.classId === p.classId)
     .slice(0, 2);
 }
-/** Cooldown gate (s) after a multiclass swap, so it can't be spammed for free casts. */
-const CLASS_SWAP_CD = 1.0;
+/**
+ * A multiclass swap is INSTANT (item 7) — the gesture never silently rejects, so a
+ * rapid A→B→A registers on the fast second press. The anti-exploit lever moved off
+ * the swap gesture and onto the kit it hands you: swapping in floors each DAMAGING
+ * slot's cooldown to `SWAP_CAST_FLOOR` seconds, so you still can't pump two fresh
+ * offensive kits by ping-ponging classes. Utility/mobility slots (dash, blink, heal,
+ * buffs, taunt) keep their real cooldown, so a quick defensive dip stays snappy.
+ */
+const SWAP_CAST_FLOOR = 1.0;
+/** Brief cosmetic "just swapped" timer (s) — drives HUD feedback only; never gates. */
+const SWAP_FX_CD = 0.3;
 // Ephemeral shop consumables (item 21).
 /** Healing-vial restore, as a fraction of max HP. */
 const EPHEMERAL_POTION_HEAL = 0.4;
@@ -1163,11 +1173,13 @@ export class World {
   /**
    * Swap the hero's active class. The previous kit's cooldowns are stashed and the
    * target kit's restored, so "all cooldowns are respected per class" (item 14).
-   * A short swap gate prevents free-cast spam. Subclass skills persist across swaps.
+   * The swap itself is INSTANT (item 7) — it never rejects on a timer, so a rapid
+   * A→B→A registers immediately. Free-cast spam is instead blocked by flooring the
+   * restored offensive cooldowns (see floorSwapOffensiveCooldowns). Subclass skills
+   * persist across swaps.
    */
   setActiveClass(p: Player, classId: ClassId): void {
     if (p.classId === classId || !p.classTables || !p.classCooldowns) return;
-    if (p.swapCd != null && p.swapCd > 0) return;
     const table = p.classTables[classId];
     if (!table) return;
     // Stash the current class's base-slot AND subclass-slot cooldowns: each class
@@ -1193,9 +1205,37 @@ export class World {
     };
     // Swap sub1/sub2 to the new class's subclass skills (or clear if it has none).
     this.rebindActiveSubs(p);
+    // Anti-exploit (item 7): the swap is free, but the OFFENSIVE kit it hands you is
+    // not hot on arrival — floor each damaging slot so ping-ponging classes can't
+    // stack two fresh bursts. Runs after rebindActiveSubs so the sub slots exist.
+    this.floorSwapOffensiveCooldowns(p);
     p.castTimer = 0;
     p.castSlot = null;
-    p.swapCd = CLASS_SWAP_CD;
+    p.swapCd = SWAP_FX_CD; // cosmetic only — the swap already happened
+  }
+
+  /**
+   * Floor every DAMAGING slot of the freshly-swapped-in kit to `SWAP_CAST_FLOOR`
+   * (item 7). Only raises a cooldown, never lowers one, so a slot already deeper on
+   * cooldown is untouched. Heals, buffs, taunts and pure mobility (dash/blink with
+   * no landing damage) are left instant so a quick defensive dip stays responsive.
+   */
+  private floorSwapOffensiveCooldowns(p: Player): void {
+    const isOffensive = (ab?: PlayerAbilityDef): boolean => {
+      if (!ab || ab.kind === 'heal' || ab.kind === 'buffAlly') return false;
+      return (ab.damage ?? 0) > 0 || (ab.zoneTickDamage ?? 0) > 0 || (ab.landingDamage ?? 0) > 0;
+    };
+    const table = p.abilities ?? getClass(p.classId).abilities;
+    for (const slot of SLOTS) {
+      if (isOffensive(table[slot])) {
+        p.cooldowns[slot] = Math.max(p.cooldowns[slot], SWAP_CAST_FLOOR);
+      }
+    }
+    for (const slot of SUB_SLOTS) {
+      if (isOffensive(p.subAbilities?.[slot])) {
+        p.cooldowns[slot] = Math.max(p.cooldowns[slot] ?? 0, SWAP_CAST_FLOOR);
+      }
+    }
   }
 
   /** Decay the saved cooldowns of the classes the hero is NOT currently wielding. */
