@@ -994,3 +994,48 @@ export function synthesizeClass(seed: number, base: ClassDef, donors: Donor[]): 
   const name = forgeName(top, (k) => (k <= 0 ? 0 : rng.int(0, k - 1)), { connectiveChance: 0.35 });
   return { ...base, name, abilities };
 }
+
+// ---------------------------------------------------------------------------
+// 8. Active-run registry — mirrors procgen's, gating Chaos Forge synthesis
+// ---------------------------------------------------------------------------
+
+let forgeSeedVal: number | null = null;
+/** Synthesized content for the active Forge seed, keyed `<kind>:<id>` (lazy). */
+const forgeCache = new Map<string, unknown>();
+
+/**
+ * Activate (or clear, with `null`) the Chaos Forge run whose SYNTHESIZED content
+ * every getter should resolve. Set from the shared master seed on the host AND
+ * every client (alongside setProceduralSeed) when Chaos Forge mode is on, so all
+ * peers synthesize identical kits/monsters/boons/shop. Cheap + idempotent; the
+ * cache is kept while the seed is unchanged. When null, getters fall back to the
+ * numeric-variance (procgen) or canonical content — Forge layers ON TOP, it does
+ * not replace the other modes.
+ */
+export function setForgeSeed(seed: number | null): void {
+  if (seed === forgeSeedVal) return;
+  forgeSeedVal = seed;
+  forgeCache.clear();
+}
+
+/** The active Forge seed, or null when Forge synthesis is off. */
+export function forgeSeed(): number | null {
+  return forgeSeedVal;
+}
+
+/**
+ * Resolve the active Forge run's synthesized variant of one content entry,
+ * generating + caching it on first use — or `null` when Forge is off, which tells
+ * the content getter to fall through to procgen/canonical. Mirrors
+ * procgen.procVariant so the run plumbing (getClass/getMonster/…) composes.
+ */
+export function forgeVariant<T>(kind: string, id: string, make: (seed: number) => T): T | null {
+  if (forgeSeedVal === null) return null;
+  const key = `${kind}:${id}`;
+  let hit = forgeCache.get(key) as T | undefined;
+  if (hit === undefined) {
+    hit = make(forgeSeedVal);
+    forgeCache.set(key, hit);
+  }
+  return hit;
+}

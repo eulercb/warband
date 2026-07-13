@@ -5,7 +5,7 @@
 import type { ClassId, AbilitySlot, ExtSlot, ZoneKind } from '../core/types';
 import { PLAYER_RADIUS, CLASS_COLORS, ATTACK_CD_SCALE } from '../core/constants';
 import { procVariant, classVariant } from './procgen';
-import { describeComposed } from './forge';
+import { describeComposed, forgeVariant, synthesizeClass, type Donor } from './forge';
 
 /** How an ability resolves. Interpreted by abilities.ts. */
 export type AbilityKind =
@@ -772,7 +772,33 @@ export const DEFAULT_CLASS: ClassId = 'knight';
  * `CLASSES[...]` reads of those stay valid.
  */
 export function getClass(id: ClassId): ClassDef {
+  // Chaos Forge (docs/CHAOS_FORGE.md) takes precedence when its run is active:
+  // the class is a component-recombined FUSION (fused kit + fused name) keyed by
+  // id, so every "knight" this run plays the same synthesized kit. Falls through
+  // to numeric-variance (procgen) then canonical when Forge is off — Forge layers
+  // on top of the other modes, it never mutates the canonical data.
+  const forged = forgeVariant('class', id, (seed) => synthesizeClass(seed, CLASSES[id], forgeDonors()));
+  if (forged) return forged;
   return procVariant('class', id, (seed) => classVariant(seed, CLASSES[id])) ?? CLASSES[id];
+}
+
+/**
+ * The component library Chaos Forge draws from: every CANONICAL class ability,
+ * tagged with its source. Built from the static CLASSES table (NOT getClass, to
+ * avoid recursion) and memoized — it is stable for the process, and a class
+ * added in a future update joins the pool automatically (req. 10). */
+let FORGE_DONORS: Donor[] | null = null;
+function forgeDonors(): Donor[] {
+  if (FORGE_DONORS) return FORGE_DONORS;
+  const out: Donor[] = [];
+  for (const cid of CLASS_IDS) {
+    const c = CLASSES[cid];
+    for (const slot of ['basic', 'a1', 'a2', 'a3'] as AbilitySlot[]) {
+      out.push({ name: c.abilities[slot].name, classId: cid, className: c.name, slot, def: c.abilities[slot] });
+    }
+  }
+  FORGE_DONORS = out;
+  return out;
 }
 
 /** Ability kinds that count as a twitchy "attack" for the global CD slow-down. */
