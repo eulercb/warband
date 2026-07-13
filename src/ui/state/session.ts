@@ -133,12 +133,32 @@ function resolveHostSeed(): number | undefined {
   return undefined; // 'random'
 }
 
-// eslint-disable-next-line @typescript-eslint/require-await
-export async function hostGame(): Promise<void> {
+/**
+ * item 8 — an optional up-front loadout for Single-fight mode (granted subclass
+ * skills / extra classes / upgrades). Applied only for a single fight; a gauntlet
+ * ignores it (upgrades accrue between bosses instead).
+ */
+export interface SingleFightLoadout {
+  subSkills?: string[];
+  charUpgrades?: string[];
+  upgrades?: UpgradeId[];
+  extraClasses?: ClassId[];
+}
+
+// eslint-disable-next-line @typescript-eslint/require-await -- async for API symmetry with client
+export async function hostGame(loadout?: SingleFightLoadout): Promise<void> {
   const st = useStore.getState();
   const code = generateRoomCode();
   const net: NetMode = st.netMode;
   writeRoomToHash(code, net);
+
+  // Only a single fight consumes the up-front loadout, and only when it has content.
+  const hasLoadout =
+    !!loadout &&
+    ((loadout.subSkills?.length ?? 0) > 0 ||
+      (loadout.charUpgrades?.length ?? 0) > 0 ||
+      (loadout.upgrades?.length ?? 0) > 0 ||
+      (loadout.extraClasses?.length ?? 0) > 0);
 
   const host = new Host({
     code,
@@ -146,6 +166,7 @@ export async function hostGame(): Promise<void> {
     monsterId: st.monsterId,
     gauntlet: st.gauntlet,
     hardcore: st.hardcore,
+    loadout: st.gauntlet || !hasLoadout ? undefined : loadout,
     seed: resolveHostSeed(),
     name: nameOrDefault(),
     classId: st.localClass,

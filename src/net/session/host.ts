@@ -118,6 +118,20 @@ export interface HostOpts {
   seed?: number;
   /** Hardcore run (item 11): deadlier corruption cadence, limited revives, no free retry. */
   hardcore?: boolean;
+  /**
+   * item 8 — an up-front loadout for the HOST hero, applied at the FIRST fight so
+   * Single-fight mode can test specific builds (granted subclass skills, an extra
+   * class, character/generic upgrades) without grinding a full run. Seeded into the
+   * host's per-peer maps in `startFight` AFTER the run-reset clears, so it survives
+   * the reset yet never leaks into a gauntlet (where upgrades accrue between bosses).
+   * Absent / empty for an ordinary run.
+   */
+  loadout?: {
+    upgrades?: UpgradeId[];
+    charUpgrades?: string[];
+    subSkills?: string[];
+    extraClasses?: ClassId[];
+  };
   /** Transport: peer-to-peer WebRTC (default) or the global-server relay. */
   net?: NetMode;
   /** Called whenever lobby state changes (including immediately in the ctor). */
@@ -569,6 +583,15 @@ export class Host implements NetSession {
     this.roundPickedGeneric.clear();
     this.roundPickedChar.clear();
     this.nextReadyPeers.clear();
+    // item 8: seed the host's up-front Single-fight loadout AFTER the run-reset clears,
+    // so a chosen build is live from the first (and only) fight.
+    const lo = this.opts.loadout;
+    if (lo) {
+      if (lo.upgrades?.length) this.upgrades.set(selfId, [...lo.upgrades]);
+      if (lo.charUpgrades?.length) this.charUpgrades.set(selfId, [...lo.charUpgrades]);
+      if (lo.subSkills?.length) this.subSkillsByPeer.set(selfId, [...lo.subSkills]);
+      if (lo.extraClasses?.length) this.extraClassesByPeer.set(selfId, [...lo.extraClasses]);
+    }
     this.beginFight();
   }
 

@@ -9,6 +9,20 @@ import { useGamepadMenu } from '../../input/useGamepadMenu';
 import { MONSTER_IDS, MONSTERS } from '../../engine/content/monsters';
 import { RUN_LENGTH } from '../../engine/core/constants';
 import { configuredRelayUrl } from '../../net/transport/room';
+import { CLASSES } from '../../engine/content/classes';
+import { subclassesFor } from '../../engine/content/subclasses';
+import { CHAR_UPGRADES_BY_CLASS } from '../../engine/content/charUpgrades';
+import { UPGRADE_IDS, getUpgrade } from '../../engine/content/upgrades';
+import type { UpgradeId } from '../../engine/content/upgrades';
+
+/** Toggle `v` in `arr` (add if absent, remove if present); refuses to grow past `cap`. */
+function toggle<T>(arr: T[], v: T, cap = Infinity): T[] {
+  if (arr.includes(v)) return arr.filter((x) => x !== v);
+  return arr.length >= cap ? arr : [...arr, v];
+}
+
+/** Up to this many subclass skills may be granted up front (matches the fight cap). */
+const MAX_SF_SUBSKILLS = 2;
 
 /** Convert a PixiJS numeric color (0xRRGGBB) to a CSS hex string. */
 function toHex(n: number): string {
@@ -34,15 +48,23 @@ export function HostSetup() {
   const setError = useStore((s) => s.setError);
   const relayConfigured = configuredRelayUrl() !== null;
 
+  const localClass = useStore((s) => s.localClass);
+
   const panelRef = useRef<HTMLDivElement>(null);
   const [creating, setCreating] = useState(false);
+  // item 8: up-front Single-fight customization (granted subclass skills + boons).
+  const [subSel, setSubSel] = useState<string[]>([]);
+  const [charSel, setCharSel] = useState<string[]>([]);
+  const [genSel, setGenSel] = useState<UpgradeId[]>([]);
 
   const onCreate = async (): Promise<void> => {
     if (creating) return;
     playUiSound('uiConfirm');
     setCreating(true);
     try {
-      await hostGame();
+      // The loadout is only consumed for a single fight (hostGame ignores it in a
+      // gauntlet), so it is always safe to pass the current selection.
+      await hostGame({ subSkills: subSel, charUpgrades: charSel, upgrades: genSel });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create room.');
       setCreating(false);
@@ -210,6 +232,90 @@ export function HostSetup() {
             </span>
           </button>
         )}
+
+        {/* item 8: Single-fight character customization — grant subclass skills and
+            boons up front to test a specific build against the chosen boss. Hidden in
+            gauntlet mode, where a build is earned between bosses instead. */}
+        {!gauntlet ? (
+          <div className="wb-field wb-sf-customize" role="group" aria-label="Customize your hero">
+            <span className="wb-field-label">Customize your hero (optional)</span>
+            <span className="wb-gauntlet-sub">
+              Test a build against this boss — grant subclass skills and boons up front.
+            </span>
+
+            <span className="wb-field-label">
+              Subclass skills — pick up to {MAX_SF_SUBSKILLS} ({subSel.length}/{MAX_SF_SUBSKILLS})
+            </span>
+            {subclassesFor(localClass).map((sub) => (
+              <div key={sub.id} className="wb-pad-scheme-row" role="group" aria-label={sub.name}>
+                {sub.skills.map((sk) => {
+                  const on = subSel.includes(sk.id);
+                  return (
+                    <button
+                      type="button"
+                      key={sk.id}
+                      className={`wb-btn wb-btn-chip${on ? ' selected' : ''}`}
+                      onClick={() => {
+                        playUiSound('uiClick');
+                        setSubSel((s) => toggle(s, sk.id, MAX_SF_SUBSKILLS));
+                      }}
+                      aria-pressed={on}
+                      disabled={!on && subSel.length >= MAX_SF_SUBSKILLS}
+                      title={sk.desc}
+                    >
+                      {sk.icon} {sk.name}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+
+            <span className="wb-field-label">{CLASSES[localClass].name} boons</span>
+            <div className="wb-pad-scheme-row">
+              {(CHAR_UPGRADES_BY_CLASS[localClass] ?? []).map((u) => {
+                const on = charSel.includes(u.id);
+                return (
+                  <button
+                    type="button"
+                    key={u.id}
+                    className={`wb-btn wb-btn-chip${on ? ' selected' : ''}`}
+                    onClick={() => {
+                      playUiSound('uiClick');
+                      setCharSel((s) => toggle(s, u.id));
+                    }}
+                    aria-pressed={on}
+                    title={u.desc}
+                  >
+                    {u.icon} {u.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            <span className="wb-field-label">Generic boons</span>
+            <div className="wb-pad-scheme-row">
+              {UPGRADE_IDS.map((id) => {
+                const u = getUpgrade(id);
+                const on = genSel.includes(id);
+                return (
+                  <button
+                    type="button"
+                    key={id}
+                    className={`wb-btn wb-btn-chip${on ? ' selected' : ''}`}
+                    onClick={() => {
+                      playUiSound('uiClick');
+                      setGenSel((s) => toggle(s, id));
+                    }}
+                    aria-pressed={on}
+                    title={u.desc}
+                  >
+                    {u.icon} {u.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         <label className="wb-field">
           <span className="wb-field-label">Your name</span>

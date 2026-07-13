@@ -116,6 +116,42 @@ describe('<HostSetup> default single-fight view', () => {
     expect(useStore.getState().monsterId).toBe('troll');
     expect(playUiSound).toHaveBeenCalledWith('uiClick');
   });
+
+  it('single-fight customization: granted subclass skills + boons flow into hostGame (item 8)', async () => {
+    useStore.setState({ localClass: 'knight' });
+    render(<HostSetup />);
+
+    // The customization panel is present only in single-fight mode.
+    expect(screen.getByRole('group', { name: 'Customize your hero' })).toBeTruthy();
+
+    // Grant a Knight subclass skill and a Knight boon and a generic boon.
+    fireEvent.click(screen.getByRole('button', { name: /Earthshaker/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Impenetrable/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Vigor/ }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Room' }));
+    await Promise.resolve();
+
+    expect(hostGame).toHaveBeenCalledTimes(1);
+    const loadout = (hostGame as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][0] as {
+      subSkills: string[];
+      charUpgrades: string[];
+      upgrades: string[];
+    };
+    expect(loadout.subSkills).toContain('kn_champion_slam'); // Earthshaker
+    expect(loadout.charUpgrades).toContain('kn_bulwark'); // Iron Bulwark boon
+    expect(loadout.upgrades).toContain('vigor');
+  });
+
+  it('caps up-front subclass-skill grants at two (item 8)', () => {
+    useStore.setState({ localClass: 'knight' });
+    render(<HostSetup />);
+    // Pick three skills; the third must be refused (disabled once two are chosen).
+    fireEvent.click(screen.getByRole('button', { name: /Earthshaker/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Riposte/ }));
+    const third = screen.getByRole<HTMLButtonElement>('button', { name: /Bull Rush/ });
+    expect(third.disabled).toBe(true);
+  });
 });
 
 // --------------------------------------------------------------------------
