@@ -20,6 +20,7 @@ import {
   GRAND_BY_CLASS,
   SKILL_GRANDS,
   SUBCLASS_GRANDS,
+  GRAFT_GRANDS,
 } from '../src/engine/content/charUpgrades';
 import { CLASSES, CLASS_IDS, cloneAbilities } from '../src/engine/content/classes';
 import type { PlayerAbilityDef, AbilityKind } from '../src/engine/content/classes';
@@ -119,20 +120,22 @@ describe('character-upgrade catalog', () => {
     expect(classGrand).toHaveLength(12 * 2); // 2 class capstones per class (item 22)
     expect(SKILL_GRANDS).toHaveLength(12 * 4 * 2); // 2 per base skill: 12 × (basic/a1/a2/a3) × 2 = 96
     expect(SUBCLASS_GRANDS).toHaveLength(12 * 2 * 2); // 2 per subclass: 24 subclasses × 2 = 48
+    expect(GRAFT_GRANDS).toHaveLength(4 * 2); // 2 per skill-replacing graft: 4 grafts × 2 = 8 (item 18)
     const all = [
       ...Object.values(CHAR_UPGRADES_BY_CLASS).flat(),
       ...HYBRID_UPGRADES,
       ...classGrand,
       ...SKILL_GRANDS,
       ...SUBCLASS_GRANDS,
+      ...GRAFT_GRANDS,
     ];
-    expect(all).toHaveLength(12 * 5 + 9 + 24 + 96 + 48); // 237
+    expect(all).toHaveLength(12 * 5 + 9 + 24 + 96 + 48 + 8); // 245
     const ids = all.map((d) => d.id);
     expect(new Set(ids).size).toBe(ids.length); // no duplicates
-    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(237);
+    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(245);
     for (const id of ids) expect(CHAR_UPGRADES[id].id).toBe(id);
-    // Every grand improvement (class, skill, subclass) is uniquely capped at one stack.
-    for (const d of [...classGrand, ...SKILL_GRANDS, ...SUBCLASS_GRANDS]) {
+    // Every grand improvement (class, skill, subclass, graft) is uniquely capped at one stack.
+    for (const d of [...classGrand, ...SKILL_GRANDS, ...SUBCLASS_GRANDS, ...GRAFT_GRANDS]) {
       expect(d.grand).toBe(true);
       expect(d.maxStacks).toBe(1);
     }
@@ -165,6 +168,27 @@ describe('character-upgrade catalog', () => {
     }
     expect(bySub.size).toBe(24); // every subclass represented
     for (const [, n] of bySub) expect(n).toBe(2); // exactly two per subclass
+  });
+
+  it('tags every graft grand with a real skill-replacing graft, two per graft (item 18)', () => {
+    // The skill-replacing grafts are exactly the hybrids with a `replaces` slot.
+    const grafts = HYBRID_UPGRADES.filter((h) => h.replaces);
+    expect(grafts.map((h) => h.id).sort()).toEqual([
+      'hy_fieldmedic',
+      'hy_pyromancer',
+      'hy_shadowpact',
+      'hy_warhowl',
+    ]);
+    const byGraft = new Map<string, number>();
+    for (const d of GRAFT_GRANDS) {
+      expect(d.classId).toBe('any'); // class-agnostic — any hero can bolt on the graft
+      expect(d.skillSlot).toBeUndefined();
+      expect(d.subclassId).toBeUndefined();
+      expect(grafts.some((h) => h.id === d.graftId)).toBe(true); // names a real graft
+      byGraft.set(d.graftId!, (byGraft.get(d.graftId!) ?? 0) + 1);
+    }
+    expect(byGraft.size).toBe(4); // every skill-replacing graft covered
+    for (const [, n] of byGraft) expect(n).toBe(2); // exactly two per graft
   });
 });
 
@@ -563,6 +587,106 @@ describe('hybrid grafts replace a slot with a foreign ability', () => {
     // Source Heal stays pristine (tweak mutated the copy only).
     expect(CLASSES.cleric.abilities.a1.damage).toBe(60);
     expect(CLASSES.cleric.abilities.a1.name).toBe('Heal');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GRAFT grands (item 18) — two radical capstones per skill-replacing graft, each
+// transforming the grafted FOREIGN skill. A knight can hold all four grafts (none
+// excludes it), so it is the host for the apply-correctness sweep.
+// ---------------------------------------------------------------------------
+
+describe('graft grands transform the grafted skill, and only with the graft held (item 18)', () => {
+  /** The graft each grand belongs to, and the slot that graft occupies. */
+  const graftOf = (grandId: string) => {
+    const grand = CHAR_UPGRADES[grandId];
+    const graft = HYBRID_UPGRADES.find((h) => h.id === grand.graftId)!;
+    return { graftId: graft.id, slot: graft.replaces! };
+  };
+
+  it('there are two graft grands for each of the four skill-replacing grafts', () => {
+    expect(GRAFT_GRANDS).toHaveLength(8);
+  });
+
+  for (const def of GRAFT_GRANDS) {
+    it(`${def.id} retunes the grafted skill when the graft is held`, () => {
+      const { graftId, slot } = graftOf(def.id);
+      const withGraft = apply('knight', [graftId]).abilities![slot];
+      const withGrand = apply('knight', [graftId, def.id]).abilities![slot];
+      // The grand measurably changed the grafted skill (same skill, new numbers).
+      expect(withGrand.name).toBe(withGraft.name);
+      expect(JSON.stringify(withGrand)).not.toBe(JSON.stringify(withGraft));
+    });
+
+    it(`${def.id} is a no-op when the hero never took the graft`, () => {
+      const { slot } = graftOf(def.id);
+      // Applied without the graft, the grand touches nothing — the native kit is
+      // byte-identical to a hero who took no upgrades at all.
+      const pristine = apply('knight', []).abilities!;
+      const withGrandOnly = apply('knight', [def.id]).abilities!;
+      expect(JSON.stringify(withGrandOnly)).toBe(JSON.stringify(pristine));
+      // and in particular the native skill in the graft's slot is untouched.
+      expect(withGrandOnly[slot].name).toBe(CLASSES.knight.abilities[slot].name);
+    });
+  }
+
+  it('Living Cataclysm swells the grafted Fireball by exact amounts', () => {
+    const fb = CLASSES.mage.abilities.a1; // dmg 70, impactRadius 100
+    const a2 = apply('knight', ['hy_pyromancer', 'hy_pyromancer_g_a']).abilities!.a2;
+    expect(a2.name).toBe('Fireball');
+    expect(a2.damage).toBe((fb.damage ?? 0) + 60);
+    expect(a2.impactRadius).toBe((fb.impactRadius ?? 0) + 80);
+  });
+
+  it('Chain Ignition makes the grafted Fireball fast and freezing', () => {
+    const fb = CLASSES.mage.abilities.a1; // castTime 0.7, cooldown 7
+    const a2 = apply('knight', ['hy_pyromancer', 'hy_pyromancer_g_b']).abilities!.a2;
+    expect(a2.castTime!).toBeCloseTo((fb.castTime ?? 0) * 0.35, 5);
+    expect(a2.cooldown).toBeCloseTo(fb.cooldown * 0.5, 5);
+    expect(a2.freeze!).toBeCloseTo(0.9, 5); // projectiles the sim can freeze
+  });
+
+  it('Umbral Reservoir teaches the grafted Shadowstep to heal and reach', () => {
+    const step = CLASSES.rogue.abilities.a2; // range 240, iframes 0.3, no healOnUse
+    const a3 = apply('knight', ['hy_shadowpact', 'hy_shadowpact_g_b']).abilities!.a3;
+    expect(a3.name).toBe('Shadowstep');
+    expect(a3.range).toBe((step.range ?? 0) + 160);
+    expect(a3.healOnUse).toBe(45); // gained from nothing (absent field → +45)
+    expect(a3.iframes!).toBeCloseTo((step.iframes ?? 0) + 0.25, 5);
+  });
+
+  it('Undying Fury grants the grafted Rage brand-new mitigation', () => {
+    const rage = CLASSES.barbarian.abilities.a1; // no buffDefMult, cooldown 14
+    expect(rage.buffDefMult).toBeUndefined();
+    const a1 = apply('knight', ['hy_warhowl', 'hy_warhowl_g_b']).abilities!.a1;
+    expect(a1.buffDefMult!).toBeCloseTo(0.55, 5); // −45% damage taken while raging
+    expect(a1.cooldown).toBeCloseTo(rage.cooldown * 0.65, 5);
+  });
+
+  it('Battlefield Surgeon turns the grafted Field Dressing into a real mend', () => {
+    // Field Dressing is the tweaked Heal (dmg 45, range 400).
+    const a2 = apply('knight', ['hy_fieldmedic', 'hy_fieldmedic_g_a']).abilities!.a2;
+    expect(a2.name).toBe('Field Dressing');
+    expect(a2.damage).toBe(45 + 75);
+    expect(a2.range).toBe(400 + 150);
+  });
+
+  it('accrues onto the graft itself — a reclaim never lets it touch the native skill', () => {
+    // Take the graft, grand it, then reclaim the native a2 (Shield Wall). The grand
+    // must NOT bleed onto the reclaimed native — it belongs to the stashed Fireball.
+    const reclaimed = apply('knight', ['hy_pyromancer', 'hy_pyromancer_g_a', 'restore:a2'])
+      .abilities!.a2;
+    expect(reclaimed.name).toBe('Shield Wall'); // native back
+    expect(JSON.stringify(reclaimed)).toBe(JSON.stringify(CLASSES.knight.abilities.a2)); // pristine
+    // Re-graft: the stashed Fireball returns with the grand still baked in.
+    const regrafted = apply('knight', [
+      'hy_pyromancer',
+      'hy_pyromancer_g_a',
+      'restore:a2',
+      'hy_pyromancer',
+    ]).abilities!.a2;
+    expect(regrafted.name).toBe('Fireball');
+    expect(regrafted.damage).toBe(70 + 60); // grand persisted across the round-trip
   });
 });
 
@@ -1457,14 +1581,48 @@ describe('offerableGrands (items 17 & 19)', () => {
     ).not.toContain('kn_champion_g_a');
   });
 
+  it('surfaces a graft grand only while the hero holds that graft (item 18)', () => {
+    // No graft → no graft grand.
+    expect(offerableGrands('knight', [], []).map((d) => d.id)).not.toContain('hy_pyromancer_g_a');
+    // Graft held → both its grands are offered, but not another graft's.
+    const held = offerableGrands('knight', ['hy_pyromancer'], []).map((d) => d.id);
+    expect(held).toContain('hy_pyromancer_g_a');
+    expect(held).toContain('hy_pyromancer_g_b');
+    expect(held).not.toContain('hy_shadowpact_g_a'); // a graft the hero doesn't hold
+  });
+
+  it('stops offering a graft grand once the graft is reclaimed away (item 18)', () => {
+    const ids = offerableGrands('knight', ['hy_pyromancer', 'restore:a2'], []).map((d) => d.id);
+    expect(ids).not.toContain('hy_pyromancer_g_a'); // Fireball dropped → its grand is gone
+    expect(ids).not.toContain('hy_pyromancer_g_b');
+  });
+
+  it('never offers a graft grand to a class the graft excludes (item 18)', () => {
+    // A Mage can't hold Pyromancer's Pact (it excludes mage), so even with the id in
+    // the owned list the graft never seats — and its grand never surfaces.
+    const ids = offerableGrands('mage', ['hy_pyromancer'], []).map((d) => d.id);
+    expect(ids).not.toContain('hy_pyromancer_g_a');
+    expect(ids).not.toContain('hy_pyromancer_g_b');
+  });
+
+  it('drops a graft grand already held at its (1) cap (item 18)', () => {
+    const ids = offerableGrands('knight', ['hy_pyromancer', 'hy_pyromancer_g_a'], []).map(
+      (d) => d.id,
+    );
+    expect(ids).not.toContain('hy_pyromancer_g_a'); // capped
+    expect(ids).toContain('hy_pyromancer_g_b'); // its sibling is still open
+  });
+
   it('is empty for an unrecognised class', () => {
     expect(offerableGrands('nope' as ClassId, [], [])).toEqual([]);
   });
 });
 
-describe('base-skill + subclass grands never enter the between-boss pool (item 20)', () => {
-  it('a random sweep never yields a skill or subclass grand for any class', () => {
-    const grandIds = new Set([...SKILL_GRANDS, ...SUBCLASS_GRANDS].map((d) => d.id));
+describe('base-skill + subclass + graft grands never enter the between-boss pool (item 20)', () => {
+  it('a random sweep never yields a skill, subclass, or graft grand for any class', () => {
+    const grandIds = new Set(
+      [...SKILL_GRANDS, ...SUBCLASS_GRANDS, ...GRAFT_GRANDS].map((d) => d.id),
+    );
     for (const classId of CLASS_IDS) {
       const rng = lcg(0x51de ^ classId.length);
       for (let t = 0; t < 80; t++) {
@@ -1472,6 +1630,19 @@ describe('base-skill + subclass grands never enter the between-boss pool (item 2
           expect(grandIds.has(id)).toBe(false);
           expect(CHAR_UPGRADES[id]?.grand).not.toBe(true);
         }
+      }
+    }
+  });
+
+  it('a graft grand never leaks into the pool even while the graft is owned (item 18/20)', () => {
+    // Owning the graft opens reclaim / graftup re-offers, but its GRAND stays locked
+    // to the run-clear special reward — the between-boss shop must never surface it.
+    const rng = lcg(0xc0ffee);
+    for (let t = 0; t < 200; t++) {
+      for (const id of rollCharChoices('knight', 4, rng, ['hy_pyromancer'], [])) {
+        expect(id).not.toBe('hy_pyromancer_g_a');
+        expect(id).not.toBe('hy_pyromancer_g_b');
+        expect(CHAR_UPGRADES[id]?.grand).not.toBe(true);
       }
     }
   });

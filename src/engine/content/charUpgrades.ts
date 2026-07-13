@@ -89,6 +89,14 @@ export interface CharUpgradeDef {
    * is offered only for subclasses the hero has actually picked. Set by `gs`.
    */
   subclassId?: string;
+  /**
+   * A GRAFT grand (item 18): tied to a skill-replacing hybrid graft by its id (e.g.
+   * `hy_pyromancer`). Offered only while the hero currently holds that graft (its id
+   * occupies the slot it replaced), and its `apply` accrues onto the grafted skill
+   * itself — live in its slot or stashed after a reclaim — never onto a native skill
+   * that has reclaimed the slot. Class-agnostic (`classId: 'any'`). Set by `gg`.
+   */
+  graftId?: string;
   apply: (ctx: CharUpgradeCtx) => void;
 }
 
@@ -3358,6 +3366,149 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
   ),
 ];
 
+// ---------------------------------------------------------------------------
+// GRAFT grands (item 18) — two radical capstones for each skill-replacing hybrid
+// graft (a graft with a `replaces` slot: Pyromancer's Pact, Shadow Pact,
+// Berserker's Howl, Field Medic). Where a class capstone owns a native skill, a
+// graft grand owns the FOREIGN skill a hero bolted on — so it is class-agnostic and
+// surfaces only while that graft is actually held (occupancy in offerableGrands).
+// Unlike the subclass grands, the grafted skill lives in a real ability slot, so a
+// graft grand needs no `subAbilities` plumbing — it just tunes the slot's occupant
+// through the standard `abilities` path. To keep it welded to the graft (and never
+// bleed onto a native skill reclaimed into the slot), the replay routes it onto the
+// graft's own def, exactly like a `graftup` (see replayCharUpgrades). Each pulls
+// only levers the sim honours for that skill's kind: a Fireball bomb freezes/enlarges
+// (projectile), a blink gains i-frames/reach/heal, a self-buff deepens its buffs, a
+// heal pours harder or faster.
+// ---------------------------------------------------------------------------
+
+/** Graft-grand builder — a grand welded to a skill-replacing graft (forces grand +
+ *  maxStacks 1, classId 'any'). `tune` mutates whatever grafted skill sits in the
+ *  slot that graft replaced; the replay hands it that skill via the standard path. */
+function gg(
+  graftId: string,
+  id: string,
+  name: string,
+  icon: string,
+  desc: string,
+  tune: (ab: PlayerAbilityDef) => void,
+): CharUpgradeDef {
+  const slot = HYBRID.find((h) => h.id === graftId)!.replaces!;
+  return {
+    id,
+    classId: 'any',
+    graftId,
+    name,
+    icon,
+    desc,
+    grand: true,
+    maxStacks: 1,
+    apply: ({ abilities }) => tune(abilities[slot]),
+  };
+}
+
+export const GRAFT_GRANDS: CharUpgradeDef[] = [
+  // Pyromancer's Pact — grafts the Mage's Fireball (a 0.7s-charged 70-dmg bomb).
+  gg(
+    'hy_pyromancer',
+    'hy_pyromancer_g_a',
+    'Living Cataclysm',
+    '🌋',
+    'Your grafted Fireball becomes an apocalypse — +60 damage across a colossal blast (+80 radius)',
+    (ab) => {
+      addN(ab, 'damage', 60);
+      addN(ab, 'impactRadius', 80);
+    },
+  ),
+  gg(
+    'hy_pyromancer',
+    'hy_pyromancer_g_b',
+    'Chain Ignition',
+    '🔥',
+    'Your grafted Fireball snaps out near-instantly (−65% charge), recharges twice as fast, and freezes what it engulfs (0.9s)',
+    (ab) => {
+      mul(ab, 'castTime', 0.35);
+      mul(ab, 'cooldown', 0.5);
+      addN(ab, 'freeze', 0.9);
+    },
+  ),
+
+  // Shadow Pact — grafts the Rogue's Shadowstep (a 240u blink with 0.3s i-frames).
+  gg(
+    'hy_shadowpact',
+    'hy_shadowpact_g_a',
+    'Ceaseless Shadow',
+    '🌑',
+    'Your grafted Shadowstep resets in a blink (−65% cooldown) and phases you far longer (+0.5s i-frames)',
+    (ab) => {
+      mul(ab, 'cooldown', 0.35);
+      addN(ab, 'iframes', 0.5);
+    },
+  ),
+  gg(
+    'hy_shadowpact',
+    'hy_shadowpact_g_b',
+    'Umbral Reservoir',
+    '🩸',
+    'Your grafted Shadowstep hurls you +160u and drinks the dark, mending 45 on use (+0.25s i-frames)',
+    (ab) => {
+      addN(ab, 'range', 160);
+      addN(ab, 'healOnUse', 45);
+      addN(ab, 'iframes', 0.25);
+    },
+  ),
+
+  // Berserker's Howl — grafts the Barbarian's Rage (+35% dmg / +20% move self-buff).
+  gg(
+    'hy_warhowl',
+    'hy_warhowl_g_a',
+    'Avatar of Wrath',
+    '😤',
+    'Your grafted Rage erupts to +70% damage and +35% move speed, lasting 5s longer',
+    (ab) => {
+      addN(ab, 'buffDamageMult', 0.35);
+      addN(ab, 'buffMoveMult', 0.15);
+      addN(ab, 'buffDuration', 5);
+    },
+  ),
+  gg(
+    'hy_warhowl',
+    'hy_warhowl_g_b',
+    'Undying Fury',
+    '🛡️',
+    'Your grafted Rage now steels you too (−45% damage taken while raging), recharges 35% faster, and lasts 4s longer',
+    (ab) => {
+      setMin(ab, 'buffDefMult', 0.55);
+      mul(ab, 'cooldown', 0.65);
+      addN(ab, 'buffDuration', 4);
+    },
+  ),
+
+  // Field Medic — grafts a field-dressed Heal (a weakened 45-HP mend, 5s cooldown).
+  gg(
+    'hy_fieldmedic',
+    'hy_fieldmedic_g_a',
+    'Battlefield Surgeon',
+    '🏥',
+    'Your grafted Field Dressing becomes a true mend — +75 healing at far greater reach (+150u)',
+    (ab) => {
+      addN(ab, 'damage', 75);
+      addN(ab, 'range', 150);
+    },
+  ),
+  gg(
+    'hy_fieldmedic',
+    'hy_fieldmedic_g_b',
+    'Combat Medic',
+    '⚡',
+    'Your grafted Field Dressing patches wounds in a heartbeat (−55% cooldown) and pours +45 more',
+    (ab) => {
+      mul(ab, 'cooldown', 0.45);
+      addN(ab, 'damage', 45);
+    },
+  ),
+];
+
 /** Grand improvements grouped by class (item 22). */
 export const GRAND_BY_CLASS: Record<ClassId, CharUpgradeDef[]> = GRAND.reduce(
   (acc, d) => {
@@ -3411,6 +3562,7 @@ export const CHAR_UPGRADES: Record<string, CharUpgradeDef> = Object.fromEntries(
     ...GRAND,
     ...SKILL_GRANDS,
     ...SUBCLASS_GRANDS,
+    ...GRAFT_GRANDS,
   ].map((d) => [d.id, d]),
 );
 
@@ -3545,6 +3697,16 @@ function replayCharUpgrades(player: Player, ids: readonly string[]): Record<Abil
     }
     const def = CHAR_UPGRADES[id];
     if (!def || !upgradeAllowedFor(def, player.classId)) continue;
+    if (def.graftId) {
+      // A GRAFT grand (item 18): accrue onto the grafted skill's OWN def — live in
+      // its slot or stashed after a reclaim — via the same all-slot proxy a graftup
+      // uses, so it can never bleed onto a native skill that reclaimed the slot. A
+      // no-op until the graft is installed (its key is in the registry).
+      const target = registry.get(def.graftId);
+      if (target)
+        def.apply({ player, abilities: { basic: target, a1: target, a2: target, a3: target } });
+      continue;
+    }
     if (def.replaces) {
       // A graft: install (or re-seat a previously-stashed) foreign ability. The
       // displaced occupant simply stays in the registry, stashed under its key.
@@ -3778,15 +3940,16 @@ export function reofferCandidates(classId: ClassId, owned: readonly string[]): s
 
 /**
  * The grand improvements a hero of `classId` may be OFFERED at a run-clear, given
- * their owned character upgrades (grafts) + subclass skills (items 17 & 19):
+ * their owned character upgrades (grafts) + subclass skills (items 17, 18 & 19):
  *   • CLASS capstones — always (item 19 only gates them to owned classes, done by
  *     the caller iterating the hero's classes);
  *   • base-SKILL grands — only while that slot still holds its NATIVE skill, so a
  *     grafted-over slot never offers its lost skill's grand;
- *   • SUBCLASS grands — only for subclasses the hero has actually picked.
- * A grand already held at its (1) cap drops out. Pure; the caller flat-maps this
- * across the hero's owned classes (a grand belongs to exactly one class, so no
- * duplicates arise). See SpecialReward.tsx.
+ *   • SUBCLASS grands — only for subclasses the hero has actually picked;
+ *   • GRAFT grands (item 18) — only while the hero currently holds that graft (its
+ *     id occupies the slot it replaced). These are class-agnostic, so the SAME graft
+ *     grand can surface for more than one owned class; the caller dedupes by id.
+ * A grand already held at its (1) cap drops out. Pure. See SpecialReward.tsx.
  */
 export function offerableGrands(
   classId: ClassId,
@@ -3805,6 +3968,15 @@ export function offerableGrands(
     if (d.skillSlot && occupant[d.skillSlot] !== d.skillSlot) continue;
     // A subclass grand only surfaces once the hero holds a skill of that subclass.
     if (d.subclassId && !pickedSubclasses.has(d.subclassId)) continue;
+    out.push(d);
+  }
+  // Graft grands (item 18): offered only while the graft is live in the kit — its id
+  // sits in an occupied slot. An excluded or reclaimed graft leaves no such slot, so
+  // its grand stays hidden; a per-class occupancy replay keeps that honest.
+  const held = new Set<SkillKey>(Object.values(occupant));
+  for (const d of GRAFT_GRANDS) {
+    if (charUpgradeAtMax(d.id, ownedChar)) continue;
+    if (!held.has(d.graftId!)) continue;
     out.push(d);
   }
   return out;
