@@ -9,7 +9,9 @@ import {
   makeBuff,
   buffMult,
   tickBuffs,
+  coReviveSpeed,
 } from '../src/engine/combat/combat';
+import { REVIVE_TIME, REVIVE_MIN_TIME } from '../src/engine/core/constants';
 
 function mkPlayer(over: Partial<Player> = {}): Player {
   return {
@@ -192,5 +194,35 @@ describe('combat: regen lockout', () => {
     const boss = mkBoss();
     damageBoss(sink(), p, boss, 20);
     expect(boss.regenLockout).toBeGreaterThan(0); // the taken branch, for contrast
+  });
+});
+
+// ---------------------------------------------------------------------------
+// coReviveSpeed — co-revive speed-up with diminishing returns + a floor (item 10)
+// ---------------------------------------------------------------------------
+
+describe('coReviveSpeed (item 10)', () => {
+  it('is 1× for a lone (or no) reviver and rises with each additional reviver', () => {
+    expect(coReviveSpeed(0)).toBe(1);
+    expect(coReviveSpeed(1)).toBe(1);
+    expect(coReviveSpeed(2)).toBeGreaterThan(1);
+    expect(coReviveSpeed(3)).toBeGreaterThan(coReviveSpeed(2) - 1e-9);
+  });
+
+  it('has diminishing returns — each extra reviver helps less than the last', () => {
+    const gain2 = coReviveSpeed(2) - coReviveSpeed(1);
+    const gain3 = coReviveSpeed(3) - coReviveSpeed(2);
+    expect(gain2).toBeGreaterThan(0);
+    expect(gain3).toBeLessThan(gain2); // the 2nd extra reviver adds less than the 1st
+  });
+
+  it('clamps so the revive can NEVER complete faster than the minimum time', () => {
+    const cap = REVIVE_TIME / REVIVE_MIN_TIME;
+    expect(coReviveSpeed(3)).toBeLessThanOrEqual(cap);
+    expect(coReviveSpeed(50)).toBeLessThanOrEqual(cap); // saturates, never exceeds the cap
+    // Effective revive time (REVIVE_TIME / speed) is floored at REVIVE_MIN_TIME.
+    for (const n of [2, 3, 4, 10, 100]) {
+      expect(REVIVE_TIME / coReviveSpeed(n)).toBeGreaterThanOrEqual(REVIVE_MIN_TIME - 1e-9);
+    }
   });
 });

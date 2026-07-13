@@ -2,7 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { World } from '../src/engine/world/world';
 import type { InputCommand, ButtonState } from '../src/engine/core/types';
 import { getMonster } from '../src/engine/content/monsters';
-import { DOWNED_BLEEDOUT, REVIVE_TIME, REVIVE_HP_FRAC } from '../src/engine/core/constants';
+import {
+  DOWNED_BLEEDOUT,
+  REVIVE_TIME,
+  REVIVE_HP_FRAC,
+  REVIVE_MIN_TIME,
+} from '../src/engine/core/constants';
+import { coReviveSpeed } from '../src/engine/combat/combat';
 
 function buttons(over: Partial<ButtonState> = {}): ButtonState {
   return { basic: false, a1: false, a2: false, a3: false, revive: false, ...over };
@@ -165,6 +171,59 @@ describe('world: downed / revive / wipe', () => {
     w.step(DT, new Map());
     expect(w.finished).toBe(true);
     expect(w.outcome).toBe('defeat');
+  });
+
+  it('co-revive: extra revivers speed the revive but never below the floor (item 10)', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 9,
+      players: [
+        { peerId: 'p1', name: 'P1', classId: 'ranger' },
+        { peerId: 'p2', name: 'P2', classId: 'knight' },
+        { peerId: 'p3', name: 'P3', classId: 'cleric' },
+        { peerId: 'p4', name: 'P4', classId: 'bard' },
+      ],
+    });
+    w.boss = null;
+    w.terrain = [];
+    const [p1, p2, p3, p4] = w.players;
+
+    // Keep the three helpers piled onto the downed p1 within revive range.
+    const cluster = (): void => {
+      p1.pos = { x: 400, y: 800 };
+      p2.pos = { x: 418, y: 800 };
+      p3.pos = { x: 400, y: 818 };
+      p4.pos = { x: 418, y: 818 };
+    };
+    const threeRevive = new Map([
+      ['p1', inp()],
+      ['p2', inp({ buttons: buttons({ revive: true }) })],
+      ['p3', inp({ buttons: buttons({ revive: true }) })],
+      ['p4', inp({ buttons: buttons({ revive: true }) })],
+    ]);
+
+    p1.hp = 0;
+    w.step(DT, new Map());
+    expect(p1.state).toBe('downed');
+
+    let steps = 0;
+    while (p1.state !== 'alive' && steps < 200) {
+      cluster();
+      w.step(DT, threeRevive);
+      steps++;
+      // First revive tick advances at DT × the co-revive multiplier for 3 revivers,
+      // i.e. strictly faster than a lone reviver's plain DT.
+      if (steps === 1) {
+        expect(p1.reviveProgress).toBeCloseTo(DT * coReviveSpeed(3), 5);
+        expect(coReviveSpeed(3)).toBeGreaterThan(1);
+      }
+    }
+    expect(p1.state).toBe('alive');
+    // Faster than a lone reviver (which needs REVIVE_TIME/DT = 60 ticks)…
+    expect(steps).toBeLessThan(Math.ceil(REVIVE_TIME / DT));
+    // …but the minimum-time floor holds: it never completes quicker than REVIVE_MIN_TIME.
+    expect(steps * DT).toBeGreaterThanOrEqual(REVIVE_MIN_TIME - 1e-9);
+    expect(p2.stats.revives).toBe(1); // the first in-range ally is credited
   });
 });
 

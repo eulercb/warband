@@ -258,6 +258,10 @@ export function MainMenu() {
             {error}
           </div>
         ) : null}
+        {/* item 7: the running build version, tucked in the menu corner. */}
+        <p className="wb-version" aria-label={`Version ${__APP_VERSION__}`}>
+          v{__APP_VERSION__}
+        </p>
       </div>
 
       {/* Totem channel progress */}

@@ -21,11 +21,35 @@ import {
   STUN_DR_WINDOW,
   STUN_DR_FLOOR,
   BOSS_REGEN_LOCKOUT_S,
+  REVIVE_TIME,
+  REVIVE_MIN_TIME,
+  REVIVE_COREVIVE_BONUS,
+  REVIVE_COREVIVE_FALLOFF,
 } from '../core/constants';
 
 /** Minimal structural sink so combat needn't import the World. */
 export interface EventSink {
   events: GameEvent[];
+}
+
+/**
+ * item 10 — co-revive rate multiplier for `reviverCount` allies reviving the SAME
+ * downed hero at once. One reviver is the baseline (1×). Each ADDITIONAL reviver adds
+ * a share of REVIVE_COREVIVE_BONUS that decays geometrically by REVIVE_COREVIVE_FALLOFF
+ * (the k-th extra reviver contributes BONUS·FALLOFF^(k-1)), so co-reviving helps with
+ * diminishing returns rather than stacking without bound. The multiplier is capped so
+ * the effective revive can never complete faster than REVIVE_MIN_TIME — never instant.
+ * Pure + deterministic (no RNG). `reviverCount <= 1` → 1 (no bonus).
+ */
+export function coReviveSpeed(reviverCount: number): number {
+  const extra = Math.max(0, Math.floor(reviverCount) - 1);
+  if (extra === 0) return 1;
+  // Closed-form geometric sum of the diminishing per-reviver bonuses.
+  const bonus =
+    (REVIVE_COREVIVE_BONUS * (1 - Math.pow(REVIVE_COREVIVE_FALLOFF, extra))) /
+    (1 - REVIVE_COREVIVE_FALLOFF);
+  const maxSpeed = REVIVE_TIME / REVIVE_MIN_TIME; // cap → the minimum-time floor
+  return Math.min(1 + bonus, maxSpeed);
 }
 
 // ---------------------------------------------------------------------------

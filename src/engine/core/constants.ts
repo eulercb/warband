@@ -59,8 +59,17 @@ export const BOSS_RECOVER_TIME = 0.4; // s after an ability resolves
 // --- Downed / revive ---
 export const DOWNED_BLEEDOUT = 20; // s
 export const REVIVE_RANGE = 60; // u
-export const REVIVE_TIME = 3; // s continuous hold
+export const REVIVE_TIME = 3; // s continuous hold (a single reviver)
 export const REVIVE_HP_FRAC = 0.4;
+// Co-revive (item 10): when MORE than one ally revives the same downed hero at once,
+// each ADDITIONAL reviver speeds the revive up — but with diminishing returns so it
+// never stacks out of hand, and clamped to a hard minimum time so it can NEVER be
+// instant. The k-th extra reviver adds REVIVE_COREVIVE_BONUS·FALLOFF^(k-1) to the
+// revive rate; the effective time is floored at REVIVE_MIN_TIME (see coReviveSpeed).
+// With these numbers: 1 reviver = 3.0s, 2 = ~1.67s, 3+ = 1.5s (the floor).
+export const REVIVE_COREVIVE_BONUS = 0.8; // first extra reviver: +80% revive rate
+export const REVIVE_COREVIVE_FALLOFF = 0.5; // each further reviver contributes half as much
+export const REVIVE_MIN_TIME = 1.5; // s — hard floor, no matter how many revive at once
 
 // --- Threat ---
 export const THREAT_DECAY = 0.05; // fraction/s

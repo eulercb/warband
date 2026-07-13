@@ -1852,6 +1852,15 @@ body {
   margin: 0 0 12px;
 }
 
+/* item 7: unobtrusive build-version label in the main-menu corner panel. */
+.wb-version {
+  margin: 10px 0 0;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  opacity: 0.65;
+}
+
 .wb-playground-panel .wb-menu-actions {
   display: flex;
   gap: 8px;

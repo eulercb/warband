@@ -932,7 +932,8 @@ const HYBRID: CharUpgradeDef[] = [
       'any',
       'hy_warhowl',
       "Berserker's Howl",
-      '📯',
+      '🐺', // item 4: was 📯 (a postal horn) — a feral howl now reads true
+
       'Graft the Barbarian’s Rage: +35% damage and +20% move speed for 6s (14s cooldown)',
       ({ abilities: a }) => {
         graft(a, 'a1', 'barbarian', 'a1');

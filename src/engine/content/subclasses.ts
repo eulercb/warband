@@ -334,7 +334,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
         sk(
           'mg_evoker_shield',
           'Arcane Shield',
-          '🔵',
+          '🛡️', // item 4: was a 🔵 placeholder (a shield skill now reads as a shield)
           'Take 50% less damage for 4s',
           buff('Arcane Shield', 12, { buffDefMult: 0.5, buffDuration: 4 }),
         ),
@@ -601,7 +601,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
         sk(
           'ro_trickster_shield',
           'Shield Spell',
-          '🔵',
+          '🛡️', // item 4: was a 🔵 placeholder
           'Take 50% less damage for 4s',
           buff('Shield Spell', 12, { buffDefMult: 0.5, buffDuration: 4 }),
         ),
@@ -981,7 +981,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
         sk(
           'so_wild_font',
           'Wild Ward',
-          '🔵',
+          '🛡️', // item 4: was a 🔵 placeholder
           'Take 45% less damage for 5s',
           buff('Wild Ward', 12, { buffDefMult: 0.55 }),
         ),

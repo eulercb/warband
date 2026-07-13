@@ -165,6 +165,7 @@ import {
   damageAdd,
   damagePlayer,
   healPlayer,
+  coReviveSpeed,
 } from '../combat/combat';
 import { decayThreat, nthThreatTarget } from '../combat/threat';
 import {
@@ -1198,18 +1199,24 @@ export class World {
     if (this.reviveBudget <= 0) return;
     for (const d of this.players) {
       if (d.state !== 'downed') continue;
+      // item 10: count EVERY ally reviving this hero (not just the first), so more
+      // hands make the revive faster. The first in-range ally is credited with the
+      // revive for score; the tally drives the co-revive speed-up.
       let reviver: Player | null = null;
+      let reviverCount = 0;
       for (const p of this.players) {
         if (p.state !== 'alive') continue;
         const cmd = inputs.get(p.peerId);
         if (!cmd || !cmd.buttons.revive) continue;
         if (dist(p.pos, d.pos) <= REVIVE_RANGE + p.radius + d.radius) {
-          reviver = p;
-          break;
+          reviverCount += 1;
+          if (!reviver) reviver = p;
         }
       }
       if (reviver) {
-        d.reviveProgress += dt;
+        // Each extra concurrent reviver speeds the fill (diminishing returns, floored
+        // so it can never be instant — see coReviveSpeed / REVIVE_MIN_TIME).
+        d.reviveProgress += dt * coReviveSpeed(reviverCount);
         d.reviverId = reviver.id;
         if (d.reviveProgress >= REVIVE_TIME) {
           d.state = 'alive';

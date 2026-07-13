@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -8,8 +9,17 @@ import { VitePWA } from 'vite-plugin-pwa';
 // for a project site under '/<repo>/'); defaults to '/' for local dev/preview.
 const base = process.env.BASE_PATH ?? '/';
 
+// item 7: expose the app version (from package.json) to the client at build time so
+// the main menu can show which build is running. A plain fs read keeps this
+// toolchain-robust (no JSON import-attribute caveats) and runs at config-eval time.
+const { version: appVersion } = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
+) as { version: string };
+
 export default defineConfig({
   base,
+  // Inlined as a literal at build/transform time; declared in src/vite-env.d.ts.
+  define: { __APP_VERSION__: JSON.stringify(appVersion) },
   plugins: [
     react(),
     VitePWA({
