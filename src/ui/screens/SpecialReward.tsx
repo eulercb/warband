@@ -144,11 +144,18 @@ export default function SpecialReward() {
   const ownedClasses = new Set<ClassId>([localClass, ...myExtraClasses]);
   const classOptions = CLASS_IDS.filter((c) => !ownedClasses.has(c)).slice(0, 4);
   // Grands are only ever offered for classes the hero actually fields (item 19), and
-  // now also cover base skills + subclasses (item 17): a skill grand only while its
-  // native slot is still equipped, a subclass grand only for a picked subclass.
-  const allGrands = [...ownedClasses].flatMap((c) =>
-    offerableGrands(c, myCharUpgrades, mySubSkills),
-  );
+  // now also cover base skills + subclasses (item 17) and skill-replacing grafts
+  // (item 18): a skill grand only while its native slot is still equipped, a subclass
+  // grand only for a picked subclass, a graft grand only while that graft is held.
+  // A graft grand is class-agnostic, so the same one can surface under more than one
+  // owned class — dedupe by id so it shows once.
+  const allGrands = [
+    ...new Map(
+      [...ownedClasses]
+        .flatMap((c) => offerableGrands(c, myCharUpgrades, mySubSkills))
+        .map((g) => [g.id, g] as const),
+    ).values(),
+  ];
   // The grand pool is now large; show a rotating window so repeat clears surface
   // different capstones (skill + subclass grands too) instead of always the first few.
   const GRAND_SHOWN = 4;
