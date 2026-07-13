@@ -34,6 +34,17 @@ import RewardRoom from '../game/RewardRoom';
 import SpecialReward from './SpecialReward';
 import EphemeralShop from './EphemeralShop';
 
+/**
+ * A reward RNG seeded from the shared reward seed (so peers agree), salted with the
+ * hero + owned-set so re-rolling after a same-screen multiclass yields a fresh,
+ * class-aware draw (item 8). Falls back to Math.random when no seed is present.
+ */
+function rewardRnd(rewardSeed: number | null | undefined, ...salts: number[]): () => number {
+  if (rewardSeed == null) return Math.random;
+  const rng = new Rng(mixSeed(rewardSeed, ...salts));
+  return () => rng.next();
+}
+
 /** Format milliseconds as `m:ss.mmm` (>= 1 min) or `s.d`s (under a minute). */
 function formatTime(ms: number): string {
   const clamped = Math.max(0, ms);
@@ -54,6 +65,10 @@ export function ResultScreen() {
   const localClass = useStore((s) => s.localClass);
   const myUpgrades = useStore((s) => s.myUpgrades);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  // Subscribed (not just read via getState) so the CHAR offer re-rolls the moment a
+  // class or sub-skill is acquired on THIS screen via SpecialReward (item 8).
+  const myExtraClasses = useStore((s) => s.myExtraClasses);
+  const mySubSkills = useStore((s) => s.mySubSkills);
 
   const panelRef = useRef<HTMLDivElement>(null);
   useGamepadMenu(panelRef);
@@ -73,24 +88,33 @@ export function ResultScreen() {
   const [pickedChar, setPickedChar] = useState<string | null>(null);
 
   /* eslint-disable react-hooks/set-state-in-effect -- intentional derived-random reset keyed on a new result */
+  // Generic offers + pick reset: only on a NEW result. Kept separate from the char
+  // roll so acquiring a class mid-screen never disturbs a banked generic pick.
   useEffect(() => {
     if (!showUpgrades) return;
     const st = useStore.getState();
-    // Deterministic from the shared reward seed (seed mode), filtered by what's
-    // already maxed. Falls back to Math.random when no seed is present.
-    let rnd: () => number = Math.random;
-    if (result?.rewardSeed != null) {
-      const rng = new Rng(mixSeed(result.rewardSeed, CLASS_IDS.indexOf(localClass) + 1));
-      rnd = () => rng.next();
-    }
+    const rnd = rewardRnd(result?.rewardSeed, CLASS_IDS.indexOf(localClass) + 1);
     setGenOffers(rollUpgradeChoices(3, rnd, st.myUpgrades));
-    // item 6: pass the hero's equipped sub skills so their per-sub-skill boons can surface.
-    setCharOffers(
-      rollCharChoices(localClass, 4, rnd, st.myCharUpgrades, st.myExtraClasses, st.mySubSkills),
-    );
     setPickedGen(null);
     setPickedChar(null);
   }, [showUpgrades, localClass, result]);
+
+  // Character offers span EVERY owned class (weighted toward the primary) and RE-ROLL
+  // whenever a class or sub-skill is acquired here via SpecialReward (item 8) — so the
+  // final screen's picks include the class you just multiclassed into. Never overwrites
+  // a char pick already committed this screen (would double-bank the boon).
+  useEffect(() => {
+    if (!showUpgrades || pickedChar) return;
+    const st = useStore.getState();
+    const rnd = rewardRnd(
+      result?.rewardSeed,
+      CLASS_IDS.indexOf(localClass) + 1,
+      myExtraClasses.length,
+      mySubSkills.length,
+    );
+    // item 6: equipped sub skills bring their per-sub-skill boons into the pool.
+    setCharOffers(rollCharChoices(localClass, 4, rnd, st.myCharUpgrades, myExtraClasses, mySubSkills));
+  }, [showUpgrades, localClass, result, myExtraClasses, mySubSkills, pickedChar]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const onPickGen = (id: UpgradeId): void => {

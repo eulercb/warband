@@ -928,6 +928,60 @@ describe('rollCharChoices', () => {
   });
 });
 
+describe('rollCharChoices — multiclass weighting + fill-to-max (item 8)', () => {
+  it('spans every owned class, weighted toward the main class', () => {
+    const extras: ClassId[] = ['mage', 'cleric'];
+    const idsOf = (c: ClassId): Set<string> =>
+      new Set(CHAR_UPGRADES_BY_CLASS[c].map((d) => d.id));
+    const mainIds = idsOf('knight');
+    const mageIds = idsOf('mage');
+    const clericIds = idsOf('cleric');
+    let main = 0;
+    let extra = 0;
+    let sawMage = false;
+    let sawCleric = false;
+    const rng = lcg(0x51ee7);
+    for (let t = 0; t < 400; t++) {
+      for (const id of rollCharChoices('knight', 4, rng, [], extras, [])) {
+        if (mainIds.has(id)) main++;
+        else if (mageIds.has(id)) {
+          extra++;
+          sawMage = true;
+        } else if (clericIds.has(id)) {
+          extra++;
+          sawCleric = true;
+        }
+      }
+    }
+    expect(sawMage).toBe(true); // extra-class boons DO surface (item 8: all classes)
+    expect(sawCleric).toBe(true);
+    expect(main).toBeGreaterThan(extra); // …but the main class is weighted heavier
+  });
+
+  it('fills to the max option count while any eligible upgrade remains', () => {
+    // Own all-but-one knight boon at cap: the native pool is nearly dry, but the
+    // top-up from hybrids/reoffers still fills the offer to the max (item 8) — across
+    // any rng, so a near-exhausted single-class hero is never left with a short list.
+    const nearlyAll = CHAR_UPGRADES_BY_CLASS.knight
+      .slice(0, -1)
+      .flatMap((d) => Array<string>(charUpgradeMaxStacks(d.id)).fill(d.id));
+    for (const s of [lcg(1), lcg(2), lcg(0xbeef)]) {
+      expect(rollCharChoices('knight', 4, s, nearlyAll)).toHaveLength(4);
+    }
+  });
+
+  it('a multiclass hero fills to max spanning classes even when the main pool is thin', () => {
+    // Main (knight) pool fully capped, but two extra classes keep the offer full.
+    const cappedKnight = CHAR_UPGRADES_BY_CLASS.knight.flatMap((d) =>
+      Array<string>(charUpgradeMaxStacks(d.id)).fill(d.id),
+    );
+    const offers = rollCharChoices('knight', 4, lcg(9), cappedKnight, ['mage', 'cleric'], []);
+    expect(offers).toHaveLength(4);
+    // Every pick is a live, class-eligible id (from an owned class or a hybrid).
+    for (const id of offers) expect(CHAR_UPGRADES[id]).toBeTruthy();
+  });
+});
+
 describe('grand improvements — never in the between-boss pool (item 20)', () => {
   it('the roll never surfaces a grand, whatever the rng', () => {
     // Grands are reserved for the run-clear special reward; the between-boss shop
