@@ -23,6 +23,7 @@ import {
   inRearArc,
   mixSeed,
   Rng,
+  shuffled,
   pointInCircle,
   pointInCone,
   pointInLine,
@@ -460,6 +461,36 @@ describe('Rng', () => {
 
   it('pick on an empty array yields undefined', () => {
     expect(new Rng(1).pick<number>([])).toBeUndefined();
+  });
+});
+
+describe('shuffled (seeded draw-without-replacement, item 4)', () => {
+  const pool = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+  it('is deterministic: same seed → identical order', () => {
+    expect(shuffled(new Rng(42), pool)).toEqual(shuffled(new Rng(42), pool));
+  });
+
+  it('is a permutation — same multiset, no elements added or dropped', () => {
+    const out = shuffled(new Rng(7), pool);
+    expect(out.length).toBe(pool.length);
+    expect([...out].sort()).toEqual([...pool].sort());
+    expect(new Set(out).size).toBe(pool.length); // no duplicates → draw without replacement
+  });
+
+  it('does not mutate the input array', () => {
+    const input = [...pool];
+    shuffled(new Rng(3), input);
+    expect(input).toEqual(pool);
+  });
+
+  it('different seeds generally yield different orders', () => {
+    expect(shuffled(new Rng(1), pool)).not.toEqual(shuffled(new Rng(2), pool));
+  });
+
+  it('handles the empty and singleton edge cases', () => {
+    expect(shuffled(new Rng(1), [])).toEqual([]);
+    expect(shuffled(new Rng(1), ['x'])).toEqual(['x']);
   });
 });
 

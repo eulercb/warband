@@ -24,6 +24,8 @@ import {
 } from '../../engine/content/subclasses';
 import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
 import { offerableGrands, CHAR_UPGRADES } from '../../engine/content/charUpgrades';
+import { hashStr } from '../../engine/content/procgen';
+import { Rng, mixSeed, shuffled } from '../../engine/core/math';
 import type { ClassId } from '../../engine/core/types';
 
 export default function SpecialReward() {
@@ -31,6 +33,7 @@ export default function SpecialReward() {
   const mySubSkills = useStore((s) => s.mySubSkills);
   const myExtraClasses = useStore((s) => s.myExtraClasses);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  const runSeed = useStore((s) => s.activeRunSeed);
 
   const [pendingSub, setPendingSub] = useState<SubclassDef | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
@@ -142,7 +145,6 @@ export default function SpecialReward() {
 
   // --- Every owned class complete: multiclass OR a grand improvement --------
   const ownedClasses = new Set<ClassId>([localClass, ...myExtraClasses]);
-  const classOptions = CLASS_IDS.filter((c) => !ownedClasses.has(c)).slice(0, 4);
   // Grands are only ever offered for classes the hero actually fields (item 19), and
   // now also cover base skills + subclasses (item 17) and skill-replacing grafts
   // (item 18): a skill grand only while its native slot is still equipped, a subclass
@@ -156,20 +158,29 @@ export default function SpecialReward() {
         .map((g) => [g.id, g] as const),
     ).values(),
   ];
-  // The grand pool is now large; show a rotating window so repeat clears surface
-  // different capstones (skill + subclass grands too) instead of always the first few.
   const GRAND_SHOWN = 4;
   const ownedGrandCount = myCharUpgrades.reduce(
     (n, id) => (CHAR_UPGRADES[id]?.grand ? n + 1 : n),
     0,
   );
-  const grands =
-    allGrands.length > GRAND_SHOWN
-      ? Array.from(
-          { length: GRAND_SHOWN },
-          (_, i) => allGrands[(ownedGrandCount + i) % allGrands.length],
-        )
-      : allGrands;
+  // Item 4: both the class list and the grand list are a SEEDED random draw — a
+  // draw-without-replacement (shuffle + take four) off the run's master seed, so
+  // every peer sees the same offer for a seed yet repeat clears / different seeds
+  // surface different sets and orders. A per-hero progression counter re-rolls the
+  // draw each clear (so taking a grand still varies next time's class offer too),
+  // and separate salts keep the two draws independent. Eligibility is filtered
+  // BEFORE the shuffle, so unowned-only classes / unheld-only grands are preserved.
+  const drawSeed = runSeed ?? 0;
+  const progress = myExtraClasses.length + ownedGrandCount + mySubSkills.length;
+  const classPool = CLASS_IDS.filter((c) => !ownedClasses.has(c));
+  const classOptions = shuffled(
+    new Rng(mixSeed(drawSeed, hashStr(localClass), progress, 0x0c1a)),
+    classPool,
+  ).slice(0, 4);
+  const grands = shuffled(
+    new Rng(mixSeed(drawSeed, hashStr(localClass), progress, 0x9a2d)),
+    allGrands,
+  ).slice(0, GRAND_SHOWN);
   return (
     <div className="wb-special-reward" role="group" aria-label="Add a class or a grand improvement">
       <span className="wb-special-title">✦ Add a class — or take a Grand improvement instead</span>

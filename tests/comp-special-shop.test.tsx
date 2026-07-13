@@ -100,8 +100,8 @@ describe('SpecialReward — tiered run-clear pick', () => {
 
   it('tier 2: surfaces skill + subclass grands once a subclass is committed (items 17/19)', () => {
     const sub = subclassesFor('knight')[0]; // Champion
-    // A committed subclass + an already-owned grand: the owned grand rotates the
-    // display window (exercising the rotation path) and gates itself out at cap.
+    // A committed subclass + an already-owned grand: the owned grand feeds the
+    // progression counter for the seeded draw (item 4) and gates itself out at cap.
     useStore.setState({
       mySubclassId: sub.id,
       mySubSkills: [sub.skills[0].id, sub.skills[1].id],
@@ -159,11 +159,11 @@ describe('SpecialReward — tiered run-clear pick', () => {
     expect(screen.getByText(/pick a second skill \(Mage\)/)).toBeTruthy();
   });
 
-  it('classOrGrand shows the whole grand pool directly when it fits (L167 false, L163 non-grand else)', () => {
+  it('classOrGrand shows the whole grand pool when it fits within the four shown (item 4)', () => {
     // Knight complete → classOrGrand. Owning all ten knight base+class grands leaves
     // only the two Champion subclass grands offerable — a pool of 2 (≤ GRAND_SHOWN),
-    // so the rotating window is NOT used (L167 false side). The lone non-grand boon
-    // (kn_bulwark) drives the owned-grand reducer's `… ? n + 1 : n` else side (L163).
+    // so the seeded draw surfaces every one (shuffle + slice keeps all). The lone
+    // non-grand boon (kn_bulwark) drives the owned-grand reducer's `… ? n + 1 : n` else.
     const mySubSkills = ['kn_champion_slam', 'kn_champion_charge'];
     const myCharUpgrades = [
       'kn_grand_immovable',
@@ -186,6 +186,34 @@ describe('SpecialReward — tiered run-clear pick', () => {
     expect(expected.length).toBeLessThanOrEqual(4); // precondition: no rotation window
     // Every offerable grand renders (a ★ card) — the count matches the pool exactly.
     expect(screen.getAllByText(/^★ /).length).toBe(expected.length);
+  });
+
+  it('classOrGrand offers a SEEDED random draw of classes — deterministic per seed, varies by seed/clear (item 4)', () => {
+    const champ = subclassesFor('knight')[0];
+    const complete = {
+      mySubclassId: champ.id,
+      mySubSkills: [champ.skills[0].id, champ.skills[1].id],
+      myExtraClasses: [],
+    };
+    const drawClasses = (seed: number, charUpgrades: string[] = []): (string | null)[] => {
+      useStore.setState({ ...complete, myCharUpgrades: charUpgrades, activeRunSeed: seed });
+      render(<SpecialReward />);
+      const names = screen.getAllByText(/^\+ /).map((n) => n.textContent);
+      cleanup();
+      return names;
+    };
+
+    const a1 = drawClasses(111);
+    const a2 = drawClasses(111); // same seed → identical offer (every peer agrees)
+    const b = drawClasses(222); // different seed → different draw
+    const later = drawClasses(111, ['kn_grand_immovable']); // a clear later → re-rolled
+
+    expect(a1).toEqual(a2); // seed-derived + deterministic
+    expect(a1.length).toBe(4); // fills to four
+    expect(new Set(a1).size).toBe(4); // distinct — draw without replacement
+    expect(a1).not.toContain('+ Knight'); // owned class filtered out (eligibility kept)
+    expect(a1).not.toEqual(b); // different seed → different set/order
+    expect(a1).not.toEqual(later); // repeated clears surface a different set
   });
 
   it('survives a skill2 step whose subclass id resolves to nothing (defensive `?? []`, L117)', () => {
