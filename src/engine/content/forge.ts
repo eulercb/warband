@@ -463,9 +463,11 @@ function zonePhrase(z: ZoneSpec): string {
   if (z.roots) bits.push('roots');
   else if (z.slowMult != null) bits.push(`slow to ${pct(z.slowMult * 100)}`);
   if (z.allyBuff) {
-    if (z.allyBuff.defMult != null) bits.push(`allies ${pct((1 - z.allyBuff.defMult) * 100)} less dmg taken`);
+    if (z.allyBuff.defMult != null)
+      bits.push(`allies ${pct((1 - z.allyBuff.defMult) * 100)} less dmg taken`);
     if (z.allyBuff.dmgMult != null) bits.push(`allies +${pct((z.allyBuff.dmgMult - 1) * 100)} dmg`);
-    if (z.allyBuff.moveMult != null) bits.push(`allies +${pct((z.allyBuff.moveMult - 1) * 100)} move`);
+    if (z.allyBuff.moveMult != null)
+      bits.push(`allies +${pct((z.allyBuff.moveMult - 1) * 100)} move`);
   }
   const body = bits.length > 0 ? bits.join(', ') : 'zone';
   return `${body} (${n(z.radius)}u, ${s(z.duration)})`;
@@ -785,7 +787,8 @@ function foldAllyBuffsIntoZone(effects: EffectComponent[]): EffectComponent[] {
   const zone = effects.find((e) => e.kind === 'zone');
   if (!zone || zone.kind !== 'zone') return effects;
   const allyBuffs = effects.filter(
-    (e): e is Extract<EffectComponent, { kind: 'buff' }> => e.kind === 'buff' && e.target === 'allies',
+    (e): e is Extract<EffectComponent, { kind: 'buff' }> =>
+      e.kind === 'buff' && e.target === 'allies',
   );
   if (allyBuffs.length === 0) return effects;
   const merged: NonNullable<ZoneSpec['allyBuff']> = { duration: 0 };
@@ -876,7 +879,9 @@ function priceToBudget(
 /** Total value of the effects that CANNOT be diluted (buffs, CC, slow, zones). */
 function rigidValue(effects: EffectComponent[]): number {
   const fan = 1; // rigid effects carry no fan multiplier
-  return effects.filter((e) => !ANCHOR_KINDS.has(e.kind)).reduce((s, e) => s + effectValue(e, fan), 0);
+  return effects
+    .filter((e) => !ANCHOR_KINDS.has(e.kind))
+    .reduce((s, e) => s + effectValue(e, fan), 0);
 }
 
 /** Drop the single lowest-value effect (keeps the priciest, most-defining ones). */
@@ -932,7 +937,11 @@ function capEffect(e: EffectComponent): EffectComponent {
     case 'freeze':
       return { ...e, seconds: clamp(round05(e.seconds), 0.3, 1.4) };
     case 'slow':
-      return { ...e, mult: clamp(round05(e.mult), 0.2, 0.95), duration: clamp(round1(e.duration), 1, 4) };
+      return {
+        ...e,
+        mult: clamp(round05(e.mult), 0.2, 0.95),
+        duration: clamp(round1(e.duration), 1, 4),
+      };
     case 'buff':
       return capBuff(e);
     case 'zone':
@@ -1029,7 +1038,11 @@ const STRIKE_SHAPES = new Set<BossAbilityShape>([
  * it unchanged. Identity (body, colour, tier, radius, AI-agnostic stats) is kept;
  * the hidden practice dummy is returned untouched.
  */
-export function synthesizeMonster(seed: number, base: MonsterDef, donors: MonsterDef[]): MonsterDef {
+export function synthesizeMonster(
+  seed: number,
+  base: MonsterDef,
+  donors: MonsterDef[],
+): MonsterDef {
   if (base.hidden) return base;
   const rng = new Rng(mixSeed(seed, FORGE_SALT.monster, hashStr(base.id)));
   const pool: BossDonor[] = donors.flatMap((m) =>
@@ -1092,7 +1105,8 @@ function composeBossAbility(
  */
 function graftBossRider(rng: Rng, out: BossAbilityDef, pool: BossDonor[]): string | null {
   const donors = pool.filter(
-    (d) => (d.ab.slowMult != null && d.ab.slowMult < 1) || d.ab.stun != null || d.ab.knockback != null,
+    (d) =>
+      (d.ab.slowMult != null && d.ab.slowMult < 1) || d.ab.stun != null || d.ab.knockback != null,
   );
   if (donors.length === 0) return null;
   const d = rng.pick(donors);

@@ -22,7 +22,13 @@ function donorPool(): Donor[] {
   for (const cid of CLASS_IDS) {
     const c = CLASSES[cid];
     for (const slot of SLOTS) {
-      out.push({ name: c.abilities[slot].name, classId: cid, className: c.name, slot, def: c.abilities[slot] });
+      out.push({
+        name: c.abilities[slot].name,
+        classId: cid,
+        className: c.name,
+        slot,
+        def: c.abilities[slot],
+      });
     }
   }
   return out;
@@ -72,7 +78,9 @@ describe('synthesizeAbility — validity + balance budget', () => {
           expect(def.cooldown).toBeLessThanOrEqual(19);
 
           // At most ONE hard CC (no stun+freeze pile-up).
-          const hardCC = comp.effects.filter((e) => e.kind === 'stun' || e.kind === 'freeze').length;
+          const hardCC = comp.effects.filter(
+            (e) => e.kind === 'stun' || e.kind === 'freeze',
+          ).length;
           expect(hardCC).toBeLessThanOrEqual(1);
 
           // Buff ceilings (never immunity; capped boosts) — direct + zone allyBuff.

@@ -1648,9 +1648,12 @@ export class World {
       for (const p of this.players) {
         if (p.state !== 'alive') continue;
         if (dist(z.pos, p.pos) > z.radius + p.radius) continue;
-        if (b.defMult != null) applyBuff(p, makeBuff('damageTaken', b.defMult, b.duration, 'zoneAllyDef'));
-        if (b.dmgMult != null) applyBuff(p, makeBuff('damageDealt', b.dmgMult, b.duration, 'zoneAllyDmg'));
-        if (b.moveMult != null) applyBuff(p, makeBuff('moveSpeed', b.moveMult, b.duration, 'zoneAllyMove'));
+        if (b.defMult != null)
+          applyBuff(p, makeBuff('damageTaken', b.defMult, b.duration, 'zoneAllyDef'));
+        if (b.dmgMult != null)
+          applyBuff(p, makeBuff('damageDealt', b.dmgMult, b.duration, 'zoneAllyDmg'));
+        if (b.moveMult != null)
+          applyBuff(p, makeBuff('moveSpeed', b.moveMult, b.duration, 'zoneAllyMove'));
       }
     }
   }

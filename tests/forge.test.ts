@@ -17,7 +17,12 @@ import {
   type EffectComponent,
   type Delivery,
 } from '../src/engine/content/forge';
-import { CLASSES, CLASS_IDS, describeAbility, type PlayerAbilityDef } from '../src/engine/content/classes';
+import {
+  CLASSES,
+  CLASS_IDS,
+  describeAbility,
+  type PlayerAbilityDef,
+} from '../src/engine/content/classes';
 import type { AbilitySlot } from '../src/engine/core/types';
 
 const SLOTS: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
@@ -196,7 +201,13 @@ describe('decompose / recompose round-trip', () => {
 describe('decompose / recompose — remaining field gates', () => {
   it('round-trips a kitchen-sink strike (freeze, maxRange, all riders)', () => {
     const comp: AbilityComponents = {
-      delivery: { kind: 'projectile', projSpeed: 600, projCount: 1, maxRange: 800, impactRadius: 80 },
+      delivery: {
+        kind: 'projectile',
+        projSpeed: 600,
+        projCount: 1,
+        maxRange: 800,
+        impactRadius: 80,
+      },
       effects: [
         { kind: 'damage', amount: 50 },
         { kind: 'freeze', seconds: 0.8 },
@@ -347,7 +358,9 @@ describe('branch completeness — defensive gates', () => {
     const def = recompose(
       {
         delivery: { kind: 'groundZone' },
-        effects: [{ kind: 'zone', zone: { zoneKind: 'sanctuary', duration: 4, radius: 100, tickHeal: 8 } }],
+        effects: [
+          { kind: 'zone', zone: { zoneKind: 'sanctuary', duration: 4, radius: 100, tickHeal: 8 } },
+        ],
       },
       { slot: 'a2', name: 'x', cooldown: 12 },
     );
@@ -359,13 +372,17 @@ describe('branch completeness — defensive gates', () => {
   it('componentValue: a snare-only zone, and a plain damaging zone (no slow/roots/buff)', () => {
     const snare = componentValue({
       delivery: { kind: 'groundZone' },
-      effects: [{ kind: 'zone', zone: { zoneKind: 'entangle', duration: 4, radius: 100, slowMult: 0.4 } }],
+      effects: [
+        { kind: 'zone', zone: { zoneKind: 'entangle', duration: 4, radius: 100, slowMult: 0.4 } },
+      ],
     });
     expect(snare).toBeGreaterThan(0);
     // A plain damaging zone exercises the slowMult/roots/allyBuff false gates.
     const plain = componentValue({
       delivery: { kind: 'groundZone' },
-      effects: [{ kind: 'zone', zone: { zoneKind: 'poison', duration: 4, radius: 100, tickDamage: 10 } }],
+      effects: [
+        { kind: 'zone', zone: { zoneKind: 'poison', duration: 4, radius: 100, tickDamage: 10 } },
+      ],
     });
     expect(plain).toBeGreaterThan(0);
   });
@@ -388,7 +405,9 @@ describe('branch completeness — defensive gates', () => {
     const def = recompose(
       {
         delivery: { kind: 'groundZone' },
-        effects: [{ kind: 'zone', zone: { zoneKind: 'entangle', duration: 4, radius: 100, slowMult: 0.4 } }],
+        effects: [
+          { kind: 'zone', zone: { zoneKind: 'entangle', duration: 4, radius: 100, slowMult: 0.4 } },
+        ],
       },
       { slot: 'a1', name: 'x', cooldown: 10 },
     );
@@ -457,13 +476,19 @@ describe('describeComposed', () => {
   it('describes single-axis buffs and single-axis ally-buffs', () => {
     // A self buff with ONLY a def axis, and one with ONLY a move axis.
     const defOnly = describeComposed(
-      { delivery: { kind: 'selfBuff' }, effects: [{ kind: 'buff', target: 'self', defMult: 0.6, duration: 4 }] },
+      {
+        delivery: { kind: 'selfBuff' },
+        effects: [{ kind: 'buff', target: 'self', defMult: 0.6, duration: 4 }],
+      },
       5,
     );
     expect(defOnly).toContain('less dmg taken');
     expect(defOnly).not.toContain('dmg for'); // no +dmg axis
     const moveOnly = describeComposed(
-      { delivery: { kind: 'selfBuff' }, effects: [{ kind: 'buff', target: 'self', moveMult: 1.2, duration: 4 }] },
+      {
+        delivery: { kind: 'selfBuff' },
+        effects: [{ kind: 'buff', target: 'self', moveMult: 1.2, duration: 4 }],
+      },
       5,
     );
     expect(moveOnly).toContain('move');
@@ -476,7 +501,12 @@ describe('describeComposed', () => {
           effects: [
             {
               kind: 'zone',
-              zone: { zoneKind: 'sanctuary', duration: 4, radius: 100, allyBuff: { [axis]: axis === 'dmgMult' ? 1.2 : 1.15, duration: 4 } },
+              zone: {
+                zoneKind: 'sanctuary',
+                duration: 4,
+                radius: 100,
+                allyBuff: { [axis]: axis === 'dmgMult' ? 1.2 : 1.15, duration: 4 },
+              },
             },
           ],
         },

@@ -5,7 +5,12 @@
  * so the desc stays accurate and buys never disagree.
  */
 import { describe, it, expect, afterEach } from 'vitest';
-import { ephemeralVariant, getEphemeral, EPHEMERAL, EPHEMERAL_IDS } from '../src/engine/content/ephemeral';
+import {
+  ephemeralVariant,
+  getEphemeral,
+  EPHEMERAL,
+  EPHEMERAL_IDS,
+} from '../src/engine/content/ephemeral';
 import { setForgeSeed } from '../src/engine/content/forge';
 
 afterEach(() => setForgeSeed(null));
@@ -27,8 +32,12 @@ describe('ephemeralVariant', () => {
   });
 
   it('varies price and name across seeds', () => {
-    const costs = new Set([1, 2, 3, 4, 5, 6, 7, 8].map((s) => ephemeralVariant(s, EPHEMERAL.damage).cost));
-    const names = new Set([1, 2, 3, 4, 5, 6, 7, 8].map((s) => ephemeralVariant(s, EPHEMERAL.damage).name));
+    const costs = new Set(
+      [1, 2, 3, 4, 5, 6, 7, 8].map((s) => ephemeralVariant(s, EPHEMERAL.damage).cost),
+    );
+    const names = new Set(
+      [1, 2, 3, 4, 5, 6, 7, 8].map((s) => ephemeralVariant(s, EPHEMERAL.damage).name),
+    );
     expect(costs.size).toBeGreaterThan(1);
     expect(names.size).toBeGreaterThan(1);
   });

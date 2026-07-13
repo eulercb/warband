@@ -1568,7 +1568,9 @@ export function getMonster(id: MonsterId): MonsterDef {
   // monster (a kit of donor abilities from different monsters, each jittered onto
   // budget + rider-grafted, with a generated decide + blended name). Falls through
   // to numeric variance then canonical when Forge is off.
-  const forged = forgeVariant('monster', id, (seed) => synthesizeMonster(seed, MONSTERS[id], monsterDonors()));
+  const forged = forgeVariant('monster', id, (seed) =>
+    synthesizeMonster(seed, MONSTERS[id], monsterDonors()),
+  );
   if (forged) return forged;
   return procVariant('monster', id, (seed) => monsterVariant(seed, MONSTERS[id])) ?? MONSTERS[id];
 }

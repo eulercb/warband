@@ -32,7 +32,11 @@ function duo(caster: ClassId = 'knight', ally: ClassId = 'ranger'): World {
 }
 
 function solo(cls: ClassId = 'mage'): World {
-  const w = new World({ monsterId: 'dragon', seed: 1, players: [{ peerId: 'a', name: 'A', classId: cls }] });
+  const w = new World({
+    monsterId: 'dragon',
+    seed: 1,
+    players: [{ peerId: 'a', name: 'A', classId: cls }],
+  });
   w.terrain = [];
   w.obstacles = [];
   w.groundZones = [];
@@ -219,7 +223,9 @@ describe('resolveComposedAbility — ground zones + ally-buff tick', () => {
     // Zone centered on the caster (sanctuary), not ground-targeted.
     expect(w.groundZones[0].pos.x).toBeCloseTo(500, 0);
     for (let t = 0; t < 14; t++) w.step(0.05, new Map()); // > one zone tick
-    expect(kinds(ally)).toEqual(expect.arrayContaining(['damageTaken', 'damageDealt', 'moveSpeed']));
+    expect(kinds(ally)).toEqual(
+      expect.arrayContaining(['damageTaken', 'damageDealt', 'moveSpeed']),
+    );
   });
 
   it('a ground-targeted damaging zone lands at the aim offset and hurts the boss', () => {
@@ -371,13 +377,19 @@ describe('resolveComposedAbility — mobility, buffs, heals, taunt', () => {
 
     // meleeCone with no range/halfAngle → 70u / 45° defaults.
     let live = mkAdd(w, { x: 515, y: 500 });
-    p.abilities!.a1 = synth({ delivery: { kind: 'meleeCone' }, effects: [{ kind: 'damage', amount: 10 }] });
+    p.abilities!.a1 = synth({
+      delivery: { kind: 'meleeCone' },
+      effects: [{ kind: 'damage', amount: 10 }],
+    });
     resolvePlayerAbility(w, p, 'a1', ZERO);
     expect(live.hp).toBeLessThan(ADD_HP);
 
     // pbaoe with no radius → 150u default.
     live = mkAdd(w, { x: 515, y: 500 });
-    p.abilities!.a1 = synth({ delivery: { kind: 'pbaoe' }, effects: [{ kind: 'damage', amount: 10 }] });
+    p.abilities!.a1 = synth({
+      delivery: { kind: 'pbaoe' },
+      effects: [{ kind: 'damage', amount: 10 }],
+    });
     resolvePlayerAbility(w, p, 'a1', ZERO);
     expect(live.hp).toBeLessThan(ADD_HP);
 
@@ -391,7 +403,10 @@ describe('resolveComposedAbility — mobility, buffs, heals, taunt', () => {
 
     // projectile: bare (defaults) then a fan (count > 1 spread branch).
     w.projectiles = [];
-    p.abilities!.a1 = synth({ delivery: { kind: 'projectile' }, effects: [{ kind: 'damage', amount: 10 }] });
+    p.abilities!.a1 = synth({
+      delivery: { kind: 'projectile' },
+      effects: [{ kind: 'damage', amount: 10 }],
+    });
     resolvePlayerAbility(w, p, 'a1', ZERO);
     expect(w.projectiles.length).toBe(1);
     w.projectiles = [];
@@ -406,7 +421,9 @@ describe('resolveComposedAbility — mobility, buffs, heals, taunt', () => {
     w.groundZones = [];
     p.abilities!.a1 = synth({
       delivery: { kind: 'groundZone' },
-      effects: [{ kind: 'zone', zone: { zoneKind: 'poison', radius: 100, duration: 3, tickDamage: 6 } }],
+      effects: [
+        { kind: 'zone', zone: { zoneKind: 'poison', radius: 100, duration: 3, tickDamage: 6 } },
+      ],
     });
     resolvePlayerAbility(w, p, 'a1', ZERO);
     expect(w.groundZones.length).toBe(1);

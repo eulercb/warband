@@ -120,12 +120,26 @@ describe('rider grafting + decide conds (crafted donor pools)', () => {
     expect(stun.abilities.some((ab) => (ab.stun ?? 0) > 0)).toBe(true);
     // A knockback-only pool → the knockback branch.
     const knock = synthesizeMonster(1, MONSTERS.goblin, [
-      mon('K', [{ id: 'a', name: 'a', shape: 'line', windup: 0.6, cooldown: 6, damage: 20, range: 400, width: 40, knockback: 100 }]),
+      mon('K', [
+        {
+          id: 'a',
+          name: 'a',
+          shape: 'line',
+          windup: 0.6,
+          cooldown: 6,
+          damage: 20,
+          range: 400,
+          width: 40,
+          knockback: 100,
+        },
+      ]),
     ]);
     expect(knock.abilities.some((ab) => (ab.knockback ?? 0) > 0)).toBe(true);
     // A rider-less strike pool → no rider grafted (graft returns null).
     const bare = synthesizeMonster(1, MONSTERS.goblin, [mon('B', [cone('a')])]);
-    expect(bare.abilities.every((ab) => ab.stun == null && (ab.slowMult == null || ab.slowMult >= 1))).toBe(true);
+    expect(
+      bare.abilities.every((ab) => ab.stun == null && (ab.slowMult == null || ab.slowMult >= 1)),
+    ).toBe(true);
   });
 
   it('derives melee / charge / low-HP conds and guarantees an unconditional fallback', () => {
@@ -135,11 +149,32 @@ describe('rider grafting + decide conds (crafted donor pools)', () => {
     expect(m.decide(ctx({ anyInMelee: false, distToTarget: 999 }))).not.toBeNull();
     // A charge (line) is gated on distance; a self-heal on low HP.
     const line = synthesizeMonster(2, MONSTERS.goblin, [
-      mon('L', [{ id: 'a', name: 'a', shape: 'line', windup: 0.6, cooldown: 6, damage: 20, range: 400, width: 40 }]),
+      mon('L', [
+        {
+          id: 'a',
+          name: 'a',
+          shape: 'line',
+          windup: 0.6,
+          cooldown: 6,
+          damage: 20,
+          range: 400,
+          width: 40,
+        },
+      ]),
     ]);
     expect(line.decide(ctx({ distToTarget: 400 }))).not.toBeNull();
     const heal = synthesizeMonster(2, MONSTERS.goblin, [
-      mon('H', [{ id: 'a', name: 'a', shape: 'buffSelf', windup: 0, cooldown: 10, damage: 0, selfHealFrac: 0.1 }]),
+      mon('H', [
+        {
+          id: 'a',
+          name: 'a',
+          shape: 'buffSelf',
+          windup: 0,
+          cooldown: 10,
+          damage: 0,
+          selfHealFrac: 0.1,
+        },
+      ]),
     ]);
     // Low HP → the self-heal is eligible; the fallback still guarantees an action.
     expect(heal.decide(ctx({ hpFrac: 0.3 }))).not.toBeNull();

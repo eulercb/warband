@@ -777,7 +777,9 @@ export function getClass(id: ClassId): ClassDef {
   // id, so every "knight" this run plays the same synthesized kit. Falls through
   // to numeric-variance (procgen) then canonical when Forge is off — Forge layers
   // on top of the other modes, it never mutates the canonical data.
-  const forged = forgeVariant('class', id, (seed) => synthesizeClass(seed, CLASSES[id], forgeDonors()));
+  const forged = forgeVariant('class', id, (seed) =>
+    synthesizeClass(seed, CLASSES[id], forgeDonors()),
+  );
   if (forged) return forged;
   return procVariant('class', id, (seed) => classVariant(seed, CLASSES[id])) ?? CLASSES[id];
 }
@@ -794,7 +796,13 @@ function forgeDonors(): Donor[] {
   for (const cid of CLASS_IDS) {
     const c = CLASSES[cid];
     for (const slot of ['basic', 'a1', 'a2', 'a3'] as AbilitySlot[]) {
-      out.push({ name: c.abilities[slot].name, classId: cid, className: c.name, slot, def: c.abilities[slot] });
+      out.push({
+        name: c.abilities[slot].name,
+        classId: cid,
+        className: c.name,
+        slot,
+        def: c.abilities[slot],
+      });
     }
   }
   FORGE_DONORS = out;

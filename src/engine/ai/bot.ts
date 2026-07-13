@@ -12,7 +12,15 @@
  * Recomputed once per sim step, this naturally pulses (fire / release / fire)
  * so a "want" that persists across ticks re-triggers as each cooldown clears.
  */
-import type { Player, Boss, InputCommand, ButtonState, Vec2, ClassId, ExtSlot } from '../core/types';
+import type {
+  Player,
+  Boss,
+  InputCommand,
+  ButtonState,
+  Vec2,
+  ClassId,
+  ExtSlot,
+} from '../core/types';
 import type { World } from '../world/world';
 import type { PlayerAbilityDef } from '../content/classes';
 import { abilityById } from '../content/monsters';
@@ -479,7 +487,10 @@ export function classifyForBot(ab: PlayerAbilityDef): BotCap {
   let allyBuff = kind === 'buffAlly';
   let selfDef = kind === 'selfBuff' || kind === 'taunt';
   const control =
-    (ab.stun ?? 0) > 0 || (ab.freeze ?? 0) > 0 || ab.roots === true || (ab.slowMult != null && ab.slowMult < 1);
+    (ab.stun ?? 0) > 0 ||
+    (ab.freeze ?? 0) > 0 ||
+    ab.roots === true ||
+    (ab.slowMult != null && ab.slowMult < 1);
   const damage = ab.damage > 0 || (ab.landingDamage ?? 0) > 0 || (ab.zoneTickDamage ?? 0) > 0;
   // Refine from the recombined payload (buff targeting + a zone's ally-buff/heal
   // that the flat fields can't express).

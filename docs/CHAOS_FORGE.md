@@ -158,20 +158,20 @@ forged bosses cast, the shop rerolls, and a typed seed reproduces the world.
 
 **Deliberately deferred (with rationale)**
 
-- **Char-upgrade *synthesis* (blended-name / rebalanced-delta upgrade defs).** In a
+- **Char-upgrade _synthesis_ (blended-name / rebalanced-delta upgrade defs).** In a
   Forge run the canonical char-upgrades still apply to the fused kit (they tug the
   same `PlayerAbilityDef` levers), so bots + players can pick and apply upgrades to
   synthesized skills — the functional requirement holds. What's deferred is
-  regenerating each upgrade's *name + description + delta* to match the fused skill,
+  regenerating each upgrade's _name + description + delta_ to match the fused skill,
   which needs a `getCharUpgrade` getter + rerouting `rollCharChoices`/the replay
   engine (char-upgrades are keyed by string id and looked up directly today). A
   focused follow-up; not landed here to keep the change reviewable.
-- **Subclass *synthesis*.** Subclass skills already route through procgen
+- **Subclass _synthesis_.** Subclass skills already route through procgen
   (`getSubSkill` → numeric variance), so they vary per run; full component
   synthesis of sub-skills + their grands is the same follow-up shape as upgrades.
 - **Affix / corruption / terrain magnitude variance (§3.7 audit).** Left static:
   their id→behaviour binding is host-side code, not data, so recombination would
-  need executor work, and their magnitudes are tuned balance constants. *Selection*
+  need executor work, and their magnitudes are tuned balance constants. _Selection_
   of which affixes/beats appear is already seeded. Folding these in is safe
   magnitude-jitter work, deferred as lower value than the families above.
 - **Shop passive-buff magnitudes.** Held constant (spawn-time balance constants

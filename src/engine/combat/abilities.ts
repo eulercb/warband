@@ -387,7 +387,8 @@ function applyForgeBuffs(
 ): void {
   for (const e of effects) {
     if (e.kind !== 'buff' || e.target !== who) continue;
-    if (e.defMult != null) applyBuff(target, makeBuff('damageTaken', e.defMult, e.duration, `${src}Def`));
+    if (e.defMult != null)
+      applyBuff(target, makeBuff('damageTaken', e.defMult, e.duration, `${src}Def`));
     if (e.dmgMult != null)
       applyBuff(target, makeBuff('damageDealt', e.dmgMult, e.duration, `${src}Dmg`));
     if (e.moveMult != null)
@@ -570,7 +571,8 @@ function resolveComposedAbility(
     }
 
     case 'groundZone': {
-      if (zoneEff && zoneEff.kind === 'zone') spawnComposedZone(world, p, zoneEff.zone, ab.range ?? 500);
+      if (zoneEff && zoneEff.kind === 'zone')
+        spawnComposedZone(world, p, zoneEff.zone, ab.range ?? 500);
       buffSelf();
       break;
     }
