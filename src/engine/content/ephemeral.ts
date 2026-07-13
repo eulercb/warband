@@ -9,6 +9,10 @@
  * its own when you fall. In a hardcore run this shop is also where you buy back
  * a revive-stock top-up or a retry.
  */
+import { Rng, mixSeed } from '../core/math';
+import { hashStr } from './procgen';
+import { forgeVariant } from './forge';
+
 export type EphemeralId = 'speed' | 'damage' | 'defense' | 'potion' | 'revive' | 'retry';
 
 /** How the perk is consumed. */
@@ -86,6 +90,46 @@ export const EPHEMERAL_IDS: EphemeralId[] = Object.keys(EPHEMERAL) as EphemeralI
 
 export function isEphemeralId(x: unknown): x is EphemeralId {
   return typeof x === 'string' && Object.prototype.hasOwnProperty.call(EPHEMERAL, x);
+}
+
+/**
+ * Chaos Forge (docs/CHAOS_FORGE.md §7) — mechanic-true name flavours for the shop,
+ * keyed by id. Index 0 is the canonical name. The shop is the one content family
+ * procgen never touched; Forge folds it in. */
+const EPHEMERAL_NAME_BANKS: Record<EphemeralId, string[]> = {
+  speed: ['Swiftness Draught', 'Zephyr Tonic', 'Fleetfoot Brew', 'Windstep Elixir'],
+  damage: ['Fury Elixir', 'Wrath Draught', 'Bloodrage Tonic', 'Warfire Brew'],
+  defense: ['Stoneskin Tonic', 'Ironhide Draught', 'Bulwark Brew', 'Aegis Elixir'],
+  potion: ['Healing Vial', 'Mending Draught', 'Restorative Phial', 'Salve of Renewal'],
+  revive: ['Phoenix Charm', 'Everflame Token', 'Second Wind Charm', 'Rebirth Sigil'],
+  retry: ['Second Chance', "Fate's Reroll", 'Last Stand Pact', 'Mulligan Rite'],
+};
+
+/**
+ * Roll a Chaos Forge shop item for the run: a re-flavoured NAME from its bank and
+ * a jittered COST within a small band. The functional identity — id, kind,
+ * hardcore gate, and the applied magnitude (a spawn-time balance constant) — is
+ * PRESERVED, so the desc stays accurate and the store/host buy logic is unchanged;
+ * only the economics (price) and flavour vary. Deterministic: host + every client
+ * derive the same price from the shared seed, so a buy never disagrees.
+ */
+export function ephemeralVariant(seed: number, base: EphemeralDef): EphemeralDef {
+  const rng = new Rng(mixSeed(seed, 0xe140, hashStr(base.id)));
+  const bank = EPHEMERAL_NAME_BANKS[base.id];
+  const name = bank[rng.int(0, bank.length - 1)];
+  const cost = Math.max(1, base.cost + rng.int(-2, 3));
+  return { ...base, name, cost };
+}
+
+/**
+ * Resolve a shop item — the run's Chaos Forge variant (re-priced + re-flavoured)
+ * while a Forge run is active, else the canonical authored def. Every shop
+ * consumer (the reward-room stalls, the list shop, the store's optimistic buy and
+ * the host's authoritative buy) resolves through here so the displayed and the
+ * charged price always agree.
+ */
+export function getEphemeral(id: EphemeralId): EphemeralDef {
+  return forgeVariant('shop', id, (seed) => ephemeralVariant(seed, EPHEMERAL[id])) ?? EPHEMERAL[id];
 }
 
 /**

@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import type { ClassId, MonsterId, FightResult } from '../../engine/core/types';
 import type { UpgradeId } from '../../engine/content/upgrades';
-import { EPHEMERAL } from '../../engine/content/ephemeral';
+import { getEphemeral } from '../../engine/content/ephemeral';
 import type { EphemeralId, EphemeralStock } from '../../engine/content/ephemeral';
 import type { LobbyPlayer, NetSession } from '../../net/protocol';
 import type { NetMode } from '../../net/transport/room';
@@ -407,7 +407,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
   resetCoins: () => set({ myCoins: 0, myEphemeral: {} }),
   buyEphemeral: (id) => {
-    const def = EPHEMERAL[id];
+    const def = getEphemeral(id);
     if (!def) return false;
     const { myCoins, myEphemeral, session } = get();
     if (myCoins < def.cost) return false;

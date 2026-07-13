@@ -59,7 +59,7 @@ import type { UpgradeId } from '../../engine/content/upgrades';
 import { isCharUpgradeId, charUpgradeMaxStacks } from '../../engine/content/charUpgrades';
 import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
 import { CLASS_IDS } from '../../engine/content/classes';
-import { EPHEMERAL, isEphemeralId } from '../../engine/content/ephemeral';
+import { getEphemeral, isEphemeralId } from '../../engine/content/ephemeral';
 import type { EphemeralId, EphemeralStock } from '../../engine/content/ephemeral';
 import type {
   MonsterId,
@@ -1053,7 +1053,7 @@ export class Host implements NetSession {
    */
   private recordEphemeral(peerId: string, id: EphemeralId): void {
     if (!isEphemeralId(id)) return;
-    const def = EPHEMERAL[id];
+    const def = getEphemeral(id);
     if (def.hardcoreOnly && !this.hardcore) return;
     const coins = this.coinsByPeer.get(peerId) ?? 0;
     if (coins < def.cost) return;
