@@ -7,6 +7,7 @@
 import type { MonsterId, Boss, Player, BossTier, BossBodyShape, ZoneKind } from '../core/types';
 import type { Rng } from '../core/math';
 import { procVariant, monsterVariant } from './procgen';
+import { forgeVariant, synthesizeMonster } from './forge';
 import {
   MONSTER_COLORS,
   RUN_LENGTH,
@@ -1563,7 +1564,22 @@ export const MONSTERS_BY_TIER: Record<BossTier, MonsterId[]> = {
  * resolve through here; AI, shapes, colours and tiers never change.
  */
 export function getMonster(id: MonsterId): MonsterDef {
+  // Chaos Forge (docs/CHAOS_FORGE.md) takes precedence: a component-recombined
+  // monster (a kit of donor abilities from different monsters, each jittered onto
+  // budget + rider-grafted, with a generated decide + blended name). Falls through
+  // to numeric variance then canonical when Forge is off.
+  const forged = forgeVariant('monster', id, (seed) => synthesizeMonster(seed, MONSTERS[id], monsterDonors()));
+  if (forged) return forged;
   return procVariant('monster', id, (seed) => monsterVariant(seed, MONSTERS[id])) ?? MONSTERS[id];
+}
+
+/** The boss-ability component library Forge draws from: every non-hidden monster
+ * (their abilities are the components). Built once from the static MONSTERS table;
+ * a monster added in a future update joins the pool automatically (req. 10). */
+let MONSTER_DONORS: MonsterDef[] | null = null;
+function monsterDonors(): MonsterDef[] {
+  if (!MONSTER_DONORS) MONSTER_DONORS = MONSTER_IDS.map((id) => MONSTERS[id]);
+  return MONSTER_DONORS;
 }
 
 export function abilityById(def: MonsterDef, id: string): BossAbilityDef | undefined {

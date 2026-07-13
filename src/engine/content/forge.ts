@@ -29,8 +29,9 @@
  */
 import type { ZoneKind, ClassId, AbilitySlot } from '../core/types';
 import type { PlayerAbilityDef, AbilityKind, ClassDef } from './classes';
+import type { BossAbilityDef, BossAbilityShape, MonsterDef, BossDecisionCtx } from './monsters';
 import { Rng, mixSeed, clamp } from '../core/math';
-import { hashStr } from './procgen';
+import { hashStr, bossAbilityVariant, MONSTER_EPITHETS } from './procgen';
 
 // ---------------------------------------------------------------------------
 // 1. Component taxonomy — a delivery + an ordered list of effect components
@@ -592,7 +593,7 @@ function dedupe(xs: string[]): string[] {
 // ---------------------------------------------------------------------------
 
 /** Domain salts (independent streams per generative family, as procgen.SALT). */
-const FORGE_SALT = { ability: 0xf0f0, className: 0xf1a5 } as const;
+const FORGE_SALT = { ability: 0xf0f0, className: 0xf1a5, monster: 0xf2b7 } as const;
 
 /**
  * A component donor — one authored/canonical ability tagged with its source, the
@@ -996,7 +997,149 @@ export function synthesizeClass(seed: number, base: ClassDef, donors: Donor[]): 
 }
 
 // ---------------------------------------------------------------------------
-// 8. Active-run registry — mirrors procgen's, gating Chaos Forge synthesis
+// 8. Boss synthesis — recombine boss-ability components into new monsters
+// ---------------------------------------------------------------------------
+
+/** One boss-ability donor, tagged with its source monster's name (for blends). */
+interface BossDonor {
+  ab: BossAbilityDef;
+  monsterName: string;
+}
+
+/** Shapes that strike targets (so an on-hit rider can be grafted onto them). */
+const STRIKE_SHAPES = new Set<BossAbilityShape>([
+  'cone',
+  'circleAtTarget',
+  'pbaoe',
+  'line',
+  'projectile',
+]);
+
+/**
+ * Synthesize a boss for a Chaos Forge run: a Frankenstein KIT whose every ability
+ * is a proven donor ability (its SHAPE + payload) drawn from a DIFFERENT source
+ * monster, jittered onto budget by the shared boss-variant roller (readability
+ * floors intact) and — for strike shapes — grafted with one on-hit rider (slow /
+ * stun / knockback) from a second donor: shape from A, rider from B. A fresh
+ * `decide` rule set references the new ids (a boss never owns an ability it can't
+ * cast, req. 9), and the monster gets a blended name + epithet. Every ability
+ * reuses one of the existing 9 shapes, so the boss executor + telegraph-dodge run
+ * it unchanged. Identity (body, colour, tier, radius, AI-agnostic stats) is kept;
+ * the hidden practice dummy is returned untouched.
+ */
+export function synthesizeMonster(seed: number, base: MonsterDef, donors: MonsterDef[]): MonsterDef {
+  if (base.hidden) return base;
+  const rng = new Rng(mixSeed(seed, FORGE_SALT.monster, hashStr(base.id)));
+  const pool: BossDonor[] = donors.flatMap((m) =>
+    m.abilities.map((ab) => ({ ab, monsterName: m.name })),
+  );
+  const hpTilt = rng.range(-0.12, 0.12);
+  const dmgComp = 1 - hpTilt * 0.5; // extra HP is paid for with softer hits
+  const n = base.abilities.length;
+  const abilities: BossAbilityDef[] = [];
+  const donorNames: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const primary = rng.pick(pool);
+    donorNames.push(primary.monsterName);
+    abilities.push(composeBossAbility(seed, rng, primary, pool, `f${i}`, dmgComp));
+  }
+  const decide = generateBossDecide(abilities);
+  const blended = forgeName([...donorNames, base.name], (k) => (k <= 0 ? 0 : rng.int(0, k - 1)), {
+    connectiveChance: 0,
+  });
+  const epithet = MONSTER_EPITHETS[rng.int(0, MONSTER_EPITHETS.length - 1)];
+  return {
+    ...base,
+    name: `${blended}, ${epithet}`,
+    baseHp: Math.round((base.baseHp * (1 + hpTilt)) / 10) * 10,
+    abilities,
+    decide,
+  };
+}
+
+/** Build one synthesized boss ability: jitter a donor's shape onto budget, clear
+ * its HP gate (the decide handles gating), graft one rider from a second donor,
+ * and blend a fresh name + id. */
+function composeBossAbility(
+  seed: number,
+  rng: Rng,
+  primary: BossDonor,
+  pool: BossDonor[],
+  id: string,
+  dmgComp: number,
+): BossAbilityDef {
+  const jittered = bossAbilityVariant(seed, 'forge', { ...primary.ab, id }, dmgComp);
+  const out: BossAbilityDef = { ...jittered, id, minHpFrac: undefined };
+  let riderName: string | null = null;
+  if (STRIKE_SHAPES.has(out.shape)) {
+    riderName = graftBossRider(rng, out, pool);
+  }
+  out.name = forgeName(
+    [primary.ab.name, riderName ?? primary.monsterName],
+    (k) => (k <= 0 ? 0 : rng.int(0, k - 1)),
+    { connectiveChance: 0.3 },
+  );
+  return out;
+}
+
+/**
+ * Graft one on-hit rider (slow, else stun, else knockback) from a donor that has
+ * one onto `out`, if `out` lacks it — the cross-source component. Clamped to
+ * identity-true windows. Returns the rider donor's monster name (for the blend),
+ * or null if none was grafted.
+ */
+function graftBossRider(rng: Rng, out: BossAbilityDef, pool: BossDonor[]): string | null {
+  const donors = pool.filter(
+    (d) => (d.ab.slowMult != null && d.ab.slowMult < 1) || d.ab.stun != null || d.ab.knockback != null,
+  );
+  if (donors.length === 0) return null;
+  const d = rng.pick(donors);
+  if (d.ab.slowMult != null && d.ab.slowMult < 1 && (out.slowMult == null || out.slowMult >= 1)) {
+    out.slowMult = clamp(round05(d.ab.slowMult), 0.5, 0.9);
+    out.slowDuration = clamp(round1(d.ab.slowDuration ?? 2), 1, 3);
+  } else if (d.ab.stun != null && out.stun == null) {
+    out.stun = clamp(round05(d.ab.stun), 0.3, 1.2);
+  } else if (d.ab.knockback != null && out.knockback == null && out.pull == null) {
+    out.knockback = clamp(round5(d.ab.knockback), 40, 120);
+  } else {
+    return null; // the chosen donor's rider didn't fit — leave the ability as-is
+  }
+  return d.monsterName;
+}
+
+/** A cond for a synthesized ability, derived from its shape (melee shapes want
+ * melee range; a charge wants distance; a self-heal waits for low HP). */
+function bossCond(ab: BossAbilityDef): ((c: BossDecisionCtx) => boolean) | undefined {
+  if (ab.shape === 'cone' || ab.shape === 'pbaoe') return (c) => c.anyInMelee;
+  if (ab.shape === 'line') return (c) => c.distToTarget > 220;
+  if (ab.shape === 'buffSelf' && ab.selfHealFrac != null) return (c) => c.hpFrac < 0.6;
+  return undefined; // ranged / summon / voidzone / beam → unconditional
+}
+
+/**
+ * Generate a valid `decide` priority list over the synthesized ability ids
+ * (req. 9): first usable rule whose guard passes wins. Guarantees at least one
+ * UNCONDITIONAL fallback so a boss with everything off cooldown always acts.
+ */
+function generateBossDecide(abilities: BossAbilityDef[]): MonsterDef['decide'] {
+  const rules = abilities.map((ab) => ({ id: ab.id, cond: bossCond(ab) }));
+  // Conditional rules first (priority), unconditional fallbacks last.
+  rules.sort((a, b) => (a.cond ? 0 : 1) - (b.cond ? 0 : 1));
+  if (!rules.some((r) => r.cond === undefined) && rules.length > 0) {
+    rules[rules.length - 1].cond = undefined; // ensure a fallback exists
+  }
+  return (c) => {
+    for (const r of rules) {
+      if (!c.usable(r.id)) continue;
+      if (r.cond && !r.cond(c)) continue;
+      return r.id;
+    }
+    return null;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 9. Active-run registry — mirrors procgen's, gating Chaos Forge synthesis
 // ---------------------------------------------------------------------------
 
 let forgeSeedVal: number | null = null;
