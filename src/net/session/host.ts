@@ -122,6 +122,9 @@ export interface HostOpts {
   /** Chaos Draft (item 10): every hero/bot/boss drafts a random kit. Independent of
    *  the gauntlet gate — it composes freely with Hardcore or a single fight. */
   randomKits?: boolean;
+  /** Chaos Forge (docs/CHAOS_FORGE.md): synthesize new content by recombining
+   *  components. Ungated like Chaos Draft; composes with every other mode. */
+  chaosForge?: boolean;
   /**
    * item 8 — an up-front loadout for the HOST hero, applied at the FIRST fight so
    * Single-fight mode can test specific builds (granted subclass skills, an extra
@@ -152,6 +155,8 @@ export interface HostOpts {
     randomKits: boolean;
     /** …and, if so, the class THIS host hero was drafted into (its effective kit). */
     draftedClass: ClassId;
+    /** Chaos Forge (docs/CHAOS_FORGE.md): whether this run synthesizes content. */
+    chaosForge: boolean;
   }) => void;
   /** Called when between-boss readiness changes (host UI shows "X/Y ready"). */
   onNextReady?: (info: { ready: number; total: number }) => void;
@@ -212,6 +217,7 @@ export class Host implements NetSession {
   private gauntlet: boolean;
   private readonly hardcore: boolean;
   private readonly randomKits: boolean;
+  private readonly chaosForge: boolean;
   private phase: 'lobby' | 'inFight' = 'lobby';
   private readonly lobby = new Map<string, PeerEntry>();
   /** Host-added AI band members (in roster order after real peers). */
@@ -308,6 +314,7 @@ export class Host implements NetSession {
     // Chaos Draft is independent of the gauntlet gate (item 10) — it works for a
     // single fight or a full run, alone or alongside Hardcore.
     this.randomKits = opts.randomKits ?? false;
+    this.chaosForge = opts.chaosForge ?? false;
     this.masterSeed = (opts.seed ?? (Math.random() * 2 ** 31) | 0) >>> 0 || 1;
 
     this.room = openRoom(opts.code, opts.onJoinError, opts.net ?? 'p2p');
@@ -765,6 +772,7 @@ export class Host implements NetSession {
       runSeed: this.masterSeed,
       hardcore: this.hardcore,
       randomKits: this.randomKits,
+      chaosForge: this.chaosForge,
     };
     netLog('host', `starting fight → ${playerCount} player(s)`, {
       seed,
@@ -785,6 +793,7 @@ export class Host implements NetSession {
       hardcore: this.hardcore,
       randomKits: this.randomKits,
       draftedClass: draftClass(selfId, this.hostClass),
+      chaosForge: this.chaosForge,
     });
     this.startLoop();
   }

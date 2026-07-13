@@ -110,6 +110,16 @@ describe('<HostSetup> default single-fight view', () => {
     expect(btn.getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('shows the Chaos Forge toggle (ungated) and flips chaosForge', () => {
+    render(<HostSetup />);
+    const btn = screen.getByRole('button', { name: /Chaos Forge/ });
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+    expect(useStore.getState().chaosForge).toBe(false);
+    fireEvent.click(btn);
+    expect(useStore.getState().chaosForge).toBe(true);
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('pre-selects the default boss and toggles selection on another card', () => {
     render(<HostSetup />);
 

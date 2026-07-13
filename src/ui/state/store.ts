@@ -13,6 +13,7 @@ import type { NetMode } from '../../net/transport/room';
 import { DEFAULT_CLASS } from '../../engine/content/classes';
 import { DEFAULT_MONSTER } from '../../engine/content/monsters';
 import { setProceduralSeed } from '../../engine/content/procgen';
+import { setForgeSeed } from '../../engine/content/forge';
 import { setShakeEnabled } from '../../render/pipeline/camera';
 
 // --- Persisted local preferences (survive reloads / future runs) -----------
@@ -149,6 +150,13 @@ export interface AppState {
   /** Whether the run currently in progress is a Chaos Draft (from the host). */
   activeRandomKits: boolean;
   /**
+   * Host setting: Chaos Forge (docs/CHAOS_FORGE.md) — synthesize brand-new kits,
+   * upgrades, bosses & shop items by recombining components. Independent of Chaos
+   * Draft (they can both be on). */
+  chaosForge: boolean;
+  /** Whether the run currently in progress is a Chaos Forge (from the host). */
+  activeChaosForge: boolean;
+  /**
    * In a Chaos Draft run, the class THIS hero was drafted into (item 10) — the
    * effective class for the kit + all upgrade offers, distinct from the picked
    * `localClass` (kept intact for the lobby). Null outside a Chaos Draft run.
@@ -221,6 +229,8 @@ export interface AppState {
   setActiveHardcore: (on: boolean) => void;
   setRandomKits: (on: boolean) => void;
   setActiveRandomKits: (on: boolean) => void;
+  setChaosForge: (on: boolean) => void;
+  setActiveChaosForge: (on: boolean) => void;
   setActiveDraftedClass: (c: ClassId | null) => void;
   setLobby: (
     players: LobbyPlayer[],
@@ -284,6 +294,8 @@ export const useStore = create<AppState>((set, get) => ({
   activeHardcore: false,
   randomKits: false,
   activeRandomKits: false,
+  chaosForge: false,
+  activeChaosForge: false,
   activeDraftedClass: null,
 
   localName: loadName(),
@@ -329,14 +341,24 @@ export const useStore = create<AppState>((set, get) => ({
   setActiveRunSeed: (activeRunSeed) => {
     // The single choke point that activates/clears the run's PROCEDURAL content
     // (rolled kits, monsters, boons): host and clients both land here with the
-    // shared master seed, so every peer derives identical variants.
+    // shared master seed, so every peer derives identical variants. Chaos Forge
+    // synthesis rides the same seed, gated by the run's activeChaosForge flag.
     setProceduralSeed(activeRunSeed);
+    setForgeSeed(get().activeChaosForge ? activeRunSeed : null);
     set({ activeRunSeed });
   },
   setHardcore: (hardcore) => set({ hardcore }),
   setActiveHardcore: (activeHardcore) => set({ activeHardcore }),
   setRandomKits: (randomKits) => set({ randomKits }),
   setActiveRandomKits: (activeRandomKits) => set({ activeRandomKits }),
+  setChaosForge: (chaosForge) => set({ chaosForge }),
+  setActiveChaosForge: (activeChaosForge) => {
+    // Sync the Forge synthesis registry to the run seed: on iff this run is a
+    // Chaos Forge run. Mirrors setActiveRunSeed so activating in either order
+    // (lobby preview, fight onStart) lands the same state.
+    setForgeSeed(activeChaosForge ? get().activeRunSeed : null);
+    set({ activeChaosForge });
+  },
   setActiveDraftedClass: (activeDraftedClass) => set({ activeDraftedClass }),
   setLobby: (players, monsterId, lobbyPhase, gauntlet) =>
     set({ players, monsterId, lobbyPhase, gauntlet }),
@@ -433,6 +455,7 @@ export const useStore = create<AppState>((set, get) => ({
     // Leaving the session ends the procedural run — the menu playground and the
     // next lobby serve canonical content until a new run seed arrives.
     setProceduralSeed(null);
+    setForgeSeed(null); // …and ends any Chaos Forge synthesis
     set({
       phase: 'menu',
       error: null,
@@ -446,6 +469,7 @@ export const useStore = create<AppState>((set, get) => ({
       lobbyPhase: 'lobby',
       localReady: false,
       activeRunSeed: null,
+      activeChaosForge: false,
       paused: false,
       pausedBy: null,
       resumeCountdown: null,

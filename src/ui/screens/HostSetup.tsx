@@ -41,6 +41,8 @@ export function HostSetup() {
   const setHardcore = useStore((s) => s.setHardcore);
   const randomKits = useStore((s) => s.randomKits);
   const setRandomKits = useStore((s) => s.setRandomKits);
+  const chaosForge = useStore((s) => s.chaosForge);
+  const setChaosForge = useStore((s) => s.setChaosForge);
   const netMode = useStore((s) => s.netMode);
   const error = useStore((s) => s.error);
   const setMonster = useStore((s) => s.setMonster);
@@ -231,6 +233,30 @@ export function HostSetup() {
               {randomKits
                 ? 'Nobody plays what they picked: every hero and bot is dealt a random class, and every boss is a random monster — all drawn from the shared run seed, so the whole band sees the same wild draft and a shared seed replays it. Your reward offers still match the class you were dealt.'
                 : 'Off: everyone plays their chosen class against the chosen boss. On: heroes, bots and bosses all draft random kits from the seed.'}
+            </span>
+          </span>
+        </button>
+
+        {/* Chaos Forge — synthesizes brand-new content by recombining components.
+            Ungated like Chaos Draft; composes with every other mode. */}
+        <button
+          type="button"
+          className={`wb-gauntlet-toggle${chaosForge ? ' on' : ''}`}
+          onClick={() => {
+            playUiSound('uiClick');
+            setChaosForge(!chaosForge);
+          }}
+          aria-pressed={chaosForge}
+        >
+          <span className="wb-gauntlet-check" aria-hidden="true">
+            {chaosForge ? '⚗️' : ''}
+          </span>
+          <span className="wb-gauntlet-text">
+            <span className="wb-gauntlet-title">Chaos Forge</span>
+            <span className="wb-gauntlet-sub">
+              {chaosForge
+                ? 'Invents new skills by recombining components of the ones that exist: the projectile of one, the on-impact area of another, the ally buff of a third — fused into one new ability with a blended name, then priced back onto budget. Every class is re-forged and renamed after its donors. All seed-derived, so the whole band forges the same wild kits and a shared seed replays them.'
+                : 'Off: kits play as designed. On: kits are synthesized fresh from recombined components — new skills, new names, same balance.'}
             </span>
           </span>
         </button>

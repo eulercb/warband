@@ -76,3 +76,24 @@ describe('Chaos Forge active-run registry', () => {
     expect(forgeVariant('thing', 'id', () => 'made')).toBe('made');
   });
 });
+
+describe('store integration — Chaos Forge activation from the run seed', () => {
+  it('the flag + run seed sync the Forge registry; reset clears both', async () => {
+    const { useStore } = await import('../src/ui/state/store');
+    const st = () => useStore.getState();
+    st().setActiveChaosForge(true);
+    expect(forgeSeed()).toBeNull(); // flag on, but no seed yet
+    st().setActiveRunSeed(31337);
+    expect(forgeSeed()).toBe(31337); // seed arrives → synthesis on
+    st().setActiveChaosForge(false);
+    expect(forgeSeed()).toBeNull(); // flag off → synthesis off (seed stays)
+    st().setActiveChaosForge(true);
+    expect(forgeSeed()).toBe(31337);
+    st().setChaosForge(true); // host setting is independent of the active mirror
+    expect(st().chaosForge).toBe(true);
+    st().reset(); // leaving the run ends synthesis
+    expect(forgeSeed()).toBeNull();
+    expect(st().activeChaosForge).toBe(false);
+    st().setChaosForge(false); // tidy the shared store singleton for sibling suites
+  });
+});
