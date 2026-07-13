@@ -272,6 +272,25 @@ describe('Host callbacks drive the store', () => {
     expect(st().activeHardcore).toBe(true);
   });
 
+  it('onStart records the host hero\'s Chaos-Draft class, and clears it when off (item 10)', () => {
+    useStore.setState({ activeRandomKits: false, activeDraftedClass: null });
+    hosts[0].opts.onStart({
+      runIndex: 0,
+      runTotal: 1,
+      cycle: 0,
+      runSeed: 3,
+      hardcore: false,
+      randomKits: true,
+      draftedClass: 'rogue',
+    });
+    expect(st().activeRandomKits).toBe(true);
+    expect(st().activeDraftedClass).toBe('rogue');
+    // A subsequent normal run clears the drafted class.
+    hosts[0].opts.onStart({ runIndex: 0, runTotal: 1, cycle: 0, runSeed: 3, hardcore: false });
+    expect(st().activeRandomKits).toBe(false);
+    expect(st().activeDraftedClass).toBeNull();
+  });
+
   it('onStart resets only the coin purse on a fresh CYCLE (index 0, cycle > 0)', () => {
     useStore.setState({ myUpgrades: ['swift'], myCoins: 50, myEphemeral: { potions: 2 } });
     // index 0 with cycle > 0 takes the `else s.resetCoins()` arm: the build persists,
@@ -363,6 +382,38 @@ describe('Client callbacks drive the store', () => {
     expect(st().myUpgrades).toEqual(['swift']); // NOT cleared -> the else arm
     expect(st().myCoins).toBe(0);
     expect(st().myEphemeral).toEqual({});
+  });
+
+  it('onStart adopts THIS client\'s Chaos-Draft class from the roster (item 10)', () => {
+    useStore.setState({ activeRandomKits: false, activeDraftedClass: null });
+    clients[0].opts.onStart({
+      runIndex: 1,
+      runTotal: 3,
+      cycle: 0,
+      runSeed: 5,
+      hardcore: false,
+      randomKits: true,
+      roster: [
+        { peerId: 'other', name: 'O', classId: 'knight' },
+        { peerId: 'selfpeerid', name: 'Me', classId: 'mage' }, // this client's drafted kit
+      ],
+    });
+    expect(st().activeRandomKits).toBe(true);
+    expect(st().activeDraftedClass).toBe('mage');
+  });
+
+  it('onStart clears the drafted class when Chaos Draft is off (item 10)', () => {
+    useStore.setState({ activeRandomKits: true, activeDraftedClass: 'mage' });
+    clients[0].opts.onStart({
+      runIndex: 0,
+      runTotal: 1,
+      cycle: 0,
+      runSeed: 5,
+      hardcore: false,
+      roster: [{ peerId: 'selfpeerid', name: 'Me', classId: 'knight' }],
+    });
+    expect(st().activeRandomKits).toBe(false);
+    expect(st().activeDraftedClass).toBeNull();
   });
 
   it('onResult plays victory then defeat stings and shows the result', () => {

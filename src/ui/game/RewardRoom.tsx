@@ -122,7 +122,9 @@ function soldOutIds(stock: EphemeralStock): string[] {
 }
 
 export default function RewardRoom({ result }: { result: FightResult }) {
-  const localClass = useStore((s) => s.localClass);
+  // Effective class: the Chaos-Draft class in a randomized run (item 10), else the
+  // pick — so the between-boss boons offered are the drafted class's correct ones.
+  const localClass = useStore((s) => s.activeDraftedClass ?? s.localClass);
   const myUpgrades = useStore((s) => s.myUpgrades);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
   const readyReady = useStore((s) => s.nextReadyReady);
@@ -215,7 +217,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
     // sub1/sub2 and Swap buttons show here too, not only in the fight (item 13).
     const scene = new RewardScene(
       st.localName || 'Hero',
-      st.localClass,
+      st.activeDraftedClass ?? st.localClass, // effective (Chaos-Draft) class, item 10
       offers,
       myScore,
       { subSkills: st.mySubSkills, extraClasses: st.myExtraClasses },

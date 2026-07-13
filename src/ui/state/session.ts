@@ -166,6 +166,7 @@ export async function hostGame(loadout?: SingleFightLoadout): Promise<void> {
     monsterId: st.monsterId,
     gauntlet: st.gauntlet,
     hardcore: st.hardcore,
+    randomKits: st.randomKits,
     loadout: st.gauntlet || !hasLoadout ? undefined : loadout,
     seed: resolveHostSeed(),
     name: nameOrDefault(),
@@ -180,6 +181,10 @@ export async function hostGame(loadout?: SingleFightLoadout): Promise<void> {
       s.setCycle(info.cycle);
       s.setActiveRunSeed(info.runSeed);
       s.setActiveHardcore(info.hardcore);
+      // Chaos Draft (item 10): record the class this host hero was drafted into so
+      // its kit + upgrade offers resolve against the effective class, not the pick.
+      s.setActiveRandomKits(info.randomKits ?? false);
+      s.setActiveDraftedClass(info.randomKits ? (info.draftedClass ?? null) : null);
       s.setNextReadyState(0, 0);
       // A fresh fight consumes any ephemeral perks bought last interstitial (item 21).
       s.resetEphemeralStock();
@@ -250,6 +255,11 @@ export async function joinGame(code: string): Promise<void> {
       s.setCycle(msg.cycle);
       if (msg.runSeed != null) s.setActiveRunSeed(msg.runSeed);
       s.setActiveHardcore(msg.hardcore ?? false);
+      // Chaos Draft (item 10): adopt the class the host drafted THIS client into
+      // (carried in the roster) so its reward offers match its effective kit.
+      const drafted = msg.roster?.find((r) => r.peerId === selfId)?.classId ?? null;
+      s.setActiveRandomKits(msg.randomKits ?? false);
+      s.setActiveDraftedClass(msg.randomKits ? drafted : null);
       s.setNextReadyState(0, 0);
       s.resetEphemeralStock(); // a fresh fight consumes bought ephemeral perks (item 21)
       // Fresh run wipes the build; each later gauntlet resets only coins (item 23).

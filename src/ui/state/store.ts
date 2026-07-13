@@ -144,6 +144,16 @@ export interface AppState {
   hardcore: boolean;
   /** Whether the run currently in progress is hardcore (from the host). */
   activeHardcore: boolean;
+  /** Host setting: Chaos Draft (item 10) — every hero/bot/boss drafts a random kit. */
+  randomKits: boolean;
+  /** Whether the run currently in progress is a Chaos Draft (from the host). */
+  activeRandomKits: boolean;
+  /**
+   * In a Chaos Draft run, the class THIS hero was drafted into (item 10) — the
+   * effective class for the kit + all upgrade offers, distinct from the picked
+   * `localClass` (kept intact for the lobby). Null outside a Chaos Draft run.
+   */
+  activeDraftedClass: ClassId | null;
 
   // local selections
   localName: string;
@@ -209,6 +219,9 @@ export interface AppState {
   setActiveRunSeed: (n: number | null) => void;
   setHardcore: (on: boolean) => void;
   setActiveHardcore: (on: boolean) => void;
+  setRandomKits: (on: boolean) => void;
+  setActiveRandomKits: (on: boolean) => void;
+  setActiveDraftedClass: (c: ClassId | null) => void;
   setLobby: (
     players: LobbyPlayer[],
     monsterId: MonsterId,
@@ -269,6 +282,9 @@ export const useStore = create<AppState>((set, get) => ({
   activeRunSeed: null,
   hardcore: false,
   activeHardcore: false,
+  randomKits: false,
+  activeRandomKits: false,
+  activeDraftedClass: null,
 
   localName: loadName(),
   localClass: DEFAULT_CLASS,
@@ -319,6 +335,9 @@ export const useStore = create<AppState>((set, get) => ({
   },
   setHardcore: (hardcore) => set({ hardcore }),
   setActiveHardcore: (activeHardcore) => set({ activeHardcore }),
+  setRandomKits: (randomKits) => set({ randomKits }),
+  setActiveRandomKits: (activeRandomKits) => set({ activeRandomKits }),
+  setActiveDraftedClass: (activeDraftedClass) => set({ activeDraftedClass }),
   setLobby: (players, monsterId, lobbyPhase, gauntlet) =>
     set({ players, monsterId, lobbyPhase, gauntlet }),
   setLocalName: (localName) => {

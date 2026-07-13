@@ -62,7 +62,10 @@ export function ResultScreen() {
   const result = useStore((s) => s.result);
   const isHost = useStore((s) => s.isHost);
   const activeHardcore = useStore((s) => s.activeHardcore);
-  const localClass = useStore((s) => s.localClass);
+  // The hero's EFFECTIVE class: the Chaos-Draft class in a randomized run (item 10),
+  // else the picked class. Drives the kit + all upgrade offers so a drafted hero is
+  // offered its drafted class's correct boons.
+  const localClass = useStore((s) => s.activeDraftedClass ?? s.localClass);
   const myUpgrades = useStore((s) => s.myUpgrades);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
   // Subscribed (not just read via getState) so the CHAR offer re-rolls the moment a

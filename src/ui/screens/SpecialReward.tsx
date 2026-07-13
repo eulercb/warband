@@ -29,7 +29,9 @@ import { Rng, mixSeed, shuffled } from '../../engine/core/math';
 import type { ClassId } from '../../engine/core/types';
 
 export default function SpecialReward() {
-  const localClass = useStore((s) => s.localClass);
+  // Effective class: the Chaos-Draft class in a randomized run (item 10), else the
+  // pick — so the subclass/multiclass/grand flow resolves against the drafted kit.
+  const localClass = useStore((s) => s.activeDraftedClass ?? s.localClass);
   const mySubSkills = useStore((s) => s.mySubSkills);
   const myExtraClasses = useStore((s) => s.myExtraClasses);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
