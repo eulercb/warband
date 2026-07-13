@@ -2775,9 +2775,6 @@ export class World {
       })),
       telegraphs: this.pendingStrikes.length > 0 || this.bond ? this.worldTelegraphs() : undefined,
       events: this.events.slice(),
-      // Hardcore kill-deadline countdown (item 11); absent (undefined) otherwise,
-      // so a standard fight ships nothing extra and the HUD shows no timer.
-      deadlineRemaining: this.hardcore ? this.deadlineRemaining() : undefined,
     };
   }
 

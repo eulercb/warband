@@ -237,8 +237,9 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
           <span className="hud-pause-glyph" aria-hidden="true" />
         </button>
       )}
-      {/* Boss bars (one per boss — twin encounters stack two), with the hardcore
-          kill-deadline countdown flowing beneath them when it's a hardcore fight. */}
+      {/* Boss bars (one per boss — twin encounters stack two). The hardcore
+          kill-deadline has no bar or clock of its own — it warns via transient
+          banners at 30/15/5s (see world.stepDeadline + CorruptionBanner). */}
       {hud.bosses.length > 0 && (
         <div className="hud-bossbars">
           {hud.bosses.map((b, i) => (

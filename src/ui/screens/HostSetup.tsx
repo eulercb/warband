@@ -180,7 +180,7 @@ export function HostSetup() {
               <span className="wb-gauntlet-title">Hardcore</span>
               <span className="wb-gauntlet-sub">
                 {hardcore
-                  ? 'Kill fast or die: a per-fight kill-DEADLINE counts down on the HUD — let it hit zero with the boss still standing and the whole band wipes. Mid-fight corruption also comes thick and ACCELERATES the longer a boss survives, revives are limited to 2 per fight, and a wipe ends the run — no free retry. For aggressive players.'
+                  ? 'Kill fast or die: each fight runs against a kill-deadline with no on-screen clock — instead the band is WARNED at 30s, 15s and 5s as it nears. Let it pass with the boss still standing and a bottomless chasm tears open and closes in around the party while corruption redoubles, swallowing the whole band within seconds. Mid-fight corruption also comes thick and ACCELERATES the longer a boss survives, revives are limited to 2 per fight, and a wipe ends the run — no free retry. For aggressive players.'
                   : 'Off: the standard run. On: a deadlier run with a hard kill-deadline, limited revives and no free retry.'}
               </span>
             </span>

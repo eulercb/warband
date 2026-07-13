@@ -35,7 +35,6 @@ export function pushHud(state: RenderState, source: InputSource): void {
       modName: b.modName ?? '',
       affixes: b.affixes ?? [],
     })),
-    deadlineRemaining: state.deadlineRemaining ?? null,
     teammates: state.players.map((p) => ({
       id: p.id,
       name: p.name,
