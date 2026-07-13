@@ -25,9 +25,10 @@ import {
   SUB_SKILL_UPGRADES,
   applySubSkillUpgrades,
 } from '../src/engine/content/charUpgrades';
-import { CLASSES, CLASS_IDS, cloneAbilities } from '../src/engine/content/classes';
+import { CLASSES, CLASS_IDS, cloneAbilities, getClass } from '../src/engine/content/classes';
 import type { PlayerAbilityDef, AbilityKind } from '../src/engine/content/classes';
 import { SUBCLASSES, getSubSkill, subclassOfSkill } from '../src/engine/content/subclasses';
+import { setProceduralSeed } from '../src/engine/content/procgen';
 import type { ClassId, Player, AbilitySlot, SubSlot } from '../src/engine/core/types';
 
 // ---------------------------------------------------------------------------
@@ -1413,6 +1414,37 @@ describe('describeCharOffer', () => {
 
   it('returns null for an unrecognised id', () => {
     expect(describeCharOffer('knight', [], 'bogus')).toBeNull();
+  });
+
+  it('never mixes a re-flavoured skill name into an upgrade card, even mid-run (items 1/9)', () => {
+    // Item 1's report: the headline named "Fireball" while the "Now →" preview
+    // named the rolled variant ("Pyroclasm"). With name-rolling reverted (item 9)
+    // every ability keeps its canonical name, so the two halves always agree.
+    for (const seed of [1, 42, 1337, 987654321]) {
+      setProceduralSeed(seed);
+      try {
+        for (const classId of CLASS_IDS) {
+          const canon = new Set(
+            (['basic', 'a1', 'a2', 'a3'] as AbilitySlot[]).map(
+              (s) => getClass(classId).abilities[s].name,
+            ),
+          );
+          for (const [id, def] of Object.entries(CHAR_UPGRADES)) {
+            if (def.classId !== classId || def.replaces) continue;
+            const v = describeCharOffer(classId, [], id);
+            if (!v || !v.desc.includes('Now →')) continue;
+            // Every "Name: …" prefix in the preview must be a canonical skill name
+            // of this class — never a re-flavoured bank variant.
+            const preview = v.desc.split('Now →')[1];
+            for (const m of preview.matchAll(/(?:^|·)\s*([^:·]+):/g)) {
+              expect(canon.has(m[1].trim())).toBe(true);
+            }
+          }
+        }
+      } finally {
+        setProceduralSeed(null);
+      }
+    }
   });
 
   it('appends a current-stats preview naming the retuned ability (item 4)', () => {

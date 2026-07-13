@@ -3,11 +3,14 @@
  *
  * Every hosted session now re-rolls the game's content from the session's master
  * seed while PRESERVING EVERY IDENTITY: a Mage still opens with a bolt, carries a
- * heavy area nuke, a control nova and an escape — but this run's nuke may be a
- * slow, huge "Pyroclasm" where last run's was a snappy little "Emberburst". The
- * same applies to monsters (an Ancient Dragon is always a fire-breathing wyrm,
- * but this run's is bulkier and slower, with a meaner tail) and to the generic
- * between-boss boons (this run's Haste shaves a different slice off cooldowns).
+ * heavy area nuke, a control nova and an escape — but this run's Fireball may be a
+ * slow, huge blast where last run's was a snappy little one. Skill NAMES stay
+ * canonical and recognisable (item 9): a Fireball is always called "Fireball", so
+ * an upgrade card never mixes the base name with a re-flavoured one. The same
+ * number-rolling applies to monsters (an Ancient Dragon is always a fire-breathing
+ * wyrm, but this run's is bulkier and slower, with a meaner tail) and to the
+ * generic between-boss boons (this run's Haste shaves a different slice off
+ * cooldowns).
  *
  * WHAT NEVER CHANGES (the identity envelope):
  *   • ids, ability kinds/shapes, slot layout, zone flavours, boss AI (`decide`),
@@ -25,11 +28,14 @@
  *   • BUDGET-LINKED: an ability's rolled output is tied to its rolled cooldown
  *     (a harder-hitting roll cycles slower), and a boss that rolls extra HP hits
  *     proportionally softer — so a lucky seed shifts a kit's FEEL, not its power;
- *   • base-skill NAMES, drawn from small hand-authored, mechanic-true banks
- *     ("Fireball" may come up "Cinder Orb" — never "Healing Word");
  *   • class HP / move speed (small, role-preserving jitter);
  *   • monster stats + a rolled epithet ("Broodmother, the Ravenous");
  *   • generic boon magnitudes, names and descriptions (regenerated to match).
+ *
+ * WHAT NO LONGER ROLLS (reverted in item 9): base-skill display NAMES. Per-run
+ * renaming (a Fireball surfacing as “Pyroclasm”) hurt recognition and mixed names
+ * inside a single upgrade card without adding real diversity — that now lives in
+ * the opt-in randomized-kits mode. Skill names stay canonical and recognisable.
  *
  * DETERMINISM: everything derives from (seed, stable id) through mulberry32
  * streams — no Math.random, no Date — so the host and every client generate
@@ -91,61 +97,10 @@ const q01 = (x: number): number => Math.round(x * 100) / 100; // percents / frac
 const q5 = (x: number): number => Math.round(x / 5) * 5; // coarse world units
 
 // ---------------------------------------------------------------------------
-// Name banks — hand-authored, mechanic-true variants. Index 0 is ALWAYS the
-// canonical name, so every bank stays anchored to the skill it re-flavours.
+// Name banks — hand-authored, mechanic-true flavour variants for the two families
+// whose names still roll (monster epithets, generic-boon names). Index 0 is the
+// canonical name. Base-skill NAMES no longer roll (item 9) — they stay canonical.
 // ---------------------------------------------------------------------------
-
-/** Base-kit skill names, keyed `<classId>.<slot>`. 4 variants per skill. */
-export const SKILL_NAME_BANKS: Record<string, string[]> = {
-  'knight.basic': ['Cleave', 'Sundering Arc', 'Iron Sweep', 'Wide Hew'],
-  'knight.a1': ['Taunt', 'Challenge', 'War Shout', 'Defiant Cry'],
-  'knight.a2': ['Shield Wall', 'Iron Bastion', 'Steel Aegis', 'Wallbrace'],
-  'knight.a3': ['Shield Bash', 'Rampart Blow', 'Crushing Check', 'Bulwark Slam'],
-  'ranger.basic': ['Arrow', 'Swiftshot', 'Longshot', 'Piercer'],
-  'ranger.a1': ['Multishot', 'Fan of Arrows', 'Splitshot', 'Twin Quiver'],
-  'ranger.a2': ['Rain of Arrows', 'Arrowstorm', 'Skyfall Volley', 'Hail of Shafts'],
-  'ranger.a3': ['Roll', 'Tumble', 'Evasive Dash', 'Sidestep'],
-  'mage.basic': ['Arcane Bolt', 'Mana Dart', 'Rune Spark', 'Aether Lance'],
-  'mage.a1': ['Fireball', 'Cinder Orb', 'Pyroclasm', 'Emberburst'],
-  'mage.a2': ['Frost Nova', 'Glacial Ring', 'Rimeburst', "Winter's Grasp"],
-  'mage.a3': ['Blink', 'Phase Step', 'Translocate', 'Aether Skip'],
-  'cleric.basic': ['Smite', 'Holy Bolt', 'Judgement', 'Radiant Lash'],
-  'cleric.a1': ['Heal', 'Mend', 'Restoring Light', 'Grace'],
-  'cleric.a2': ['Sanctuary', 'Hallowed Ground', 'Blessed Circle', 'Refuge'],
-  'cleric.a3': ['Blessing', 'Benediction', 'Divine Favor', 'Anointment'],
-  'barbarian.basic': ['Reckless Swing', 'Wild Hew', 'Savage Arc', 'Bonebreaker'],
-  'barbarian.a1': ['Rage', 'Blood Fury', 'Berserk', 'War Trance'],
-  'barbarian.a2': ['Leap', 'Skybreaker Jump', 'Crashing Bound', 'Warvault'],
-  'barbarian.a3': ['Whirlwind', 'Steel Cyclone', 'Blade Storm', 'Reaping Spin'],
-  'rogue.basic': ['Slash', 'Quick Cut', 'Razor Flick', 'Twin Nick'],
-  'rogue.a1': ['Backstab', 'Vital Thrust', 'Shadow Lunge', 'Kidney Strike'],
-  'rogue.a2': ['Shadowstep', 'Night Slip', 'Smoke Vanish', 'Gloom Stride'],
-  'rogue.a3': ['Poison Vial', 'Venom Flask', 'Toxin Burst', 'Blight Bottle'],
-  'paladin.basic': ['Holy Strike', 'Radiant Blow', 'Censure', 'Lightbrand'],
-  'paladin.a1': ['Consecration', 'Sacred Ground', 'Sanctified Soil', 'Holy Field'],
-  'paladin.a2': ['Lay on Hands', 'Divine Touch', 'Healing Hands', 'Mercy'],
-  'paladin.a3': ['Divine Shield', 'Aegis of Light', 'Holy Bulwark', "Guardian's Oath"],
-  'druid.basic': ['Thornlash', 'Briar Whip', 'Thorn Volley', 'Sting of Oak'],
-  'druid.a1': ['Entangle', 'Vine Snare', 'Bramble Trap', 'Root Grasp'],
-  'druid.a2': ['Regrowth', 'Wildmend', "Nature's Balm", 'Verdant Surge'],
-  'druid.a3': ['Cyclone', 'Gale Ring', 'Leafstorm', 'Tempest Coil'],
-  'bard.basic': ['Vicious Mockery', 'Cutting Verse', 'Scathing Quip', 'Barbed Rhyme'],
-  'bard.a1': ['Inspiration', 'Battle Anthem', 'Heartening Song', 'Rallying Chord'],
-  'bard.a2': ['Healing Word', 'Soothing Refrain', 'Mending Note', 'Lullaby of Life'],
-  'bard.a3': ['Dissonant Whispers', 'Discordant Wail', 'Maddening Chord', 'Shattersong'],
-  'monk.basic': ['Flurry of Blows', 'Hundred Fists', 'Palm Cascade', 'Storm of Cuffs'],
-  'monk.a1': ['Stunning Strike', 'Numbing Palm', 'Pressure Point', 'Dazing Fist'],
-  'monk.a2': ['Step of the Wind', 'Zephyr Stride', 'Gale Step', 'Cloudfoot Dash'],
-  'monk.a3': ['Quivering Palm', 'Tremor Palm', 'Chi Burst', 'Forbidden Touch'],
-  'sorcerer.basic': ['Chaos Bolt', 'Wild Surge', 'Twin Havoc', 'Entropy Dart'],
-  'sorcerer.a1': ['Meteor', 'Starfall', 'Cometfall', 'Skyfire'],
-  'sorcerer.a2': ['Mirror Image', 'Twinned Guise', 'Phantom Selves', 'Blur of Forms'],
-  'sorcerer.a3': ['Arcane Leap', 'Sorcerous Vault', 'Riftjump', 'Mana Spring'],
-  'warlock.basic': ['Eldritch Blast', 'Void Lash', 'Pact Bolt', 'Umbral Ray'],
-  'warlock.a1': ['Hex', 'Withering Curse', 'Doom Mark', 'Blightbind'],
-  'warlock.a2': ['Hellish Rebuke', 'Infernal Riposte', 'Brimstone Burst', "Fiend's Answer"],
-  'warlock.a3': ["Dark One's Blessing", "Patron's Boon", 'Fell Bargain', 'Umbral Pact'],
-};
 
 /** Epithets appended to a rolled monster's name ("Broodmother, the Ravenous"). */
 export const MONSTER_EPITHETS: string[] = [
@@ -220,13 +175,13 @@ const AB_ROLLS = 28;
  * (±~10% "tilt" — a run's kit can lean hot or cold, never break).
  *
  * Pure: (seed, key, base) → variant. `key` is the stable identity of the skill
- * (e.g. `mage.a1` or a subclass skill id) and also picks the name bank entry.
+ * (e.g. `mage.a1` or a subclass skill id). The skill's display NAME never rolls —
+ * it stays canonical (item 9) so upgrade cards and tooltips are always consistent.
  */
 export function abilityVariant<T extends Omit<PlayerAbilityDef, 'slot'>>(
   seed: number,
   key: string,
   base: T,
-  nameBank?: string[],
 ): T {
   const r = rollVector(seed, SALT.classAbility, key, AB_ROLLS);
   const out: T = { ...base };
@@ -309,10 +264,8 @@ export function abilityVariant<T extends Omit<PlayerAbilityDef, 'slot'>>(
     out.lifestealFrac = q01(Math.min(0.35, base.lifestealFrac * u(r[26], 0.8, 1.25)));
   }
 
-  // --- Name (bank pick; index 0 is the canonical name) ---
-  if (nameBank && nameBank.length > 0) {
-    out.name = nameBank[Math.floor(r[27] * nameBank.length) % nameBank.length];
-  }
+  // The display NAME is intentionally left canonical (item 9): r[27] is reserved
+  // to keep the roll vector fixed-size so value streams never desync across peers.
   return out;
 }
 
@@ -334,7 +287,7 @@ export function classVariant(seed: number, base: ClassDef): ClassDef {
   const abilities = {} as Record<AbilitySlot, PlayerAbilityDef>;
   for (const slot of SLOTS) {
     const key = `${base.id}.${slot}`;
-    abilities[slot] = abilityVariant(seed, key, base.abilities[slot], SKILL_NAME_BANKS[key]);
+    abilities[slot] = abilityVariant(seed, key, base.abilities[slot]);
   }
   return {
     ...base,
