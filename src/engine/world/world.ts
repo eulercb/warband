@@ -151,6 +151,8 @@ import type { MonsterDef, BossModifier } from '../content/monsters';
 import { hasAffix, AFFIXES } from '../content/affixes';
 import { computeScaling, addCount } from '../content/scaling';
 import type { ScalingResult } from '../content/scaling';
+import { balanceAdjust, bandPowerRatio, runClears, NEUTRAL_BALANCE } from '../content/balance';
+import type { BalanceAdjust } from '../content/balance';
 import {
   tickBuffs,
   tickStunDr,
@@ -253,6 +255,15 @@ export interface WorldInit {
   players: WorldPlayerInit[];
   /** Endless cycle (0 = first run) — scales boss HP/damage (scaling.ts). */
   cycle?: number;
+  /**
+   * MATCH BALANCE (adaptive difficulty): the host's smoothed kill-pace signal
+   * across the encounters fought so far (1 = on target, >1 = the band has been
+   * killing fast — see content/balance.ts). When provided, the World measures
+   * the band's realized power off the freshly-spawned roster and multiplies the
+   * resulting hard-capped adjustment into this fight's boss HP / damage
+   * scaling. Omitted (tests, playground, menu scenes) = fully neutral.
+   */
+  pace?: number;
   /** Slot within the current run (0-based) and the run's length, so a multi-boss
    *  pack can be eased against party progression early on (item 10). Default 0/1. */
   runIndex?: number;
@@ -370,6 +381,12 @@ export class World {
   seed: number;
 
   scaling: ScalingResult;
+  /**
+   * MATCH BALANCE adjustment applied to this fight (content/balance.ts): the
+   * band's kill pace + measured power, folded into `scaling` at construction.
+   * NEUTRAL_BALANCE unless the host fed a pace signal (real hosted fights).
+   */
+  readonly balance: BalanceAdjust;
   /** Endless cycle + this encounter's slot in the run, for progression-aware pack
    *  easing (item 10). Default cycle 0, slot 0 of a length-1 run. */
   private readonly cycle: number;
@@ -439,6 +456,21 @@ export class World {
     this.corruptionEnabled = (init.corruption ?? false) && !this.practice && this.scene === null;
     this.corruptionTimer = this.corruptionEnabled ? firstCorruptionDelay(this) : 0;
     this.spawnPlayers(init.players);
+    // MATCH BALANCE (adaptive difficulty): only a real hosted fight feeds a
+    // pace signal. Measure the band as it actually spawned — every reward is
+    // applied by now — and turn this encounter's pressure knobs (bounded) so
+    // the run stays steadily challenging. Practice / menu scenes stay neutral.
+    const pace = this.practice || this.scene !== null ? null : (init.pace ?? null);
+    this.balance =
+      pace === null
+        ? NEUTRAL_BALANCE
+        : balanceAdjust(
+            pace,
+            bandPowerRatio(this.players),
+            runClears(this.cycle, this.runIndex, this.runTotal),
+          );
+    this.scaling.hpMultiplier *= this.balance.hpMult;
+    this.scaling.bossDamageMult *= this.balance.dmgMult;
     // A menu scene (reward chamber / war room) is heroes-only: no boss, no
     // hazards, no cover, no totems — only the harness's interaction objects.
     if (this.scene === null) {

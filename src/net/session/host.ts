@@ -51,6 +51,7 @@ import {
 } from '../../engine/content/monsters';
 import type { RunSlot } from '../../engine/content/monsters';
 import { rollAffixes } from '../../engine/content/affixes';
+import { recordEncounter } from '../../engine/content/balance';
 import { Rng, mixSeed } from '../../engine/core/math';
 import { isUpgradeId, upgradeMaxStacks } from '../../engine/content/upgrades';
 import type { UpgradeId } from '../../engine/content/upgrades';
@@ -246,6 +247,14 @@ export class Host implements NetSession {
   private readonly masterSeed: number;
   /** Bosses fielded in the current run, so the next Endless run opens on a fresh set. */
   private lastRunBosses = new Set<MonsterId>();
+  /**
+   * MATCH BALANCE: the smoothed kill-pace signal across this session's fights
+   * (content/balance.ts; 1 = on target, >1 = the band kills fast). Updated from
+   * each encounter's time-to-kill (a wipe records a "struggling" sample) and fed
+   * into every World so boss HP/damage track how the band is actually doing.
+   * Persists across retries and endless cycles; reset with the run itself.
+   */
+  private balancePace = 1;
 
   // Sim-loop bookkeeping.
   private running = false;
@@ -537,6 +546,7 @@ export class Host implements NetSession {
     }
     this.cycle = 0;
     this.lastRunBosses.clear(); // a fresh run isn't constrained by a prior one
+    this.balancePace = 1; // fresh run — the pace signal starts on target
     this.runOrder = this.buildRunOrder();
     this.runIndex = 0;
     this.upgrades.clear(); // fresh run — nobody carries upgrades into boss 1
@@ -679,6 +689,10 @@ export class Host implements NetSession {
       bossAffixes,
       corruption,
       hardcore: this.hardcore,
+      // MATCH BALANCE: the smoothed kill-pace signal from the fights so far. The
+      // World blends it with the band's measured power (rewards fully applied)
+      // into this fight's bounded boss HP/damage adjustment (content/balance.ts).
+      pace: this.balancePace,
     });
     this.localPlayerId = this.world.playerIdByPeer(selfId);
 
@@ -1065,6 +1079,7 @@ export class Host implements NetSession {
     this.runIndex = 0;
     this.cycle = 0;
     this.lastRunBosses.clear();
+    this.balancePace = 1;
     this.upgrades.clear();
     this.charUpgrades.clear();
     this.subclassByPeer.clear();
@@ -1209,6 +1224,14 @@ export class Host implements NetSession {
     result.cycle = this.cycle;
 
     const victory = result.outcome === 'victory';
+    // MATCH BALANCE: fold this encounter's time-to-kill into the smoothed pace
+    // signal (a wipe records a fixed "struggling" sample instead), so the NEXT
+    // fight's boss scaling tracks how the band is actually doing.
+    this.balancePace = recordEncounter(this.balancePace, {
+      durationS: world.elapsed,
+      bossCount: world.bosses.length,
+      victory,
+    });
     const hasNext = victory && this.runIndex < this.runOrder.length - 1;
     const nextSlot = hasNext ? this.runOrder[this.runIndex + 1] : null;
     result.nextMonsterId = nextSlot ? (nextSlot[0] ?? null) : null;
