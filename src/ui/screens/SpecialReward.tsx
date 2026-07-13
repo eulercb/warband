@@ -23,7 +23,7 @@ import {
   type SubclassDef,
 } from '../../engine/content/subclasses';
 import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
-import { offerableGrands, CHAR_UPGRADES } from '../../engine/content/charUpgrades';
+import { offerableGrands, describeCharOffer, CHAR_UPGRADES } from '../../engine/content/charUpgrades';
 import { hashStr } from '../../engine/content/procgen';
 import { Rng, mixSeed, shuffled } from '../../engine/core/math';
 import type { ClassId } from '../../engine/core/types';
@@ -151,11 +151,15 @@ export default function SpecialReward() {
   // grand only for a picked subclass, a graft grand only while that graft is held.
   // A graft grand is class-agnostic, so the same one can surface under more than one
   // owned class — dedupe by id so it shows once.
+  // Keep the class each grand was offered under, so its "Now →" preview resolves
+  // against the right kit (item 6).
   const allGrands = [
     ...new Map(
-      [...ownedClasses]
-        .flatMap((c) => offerableGrands(c, myCharUpgrades, mySubSkills))
-        .map((g) => [g.id, g] as const),
+      [...ownedClasses].flatMap((c) =>
+        offerableGrands(c, myCharUpgrades, mySubSkills).map(
+          (g) => [g.id, { g, forClass: c }] as const,
+        ),
+      ),
     ).values(),
   ];
   const GRAND_SHOWN = 4;
@@ -196,19 +200,26 @@ export default function SpecialReward() {
             <span className="wb-upgrade-desc">{CLASSES[c].role} — swap to it in the fight</span>
           </button>
         ))}
-        {grands.map((g) => (
-          <button
-            key={g.id}
-            type="button"
-            className="wb-upgrade-card wb-upgrade-char wb-special-card"
-            onClick={() => pickGrand(g.id, g.name)}
-          >
-            <span className="wb-upgrade-name">
-              ★ {g.icon} {g.name}
-            </span>
-            <span className="wb-upgrade-desc">GRAND — {g.desc}</span>
-          </button>
-        ))}
+        {grands.map(({ g, forClass }) => {
+          // Item 6: resolve the grand's card against the owning kit so it shows the
+          // resulting values ("Now → …"), not just hand-authored prose. Subclass
+          // grands retune sub-abilities (outside the base-slot preview), so those
+          // fall back to their prose — which already carries the concrete change.
+          const view = describeCharOffer(forClass, myCharUpgrades, g.id);
+          return (
+            <button
+              key={g.id}
+              type="button"
+              className="wb-upgrade-card wb-upgrade-char wb-special-card"
+              onClick={() => pickGrand(g.id, g.name)}
+            >
+              <span className="wb-upgrade-name">
+                ★ {g.icon} {g.name}
+              </span>
+              <span className="wb-upgrade-desc">{view?.desc ?? `GRAND — ${g.desc}`}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

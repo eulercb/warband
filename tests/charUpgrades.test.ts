@@ -1417,6 +1417,51 @@ describe('describeCharOffer', () => {
     expect(describeCharOffer('knight', [], 'bogus')).toBeNull();
   });
 
+  // A "resolved post-value" = a "Now →" segment that carries a digit (a resolved
+  // ability stat and/or player stat). This is the item-6 regression guard: every
+  // offer card must show the RESULTING value, not just a prose delta — or be an
+  // explicitly whitelisted prose-only case with the reason recorded below.
+  const resolvesPostValue = (desc: string): boolean => {
+    const now = desc.split('Now →')[1];
+    return now !== undefined && /\d/.test(now);
+  };
+
+  it('every between-boss class boon resolves a Now → post-value (item 6)', () => {
+    for (const classId of CLASS_IDS) {
+      for (const def of CHAR_UPGRADES_BY_CLASS[classId]) {
+        const v = describeCharOffer(classId, [], def.id)!;
+        expect(resolvesPostValue(v.desc), `${classId}/${def.id}: ${v.desc}`).toBe(true);
+      }
+    }
+  });
+
+  it('every class capstone + base-skill grand resolves a Now → post-value (item 6)', () => {
+    for (const g of [...Object.values(GRAND_BY_CLASS).flat(), ...SKILL_GRANDS]) {
+      const classId = g.classId === 'any' ? 'knight' : g.classId;
+      const v = describeCharOffer(classId, [], g.id)!;
+      expect(resolvesPostValue(v.desc), `${g.id}: ${v.desc}`).toBe(true);
+    }
+  });
+
+  it('every graft grand resolves a Now → post-value once its graft is held (item 6)', () => {
+    for (const g of GRAFT_GRANDS) {
+      const graft = HYBRID_UPGRADES.find((h) => h.id === g.graftId)!;
+      const classId = CLASS_IDS.find((c) => !(graft.exclude ?? []).includes(c))!;
+      const v = describeCharOffer(classId, [g.graftId!], g.id)!;
+      expect(resolvesPostValue(v.desc), `${g.id}: ${v.desc}`).toBe(true);
+    }
+  });
+
+  it('subclass grands are whitelisted prose-only but still state a concrete change (item 6)', () => {
+    // WHITELIST + justification: a subclass grand retunes SUB-abilities (sub1/sub2),
+    // which live outside previewAbilityTable's base-slot preview, so describeCharOffer
+    // cannot resolve a "Now →" for them. Their hand-authored prose still carries the
+    // concrete delta (a % or number), which this asserts so they never go vague.
+    for (const g of SUBCLASS_GRANDS) {
+      expect(/\d/.test(g.desc), `${g.id}: ${g.desc}`).toBe(true);
+    }
+  });
+
   it('never mixes a re-flavoured skill name into an upgrade card, even mid-run (items 1/9)', () => {
     // Item 1's report: the headline named "Fireball" while the "Now →" preview
     // named the rolled variant ("Pyroclasm"). With name-rolling reverted (item 9)

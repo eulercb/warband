@@ -116,6 +116,16 @@ describe('SpecialReward — tiered run-clear pick', () => {
     expect(chooseCharUpgrade).toHaveBeenCalled();
   });
 
+  it('grand cards render the resolved "Now →" preview, not just prose (item 6)', () => {
+    const sub = subclassesFor('knight')[0];
+    useStore.setState({ mySubclassId: sub.id, mySubSkills: [sub.skills[0].id, sub.skills[1].id] });
+    render(<SpecialReward />);
+    const grandDescs = screen.getAllByText(/^GRAND — /);
+    expect(grandDescs.length).toBeGreaterThan(0);
+    // At least one grand (a class capstone / base-skill grand) shows resolved values.
+    expect(grandDescs.some((el) => el.textContent?.includes('Now →'))).toBe(true);
+  });
+
   it('ignores an unrecognised sub skill and falls back to offering a subclass', () => {
     // A bogus skill id counts toward no class (subclassOfSkill → undefined), so the
     // hero is treated as sub-less and the panel offers a subclass choice (item 15).
