@@ -2709,7 +2709,9 @@ describe('world-branches: hardcore chasm edges', () => {
     w.elapsed = w.hardcoreDeadline - DT / 2;
     w.step(DT, new Map());
 
-    const opening = w.events.find((e) => e.t === 'deadlineWarn' && /Abyss opens/.test(e.text ?? ''));
+    const opening = w.events.find(
+      (e) => e.t === 'deadlineWarn' && /Abyss opens/.test(e.text ?? ''),
+    );
     expect(opening?.t).toBe('deadlineWarn');
     // Narrow to the deadlineWarn variant (which carries `pos`) before asserting.
     if (opening?.t === 'deadlineWarn') {

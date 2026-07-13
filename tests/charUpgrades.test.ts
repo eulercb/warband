@@ -1033,7 +1033,11 @@ describe('effect fallbacks for absent optional fields', () => {
 
   it('amplify() seeds iframes on an iframe-less dash sub-skill (iframes ?? 0)', () => {
     const dash = ab('a1', 'dash', 0); // dash, no iframes
-    CHAR_UPGRADES.kn_champion_g_a.apply({ player: stub, abilities: table(), subAbilities: { sub1: dash } });
+    CHAR_UPGRADES.kn_champion_g_a.apply({
+      player: stub,
+      abilities: table(),
+      subAbilities: { sub1: dash },
+    });
     expect(dash.iframes).toBeCloseTo(0.15, 5); // round(((undefined ?? 0) + 0.15) * 100) / 100
   });
 
@@ -1041,7 +1045,11 @@ describe('effect fallbacks for absent optional fields', () => {
     // A pure hazard: no `damage` field at all, only per-tick damage — so `(ab.damage ?? 0)`
     // takes its 0 fallback, the first `> 0` is false, and the OR falls through to the tick.
     const zone = ab('a1', 'groundZone', undefined as unknown as number, { zoneTickDamage: 15 });
-    CHAR_UPGRADES.kn_battlemaster_g_a.apply({ player: stub, abilities: table(), subAbilities: { sub1: zone } });
+    CHAR_UPGRADES.kn_battlemaster_g_a.apply({
+      player: stub,
+      abilities: table(),
+      subAbilities: { sub1: zone },
+    });
     expect(zone.slowMult).toBeCloseTo(0.45, 5);
   });
 });
