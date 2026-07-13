@@ -41,6 +41,7 @@ import {
   applyStun,
   makeBuff,
   buffMult,
+  isRooted,
 } from './combat';
 import { forceTopThreat } from './threat';
 import { addCount, zoneCount } from '../content/scaling';
@@ -385,6 +386,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     healPerTick,
     slowMult,
     slowDuration,
+    roots: ab.roots, // item 9: carry the true-root flag onto the spawned zone
     duration: ab.zoneDuration ?? 4,
   });
 }
@@ -479,6 +481,8 @@ export interface SpawnZoneOpts {
   healPerTick: number;
   slowMult?: number;
   slowDuration?: number;
+  /** item 9 — a true-root zone (immobilises enemies inside). See GroundZone.roots. */
+  roots?: boolean;
   /** Seconds of silence re-applied per tick to opposing creatures inside (a
    * standable antimagic pool). Absent = a plain hazard. See GroundZone.silence. */
   silence?: number;
@@ -502,6 +506,7 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     healPerTick: o.healPerTick,
     slowMult: o.slowMult ?? 1,
     slowDuration: o.slowDuration ?? 0,
+    roots: o.roots, // item 9
     silence: o.silence,
     duration: o.duration,
     remaining: o.duration,
@@ -664,6 +669,9 @@ export function resolveBossAbility(
     case 'line': {
       // Charge: dash from boss to the locked target position, hitting anyone
       // along the path, then relocate the boss to the target.
+      // item 9: a rooted boss can't charge — the whole dash (its path damage AND the
+      // relocation) fizzles while the roots hold.
+      if (isRooted(boss)) break;
       const from = { ...boss.pos };
       const to = action.targetPos ?? vadd(boss.pos, fromAngle(action.aimAngle, ab.range ?? 600));
       const halfWidth = (ab.width ?? 45) + boss.radius * 0.5;

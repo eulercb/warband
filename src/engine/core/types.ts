@@ -151,6 +151,10 @@ export type BuffKind =
   | 'damageDealt'
   | 'damageTaken'
   | 'moveSpeed'
+  /** Rooted (item 9): immobilised in place — base movement AND blink / charge /
+   * teleport abilities (incl. the Teleporting affix) are disabled while it holds.
+   * `mult` is unused (presence is what matters); the entity can still turn + cast. */
+  | 'root'
   | 'stun'
   | 'invuln'
   /** Silenced (item 28): all abilities except the basic attack are disabled. */
@@ -716,6 +720,9 @@ export interface GroundZone {
   /** Move-speed multiplier applied to enemies standing inside (1 = none). */
   slowMult: number;
   slowDuration: number; // s the slow lingers after leaving
+  /** item 9 — a true ROOT zone: enemies inside are immobilised (movement + blink /
+   * charge / teleport disabled), re-applied each tick so it clears after leaving. */
+  roots?: boolean;
   /**
    * SILENCE zone (item 28 follow-up): seconds of silence re-applied every tick to
    * an opposing-side creature standing inside, so an antimagic pool is a standable

@@ -10,6 +10,7 @@ import {
   buffMult,
   tickBuffs,
   coReviveSpeed,
+  isRooted,
 } from '../src/engine/combat/combat';
 import { REVIVE_TIME, REVIVE_MIN_TIME } from '../src/engine/core/constants';
 
@@ -224,5 +225,21 @@ describe('coReviveSpeed (item 10)', () => {
     for (const n of [2, 3, 4, 10, 100]) {
       expect(REVIVE_TIME / coReviveSpeed(n)).toBeGreaterThanOrEqual(REVIVE_MIN_TIME - 1e-9);
     }
+  });
+});
+
+describe('isRooted (item 9)', () => {
+  it('is true only while a root buff is present', () => {
+    const boss = mkBoss();
+    expect(isRooted(boss)).toBe(false);
+    applyBuff(boss, makeBuff('root', 0, 2, 'zoneRoot'));
+    expect(isRooted(boss)).toBe(true);
+    // A moveSpeed slow is NOT a root.
+    const slowed = mkBoss();
+    applyBuff(slowed, makeBuff('moveSpeed', 0.3, 2, 'zoneSlow'));
+    expect(isRooted(slowed)).toBe(false);
+    // Expires with its buff.
+    tickBuffs(boss, 3);
+    expect(isRooted(boss)).toBe(false);
   });
 });

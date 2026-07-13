@@ -166,6 +166,7 @@ import {
   damagePlayer,
   healPlayer,
   coReviveSpeed,
+  isRooted,
 } from '../combat/combat';
 import { decayThreat, nthThreatTarget } from '../combat/threat';
 import {
@@ -1434,11 +1435,18 @@ export class World {
     // player-side zone
     const owner = this.players.find((p) => p.id === z.ownerId) ?? null;
     const slows = z.slowMult < 1;
-    if (z.damagePerTick > 0 || slows) {
+    // item 9: a true-root zone (Druid's Entangle) immobilises enemies inside — the
+    // `root` buff is what world.bossMove / handleBlink / the charge resolution gate
+    // on, so movement AND blink/charge/teleport stop while the boss stands in it.
+    // Re-applied each tick and floored above the tick interval so it clears shortly
+    // after the boss leaves (or the zone expires).
+    const rootDur = z.roots ? Math.max(z.slowDuration, ZONE_TICK_INTERVAL * 1.5) : 0;
+    if (z.damagePerTick > 0 || slows || z.roots) {
       for (const b of this.aliveBosses()) {
         if (dist(z.pos, b.pos) > z.radius + b.radius) continue;
         if (z.damagePerTick > 0) this.applyProjDamageBoss(owner, z.damagePerTick, b);
         if (slows) applyBuff(b, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
+        if (z.roots) applyBuff(b, makeBuff('root', 0, rootDur, 'zoneRoot'));
       }
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
@@ -1448,6 +1456,7 @@ export class World {
             else a.hp -= z.damagePerTick;
           }
           if (slows) applyBuff(a, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
+          if (z.roots) applyBuff(a, makeBuff('root', 0, rootDur, 'zoneRoot'));
         }
       }
     }
@@ -2179,7 +2188,9 @@ export class World {
   private bossMove(dt: number, boss: Boss, def: MonsterDef, target: Player | null): void {
     if (!target) return;
     const d = dist(boss.pos, target.pos);
-    const speed = boss.moveSpeed * buffMult(boss, 'moveSpeed');
+    // item 9: a rooted boss can't walk (it can still turn to face). Speed 0 freezes
+    // its position while it stands in the root zone.
+    const speed = isRooted(boss) ? 0 : boss.moveSpeed * buffMult(boss, 'moveSpeed');
 
     if (def.blink) {
       // kiter: keep within casting range but don't crowd the target
@@ -2203,6 +2214,10 @@ export class World {
   }
 
   private handleBlink(boss: Boss, def: MonsterDef): void {
+    // item 9: a rooted boss can't blink OR teleport. Because both a native blink and
+    // the Teleporting affix resolve through this one path (blinkConfigFor), gating
+    // here disables the affix teleport too.
+    if (isRooted(boss)) return;
     const cfg = this.blinkConfigFor(boss, def);
     if (!cfg) return;
     if (boss.blinkTimer > 0) return;

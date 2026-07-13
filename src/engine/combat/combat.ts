@@ -67,6 +67,15 @@ export function hasBuff(entity: { buffs: Buff[] }, kind: BuffKind): boolean {
   return false;
 }
 
+/**
+ * item 9 — is this entity ROOTED? A rooted boss/add cannot self-move: base
+ * movement AND blink / charge / teleport abilities (including the Teleporting
+ * affix) are gated while the root holds. It can still turn, cast and be shoved.
+ */
+export function isRooted(entity: { buffs: Buff[] }): boolean {
+  return hasBuff(entity, 'root');
+}
+
 /** Apply/refresh a buff, de-duping by `source`. */
 export function applyBuff(entity: { buffs: Buff[] }, buff: Buff): void {
   const existing = entity.buffs.find((b) => b.source === buff.source);

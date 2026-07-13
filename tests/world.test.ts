@@ -8,7 +8,8 @@ import {
   REVIVE_HP_FRAC,
   REVIVE_MIN_TIME,
 } from '../src/engine/core/constants';
-import { coReviveSpeed } from '../src/engine/combat/combat';
+import { coReviveSpeed, hasBuff } from '../src/engine/combat/combat';
+import { spawnZone } from '../src/engine/combat/abilities';
 
 function buttons(over: Partial<ButtonState> = {}): ButtonState {
   return { basic: false, a1: false, a2: false, a3: false, revive: false, ...over };
@@ -224,6 +225,45 @@ describe('world: downed / revive / wipe', () => {
     // …but the minimum-time floor holds: it never completes quicker than REVIVE_MIN_TIME.
     expect(steps * DT).toBeGreaterThanOrEqual(REVIVE_MIN_TIME - 1e-9);
     expect(p2.stats.revives).toBe(1); // the first in-range ally is credited
+  });
+});
+
+describe('world: root immobilises the boss (item 9)', () => {
+  it("a true-root entangle zone gives the boss a root buff and stops it walking", () => {
+    const w = new World({
+      monsterId: 'dragon', // no native blink/charge — isolates the walk gate
+      seed: 4,
+      players: [{ peerId: 'a', name: 'A', classId: 'druid' }],
+    });
+    w.terrain = [];
+    const boss = w.boss!;
+    const p = w.players[0];
+    // Park the hero far away so the boss WANTS to march toward it…
+    p.pos = { x: 200, y: 200 };
+    boss.pos = { x: 900, y: 600 };
+    // …then drop a wide true-root entangle zone on the boss.
+    spawnZone(w, {
+      kind: 'entangle',
+      roots: true,
+      pos: { ...boss.pos },
+      radius: 320,
+      side: 'player',
+      ownerId: p.id,
+      damagePerTick: 0,
+      healPerTick: 0,
+      slowMult: 1,
+      slowDuration: 1.5,
+      duration: 6,
+    });
+    // Step past the first zone tick (0.5s) so the root lands…
+    for (let i = 0; i < 12; i++) w.step(DT, new Map([['a', inp()]]));
+    expect(hasBuff(boss, 'root')).toBe(true);
+    // …then confirm it can't walk toward the far hero while rooted.
+    const rootedAt = { ...boss.pos };
+    for (let i = 0; i < 24; i++) w.step(DT, new Map([['a', inp()]]));
+    expect(hasBuff(boss, 'root')).toBe(true);
+    expect(boss.pos.x).toBeCloseTo(rootedAt.x, 3);
+    expect(boss.pos.y).toBeCloseTo(rootedAt.y, 3);
   });
 });
 
