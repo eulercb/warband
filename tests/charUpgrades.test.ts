@@ -10,6 +10,7 @@ import {
   describeCharOffer,
   charUpgradeBadge,
   charUpgradeMaxStacks,
+  charUpgradeAtMax,
   applySubclassGrands,
   offerableGrands,
   REOFFER_CHANCE,
@@ -827,14 +828,23 @@ describe('rollCharChoices', () => {
       'kn_concuss',
       'kn_widecleave',
     ]);
-    // n beyond the 5-strong pool clamps to the whole pool, in order.
-    expect(rollCharChoices('knight', 10, seq([0, 0, 0, 0, 0, 0.9, 0.9]))).toEqual([
+    // n beyond the 5-strong base pool degrades gracefully (items 12 & 14): the base
+    // pool comes first, in order, then the remaining slots top up from the RARE
+    // cross-class hybrids (no reoffers for a graft-less hero), so the offer is never
+    // short while eligible upgrades remain.
+    const wide = rollCharChoices('knight', 10, seq([0, 0, 0, 0, 0, 0.9, 0.9]));
+    expect(wide.slice(0, 5)).toEqual([
       'kn_bulwark',
       'kn_concuss',
       'kn_widecleave',
       'kn_bastion',
       'kn_secondwind',
     ]);
+    expect(new Set(wide).size).toBe(wide.length); // still distinct
+    for (const id of wide.slice(5)) {
+      expect(CHAR_UPGRADES[id].classId).toBe('any'); // the fill is cross-class hybrids
+      expect(upgradeAllowedFor(CHAR_UPGRADES[id], 'knight')).toBe(true);
+    }
   });
 
   it('returns nothing for n <= 0 (and never reaches the hybrid swap)', () => {
@@ -1303,6 +1313,62 @@ describe('rollCharChoices re-offer swap', () => {
     const off = rollCharChoices('knight', 5, seq([0, 0, 0, 0, 0.99, 0.99]), ['hy_pyromancer']);
     expect(off).not.toContain('kn_bulwark');
     expect(off).toContain('kn_widecleave');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// rollCharChoices — graceful degradation + reachability (items 12, 13, 14)
+// ---------------------------------------------------------------------------
+
+describe('rollCharChoices graceful degradation (items 12–14)', () => {
+  /** Every base id of a class, each repeated to its cap — a fully-exhausted pool. */
+  function maxedOut(classId: ClassId): string[] {
+    const owned: string[] = [];
+    for (const d of CHAR_UPGRADES_BY_CLASS[classId]) {
+      for (let i = 0; i < charUpgradeMaxStacks(d.id); i++) owned.push(d.id);
+    }
+    return owned;
+  }
+
+  it('never returns a blank class-boon offer while rare upgrades remain (item 12)', () => {
+    // Every common knight boon is owned at its cap, so the base pool is empty. The
+    // roll must still surface options — degrading to the cross-class hybrids.
+    const owned = maxedOut('knight');
+    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0.99, 0.99]), owned);
+    expect(off.length).toBeGreaterThan(0); // NEVER blank while anything is eligible
+    for (const id of off) {
+      expect(charUpgradeAtMax(id, owned)).toBe(false); // never a maxed pick
+      const isReoffer = id.startsWith('restore:') || id.startsWith('graftup:');
+      expect(isReoffer || CHAR_UPGRADES[id]?.classId === 'any').toBe(true); // rare/restore only
+    }
+  });
+
+  it('keeps skill-replace / restore offers surfacing once the pool is exhausted (item 14)', () => {
+    // A hero holding the Pyromancer graft (displacing Shield Wall) whose remaining
+    // common boons are all maxed: the reclaim of the displaced skill must still be
+    // offered rather than the class-boon relic going blank.
+    const owned = ['hy_pyromancer', ...maxedOut('knight')];
+    const off = rollCharChoices('knight', 4, seq([0.99]), owned);
+    expect(off.length).toBeGreaterThan(0);
+    expect(off).toContain('restore:a2'); // the reclaim keeps appearing (item 14)
+  });
+
+  it('keeps the basic-attack projectile boon reachable (item 13)', () => {
+    // so_twin (Sorcerer) and dr_thorns (Druid) are the only class-pool boons that add
+    // a projectile to the BASIC attack; both must stay offerable from a fresh pool.
+    // rng 0 walks the shrinking pool in order; trailing 0.99s suppress the swaps.
+    expect(rollCharChoices('sorcerer', 5, seq([0, 0, 0, 0, 0, 0.99, 0.99]))).toContain('so_twin');
+    expect(rollCharChoices('druid', 5, seq([0, 0, 0, 0, 0, 0.99, 0.99]))).toContain('dr_thorns');
+    // And they survive a seed sweep — guarding the item-26 liveBoon / atMax filters.
+    let sawTwin = false;
+    let sawThorns = false;
+    const rng = lcg(0x51301);
+    for (let t = 0; t < 200 && !(sawTwin && sawThorns); t++) {
+      if (rollCharChoices('sorcerer', 4, rng, []).includes('so_twin')) sawTwin = true;
+      if (rollCharChoices('druid', 4, rng, []).includes('dr_thorns')) sawThorns = true;
+    }
+    expect(sawTwin).toBe(true);
+    expect(sawThorns).toBe(true);
   });
 });
 

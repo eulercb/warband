@@ -341,9 +341,16 @@ export class RewardScene {
     };
   }
 
-  /** Is the descent vortex open (every boon claimed)? */
+  /**
+   * Is the descent vortex open? ALWAYS true (item 11): the walkable room must never
+   * soft-lock progression, so a player can step into the vortex and descend to the
+   * next boss even if they chose to skip a pick. The `charge` visual (see
+   * `vortexView`) still fills as boons are claimed, but claiming is never a gate on
+   * descent — matching the accessible List-view "ready" button, which likewise never
+   * required a claim.
+   */
   vortexOpen(): boolean {
-    return this.progress().allClaimed;
+    return true;
   }
 
   /** Is the hero physically inside the OPEN vortex right now? */
@@ -417,8 +424,11 @@ export class RewardScene {
     const done =
       (p.totalGeneric > 0 && p.claimedGeneric > 0 ? 1 : 0) +
       (p.totalChar > 0 && p.claimedChar > 0 ? 1 : 0);
+    // The vortex is ALWAYS open (item 11) so the room can never soft-lock; `charge`
+    // still reflects how many boons have been claimed so the ring visibly intensifies
+    // as you pick, without ever gating the descent.
     const charge = kinds === 0 ? 1 : done / kinds;
-    const open = p.allClaimed;
+    const open = true;
     return {
       id: 0,
       pos: { ...VORTEX_POS },
