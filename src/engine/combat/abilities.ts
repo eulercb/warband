@@ -15,10 +15,12 @@ import type {
   BossAction,
   ProjectileKind,
   BuffKind,
+  ProjectileImpact,
 } from '../core/types';
 import type { World } from '../world/world';
 import type { BossAbilityDef } from '../content/monsters';
 import type { PlayerAbilityDef } from '../content/classes';
+import type { AbilityComponents, EffectComponent, ZoneSpec, BuffTarget } from '../content/forge';
 import { getClass } from '../content/classes';
 import {
   add as vadd,
@@ -132,6 +134,16 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
     side: 'player',
     slot,
   });
+
+  // Chaos Forge — a SYNTHESIZED ability carries a recombined component list; walk
+  // that instead of the fixed field switch (so a projectile can spawn an
+  // ally-buff zone on impact). Canonical/variance/Chaos-Draft content never has
+  // `.components`, so it takes the untouched switch below — byte-for-byte
+  // identical when Forge is off. See docs/CHAOS_FORGE.md.
+  if (ab.components) {
+    resolveComposedAbility(world, p, ab, moveDir, ab.components);
+    return;
+  }
 
   switch (ab.kind) {
     case 'meleeCone': {
@@ -359,6 +371,305 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
   }
 }
 
+// ---------------------------------------------------------------------------
+// Chaos Forge — component-driven executor (docs/CHAOS_FORGE.md)
+// ---------------------------------------------------------------------------
+
+/** Rally reach for an ally-buff carried by a strike/mobility delivery (a war-cry). */
+const FORGE_RALLY_RANGE = 320;
+
+/** Apply the buff components in `effects` that target `who` onto `target`. */
+function applyForgeBuffs(
+  target: { buffs: import('../core/types').Buff[] },
+  effects: EffectComponent[],
+  who: BuffTarget,
+  src: string,
+): void {
+  for (const e of effects) {
+    if (e.kind !== 'buff' || e.target !== who) continue;
+    if (e.defMult != null) applyBuff(target, makeBuff('damageTaken', e.defMult, e.duration, `${src}Def`));
+    if (e.dmgMult != null)
+      applyBuff(target, makeBuff('damageDealt', e.dmgMult, e.duration, `${src}Dmg`));
+    if (e.moveMult != null)
+      applyBuff(target, makeBuff('moveSpeed', e.moveMult, e.duration, `${src}Move`));
+  }
+}
+
+/** Map a forge ZoneSpec to a projectile's on-impact payload. */
+function zoneToImpact(z: ZoneSpec): ProjectileImpact {
+  return {
+    kind: z.zoneKind,
+    radius: z.radius,
+    duration: z.duration,
+    tickDamage: z.tickDamage,
+    tickHeal: z.tickHeal,
+    slowMult: z.slowMult,
+    slowDuration: z.slowDuration,
+    roots: z.roots,
+    allyBuff: z.allyBuff,
+  };
+}
+
+/** Spawn a synthesized ability's ground zone (centered heal zones / ground-cast). */
+function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number): void {
+  const centered = z.zoneKind === 'sanctuary' || z.zoneKind === 'consecration';
+  const pos = centered
+    ? { ...p.pos }
+    : clampToArena(world, vadd(p.pos, vscale(p.aim, range)), z.radius);
+  spawnZone(world, {
+    kind: z.zoneKind,
+    pos,
+    radius: z.radius,
+    side: 'player',
+    ownerId: p.id,
+    damagePerTick: z.tickDamage ?? 0,
+    healPerTick: z.tickHeal ?? 0,
+    slowMult: z.slowMult,
+    slowDuration: z.slowDuration,
+    roots: z.roots,
+    allyBuff: z.allyBuff,
+    duration: z.duration,
+  });
+}
+
+/**
+ * Resolve a SYNTHESIZED player ability from its component list. Mirrors the
+ * canonical per-kind switch but reads the delivery + effects, so a fusion resolves
+ * every payload it carries (a projectile that blooms an ally-buff zone on impact;
+ * a cleave that also rallies the band). Reuses the canonical helpers and the flat
+ * fields (which recompose keeps in sync) for the parts they already express;
+ * components drive only the genuinely-new cross-cutting behaviour (buff targeting,
+ * on-impact zones). PURE aside from world mutation.
+ */
+function resolveComposedAbility(
+  world: World,
+  p: Player,
+  ab: PlayerAbilityDef,
+  moveDir: Vec2,
+  comp: AbilityComponents,
+): void {
+  const d = comp.delivery;
+  const effects = comp.effects;
+  const color = CLASS_COLORS[p.classId];
+  const aimAngle = angleOf(p.aim);
+  const zoneEff = effects.find((e) => e.kind === 'zone');
+  const healEff = effects.find((e) => e.kind === 'heal');
+  const healOnUse = effects.find((e) => e.kind === 'healOnUse');
+  const dmg = ab.damage;
+
+  // Buff the caster with any self-targeted buffs, and heal the caster on-use.
+  const buffSelf = (): void => applyForgeBuffs(p, effects, 'self', 'forgeSelf');
+  const selfHeal = (): void => {
+    if (healOnUse && healOnUse.kind === 'healOnUse') healPlayer(world, null, p, healOnUse.amount);
+  };
+  // Rally: put ally-targeted buffs on EVERY ally in reach (the caster included).
+  const buffAllies = (range: number): void => {
+    if (!effects.some((e) => e.kind === 'buff' && e.target === 'allies')) return;
+    for (const a of aliveAllies(world)) {
+      if (dist(p.pos, a.pos) <= range) applyForgeBuffs(a, effects, 'allies', 'forgeAlly');
+    }
+  };
+  const healAlly = (range: number): void => {
+    if (!healEff || healEff.kind !== 'heal') return;
+    const t = lowestHpAllyInRange(world, p.pos, range);
+    if (t) healPlayer(world, p, t, healEff.amount);
+  };
+
+  switch (d.kind) {
+    case 'meleeCone': {
+      const range = ab.range ?? 70;
+      const half = ((ab.halfAngleDeg ?? 45) * Math.PI) / 180;
+      emitSkillArea(world, p.id, color, {
+        kind: 'cone',
+        origin: { ...p.pos },
+        angle: aimAngle,
+        range,
+        radius: 0,
+        halfAngle: half,
+      });
+      let dealt = 0;
+      for (const b of world.bosses) {
+        if (b.hp <= 0) continue;
+        if (pointInCone(b.pos, p.pos, aimAngle, range, half, b.radius)) {
+          dealt += damageBoss(world, p, b, dmg, world.meleeHit(p, b));
+          applyStrikeRiders(world, b, ab);
+        }
+      }
+      for (const a of world.adds) {
+        if (a.hp <= 0) continue;
+        if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
+          dealt += damageAdd(world, p, a, dmg, world.critRoll(p));
+          applyStrikeRiders(world, a, ab);
+        }
+      }
+      lifesteal(world, p, ab, dealt);
+      buffSelf();
+      buffAllies(FORGE_RALLY_RANGE);
+      break;
+    }
+
+    case 'pbaoe': {
+      const radius = ab.radius ?? 150;
+      emitSkillArea(world, p.id, color, {
+        kind: 'circle',
+        origin: { ...p.pos },
+        angle: 0,
+        range: 0,
+        radius,
+        halfAngle: 0,
+      });
+      let dealt = 0;
+      for (const b of world.bosses) {
+        if (b.hp <= 0) continue;
+        if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
+          dealt += damageBoss(world, p, b, dmg, world.critRoll(p));
+          applyStrikeRiders(world, b, ab);
+        }
+      }
+      for (const a of world.adds) {
+        if (a.hp <= 0) continue;
+        if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
+          dealt += damageAdd(world, p, a, dmg, world.critRoll(p));
+          applyStrikeRiders(world, a, ab);
+        }
+      }
+      lifesteal(world, p, ab, dealt);
+      buffSelf();
+      buffAllies(FORGE_RALLY_RANGE);
+      break;
+    }
+
+    case 'projectile': {
+      const count = ab.projCount ?? 1;
+      const spread = ((ab.spreadDeg ?? 0) * Math.PI) / 180;
+      const speed = ab.projSpeed ?? 600;
+      const impactRadius = ab.impactRadius ?? 0;
+      const kind: ProjectileKind =
+        impactRadius > 0 || zoneEff ? 'fireball' : projectileKindFor(p, 'a1');
+      const maxRange = ab.maxRange ?? PROJECTILE_MAX_RANGE;
+      const onImpact = zoneEff && zoneEff.kind === 'zone' ? zoneToImpact(zoneEff.zone) : undefined;
+      for (let i = 0; i < count; i++) {
+        const t = count > 1 ? i / (count - 1) - 0.5 : 0;
+        const a = aimAngle + t * spread;
+        spawnPlayerProjectile(world, p, kind, fromAngle(a), {
+          speed,
+          damage: dmg,
+          // A shot that carries a zone needs a positive impact radius so it
+          // detonates (and blooms the zone) rather than passing through.
+          impactRadius: onImpact ? Math.max(impactRadius, onImpact.radius) : impactRadius,
+          maxRange,
+          slowMult: ab.slowMult,
+          slowDuration: ab.slowDuration,
+          freeze: ab.freeze,
+          lifesteal: ab.lifestealFrac,
+          onImpact,
+        });
+      }
+      buffSelf();
+      break;
+    }
+
+    case 'groundZone': {
+      if (zoneEff && zoneEff.kind === 'zone') spawnComposedZone(world, p, zoneEff.zone, ab.range ?? 500);
+      buffSelf();
+      break;
+    }
+
+    case 'dash':
+    case 'blink': {
+      let dir = moveDir;
+      if (d.kind === 'blink' || (dir.x === 0 && dir.y === 0)) dir = p.aim;
+      dir = normalize(dir);
+      const from = { ...p.pos };
+      const target = vadd(p.pos, vscale(dir, ab.range ?? 220));
+      p.pos = clampToArena(world, target, p.radius);
+      if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
+      if (d.kind === 'blink') world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
+      else world.events.push({ t: 'dodge', id: p.id, pos: { ...p.pos } });
+      if (ab.landingDamage && ab.landingDamage > 0) {
+        const radius = ab.radius ?? 120;
+        emitSkillArea(world, p.id, color, {
+          kind: 'circle',
+          origin: { ...p.pos },
+          angle: 0,
+          range: 0,
+          radius,
+          halfAngle: 0,
+        });
+        for (const b of world.bosses) {
+          if (b.hp <= 0) continue;
+          if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
+            damageBoss(world, p, b, ab.landingDamage, world.critRoll(p));
+            applyStrikeRiders(world, b, ab);
+          }
+        }
+        for (const a of world.adds) {
+          if (a.hp <= 0) continue;
+          if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
+            damageAdd(world, p, a, ab.landingDamage, world.critRoll(p));
+            applyStrikeRiders(world, a, ab);
+          }
+        }
+      }
+      buffSelf();
+      selfHeal();
+      break;
+    }
+
+    case 'selfBuff': {
+      buffSelf();
+      selfHeal();
+      break;
+    }
+
+    case 'buffAlly': {
+      const range = ab.range ?? 400;
+      emitSkillArea(world, p.id, color, {
+        kind: 'circle',
+        origin: { ...p.pos },
+        angle: 0,
+        range: 0,
+        radius: range,
+        halfAngle: 0,
+      });
+      buffAllies(range);
+      healAlly(range);
+      break;
+    }
+
+    case 'heal': {
+      const range = ab.range ?? 400;
+      emitSkillArea(world, p.id, color, {
+        kind: 'circle',
+        origin: { ...p.pos },
+        angle: 0,
+        range: 0,
+        radius: range,
+        halfAngle: 0,
+      });
+      healAlly(range);
+      break;
+    }
+
+    case 'taunt': {
+      emitSkillArea(world, p.id, color, {
+        kind: 'circle',
+        origin: { ...p.pos },
+        angle: 0,
+        range: 0,
+        radius: 150,
+        halfAngle: 0,
+      });
+      forceTopThreat(world.players, p.id);
+      world.tauntTargetId = p.id;
+      world.tauntTimer = ab.buffDuration ?? 4;
+      buffSelf();
+      selfHeal();
+      break;
+    }
+  }
+}
+
 /** Heal the caster for a fraction of the damage a lifesteal ability dealt. */
 function lifesteal(world: World, p: Player, ab: PlayerAbilityDef, dealt: number): void {
   if (ab.lifestealFrac && dealt > 0) {
@@ -416,6 +727,8 @@ interface SpawnProjOpts {
   freeze?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
+  /** Chaos Forge — on-impact payload (spawn a zone / ally-buff area on landing). */
+  onImpact?: ProjectileImpact;
 }
 
 function spawnPlayerProjectile(
@@ -442,6 +755,7 @@ function spawnPlayerProjectile(
     slowDuration: o.slowDuration,
     freeze: o.freeze,
     lifesteal: o.lifesteal,
+    onImpact: o.onImpact,
   };
   world.projectiles.push(proj);
   world.events.push({ t: 'projectile', kind, pos: { ...origin } });
@@ -488,6 +802,8 @@ export interface SpawnZoneOpts {
   /** Seconds of silence re-applied per tick to opposing creatures inside (a
    * standable antimagic pool). Absent = a plain hazard. See GroundZone.silence. */
   silence?: number;
+  /** Chaos Forge — a buff this zone refreshes on allies inside (player-side). */
+  allyBuff?: import('../core/types').ZoneAllyBuff;
   duration: number;
   /** Themed tint override (affix/corruption hazards); falls back to the palette. */
   color?: number;
@@ -510,6 +826,7 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     slowDuration: o.slowDuration ?? 0,
     roots: o.roots, // item 9
     silence: o.silence,
+    allyBuff: o.allyBuff, // Chaos Forge — buff refreshed on allies inside
     duration: o.duration,
     remaining: o.duration,
     tickAccum: 0,

@@ -5,6 +5,7 @@
 import type { ClassId, AbilitySlot, ExtSlot, ZoneKind } from '../core/types';
 import { PLAYER_RADIUS, CLASS_COLORS, ATTACK_CD_SCALE } from '../core/constants';
 import { procVariant, classVariant } from './procgen';
+import { describeComposed } from './forge';
 
 /** How an ability resolves. Interpreted by abilities.ts. */
 export type AbilityKind =
@@ -821,6 +822,11 @@ export function cloneAbilities(
  * seconds to one decimal, ratios to whole percents.
  */
 export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>): string {
+  // Chaos Forge — a synthesized ability regenerates its card text from its
+  // recombined component list (there is no author to write copy for a fused
+  // skill). Canonical/variance content carries no components and keeps the
+  // authored flat-field walk below, so its cards are byte-for-byte unchanged.
+  if (def.components) return describeComposed(def.components, def.cooldown);
   const n = (v: number): string => `${Math.round(v)}`;
   // Up to two decimals (trailing zeros drop naturally), so a 0.25s i-frame or a
   // 1.1s cooldown both read exactly, matching the reward cards' precision.

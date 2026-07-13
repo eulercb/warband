@@ -432,6 +432,38 @@ export interface Add {
 
 export type ProjectileKind = 'arrow' | 'arcaneBolt' | 'fireball' | 'shadowBolt' | 'smite';
 
+/**
+ * Chaos Forge (docs/CHAOS_FORGE.md) — a buff a synthesized zone refreshes on
+ * allied players standing inside it (the flagship's "area that grants a
+ * resistance buff to allies"). Present only on procedurally-fused zones; a value
+ * < 1 on `defMult` is mitigation, > 1 on dmg/move is a boost. `mult`-style.
+ */
+export interface ZoneAllyBuff {
+  defMult?: number;
+  dmgMult?: number;
+  moveMult?: number;
+  duration: number;
+}
+
+/**
+ * Chaos Forge — the on-impact payload a synthesized projectile carries: a ground
+ * zone (optionally an ally-buff zone) spawned where the shot lands. This is the
+ * new primitive that unlocks a projectile → area → ally-buff fusion. Present only
+ * on fused projectiles; canonical shots never set it, so world.updateProjectiles
+ * stays byte-identical when Forge is off.
+ */
+export interface ProjectileImpact {
+  kind: ZoneKind;
+  radius: number;
+  duration: number;
+  tickDamage?: number;
+  tickHeal?: number;
+  slowMult?: number;
+  slowDuration?: number;
+  roots?: boolean;
+  allyBuff?: ZoneAllyBuff;
+}
+
 export interface Projectile {
   id: EntityId;
   kind: ProjectileKind;
@@ -453,6 +485,10 @@ export interface Projectile {
   freeze?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
+  /**
+   * Chaos Forge — on-impact payload (spawn a zone / ally-buff area where this
+   * shot lands). Absent on canonical shots; see ProjectileImpact. */
+  onImpact?: ProjectileImpact;
 }
 
 export type ZoneKind =
@@ -749,6 +785,13 @@ export interface GroundZone {
    * 0 = a plain hazard. Boss-side zones only (players don't silence bosses).
    */
   silence?: number;
+  /**
+   * Chaos Forge — a buff this zone refreshes each tick on allied players standing
+   * inside it (a synthesized "sanctuary of resistance"). Player-side zones only;
+   * absent on canonical zones, so applyZoneTick stays byte-identical off-Forge.
+   * Re-applied per tick (source 'zoneAllyBuff'), so it lingers ~this long after
+   * the ally steps out. See ZoneAllyBuff. */
+  allyBuff?: ZoneAllyBuff;
   duration: number; // seconds — full lifetime, used for the render fade envelope
   remaining: number; // seconds — counts down; zone is removed at <= 0
   tickAccum: number; // accumulates toward ZONE_TICK_INTERVAL

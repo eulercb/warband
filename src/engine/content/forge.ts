@@ -27,8 +27,10 @@
  * the balance-pricing weight, the component describer and the name blender. The
  * synthesizers and the active-run registry build on these (phase B+).
  */
-import type { ZoneKind } from '../core/types';
-import type { PlayerAbilityDef, AbilityKind } from './classes';
+import type { ZoneKind, ClassId, AbilitySlot } from '../core/types';
+import type { PlayerAbilityDef, AbilityKind, ClassDef } from './classes';
+import { Rng, mixSeed, clamp } from '../core/math';
+import { hashStr } from './procgen';
 
 // ---------------------------------------------------------------------------
 // 1. Component taxonomy — a delivery + an ordered list of effect components
@@ -116,12 +118,7 @@ export interface AbilityComponents {
 }
 
 /** Deliveries whose damage effect lands as a DIRECT strike (not a zone tick). */
-const STRIKE_DELIVERIES = new Set<DeliveryKind>([
-  'meleeCone',
-  'projectile',
-  'pbaoe',
-  'dash',
-]);
+const DIRECT_STRIKE = new Set<DeliveryKind>(['meleeCone', 'projectile', 'pbaoe']);
 
 /** Deliveries that buff/heal an ALLY (auto-targeted) rather than the caster. */
 const ALLY_DELIVERIES = new Set<DeliveryKind>(['buffAlly', 'heal']);
@@ -178,7 +175,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     // Direct-strike payload: damage, then on-hit riders.
     if (def.damage > 0 && kind === 'heal') {
       effects.push({ kind: 'heal', amount: def.damage });
-    } else if (def.damage > 0 && STRIKE_DELIVERIES.has(kind)) {
+    } else if (def.damage > 0 && DIRECT_STRIKE.has(kind)) {
       effects.push({ kind: 'damage', amount: def.damage });
     }
     if (def.landingDamage) effects.push({ kind: 'landingDamage', amount: def.landingDamage });
@@ -588,4 +585,412 @@ function dedupe(xs: string[]): string[] {
     out.push(x);
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// 7. Synthesis — recombine donor components into new, balanced abilities
+// ---------------------------------------------------------------------------
+
+/** Domain salts (independent streams per generative family, as procgen.SALT). */
+const FORGE_SALT = { ability: 0xf0f0, className: 0xf1a5 } as const;
+
+/**
+ * A component donor — one authored/canonical ability tagged with its source, the
+ * raw material synthesis draws from. Passed in by the caller (getters in
+ * classes.ts) so this module stays import-cycle-free and AUTOMATICALLY absorbs
+ * any ability a future update adds to the pool — no per-item wiring (req. 10).
+ */
+export interface Donor {
+  /** The donor ability's display name (fuels the blended name). */
+  name: string;
+  classId: ClassId;
+  /** The donor class's display name (fuels the class rename). */
+  className: string;
+  slot: string;
+  def: Omit<PlayerAbilityDef, 'slot'>;
+}
+
+/** A synthesized ability plus the classes that donated its components. */
+export interface SynthAbility {
+  def: PlayerAbilityDef;
+  donorClasses: ClassId[];
+  donorNames: string[];
+}
+
+interface Pooled {
+  effect: EffectComponent;
+  donor: Donor;
+}
+
+/** Cooldown bands per slot (a basic spams; specials cycle) — the pricing clamp. */
+const COOLDOWN_BAND: Record<AbilitySlot, [number, number]> = {
+  basic: [0.35, 1.3],
+  a1: [3.5, 16],
+  a2: [3.5, 18],
+  a3: [3.5, 18],
+};
+
+/** Can effect `e` be delivered by delivery `kind`? Keeps fusions coherent. */
+function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
+  switch (e.kind) {
+    case 'damage':
+      return DIRECT_STRIKE.has(kind);
+    case 'landingDamage':
+      return kind === 'dash';
+    case 'stun':
+    case 'freeze':
+    case 'slow':
+    case 'lifesteal':
+      return DIRECT_STRIKE.has(kind);
+    case 'heal':
+      return kind === 'heal' || kind === 'buffAlly';
+    case 'healOnUse':
+      return kind === 'dash' || kind === 'blink' || kind === 'selfBuff' || kind === 'taunt';
+    case 'buff':
+      return true; // buffs fit anywhere (folded into a zone / rallied / self)
+    case 'zone':
+      return kind === 'groundZone' || kind === 'projectile';
+  }
+}
+
+/** Is this a hard crowd-control effect (capped to one per fusion)? */
+const isHardCC = (e: EffectComponent): boolean => e.kind === 'stun' || e.kind === 'freeze';
+
+/**
+ * A BASIC attack must stay light and spammable — it can't afford a zone, a hard
+ * CC or a buff on its ~1s cooldown (a permanent-uptime root-zone basic would be
+ * degenerate AND unpriceable). Restrict basics to damage + a light strike rider;
+ * specials (a1/a2/a3) may carry anything. */
+function slotAllowsEffect(slot: AbilitySlot, e: EffectComponent): boolean {
+  if (slot !== 'basic') return true;
+  return e.kind === 'damage' || e.kind === 'slow' || e.kind === 'lifesteal';
+}
+
+/** The natural "primary" payload predicate for a delivery kind. */
+function primaryWant(kind: DeliveryKind): (e: EffectComponent) => boolean {
+  switch (kind) {
+    case 'meleeCone':
+    case 'pbaoe':
+      return (e) => e.kind === 'damage';
+    case 'projectile':
+      return (e) => e.kind === 'damage' || e.kind === 'zone';
+    case 'groundZone':
+      return (e) => e.kind === 'zone';
+    case 'heal':
+      return (e) => e.kind === 'heal';
+    case 'buffAlly':
+    case 'selfBuff':
+      return (e) => e.kind === 'buff';
+    case 'dash':
+    case 'blink':
+      return (e) => e.kind === 'landingDamage' || e.kind === 'healOnUse' || e.kind === 'buff';
+    case 'taunt':
+      return (e) => e.kind === 'buff';
+  }
+}
+
+/**
+ * Synthesize one new ability for `slot` by recombining donor components. Picks a
+ * slot-appropriate delivery from one donor, a natural primary payload + 1-2
+ * cross-source secondary effects (hard-CC-capped) from others, folds ally buffs
+ * into a spawned zone where possible, prices the whole thing to the slot budget,
+ * and blends a name. Deterministic: (seed, key) → the same fusion for every peer.
+ */
+export function synthesizeAbility(
+  seed: number,
+  key: string,
+  slot: AbilitySlot,
+  donors: Donor[],
+): SynthAbility {
+  const rng = new Rng(mixSeed(seed, FORGE_SALT.ability, hashStr(key)));
+
+  // 1. Delivery: a donor from this slot (basics stay light strikes by construction).
+  const deliveryPool = donors.filter((d) => d.slot === slot);
+  const src = deliveryPool.length > 0 ? deliveryPool : donors;
+  const deliveryDonor = rng.pick(src);
+  const delivery: Delivery = { ...decompose(deliveryDonor.def).delivery };
+
+  // 2. Effect pool from ALL donors (so a projectile can adopt a groundZone's zone).
+  const pool: Pooled[] = donors.flatMap((d) =>
+    decompose(d.def).effects.map((effect) => ({ effect, donor: d })),
+  );
+
+  // 3. Primary payload — the thing this delivery naturally does.
+  const chosen: Pooled[] = [];
+  const usedSources = new Set<string>();
+  const wantPrimary = primaryWant(delivery.kind);
+  const primaryOptions = pool.filter(
+    (x) => wantPrimary(x.effect) && slotAllowsEffect(slot, x.effect),
+  );
+  if (primaryOptions.length > 0) {
+    const p = rng.pick(primaryOptions);
+    chosen.push(p);
+    usedSources.add(p.donor.name);
+  }
+
+  // 4. Secondary effects — 1..2 more that FIT, from fresh sources, CC-capped.
+  const extra = rng.int(1, 2);
+  let hardCC = chosen.some((x) => isHardCC(x.effect)) ? 1 : 0;
+  for (let i = 0; i < extra; i++) {
+    const options = pool.filter(
+      (x) =>
+        effectFitsDelivery(delivery.kind, x.effect) &&
+        slotAllowsEffect(slot, x.effect) &&
+        !usedSources.has(x.donor.name) &&
+        !(isHardCC(x.effect) && hardCC >= 1) &&
+        // avoid a second zone / a duplicate primary damage pile-up
+        !(x.effect.kind === 'zone' && chosen.some((c) => c.effect.kind === 'zone')),
+    );
+    if (options.length === 0) break;
+    const pick = rng.pick(options);
+    chosen.push(pick);
+    usedSources.add(pick.donor.name);
+    if (isHardCC(pick.effect)) hardCC += 1;
+  }
+
+  // 5. A single-shot vehicle reads cleaner when it carries a zone (the flagship).
+  if (delivery.kind === 'projectile' && chosen.some((c) => c.effect.kind === 'zone')) {
+    delivery.projCount = 1;
+    delivery.spreadDeg = 0;
+  }
+
+  // 6. Assemble + recombine (fold ally buffs into a zone / retarget orphans).
+  let effects = chosen.map((c) => c.effect);
+  effects = foldAllyBuffsIntoZone(effects);
+  effects = retargetOrphanAllyBuffs(delivery, effects);
+  const assembled: AbilityComponents = { delivery, effects };
+
+  // 7. Price to the slot budget, then cap + quantize magnitudes.
+  const { comp, cooldown } = priceToBudget(assembled, slotBudget(donors, slot), slot);
+
+  // 8. Blend a name from the contributing donor names.
+  const donorNames = [deliveryDonor.name, ...chosen.map((c) => c.donor.name)];
+  const name = forgeName(donorNames, (k) => (k <= 0 ? 0 : rng.int(0, k - 1)));
+
+  const def = recompose(comp, { slot, name, cooldown });
+  return {
+    def,
+    donorClasses: [deliveryDonor.classId, ...chosen.map((c) => c.donor.classId)],
+    donorNames,
+  };
+}
+
+/** Merge every ally-targeted buff into the effect list's zone (if any), as its
+ * refreshed allyBuff — the recombination seam that makes "a zone that buffs
+ * allies" (the flagship's resistance area). */
+function foldAllyBuffsIntoZone(effects: EffectComponent[]): EffectComponent[] {
+  const zone = effects.find((e) => e.kind === 'zone');
+  if (!zone || zone.kind !== 'zone') return effects;
+  const allyBuffs = effects.filter(
+    (e): e is Extract<EffectComponent, { kind: 'buff' }> => e.kind === 'buff' && e.target === 'allies',
+  );
+  if (allyBuffs.length === 0) return effects;
+  const merged: NonNullable<ZoneSpec['allyBuff']> = { duration: 0 };
+  let dur = 0;
+  for (const b of allyBuffs) {
+    if (b.defMult != null) merged.defMult = b.defMult;
+    if (b.dmgMult != null) merged.dmgMult = b.dmgMult;
+    if (b.moveMult != null) merged.moveMult = b.moveMult;
+    dur = Math.max(dur, b.duration);
+  }
+  merged.duration = dur;
+  const foldedZone: EffectComponent = { kind: 'zone', zone: { ...zone.zone, allyBuff: merged } };
+  return effects
+    .filter((e) => !(e.kind === 'buff' && e.target === 'allies'))
+    .map((e) => (e === zone ? foldedZone : e));
+}
+
+/** Retarget ally buffs that a non-rallying delivery can't deliver, onto the caster. */
+function retargetOrphanAllyBuffs(
+  delivery: Delivery,
+  effects: EffectComponent[],
+): EffectComponent[] {
+  const canRally =
+    delivery.kind === 'meleeCone' || delivery.kind === 'pbaoe' || delivery.kind === 'buffAlly';
+  if (canRally) return effects;
+  return effects.map((e) =>
+    e.kind === 'buff' && e.target === 'allies' ? { ...e, target: 'self' as const } : e,
+  );
+}
+
+// --- Balance pricing --------------------------------------------------------
+
+/** Median output-per-second of the donors in this slot — the target budget. */
+function slotBudget(donors: Donor[], slot: AbilitySlot): number {
+  const vals = donors
+    .filter((d) => d.slot === slot)
+    .map((d) => componentValue(decompose(d.def)) / Math.max(0.1, d.def.cooldown))
+    .sort((a, b) => a - b);
+  if (vals.length === 0) return 20;
+  return vals[Math.floor(vals.length / 2)];
+}
+
+/** Effect kinds whose magnitude can be diluted to hit budget (pure output). Buffs
+ * / CC / zones are NOT diluted — watering them to a floor would misprice them, so
+ * they are DROPPED instead (keeps fusions to a few MEANINGFUL components). */
+const ANCHOR_KINDS = new Set<EffectComponent['kind']>([
+  'damage',
+  'landingDamage',
+  'heal',
+  'healOnUse',
+]);
+
+/**
+ * Price a fusion to its slot budget without minting power (req. §7):
+ *  1. shed the cheapest rigid (buff/CC/zone) effects until what CAN'T be diluted
+ *     fits under the slot's max cooldown — so nothing gets watered to a floor;
+ *  2. scale the pure-damage anchors down so the total lands on budget;
+ *  3. set the cooldown to totalValue ÷ budget within the slot's band.
+ * Then cap + quantize so the numbers read hand-tuned.
+ */
+function priceToBudget(
+  comp: AbilityComponents,
+  budget: number,
+  slot: AbilitySlot,
+): { comp: AbilityComponents; cooldown: number } {
+  const [lo, hi] = COOLDOWN_BAND[slot];
+  const ceiling = budget * hi; // most value the slot can carry (at max cooldown)
+  let effects = comp.effects.slice();
+  // 1. Drop the cheapest effect while the rigid (un-dilutable) value alone busts
+  //    the ceiling — never below one effect.
+  while (effects.length > 1 && rigidValue(effects) > ceiling) {
+    effects = dropCheapest(effects);
+  }
+  let scaled: AbilityComponents = { delivery: comp.delivery, effects };
+  // 2. Dilute the damage anchors so the total sits on budget.
+  const total = componentValue(scaled);
+  if (total > ceiling) {
+    const rigid = rigidValue(effects);
+    const anchor = total - rigid;
+    const f = anchor > 0 ? clamp((ceiling - rigid) / anchor, 0.05, 1) : 1;
+    scaled = { delivery: comp.delivery, effects: effects.map((e) => scaleAnchor(e, f)) };
+  }
+  // 3. Cooldown from the priced value.
+  const cooldown = roundCd(clamp(componentValue(scaled) / Math.max(0.1, budget), lo, hi), slot);
+  return { comp: capComponents(scaled), cooldown };
+}
+
+/** Total value of the effects that CANNOT be diluted (buffs, CC, slow, zones). */
+function rigidValue(effects: EffectComponent[]): number {
+  const fan = 1; // rigid effects carry no fan multiplier
+  return effects.filter((e) => !ANCHOR_KINDS.has(e.kind)).reduce((s, e) => s + effectValue(e, fan), 0);
+}
+
+/** Drop the single lowest-value effect (keeps the priciest, most-defining ones). */
+function dropCheapest(effects: EffectComponent[]): EffectComponent[] {
+  let idx = 0;
+  let min = Infinity;
+  for (let i = 0; i < effects.length; i++) {
+    const v = effectValue(effects[i], 1);
+    if (v < min) {
+      min = v;
+      idx = i;
+    }
+  }
+  return effects.filter((_, i) => i !== idx);
+}
+
+/** Scale only a damage ANCHOR's magnitude by `f`; leave rigid effects untouched. */
+function scaleAnchor(e: EffectComponent, f: number): EffectComponent {
+  switch (e.kind) {
+    case 'damage':
+    case 'landingDamage':
+    case 'heal':
+    case 'healOnUse':
+      return { ...e, amount: e.amount * f };
+    default:
+      return e;
+  }
+}
+
+const round05 = (x: number): number => Math.round(x * 20) / 20;
+const round1 = (x: number): number => Math.round(x * 10) / 10;
+const round2 = (x: number): number => Math.round(x * 100) / 100;
+const round5 = (x: number): number => Math.round(x / 5) * 5;
+const roundCd = (x: number, slot: AbilitySlot): number =>
+  slot === 'basic' ? round05(x) : round1(x);
+
+// --- Caps + quantization (identity-true ceilings, clean numbers) ------------
+
+function capComponents(comp: AbilityComponents): AbilityComponents {
+  return { delivery: comp.delivery, effects: comp.effects.map(capEffect) };
+}
+
+function capEffect(e: EffectComponent): EffectComponent {
+  switch (e.kind) {
+    case 'damage':
+    case 'landingDamage':
+    case 'heal':
+    case 'healOnUse':
+      return { ...e, amount: Math.max(1, Math.round(e.amount)) };
+    case 'lifesteal':
+      return { ...e, frac: Math.min(0.35, round2(e.frac)) };
+    case 'stun':
+    case 'freeze':
+      return { ...e, seconds: clamp(round05(e.seconds), 0.3, 1.4) };
+    case 'slow':
+      return { ...e, mult: clamp(round05(e.mult), 0.2, 0.95), duration: clamp(round1(e.duration), 1, 4) };
+    case 'buff':
+      return capBuff(e);
+    case 'zone':
+      return { kind: 'zone', zone: capZone(e.zone) };
+  }
+}
+
+function capBuff(e: Extract<EffectComponent, { kind: 'buff' }>): EffectComponent {
+  const out = { ...e, duration: clamp(round1(e.duration), 2, 10) };
+  if (out.defMult != null) out.defMult = clamp(round2(out.defMult), 0.2, 0.95);
+  if (out.dmgMult != null) out.dmgMult = clamp(round2(out.dmgMult), 1.05, 1.6);
+  if (out.moveMult != null) out.moveMult = clamp(round2(out.moveMult), 1.05, 1.5);
+  return out;
+}
+
+function capZone(z: ZoneSpec): ZoneSpec {
+  const out: ZoneSpec = {
+    ...z,
+    radius: clamp(round5(z.radius), 60, 200),
+    duration: clamp(round1(z.duration), 2, 8),
+  };
+  if (out.tickDamage != null) out.tickDamage = Math.max(1, Math.round(out.tickDamage));
+  if (out.tickHeal != null) out.tickHeal = Math.max(1, Math.round(out.tickHeal));
+  if (out.slowMult != null) out.slowMult = clamp(round05(out.slowMult), 0.2, 0.95);
+  if (out.allyBuff) out.allyBuff = capAllyBuff(out.allyBuff);
+  return out;
+}
+
+function capAllyBuff(b: NonNullable<ZoneSpec['allyBuff']>): NonNullable<ZoneSpec['allyBuff']> {
+  const out = { ...b, duration: clamp(round1(b.duration), 2, 8) };
+  if (out.defMult != null) out.defMult = clamp(round2(out.defMult), 0.2, 0.95);
+  if (out.dmgMult != null) out.dmgMult = clamp(round2(out.dmgMult), 1.05, 1.6);
+  if (out.moveMult != null) out.moveMult = clamp(round2(out.moveMult), 1.05, 1.5);
+  return out;
+}
+
+// --- Class synthesis + renaming ---------------------------------------------
+
+/**
+ * Synthesize a whole class kit: a fused ability in each slot, then RENAME the
+ * class after the two classes that donated the most components (rogue + paladin
+ * → "Palarogue" / "Rodin" …), keeping the new identity tied to its sources. Id,
+ * colour, role, radius, threat and stats are preserved. Deterministic.
+ */
+export function synthesizeClass(seed: number, base: ClassDef, donors: Donor[]): ClassDef {
+  const abilities = {} as Record<AbilitySlot, PlayerAbilityDef>;
+  const tally = new Map<ClassId, number>();
+  const classNames = new Map<ClassId, string>();
+  for (const d of donors) classNames.set(d.classId, d.className);
+  const SLOTS: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
+  for (const slot of SLOTS) {
+    const syn = synthesizeAbility(seed, `${base.id}.${slot}`, slot, donors);
+    abilities[slot] = syn.def;
+    for (const c of syn.donorClasses) tally.set(c, (tally.get(c) ?? 0) + 1);
+  }
+  // Top donor classes, ties broken by id for determinism. Every tallied class is
+  // a donor, so its display name is always in the map.
+  const top = [...tally.entries()]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .map((e) => classNames.get(e[0])!);
+  const rng = new Rng(mixSeed(seed, FORGE_SALT.className, hashStr(base.id)));
+  const name = forgeName(top, (k) => (k <= 0 ? 0 : rng.int(0, k - 1)), { connectiveChance: 0.35 });
+  return { ...base, name, abilities };
 }
