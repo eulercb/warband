@@ -13,7 +13,7 @@ import {
   subSkillsForClass,
   specialRewardStep,
 } from '../src/engine/content/subclasses';
-import type { InputCommand } from '../src/engine/core/types';
+import type { InputCommand, ClassId } from '../src/engine/core/types';
 
 function input(over: Partial<InputCommand['buttons']>): InputCommand {
   return {
@@ -171,6 +171,12 @@ describe('subclass lookups', () => {
     expect(isSubSkillId('not_a_skill')).toBe(false); // a string, but not indexed
     expect(isSubSkillId(42)).toBe(false); // non-string short-circuit
     expect(isSubSkillId(undefined)).toBe(false);
+  });
+
+  it('subclassesFor returns a real subclass list, or [] for an unknown class (?? [] guard)', () => {
+    expect(subclassesFor('knight').length).toBeGreaterThan(0);
+    // A classId with no registered subclasses falls through the `?? []` fallback.
+    expect(subclassesFor('nonesuch' as ClassId)).toEqual([]);
   });
 });
 

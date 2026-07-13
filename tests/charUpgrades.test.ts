@@ -1009,6 +1009,73 @@ describe('effect fallbacks for absent optional fields', () => {
     expect(a.a1.castTime).toBe(0); // (undefined ?? 0) * 0.6
     expect(a.a1.cooldown).toBeCloseTo(0.85, 5); // 1 * 0.85
   });
+
+  // Grand-capstone tunes read optional buff/snare fields the real kits fill in, so
+  // their `?? default` arms only fire against a field-less ability. Apply each grand
+  // straight onto a synthetic slot to prove the guard rather than leave it dead.
+  it('so_gk_a2_a defaults a move-buff-less Mirror Image (buffMoveMult ?? 1)', () => {
+    const a = table({ a2: ab('a2', 'selfBuff', 0) }); // no buffMoveMult
+    CHAR_UPGRADES.so_gk_a2_a.apply({ player: stub, abilities: a });
+    expect(a.a2.buffMoveMult).toBeCloseTo(1.35, 5); // max(undefined ?? 1, 1.35)
+  });
+
+  it('so_gk_a2_b defaults a move-buff-less Mirror Image (buffMoveMult ?? 1)', () => {
+    const a = table({ a2: ab('a2', 'selfBuff', 0) });
+    CHAR_UPGRADES.so_gk_a2_b.apply({ player: stub, abilities: a });
+    expect(a.a2.buffMoveMult).toBeCloseTo(1.3, 5);
+  });
+
+  it('wa_gk_a1_b defaults a duration-less Hex (slowDuration ?? 0)', () => {
+    const a = table({ a1: ab('a1', 'groundZone', 0) }); // no slowDuration
+    CHAR_UPGRADES.wa_gk_a1_b.apply({ player: stub, abilities: a });
+    expect(a.a1.slowDuration).toBeCloseTo(1.5, 5); // max(undefined ?? 0, 1.5)
+  });
+
+  it('amplify() seeds iframes on an iframe-less dash sub-skill (iframes ?? 0)', () => {
+    const dash = ab('a1', 'dash', 0); // dash, no iframes
+    CHAR_UPGRADES.kn_champion_g_a.apply({ player: stub, abilities: table(), subAbilities: { sub1: dash } });
+    expect(dash.iframes).toBeCloseTo(0.15, 5); // round(((undefined ?? 0) + 0.15) * 100) / 100
+  });
+
+  it('slowRider() chills a damage-less hazard via its tick damage (damage ?? 0 → OR second operand)', () => {
+    // A pure hazard: no `damage` field at all, only per-tick damage — so `(ab.damage ?? 0)`
+    // takes its 0 fallback, the first `> 0` is false, and the OR falls through to the tick.
+    const zone = ab('a1', 'groundZone', undefined as unknown as number, { zoneTickDamage: 15 });
+    CHAR_UPGRADES.kn_battlemaster_g_a.apply({ player: stub, abilities: table(), subAbilities: { sub1: zone } });
+    expect(zone.slowMult).toBeCloseTo(0.45, 5);
+  });
+});
+
+describe('applySubclassGrands: absent-field guards', () => {
+  const champSub = (): PlayerAbilityDef => ({
+    slot: 'a1',
+    name: 'Champion Slam',
+    kind: 'meleeCone',
+    cooldown: 5,
+    damage: 30,
+  });
+
+  it('no-ops when the hero has sub-abilities but no recorded subSkillIds (subSkillIds ?? [])', () => {
+    const p = makePlayer('knight');
+    p.subAbilities = { sub1: champSub() };
+    p.subSkillIds = undefined; // the slot→subclass map cannot be built…
+    const before = p.subAbilities.sub1!.damage;
+    applySubclassGrands(p, ['kn_champion_g_a']);
+    // …so no grand binds to a slot: the sub-ability is left exactly as it was.
+    expect(p.subAbilities.sub1!.damage).toBe(before);
+    expect(p.subAbilities.sub1!.lifestealFrac ?? 0).toBe(0);
+  });
+
+  it('applies a subclass grand even when the hero has no base ability table (abilities ?? {})', () => {
+    const p = makePlayer('knight');
+    p.subAbilities = { sub1: champSub() };
+    p.subSkillIds = ['kn_champion_slam']; // maps sub1 → the kn_champion subclass
+    (p as unknown as { abilities?: unknown }).abilities = undefined; // no base kit present
+    applySubclassGrands(p, ['kn_champion_g_a']);
+    // Unbroken Champion grafts 25% lifesteal onto its (damaging) sub-skill — proof the
+    // grand ran despite the missing base table (the `?? {}` fallback stood in).
+    expect(p.subAbilities.sub1!.lifestealFrac).toBeCloseTo(0.25, 5);
+  });
 });
 
 // ---------------------------------------------------------------------------

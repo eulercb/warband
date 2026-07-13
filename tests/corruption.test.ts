@@ -7,7 +7,8 @@
 import { describe, it, expect } from 'vitest';
 import { World } from '../src/engine/world/world';
 import type { CorruptionKind } from '../src/engine/core/types';
-import { firstCorruptionDelay } from '../src/engine/world/corruption';
+import { firstCorruptionDelay, stepCorruption } from '../src/engine/world/corruption';
+import type { Rng } from '../src/engine/core/math';
 import {
   CORRUPTION_FIRST_DELAY,
   CORRUPTION_INTERVAL_JITTER,
@@ -146,6 +147,28 @@ describe('corruption scheduler', () => {
     for (const b of w.bosses) b.hp = 0;
     w.step(DT, new Map());
     expect(w.events.some((e) => e.t === 'corruption')).toBe(false);
+  });
+
+  it('pickKind falls back to the last beat when the weighted roll overshoots (line 143)', () => {
+    // pickKind normally returns as soon as its running roll crosses 0. With an rng
+    // whose range() overshoots the weight total, the roll never crosses 0, so the
+    // loop runs off the end to its defensive `return src[src.length - 1]`. A real
+    // seeded Rng (range ∈ [0,total)) can never reach it, so we prove it by swapping
+    // in an rng stand-in (as monsters.test.ts does with its stub rng).
+    const w = corruptWorld(3);
+    w.rng = {
+      range: (): number => 1e9,
+      next: (): number => 0,
+      int: (): number => 0,
+      pick: <T>(a: T[]): T => a[0],
+    } as unknown as Rng;
+    w.corruptionTimer = 0.01;
+    stepCorruption(w, DT);
+    const ev = w.events.find((e) => e.t === 'corruption');
+    if (ev?.t !== 'corruption') throw new Error('expected a corruption beat to fire');
+    // The fallback yields the LAST entry of the beat table — the healing rift.
+    expect(ev.kind).toBe('healingRift');
+    expect(w.corruptionCount).toBe(1);
   });
 });
 

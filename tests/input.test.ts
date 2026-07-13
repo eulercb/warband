@@ -16,10 +16,11 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { InputManager } from '../src/input/input';
+import { KeyboardMouse } from '../src/input/keyboard';
 import { useBindings } from '../src/input/bindings';
 import { setTouchMove, resetTouch } from '../src/input/touch';
 import { DEAD_ZONE } from '../src/engine/core/constants';
-import type { Vec2 } from '../src/engine/core/types';
+import type { InputState, Vec2 } from '../src/engine/core/types';
 
 const ORIGIN: Vec2 = { x: 0, y: 0 };
 
@@ -259,5 +260,99 @@ describe('InputManager: dispose', () => {
     keyDown('KeyW'); // listeners removed -> ignored
     const s = manager.sample(ORIGIN);
     expect(s.move).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe('InputManager: touch sticky window (touch-was-recently-used arbitration)', () => {
+  // Mirrors the gamepad sticky logic but for the touch overlay: once touch was the
+  // most-recently-used source, a subsequently-DISENGAGED touch keeps control while
+  // it is still the freshest device AND within the 2000ms window. These drive the
+  // second operand of `useTouch` (the parenthesized touchMs>0 && … && … chain),
+  // which the "touchEngaged() is true" cases never reach.
+
+  it('keeps a disengaged touch active while inside its sticky window', () => {
+    const now = vi.spyOn(performance, 'now');
+    now.mockReturnValue(1000);
+    setTouchMove(0.5, 0); // touch engaged -> activity stamp = 1000
+    expect(manager.sample(ORIGIN).move.x).toBeGreaterThan(0);
+    expect(manager.activeSource).toBe('touch');
+
+    // Disengage: zero the stick. touchEngaged() is now false, but the activity
+    // stamp (1000) is unchanged, so the sticky branch must keep touch selected.
+    setTouchMove(0, 0);
+    now.mockReturnValue(2500); // 1500ms later, still within the 2000ms window
+    manager.sample(ORIGIN);
+    expect(manager.activeSource).toBe('touch');
+  });
+
+  it('lets fresher keyboard activity reclaim control from a disengaged touch', () => {
+    const now = vi.spyOn(performance, 'now');
+    now.mockReturnValue(1000);
+    setTouchMove(0.5, 0); // touch stamp = 1000
+    manager.sample(ORIGIN);
+    expect(manager.activeSource).toBe('touch');
+
+    setTouchMove(0, 0); // disengage; touch stamp stays 1000
+    now.mockReturnValue(1500);
+    keyDown('KeyD'); // keyboard activity at 1500 (fresher than touch's 1000)
+    now.mockReturnValue(1600); // still inside touch's sticky window
+    const s = manager.sample(ORIGIN);
+    // touchMs (1000) < otherMs (kb 1500) -> the `touchMs >= otherMs` term is false.
+    expect(manager.activeSource).toBe('keyboard');
+    expect(s.move.x).toBeCloseTo(1); // D still held
+  });
+
+  it('hands a disengaged touch back to the keyboard once its sticky window lapses', () => {
+    const now = vi.spyOn(performance, 'now');
+    now.mockReturnValue(1000);
+    setTouchMove(0.5, 0); // touch stamp = 1000
+    manager.sample(ORIGIN);
+    expect(manager.activeSource).toBe('touch');
+
+    setTouchMove(0, 0); // disengage; stamp stays 1000
+    now.mockReturnValue(3500); // 2500ms later -> past the 2000ms window
+    manager.sample(ORIGIN);
+    // `now - touchMs (2500) <= GAMEPAD_STICKY_MS (2000)` is false -> keyboard wins.
+    expect(manager.activeSource).toBe('keyboard');
+  });
+});
+
+describe('InputManager: optional-button backfill', () => {
+  it('fills sub1/sub2/swap/item with false when a source omits them (?? false)', () => {
+    // Pin the clock far ahead so any residual touch activity stamp from earlier
+    // tests sits well outside the sticky window and the keyboard path is chosen.
+    vi.spyOn(performance, 'now').mockReturnValue(10_000_000);
+    // The expansion buttons are optional on ButtonState ("producers set them and
+    // consumers read `?? false`"). Stub the keyboard producer to emit only the
+    // base buttons; sanitize must backfill the four optional ones as false.
+    vi.spyOn(KeyboardMouse.prototype, 'sample').mockReturnValue({
+      move: { x: 0, y: 0 },
+      aim: { x: 1, y: 0 },
+      buttons: { basic: true, a1: false, a2: false, a3: false, revive: false },
+    } satisfies InputState);
+
+    const s = manager.sample(ORIGIN);
+    expect(manager.activeSource).toBe('keyboard');
+    expect(s.buttons.basic).toBe(true);
+    expect(s.buttons.sub1).toBe(false);
+    expect(s.buttons.sub2).toBe(false);
+    expect(s.buttons.swap).toBe(false);
+    expect(s.buttons.item).toBe(false);
+  });
+});
+
+describe('InputManager: NaN coercion (safe fallback)', () => {
+  it('coerces NaN move components to 0 while keeping a finite unit aim', () => {
+    // Touch is the one source that passes its stick vector straight through, so it
+    // can hand sanitize a NaN move. `safe()` must map both NaN components to 0.
+    vi.spyOn(performance, 'now').mockReturnValue(0);
+    setTouchMove(NaN, NaN);
+    const s = manager.sample(ORIGIN);
+    expect(manager.activeSource).toBe('touch');
+    expect(s.move).toEqual({ x: 0, y: 0 });
+    // Touch aim is {0,0} -> zero-length -> falls back to the persisted "up" aim.
+    expect(Number.isFinite(s.aim.x)).toBe(true);
+    expect(Number.isFinite(s.aim.y)).toBe(true);
+    expect(Math.hypot(s.aim.x, s.aim.y)).toBeCloseTo(1);
   });
 });

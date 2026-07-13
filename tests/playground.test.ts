@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Playground, STATION_DWELL_S } from '../src/ui/state/playground';
-import { SIM_DT } from '../src/engine/core/constants';
+import { SIM_DT, CLASS_COLORS } from '../src/engine/core/constants';
 import { CLASS_IDS } from '../src/engine/content/classes';
 import type { InputCommand, RenderState, Vec2 } from '../src/engine/core/types';
 
@@ -356,6 +356,25 @@ describe('Playground: class effigies (stations)', () => {
     const selected = (s.stations ?? []).filter((st) => st.selected);
     expect(selected).toHaveLength(1);
     expect(selected[0].refId).toBe('mage');
+  });
+});
+
+describe('Playground: class-effigy colour fallback', () => {
+  it('falls back to white for a class effigy with no registered colour (L108 `?? 0xffffff`)', () => {
+    // Every real class has a CLASS_COLORS entry, so the `?? 0xffffff` fallback only
+    // fires defensively. Remove one entry (restored afterwards) to reach it — the
+    // knight hero keeps its own colour, only the warlock effigy hits the fallback.
+    const saved = CLASS_COLORS['warlock'];
+    Reflect.deleteProperty(CLASS_COLORS, 'warlock');
+    try {
+      const pg = new Playground('Aria', 'knight');
+      const s = pg.frame(1000);
+      const eff = (s.stations ?? []).find((st) => st.refId === 'warlock');
+      expect(eff).toBeDefined();
+      expect(eff?.color).toBe(0xffffff);
+    } finally {
+      CLASS_COLORS['warlock'] = saved;
+    }
   });
 });
 

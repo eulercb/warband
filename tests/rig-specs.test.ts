@@ -1187,3 +1187,43 @@ describe('addUsesRig — add rig flag forced on', () => {
     expect(RIG_FLAGS.add).toBe(false); // restored to the shipped default
   });
 });
+
+// ---------------------------------------------------------------------------
+// Registry — the documented geometry fallback for an unmapped silhouette
+// ---------------------------------------------------------------------------
+
+describe('bossRigId — unmapped body shape falls back to geometry (default arm)', () => {
+  // Every shipped BossBodyShape now maps to a rig, so the switch's `default:`
+  // (return null — "a new one falls back to geometry") is only reachable with a
+  // shape outside the union. Retag a plain non-override, non-dummy boss to an
+  // unknown shape to drive that documented fallback directly.
+  it('returns null for a body shape the silhouette table does not handle', () => {
+    const victim = MONSTERS.goblin; // humanoid, not overridden, not the dummy
+    const original = victim.bodyShape;
+    try {
+      victim.bodyShape = 'unmapped' as BossBodyShape;
+      expect(bossRigId('goblin')).toBeNull();
+    } finally {
+      victim.bodyShape = original;
+    }
+    // Restored: the untouched registry resolves goblin to the humanoid rig again.
+    expect(bossRigId('goblin')).toBe('humanoid');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Humanoid — the weaponFor default arm for an unregistered class
+// ---------------------------------------------------------------------------
+
+describe('buildHumanoidSpec — unknown class falls back to the default kit', () => {
+  // `weaponFor` has a `default:` arm and a `CLASS_COLORS[classId] ?? 0xffffff`
+  // colour fallback for a classId outside the shipped union. Pass an unrecognised
+  // class to drive both: a plain white melee sword.
+  it('gives an unrecognised class a neutral white melee sword', () => {
+    const spec = buildHumanoidSpec('nonesuch' as ClassId);
+    expect(spec.id).toBe('humanoid');
+    expect(spec.weapon).toEqual({ kind: 'sword', length: 2.0, color: 0xffffff, style: 'melee' });
+    // The rest of the biped is still well-formed.
+    assertValidRigSpec(spec);
+  });
+});

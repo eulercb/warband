@@ -280,6 +280,26 @@ describe('<PauseMenu>', () => {
     expect(screen.getByText('-15%')).toBeTruthy(); // damage taken
   });
 
+  it('appends the regen + terrain-resist rows and marks a penalised stat "bad"', () => {
+    useHudStore.setState({ classId: 'knight', hp: 100, maxHp: 200 });
+    // Surefooted -> terrainResist > 0 (L48 row); Second Wind -> regenPerSec > 0 (L47
+    // row); Glass Cannon -> +18% damage taken, a stat whose `good` is false so its
+    // value carries the " bad" class (L58 alternate).
+    useStore.setState({
+      myUpgrades: ['surefooted'],
+      myCharUpgrades: ['kn_secondwind', 'hy_glasscannon'],
+    });
+    const { container } = renderMenu();
+
+    expect(screen.getByText('Regen')).toBeTruthy(); // L47 push
+    expect(screen.getByText('Terrain resist')).toBeTruthy(); // L48 push
+    expect(screen.getByText('+50%')).toBeTruthy(); // terrain resist value
+
+    const bad = container.querySelector('.wb-pause-stat-val.bad');
+    expect(bad).toBeTruthy();
+    expect(bad?.textContent).toBe('+18%'); // Damage taken +18% -> good === false
+  });
+
   it('omits the character sheet when no class is active', () => {
     useHudStore.setState({ classId: null });
     const { container } = renderMenu();

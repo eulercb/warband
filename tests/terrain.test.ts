@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateTerrain } from '../src/engine/world/terrain';
+import { generateTerrain, themeFor } from '../src/engine/world/terrain';
 import { World } from '../src/engine/world/world';
 import {
   TERRAIN_MAX_PATCHES,
@@ -73,6 +73,40 @@ describe('terrain: generation', () => {
         expect(dBoss).toBeGreaterThanOrEqual(patch.radius + TERRAIN_SPAWN_CLEARANCE - 0.5);
       }
     }
+  });
+});
+
+describe('terrain: themeFor', () => {
+  // DEFAULT_THEME is module-private; its value is ['ember', 'bog', 'ice'].
+  const DEFAULT_THEME = ['ember', 'bog', 'ice'];
+
+  it('themes a boss from its arena kinds', () => {
+    expect(themeFor(['dragon'])).toEqual(['magma', 'ember']);
+    expect(themeFor(['lich'])).toEqual(['ice', 'deathfog']);
+  });
+
+  it('falls back to the default mix for a boss with no explicit theme (?? DEFAULT_THEME, L155)', () => {
+    // The hidden training dummy carries no THEMES entry, so the nullish fallback fires.
+    expect(themeFor(['dummy'])).toEqual(DEFAULT_THEME);
+  });
+
+  it('a twin of same-themed bosses dedupes shared kinds (the !includes false arm, L156)', () => {
+    // Troll and Treant both theme to ['swamp', 'bog']; the second boss's kinds are
+    // already present, so every push is skipped — the blended set has no duplicates.
+    expect(themeFor(['troll', 'treant'])).toEqual(['swamp', 'bog']);
+  });
+
+  it('a twin of differently-themed bosses blends both arenas in order', () => {
+    // Kraken ['tide','bog'] + Dragon ['magma','ember']; bog is unique to each list-head.
+    expect(themeFor(['kraken', 'dragon'])).toEqual(['tide', 'bog', 'magma', 'ember']);
+  });
+
+  it('an empty encounter returns a fresh copy of the default theme (: DEFAULT_THEME, L159)', () => {
+    const got = themeFor([]);
+    expect(got).toEqual(DEFAULT_THEME);
+    // It is a copy (spread), not the shared module constant — mutating it is safe.
+    got.push('magma');
+    expect(themeFor([])).toEqual(DEFAULT_THEME);
   });
 });
 

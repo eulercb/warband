@@ -168,6 +168,34 @@ describe('persisted load merge', () => {
   });
 });
 
+describe('persisted load — absent pad + invalid scheme branches', () => {
+  it('leaves pad + scheme at defaults when the saved blob omits them (line 137 false, 142 non-string)', async () => {
+    // Only `keys` was persisted: the `if (saved.pad)` guard takes its false arm
+    // and `typeof saved.padScheme === 'string'` is false (padScheme is absent).
+    localStorage.setItem('warband.bindings.v1', JSON.stringify({ keys: { a1: ['KeyM'] } }));
+    vi.resetModules();
+    const mod = await import('../src/input/bindings');
+    const b = mod.getBindings();
+    expect(b.keys.a1[0]).toBe('KeyM'); // saved key merged over the default
+    expect(b.pad.a1[0]).toBe(1); // no saved.pad → default button retained
+    expect(b.padScheme).toBe('auto'); // absent padScheme → default retained
+  });
+
+  it('ignores a padScheme string that is not a known scheme (line 142 includes-false)', async () => {
+    // padScheme is a string (typeof passes) but not one of PAD_SCHEMES, so the
+    // `PAD_SCHEMES.includes(...)` term is false and the default scheme is kept.
+    localStorage.setItem(
+      'warband.bindings.v1',
+      JSON.stringify({ pad: { a1: [9] }, padScheme: 'nonsense' }),
+    );
+    vi.resetModules();
+    const mod = await import('../src/input/bindings');
+    const b = mod.getBindings();
+    expect(b.pad.a1[0]).toBe(9); // saved pad merged (the `if (saved.pad)` true arm)
+    expect(b.padScheme).toBe('auto'); // unknown scheme rejected → default kept
+  });
+});
+
 describe('setKey / setPad slot compaction', () => {
   it('drops an empty middle slot when a key lands past the array end (line 186)', () => {
     // sub1 has a single default key ('KeyZ'); binding a fresh key at slot 2 pads

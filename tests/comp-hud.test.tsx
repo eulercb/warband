@@ -24,6 +24,14 @@ vi.mock('../src/ui/state/session', () => ({
 // loop. Controls still calls it (line coverage kept); it's just a no-op here.
 vi.mock('../src/input/useGamepadMenu', () => ({ useGamepadMenu: vi.fn() }));
 
+// Spy on previewAbilityTable but keep the real behaviour by default (real ability
+// names/tooltips for every other test). One test overrides it with a zero-cooldown
+// slot to exercise the divide-guard on an ability whose cooldown is 0.
+vi.mock('../src/engine/content/charUpgrades', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/engine/content/charUpgrades')>();
+  return { ...actual, previewAbilityTable: vi.fn(actual.previewAbilityTable) };
+});
+
 import HUD from '../src/ui/game/HUD';
 import Controls from '../src/ui/screens/Controls';
 import { useHudStore } from '../src/ui/state/hudStore';
@@ -31,6 +39,7 @@ import type { HudBoss, HudTeammate } from '../src/ui/state/hudStore';
 import { useStore } from '../src/ui/state/store';
 import { useBindings } from '../src/input/bindings';
 import { closeControls, playUiSound } from '../src/ui/state/session';
+import { previewAbilityTable } from '../src/engine/content/charUpgrades';
 import type { BuffView } from '../src/engine/core/types';
 
 const closeControlsMock = vi.mocked(closeControls);
@@ -389,6 +398,47 @@ describe('<HUD>', () => {
     expect(nums[0].textContent).toBe('6.0');
     // The three ready abilities carry the "ready" class.
     expect(container.querySelectorAll('.hud-ability.ready')).toHaveLength(3);
+  });
+
+  it('treats a zero-cooldown ability as always ready without dividing by zero (L129 false side)', () => {
+    // No shipped ability has cooldown 0, so inject one: the `total > 0 ? … : 0` guard
+    // must force frac (and the ready flag) rather than compute remaining / 0.
+    const spy = vi.mocked(previewAbilityTable);
+    const original = spy.getMockImplementation();
+    const real = original!('knight', []);
+    spy.mockReturnValue({ ...real, a2: { ...real.a2, cooldown: 0 } });
+    try {
+      useHudStore.getState().set({
+        active: true,
+        classId: 'knight',
+        hp: 100,
+        maxHp: 100,
+        // a2 carries 5s "remaining" — with a real cooldown it would paint a countdown,
+        // but with total 0 the guard zeroes frac so a2 reads ready (no cd number).
+        cooldowns: { basic: 3, a1: 0, a2: 5, a3: 0 },
+      });
+      const { container } = render(<HUD />);
+      const nums = container.querySelectorAll('.hud-cd-num');
+      expect(nums).toHaveLength(1); // only basic (real cooldown) shows a number
+      expect(nums[0].textContent).toBe('3.0');
+    } finally {
+      spy.mockImplementation(original!);
+    }
+  });
+
+  it('hides a subclass skill whose owning class is not the active class (L339 true side)', () => {
+    // A multiclass hero currently fielding Knight: a Knight sub skill shows, but a
+    // Mage sub skill (owner 'mage' !== active 'knight') is filtered out (item 14).
+    useHudStore.getState().set({
+      active: true,
+      classId: 'knight',
+      hp: 100,
+      maxHp: 100,
+      subSkills: ['kn_champion_slam', 'mg_evoker_lightning'],
+    });
+    render(<HUD />);
+    expect(screen.getByText('💥 Earthshaker')).toBeTruthy(); // knight skill kept
+    expect(screen.queryByText('⚡ Lightning Bolt')).toBeNull(); // mage skill hidden
   });
 
   // --- hardcore kill-deadline countdown (item 11) -------------------------

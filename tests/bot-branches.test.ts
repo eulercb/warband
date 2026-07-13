@@ -1182,3 +1182,61 @@ describe('bot: expansion classes press their abilities', () => {
     });
   }
 });
+
+// ===========================================================================
+// Bard Healing Word — the needHeal branch (decideAbilities, line 536)
+// ===========================================================================
+
+describe('bot: bard heals a wounded ally', () => {
+  it('casts Healing Word when an ally drops below the heal threshold (line 536)', () => {
+    const w = mkWorld(['bard', 'ranger']);
+    const bot = w.players[0];
+    faceOff(w, 300);
+    w.players[1].hp = w.players[1].maxHp * 0.3; // wounded ally -> needHeal true
+    readyCds(bot);
+    const c = computeBotInput(w, bot, 0, persona());
+    expect(c.buttons.a2).toBe(true); // Healing Word (needHeal && cd.a2 <= 0)
+  });
+
+  it('holds Healing Word when the whole band is healthy (needHeal false arm)', () => {
+    const w = mkWorld(['bard', 'ranger']);
+    const bot = w.players[0];
+    faceOff(w, 300); // both at full hp -> mostWounded ratio 1 -> needHeal false
+    readyCds(bot);
+    expect(computeBotInput(w, bot, 0, persona()).buttons.a2).toBe(false);
+  });
+});
+
+// ===========================================================================
+// dangerAvoidance: a boss zone the bot is clear of (loop's not-inside arm, L359)
+// ===========================================================================
+
+describe('bot: distant boss zone', () => {
+  it('a boss-side damaging zone the bot is well clear of does not trigger a flee (line 359)', () => {
+    const w = mkWorld(['ranger']);
+    const bot = w.players[0];
+    bot.pos = { x: 800, y: 500 };
+    armRangerDangerProbe(bot); // only Roll (a3) is ready => a3 <=> "the bot is fleeing"
+    // The zone passes the side/damage guard but sits far away: len(away) > margin.
+    w.groundZones = [bossZone({ x: 200, y: 200 })];
+    const cmd = computeBotInput(w, bot, 0, persona());
+    expect(cmd.buttons.a3).toBe(false); // out of the zone -> not in danger
+  });
+});
+
+// ===========================================================================
+// pickBotUpgrades: weightedPick's last-element fallback (line 154)
+// ===========================================================================
+
+describe('bot: weightedPick fallthrough', () => {
+  it('takes the last-pool fallback when the roll overshoots the weight sum (line 154)', () => {
+    // weightedPick returns as soon as its running roll crosses 0. An rng whose
+    // range() overshoots the total keeps the roll positive, so the loop runs to the
+    // end and returns pool[last]. A real seeded Rng (range ∈ [0,total)) can't reach
+    // it, so we drive it with an rng stand-in (as the suite already does elsewhere).
+    const overshoot = { range: (): number => 1e9, next: (): number => 0 } as unknown as Rng;
+    const pick = pickBotUpgrades('knight', persona(), [], [], overshoot);
+    expect(pick.generic).not.toBeNull(); // still a real generic boon id
+    expect(UPGRADE_IDS).toContain(pick.generic);
+  });
+});

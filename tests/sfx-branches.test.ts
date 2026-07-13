@@ -827,3 +827,118 @@ describe('Sfx: synthesis + cleanup arms', () => {
     expect(ctx.createdOscillators.length).toBe(13);
   });
 });
+
+// ---------------------------------------------------------------------------
+// deadlineWarn throttle guard — the FALSE arm (line 450). This event is NOT in
+// the parametric throttle sweep above, so its de-dupe branch needs its own case.
+// ---------------------------------------------------------------------------
+
+describe('Sfx: deadlineWarn throttle', () => {
+  const warn = (): GameEvent => ({ t: 'deadlineWarn', pos: P, text: '15s' });
+
+  it('a repeated deadlineWarn at the same instant collapses to one voice set (line 450 false arm)', () => {
+    const sfx = new Sfx();
+    // Two warnings in the same batch land at currentTime 0 -> the 2nd is throttled.
+    sfx.handleEvents([warn(), warn()]);
+    const ctx = currentCtx();
+    // One low saw voice + one bandpass noise rumble; the throttled copy adds nothing.
+    expect(ctx.createdOscillators.length).toBe(1);
+    expect(ctx.createdBufferSources.length).toBe(1);
+  });
+
+  it('plays again once the 0.1s throttle window elapses', () => {
+    const sfx = new Sfx();
+    sfx.handleEvents([warn()]);
+    const ctx = currentCtx();
+    expect(ctx.createdOscillators.length).toBe(1);
+    ctx.currentTime = 1; // well past the 0.1s window
+    sfx.handleEvents([warn()]);
+    expect(ctx.createdOscillators.length).toBe(2);
+    expect(ctx.createdBufferSources.length).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Defensive context guards inside the synthesis primitives. Through the public
+// API these are only ever reached AFTER ensureCtx() has produced a live context,
+// so the "no context" arms are unreachable that way. We prove them the same way
+// the char-upgrade suite proves its `?? default` guards: by driving the private
+// method directly against a context-less instance. (Lines 483, 531, 595, 627, 649.)
+// ---------------------------------------------------------------------------
+
+interface SfxInternals {
+  voice(o: unknown): void;
+  noiseVoice(o: unknown): void;
+  ensureCtx(): unknown;
+  ensureNoiseBuffer(): unknown;
+  throttle(key: string, minGap: number): boolean;
+}
+const internals = (sfx: Sfx): SfxInternals => sfx as unknown as SfxInternals;
+
+describe('Sfx: context-less primitive guards', () => {
+  it('voice() bails when no context has been built yet (line 483)', () => {
+    const sfx = new Sfx(); // never resumed -> this.ctx / this.master are null
+    expect(() =>
+      internals(sfx).voice({ type: 'sine', freq: 440, dur: 0.04, peak: 0.08 }),
+    ).not.toThrow();
+    expect(FakeAudioContext.instances.length).toBe(0); // nothing was scheduled
+  });
+
+  it('noiseVoice() bails when no context has been built yet (line 531)', () => {
+    const sfx = new Sfx();
+    expect(() =>
+      internals(sfx).noiseVoice({ dur: 0.06, peak: 0.14, filterType: 'lowpass', filterFreq: 900 }),
+    ).not.toThrow();
+    expect(FakeAudioContext.instances.length).toBe(0);
+  });
+
+  it('ensureCtx() returns null after dispose without building a context (line 595)', () => {
+    const sfx = new Sfx();
+    sfx.dispose();
+    expect(internals(sfx).ensureCtx()).toBeNull();
+    expect(FakeAudioContext.instances.length).toBe(0);
+  });
+
+  it('ensureNoiseBuffer() returns null with no context (line 627)', () => {
+    const sfx = new Sfx();
+    expect(internals(sfx).ensureNoiseBuffer()).toBeNull();
+  });
+
+  it('throttle() returns false (no play) with no context yet (line 649)', () => {
+    const sfx = new Sfx();
+    expect(internals(sfx).throttle('anything', 0.1)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Swallowed promise rejections: resume() and close() return promises whose
+// rejections are caught and dropped so nothing bubbles into the game loop. The
+// happy-path fakes always resolve, so the `.catch(() => undefined)` handlers
+// (anonymous_3 @ line 86, anonymous_18 @ line 187) only run when the promise
+// actually rejects.
+// ---------------------------------------------------------------------------
+
+const flushMicrotasks = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
+describe('Sfx: swallowed async rejections', () => {
+  it('drops a rejected resume() promise (anonymous_3, line 86)', async () => {
+    const sfx = new Sfx();
+    sfx.resume(); // builds the (suspended) context and resolves the first resume()
+    const ctx = currentCtx();
+    ctx.state = 'suspended'; // re-arm the suspended branch
+    ctx.resume = vi.fn<() => Promise<void>>(() => Promise.reject(new Error('autoplay blocked')));
+    expect(() => sfx.resume()).not.toThrow(); // rejection is swallowed, not thrown
+    expect(ctx.resume).toHaveBeenCalled();
+    await flushMicrotasks(); // let the .catch handler run
+  });
+
+  it('drops a rejected close() promise on dispose (anonymous_18, line 187)', async () => {
+    const sfx = new Sfx();
+    sfx.resume();
+    const ctx = currentCtx();
+    ctx.close = vi.fn<() => Promise<void>>(() => Promise.reject(new Error('close failed')));
+    expect(() => sfx.dispose()).not.toThrow();
+    expect(ctx.close).toHaveBeenCalledTimes(1);
+    await flushMicrotasks(); // let the .catch handler run
+  });
+});

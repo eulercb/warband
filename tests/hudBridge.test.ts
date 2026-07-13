@@ -113,4 +113,18 @@ describe('pushHud', () => {
     expect(h.classId).toBeNull();
     expect(h.state).toBe('dead');
   });
+
+  it('falls back to safe defaults when the local id names no present player', () => {
+    // localId is set (not null) but no player carries it -> find() returns undefined
+    // and the `?? null` on line 13 makes lp null (a different branch from localId==null).
+    pushHud(renderState({ localPlayerId: 5, players: [player({ id: 1, name: 'A' })] }), 'keyboard');
+    const h = useHudStore.getState();
+    expect(h.classId).toBeNull();
+    expect(h.hp).toBe(0);
+    expect(h.maxHp).toBe(1);
+    expect(h.state).toBe('dead');
+    // The roster is still mapped, and the present player is not flagged local.
+    expect(h.teammates).toHaveLength(1);
+    expect(h.teammates[0].isLocal).toBe(false);
+  });
 });
