@@ -293,7 +293,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'Pounce',
           '🐺',
           'Leap in, landing for 26',
-          dash('Pounce', 6, { landingDamage: 26, radius: 100 }),
+          dash('Pounce', 6, { landingDamage: 26, radius: 100, leap: true }),
         ),
         sk(
           'rg_beast_snare',
@@ -510,7 +510,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'Rage Leap',
           '🦵',
           'Leap, landing for 34',
-          dash('Rage Leap', 7, { landingDamage: 34, radius: 120 }),
+          dash('Rage Leap', 7, { landingDamage: 34, radius: 120, leap: true }),
         ),
       ],
     },
@@ -718,7 +718,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'Feral Pounce',
           '🐆',
           'Leap, landing for 30',
-          dash('Feral Pounce', 6, { landingDamage: 30, radius: 100 }),
+          dash('Feral Pounce', 6, { landingDamage: 30, radius: 100, leap: true }),
         ),
         sk(
           'dr_moon_roar',

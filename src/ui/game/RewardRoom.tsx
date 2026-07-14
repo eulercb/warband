@@ -37,6 +37,7 @@ import {
   RewardScene,
   type RewardOffers,
   type RelicFocus,
+  type ShopFocus,
   type ShopOffer,
 } from '../state/rewardScene';
 import {
@@ -95,7 +96,9 @@ function rollOffers(
     // `graftup:` grafted-skill upgrade — against the hero's current kit, keeping the
     // "Replaces X" graft label (item 18) and naming reclaimed / grafted skills.
     char: chr
-      .map((id) => describeCharOffer(classId, ownedChar, id))
+      // item 5: pass the equipped sub-skills so a subclass-grand card can preview the
+      // concrete before→after of the actual skills it retunes.
+      .map((id) => describeCharOffer(classId, ownedChar, id, subSkills))
       .filter((o): o is CharOfferView => o !== null),
   };
 }
@@ -160,6 +163,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   const [ready, setReady] = useState(false);
   const [showList, setShowList] = useState(false);
   const [focus, setFocus] = useState<RelicFocus | null>(null);
+  const [shopFocus, setShopFocus] = useState<ShopFocus | null>(null);
   const [vortexOpen, setVortexOpen] = useState(false);
   const [descending, setDescending] = useState(false);
   const [descentCharge, setDescentCharge] = useState(0);
@@ -337,10 +341,11 @@ export default function RewardRoom({ result }: { result: FightResult }) {
         // Readiness follows a committed vortex descent (or a list-view toggle).
         applyReady(scene.readyToDescend() || listReady);
 
-        // Throttled UI mirror: inspector chip, vortex state, descend charge.
+        // Throttled UI mirror: inspector chips (relic + shop), vortex state, charge.
         if (now - lastPush > 80) {
           lastPush = now;
           setFocus(scene.focus());
+          setShopFocus(scene.shopFocus()); // item 3
           setVortexOpen(scene.vortexOpen());
           setDescending(scene.standingInVortex());
           setDescentCharge(scene.descentCharge());
@@ -457,6 +462,26 @@ export default function RewardRoom({ result }: { result: FightResult }) {
           ) : (
             <div className="wb-totem-hint-track">
               <div className="wb-totem-hint-fill" style={{ width: `${focus.dwell * 100}%` }} />
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* Diegetic shop inspector (item 3): the stall you're near — name, what it
+          does, and its cost — readable without opening the List view, gamepad too.
+          Relic focus wins if both are somehow in range (they never overlap: the
+          shop sits below spawn, the relics above). */}
+      {shopFocus && !focus && !showList ? (
+        <div className="wb-totem-hint wb-reward-inspect wb-reward-inspect-shop">
+          <div className="wb-reward-inspect-name">{shopFocus.offer.label}</div>
+          <div className="wb-reward-inspect-desc">{shopFocus.offer.desc}</div>
+          {shopFocus.soldOut ? (
+            <div className="wb-reward-inspect-tag claimed">Bought ✓</div>
+          ) : !shopFocus.affordable ? (
+            <div className="wb-reward-inspect-tag locked">Need 💰{shopFocus.offer.cost}</div>
+          ) : (
+            <div className="wb-totem-hint-track">
+              <div className="wb-totem-hint-fill" style={{ width: `${shopFocus.dwell * 100}%` }} />
             </div>
           )}
         </div>

@@ -208,10 +208,10 @@ export default function SpecialReward() {
         ))}
         {grands.map(({ g, forClass }) => {
           // Item 6: resolve the grand's card against the owning kit so it shows the
-          // resulting values ("Now → …"), not just hand-authored prose. Subclass
-          // grands retune sub-abilities (outside the base-slot preview), so those
-          // fall back to their prose — which already carries the concrete change.
-          const view = describeCharOffer(forClass, myCharUpgrades, g.id);
+          // resulting values ("Now → …"), not just hand-authored prose. item 5:
+          // passing the equipped sub-skills lets a SUBCLASS grand now preview the
+          // concrete before→after of the sub-abilities it retunes, too.
+          const view = describeCharOffer(forClass, myCharUpgrades, g.id, mySubSkills);
           return (
             <button
               key={g.id}

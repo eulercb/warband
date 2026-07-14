@@ -65,10 +65,14 @@ const RELIC_READ_RADIUS = 150;
 /** Relics sit on this row (between the hero's spawn and the vortex). */
 const RELIC_ROW_Y = 560;
 
-// item 2: the walk-up coin shop. Buyable stalls sit on a row between the hero's
-// spawn (y=780) and the relic row, so a hero passes them on the way up; a dwell +
-// moving-guard means walking through never buys.
-const SHOP_ROW_Y = 700;
+// item 2 / item 3: the walk-up coin shop. Buyable stalls sit on a row BELOW the
+// hero's spawn (y=780). item 3 moved them off the spawn→relics→vortex path: the
+// upgrade relics and descent vortex are UP the arena, so heading for them used to
+// force the hero across the shop row (a mis-selection trap). Now the shop is behind
+// the spawn — a deliberate turn back down — and a dwell + moving-guard still means
+// walking through never buys. 80u below spawn is well inside the half-arena torus
+// budget, so the stalls never nearest-copy flip to the far edge.
+const SHOP_ROW_Y = 860;
 const SHOP_PICKUP_RADIUS = 52;
 const SHOP_READ_RADIUS = 150;
 
@@ -123,6 +127,17 @@ export interface RelicFocus {
   claimed: boolean;
   locked: boolean;
   /** Dwell progress 0..1 toward claiming (0 unless actively being claimed). */
+  dwell: number;
+}
+
+/** A shop stall the hero can currently read (for the inspector chip) (item 3). */
+export interface ShopFocus {
+  offer: ShopOffer;
+  /** Affordable right now (coins ≥ cost and not sold out)? */
+  affordable: boolean;
+  /** Already bought — a single-buy passive the hero owns? */
+  soldOut: boolean;
+  /** Dwell progress 0..1 toward buying (0 unless actively dwelling on it). */
   dwell: number;
 }
 
@@ -198,7 +213,7 @@ export class RewardScene {
     this.layoutShop(shop);
   }
 
-  /** Lay the shop stalls in a row between the spawn and the relics (item 2). */
+  /** Lay the shop stalls in a row below the spawn, off the up-arena path (item 3). */
   private layoutShop(shop: ShopOffer[]): void {
     const n = shop.length;
     if (n === 0) return;
@@ -524,6 +539,30 @@ export class RewardScene {
       locked: best.locked,
       dwell,
     };
+  }
+
+  /**
+   * The shop stall the hero can currently read (nearest within read range), or null
+   * (item 3). Mirrors focus() over the stalls so the walkable room can surface an
+   * item's name / desc / cost without opening the List view — on gamepad too, since
+   * "focus" here is hero proximity, not DOM focus. Carries affordability / sold-out /
+   * dwell so the chip can echo exactly what the buy interaction will do.
+   */
+  shopFocus(): ShopFocus | null {
+    let best: ShopItem | null = null;
+    let bestD = SHOP_READ_RADIUS;
+    for (const s of this.shopItems) {
+      const d = this.heroDist(s.pos);
+      if (d <= bestD) {
+        bestD = d;
+        best = s;
+      }
+    }
+    if (!best) return null;
+    const soldOut = this.soldOut.has(best.offer.id);
+    const affordable = !soldOut && this.coins >= best.offer.cost;
+    const dwell = this.shopDwellId === best.id ? Math.min(1, this.shopDwellS / BUY_DWELL_S) : 0;
+    return { offer: best.offer, affordable, soldOut, dwell };
   }
 
   // -------------------------------------------------------------------------
