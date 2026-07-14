@@ -7,7 +7,11 @@
 import { describe, it, expect } from 'vitest';
 import { pickBotUpgrades, botRoleWeight, type BotPersonality } from '../src/engine/ai/bot';
 import { UPGRADES } from '../src/engine/content/upgrades';
-import { CHAR_UPGRADES_BY_CLASS } from '../src/engine/content/charUpgrades';
+import {
+  CHAR_UPGRADES_BY_CLASS,
+  HYBRID_UPGRADES,
+  upgradeAllowedFor,
+} from '../src/engine/content/charUpgrades';
 import { Rng } from '../src/engine/core/math';
 
 function persona(over: Partial<BotPersonality>): BotPersonality {
@@ -31,12 +35,35 @@ describe('pickBotUpgrades', () => {
     expect(a).toEqual(b);
   });
 
-  it('draws the class pick from the class pool', () => {
-    const pool = new Set(CHAR_UPGRADES_BY_CLASS.mage.map((d) => d.id));
+  it('draws the class pick from the class pool or an eligible hybrid (item 59)', () => {
+    // A bot's between-boss pick is now its class pool ∪ the hybrids it's allowed.
+    const classPool = CHAR_UPGRADES_BY_CLASS.mage.map((d) => d.id);
+    const hybridPool = HYBRID_UPGRADES.filter((d) => upgradeAllowedFor(d, 'mage')).map((d) => d.id);
+    const eligible = new Set([...classPool, ...hybridPool]);
     for (let seed = 1; seed <= 30; seed++) {
       const pick = pickBotUpgrades('mage', persona({}), [], [], new Rng(seed));
       expect(pick.char).not.toBeNull();
-      expect(pool.has(pick.char as string)).toBe(true);
+      expect(eligible.has(pick.char as string)).toBe(true);
+    }
+  });
+
+  it('bots keep pace with humans by sometimes grafting a hybrid (item 59)', () => {
+    // Over a spread of seeds, a bot draws hybrids at roughly the human offer rate,
+    // never one its class is excluded from, honouring the maxStacks-1 cap.
+    const hybridIds = new Set(HYBRID_UPGRADES.map((d) => d.id));
+    let hybridPicks = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const pick = pickBotUpgrades('knight', persona({}), [], [], new Rng(seed));
+      if (pick.char && hybridIds.has(pick.char)) hybridPicks++;
+    }
+    expect(hybridPicks).toBeGreaterThan(0); // hybrids really do surface for bots
+  });
+
+  it('never picks a hybrid its class is excluded from (item 59)', () => {
+    // hy_pyromancer excludes mage/sorcerer — a mage bot must never graft a Fireball.
+    for (let seed = 1; seed <= 80; seed++) {
+      const pick = pickBotUpgrades('mage', persona({}), [], [], new Rng(seed));
+      expect(pick.char).not.toBe('hy_pyromancer');
     }
   });
 
