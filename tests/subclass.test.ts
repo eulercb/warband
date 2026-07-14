@@ -13,6 +13,8 @@ import {
   subSkillsForClass,
   specialRewardStep,
 } from '../src/engine/content/subclasses';
+import { previewPlayerStats } from '../src/engine/content/charUpgrades';
+import type { UpgradeId } from '../src/engine/content/upgrades';
 import type { InputCommand, ClassId } from '../src/engine/core/types';
 
 function input(over: Partial<InputCommand['buttons']>): InputCommand {
@@ -107,6 +109,46 @@ describe('multiclass swap', () => {
     w.setActiveClass(p, 'knight');
     expect(p.classId).toBe('knight');
     expect(p.cooldowns.a1).toBe(8);
+  });
+
+  it('persistent stats stay identity-bound across a swap, and the sheet preview agrees (#70)', () => {
+    // Multiclass hero spawned as knight (identity) + mage, carrying a few run boons so
+    // the stat block is non-trivial. `previewPlayerStats` is exactly what the pause
+    // CharacterSheet renders; the fix pins it to the SPAWN class (classes[0]).
+    const boons: UpgradeId[] = ['mighty', 'vigor', 'swift'];
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 5,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'knight', extraClasses: ['mage'], upgrades: boons },
+      ],
+    });
+    const p = w.players[0];
+    const liveStats = () => ({
+      maxHp: p.maxHp,
+      moveSpeed: p.moveSpeed,
+      damageMult: p.damageMult,
+      cooldownMult: p.cooldownMult,
+      castMult: p.castMult,
+      damageTakenMult: p.damageTakenMult,
+      terrainResist: p.terrainResist,
+      regenPerSec: p.regenPerSec,
+    });
+    const atSpawn = liveStats();
+    // The sheet previews the identity (spawn) class — it agrees with the sim at spawn.
+    expect(previewPlayerStats('knight', boons, [])).toEqual(atSpawn);
+
+    // Swap to the mage kit: setActiveClass changes only the kit + per-class cooldowns,
+    // so the identity-bound persistent stat block must NOT move.
+    w.setActiveClass(p, 'mage');
+    expect(p.classId).toBe('mage');
+    expect(liveStats()).toEqual(atSpawn); // sim stats unchanged by the swap
+
+    // …so the identity-class preview STILL matches the sim after the swap (the fix)…
+    expect(previewPlayerStats('knight', boons, [])).toEqual(liveStats());
+    // …whereas previewing the ACTIVE (mage) class — the pre-fix behaviour — disagrees,
+    // since a mage's base HP pool differs from the knight identity the sim is running.
+    expect(previewPlayerStats('mage', boons, []).maxHp).not.toBe(liveStats().maxHp);
   });
 
   it('requestClassSwap without a target cycles to the next owned class (a tap)', () => {

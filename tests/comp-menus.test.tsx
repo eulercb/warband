@@ -307,6 +307,29 @@ describe('<PauseMenu>', () => {
     expect(container.querySelector('.wb-pause-stats')).toBeNull();
   });
 
+  it('a multiclass hero shows IDENTITY-class stats after a swap, matching the sim (#70)', () => {
+    // Hero spawned as Knight, gained Mage via multiclass, then SWAPPED to the Mage
+    // kit: `classId` (active) is now 'mage', but the sim keeps the hero's persistent
+    // stats + maxHp bound to the Knight identity (`classes[0]`) — `setActiveClass`
+    // never recomputes them. The sheet must follow that identity, not the wielded kit,
+    // or it disagrees with the sim the instant you swap.
+    useHudStore.setState({
+      classId: 'mage', // active kit after the swap
+      classes: ['knight', 'mage'], // spawn identity first, per buildMulticlass
+      hp: 120,
+      maxHp: 240, // Knight's identity-bound pool (a Mage's base is lower)
+    });
+    useStore.setState({ myUpgrades: ['mighty', 'bulwark'], myCharUpgrades: [] });
+    renderMenu();
+    // Reads the spawn identity (Knight) + the sim's HP — before the fix it recomputed
+    // from the active class and rendered "Mage — …", drifting from the sim.
+    expect(screen.getByText('Knight — 120/240 HP')).toBeTruthy();
+    expect(screen.queryByText('Mage — 120/240 HP')).toBeNull();
+    // Generic (class-agnostic) boons still resolve on the identity path.
+    expect(screen.getByText('+15%')).toBeTruthy(); // Mighty: +15% damage
+    expect(screen.getByText('-15%')).toBeTruthy(); // Bulwark: -15% damage taken
+  });
+
   it('lists owned base + subclass skills with always-visible numeric lines (item 6)', () => {
     useHudStore.setState({
       classId: 'knight',

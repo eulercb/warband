@@ -3968,8 +3968,10 @@ export interface PreviewedStats {
 /**
  * Resolve the stat block a hero of `classId` ends up with after taking the given
  * generic + character upgrades, off a throwaway stub (no World). For a multiclass
- * hero pass the ACTIVE class — only that class's character boons apply, matching the
- * live sim. Pure.
+ * hero pass the SPAWN/identity class, not whichever kit is currently wielded: the sim
+ * fixes a hero's persistent stats at spawn and a class swap never recomputes them
+ * (`setActiveClass`), so previewing the active class would disagree with the sim after
+ * a swap (#70). Pure.
  */
 export function previewPlayerStats(
   classId: ClassId,
@@ -4306,10 +4308,20 @@ export function rollCharChoices(
   const out: string[] = [];
   const extras = extraClasses.filter((c) => c !== classId);
   // Slot occupancy after the hero's owned upgrades — drives the item-26 filter that
-  // drops boons which only upgrade a skill that's been grafted over. All-native for a
-  // graft-less hero, so it never filters anything for the common case.
-  const occupant = CLASSES[classId] ? occupancyAfter(classId, owned) : null;
-  const liveBoon = (id: string): boolean => !occupant || boonUpgradesLiveSkill(occupant, id);
+  // drops boons which only upgrade a skill that's been grafted over. Occupancy is
+  // PER CLASS: a graft can displace a slot on ANY class the hero owns (item 14/23), so
+  // each class must filter against its OWN replayed occupancy — not the main class's.
+  // (Filtering only the main class let a grafted-over EXTRA class still offer its now
+  // dead boons — #69.) Replayed once per owned class; all-native for a graft-less
+  // class, so the common case filters nothing and the seeded offer stream is unchanged.
+  const occByClass = new Map<ClassId, Record<AbilitySlot, SkillKey> | null>();
+  for (const cid of new Set<ClassId>([classId, ...extras])) {
+    occByClass.set(cid, CLASSES[cid] ? occupancyAfter(cid, owned) : null);
+  }
+  const liveBoonFor = (cid: ClassId, id: string): boolean => {
+    const occ = occByClass.get(cid)!; // set above for classId + every extra
+    return !occ || boonUpgradesLiveSkill(occ, id);
+  };
   // item 6: per-subclass-skill upgrades enter the pool ONLY for sub skills the hero
   // has equipped (and for the active class). Empty for a hero with no sub skills, so
   // the common case is untouched.
@@ -4324,15 +4336,15 @@ export function rollCharChoices(
     // Multiclass (item 14/23): the pool spans EVERY owned class's upgrades, but the
     // MAIN class's picks are weighted heavier so they surface more often.
     const weighted: Array<{ id: string; w: number }> = [];
-    const push = (cid: ClassId, w: number, filterLive: boolean): void => {
+    const push = (cid: ClassId, w: number): void => {
       for (const d of CHAR_UPGRADES_BY_CLASS[cid] ?? []) {
         if (charUpgradeAtMax(d.id, owned)) continue;
-        if (filterLive && !liveBoon(d.id)) continue; // item 26: replaced skill → drop
+        if (!liveBoonFor(cid, d.id)) continue; // item 26/#69: grafted-over slot → drop
         weighted.push({ id: d.id, w });
       }
     };
-    push(classId, MAIN_CLASS_WEIGHT, true);
-    for (const c of extras) push(c, 1, false);
+    push(classId, MAIN_CLASS_WEIGHT);
+    for (const c of extras) push(c, 1);
     // item 6: equipped-sub-skill boons weight with the main class.
     for (const id of subEligible) weighted.push({ id, w: MAIN_CLASS_WEIGHT });
     const count = Math.min(n, weighted.length);
@@ -4352,7 +4364,7 @@ export function rollCharChoices(
     }
   } else {
     const pool = [...(CHAR_UPGRADES_BY_CLASS[classId] ?? []).map((d) => d.id), ...subEligible] // item 6
-      .filter((id) => !charUpgradeAtMax(id, owned) && liveBoon(id)); // item 26 filter
+      .filter((id) => !charUpgradeAtMax(id, owned) && liveBoonFor(classId, id)); // item 26 filter
     const count = Math.min(n, pool.length);
     while (out.length < count) {
       const i = Math.floor(rnd() * pool.length) % pool.length;

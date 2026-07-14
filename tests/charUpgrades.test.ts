@@ -982,6 +982,43 @@ describe('rollCharChoices — multiclass weighting + fill-to-max (item 8)', () =
   });
 });
 
+describe('rollCharChoices — grafted-over EXTRA class drops its dead boons (#69)', () => {
+  // `hy_warhowl` grafts the Barbarian's Rage over slot a1 on WHICHEVER class it is
+  // replayed on. For a hero whose EXTRA multiclass is ranger, that displaces the
+  // ranger's a1 (Multishot), so a ranger boon that only upgrades a1 can no longer land
+  // on a live skill — it must drop from the offer pool, exactly like a grafted-over
+  // MAIN-class boon already does. Before the fix the item-26 filter ran for the main
+  // class only, so a displaced extra class still offered its dead boons.
+  const GRAFT = 'hy_warhowl'; // replaces: 'a1'
+
+  // Union of every id offered to a knight/ranger multiclass hero across a deterministic
+  // sweep. n=5 so a single roll can surface several distinct ranger boons per iteration.
+  const offeredSweep = (owned: string[]): Set<string> => {
+    const seen = new Set<string>();
+    const rng = lcg(0x9017e);
+    for (let t = 0; t < 600; t++) {
+      for (const id of rollCharChoices('knight', 5, rng, owned, ['ranger'], [])) seen.add(id);
+    }
+    return seen;
+  };
+
+  it('never offers an extra-class boon that only upgrades the grafted-over slot', () => {
+    // rg_volley touches a1 alone (BOON_SLOTS = ['a1']); with a1 grafted it is dead.
+    expect(offeredSweep([GRAFT]).has('rg_volley')).toBe(false);
+  });
+
+  it('positive control: without the graft that same extra-class boon IS offered', () => {
+    // Proves the drop above is caused by the graft, not by the boon being unreachable.
+    expect(offeredSweep([]).has('rg_volley')).toBe(true);
+  });
+
+  it('still offers an extra-class boon that also touches a LIVE slot (precise, not blanket)', () => {
+    // rg_frost upgrades basic AND a1; basic stays native, so the boon survives — the
+    // filter drops a boon only when EVERY native slot it touches has been grafted over.
+    expect(offeredSweep([GRAFT]).has('rg_frost')).toBe(true);
+  });
+});
+
 describe('grand improvements — never in the between-boss pool (item 20)', () => {
   it('the roll never surfaces a grand, whatever the rng', () => {
     // Grands are reserved for the run-clear special reward; the between-boss shop
