@@ -9,19 +9,12 @@ import { useStore } from '../state/store';
 import { useHudStore } from '../state/hudStore';
 import { endRun, leaveToMenu, openControls, playUiSound } from '../state/session';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
-import { previewPlayerStats } from '../../engine/content/charUpgrades';
+import { previewPlayerStats, PERSISTENT_STATS } from '../../engine/content/charUpgrades';
 import { CLASSES, getClass } from '../../engine/content/classes';
 import { useBindings, keyLabelFor, padLabelFor, SLOT_ACTION } from '../../input/bindings';
 import type { InputSource } from '../../input/input';
 import { ownedSkillRows } from './pauseSkills';
 import TerrainLegend from './TerrainLegend';
-
-/** Signed percentage from a multiplier delta (0 → "—", 0.3 → "+30%", -0.18 → "-18%"). */
-function pctDelta(delta: number): string {
-  const n = Math.round(delta * 100);
-  if (n === 0) return '—';
-  return `${n > 0 ? '+' : ''}${n}%`;
-}
 
 /**
  * The local hero's live character sheet (item: know your current stats). Resolved
@@ -52,17 +45,17 @@ export function CharacterSheet() {
     [identityClass, myUpgrades, myCharUpgrades],
   );
   if (!identityClass || !stats) return null;
-  // Run-aware base (getClass): the delta shows what the BOONS added, not the roll.
+  // Run-aware base (getClass): the move delta shows what the BOONS added, not the roll.
   const baseMove = getClass(identityClass).moveSpeed;
-  const rows: Array<[string, string, boolean]> = [
-    ['Damage', pctDelta(stats.damageMult - 1), stats.damageMult >= 1],
-    ['Damage taken', pctDelta(stats.damageTakenMult - 1), stats.damageTakenMult <= 1],
-    ['Cooldowns', pctDelta(stats.cooldownMult - 1), stats.cooldownMult <= 1],
-    ['Cast time', pctDelta(stats.castMult - 1), stats.castMult <= 1],
-    ['Move speed', pctDelta(stats.moveSpeed / baseMove - 1), stats.moveSpeed >= baseMove],
-  ];
-  if (stats.regenPerSec > 0) rows.push(['Regen', `${stats.regenPerSec.toFixed(1)} HP/s`, true]);
-  if (stats.terrainResist > 0) rows.push(['Terrain resist', pctDelta(stats.terrainResist), true]);
+  // Rows come from the single PERSISTENT_STATS model (charUpgrades.ts) — crit and any
+  // future stat mechanic appear here with no local edit. Skip readout-only stats
+  // (maxHp lives in the header) and rows still at their neutral default.
+  const rows: Array<[string, string, boolean]> = PERSISTENT_STATS.filter(
+    (r) => r.panelRow !== false && (!r.show || r.show(stats)),
+  ).map((r): [string, string, boolean] => {
+    const { text, good } = r.cell(stats, { baseMoveSpeed: baseMove });
+    return [r.label, text, good];
+  });
   return (
     <div className="wb-pause-stats">
       <span className="wb-field-label">
