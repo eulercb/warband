@@ -179,6 +179,13 @@ export default function PauseMenu({ onResume }: { onResume: () => void }) {
 
         <OwnedSkills />
 
+        <TerrainLegend />
+
+        {/* Primary actions pinned to the panel's bottom edge: with a tall run
+         * (4-player scores + character sheet + skills + legend) the content
+         * outruns the viewport, so a static button row fell below the fold and
+         * the panel edge sliced it. Sticky keeps all four reachable while the
+         * rest scrolls behind it. (#82) */}
         <div className="wb-pause-actions">
           <button type="button" className="wb-btn wb-btn-primary wb-btn-lg" onClick={onResumeClick}>
             Resume
@@ -195,8 +202,6 @@ export default function PauseMenu({ onResume }: { onResume: () => void }) {
             Leave to Menu
           </button>
         </div>
-
-        <TerrainLegend />
       </div>
     </div>
   );
