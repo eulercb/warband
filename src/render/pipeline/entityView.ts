@@ -115,6 +115,10 @@ const PROJECTILE_COLORS: Record<ProjectileKind, number> = {
   fireball: 0xff8a3d, // orange
   shadowBolt: 0x8a3ff0, // purple
   smite: 0xf2c14e, // gold
+  eldritch: 0x8ad46a, // sickly green-violet (Warlock)
+  chaos: 0xd85ac0, // twin-hued magenta (Sorcerer)
+  sonic: 0xc98ce0, // orchid (Bard)
+  thorn: 0x6f9e3a, // moss (Druid)
 };
 
 const ZONE_COLORS: Record<ZoneKind, number> = {
@@ -449,7 +453,7 @@ export function drawAddOverlay(
 // ---------------------------------------------------------------------------
 
 export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, scale: number): void {
-  const color = PROJECTILE_COLORS[pr.kind] ?? 0xffffff;
+  const color = pr.color ?? PROJECTILE_COLORS[pr.kind] ?? 0xffffff;
   const { x, y } = screen;
 
   const speed = Math.hypot(pr.vel.x, pr.vel.y) || 1;

@@ -1894,7 +1894,7 @@ export class World {
     boss.regenLockout = Math.max(0, (boss.regenLockout ?? 0) - dt);
     if (boss.regen > 0 && boss.regenLockout <= 0) {
       const regenMult =
-        this.scaling.trollRegenMult * (boss.phase === 'enraged' ? def.enrageRegenMult : 1);
+        this.scaling.bossRegenMult * (boss.phase === 'enraged' ? def.enrageRegenMult : 1);
       // The practice dummy keeps its brisk, uncapped self-heal so it refills fast
       // once you stop swinging — but it still honours the lockout, so a committed
       // combo bursts it down (and it pops back up) instead of out-healing you.
@@ -3004,6 +3004,7 @@ export class World {
         side: p.side,
         pos: { ...p.pos },
         vel: { ...p.vel },
+        color: p.color,
       })),
       groundZones: this.groundZones.map((z) => ({
         id: z.id,

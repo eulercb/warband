@@ -5,7 +5,7 @@
 import {
   SCALE_HP_PER_PLAYER,
   SCALE_DMG_PER_PLAYER,
-  SCALE_TROLL_REGEN_PER_PLAYER,
+  SCALE_REGEN_PER_PLAYER,
   MAX_PLAYERS,
   ENDLESS_HP_PER_CYCLE,
   ENDLESS_DMG_PER_CYCLE,
@@ -15,7 +15,8 @@ export interface ScalingResult {
   playerCount: number;
   hpMultiplier: number;
   bossDamageMult: number;
-  trollRegenMult: number;
+  /** Per-player regen multiplier for every regenerating boss (item 67). */
+  bossRegenMult: number;
   /** Endless cycle this fight belongs to (0 = the first run). */
   cycle: number;
 }
@@ -35,7 +36,7 @@ export function computeScaling(n: number, cycle = 0): ScalingResult {
     playerCount,
     hpMultiplier: (1 + SCALE_HP_PER_PLAYER * k) * cycleHp, // 1, 1.75, 2.5, 3.25 × cycle
     bossDamageMult: (1 + SCALE_DMG_PER_PLAYER * k) * cycleDmg, // 1, 1.12, 1.24, 1.36 × cycle
-    trollRegenMult: 1 + SCALE_TROLL_REGEN_PER_PLAYER * k, // 1, 1.5, 2, 2.5
+    bossRegenMult: 1 + SCALE_REGEN_PER_PLAYER * k, // 1, 1.5, 2, 2.5
     cycle: c,
   };
 }

@@ -30,6 +30,7 @@ import type {
 } from '../src/engine/core/types';
 import { Rng } from '../src/engine/core/math';
 import { UPGRADE_IDS, upgradeMaxStacks } from '../src/engine/content/upgrades';
+import { HYBRID_UPGRADES } from '../src/engine/content/charUpgrades';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -215,18 +216,37 @@ describe('bot: pickBotUpgrades edge cases', () => {
     expect(pick.char).not.toBeNull();
   });
 
-  it('returns a null char pick for an unrecognised class (?? [] path)', () => {
-    const pick = pickBotUpgrades('nonesuch' as ClassId, persona(), [], [], new Rng(3));
-    expect(pick.char).toBeNull();
-    expect(pick.generic).not.toBeNull();
+  it('an unrecognised class has no class pool — its pick is null or a hybrid (item 59)', () => {
+    // The `?? []` fallback empties the class pool, but hybrids are class-agnostic,
+    // so the pick is either null (no hybrid offer that roll) or a hybrid — never a
+    // class upgrade. Sweeping seeds exercises both the offer and the null branch.
+    const hybridIds = new Set(HYBRID_UPGRADES.map((d) => d.id));
+    let sawNull = false;
+    for (let seed = 1; seed <= 20; seed++) {
+      const pick = pickBotUpgrades('nonesuch' as ClassId, persona(), [], [], new Rng(seed));
+      expect(pick.generic).not.toBeNull();
+      if (pick.char === null) sawNull = true;
+      else expect(hybridIds.has(pick.char)).toBe(true);
+    }
+    expect(sawNull).toBe(true); // the empty-pool → null path really is reached
   });
 
-  it('returns a null char pick when the whole class pool is maxed', () => {
-    // Ranger has five class upgrades; own each at its default cap.
+  it('with the class pool maxed a bot still progresses via hybrids (item 59)', () => {
+    // Ranger has five class upgrades; own each at its default cap so the class
+    // pool is empty — the bot now keeps growing off hybrids (or takes nothing that
+    // roll) rather than stalling.
     const ids = ['rg_pierce', 'rg_frost', 'rg_volley', 'rg_barbed', 'rg_fleet'];
     const maxedChar = ids.flatMap((id) => Array(5).fill(id) as string[]);
-    const pick = pickBotUpgrades('ranger', persona(), [], maxedChar, new Rng(3));
-    expect(pick.char).toBeNull();
+    const hybridIds = new Set(HYBRID_UPGRADES.map((d) => d.id));
+    let sawHybrid = false;
+    for (let seed = 1; seed <= 20; seed++) {
+      const pick = pickBotUpgrades('ranger', persona(), [], maxedChar, new Rng(seed));
+      if (pick.char !== null) {
+        expect(hybridIds.has(pick.char)).toBe(true);
+        sawHybrid = true;
+      }
+    }
+    expect(sawHybrid).toBe(true);
   });
 });
 

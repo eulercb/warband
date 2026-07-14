@@ -255,11 +255,11 @@ describe('player projectile', () => {
     const w = mkWorld('mage');
     const p = w.players[0];
     p.aim = { ...RIGHT };
-    resolvePlayerAbility(w, p, 'a1', ZERO); // Fireball: dmg 70, speed 480, impactRadius 100
+    resolvePlayerAbility(w, p, 'a1', ZERO); // Fireball: dmg 80, speed 480, impactRadius 110
     const proj = w.projectiles[0];
     expect(proj.kind).toBe('fireball');
-    expect(proj.damage).toBeCloseTo(70, 6);
-    expect(proj.impactRadius).toBe(100);
+    expect(proj.damage).toBeCloseTo(80, 6);
+    expect(proj.impactRadius).toBe(110);
     expect(proj.hitRadius).toBe(10);
     expect(Math.hypot(proj.vel.x, proj.vel.y)).toBeCloseTo(480, 3);
   });
@@ -282,12 +282,26 @@ describe('player projectile', () => {
     expect(Math.hypot(proj.vel.x, proj.vel.y)).toBeCloseTo(560, 3);
   });
 
-  it('Druid Thornlash uses the arrow kind', () => {
+  it('Druid Thornlash uses its own thorn kind (item 58)', () => {
     const w = mkWorld('druid');
     resolvePlayerAbility(w, w.players[0], 'basic', ZERO);
     const proj = w.projectiles[0];
-    expect(proj.kind).toBe('arrow');
+    expect(proj.kind).toBe('thorn');
     expect(proj.damage).toBeCloseTo(17, 6);
+  });
+
+  it('the expansion casters each fire their own projectile kind (item 58)', () => {
+    // Warlock Eldritch Blast, Sorcerer Chaos Bolt, Bard Vicious Mockery — all
+    // used to funnel into the Ranger's green arrow.
+    for (const [cls, kind] of [
+      ['warlock', 'eldritch'],
+      ['sorcerer', 'chaos'],
+      ['bard', 'sonic'],
+    ] as const) {
+      const w = mkWorld(cls);
+      resolvePlayerAbility(w, w.players[0], 'basic', ZERO);
+      expect(w.projectiles[0].kind).toBe(kind);
+    }
   });
 
   it('a class with no projectile branch (knight) falls back to the arrow kind', () => {
@@ -796,16 +810,27 @@ describe('player movement by nature (item 2)', () => {
 // Player: blink
 // ===========================================================================
 describe('player blink', () => {
-  it('Blink teleports toward aim and emits a blink event', () => {
+  it('Blink teleports toward aim and emits a blink event, granting i-frames', () => {
     const w = mkWorld('mage');
     const p = w.players[0];
     p.pos = { x: 400, y: 500 };
     p.aim = { ...RIGHT };
-    resolvePlayerAbility(w, p, 'a3', ZERO); // Blink range 250
+    resolvePlayerAbility(w, p, 'a3', ZERO); // Blink range 250, iframes 0.2 (item 56)
     expect(p.pos.x).toBeCloseTo(650, 4);
     expect(p.pos.y).toBeCloseTo(500, 4);
     expect(w.events.some((e) => e.t === 'blink' && e.id === p.id)).toBe(true);
-    // Plain Blink grants no i-frames.
+    // item 56: Blink now grants brief i-frames like every other escape.
+    const inv = p.buffs.find((b) => b.kind === 'invuln' && b.source === 'dash');
+    expect(inv!.remaining).toBeCloseTo(0.2, 6);
+  });
+
+  it('a blink with no iframes field grants no invuln buff', () => {
+    const w = mkWorld('mage');
+    const p = w.players[0];
+    tableOf(p).a3.iframes = undefined; // exercise the no-i-frames branch
+    p.pos = { x: 400, y: 500 };
+    p.aim = { ...RIGHT };
+    resolvePlayerAbility(w, p, 'a3', ZERO);
     expect(p.buffs.some((b) => b.kind === 'invuln')).toBe(false);
   });
 
@@ -1148,6 +1173,11 @@ describe('boss circleAtTarget', () => {
     resolveBossAbility(w, boss, ab, mkAction({ targetPos: { x: 900, y: 300 } }));
     expect(before - p.hp).toBeCloseTo(45, 6);
     expect(w.events.some((e) => e.t === 'telegraph' && e.shape === 'circle')).toBe(true);
+    // item 63: the boss cast event carries its telegraph shape + damage so the FX
+    // layer can weigh screen-shake from data rather than a hand-kept id list.
+    const cast = w.events.find((e) => e.t === 'cast');
+    expect(cast && cast.t === 'cast' && cast.shape).toBe('circleAtTarget');
+    expect(cast && cast.t === 'cast' && cast.damage).toBe(45);
   });
 
   it('falls back to the boss position when no target position is locked', () => {
@@ -1359,6 +1389,7 @@ describe('boss projectile', () => {
     expect(w.projectiles).toHaveLength(1);
     const proj = w.projectiles[0];
     expect(proj.kind).toBe('shadowBolt');
+    expect(proj.color).toBe(0x3a2f5b); // item 58: tinted by the Lich's own colour
     expect(proj.side).toBe('boss');
     expect(proj.ownerId).toBe(boss.id);
     expect(proj.damage).toBeCloseTo(30, 6);

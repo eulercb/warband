@@ -282,7 +282,7 @@ describe('hybrid grafts, styles & skill-keyed progression', () => {
 
   it('graft + graftup levels the grafted skill; restore reclaims the native + boons', () => {
     const leveled = apply('knight', ['hy_pyromancer', 'graftup:a2:mg_combust']).abilities!;
-    expect(leveled.a2.damage).toBe(92); // 70 + 22
+    expect(leveled.a2.damage).toBe(102); // 80 + 22
     const reclaimed = apply('knight', ['kn_bulwark', 'hy_pyromancer', 'restore:a2']).abilities!;
     expect(reclaimed.a2.name).toBe('Shield Wall');
     expect(reclaimed.a2.buffDefMult!).toBeCloseTo(0.4, 5); // boon preserved
@@ -296,7 +296,7 @@ describe('hybrid grafts, styles & skill-keyed progression', () => {
       'hy_pyromancer', // re-seats the stashed, leveled Fireball
     ]).abilities!;
     expect(a.a2.name).toBe('Fireball');
-    expect(a.a2.damage).toBe(92);
+    expect(a.a2.damage).toBe(102);
   });
 
   it('a graftup on a slot with no graft is harmless', () => {

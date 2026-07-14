@@ -973,6 +973,59 @@ const HYBRID: CharUpgradeDef[] = [
     graftSource: { classId: 'cleric', slot: 'a1' },
     maxStacks: 1,
   },
+  // item 66: grafts donated by the expansion wave — the donor pool used to be
+  // frozen at the four v1 classes (mage/rogue/barbarian/cleric). These add a
+  // zone, a mobility escape and an ally-buff from bard/monk/warlock so a hero can
+  // bolt on an archetype the roster gained after launch.
+  {
+    ...u(
+      'any',
+      'hy_hexbrand',
+      'Warlock’s Hex',
+      '🟣',
+      'Graft the Warlock’s Hex: curse a 120-radius patch that ticks 12 poison and slows, for 5s (11s cooldown)',
+      ({ abilities: a }) => {
+        graft(a, 'a3', 'warlock', 'a1');
+      },
+    ),
+    exclude: ['warlock', 'ranger', 'druid'], // already field a damaging zone
+    replaces: 'a3',
+    graftSource: { classId: 'warlock', slot: 'a1' },
+    maxStacks: 1,
+  },
+  {
+    ...u(
+      'any',
+      'hy_windstep',
+      'Wind Step',
+      '🌀',
+      'Graft the Monk’s Step of the Wind: dash 250u with 0.3s of i-frames, mending 18 on use (5s cooldown)',
+      ({ abilities: a }) => {
+        graft(a, 'a3', 'monk', 'a2');
+      },
+    ),
+    // Everyone who already owns an i-frame escape (dash/blink) gains nothing here.
+    exclude: ['monk', 'rogue', 'ranger', 'barbarian', 'mage', 'sorcerer'],
+    replaces: 'a3',
+    graftSource: { classId: 'monk', slot: 'a2' },
+    maxStacks: 1,
+  },
+  {
+    ...u(
+      'any',
+      'hy_inspire',
+      'Borrowed Anthem',
+      '🎶',
+      'Graft the Bard’s Inspiration: rally an ally within 420u to +20% damage and 15% less damage taken for 6s (12s cooldown)',
+      ({ abilities: a }) => {
+        graft(a, 'a1', 'bard', 'a1');
+      },
+    ),
+    exclude: ['bard', 'cleric', 'paladin'], // already carry an ally-empowering tool
+    replaces: 'a1',
+    graftSource: { classId: 'bard', slot: 'a1' },
+    maxStacks: 1,
+  },
   {
     ...u(
       'any',
@@ -3554,6 +3607,82 @@ export const GRAFT_GRANDS: CharUpgradeDef[] = [
     (ab) => {
       mul(ab, 'cooldown', 0.45);
       addN(ab, 'damage', 45);
+    },
+  ),
+
+  // Warlock's Hex — grafts the Warlock's Hex (a 120-radius poison field, 5s).
+  gg(
+    'hy_hexbrand',
+    'hy_hexbrand_g_a',
+    'Creeping Blight',
+    '☠️',
+    'Your grafted Hex festers wider and hits harder — +10 poison per tick across a +50 radius',
+    (ab) => {
+      addN(ab, 'zoneTickDamage', 10);
+      addN(ab, 'radius', 50);
+    },
+  ),
+  gg(
+    'hy_hexbrand',
+    'hy_hexbrand_g_b',
+    'Lingering Curse',
+    '🕸️',
+    'Your grafted Hex clings 4s longer, snares harder (slow to 50%) and recurses 40% faster',
+    (ab) => {
+      addN(ab, 'zoneDuration', 4);
+      setMin(ab, 'slowMult', 0.5);
+      mul(ab, 'cooldown', 0.6);
+    },
+  ),
+
+  // Wind Step — grafts the Monk's Step of the Wind (a 250u i-frame dash + heal).
+  gg(
+    'hy_windstep',
+    'hy_windstep_g_a',
+    'Cyclone Step',
+    '🌪️',
+    'Your grafted Wind Step recharges in a blink (−60% cooldown), phases far longer (+0.4s i-frames) and carries you +120u',
+    (ab) => {
+      mul(ab, 'cooldown', 0.4);
+      addN(ab, 'iframes', 0.4);
+      addN(ab, 'range', 120);
+    },
+  ),
+  gg(
+    'hy_windstep',
+    'hy_windstep_g_b',
+    'Mending Gale',
+    '🍃',
+    'Your grafted Wind Step mends +40 on use and steadies you through the slide (+0.2s i-frames)',
+    (ab) => {
+      addN(ab, 'healOnUse', 40);
+      addN(ab, 'iframes', 0.2);
+    },
+  ),
+
+  // Borrowed Anthem — grafts the Bard's Inspiration (an ally +dmg / −dmg-taken buff).
+  gg(
+    'hy_inspire',
+    'hy_inspire_g_a',
+    'Rousing Chorus',
+    '🎺',
+    'Your grafted Anthem swells its rally to +45% damage, lasts 4s longer and recharges 30% faster',
+    (ab) => {
+      addN(ab, 'buffDamageMult', 0.25);
+      addN(ab, 'buffDuration', 4);
+      mul(ab, 'cooldown', 0.7);
+    },
+  ),
+  gg(
+    'hy_inspire',
+    'hy_inspire_g_b',
+    'Warding Hymn',
+    '🛡️',
+    'Your grafted Anthem also shields the ally (40% less damage taken) and carries +160u',
+    (ab) => {
+      setMin(ab, 'buffDefMult', 0.6);
+      addN(ab, 'range', 160);
+      addN(ab, 'buffDuration', 3);
     },
   ),
 ];

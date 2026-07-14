@@ -274,7 +274,8 @@ describe('signatures: lethal abyss void', () => {
   it('generated abyss patches carry a lethal core; the tide never does', () => {
     let sawAbyssCore = false;
     for (let seed = 1; seed <= 25; seed++) {
-      for (const p of generateTerrain('bandit', seed * 7, counter())) {
+      // item 61: the abyss now themes the hard-tier Archlich, not the easy Bandit.
+      for (const p of generateTerrain('archlich', seed * 7, counter())) {
         if (p.kind === 'abyss') {
           expect(p.lethalRadius).toBeGreaterThan(0);
           sawAbyssCore = true;

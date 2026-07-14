@@ -26,6 +26,7 @@ import { getClass } from '../../engine/content/classes';
 import { themeFor } from '../../engine/world/terrain';
 import { Rng } from '../../engine/core/math';
 import { Camera } from './camera';
+import { topBandFade, staggerOffset } from './labelLayout';
 import { Fx } from '../overlays/fx';
 import { Balloons } from '../overlays/balloons';
 import {
@@ -200,7 +201,7 @@ export class Renderer {
 
     // Live-projectile particle trails, then advance + draw the particle pool.
     if (state.projectiles.length > 0) {
-      for (const pr of state.projectiles) this.particles.trail(pr.pos, pr.kind);
+      for (const pr of state.projectiles) this.particles.trail(pr.pos, pr.kind, pr.color);
     }
     this.particles.update(dtMs);
     this.particles.draw(this.camera);
@@ -624,6 +625,12 @@ export class Renderer {
 
     for (const p of state.players) {
       const t = this.labels[i++];
+      // item 78: while a speech balloon owns this entity's anchor, hide the name
+      // label so the balloon and the nameplate never render through each other.
+      if (this.balloons.isActive(p.id)) {
+        t.visible = false;
+        continue;
+      }
       t.visible = true;
       // Name, with a compact buff/debuff readout (glyph + seconds) beneath it.
       const badges = p.state === 'alive' ? buffLabel(p.buffs) : '';
@@ -636,6 +643,10 @@ export class Renderer {
     for (const boss of state.bosses) {
       const def = getMonster(boss.monsterId);
       const t = this.labels[i++];
+      if (this.balloons.isActive(boss.id)) {
+        t.visible = false;
+        continue;
+      }
       t.visible = true;
       const name = boss.modName ? `${boss.modName} ${def.name}` : def.name;
       const badges = buffLabel(boss.buffs);
@@ -655,12 +666,15 @@ export class Renderer {
     }
 
     // Reward-room relic captions (icon + name), dim once claimed/locked.
+    // item 78: stagger alternate relics' captions onto a lifted row so two
+    // horizontally-adjacent names never merge into one string.
+    let lootIdx = 0;
     for (const l of loot) {
       const t = this.labels[i++];
       t.visible = true;
       t.text = l.claimed ? `${l.label ?? ''} ✓` : (l.label ?? '');
       const s = this.camera.worldToScreen(l.pos);
-      t.position.set(s.x, s.y - l.radius * scale - 24);
+      t.position.set(s.x, s.y - l.radius * scale - 24 - staggerOffset(lootIdx++, LABEL_STAGGER));
       t.alpha = l.claimed ? 0.85 : l.locked ? 0.3 : l.active ? 1 : 0.7;
     }
 
@@ -674,20 +688,39 @@ export class Renderer {
       t.alpha = vortex.open ? 1 : 0.6;
     }
 
-    // Menu station captions (class effigy names, etc.). The selected one shows a
-    // check so the current pick reads at a glance.
+    // Menu / war-room station captions (class effigy + boss effigy names, etc.).
+    // The selected one shows a check so the current pick reads at a glance.
+    // item 78: stagger alternates so a packed effigy row doesn't mash into soup.
+    let stationIdx = 0;
     for (const st of stations) {
       const t = this.labels[i++];
       t.visible = true;
       t.text = st.selected ? `${st.label ?? ''} ✓` : (st.label ?? '');
       const s = this.camera.worldToScreen(st.pos);
-      t.position.set(s.x, s.y - st.radius * scale - 22);
+      t.position.set(
+        s.x,
+        s.y - st.radius * scale - 22 - staggerOffset(stationIdx++, LABEL_STAGGER),
+      );
       t.alpha = st.selected ? 1 : st.active ? 1 : 0.7;
+    }
+
+    // item 78: a final declutter pass — fade any visible label sliding into the top
+    // HUD band (boss bar / HP readout) so world text thins out under the HUD
+    // instead of colliding with it.
+    for (let j = 0; j < i; j++) {
+      const t = this.labels[j];
+      if (t.visible) t.alpha *= topBandFade(t.position.y, LABEL_TOP_BAND);
     }
 
     for (; i < this.labels.length; i++) this.labels[i].visible = false;
   }
 }
+
+/** item 78: viewport-top band (px) the fixed boss bar/HP readout occupies; world
+ *  labels fade out as they cross into it. And the lifted row height for staggering
+ *  a packed row of relic/effigy captions so neighbours never merge. */
+const LABEL_TOP_BAND = 92;
+const LABEL_STAGGER = 15;
 
 /** Floating captions over the playground totems. */
 const TOTEM_LABELS: Record<string, string> = {

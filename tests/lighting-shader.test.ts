@@ -59,6 +59,11 @@ describe('litFragmentSource', () => {
     expect(src).toContain('if (float(i) >= uLightCount) break;');
     // Additive terms are premultiplied by alpha (no silhouette halo, §4.3).
     expect(src).toContain('* alpha;');
+    // item 77: composed colour is soft-clipped (knee 0.8, headroom 0.2) so
+    // compounding lights + flash roll off toward — never reach — pure white,
+    // instead of hard-clamping bodies to a flat white disc.
+    expect(src).toContain('vec3 over = max(lit - 0.8, 0.0);');
+    expect(src).toContain('lit = min(lit, vec3(0.8)) + 0.2 * (over / (over + 0.2));');
   });
 
   it('declares the normal-map sampler + atlas uniforms only for the textured variant', () => {

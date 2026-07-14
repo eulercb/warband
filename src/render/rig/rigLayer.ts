@@ -72,16 +72,20 @@ export class RigLayer {
       }
       // Hit-flash light (§7.1): a brief bright pop at each impact. The single
       // largest perceived-quality jump — every hit briefly lights its surroundings.
+      // item 77: dropped from intensity 3 to 1.6 — in a 4-member fight hits land
+      // near-continuously, and at 3 they compounded (with the core glow + flash
+      // tint) past what the shader's soft-clip can hold, flattening bodies to white
+      // discs. 1.6 still reads as a clear pop without erasing the silhouette.
       if (e.t === 'hit' && this.lit) {
         this.lights!.add({
           x: e.pos.x,
           y: e.pos.y,
           z: 30,
-          radius: 120,
+          radius: 110,
           r: 1,
           g: 1,
           b: 1,
-          intensity: 3,
+          intensity: 1.6,
           ttl: 0.06,
         });
       }

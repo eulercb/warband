@@ -40,13 +40,13 @@ describe('describeAbility (base-kit abilities)', () => {
     // Ranger Multishot — projCount 3.
     expect(describeAbility(CLASSES.ranger.abilities.a1)).toBe('3× 16 dmg · 6s cooldown');
     // Sorcerer Chaos Bolt — twin bolts.
-    expect(describeAbility(CLASSES.sorcerer.abilities.basic)).toBe('2× 15 dmg · 0.5s cooldown');
+    expect(describeAbility(CLASSES.sorcerer.abilities.basic)).toBe('2× 12 dmg · 0.5s cooldown');
   });
 
   it('a projectile bomb: blast radius + cast time', () => {
     // Mage Fireball — impactRadius + castTime.
     expect(describeAbility(CLASSES.mage.abilities.a1)).toBe(
-      '70 dmg · 100u blast · 0.7s cast · 7s cooldown',
+      '80 dmg · 110u blast · 0.7s cast · 7s cooldown',
     );
   });
 
@@ -105,8 +105,10 @@ describe('describeAbility (base-kit abilities)', () => {
   });
 
   it('a blink reads a blink distance (not a dash)', () => {
-    // Mage Blink.
-    expect(describeAbility(CLASSES.mage.abilities.a3)).toBe('250u blink · 6s cooldown');
+    // Mage Blink — now carries the escape-parity i-frames (item 56).
+    expect(describeAbility(CLASSES.mage.abilities.a3)).toBe(
+      '250u blink · 0.2s i-frames · 6s cooldown',
+    );
   });
 
   it('a lifesteal attack shows the lifesteal percentage', () => {
@@ -126,9 +128,9 @@ describe('describeAbility (base-kit abilities)', () => {
 
 describe('describeAbility (upgrade-resolved values, item 19)', () => {
   it('reflects a character boon that boosts the numbers', () => {
-    // Combustion: Fireball → +22 damage (92) across a +35 blast (135u).
+    // Combustion: Fireball → +22 damage (102) across a +35 blast (145u).
     const table = previewAbilityTable('mage', ['mg_combust']);
-    expect(describeAbility(table.a1)).toBe('92 dmg · 135u blast · 0.7s cast · 14s cooldown');
+    expect(describeAbility(table.a1)).toBe('102 dmg · 145u blast · 0.7s cast · 14s cooldown');
   });
 
   it('reflects a boon that adds a brand-new effect (Deep Freeze)', () => {
@@ -143,8 +145,8 @@ describe('describeAbility (upgrade-resolved values, item 19)', () => {
     // Pyromancer's Pact grafts the Mage's Fireball onto a Knight's a2 slot.
     const table = previewAbilityTable('knight', ['hy_pyromancer']);
     const line = describeAbility(table.a2);
-    expect(line).toContain('70 dmg');
-    expect(line).toContain('100u blast');
+    expect(line).toContain('80 dmg');
+    expect(line).toContain('110u blast');
     expect(line).toContain('0.7s cast');
   });
 });

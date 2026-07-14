@@ -33,7 +33,13 @@ import {
   type UpgradeId,
   type UpgradeRole,
 } from '../content/upgrades';
-import { CHAR_UPGRADES_BY_CLASS, charUpgradeAtMax } from '../content/charUpgrades';
+import {
+  CHAR_UPGRADES_BY_CLASS,
+  charUpgradeAtMax,
+  HYBRID_UPGRADES,
+  HYBRID_OFFER_CHANCE,
+  upgradeAllowedFor,
+} from '../content/charUpgrades';
 import {
   Rng,
   add as vadd,
@@ -184,9 +190,18 @@ export function pickBotUpgrades(
   const charPool = (CHAR_UPGRADES_BY_CLASS[classId] ?? [])
     .map((d) => d.id)
     .filter((id) => !charUpgradeAtMax(id, ownedChar));
+  // item 59: at the same rate a human's offer is swapped for a hybrid, fold the
+  // class-agnostic HYBRID pool (grafts + combat styles) into the bot's kit pick —
+  // so an AI band member also grafts/adopts styles between bosses instead of
+  // stalling at generic + class only. Exclusions and stacking caps are honoured
+  // just like the human offer path.
+  const hybridPool = HYBRID_UPGRADES.filter(
+    (d) => upgradeAllowedFor(d, classId) && !charUpgradeAtMax(d.id, ownedChar),
+  ).map((d) => d.id);
+  const pickFrom = rng.next() < HYBRID_OFFER_CHANCE ? [...charPool, ...hybridPool] : charPool;
   const char =
-    charPool.length > 0
-      ? charPool[Math.floor(rng.next() * charPool.length) % charPool.length]
+    pickFrom.length > 0
+      ? pickFrom[Math.floor(rng.next() * pickFrom.length) % pickFrom.length]
       : null;
   return { generic, char };
 }
@@ -296,6 +311,13 @@ function wanderDrift(p: BotPersonality, tick: number): Vec2 {
 /** Melee-role classes close the distance; the rest hold a ranged standoff. */
 const MELEE_CLASSES = new Set(['knight', 'barbarian', 'rogue', 'paladin', 'monk']);
 
+/**
+ * Healer-role classes hold a CLOSER standoff so their heal reaches an ally at the
+ * boss (item 59). Was cleric-only, leaving the newer healers (Druid's Regrowth,
+ * Bard's Healing Word) hovering too far back for their mend to land.
+ */
+const HEALER_CLASSES = new Set(['cleric', 'druid', 'bard']);
+
 /** Desired movement vector for the bot's role (not yet normalized). */
 function positioning(bot: Player, focus: Vec2 | null, p: BotPersonality): Vec2 {
   if (!focus) return { x: 0, y: 0 };
@@ -313,7 +335,7 @@ function positioning(bot: Player, focus: Vec2 | null, p: BotPersonality): Vec2 {
 
   // Ranged/support: hold a standoff band around the boss. Aggressive archers
   // crowd in for the thrill; timid ones snipe from the horizon.
-  let standoff = bot.classId === 'cleric' ? BOT_RANGED_STANDOFF - 40 : BOT_RANGED_STANDOFF;
+  let standoff = HEALER_CLASSES.has(bot.classId) ? BOT_RANGED_STANDOFF - 40 : BOT_RANGED_STANDOFF;
   standoff += (0.5 - p.aggression) * 160;
   if (d < standoff - 40) return vscale(dir, -1); // too close — back off
   if (d > standoff + 40) return dir; // too far — close in

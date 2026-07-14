@@ -100,18 +100,24 @@ const THEMES: Partial<Record<MonsterId, TerrainKind[]>> = {
   basilisk: ['swamp', 'bog'],
   mudGolem: ['swamp', 'bog'],
   goblin: ['bog', 'ember'],
-  bandit: ['abyss', 'bog'],
+  // item 61: the Bandit Captain is an EASY-tier boss, so its arena could seed a
+  // fresh run's opener; the abyss (the game's only instant-death terrain) is far
+  // too harsh for the tier that fights first. Re-themed to a mundane scoundrel
+  // camp (muddy ground, smoky fires) and the lethal chasm moved to the hard-tier
+  // Archlich below, so terrain lethality tracks tier.
+  bandit: ['bog', 'ember'],
   direwolf: ['bog', 'swamp'],
   minotaur: ['swamp', 'bog'],
   fae: ['swamp', 'ember'],
   // Signature arenas (item 28 + follow-up): the Kraken drags you into a surging
-  // ocean, the Bandit Captain fights on the lip of a black chasm, the Demon Lord
-  // over molten brimstone fissures.
+  // ocean, the Demon Lord over molten brimstone fissures, and (item 61) the
+  // hard-tier Archlich holds court on the lip of a bottomless black chasm — the
+  // abyss's instant-death core belongs to a late, high-tier fight, not an opener.
   kraken: ['tide', 'bog'],
   demon: ['brimstone', 'magma'],
   // Frost / undead
   lich: ['ice', 'deathfog'],
-  archlich: ['ice', 'deathfog'],
+  archlich: ['abyss', 'deathfog'],
   wraith: ['ice', 'deathfog'],
   zombie: ['deathfog', 'bog'],
   // The Vampire Lord holds court over a mire of spilled blood.

@@ -1036,20 +1036,33 @@ describe('bossRigSpec', () => {
     expect(bossRigSpec('treant')?.id).toBe('treant');
   });
 
-  it('gives humanoid bosses the neutral axe, not a class weapon', () => {
-    const spec = bossRigSpec('goblin');
-    expect(spec?.weapon?.kind).toBe('axe');
-    expect(spec?.weapon?.color).toBe(0x9aa4b2);
+  it('gives each humanoid boss a weapon true to its fantasy (item 62)', () => {
+    // The Mind Flayer casts (staff), the Death Knight tanks (sword + shield), the
+    // Frost Giant swings an oversized maul — no longer one shared grey axe.
+    expect(bossRigSpec('mindflayer')?.weapon?.kind).toBe('staff');
+    expect(bossRigSpec('deathknight')?.weapon?.offhand).toBe('shield');
+    expect(bossRigSpec('frostGiant')?.weapon?.kind).toBe('mace');
+    expect(bossRigSpec('zombie')?.weapon?.kind).toBe('claws');
+    expect(bossRigSpec('vampire')?.weapon?.kind).toBe('sword');
   });
 
   it('caches: repeated lookups return the same instance', () => {
     expect(bossRigSpec('kraken')).toBe(bossRigSpec('kraken')); // creature cache
     expect(bossRigSpec('spider')).toBe(bossRigSpec('spider'));
+    expect(bossRigSpec('vampire')).toBe(bossRigSpec('vampire')); // per-monster humanoid cache
   });
 
-  it('shares one humanoid singleton across all humanoid bosses', () => {
-    expect(bossRigSpec('goblin')).toBe(bossRigSpec('orc'));
-    expect(bossRigSpec('goblin')).toBe(bossRigSpec('demon'));
+  it('no longer collapses humanoid bosses into one identical silhouette (item 62)', () => {
+    // A distinct per-boss instance, and — the crux of the fix — no two hard-tier
+    // humanoid bosses render silhouette-identical.
+    expect(bossRigSpec('goblin')).not.toBe(bossRigSpec('orc'));
+    const hardHumanoids = ['vampire', 'frostGiant', 'mindflayer', 'deathknight', 'demon'] as const;
+    const sigs = hardHumanoids.map((id) => {
+      const w = bossRigSpec(id)!.weapon!;
+      const t = bossRigSpec(id)!.parts[0];
+      return `${w.kind}:${w.offhand ?? '-'}:${t.rx}:${t.ry}`;
+    });
+    expect(new Set(sigs).size).toBe(hardHumanoids.length);
   });
 
   it('builds the newly-mapped silhouette rigs', () => {

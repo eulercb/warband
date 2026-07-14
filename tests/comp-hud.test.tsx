@@ -130,8 +130,8 @@ describe('<HUD>', () => {
     );
     expect(fireball).toBeTruthy();
     const tip = fireball!.getAttribute('title');
-    expect(tip).toContain('92 dmg');
-    expect(tip).toContain('135u blast');
+    expect(tip).toContain('102 dmg');
+    expect(tip).toContain('145u blast');
   });
 
   it('shows buff badges (glyph + seconds + tooltip) when the hero has buffs', () => {

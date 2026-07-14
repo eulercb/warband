@@ -29,8 +29,15 @@ const FLOATER_RISE_PX = 42; // total rise over its life
 const HIT_FLASH_TIME = 0.16; // s
 const AREA_FLASH_TTL = 0.45; // s — how long an ability's area cue lingers
 
-/** Boss abilities heavy enough to warrant a screen shake on cast. */
-const HEAVY_CAST = new Set(['groundSlam', 'tailSweep', 'smash', 'wingGust', 'charge']);
+/** A boss cast shakes the camera when its telegraph is a heavy impact shape AND
+ * it hits hard enough (item 63). Data-driven off the cast event's shape/damage so
+ * every boss — including all expansion bosses and any future one — is covered with
+ * no per-ability-id list to maintain. */
+const HEAVY_CAST_SHAPES = new Set(['pbaoe', 'line', 'circleAtTarget']);
+const HEAVY_CAST_MIN_DAMAGE = 40;
+function isHeavyBossCast(shape: string | undefined, damage: number | undefined): boolean {
+  return shape != null && HEAVY_CAST_SHAPES.has(shape) && (damage ?? 0) >= HEAVY_CAST_MIN_DAMAGE;
+}
 
 /** Confetti palette for the post-win fireworks. */
 const FIREWORK_COLORS = [0xffe066, 0xff7a6e, 0x8fd3ff, 0x9c5cf0, 0x66ff88, 0xf2c14e];
@@ -172,7 +179,7 @@ export class Fx {
             alpha0: 0.5,
             filled: true,
           });
-          if (e.side === 'boss' && HEAVY_CAST.has(e.ability)) camera.addShake(8);
+          if (e.side === 'boss' && isHeavyBossCast(e.shape, e.damage)) camera.addShake(8);
           break;
         }
         case 'skillArea': {

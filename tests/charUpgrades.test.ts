@@ -104,8 +104,8 @@ describe('character-upgrade catalog', () => {
     }
   });
 
-  it('exposes 9 hybrid upgrades, all class-agnostic', () => {
-    expect(HYBRID_UPGRADES).toHaveLength(9);
+  it('exposes 12 hybrid upgrades, all class-agnostic', () => {
+    expect(HYBRID_UPGRADES).toHaveLength(12);
     for (const def of HYBRID_UPGRADES) expect(def.classId).toBe('any');
   });
 
@@ -132,7 +132,7 @@ describe('character-upgrade catalog', () => {
     expect(classGrand).toHaveLength(12 * 2); // 2 class capstones per class (item 22)
     expect(SKILL_GRANDS).toHaveLength(12 * 4 * 2); // 2 per base skill: 12 × (basic/a1/a2/a3) × 2 = 96
     expect(SUBCLASS_GRANDS).toHaveLength(12 * 2 * 2); // 2 per subclass: 24 subclasses × 2 = 48
-    expect(GRAFT_GRANDS).toHaveLength(4 * 2); // 2 per skill-replacing graft: 4 grafts × 2 = 8 (item 18)
+    expect(GRAFT_GRANDS).toHaveLength(7 * 2); // 2 per skill-replacing graft: 7 grafts × 2 = 14 (item 18/66)
     const all = [
       ...Object.values(CHAR_UPGRADES_BY_CLASS).flat(),
       ...HYBRID_UPGRADES,
@@ -142,11 +142,11 @@ describe('character-upgrade catalog', () => {
       ...GRAFT_GRANDS,
       ...SUB_SKILL_UPGRADES, // item 6: one per subclass skill (24 subclasses × 4 = 96)
     ];
-    expect(all).toHaveLength(12 * 5 + 9 + 24 + 96 + 48 + 8 + 96); // 341
+    expect(all).toHaveLength(12 * 5 + 12 + 24 + 96 + 48 + 14 + 96); // 350 (item 66: +3 grafts, +6 graft-grands)
     expect(SUB_SKILL_UPGRADES).toHaveLength(96);
     const ids = all.map((d) => d.id);
     expect(new Set(ids).size).toBe(ids.length); // no duplicates
-    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(341);
+    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(350);
     for (const id of ids) expect(CHAR_UPGRADES[id].id).toBe(id);
     // Every grand improvement (class, skill, subclass, graft) is uniquely capped at one stack.
     for (const d of [...classGrand, ...SKILL_GRANDS, ...SUBCLASS_GRANDS, ...GRAFT_GRANDS]) {
@@ -189,9 +189,12 @@ describe('character-upgrade catalog', () => {
     const grafts = HYBRID_UPGRADES.filter((h) => h.replaces);
     expect(grafts.map((h) => h.id).sort()).toEqual([
       'hy_fieldmedic',
+      'hy_hexbrand',
+      'hy_inspire',
       'hy_pyromancer',
       'hy_shadowpact',
       'hy_warhowl',
+      'hy_windstep',
     ]);
     const byGraft = new Map<string, number>();
     for (const d of GRAFT_GRANDS) {
@@ -201,7 +204,7 @@ describe('character-upgrade catalog', () => {
       expect(grafts.some((h) => h.id === d.graftId)).toBe(true); // names a real graft
       byGraft.set(d.graftId!, (byGraft.get(d.graftId!) ?? 0) + 1);
     }
-    expect(byGraft.size).toBe(4); // every skill-replacing graft covered
+    expect(byGraft.size).toBe(7); // every skill-replacing graft covered
     for (const [, n] of byGraft) expect(n).toBe(2); // exactly two per graft
   });
 });
@@ -379,8 +382,8 @@ describe('mage upgrades', () => {
   });
   it('mg_combust widens the Fireball blast', () => {
     const a = apply('mage', ['mg_combust']).abilities!;
-    expect(a.a1.impactRadius).toBe(135);
-    expect(a.a1.damage).toBe(92);
+    expect(a.a1.impactRadius).toBe(145); // 110 + 35
+    expect(a.a1.damage).toBe(102); // 80 + 22
   });
   it('mg_arcane pumps Arcane Bolt', () => {
     const a = apply('mage', ['mg_arcane']).abilities!;
@@ -391,7 +394,7 @@ describe('mage upgrades', () => {
     const a = apply('mage', ['mg_blink']).abilities!;
     expect(a.a3.range).toBe(320);
     expect(a.a3.cooldown).toBeCloseTo(4.2, 5); // 6 * 0.7
-    expect(a.a3.iframes!).toBeCloseTo(0.25, 5); // was undefined -> +0.25
+    expect(a.a3.iframes!).toBeCloseTo(0.45, 5); // base 0.2 (item 56) -> +0.25
   });
 });
 
@@ -564,9 +567,9 @@ describe('hybrid grafts replace a slot with a foreign ability', () => {
     const a2 = p.abilities!.a2;
     expect(a2.name).toBe('Fireball');
     expect(a2.kind).toBe('projectile');
-    expect(a2.damage).toBe(70);
+    expect(a2.damage).toBe(80);
     expect(a2.castTime!).toBeCloseTo(0.7, 5);
-    expect(a2.impactRadius).toBe(100);
+    expect(a2.impactRadius).toBe(110);
     expect(a2.slot).toBe('a2'); // re-labelled to the graft slot
     // The graft is a private copy — the shared Mage table is untouched.
     expect(a2).not.toBe(CLASSES.mage.abilities.a1);
@@ -602,6 +605,76 @@ describe('hybrid grafts replace a slot with a foreign ability', () => {
     expect(CLASSES.cleric.abilities.a1.damage).toBe(60);
     expect(CLASSES.cleric.abilities.a1.name).toBe('Heal');
   });
+
+  // item 66: grafts donated by the expansion classes (bard/monk/warlock).
+  it("hy_hexbrand drops the Warlock's Hex zone into A3", () => {
+    const a = apply('knight', ['hy_hexbrand']).abilities!;
+    expect(a.a3.name).toBe('Hex');
+    expect(a.a3.kind).toBe('groundZone');
+    expect(a.a3.zoneTickDamage).toBe(12);
+    expect(a.a3.radius).toBe(120);
+    expect(a.a3.slot).toBe('a3');
+    expect(CLASSES.warlock.abilities.a1.slot).toBe('a1'); // source untouched
+  });
+
+  it("hy_windstep drops the Monk's Step of the Wind dash into A3", () => {
+    const a = apply('knight', ['hy_windstep']).abilities!;
+    expect(a.a3.name).toBe('Step of the Wind');
+    expect(a.a3.kind).toBe('dash');
+    expect(a.a3.iframes!).toBeCloseTo(0.3, 5);
+    expect(a.a3.healOnUse).toBe(18);
+    expect(a.a3.slot).toBe('a3');
+  });
+
+  it("hy_inspire drops the Bard's Inspiration ally-buff into A1", () => {
+    const a = apply('knight', ['hy_inspire']).abilities!;
+    expect(a.a1.name).toBe('Inspiration');
+    expect(a.a1.kind).toBe('buffAlly');
+    expect(a.a1.buffDamageMult!).toBeCloseTo(1.2, 5);
+    expect(a.a1.range).toBe(420);
+    expect(a.a1.slot).toBe('a1');
+  });
+
+  it('the new grafts span the expansion wave and each carries two graft-grands', () => {
+    // Donor classes now include bard/monk/warlock, not just the v1 four.
+    const donors = new Set(
+      HYBRID_UPGRADES.filter((h) => h.graftSource).map((h) => h.graftSource!.classId),
+    );
+    for (const c of ['warlock', 'monk', 'bard'] as const) expect(donors.has(c)).toBe(true);
+  });
+});
+
+describe('the expansion graft-grands transform their grafted skill (item 66)', () => {
+  it('hy_hexbrand grands fester and prolong the grafted Hex', () => {
+    const blight = apply('knight', ['hy_hexbrand', 'hy_hexbrand_g_a']).abilities!.a3;
+    expect(blight.zoneTickDamage).toBe(22); // 12 + 10
+    expect(blight.radius).toBe(170); // 120 + 50
+    const curse = apply('knight', ['hy_hexbrand', 'hy_hexbrand_g_b']).abilities!.a3;
+    expect(curse.zoneDuration).toBe(9); // 5 + 4
+    expect(curse.slowMult!).toBeCloseTo(0.5, 5); // snared harder (min of 0.7, 0.5)
+    expect(curse.cooldown).toBeCloseTo(6.6, 5); // 11 * 0.6
+  });
+
+  it('hy_windstep grands sharpen the grafted dash', () => {
+    const cyclone = apply('knight', ['hy_windstep', 'hy_windstep_g_a']).abilities!.a3;
+    expect(cyclone.cooldown).toBeCloseTo(2, 5); // 5 * 0.4
+    expect(cyclone.iframes!).toBeCloseTo(0.7, 5); // 0.3 + 0.4
+    expect(cyclone.range).toBe(370); // 250 + 120
+    const gale = apply('knight', ['hy_windstep', 'hy_windstep_g_b']).abilities!.a3;
+    expect(gale.healOnUse).toBe(58); // 18 + 40
+    expect(gale.iframes!).toBeCloseTo(0.5, 5); // 0.3 + 0.2
+  });
+
+  it('hy_inspire grands deepen the grafted ally-buff', () => {
+    const chorus = apply('knight', ['hy_inspire', 'hy_inspire_g_a']).abilities!.a1;
+    expect(chorus.buffDamageMult!).toBeCloseTo(1.45, 5); // 1.2 + 0.25
+    expect(chorus.buffDuration).toBe(10); // 6 + 4
+    expect(chorus.cooldown).toBeCloseTo(8.4, 5); // 12 * 0.7
+    const hymn = apply('knight', ['hy_inspire', 'hy_inspire_g_b']).abilities!.a1;
+    expect(hymn.buffDefMult!).toBeCloseTo(0.6, 5); // min of 0.85, 0.6
+    expect(hymn.range).toBe(580); // 420 + 160
+    expect(hymn.buffDuration).toBe(9); // 6 + 3
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -618,8 +691,8 @@ describe('graft grands transform the grafted skill, and only with the graft held
     return { graftId: graft.id, slot: graft.replaces! };
   };
 
-  it('there are two graft grands for each of the four skill-replacing grafts', () => {
-    expect(GRAFT_GRANDS).toHaveLength(8);
+  it('there are two graft grands for each of the seven skill-replacing grafts', () => {
+    expect(GRAFT_GRANDS).toHaveLength(14);
   });
 
   for (const def of GRAFT_GRANDS) {
@@ -645,7 +718,7 @@ describe('graft grands transform the grafted skill, and only with the graft held
   }
 
   it('Living Cataclysm swells the grafted Fireball by exact amounts', () => {
-    const fb = CLASSES.mage.abilities.a1; // dmg 70, impactRadius 100
+    const fb = CLASSES.mage.abilities.a1; // dmg 80, impactRadius 110
     const a2 = apply('knight', ['hy_pyromancer', 'hy_pyromancer_g_a']).abilities!.a2;
     expect(a2.name).toBe('Fireball');
     expect(a2.damage).toBe((fb.damage ?? 0) + 60);
@@ -700,7 +773,7 @@ describe('graft grands transform the grafted skill, and only with the graft held
       'hy_pyromancer',
     ]).abilities!.a2;
     expect(regrafted.name).toBe('Fireball');
-    expect(regrafted.damage).toBe(70 + 60); // grand persisted across the round-trip
+    expect(regrafted.damage).toBe(80 + 60); // grand persisted across the round-trip
   });
 });
 
@@ -1217,8 +1290,8 @@ describe('skill-keyed progression: isolation (item 17)', () => {
     expect(a2.buffDefMult).toBeUndefined(); // Shield Wall's boon did NOT bleed onto Fireball
     expect(a2.buffDuration).toBeUndefined();
     // Fireball's own numbers are pristine.
-    expect(a2.damage).toBe(70);
-    expect(a2.impactRadius).toBe(100);
+    expect(a2.damage).toBe(80);
+    expect(a2.impactRadius).toBe(110);
   });
 
   it('routes the boon to the displaced native even when it is picked AFTER the graft', () => {
@@ -1267,8 +1340,8 @@ describe('skill-keyed progression: stash / restore round-trip (item 15)', () => 
     ]);
     const a2 = p.abilities!.a2;
     expect(a2.name).toBe('Fireball');
-    expect(a2.damage).toBe(92); // 70 + 22 preserved across the stash
-    expect(a2.impactRadius).toBe(135); // 100 + 35
+    expect(a2.damage).toBe(102); // 80 + 22 preserved across the stash
+    expect(a2.impactRadius).toBe(145); // 110 + 35
   });
 
   it('previewAbilityTable (HUD path) reflects reclaimed progression too', () => {
@@ -1282,17 +1355,17 @@ describe('skill-keyed progression: grafted-skill upgrades (graftup)', () => {
   it('a graftup levels the grafted skill via a source-class boon', () => {
     const a = apply('knight', ['hy_pyromancer', 'graftup:a2:mg_combust']).abilities!;
     expect(a.a2.name).toBe('Fireball');
-    expect(a.a2.damage).toBe(92); // 70 + 22
-    expect(a.a2.impactRadius).toBe(135); // 100 + 35
+    expect(a.a2.damage).toBe(102); // 80 + 22
+    expect(a.a2.impactRadius).toBe(145); // 110 + 35
   });
 
   it('a second source boon composes on the same grafted skill', () => {
     const a = apply('knight', [
       'hy_pyromancer',
-      'graftup:a2:mg_combust', // dmg 92, impact 135
+      'graftup:a2:mg_combust', // dmg 102, impact 145
       'graftup:a2:mg_quickcast', // castTime 0.42, cooldown *0.85
     ]).abilities!;
-    expect(a.a2.damage).toBe(92);
+    expect(a.a2.damage).toBe(102);
     expect(a.a2.castTime!).toBeCloseTo(0.42, 5); // 0.7 * 0.6
   });
 
@@ -1854,8 +1927,8 @@ describe('base-skill grands apply, and touch only their own slot (item 17)', () 
 
   it('mg_gk_a1_a makes Fireball a Supernova; mg_gk_a2_a freezes Frost Nova solid', () => {
     const nova = apply('mage', ['mg_gk_a1_a']).abilities!;
-    expect(nova.a1.damage).toBe(125); // 70 + 55
-    expect(nova.a1.impactRadius).toBe(180); // 100 + 80
+    expect(nova.a1.damage).toBe(135); // 80 + 55
+    expect(nova.a1.impactRadius).toBe(190); // 110 + 80
     const zero = apply('mage', ['mg_gk_a2_a']).abilities!;
     expect(zero.a2.freeze!).toBeCloseTo(1.5, 5);
     expect(zero.a2.damage).toBe(40); // 20 + 20

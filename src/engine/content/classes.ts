@@ -237,11 +237,14 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         name: 'Fireball',
         kind: 'projectile',
         cooldown: 7,
-        damage: 70,
+        // item 56: the Mage's blurb promises "highest burst"; keep its bomb the
+        // single biggest hit in the game (just above the Sorcerer's Meteor 78/110)
+        // so the claim is honest rather than out-classed by the newer caster.
+        damage: 80,
         projSpeed: 480,
         projCount: 1,
         castTime: 0.7,
-        impactRadius: 100,
+        impactRadius: 110,
       },
       a2: {
         slot: 'a2',
@@ -260,6 +263,10 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         cooldown: 6,
         damage: 0,
         range: 250,
+        // item 56: every other escape in the game grants brief i-frames; Blink was
+        // the lone exception, leaving the "lowest HP" glass cannon with the least
+        // safe getaway. Give it a short invuln window so escapes are at parity.
+        iframes: 0.2,
       },
     },
   },
@@ -659,8 +666,12 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         slot: 'basic',
         name: 'Chaos Bolt',
         kind: 'projectile',
+        // item 56: two bolts at 15 each landed 60 sustained DPS — 50% over every
+        // other ranged basic and comfortably past the Mage's own output. Trim to
+        // 12 each (48 DPS): still the highest sustained ranged basic (the
+        // Sorcerer's "raw output" identity) without dominating the Mage's niche.
         cooldown: 0.5,
-        damage: 15,
+        damage: 12,
         projSpeed: 640,
         projCount: 2,
         spreadDeg: 10,

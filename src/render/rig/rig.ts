@@ -386,7 +386,11 @@ export class CreatureRig {
         // sprite — a sphere's shading is rotation-invariant.
         const m = this.partMeshes.get(part.id)!;
         m.setPose(p.x, p.y, rx, ry);
-        m.setMaterial(this.partColor(part.tint, ctx, false), 0, ctx.flash);
+        // item 77: flash toward a LIGHTENED version of the body's own colour, not
+        // pure white, so even a full-strength hit-flash keeps the palette's hue and
+        // the silhouette instead of erasing the body to a white disc.
+        const base = this.partColor(part.tint, ctx, false);
+        m.setMaterial(base, 0, ctx.flash, lighten(base, 0.6));
         m.alpha = alpha;
       } else {
         const s = this.partSprites.get(part.id)!;

@@ -185,6 +185,13 @@ void main() {
     vec3 lit = albedo * (uAmbient + keyTerm + diffuse + uEmissive)
              + (spec + uRimColor * rim) * alpha;
     lit = mix(lit, uTint.rgb * alpha, uTint.a);
+    // item 77: soft-clip the composed colour so compounding lights + the hit-flash
+    // tint HIGHLIGHT instead of blowing out to a flat white disc (until a bloom
+    // stage, #45, exists to absorb the overflow). Identity below the knee; above
+    // it each channel rolls off toward — but never reaches — 1.0, so hue, shading
+    // and silhouette survive a hit-heavy multi-attacker fight instead of erasing.
+    vec3 over = max(lit - 0.8, 0.0);
+    lit = min(lit, vec3(0.8)) + 0.2 * (over / (over + 0.2));
     fragColor = vec4(lit, alpha);
 }
 `;
