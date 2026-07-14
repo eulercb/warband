@@ -133,6 +133,8 @@ describe('multiclass swap', () => {
       damageTakenMult: p.damageTakenMult,
       terrainResist: p.terrainResist,
       regenPerSec: p.regenPerSec,
+      critChance: p.critChance,
+      critMult: p.critMult,
     });
     const atSpawn = liveStats();
     // The sheet previews the identity (spawn) class — it agrees with the sim at spawn.

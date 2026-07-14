@@ -15,7 +15,7 @@ import type { PlayerAbilityDef } from './classes';
 import { CLASSES, getClass, cloneAbilities, slowAttackCooldowns, describeAbility } from './classes';
 import { getSubclass, getSubSkill, subclassOfSkill, ALL_SUBCLASSES } from './subclasses';
 import { applyUpgrades, type UpgradeId } from './upgrades';
-import { MAX_SKILL_STACKS } from '../core/constants';
+import { MAX_SKILL_STACKS, CRIT_CHANCE_BASE, CRIT_MULT_BASE } from '../core/constants';
 
 /** What an upgrade's `apply` receives: the hero and their private ability table. */
 export interface CharUpgradeCtx {
@@ -3712,6 +3712,11 @@ function stubPlayer(classId: ClassId): Player {
     damageTakenMult: 1,
     terrainResist: 0,
     regenPerSec: 0,
+    // item 5: seed the base crit every hero spawns with (world.ts spawn), so
+    // Deadeye/procgen crit boons (which do `critChance += …`) stack ON TOP of the
+    // base in a preview instead of starting from an undefined-as-0 floor.
+    critChance: CRIT_CHANCE_BASE,
+    critMult: CRIT_MULT_BASE,
     abilities: cloneAbilities(cls.abilities),
   } as unknown as Player;
 }
@@ -3963,6 +3968,8 @@ export interface PreviewedStats {
   damageTakenMult: number;
   terrainResist: number;
   regenPerSec: number;
+  critChance: number; // item 5: [0,1) crit chance (base + Deadeye/procgen boons)
+  critMult: number; // item 5: outgoing-damage multiplier on a crit
 }
 
 /**
@@ -3992,8 +3999,136 @@ export function previewPlayerStats(
     damageTakenMult: stub.damageTakenMult,
     terrainResist: stub.terrainResist,
     regenPerSec: stub.regenPerSec,
+    critChance: stub.critChance,
+    critMult: stub.critMult,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Persistent-stat display model (item 5 + future-proofing)
+// ---------------------------------------------------------------------------
+
+/** Extra context a row needs beyond the resolved stats (the run-aware move base). */
+export interface StatRowCtx {
+  /** getClass(identity).moveSpeed — the baseline the move-speed delta is read against. */
+  baseMoveSpeed: number;
+}
+
+/**
+ * One persistent (identity-bound) stat, described ONCE so every surface stays in
+ * sync: the pause-menu character sheet (`cell`) and the reward-card before→after
+ * readout (`readout`). Adding the next stat mechanic is a single entry here — no
+ * edits scattered across the panel and the card. `key` drives the card's changed-
+ * stat diff; `panelRow: false` keeps a stat out of the sheet (maxHp lives in its
+ * header); `show` hides a sheet row at its neutral default (regen/terrain at 0).
+ */
+export interface PersistentStatSpec {
+  key: keyof PreviewedStats;
+  /** Character-sheet row label. */
+  label: string;
+  /** Reward-card noun that trails the absolute value ("dmg", "max HP", "crit"). */
+  readoutNoun: string;
+  /** Character-sheet cell: display text + whether the value reads as a boon (green). */
+  cell: (s: PreviewedStats, ctx: StatRowCtx) => { text: string; good: boolean };
+  /** Reward-card absolute readout of the resolved value ("130%", "240", "12%"). */
+  readout: (s: PreviewedStats) => string;
+  /** false → not a sheet row (surfaced elsewhere, e.g. maxHp in the header). Default true. */
+  panelRow?: boolean;
+  /** Show the sheet row only when meaningful (default: always). */
+  show?: (s: PreviewedStats) => boolean;
+}
+
+/** Signed percent from a multiplier delta (0 → "—", 0.3 → "+30%", -0.18 → "-18%"). */
+const pctDelta = (delta: number): string => {
+  const n = Math.round(delta * 100);
+  return n === 0 ? '—' : `${n > 0 ? '+' : ''}${n}%`;
+};
+const pctAbs = (v: number): string => `${Math.round(v * 100)}%`;
+const whole = (v: number): string => `${Math.round(v)}`;
+const critX = (v: number): string => `×${Math.round(v * 100) / 100}`;
+
+/**
+ * The persistent stats shown to the player, in display order. Offensive stats
+ * (damage + crit) lead; maxHp is readout-only (the sheet shows it in its header).
+ */
+export const PERSISTENT_STATS: readonly PersistentStatSpec[] = [
+  {
+    key: 'maxHp',
+    label: 'Max HP',
+    readoutNoun: 'max HP',
+    cell: (s) => ({ text: whole(s.maxHp), good: true }),
+    readout: (s) => whole(s.maxHp),
+    panelRow: false, // shown in the sheet header ("Class — hp/maxHp HP")
+  },
+  {
+    key: 'damageMult',
+    label: 'Damage',
+    readoutNoun: 'dmg',
+    cell: (s) => ({ text: pctDelta(s.damageMult - 1), good: s.damageMult >= 1 }),
+    readout: (s) => pctAbs(s.damageMult),
+  },
+  {
+    key: 'critChance',
+    label: 'Crit chance',
+    readoutNoun: 'crit',
+    cell: (s) => ({ text: pctAbs(s.critChance), good: true }),
+    readout: (s) => pctAbs(s.critChance),
+  },
+  {
+    key: 'critMult',
+    label: 'Crit damage',
+    readoutNoun: 'crit dmg',
+    cell: (s) => ({ text: critX(s.critMult), good: true }),
+    readout: (s) => critX(s.critMult),
+  },
+  {
+    key: 'damageTakenMult',
+    label: 'Damage taken',
+    readoutNoun: 'dmg taken',
+    cell: (s) => ({ text: pctDelta(s.damageTakenMult - 1), good: s.damageTakenMult <= 1 }),
+    readout: (s) => pctAbs(s.damageTakenMult),
+  },
+  {
+    key: 'cooldownMult',
+    label: 'Cooldowns',
+    readoutNoun: 'cooldowns',
+    cell: (s) => ({ text: pctDelta(s.cooldownMult - 1), good: s.cooldownMult <= 1 }),
+    readout: (s) => pctAbs(s.cooldownMult),
+  },
+  {
+    key: 'castMult',
+    label: 'Cast time',
+    readoutNoun: 'cast time',
+    cell: (s) => ({ text: pctDelta(s.castMult - 1), good: s.castMult <= 1 }),
+    readout: (s) => pctAbs(s.castMult),
+  },
+  {
+    key: 'moveSpeed',
+    label: 'Move speed',
+    readoutNoun: 'move',
+    cell: (s, ctx) => ({
+      text: pctDelta(s.moveSpeed / ctx.baseMoveSpeed - 1),
+      good: s.moveSpeed >= ctx.baseMoveSpeed,
+    }),
+    readout: (s) => whole(s.moveSpeed),
+  },
+  {
+    key: 'regenPerSec',
+    label: 'Regen',
+    readoutNoun: 'regen',
+    cell: (s) => ({ text: `${s.regenPerSec.toFixed(1)} HP/s`, good: true }),
+    readout: (s) => `${Math.round(s.regenPerSec * 10) / 10}/s`,
+    show: (s) => s.regenPerSec > 0,
+  },
+  {
+    key: 'terrainResist',
+    label: 'Terrain resist',
+    readoutNoun: 'terrain resist',
+    cell: (s) => ({ text: pctDelta(s.terrainResist), good: true }),
+    readout: (s) => pctAbs(s.terrainResist),
+    show: (s) => s.terrainResist > 0,
+  },
+];
 
 /** Most times a character upgrade may be taken (its `maxStacks`, or the shared cap). */
 export function charUpgradeMaxStacks(id: string): number {
@@ -4133,24 +4268,13 @@ export function offerableGrands(
 function describeStatReadout(classId: ClassId, ownedChar: readonly string[], id: string): string {
   const before = previewPlayerStats(classId, [], [...ownedChar]);
   const after = previewPlayerStats(classId, [], [...ownedChar, id]);
-  const parts: string[] = [];
-  const whole = (v: number): string => `${Math.round(v)}`;
-  const pct = (v: number): string => `${Math.round(v * 100)}%`;
-  if (after.maxHp !== before.maxHp) parts.push(`${whole(after.maxHp)} max HP`);
-  if (after.moveSpeed !== before.moveSpeed) parts.push(`${whole(after.moveSpeed)} move`);
-  if (after.damageMult !== before.damageMult) parts.push(`${pct(after.damageMult)} dmg`);
-  if (after.damageTakenMult !== before.damageTakenMult) {
-    parts.push(`${pct(after.damageTakenMult)} dmg taken`);
-  }
-  if (after.cooldownMult !== before.cooldownMult)
-    parts.push(`${pct(after.cooldownMult)} cooldowns`);
-  if (after.castMult !== before.castMult) parts.push(`${pct(after.castMult)} cast time`);
-  if (after.regenPerSec !== before.regenPerSec) {
-    parts.push(`${Math.round(after.regenPerSec * 10) / 10}/s regen`);
-  }
-  // (terrainResist is only tugged by GENERIC boons like Surefooted, never a class
-  // upgrade, so it never moves here — and those have their own reward-card path.)
-  return parts.join(' · ');
+  // One readout per stat the pick MOVED — driven by the shared PERSISTENT_STATS
+  // model, so a new stat mechanic (e.g. crit) surfaces here automatically. Stats a
+  // class upgrade never tugs (terrainResist; crit today) simply never differ, so
+  // they never appear — no per-stat wiring needed.
+  return PERSISTENT_STATS.filter((r) => after[r.key] !== before[r.key])
+    .map((r) => `${r.readout(after)} ${r.readoutNoun}`)
+    .join(' · ');
 }
 
 /** A resolved label + description for an offer (a real, reclaim, or graftup id). */

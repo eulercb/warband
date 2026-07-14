@@ -281,6 +281,26 @@ describe('<PauseMenu>', () => {
     expect(screen.getByText('-15%')).toBeTruthy(); // damage taken
   });
 
+  it('shows crit chance + crit damage, reflecting base crit plus Deadeye (item 5)', () => {
+    useHudStore.setState({ classId: 'ranger', hp: 100, maxHp: 130 });
+    // Deadeye is a generic crit-chance boon (+8%); base crit is 5% / ×1.5.
+    useStore.setState({ myUpgrades: ['deadeye'], myCharUpgrades: [] });
+    renderMenu();
+    expect(screen.getByText('Crit chance')).toBeTruthy();
+    expect(screen.getByText('13%')).toBeTruthy(); // 5% base + 8% Deadeye
+    expect(screen.getByText('Crit damage')).toBeTruthy();
+    expect(screen.getByText('×1.5')).toBeTruthy(); // base crit multiplier
+  });
+
+  it('shows base crit even with no crit boons taken (item 5)', () => {
+    useHudStore.setState({ classId: 'knight', hp: 120, maxHp: 240 });
+    useStore.setState({ myUpgrades: [], myCharUpgrades: [] });
+    renderMenu();
+    expect(screen.getByText('Crit chance')).toBeTruthy();
+    expect(screen.getByText('5%')).toBeTruthy(); // base crit chance, no boons
+    expect(screen.getByText('×1.5')).toBeTruthy();
+  });
+
   it('appends the regen + terrain-resist rows and marks a penalised stat "bad"', () => {
     useHudStore.setState({ classId: 'knight', hp: 100, maxHp: 200 });
     // Surefooted -> terrainResist > 0 (L48 row); Second Wind -> regenPerSec > 0 (L47

@@ -26,11 +26,17 @@ import {
   SUB_SKILL_UPGRADES,
   applySubSkillUpgrades,
   previewSubAbility,
+  PERSISTENT_STATS,
 } from '../src/engine/content/charUpgrades';
 import { CLASSES, CLASS_IDS, cloneAbilities, getClass } from '../src/engine/content/classes';
 import type { PlayerAbilityDef, AbilityKind } from '../src/engine/content/classes';
 import { SUBCLASSES, getSubSkill, subclassOfSkill } from '../src/engine/content/subclasses';
 import { setProceduralSeed } from '../src/engine/content/procgen';
+import {
+  CRIT_CHANCE_BASE,
+  CRIT_MULT_BASE,
+  CRIT_CHANCE_PER_DEADEYE,
+} from '../src/engine/core/constants';
 import type { ClassId, Player, AbilitySlot, SubSlot } from '../src/engine/core/types';
 
 // ---------------------------------------------------------------------------
@@ -1754,6 +1760,21 @@ describe('previewPlayerStats', () => {
     expect(s.damageTakenMult).toBe(1);
     expect(s.regenPerSec).toBe(0);
     expect(s.terrainResist).toBe(0);
+    // item 5: the base crit every hero carries must surface in the preview (the stub
+    // is seeded with it), so the pause-menu sheet shows it even with no crit boons.
+    expect(s.critChance).toBe(CRIT_CHANCE_BASE);
+    expect(s.critMult).toBe(CRIT_MULT_BASE);
+  });
+
+  it('stacks Deadeye crit-chance boons on top of the base (item 5)', () => {
+    expect(previewPlayerStats('ranger', ['deadeye'], []).critChance).toBeCloseTo(
+      CRIT_CHANCE_BASE + CRIT_CHANCE_PER_DEADEYE,
+      5,
+    );
+    expect(previewPlayerStats('ranger', ['deadeye', 'deadeye'], []).critChance).toBeCloseTo(
+      CRIT_CHANCE_BASE + 2 * CRIT_CHANCE_PER_DEADEYE,
+      5,
+    );
   });
 
   it('folds generic boons into the stat block (Mighty/Bulwark/Vigor/Swift)', () => {
@@ -1770,6 +1791,34 @@ describe('previewPlayerStats', () => {
     const s = previewPlayerStats('knight', [], ['kn_grand_immovable', 'rg_grand_deadeye']);
     expect(s.damageTakenMult).toBeCloseTo(0.6, 5);
     expect(s.maxHp).toBe(Math.round(CLASSES.knight.maxHp * 1.35));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PERSISTENT_STATS — the single display model the pause sheet + reward card share
+// ---------------------------------------------------------------------------
+describe('PERSISTENT_STATS display model', () => {
+  it('formats a cell + readout for every stat (adding one is a one-line change)', () => {
+    const s = previewPlayerStats('ranger', ['deadeye'], []); // crit boosted, non-trivial
+    const ctx = { baseMoveSpeed: getClass('ranger').moveSpeed };
+    for (const r of PERSISTENT_STATS) {
+      const cell = r.cell(s, ctx);
+      expect(cell.text.length).toBeGreaterThan(0);
+      expect(typeof cell.good).toBe('boolean');
+      expect(r.readout(s).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('renders crit chance as a percentage and crit damage as a ×multiplier (item 5)', () => {
+    const s = previewPlayerStats('ranger', ['deadeye'], []);
+    const ctx = { baseMoveSpeed: getClass('ranger').moveSpeed };
+    const chance = PERSISTENT_STATS.find((r) => r.key === 'critChance')!;
+    const dmg = PERSISTENT_STATS.find((r) => r.key === 'critMult')!;
+    expect(chance.cell(s, ctx).text).toBe('13%'); // 5% base + 8% Deadeye
+    expect(chance.readout(s)).toBe('13%');
+    expect(dmg.cell(s, ctx).text).toBe('×1.5');
+    // maxHp is readout-only (the sheet shows it in its header, not as a row).
+    expect(PERSISTENT_STATS.find((r) => r.key === 'maxHp')!.panelRow).toBe(false);
   });
 });
 
