@@ -4,7 +4,7 @@
  * points), while the two legs orient to the TRAVEL direction and step with a
  * walk-cycle gait. Each class carries a distinct simple-shape weapon.
  */
-import type { ClassId } from '../../../engine/core/types';
+import type { ClassId, MonsterId } from '../../../engine/core/types';
 import { CLASS_COLORS } from '../../../engine/core/constants';
 import type { RigSpec, WeaponSpec, ArmSpec } from '../types';
 
@@ -53,11 +53,17 @@ function weaponFor(classId: ClassId): WeaponSpec {
   }
 }
 
-function biped(weapon: WeaponSpec): RigSpec {
+function biped(weapon: WeaponSpec, torso?: { rx: number; ry: number }): RigSpec {
   return {
     id: 'humanoid',
     parts: [
-      { id: 'torso', local: { x: 0, y: 0 }, rx: 0.95, ry: 1.0, z: 'main' },
+      {
+        id: 'torso',
+        local: { x: 0, y: 0 },
+        rx: torso?.rx ?? 0.95,
+        ry: torso?.ry ?? 1.0,
+        z: 'main',
+      },
       { id: 'head', local: { x: 0.5, y: 0 }, rx: 0.42, ry: 0.42, z: 'front' },
     ],
     legs: {
@@ -91,7 +97,45 @@ export function buildHumanoidSpec(classId: ClassId): RigSpec {
   return biped(weaponFor(classId));
 }
 
-/** A humanoid rig for `humanoid`-silhouette bosses: the biped with a heavy axe. */
-export function buildBossHumanoidSpec(): RigSpec {
-  return biped({ kind: 'axe', length: 1.7, color: 0x9aa4b2, style: 'melee' });
+/**
+ * Per-boss silhouette treatment for `humanoid`-shaped bosses (item 62). The whole
+ * expansion humanoid roster used to share ONE grey-axe biped — a Vampire Lord, a
+ * Frost Giant and a Demon Lord differed only by tint and radius. Give each a
+ * weapon (and, for a few, lean/broad proportions) that reads true to its fantasy,
+ * the way `weaponFor` already differentiates the playable classes. Bosses not
+ * listed fall back to the neutral heavy axe.
+ */
+interface BossBuild {
+  weapon: WeaponSpec;
+  torso?: { rx: number; ry: number };
+}
+const BOSS_HUMANOID: Partial<Record<MonsterId, BossBuild>> = {
+  goblin: { weapon: m('dagger', 1.0, 0x7a9e3a), torso: { rx: 0.8, ry: 0.85 } }, // scrawny cutthroat
+  kobold: { weapon: m('dagger', 0.9, 0xc06a2a), torso: { rx: 0.78, ry: 0.82 } }, // small firebrand
+  bandit: { weapon: { ...m('sword', 1.5, 0xb0a080), offhand: 'dagger' } }, // sword-and-dirk brigand
+  zombie: { weapon: m('claws', 1.0, 0x6a7a4a) }, // shambling, unarmed
+  orc: { weapon: m('axe', 1.6, 0x6f8f4a) }, // brutish cleaver
+  cyclops: { weapon: m('mace', 2.2, 0x9a8a6a), torso: { rx: 1.15, ry: 1.15 } }, // huge club
+  ettin: { weapon: m('mace', 2.0, 0x8a7a5a), torso: { rx: 1.2, ry: 1.1 } }, // two-headed brute's club
+  vampire: { weapon: m('sword', 1.9, 0xb0455a), torso: { rx: 0.82, ry: 1.05 } }, // lean, elegant blade
+  frostGiant: { weapon: m('mace', 2.6, 0x8ac0e0), torso: { rx: 1.25, ry: 1.2 } }, // oversized maul
+  mindflayer: { weapon: mr('staff', 1.9, 0x9c5cf0) }, // psionic caster, no melee weapon
+  deathknight: { weapon: { ...m('sword', 2.0, 0x6a7a8a), offhand: 'shield' } }, // sword + shield
+  demon: { weapon: m('claws', 1.3, 0xc0402a), torso: { rx: 1.2, ry: 1.15 } }, // clawed, broad
+};
+
+/** Shorthand builders for a melee / ranged weapon spec. */
+function m(kind: WeaponSpec['kind'], length: number, color: number): WeaponSpec {
+  return { kind, length, color, style: 'melee' };
+}
+function mr(kind: WeaponSpec['kind'], length: number, color: number): WeaponSpec {
+  return { kind, length, color, style: 'ranged' };
+}
+
+/** A humanoid rig for a `humanoid`-silhouette boss. Differentiated per monster;
+ *  omit the id (or pass an unmapped one) for the neutral heavy-axe fallback. */
+export function buildBossHumanoidSpec(monsterId?: MonsterId): RigSpec {
+  const build = (monsterId && BOSS_HUMANOID[monsterId]) || undefined;
+  if (!build) return biped({ kind: 'axe', length: 1.7, color: 0x9aa4b2, style: 'melee' });
+  return biped(build.weapon, build.torso);
 }

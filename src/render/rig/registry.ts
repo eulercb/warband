@@ -111,7 +111,9 @@ export function addUsesRig(_a: AddView): boolean {
 
 const creatureCache = new Map<RigId, RigSpec>();
 const classCache = new Map<ClassId, RigSpec>();
-let bossHumanoid: RigSpec | null = null;
+// item 62: humanoid bosses are differentiated per monster (weapon + proportions),
+// so their specs cache PER MONSTER ID rather than sharing one grey-axe biped.
+const bossHumanoidCache = new Map<MonsterId, RigSpec>();
 
 function buildCreature(id: RigId): RigSpec {
   switch (id) {
@@ -147,8 +149,12 @@ export function bossRigSpec(id: MonsterId): RigSpec | null {
   const rig = bossRigId(id);
   if (!rig) return null;
   if (rig === 'humanoid') {
-    if (!bossHumanoid) bossHumanoid = buildBossHumanoidSpec();
-    return bossHumanoid;
+    let spec = bossHumanoidCache.get(id);
+    if (!spec) {
+      spec = buildBossHumanoidSpec(id);
+      bossHumanoidCache.set(id, spec);
+    }
+    return spec;
   }
   let spec = creatureCache.get(rig);
   if (!spec) {
