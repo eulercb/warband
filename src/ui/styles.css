@@ -125,7 +125,10 @@ body {
 }
 
 .wb-result-panel {
-  max-width: 760px;
+  /* 760px couldn't hold 7 nowrap columns + MVP pills with 4 players, so the Score
+   * column clipped at the panel edge. Widen (still viewport-bounded) so Score fits
+   * in the common case; the table's scroll affordance signals any true overflow. (#81) */
+  max-width: min(960px, 94vw);
 }
 
 .wb-menu-panel {
@@ -746,7 +749,7 @@ body {
 
 .wb-stat-table th,
 .wb-stat-table td {
-  padding: 10px 12px;
+  padding: 9px 10px;
   text-align: left;
   border-bottom: 1px solid var(--border-soft);
   white-space: nowrap;
@@ -972,22 +975,54 @@ body {
   align-items: center;
   justify-content: center;
   padding: 24px;
+  /* Scroll the backdrop when a panel outgrows the viewport, so a tall panel is
+   * reachable instead of clipping out of view. `align-items: center` alone would
+   * push an over-tall panel's top above the scroll origin (unreachable); auto
+   * margins on the child center it when it fits and fall back to start-alignment
+   * (fully scrollable-to) when it doesn't. (#80) */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: rgba(6, 6, 10, 0.72);
   backdrop-filter: blur(3px);
+}
+/* Scoped to `.wb-panel` so it centers the dialog panels (all of which carry it)
+ * without disturbing overlays that opt into their own layout — e.g. the war-room
+ * list view is deliberately top-aligned (align-items: flex-start). */
+.wb-overlay > .wb-panel {
+  margin: auto;
 }
 
 .wb-pause-panel {
   max-width: 460px;
   width: 100%;
-  max-height: min(88vh, 720px);
+  /* 720px kicked in on standard desktop heights (>=818px tall) and sliced the
+   * last action button mid-glyph with the map legend hidden below. Raise the cap
+   * so more fits, and pair with the scroll affordance below so any remaining
+   * overflow reads as "scroll for more", not a rendering bug. (#82) */
+  max-height: min(92vh, 900px);
   overflow-y: auto;
+  /* The sticky action bar below supplies the bottom spacing, so it can sit flush
+   * against the panel's bottom edge. */
+  padding-bottom: 0;
   text-align: center;
 }
+/* Action bar pinned to the panel bottom (sticky), two columns so it stays short,
+ * Resume full-width as the primary. The negative side margins bleed it across the
+ * panel's 32px padding so it spans edge-to-edge, and the top gradient dissolves
+ * whatever scrolls up behind it. (#82) */
 .wb-pause-actions {
-  display: flex;
-  flex-direction: column;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin-top: 18px;
+  margin: 0 -32px;
+  padding: 16px 32px 24px;
+  background: linear-gradient(180deg, rgba(27, 27, 39, 0) 0%, var(--panel-2) 32%);
+}
+.wb-pause-actions > :first-child {
+  grid-column: 1 / -1;
 }
 
 .wb-pause-banner {
@@ -1006,12 +1041,92 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+ * Scroll affordances (#80/#81/#82)
+ *
+ * Fixed-size overlays and panels that outgrow their content used to clip in
+ * silence: no visible scrollbar (overlay scrollbars stay hidden until you drag),
+ * no edge fade. A half-cut "Leave to Menu" button or a chopped-off Score column
+ * then read as rendering bugs rather than "there's more — scroll". Give the
+ * scroll containers an always-visible thin scrollbar, and a self-hiding edge
+ * fade (a shadow that shows only while there's more to scroll toward, via
+ * background-attachment: local/scroll), so the overflow is unmistakable.
+ * ------------------------------------------------------------------------ */
+/* Chromium-first (this is a Pixi/WebGPU app): a styled ::-webkit-scrollbar renders
+ * a classic, always-visible, space-consuming bar — the affordance we want. Setting
+ * the standard `scrollbar-color`/`scrollbar-width` here would make Blink switch to
+ * a thin overlay bar and ignore these pseudos, so we omit them; Firefox falls back
+ * to its own always-visible scrollbar, which is fine. */
+.wb-pause-panel::-webkit-scrollbar,
+.wb-controls-panel::-webkit-scrollbar,
+.wb-table-wrap::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+.wb-pause-panel::-webkit-scrollbar-track,
+.wb-controls-panel::-webkit-scrollbar-track,
+.wb-table-wrap::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 999px;
+}
+.wb-pause-panel::-webkit-scrollbar-thumb,
+.wb-controls-panel::-webkit-scrollbar-thumb,
+.wb-table-wrap::-webkit-scrollbar-thumb {
+  background: var(--text-faint);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.wb-pause-panel::-webkit-scrollbar-thumb:hover,
+.wb-controls-panel::-webkit-scrollbar-thumb:hover,
+.wb-table-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+
+/* Vertical top/bottom fade for the tall overlay panels. The last layer restates
+ * the panel's own gradient fill (so overriding `background` keeps the look); the
+ * two `local` cover layers ride with the content to mask a shadow at whichever
+ * edge is fully scrolled, and the two `scroll` shadow layers are pinned to the
+ * viewport so a shadow shows wherever content continues off-panel. */
+.wb-pause-panel,
+.wb-controls-panel {
+  background:
+    linear-gradient(180deg, var(--panel), rgba(27, 27, 39, 0)) top / 100% 24px no-repeat local,
+    linear-gradient(0deg, var(--panel-2), rgba(34, 34, 47, 0)) bottom / 100% 24px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0)) top / 100% 12px
+      no-repeat,
+    radial-gradient(farthest-side at 50% 100%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0)) bottom / 100%
+      12px no-repeat,
+    linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  background-attachment: local, local, scroll, scroll, scroll;
+}
+
+/* Horizontal left/right fade for the results stats table — same technique on the
+ * one axis it scrolls, so the Score column reads as "scroll right for more". */
+.wb-table-wrap {
+  background:
+    linear-gradient(90deg, var(--panel-2), rgba(34, 34, 47, 0)) left center / 24px 100% no-repeat
+      local,
+    linear-gradient(-90deg, var(--panel-2), rgba(34, 34, 47, 0)) right center / 24px 100% no-repeat
+      local,
+    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0)) left center / 14px
+      100% no-repeat,
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0)) right center /
+      14px 100% no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* --------------------------------------------------------------------------
  * Controls (rebinding)
  * ------------------------------------------------------------------------ */
 
 .wb-controls-panel {
   max-width: 640px;
   width: 100%;
+  /* The Keyboard tab lists 14 binding rows — taller than a short viewport. Scroll
+   * inside the panel (like .wb-pause-panel / .wb-reward-list) so the title and the
+   * Done/Reset footer stay reachable instead of clipping off both edges. (#80) */
+  max-height: min(88vh, 720px);
+  overflow-y: auto;
 }
 /* Tabbed controls (one pane at a time keeps the panel compact). */
 .wb-controls-tabs {
