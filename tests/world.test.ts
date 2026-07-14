@@ -7,6 +7,7 @@ import {
   REVIVE_TIME,
   REVIVE_HP_FRAC,
   REVIVE_MIN_TIME,
+  BASIC_CD_FLOOR,
 } from '../src/engine/core/constants';
 import { coReviveSpeed, hasBuff, damageBoss } from '../src/engine/combat/combat';
 import { spawnZone } from '../src/engine/combat/abilities';
@@ -87,6 +88,38 @@ describe('world: cooldown gating', () => {
     pin();
     w.step(DT, new Map([['k', inp({ aim: { x: 0, y: -1 }, buttons: buttons({ basic: true }) })]]));
     expect(boss.hp).toBe(hpAfterFirst); // no second cleave
+  });
+
+  // #71: basics are the fire-rate spam vector. A ×0.5 basic grand (Thousand Cuts /
+  // Hundred Hands) stacked with compounding Haste has no natural lower bound, so
+  // the effective cooldown is clamped to BASIC_CD_FLOOR — otherwise every blow
+  // loses the weight the ATTACK_CD_SCALE pacing exists to give it.
+  it('floors a fully-stacked basic-attack cooldown', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 7,
+      players: [{ peerId: 'r', name: 'R', classId: 'rogue' }],
+    });
+    const r = w.players[0];
+    // Worst case: the grand-halved rogue basic (~0.42s) under heavy Haste.
+    r.abilities!.basic.cooldown = 0.42;
+    r.cooldownMult = 0.4; // raw = 0.168s — well under the readable floor
+    w.step(DT, new Map([['r', inp({ buttons: buttons({ basic: true }) })]]));
+    expect(r.cooldowns.basic).toBeCloseTo(BASIC_CD_FLOOR, 5); // clamped up, not 0.168
+  });
+
+  it('leaves a basic cooldown already above the floor untouched (clamp, not a fixed value)', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 7,
+      players: [{ peerId: 'r', name: 'R', classId: 'rogue' }],
+    });
+    const r = w.players[0];
+    r.abilities!.basic.cooldown = 0.9; // comfortably above the floor
+    r.cooldownMult = 1;
+    w.step(DT, new Map([['r', inp({ buttons: buttons({ basic: true }) })]]));
+    expect(r.cooldowns.basic).toBeCloseTo(0.9, 5); // Math.max leaves it as-is
+    expect(r.cooldowns.basic).toBeGreaterThan(BASIC_CD_FLOOR);
   });
 });
 
