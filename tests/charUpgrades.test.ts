@@ -32,7 +32,11 @@ import { CLASSES, CLASS_IDS, cloneAbilities, getClass } from '../src/engine/cont
 import type { PlayerAbilityDef, AbilityKind } from '../src/engine/content/classes';
 import { SUBCLASSES, getSubSkill, subclassOfSkill } from '../src/engine/content/subclasses';
 import { setProceduralSeed } from '../src/engine/content/procgen';
-import { CRIT_CHANCE_BASE, CRIT_MULT_BASE, CRIT_CHANCE_PER_DEADEYE } from '../src/engine/core/constants';
+import {
+  CRIT_CHANCE_BASE,
+  CRIT_MULT_BASE,
+  CRIT_CHANCE_PER_DEADEYE,
+} from '../src/engine/core/constants';
 import type { ClassId, Player, AbilitySlot, SubSlot } from '../src/engine/core/types';
 
 // ---------------------------------------------------------------------------

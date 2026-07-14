@@ -783,7 +783,8 @@ export function synthesizeAbility(
   //    cooldown variety instead of every special landing on one number — output
   //    stays on budget either way (value tracks the cooldown), so it's cosmetic
   //    spread within the canonical band, not a power lever.
-  const target = slotCooldownTarget(donors, slot) * rng.range(COOLDOWN_JITTER[0], COOLDOWN_JITTER[1]);
+  const target =
+    slotCooldownTarget(donors, slot) * rng.range(COOLDOWN_JITTER[0], COOLDOWN_JITTER[1]);
   const { comp, cooldown } = priceToBudget(assembled, slotBudget(donors, slot), target, slot);
 
   // 8. Blend a name from the contributing donor names.
