@@ -63,6 +63,12 @@ export class Balloons {
     }
   }
 
+  /** item 78: true while a source has a live balloon, so the renderer can hand the
+   *  anchor to the balloon and hide that entity's name label (no z-fight). */
+  isActive(sourceId: number): boolean {
+    return this.active.has(sourceId);
+  }
+
   /** Position/fade balloons over their source each frame; retire expired ones. */
   update(state: RenderState, camera: Camera, dtMs: number): void {
     const dt = dtMs / 1000;
