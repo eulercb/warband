@@ -20,6 +20,10 @@ const TRAIL_COLORS: Record<ProjectileKind, number> = {
   fireball: 0xff8a3d,
   shadowBolt: 0x8a3ff0,
   smite: 0xf2c14e,
+  eldritch: 0x8ad46a,
+  chaos: 0xd85ac0,
+  sonic: 0xc98ce0,
+  thorn: 0x6f9e3a,
 };
 
 interface P {
@@ -149,10 +153,11 @@ export class Particles {
     }
   }
 
-  /** Live-projectile trail; call each frame per projectile (brief §8). */
-  trail(pos: Vec2, kind: ProjectileKind): void {
+  /** Live-projectile trail; call each frame per projectile (brief §8). A `tint`
+   * override (item 58: boss bolts) wins over the per-kind palette. */
+  trail(pos: Vec2, kind: ProjectileKind, tint?: number): void {
     this.burst(pos, 1, {
-      color: TRAIL_COLORS[kind] ?? 0xffffff,
+      color: tint ?? TRAIL_COLORS[kind] ?? 0xffffff,
       spd: 18,
       ttl: 0.25,
       s0: 2,

@@ -815,14 +815,16 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
 
 function projectileKindFor(p: Player, slot: ExtSlot): ProjectileKind {
   if (p.classId === 'mage') return slot === 'a1' ? 'fireball' : 'arcaneBolt';
-  if (p.classId === 'cleric' || p.classId === 'paladin') return 'smite';
-  if (
-    p.classId === 'ranger' ||
-    p.classId === 'druid' ||
-    p.classId === 'barbarian' ||
-    p.classId === 'rogue'
-  )
-    return 'arrow';
+  // item 67: cleric is the only projectile-firing owner of Smite; the paladin kit
+  // (and both its subclasses) has no projectile, so the old paladin branch was dead.
+  if (p.classId === 'cleric') return 'smite';
+  // item 58: the expansion casters' bolts each get their own visual instead of
+  // funnelling into the Ranger's green arrow.
+  if (p.classId === 'warlock') return 'eldritch';
+  if (p.classId === 'sorcerer') return 'chaos';
+  if (p.classId === 'bard') return 'sonic';
+  if (p.classId === 'druid') return 'thorn';
+  // ranger / barbarian / rogue (and any unlisted class) keep the plain arrow.
   return 'arrow';
 }
 
@@ -1050,6 +1052,10 @@ export function resolveBossAbility(
     sourceId: boss.id,
     pos: { ...boss.pos },
     side: 'boss',
+    // item 63: carry the telegraph shape + damage so the FX layer can weigh the
+    // cast-shake from data (any heavy expansion windup shakes, no fx.ts edit).
+    shape: ab.shape,
+    damage: ab.damage,
   });
 
   switch (ab.shape) {
@@ -1133,6 +1139,11 @@ export function resolveBossAbility(
       const count = ab.projCount ?? 1;
       const spread = ((ab.spreadDeg ?? 0) * Math.PI) / 180;
       const maxRange = ab.range ?? 900;
+      // item 58: every boss bolt used to render as the Lich's purple shadow bolt.
+      // Keep the shadowBolt shape/trail but tint it by the firing boss's own colour
+      // so, e.g., a Kobold's fire spark and a Kraken's brine bolt read apart in a
+      // twin fight. `defOf` resolves the acting boss's def (twins included).
+      const projColor = world.defOf(boss).color;
       for (let i = 0; i < count; i++) {
         const t = count > 1 ? i / (count - 1) - 0.5 : 0;
         const ang = baseAngle + t * spread;
@@ -1152,6 +1163,7 @@ export function resolveBossAbility(
           rangeLeft: maxRange,
           slowMult: ab.slowMult,
           slowDuration: ab.slowDuration,
+          color: projColor,
         });
       }
       world.events.push({ t: 'projectile', kind: 'shadowBolt', pos: { ...boss.pos } });

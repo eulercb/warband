@@ -379,8 +379,8 @@ describe('mage upgrades', () => {
   });
   it('mg_combust widens the Fireball blast', () => {
     const a = apply('mage', ['mg_combust']).abilities!;
-    expect(a.a1.impactRadius).toBe(135);
-    expect(a.a1.damage).toBe(92);
+    expect(a.a1.impactRadius).toBe(145); // 110 + 35
+    expect(a.a1.damage).toBe(102); // 80 + 22
   });
   it('mg_arcane pumps Arcane Bolt', () => {
     const a = apply('mage', ['mg_arcane']).abilities!;
@@ -391,7 +391,7 @@ describe('mage upgrades', () => {
     const a = apply('mage', ['mg_blink']).abilities!;
     expect(a.a3.range).toBe(320);
     expect(a.a3.cooldown).toBeCloseTo(4.2, 5); // 6 * 0.7
-    expect(a.a3.iframes!).toBeCloseTo(0.25, 5); // was undefined -> +0.25
+    expect(a.a3.iframes!).toBeCloseTo(0.45, 5); // base 0.2 (item 56) -> +0.25
   });
 });
 
@@ -564,9 +564,9 @@ describe('hybrid grafts replace a slot with a foreign ability', () => {
     const a2 = p.abilities!.a2;
     expect(a2.name).toBe('Fireball');
     expect(a2.kind).toBe('projectile');
-    expect(a2.damage).toBe(70);
+    expect(a2.damage).toBe(80);
     expect(a2.castTime!).toBeCloseTo(0.7, 5);
-    expect(a2.impactRadius).toBe(100);
+    expect(a2.impactRadius).toBe(110);
     expect(a2.slot).toBe('a2'); // re-labelled to the graft slot
     // The graft is a private copy — the shared Mage table is untouched.
     expect(a2).not.toBe(CLASSES.mage.abilities.a1);
@@ -645,7 +645,7 @@ describe('graft grands transform the grafted skill, and only with the graft held
   }
 
   it('Living Cataclysm swells the grafted Fireball by exact amounts', () => {
-    const fb = CLASSES.mage.abilities.a1; // dmg 70, impactRadius 100
+    const fb = CLASSES.mage.abilities.a1; // dmg 80, impactRadius 110
     const a2 = apply('knight', ['hy_pyromancer', 'hy_pyromancer_g_a']).abilities!.a2;
     expect(a2.name).toBe('Fireball');
     expect(a2.damage).toBe((fb.damage ?? 0) + 60);
@@ -700,7 +700,7 @@ describe('graft grands transform the grafted skill, and only with the graft held
       'hy_pyromancer',
     ]).abilities!.a2;
     expect(regrafted.name).toBe('Fireball');
-    expect(regrafted.damage).toBe(70 + 60); // grand persisted across the round-trip
+    expect(regrafted.damage).toBe(80 + 60); // grand persisted across the round-trip
   });
 });
 
@@ -1217,8 +1217,8 @@ describe('skill-keyed progression: isolation (item 17)', () => {
     expect(a2.buffDefMult).toBeUndefined(); // Shield Wall's boon did NOT bleed onto Fireball
     expect(a2.buffDuration).toBeUndefined();
     // Fireball's own numbers are pristine.
-    expect(a2.damage).toBe(70);
-    expect(a2.impactRadius).toBe(100);
+    expect(a2.damage).toBe(80);
+    expect(a2.impactRadius).toBe(110);
   });
 
   it('routes the boon to the displaced native even when it is picked AFTER the graft', () => {
@@ -1267,8 +1267,8 @@ describe('skill-keyed progression: stash / restore round-trip (item 15)', () => 
     ]);
     const a2 = p.abilities!.a2;
     expect(a2.name).toBe('Fireball');
-    expect(a2.damage).toBe(92); // 70 + 22 preserved across the stash
-    expect(a2.impactRadius).toBe(135); // 100 + 35
+    expect(a2.damage).toBe(102); // 80 + 22 preserved across the stash
+    expect(a2.impactRadius).toBe(145); // 110 + 35
   });
 
   it('previewAbilityTable (HUD path) reflects reclaimed progression too', () => {
@@ -1282,17 +1282,17 @@ describe('skill-keyed progression: grafted-skill upgrades (graftup)', () => {
   it('a graftup levels the grafted skill via a source-class boon', () => {
     const a = apply('knight', ['hy_pyromancer', 'graftup:a2:mg_combust']).abilities!;
     expect(a.a2.name).toBe('Fireball');
-    expect(a.a2.damage).toBe(92); // 70 + 22
-    expect(a.a2.impactRadius).toBe(135); // 100 + 35
+    expect(a.a2.damage).toBe(102); // 80 + 22
+    expect(a.a2.impactRadius).toBe(145); // 110 + 35
   });
 
   it('a second source boon composes on the same grafted skill', () => {
     const a = apply('knight', [
       'hy_pyromancer',
-      'graftup:a2:mg_combust', // dmg 92, impact 135
+      'graftup:a2:mg_combust', // dmg 102, impact 145
       'graftup:a2:mg_quickcast', // castTime 0.42, cooldown *0.85
     ]).abilities!;
-    expect(a.a2.damage).toBe(92);
+    expect(a.a2.damage).toBe(102);
     expect(a.a2.castTime!).toBeCloseTo(0.42, 5); // 0.7 * 0.6
   });
 
@@ -1854,8 +1854,8 @@ describe('base-skill grands apply, and touch only their own slot (item 17)', () 
 
   it('mg_gk_a1_a makes Fireball a Supernova; mg_gk_a2_a freezes Frost Nova solid', () => {
     const nova = apply('mage', ['mg_gk_a1_a']).abilities!;
-    expect(nova.a1.damage).toBe(125); // 70 + 55
-    expect(nova.a1.impactRadius).toBe(180); // 100 + 80
+    expect(nova.a1.damage).toBe(135); // 80 + 55
+    expect(nova.a1.impactRadius).toBe(190); // 110 + 80
     const zero = apply('mage', ['mg_gk_a2_a']).abilities!;
     expect(zero.a2.freeze!).toBeCloseTo(1.5, 5);
     expect(zero.a2.damage).toBe(40); // 20 + 20

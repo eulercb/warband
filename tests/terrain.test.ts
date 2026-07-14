@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateTerrain, themeFor } from '../src/engine/world/terrain';
+import { MONSTERS_BY_TIER } from '../src/engine/content/monsters';
 import { World } from '../src/engine/world/world';
 import {
   TERRAIN_MAX_PATCHES,
@@ -44,20 +45,33 @@ describe('terrain: generation', () => {
   });
 
   it('gives signature bosses their own arena hazards (item 28)', () => {
-    // The Kraken drags you into a surging tide; the Bandit fights on an abyss.
+    // The Kraken drags you into a surging tide; the hard-tier Archlich fights on
+    // the lip of an abyss (item 61: moved off the easy-tier Bandit).
     for (const p of generateTerrain('kraken', 9, counter())) {
       expect(['tide', 'bog']).toContain(p.kind);
     }
-    // Every bandit patch is drawn from its theme, and the abyss shows up across
+    // Every archlich patch is drawn from its theme, and the abyss shows up across
     // a spread of seeds (weighted, so any single seed may skip it).
     let sawAbyss = false;
     for (let seed = 1; seed <= 20; seed++) {
-      for (const p of generateTerrain('bandit', seed * 7, counter())) {
-        expect(['abyss', 'bog']).toContain(p.kind);
+      for (const p of generateTerrain('archlich', seed * 7, counter())) {
+        expect(['abyss', 'deathfog']).toContain(p.kind);
         if (p.kind === 'abyss') sawAbyss = true;
       }
     }
     expect(sawAbyss).toBe(true);
+  });
+
+  it('never seeds an instant-death terrain core on an easy-tier boss (item 61)', () => {
+    // A fresh run's opener is drawn from the easy tier, so no easy boss's arena
+    // may contain a lethal terrain core — terrain lethality must track tier.
+    for (const id of MONSTERS_BY_TIER.easy) {
+      for (let seed = 1; seed <= 15; seed++) {
+        for (const p of generateTerrain(id, seed * 13, counter())) {
+          expect(p.lethalRadius ?? 0).toBe(0);
+        }
+      }
+    }
   });
 
   it('keeps patches inside the arena and clear of the spawn/boss anchors', () => {

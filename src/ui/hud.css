@@ -332,7 +332,7 @@
 
 /* Class accent colors for teammate frames + local health bar. One colour per
  * class, sourced from the shared --cls-* tokens (styles.css :root, mirroring
- * engine/core/constants.ts CLASS_COLORS) so all eight classes stay in sync. */
+ * engine/core/constants.ts CLASS_COLORS) so all twelve classes stay in sync. */
 .hud-teammate.cls-knight {
   border-left-color: var(--cls-knight);
 }
@@ -872,30 +872,4 @@
 .hud-item-count {
   font-weight: 800;
   color: #7dffa0;
-}
-
-/* Class accents for the expansion classes (bard/monk/sorcerer/warlock). */
-.hud-teammate.cls-bard {
-  border-left-color: var(--cls-bard);
-}
-.hud-teammate.cls-monk {
-  border-left-color: var(--cls-monk);
-}
-.hud-teammate.cls-sorcerer {
-  border-left-color: var(--cls-sorcerer);
-}
-.hud-teammate.cls-warlock {
-  border-left-color: var(--cls-warlock);
-}
-.hud-selfhp.cls-bard .hud-healthbar {
-  border-color: var(--cls-bard);
-}
-.hud-selfhp.cls-monk .hud-healthbar {
-  border-color: var(--cls-monk);
-}
-.hud-selfhp.cls-sorcerer .hud-healthbar {
-  border-color: var(--cls-sorcerer);
-}
-.hud-selfhp.cls-warlock .hud-healthbar {
-  border-color: var(--cls-warlock);
 }

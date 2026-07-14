@@ -105,9 +105,9 @@ describe('decompose / recompose round-trip', () => {
   });
 
   it('separates the area-on-impact from dealing damage in it (flagship facet 2)', () => {
-    const fireball = CLASSES.mage.abilities.a1; // impactRadius 100, damage 70
+    const fireball = CLASSES.mage.abilities.a1; // impactRadius 110, damage 80
     const comp = decompose(fireball);
-    expect(comp.delivery.impactRadius).toBe(100);
+    expect(comp.delivery.impactRadius).toBe(110);
     expect(comp.effects.some((e) => e.kind === 'damage')).toBe(true);
     // Keep the impact vehicle, drop the damage → a harmless area delivery.
     const vehicle: AbilityComponents = {
@@ -115,7 +115,7 @@ describe('decompose / recompose round-trip', () => {
       effects: comp.effects.filter((e) => e.kind !== 'damage'),
     };
     const back = recompose(vehicle, { slot: 'a1', name: 'x', cooldown: 5 });
-    expect(back.impactRadius).toBe(100);
+    expect(back.impactRadius).toBe(110);
     expect(back.damage).toBe(0);
   });
 

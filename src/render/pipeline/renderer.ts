@@ -200,7 +200,7 @@ export class Renderer {
 
     // Live-projectile particle trails, then advance + draw the particle pool.
     if (state.projectiles.length > 0) {
-      for (const pr of state.projectiles) this.particles.trail(pr.pos, pr.kind);
+      for (const pr of state.projectiles) this.particles.trail(pr.pos, pr.kind, pr.color);
     }
     this.particles.update(dtMs);
     this.particles.draw(this.camera);

@@ -75,7 +75,7 @@ export function bossRigId(id: MonsterId): RigId | null {
   }
 }
 
-/** All eight classes render as the humanoid biped. */
+/** Every class renders as the humanoid biped. */
 export function classRigId(_classId: ClassId): RigId | null {
   return 'humanoid';
 }

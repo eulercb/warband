@@ -9,7 +9,6 @@ import type { Rng } from '../core/math';
 import { procVariant, monsterVariant } from './procgen';
 import { forgeVariant, synthesizeMonster } from './forge';
 import {
-  MONSTER_COLORS,
   RUN_LENGTH,
   TWIN_BASE_CHANCE,
   TWIN_CHANCE_PER_CYCLE,
@@ -322,7 +321,7 @@ const DRAGON: MonsterDef = {
   difficulty: 'Medium',
   tier: 'medium',
   bodyShape: 'star',
-  color: MONSTER_COLORS.dragon,
+  color: 0xd9463e, // red
   baseHp: 2600,
   radius: 72,
   moveSpeed: 120,
@@ -353,7 +352,7 @@ const TROLL: MonsterDef = {
   difficulty: 'Medium-Hard',
   tier: 'medium',
   bodyShape: 'blob',
-  color: MONSTER_COLORS.troll,
+  color: 0x6b8e23, // olive/brown-green
   baseHp: 2200,
   radius: 60,
   moveSpeed: 150,
@@ -387,7 +386,7 @@ const LICH: MonsterDef = {
   difficulty: 'Hard',
   tier: 'hard',
   bodyShape: 'diamond',
-  color: MONSTER_COLORS.lich,
+  color: 0x3a2f5b, // dark violet
   // Re-baselined to the hard-caster band (#55). The Lich shipped at its v1 value
   // of 1900, but the expansion set a hard tier of 2700–3500 and a medium tier that
   // tops out at 2600, so 1900 left the sole "Hard" boss softer than every medium

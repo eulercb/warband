@@ -450,7 +450,24 @@ export interface Add {
   stunDr?: StunDr;
 }
 
-export type ProjectileKind = 'arrow' | 'arcaneBolt' | 'fireball' | 'shadowBolt' | 'smite';
+/**
+ * All projectile visual kinds, as a runtime list so both the render color tables
+ * and the sprite manifest can enumerate them (item 58/64). The v1 five plus the
+ * expansion casters' signature bolts — eldritch (Warlock), chaos (Sorcerer),
+ * sonic (Bard), thorn (Druid) — so newer casters no longer all fire green arrows.
+ */
+export const PROJECTILE_KINDS = [
+  'arrow',
+  'arcaneBolt',
+  'fireball',
+  'shadowBolt',
+  'smite',
+  'eldritch',
+  'chaos',
+  'sonic',
+  'thorn',
+] as const;
+export type ProjectileKind = (typeof PROJECTILE_KINDS)[number];
 
 /**
  * Chaos Forge (docs/CHAOS_FORGE.md) — a buff a synthesized zone refreshes on
@@ -509,6 +526,9 @@ export interface Projectile {
    * Chaos Forge — on-impact payload (spawn a zone / ally-buff area where this
    * shot lands). Absent on canonical shots; see ProjectileImpact. */
   onImpact?: ProjectileImpact;
+  /** Body/trail tint override (item 58): boss bolts carry their monster's colour
+   * so two bosses' volleys are distinguishable; falls back to the per-kind palette. */
+  color?: number;
 }
 
 export type ZoneKind =
@@ -904,6 +924,11 @@ export type GameEvent =
       side: Side;
       /** Slot the cast came from (players); absent for boss casts. */
       slot?: ExtSlot;
+      /** Boss casts carry their ability's telegraph shape + damage (item 63) so the
+       * FX layer can decide screen-shake weight from data instead of a hand-kept id
+       * list; absent for player casts. */
+      shape?: string;
+      damage?: number;
     }
   | {
       // A player/boss ability resolved — carries its effect geometry so the
@@ -1035,6 +1060,8 @@ export interface ProjectileView {
   side: Side;
   pos: Vec2;
   vel: Vec2;
+  /** Tint override (item 58); falls back to the per-kind palette when absent. */
+  color?: number;
 }
 
 export interface ZoneView {

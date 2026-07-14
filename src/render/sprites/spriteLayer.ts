@@ -131,7 +131,7 @@ export class SpriteLayer {
 
     if (SPRITE_FLAGS.player) {
       for (const p of state.players) {
-        const n = this.ensure(p.id, p.classId as ActorKey);
+        const n = this.ensure(p.id, p.classId);
         if (n.attack && nowMs - n.attack.startMs >= ATTACK_CLIP_MS) n.attack = null;
         const scr = camera.worldToScreen(p.pos);
         const moving = this.speed(n, scr, dtMs) > EPS_MOVE;

@@ -10,28 +10,25 @@
  * module is pure config and safe to import from tests.
  */
 import type { Texture, Spritesheet } from 'pixi.js';
-import { CLASS_COLORS, MONSTER_COLORS, ADD_RADIUS } from '../../engine/core/constants';
+import { CLASS_COLORS, ADD_RADIUS } from '../../engine/core/constants';
+import { CLASS_IDS } from '../../engine/content/classes';
+import { MONSTERS } from '../../engine/content/monsters';
+import { PROJECTILE_KINDS } from '../../engine/core/types';
+import type { ClassId, MonsterId, ProjectileKind, BossBodyShape } from '../../engine/core/types';
 
 export type DirMode = '8dir' | '4dir' | 'flip' | 'single';
 export type DirToken = 'e' | 'se' | 's' | 'sw' | 'w' | 'nw' | 'n' | 'ne' | 'side';
 /** Which half of a side-by-side packed atlas frame holds the tangent-space normal. */
 export type NormalPackHalf = 'right' | 'bottom';
 
-/** Logical actor keys in the atlas. Palette-swapped classes share a base name. */
-export type ActorKey =
-  | 'knight'
-  | 'ranger'
-  | 'mage'
-  | 'cleric'
-  | 'dragon'
-  | 'troll'
-  | 'lich'
-  | 'skeleton'
-  | 'arrow'
-  | 'arcaneBolt'
-  | 'fireball'
-  | 'shadowBolt'
-  | 'smite';
+/**
+ * Logical actor keys in the atlas. Derived from the canonical content registries
+ * (item 64) so EVERY class, monster, the skeleton add and every projectile kind
+ * is representable — adding new content to `content/` can never leave an actor
+ * unmapped (which used to throw the first frame a newer class/boss existed with a
+ * `SPRITE_FLAGS` category on).
+ */
+export type ActorKey = ClassId | MonsterId | 'skeleton' | ProjectileKind;
 
 /** Which drawable categories are sprite-driven. Everything else keeps the
  * immediate-mode geometry in entityView. All default OFF so the shipped game is
@@ -80,26 +77,35 @@ export const NORMAL_MAP: {
   half: 'right',
 };
 
-/**
- * Tint applied to each actor's (white) placeholder silhouette, and to real art
- * as a base for the hit-flash lerp toward white. For already-coloured pixel art
- * set these to `0xffffff` so tint is an identity multiply.
- */
-export const ACTOR_PALETTE: Record<ActorKey, number> = {
-  knight: CLASS_COLORS.knight,
-  ranger: CLASS_COLORS.ranger,
-  mage: CLASS_COLORS.mage,
-  cleric: CLASS_COLORS.cleric,
-  dragon: MONSTER_COLORS.dragon,
-  troll: MONSTER_COLORS.troll,
-  lich: 0x8a6cff, // lich body reads as its violet glow, not the near-black fill
-  skeleton: 0xbfc4cc,
+/** Per-kind projectile tints (mirrors entityView's PROJECTILE_COLORS). */
+const PROJECTILE_PALETTE: Record<ProjectileKind, number> = {
   arrow: 0x76e34a,
   arcaneBolt: 0x9c5cf0,
   fireball: 0xff8a3d,
   shadowBolt: 0x8a3ff0,
   smite: 0xf2c14e,
+  eldritch: 0x8ad46a,
+  chaos: 0xd85ac0,
+  sonic: 0xc98ce0,
+  thorn: 0x6f9e3a,
 };
+
+/**
+ * Tint applied to each actor's (white) placeholder silhouette, and to real art
+ * as a base for the hit-flash lerp toward white. For already-coloured pixel art
+ * set these to `0xffffff` so tint is an identity multiply. Built from the content
+ * registries (item 64/65: monster colours now live on the defs, not a stale
+ * side-table) so every actor has a colour by construction.
+ */
+function buildActorPalette(): Record<ActorKey, number> {
+  const p = { skeleton: 0xbfc4cc } as Record<ActorKey, number>;
+  for (const c of CLASS_IDS) p[c] = CLASS_COLORS[c];
+  for (const id of Object.keys(MONSTERS) as MonsterId[]) p[id] = MONSTERS[id].color;
+  for (const k of PROJECTILE_KINDS) p[k] = PROJECTILE_PALETTE[k];
+  p.lich = 0x8a6cff; // override: reads as its violet glow, not the near-black fill
+  return p;
+}
+export const ACTOR_PALETTE: Record<ActorKey, number> = buildActorPalette();
 
 export interface ActorConfig {
   dirMode: DirMode;
@@ -189,27 +195,31 @@ function humanoid(): ActorConfig {
   };
 }
 
-function boss(dirMode: DirMode, r: number): ActorConfig {
+/** Placeholder facing granularity per body silhouette (real art can override). */
+const BODY_DIR_MODE: Record<BossBodyShape, DirMode> = {
+  humanoid: '8dir',
+  beast: '4dir',
+  serpent: '4dir',
+  insect: '4dir',
+  star: 'flip',
+  blob: 'flip',
+  diamond: 'flip',
+  construct: 'flip',
+  orb: 'flip',
+  tree: 'flip',
+};
+
+function boss(id: MonsterId): ActorConfig {
+  const def = MONSTERS[id];
   return {
-    dirMode,
-    targetRadiusPx: r,
+    dirMode: BODY_DIR_MODE[def.bodyShape],
+    targetRadiusPx: def.radius,
     anchor: { x: 0.5, y: 0.72 },
     defaultFps: 9,
     loopClips: new Set(['idle', 'move', 'idle_enraged', 'channel']),
-    progressClips: new Set([
-      // windups sync to the telegraph fill
-      'windup_fireBreath',
-      'windup_fireball',
-      'windup_tailSweep',
-      'windup_wingGust',
-      'windup_smash',
-      'windup_charge',
-      'windup_groundSlam',
-      'windup_shadowBolt',
-      'windup_summonSkeletons',
-      'windup_voidZone',
-      'windup_lifeDrain',
-    ]),
+    // item 64: windups sync to THIS boss's own telegraphs, derived from its
+    // abilities — no hand-maintained list that freezes at the v1 roster.
+    progressClips: new Set(def.abilities.map((a) => `windup_${a.id}`)),
   };
 }
 
@@ -224,25 +234,22 @@ function proj(): ActorConfig {
   };
 }
 
-export const MANIFEST: Manifest = {
-  knight: humanoid(),
-  ranger: humanoid(),
-  mage: humanoid(),
-  cleric: humanoid(),
-  dragon: boss('4dir', 96),
-  troll: boss('4dir', 88),
-  lich: boss('flip', 80),
-  skeleton: {
+/** Total by construction (item 64): a config for every class, monster, the
+ * skeleton add and every projectile kind, so flipping any `SPRITE_FLAGS` category
+ * on renders placeholders for the whole roster instead of throwing. */
+function buildManifest(): Manifest {
+  const m = {} as Record<ActorKey, ActorConfig>;
+  for (const c of CLASS_IDS) m[c] = humanoid();
+  for (const id of Object.keys(MONSTERS) as MonsterId[]) m[id] = boss(id);
+  for (const k of PROJECTILE_KINDS) m[k] = proj();
+  m.skeleton = {
     dirMode: 'flip',
     targetRadiusPx: ADD_RADIUS,
     anchor: { x: 0.5, y: 0.8 },
     defaultFps: 8,
     loopClips: new Set(['idle', 'walk']),
     progressClips: new Set(),
-  },
-  arrow: proj(),
-  arcaneBolt: proj(),
-  fireball: proj(),
-  shadowBolt: proj(),
-  smite: proj(),
-};
+  };
+  return m;
+}
+export const MANIFEST: Manifest = buildManifest();

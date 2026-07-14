@@ -16,11 +16,11 @@ describe('scaling', () => {
     expect(computeScaling(4).bossDamageMult).toBeCloseTo(1.36);
   });
 
-  it('troll regen multiplier for n=1..4', () => {
-    expect(computeScaling(1).trollRegenMult).toBeCloseTo(1.0);
-    expect(computeScaling(2).trollRegenMult).toBeCloseTo(1.5);
-    expect(computeScaling(3).trollRegenMult).toBeCloseTo(2.0);
-    expect(computeScaling(4).trollRegenMult).toBeCloseTo(2.5);
+  it('boss regen multiplier for n=1..4', () => {
+    expect(computeScaling(1).bossRegenMult).toBeCloseTo(1.0);
+    expect(computeScaling(2).bossRegenMult).toBeCloseTo(1.5);
+    expect(computeScaling(3).bossRegenMult).toBeCloseTo(2.0);
+    expect(computeScaling(4).bossRegenMult).toBeCloseTo(2.5);
   });
 
   it('clamps out-of-range player counts', () => {

@@ -822,19 +822,6 @@ body {
   color: var(--cls-warlock);
 }
 
-.cls-bg-knight {
-  background: rgba(74, 144, 217, 0.16);
-}
-.cls-bg-ranger {
-  background: rgba(76, 175, 80, 0.16);
-}
-.cls-bg-mage {
-  background: rgba(156, 92, 240, 0.16);
-}
-.cls-bg-cleric {
-  background: rgba(242, 193, 78, 0.16);
-}
-
 /* --------------------------------------------------------------------------
  * Feedback
  * ------------------------------------------------------------------------ */

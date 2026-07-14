@@ -2,7 +2,6 @@
  * Warband — ALL tunable numbers live here (plus classes.ts / monsters.ts which
  * import from here). Everything is a starting balance point meant to be nudged.
  */
-import type { MonsterId } from './types';
 
 // --- Simulation ---
 export const SIM_TICK_RATE = 20; // Hz
@@ -163,10 +162,9 @@ export const OBSTACLE_MAX_RADIUS = 74;
 export const OBSTACLE_SPAWN_CLEARANCE = 170; // u
 
 // --- Gauntlet (sequence run) ---
-// Legacy fixed order (kept for reference / single-picks). A modern "run" is now
-// a curated 5-boss sequence assembled by difficulty tier (see monsters.ts
-// `buildRun`), and continues into Endless cycles after the fifth boss falls.
-export const GAUNTLET_ORDER: MonsterId[] = ['dragon', 'troll', 'lich'];
+// A "run" is a curated 5-boss sequence assembled by difficulty tier (see
+// monsters.ts `buildRun`/`buildRunSlots`), continuing into Endless cycles after
+// the fifth boss falls.
 
 /** Bosses in a single run (a full run = this many bosses, then Victory/Endless). */
 export const RUN_LENGTH = 5;
@@ -518,16 +516,11 @@ export const CLASS_COLORS: Record<string, number> = {
   warlock: 0x6d3fa0, // indigo-violet
 };
 
-// --- Monster colors ---
-export const MONSTER_COLORS: Record<string, number> = {
-  dragon: 0xd9463e, // red
-  troll: 0x6b8e23, // olive/brown-green
-  lich: 0x3a2f5b, // dark violet
-};
-
 // --- Player-count scaling coefficients (see scaling.ts) ---
 export const SCALE_HP_PER_PLAYER = 0.75;
 export const SCALE_DMG_PER_PLAYER = 0.12;
-export const SCALE_TROLL_REGEN_PER_PLAYER = 0.5;
+// item 67: this scales the regen of EVERY regenerating boss (troll, zombie,
+// mudGolem, treant, kraken, dummy) — not just the troll it was first named for.
+export const SCALE_REGEN_PER_PLAYER = 0.5;
 
 export const MAX_PLAYERS = 4;
