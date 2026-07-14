@@ -25,22 +25,35 @@ function pctDelta(delta: number): string {
 
 /**
  * The local hero's live character sheet (item: know your current stats). Resolved
- * from the owned run boons for the ACTIVE class — no per-frame data, no wire cost.
- * Exported so the (local, no-sim) reward-room pause overlay can reuse it.
+ * from the owned run boons — no per-frame data, no wire cost. Exported so the
+ * (local, no-sim) reward-room pause overlay can reuse it.
+ *
+ * A multiclass hero's PERSISTENT stats (maxHp, moveSpeed, damageMult, …) are
+ * IDENTITY-BOUND: the sim resolves them once at spawn from the hero's spawn class +
+ * run boons and never recomputes them on a class swap — `setActiveClass` swaps only
+ * the kit/cooldowns (see world.ts). So the sheet must preview against that spawn
+ * identity (`classes[0]` for a multiclass hero, else the sole active class), or its
+ * numbers would drift from the authoritative sim the instant the hero swaps (#70).
+ * The ACTIVE class's kit is shown separately by <OwnedSkills>, so nothing is lost.
  */
 export function CharacterSheet() {
   const classId = useHudStore((s) => s.classId);
+  const classes = useHudStore((s) => s.classes);
   const hp = useHudStore((s) => s.hp);
   const maxHp = useHudStore((s) => s.maxHp);
   const myUpgrades = useStore((s) => s.myUpgrades);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  // Spawn/identity class: first owned class for a multiclass hero (buildMulticlass
+  // seeds `classes` as [spawnClass, ...extras]), else the active class (single-class
+  // heroes never swap, so active === identity there).
+  const identityClass = classes[0] ?? classId;
   const stats = useMemo(
-    () => (classId ? previewPlayerStats(classId, myUpgrades, myCharUpgrades) : null),
-    [classId, myUpgrades, myCharUpgrades],
+    () => (identityClass ? previewPlayerStats(identityClass, myUpgrades, myCharUpgrades) : null),
+    [identityClass, myUpgrades, myCharUpgrades],
   );
-  if (!classId || !stats) return null;
+  if (!identityClass || !stats) return null;
   // Run-aware base (getClass): the delta shows what the BOONS added, not the roll.
-  const baseMove = getClass(classId).moveSpeed;
+  const baseMove = getClass(identityClass).moveSpeed;
   const rows: Array<[string, string, boolean]> = [
     ['Damage', pctDelta(stats.damageMult - 1), stats.damageMult >= 1],
     ['Damage taken', pctDelta(stats.damageTakenMult - 1), stats.damageTakenMult <= 1],
@@ -53,7 +66,7 @@ export function CharacterSheet() {
   return (
     <div className="wb-pause-stats">
       <span className="wb-field-label">
-        {CLASSES[classId].name} — {Math.round(hp)}/{Math.round(maxHp)} HP
+        {CLASSES[identityClass].name} — {Math.round(hp)}/{Math.round(maxHp)} HP
       </span>
       <div className="wb-pause-stat-grid">
         {rows.map(([label, val, good]) => (
