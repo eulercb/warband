@@ -625,13 +625,26 @@ interface Pooled {
   donor: Donor;
 }
 
-/** Cooldown bands per slot (a basic spams; specials cycle) — the pricing clamp. */
+/**
+ * Cooldown band per slot (a basic spams; specials cycle) — the pricing CLAMP.
+ * Kept to the canonical envelope of each slot (basics ~0.4–0.7s; specials the
+ * 3.5–14/16s the authored abilities of classes.ts occupy) so a fusion can never
+ * price ABOVE the slowest hand-tuned ability of its slot. Fusions land near the
+ * slot's canonical MEDIAN cooldown (see priceToBudget), not at these ceilings —
+ * the max is only reached by rigid, un-dilutable fusions (a lone heavy zone/buff),
+ * exactly the abilities the authored 14–16s specials also occupy.
+ */
 const COOLDOWN_BAND: Record<AbilitySlot, [number, number]> = {
-  basic: [0.35, 1.3],
-  a1: [3.5, 16],
-  a2: [3.5, 18],
-  a3: [3.5, 18],
+  basic: [0.35, 0.9],
+  a1: [3.5, 14],
+  a2: [3.5, 16],
+  a3: [3.5, 16],
 };
+
+/** Seeded per-fusion spread around the slot's canonical pace (see synthesizeAbility) —
+ * symmetric, so the median lands on the target while individual cooldowns vary like a
+ * hand-tuned kit. Cosmetic: a hotter cooldown carries proportionally more value. */
+const COOLDOWN_JITTER: [number, number] = [0.72, 1.28];
 
 /** Can effect `e` be delivered by delivery `kind`? Keeps fusions coherent. */
 function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
@@ -765,8 +778,13 @@ export function synthesizeAbility(
   effects = retargetOrphanAllyBuffs(delivery, effects);
   const assembled: AbilityComponents = { delivery, effects };
 
-  // 7. Price to the slot budget, then cap + quantize magnitudes.
-  const { comp, cooldown } = priceToBudget(assembled, slotBudget(donors, slot), slot);
+  // 7. Price to the slot budget at the slot's canonical pace, then cap + quantize.
+  //    Jitter the pace per-fusion (seeded) so a run's kit reads with hand-tuned
+  //    cooldown variety instead of every special landing on one number — output
+  //    stays on budget either way (value tracks the cooldown), so it's cosmetic
+  //    spread within the canonical band, not a power lever.
+  const target = slotCooldownTarget(donors, slot) * rng.range(COOLDOWN_JITTER[0], COOLDOWN_JITTER[1]);
+  const { comp, cooldown } = priceToBudget(assembled, slotBudget(donors, slot), target, slot);
 
   // 8. Blend a name from the contributing donor names.
   const donorNames = [deliveryDonor.name, ...chosen.map((c) => c.donor.name)];
@@ -831,9 +849,28 @@ function slotBudget(donors: Donor[], slot: AbilitySlot): number {
   return vals[Math.floor(vals.length / 2)];
 }
 
-/** Effect kinds whose magnitude can be diluted to hit budget (pure output). Buffs
- * / CC / zones are NOT diluted — watering them to a floor would misprice them, so
- * they are DROPPED instead (keeps fusions to a few MEANINGFUL components). */
+/**
+ * The canonical MEDIAN cooldown of the slot — the pace a fusion is priced toward.
+ * A fusion stacks a primary + 1–2 secondary effects drawn CROSS-SLOT from the whole
+ * donor pool, so its raw per-use value runs ~2–3× a single canonical ability's; left
+ * unchecked, `value / budget` prices it to ~2–3× the canonical cooldown and pins it
+ * at the band ceiling. Pricing toward this target (see priceToBudget) dilutes the
+ * fusion's magnitudes down to a canonical per-use punch, so its cooldown lands in the
+ * slot's canonical range while its sustained output stays on budget (no power minted).
+ * Data-driven (median of the same-slot donors), so a class added in a future update
+ * shifts the target automatically; falls back to the whole pool, then a constant.
+ */
+function slotCooldownTarget(donors: Donor[], slot: AbilitySlot): number {
+  const inSlot = donors.filter((d) => d.slot === slot).map((d) => d.def.cooldown);
+  const pool = inSlot.length > 0 ? inSlot : donors.map((d) => d.def.cooldown);
+  if (pool.length === 0) return slot === 'basic' ? 0.6 : 8;
+  pool.sort((a, b) => a - b);
+  return pool[Math.floor(pool.length / 2)];
+}
+
+/** Effect kinds whose MAGNITUDE is the ability's defining output — never shed when
+ * trimming an over-stuffed fusion (a fusion keeps its damage/heal; extra rigid riders
+ * go first). Compression still scales these down like any other effect. */
 const ANCHOR_KINDS = new Set<EffectComponent['kind']>([
   'damage',
   'landingDamage',
@@ -843,72 +880,125 @@ const ANCHOR_KINDS = new Set<EffectComponent['kind']>([
 
 /**
  * Price a fusion to its slot budget without minting power (req. §7):
- *  1. shed the cheapest rigid (buff/CC/zone) effects until what CAN'T be diluted
- *     fits under the slot's max cooldown — so nothing gets watered to a floor;
- *  2. scale the pure-damage anchors down so the total lands on budget;
+ *  1. compress every effect toward the slot's per-use value envelope so the total
+ *     lands on budget — damage/heal anchors shed MAGNITUDE, rigid effects (buff /
+ *     CC / slow / zone) shed DURATION, keeping their readable magnitude intact
+ *     (a 0.5-def buff stays a 0.5-def buff, just shorter — never watered to a floor);
+ *  2. if readable-magnitude floors still leave an over-stuffed fusion above the band,
+ *     shed the cheapest rigid rider (never the damage) and re-price;
  *  3. set the cooldown to totalValue ÷ budget within the slot's band.
  * Then cap + quantize so the numbers read hand-tuned.
+ *
+ * The value envelope is `budget × targetCd` (the slot's canonical median cooldown),
+ * NOT `budget × hi` (the band ceiling): a fusion's raw value runs ~2–3× a single
+ * canonical ability's (it stacks cross-slot components), so pricing against the band
+ * ceiling pinned every fusion at 16–18s. Compressing to the canonical per-use envelope
+ * instead lands the cooldown near the slot's canonical MEDIAN — sustained output is
+ * still `budget` (the ability just delivers it in canonical-sized chunks at a
+ * realistic, beatable pace). Because every effect's value is LINEAR in the quantity
+ * scaled, one factor `f = ceiling/total` lands the total on the envelope regardless of
+ * the mix, so buff/CC/zone-heavy fusions no longer pin at the ceiling. Light fusions
+ * (already under the envelope) keep their value and cycle faster, down to `lo`.
  */
 function priceToBudget(
   comp: AbilityComponents,
   budget: number,
+  targetCd: number,
   slot: AbilitySlot,
 ): { comp: AbilityComponents; cooldown: number } {
   const [lo, hi] = COOLDOWN_BAND[slot];
-  const ceiling = budget * hi; // most value the slot can carry (at max cooldown)
+  const ceiling = budget * targetCd; // per-use value a canonically-paced ability carries
   let effects = comp.effects.slice();
-  // 1. Drop the cheapest effect while the rigid (un-dilutable) value alone busts
-  //    the ceiling — never below one effect.
-  while (effects.length > 1 && rigidValue(effects) > ceiling) {
-    effects = dropCheapest(effects);
+  let capped = compressToBudget(comp.delivery, effects, ceiling);
+  // A duration can't quantize below its readable floor (~2s), so a heavily-compressed
+  // MULTI-rigid fusion (two or three stacked buffs/zones/CC) can floor back up above
+  // the slot's SLOWEST pace — a sign it carries one rigid rider too many. Shed the
+  // cheapest rigid effect (never the damage/heal that defines it) and re-price from
+  // the original magnitudes, so an over-stuffed fusion trims to pace instead of
+  // pinning at the band ceiling.
+  while (effects.length > 1 && componentValue(capped) > budget * hi) {
+    const trimmed = dropCheapestRigid(effects);
+    if (trimmed.length === effects.length) break; // nothing rigid left to shed
+    effects = trimmed;
+    capped = compressToBudget(comp.delivery, effects, ceiling);
   }
-  let scaled: AbilityComponents = { delivery: comp.delivery, effects };
-  // 2. Dilute the damage anchors so the total sits on budget.
-  const total = componentValue(scaled);
-  if (total > ceiling) {
-    const rigid = rigidValue(effects);
-    const anchor = total - rigid;
-    const f = anchor > 0 ? clamp((ceiling - rigid) / anchor, 0.05, 1) : 1;
-    scaled = { delivery: comp.delivery, effects: effects.map((e) => scaleAnchor(e, f)) };
-  }
-  // 3. Cooldown from the priced value.
-  const cooldown = roundCd(clamp(componentValue(scaled) / Math.max(0.1, budget), lo, hi), slot);
-  return { comp: capComponents(scaled), cooldown };
+  // Price the cooldown from the FINAL capped value so the two agree: a magnitude
+  // floored back up by a cap is paid for with a proportionally longer cooldown,
+  // keeping output on budget (a cooldown priced off the pre-cap value would over-output).
+  const cooldown = roundCd(clamp(componentValue(capped) / Math.max(0.1, budget), lo, hi), slot);
+  return { comp: capped, cooldown };
 }
 
-/** Total value of the effects that CANNOT be diluted (buffs, CC, slow, zones). */
-function rigidValue(effects: EffectComponent[]): number {
-  const fan = 1; // rigid effects carry no fan multiplier
-  return effects
-    .filter((e) => !ANCHOR_KINDS.has(e.kind))
-    .reduce((s, e) => s + effectValue(e, fan), 0);
+/**
+ * Compress a delivery's effects toward `ceiling` with a single linear factor, then cap
+ * + quantize. Every effect's `effectValue` is linear in the quantity `scaleEffect`
+ * scales, so `f = ceiling/total` lands the whole mix on the envelope regardless of its
+ * composition (no per-kind bookkeeping). Under-envelope (light) fusions pass through.
+ */
+function compressToBudget(
+  delivery: Delivery,
+  effects: EffectComponent[],
+  ceiling: number,
+): AbilityComponents {
+  const total = componentValue({ delivery, effects });
+  const scaled =
+    total > ceiling ? effects.map((e) => scaleEffect(e, clamp(ceiling / total, 0.05, 1))) : effects;
+  return capComponents({ delivery, effects: scaled });
 }
 
-/** Drop the single lowest-value effect (keeps the priciest, most-defining ones). */
-function dropCheapest(effects: EffectComponent[]): EffectComponent[] {
-  let idx = 0;
+/** Shed the single lowest-value RIGID rider (buff / CC / slow / zone / lifesteal),
+ * keeping the damage/heal anchors that define the ability. Returns the list unchanged
+ * when there is no rigid rider to shed (a pure-anchor fusion). */
+function dropCheapestRigid(effects: EffectComponent[]): EffectComponent[] {
+  let idx = -1;
   let min = Infinity;
   for (let i = 0; i < effects.length; i++) {
+    if (ANCHOR_KINDS.has(effects[i].kind)) continue;
     const v = effectValue(effects[i], 1);
     if (v < min) {
       min = v;
       idx = i;
     }
   }
-  return effects.filter((_, i) => i !== idx);
+  return idx < 0 ? effects : effects.filter((_, i) => i !== idx);
 }
 
-/** Scale only a damage ANCHOR's magnitude by `f`; leave rigid effects untouched. */
-function scaleAnchor(e: EffectComponent, f: number): EffectComponent {
+/**
+ * Scale one effect's OUTPUT by `f` (0<f≤1). Anchors (damage/heal) lose magnitude;
+ * rigid effects lose DURATION but keep their magnitude (a def/dmg/move mult, a slow
+ * depth, a CC's bite) so they stay meaningful rather than watered to a floor. Every
+ * kind's `effectValue` is linear in the quantity scaled, so `effectValue(scaleEffect
+ * (e,f)) === f × effectValue(e)` — that is what lets one factor price the whole mix.
+ */
+function scaleEffect(e: EffectComponent, f: number): EffectComponent {
   switch (e.kind) {
     case 'damage':
     case 'landingDamage':
     case 'heal':
     case 'healOnUse':
       return { ...e, amount: e.amount * f };
-    default:
-      return e;
+    case 'lifesteal':
+      return { ...e, frac: e.frac * f };
+    case 'stun':
+    case 'freeze':
+      return { ...e, seconds: e.seconds * f };
+    case 'slow':
+      return { ...e, duration: e.duration * f };
+    case 'buff':
+      return { ...e, duration: e.duration * f };
+    case 'zone':
+      return { kind: 'zone', zone: scaleZone(e.zone, f) };
   }
+}
+
+/** Shed a zone's DURATION (ticks, snare time, root time and any ally-buff window all
+ * scale with it) by `f`, keeping its per-tick magnitudes + footprint — so its value
+ * drops linearly without watering what it does. */
+function scaleZone(z: ZoneSpec, f: number): ZoneSpec {
+  const out: ZoneSpec = { ...z, duration: z.duration * f };
+  if (z.slowDuration != null) out.slowDuration = z.slowDuration * f;
+  if (z.allyBuff) out.allyBuff = { ...z.allyBuff, duration: z.allyBuff.duration * f };
+  return out;
 }
 
 const round05 = (x: number): number => Math.round(x * 20) / 20;

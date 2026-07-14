@@ -43,6 +43,19 @@ function slotBudget(slot: AbilitySlot): number {
   return vals[Math.floor(vals.length / 2)];
 }
 
+/** The slowest canonical cooldown per slot — a fusion must never price above it
+ * (basics spam; specials cycle within the authored 14/16s envelope). */
+const CANON_MAX_CD: Record<AbilitySlot, number> = { basic: 0.9, a1: 14, a2: 16, a3: 16 };
+
+/** The canonical MEDIAN cooldown per slot — fusions should center HERE, not at the
+ * band ceiling (the pace synthesis prices toward). Derived from the donor pool. */
+function canonMedianCd(slot: AbilitySlot): number {
+  const cds = POOL.filter((d) => d.slot === slot)
+    .map((d) => d.def.cooldown)
+    .sort((a, b) => a - b);
+  return cds[Math.floor(cds.length / 2)];
+}
+
 const SEEDS = [1, 7, 42, 99, 1234, 55555, 0, 8675309];
 
 describe('synthesizeAbility — determinism', () => {
@@ -73,9 +86,12 @@ describe('synthesizeAbility — validity + balance budget', () => {
           expect(def.name.length).toBeGreaterThan(0);
           expect(describeAbility(def)).not.toMatch(/NaN|undefined/);
 
-          // Cooldown within a sane band.
+          // Cooldown sits within the slot's CANONICAL band — a fusion never prices
+          // ABOVE the slowest hand-tuned ability of its slot (basics ~0.4–0.7s;
+          // specials the 3.5–14/16s classes.ts occupies). Guards the cooldown fix:
+          // before it, rigid fusions pinned at an inflated 16–18s ceiling.
           expect(def.cooldown).toBeGreaterThan(0);
-          expect(def.cooldown).toBeLessThanOrEqual(19);
+          expect(def.cooldown).toBeLessThanOrEqual(CANON_MAX_CD[slot]);
 
           // At most ONE hard CC (no stun+freeze pile-up).
           const hardCC = comp.effects.filter(
@@ -107,6 +123,33 @@ describe('synthesizeAbility — validity + balance budget', () => {
           expect(ops).toBeLessThanOrEqual(slotBudget(slot) * 1.75 + 2);
         }
       }
+    }
+  });
+
+  it('cooldowns center on the canonical pace, NOT the band ceiling', () => {
+    // Regression guard for the cooldown fix: fusions used to pin at the 16–18s
+    // ceiling (rigid buff/CC/zone value priced against the band max). They now
+    // compress to the slot's canonical median, so the DISTRIBUTION per slot should
+    // sit around that median with only a thin tail near the ceiling.
+    for (const slot of SLOTS) {
+      const cds: number[] = [];
+      for (const seed of SEEDS)
+        for (const cid of CLASS_IDS)
+          cds.push(synthesizeAbility(seed, `${cid}.${slot}`, slot, POOL).def.cooldown);
+      cds.sort((a, b) => a - b);
+      const median = cds[Math.floor(cds.length / 2)];
+      const ceiling = CANON_MAX_CD[slot];
+      const canonMed = canonMedianCd(slot);
+
+      // Median lands in the canonical range: near the canonical median, well under
+      // the ceiling (never within the top 15% of the band — i.e. not "clustered at
+      // the top", which is what the bug produced).
+      expect(median).toBeLessThanOrEqual(canonMed * 1.6);
+      expect(median).toBeLessThanOrEqual(ceiling * 0.85);
+      // Only a small minority may reach the ceiling (rigid, un-dilutable fusions);
+      // the bug pinned the MAJORITY there.
+      const atCeiling = cds.filter((c) => c >= ceiling - (slot === 'basic' ? 0.05 : 0.5)).length;
+      expect(atCeiling / cds.length).toBeLessThan(0.1);
     }
   });
 });
