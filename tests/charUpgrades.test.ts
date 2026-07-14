@@ -25,6 +25,7 @@ import {
   GRAFT_GRANDS,
   SUB_SKILL_UPGRADES,
   applySubSkillUpgrades,
+  previewSubAbility,
 } from '../src/engine/content/charUpgrades';
 import { CLASSES, CLASS_IDS, cloneAbilities, getClass } from '../src/engine/content/classes';
 import type { PlayerAbilityDef, AbilityKind } from '../src/engine/content/classes';
@@ -1435,6 +1436,44 @@ describe('rollCharChoices graceful degradation (items 12–14)', () => {
 // describeCharOffer / charUpgradeBadge — labels for real + synthetic ids
 // ---------------------------------------------------------------------------
 
+describe('previewSubAbility (item 5)', () => {
+  it('applies Honed boons (stacking) and lowers cooldown, and ignores unrelated ids', () => {
+    const base = previewSubAbility('kn_champion_slam', [])!;
+    const honed1 = previewSubAbility('kn_champion_slam', ['subup_kn_champion_slam'])!;
+    const honed2 = previewSubAbility('kn_champion_slam', [
+      'subup_kn_champion_slam',
+      'subup_kn_champion_slam',
+    ])!;
+    expect(honed1.damage).toBeGreaterThan(base.damage);
+    expect(honed2.damage).toBeGreaterThan(honed1.damage); // each occurrence stacks
+    expect(honed1.cooldown).toBeLessThan(base.cooldown);
+    // A base-slot boon touches base abilities, not sub-abilities → no change here.
+    const unrelated = previewSubAbility('kn_champion_slam', ['kn_widecleave'])!;
+    expect(unrelated.damage).toBe(base.damage);
+  });
+
+  it('applies a subclass grand to every skill of that subclass only', () => {
+    const base = previewSubAbility('kn_champion_slam', [])!;
+    const granded = previewSubAbility('kn_champion_slam', ['kn_champion_g_a'])!;
+    expect(granded.damage).toBeGreaterThan(base.damage);
+    // A different subclass's grand leaves this skill untouched.
+    const otherGrand = SUBCLASS_GRANDS.find((g) => g.subclassId !== 'kn_champion')!;
+    const unaffected = previewSubAbility('kn_champion_slam', [otherGrand.id])!;
+    expect(unaffected.damage).toBe(base.damage);
+  });
+
+  it('skips ids that do not touch this skill (unknown id, or a base-slot boon)', () => {
+    const base = previewSubAbility('kn_champion_slam', [])!;
+    const r = previewSubAbility('kn_champion_slam', ['not_a_real_upgrade', 'kn_bulwark'])!;
+    expect(r.damage).toBe(base.damage); // untouched — neither id hones this sub-skill
+    expect(r.cooldown).toBe(base.cooldown);
+  });
+
+  it('returns null for an unknown sub-skill id', () => {
+    expect(previewSubAbility('not_a_skill', [])).toBeNull();
+  });
+});
+
 describe('describeCharOffer', () => {
   it('keeps the "Replaces X" graft label (item 18)', () => {
     const v = describeCharOffer('knight', [], 'hy_pyromancer')!;
@@ -1505,14 +1544,40 @@ describe('describeCharOffer', () => {
     }
   });
 
-  it('subclass grands are whitelisted prose-only but still state a concrete change (item 6)', () => {
-    // WHITELIST + justification: a subclass grand retunes SUB-abilities (sub1/sub2),
-    // which live outside previewAbilityTable's base-slot preview, so describeCharOffer
-    // cannot resolve a "Now →" for them. Their hand-authored prose still carries the
-    // concrete delta (a % or number), which this asserts so they never go vague.
+  it('subclass grands resolve a numeric Now → once the equipped subs are known (item 5)', () => {
+    // item 5 lifted the old prose-only whitelist: a subclass grand retunes SUB-abilities
+    // (sub1/sub2), so passing the hero's equipped sub-skills lets the card resolve the
+    // concrete resulting values — exactly like a base-class card.
     for (const g of SUBCLASS_GRANDS) {
-      expect(/\d/.test(g.desc), `${g.id}: ${g.desc}`).toBe(true);
+      const classId = g.classId as ClassId;
+      const sub = SUBCLASSES[classId].find((s) => s.id === g.subclassId)!;
+      const equipped = sub.skills.slice(0, 2).map((s) => s.id);
+      const v = describeCharOffer(classId, [], g.id, equipped)!;
+      expect(resolvesPostValue(v.desc), `${g.id}: ${v.desc}`).toBe(true);
+      // …and even WITHOUT the equipped list it still states a concrete change in prose
+      // (the item-6 floor — never vague).
+      expect(/\d/.test(describeCharOffer(classId, [], g.id)!.desc)).toBe(true);
     }
+  });
+
+  it('a Honed subclass-skill boon shows an explicit before→after (item 5)', () => {
+    const v = describeCharOffer('knight', [], 'subup_kn_champion_slam', ['kn_champion_slam'])!;
+    expect(v.desc).toContain('Now →');
+    expect(v.desc).toContain('Earthshaker'); // names the honed skill
+    expect(v.desc).toMatch(/\(was .*cooldown\)/); // before→after, both concrete lines
+    expect(resolvesPostValue(v.desc)).toBe(true);
+  });
+
+  it('a subclass grand previews the before→after of every equipped skill it retunes (item 5)', () => {
+    const v = describeCharOffer('knight', [], 'kn_champion_g_a', [
+      'kn_champion_slam',
+      'kn_champion_charge',
+    ])!;
+    const preview = v.desc.split('Now →')[1];
+    // Both equipped Champion skills appear, each with a "(was …)" before→after.
+    expect(preview).toContain('Earthshaker');
+    expect(preview).toContain('Bull Rush');
+    expect((preview.match(/\(was /g) ?? []).length).toBe(2);
   });
 
   it('never mixes a re-flavoured skill name into an upgrade card, even mid-run (items 1/9)', () => {
@@ -1528,6 +1593,9 @@ describe('describeCharOffer', () => {
               (s) => getClass(classId).abilities[s].name,
             ),
           );
+          // item 5: subclass-skill upgrade cards now also preview the retuned
+          // sub-ability, so their (identity, never-rolled) names are canonical too.
+          for (const sc of SUBCLASSES[classId]) for (const sk of sc.skills) canon.add(sk.name);
           for (const [id, def] of Object.entries(CHAR_UPGRADES)) {
             if (def.classId !== classId || def.replaces) continue;
             const v = describeCharOffer(classId, [], id);

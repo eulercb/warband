@@ -11,6 +11,9 @@ import { endRun, leaveToMenu, openControls, playUiSound } from '../state/session
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import { previewPlayerStats } from '../../engine/content/charUpgrades';
 import { CLASSES, getClass } from '../../engine/content/classes';
+import { useBindings, keyLabelFor, padLabelFor, SLOT_ACTION } from '../../input/bindings';
+import type { InputSource } from '../../input/input';
+import { ownedSkillRows } from './pauseSkills';
 import TerrainLegend from './TerrainLegend';
 
 /** Signed percentage from a multiplier delta (0 → "—", 0.3 → "+30%", -0.18 → "-18%"). */
@@ -62,6 +65,50 @@ export function CharacterSheet() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Button label for a slot, keyboard or controller per the active device. */
+function slotLabel(slot: keyof typeof SLOT_ACTION, source: InputSource): string {
+  const action = SLOT_ACTION[slot];
+  return source === 'gamepad' ? padLabelFor(action) : keyLabelFor(action);
+}
+
+/**
+ * The local hero's owned-skill review (item 6). Unlike the HUD's hover-only tile
+ * tooltips, every skill's numeric line is always visible here — the pause menu is a
+ * read/review surface. Reuses the same resolved data as the HUD, so it reflects the
+ * hero's live upgrades with no sim/wire cost.
+ */
+export function OwnedSkills() {
+  const classId = useHudStore((s) => s.classId);
+  const subSkills = useHudStore((s) => s.subSkills);
+  const source = useHudStore((s) => s.inputSource);
+  const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  // Re-render on rebinds so the per-skill key badges stay accurate.
+  useBindings((s) => s.bindings);
+  const rows = useMemo(
+    () => (classId ? ownedSkillRows(classId, myCharUpgrades, subSkills) : []),
+    [classId, myCharUpgrades, subSkills],
+  );
+  if (!classId || rows.length === 0) return null;
+  return (
+    <div className="wb-pause-skills">
+      <span className="wb-field-label">Your skills</span>
+      <ul className="wb-pause-skill-list">
+        {rows.map((r) => (
+          <li key={r.key} className="wb-pause-skill" aria-label={`${r.name}: ${r.line}`}>
+            <span className="wb-pause-skill-key" aria-hidden="true">
+              {slotLabel(r.slot, source)}
+            </span>
+            <div className="wb-pause-skill-body">
+              <span className="wb-pause-skill-name">{r.name}</span>
+              <span className="wb-pause-skill-line">{r.line}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -129,6 +176,8 @@ export default function PauseMenu({ onResume }: { onResume: () => void }) {
         </div>
 
         <CharacterSheet />
+
+        <OwnedSkills />
 
         <div className="wb-pause-actions">
           <button type="button" className="wb-btn wb-btn-primary wb-btn-lg" onClick={onResumeClick}>

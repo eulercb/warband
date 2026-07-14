@@ -39,6 +39,14 @@ export interface PlayerAbilityDef {
   impactRadius?: number; // projectile AoE-on-impact radius
 
   iframes?: number; // dash i-frame duration
+  /**
+   * item 2 — marks a dash-nature mover (kind:'dash') as a LEAP/JUMP: it clears LOW
+   * cover mid-flight and lands at the target (tall silhouettes — pillars, monoliths,
+   * crystals — still stop it), rather than a roll/dash/charge which ends at the first
+   * obstacle. Ignored for kind:'blink' (a teleport passes through everything).
+   * Absent = a grounded dash/roll/charge that stops at cover.
+   */
+  leap?: boolean;
   stun?: number; // applied to boss/adds on hit
   slowMult?: number; // < 1 slows target move speed
   slowDuration?: number;
@@ -353,6 +361,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         iframes: 0.25,
         landingDamage: 22,
         radius: 120,
+        leap: true, // item 2: a jump — clears low cover, lands at the target
       },
       a3: {
         slot: 'a3',
@@ -679,7 +688,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       },
       a3: {
         slot: 'a3',
-        name: 'Arcane Leap',
+        name: 'Arcane Phase',
         kind: 'blink',
         cooldown: 6,
         damage: 0,

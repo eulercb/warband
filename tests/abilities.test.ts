@@ -5,6 +5,7 @@ import {
   beamTick,
   withLength,
   applyImpulse,
+  stepPlayerGlide,
   PLAYER_RADIUS,
 } from '../src/engine/combat/abilities';
 import { World } from '../src/engine/world/world';
@@ -79,6 +80,11 @@ function mkAdd(w: World, pos: Vec2): Add {
 const UP: Vec2 = { x: 0, y: -1 };
 const RIGHT: Vec2 = { x: 1, y: 0 };
 const ZERO: Vec2 = { x: 0, y: 0 };
+
+/** item 2 — drive a hero's in-progress dash/leap glide to touchdown (fixed 20 Hz dt). */
+function driveGlide(w: World, p: Player, dt = 0.05): void {
+  for (let i = 0; i < 40 && p.glide; i++) stepPlayerGlide(w, p, dt);
+}
 
 // ===========================================================================
 // Player: meleeCone
@@ -558,30 +564,38 @@ describe('player pbaoe', () => {
 // Player: dash
 // ===========================================================================
 describe('player dash', () => {
-  it('Roll moves along the move direction, grants i-frames and emits a dodge', () => {
+  it('Roll glides along the move direction, grants i-frames on use and emits a dodge', () => {
     const w = mkWorld('ranger');
+    w.obstacles = []; // isolate travel from procedural cover
     const p = w.players[0];
     p.pos = { x: 400, y: 500 };
     resolvePlayerAbility(w, p, 'a3', RIGHT); // Roll: range 220, iframes 0.3
-    expect(p.pos.x).toBeCloseTo(620, 4);
-    expect(p.pos.y).toBeCloseTo(500, 4);
+    // The i-frames + dodge fire ON USE; the hero then travels over a few ticks.
     const inv = p.buffs.find((b) => b.kind === 'invuln' && b.source === 'dash');
-    expect(inv!.remaining).toBeCloseTo(0.3, 6);
+    expect(inv!.remaining).toBeCloseTo(0.3, 6); // covers the whole (shorter) glide
     expect(w.events.some((e) => e.t === 'dodge' && e.id === p.id)).toBe(true);
+    expect(p.glide).toBeTruthy(); // mid-dash — it did not teleport
+    driveGlide(w, p);
+    expect(p.glide).toBeNull();
+    expect(p.pos.x).toBeCloseTo(620, 4); // 400 + 220 reach preserved
+    expect(p.pos.y).toBeCloseTo(500, 4);
   });
 
   it('falls back to aim direction when there is no move input', () => {
     const w = mkWorld('ranger');
+    w.obstacles = [];
     const p = w.players[0];
     p.pos = { x: 400, y: 500 };
     p.aim = { ...UP };
     resolvePlayerAbility(w, p, 'a3', ZERO);
+    driveGlide(w, p);
     expect(p.pos.x).toBeCloseTo(400, 4);
     expect(p.pos.y).toBeCloseTo(280, 4); // 500 - 220 up
   });
 
-  it('Leap deals landing damage in a circle around the touchdown', () => {
+  it('Leap deals landing damage in a circle around the touchdown (not on use)', () => {
     const w = mkWorld('barbarian');
+    w.obstacles = [];
     const p = w.players[0];
     const boss = w.boss!;
     p.pos = { x: 400, y: 500 };
@@ -589,6 +603,8 @@ describe('player dash', () => {
     tableOf(p).a2.radius = undefined; // exercises the 120 default landing radius
     const before = boss.hp;
     resolvePlayerAbility(w, p, 'a2', RIGHT); // Leap: range 270, landingDamage 22
+    expect(before - boss.hp).toBe(0); // no damage until it lands
+    driveGlide(w, p);
     expect(p.pos.x).toBeCloseTo(670, 4);
     expect(before - boss.hp).toBeCloseTo(22, 6);
     const inv = p.buffs.find((b) => b.kind === 'invuln' && b.source === 'dash');
@@ -598,17 +614,20 @@ describe('player dash', () => {
 
   it('Leap landing damage also strikes adds around the touchdown', () => {
     const w = mkWorld('barbarian');
+    w.obstacles = [];
     const p = w.players[0];
     w.boss!.pos = { x: 200, y: 200 }; // out of the way
     p.pos = { x: 400, y: 500 };
     const add = mkAdd(w, { x: 670, y: 510 }); // near the {670,500} landing spot
     w.adds = [add];
     resolvePlayerAbility(w, p, 'a2', RIGHT); // Leap: landingDamage 22, radius 120
+    driveGlide(w, p);
     expect(ADD_HP - add.hp).toBeCloseTo(22, 6);
   });
 
   it('Leap landing ignores corpses and out-of-range targets', () => {
     const w = mkWorld('barbarian');
+    w.obstacles = [];
     const p = w.players[0];
     const boss = w.boss!;
     p.pos = { x: 400, y: 500 };
@@ -619,39 +638,157 @@ describe('player dash', () => {
     const faraway = mkAdd(w, { x: 100, y: 100 }); // outside the 120 landing radius
     w.adds = [dead, faraway];
     resolvePlayerAbility(w, p, 'a2', RIGHT);
+    driveGlide(w, p); // land, so the landing filter actually runs
     expect(boss.hp).toBe(0);
     expect(dead.hp).toBe(0);
     expect(faraway.hp).toBe(ADD_HP); // untouched, out of range
   });
 
-  it('healOnUse patches the dasher up', () => {
+  it('healOnUse patches the dasher up on use (before the travel)', () => {
     const w = mkWorld('ranger');
+    w.obstacles = [];
     const p = w.players[0];
     tableOf(p).a3.healOnUse = 30;
     p.hp = p.maxHp - 50;
     resolvePlayerAbility(w, p, 'a3', RIGHT);
-    expect(p.hp).toBeCloseTo(p.maxHp - 20, 5);
+    expect(p.hp).toBeCloseTo(p.maxHp - 20, 5); // fires immediately, as an escape heal
   });
 
-  it('a dash without i-frames or an explicit range moves the default 220 distance', () => {
+  it('a dash without i-frames or an explicit range glides the default 220 distance', () => {
     const w = mkWorld('ranger');
+    w.obstacles = [];
     const p = w.players[0];
     tableOf(p).a3.iframes = undefined; // no i-frame branch
     tableOf(p).a3.range = undefined; // default dash range 220
     p.pos = { x: 400, y: 500 };
     resolvePlayerAbility(w, p, 'a3', RIGHT);
+    driveGlide(w, p);
     expect(p.pos.x).toBeCloseTo(620, 4); // 400 + default 220
     expect(p.buffs.some((b) => b.kind === 'invuln')).toBe(false);
   });
 
   it('wraps around the torus seam instead of leaving the arena', () => {
     const w = mkWorld('ranger');
+    w.obstacles = [];
     const p = w.players[0];
     p.pos = { x: ARENA_W - 20, y: 500 };
     resolvePlayerAbility(w, p, 'a3', RIGHT); // dash 220 past the right edge
+    driveGlide(w, p);
     expect(p.pos.x).toBeCloseTo(200, 4); // (1580 + 220) - 1600
     expect(p.pos.x).toBeGreaterThanOrEqual(0);
     expect(p.pos.x).toBeLessThan(ARENA_W);
+  });
+});
+
+// ===========================================================================
+// Player: movement by nature (item 2)
+// ===========================================================================
+describe('player movement by nature (item 2)', () => {
+  /** A single blocking obstacle of `kind` centred at `pos`. */
+  function cover(pos: Vec2, kind: 'rock' | 'stump' | 'pillar' | 'monolith' | 'crystal') {
+    return { id: 1, pos, radius: 30, kind };
+  }
+
+  it('a dash travels over multiple ticks instead of teleporting', () => {
+    const w = mkWorld('ranger');
+    w.obstacles = [];
+    const p = w.players[0];
+    p.pos = { x: 400, y: 500 };
+    resolvePlayerAbility(w, p, 'a3', RIGHT); // Roll: range 220
+    stepPlayerGlide(w, p, 0.05); // one 20 Hz tick
+    expect(p.pos.x).toBeGreaterThan(400); // moved…
+    expect(p.pos.x).toBeLessThan(620); // …but not the whole way in one tick
+    expect(p.glide).toBeTruthy();
+  });
+
+  it('a roll/dash STOPS flush at the first blocking obstacle (no tunnelling)', () => {
+    const w = mkWorld('ranger');
+    const p = w.players[0];
+    p.pos = { x: 400, y: 500 };
+    w.obstacles = [cover({ x: 560, y: 500 }, 'rock')]; // in the Roll's 220u path
+    resolvePlayerAbility(w, p, 'a3', RIGHT);
+    driveGlide(w, p);
+    expect(p.glide).toBeNull();
+    expect(p.pos.x).toBeCloseTo(560 - 30 - p.radius, 3); // ends flush against the rock
+    expect(p.pos.x).toBeLessThan(620); // did NOT reach the full-range destination
+  });
+
+  it('a leap CLEARS low cover but is STOPPED by tall cover', () => {
+    // Low rock → the leap sails over it and lands at full range.
+    const wLow = mkWorld('barbarian');
+    const lo = wLow.players[0];
+    wLow.boss!.pos = { x: 100, y: 100 };
+    lo.pos = { x: 400, y: 500 };
+    wLow.obstacles = [cover({ x: 560, y: 500 }, 'rock')];
+    resolvePlayerAbility(wLow, lo, 'a2', RIGHT); // Leap range 270
+    driveGlide(wLow, lo);
+    expect(lo.pos.x).toBeCloseTo(670, 3); // cleared the low rock, full reach
+
+    // Tall monolith → the leap is stopped flush at it.
+    const wTall = mkWorld('barbarian');
+    const hi = wTall.players[0];
+    wTall.boss!.pos = { x: 100, y: 100 };
+    hi.pos = { x: 400, y: 500 };
+    wTall.obstacles = [cover({ x: 560, y: 500 }, 'monolith')];
+    resolvePlayerAbility(wTall, hi, 'a2', RIGHT);
+    driveGlide(wTall, hi);
+    expect(hi.pos.x).toBeCloseTo(560 - 30 - hi.radius, 3);
+    expect(hi.pos.x).toBeLessThan(670);
+  });
+
+  it('a blink/teleport passes THROUGH cover and stays instant', () => {
+    const w = mkWorld('mage');
+    const p = w.players[0];
+    p.pos = { x: 400, y: 500 };
+    p.aim = { ...RIGHT };
+    w.obstacles = [cover({ x: 500, y: 500 }, 'monolith')]; // squarely in the path
+    resolvePlayerAbility(w, p, 'a3', ZERO); // Blink range 250
+    expect(p.glide == null).toBe(true); // no glide — instant
+    expect(p.pos.x).toBeCloseTo(650, 4); // teleported clean past the obstacle
+  });
+
+  it('a root locks both a dash and a blink (nobody moves)', () => {
+    const wd = mkWorld('ranger');
+    const pd = wd.players[0];
+    wd.obstacles = [];
+    pd.pos = { x: 400, y: 500 };
+    applyBuff(pd, makeBuff('root', 0, 1, 'testRoot'));
+    resolvePlayerAbility(wd, pd, 'a3', RIGHT); // Roll
+    expect(pd.glide == null).toBe(true);
+    expect(pd.pos.x).toBeCloseTo(400, 4); // rooted → no dash
+
+    const wb = mkWorld('mage');
+    const pb = wb.players[0];
+    pb.pos = { x: 400, y: 500 };
+    pb.aim = { ...RIGHT };
+    applyBuff(pb, makeBuff('root', 0, 1, 'testRoot'));
+    resolvePlayerAbility(wb, pb, 'a3', ZERO); // Blink
+    expect(pb.pos.x).toBeCloseTo(400, 4); // rooted → no teleport
+  });
+
+  it('a felled hero drops out of a dash mid-glide', () => {
+    const w = mkWorld('ranger');
+    w.obstacles = [];
+    const p = w.players[0];
+    resolvePlayerAbility(w, p, 'a3', RIGHT);
+    expect(p.glide).toBeTruthy();
+    p.state = 'downed';
+    stepPlayerGlide(w, p, 0.05);
+    expect(p.glide).toBeNull(); // the glide is abandoned, not ghost-sliding a corpse
+  });
+
+  it('the boss charge stops flush at tall cover instead of tunnelling through', () => {
+    const w = mkWorld('knight', 'troll');
+    const boss = w.boss!;
+    const p = w.players[0];
+    boss.pos = { x: 200, y: 500 };
+    p.pos = { x: 900, y: 500 }; // beyond the obstacle, on the +x path
+    w.obstacles = [{ id: 1, pos: { x: 500, y: 500 }, radius: 40, kind: 'monolith' }];
+    const before = p.hp;
+    resolveBossAbility(w, boss, bossAb('troll', 'charge'), mkAction({ aimAngle: 0 }));
+    expect(boss.pos.x).toBeCloseTo(500 - 40 - boss.radius, 2); // stopped flush at the monolith
+    expect(boss.pos.x).toBeLessThan(900);
+    expect(p.hp).toBe(before); // the player behind the cover is spared the charge
   });
 });
 

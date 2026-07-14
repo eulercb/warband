@@ -194,6 +194,7 @@ import {
   spawnZone,
   abilityForSlot,
   pullToward,
+  stepPlayerGlide,
 } from '../combat/abilities';
 import type { BossAbilityDef } from '../content/monsters';
 import { stepCorruption, firstCorruptionDelay } from './corruption';
@@ -1037,6 +1038,7 @@ export class World {
 
     this.tickTimers(dt);
     this.applyInputs(dt, inputs);
+    this.stepGlides(dt); // item 2: advance in-progress dash/leap glides host-side
     this.checkDownedTransitions();
     this.updateRevive(dt, inputs);
     this.updateProjectiles(dt);
@@ -1129,8 +1131,11 @@ export class World {
 
       const stunned = hasBuff(p, 'stun');
       const casting = p.castTimer > 0;
+      // item 2: a committed dash/leap owns the hero for its brief glide — normal
+      // walking and firing another ability are held until it lands (like a cast).
+      const gliding = p.glide != null;
 
-      if (!stunned && !casting) {
+      if (!stunned && !casting && !gliding) {
         const move = clampLength(cmd.move, 1);
         const speed = p.moveSpeed * buffMult(p, 'moveSpeed');
         p.pos = vadd(p.pos, vscale(move, speed * dt));
@@ -1166,6 +1171,14 @@ export class World {
       }
 
       p.prevButtons = { ...cmd.buttons };
+    }
+  }
+
+  /** item 2 — advance every hero's in-progress dash/leap glide one tick, so the
+   *  travel is host-authoritative and replicates through the snapshot pipeline. */
+  private stepGlides(dt: number): void {
+    for (const p of this.players) {
+      if (p.glide) stepPlayerGlide(this, p, dt);
     }
   }
 

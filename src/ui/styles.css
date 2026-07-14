@@ -1782,6 +1782,56 @@ body {
   color: var(--danger);
 }
 
+/* item 6 — owned-skill review: every skill's live numbers, always visible. */
+.wb-pause-skills {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  text-align: left;
+}
+.wb-pause-skill-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wb-pause-skill {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.wb-pause-skill-key {
+  flex: 0 0 auto;
+  min-width: 34px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.4;
+}
+.wb-pause-skill-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.wb-pause-skill-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.wb-pause-skill-line {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
 /* Cycle tag (endless) */
 .wb-cycle-tag {
   padding: 1px 8px;
@@ -2094,6 +2144,12 @@ body {
   text-transform: none;
   letter-spacing: 0.01em;
   font-weight: 600;
+}
+
+/* item 3 — shop-stall inspector: a teal accent on the name echoes the teal stalls,
+   so a shop tooltip reads distinctly from an upgrade-relic one. */
+.wb-reward-inspect-shop .wb-reward-inspect-name {
+  color: #8fe9d6;
 }
 
 /* Descend prompt + band tally, upper-centre near the vortex label. */

@@ -32,7 +32,15 @@ import {
 } from '../core/math';
 // Toroidal geometry (drop-in for the Euclidean sub/dist/point-in-shape helpers)
 // so abilities resolve correctly across the wrap-around seam. See engine/torus.
-import { sub, dist, pointInCircle, pointInCone, pointInSegment, wrapCoord } from '../core/torus';
+import {
+  sub,
+  dist,
+  pointInCircle,
+  pointInCone,
+  pointInSegment,
+  wrapCoord,
+  nearestCopy,
+} from '../core/torus';
 import {
   damageBoss,
   damageAdd,
@@ -69,6 +77,145 @@ function clampToArena(world: World, pos: Vec2, _radius = 0): Vec2 {
     x: wrapCoord(pos.x, world.arena.w),
     y: wrapCoord(pos.y, world.arena.h),
   };
+}
+
+// item 2 — dash-nature movers GLIDE instead of teleporting. This is the travel
+// speed (world units/sec); a 220-280u dash resolves over ~3-4 fixed 20 Hz ticks, so
+// it reads as a fast slide (not a slow walk) while replicating through the normal
+// snapshot pipeline. Reach is unchanged — only the instantaneous jump becomes travel.
+const GLIDE_SPEED = 1500;
+
+// Tall silhouettes a LEAP cannot clear (it stops at them, like a dash). Low cover —
+// rocks and stumps — a leap sails over. Collision itself is always the circle; this
+// only decides whether a leap is stopped by a given obstacle's bulk (item 2).
+const TALL_OBSTACLES: ReadonlySet<string> = new Set(['pillar', 'monolith', 'crystal', 'totem']);
+
+/**
+ * The point at which a glide from `a` toward `b` (hero radius `r`) is first stopped by
+ * a movement-blocking obstacle, or null if the path is clear. A dash/roll/charge is
+ * stopped by ANY obstacle; a leap (`leap=true`) only by a TALL one. Torus-aware
+ * (obstacle centres are projected to their nearest copy of `a`); returns the contact
+ * point (hero centre one combined-radius short of the obstacle) so the mover ends
+ * flush against cover instead of tunnelling through it.
+ */
+function firstObstacleStop(world: World, a: Vec2, b: Vec2, r: number, leap: boolean): Vec2 | null {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return null;
+  const ux = dx / len;
+  const uy = dy / len;
+  let bestT = Infinity;
+  for (const o of world.obstacles) {
+    if (leap && !TALL_OBSTACLES.has(o.kind ?? 'rock')) continue; // a leap clears low cover
+    const c = nearestCopy(o.pos, a);
+    const R = o.radius + r;
+    // Ray–circle: smallest t along the unit path where |a + t·u − c| = R.
+    const fx = a.x - c.x;
+    const fy = a.y - c.y;
+    const proj = fx * ux + fy * uy; // dot(f, u)
+    const cc = fx * fx + fy * fy - R * R;
+    const disc = proj * proj - cc;
+    if (disc < 0) continue; // path misses this obstacle
+    const t = -proj - Math.sqrt(disc); // entry point
+    if (t >= 0 && t <= len && t < bestT) bestT = t;
+  }
+  if (bestT === Infinity) return null;
+  return { x: a.x + ux * bestT, y: a.y + uy * bestT };
+}
+
+/**
+ * The landing slam of a dash-nature mover (item 2). Fires on TOUCHDOWN — when the
+ * glide completes or stops at cover — so a leap/charge slams where it actually lands.
+ * A no-op for a mover with no `landingDamage` (a plain roll/dash). Extracted from the
+ * old instantaneous dash so the effect is identical, just deferred to the real landing.
+ */
+function applyDashLanding(world: World, p: Player, ab: PlayerAbilityDef): void {
+  if (!ab.landingDamage || ab.landingDamage <= 0) return;
+  const color = CLASS_COLORS[p.classId] ?? 0xffffff;
+  const radius = ab.radius ?? 120;
+  emitSkillArea(world, p.id, color, {
+    kind: 'circle',
+    origin: { ...p.pos },
+    angle: 0,
+    range: 0,
+    radius,
+    halfAngle: 0,
+  });
+  for (const b of world.bosses) {
+    if (b.hp <= 0) continue;
+    if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
+      damageBoss(world, p, b, ab.landingDamage, world.critRoll(p));
+      applyStrikeRiders(world, b, ab);
+    }
+  }
+  for (const a of world.adds) {
+    if (a.hp <= 0) continue;
+    if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
+      damageAdd(world, p, a, ab.landingDamage, world.critRoll(p));
+      applyStrikeRiders(world, a, ab);
+    }
+  }
+}
+
+/**
+ * Begin a dash-nature GLIDE (item 2): the escape effects that fire ON USE — i-frames
+ * (extended to cover the whole slide so the hero is never exposed mid-dash) and the
+ * escape heal — fire now; the travel plays out over subsequent ticks in
+ * `stepPlayerGlide`, and the landing slam fires on touchdown. `dir` is the (already
+ * chosen) travel direction; it is normalised here.
+ */
+function startGlide(
+  world: World,
+  p: Player,
+  ab: PlayerAbilityDef,
+  dir: Vec2,
+  /** Fire the flat `healOnUse` here. false for a composed dash, whose heal comes from
+   *  its own `selfHeal()` component instead (avoids a double heal). */
+  fireHeal = true,
+): void {
+  const range = ab.range ?? 220;
+  const d = normalize(dir);
+  if (ab.iframes) {
+    // Cover at least the travel time so the i-frames span the entire glide.
+    const dur = Math.max(ab.iframes, range / GLIDE_SPEED);
+    applyBuff(p, makeBuff('invuln', 0, dur, 'dash'));
+  }
+  if (fireHeal && ab.healOnUse) healPlayer(world, null, p, ab.healOnUse);
+  world.events.push({ t: 'dodge', id: p.id, pos: { ...p.pos } });
+  p.glide = { dir: d, remaining: range, leap: ab.leap === true, ab };
+}
+
+/**
+ * Advance a hero's in-progress dash glide by one tick (item 2). Moves along the locked
+ * direction at `GLIDE_SPEED`, stopping flush at the first blocking obstacle per the
+ * mover's nature (dash/charge → any cover; leap → tall cover only). On touchdown —
+ * completed OR stopped — the landing slam fires and the glide clears. Host-authoritative
+ * and deterministic; the intermediate positions replicate via the snapshot pipeline.
+ */
+export function stepPlayerGlide(world: World, p: Player, dt: number): void {
+  const g = p.glide;
+  if (!g) return;
+  // A felled hero drops out of a dash (no ghost-sliding a corpse).
+  if (p.state !== 'alive') {
+    p.glide = null;
+    return;
+  }
+  const step = Math.min(GLIDE_SPEED * dt, g.remaining);
+  const from = { ...p.pos };
+  let next = vadd(from, vscale(g.dir, step));
+  const stop = firstObstacleStop(world, from, next, p.radius, g.leap);
+  let ended = false;
+  if (stop) {
+    next = stop;
+    ended = true; // ran into cover — end the dash here
+  }
+  p.pos = clampToArena(world, next, p.radius);
+  g.remaining -= step;
+  if (ended || g.remaining <= 1e-6) {
+    applyDashLanding(world, p, g.ab);
+    p.glide = null;
+  }
 }
 
 /** A hero's resolved ability table (per-run character upgrades), else class defaults. */
@@ -240,44 +387,21 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
     }
 
     case 'dash': {
+      // item 2: a roll / dash / charge is NOT a teleport — begin a multi-tick glide
+      // (it visibly travels, stops at the first blocking obstacle, and its landing
+      // slam fires on touchdown, all in stepPlayerGlide). A root locks it — a rooted
+      // hero can't dash away — matching the boss charge and the root contract.
+      if (isRooted(p)) break;
       let dir = moveDir;
       if (dir.x === 0 && dir.y === 0) dir = p.aim;
-      dir = normalize(dir);
-      const target = vadd(p.pos, vscale(dir, ab.range ?? 220));
-      p.pos = clampToArena(world, target, p.radius);
-      if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
-      world.events.push({ t: 'dodge', id: p.id, pos: { ...p.pos } });
-      // Leap-style landing slam.
-      if (ab.landingDamage && ab.landingDamage > 0) {
-        const radius = ab.radius ?? 120;
-        emitSkillArea(world, p.id, color, {
-          kind: 'circle',
-          origin: { ...p.pos },
-          angle: 0,
-          range: 0,
-          radius,
-          halfAngle: 0,
-        });
-        for (const b of world.bosses) {
-          if (b.hp <= 0) continue;
-          if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
-            damageBoss(world, p, b, ab.landingDamage, world.critRoll(p)); // item 5: crit
-            applyStrikeRiders(world, b, ab);
-          }
-        }
-        for (const a of world.adds) {
-          if (a.hp <= 0) continue;
-          if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-            damageAdd(world, p, a, ab.landingDamage, world.critRoll(p));
-            applyStrikeRiders(world, a, ab);
-          }
-        }
-      }
-      if (ab.healOnUse) healPlayer(world, null, p, ab.healOnUse);
+      startGlide(world, p, ab, dir);
       break;
     }
 
     case 'blink': {
+      // item 2: a teleport stays instant and may pass THROUGH movement-blocking cover
+      // — but a root still locks it (blink/teleport are on the root contract).
+      if (isRooted(p)) break;
       const dir = normalize(p.aim);
       const from = { ...p.pos };
       const target = vadd(p.pos, vscale(dir, ab.range ?? 250));
@@ -579,39 +703,22 @@ function resolveComposedAbility(
 
     case 'dash':
     case 'blink': {
-      let dir = moveDir;
-      if (d.kind === 'blink' || (dir.x === 0 && dir.y === 0)) dir = p.aim;
-      dir = normalize(dir);
-      const from = { ...p.pos };
-      const target = vadd(p.pos, vscale(dir, ab.range ?? 220));
-      p.pos = clampToArena(world, target, p.radius);
-      if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
-      if (d.kind === 'blink') world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
-      else world.events.push({ t: 'dodge', id: p.id, pos: { ...p.pos } });
-      if (ab.landingDamage && ab.landingDamage > 0) {
-        const radius = ab.radius ?? 120;
-        emitSkillArea(world, p.id, color, {
-          kind: 'circle',
-          origin: { ...p.pos },
-          angle: 0,
-          range: 0,
-          radius,
-          halfAngle: 0,
-        });
-        for (const b of world.bosses) {
-          if (b.hp <= 0) continue;
-          if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
-            damageBoss(world, p, b, ab.landingDamage, world.critRoll(p));
-            applyStrikeRiders(world, b, ab);
-          }
-        }
-        for (const a of world.adds) {
-          if (a.hp <= 0) continue;
-          if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-            damageAdd(world, p, a, ab.landingDamage, world.critRoll(p));
-            applyStrikeRiders(world, a, ab);
-          }
-        }
+      // item 2: a composed teleport stays instant and passes THROUGH cover; a composed
+      // dash glides and stops at cover, its landing slam firing on touchdown (via the
+      // stored ab in stepPlayerGlide). A root locks either. The self-buff + component
+      // heal fire on use, exactly as before.
+      if (isRooted(p)) break;
+      if (d.kind === 'blink') {
+        const dir = normalize(p.aim);
+        const from = { ...p.pos };
+        const target = vadd(p.pos, vscale(dir, ab.range ?? 220));
+        p.pos = clampToArena(world, target, p.radius);
+        if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
+        world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
+      } else {
+        let dir = moveDir;
+        if (dir.x === 0 && dir.y === 0) dir = p.aim;
+        startGlide(world, p, ab, dir, false); // composed heal handled by selfHeal()
       }
       buffSelf();
       selfHeal();
@@ -994,7 +1101,12 @@ export function resolveBossAbility(
       // relocation) fizzles while the roots hold.
       if (isRooted(boss)) break;
       const from = { ...boss.pos };
-      const to = action.targetPos ?? vadd(boss.pos, fromAngle(action.aimAngle, ab.range ?? 600));
+      let to = action.targetPos ?? vadd(boss.pos, fromAngle(action.aimAngle, ab.range ?? 600));
+      // item 2: parity with the hero dash — a charge can't tunnel through TALL cover.
+      // It stops flush at the first pillar/monolith/crystal along its path (both its
+      // path damage and its relocation end there), while still trampling low rubble.
+      const chargeStop = firstObstacleStop(world, from, to, boss.radius, true);
+      if (chargeStop) to = chargeStop;
       const halfWidth = (ab.width ?? 45) + boss.radius * 0.5;
       for (const p of alivePlayers) {
         if (pointInSegment(p.pos, from, to, halfWidth, p.radius)) {

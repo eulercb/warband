@@ -402,6 +402,72 @@ describe('RewardScene: walk-up coin shop (item 2)', () => {
   });
 });
 
+describe('RewardScene: shop reposition + inspector (item 3)', () => {
+  it('places the shop stalls BELOW the spawn, off the spawn→relics→vortex path', () => {
+    const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
+    const s = scene.frame(1000);
+    const stalls = (s.loot ?? []).filter((l) => l.kind === 'shop');
+    expect(stalls).toHaveLength(2);
+    for (const l of stalls) {
+      // Y grows downward, so "below spawn" is a LARGER y — the relics + vortex sit
+      // ABOVE the spawn, so a stall on this row is never on the up-arena path.
+      expect(l.pos.y).toBeGreaterThan(SPAWN.y);
+      // …but still inside the half-arena torus budget of the spawn (no wrap flip).
+      expect(Math.abs(SPAWN.y - l.pos.y)).toBeLessThan(ARENA_H / 2);
+    }
+    // The hero spawns clear of every stall, so entering the room never buys one.
+    expect(scene.takeShopBuys()).toHaveLength(0);
+  });
+
+  it('shopFocus() surfaces the nearest stall (name/desc/cost) when the hero is near', () => {
+    const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
+    scene.setShopState(10, []); // affordable, nothing sold out
+    const s = scene.frame(1000);
+    const stall = (s.loot ?? []).find((l) => l.kind === 'shop' && /Swiftness/.test(l.label ?? ''))!;
+    walkOnto(scene, stall.pos, 1000, 0.1); // step onto it (short hold, below the buy dwell)
+    const f = scene.shopFocus();
+    expect(f).not.toBeNull();
+    expect(f!.offer.id).toBe('speed');
+    expect(f!.offer.desc).toBeTruthy(); // what it does — readable without the menu
+    expect(f!.offer.label).toMatch(/💰/); // cost is carried in the label
+    expect(f!.affordable).toBe(true);
+    expect(f!.soldOut).toBe(false);
+    expect(f!.dwell).toBeGreaterThan(0); // dwelling toward the buy
+    expect(f!.dwell).toBeLessThanOrEqual(1);
+  });
+
+  it('shopFocus() reflects unaffordable and sold-out state (still readable)', () => {
+    const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
+    const s = scene.frame(1000);
+    const stall = (s.loot ?? []).find((l) => l.kind === 'shop' && /Swiftness/.test(l.label ?? ''))!;
+    scene.setShopState(1, []); // 1 coin, stall costs 3
+    walkOnto(scene, stall.pos, 1000, 0.1);
+    let f = scene.shopFocus();
+    expect(f).not.toBeNull();
+    expect(f!.affordable).toBe(false); // too poor
+    expect(f!.soldOut).toBe(false);
+    // Now own it (single-buy sold out) with coins to spare — still shown, not buyable.
+    scene.setShopState(10, ['speed']);
+    f = scene.shopFocus();
+    expect(f!.soldOut).toBe(true);
+    expect(f!.affordable).toBe(false);
+  });
+
+  it('shopFocus() is null up by the vortex (well clear of the below-spawn shop row)', () => {
+    const scene = new RewardScene('Aria', 'knight', offers(), 0, {}, shop());
+    scene.setShopState(10, []);
+    scene.frame(1000);
+    walkOnto(scene, { x: ARENA_W / 2, y: 400 }, 1000, 0.1); // march up to the vortex
+    expect(scene.shopFocus()).toBeNull();
+  });
+
+  it('shopFocus() is null when the room has no shop stalls at all', () => {
+    const scene = new RewardScene('Aria', 'knight', offers()); // no shop offers
+    scene.frame(1000);
+    expect(scene.shopFocus()).toBeNull();
+  });
+});
+
 describe('RewardScene: relic inspector focus', () => {
   it('focus() is null clear of the relics, then surfaces the nearest readable one', () => {
     const scene = new RewardScene('Aria', 'knight', offers());

@@ -12,7 +12,6 @@ import {
   proceduralSeed,
   procVariant,
   MONSTER_EPITHETS,
-  UPGRADE_NAME_BANKS,
 } from '../src/engine/content/procgen';
 import { CLASSES, CLASS_IDS, getClass, describeAbility } from '../src/engine/content/classes';
 import type { PlayerAbilityDef } from '../src/engine/content/classes';
@@ -471,12 +470,9 @@ describe('upgradeVariant', () => {
             break;
           }
         }
-        if (id !== 'surefooted') {
-          const bank = UPGRADE_NAME_BANKS[id];
-          expect(bank).toBeDefined();
-          expect(bank[0]).toBe(UPGRADES[id].name);
-          expect(bank).toContain(v.name);
-        }
+        // item 4: the boon NAME never rolls — it stays canonical every seed,
+        // while the magnitude (asserted above) still varies per run.
+        expect(v.name).toBe(base.name);
       }
     }
   });
@@ -534,7 +530,7 @@ describe('active-run registry', () => {
     expect(getMonster('dummy')).toBe(MONSTERS.dummy); // practice target untouched
 
     const swift = getUpgrade('swift');
-    expect(UPGRADE_NAME_BANKS.swift).toContain(swift.name);
+    expect(swift.name).toBe(UPGRADES.swift.name); // item 4: canonical name, stable per run
 
     const skill = getSubSkill('kn_champion_slam')!;
     expect(skill.desc).toBe(describeAbility(skill.ability));

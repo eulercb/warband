@@ -22,9 +22,14 @@ import { InputManager } from '../../input/input';
 import { ARENA_W, ARENA_H } from '../../engine/core/constants';
 import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
 import type { ClassId, InputCommand, TotemKind } from '../../engine/core/types';
+import { formatBuildLabel } from './buildInfo';
 
 /** Seconds a hero must hold their ground on a totem before it activates. */
 const TOTEM_DWELL_S = 0.9;
+
+// item 1: version + per-build identifier (git SHA · date). Computed once at module
+// load from the Vite-injected build constants; changes whenever a new build ships.
+const BUILD_LABEL = formatBuildLabel(__APP_VERSION__, __BUILD_SHA__, __BUILD_DATE__);
 
 const TOTEM_VERBS: Record<TotemKind, string> = {
   host: 'Raising your banner…',
@@ -258,9 +263,10 @@ export function MainMenu() {
             {error}
           </div>
         ) : null}
-        {/* item 7: the running build version, tucked in the menu corner. */}
-        <p className="wb-version" aria-label={`Version ${__APP_VERSION__}`}>
-          v{__APP_VERSION__}
+        {/* item 1 (extends item 7): version + per-build SHA · date, tucked in the
+            menu corner, so a shipped update is identifiable at a glance. */}
+        <p className="wb-version" aria-label={BUILD_LABEL.aria}>
+          {BUILD_LABEL.text}
         </p>
       </div>
 

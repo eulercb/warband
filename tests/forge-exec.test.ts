@@ -5,9 +5,10 @@
  * resolves its full payload. Canonical parity lives in the existing suites.
  */
 import { describe, it, expect } from 'vitest';
-import { resolvePlayerAbility } from '../src/engine/combat/abilities';
+import { resolvePlayerAbility, stepPlayerGlide } from '../src/engine/combat/abilities';
 import { World } from '../src/engine/world/world';
 import { recompose, type AbilityComponents } from '../src/engine/content/forge';
+import { makeBuff, applyBuff } from '../src/engine/combat/combat';
 import type { Player, ClassId, Vec2, Add } from '../src/engine/core/types';
 import { ADD_HP, ADD_MOVE_SPEED, ADD_RADIUS } from '../src/engine/core/constants';
 
@@ -267,12 +268,15 @@ describe('resolveComposedAbility — mobility, buffs, heals, taunt', () => {
       ],
     });
     resolvePlayerAbility(w, p, 'a1', RIGHT);
-    expect(p.pos.x).toBeGreaterThan(400); // dashed east
-    expect(w.boss!.hp).toBeLessThan(hp0); // landing slam
-    expect(add.hp).toBeLessThan(ADD_HP); // slam caught the add
+    // item 2: buffs, self-heal and i-frames fire ON USE; the travel + landing slam
+    // play out over the following ticks (a composed dash glides, it doesn't teleport).
     expect(kinds(p)).toContain('moveSpeed');
-    expect(p.hp).toBeGreaterThan(p.maxHp - 30); // self-heal
-    expect(p.buffs.some((b) => b.kind === 'invuln')).toBe(true); // i-frames
+    expect(p.hp).toBeGreaterThan(p.maxHp - 30); // self-heal on use
+    expect(p.buffs.some((b) => b.kind === 'invuln')).toBe(true); // i-frames on use
+    for (let i = 0; i < 40 && p.glide; i++) stepPlayerGlide(w, p, 0.05);
+    expect(p.pos.x).toBeGreaterThan(400); // dashed east
+    expect(w.boss!.hp).toBeLessThan(hp0); // landing slam on touchdown
+    expect(add.hp).toBeLessThan(ADD_HP); // slam caught the add
   });
 
   it('dash: a zero move vector falls back to the aim direction', () => {
@@ -285,7 +289,20 @@ describe('resolveComposedAbility — mobility, buffs, heals, taunt', () => {
       effects: [{ kind: 'buff', target: 'self', moveMult: 1.2, duration: 3 }],
     });
     resolvePlayerAbility(w, p, 'a1', ZERO);
+    for (let i = 0; i < 40 && p.glide; i++) stepPlayerGlide(w, p, 0.05);
     expect(p.pos.x).toBeGreaterThan(400);
+  });
+
+  it('dash/blink: a root locks a composed mover (item 2)', () => {
+    const w = solo('barbarian');
+    const p = w.players[0];
+    p.pos = { x: 400, y: 500 };
+    p.aim = { ...RIGHT };
+    applyBuff(p, makeBuff('root', 0, 1, 'testRoot'));
+    p.abilities!.a1 = synth({ delivery: { kind: 'dash', range: 120 }, effects: [] });
+    resolvePlayerAbility(w, p, 'a1', RIGHT);
+    expect(p.glide == null).toBe(true); // rooted → no glide started
+    expect(p.pos.x).toBeCloseTo(400, 4); // and no movement
   });
 
   it('blink: teleports along the aim, self-buffs and heals', () => {

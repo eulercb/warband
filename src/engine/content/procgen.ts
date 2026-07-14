@@ -134,17 +134,11 @@ export const MONSTER_EPITHETS: string[] = [
   'the Dread',
 ];
 
-/** Generic boon name variants, keyed by upgrade id. Index 0 = canonical. */
-export const UPGRADE_NAME_BANKS: Record<string, string[]> = {
-  swift: ['Swift', 'Fleet', 'Windborne', 'Quickstep'],
-  vigor: ['Vigor', 'Stalwart', 'Thickblood', 'Ironheart'],
-  haste: ['Haste', 'Alacrity', 'Quickened', 'Tempo'],
-  focus: ['Focus', 'Clarity', 'Keen Mind', 'Spellrush'],
-  mighty: ['Mighty', 'Savage', 'Brutal', 'Empowered'],
-  bulwark: ['Bulwark', 'Stoneskin', 'Warded', 'Unyielding'],
-  renewal: ['Renewal', 'Mending', 'Everbloom', 'Second Breath'],
-  deadeye: ['Deadeye', 'Keen Eye', 'Lethal', 'Killer Instinct'],
-};
+// item 4: generic-boon NAMES no longer roll. Per-run renaming (a "Vigor" boon
+// surfacing as "Ironheart") hurt recognition for no real diversity — the value
+// still varies per run, but the identity/name stays canonical, mirroring the
+// item-9 skill-name revert. The old UPGRADE_NAME_BANKS is gone; upgradeVariant
+// keeps base.name and reserves its former name-roll slot (see there).
 
 // ---------------------------------------------------------------------------
 // Player ability variance
@@ -424,15 +418,17 @@ interface UpgradeRoll {
 
 /**
  * Roll a generic between-boss boon for the run: magnitude within a role-true
- * band, a name from its bank, and a description regenerated from the ACTUAL
- * rolled number so cards never lie. Ids, icons, roles and stacking caps are
- * identity and never change. Surefooted is structural (2 stacks = immunity)
- * and rolls only its name.
+ * band, and a description regenerated from the ACTUAL rolled number so cards
+ * never lie. Ids, icons, roles, stacking caps AND the display name are identity
+ * and never change (item 4 — names stay canonical for recognition). Surefooted
+ * is structural (2 stacks = immunity) and keeps its magnitude untouched.
  */
 export function upgradeVariant(seed: number, base: UpgradeDef): UpgradeDef {
+  // r[0] is the magnitude roll. r[1] is reserved (item 4): the boon NAME no
+  // longer rolls — it stays canonical (base.name) — but the vector width is
+  // kept fixed so per-run value streams stay byte-aligned across peers.
   const r = rollVector(seed, SALT.upgrade, base.id, 2);
-  const bank = UPGRADE_NAME_BANKS[base.id];
-  const name = bank ? bank[Math.floor(r[1] * bank.length) % bank.length] : base.name;
+  const name = base.name;
   const pct = (x: number): number => Math.round(x * 100);
 
   let roll: UpgradeRoll;

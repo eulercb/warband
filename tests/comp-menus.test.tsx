@@ -22,6 +22,7 @@ vi.mock('../src/ui/state/session', () => ({
 }));
 
 import PauseMenu from '../src/ui/game/PauseMenu';
+import { ownedSkillRows } from '../src/ui/game/pauseSkills';
 import ResumeCountdown from '../src/ui/game/ResumeCountdown';
 import TerrainLegend from '../src/ui/game/TerrainLegend';
 import { useStore } from '../src/ui/state/store';
@@ -304,5 +305,84 @@ describe('<PauseMenu>', () => {
     useHudStore.setState({ classId: null });
     const { container } = renderMenu();
     expect(container.querySelector('.wb-pause-stats')).toBeNull();
+  });
+
+  it('lists owned base + subclass skills with always-visible numeric lines (item 6)', () => {
+    useHudStore.setState({
+      classId: 'knight',
+      hp: 200,
+      maxHp: 240,
+      // One knight sub-skill (shown) + one mage sub-skill (hidden for a knight).
+      subSkills: ['kn_champion_slam', 'mg_evoker_lightning'],
+      inputSource: 'keyboard',
+    });
+    useStore.setState({ myUpgrades: [], myCharUpgrades: [] });
+    const { container } = renderMenu();
+
+    expect(screen.getByText('Your skills')).toBeTruthy();
+    expect(screen.getByText('Cleave')).toBeTruthy(); // a base slot
+    expect(screen.getByText('💥 Earthshaker')).toBeTruthy(); // the knight sub-skill, icon + name
+
+    // 4 base slots + only the active-class sub-skill (the mage one is filtered out).
+    const rows = container.querySelectorAll('.wb-pause-skill');
+    expect(rows).toHaveLength(5);
+    // Each row carries a key badge and a concrete numeric line (not hover-only).
+    expect(container.querySelectorAll('.wb-pause-skill-key')).toHaveLength(5);
+    const slamLine = screen
+      .getByText('💥 Earthshaker')
+      .closest('.wb-pause-skill')
+      ?.querySelector('.wb-pause-skill-line')?.textContent;
+    expect(slamLine).toMatch(/cooldown/);
+  });
+
+  it('labels owned-skill rows with pad glyphs on a controller (item 6)', () => {
+    useHudStore.setState({ classId: 'knight', subSkills: [], inputSource: 'gamepad' });
+    useStore.setState({ myCharUpgrades: [] });
+    const { container } = renderMenu();
+    const keys = container.querySelectorAll('.wb-pause-skill-key');
+    expect(keys).toHaveLength(4); // the 4 base slots
+    expect(keys[0].textContent).toBeTruthy(); // a pad glyph, not the keyboard label
+  });
+
+  it('omits the owned-skills panel when no class is active (item 6)', () => {
+    useHudStore.setState({ classId: null });
+    const { container } = renderMenu();
+    expect(container.querySelector('.wb-pause-skills')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// item 6 — the pure skill-row resolver behind the pause panel.
+// ---------------------------------------------------------------------------
+describe('ownedSkillRows (item 6)', () => {
+  it('resolves base + both active-class sub slots with numeric lines, filtering other classes', () => {
+    // Two knight sub-skills (fill sub1 AND sub2) plus a mage sub-skill (filtered out).
+    const rows = ownedSkillRows(
+      'knight',
+      [],
+      ['kn_champion_slam', 'kn_champion_charge', 'mg_evoker_lightning'],
+    );
+    expect(rows).toHaveLength(6); // 4 base + 2 knight subs; the mage sub is dropped
+    expect(rows.slice(0, 4).map((r) => r.slot)).toEqual(['basic', 'a1', 'a2', 'a3']);
+    expect(rows[0].name).toBe('Cleave');
+    expect(rows[4]).toMatchObject({ slot: 'sub1', name: '💥 Earthshaker' });
+    expect(rows[5].slot).toBe('sub2'); // the second equipped sub takes the sub2 slot
+    for (const r of rows) {
+      expect(r.line).toMatch(/cooldown/); // describeAbility always closes with a cooldown
+      expect(r.line).not.toMatch(/NaN|undefined/);
+    }
+  });
+
+  it('reflects the hero current upgrades in the numeric line', () => {
+    const [before] = ownedSkillRows('knight', [], []);
+    const [after] = ownedSkillRows('knight', ['kn_widecleave'], []);
+    // Wide Cleave tunes the basic slot: bigger damage / reach / arc show through.
+    expect(before.line).not.toBe(after.line);
+    expect(after.line).toContain('27 dmg');
+  });
+
+  it('drops an unknown/dead sub-skill id without crashing', () => {
+    const rows = ownedSkillRows('knight', [], ['not_a_real_skill']);
+    expect(rows).toHaveLength(4); // only the base slots survive
   });
 });

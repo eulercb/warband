@@ -704,7 +704,7 @@ function decideAbilities(
       const greedy = p.smart < 0.45;
       if (bossPos && cd.a1 <= 0 && (greedy || !inDanger) && distBoss > 150) want.a1 = true; // Meteor
       if (cd.a2 <= 0 && (hpFrac < panicAt || inDanger)) want.a2 = true; // Mirror Image
-      if (inDanger && cd.a3 <= 0) want.a3 = true; // Arcane Leap out of danger
+      if (inDanger && cd.a3 <= 0) want.a3 = true; // Arcane Phase out of danger
       break;
     }
     case 'warlock': {

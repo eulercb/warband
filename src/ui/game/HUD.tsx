@@ -9,7 +9,7 @@ import { useStore } from '../state/store';
 import { isTouchCapable } from '../../input/touch';
 import { requestPause, playUiSound } from '../state/session';
 import VolumeControl from './VolumeControl';
-import { previewAbilityTable } from '../../engine/content/charUpgrades';
+import { previewAbilityTable, previewSubAbility } from '../../engine/content/charUpgrades';
 import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
 import { AFFIXES } from '../../engine/content/affixes';
 import {
@@ -338,11 +338,15 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
               if (!sk) return null;
               const owner = subclassOfSkill(id)?.classId;
               if (owner != null && owner !== hud.classId) return null;
+              // item 5: resolve the sub-ability through the hero's owned Honed boons +
+              // subclass grands, so the tooltip numbers (and the cooldown ring) match
+              // the sim and the offer cards — not the raw, un-upgraded ability.
+              const def = previewSubAbility(id, myCharUpgrades) ?? sk.ability;
               return (
                 <AbilityIcon
                   key={id}
                   slot={i === 0 ? 'sub1' : 'sub2'}
-                  def={sk.ability}
+                  def={def}
                   displayName={`${sk.icon} ${sk.name}`}
                   source={source}
                 />

@@ -1,5 +1,6 @@
 /// <reference types="vitest/config" />
 import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -16,10 +17,38 @@ const { version: appVersion } = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
 ) as { version: string };
 
+// item 1: the semantic version alone never changes between deploys — every push to
+// main ships the same "1.0.0" — so it can't tell one build from the next. Inject the
+// short commit SHA and its date at build time; these DO change every deploy, so the
+// menu can show an identifier that actually moves. Git resolves HEAD even in CI's
+// shallow checkout (actions/checkout@v4), but if the call ever fails the build must
+// still succeed, so fall back to a static 'dev' marker (empty date). GITHUB_SHA is a
+// belt-and-braces fallback for CI runs where the .git dir isn't present.
+function buildStamp(): { sha: string; date: string } {
+  const run = (cmd: string): string =>
+    execSync(cmd, { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  try {
+    return {
+      sha: run('git rev-parse --short HEAD'),
+      date: run('git log -1 --format=%cd --date=format:%Y-%m-%d'),
+    };
+  } catch {
+    const envSha = process.env.GITHUB_SHA;
+    return { sha: envSha ? envSha.slice(0, 7) : 'dev', date: '' };
+  }
+}
+const { sha: buildSha, date: buildDate } = buildStamp();
+
 export default defineConfig({
   base,
-  // Inlined as a literal at build/transform time; declared in src/vite-env.d.ts.
-  define: { __APP_VERSION__: JSON.stringify(appVersion) },
+  // Inlined as literals at build/transform time; declared in src/vite-env.d.ts.
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+    __BUILD_SHA__: JSON.stringify(buildSha),
+    __BUILD_DATE__: JSON.stringify(buildDate),
+  },
   plugins: [
     react(),
     VitePWA({

@@ -13,7 +13,7 @@
 import type { ClassId, AbilitySlot, SubSlot, Player } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
 import { CLASSES, getClass, cloneAbilities, slowAttackCooldowns, describeAbility } from './classes';
-import { getSubclass, subclassOfSkill, ALL_SUBCLASSES } from './subclasses';
+import { getSubclass, getSubSkill, subclassOfSkill, ALL_SUBCLASSES } from './subclasses';
 import { applyUpgrades, type UpgradeId } from './upgrades';
 import { MAX_SKILL_STACKS } from '../core/constants';
 
@@ -815,7 +815,7 @@ const SORCERER: CharUpgradeDef[] = [
     'so_leap',
     'Distant Leap',
     '🌀',
-    'Arcane Leap jumps 330u (+70), returns 30% faster, and phases you for 0.45s',
+    'Arcane Phase blinks 330u (+70), returns 30% faster, and phases you for 0.45s',
     ({ abilities: a }) => {
       addN(a.a3, 'range', 70);
       mul(a.a3, 'cooldown', 0.7);
@@ -2582,7 +2582,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'so_gk_a3_a',
     'Warp',
     '🌀',
-    'Arcane Leap jumps +150u, phases +0.4s, and recharges 60% faster',
+    'Arcane Phase blinks +150u, phases +0.4s, and recharges 60% faster',
     (ab) => {
       addN(ab, 'range', 150);
       addN(ab, 'iframes', 0.4);
@@ -2595,7 +2595,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'so_gk_a3_b',
     'Phase Shift',
     '✨',
-    'Arcane Leap mends +50 on use, phases +0.5s, and reaches +80u',
+    'Arcane Phase mends +50 on use, phases +0.5s, and reaches +80u',
     (ab) => {
       addN(ab, 'healOnUse', 50);
       addN(ab, 'iframes', 0.5);
@@ -3913,6 +3913,42 @@ export function previewAbilityTable(
 }
 
 /**
+ * Preview one equipped SUBCLASS skill's resolved ability after the hero's owned
+ * per-skill "Honed" boons (`subup_<id>`) and subclass grands are applied to it
+ * (item 5) — WITHOUT a live World. Mirrors applySubSkillUpgrades / applySubclassGrands
+ * but for a single ability: each matching boon in `ownedChar` is applied once (so a
+ * boon taken up to its cap stacks that many times), a subclass grand hits every skill
+ * of its subclass. Returns null for an unknown sub-skill id. Reused by the offer cards
+ * (describeCharOffer) and the HUD sub-skill tooltip so both agree with the sim.
+ */
+export function previewSubAbility(
+  subSkillId: string,
+  ownedChar: readonly string[],
+): PlayerAbilityDef | null {
+  const sk = getSubSkill(subSkillId);
+  const owner = subclassOfSkill(subSkillId);
+  if (!sk || !owner) return null;
+  // Shallow clone (numeric fields only; see cloneAbilities). Sub-abilities carry no
+  // slot; tag it sub1 so it's a full PlayerAbilityDef for the tune ctx (slot is
+  // ignored by describeAbility and the tunes alike).
+  const ability: PlayerAbilityDef = { ...sk.ability, slot: 'sub1' };
+  const stub = stubPlayer(owner.classId);
+  const abilities = stub.abilities as Record<AbilitySlot, PlayerAbilityDef>;
+  for (const boonId of ownedChar) {
+    const def = CHAR_UPGRADES[boonId];
+    if (!def) continue;
+    // A "Honed X" boon tunes exactly this skill; a subclass grand tunes every skill
+    // of its subclass. Both mutate the ability handed in through the sub1 slot.
+    const hits =
+      (def.subSkillId != null && def.subSkillId === subSkillId) ||
+      (def.subclassId != null && def.subclassId === owner.id);
+    if (!hits) continue;
+    def.apply({ player: stub, abilities, subAbilities: { sub1: ability } });
+  }
+  return ability;
+}
+
+/**
  * A hero's resolved persistent stat block after a run's boons are applied. Mirrors
  * the mutable stat fields the World applies at spawn (generic upgrades first, then
  * class-specific ones — the same order), so the pause-menu character sheet can show
@@ -4129,10 +4165,47 @@ export interface CharOfferView {
  * REAL skill it replaces ("Replaces Fireball", item 18) and a reclaim / graftup
  * names the ability it acts on. Returns null for an unrecognised id.
  */
+/**
+ * item 5 — a concrete before→after line for a SUBCLASS upgrade offer, since these
+ * tune sub-abilities (sub1/sub2) that the base-slot preview never sees. A per-skill
+ * "Honed" boon (`subSkillId`) previews exactly that skill; a subclass grand
+ * (`subclassId`) previews every equipped skill of that subclass. Returns null for a
+ * non-subclass offer, or if nothing resolves. Formatted to match the base cards' "Now
+ * →" convention, plus a "(was …)" so the improvement is explicit.
+ */
+function describeSubOfferPreview(
+  def: CharUpgradeDef,
+  ownedChar: readonly string[],
+  subSkills: readonly string[],
+): string | null {
+  let targetIds: string[];
+  if (def.subSkillId) targetIds = [def.subSkillId];
+  else if (def.subclassId)
+    targetIds = subSkills.filter((sid) => subclassOfSkill(sid)?.id === def.subclassId);
+  else return null;
+  const clauses: string[] = [];
+  for (const sid of targetIds) {
+    const before = previewSubAbility(sid, ownedChar);
+    const after = previewSubAbility(sid, [...ownedChar, def.id]);
+    if (!before || !after) continue;
+    const beforeLine = describeAbility(before);
+    const afterLine = describeAbility(after);
+    clauses.push(
+      beforeLine === afterLine
+        ? `${after.name}: ${afterLine}`
+        : `${after.name}: ${afterLine} (was ${beforeLine})`,
+    );
+  }
+  return clauses.length > 0 ? `Now → ${clauses.join(' · ')}` : null;
+}
+
 export function describeCharOffer(
   classId: ClassId,
   ownedChar: readonly string[],
   id: string,
+  /** The hero's equipped sub-skill ids — lets a SUBCLASS-grand offer preview the
+   *  actual skills it will retune (item 5). Empty for callers that don't track subs. */
+  subSkills: readonly string[] = [],
 ): CharOfferView | null {
   const current = previewAbilityTable(classId, [...ownedChar]);
   const restoreSlot = parseRestore(id);
@@ -4177,6 +4250,13 @@ export function describeCharOffer(
     const preview = [slotPreview, statPreview].filter(Boolean).join(' · ');
     if (preview) desc = `${desc}. Now → ${preview}`;
   }
+  // item 5 — subclass upgrades (Honed skills + subclass grands) tune sub-abilities,
+  // invisible to the base-slot preview above. Resolve the affected sub-ability(ies)
+  // so the card shows the concrete before→after, matching base-class card quality.
+  const subPreview = describeSubOfferPreview(def, ownedChar, subSkills);
+  // Strip a trailing period first (Honed-skill prose ends in one) so the join reads
+  // as a single sentence break, not "…).. Now →".
+  if (subPreview) desc = `${desc.replace(/\.\s*$/, '')}. ${subPreview}`;
   const label = def.grand ? `★ ${def.icon} ${def.name}` : `${def.icon} ${def.name}`;
   return { id, label, desc };
 }

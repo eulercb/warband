@@ -318,6 +318,26 @@ export interface Player {
   slideRemaining?: number;
   slideTotal?: number;
 
+  /**
+   * item 2 — an in-progress dash / roll / charge / leap GLIDE. A dash-nature mover
+   * no longer teleports: the host advances the hero along `dir` at a fixed speed over
+   * a few ticks (so it replicates through the normal snapshot + interpolation pipeline
+   * and stays collision-authoritative), stopping at cover per its nature. Host-only,
+   * never serialized — clients interpolate the intermediate positions for free.
+   * Absent/null when not mid-dash. Teleports (blink) move instantly and never set it.
+   */
+  glide?: {
+    /** Unit travel direction (locked at dash start). */
+    dir: Vec2;
+    /** World units left to travel before touchdown. */
+    remaining: number;
+    /** true → a leap that clears LOW cover and stops only at TALL silhouettes;
+     *  false → a roll/dash/charge that ends at the first blocking obstacle. */
+    leap: boolean;
+    /** The mover's ability def, so the landing slam (landingDamage) fires on touchdown. */
+    ab: import('../content/classes').PlayerAbilityDef;
+  } | null;
+
   /** Host-side edge-detection of the previous button state for this player. */
   prevButtons: ButtonState;
   lastSeq: number;
