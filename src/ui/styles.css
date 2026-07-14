@@ -2203,8 +2203,22 @@ body {
 .wb-reward-listbtn {
   position: absolute;
   top: 12px;
-  right: 12px;
-  z-index: 7;
+  /* item 75: sit LEFT of the HUD volume slider (top-right, ~132px wide) instead of
+     stacked on top of it, so both stay fully visible and usable at desktop widths. */
+  right: 156px;
+  /* item 76: the list-view backdrop (.wb-overlay) is z-index 50; the toggle flips
+     to "Close list" while the list is open, so it must sit ABOVE the backdrop to
+     stay clickable as a true toggle (was 7 — visible through the backdrop but dead). */
+  z-index: 60;
+}
+/* item 75: on touch the top-right corner is crowded (pause + volume already there),
+   so the list toggle drops to its own row below them, and the self-HP block (moved
+   to the top-right on coarse, item 74) sits below that — nothing overlaps. */
+@media (pointer: coarse) {
+  .wb-reward-listbtn {
+    top: 60px;
+    right: 12px;
+  }
 }
 
 /* Relic inspector (reuses the totem-hint frame at bottom-centre). */
@@ -2367,6 +2381,40 @@ body {
   background: rgba(20, 20, 29, 0.9);
   backdrop-filter: blur(6px);
   pointer-events: auto;
+}
+
+/* item 79: the classic lobby panel was laid out for the old 900px screen; docked
+   into this 440px column its content clipped and buried the primary actions. Compact
+   it for the narrow panel. */
+
+/* (a) The roster + class grid stack to a single column regardless of viewport (their
+   column count keyed off the viewport, not this panel, so cards clipped mid-word at
+   desktop widths). */
+.wb-muster-hall .wb-lobby-cols,
+.wb-muster-hall .wb-class-grid {
+  grid-template-columns: 1fr;
+}
+
+/* (b) Pin Leave / Ready / Start to the panel bottom as a sticky footer so Start
+   Fight is always reachable, however tall the boss chips + class grid run. */
+.wb-muster-hall .wb-lobby-actions {
+  position: sticky;
+  bottom: 0;
+  margin-top: 4px;
+  padding: 10px 0 2px;
+  background: linear-gradient(to top, rgba(20, 20, 29, 0.98) 72%, rgba(20, 20, 29, 0));
+  z-index: 2;
+}
+
+/* (c, d) There's no fight in the hall, so the HUD's fight-only furniture (party
+   frames, ability bar, keyboard hint, self-HP/score cluster) is redundant AND
+   collided with the docked panel and the muster hint. Suppress it — the panel owns
+   the roster, the muster hint owns the bottom band. */
+.wb-muster-hall .hud-teammates,
+.wb-muster-hall .hud-abilities,
+.wb-muster-hall .hud-hint,
+.wb-muster-hall .hud-bottom {
+  display: none;
 }
 
 .wb-muster-hint {
