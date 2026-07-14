@@ -181,7 +181,7 @@ function startGlide(
     const dur = Math.max(ab.iframes, range / GLIDE_SPEED);
     applyBuff(p, makeBuff('invuln', 0, dur, 'dash'));
   }
-  if (fireHeal && ab.healOnUse) healPlayer(world, null, p, ab.healOnUse);
+  if (fireHeal && ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
   world.events.push({ t: 'dodge', id: p.id, pos: { ...p.pos } });
   p.glide = { dir: d, remaining: range, leap: ab.leap === true, ab };
 }
@@ -407,7 +407,7 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
       const target = vadd(p.pos, vscale(dir, ab.range ?? 250));
       p.pos = clampToArena(world, target, p.radius);
       if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
-      if (ab.healOnUse) healPlayer(world, null, p, ab.healOnUse);
+      if (ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
       world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
       break;
     }
@@ -585,7 +585,7 @@ function resolveComposedAbility(
   // Buff the caster with any self-targeted buffs, and heal the caster on-use.
   const buffSelf = (): void => applyForgeBuffs(p, effects, 'self', 'forgeSelf');
   const selfHeal = (): void => {
-    if (healOnUse && healOnUse.kind === 'healOnUse') healPlayer(world, null, p, healOnUse.amount);
+    if (healOnUse && healOnUse.kind === 'healOnUse') healPlayer(world, p, p, healOnUse.amount);
   };
   // Rally: put ally-targeted buffs on EVERY ally in reach (the caster included).
   const buffAllies = (range: number): void => {
@@ -782,7 +782,7 @@ function resolveComposedAbility(
 /** Heal the caster for a fraction of the damage a lifesteal ability dealt. */
 function lifesteal(world: World, p: Player, ab: PlayerAbilityDef, dealt: number): void {
   if (ab.lifestealFrac && dealt > 0) {
-    healPlayer(world, null, p, dealt * ab.lifestealFrac);
+    healPlayer(world, p, p, dealt * ab.lifestealFrac);
   }
 }
 

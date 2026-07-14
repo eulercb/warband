@@ -388,12 +388,22 @@ const LICH: MonsterDef = {
   tier: 'hard',
   bodyShape: 'diamond',
   color: MONSTER_COLORS.lich,
-  baseHp: 1900,
+  // Re-baselined to the hard-caster band (#55). The Lich shipped at its v1 value
+  // of 1900, but the expansion set a hard tier of 2700–3500 and a medium tier that
+  // tops out at 2600, so 1900 left the sole "Hard" boss softer than every medium
+  // one — a run rolling the Lich into a hard slot was dramatically easier. 2900
+  // sits it mid-band alongside the other hard casters (Mind Flayer 2700, Fae 3000)
+  // while staying clearly under the Archlich (3300, "the lich perfected") so the
+  // fiction still reads. The invariant "every hard boss ≥ max medium boss" is
+  // enforced in tests/monsters.test.ts.
+  baseHp: 2900,
   radius: 56,
   moveSpeed: 130,
   regen: 0,
   meleeRange: 130,
-  enrageThreshold: 0.2,
+  // Was 0.2 — the weakest enrage trigger of the whole hard tier. Matched to the
+  // hard-caster band (Mind Flayer / Fae / Beholder / Archlich all 0.25).
+  enrageThreshold: 0.25,
   enrageCooldownMult: 0.7,
   enrageRegenMult: 1,
   blink: { range: 300, threatenRange: 100, internalCd: 5 },

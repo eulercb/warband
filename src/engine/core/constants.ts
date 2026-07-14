@@ -20,6 +20,18 @@ export const SNAPSHOT_RATE = 20; // Hz (host -> clients)
 export const ATTACK_CD_SCALE = 2;
 /** Boss max-HP multiplier that pairs with ATTACK_CD_SCALE to hold fight length. */
 export const BOSS_HP_SCALE = 0.6;
+/**
+ * Hard lower bound on a basic attack's effective cooldown (#71). A basic's cooldown
+ * is `ab.cooldown * cooldownMult`, and two grand improvements (Rogue "Thousand
+ * Cuts", Monk "Hundred Hands") halve it multiplicatively while every Haste source
+ * compounds another ×0.9 — with no floor, a fully-stacked basic dips under ~0.28s
+ * (7+ swings/sec) and every blow loses its weight, the exact outcome the weightier-
+ * combat pacing (ATTACK_CD_SCALE) exists to prevent. Clamp keeps the fastest
+ * possible basic at ~3.3 swings/sec, so fire-rate rewards still feel good without
+ * degenerating into a machine-gun. Non-basic abilities (mobility, heals, the big
+ * A1/A2/A3 nukes) are unaffected.
+ */
+export const BASIC_CD_FLOOR = 0.3;
 
 /**
  * A boss's passive regen is SUPPRESSED for this long after it takes any damage,

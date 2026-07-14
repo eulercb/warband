@@ -188,6 +188,28 @@ describe('combat: healing', () => {
     expect(healPlayer(sink(), null, target, 60)).toBe(0);
     expect(target.hp).toBe(0);
   });
+
+  // #60: self-heals (lifesteal / healOnUse / a self-targeted heal) count toward
+  // score exactly like a heal cast on someone else, but never build threat — so a
+  // hero can't tank the boss by patching itself, and a heal's bookkeeping no longer
+  // depends on which mechanic (and thus which release) produced it.
+  it('a self-heal (source === target) credits score but no threat', () => {
+    const p = mkPlayer({ hp: 40 }); // wounded, so the heal actually lands
+    const threatBefore = p.threat;
+    const healed = healPlayer(sink(), p, p, 30);
+    expect(healed).toBe(30);
+    expect(p.stats.healingDone).toBe(30); // scores 1:1
+    expect(p.threat).toBe(threatBefore); // ...but generates no self-heal threat
+  });
+
+  it('healing another ally credits both score and threat', () => {
+    const healer = mkPlayer({ id: 2, classId: 'cleric' });
+    const ally = mkPlayer({ id: 1, hp: 40 });
+    const healed = healPlayer(sink(), healer, ally, 30);
+    expect(healed).toBe(30);
+    expect(healer.stats.healingDone).toBe(30);
+    expect(healer.threat).toBeGreaterThan(0); // healing someone else still draws aggro
+  });
 });
 
 describe('combat: buffs', () => {

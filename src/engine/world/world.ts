@@ -63,6 +63,7 @@ import {
   PACK_EARLY_DMG_EASE,
   TWIN_DMG_FRAC,
   BOSS_HP_SCALE,
+  BASIC_CD_FLOOR,
   BOSS_REGEN_MAX_FRAC,
   BOSS_INVULN_WINDOW_S,
   HARDCORE_REVIVES_PER_FIGHT,
@@ -1189,10 +1190,16 @@ export class World {
     if (hasBuff(p, 'silence') && slot !== 'basic') return; // silenced: only the basic works
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
 
+    // Basics are the fire-rate spam vector: ×0.5 basic grands (Thousand Cuts /
+    // Hundred Hands) plus stacking Haste compound with no natural bound, so floor
+    // the basic slot's effective cooldown (#71). Other slots keep their raw value —
+    // their reductions are bounded by their base cooldown and the swap-cast gate.
+    const rawCd = ab.cooldown * p.cooldownMult;
+    const nextCd = slot === 'basic' ? Math.max(BASIC_CD_FLOOR, rawCd) : rawCd;
     if (ab.castTime && ab.castTime > 0) {
       p.castTimer = ab.castTime * p.castMult;
       p.castSlot = slot;
-      p.cooldowns[slot] = ab.cooldown * p.cooldownMult;
+      p.cooldowns[slot] = nextCd;
       this.events.push({
         t: 'cast',
         ability: `${ab.name} (cast)`,
@@ -1203,7 +1210,7 @@ export class World {
       });
     } else {
       resolvePlayerAbility(this, p, slot, moveDir);
-      p.cooldowns[slot] = ab.cooldown * p.cooldownMult;
+      p.cooldowns[slot] = nextCd;
     }
   }
 
@@ -1479,8 +1486,10 @@ export class World {
       this.applyProjRiders(hitAdd, proj);
     }
     // Vampiric shots feed their archer (melee lifesteal lives in abilities.ts).
+    // The archer is both source and target, so this scores but generates no
+    // heal-threat (#60) — same as every other self-heal lever.
     if (proj.lifesteal && proj.lifesteal > 0 && dealt > 0 && owner) {
-      healPlayer(this, null, owner, dealt * proj.lifesteal);
+      healPlayer(this, owner, owner, dealt * proj.lifesteal);
     }
     // Chaos Forge — a synthesized shot blooms a ground zone where it lands (the
     // projectile→area→ally-buff fusion). Gated by the optional field, so

@@ -166,6 +166,42 @@ describe('monster catalog: per-boss invariants', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Cross-tier HP band invariant (#55)
+// ---------------------------------------------------------------------------
+
+describe('difficulty-tier HP bands do not overlap', () => {
+  const hpOf = (id: MonsterId): number => MONSTERS[id].baseHp;
+  const maxHp = (tier: BossTier): number => Math.max(...MONSTERS_BY_TIER[tier].map(hpOf));
+  const minHp = (tier: BossTier): number => Math.min(...MONSTERS_BY_TIER[tier].map(hpOf));
+
+  // The whole point of a tier is that a "Hard" boss is a harder fight than any
+  // "Medium" one. HP is the coarsest lever, so a hard boss must never have less
+  // baseHp than the toughest medium boss (the regression that let the Lich sit at
+  // 1900 while the softest hard boss should be 2700 — #55). Guards every future
+  // boss add against silently re-introducing the same inversion.
+  it('every hard boss has at least as much baseHp as the toughest medium boss', () => {
+    const mediumCeiling = maxHp('medium');
+    for (const id of MONSTERS_BY_TIER.hard) {
+      expect(hpOf(id)).toBeGreaterThanOrEqual(mediumCeiling);
+    }
+  });
+
+  it('every medium boss has at least as much baseHp as the toughest easy boss', () => {
+    const easyCeiling = maxHp('easy');
+    for (const id of MONSTERS_BY_TIER.medium) {
+      expect(hpOf(id)).toBeGreaterThanOrEqual(easyCeiling);
+    }
+  });
+
+  it('the re-baselined Lich sits inside the hard-caster band (#55)', () => {
+    expect(MONSTERS.lich.tier).toBe('hard');
+    expect(MONSTERS.lich.baseHp).toBeGreaterThanOrEqual(minHp('hard'));
+    // Stays clearly under the Archlich ("the lich perfected") so the fiction reads.
+    expect(MONSTERS.lich.baseHp).toBeLessThan(MONSTERS.archlich.baseHp);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Registry lists + lookups
 // ---------------------------------------------------------------------------
 

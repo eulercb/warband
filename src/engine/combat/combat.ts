@@ -311,8 +311,15 @@ export function healPlayer(
   if (effective <= 0) return 0;
   target.hp += effective;
   if (source) {
+    // Score credit is uniform for any attributed heal (#60): whether it's a
+    // dedicated heal, a `healOnUse` on a mobility skill, or a `lifestealFrac`
+    // drain, the caster's participation score counts the same. Threat, however,
+    // only accrues for healing SOMEONE ELSE — a self-heal (source === target)
+    // generates none, so a hero can't passively tank the boss by patching itself.
+    // Previously the self-heal levers passed source = null and so scored/threated
+    // nothing, splitting a heal's bookkeeping by which era its mechanic shipped in.
     source.stats.healingDone += effective;
-    addHealThreat(source, effective);
+    if (source !== target) addHealThreat(source, effective);
   }
   sink.events.push({
     t: 'heal',
