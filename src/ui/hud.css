@@ -723,6 +723,8 @@
   justify-items: center;
 }
 .wb-touch-btn {
+  position: relative; /* anchor the cooldown sweep overlay */
+  overflow: hidden; /* clip the radial sweep to the round shape */
   width: 66px;
   height: 66px;
   border-radius: 50%;
@@ -734,6 +736,11 @@
   text-align: center;
   line-height: 1.05;
   padding: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -745,6 +752,30 @@
 .wb-touch-btn.held {
   transform: scale(0.92);
   background: rgba(90, 120, 200, 0.75);
+}
+/* Cooldown affordance on the overlay ability buttons (item: mobile cooldown). The
+   radial sweep fills as the skill recharges; the label dims and a remaining-seconds
+   badge shows while unavailable. Fed by the same data as the HUD ability tiles. */
+.wb-touch-cd {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.wb-touch-btn-label {
+  position: relative; /* paint above the sweep */
+  transition: opacity 0.1s ease;
+}
+.wb-touch-btn-label.cooling {
+  opacity: 0.5;
+}
+.wb-touch-cd-num {
+  position: relative;
+  font-size: 12px;
+  font-weight: 800;
+  color: #eaf1ff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
 }
 .wb-touch-btn-basic {
   border-color: rgba(255, 255, 255, 0.55);
