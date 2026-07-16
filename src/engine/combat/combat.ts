@@ -120,19 +120,26 @@ export interface Stunnable {
 }
 
 /**
- * Apply a stun honoring diminishing returns. Each successive stun LANDED on the
- * same target within `STUN_DR_WINDOW` keeps only `STUN_DR_FACTOR` of the
- * previous effective duration; once the effective duration would fall under
- * `STUN_DR_FLOOR` the stun is resisted entirely (a `stunResist` event fires so
- * players can read it — once per window, so rider spam doesn't flood the FX).
+ * Apply a stun honoring diminishing returns. The falloff is MAGNITUDE-RELATIVE:
+ * every landed stun banks its requested `seconds` onto the target's rolling
+ * `load`, and an incoming stun keeps only `STUN_DR_FACTOR ^ (load / seconds)` —
+ * the load already banked within `STUN_DR_WINDOW`, measured in units of THIS
+ * stun's own duration. So a rare, long stun divides a small banked load by its
+ * big duration and lands almost full, even while a stream of short, frequent
+ * stuns keeps the window alive — the frequent-weak-starves-rare-strong bug — yet
+ * a chain of the SAME duration still halves each time (`load/seconds` equals the
+ * chain length, so a uniform chain is byte-identical to the old count falloff).
+ * Once the effective duration would fall under `STUN_DR_FLOOR` the stun is
+ * resisted entirely (a `stunResist` event fires so players can read it — once per
+ * window, so rider spam doesn't flood the FX).
  *
  * Two deliberate asymmetries in the defender's favor:
- *  - Only stuns that actually LAND refresh the window. Resisted attempts do
- *    not, so spamming a freeze rider can't hold a target stun-immune forever —
- *    the falloff always recovers `STUN_DR_WINDOW` after the last landed stun.
- *  - A shorter chained stun never overwrites a longer one still ticking: if
- *    the target is already stunned for at least the new effective duration,
- *    the attempt is wasted (returns 0, no DR charge).
+ *  - Only stuns that actually LAND bank load / refresh the window. Resisted
+ *    attempts do not, so spamming a freeze rider can't hold a target stun-immune
+ *    forever — the falloff always recovers `STUN_DR_WINDOW` after the last land.
+ *  - A shorter chained stun never overwrites a longer one still ticking: if the
+ *    target is already stunned for at least the new effective duration, the
+ *    attempt is wasted (returns 0, banks no load).
  *
  * Returns the effective stun seconds applied (0 = resisted / wasted).
  */
@@ -143,8 +150,8 @@ export function applyStun(
   source: string,
 ): number {
   if (seconds <= 0) return 0;
-  const dr = (target.stunDr ??= { count: 0, window: 0 });
-  const effective = seconds * Math.pow(STUN_DR_FACTOR, dr.count);
+  const dr = (target.stunDr ??= { load: 0, window: 0 });
+  const effective = seconds * Math.pow(STUN_DR_FACTOR, dr.load / seconds);
   if (effective < STUN_DR_FLOOR) {
     if (!dr.announced) {
       dr.announced = true;
@@ -157,20 +164,20 @@ export function applyStun(
     if (b.kind === 'stun' && b.remaining > longestActive) longestActive = b.remaining;
   }
   if (longestActive >= effective) return 0; // already stunned for longer
-  dr.count += 1;
+  dr.load += seconds; // bank this stun's requested seconds (uniform chain ⇒ old falloff)
   dr.window = STUN_DR_WINDOW;
   dr.announced = false;
   applyBuff(target, makeBuff('stun', 0, effective, source));
   return effective;
 }
 
-/** Tick a target's stun-DR window; when it runs out, the falloff fully resets. */
+/** Tick a target's stun-DR window; when it runs out, the banked load fully resets. */
 export function tickStunDr(target: { stunDr?: StunDr }, dt: number): void {
   const dr = target.stunDr;
   if (!dr || dr.window <= 0) return;
   dr.window -= dt;
   if (dr.window <= 0) {
-    dr.count = 0;
+    dr.load = 0;
     dr.window = 0;
     dr.announced = false;
   }

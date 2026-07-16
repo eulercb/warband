@@ -149,6 +149,53 @@ describe('stun diminishing returns', () => {
     expect(landed).toBeLessThan(6); // DR kicked in before all six landed
     expect(w.events.some((e) => e.t === 'stunResist')).toBe(true);
   });
+
+  // Magnitude-relative DR (rebalance): a stream of frequent WEAK stuns must not starve
+  // a rare STRONG stun. The strong stun divides the small banked weak-load by its big
+  // duration, so its falloff exponent stays tiny and it lands almost full.
+  it('a stream of frequent weak stuns barely dents a later strong stun', () => {
+    const s = sink();
+    const t = target();
+    expect(applyStun(s, t, 0.4, 'weak')).toBeCloseTo(0.4); // 1st weak lands full
+    tickBuffs(t, 0.45);
+    applyStun(s, t, 0.4, 'weak'); // 2nd diminished but still lands
+    tickBuffs(t, 0.45);
+    applyStun(s, t, 0.4, 'weak'); // 3rd+ resisted — a weak load can't sustain itself
+    tickBuffs(t, 0.45);
+    // A rare strong stun now keeps well over a full second. Under the OLD count-based
+    // falloff it would have been 1.5·0.5^2 ≈ 0.375 (gutted by the weak spam).
+    expect(applyStun(s, t, 1.5, 'strong')).toBeGreaterThan(1.0);
+  });
+
+  it('a chain of the SAME-duration strong stun still halves each time (no lock)', () => {
+    const s = sink();
+    const t = target();
+    const first = applyStun(s, t, 1.5, 'strong');
+    tickBuffs(t, 1.6); // let it expire so the next isn't overwrite-guarded
+    const second = applyStun(s, t, 1.5, 'strong');
+    expect(second).toBeLessThan(first); // a rotation can't freeze a target forever
+    expect(second).toBeCloseTo(1.5 * STUN_DR_FACTOR, 5); // load 1.5 / seconds 1.5 = 1 ⇒ ×0.5
+  });
+
+  it('a strong stun lands harder behind weak spam than behind a prior strong stun', () => {
+    const afterWeak = (() => {
+      const s = sink();
+      const t = target();
+      for (let i = 0; i < 4; i++) {
+        applyStun(s, t, 0.4, 'w');
+        tickBuffs(t, 0.45);
+      }
+      return applyStun(s, t, 1.5, 'strong');
+    })();
+    const afterStrong = (() => {
+      const s = sink();
+      const t = target();
+      applyStun(s, t, 1.5, 'strong');
+      tickBuffs(t, 1.6);
+      return applyStun(s, t, 1.5, 'strong');
+    })();
+    expect(afterWeak).toBeGreaterThan(afterStrong);
+  });
 });
 
 // ---------------------------------------------------------------------------

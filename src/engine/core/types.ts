@@ -170,13 +170,16 @@ export interface Buff {
 
 /**
  * Stun diminishing-returns bookkeeping, shared by players, bosses and adds.
- * Each successive stun landed within the rolling window is shorter; past the
- * cap the target is briefly immune. The window resets once no stun has landed
- * for STUN_DR_WINDOW seconds. See combat.applyStun.
+ * The falloff is magnitude-relative: each landed stun banks its requested seconds
+ * onto `load`, and an incoming stun keeps only STUN_DR_FACTOR^(load/seconds) — so a
+ * rare long stun shrugs off the small load banked by frequent short ones, while a
+ * same-duration chain still halves each time. Past the floor the target is briefly
+ * immune. The load resets once no stun has landed for STUN_DR_WINDOW seconds. See
+ * combat.applyStun.
  */
 export interface StunDr {
-  /** Stuns landed inside the current window (drives the duration falloff). */
-  count: number;
+  /** Recent stun-seconds banked on this target (drives the magnitude-relative falloff). */
+  load: number;
   /** Seconds left before the falloff resets (refreshed on every LANDED stun). */
   window: number;
   /** A "RESIST" cue already fired this window (dedupes rider-spam floaters). */
