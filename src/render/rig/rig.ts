@@ -367,13 +367,13 @@ export class CreatureRig {
     this.drawBodyParts(R, bodyScale, downed, ctx);
 
     if (this.spec.arms) this.drawArms(R, ctx, downed);
-    if (this.spec.weapon && !downed) this.drawWeapon(R, ctx);
+    if (this.spec.weapon && !downed) this.drawWeapon(R, ctx, timeSec);
     if (this.spec.decor) this.drawDecor(R, ctx);
   }
 
   private drawBodyParts(R: number, bodyScale: number, downed: boolean, ctx: RigDriveCtx): void {
     for (const part of this.spec.parts) {
-      const p = this.bodyPoint(part.local, R);
+      const p = this.bodyPoint(this.effLocal(part), R);
       const rx = part.rx * R * bodyScale;
       const ry = part.ry * R * bodyScale * (downed ? 0.72 : 1);
       const alpha = downed ? 0.85 : 1;
@@ -551,7 +551,7 @@ export class CreatureRig {
     }
   }
 
-  private drawWeapon(R: number, ctx: RigDriveCtx): void {
+  private drawWeapon(R: number, ctx: RigDriveCtx, timeSec: number): void {
     const w = this.spec.weapon!;
     const grip = this.gripPoint(R, ctx, false);
     const g = this.gFront;
@@ -597,6 +597,11 @@ export class CreatureRig {
         g.moveTo(grip.x, grip.y)
           .lineTo(head.x, head.y)
           .stroke({ width: 0.12 * R, color: 0x8a7a5a, cap: 'round' });
+        // Optional gold band on the haft (cleric).
+        if (w.accent !== undefined) {
+          const band = at(w.length * 0.55);
+          g.circle(band.x, band.y, 0.13 * R).stroke({ width: 0.07 * R, color: w.accent });
+        }
         g.circle(head.x, head.y, 0.26 * R).fill({ color: metal });
         break;
       }
@@ -634,9 +639,12 @@ export class CreatureRig {
         g.moveTo(grip.x, grip.y)
           .lineTo(tip.x, tip.y)
           .stroke({ width: 0.11 * R, color: 0x6b4a2a, cap: 'round' });
-        const glow = 0.22 * R * (1 + 0.4 * swing);
-        g.circle(tip.x, tip.y, glow * 1.6).fill({ color: w.color, alpha: 0.25 });
-        g.circle(tip.x, tip.y, glow).fill({ color: lighten(w.color, 0.3) });
+        // Arcane orb: a soft additive glow pulsing ~2.2s, swelling as a cast charges.
+        const pulse = 1 + 0.16 * Math.sin(timeSec * ((2 * Math.PI) / 2.2));
+        const glow = 0.22 * R * (1 + 0.4 * swing) * pulse;
+        g.circle(tip.x, tip.y, glow * 1.8).fill({ color: w.color, alpha: 0.22 });
+        g.circle(tip.x, tip.y, glow * 1.2).fill({ color: w.color, alpha: 0.4 });
+        g.circle(tip.x, tip.y, glow).fill({ color: lighten(w.color, 0.45) });
         break;
       }
       case 'claws': {
@@ -652,7 +660,7 @@ export class CreatureRig {
         break;
     }
 
-    // Off-hand shield (paladin): a small rounded plate to the side/back.
+    // Off-hand shield (paladin / knight): a small rounded kite plate to the side/back.
     if (w.offhand === 'shield') {
       const c = this.bodyPoint({ x: -0.1, y: -0.85 }, R);
       g.roundRect(c.x - 0.34 * R, c.y - 0.44 * R, 0.68 * R, 0.88 * R, 0.18 * R).fill({
@@ -662,6 +670,10 @@ export class CreatureRig {
         width: 0.06 * R,
         color: darken(w.color, 0.3),
       });
+      // Optional gold boss stud at the shield centre (knight).
+      if (w.accent !== undefined) {
+        g.circle(c.x, c.y, 0.12 * R).fill({ color: w.accent });
+      }
     }
   }
 
@@ -696,6 +708,16 @@ export class CreatureRig {
         case 'mandible': {
           const s = d.scale * R;
           g.ellipse(at.x, at.y, s, s * 0.5).fill({ color: darken(ctx.color, 0.5) });
+          break;
+        }
+        case 'ring': {
+          // Unfilled ring (halo, pauldron rim, robe / vestment trim), optionally glowing.
+          const rr = d.scale * R;
+          const rw = Math.max(1, (d.ringWidth ?? 0.1) * R);
+          if (d.glow) {
+            g.circle(at.x, at.y, rr).stroke({ width: rw * 2.6, color, alpha: 0.28 });
+          }
+          g.circle(at.x, at.y, rr).stroke({ width: rw, color });
           break;
         }
         case 'horn': {
@@ -777,6 +799,20 @@ export class CreatureRig {
   }
 
   private partLocal(id: string): Vec2 {
+    const p = this.spec.parts.find((q) => q.id === id);
+    return p ? this.effLocal(p) : { x: 0, y: 0 };
+  }
+
+  /** A part's rig-origin-relative local, resolving an optional `parent` anchor so a
+   *  dress part (hood/hat/plume/pauldron) rides the head or torso it's pinned to. */
+  private effLocal(part: BodyPartSpec): Vec2 {
+    if (!part.parent) return part.local;
+    const base = this.rawLocal(part.parent);
+    return { x: base.x + part.local.x, y: base.y + part.local.y };
+  }
+
+  /** A part's OWN local by id, without resolving its parent (anchors are base parts). */
+  private rawLocal(id: string): Vec2 {
     const p = this.spec.parts.find((q) => q.id === id);
     return p ? p.local : { x: 0, y: 0 };
   }
