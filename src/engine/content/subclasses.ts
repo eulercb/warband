@@ -9,10 +9,12 @@
  * to 'sub1'/'sub2' when bound), so it flows through the exact same cast/cooldown
  * machinery as the base kit. PURE data + lookups — no UI, no networking.
  */
-import type { ClassId } from '../core/types';
+import type { ClassId, AbilitySlot } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
 import { describeAbility } from './classes';
-import { procVariant, subSkillAbilityVariant } from './procgen';
+import { procVariant, subSkillAbilityVariant, hashStr } from './procgen';
+import { synthesizeAbility, forgeName, forgeVariant, type Donor } from './forge';
+import { Rng, mixSeed } from '../core/math';
 
 /** One pickable subclass skill (an ability minus its slot assignment). */
 export interface SubSkillDef {
@@ -1101,6 +1103,91 @@ for (const sub of ALL_SUBCLASSES) {
   for (const skill of sub.skills) SKILL_INDEX[skill.id] = { skill, subclass: sub };
 }
 
+// ---------------------------------------------------------------------------
+// Chaos Forge — subclass + sub-skill SYNTHESIS (docs/CHAOS_FORGE.md §9).
+//
+// When a Forge run is active, a subclass skill is recombined from components the SAME
+// way base-class skills are (forge.synthesizeAbility), but drawing its donor components
+// from the pool of every canonical SUBCLASS skill; its new name is blended from the
+// donor sub-skills' names. A synthesized subclass is renamed after the subclasses whose
+// skills donated the most components (mirroring the class rename). All seed-derived, so
+// host and clients derive identical content; canonical content is byte-identical when
+// Forge is off (forgeVariant returns null and the procgen/canonical path below runs).
+// ---------------------------------------------------------------------------
+
+/** Sub-skills are priced against the special-tier band (they occupy the a1/a2/a3 budget). */
+const SUB_SYNTH_SLOT: AbilitySlot = 'a2';
+/** Salt for the subclass-rename stream (decorrelated from the ability stream). */
+const SUB_RENAME_SALT = 0xf4d2;
+
+/** Every canonical sub-skill as a synthesis donor (built once; a sub-skill added in a
+ *  future update joins the pool automatically — no per-item wiring, req. 10). */
+let SUB_FORGE_DONORS: Donor[] | null = null;
+function subForgeDonors(): Donor[] {
+  if (SUB_FORGE_DONORS) return SUB_FORGE_DONORS;
+  const out: Donor[] = [];
+  for (const sub of ALL_SUBCLASSES) {
+    for (const sk of sub.skills) {
+      out.push({
+        name: sk.name,
+        classId: sub.classId,
+        className: sub.name,
+        slot: SUB_SYNTH_SLOT,
+        def: sk.ability,
+      });
+    }
+  }
+  SUB_FORGE_DONORS = out;
+  return out;
+}
+
+/** Donor sub-skill NAME → its subclass, for the subclass rename tally (first match wins). */
+let SKILL_NAME_TO_SUB: Map<string, SubclassDef> | null = null;
+function skillNameToSub(): Map<string, SubclassDef> {
+  if (SKILL_NAME_TO_SUB) return SKILL_NAME_TO_SUB;
+  const m = new Map<string, SubclassDef>();
+  for (const sub of ALL_SUBCLASSES)
+    for (const sk of sub.skills) if (!m.has(sk.name)) m.set(sk.name, sub);
+  SKILL_NAME_TO_SUB = m;
+  return m;
+}
+
+/** Fuse one sub-skill's ability from cross-subclass components; returns the new skill
+ *  (blended name + fused ability + regenerated card) and the donor sub-skill names. */
+function forgeOneSubSkill(seed: number, base: SubSkillDef): { def: SubSkillDef; donorNames: string[] } {
+  const syn = synthesizeAbility(seed, `subskill.${base.id}`, SUB_SYNTH_SLOT, subForgeDonors());
+  const { slot: _slot, ...ability } = syn.def; // sub-abilities carry no slot until bound
+  return {
+    def: { ...base, name: syn.def.name, ability, desc: describeAbility(ability) },
+    donorNames: syn.donorNames,
+  };
+}
+
+function synthesizeSubSkillForge(seed: number, base: SubSkillDef): SubSkillDef {
+  return forgeOneSubSkill(seed, base).def;
+}
+
+function synthesizeSubclassForge(seed: number, base: SubclassDef): SubclassDef {
+  const tally = new Map<string, number>();
+  const nameToSub = skillNameToSub();
+  const skills = base.skills.map((sk) => {
+    const { def, donorNames } = forgeOneSubSkill(seed, sk);
+    for (const dn of donorNames) {
+      const sub = nameToSub.get(dn);
+      if (sub) tally.set(sub.name, (tally.get(sub.name) ?? 0) + 1);
+    }
+    return def;
+  });
+  // Rename after the subclasses that donated the most components (ties broken by name).
+  const top = [...tally.entries()]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .map((e) => e[0]);
+  const rng = new Rng(mixSeed(seed, SUB_RENAME_SALT, hashStr(base.id)));
+  const name =
+    top.length > 0 ? forgeName(top, (k) => rng.int(0, k - 1), { connectiveChance: 0.35 }) : base.name;
+  return { ...base, name, skills };
+}
+
 /**
  * A subclass skill, resolved for the active run: while a procedural run is
  * active its ability numbers re-roll within the same identity envelope as the
@@ -1127,11 +1214,16 @@ function subclassVariant(base: SubclassDef): SubclassDef {
 
 export function getSubclass(id: string): SubclassDef | undefined {
   const base = SUBCLASS_BY_ID[id];
-  return base ? subclassVariant(base) : undefined;
+  if (!base) return undefined;
+  // Chaos Forge takes precedence when its run is active (a component-recombined subclass
+  // + skills, renamed after its top donor subclasses); else numeric variance then the
+  // canonical def. Forge layers on top — it never mutates the static SUBCLASSES data.
+  return forgeVariant('subclass', id, (seed) => synthesizeSubclassForge(seed, base)) ?? subclassVariant(base);
 }
 export function getSubSkill(id: string): SubSkillDef | undefined {
   const base = SKILL_INDEX[id]?.skill;
-  return base ? skillVariant(base) : undefined;
+  if (!base) return undefined;
+  return forgeVariant('subSkill', id, (seed) => synthesizeSubSkillForge(seed, base)) ?? skillVariant(base);
 }
 export function subclassOfSkill(id: string): SubclassDef | undefined {
   return SKILL_INDEX[id]?.subclass;
@@ -1140,7 +1232,9 @@ export function isSubSkillId(x: unknown): x is string {
   return typeof x === 'string' && x in SKILL_INDEX;
 }
 export function subclassesFor(classId: ClassId): SubclassDef[] {
-  return (SUBCLASSES[classId] ?? []).map(subclassVariant);
+  // Route through getSubclass so the reward picker shows synthesized subclasses in a
+  // Forge run (and canonical / variance otherwise), consistent with what spawns.
+  return (SUBCLASSES[classId] ?? []).map((sub) => getSubclass(sub.id) ?? sub);
 }
 
 /** The subclass skills a hero owns for a specific class (from their flat pick list). */

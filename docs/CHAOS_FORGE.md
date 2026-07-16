@@ -155,6 +155,13 @@ forged bosses cast, the shop rerolls, and a typed seed reproduces the world.
   seed-deterministic across host and clients.
 - Data-driven bots: capability classifier + generic casting policy over every slot
   incl. sub1/sub2, engaged whenever Forge is live.
+- **Subclass synthesis** (`getSubSkill`/`getSubclass`/`subclassesFor`): sub-skills are
+  now recombined the same way base skills are (`synthesizeAbility`), drawing donor
+  components from the pool of every canonical SUBCLASS skill and blending the new name
+  from the donor sub-skills; a synthesized subclass is renamed after the subclasses whose
+  skills donated the most components (mirroring the class rename). Priced against the
+  special-tier slot budget, seed-deterministic across peers, canonical byte-identical
+  when Forge is off (a `forgeVariant` gate ahead of the procgen/canonical fallback).
 
 **Deliberately deferred (with rationale)**
 
@@ -166,9 +173,6 @@ forged bosses cast, the shop rerolls, and a typed seed reproduces the world.
   which needs a `getCharUpgrade` getter + rerouting `rollCharChoices`/the replay
   engine (char-upgrades are keyed by string id and looked up directly today). A
   focused follow-up; not landed here to keep the change reviewable.
-- **Subclass _synthesis_.** Subclass skills already route through procgen
-  (`getSubSkill` → numeric variance), so they vary per run; full component
-  synthesis of sub-skills + their grands is the same follow-up shape as upgrades.
 - **Affix / corruption / terrain magnitude variance (§3.7 audit).** Left static:
   their id→behaviour binding is host-side code, not data, so recombination would
   need executor work, and their magnitudes are tuned balance constants. _Selection_
