@@ -192,3 +192,32 @@ describe('describeAbility (slot-less subclass skills + edge shapes)', () => {
     expect(describeAbility(def)).toBe('10 dmg · 50u reach · 1s cooldown');
   });
 });
+
+describe('describeAbility (generic mods fold + cooldown floor, item 2)', () => {
+  const jab: Omit<PlayerAbilityDef, 'slot'> = {
+    name: 'Jab',
+    kind: 'meleeCone',
+    cooldown: 0.4,
+    damage: 10,
+    range: 50,
+  };
+
+  it('scales damage / cooldown / cast by the passed multipliers', () => {
+    const def: Omit<PlayerAbilityDef, 'slot'> = { ...jab, cooldown: 4, castTime: 1 };
+    expect(describeAbility(def, { damageMult: 1.5, cooldownMult: 0.5, castMult: 0.5 })).toBe(
+      '15 dmg · 50u reach · 0.5s cast · 2s cooldown',
+    );
+  });
+
+  it('clamps the shown cooldown at cooldownFloor, matching the sim basic-slot clamp', () => {
+    // 0.4 × 0.1 = 0.04s, below the floor → the line must read 0.3s (what the sim delivers),
+    // not the sub-floor number.
+    expect(describeAbility(jab, { cooldownMult: 0.1, cooldownFloor: 0.3 })).toBe(
+      '10 dmg · 50u reach · 0.3s cooldown',
+    );
+    // With no floor (every non-basic slot, and every pre-item-2 caller) the raw value shows.
+    expect(describeAbility(jab, { cooldownMult: 0.1 })).toBe('10 dmg · 50u reach · 0.04s cooldown');
+    // A floor below the (already larger) cooldown is inert — no clamp, unchanged line.
+    expect(describeAbility(jab, { cooldownFloor: 0.3 })).toBe('10 dmg · 50u reach · 0.4s cooldown');
+  });
+});

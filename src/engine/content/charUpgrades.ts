@@ -3261,7 +3261,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'ba_valor_g_a',
     "Hero's Ballad",
     '🎺',
-    'Your Valor skills hit 50% harder over a wider area and empower the band far more',
+    'Your Valor skills hit 50% harder over a wider area, empower the band far more, and leech 15% of the damage dealt as health',
     (ab) => {
       amplify(ab, 0.5, 0.3);
       lifeRider(ab, 0.15);

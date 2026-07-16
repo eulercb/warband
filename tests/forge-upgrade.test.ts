@@ -5,7 +5,8 @@
  * via getCharUpgrade with a name blended for that fused skill. Canonical when off.
  */
 import { describe, it, expect, afterEach } from 'vitest';
-import { setForgeSeed } from '../src/engine/content/forge';
+import { setForgeSeed, refreshComponents } from '../src/engine/content/forge';
+import type { AbilityComponents, EffectComponent } from '../src/engine/content/forge';
 import { setProceduralSeed } from '../src/engine/content/procgen';
 import {
   CHAR_UPGRADES,
@@ -15,6 +16,7 @@ import {
   previewSubAbility,
   applySubSkillUpgrades,
 } from '../src/engine/content/charUpgrades';
+import type { PlayerAbilityDef } from '../src/engine/content/classes';
 import type { Player } from '../src/engine/core/types';
 
 afterEach(() => {
@@ -109,5 +111,162 @@ describe('Chaos Forge char-upgrade synthesis', () => {
     } as unknown as Player;
     applySubSkillUpgrades(player, ['subup_kn_champion_slam']);
     expect(JSON.stringify(player.subAbilities!.sub1!.components)).not.toBe(baseComp);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// refreshComponents — the flat→components patch behind item 6. These drive it
+// DIRECTLY (seed-independent) to prove the properties a components-inequality
+// assertion can't: a boon's change flows onto the RIGHT existing effect, a
+// mismatched boon is a safe no-op (never a minted ~80%-DR near-immunity), and
+// structural data a flat round-trip would lose (zone ally-buffs, buff targets,
+// multiple buff axes) survives intact.
+// ---------------------------------------------------------------------------
+type Fused = Omit<PlayerAbilityDef, 'slot'>;
+function fused(
+  kind: PlayerAbilityDef['kind'],
+  flat: Partial<PlayerAbilityDef>,
+  effects: EffectComponent[],
+): Fused {
+  const components: AbilityComponents = { delivery: { kind }, effects };
+  return { name: 'Fused', kind, cooldown: 8, damage: 0, ...flat, components };
+}
+const buffsOf = (c: AbilityComponents): Array<Extract<EffectComponent, { kind: 'buff' }>> =>
+  c.effects.filter((e): e is Extract<EffectComponent, { kind: 'buff' }> => e.kind === 'buff');
+const zoneOf = (c: AbilityComponents): Extract<EffectComponent, { kind: 'zone' }> | undefined =>
+  c.effects.find((e): e is Extract<EffectComponent, { kind: 'zone' }> => e.kind === 'zone');
+
+describe('refreshComponents (item 6 flat→components patch)', () => {
+  it('flows an upgrade onto the existing buff axis, keeping the buff target', () => {
+    // A boon did mul(buffDefMult, 0.8): 0.5 → 0.4 on an ally-targeting defence buff.
+    const def = fused('buffAlly', { buffDefMult: 0.4, buffDuration: 6 }, [
+      { kind: 'buff', target: 'allies', defMult: 0.5, duration: 6 },
+    ]);
+    const [buff] = buffsOf(refreshComponents(def));
+    expect(buff).toMatchObject({ target: 'allies', defMult: 0.4 }); // flowed through; target kept
+  });
+
+  it('does NOT mint a buff on a skill that never had one (the mul-of-undefined degenerate case)', () => {
+    // The exact item-6 regression: a defence-buff boon on a fused skill with no such buff.
+    // mul(undefined→0) leaves flat buffDefMult 0; a decompose-rebuild would cap it to a 0.2
+    // (≈80% damage-reduction) near-immunity. The patch must leave it a harmless no-op.
+    const def = fused('meleeCone', { damage: 30, buffDefMult: 0 }, [
+      { kind: 'damage', amount: 30 },
+    ]);
+    const out = refreshComponents(def);
+    expect(buffsOf(out)).toHaveLength(0); // no fabricated near-immunity
+    expect(out.effects.find((e) => e.kind === 'damage')).toMatchObject({ amount: 30 });
+  });
+
+  it("preserves a zone's ally-buff (which flat fields cannot represent) while flowing the tick boon", () => {
+    const def = fused('groundZone', { zoneTickDamage: 15, zoneDuration: 4, radius: 130 }, [
+      {
+        kind: 'zone',
+        zone: {
+          zoneKind: 'rainOfArrows',
+          duration: 4,
+          radius: 130,
+          tickDamage: 12,
+          allyBuff: { dmgMult: 1.2, duration: 5 },
+        },
+      },
+    ]);
+    const zone = zoneOf(refreshComponents(def));
+    expect(zone?.zone.tickDamage).toBe(15); // the boon flowed through
+    expect(zone?.zone.allyBuff).toMatchObject({ dmgMult: 1.2 }); // NOT dropped by the refresh
+  });
+
+  it('keeps distinct buffs (separate axes + targets) from collapsing into one', () => {
+    const def = fused('buffAlly', { buffDamageMult: 1.4, buffMoveMult: 1.3, buffDuration: 6 }, [
+      { kind: 'buff', target: 'allies', dmgMult: 1.3, duration: 6 },
+      { kind: 'buff', target: 'self', moveMult: 1.2, duration: 6 },
+    ]);
+    const buffs = buffsOf(refreshComponents(def));
+    expect(buffs).toHaveLength(2); // neither buff collapsed away
+    expect(buffs.find((b) => b.dmgMult != null)).toMatchObject({ target: 'allies', dmgMult: 1.4 });
+    expect(buffs.find((b) => b.moveMult != null)).toMatchObject({ target: 'self', moveMult: 1.3 });
+  });
+
+  it('flows every strike / CC / zone effect kind from its matching flat field', () => {
+    const def = fused(
+      'projectile',
+      {
+        landingDamage: 25,
+        lifestealFrac: 0.2,
+        healOnUse: 15,
+        stun: 1.0,
+        freeze: 0.8,
+        slowMult: 0.5,
+        slowDuration: 3,
+        zoneTickDamage: 14,
+        zoneTickHeal: 9,
+        zoneDuration: 5,
+        radius: 120,
+      },
+      [
+        { kind: 'landingDamage', amount: 10 },
+        { kind: 'lifesteal', frac: 0.1 },
+        { kind: 'healOnUse', amount: 5 },
+        { kind: 'stun', seconds: 0.5 },
+        { kind: 'freeze', seconds: 0.5 },
+        { kind: 'slow', mult: 0.9, duration: 2 },
+        { kind: 'zone', zone: { zoneKind: 'rainOfArrows', duration: 4, radius: 100, slowMult: 0.8 } },
+      ],
+    );
+    const out = refreshComponents(def);
+    const by = (k: EffectComponent['kind']): EffectComponent | undefined =>
+      out.effects.find((e) => e.kind === k);
+    expect(by('landingDamage')).toMatchObject({ amount: 25 });
+    expect(by('lifesteal')).toMatchObject({ frac: 0.2 });
+    expect(by('healOnUse')).toMatchObject({ amount: 15 });
+    expect(by('stun')).toMatchObject({ seconds: 1 });
+    expect(by('freeze')).toMatchObject({ seconds: 0.8 });
+    expect(by('slow')).toMatchObject({ mult: 0.5, duration: 3 }); // direct slow patched
+    expect(zoneOf(out)?.zone.slowMult).toBe(0.5); // zone slow patched from the same flat field
+  });
+
+  it('leaves an effect untouched when no flat field targets it (the no-op branch)', () => {
+    // Effects present but their flat fields absent — an upgrade that didn't tug them.
+    const def = fused('projectile', {}, [
+      { kind: 'landingDamage', amount: 20 },
+      { kind: 'lifesteal', frac: 0.15 },
+      { kind: 'healOnUse', amount: 12 },
+      { kind: 'stun', seconds: 1.0 },
+      { kind: 'freeze', seconds: 0.7 },
+      { kind: 'slow', mult: 0.6, duration: 2 },
+      { kind: 'buff', target: 'self', defMult: 0.5, dmgMult: 1.2, moveMult: 1.2, duration: 6 },
+      { kind: 'zone', zone: { zoneKind: 'rainOfArrows', duration: 4, radius: 100, tickDamage: 8 } },
+    ]);
+    const out = refreshComponents(def);
+    expect(out.effects.find((e) => e.kind === 'stun')).toMatchObject({ seconds: 1 });
+    expect(out.effects.find((e) => e.kind === 'slow')).toMatchObject({ mult: 0.6, duration: 2 });
+    expect(buffsOf(out)[0]).toMatchObject({ defMult: 0.5, dmgMult: 1.2, moveMult: 1.2 }); // untouched
+    expect(zoneOf(out)?.zone.tickDamage).toBe(8); // untouched
+  });
+
+  it('falls back to a capped decompose for a def with no prior components', () => {
+    const bare: Fused = { name: 'Bare', kind: 'meleeCone', cooldown: 5, damage: 20, range: 60 };
+    const out = refreshComponents(bare);
+    expect(out.effects.find((e) => e.kind === 'damage')).toMatchObject({ amount: 20 });
+  });
+
+  it('patches a heal-delivery amount from the flat damage field', () => {
+    const def = fused('heal', { damage: 55 }, [{ kind: 'heal', amount: 40 }]);
+    const heal = refreshComponents(def).effects.find((e) => e.kind === 'heal');
+    expect(heal).toMatchObject({ amount: 55 });
+  });
+
+  it('keeps the existing slow durations when an upgrade tugs only the slow magnitude', () => {
+    const def = fused('groundZone', { slowMult: 0.4 }, [
+      // slowMult moved, slowDuration absent → both the direct slow and the zone slow keep theirs.
+      { kind: 'slow', mult: 0.6, duration: 2 },
+      {
+        kind: 'zone',
+        zone: { zoneKind: 'rainOfArrows', duration: 4, radius: 100, slowMult: 0.6, slowDuration: 3 },
+      },
+    ]);
+    const out = refreshComponents(def);
+    expect(out.effects.find((e) => e.kind === 'slow')).toMatchObject({ mult: 0.4, duration: 2 });
+    expect(zoneOf(out)?.zone.slowDuration).toBe(3);
   });
 });

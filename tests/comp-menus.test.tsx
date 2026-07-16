@@ -402,6 +402,7 @@ describe('ownedSkillRows (item 6)', () => {
     // Two knight sub-skills (fill sub1 AND sub2) plus a mage sub-skill (filtered out).
     const rows = ownedSkillRows(
       'knight',
+      'knight',
       [],
       [],
       ['kn_champion_slam', 'kn_champion_charge', 'mg_evoker_lightning'],
@@ -418,8 +419,8 @@ describe('ownedSkillRows (item 6)', () => {
   });
 
   it('reflects the hero current upgrades in the numeric line', () => {
-    const [before] = ownedSkillRows('knight', [], [], []);
-    const [after] = ownedSkillRows('knight', [], ['kn_widecleave'], []);
+    const [before] = ownedSkillRows('knight', 'knight', [], [], []);
+    const [after] = ownedSkillRows('knight', 'knight', [], ['kn_widecleave'], []);
     // Wide Cleave tunes the basic slot: bigger damage / reach / arc show through.
     expect(before.line).not.toBe(after.line);
     expect(after.line).toContain('27 dmg');
@@ -430,21 +431,33 @@ describe('ownedSkillRows (item 6)', () => {
     const cdOf = (line: string): number => Number(line.match(/([\d.]+)s cooldown/)?.[1]);
     const castOf = (line: string): number => Number(line.match(/([\d.]+)s cast/)?.[1]);
 
-    const [plain] = ownedSkillRows('knight', [], [], []);
-    const [mighty] = ownedSkillRows('knight', ['mighty'], [], []); // +15% damage dealt
-    const [hasted] = ownedSkillRows('knight', ['haste'], [], []); // -10% cooldown
+    const [plain] = ownedSkillRows('knight', 'knight', [], [], []);
+    const [mighty] = ownedSkillRows('knight', 'knight', ['mighty'], [], []); // +15% damage dealt
+    const [hasted] = ownedSkillRows('knight', 'knight', ['haste'], [], []); // -10% cooldown
     // Mighty lifts the DISPLAYED basic damage; Haste shortens the DISPLAYED cooldown.
     expect(dmgOf(mighty.line)).toBeGreaterThan(dmgOf(plain.line));
     expect(cdOf(hasted.line)).toBeLessThan(cdOf(plain.line));
 
     // Focus folds into a cast time — Fireball (mage a1) is the canonical cast skill.
-    const plainFireball = ownedSkillRows('mage', [], [], [])[1].line;
-    const focusFireball = ownedSkillRows('mage', ['focus'], [], [])[1].line;
+    const plainFireball = ownedSkillRows('mage', 'mage', [], [], [])[1].line;
+    const focusFireball = ownedSkillRows('mage', 'mage', ['focus'], [], [])[1].line;
     expect(castOf(focusFireball)).toBeLessThan(castOf(plainFireball));
   });
 
   it('drops an unknown/dead sub-skill id without crashing', () => {
-    const rows = ownedSkillRows('knight', [], [], ['not_a_real_skill']);
+    const rows = ownedSkillRows('knight', 'knight', [], [], ['not_a_real_skill']);
     expect(rows).toHaveLength(4); // only the base slots survive
+  });
+
+  it('resolves generic mults off the IDENTITY class for a swapped multiclass hero', () => {
+    const dmgOf = (line: string): number => Number(line.match(/(\d+) dmg/)?.[1]);
+    // A warlock-only stat boon (Fiendish Vigor, +10% damage) is fixed at spawn on the
+    // identity class. While wielding the OTHER (knight) kit, the per-skill damage must
+    // still include it — resolving off the identity class — not silently drop it the
+    // moment the non-identity kit is active (which would contradict the sim + char sheet).
+    const withVigor = ownedSkillRows('knight', 'warlock', [], ['wa_fiend'], [])[0];
+    const without = ownedSkillRows('knight', 'knight', [], ['wa_fiend'], [])[0];
+    // Same active kit; the only difference is whether the identity-class boon is folded.
+    expect(dmgOf(withVigor.line)).toBeGreaterThan(dmgOf(without.line));
   });
 });

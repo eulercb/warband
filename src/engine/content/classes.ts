@@ -873,6 +873,14 @@ export interface DescribeMods {
   cooldownMult?: number;
   /** Cast-time multiplier (Focus) — scales the cast time. */
   castMult?: number;
+  /**
+   * Absolute cooldown floor (seconds) the sim clamps this slot to at use-time. The
+   * world tick floors ONLY the basic slot at `BASIC_CD_FLOOR`, so a caller describing
+   * a basic passes it here to keep the shown cooldown from printing below what the sim
+   * actually delivers once Haste stacks past the floor. Absent ⇒ no floor (every other
+   * slot, and every existing caller), so the line stays byte-for-byte unchanged.
+   */
+  cooldownFloor?: number;
 }
 
 /**
@@ -902,11 +910,15 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   const dmgMul = mods?.damageMult ?? 1;
   const cdMul = mods?.cooldownMult ?? 1;
   const castMul = mods?.castMult ?? 1;
+  // The sim floors this slot's cooldown at use-time (only the basic slot today, at
+  // `BASIC_CD_FLOOR`); fold that same clamp in so the shown cooldown never prints below
+  // what the sim actually delivers once Haste stacks past the floor. 0 ⇒ no floor.
+  const effCooldown = Math.max(mods?.cooldownFloor ?? 0, def.cooldown * cdMul);
   // Chaos Forge — a synthesized ability regenerates its card text from its
   // recombined component list (there is no author to write copy for a fused
   // skill). Canonical/variance content carries no components and keeps the
   // authored flat-field walk below, so its cards are byte-for-byte unchanged.
-  if (def.components) return describeComposed(def.components, def.cooldown * cdMul);
+  if (def.components) return describeComposed(def.components, effCooldown);
   const n = (v: number): string => `${Math.round(v)}`;
   // Up to two decimals (trailing zeros drop naturally), so a 0.25s i-frame or a
   // 1.1s cooldown both read exactly, matching the reward cards' precision.
@@ -967,7 +979,7 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   }
 
   // --- Cooldown always closes the line ---
-  parts.push(`${s(def.cooldown * cdMul)} cooldown`);
+  parts.push(`${s(effCooldown)} cooldown`);
 
   return parts.join(' · ');
 }

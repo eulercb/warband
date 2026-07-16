@@ -25,8 +25,10 @@ import {
   CHAR_UPGRADES,
   CHAR_UPGRADES_BY_CLASS,
   SUB_SKILL_UPGRADES,
+  HYBRID_UPGRADES,
   charUpgradeMaxStacks,
   offerableGrands,
+  upgradeAllowedFor,
 } from '../../engine/content/charUpgrades';
 import { UPGRADE_IDS, getUpgrade, upgradeMaxStacks } from '../../engine/content/upgrades';
 import type { UpgradeId } from '../../engine/content/upgrades';
@@ -62,20 +64,43 @@ export function LoadoutEditor() {
     const char = lo.charUpgrades.filter((id) => {
       const def = CHAR_UPGRADES[id];
       if (!def) return false;
-      return def.classId === 'any' || valid.has(def.classId);
+      // Class-specific boons: only the active class or an owned extra class may hold them.
+      if (def.classId !== 'any') return valid.has(def.classId);
+      // 'any' grafts/hybrids: the sim gates grafts on the PRIMARY class, so drop one the
+      // active class can't take (its exclude list) — it would otherwise no-op at spawn.
+      return upgradeAllowedFor(def, localClass);
+    });
+    // A graft grand is only coherent while its graft survives above — drop an orphan so a
+    // pruned graft can't leave a dangling grand that no-ops in the sim.
+    const survived = new Set(char);
+    const charOk = char.filter((id) => {
+      const g = CHAR_UPGRADES[id]?.graftId;
+      return g == null || survived.has(g);
     });
     const subs = lo.subSkills.filter((id) => {
       const owner = subclassOfSkill(id)?.classId;
       return owner == null || valid.has(owner);
     });
-    if (char.length !== lo.charUpgrades.length || subs.length !== lo.subSkills.length) {
-      setSfLoadout({ ...lo, charUpgrades: char, subSkills: subs });
+    if (charOk.length !== lo.charUpgrades.length || subs.length !== lo.subSkills.length) {
+      setSfLoadout({ ...lo, charUpgrades: charOk, subSkills: subs });
     }
   }, [localClass, lo, setSfLoadout]);
 
   if (!isHost || gauntlet) return null;
 
   const set = (patch: Partial<SfLoadout>): void => setSfLoadout({ ...lo, ...patch });
+
+  // Ability slots already occupied by a selected graft — one graft per slot (the
+  // slot-occupancy rule) so a second graft can't silently overwrite the first at replay.
+  const graftSlots = new Set<string>(
+    HYBRID_UPGRADES.filter((h) => h.replaces != null && lo.charUpgrades.includes(h.id)).map(
+      (h) => h.replaces as string,
+    ),
+  );
+  // The subclass the primary class has committed to (one subclass per class): its equipped
+  // sub-skills are all this class's, so the first pick fixes it. Locks the OTHER subclasses.
+  const committedLocal =
+    lo.subSkills.length > 0 ? (subclassOfSkill(lo.subSkills[0])?.id ?? null) : null;
 
   // Stackable char/generic boons: click cycles the rank 0 → 1 → … → cap → 0.
   const cycleChar = (id: string): void => {
@@ -95,6 +120,20 @@ export function LoadoutEditor() {
     playUiSound('uiClick');
     const has = lo.charUpgrades.includes(id);
     set({ charUpgrades: has ? lo.charUpgrades.filter((x) => x !== id) : [...lo.charUpgrades, id] });
+  };
+  // Grafts (skill-replacing hybrids) are toggled (maxStacks 1). Selecting one unlocks its
+  // graft grand in the Grand improvements list below (offerableGrands surfaces it once the
+  // graft occupies its slot); dropping it takes that welded grand with it. Slot-occupancy
+  // (one graft per slot) and the one-subclass-per-class rule are enforced by DISABLING the
+  // offending chips in the render, so the handlers stay a plain toggle.
+  const toggleGraft = (id: string): void => {
+    playUiSound('uiClick');
+    const has = lo.charUpgrades.includes(id);
+    set({
+      charUpgrades: has
+        ? lo.charUpgrades.filter((x) => x !== id && CHAR_UPGRADES[x]?.graftId !== id)
+        : [...lo.charUpgrades, id],
+    });
   };
   const toggleSub = (id: string): void => {
     const has = lo.subSkills.includes(id);
@@ -124,6 +163,9 @@ export function LoadoutEditor() {
   const subUpgrades = SUB_SKILL_UPGRADES.filter(
     (u) => u.subSkillId != null && lo.subSkills.includes(u.subSkillId),
   );
+  // Grafts (skill-replacing "wild picks") the primary class may adopt — gated by each
+  // graft's own exclude list. Picking one unlocks its graft grand in the list above.
+  const eligibleGrafts = HYBRID_UPGRADES.filter((h) => upgradeAllowedFor(h, localClass));
   const totalPicks =
     lo.upgrades.length + lo.charUpgrades.length + lo.subSkills.length + lo.extraClasses.length;
 
@@ -190,26 +232,35 @@ export function LoadoutEditor() {
             Subclass skills — pick up to {MAX_SF_SUBSKILLS} ({lo.subSkills.length}/
             {MAX_SF_SUBSKILLS})
           </span>
-          {subclassesFor(localClass).map((sub) => (
-            <div key={sub.id} className="wb-pad-scheme-row" role="group" aria-label={sub.name}>
-              {sub.skills.map((sk) => {
-                const on = lo.subSkills.includes(sk.id);
-                return (
-                  <button
-                    type="button"
-                    key={sk.id}
-                    className={`wb-btn wb-btn-chip${on ? ' selected' : ''}`}
-                    onClick={() => toggleSub(sk.id)}
-                    aria-pressed={on}
-                    disabled={!on && lo.subSkills.length >= MAX_SF_SUBSKILLS}
-                    title={sk.desc}
-                  >
-                    {sk.icon} {sk.name}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+          {subclassesFor(localClass).map((sub) => {
+            // One subclass per class: once a subclass is committed, its siblings lock out.
+            const locked = committedLocal != null && committedLocal !== sub.id;
+            return (
+              <div key={sub.id} className="wb-pad-scheme-row" role="group" aria-label={sub.name}>
+                {sub.skills.map((sk) => {
+                  const on = lo.subSkills.includes(sk.id);
+                  const blocked = !on && (lo.subSkills.length >= MAX_SF_SUBSKILLS || locked);
+                  return (
+                    <button
+                      type="button"
+                      key={sk.id}
+                      className={`wb-btn wb-btn-chip${on ? ' selected' : ''}`}
+                      onClick={() => toggleSub(sk.id)}
+                      aria-pressed={on}
+                      disabled={blocked}
+                      title={
+                        locked && !on
+                          ? `${sk.desc} — one subclass per class; drop the other subclass's skill first`
+                          : sk.desc
+                      }
+                    >
+                      {sk.icon} {sk.name}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
 
           <span className="wb-field-label">
             {CLASSES[localClass].name} boons — click to rank up
@@ -233,6 +284,35 @@ export function LoadoutEditor() {
               );
             })}
           </div>
+
+          {eligibleGrafts.length > 0 ? (
+            <>
+              <span className="wb-field-label">Grafts — wild cross-class picks</span>
+              <div className="wb-pad-scheme-row">
+                {eligibleGrafts.map((h) => {
+                  const on = lo.charUpgrades.includes(h.id);
+                  const slotTaken = !on && h.replaces != null && graftSlots.has(h.replaces);
+                  return (
+                    <button
+                      type="button"
+                      key={h.id}
+                      className={`wb-btn wb-btn-chip wb-btn-graft${on ? ' selected' : ''}`}
+                      onClick={() => toggleGraft(h.id)}
+                      aria-pressed={on}
+                      disabled={slotTaken}
+                      title={
+                        slotTaken
+                          ? `${h.desc} — that ability slot already holds another graft`
+                          : h.desc
+                      }
+                    >
+                      {h.icon} {h.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : null}
 
           {grandList.length > 0 ? (
             <>

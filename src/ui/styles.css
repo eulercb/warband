@@ -2071,6 +2071,11 @@ body {
   border-color: var(--gold, #e8d36a);
   box-shadow: 0 0 0 1px rgba(232, 211, 106, 0.4);
 }
+/* Grafts (wild cross-class picks) — a violet accent to set them apart from grands. */
+.wb-btn-graft.selected {
+  border-color: var(--violet, #b98cff);
+  box-shadow: 0 0 0 1px rgba(185, 140, 255, 0.4);
+}
 
 /* item 7: unobtrusive build-version label in the main-menu corner panel. */
 .wb-version {

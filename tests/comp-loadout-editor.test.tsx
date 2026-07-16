@@ -94,6 +94,25 @@ describe('<LoadoutEditor> selections write the loadout', () => {
     expect(lo().extraClasses).toContain('mage');
   });
 
+  it('clears every selection via the Clear button', () => {
+    setup({
+      sfLoadout: {
+        ...EMPTY_SF_LOADOUT,
+        upgrades: ['mighty'],
+        charUpgrades: ['kn_bulwark'],
+        subSkills: ['kn_champion_slam'],
+        extraClasses: ['mage'],
+      },
+    });
+    render(<LoadoutEditor />);
+    fireEvent.click(screen.getByRole('button', { name: /Clear/ }));
+    const l = lo();
+    expect(l.upgrades).toEqual([]);
+    expect(l.charUpgrades).toEqual([]);
+    expect(l.subSkills).toEqual([]);
+    expect(l.extraClasses).toEqual([]);
+  });
+
   it('toggles a grand improvement into the loadout', () => {
     const { container } = render(<LoadoutEditor />);
     const grands = container.querySelectorAll<HTMLButtonElement>('.wb-btn-grand');
@@ -114,6 +133,62 @@ describe('<LoadoutEditor> selections write the loadout', () => {
     expect(screen.getByText(/Subclass-skill boons/i)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Honed Earthshaker/ }));
     expect(lo().charUpgrades).toContain('subup_kn_champion_slam');
+  });
+});
+
+describe('<LoadoutEditor> grafts (wild picks) + graft grands', () => {
+  it('selecting a graft unlocks its graft grand, and dropping the graft removes it', () => {
+    render(<LoadoutEditor />);
+    // No graft grand is offered until the graft is actually held.
+    expect(screen.queryByRole('button', { name: /Living Cataclysm/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Pyromancer's Pact/ }));
+    expect(lo().charUpgrades).toContain('hy_pyromancer');
+    // Its graft grand now appears (offerableGrands surfaces it) and can be taken.
+    fireEvent.click(screen.getByRole('button', { name: /Living Cataclysm/ }));
+    expect(lo().charUpgrades).toContain('hy_pyromancer_g_a');
+    // Dropping the graft strips its welded grand too — no dangling no-op grand.
+    fireEvent.click(screen.getByRole('button', { name: /Pyromancer's Pact/ }));
+    expect(lo().charUpgrades).not.toContain('hy_pyromancer');
+    expect(lo().charUpgrades).not.toContain('hy_pyromancer_g_a');
+  });
+
+  it('enforces one graft per ability slot', () => {
+    render(<LoadoutEditor />);
+    // Pyromancer's Pact and Field Medic both replace the a2 slot.
+    fireEvent.click(screen.getByRole('button', { name: /Pyromancer's Pact/ }));
+    const medic = screen.getByRole<HTMLButtonElement>('button', { name: /Field Medic/ });
+    expect(medic.disabled).toBe(true);
+    fireEvent.click(medic);
+    expect(lo().charUpgrades).not.toContain('hy_fieldmedic'); // refused — slot occupied
+  });
+
+  it('prunes a graft the primary class cannot take on class change', () => {
+    // Pyromancer's Pact excludes mage; a mage host must not keep it.
+    setup({
+      localClass: 'mage',
+      sfLoadout: { ...EMPTY_SF_LOADOUT, charUpgrades: ['hy_pyromancer'] },
+    });
+    render(<LoadoutEditor />);
+    expect(lo().charUpgrades).not.toContain('hy_pyromancer');
+  });
+
+  it('prunes an orphaned graft grand whose graft is not held', () => {
+    // A graft grand with no underlying graft in the loadout is dropped on mount.
+    setup({ sfLoadout: { ...EMPTY_SF_LOADOUT, charUpgrades: ['hy_pyromancer_g_a'] } });
+    render(<LoadoutEditor />);
+    expect(lo().charUpgrades).not.toContain('hy_pyromancer_g_a');
+  });
+});
+
+describe('<LoadoutEditor> one subclass per class', () => {
+  it('locks the sibling subclass once one is committed', () => {
+    render(<LoadoutEditor />);
+    fireEvent.click(screen.getByRole('button', { name: /Earthshaker/ })); // kn_champion
+    // A Battlemaster skill (the OTHER knight subclass) is now locked out.
+    const trip = screen.getByRole<HTMLButtonElement>('button', { name: /Trip Attack/ });
+    expect(trip.disabled).toBe(true);
+    fireEvent.click(trip);
+    expect(lo().subSkills).toEqual(['kn_champion_slam']); // the cross-subclass pick was refused
   });
 });
 
