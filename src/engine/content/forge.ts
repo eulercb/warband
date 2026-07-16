@@ -1015,6 +1015,19 @@ function capComponents(comp: AbilityComponents): AbilityComponents {
   return { delivery: comp.delivery, effects: comp.effects.map(capEffect) };
 }
 
+/**
+ * Re-derive a synthesized ability's components from its (possibly upgrade-mutated) flat
+ * fields, re-capped (item: forge upgrade synthesis). The composed executor sources
+ * buffs / zones / heals from `components`, so a canonical char-upgrade that tugs a flat
+ * field (a buff/zone/heal magnitude) would otherwise be a NO-OP on a fused skill — this
+ * flows the change through, while `capComponents` keeps it inside the balance ceilings so
+ * a stray `mul(undefined→0)` can't mint an immunity or an out-of-band buff. Canonical
+ * (uncomposed) defs carry no components and never reach this.
+ */
+export function refreshComponents(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponents {
+  return capComponents(decompose(def));
+}
+
 function capEffect(e: EffectComponent): EffectComponent {
   switch (e.kind) {
     case 'damage':

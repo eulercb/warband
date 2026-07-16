@@ -15,6 +15,9 @@ import type { PlayerAbilityDef } from './classes';
 import { CLASSES, getClass, cloneAbilities, slowAttackCooldowns, describeAbility } from './classes';
 import { getSubclass, getSubSkill, subclassOfSkill, ALL_SUBCLASSES } from './subclasses';
 import { applyUpgrades, type UpgradeId } from './upgrades';
+import { refreshComponents, forgeName, forgeVariant } from './forge';
+import { Rng, mixSeed } from '../core/math';
+import { hashStr } from './procgen';
 import {
   MAX_SKILL_STACKS,
   CRIT_CHANCE_BASE,
@@ -3955,9 +3958,46 @@ export function isCharUpgradeId(x: unknown): x is string {
  * (and, for the stat-flavoured ones, the hero directly). Unknown / mismatched-
  * class ids are skipped. Call after `applyUpgrades` at spawn.
  */
+/** A composed skill's FLAT fields (excluding `components`) as a signature, so we can
+ *  tell whether an upgrade actually retuned it. */
+function flatSig(ab: PlayerAbilityDef): string {
+  const { components: _components, ...flat } = ab;
+  return JSON.stringify(flat);
+}
+
+/** Re-derive the components of any composed sub-ability a boon just retuned (item: forge
+ *  upgrade synthesis), so its zone/heal/buff tweaks reach the component-driven executor.
+ *  A no-op off Forge (canonical sub-abilities carry no components). */
+function refreshComposedSubs(subs: Partial<Record<SubSlot, PlayerAbilityDef>>): void {
+  for (const slot of SUB_SLOTS) {
+    const ab = subs[slot];
+    if (ab?.components) ab.components = refreshComponents(ab);
+  }
+}
+
 export function applyCharUpgrades(player: Player, ids: string[] | undefined): void {
   if (!ids || !player.abilities) return;
+  const abilities = player.abilities;
+  // Chaos Forge (item: forge upgrade synthesis): a fused base skill resolves buffs /
+  // zones / heals from its `components`, so a canonical upgrade that only tugs a flat
+  // field would be a NO-OP on it. Snapshot each fused skill's flat fields, apply the
+  // upgrades, then re-derive the components of any fused skill an upgrade actually
+  // retuned — so every offered upgrade meaningfully improves the synthesized skill,
+  // re-capped to stay on budget. Only fused skills that CHANGED are refreshed, so a
+  // canonical (or un-upgraded Forge) kit is byte-identical.
+  const before = new Map<AbilitySlot, string>();
+  for (const slot of SLOTS) {
+    const ab = abilities[slot];
+    if (ab?.components) before.set(slot, flatSig(ab));
+  }
   replayCharUpgrades(player, ids);
+  for (const slot of SLOTS) {
+    const ab = abilities[slot];
+    const was = before.get(slot);
+    if (ab?.components && was !== undefined && flatSig(ab) !== was) {
+      ab.components = refreshComponents(ab);
+    }
+  }
 }
 
 /**
@@ -3996,6 +4036,7 @@ export function applySubclassGrands(player: Player, ids: readonly string[] | und
         abilities: (player.abilities ?? {}) as Record<AbilitySlot, PlayerAbilityDef>,
         subAbilities: targeted,
       });
+      refreshComposedSubs(targeted); // flow the boon into a fused sub-skill's components
     }
   }
 }
@@ -4034,6 +4075,7 @@ export function applySubSkillUpgrades(player: Player, ids: readonly string[] | u
         abilities: (player.abilities ?? {}) as Record<AbilitySlot, PlayerAbilityDef>,
         subAbilities: targeted,
       });
+      refreshComposedSubs(targeted); // flow the boon into a fused sub-skill's components
     }
   }
 }
@@ -4080,6 +4122,7 @@ export function previewSubAbility(
   const ability: PlayerAbilityDef = { ...sk.ability, slot: 'sub1' };
   const stub = stubPlayer(owner.classId);
   const abilities = stub.abilities as Record<AbilitySlot, PlayerAbilityDef>;
+  let tuned = false;
   for (const boonId of ownedChar) {
     const def = CHAR_UPGRADES[boonId];
     if (!def) continue;
@@ -4090,7 +4133,11 @@ export function previewSubAbility(
       (def.subclassId != null && def.subclassId === owner.id);
     if (!hits) continue;
     def.apply({ player: stub, abilities, subAbilities: { sub1: ability } });
+    tuned = true;
   }
+  // Forge run: flow the boons' tweaks into the fused sub-skill's components (item: forge
+  // upgrade synthesis), so the preview reads the true empowered numbers.
+  if (tuned && ability.components) ability.components = refreshComponents(ability);
   return ability;
 }
 
@@ -4418,6 +4465,46 @@ function describeStatReadout(classId: ClassId, ownedChar: readonly string[], id:
     .join(' · ');
 }
 
+/** Salt for the Forge char-upgrade rename stream (decorrelated from ability/class streams). */
+const FORGE_CHARUP_SALT = 0xf5e3;
+
+/** The base slot a boon empowers (for the Forge rename), or null for a stat-only /
+ *  hybrid / graft boon that doesn't tie to exactly one native slot. */
+function boonTargetSlot(def: CharUpgradeDef): AbilitySlot | null {
+  if (def.classId === 'any') return null; // grafts / cross-class styles — left as authored
+  if (def.skillSlot) return def.skillSlot;
+  const slots = BOON_SLOTS[def.id];
+  return slots && slots.length > 0 ? slots[0] : null;
+}
+
+/**
+ * Resolve a character upgrade for the active run (item: forge upgrade synthesis). In a
+ * Chaos Forge run a skill-targeting boon is re-presented for the FUSED skill it now
+ * empowers: its NAME is blended (the same forgeName method skill names use) from the
+ * boon's name + the fused skill's name, and its DESCRIPTION is regenerated to reference
+ * that skill — the offer card's "Now →" line already resolves the fused skill's real
+ * before→after. The `apply` is unchanged: the flat-field tweak flows to the fused
+ * skill's components at spawn (applyCharUpgrades' refresh), so the boon genuinely
+ * improves the synthesized skill rather than no-opping. Byte-identical to the canonical
+ * def when Forge is off (forgeVariant returns null); stat-only / hybrid boons, which
+ * tug player stats or swap whole kits, are left exactly as authored.
+ */
+export function getCharUpgrade(id: string): CharUpgradeDef | undefined {
+  const base = CHAR_UPGRADES[id];
+  if (!base) return undefined;
+  return forgeVariant('charUpgrade', id, (seed) => forgeCharUpgrade(seed, base)) ?? base;
+}
+
+function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
+  const slot = boonTargetSlot(base);
+  if (!slot) return base; // stat-only / hybrid — nothing skill-specific to rename
+  const fused = getClass(base.classId as ClassId).abilities[slot];
+  const rng = new Rng(mixSeed(seed, FORGE_CHARUP_SALT, hashStr(base.id)));
+  const name = forgeName([base.name, fused.name], (k) => rng.int(0, k - 1));
+  const kind = base.grand ? 'Reforged capstone' : 'Reforged boon';
+  return { ...base, name, desc: `${kind} — empowers your ${fused.name}` };
+}
+
 /** A resolved label + description for an offer (a real, reclaim, or graftup id). */
 export interface CharOfferView {
   id: string;
@@ -4496,7 +4583,7 @@ export function describeCharOffer(
       desc: `${boon.desc}. Upgrades your grafted ${skillName}.`,
     };
   }
-  const def = CHAR_UPGRADES[id];
+  const def = getCharUpgrade(id); // Forge run → the boon re-presented for its fused skill
   if (!def) return null;
   const replaced = def.replaces ? current[def.replaces]?.name : null;
   let desc = replaced ? `${def.desc}. Replaces ${replaced}.` : def.desc;
@@ -4542,7 +4629,7 @@ export function charUpgradeBadge(id: string): { icon: string; name: string; desc
     const boon = CHAR_UPGRADES[graftup.boonId]; // parseGraftup guarantees it exists
     return { icon: boon.icon, name: boon.name, desc: `${boon.desc}. Upgrades your grafted skill.` };
   }
-  const def = CHAR_UPGRADES[id];
+  const def = getCharUpgrade(id); // Forge run → the boon re-presented for its fused skill
   if (!def) return null;
   return { icon: def.icon, name: def.name, desc: def.desc };
 }
