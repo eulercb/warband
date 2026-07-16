@@ -26,6 +26,7 @@ function mkPlayer(id: number, classId: Player['classId']): Player {
     reviverId: null,
     cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 },
     castTimer: 0,
+    castTimerMax: 0,
     castSlot: null,
     buffs: [],
     cooldownMult: 1,

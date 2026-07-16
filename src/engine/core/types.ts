@@ -246,6 +246,7 @@ export interface Player {
 
   cooldowns: Cooldowns;
   castTimer: number; // > 0 while rooted mid-cast (e.g. Fireball)
+  castTimerMax: number; // the cast's full duration (castTime × castMult); drives the cast bar
   castSlot: ExtSlot | null;
   buffs: Buff[];
 
@@ -1012,6 +1013,9 @@ export interface PlayerView {
   reviveProgress: number;
   castSlot: ExtSlot | null;
   castTimer: number;
+  /** The current cast's full duration (castTime × castMult) so the render can show an
+   * accurate progress ring even under Focus; 0 when not casting. */
+  castTimerMax: number;
   /** Live participation score (prior bosses + this fight), for HUD / pause menu. */
   score: number;
   /** Chosen subclass-skill ids (so clients render + label the sub1/sub2 buttons). */

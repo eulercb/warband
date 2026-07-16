@@ -49,6 +49,7 @@ function mkPlayer(over: Partial<PlayerView> & Pick<PlayerView, 'id'>): PlayerVie
     reviveProgress: over.reviveProgress ?? 0,
     castSlot: over.castSlot ?? null,
     castTimer: over.castTimer ?? 0,
+    castTimerMax: over.castTimerMax ?? 0,
     score: over.score ?? 0,
   };
 }

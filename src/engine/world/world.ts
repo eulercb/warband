@@ -723,6 +723,7 @@ export class World {
         reviverId: null,
         cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 },
         castTimer: 0,
+        castTimerMax: 0,
         castSlot: null,
         buffs: [],
         cooldownMult: 1,
@@ -1096,6 +1097,7 @@ export class World {
         if (was > 0 && p.castTimer === 0 && p.castSlot) {
           const slot = p.castSlot;
           p.castSlot = null;
+          p.castTimerMax = 0; // cast finished; the bar clears
           if (p.state === 'alive' && !hasBuff(p, 'stun')) {
             resolvePlayerAbility(this, p, slot, { x: 0, y: 0 });
           }
@@ -1198,6 +1200,7 @@ export class World {
     const nextCd = slot === 'basic' ? Math.max(BASIC_CD_FLOOR, rawCd) : rawCd;
     if (ab.castTime && ab.castTime > 0) {
       p.castTimer = ab.castTime * p.castMult;
+      p.castTimerMax = p.castTimer; // full duration, so the render's cast bar is accurate under Focus
       p.castSlot = slot;
       p.cooldowns[slot] = nextCd;
       this.events.push({
@@ -1285,6 +1288,7 @@ export class World {
     // stack two fresh bursts. Runs after rebindActiveSubs so the sub slots exist.
     this.floorSwapOffensiveCooldowns(p);
     p.castTimer = 0;
+    p.castTimerMax = 0;
     p.castSlot = null;
     p.swapCd = SWAP_FX_CD; // cosmetic only — the swap already happened
   }
@@ -2758,6 +2762,7 @@ export class World {
         p.reviveProgress = 0;
         p.reviverId = null;
         p.castTimer = 0;
+        p.castTimerMax = 0;
         p.castSlot = null;
         p.stats.deaths += 1;
         this.events.push({ t: 'downed', id: p.id, pos: { ...p.pos } });
@@ -2945,6 +2950,7 @@ export class World {
       reviveProgress: p.reviveProgress,
       castSlot: p.castSlot,
       castTimer: p.castTimer,
+      castTimerMax: p.castTimerMax,
       score: Math.round(this.playerScore(p)),
       // Only the ACTIVE class's subclass skills cross the wire (item 15): the HUD
       // binds them to sub1/sub2 by index, so a multiclass hero shows the right two.

@@ -349,8 +349,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'mg_evoker_sculpt',
           'Sculpted Blast',
           '💥',
-          'A 170u detonation for 44',
-          nova('Sculpted Blast', 9, 44, 170),
+          'Charge a 170u detonation for 58',
+          nova('Sculpted Blast', 11, 58, 170, { castTime: 0.6 }),
         ),
         sk(
           'mg_evoker_shield',
@@ -422,8 +422,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'cl_light_beam',
           'Guiding Bolt',
           '☀️',
-          'A bolt of light for 46',
-          proj('Guiding Bolt', 6, 46, { projSpeed: 620 }),
+          'Charge a searing bolt of light for 60',
+          proj('Guiding Bolt', 8, 60, { projSpeed: 620, castTime: 0.55 }),
         ),
         sk(
           'cl_light_flash',
@@ -962,8 +962,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'so_draconic_bolt',
           'Chromatic Bolt',
           '🌈',
-          'A heavy bolt for 46',
-          proj('Chromatic Bolt', 6, 46, { projSpeed: 700 }),
+          'Charge a heavy chromatic bolt for 60',
+          proj('Chromatic Bolt', 8, 60, { projSpeed: 700, castTime: 0.5 }),
         ),
         sk(
           'so_draconic_scales',
@@ -1022,8 +1022,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'wa_fiend_hurl',
           'Hurl Flame',
           '🔥',
-          'A hellfire bolt for 44',
-          proj('Hurl Flame', 5, 44, { lifestealFrac: 0.15 }),
+          'Charge a hellfire bolt for 56 that drinks 15% as health',
+          proj('Hurl Flame', 6.5, 56, { lifestealFrac: 0.15, castTime: 0.5 }),
         ),
         sk(
           'wa_fiend_pit',
