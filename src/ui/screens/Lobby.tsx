@@ -21,23 +21,11 @@ import {
 } from '../state/session';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import { LoadoutEditor } from './LoadoutEditor';
-import { CLASS_IDS, CLASSES, describeAbility } from '../../engine/content/classes';
-import { previewAbilityTable } from '../../engine/content/charUpgrades';
+import { CodexCard } from './CodexCard';
+import { CLASS_IDS, CLASSES } from '../../engine/content/classes';
 import { MONSTER_IDS, MONSTERS } from '../../engine/content/monsters';
 import { MAX_PLAYERS } from '../../engine/core/constants';
-import type { ClassId, AbilitySlot } from '../../engine/core/types';
-
-const KIT_SLOTS: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
-
-/**
- * A multi-line summary of a class's base kit — each ability's name and its
- * concrete effect numbers (item 19) — for the class-card tooltip. Uses the
- * spawn-resolved table so the cooldowns match what the fight actually commits.
- */
-function classKitTooltip(id: ClassId): string {
-  const table = previewAbilityTable(id, []);
-  return KIT_SLOTS.map((slot) => `${table[slot].name}: ${describeAbility(table[slot])}`).join('\n');
-}
+import type { ClassId } from '../../engine/core/types';
 
 export function Lobby() {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -94,6 +82,11 @@ export function Lobby() {
   const onReady = (): void => {
     playUiSound('uiClick');
     setReady(!localReady);
+  };
+
+  const onPickClass = (id: ClassId): void => {
+    playUiSound('uiClick');
+    selectClass(id);
   };
 
   const onStart = (): void => {
@@ -213,7 +206,7 @@ export function Lobby() {
         <LoadoutEditor />
 
         <div className="wb-lobby-cols">
-          <section className="wb-lobby-col">
+          <section className="wb-lobby-col wb-lobby-col-roster">
             <h3 className="wb-section-title">Warband ({players.length})</h3>
             <ul className="wb-player-list">
               {players.map((p) => (
@@ -264,31 +257,17 @@ export function Lobby() {
             </ul>
           </section>
 
-          <section className="wb-lobby-col">
+          <section className="wb-lobby-col wb-lobby-col-picker">
             <h3 className="wb-section-title">Choose your class</h3>
             <div className="wb-class-grid">
-              {CLASS_IDS.map((id) => {
-                const def = CLASSES[id];
-                const selected = id === localClass;
-                return (
-                  <button
-                    type="button"
-                    key={id}
-                    data-cls={id}
-                    className={`wb-card wb-class-card${selected ? ' selected' : ''}`}
-                    onClick={() => {
-                      playUiSound('uiClick');
-                      selectClass(id);
-                    }}
-                    aria-pressed={selected}
-                    title={classKitTooltip(id)}
-                  >
-                    <span className="wb-card-name">{def.name}</span>
-                    <span className="wb-card-role">{def.role}</span>
-                    <span className="wb-card-blurb">{def.blurb}</span>
-                  </button>
-                );
-              })}
+              {CLASS_IDS.map((id) => (
+                <CodexCard
+                  key={id}
+                  classId={id}
+                  selected={id === localClass}
+                  onSelect={onPickClass}
+                />
+              ))}
             </div>
           </section>
         </div>

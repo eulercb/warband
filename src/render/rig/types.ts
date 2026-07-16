@@ -41,6 +41,12 @@ export interface BodyPartSpec {
   z: PartZ;
   /** 'base' (default) tints with the entity colour; a number is an explicit accent. */
   tint?: 'base' | number;
+  /**
+   * Optional anchor for a decorative dress-up part: when set, `local` is measured
+   * from the named part's centre instead of the rig origin, so a hood/hat/plume
+   * rides the head and a pauldron rides the torso. Absent = rig-origin relative.
+   */
+  parent?: 'head' | 'torso';
 }
 
 /** A group of `count` IK legs with a shared stepping gait. */
@@ -89,12 +95,17 @@ export interface TentacleSpec {
 
 /** A small procedural detail drawn on top of a part. */
 export interface DecorSpec {
-  kind: 'eyes' | 'marking' | 'horn' | 'mandible';
+  kind: 'eyes' | 'marking' | 'horn' | 'mandible' | 'ring';
   anchorPart: string;
   local: Vec2; // offset on the anchor part, body-local, × R
   scale: number; // × R
   color?: number;
   count?: number; // eyes/horns: how many
+  /** `ring` only — stroke width, × R (default 0.1). Draws an UNFILLED ring (halo,
+   *  pauldron rim, robe/vestment trim). */
+  ringWidth?: number;
+  /** `ring` only — add a soft outer glow (a lit halo). */
+  glow?: boolean;
 }
 
 /** One humanoid arm (2-bone IK from a shoulder to the grip). */
@@ -117,6 +128,8 @@ export interface WeaponSpec {
   /** melee = forward thrust on cast; ranged = pull-back then release. */
   style: 'melee' | 'ranged';
   offhand?: WeaponKind; // e.g. paladin shield, rogue second dagger
+  /** Optional decorative trim colour — a shield boss stud, a mace haft band. */
+  accent?: number;
 }
 
 export interface RigSpec {

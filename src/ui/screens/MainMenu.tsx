@@ -23,6 +23,7 @@ import { ARENA_W, ARENA_H } from '../../engine/core/constants';
 import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
 import type { ClassId, InputCommand, TotemKind } from '../../engine/core/types';
 import { formatBuildLabel } from './buildInfo';
+import { CodexCard } from './CodexCard';
 
 /** Seconds a hero must hold their ground on a totem before it activates. */
 const TOTEM_DWELL_S = 0.9;
@@ -301,16 +302,12 @@ export function MainMenu() {
             <h2 className="wb-title-sm">Choose your hero</h2>
             <div className="wb-picker-grid">
               {CLASS_IDS.map((id) => (
-                <button
+                <CodexCard
                   key={id}
-                  type="button"
-                  data-cls={id}
-                  className={`wb-card wb-class-card wb-picker-card${id === localClass ? ' selected' : ''}`}
-                  onClick={() => pickClass(id)}
-                >
-                  <span className="wb-card-name">{CLASSES[id].name}</span>
-                  <span className="wb-card-role">{CLASSES[id].role}</span>
-                </button>
+                  classId={id}
+                  selected={id === localClass}
+                  onSelect={pickClass}
+                />
               ))}
             </div>
             <button

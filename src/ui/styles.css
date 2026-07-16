@@ -121,7 +121,9 @@ body {
 }
 
 .wb-lobby-panel {
-  max-width: 900px;
+  /* Codex cards are taller/wider than the old flat class cards; widen the panel so
+   * the roster + picker sit side by side with room to breathe (they wrap on narrow). */
+  max-width: 1100px;
 }
 
 .wb-result-panel {
@@ -488,8 +490,8 @@ body {
 
 .wb-class-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 14px;
 }
 
 /* --------------------------------------------------------------------------
@@ -603,9 +605,11 @@ body {
 }
 
 .wb-lobby-cols {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  /* Wrap the roster + picker instead of a fixed 1fr 1fr: the picker (codex cards)
+   * wants the lion's share of the width and both stack cleanly on a phone. */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
 }
 
 .wb-lobby-col {
@@ -613,6 +617,15 @@ body {
   flex-direction: column;
   gap: 10px;
   min-width: 0;
+}
+
+/* Roster stays compact; the class picker takes the rest and drops below on narrow. */
+.wb-lobby-col-roster {
+  flex: 1 1 260px;
+  max-width: 400px;
+}
+.wb-lobby-col-picker {
+  flex: 10 1 320px;
 }
 
 .wb-section-title {
@@ -2195,16 +2208,16 @@ body {
   }
 }
 
-/* Class picker overlay grid */
+/* Class picker overlay grid (reuses the parchment codex cards). */
 .wb-picker-panel {
-  max-width: 560px;
-  width: min(560px, 92vw);
+  max-width: 720px;
+  width: min(720px, 94vw);
 }
 
 .wb-picker-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 14px;
   margin: 12px 0 14px;
 }
 
@@ -2541,4 +2554,212 @@ body {
 .wb-special-reward.chosen .wb-special-title {
   color: #9df0b0;
   margin-bottom: 0;
+}
+
+/* ==========================================================================
+ * Class Codex — parchment "Player's Handbook" class cards (lobby + hero picker).
+ *
+ * The flat class buttons are replaced by 5e-style stat blocks on a parchment
+ * surface. Everything OUTSIDE the cards keeps the dark system-ui skin; only the
+ * cards opt into the serif display/body faces + parchment palette below.
+ * ========================================================================== */
+
+/* Self-hosted display + body faces so the handbook look works offline / in the
+ * installed PWA — no Google Fonts hotlink. Cinzel for headings, Alegreya for
+ * body copy. woff2 files live in public/fonts/; font-display: swap renders the
+ * serif fallback first so text is never invisible while a face loads. */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/cinzel-700.woff2') format('woff2');
+}
+/* Alegreya ships as a single variable face per style, so one file covers the
+ * 400/500/700 weights the cards use (declared as a weight range). */
+@font-face {
+  font-family: 'Alegreya';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/alegreya.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Alegreya';
+  font-style: italic;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url('/fonts/alegreya-italic.woff2') format('woff2');
+}
+
+:root {
+  /* Parchment surface + inks — scoped in practice to the codex cards. */
+  --parch-1: #f6eed8;
+  --parch-2: #eee1c2;
+  --parch-3: #e6d6ae;
+  --parch-border: #b8a577;
+  --ink: #2b1d12;
+  --ink-warm: #4a3a24;
+  --ink-faded: #5b4a30;
+  --heading-red: #7a2f1f;
+  --chip-bg: #5b4a30;
+  --chip-text: #f0e6cf;
+  --codex-cinzel: 'Cinzel', 'Trajan Pro', Georgia, serif;
+  --codex-body: 'Alegreya', Georgia, 'Times New Roman', serif;
+}
+
+.wb-codex-card {
+  position: relative;
+  appearance: none;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  border: 1px solid var(--parch-border);
+  border-radius: 6px;
+  background: linear-gradient(160deg, var(--parch-1) 0%, var(--parch-2) 55%, var(--parch-3) 100%);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--codex-body);
+  color: var(--ink-warm);
+}
+
+.wb-codex-card:hover {
+  transform: translateY(-3px);
+}
+
+.wb-codex-card:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(242, 193, 78, 0.55),
+    0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* Selected: the gold ring, matching the old `.wb-card.selected`. */
+.wb-codex-card.selected {
+  box-shadow:
+    0 0 0 2px var(--gold),
+    0 14px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Accent ribbon along the top edge (fades to transparent). */
+.wb-codex-ribbon {
+  display: block;
+  height: 5px;
+  border-radius: 5px 5px 0 0;
+  background: linear-gradient(90deg, var(--codex-accent, var(--heading-red)), transparent 85%);
+}
+
+.wb-codex-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px 14px;
+}
+
+.wb-codex-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wb-codex-name {
+  font-family: var(--codex-cinzel);
+  font-size: 1.22rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--codex-accent, var(--heading-red));
+}
+
+/* "✓ Your hero" gold pill on the selected card. */
+.wb-codex-badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #241c05;
+  background: linear-gradient(180deg, #f2c14e, #c99a2e);
+  border: 1px solid #a87d20;
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+  font-family: var(--font);
+}
+
+.wb-codex-role {
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--ink-warm);
+}
+
+/* 5e-style tapering divider. */
+.wb-codex-divider {
+  display: block;
+  height: 6px;
+  margin: 7px 0 6px;
+  background: var(--heading-red);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+.wb-codex-stats {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--heading-red);
+}
+.wb-codex-stats b {
+  font-weight: 700;
+}
+
+.wb-codex-blurb {
+  margin-top: 2px;
+  font-size: 0.84rem;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--ink-faded);
+}
+
+.wb-codex-abilities {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.wb-codex-ability {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.wb-codex-key {
+  padding: 2px 0;
+  border-radius: 4px;
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  font-family: var(--font);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.wb-codex-ab {
+  min-width: 0;
+}
+
+.wb-codex-ab-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.wb-codex-ab-line {
+  font-size: 0.8rem;
+  color: var(--ink-warm);
 }

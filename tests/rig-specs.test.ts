@@ -95,7 +95,7 @@ const RIG_IDS: RigId[] = [
 ];
 const PART_Z = ['behind', 'main', 'front'];
 const WEAPON_KINDS = ['sword', 'bow', 'staff', 'mace', 'axe', 'dagger', 'shield', 'claws'];
-const DECOR_KINDS = ['eyes', 'marking', 'horn', 'mandible'];
+const DECOR_KINDS = ['eyes', 'marking', 'horn', 'mandible', 'ring'];
 
 // ---------------------------------------------------------------------------
 // Generic invariant helpers
@@ -814,7 +814,14 @@ describe('buildDragonSpec', () => {
 // ---------------------------------------------------------------------------
 
 const WEAPON_EXPECT: Record<ClassId, WeaponSpec> = {
-  knight: { kind: 'sword', length: 2.0, color: CLASS_COLORS.knight, style: 'melee' },
+  knight: {
+    kind: 'sword',
+    length: 2.0,
+    color: CLASS_COLORS.knight,
+    style: 'melee',
+    offhand: 'shield',
+    accent: 0xf2c14e,
+  },
   paladin: {
     kind: 'sword',
     length: 2.0,
@@ -833,7 +840,7 @@ const WEAPON_EXPECT: Record<ClassId, WeaponSpec> = {
   ranger: { kind: 'bow', length: 1.2, color: 0x8a5a2a, style: 'ranged' },
   mage: { kind: 'staff', length: 1.8, color: 0x9c5cf0, style: 'ranged' },
   druid: { kind: 'staff', length: 1.7, color: 0x6b8f3a, style: 'melee' },
-  cleric: { kind: 'mace', length: 1.3, color: 0xf2c14e, style: 'melee' },
+  cleric: { kind: 'mace', length: 1.3, color: 0xf2c14e, style: 'melee', accent: 0xc99a2e },
   bard: { kind: 'dagger', length: 1.1, color: CLASS_COLORS.bard, style: 'ranged' },
   monk: {
     kind: 'dagger',
@@ -848,7 +855,9 @@ const WEAPON_EXPECT: Record<ClassId, WeaponSpec> = {
 
 describe('buildHumanoidSpec', () => {
   it('is the aim-tracking biped: torso + head, two legs, two arms, a weapon', () => {
-    const spec = buildHumanoidSpec('knight');
+    // Use an undressed (expansion) class so this pins the shared base chassis; the
+    // four core classes now add per-class dress parts + decor (asserted separately).
+    const spec = buildHumanoidSpec('barbarian');
     expect(spec.id).toBe('humanoid');
     expect(spec.parts.map((p) => p.id)).toEqual(['torso', 'head']);
     expect(spec.parts[0].z).toBe('main');
@@ -896,15 +905,104 @@ describe('buildHumanoidSpec', () => {
     expect(spec.weapon).toEqual(WEAPON_EXPECT[classId]);
   });
 
-  it('shares the same body across classes (only the weapon differs)', () => {
+  it('shares the biped chassis across undressed classes (only the weapon differs)', () => {
+    // The four core classes carry per-class dress now, but the expansion classes
+    // still share ONE plain biped body — only the weapon differs between them.
+    const barbarian = buildHumanoidSpec('barbarian');
+    const rogue = buildHumanoidSpec('rogue');
+    expect(barbarian.parts).toEqual(rogue.parts);
+    expect(barbarian.arms).toEqual(rogue.arms);
+    expect(barbarian.legs?.gait).toEqual(rogue.legs?.gait);
+    expect(barbarian.idle).toEqual(rogue.idle);
+    expect(barbarian.weapon).not.toEqual(rogue.weapon);
+  });
+
+  it('keeps the shared legs / arms / idle intact under a dressed class', () => {
+    // Dress only adds parts / decor / tints + weapon trim — the gait, arms and idle
+    // breathing are the same shared chassis as an undressed class.
     const knight = buildHumanoidSpec('knight');
-    const mage = buildHumanoidSpec('mage');
-    // Function-free portions of the body are identical; only the weapon changes.
-    expect(knight.parts).toEqual(mage.parts);
-    expect(knight.arms).toEqual(mage.arms);
-    expect(knight.legs?.gait).toEqual(mage.legs?.gait);
-    expect(knight.idle).toEqual(mage.idle);
-    expect(knight.weapon).not.toEqual(mage.weapon);
+    const barbarian = buildHumanoidSpec('barbarian');
+    expect(knight.arms).toEqual(barbarian.arms);
+    expect(knight.legs?.gait).toEqual(barbarian.legs?.gait);
+    expect(knight.idle).toEqual(barbarian.idle);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Humanoid — per-class field dress-up (knight / ranger / mage / cleric)
+// ---------------------------------------------------------------------------
+
+describe('buildHumanoidSpec — per-class field dress', () => {
+  it('gives the knight a steel cuirass, pauldrons, a plume and a boss-studded shield', () => {
+    const spec = buildHumanoidSpec('knight');
+    expect(spec.parts.map((p) => p.id)).toEqual([
+      'torso',
+      'head',
+      'pauldronL',
+      'pauldronR',
+      'plume',
+    ]);
+    // Torso + head recoloured to steel (no longer the class blue).
+    expect(spec.parts.find((p) => p.id === 'torso')?.tint).toBe(0x505c6b);
+    expect(spec.parts.find((p) => p.id === 'head')?.tint).toBe(0x8d97a8);
+    // Pauldrons ride the torso; the plume rides the head.
+    expect(spec.parts.find((p) => p.id === 'pauldronL')?.parent).toBe('torso');
+    expect(spec.parts.find((p) => p.id === 'plume')?.parent).toBe('head');
+    // A blue rim ring on each pauldron.
+    expect(spec.decor?.map((d) => d.kind)).toEqual(['ring', 'ring']);
+    expect(spec.decor?.map((d) => d.anchorPart)).toEqual(['pauldronL', 'pauldronR']);
+    // Kite shield with a gold boss stud.
+    expect(spec.weapon?.offhand).toBe('shield');
+    expect(spec.weapon?.accent).toBe(0xf2c14e);
+  });
+
+  it('gives the ranger a hood, a skin face and a fletched quiver', () => {
+    const spec = buildHumanoidSpec('ranger');
+    expect(spec.parts.map((p) => p.id)).toEqual([
+      'torso',
+      'head',
+      'hood',
+      'quiver',
+      'fletchA',
+      'fletchB',
+    ]);
+    expect(spec.parts.find((p) => p.id === 'head')?.tint).toBe(0xd9b38c); // skin
+    expect(spec.parts.find((p) => p.id === 'hood')?.parent).toBe('head');
+    // Two fletching dots (cream + red) on the quiver.
+    expect(spec.parts.find((p) => p.id === 'fletchA')?.tint).toBe(0xe6dfc8);
+    expect(spec.parts.find((p) => p.id === 'fletchB')?.tint).toBe(0xc94f3d);
+    expect(spec.decor).toBeUndefined();
+    expect(spec.weapon?.kind).toBe('bow');
+  });
+
+  it('gives the mage a wide-brim hat, a robe trim and an orb-staff', () => {
+    const spec = buildHumanoidSpec('mage');
+    expect(spec.parts.map((p) => p.id)).toEqual(['torso', 'head', 'hatBrim', 'hatCrown']);
+    expect(spec.parts.find((p) => p.id === 'hatBrim')?.parent).toBe('head');
+    // Gold hat band (on the crown) + a robe trim ring.
+    expect(spec.decor?.map((d) => d.kind)).toEqual(['ring', 'ring']);
+    expect(spec.decor?.[0].anchorPart).toBe('hatCrown');
+    expect(spec.weapon?.kind).toBe('staff');
+  });
+
+  it('gives the cleric a glowing halo, a chest sigil and a gold-banded mace', () => {
+    const spec = buildHumanoidSpec('cleric');
+    // All accents — no big extra body parts.
+    expect(spec.parts.map((p) => p.id)).toEqual(['torso', 'head']);
+    expect(spec.parts.find((p) => p.id === 'torso')?.tint).toBe(0xdecfa6); // cream vestment
+    expect(spec.decor?.map((d) => d.kind)).toEqual(['ring', 'ring', 'marking']);
+    const halo = spec.decor?.find((d) => d.anchorPart === 'head');
+    expect(halo?.kind).toBe('ring');
+    expect(halo?.glow).toBe(true);
+    expect(spec.weapon?.accent).toBe(0xc99a2e); // gold mace band
+  });
+
+  it('leaves the expansion classes on the plain biped (no dress)', () => {
+    for (const id of ['barbarian', 'rogue', 'paladin', 'druid'] as ClassId[]) {
+      const spec = buildHumanoidSpec(id);
+      expect(spec.parts.map((p) => p.id)).toEqual(['torso', 'head']);
+      expect(spec.decor).toBeUndefined();
+    }
   });
 });
 
