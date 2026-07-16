@@ -91,12 +91,13 @@ export function OwnedSkills() {
   const classId = useHudStore((s) => s.classId);
   const subSkills = useHudStore((s) => s.subSkills);
   const source = useHudStore((s) => s.inputSource);
+  const myUpgrades = useStore((s) => s.myUpgrades);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
   // Re-render on rebinds so the per-skill key badges stay accurate.
   useBindings((s) => s.bindings);
   const rows = useMemo(
-    () => (classId ? ownedSkillRows(classId, myCharUpgrades, subSkills) : []),
-    [classId, myCharUpgrades, subSkills],
+    () => (classId ? ownedSkillRows(classId, myUpgrades, myCharUpgrades, subSkills) : []),
+    [classId, myUpgrades, myCharUpgrades, subSkills],
   );
   if (!classId || rows.length === 0) return null;
   return (

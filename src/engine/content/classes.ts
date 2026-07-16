@@ -863,6 +863,19 @@ export function cloneAbilities(
 }
 
 /**
+ * The hero's generic (non-ability) multipliers, folded into a described ability's
+ * numbers so a skill line reads the REAL effective values. All optional / default 1×.
+ */
+export interface DescribeMods {
+  /** Outgoing-damage multiplier (Mighty + any damage boon) — scales damage fields. */
+  damageMult?: number;
+  /** Cooldown multiplier (Haste) — scales the cooldown. */
+  cooldownMult?: number;
+  /** Cast-time multiplier (Focus) — scales the cast time. */
+  castMult?: number;
+}
+
+/**
  * A compact, player-facing effect line for a base-kit ability (item 19) — the
  * concrete numbers behind its icon: damage/heal, projectile count, blast/reach/
  * radius, cast/stun/slow seconds, buff percentages + duration, lifesteal, i-frames
@@ -871,16 +884,32 @@ export function cloneAbilities(
  *
  * PURE — it reads only the def, so passing a hero's *resolved* ability (post
  * grafts/boons, e.g. from `previewAbilityTable`) reflects their current numbers.
+ * Pass `mods` to also fold in the hero's generic damage/cooldown/cast multipliers
+ * (which the sim applies at use-time), so the line shows the true effective values.
  * `slot` is ignored, so a subclass skill's ability (which carries no slot)
  * describes fine too. Rounds like the reward cards: magnitudes to whole units,
  * seconds to one decimal, ratios to whole percents.
  */
-export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>): string {
+export function describeAbility(
+  def: Omit<PlayerAbilityDef, 'slot'>,
+  mods?: DescribeMods,
+): string {
+  // The hero's GENERIC multipliers (Mighty/Haste/Focus and any boon that tugs
+  // player.damageMult / cooldownMult / castMult) are applied by the SIM at use-time,
+  // on top of the class-upgraded def — so fold them into the displayed numbers here so
+  // a pause-menu skill line reads the hero's REAL current damage / cooldown / cast.
+  // Absent mods ⇒ all 1× ⇒ the card text is byte-for-byte the authored formatter, so
+  // every existing caller (and canonical content) is unchanged. Damage scales the
+  // fields the sim runs through damageMult (direct/impact/landing/zone-tick damage);
+  // heals and buffs are never damage-scaled (the sim doesn't scale them either).
+  const dmgMul = mods?.damageMult ?? 1;
+  const cdMul = mods?.cooldownMult ?? 1;
+  const castMul = mods?.castMult ?? 1;
   // Chaos Forge — a synthesized ability regenerates its card text from its
   // recombined component list (there is no author to write copy for a fused
   // skill). Canonical/variance content carries no components and keeps the
   // authored flat-field walk below, so its cards are byte-for-byte unchanged.
-  if (def.components) return describeComposed(def.components, def.cooldown);
+  if (def.components) return describeComposed(def.components, def.cooldown * cdMul);
   const n = (v: number): string => `${Math.round(v)}`;
   // Up to two decimals (trailing zeros drop naturally), so a 0.25s i-frame or a
   // 1.1s cooldown both read exactly, matching the reward cards' precision.
@@ -890,13 +919,14 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>): string {
   // --- Primary magnitude (what it does when it lands) ---
   if (def.kind === 'taunt') parts.push('Pull aggro');
   if (def.kind === 'heal' && def.damage > 0) {
-    parts.push(`Heal ${n(def.damage)}`);
+    parts.push(`Heal ${n(def.damage)}`); // heals aren't damage-scaled
   } else if (def.damage > 0) {
     const count = def.projCount ?? 1;
-    parts.push(count > 1 ? `${count}× ${n(def.damage)} dmg` : `${n(def.damage)} dmg`);
+    const dmg = def.damage * dmgMul;
+    parts.push(count > 1 ? `${count}× ${n(dmg)} dmg` : `${n(dmg)} dmg`);
   }
-  if (def.landingDamage) parts.push(`${n(def.landingDamage)} landing dmg`);
-  if (def.zoneTickDamage) parts.push(`${n(def.zoneTickDamage)}/tick dmg`);
+  if (def.landingDamage) parts.push(`${n(def.landingDamage * dmgMul)} landing dmg`);
+  if (def.zoneTickDamage) parts.push(`${n(def.zoneTickDamage * dmgMul)}/tick dmg`);
   if (def.zoneTickHeal) parts.push(`${n(def.zoneTickHeal)}/tick heal`);
   if (def.healOnUse) parts.push(`heal ${n(def.healOnUse)}`);
 
@@ -911,7 +941,7 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>): string {
   }
 
   // --- Timing / control ---
-  if (def.castTime) parts.push(`${s(def.castTime)} cast`);
+  if (def.castTime) parts.push(`${s(def.castTime * castMul)} cast`);
   if (def.stun) parts.push(`${s(def.stun)} stun`);
   if (def.freeze) parts.push(`${s(def.freeze)} freeze`);
   // A true root (item 3) supersedes its slow — the target is held fast (no move,
@@ -940,7 +970,7 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>): string {
   }
 
   // --- Cooldown always closes the line ---
-  parts.push(`${s(def.cooldown)} cooldown`);
+  parts.push(`${s(def.cooldown * cdMul)} cooldown`);
 
   return parts.join(' · ');
 }

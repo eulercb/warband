@@ -403,6 +403,7 @@ describe('ownedSkillRows (item 6)', () => {
     const rows = ownedSkillRows(
       'knight',
       [],
+      [],
       ['kn_champion_slam', 'kn_champion_charge', 'mg_evoker_lightning'],
     );
     expect(rows).toHaveLength(6); // 4 base + 2 knight subs; the mage sub is dropped
@@ -417,15 +418,33 @@ describe('ownedSkillRows (item 6)', () => {
   });
 
   it('reflects the hero current upgrades in the numeric line', () => {
-    const [before] = ownedSkillRows('knight', [], []);
-    const [after] = ownedSkillRows('knight', ['kn_widecleave'], []);
+    const [before] = ownedSkillRows('knight', [], [], []);
+    const [after] = ownedSkillRows('knight', [], ['kn_widecleave'], []);
     // Wide Cleave tunes the basic slot: bigger damage / reach / arc show through.
     expect(before.line).not.toBe(after.line);
     expect(after.line).toContain('27 dmg');
   });
 
+  it('folds the hero generic multipliers into the numeric line (item: real effective values)', () => {
+    const dmgOf = (line: string): number => Number(line.match(/(\d+) dmg/)?.[1]);
+    const cdOf = (line: string): number => Number(line.match(/([\d.]+)s cooldown/)?.[1]);
+    const castOf = (line: string): number => Number(line.match(/([\d.]+)s cast/)?.[1]);
+
+    const [plain] = ownedSkillRows('knight', [], [], []);
+    const [mighty] = ownedSkillRows('knight', ['mighty'], [], []); // +15% damage dealt
+    const [hasted] = ownedSkillRows('knight', ['haste'], [], []); // -10% cooldown
+    // Mighty lifts the DISPLAYED basic damage; Haste shortens the DISPLAYED cooldown.
+    expect(dmgOf(mighty.line)).toBeGreaterThan(dmgOf(plain.line));
+    expect(cdOf(hasted.line)).toBeLessThan(cdOf(plain.line));
+
+    // Focus folds into a cast time — Fireball (mage a1) is the canonical cast skill.
+    const plainFireball = ownedSkillRows('mage', [], [], [])[1].line;
+    const focusFireball = ownedSkillRows('mage', ['focus'], [], [])[1].line;
+    expect(castOf(focusFireball)).toBeLessThan(castOf(plainFireball));
+  });
+
   it('drops an unknown/dead sub-skill id without crashing', () => {
-    const rows = ownedSkillRows('knight', [], ['not_a_real_skill']);
+    const rows = ownedSkillRows('knight', [], [], ['not_a_real_skill']);
     expect(rows).toHaveLength(4); // only the base slots survive
   });
 });
