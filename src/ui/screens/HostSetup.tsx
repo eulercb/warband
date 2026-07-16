@@ -270,8 +270,8 @@ export function HostSetup() {
             between attempts without recreating the room. */}
         {!gauntlet ? (
           <p className="wb-gauntlet-sub wb-sf-customize-hint">
-            Build a test loadout — subclass skills, boons at any rank, grands and extra
-            classes — in the lobby after you create the room.
+            Build a test loadout — subclass skills, boons at any rank, grands and extra classes — in
+            the lobby after you create the room.
           </p>
         ) : null}
 

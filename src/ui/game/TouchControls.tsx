@@ -319,9 +319,27 @@ export default function TouchControls() {
             total={subCd(subSkills[0])}
           />
         ) : null}
-        <TouchButton slot="a3" label={shortName('a3')} kind="a3" cdSlot="a3" total={abilities.a3?.cooldown} />
-        <TouchButton slot="a2" label={shortName('a2')} kind="a2" cdSlot="a2" total={abilities.a2?.cooldown} />
-        <TouchButton slot="a1" label={shortName('a1')} kind="a1" cdSlot="a1" total={abilities.a1?.cooldown} />
+        <TouchButton
+          slot="a3"
+          label={shortName('a3')}
+          kind="a3"
+          cdSlot="a3"
+          total={abilities.a3?.cooldown}
+        />
+        <TouchButton
+          slot="a2"
+          label={shortName('a2')}
+          kind="a2"
+          cdSlot="a2"
+          total={abilities.a2?.cooldown}
+        />
+        <TouchButton
+          slot="a1"
+          label={shortName('a1')}
+          kind="a1"
+          cdSlot="a1"
+          total={abilities.a1?.cooldown}
+        />
         <TouchButton
           slot="basic"
           label={shortName('basic')}

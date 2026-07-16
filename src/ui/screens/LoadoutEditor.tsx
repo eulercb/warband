@@ -81,7 +81,9 @@ export function LoadoutEditor() {
   const cycleChar = (id: string): void => {
     playUiSound('uiClick');
     const cap = charUpgradeMaxStacks(id);
-    set({ charUpgrades: withCount(id, (countOf(id, lo.charUpgrades) + 1) % (cap + 1), lo.charUpgrades) });
+    set({
+      charUpgrades: withCount(id, (countOf(id, lo.charUpgrades) + 1) % (cap + 1), lo.charUpgrades),
+    });
   };
   const cycleGen = (id: UpgradeId): void => {
     playUiSound('uiClick');
@@ -139,7 +141,9 @@ export function LoadoutEditor() {
         <span className="wb-sf-loadout-caret" aria-hidden="true">
           {open ? '▾' : '▸'}
         </span>
-        <span className="wb-gauntlet-title">Test loadout {totalPicks > 0 ? `(${totalPicks})` : ''}</span>
+        <span className="wb-gauntlet-title">
+          Test loadout {totalPicks > 0 ? `(${totalPicks})` : ''}
+        </span>
         <span className="wb-gauntlet-sub">
           Grant skills, boons, ranks, grands and extra classes to test a build against this boss.
         </span>
@@ -148,8 +152,15 @@ export function LoadoutEditor() {
       {open ? (
         <div className="wb-sf-loadout-body">
           <div className="wb-sf-loadout-head">
-            <span className="wb-gauntlet-sub">Click a boon to cycle its rank; click a chip to toggle.</span>
-            <button type="button" className="wb-btn wb-btn-chip" onClick={reset} disabled={totalPicks === 0}>
+            <span className="wb-gauntlet-sub">
+              Click a boon to cycle its rank; click a chip to toggle.
+            </span>
+            <button
+              type="button"
+              className="wb-btn wb-btn-chip"
+              onClick={reset}
+              disabled={totalPicks === 0}
+            >
               Clear
             </button>
           </div>
@@ -176,7 +187,8 @@ export function LoadoutEditor() {
           </div>
 
           <span className="wb-field-label">
-            Subclass skills — pick up to {MAX_SF_SUBSKILLS} ({lo.subSkills.length}/{MAX_SF_SUBSKILLS})
+            Subclass skills — pick up to {MAX_SF_SUBSKILLS} ({lo.subSkills.length}/
+            {MAX_SF_SUBSKILLS})
           </span>
           {subclassesFor(localClass).map((sub) => (
             <div key={sub.id} className="wb-pad-scheme-row" role="group" aria-label={sub.name}>
@@ -199,7 +211,9 @@ export function LoadoutEditor() {
             </div>
           ))}
 
-          <span className="wb-field-label">{CLASSES[localClass].name} boons — click to rank up</span>
+          <span className="wb-field-label">
+            {CLASSES[localClass].name} boons — click to rank up
+          </span>
           <div className="wb-pad-scheme-row">
             {(CHAR_UPGRADES_BY_CLASS[localClass] ?? []).map((u) => {
               const n = countOf(u.id, lo.charUpgrades);

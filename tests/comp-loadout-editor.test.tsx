@@ -126,7 +126,9 @@ describe('<LoadoutEditor> prunes class-invalid picks on class change', () => {
   });
 
   it('keeps an extra-class boon while that class is owned', () => {
-    setup({ sfLoadout: { ...EMPTY_SF_LOADOUT, charUpgrades: ['mg_freeze'], extraClasses: ['mage'] } });
+    setup({
+      sfLoadout: { ...EMPTY_SF_LOADOUT, charUpgrades: ['mg_freeze'], extraClasses: ['mage'] },
+    });
     render(<LoadoutEditor />);
     expect(lo().charUpgrades).toContain('mg_freeze');
   });

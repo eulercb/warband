@@ -180,6 +180,7 @@ forged bosses cast, the shop rerolls, and a typed seed reproduces the world.
   "every offered upgrade meaningfully applies" is the load-bearing requirement, and it holds.)
 
 **Deliberately deferred (with rationale)**
+
 - **Affix / corruption / terrain magnitude variance (§3.7 audit).** Left static:
   their id→behaviour binding is host-side code, not data, so recombination would
   need executor work, and their magnitudes are tuned balance constants. _Selection_

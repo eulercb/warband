@@ -890,10 +890,7 @@ export interface DescribeMods {
  * describes fine too. Rounds like the reward cards: magnitudes to whole units,
  * seconds to one decimal, ratios to whole percents.
  */
-export function describeAbility(
-  def: Omit<PlayerAbilityDef, 'slot'>,
-  mods?: DescribeMods,
-): string {
+export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: DescribeMods): string {
   // The hero's GENERIC multipliers (Mighty/Haste/Focus and any boon that tugs
   // player.damageMult / cooldownMult / castMult) are applied by the SIM at use-time,
   // on top of the class-upgraded def — so fold them into the displayed numbers here so

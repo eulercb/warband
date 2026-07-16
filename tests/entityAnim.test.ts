@@ -125,10 +125,7 @@ describe('playerAnim: priority order (dead > downed > rooted-cast > attack > wal
   });
 
   it('a rooted subclass-skill cast falls back to the a1 cast pose (no cast_sub clip)', () => {
-    const sel = playerAnim(
-      player({ castTimer: 0.4, castSlot: 'sub1' }),
-      ctx({ castTotalMs: 900 }),
-    );
+    const sel = playerAnim(player({ castTimer: 0.4, castSlot: 'sub1' }), ctx({ castTotalMs: 900 }));
     expect(sel.clip).toBe('cast_a1'); // charged sub nukes reuse the generic cast pose
     expect(sel.progress).toBeCloseTo(1 - (0.4 * 1000) / 900, 5);
   });

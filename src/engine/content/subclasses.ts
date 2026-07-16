@@ -1154,7 +1154,10 @@ function skillNameToSub(): Map<string, SubclassDef> {
 
 /** Fuse one sub-skill's ability from cross-subclass components; returns the new skill
  *  (blended name + fused ability + regenerated card) and the donor sub-skill names. */
-function forgeOneSubSkill(seed: number, base: SubSkillDef): { def: SubSkillDef; donorNames: string[] } {
+function forgeOneSubSkill(
+  seed: number,
+  base: SubSkillDef,
+): { def: SubSkillDef; donorNames: string[] } {
   const syn = synthesizeAbility(seed, `subskill.${base.id}`, SUB_SYNTH_SLOT, subForgeDonors());
   const { slot: _slot, ...ability } = syn.def; // sub-abilities carry no slot until bound
   return {
@@ -1184,7 +1187,9 @@ function synthesizeSubclassForge(seed: number, base: SubclassDef): SubclassDef {
     .map((e) => e[0]);
   const rng = new Rng(mixSeed(seed, SUB_RENAME_SALT, hashStr(base.id)));
   const name =
-    top.length > 0 ? forgeName(top, (k) => rng.int(0, k - 1), { connectiveChance: 0.35 }) : base.name;
+    top.length > 0
+      ? forgeName(top, (k) => rng.int(0, k - 1), { connectiveChance: 0.35 })
+      : base.name;
   return { ...base, name, skills };
 }
 
@@ -1218,12 +1223,18 @@ export function getSubclass(id: string): SubclassDef | undefined {
   // Chaos Forge takes precedence when its run is active (a component-recombined subclass
   // + skills, renamed after its top donor subclasses); else numeric variance then the
   // canonical def. Forge layers on top — it never mutates the static SUBCLASSES data.
-  return forgeVariant('subclass', id, (seed) => synthesizeSubclassForge(seed, base)) ?? subclassVariant(base);
+  return (
+    forgeVariant('subclass', id, (seed) => synthesizeSubclassForge(seed, base)) ??
+    subclassVariant(base)
+  );
 }
 export function getSubSkill(id: string): SubSkillDef | undefined {
   const base = SKILL_INDEX[id]?.skill;
   if (!base) return undefined;
-  return forgeVariant('subSkill', id, (seed) => synthesizeSubSkillForge(seed, base)) ?? skillVariant(base);
+  return (
+    forgeVariant('subSkill', id, (seed) => synthesizeSubSkillForge(seed, base)) ??
+    skillVariant(base)
+  );
 }
 export function subclassOfSkill(id: string): SubclassDef | undefined {
   return SKILL_INDEX[id]?.subclass;
