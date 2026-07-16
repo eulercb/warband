@@ -80,6 +80,9 @@ abstract class LitMeshBase extends Mesh<MeshGeometry, Shader> {
             uAtlasUV: { value: atlasUV, type: 'vec4<f32>' },
             uNormalDelta: { value: normalDelta, type: 'vec2<f32>' },
             uNormalFlipG: { value: opts.flipG === false ? 0 : 1, type: 'f32' },
+            // #48: baked-AO mix. 0 = off (identity) — inert until AO-packed normal
+            // art ships (the AO rides the normal map's unused alpha channel).
+            uAoStrength: { value: 0, type: 'f32' },
           }
         : {
             uBaseColor: { value: baseColor, type: 'vec3<f32>' },

@@ -91,7 +91,8 @@ ${
     ? `uniform sampler2D uNormalTex;   // tangent-space normals (may be the albedo atlas)
 uniform vec4  uAtlasUV;         // xy = albedo frame scale, zw = frame offset (atlas UV)
 uniform vec2  uNormalDelta;     // constant UV offset albedo->normal in the packed frame
-uniform float uNormalFlipG;     // 1 = flip green (Blender +Y up -> Pixi Y down)`
+uniform float uNormalFlipG;     // 1 = flip green (Blender +Y up -> Pixi Y down)
+uniform float uAoStrength;      // 0..1 baked-AO mix (#48); 0 = off (no AO art yet)`
     : ''
 }
 
@@ -180,9 +181,24 @@ void main() {
 
     float rim = pow(1.0 - clamp(N.z, 0.0, 1.0), uRimPower) * uRimStrength;
 
+    // #48 (brief §12): baked ambient occlusion — a nearly-free contact-darkening
+    // multiply on the indirect/ambient term (crevices, under-limbs) that adds
+    // depth at zero runtime cost. It's packed in the normal map's ALPHA (normals
+    // use rgb only) and read at the SAME frame transform as the normal, so
+    // trim/rotate can't desync it. uAoStrength defaults to 0 -> identity, so this
+    // is inert until AO-baked art ships with the textured path (#43); the analytic
+    // sphere/limb imposters have no authored texture to carry an AO channel, so
+    // only the textured variant compiles it.
+    vec3 ambient = uAmbient;
+#if defined(NORMAL_TEXTURED)
+    vec2  aoUV = vUV * uAtlasUV.xy + uAtlasUV.zw + uNormalDelta;
+    float ao   = texture(uNormalTex, aoUV).a;
+    ambient   *= mix(1.0, ao, uAoStrength);
+#endif
+
     // Additive terms (spec, rim) are multiplied by alpha so premultiplied albedo
     // and un-premultiplied highlights compose without a bright silhouette halo.
-    vec3 lit = albedo * (uAmbient + keyTerm + diffuse + uEmissive)
+    vec3 lit = albedo * (ambient + keyTerm + diffuse + uEmissive)
              + (spec + uRimColor * rim) * alpha;
     lit = mix(lit, uTint.rgb * alpha, uTint.a);
     // item 77: soft-clip the composed colour so compounding lights + the hit-flash

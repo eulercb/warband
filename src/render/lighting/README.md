@@ -14,6 +14,7 @@ touching the shader or the coordinate math** — both adaptations are load-beari
 | ----------------- | ------------------------------------------------------------------------------- | --------------------- |
 | `light.ts`        | `Light` model + `LightManager` — cull/expire/pack into a shared uniform group   | unit-tested           |
 | `presets.ts`      | `LIGHTING` flag, material presets (§6), per-arena ambient, rig→preset map       | unit-tested           |
+| `deviceTier.ts`   | Per-device light budget (M6) — pick 8 (mobile) / 16 (desktop) once at init      | unit-tested           |
 | `litShader.ts`    | GLSL ES 3.00 source builders for the sphere / limb / textured variants          | unit-tested (strings) |
 | `limbGeometry.ts` | Quad-strip extrusion (centre-line → 2-wide vertex strip) for the `limb` variant | unit-tested           |
 | `litMesh.ts`      | `LitMesh` (unit-quad sphere) + `LitLimb` (dynamic bone strip); the GPU glue     | excluded (GPU only)   |
@@ -67,6 +68,13 @@ emissive, hit-flash) and binds the shared `lights` / `env` / `material` groups.
 - **Per-arena ambient** (§7.5) — mood tint keyed to the lead boss's terrain theme.
 - A constant **key light** reproduces the old baked top-left volume, so a surface
   with no dynamic light nearby still reads as a lit sphere.
+- **Per-device light budget** (M6 / #46) — `deviceTier.ts` probes the GPU once at
+  init and picks the budget: the **16-light** program on desktop, the **8-light**
+  floor on phones/tablets (the bottleneck is fill rate, so the gate is device class
+  plus a uniform-vector safety check). It's a detect-and-pick — the shader is
+  already parameterized by the budget and every lit mesh reads it from the
+  `LightManager` — so nothing else changes. `LIGHTING.maxLights` stays the first
+  knob to lower if a device is still over budget (§8).
 - **Textured normal-map path** (Path B, §3) — pre-rendered sprite bodies. The
   `textured` variant is wired into `SpriteLayer`: a flagged actor renders as a
   `LitMesh({ variant: 'textured' })` that samples a tangent-space normal packed
@@ -84,9 +92,18 @@ emissive, hit-flash) and binds the shared `lights` / `env` / `material` groups.
   them into the lit path is optional polish, not part of M3).
 - **Normal-mapped art itself** — Path B is wired but no atlas with packed normals
   ships yet, so it's inert (`NORMAL_MAP.enabled = false`); on-GPU tuning of anchor
-  offset / material preset per actor waits for real art.
-- **WGSL port** (re-enable WebGPU), **bloom** on the emissive/overbright channel,
-  **desktop 16-light variant**, on-device perf pass — brief §12 / M6.
+  offset / material preset per actor waits for real art. The **baked-AO** multiply
+  (#48) rides the same path: the shader term is wired (`uAoStrength`, textured
+  variant, AO packed in the normal map's unused alpha) but defaults to 0/off until
+  AO-baked art ships — the analytic sphere/limb imposters have no authored texture
+  to carry an AO channel, so only the textured variant compiles it.
+- **WGSL port** (re-enable WebGPU, #44), **bloom** on the emissive/overbright
+  channel (#45), and **2D shadow casting** for a signature boss (#47) — brief §12.
+  Bloom and shadows are fill-rate heavy and must budget against the mid-range
+  Android target; the WGSL port waits until the lighting look is settled (carrying
+  two shader languages is a cost worth deferring). The **desktop 16-light variant**
+  (#46) has shipped — see `deviceTier.ts` above; its on-device Android **perf
+  measurement** pass still needs real hardware to close.
 
 ## Escape hatch
 

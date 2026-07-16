@@ -113,6 +113,42 @@ describe('litFragmentSource', () => {
   });
 });
 
+describe('litFragmentSource — baked AO (#48, textured path only)', () => {
+  it('declares the uAoStrength uniform only for the textured variant', () => {
+    // The AO strength rides the same conditional block as the normal-map uniforms:
+    // present for textured, physically absent from the analytic sphere/limb source.
+    expect(litFragmentSource('textured', 8)).toContain('uniform float uAoStrength;');
+    for (const v of ['sphere', 'limb'] as NormalVariant[]) {
+      expect(litFragmentSource(v, 8)).not.toContain('uniform float uAoStrength;');
+    }
+  });
+
+  it('multiplies AO (from the normal-map alpha) into the ambient term under a textured guard', () => {
+    const textured = litFragmentSource('textured', 8);
+    // AO is read at the SAME packed-frame transform as the normal (no trim desync),
+    // from the normal map's alpha (normals only use rgb).
+    expect(textured).toContain('vUV * uAtlasUV.xy + uAtlasUV.zw + uNormalDelta;');
+    expect(textured).toContain('texture(uNormalTex, aoUV).a');
+    // ...then mixed into the ambient term by uAoStrength (0 = identity, i.e. off).
+    expect(textured).toContain('mix(1.0, ao, uAoStrength)');
+    // Compiled only for the textured variant.
+    expect(textured).toContain('#if defined(NORMAL_TEXTURED)');
+    // The composed colour reads the (possibly AO-scaled) ambient local, not uAmbient.
+    expect(textured).toContain('albedo * (ambient + keyTerm + diffuse + uEmissive)');
+  });
+
+  it('leaves the ambient term identity for the analytic sphere/limb variants', () => {
+    for (const v of ['sphere', 'limb'] as NormalVariant[]) {
+      const src = litFragmentSource(v, 8);
+      // The ambient local exists (shared composition) but nothing scales it, so it
+      // is exactly uAmbient — pre-#48 behaviour, byte-for-byte.
+      expect(src).toContain('vec3 ambient = uAmbient;');
+      expect(src).toContain('albedo * (ambient + keyTerm + diffuse + uEmissive)');
+      expect(src).not.toContain('uniform float uAoStrength;');
+    }
+  });
+});
+
 describe('litProgramSource', () => {
   it('bundles a matching vertex + fragment pair', () => {
     const src = litProgramSource('sphere', 8);
