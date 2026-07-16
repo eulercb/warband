@@ -45,7 +45,7 @@ vi.mock('../src/ui/state/session', () => ({
 
 import ResultScreen from '../src/ui/screens/ResultScreen';
 import Lobby from '../src/ui/screens/Lobby';
-import { useStore } from '../src/ui/state/store';
+import { useStore, EMPTY_SF_LOADOUT } from '../src/ui/state/store';
 import type { AppState } from '../src/ui/state/store';
 import type { FightResult, ResultPlayerStat } from '../src/engine/core/types';
 import type { LobbyPlayer } from '../src/net/protocol';
@@ -126,6 +126,10 @@ const BASE: Partial<AppState> = {
   localReady: false,
   peerCount: 0,
   netHint: null,
+  // The lobby's host-only test-loadout editor reads these; pin them so its
+  // collapsed/expanded state is deterministic across the <Lobby> cases below.
+  sfLoadout: EMPTY_SF_LOADOUT,
+  sfLoadoutOpen: false,
 };
 
 // The upgrade offers roll through Math.random in an effect; pin it so the
@@ -542,5 +546,76 @@ describe('<Lobby>', () => {
     );
     expect(names).toContain('Alice');
     expect(names).toContain('Hero');
+  });
+
+  // ---- Single-fight test loadout (item: lobby loadout) ----------------------
+  // A play-tester reported the host-only "Test loadout" panel was unreachable in a
+  // freshly hosted single-boss lobby. Root cause: `.wb-sf-loadout` (overflow:hidden,
+  // so its flex min-height resolves to 0) was the one shrinkable child of the height-
+  // capped, scrolling muster panel, so flexbox crushed it to its 2px borders and the
+  // toggle was clipped away. The fix pins it (`flex-shrink: 0`, styles.css) and lifts
+  // it above the tall roster/class grid so it's found without a marathon scroll. These
+  // lock in reachability, placement and the host/gauntlet gating from a real <Lobby>;
+  // the 2px layout crush itself (a rendered-layout effect jsdom can't see) is guarded
+  // by the muster-hall lobby step in scripts/smoke.mjs.
+  it('surfaces the host-only test-loadout panel in a single-boss lobby and opens its build sections', () => {
+    useStore.setState({ isHost: true, gauntlet: false, players: HOST_ROSTER });
+    const { container } = render(<Lobby />);
+
+    // Collapsed: a labelled toggle is present, but no body yet.
+    const toggle = container.querySelector('.wb-sf-loadout-toggle');
+    expect(toggle).toBeTruthy();
+    expect(container.querySelector('[aria-label="Test loadout"]')).toBeTruthy();
+    expect(container.querySelector('.wb-sf-loadout-body')).toBeNull();
+
+    // Clicking the toggle expands the body with the always-present build sections
+    // reachable — multiclass, subclass skills, class + generic boons, grafts and grands.
+    // (The per-sub-skill "Honed" boons section only appears once a sub-skill is equipped,
+    // so it isn't asserted from an empty loadout.)
+    fireEvent.click(toggle as HTMLElement);
+    expect(useStore.getState().sfLoadoutOpen).toBe(true);
+    const body = container.querySelector('.wb-sf-loadout-body');
+    expect(body).toBeTruthy();
+    const labels = Array.from(body!.querySelectorAll('.wb-field-label')).map((e) => e.textContent);
+    expect(labels.some((l) => /Multiclass/.test(l ?? ''))).toBe(true);
+    expect(labels.some((l) => /Subclass skills/.test(l ?? ''))).toBe(true);
+    expect(labels.some((l) => /boons/i.test(l ?? ''))).toBe(true);
+    // Grafts (wild cross-class picks) and Grand improvements stay reachable end-to-end
+    // (the latter surfaced via offerableGrands).
+    expect(body!.querySelector('.wb-btn-graft')).toBeTruthy();
+    expect(body!.querySelector('.wb-btn-grand')).toBeTruthy();
+  });
+
+  it('docks the test-loadout panel above the roster/class grid and the action bar so it is not buried', () => {
+    useStore.setState({ isHost: true, gauntlet: false, players: HOST_ROSTER });
+    const { container } = render(<Lobby />);
+
+    const sf = container.querySelector('.wb-sf-loadout');
+    const cols = container.querySelector('.wb-lobby-cols');
+    const actions = container.querySelector('.wb-lobby-actions');
+    if (!sf || !cols || !actions) throw new Error('lobby landmarks not found');
+    // DOM order: the test loadout comes BEFORE the tall roster/class columns (so its
+    // collapsed toggle is reachable without scrolling past the whole grid) and before
+    // the sticky action bar (so its expanded body has room clear of it).
+    expect(sf.compareDocumentPosition(cols) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(sf.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shows the test-loadout panel only for a single-boss host — hidden for clients and gauntlets', () => {
+    // Positive control: it renders for a single-boss host, so the two negative cases
+    // below can't pass vacuously on a wrong/renamed `.wb-sf-loadout` selector.
+    useStore.setState({ isHost: true, gauntlet: false, players: HOST_ROSTER });
+    const host = render(<Lobby />);
+    expect(host.container.querySelector('.wb-sf-loadout')).toBeTruthy();
+    cleanup();
+    // Non-host client: the build editor never renders.
+    useStore.setState({ isHost: false, gauntlet: false, players: HOST_ROSTER });
+    const client = render(<Lobby />);
+    expect(client.container.querySelector('.wb-sf-loadout')).toBeNull();
+    cleanup();
+    // Host, but a gauntlet run: it's a single-fight tool, so it stays hidden.
+    useStore.setState({ isHost: true, gauntlet: true, players: HOST_ROSTER });
+    const gauntlet = render(<Lobby />);
+    expect(gauntlet.container.querySelector('.wb-sf-loadout')).toBeNull();
   });
 });
