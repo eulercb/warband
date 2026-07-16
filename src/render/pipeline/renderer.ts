@@ -53,6 +53,7 @@ import { bossUsesRig, playerUsesRig, addUsesRig } from '../rig/registry';
 import { buffLabel } from '../overlays/buffGlyphs';
 import { LightManager } from '../lighting/light';
 import { LIGHTING, AMBIENT_BY_THEME } from '../lighting/presets';
+import { pickMaxLights, probeDeviceCaps } from '../lighting/deviceTier';
 
 const GRID_STEP = 100; // world units between grid lines
 
@@ -142,6 +143,16 @@ export class Renderer {
       autoDensity: true,
     });
     container.appendChild(app.canvas);
+
+    // #46 (brief M6): pick this device's light budget ONCE, before the
+    // LightManager — and thus every lit mesh's compiled `MAX_LIGHTS` — is sized
+    // from `LIGHTING.maxLights` in the Renderer constructor below. Desktop GPUs
+    // get the 16-light variant; phones/tablets keep the 8-light floor. This is a
+    // detect-and-pick: the shader source is already parameterized by the budget,
+    // so no new shader code. A WebGL renderer exposes its context as `.gl`;
+    // anything else (or a probe failure) leaves the safe floor in place.
+    const glReader = (app.renderer as { gl?: unknown }).gl ?? null;
+    LIGHTING.maxLights = pickMaxLights(probeDeviceCaps(glReader));
 
     // Load the sprite atlas if one is configured; otherwise SpriteLayer renders
     // procedural placeholder silhouettes. Failure is non-fatal (placeholders).

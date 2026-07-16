@@ -227,7 +227,6 @@ export class SpriteLayer {
       // packed frame, so the same atlas is both albedo and normal source.
       lit = new LitMesh({
         variant: 'textured',
-        maxLights: this.lights!.maxLights,
         lights: this.lights!,
         preset: 'flesh', // pre-rendered characters read as flesh by default; tune per actor if needed
         texture: this.atlasTex!,
