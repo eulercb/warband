@@ -111,9 +111,13 @@ await step('join screen validates and returns', async () => {
 await step('change-hero picker opens and closes', async () => {
   // The picker is opened from the "Hero: <ClassName>" button in the menu panel.
   await page.getByRole('button', { name: /^hero:/i }).click();
-  await page.getByRole('dialog', { name: /choose your hero/i }).waitFor({ timeout: 10000 });
+  const picker = page.getByRole('dialog', { name: /choose your hero/i });
+  await picker.waitFor({ timeout: 10000 });
   await page.screenshot({ path: `${SHOT_DIR}/smoke-3-hero.png` });
-  await page.getByRole('button', { name: /back/i }).click();
+  // Scope + exact-match the Back control: the parchment codex cards carry rich
+  // accessible names (a class's kit text can contain "back", e.g. Backstab), so a
+  // loose /back/i would ambiguously match a card too.
+  await picker.getByRole('button', { name: 'Back', exact: true }).click();
   await waitForMenu();
 });
 
