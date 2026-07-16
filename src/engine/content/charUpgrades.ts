@@ -4647,27 +4647,38 @@ export function rollCharChoices(
     // slot it away from the grand (index 0) / hybrid (last) swaps.
     out[out.length > 1 ? 1 : 0] = pick;
   }
-  // Graceful degradation (items 12 & 14): if the normal class pool couldn't supply
-  // n picks — every common boon already owned at its cap, or a run deep into Endless
-  // — top the offer up from the remaining RESTORE (reclaim / graftup) and RARE
-  // (cross-class hybrid, incl. skill-REPLACE grafts) candidates. This guarantees the
-  // class-boon relic is never left blank while ANY eligible upgrade still exists, and
-  // keeps skill-replace / restore offers surfacing even once the ordinary pool is
-  // exhausted. Restore/reoffer candidates come first so a hero with a displaced skill
-  // always sees the reclaim (item 14). Deterministic (draws no rng), so the carefully
-  // seeded reward stream is unchanged for the common case where `out` already holds n.
-  // Gated on a recognised class so an unknown class still yields nothing (a hybrid is
-  // technically "allowed" for any non-excluded class, which must not resurrect offers
-  // for a class that has no kit at all).
+  // Graceful degradation (items 12 & 14): if the normal class pool couldn't supply n
+  // picks — every common boon already owned at its cap, or a run deep into Endless —
+  // top the offer up from the remaining GENUINE upgrades (the class's eligible cross-
+  // class HYBRIDS) and the RESTORE / graftup reoffers. Two invariants shape the fill:
+  //   • (late-run offers) genuine upgrades are drawn FIRST, with the SEEDED rng, so the
+  //     set never collapses to only skill-change / skill-restore options while a real
+  //     upgrade remains, and a deep-run offer stays VARIED between bosses instead of
+  //     repeating one fixed list — the old fill drew no rng, so every maxed-out hero saw
+  //     the identical degraded set every fight (the reported bug);
+  //   • (item 14) one slot is RESERVED for a reoffer whenever a graft has displaced a
+  //     skill, so its reclaim keeps surfacing rather than being crowded out by hybrids.
+  // Only runs when `out` is short (a pool that already yields n is byte-for-byte the
+  // seeded stream it always was). Gated on a recognised class so an unknown class still
+  // yields nothing (a hybrid is technically "allowed" for any non-excluded class, which
+  // must not resurrect offers for a class that has no kit at all).
   if (CLASSES[classId] && out.length < n) {
-    for (const id of reoffers) {
+    const realFill = eligible.map((h) => h.id).filter((id) => !out.includes(id));
+    const swapFill = reoffers.filter((id) => !out.includes(id)); // natural order: reclaim first
+    const reserve = swapFill.length > 0 ? 1 : 0; // hold a slot for the reclaim (item 14)
+    const drawReals = (limit: number): void => {
+      while (out.length < limit && realFill.length > 0) {
+        const i = Math.floor(rnd() * realFill.length) % realFill.length;
+        out.push(realFill[i]);
+        realFill.splice(i, 1);
+      }
+    };
+    drawReals(n - reserve); // genuine upgrades first (leave room for one reclaim)
+    for (const id of swapFill) {
       if (out.length >= n) break;
-      if (!out.includes(id)) out.push(id);
+      out.push(id); // reclaim / graftup reoffers — reclaim leads, so item 14 holds
     }
-    for (const h of eligible) {
-      if (out.length >= n) break;
-      if (!out.includes(h.id)) out.push(h.id);
-    }
+    drawReals(n); // any slot the reoffers didn't need falls back to more genuine picks
   }
   return out;
 }

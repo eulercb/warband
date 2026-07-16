@@ -1529,6 +1529,51 @@ describe('rollCharChoices graceful degradation (items 12–14)', () => {
     expect(off).toContain('restore:a2'); // the reclaim keeps appearing (item 14)
   });
 
+  // Late-run offer fixes: once the base pool is exhausted the degraded fill must stay
+  // (a) RANDOM — varied between seeds, not one fixed repeated list — and (b) keep
+  // offering GENUINE upgrades (hybrids) rather than collapsing to only skill-swap /
+  // restore options while real upgrades remain.
+  it('varies the degraded offer across seeds instead of repeating one fixed list', () => {
+    const owned = maxedOut('knight'); // base pool fully exhausted → degradation path
+    const sets = new Set<string>();
+    for (const s of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const off = rollCharChoices('knight', 4, lcg(s), owned);
+      expect(off).toHaveLength(4);
+      sets.add(off.join(','));
+    }
+    // The old deterministic fill returned the SAME 4-pick list for every seed (size 1).
+    expect(sets.size).toBeGreaterThan(1);
+  });
+
+  it('always offers a genuine upgrade while hybrids remain (never only swaps)', () => {
+    // Exhausted pool + a graft displacing a2: every seed must surface BOTH a real cross-
+    // class hybrid (never collapse to only skill-swap/restore) AND the reclaim (item 14).
+    const owned = ['hy_pyromancer', ...maxedOut('knight')];
+    for (const s of [1, 7, 42, 0xbee, 0x1234]) {
+      const off = rollCharChoices('knight', 4, lcg(s), owned);
+      expect(off).toHaveLength(4);
+      const hasGenuine = off.some((id) => CHAR_UPGRADES[id]?.classId === 'any');
+      const hasReclaim = off.some((id) => id.startsWith('restore:'));
+      expect(hasGenuine).toBe(true); // a genuine upgrade is always present
+      expect(hasReclaim).toBe(true); // …and the displaced skill stays reclaimable (item 14)
+    }
+  });
+
+  it('never degrades to an all-reoffer set while a genuine upgrade is eligible (every class)', () => {
+    for (const classId of CLASS_IDS) {
+      const owned = maxedOut(classId);
+      const rng = lcg(0xd00d ^ classId.length);
+      for (let t = 0; t < 40; t++) {
+        const off = rollCharChoices(classId, 4, rng, owned);
+        if (off.length === 0) continue; // (no class has an empty hybrid pool, but be safe)
+        const hasGenuine = off.some(
+          (id) => !id.startsWith('restore:') && !id.startsWith('graftup:'),
+        );
+        expect(hasGenuine).toBe(true);
+      }
+    }
+  });
+
   it('keeps the basic-attack projectile boon reachable (item 13)', () => {
     // so_twin (Sorcerer) and dr_thorns (Druid) are the only class-pool boons that add
     // a projectile to the BASIC attack; both must stay offerable from a fresh pool.
