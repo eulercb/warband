@@ -299,7 +299,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'rg_beast_snare',
           'Snare',
           '🪤',
-          'Roots foes to 25% speed for 4s',
+          'Snares foes to 25% speed for 4s',
           zone('Snare', 10, {
             slowMult: 0.25,
             slowDuration: 1.5,

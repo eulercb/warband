@@ -36,6 +36,7 @@ import {
   CRIT_CHANCE_BASE,
   CRIT_MULT_BASE,
   CRIT_CHANCE_PER_DEADEYE,
+  PROJECTILE_MAX_RANGE,
 } from '../src/engine/core/constants';
 import type { ClassId, Player, AbilitySlot, SubSlot } from '../src/engine/core/types';
 
@@ -1596,6 +1597,37 @@ describe('rollCharChoices graceful degradation (items 12–14)', () => {
 // ---------------------------------------------------------------------------
 // describeCharOffer / charUpgradeBadge — labels for real + synthetic ids
 // ---------------------------------------------------------------------------
+
+describe('projectile range grands extend range instead of collapsing it (item 3)', () => {
+  // A base projectile has no `maxRange` field and falls back to PROJECTILE_MAX_RANGE at
+  // spawn, so a naive addN(...,'maxRange',X) read the missing field as 0 and SLASHED the
+  // cap to X — a "+range" boon that made the shot far SHORTER (the Frostlance bug). The
+  // range grands must now lengthen the shot; the lances that never promised range leave
+  // the cap untouched at its default.
+  it('Deadeye / Railshot / Judgment raise maxRange above the default cap', () => {
+    expect(previewAbilityTable('ranger', ['rg_grand_deadeye']).basic.maxRange).toBe(
+      PROJECTILE_MAX_RANGE + 220,
+    );
+    expect(previewAbilityTable('ranger', ['rg_gk_basic_b']).basic.maxRange).toBe(
+      PROJECTILE_MAX_RANGE + 260,
+    );
+    expect(previewAbilityTable('cleric', ['cl_gk_basic_b']).basic.maxRange).toBe(
+      PROJECTILE_MAX_RANGE + 200,
+    );
+  });
+
+  it('Frostlance / Chaos Lance keep the default range cap (never the 200u regression)', () => {
+    const frost = previewAbilityTable('mage', ['mg_gk_basic_b']).basic;
+    const chaos = previewAbilityTable('sorcerer', ['so_gk_basic_b']).basic;
+    // maxRange stays unset ⇒ the spawn falls back to PROJECTILE_MAX_RANGE (820), not 200.
+    expect(frost.maxRange ?? PROJECTILE_MAX_RANGE).toBe(PROJECTILE_MAX_RANGE);
+    expect(chaos.maxRange ?? PROJECTILE_MAX_RANGE).toBe(PROJECTILE_MAX_RANGE);
+    // …while still granting the speed + freeze the description promises.
+    expect(frost.freeze).toBeCloseTo(0.4, 6);
+    expect(frost.projSpeed).toBe(620 + 350);
+    expect(chaos.freeze).toBeCloseTo(0.4, 6);
+  });
+});
 
 describe('previewSubAbility (item 5)', () => {
   it('applies Honed boons (stacking) and lowers cooldown, and ignores unrelated ids', () => {
