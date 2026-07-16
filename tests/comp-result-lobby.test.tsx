@@ -558,7 +558,7 @@ describe('<Lobby>', () => {
   // lock in reachability, placement and the host/gauntlet gating from a real <Lobby>;
   // the 2px layout crush itself (a rendered-layout effect jsdom can't see) is guarded
   // by the muster-hall lobby step in scripts/smoke.mjs.
-  it('surfaces the host-only test-loadout panel in a single-boss lobby and opens every build section', () => {
+  it('surfaces the host-only test-loadout panel in a single-boss lobby and opens its build sections', () => {
     useStore.setState({ isHost: true, gauntlet: false, players: HOST_ROSTER });
     const { container } = render(<Lobby />);
 
@@ -568,8 +568,10 @@ describe('<Lobby>', () => {
     expect(container.querySelector('[aria-label="Test loadout"]')).toBeTruthy();
     expect(container.querySelector('.wb-sf-loadout-body')).toBeNull();
 
-    // Clicking the toggle expands the body with every build section reachable —
-    // multiclass, subclass skills, class boons, grafts, grands and generic boons.
+    // Clicking the toggle expands the body with the always-present build sections
+    // reachable — multiclass, subclass skills, class + generic boons, grafts and grands.
+    // (The per-sub-skill "Honed" boons section only appears once a sub-skill is equipped,
+    // so it isn't asserted from an empty loadout.)
     fireEvent.click(toggle as HTMLElement);
     expect(useStore.getState().sfLoadoutOpen).toBe(true);
     const body = container.querySelector('.wb-sf-loadout-body');
@@ -578,7 +580,9 @@ describe('<Lobby>', () => {
     expect(labels.some((l) => /Multiclass/.test(l ?? ''))).toBe(true);
     expect(labels.some((l) => /Subclass skills/.test(l ?? ''))).toBe(true);
     expect(labels.some((l) => /boons/i.test(l ?? ''))).toBe(true);
-    // Grand improvements stay reachable end-to-end (offerableGrands surfaces them).
+    // Grafts (wild cross-class picks) and Grand improvements stay reachable end-to-end
+    // (the latter surfaced via offerableGrands).
+    expect(body!.querySelector('.wb-btn-graft')).toBeTruthy();
     expect(body!.querySelector('.wb-btn-grand')).toBeTruthy();
   });
 
@@ -597,15 +601,21 @@ describe('<Lobby>', () => {
     expect(sf.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('keeps the test-loadout panel out of a client view and out of a gauntlet run', () => {
+  it('shows the test-loadout panel only for a single-boss host — hidden for clients and gauntlets', () => {
+    // Positive control: it renders for a single-boss host, so the two negative cases
+    // below can't pass vacuously on a wrong/renamed `.wb-sf-loadout` selector.
+    useStore.setState({ isHost: true, gauntlet: false, players: HOST_ROSTER });
+    const host = render(<Lobby />);
+    expect(host.container.querySelector('.wb-sf-loadout')).toBeTruthy();
+    cleanup();
     // Non-host client: the build editor never renders.
     useStore.setState({ isHost: false, gauntlet: false, players: HOST_ROSTER });
-    const a = render(<Lobby />);
-    expect(a.container.querySelector('.wb-sf-loadout')).toBeNull();
+    const client = render(<Lobby />);
+    expect(client.container.querySelector('.wb-sf-loadout')).toBeNull();
     cleanup();
     // Host, but a gauntlet run: it's a single-fight tool, so it stays hidden.
     useStore.setState({ isHost: true, gauntlet: true, players: HOST_ROSTER });
-    const b = render(<Lobby />);
-    expect(b.container.querySelector('.wb-sf-loadout')).toBeNull();
+    const gauntlet = render(<Lobby />);
+    expect(gauntlet.container.querySelector('.wb-sf-loadout')).toBeNull();
   });
 });

@@ -156,11 +156,15 @@ await step('single-boss lobby exposes a usable test-loadout panel', async () => 
   await toggle.scrollIntoViewIfNeeded();
   const h = await panel.evaluate((el) => Math.round(el.getBoundingClientRect().height));
   if (h < 24) throw new Error(`test-loadout panel crushed to ${h}px (should be ~69px)`);
+  // Centre it in the scroll container before the (no-force) click: the panel's own
+  // auto-scroll can otherwise park a bottom-of-panel target under the sticky action bar,
+  // flaking the hit — centring keeps the assertion about the crush, not scroll luck.
+  await toggle.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   await toggle.click();
   await page.locator('.wb-sf-loadout-body').waitFor({ timeout: 10000 });
   const grand = page.locator('.wb-sf-loadout-body .wb-btn-grand').first();
   await grand.waitFor({ timeout: 10000 });
-  await grand.scrollIntoViewIfNeeded();
+  await grand.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   await grand.click(); // no force: throws if the sticky action bar intercepts the hit
   const picks = await page.evaluate(() => {
     const t = document.querySelector('.wb-sf-loadout-toggle .wb-gauntlet-title');
