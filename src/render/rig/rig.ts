@@ -117,7 +117,6 @@ export class CreatureRig {
         if (this.lit) {
           const m = new LitMesh({
             variant: 'sphere',
-            maxLights: lights!.maxLights,
             lights: lights!,
             preset,
           });
@@ -136,7 +135,6 @@ export class CreatureRig {
       if (this.lit) {
         const m = new LitMesh({
           variant: 'sphere',
-          maxLights: lights!.maxLights,
           lights: lights!,
           preset,
         });
@@ -155,8 +153,7 @@ export class CreatureRig {
     // A leg/arm is a 3-point centre-line (shoulder → joint → tip); a tentacle is
     // one point per segment plus the anchor. Weapons stay stroked.
     if (this.lit) {
-      const litLimb = (points: number): LitLimb =>
-        new LitLimb({ points, maxLights: lights!.maxLights, lights: lights!, preset });
+      const litLimb = (points: number): LitLimb => new LitLimb({ points, lights: lights!, preset });
       if (spec.legs) {
         for (let i = 0; i < spec.legs.count; i++) {
           const m = litLimb(3);

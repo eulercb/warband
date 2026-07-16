@@ -30,7 +30,6 @@ import { makeStrip, extrudeStrip, type StripBuffers } from './limbGeometry';
 
 export interface LitMeshOptions {
   variant: NormalVariant;
-  maxLights: number;
   lights: LightManager;
   preset: MaterialPreset;
   /** Albedo texture. Defaults to white (flat-colour parts tinted by uBaseColor). */
@@ -104,7 +103,7 @@ abstract class LitMeshBase extends Mesh<MeshGeometry, Shader> {
       resources.uNormalTex = (opts.normalTexture ?? albedo).source;
     }
 
-    const src = litProgramSource(opts.variant, opts.maxLights);
+    const src = litProgramSource(opts.variant, opts.lights.maxLights);
     const shader = Shader.from({ gl: src, resources });
 
     super({ geometry, shader, texture: albedo });
@@ -185,7 +184,6 @@ export class LitMesh extends LitMeshBase {
 /** Options for a `LitLimb`: everything a `LitMesh` needs minus the fixed `limb`
  * variant, plus the centre-line point count the strip is allocated for. */
 export interface LitLimbOptions {
-  maxLights: number;
   lights: LightManager;
   preset: MaterialPreset;
   /** Centre-line points (bones + 1). A leg/arm is 3; a tentacle is segments + 1. */
@@ -219,7 +217,6 @@ export class LitLimb extends LitMeshBase {
 
     super(geometry, {
       variant: 'limb',
-      maxLights: opts.maxLights,
       lights: opts.lights,
       preset: opts.preset,
     });

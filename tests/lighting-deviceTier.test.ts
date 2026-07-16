@@ -155,4 +155,15 @@ describe('probeDeviceCaps — mobile detection', () => {
     vi.stubGlobal('navigator', undefined);
     expect(probeDeviceCaps(null).isMobile).toBe(false);
   });
+
+  it('swallows a throwing matchMedia and never rejects (contract: never throws)', () => {
+    vi.stubGlobal('navigator', {
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome Safari',
+    });
+    vi.stubGlobal('matchMedia', () => {
+      throw new Error('hostile host');
+    });
+    expect(() => probeDeviceCaps(null)).not.toThrow();
+    expect(probeDeviceCaps(null)).toEqual({ isMobile: false, maxFragmentUniformVectors: 0 });
+  });
 });

@@ -70,8 +70,14 @@ interface GlParamReader {
  * failure must only ever keep the safe budget, never break rendering.
  */
 export function probeDeviceCaps(gl: unknown): DeviceCaps {
+  let isMobile = false;
   let maxFragmentUniformVectors = 0;
   try {
+    // Both reads live INSIDE the guard: isMobileDevice() touches matchMedia /
+    // navigator, and the GL read can fault on a lost context. The call site
+    // (Renderer.create) does NOT wrap this, so a hostile host must never reject
+    // it — a fault just leaves the conservative floor inputs (→ the 8-light floor).
+    isMobile = isMobileDevice();
     const reader = gl as GlParamReader | null;
     if (reader && typeof reader.getParameter === 'function') {
       const v = reader.getParameter(reader.MAX_FRAGMENT_UNIFORM_VECTORS);
@@ -80,7 +86,7 @@ export function probeDeviceCaps(gl: unknown): DeviceCaps {
   } catch {
     maxFragmentUniformVectors = 0;
   }
-  return { isMobile: isMobileDevice(), maxFragmentUniformVectors };
+  return { isMobile, maxFragmentUniformVectors };
 }
 
 /**

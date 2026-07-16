@@ -186,7 +186,8 @@ void main() {
     // depth at zero runtime cost. It's packed in the normal map's ALPHA (normals
     // use rgb only) and read at the SAME frame transform as the normal, so
     // trim/rotate can't desync it. uAoStrength defaults to 0 -> identity, so this
-    // is inert until AO-baked art ships with the textured path (#43); the analytic
+    // is inert until AO-baked normal art ships — the textured path it rides already
+    // landed (#43), so the remaining gap is authored AO, not code; the analytic
     // sphere/limb imposters have no authored texture to carry an AO channel, so
     // only the textured variant compiles it.
     vec3 ambient = uAmbient;
