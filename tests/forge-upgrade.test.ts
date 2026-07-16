@@ -210,7 +210,10 @@ describe('refreshComponents (item 6 flat→components patch)', () => {
         { kind: 'stun', seconds: 0.5 },
         { kind: 'freeze', seconds: 0.5 },
         { kind: 'slow', mult: 0.9, duration: 2 },
-        { kind: 'zone', zone: { zoneKind: 'rainOfArrows', duration: 4, radius: 100, slowMult: 0.8 } },
+        {
+          kind: 'zone',
+          zone: { zoneKind: 'rainOfArrows', duration: 4, radius: 100, slowMult: 0.8 },
+        },
       ],
     );
     const out = refreshComponents(def);
@@ -262,7 +265,13 @@ describe('refreshComponents (item 6 flat→components patch)', () => {
       { kind: 'slow', mult: 0.6, duration: 2 },
       {
         kind: 'zone',
-        zone: { zoneKind: 'rainOfArrows', duration: 4, radius: 100, slowMult: 0.6, slowDuration: 3 },
+        zone: {
+          zoneKind: 'rainOfArrows',
+          duration: 4,
+          radius: 100,
+          slowMult: 0.6,
+          slowDuration: 3,
+        },
       },
     ]);
     const out = refreshComponents(def);
