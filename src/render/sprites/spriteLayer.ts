@@ -135,9 +135,10 @@ export class SpriteLayer {
         if (n.attack && nowMs - n.attack.startMs >= ATTACK_CLIP_MS) n.attack = null;
         const scr = camera.worldToScreen(p.pos);
         const moving = this.speed(n, scr, dtMs) > EPS_MOVE;
-        // Sub-skill casts are instant (never rooted), so only base slots matter here.
-        const baseCastSlot = p.castSlot === 'sub1' || p.castSlot === 'sub2' ? null : p.castSlot;
-        const castTotalMs = p.castTimer > 0 ? castMs(p.classId, baseCastSlot) : null;
+        // The cast's full duration crosses the wire (castTimerMax = castTime × castMult),
+        // so the pose progress is accurate under Focus and works for any slot (base or a
+        // charged subclass nuke) without a per-class base-castTime lookup.
+        const castTotalMs = p.castTimer > 0 && p.castTimerMax > 0 ? p.castTimerMax * 1000 : null;
         const sel = playerAnim(p, {
           dirMode: MANIFEST[p.classId as ActorKey].dirMode,
           moving,
@@ -416,13 +417,6 @@ function litFrameIndex(n: Node, sel: AnimSelection, nowMs: number): number {
   const raw = Math.floor(((nowMs - n.clipStartMs) / 1000) * fps);
   if (raw <= 0) return 0;
   return sel.loop ? raw % count : Math.min(count - 1, raw);
-}
-
-/** Ability cast time (ms) for a (class, slot); null when not a rooted cast. */
-function castMs(classId: ClassId, slot: AbilitySlot | null): number | null {
-  if (!slot) return null;
-  const sec = getClass(classId).abilities[slot].castTime ?? 0;
-  return sec > 0 ? sec * 1000 : null;
 }
 
 /** Map a `cast` event's ability *name* back to its slot for the owning class.

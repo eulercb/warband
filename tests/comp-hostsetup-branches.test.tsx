@@ -139,40 +139,26 @@ describe('<HostSetup> default single-fight view', () => {
     expect(playUiSound).toHaveBeenCalledWith('uiClick');
   });
 
-  it('single-fight customization: granted subclass skills + boons flow into hostGame (item 8)', async () => {
+  it('points to the lobby for the test loadout and calls hostGame with no up-front args', async () => {
     useStore.setState({ localClass: 'knight' });
     render(<HostSetup />);
 
-    // The customization panel is present only in single-fight mode.
-    expect(screen.getByRole('group', { name: 'Customize your hero' })).toBeTruthy();
-
-    // Grant a Knight subclass skill and a Knight boon and a generic boon.
-    fireEvent.click(screen.getByRole('button', { name: /Earthshaker/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Impenetrable/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Vigor/ }));
+    // The build editor moved to the lobby; a single fight shows only a hint here now.
+    expect(screen.queryByRole('group', { name: 'Customize your hero' })).toBeNull();
+    expect(screen.getByText(/Build a test loadout/i)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Create Room' }));
     await Promise.resolve();
 
+    // hostGame reads the loadout live from the store, so it's called with no arguments.
     expect(hostGame).toHaveBeenCalledTimes(1);
-    const loadout = (hostGame as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][0] as {
-      subSkills: string[];
-      charUpgrades: string[];
-      upgrades: string[];
-    };
-    expect(loadout.subSkills).toContain('kn_champion_slam'); // Earthshaker
-    expect(loadout.charUpgrades).toContain('kn_bulwark'); // Iron Bulwark boon
-    expect(loadout.upgrades).toContain('vigor');
+    expect((hostGame as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]).toHaveLength(0);
   });
 
-  it('caps up-front subclass-skill grants at two (item 8)', () => {
-    useStore.setState({ localClass: 'knight' });
+  it('hides the loadout hint in gauntlet mode (the build is earned between bosses)', () => {
+    useStore.setState({ localClass: 'knight', gauntlet: true });
     render(<HostSetup />);
-    // Pick three skills; the third must be refused (disabled once two are chosen).
-    fireEvent.click(screen.getByRole('button', { name: /Earthshaker/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Riposte/ }));
-    const third = screen.getByRole<HTMLButtonElement>('button', { name: /Bull Rush/ });
-    expect(third.disabled).toBe(true);
+    expect(screen.queryByText(/Build a test loadout/i)).toBeNull();
   });
 });
 

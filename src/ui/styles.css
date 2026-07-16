@@ -2016,6 +2016,66 @@ body {
 .wb-sf-customize .wb-pad-scheme-row {
   flex-wrap: wrap;
 }
+.wb-sf-customize-hint {
+  margin: 2px 0 0;
+}
+
+/* Lobby single-fight test-loadout editor (item: lobby loadout). */
+.wb-sf-loadout {
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--border, #2a2a38);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+.wb-sf-loadout-toggle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 2px 10px;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+}
+.wb-sf-loadout-toggle .wb-gauntlet-sub {
+  grid-column: 2;
+}
+.wb-sf-loadout-caret {
+  grid-row: 1 / span 2;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+.wb-sf-loadout-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 12px 12px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.wb-sf-loadout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.wb-sf-loadout .wb-pad-scheme-row {
+  flex-wrap: wrap;
+}
+.wb-btn-grand.selected {
+  border-color: var(--gold, #e8d36a);
+  box-shadow: 0 0 0 1px rgba(232, 211, 106, 0.4);
+}
+/* Grafts (wild cross-class picks) — a violet accent to set them apart from grands. */
+.wb-btn-graft.selected {
+  border-color: var(--violet, #b98cff);
+  box-shadow: 0 0 0 1px rgba(185, 140, 255, 0.4);
+}
 
 /* item 7: unobtrusive build-version label in the main-menu corner panel. */
 .wb-version {

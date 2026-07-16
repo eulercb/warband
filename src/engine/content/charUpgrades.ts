@@ -15,7 +15,15 @@ import type { PlayerAbilityDef } from './classes';
 import { CLASSES, getClass, cloneAbilities, slowAttackCooldowns, describeAbility } from './classes';
 import { getSubclass, getSubSkill, subclassOfSkill, ALL_SUBCLASSES } from './subclasses';
 import { applyUpgrades, type UpgradeId } from './upgrades';
-import { MAX_SKILL_STACKS, CRIT_CHANCE_BASE, CRIT_MULT_BASE } from '../core/constants';
+import { refreshComponents, forgeName, forgeVariant } from './forge';
+import { Rng, mixSeed } from '../core/math';
+import { hashStr } from './procgen';
+import {
+  MAX_SKILL_STACKS,
+  CRIT_CHANCE_BASE,
+  CRIT_MULT_BASE,
+  PROJECTILE_MAX_RANGE,
+} from '../core/constants';
 
 /** What an upgrade's `apply` receives: the hero and their private ability table. */
 export interface CharUpgradeCtx {
@@ -124,6 +132,16 @@ const addN = (ab: PlayerAbilityDef, k: keyof PlayerAbilityDef, d: number): void 
 const setMin = (ab: PlayerAbilityDef, k: keyof PlayerAbilityDef, v: number): void => {
   const cur = ab[k] as number | undefined;
   (ab[k] as number) = cur == null ? v : Math.min(cur, v);
+};
+/**
+ * Extend a projectile's travel cap from its REAL default. An uncapped shot has no
+ * `maxRange` field and falls back to PROJECTILE_MAX_RANGE at spawn, so a plain
+ * `addN(ab,'maxRange',d)` would read the missing field as 0 and *slash* the cap to
+ * `d` (a "+range" boon that collapses range — the Frostlance bug). Seed from the
+ * default so a range boon actually lengthens the shot.
+ */
+const addRange = (ab: PlayerAbilityDef, d: number): void => {
+  ab.maxRange = (ab.maxRange ?? PROJECTILE_MAX_RANGE) + d;
 };
 
 // A helper so each definition reads as a one-liner.
@@ -314,7 +332,7 @@ const MAGE: CharUpgradeDef[] = [
     'mg_combust',
     'Combustion',
     '🔥',
-    'Fireball erupts for 92 (+22) across a 135u blast (+35)',
+    'Fireball erupts for 102 (+22) across a 145u blast (+35)',
     ({ abilities: a }) => {
       addN(a.a1, 'impactRadius', 35);
       addN(a.a1, 'damage', 22);
@@ -336,7 +354,7 @@ const MAGE: CharUpgradeDef[] = [
     'mg_blink',
     'Flicker',
     '🌀',
-    'Blink jumps 320u (+70), returns 30% faster (4.2s), and phases you for 0.25s',
+    'Blink jumps 320u (+70), returns 30% faster (4.2s), and phases you for 0.45s',
     ({ abilities: a }) => {
       addN(a.a3, 'range', 70);
       mul(a.a3, 'cooldown', 0.7);
@@ -780,7 +798,7 @@ const SORCERER: CharUpgradeDef[] = [
     'so_twin',
     'Twinned Spell',
     '✨',
-    'Chaos Bolt fires 3 bolts (+1) and each hits for 19 (+4)',
+    'Chaos Bolt fires 3 bolts (+1) and each hits for 16 (+4)',
     ({ abilities: a }) => {
       addN(a.basic, 'projCount', 1);
       addN(a.basic, 'damage', 4);
@@ -909,7 +927,7 @@ const HYBRID: CharUpgradeDef[] = [
       'hy_pyromancer',
       "Pyromancer's Pact",
       '☄️',
-      'Graft the Mage’s Fireball: a 0.7s-charged bomb bursting for 70 in a 100-radius blast (7s cooldown)',
+      'Graft the Mage’s Fireball: a 0.7s-charged bomb bursting for 80 in a 110-radius blast (7s cooldown)',
       ({ abilities: a }) => {
         graft(a, 'a2', 'mage', 'a1');
       },
@@ -1173,7 +1191,7 @@ const GRAND: CharUpgradeDef[] = [
     ({ abilities: a }) => {
       addN(a.basic, 'damage', 20);
       addN(a.basic, 'projSpeed', 250);
-      addN(a.basic, 'maxRange', 220);
+      addRange(a.basic, 220);
     },
   ),
   g(
@@ -1181,7 +1199,7 @@ const GRAND: CharUpgradeDef[] = [
     'rg_grand_storm',
     'Arrow Storm',
     '🌩️',
-    'Multishot erupts into a storm — 5 extra arrows across a wide 40° fan (+6 each)',
+    'Multishot erupts into a storm — 5 extra arrows across a wide 55° fan (+6 each)',
     ({ abilities: a }) => {
       addN(a.a1, 'projCount', 5);
       addN(a.a1, 'spreadDeg', 25);
@@ -1271,7 +1289,7 @@ const GRAND: CharUpgradeDef[] = [
     'ro_grand_shadow',
     'Shadow Master',
     '🌑',
-    'Shadowstep resets almost instantly (−65% cd); Backstab annihilates for +60',
+    'Shadowstep resets almost instantly (−65% cd); Backstab annihilates for +60 and drinks 25% as health',
     ({ abilities: a }) => {
       mul(a.a2, 'cooldown', 0.35);
       addN(a.a1, 'damage', 60);
@@ -1335,12 +1353,11 @@ const GRAND: CharUpgradeDef[] = [
     'dr_grand_grove',
     'Sacred Grove',
     '🌳',
-    'Entangle becomes a vast thornfield — +22/tick, +65 radius, +5s, slows to 40%',
+    'Entangle becomes a vast thornfield that roots — +22/tick, +65 radius, +5s',
     ({ abilities: a }) => {
       addN(a.a1, 'zoneTickDamage', 22);
       addN(a.a1, 'radius', 65);
       addN(a.a1, 'zoneDuration', 5);
-      setMin(a.a1, 'slowMult', 0.4);
     },
   ),
   g(
@@ -1373,7 +1390,7 @@ const GRAND: CharUpgradeDef[] = [
     'mo_grand_ascend',
     'Ascendant',
     '🕉️',
-    'Transcend the flesh: +30% move speed, +8 Flurry dmg, Step of the Wind resets fast (+iframes)',
+    'Transcend the flesh: +30% move speed, +8 Flurry dmg, Step of the Wind resets fast (+iframes, mends +20)',
     ({ player: p, abilities: a }) => {
       p.moveSpeed *= 1.3;
       addN(a.basic, 'damage', 8);
@@ -1435,7 +1452,7 @@ const GRAND: CharUpgradeDef[] = [
     'wa_grand_ruin',
     'Word of Ruin',
     '💀',
-    'Hex becomes a vast, lingering curse (+22/tick, +65 radius, +4s); Hellish Rebuke erupts (+40)',
+    'Hex becomes a vast, lingering curse (+22/tick, +65 radius, +4s); Hellish Rebuke erupts (+40 dmg, +30 radius)',
     ({ abilities: a }) => {
       addN(a.a1, 'zoneTickDamage', 22);
       addN(a.a1, 'radius', 65);
@@ -1612,7 +1629,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     (ab) => {
       addN(ab, 'damage', 26);
       addN(ab, 'projSpeed', 300);
-      addN(ab, 'maxRange', 260);
+      addRange(ab, 260);
     },
   ),
   gk(
@@ -1719,7 +1736,6 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     (ab) => {
       addN(ab, 'damage', 18);
       addN(ab, 'projSpeed', 350);
-      addN(ab, 'maxRange', 200);
       addN(ab, 'freeze', 0.4);
     },
   ),
@@ -1781,7 +1797,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'mg_gk_a3_a',
     'Fold Space',
     '🌀',
-    'Blink leaps +150u, recharges in a blink (−60% cd), and phases you 0.4s',
+    'Blink leaps +150u, recharges in a blink (−60% cd), and phases you 0.6s',
     (ab) => {
       addN(ab, 'range', 150);
       mul(ab, 'cooldown', 0.4);
@@ -1794,7 +1810,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'mg_gk_a3_b',
     'Displacement Ward',
     '🛡️',
-    'Blink knits +60 HP on use, phases you 0.5s, and reaches +80u',
+    'Blink knits +60 HP on use, phases you 0.7s, and reaches +80u',
     (ab) => {
       addN(ab, 'healOnUse', 60);
       addN(ab, 'iframes', 0.5);
@@ -1827,7 +1843,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     (ab) => {
       addN(ab, 'damage', 24);
       addN(ab, 'projSpeed', 300);
-      addN(ab, 'maxRange', 200);
+      addRange(ab, 200);
     },
   ),
   gk(
@@ -2573,7 +2589,6 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     (ab) => {
       addN(ab, 'damage', 20);
       addN(ab, 'projSpeed', 300);
-      addN(ab, 'maxRange', 200);
       addN(ab, 'freeze', 0.4);
     },
   ),
@@ -2757,7 +2772,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'wa_gk_a3_b',
     'Eternal Pact',
     '🕯️',
-    "Dark One's Blessing is nearly always up (−45% cd), +30% damage, 30% mitigation",
+    "Dark One's Blessing is nearly always up (−45% cd), +30% damage, 30% mitigation, lasts +2s",
     (ab) => {
       mul(ab, 'cooldown', 0.55);
       addN(ab, 'buffDamageMult', 0.3);
@@ -3246,7 +3261,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'ba_valor_g_a',
     "Hero's Ballad",
     '🎺',
-    'Your Valor skills hit 50% harder over a wider area and empower the band far more',
+    'Your Valor skills hit 50% harder over a wider area, empower the band far more, and leech 15% of the damage dealt as health',
     (ab) => {
       amplify(ab, 0.5, 0.3);
       lifeRider(ab, 0.15);
@@ -3678,7 +3693,7 @@ export const GRAFT_GRANDS: CharUpgradeDef[] = [
     'hy_inspire_g_b',
     'Warding Hymn',
     '🛡️',
-    'Your grafted Anthem also shields the ally (40% less damage taken) and carries +160u',
+    'Your grafted Anthem also shields the ally (40% less damage taken), carries +160u, and lasts +3s',
     (ab) => {
       setMin(ab, 'buffDefMult', 0.6);
       addN(ab, 'range', 160);
@@ -3943,9 +3958,46 @@ export function isCharUpgradeId(x: unknown): x is string {
  * (and, for the stat-flavoured ones, the hero directly). Unknown / mismatched-
  * class ids are skipped. Call after `applyUpgrades` at spawn.
  */
+/** A composed skill's FLAT fields (excluding `components`) as a signature, so we can
+ *  tell whether an upgrade actually retuned it. */
+function flatSig(ab: PlayerAbilityDef): string {
+  const { components: _components, ...flat } = ab;
+  return JSON.stringify(flat);
+}
+
+/** Re-derive the components of any composed sub-ability a boon just retuned (item: forge
+ *  upgrade synthesis), so its zone/heal/buff tweaks reach the component-driven executor.
+ *  A no-op off Forge (canonical sub-abilities carry no components). */
+function refreshComposedSubs(subs: Partial<Record<SubSlot, PlayerAbilityDef>>): void {
+  for (const slot of SUB_SLOTS) {
+    const ab = subs[slot];
+    if (ab?.components) ab.components = refreshComponents(ab);
+  }
+}
+
 export function applyCharUpgrades(player: Player, ids: string[] | undefined): void {
   if (!ids || !player.abilities) return;
+  const abilities = player.abilities;
+  // Chaos Forge (item: forge upgrade synthesis): a fused base skill resolves buffs /
+  // zones / heals from its `components`, so a canonical upgrade that only tugs a flat
+  // field would be a NO-OP on it. Snapshot each fused skill's flat fields, apply the
+  // upgrades, then re-derive the components of any fused skill an upgrade actually
+  // retuned — so every offered upgrade meaningfully improves the synthesized skill,
+  // re-capped to stay on budget. Only fused skills that CHANGED are refreshed, so a
+  // canonical (or un-upgraded Forge) kit is byte-identical.
+  const before = new Map<AbilitySlot, string>();
+  for (const slot of SLOTS) {
+    const ab = abilities[slot];
+    if (ab?.components) before.set(slot, flatSig(ab));
+  }
   replayCharUpgrades(player, ids);
+  for (const slot of SLOTS) {
+    const ab = abilities[slot];
+    const was = before.get(slot);
+    if (ab?.components && was !== undefined && flatSig(ab) !== was) {
+      ab.components = refreshComponents(ab);
+    }
+  }
 }
 
 /**
@@ -3984,6 +4036,7 @@ export function applySubclassGrands(player: Player, ids: readonly string[] | und
         abilities: (player.abilities ?? {}) as Record<AbilitySlot, PlayerAbilityDef>,
         subAbilities: targeted,
       });
+      refreshComposedSubs(targeted); // flow the boon into a fused sub-skill's components
     }
   }
 }
@@ -4022,6 +4075,7 @@ export function applySubSkillUpgrades(player: Player, ids: readonly string[] | u
         abilities: (player.abilities ?? {}) as Record<AbilitySlot, PlayerAbilityDef>,
         subAbilities: targeted,
       });
+      refreshComposedSubs(targeted); // flow the boon into a fused sub-skill's components
     }
   }
 }
@@ -4068,6 +4122,7 @@ export function previewSubAbility(
   const ability: PlayerAbilityDef = { ...sk.ability, slot: 'sub1' };
   const stub = stubPlayer(owner.classId);
   const abilities = stub.abilities as Record<AbilitySlot, PlayerAbilityDef>;
+  let tuned = false;
   for (const boonId of ownedChar) {
     const def = CHAR_UPGRADES[boonId];
     if (!def) continue;
@@ -4078,7 +4133,11 @@ export function previewSubAbility(
       (def.subclassId != null && def.subclassId === owner.id);
     if (!hits) continue;
     def.apply({ player: stub, abilities, subAbilities: { sub1: ability } });
+    tuned = true;
   }
+  // Forge run: flow the boons' tweaks into the fused sub-skill's components (item: forge
+  // upgrade synthesis), so the preview reads the true empowered numbers.
+  if (tuned && ability.components) ability.components = refreshComponents(ability);
   return ability;
 }
 
@@ -4406,6 +4465,46 @@ function describeStatReadout(classId: ClassId, ownedChar: readonly string[], id:
     .join(' · ');
 }
 
+/** Salt for the Forge char-upgrade rename stream (decorrelated from ability/class streams). */
+const FORGE_CHARUP_SALT = 0xf5e3;
+
+/** The base slot a boon empowers (for the Forge rename), or null for a stat-only /
+ *  hybrid / graft boon that doesn't tie to exactly one native slot. */
+function boonTargetSlot(def: CharUpgradeDef): AbilitySlot | null {
+  if (def.classId === 'any') return null; // grafts / cross-class styles — left as authored
+  if (def.skillSlot) return def.skillSlot;
+  const slots = BOON_SLOTS[def.id];
+  return slots && slots.length > 0 ? slots[0] : null;
+}
+
+/**
+ * Resolve a character upgrade for the active run (item: forge upgrade synthesis). In a
+ * Chaos Forge run a skill-targeting boon is re-presented for the FUSED skill it now
+ * empowers: its NAME is blended (the same forgeName method skill names use) from the
+ * boon's name + the fused skill's name, and its DESCRIPTION is regenerated to reference
+ * that skill — the offer card's "Now →" line already resolves the fused skill's real
+ * before→after. The `apply` is unchanged: the flat-field tweak flows to the fused
+ * skill's components at spawn (applyCharUpgrades' refresh), so the boon genuinely
+ * improves the synthesized skill rather than no-opping. Byte-identical to the canonical
+ * def when Forge is off (forgeVariant returns null); stat-only / hybrid boons, which
+ * tug player stats or swap whole kits, are left exactly as authored.
+ */
+export function getCharUpgrade(id: string): CharUpgradeDef | undefined {
+  const base = CHAR_UPGRADES[id];
+  if (!base) return undefined;
+  return forgeVariant('charUpgrade', id, (seed) => forgeCharUpgrade(seed, base)) ?? base;
+}
+
+function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
+  const slot = boonTargetSlot(base);
+  if (!slot) return base; // stat-only / hybrid — nothing skill-specific to rename
+  const fused = getClass(base.classId as ClassId).abilities[slot];
+  const rng = new Rng(mixSeed(seed, FORGE_CHARUP_SALT, hashStr(base.id)));
+  const name = forgeName([base.name, fused.name], (k) => rng.int(0, k - 1));
+  const kind = base.grand ? 'Reforged capstone' : 'Reforged boon';
+  return { ...base, name, desc: `${kind} — empowers your ${fused.name}` };
+}
+
 /** A resolved label + description for an offer (a real, reclaim, or graftup id). */
 export interface CharOfferView {
   id: string;
@@ -4484,7 +4583,7 @@ export function describeCharOffer(
       desc: `${boon.desc}. Upgrades your grafted ${skillName}.`,
     };
   }
-  const def = CHAR_UPGRADES[id];
+  const def = getCharUpgrade(id); // Forge run → the boon re-presented for its fused skill
   if (!def) return null;
   const replaced = def.replaces ? current[def.replaces]?.name : null;
   let desc = replaced ? `${def.desc}. Replaces ${replaced}.` : def.desc;
@@ -4530,7 +4629,7 @@ export function charUpgradeBadge(id: string): { icon: string; name: string; desc
     const boon = CHAR_UPGRADES[graftup.boonId]; // parseGraftup guarantees it exists
     return { icon: boon.icon, name: boon.name, desc: `${boon.desc}. Upgrades your grafted skill.` };
   }
-  const def = CHAR_UPGRADES[id];
+  const def = getCharUpgrade(id); // Forge run → the boon re-presented for its fused skill
   if (!def) return null;
   return { icon: def.icon, name: def.name, desc: def.desc };
 }
@@ -4647,27 +4746,38 @@ export function rollCharChoices(
     // slot it away from the grand (index 0) / hybrid (last) swaps.
     out[out.length > 1 ? 1 : 0] = pick;
   }
-  // Graceful degradation (items 12 & 14): if the normal class pool couldn't supply
-  // n picks — every common boon already owned at its cap, or a run deep into Endless
-  // — top the offer up from the remaining RESTORE (reclaim / graftup) and RARE
-  // (cross-class hybrid, incl. skill-REPLACE grafts) candidates. This guarantees the
-  // class-boon relic is never left blank while ANY eligible upgrade still exists, and
-  // keeps skill-replace / restore offers surfacing even once the ordinary pool is
-  // exhausted. Restore/reoffer candidates come first so a hero with a displaced skill
-  // always sees the reclaim (item 14). Deterministic (draws no rng), so the carefully
-  // seeded reward stream is unchanged for the common case where `out` already holds n.
-  // Gated on a recognised class so an unknown class still yields nothing (a hybrid is
-  // technically "allowed" for any non-excluded class, which must not resurrect offers
-  // for a class that has no kit at all).
+  // Graceful degradation (items 12 & 14): if the normal class pool couldn't supply n
+  // picks — every common boon already owned at its cap, or a run deep into Endless —
+  // top the offer up from the remaining GENUINE upgrades (the class's eligible cross-
+  // class HYBRIDS) and the RESTORE / graftup reoffers. Two invariants shape the fill:
+  //   • (late-run offers) genuine upgrades are drawn FIRST, with the SEEDED rng, so the
+  //     set never collapses to only skill-change / skill-restore options while a real
+  //     upgrade remains, and a deep-run offer stays VARIED between bosses instead of
+  //     repeating one fixed list — the old fill drew no rng, so every maxed-out hero saw
+  //     the identical degraded set every fight (the reported bug);
+  //   • (item 14) one slot is RESERVED for a reoffer whenever a graft has displaced a
+  //     skill, so its reclaim keeps surfacing rather than being crowded out by hybrids.
+  // Only runs when `out` is short (a pool that already yields n is byte-for-byte the
+  // seeded stream it always was). Gated on a recognised class so an unknown class still
+  // yields nothing (a hybrid is technically "allowed" for any non-excluded class, which
+  // must not resurrect offers for a class that has no kit at all).
   if (CLASSES[classId] && out.length < n) {
-    for (const id of reoffers) {
+    const realFill = eligible.map((h) => h.id).filter((id) => !out.includes(id));
+    const swapFill = reoffers.filter((id) => !out.includes(id)); // natural order: reclaim first
+    const reserve = swapFill.length > 0 ? 1 : 0; // hold a slot for the reclaim (item 14)
+    const drawReals = (limit: number): void => {
+      while (out.length < limit && realFill.length > 0) {
+        const i = Math.floor(rnd() * realFill.length) % realFill.length;
+        out.push(realFill[i]);
+        realFill.splice(i, 1);
+      }
+    };
+    drawReals(n - reserve); // genuine upgrades first (leave room for one reclaim)
+    for (const id of swapFill) {
       if (out.length >= n) break;
-      if (!out.includes(id)) out.push(id);
+      out.push(id); // reclaim / graftup reoffers — reclaim leads, so item 14 holds
     }
-    for (const h of eligible) {
-      if (out.length >= n) break;
-      if (!out.includes(h.id)) out.push(h.id);
-    }
+    drawReals(n); // any slot the reoffers didn't need falls back to more genuine picks
   }
   return out;
 }

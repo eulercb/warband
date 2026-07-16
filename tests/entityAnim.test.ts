@@ -33,6 +33,7 @@ function player(over: Partial<PlayerView> = {}): PlayerView {
     reviveProgress: 0,
     castSlot: null,
     castTimer: 0,
+    castTimerMax: 0,
     score: 0,
     ...over,
   };
@@ -121,6 +122,12 @@ describe('playerAnim: priority order (dead > downed > rooted-cast > attack > wal
   it('rooted cast falls back to a1 when castSlot is null', () => {
     const sel = playerAnim(player({ castTimer: 0.2, castSlot: null }), ctx());
     expect(sel.clip).toBe('cast_a1');
+  });
+
+  it('a rooted subclass-skill cast falls back to the a1 cast pose (no cast_sub clip)', () => {
+    const sel = playerAnim(player({ castTimer: 0.4, castSlot: 'sub1' }), ctx({ castTotalMs: 900 }));
+    expect(sel.clip).toBe('cast_a1'); // charged sub nukes reuse the generic cast pose
+    expect(sel.progress).toBeCloseTo(1 - (0.4 * 1000) / 900, 5);
   });
 
   it('instant attack plays while young, one-shot', () => {

@@ -351,6 +351,27 @@ describe('world-branches: input + cast', () => {
     expect(w2.projectiles.length).toBe(0); // stunned: the fireball never fired
   });
 
+  it('records the cast full duration (castTimerMax) so the cast bar reads under Focus', () => {
+    const w = makeWorld({ classId: 'mage' });
+    w.boss = null;
+    w.terrain = [];
+    w.obstacles = [];
+    const p = w.players[0];
+    p.pos = { x: 400, y: 400 };
+    // Focus (castMult 0.7) shortens the cast; castTimerMax must equal the ACTUAL total,
+    // so the render's progress ring starts at 0, not at (1 - castMult).
+    p.castMult = 0.7;
+    w.step(DT, new Map([['a', inp({ aim: { x: 1, y: 0 }, buttons: buttons({ a1: true }) })]]));
+    expect(p.castSlot).toBe('a1');
+    expect(p.castTimerMax).toBeCloseTo(0.7 * 0.7, 5); // Fireball castTime 0.7 × castMult 0.7
+    expect(p.castTimer).toBeLessThanOrEqual(p.castTimerMax); // remaining never exceeds the total
+    // The full duration crosses the wire for the client-side bar.
+    expect(w.serialize().players[0].castTimerMax).toBeCloseTo(p.castTimerMax, 5);
+    // It clears once the cast completes.
+    for (let i = 0; i < 40 && p.castSlot; i++) w.step(DT, new Map([['a', inp()]]));
+    expect(p.castTimerMax).toBe(0);
+  });
+
   it('an ability on cooldown does not fire again', () => {
     const w = solo();
     w.terrain = [];

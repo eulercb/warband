@@ -282,14 +282,21 @@ export const SOFT_ENRAGE_TIME = 300; // s — after this, escalating boss damage
 export const SOFT_ENRAGE_RAMP = 0.05; // +5%/s boss outgoing damage past the threshold
 
 // --- Stun diminishing returns (applies to players, bosses AND adds) ---
-// Chain-stunning the same target gets weaker each time: every successive stun
-// landed within the rolling window keeps only STUN_DR_FACTOR of the previous
-// effective duration. Once the effective duration would drop below
-// STUN_DR_FLOOR the stun is fully resisted (a `stunResist` event fires so the
-// resist is readable). The counter resets after STUN_DR_WINDOW seconds without
-// any new stun landing. Keeps Daze/Shield Bash/Deep Freeze strong openers
-// without letting a rotation freeze a boss (or a hero) forever.
-export const STUN_DR_FACTOR = 0.5; // each chained stun keeps 50% of the last
+// Chain-stunning the same target gets weaker each time, but the falloff is
+// MAGNITUDE-RELATIVE, not a raw count. Each landed stun banks its requested
+// seconds onto the target's rolling stun-`load`; an incoming stun keeps only
+// STUN_DR_FACTOR raised to `load / seconds` — i.e. the load already banked
+// measured in units of THIS stun's own duration. So a stream of short, frequent
+// stuns (a cheap basic-attack freeze rider) banks little load and barely dents a
+// rare, long stun (Deep Freeze), which divides that small load by its big
+// duration and lands almost full — while repeats of the SAME duration still keep
+// only 50% of the last (load/seconds === the chain length), so nothing changes
+// for a uniform chain. Once the effective duration would drop below STUN_DR_FLOOR
+// the stun is fully resisted (a `stunResist` event fires so the resist is
+// readable). The load resets after STUN_DR_WINDOW seconds without any new stun
+// landing. Keeps Daze/Shield Bash/Deep Freeze strong openers, stops a frequent
+// weak stun from starving a strong one, and never lets a rotation lock a target.
+export const STUN_DR_FACTOR = 0.5; // a same-duration chained stun keeps 50% of the last
 export const STUN_DR_WINDOW = 14; // s without stuns before the falloff resets
 export const STUN_DR_FLOOR = 0.2; // s — anything shorter is resisted outright
 

@@ -155,20 +155,32 @@ forged bosses cast, the shop rerolls, and a typed seed reproduces the world.
   seed-deterministic across host and clients.
 - Data-driven bots: capability classifier + generic casting policy over every slot
   incl. sub1/sub2, engaged whenever Forge is live.
+- **Subclass synthesis** (`getSubSkill`/`getSubclass`/`subclassesFor`): sub-skills are
+  now recombined the same way base skills are (`synthesizeAbility`), drawing donor
+  components from the pool of every canonical SUBCLASS skill and blending the new name
+  from the donor sub-skills; a synthesized subclass is renamed after the subclasses whose
+  skills donated the most components (mirroring the class rename). Priced against the
+  special-tier slot budget, seed-deterministic across peers, canonical byte-identical
+  when Forge is off (a `forgeVariant` gate ahead of the procgen/canonical fallback).
+- **Char-upgrade synthesis** (`getCharUpgrade` + a components refresh): in a Forge run a
+  class boon now genuinely improves the FUSED skill it targets. The composed executor
+  sources buffs/zones/heals from `components`, so a canonical boon that only tugs a flat
+  field would no-op on a fused skill; after the boon applies, `applyCharUpgrades` /
+  `previewSubAbility` re-derive the components of any fused skill it retuned
+  (`forge.refreshComponents`, re-capped to stay on budget), turning the would-be no-op
+  into a real effect — so no offered upgrade is dead on the synthesized kit. Each
+  skill-targeting boon is re-presented through `getCharUpgrade` for its fused skill: a
+  name blended (the same `forgeName` method skill names use) from the boon + the fused
+  skill, and a regenerated description; the offer card's "Now →" already resolves the
+  fused skill's real before→after. Routed through `describeCharOffer`/`charUpgradeBadge`;
+  the `apply` is unchanged, so `rollCharChoices` and the replay engine keep working.
+  Byte-identical when Forge is off; stat-only / hybrid (kit-swapping) boons left as
+  authored. (Scope note: the name blends the boon with the fused skill it empowers rather
+  than reconstructing each component's specific donor-upgrade — the functional guarantee
+  "every offered upgrade meaningfully applies" is the load-bearing requirement, and it holds.)
 
 **Deliberately deferred (with rationale)**
 
-- **Char-upgrade _synthesis_ (blended-name / rebalanced-delta upgrade defs).** In a
-  Forge run the canonical char-upgrades still apply to the fused kit (they tug the
-  same `PlayerAbilityDef` levers), so bots + players can pick and apply upgrades to
-  synthesized skills — the functional requirement holds. What's deferred is
-  regenerating each upgrade's _name + description + delta_ to match the fused skill,
-  which needs a `getCharUpgrade` getter + rerouting `rollCharChoices`/the replay
-  engine (char-upgrades are keyed by string id and looked up directly today). A
-  focused follow-up; not landed here to keep the change reviewable.
-- **Subclass _synthesis_.** Subclass skills already route through procgen
-  (`getSubSkill` → numeric variance), so they vary per run; full component
-  synthesis of sub-skills + their grands is the same follow-up shape as upgrades.
 - **Affix / corruption / terrain magnitude variance (§3.7 audit).** Left static:
   their id→behaviour binding is host-side code, not data, so recombination would
   need executor work, and their magnitudes are tuned balance constants. _Selection_

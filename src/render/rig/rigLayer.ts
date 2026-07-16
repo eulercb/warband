@@ -15,13 +15,11 @@ import type {
   GameEvent,
   PlayerView,
   Telegraph,
-  AbilitySlot,
 } from '../../engine/core/types';
 import type { Camera } from '../pipeline/camera';
 import type { Fx } from '../overlays/fx';
 import { PLAYER_RADIUS, CLASS_COLORS } from '../../engine/core/constants';
 import { getMonster } from '../../engine/content/monsters';
-import { getClass } from '../../engine/content/classes';
 import { CreatureRig } from './rig';
 import { makeSphereTexture } from './shading';
 import type { RigSpec } from './types';
@@ -168,8 +166,9 @@ export class RigLayer {
         flash: this.fx.flashAmount(p.id),
         enraged: false,
         state: p.state,
-        // Only base-kit rooted casts drive the cast pose (sub skills are instant).
-        castSlot: p.castSlot === 'sub1' || p.castSlot === 'sub2' ? null : p.castSlot,
+        // A charged cast drives the cast pose. Sub slots have no dedicated pose, so they
+        // fall back to the a1 cast pose; the cast bar over the head carries the progress.
+        castSlot: p.castSlot === 'sub1' || p.castSlot === 'sub2' ? 'a1' : p.castSlot,
         castT: castProgress(p),
         aim: p.aim,
         cheer: celebrate ? cheer : undefined,
@@ -266,14 +265,11 @@ function telegraphProgress(tg: Telegraph | null): number | undefined {
   return p < 0 ? 0 : p > 1 ? 1 : p;
 }
 
-/** 0..1 rooted-cast progress for a player, or undefined when not mid-cast. */
+/** 0..1 rooted-cast progress for a player, or undefined when not mid-cast. The full
+ * duration crosses the wire (castTimerMax), so this is accurate under Focus and needs
+ * no per-class base-castTime lookup. */
 function castProgress(p: PlayerView): number | undefined {
-  if (!p.castSlot || p.castTimer <= 0) return undefined;
-  // Subclass skills are instant (never rooted-cast), so only base slots matter.
-  if (p.castSlot === 'sub1' || p.castSlot === 'sub2') return undefined;
-  const slot: AbilitySlot = p.castSlot;
-  const total = getClass(p.classId).abilities[slot].castTime ?? 0;
-  if (total <= 0) return undefined;
-  const t = 1 - p.castTimer / total;
+  if (p.castTimer <= 0 || p.castTimerMax <= 0) return undefined;
+  const t = 1 - p.castTimer / p.castTimerMax;
   return t < 0 ? 0 : t > 1 ? 1 : t;
 }

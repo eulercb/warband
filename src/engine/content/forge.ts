@@ -1015,6 +1015,86 @@ function capComponents(comp: AbilityComponents): AbilityComponents {
   return { delivery: comp.delivery, effects: comp.effects.map(capEffect) };
 }
 
+/**
+ * Flow an upgrade's (possibly-mutated) flat fields back into a synthesized ability's
+ * components, re-capped (item: forge upgrade synthesis). The composed executor sources
+ * buffs / zones / heals from `components`, so a canonical char-upgrade that tugs a flat
+ * field would otherwise be a NO-OP on a fused skill — this carries the change through.
+ *
+ * It PATCHES the ability's existing components (still intact at refresh time — an upgrade's
+ * `apply` mutates flat fields, not `.components`) rather than rebuilding them from flat via
+ * `decompose`. A decompose round-trip is lossy and unsafe here: it re-derives a buff's
+ * target from the delivery kind (flipping an ally buff to self), cannot represent a zone's
+ * ally-buff (silently dropping it), collapses multiple same-axis buffs, AND mints garbage —
+ * a `mul(undefined→0)` on a skill that never had that buff becomes a capped 0.2 (≈80% DR)
+ * near-immunity. Patching touches only the magnitudes a flat field maps onto an EXISTING
+ * effect: structural fields (targets, ally-buffs, extra axes) are preserved, and a flat
+ * field with no matching effect is ignored — so a mismatched boon is a safe no-op, never a
+ * minted or corrupted effect. The delivery (range/radius/projCount/cast/… — a lossless,
+ * scalar-only projection of flat fields) is taken fresh so those upgrades still flow.
+ * Canonical (uncomposed) defs carry no components and never reach this.
+ */
+export function refreshComponents(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponents {
+  const prev = def.components;
+  // No prior component form ⇒ nothing to preserve; fall back to a capped decompose (this is
+  // how initial synthesis builds them). In practice every caller passes a fused def.
+  if (!prev) return capComponents(decompose(def));
+  const delivery = decompose(def).delivery; // lossless: reflects upgrade-mutated delivery scalars
+  const effects = prev.effects.map((e) => patchEffect(e, def));
+  return capComponents({ delivery, effects });
+}
+
+/**
+ * Overlay an upgrade's mutated flat scalars onto ONE existing component effect. Only the
+ * magnitudes a flat field maps to are updated; the effect's kind/target/structure is kept,
+ * and a field the effect doesn't already carry is ignored (no new effect is ever minted).
+ */
+function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): EffectComponent {
+  switch (e.kind) {
+    case 'damage':
+    case 'heal':
+      // Both direct-strike damage and heal-delivery healing mirror the flat `damage` field.
+      return { ...e, amount: def.damage };
+    case 'landingDamage':
+      return def.landingDamage != null ? { ...e, amount: def.landingDamage } : e;
+    case 'lifesteal':
+      return def.lifestealFrac != null ? { ...e, frac: def.lifestealFrac } : e;
+    case 'healOnUse':
+      return def.healOnUse != null ? { ...e, amount: def.healOnUse } : e;
+    case 'stun':
+      return def.stun != null ? { ...e, seconds: def.stun } : e;
+    case 'freeze':
+      return def.freeze != null ? { ...e, seconds: def.freeze } : e;
+    case 'slow':
+      return def.slowMult != null
+        ? { ...e, mult: def.slowMult, duration: def.slowDuration ?? e.duration }
+        : e;
+    case 'buff': {
+      // Update only the axes THIS buff already carries (so a mul-of-undefined that set a flat
+      // axis the buff lacks is ignored) and keep its target + structure intact.
+      const out = { ...e };
+      if (e.defMult != null && def.buffDefMult != null) out.defMult = def.buffDefMult;
+      if (e.dmgMult != null && def.buffDamageMult != null) out.dmgMult = def.buffDamageMult;
+      if (e.moveMult != null && def.buffMoveMult != null) out.moveMult = def.buffMoveMult;
+      if (def.buffDuration != null) out.duration = def.buffDuration;
+      return out;
+    }
+    case 'zone': {
+      // Patch the zone's scalars from the flat fields; preserve its ally-buff + kind.
+      const z: ZoneSpec = { ...e.zone };
+      if (def.zoneTickDamage != null) z.tickDamage = def.zoneTickDamage;
+      if (def.zoneTickHeal != null) z.tickHeal = def.zoneTickHeal;
+      if (def.zoneDuration != null) z.duration = def.zoneDuration;
+      if (def.radius != null) z.radius = def.radius;
+      if (def.slowMult != null) {
+        z.slowMult = def.slowMult;
+        z.slowDuration = def.slowDuration ?? z.slowDuration;
+      }
+      return { kind: 'zone', zone: z };
+    }
+  }
+}
+
 function capEffect(e: EffectComponent): EffectComponent {
   switch (e.kind) {
     case 'damage':

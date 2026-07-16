@@ -47,9 +47,11 @@ export function playerAnim(p: PlayerView, ctx: PlayerAnimCtx): AnimSelection {
     return { clip: 'downed', dir, flipX, loop: true, progress: null };
   }
 
-  // Rooted cast (e.g. mage Fireball) — hold the cast pose, synced if we know total.
+  // Rooted cast (e.g. mage Fireball, a charged subclass nuke) — hold the cast pose,
+  // synced if we know the total. Sub slots have no dedicated cast clip, so they fall
+  // back to the generic a1 cast pose (the cast bar over the head carries the progress).
   if (p.castTimer > 0) {
-    const slot = p.castSlot ?? 'a1';
+    const slot = p.castSlot === 'sub1' || p.castSlot === 'sub2' ? 'a1' : (p.castSlot ?? 'a1');
     const progress = ctx.castTotalMs ? clamp01(1 - (p.castTimer * 1000) / ctx.castTotalMs) : null;
     return { clip: `cast_${slot}`, dir, flipX, loop: progress === null, progress };
   }

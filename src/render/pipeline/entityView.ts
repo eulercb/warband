@@ -227,9 +227,34 @@ export function drawPlayer(
     g.circle(x, y, r).fill({ color: 0xffffff, alpha: clamp(flash, 0, 1) * 0.75 });
   }
 
+  // Cast-progress ring (a charged nuke mid-cast).
+  drawCastRing(g, x, y, r, p);
+
   // Floating HP bar.
   const hpFrac = clamp(p.hp / p.maxHp, 0, 1);
   drawBar(g, x, y - r - 9, Math.max(22, r * 2), 4, hpFrac, downed ? 0x9a9a9a : hpColor(hpFrac));
+}
+
+/**
+ * A cast-progress ring hugging a player who is mid-cast (Fireball, a charged
+ * subclass nuke…): a faint full track plus a bright arcane arc that sweeps from the
+ * top and fills as the cast completes. Uses `castTimerMax` (the cast's full duration,
+ * carried on the wire) so it's accurate even under Focus. Only a live hero casts
+ * (castTimer>0 ⇒ alive), so it never clashes with the downed revive ring. Anchored to
+ * the body, so it reads on the sprite and rig paths and on mobile alike.
+ */
+function drawCastRing(g: Graphics, x: number, y: number, r: number, p: PlayerView): void {
+  if (p.castTimer <= 0 || p.castTimerMax <= 0) return;
+  const frac = clamp(1 - p.castTimer / p.castTimerMax, 0, 1); // 0 at cast-start → 1 at finish
+  const ringR = r + 5;
+  g.circle(x, y, ringR).stroke({ width: 3, color: 0x0b1a33, alpha: 0.55 }); // faint track
+  if (frac > 0.001) {
+    const start = -Math.PI / 2;
+    const end = start + frac * Math.PI * 2;
+    g.moveTo(x + Math.cos(start) * ringR, y + Math.sin(start) * ringR)
+      .arc(x, y, ringR, start, end)
+      .stroke({ width: 3, color: 0x66d0ff, alpha: 0.95 }); // arcane-cyan progress
+  }
 }
 
 /**
@@ -268,6 +293,9 @@ export function drawPlayerOverlay(
   if (isLocal) {
     g.circle(x, y, r + 3).stroke({ width: 2, color: 0xffffff, alpha: 0.85 });
   }
+
+  // Cast-progress ring (a charged nuke mid-cast) — same as the vector-body path.
+  drawCastRing(g, x, y, r, p);
 
   const hpFrac = clamp(p.hp / p.maxHp, 0, 1);
   drawBar(g, x, y - r - 9, Math.max(22, r * 2), 4, hpFrac, downed ? 0x9a9a9a : hpColor(hpFrac));

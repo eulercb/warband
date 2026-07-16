@@ -20,6 +20,7 @@ import {
   playUiSound,
 } from '../state/session';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
+import { LoadoutEditor } from './LoadoutEditor';
 import { CLASS_IDS, CLASSES, describeAbility } from '../../engine/content/classes';
 import { previewAbilityTable } from '../../engine/content/charUpgrades';
 import { MONSTER_IDS, MONSTERS } from '../../engine/content/monsters';
@@ -284,6 +285,10 @@ export function Lobby() {
             </div>
           </section>
         </div>
+
+        {/* Single-fight test loadout (item: lobby loadout) — host-only, non-gauntlet;
+            gates itself internally so it stays out of a gauntlet run. */}
+        <LoadoutEditor />
 
         <div className="wb-row wb-lobby-actions">
           <button type="button" className="wb-btn wb-btn-ghost" onClick={onLeave}>

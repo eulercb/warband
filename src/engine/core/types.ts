@@ -170,13 +170,16 @@ export interface Buff {
 
 /**
  * Stun diminishing-returns bookkeeping, shared by players, bosses and adds.
- * Each successive stun landed within the rolling window is shorter; past the
- * cap the target is briefly immune. The window resets once no stun has landed
- * for STUN_DR_WINDOW seconds. See combat.applyStun.
+ * The falloff is magnitude-relative: each landed stun banks its requested seconds
+ * onto `load`, and an incoming stun keeps only STUN_DR_FACTOR^(load/seconds) — so a
+ * rare long stun shrugs off the small load banked by frequent short ones, while a
+ * same-duration chain still halves each time. Past the floor the target is briefly
+ * immune. The load resets once no stun has landed for STUN_DR_WINDOW seconds. See
+ * combat.applyStun.
  */
 export interface StunDr {
-  /** Stuns landed inside the current window (drives the duration falloff). */
-  count: number;
+  /** Recent stun-seconds banked on this target (drives the magnitude-relative falloff). */
+  load: number;
   /** Seconds left before the falloff resets (refreshed on every LANDED stun). */
   window: number;
   /** A "RESIST" cue already fired this window (dedupes rider-spam floaters). */
@@ -243,6 +246,7 @@ export interface Player {
 
   cooldowns: Cooldowns;
   castTimer: number; // > 0 while rooted mid-cast (e.g. Fireball)
+  castTimerMax: number; // the cast's full duration (castTime × castMult); drives the cast bar
   castSlot: ExtSlot | null;
   buffs: Buff[];
 
@@ -1009,6 +1013,9 @@ export interface PlayerView {
   reviveProgress: number;
   castSlot: ExtSlot | null;
   castTimer: number;
+  /** The current cast's full duration (castTime × castMult) so the render can show an
+   * accurate progress ring even under Focus; 0 when not casting. */
+  castTimerMax: number;
   /** Live participation score (prior bosses + this fight), for HUD / pause menu. */
   score: number;
   /** Chosen subclass-skill ids (so clients render + label the sub1/sub2 buttons). */

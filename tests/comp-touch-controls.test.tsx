@@ -19,7 +19,7 @@
  * then feed clientX/clientY on the fireEvent init to drive the knob math.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import type { AbilitySlot } from '../src/engine/core/types';
 import type { PlayerAbilityDef } from '../src/engine/content/classes';
 
@@ -335,6 +335,66 @@ describe('<TouchControls> ability buttons', () => {
     expect(resetTouchMock).not.toHaveBeenCalled();
     unmount();
     expect(resetTouchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Ability-button cooldown readout (item: mobile overlay cooldown)
+// ---------------------------------------------------------------------------
+
+describe('<TouchControls> ability cooldowns', () => {
+  it('badges the remaining seconds and dims the label while a skill is cooling', () => {
+    useHudStore.getState().set({
+      classId: 'knight',
+      cooldowns: { basic: 0.5, a1: 3.2, a2: 0, a3: 0 },
+    });
+    const { container } = render(<TouchControls />);
+    const basic = container.querySelector('.wb-touch-btn-basic') as HTMLElement;
+    const a1 = container.querySelector('.wb-touch-btn-a1') as HTMLElement;
+    const a2 = container.querySelector('.wb-touch-btn-a2') as HTMLElement;
+
+    // A cooling button shows the remaining seconds (one decimal, straight from the
+    // store), dims its label, and carries the radial sweep overlay.
+    expect(basic.querySelector('.wb-touch-cd-num')?.textContent).toBe('0.5');
+    expect(a1.querySelector('.wb-touch-cd-num')?.textContent).toBe('3.2');
+    expect(basic.querySelector('.wb-touch-btn-label')?.classList.contains('cooling')).toBe(true);
+    expect(basic.querySelector('.wb-touch-cd')).toBeTruthy();
+    // The label stays identifiable while cooling.
+    expect(basic.querySelector('.wb-touch-btn-label')?.textContent).toBe('Cleave');
+
+    // A ready skill (0 remaining) shows no badge and an un-dimmed label.
+    expect(a2.querySelector('.wb-touch-cd-num')).toBeNull();
+    expect(a2.querySelector('.wb-touch-btn-label')?.classList.contains('cooling')).toBe(false);
+  });
+
+  it('shows cooldown on sub-skill buttons but never on revive / item', () => {
+    useHudStore.getState().set({
+      classId: 'knight',
+      subSkills: ['kn_champion_slam'],
+      potions: 2,
+      cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0, sub1: 4 },
+    });
+    const { container } = render(<TouchControls />);
+    expect(container.querySelector('.wb-touch-btn-sub .wb-touch-cd-num')?.textContent).toBe('4.0');
+    // The item and revive buttons carry no cooldown slot → never a sweep or a badge.
+    expect(container.querySelector('.wb-touch-btn-item .wb-touch-cd-num')).toBeNull();
+    expect(container.querySelector('.wb-touch-btn-item .wb-touch-cd')).toBeNull();
+    expect(container.querySelector('.wb-touch-btn-revive .wb-touch-cd')).toBeNull();
+  });
+
+  it('keeps the imperative held class through a cooldown re-render', () => {
+    useHudStore.getState().set({ classId: 'knight', cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 } });
+    const { container } = render(<TouchControls />);
+    const basic = container.querySelector('.wb-touch-btn-basic') as HTMLElement;
+    fireEvent.pointerDown(basic, { pointerId: 1 });
+    expect(basic.classList.contains('held')).toBe(true);
+    // A cooldown tick re-renders the button; the imperatively-set held class must persist
+    // (the button's own className is kept static precisely so React can't reconcile it away).
+    act(() => {
+      useHudStore.getState().set({ cooldowns: { basic: 1.2, a1: 0, a2: 0, a3: 0 } });
+    });
+    expect(basic.classList.contains('held')).toBe(true);
+    expect(basic.querySelector('.wb-touch-cd-num')?.textContent).toBe('1.2');
   });
 });
 

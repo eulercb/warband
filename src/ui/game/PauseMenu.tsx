@@ -89,14 +89,23 @@ function slotLabel(slot: keyof typeof SLOT_ACTION, source: InputSource): string 
  */
 export function OwnedSkills() {
   const classId = useHudStore((s) => s.classId);
+  const classes = useHudStore((s) => s.classes);
   const subSkills = useHudStore((s) => s.subSkills);
   const source = useHudStore((s) => s.inputSource);
+  const myUpgrades = useStore((s) => s.myUpgrades);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  // Spawn/identity class (first owned; buildMulticlass seeds `classes` as [spawn, …extras]).
+  // The active class picks which kit is shown; the identity class is what the sim gated the
+  // hero's boons on at spawn, so fold the mults off it (matches CharacterSheet above).
+  const identityClass = classes[0] ?? classId;
   // Re-render on rebinds so the per-skill key badges stay accurate.
   useBindings((s) => s.bindings);
   const rows = useMemo(
-    () => (classId ? ownedSkillRows(classId, myCharUpgrades, subSkills) : []),
-    [classId, myCharUpgrades, subSkills],
+    () =>
+      classId && identityClass
+        ? ownedSkillRows(classId, identityClass, myUpgrades, myCharUpgrades, subSkills)
+        : [],
+    [classId, identityClass, myUpgrades, myCharUpgrades, subSkills],
   );
   if (!classId || rows.length === 0) return null;
   return (

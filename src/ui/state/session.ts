@@ -146,19 +146,11 @@ export interface SingleFightLoadout {
 }
 
 // eslint-disable-next-line @typescript-eslint/require-await -- async for API symmetry with client
-export async function hostGame(loadout?: SingleFightLoadout): Promise<void> {
+export async function hostGame(): Promise<void> {
   const st = useStore.getState();
   const code = generateRoomCode();
   const net: NetMode = st.netMode;
   writeRoomToHash(code, net);
-
-  // Only a single fight consumes the up-front loadout, and only when it has content.
-  const hasLoadout =
-    !!loadout &&
-    ((loadout.subSkills?.length ?? 0) > 0 ||
-      (loadout.charUpgrades?.length ?? 0) > 0 ||
-      (loadout.upgrades?.length ?? 0) > 0 ||
-      (loadout.extraClasses?.length ?? 0) > 0);
 
   const host = new Host({
     code,
@@ -168,7 +160,19 @@ export async function hostGame(loadout?: SingleFightLoadout): Promise<void> {
     hardcore: st.hardcore,
     randomKits: st.randomKits,
     chaosForge: st.chaosForge,
-    loadout: st.gauntlet || !hasLoadout ? undefined : loadout,
+    // The single-fight test loadout is read LIVE from the store (lobby editor), so the
+    // build can be re-picked right up to the Start button; a gauntlet ignores it.
+    loadout: () => {
+      const s = useStore.getState();
+      if (s.gauntlet) return undefined;
+      const lo = s.sfLoadout;
+      return {
+        upgrades: lo.upgrades,
+        charUpgrades: lo.charUpgrades,
+        subSkills: lo.subSkills,
+        extraClasses: lo.extraClasses,
+      };
+    },
     seed: resolveHostSeed(),
     name: nameOrDefault(),
     classId: st.localClass,
@@ -196,8 +200,13 @@ export async function hostGame(loadout?: SingleFightLoadout): Promise<void> {
       // gauntlet (item 23) resets the ephemeral coin purse — coins accumulate across
       // a 5-boss run, then reset at the next gauntlet — while the build persists.
       if (info.runIndex === 0) {
-        if (info.cycle === 0) s.clearMyUpgrades();
-        else s.resetCoins();
+        if (info.cycle === 0) {
+          s.clearMyUpgrades();
+          // Single fight: the lobby's test loadout IS the starting build, so mirror it
+          // into the my* display fields — the pause menu reads those to show the applied
+          // boons (the sim already spawned with it via the host's live loadout getter).
+          if (!s.gauntlet) s.setMyLoadout(s.sfLoadout);
+        } else s.resetCoins();
       }
       s.setPhase('game');
     },

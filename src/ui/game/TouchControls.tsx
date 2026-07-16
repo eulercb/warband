@@ -22,10 +22,10 @@ import {
   resetTouch,
   isTouchCapable,
 } from '../../input/touch';
-import { previewAbilityTable } from '../../engine/content/charUpgrades';
+import { previewAbilityTable, previewSubAbility } from '../../engine/content/charUpgrades';
 import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
 import { AIM_DEAD_ZONE } from '../../engine/core/constants';
-import type { AbilitySlot, ButtonState } from '../../engine/core/types';
+import type { AbilitySlot, ButtonState, Cooldowns } from '../../engine/core/types';
 
 /** Radius (px) of a virtual stick's active area; the knob clamps to this. */
 const STICK_R = 56;
@@ -114,17 +114,34 @@ function VirtualStick({
   );
 }
 
-/** A held-state ability button. */
+/**
+ * A held-state ability button. When `cdSlot` + `total` are supplied it also shows a
+ * cooldown readout — a radial sweep, a remaining-seconds badge and a dimmed label —
+ * reading the SAME per-slot remaining seconds the HUD tiles consume (hudStore.cooldowns)
+ * and the SAME total (the resolved ability def's cooldown) so the two stay in lock-step.
+ *
+ * The `held` state is toggled imperatively on the element (below), so the button's own
+ * `className` is kept STATIC across renders — otherwise React would reconcile it away
+ * mid-press when the ~15 Hz cooldown refresh re-renders. The cooldown lives entirely in
+ * child overlays, which React is free to update without touching the button's class.
+ */
 function TouchButton({
   slot,
   label,
   kind,
+  cdSlot,
+  total = 0,
 }: {
   slot: keyof ButtonState;
   label: string;
   kind: string;
+  cdSlot?: keyof Cooldowns;
+  total?: number;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
+  const remaining = useHudStore((s) => (cdSlot ? (s.cooldowns[cdSlot] ?? 0) : 0));
+  const frac = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
+  const cooling = frac > 0.001;
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -156,7 +173,21 @@ function TouchButton({
       className={`wb-touch-btn wb-touch-btn-${kind}`}
       aria-hidden="true"
     >
-      {label}
+      {cdSlot != null ? (
+        <span
+          className="wb-touch-cd"
+          aria-hidden="true"
+          style={{
+            background: `conic-gradient(rgba(4,8,16,0.62) ${frac * 360}deg, transparent ${frac * 360}deg)`,
+          }}
+        />
+      ) : null}
+      <span className={`wb-touch-btn-label${cooling ? ' cooling' : ''}`}>{label}</span>
+      {cooling ? (
+        <span className="wb-touch-cd-num" aria-hidden="true">
+          {remaining.toFixed(1)}
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -260,6 +291,10 @@ export default function TouchControls() {
     const owner = subclassOfSkill(id)?.classId;
     return owner == null || owner === activeClass;
   };
+  // Total cooldown for a sub skill — resolved the SAME way the HUD tile does, so the
+  // touch button's sweep matches the HUD's (previewSubAbility folds in Honed boons).
+  const subCd = (id: string | undefined): number =>
+    (id ? previewSubAbility(id, myCharUpgrades)?.cooldown : 0) ?? 0;
 
   return (
     <div className="wb-touch-controls" role="group" aria-label="Touch controls">
@@ -267,15 +302,51 @@ export default function TouchControls() {
       <VirtualStick side="right" label="AIM" onVec={setTouchAim} deadzone={AIM_DEAD_ZONE} />
       <div className="wb-touch-buttons">
         {subVisible(subSkills[1]) ? (
-          <TouchButton slot="sub2" label={subName(subSkills[1])} kind="sub" />
+          <TouchButton
+            slot="sub2"
+            label={subName(subSkills[1])}
+            kind="sub"
+            cdSlot="sub2"
+            total={subCd(subSkills[1])}
+          />
         ) : null}
         {subVisible(subSkills[0]) ? (
-          <TouchButton slot="sub1" label={subName(subSkills[0])} kind="sub" />
+          <TouchButton
+            slot="sub1"
+            label={subName(subSkills[0])}
+            kind="sub"
+            cdSlot="sub1"
+            total={subCd(subSkills[0])}
+          />
         ) : null}
-        <TouchButton slot="a3" label={shortName('a3')} kind="a3" />
-        <TouchButton slot="a2" label={shortName('a2')} kind="a2" />
-        <TouchButton slot="a1" label={shortName('a1')} kind="a1" />
-        <TouchButton slot="basic" label={shortName('basic')} kind="basic" />
+        <TouchButton
+          slot="a3"
+          label={shortName('a3')}
+          kind="a3"
+          cdSlot="a3"
+          total={abilities.a3?.cooldown}
+        />
+        <TouchButton
+          slot="a2"
+          label={shortName('a2')}
+          kind="a2"
+          cdSlot="a2"
+          total={abilities.a2?.cooldown}
+        />
+        <TouchButton
+          slot="a1"
+          label={shortName('a1')}
+          kind="a1"
+          cdSlot="a1"
+          total={abilities.a1?.cooldown}
+        />
+        <TouchButton
+          slot="basic"
+          label={shortName('basic')}
+          kind="basic"
+          cdSlot="basic"
+          total={abilities.basic?.cooldown}
+        />
       </div>
       <div className="wb-touch-side">
         {potions > 0 ? <TouchButton slot="item" label={`🧪${potions}`} kind="item" /> : null}
