@@ -205,6 +205,13 @@ export function Lobby() {
           </div>
         ) : null}
 
+        {/* Single-fight test loadout (item: lobby loadout) — host-only, non-gauntlet;
+            gates itself internally so it stays out of a gauntlet run. Placed here, above
+            the tall roster + class grid, so the collapsed toggle is reachable without
+            scrolling past the whole grid and its expanded body has room clear of the
+            sticky action bar (the class picker below feeds its class-boon sections live). */}
+        <LoadoutEditor />
+
         <div className="wb-lobby-cols">
           <section className="wb-lobby-col">
             <h3 className="wb-section-title">Warband ({players.length})</h3>
@@ -285,10 +292,6 @@ export function Lobby() {
             </div>
           </section>
         </div>
-
-        {/* Single-fight test loadout (item: lobby loadout) — host-only, non-gauntlet;
-            gates itself internally so it stays out of a gauntlet run. */}
-        <LoadoutEditor />
 
         <div className="wb-row wb-lobby-actions">
           <button type="button" className="wb-btn wb-btn-ghost" onClick={onLeave}>

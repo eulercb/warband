@@ -2028,6 +2028,12 @@ body {
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.02);
   overflow: hidden;
+  /* This panel is a flex child of the height-capped, scrolling muster-hall lobby
+     panel. Its own `overflow: hidden` (for the rounded body clip) resolves its flex
+     `min-height: auto` to 0, so — being the one shrinkable sibling — flexbox crushed
+     it to its 2px borders and clipped the toggle away entirely, making the whole test
+     loadout unreachable. Refuse to shrink: the lobby panel scrolls to reach it. */
+  flex-shrink: 0;
 }
 .wb-sf-loadout-toggle {
   display: grid;

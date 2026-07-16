@@ -141,6 +141,39 @@ await step('create room -> muster hall lobby', async () => {
   await page.screenshot({ path: `${SHOT_DIR}/smoke-5-lobby.png` });
 });
 
+await step('single-boss lobby exposes a usable test-loadout panel', async () => {
+  // Regression guard for the test-loadout crush (item: lobby loadout). `.wb-sf-loadout`
+  // (overflow:hidden → flex min-height 0) was the one shrinkable child of the height-
+  // capped, scrolling muster panel, so flexbox squashed it to its 2px borders and the
+  // host-only "Test loadout" toggle was clipped away — present in the DOM but invisible
+  // and unclickable. Assert the collapsed panel keeps a real height (not the ~2px
+  // sliver — measured on the container, whose overflow:hidden clips the toggle when
+  // flex crushes it), then that it opens to a body whose deep chips (incl. a Grand
+  // improvement) are on-screen and hit-testable: a plain click (no force) fails if the
+  // sticky action bar covers it.
+  const panel = page.locator('.wb-sf-loadout');
+  const toggle = page.locator('.wb-sf-loadout-toggle');
+  await toggle.scrollIntoViewIfNeeded();
+  const h = await panel.evaluate((el) => Math.round(el.getBoundingClientRect().height));
+  if (h < 24) throw new Error(`test-loadout panel crushed to ${h}px (should be ~69px)`);
+  await toggle.click();
+  await page.locator('.wb-sf-loadout-body').waitFor({ timeout: 10000 });
+  const grand = page.locator('.wb-sf-loadout-body .wb-btn-grand').first();
+  await grand.waitFor({ timeout: 10000 });
+  await grand.scrollIntoViewIfNeeded();
+  await grand.click(); // no force: throws if the sticky action bar intercepts the hit
+  const picks = await page.evaluate(() => {
+    const t = document.querySelector('.wb-sf-loadout-toggle .wb-gauntlet-title');
+    const m = t && t.textContent ? t.textContent.match(/\((\d+)\)/) : null;
+    return m ? Number(m[1]) : 0;
+  });
+  if (picks < 1) throw new Error('test-loadout pick did not register after clicking a grand');
+  await page.screenshot({ path: `${SHOT_DIR}/smoke-5b-loadout.png` });
+  // Reset to a clean, collapsed panel so the downstream fight step runs from a stock kit.
+  await page.locator('.wb-sf-loadout-head').getByRole('button', { name: /clear/i }).click();
+  await toggle.click();
+});
+
 await step('start fight -> game renders', async () => {
   await page.getByRole('button', { name: /start fight/i }).click();
   // wait for the pixi canvas to mount
