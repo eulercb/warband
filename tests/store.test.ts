@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useStore } from '../src/ui/state/store';
+import type { SfLoadout } from '../src/ui/state/store';
 import type { AppState } from '../src/ui/state/store';
 import { DEFAULT_CLASS } from '../src/engine/content/classes';
 import { DEFAULT_MONSTER } from '../src/engine/content/monsters';
@@ -383,6 +384,32 @@ describe('per-run upgrades', () => {
     expect(changedKeys(before, after)).toEqual(
       expect.arrayContaining(['myCharUpgrades', 'myUpgrades', 'mySubSkills']),
     );
+  });
+
+  it('setSfLoadout stores the single-fight test loadout and setMyLoadout mirrors it', () => {
+    const g = useStore.getState();
+    const loadout: SfLoadout = {
+      upgrades: ['mighty', 'mighty'],
+      charUpgrades: ['kn_bulwark'],
+      subSkills: ['kn_champion_slam'],
+      extraClasses: ['mage'],
+    };
+    g.setSfLoadout(loadout);
+    expect(useStore.getState().sfLoadout).toEqual(loadout);
+    // Mirroring it into the my* display fields is what makes the pause menu reflect it.
+    g.setMyLoadout(loadout);
+    const s = useStore.getState();
+    expect(s.myUpgrades).toEqual(['mighty', 'mighty']);
+    expect(s.myCharUpgrades).toEqual(['kn_bulwark']);
+    expect(s.mySubSkills).toEqual(['kn_champion_slam']);
+    expect(s.myExtraClasses).toEqual(['mage']);
+  });
+
+  it('setSfLoadoutOpen toggles the lobby editor visibility', () => {
+    useStore.getState().setSfLoadoutOpen(true);
+    expect(useStore.getState().sfLoadoutOpen).toBe(true);
+    useStore.getState().setSfLoadoutOpen(false);
+    expect(useStore.getState().sfLoadoutOpen).toBe(false);
   });
 
   it('setNextReadyState records the between-boss tally', () => {

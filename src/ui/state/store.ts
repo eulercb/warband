@@ -16,6 +16,27 @@ import { setProceduralSeed } from '../../engine/content/procgen';
 import { setForgeSeed } from '../../engine/content/forge';
 import { setShakeEnabled } from '../../render/pipeline/camera';
 
+/**
+ * The host-chosen test loadout for a SINGLE fight (item: lobby loadout). Held in the
+ * store so the lobby can freely re-pick it between attempts, the Host reads it live at
+ * startFight, and the pause menu (which reads my*) reflects it. Stackable ids repeat in
+ * the arrays (`['mighty','mighty']` = Mighty ×2), exactly as the sim replays them.
+ */
+export interface SfLoadout {
+  upgrades: UpgradeId[];
+  charUpgrades: string[];
+  subSkills: string[];
+  extraClasses: ClassId[];
+}
+
+/** An empty test loadout (nothing granted). */
+export const EMPTY_SF_LOADOUT: SfLoadout = {
+  upgrades: [],
+  charUpgrades: [],
+  subSkills: [],
+  extraClasses: [],
+};
+
 // --- Persisted local preferences (survive reloads / future runs) -----------
 const NAME_KEY = 'warband.heroName.v1';
 const VOLUME_KEY = 'warband.volume.v1';
@@ -189,6 +210,10 @@ export interface AppState {
   mySubSkills: string[];
   /** Extra classes unlocked for multiclass swapping (item 14). */
   myExtraClasses: ClassId[];
+  /** Host's test loadout for a single fight — freely re-picked in the lobby (item: lobby loadout). */
+  sfLoadout: SfLoadout;
+  /** Whether the lobby's test-loadout editor is expanded (UI only). */
+  sfLoadoutOpen: boolean;
   /** Ephemeral-shop coin balance for this local hero (item 21; carries the run). */
   myCoins: number;
   /** Ephemeral perks this hero has bought for the next fight (item 21). */
@@ -251,6 +276,12 @@ export interface AppState {
   clearMyUpgrades: () => void;
   addMySubSkill: (subclassId: string, skillId: string) => void;
   addMyExtraClass: (classId: ClassId) => void;
+  /** Replace the single-fight test loadout (lobby editor). */
+  setSfLoadout: (loadout: SfLoadout) => void;
+  /** Expand / collapse the lobby's test-loadout editor. */
+  setSfLoadoutOpen: (open: boolean) => void;
+  /** Mirror a loadout into the my* display fields so the pause menu reflects it. */
+  setMyLoadout: (loadout: SfLoadout) => void;
   /** Bank this fight's ephemeral coins from a landed result (item 21). */
   awardCoinsFromResult: (result: FightResult) => void;
   /** Reset the coin balance + carried stock at a gauntlet boundary (item 23), keeping
@@ -312,6 +343,8 @@ export const useStore = create<AppState>((set, get) => ({
   mySubclassId: null,
   mySubSkills: [],
   myExtraClasses: [],
+  sfLoadout: EMPTY_SF_LOADOUT,
+  sfLoadoutOpen: false,
   myCoins: 0,
   myEphemeral: {},
   nextReadyReady: 0,
@@ -399,6 +432,15 @@ export const useStore = create<AppState>((set, get) => ({
         ? get().myExtraClasses
         : [...get().myExtraClasses, classId],
     }),
+  setSfLoadout: (loadout) => set({ sfLoadout: loadout }),
+  setSfLoadoutOpen: (open) => set({ sfLoadoutOpen: open }),
+  setMyLoadout: (loadout) =>
+    set({
+      myUpgrades: [...loadout.upgrades],
+      myCharUpgrades: [...loadout.charUpgrades],
+      mySubSkills: [...loadout.subSkills],
+      myExtraClasses: [...loadout.extraClasses],
+    }),
   awardCoinsFromResult: (result) => {
     const sess = get().session;
     if (!sess) return;
@@ -480,6 +522,7 @@ export const useStore = create<AppState>((set, get) => ({
       mySubclassId: null,
       mySubSkills: [],
       myExtraClasses: [],
+      sfLoadout: EMPTY_SF_LOADOUT,
       myCoins: 0,
       myEphemeral: {},
       nextReadyReady: 0,
