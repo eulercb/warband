@@ -144,6 +144,32 @@ describe('synthesizeAbility — validity + balance budget', () => {
     }
   });
 
+  // item 6 — a fusion whose DELIVERY implies direct output always lands a PLAYABLE
+  // hit/heal (never the old single-digit / literally-1 dud): the compression floor
+  // keeps the anchor's magnitude up, and ensureOutputAnchor guarantees one exists.
+  it('a direct-output delivery always carries a playable damage/heal anchor', () => {
+    for (const seed of SEEDS) {
+      for (const cid of CLASS_IDS) {
+        for (const slot of SLOTS) {
+          const { def } = synthesizeAbility(seed, `${cid}.${slot}`, slot, POOL);
+          const comp = def.components!;
+          const k = comp.delivery.kind;
+          const where = `${cid}.${slot}@${seed}`;
+          if (k === 'meleeCone' || k === 'pbaoe' || k === 'projectile') {
+            const dmg = comp.effects.find((e) => e.kind === 'damage');
+            expect(dmg, `${where} should carry a damage anchor`).toBeDefined();
+            if (dmg?.kind === 'damage') expect(dmg.amount, where).toBeGreaterThan(2);
+          }
+          if (k === 'heal') {
+            const heal = comp.effects.find((e) => e.kind === 'heal');
+            expect(heal, `${where} should carry a heal anchor`).toBeDefined();
+            if (heal?.kind === 'heal') expect(heal.amount, where).toBeGreaterThan(2);
+          }
+        }
+      }
+    }
+  });
+
   // item 5 — a merged buff keeps the STRONGEST value per axis (so the price reflects
   // what is delivered, not the sum of two components the runtime collapses to one).
   it('mergeBuffs keeps the strongest per axis and drops the redundant component', () => {
@@ -155,14 +181,14 @@ describe('synthesizeAbility — validity + balance budget', () => {
         classId: 'knight',
         className: 'Knight',
         slot: 'a2',
-        def: { slot: 'a2', name: 'Ward', kind: 'selfBuff', cooldown: 12, damage: 0, buffDefMult: 0.7, buffDuration: 6 },
+        def: { name: 'Ward', kind: 'selfBuff', cooldown: 12, damage: 0, buffDefMult: 0.7, buffDuration: 6 },
       },
       {
         name: 'Aegis',
         classId: 'paladin',
         className: 'Paladin',
         slot: 'a2',
-        def: { slot: 'a2', name: 'Aegis', kind: 'selfBuff', cooldown: 12, damage: 0, buffDefMult: 0.5, buffDuration: 6 },
+        def: { name: 'Aegis', kind: 'selfBuff', cooldown: 12, damage: 0, buffDefMult: 0.5, buffDuration: 6 },
       },
     ];
     for (const seed of SEEDS) {

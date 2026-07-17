@@ -699,6 +699,17 @@ const COOLDOWN_BAND: Record<AbilitySlot, [number, number]> = {
  * hand-tuned kit. Cosmetic: a hotter cooldown carries proportionally more value. */
 const COOLDOWN_JITTER: [number, number] = [0.72, 1.28];
 
+/**
+ * item 6 — the deepest a single linear compression may water an effect. The old
+ * 0.05 floor let an over-stuffed fusion (a primary + two strong secondaries) scale
+ * everything to ~5%, bottoming damage/heal at the `1` quantize floor (single-digit
+ * or literally-1 hits). At 0.3 the ANCHOR keeps ≥30% of its donor magnitude; the
+ * excess is instead shed as whole rigid riders (priceToBudget's dropCheapestRigid
+ * loop) and absorbed by a longer cooldown, so output stays on budget while a
+ * crafted skill lands in a playable band. Curbing over-stuffing, not minting power.
+ */
+const COMPRESSION_FLOOR = 0.3;
+
 /** Can effect `e` be delivered by delivery `kind`? Keeps fusions coherent. */
 function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
   switch (e.kind) {
@@ -845,6 +856,7 @@ export function synthesizeAbility(
   effects = foldAllyBuffsIntoZone(effects);
   effects = retargetOrphanAllyBuffs(delivery, effects);
   effects = mergeBuffs(effects); // item 5 — one buff per target; honest pricing
+  effects = ensureOutputAnchor(delivery, effects, donors, slot); // item 6 — a real hit/heal
   const assembled: AbilityComponents = { delivery, effects };
 
   // 7. Price to the slot budget at the slot's canonical pace, then cap + quantize.
@@ -935,6 +947,45 @@ function mergeBuffs(effects: EffectComponent[]): EffectComponent[] {
     }
   }
   return out;
+}
+
+/**
+ * item 6 — guarantee a fusion whose DELIVERY implies direct output actually carries
+ * a damage/heal anchor. primaryWant('projectile') accepts a zone as the primary, so
+ * a projectile could carry ONLY a zone and deal 0 impact (recompose defaults
+ * damage:0 → a dud shot). A melee/pbaoe/projectile with no `damage` effect — and a
+ * heal delivery with no `heal` — gets one injected, sized to the slot's canonical
+ * median so it prices on budget. No-op when an anchor is already present.
+ */
+function ensureOutputAnchor(
+  delivery: Delivery,
+  effects: EffectComponent[],
+  donors: Donor[],
+  slot: AbilitySlot,
+): EffectComponent[] {
+  const wantsDamage =
+    delivery.kind === 'meleeCone' || delivery.kind === 'pbaoe' || delivery.kind === 'projectile';
+  if (wantsDamage && !effects.some((e) => e.kind === 'damage')) {
+    return [{ kind: 'damage', amount: medianDonorMagnitude(donors, slot, false) }, ...effects];
+  }
+  if (delivery.kind === 'heal' && !effects.some((e) => e.kind === 'heal')) {
+    return [{ kind: 'heal', amount: medianDonorMagnitude(donors, slot, true) }, ...effects];
+  }
+  return effects;
+}
+
+/** Median direct damage (or heal) magnitude among same-slot donors — a sane size for
+ *  an injected output anchor (item 6). Falls back to the whole pool, then a constant. */
+function medianDonorMagnitude(donors: Donor[], slot: AbilitySlot, heal: boolean): number {
+  const want = (d: Donor): boolean =>
+    heal
+      ? d.def.kind === 'heal' && d.def.damage > 0
+      : DIRECT_STRIKE.has(d.def.kind) && d.def.damage > 0;
+  let vals = donors.filter((d) => d.slot === slot && want(d)).map((d) => d.def.damage);
+  if (vals.length === 0) vals = donors.filter(want).map((d) => d.def.damage);
+  if (vals.length === 0) return 20;
+  vals.sort((a, b) => a - b);
+  return vals[Math.floor(vals.length / 2)];
 }
 
 /** Retarget ally buffs that a non-rallying delivery can't deliver, onto the caster. */
@@ -1055,7 +1106,9 @@ function compressToBudget(
 ): AbilityComponents {
   const total = componentValue({ delivery, effects });
   const scaled =
-    total > ceiling ? effects.map((e) => scaleEffect(e, clamp(ceiling / total, 0.05, 1))) : effects;
+    total > ceiling
+      ? effects.map((e) => scaleEffect(e, clamp(ceiling / total, COMPRESSION_FLOOR, 1)))
+      : effects;
   return capComponents({ delivery, effects: scaled });
 }
 
