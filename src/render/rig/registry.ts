@@ -25,6 +25,7 @@ import { buildGolemSpec } from './specs/golem';
 import { buildGemSpec } from './specs/gem';
 import { buildEyeSpec } from './specs/eye';
 import { buildDragonSpec } from './specs/dragon';
+import { buildHarpySpec } from './specs/harpy';
 
 /** Per-category master switches (mirror of `SPRITE_FLAGS`). */
 export type RigCategory = 'boss' | 'player' | 'add';
@@ -40,6 +41,9 @@ const BOSS_RIG_OVERRIDE: Partial<Record<MonsterId, RigId>> = {
   kraken: 'kraken',
   treant: 'treant',
   basilisk: 'serpent',
+  // item 7 — the Harpy Matriarch gets her OWN winged rig instead of borrowing the
+  // wingless quadruped beast rig (which read as a spider). See specs/harpy.ts.
+  harpy: 'harpy',
 };
 
 /** The rig a boss uses, or null to keep its geometry silhouette. */
@@ -139,6 +143,8 @@ function buildCreature(id: RigId): RigSpec {
       return buildEyeSpec();
     case 'dragon':
       return buildDragonSpec();
+    case 'harpy':
+      return buildHarpySpec();
     case 'humanoid':
       return buildBossHumanoidSpec();
   }

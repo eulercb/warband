@@ -93,6 +93,7 @@ export const RIG_MATERIAL: Record<RigId, MaterialPreset> = {
   gem: 'metal',
   eye: 'ooze',
   dragon: 'chitin',
+  harpy: 'flesh', // feathered flesh-and-blood shrieker (item 7)
 };
 
 /**

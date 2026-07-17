@@ -109,7 +109,12 @@ export class RigLayer {
       const node = this.ensure(b.id, spec, def.radius);
       const scr = camera.worldToScreen(b.pos);
       const dead = b.hp <= 0;
-      node.rig.update(scr, b.facing, scale, dtMs, timeSec, {
+      // item 7 — a FLYING boss (constant flyer OR a live flight buff) lifts off the
+      // ground so its airborne state reads at a glance; z-order keeps the ground pos.
+      const flying =
+        !dead && (def.flying === true || (b.buffs?.some((bf) => bf.kind === 'flight') ?? false));
+      const bodyScr = flying ? { x: scr.x, y: scr.y - def.radius * scale * 0.45 } : scr;
+      node.rig.update(bodyScr, b.facing, scale, dtMs, timeSec, {
         color: def.color,
         flash: this.fx.flashAmount(b.id),
         enraged: !dead && b.phase === 'enraged',
@@ -155,13 +160,16 @@ export class RigLayer {
       if (!spec) continue;
       const node = this.ensure(p.id, spec, PLAYER_RADIUS);
       const scr = camera.worldToScreen(p.pos);
+      // item 7 — a flying hero (Dragon Wings & co.) lifts off the ground too.
+      const flying = p.state === 'alive' && (p.buffs?.some((bf) => bf.kind === 'flight') ?? false);
+      const bodyScr = flying ? { x: scr.x, y: scr.y - PLAYER_RADIUS * scale * 0.45 } : scr;
       const celebrate = cheer != null && p.state === 'alive';
       if (celebrate && brandishNow) node.rig.triggerAttack();
       // Twirl during the dance: spin the facing a full turn per second-ish.
       const facing = celebrate
         ? Math.atan2(p.aim.y, p.aim.x) + Math.sin((cheer ?? 0) * 2.6) * 2.4
         : Math.atan2(p.aim.y, p.aim.x);
-      node.rig.update(scr, facing, scale, dtMs, timeSec, {
+      node.rig.update(bodyScr, facing, scale, dtMs, timeSec, {
         color: CLASS_COLORS[p.classId] ?? 0xffffff,
         flash: this.fx.flashAmount(p.id),
         enraged: false,
