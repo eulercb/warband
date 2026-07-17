@@ -575,15 +575,32 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'ro_assassin_strike',
           'Death Strike',
           '🗡️',
-          'A devastating stab for 72',
-          melee('Death Strike', 7, 72, { range: 58, halfAngleDeg: 30 }),
+          // item 13 — the Assassin's signature finds the vital point: less flat damage,
+          // a heavy crit lean, so it reads as a lethal gamble that spikes on a crit
+          // (the modern crit-keyed identity) rather than a flat nuke.
+          'A precise stab for 60 that strikes true — crits often and hard',
+          melee('Death Strike', 7, 60, {
+            range: 58,
+            halfAngleDeg: 30,
+            critChanceBonus: 0.2,
+            critMultBonus: 0.4,
+          }),
         ),
         sk(
-          'ro_assassin_vanish',
-          'Vanish',
-          '💨',
-          'Blink 280u with i-frames',
-          blink('Vanish', 6, { range: 280, iframes: 0.35 }),
+          // item 13 — REPLACES the old "Vanish" blink, which merely duplicated the
+          // Rogue's base Shadowstep (and the Trickster's Misty Step) — three near
+          // identical teleports across the class. The Assassin instead gets a
+          // distinctive at-range finisher keyed on the modern crit mechanic: a hurled
+          // blade that buries in a vital point.
+          'ro_assassin_throw',
+          'Deadly Throw',
+          '🔪',
+          'Hurl a blade for 38 that finds a vital point — crits ~40% for a huge blow',
+          proj('Deadly Throw', 6, 38, {
+            projSpeed: 720,
+            critChanceBonus: 0.35,
+            critMultBonus: 0.6,
+          }),
         ),
         sk(
           'ro_assassin_poison',

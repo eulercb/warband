@@ -91,6 +91,9 @@ export type EffectComponent =
   /** item 11 — FORCED MOVEMENT on struck enemies: shove `distance` units away
    * (`pull` false) or drag them toward the caster (`pull` true). A reposition rider. */
   | { kind: 'shove'; distance: number; pull: boolean }
+  /** item 13 — a CRIT lean this ability carries: `chance` added to the hero's crit
+   * chance, `mult` added to the crit multiplier, for its own hits (a precision strike). */
+  | { kind: 'crit'; chance: number; mult: number }
   | {
       kind: 'buff';
       target: BuffTarget;
@@ -208,6 +211,10 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     // item 11 — a FORCED-MOVEMENT rider (knockback / pull).
     if (def.knockback) effects.push({ kind: 'shove', distance: def.knockback, pull: false });
     if (def.pull) effects.push({ kind: 'shove', distance: def.pull, pull: true });
+    // item 13 — a CRIT lean rider (precision strike).
+    if (def.critChanceBonus || def.critMultBonus) {
+      effects.push({ kind: 'crit', chance: def.critChanceBonus ?? 0, mult: def.critMultBonus ?? 0 });
+    }
     if (def.lifestealFrac) effects.push({ kind: 'lifesteal', frac: def.lifestealFrac });
     if (def.healOnUse) effects.push({ kind: 'healOnUse', amount: def.healOnUse });
     // Buffs — one component PER axis, so resistance is separable from +damage.
@@ -306,6 +313,10 @@ export function recompose(
         if (e.pull) def.pull = e.distance;
         else def.knockback = e.distance;
         break;
+      case 'crit': // item 13 — a crit lean
+        if (e.chance) def.critChanceBonus = e.chance;
+        if (e.mult) def.critMultBonus = e.mult;
+        break;
       case 'buff':
         if (e.defMult != null) def.buffDefMult = e.defMult;
         if (e.dmgMult != null) def.buffDamageMult = e.dmgMult;
@@ -379,6 +390,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return e.duration * 10; // a defensive/mobility window (ignore ground hazards)
     case 'shove':
       return e.distance * 0.2; // a reposition — priced by displacement
+    case 'crit':
+      return e.chance * 90 + e.mult * 35; // expected extra output from the crit lean
     case 'buff':
       return buffValue(e);
     case 'zone':
@@ -491,6 +504,10 @@ function effectPhrase(e: EffectComponent): string {
       return `fly ${s(e.duration)}`;
     case 'shove':
       return e.pull ? `pull ${n(e.distance)}u` : `knock back ${n(e.distance)}u`;
+    case 'crit':
+      return e.mult > 0
+        ? `+${pct(e.chance * 100)} crit, +${round2(e.mult)}× crit dmg`
+        : `+${pct(e.chance * 100)} crit`;
     case 'buff':
       return buffPhrase(e);
     case 'zone':
@@ -721,6 +738,7 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'freeze':
     case 'slow':
     case 'castSlow':
+    case 'crit':
     case 'lifesteal':
       return DIRECT_STRIKE.has(kind);
     case 'heal':
@@ -1156,6 +1174,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, duration: e.duration * f };
     case 'shove':
       return { ...e, distance: e.distance * f }; // scales the displacement
+    case 'crit':
+      return { ...e, chance: e.chance * f, mult: e.mult * f };
     case 'buff':
       return { ...e, duration: e.duration * f };
     case 'zone':
@@ -1300,6 +1320,13 @@ function addBoonComponents(
   if (def.pull != null && !has((e) => e.kind === 'shove' && e.pull)) {
     out.push({ kind: 'shove', distance: sane(def.pull, 40, 260, 120), pull: true });
   }
+  if ((def.critChanceBonus != null || def.critMultBonus != null) && !has((e) => e.kind === 'crit')) {
+    out.push({
+      kind: 'crit',
+      chance: sane(def.critChanceBonus, 0, 0.5, 0.15),
+      mult: sane(def.critMultBonus, 0, 1.5, 0),
+    });
+  }
   if (def.grantsFlight != null && !has((e) => e.kind === 'flight')) {
     out.push({ kind: 'flight', duration: sane(def.grantsFlight, 2, 8, 4) });
   }
@@ -1351,6 +1378,10 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       const flat = e.pull ? def.pull : def.knockback;
       return flat != null ? { ...e, distance: flat } : e;
     }
+    case 'crit':
+      return def.critChanceBonus != null || def.critMultBonus != null
+        ? { ...e, chance: def.critChanceBonus ?? e.chance, mult: def.critMultBonus ?? e.mult }
+        : e;
     case 'buff': {
       // Update only the axes THIS buff already carries (so a mul-of-undefined that set a flat
       // axis the buff lacks is ignored) and keep its target + structure intact.
@@ -1407,6 +1438,8 @@ function capEffect(e: EffectComponent): EffectComponent {
       return { ...e, duration: clamp(round1(e.duration), 2, 8) };
     case 'shove':
       return { ...e, distance: clamp(round5(e.distance), 40, 260) };
+    case 'crit':
+      return { ...e, chance: clamp(round2(e.chance), 0, 0.5), mult: clamp(round1(e.mult), 0, 1.5) };
     case 'buff':
       return capBuff(e);
     case 'zone':

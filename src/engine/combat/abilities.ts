@@ -149,14 +149,14 @@ function applyDashLanding(world: World, p: Player, ab: PlayerAbilityDef): void {
   for (const b of world.bosses) {
     if (b.hp <= 0) continue;
     if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
-      damageBoss(world, p, b, ab.landingDamage, world.critRoll(p));
+      damageBoss(world, p, b, ab.landingDamage, world.critRoll(p, ab));
       applyStrikeRiders(world, p.pos, b, ab);
     }
   }
   for (const a of world.adds) {
     if (a.hp <= 0) continue;
     if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-      damageAdd(world, p, a, ab.landingDamage, world.critRoll(p));
+      damageAdd(world, p, a, ab.landingDamage, world.critRoll(p, ab));
       applyStrikeRiders(world, p.pos, a, ab);
     }
   }
@@ -383,14 +383,14 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
         if (b.hp <= 0) continue;
         if (pointInCone(b.pos, p.pos, aimAngle, range, half, b.radius)) {
           // item 5: a directional cone strike can crit AND backstab (rear arc).
-          dealt += damageBoss(world, p, b, ab.damage, world.meleeHit(p, b));
+          dealt += damageBoss(world, p, b, ab.damage, world.meleeHit(p, b, ab));
           applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
-          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p));
+          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p, ab));
           applyStrikeRiders(world, p.pos, a, ab);
         }
       }
@@ -419,6 +419,8 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
           slowMult: ab.slowMult,
           slowDuration: ab.slowDuration,
           freeze: ab.freeze,
+          critChanceBonus: ab.critChanceBonus, // item 13 — a deadly/aimed shot
+          critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
         });
       }
@@ -445,14 +447,14 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
         if (b.hp <= 0) continue;
         if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
           // item 5: a point-blank burst can crit (omnidirectional → no backstab).
-          dealt += damageBoss(world, p, b, ab.damage, world.critRoll(p));
+          dealt += damageBoss(world, p, b, ab.damage, world.critRoll(p, ab));
           applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p));
+          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p, ab));
           applyStrikeRiders(world, p.pos, a, ab);
         }
       }
@@ -721,14 +723,14 @@ function resolveComposedAbility(
       for (const b of world.bosses) {
         if (b.hp <= 0) continue;
         if (pointInCone(b.pos, p.pos, aimAngle, range, half, b.radius)) {
-          dealt += damageBoss(world, p, b, dmg, world.meleeHit(p, b));
+          dealt += damageBoss(world, p, b, dmg, world.meleeHit(p, b, ab));
           applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
-          dealt += damageAdd(world, p, a, dmg, world.critRoll(p));
+          dealt += damageAdd(world, p, a, dmg, world.critRoll(p, ab));
           applyStrikeRiders(world, p.pos, a, ab);
         }
       }
@@ -752,14 +754,14 @@ function resolveComposedAbility(
       for (const b of world.bosses) {
         if (b.hp <= 0) continue;
         if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
-          dealt += damageBoss(world, p, b, dmg, world.critRoll(p));
+          dealt += damageBoss(world, p, b, dmg, world.critRoll(p, ab));
           applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-          dealt += damageAdd(world, p, a, dmg, world.critRoll(p));
+          dealt += damageAdd(world, p, a, dmg, world.critRoll(p, ab));
           applyStrikeRiders(world, p.pos, a, ab);
         }
       }
@@ -793,6 +795,8 @@ function resolveComposedAbility(
           freeze: ab.freeze,
           castSlow: ab.castSlow, // item 9
           castSlowDuration: ab.castSlowDuration,
+          critChanceBonus: ab.critChanceBonus, // item 13
+          critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
           onImpact,
         });
@@ -953,6 +957,9 @@ interface SpawnProjOpts {
   /** item 9 — wind-up-slow factor (≥ 1) applied on hit (a forged cursed bolt). */
   castSlow?: number;
   castSlowDuration?: number;
+  /** item 13 — this shot's crit lean, added to the owner's base crit on hit. */
+  critChanceBonus?: number;
+  critMultBonus?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
   /** Chaos Forge — on-impact payload (spawn a zone / ally-buff area on landing). */
@@ -984,6 +991,8 @@ function spawnPlayerProjectile(
     freeze: o.freeze,
     castSlow: o.castSlow, // item 9
     castSlowDuration: o.castSlowDuration,
+    critChanceBonus: o.critChanceBonus, // item 13
+    critMultBonus: o.critMultBonus,
     lifesteal: o.lifesteal,
     onImpact: o.onImpact,
   };

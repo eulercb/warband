@@ -36,6 +36,18 @@ describe('buffBadges', () => {
     expect(rooted.label).toBe('Rooted');
   });
 
+  it('describes castSlow → Sluggish (item 9) and flight → Airborne (item 7)', () => {
+    const [slug] = buffBadges([buff('castSlow', 3, 1.4)]);
+    expect(slug.glyph).toBe('⏳');
+    expect(slug.good).toBe(false);
+    expect(slug.label).toBe('Sluggish');
+
+    const [air] = buffBadges([buff('flight', 5)]);
+    expect(air.glyph).toBe('🕊️');
+    expect(air.good).toBe(true);
+    expect(air.label).toBe('Airborne');
+  });
+
   it('splits moveSpeed into slow (mult<1) vs haste (mult>=1)', () => {
     expect(buffBadges([buff('moveSpeed', 3, 0.5)])[0]).toMatchObject({
       glyph: '🐌',

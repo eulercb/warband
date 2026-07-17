@@ -1461,7 +1461,7 @@ export class World {
       for (const b of this.aliveBosses()) {
         if (dist(center, b.pos) <= proj.impactRadius + b.radius) {
           // item 5: ranged impacts can crit (per target); no backstab on a shot.
-          this.applyProjDamageBoss(owner, proj.damage, b, owner ? this.critRoll(owner) : undefined);
+          this.applyProjDamageBoss(owner, proj.damage, b, owner ? this.critRoll(owner, proj) : undefined);
           dealt += proj.damage;
           this.applyProjRiders(b, proj);
         }
@@ -1469,7 +1469,7 @@ export class World {
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
         if (dist(center, a.pos) <= proj.impactRadius + a.radius) {
-          if (owner) damageAdd(this, owner, a, proj.damage, this.critRoll(owner));
+          if (owner) damageAdd(this, owner, a, proj.damage, this.critRoll(owner, proj));
           else a.hp -= proj.damage;
           dealt += proj.damage;
           this.applyProjRiders(a, proj);
@@ -1496,12 +1496,12 @@ export class World {
         owner,
         proj.damage,
         hitBoss,
-        owner ? this.critRoll(owner) : undefined,
+        owner ? this.critRoll(owner, proj) : undefined,
       );
       dealt += proj.damage;
       this.applyProjRiders(hitBoss, proj);
     } else if (hitAdd) {
-      if (owner) damageAdd(this, owner, hitAdd, proj.damage, this.critRoll(owner));
+      if (owner) damageAdd(this, owner, hitAdd, proj.damage, this.critRoll(owner, proj));
       else hitAdd.hp -= proj.damage;
       dealt += proj.damage;
       this.applyProjRiders(hitAdd, proj);
@@ -1555,20 +1555,31 @@ export class World {
     }
   }
 
-  /** item 5 — roll a crit for `source` on the isolated crit stream (no backstab).
-   *  Public so ability resolution (combat/abilities.ts) shares the one crit stream. */
-  critRoll(source: Player): HitMods {
-    const crit = this.critRng.next() < (source.critChance ?? 0);
-    return { crit, mult: crit ? (source.critMult ?? 1) : 1 };
+  /**
+   * item 5 — roll a crit for `source` on the isolated crit stream (no backstab).
+   * item 13 — a `bonus` (an ability's / shot's own crit lean) adds to the hero's base
+   * crit chance AND crit multiplier for THIS hit, so a signature high-crit strike
+   * (the Rogue's precision kit, a forged deadly shot) crits more often / harder than
+   * the hero's basic. Public so ability resolution shares the one crit stream.
+   */
+  critRoll(source: Player, bonus?: { critChanceBonus?: number; critMultBonus?: number }): HitMods {
+    const chance = (source.critChance ?? 0) + (bonus?.critChanceBonus ?? 0);
+    const crit = this.critRng.next() < chance;
+    return { crit, mult: crit ? (source.critMult ?? 1) + (bonus?.critMultBonus ?? 0) : 1 };
   }
 
   /**
    * item 5 — full modifiers for a MELEE player hit on a boss: a seeded crit plus a
    * backstab bonus when the attacker stands in the boss's rear arc. Adds carry no
-   * facing, so they take crits only (use `critRoll` for those).
+   * facing, so they take crits only (use `critRoll` for those). item 13 — `bonus`
+   * folds the ability's own crit lean into the roll.
    */
-  meleeHit(source: Player, boss: Boss): HitMods {
-    const { crit, mult } = this.critRoll(source);
+  meleeHit(
+    source: Player,
+    boss: Boss,
+    bonus?: { critChanceBonus?: number; critMultBonus?: number },
+  ): HitMods {
+    const { crit, mult } = this.critRoll(source, bonus);
     const toAttacker = angleOf(sub(source.pos, boss.pos));
     const backstab = inRearArc(boss.facing, toAttacker, BACKSTAB_REAR_ARC_DEG);
     return { crit, backstab, mult: (mult ?? 1) * (backstab ? BACKSTAB_MULT : 1) };

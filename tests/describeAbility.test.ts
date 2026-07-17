@@ -128,6 +128,30 @@ describe('describeAbility (base-kit abilities)', () => {
   });
 });
 
+describe('describeAbility (crit lean, item 13)', () => {
+  it("the Rogue's base kit reads its signature crit on Slash + Backstab", () => {
+    // Slash carries only a crit-CHANCE lean (no sharper multiplier).
+    expect(describeAbility(CLASSES.rogue.abilities.basic)).toBe(
+      '18 dmg · 62u reach · 84° arc · +12% crit · 0.42s cooldown',
+    );
+    // Backstab — the flagship crit strike — leans both chance AND multiplier.
+    expect(describeAbility(CLASSES.rogue.abilities.a1)).toBe(
+      '50 dmg · 58u reach · 64° arc · +30% crit · +0.3× crit dmg · 5s cooldown',
+    );
+  });
+
+  it('the Assassin subclass surfaces crit on Death Strike and the new Deadly Throw', () => {
+    expect(describeAbility(getSubSkill('ro_assassin_strike')!.ability)).toBe(
+      '60 dmg · 58u reach · 60° arc · +20% crit · +0.4× crit dmg · 7s cooldown',
+    );
+    // Deadly Throw REPLACES the old redundant "Vanish" blink with a ranged crit finisher.
+    expect(describeAbility(getSubSkill('ro_assassin_throw')!.ability)).toBe(
+      '38 dmg · +35% crit · +0.6× crit dmg · 6s cooldown',
+    );
+    expect(getSubSkill('ro_assassin_vanish')).toBeUndefined(); // the blink is gone
+  });
+});
+
 describe('describeAbility (upgrade-resolved values, item 19)', () => {
   it('reflects a character boon that boosts the numbers', () => {
     // Combustion: Fireball → +22 damage (102) across a +35 blast (145u).

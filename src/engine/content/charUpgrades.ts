@@ -492,7 +492,7 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_assassin',
     'Assassinate',
     '🗡️',
-    'Backstab bursts for 82 (+24) and returns 22% sooner (3.9s)',
+    'Backstab bursts for 74 (+24) and returns 22% sooner (3.9s)',
     ({ abilities: a }) => {
       addN(a.a1, 'damage', 24);
       mul(a.a1, 'cooldown', 0.78);
@@ -1292,11 +1292,16 @@ const GRAND: CharUpgradeDef[] = [
     'ro_grand_shadow',
     'Shadow Master',
     '🌑',
-    'Shadowstep resets almost instantly (−65% cd); Backstab annihilates for +60 and drinks 25% as health',
+    // item 13 — the Rogue's crit capstone, modernized off the newer crit mechanic:
+    // rather than a flat +60 nuke, Backstab now strikes for the KILL — a big crit
+    // lean stacking on its base +30% (→ 50% crit chance for +0.8× crit damage), so
+    // the grand reads as an assassin's finisher, not a damage number bump.
+    'Shadowstep resets almost instantly (−65% cd); Backstab strikes for the kill — +35 damage, +20% crit chance, +0.5× crit damage',
     ({ abilities: a }) => {
       mul(a.a2, 'cooldown', 0.35);
-      addN(a.a1, 'damage', 60);
-      addN(a.a1, 'lifestealFrac', 0.25);
+      addN(a.a1, 'damage', 35);
+      addN(a.a1, 'critChanceBonus', 0.2);
+      addN(a.a1, 'critMultBonus', 0.5);
     },
   ),
   g(

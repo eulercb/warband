@@ -118,6 +118,15 @@ export interface PlayerAbilityDef {
   healOnUse?: number;
   /** Point-blank AoE damage dealt on a dash/leap landing (0 = none). */
   landingDamage?: number;
+  /**
+   * item 13 — a SIGNATURE crit lean this ability carries, ADDED to the hero's base
+   * crit stats for its own hits: `critChanceBonus` raises the crit chance (0.25 =
+   * +25% chance), `critMultBonus` sharpens the crit (0.5 = +0.5× on a crit). Lets a
+   * precision strike crit more often / harder than the basic — the modern way to
+   * key an ability off crit (the Rogue's identity). Absent = plain crit stats.
+   */
+  critChanceBonus?: number;
+  critMultBonus?: number;
 
   /**
    * Chaos Forge (docs/CHAOS_FORGE.md) — the recombined component form of a
@@ -448,15 +457,24 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         damage: 18,
         range: 62,
         halfAngleDeg: 42,
+        // item 13 — the Rogue lands its blade precisely: a touch of extra crit even
+        // on the basic, keying the class off the (previously barely-used) crit stat.
+        critChanceBonus: 0.12,
       },
       a1: {
         slot: 'a1',
         name: 'Backstab',
         kind: 'meleeCone',
         cooldown: 5,
-        damage: 58,
+        // item 13 — the flagship CRIT strike. Lower flat damage, a big crit lean:
+        // Backstab crits ~35% of the time for ~1.8×, so it reads as a devastating
+        // gamble (its namesake) rather than a flat nuke — same-ish output, far more
+        // crit-driven. The Rogue's identity, modernized around crit.
+        damage: 50,
         range: 58,
         halfAngleDeg: 32,
+        critChanceBonus: 0.3,
+        critMultBonus: 0.3,
       },
       a2: {
         slot: 'a2',
@@ -1032,6 +1050,9 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   if (def.knockback) parts.push(`knock back ${n(def.knockback)}u`);
   if (def.pull) parts.push(`pull in ${n(def.pull)}u`);
   if (def.swap) parts.push('swap foes across you');
+  // item 13 — a signature crit lean.
+  if (def.critChanceBonus) parts.push(`+${n(def.critChanceBonus * 100)}% crit`);
+  if (def.critMultBonus) parts.push(`+${Math.round(def.critMultBonus * 100) / 100}× crit dmg`);
 
   // --- Buffs (damage/move up, damage-taken down) ---
   if (def.buffDamageMult) parts.push(`+${n((def.buffDamageMult - 1) * 100)}% dmg`);

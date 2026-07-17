@@ -2221,3 +2221,66 @@ describe('crit + backstab (item 5)', () => {
     expect(before - boss.hp).toBeCloseTo(22 * 1.4, 4); // Cleave 22 × BACKSTAB_MULT
   });
 });
+
+// ===========================================================================
+// Ability-signature crit lean (item 13) — an ability's own critChanceBonus /
+// critMultBonus folds INTO the seeded crit roll, on top of the hero's base crit.
+// This is the modern way to key a strike off crit (the Rogue's identity).
+// ===========================================================================
+describe('ability crit lean (item 13)', () => {
+  it('critRoll folds an ability bonus onto the base crit chance + multiplier', () => {
+    const w = mkWorld('rogue');
+    const p = w.players[0];
+    p.critChance = 0; // 0% base → never crits on its own
+    p.critMult = 1.5;
+    expect(w.critRoll(p).crit).toBe(false); // no lean, no crit
+    // A +100% ability lean guarantees the crit; +0.5× sharpens the multiplier.
+    const mods = w.critRoll(p, { critChanceBonus: 1, critMultBonus: 0.5 });
+    expect(mods.crit).toBe(true);
+    expect(mods.mult).toBeCloseTo(2.0, 5); // base 1.5 + bonus 0.5
+  });
+
+  it('meleeHit stacks the ability lean with a rear-arc backstab', () => {
+    const w = mkWorld('rogue');
+    const p = w.players[0];
+    const boss = w.boss!;
+    p.critChance = 0;
+    p.critMult = 1.5;
+    boss.facing = 0; // faces +x, away from a player standing behind (−x side)
+    p.pos = { x: 720, y: 500 };
+    boss.pos = { x: 760, y: 500 };
+    const mods = w.meleeHit(p, boss, { critChanceBonus: 1, critMultBonus: 0.5 });
+    expect(mods.crit).toBe(true);
+    expect(mods.backstab).toBe(true);
+    // (base 1.5 + 0.5 crit) × 1.4 backstab.
+    expect(mods.mult).toBeCloseTo(2.0 * 1.4, 5);
+  });
+
+  it("Backstab's crit lean reaches its resolved damage end-to-end", () => {
+    const w = mkWorld('rogue');
+    const p = w.players[0];
+    const boss = w.boss!;
+    const a1 = tableOf(p).a1;
+    expect(a1.name).toBe('Backstab');
+    expect(a1.damage).toBe(50); // item 13 — lowered flat, crit-leaning
+    // Force the lean to a guaranteed crit so the assertion is deterministic; keep
+    // the hero's own base crit at 0 so ONLY the ability lean is under test.
+    p.critChance = 0;
+    p.critMult = 1.5;
+    a1.critChanceBonus = 1; // guaranteed crit from the ability's signature
+    a1.critMultBonus = 0.5; // → ×2.0
+    // Stand in FRONT of the boss so a backstab doesn't confound the multiplier.
+    boss.facing = 0;
+    p.pos = { x: 800, y: 500 };
+    p.aim = { x: -1, y: 0 };
+    boss.pos = { x: 760, y: 500 };
+    const before = boss.hp;
+    resolvePlayerAbility(w, p, 'a1', ZERO);
+    const hit = w.events.find((e) => e.t === 'hit' && e.targetId === boss.id) as
+      | { crit?: boolean; backstab?: boolean }
+      | undefined;
+    expect(hit?.crit).toBe(true);
+    expect(hit?.backstab).toBeFalsy();
+    expect(before - boss.hp).toBeCloseTo(50 * 2.0, 5); // damage 50 × (1.5 + 0.5)
+  });
+});

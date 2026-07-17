@@ -548,6 +548,10 @@ export interface Projectile {
    * (a forged cursed bolt); with `castSlowDuration`. Absent = none. */
   castSlow?: number;
   castSlowDuration?: number;
+  /** item 13 — this shot's own crit lean, added to the owner's base crit on hit (a
+   * deadly/aimed shot). See PlayerAbilityDef.critChanceBonus. Absent = plain crit. */
+  critChanceBonus?: number;
+  critMultBonus?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
   /**
