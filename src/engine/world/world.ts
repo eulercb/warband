@@ -1620,6 +1620,16 @@ export class World {
   private updateZones(dt: number): void {
     const keep: GroundZone[] = [];
     for (const z of this.groundZones) {
+      // item 12 — while ARMING (a ranged AoE's telegraph is still travelling) the
+      // zone is inert: no lifetime decay, no ticks. It activates when the arm lapses.
+      if ((z.armRemaining ?? 0) > 0) {
+        z.armRemaining = (z.armRemaining ?? 0) - dt;
+        if ((z.armRemaining ?? 0) > 0) {
+          keep.push(z);
+          continue;
+        }
+        z.armRemaining = 0; // armed this tick — fall through to a normal live tick
+      }
       z.remaining -= dt;
       z.tickAccum += dt;
       while (z.tickAccum >= ZONE_TICK_INTERVAL) {
@@ -3064,6 +3074,10 @@ export class World {
         radius: z.radius,
         duration: z.duration,
         remaining: z.remaining,
+        // item 12 — carry the arming telegraph so clients draw the incoming indicator.
+        armRemaining: z.armRemaining,
+        armTotal: z.armTotal,
+        armFrom: z.armFrom ? { ...z.armFrom } : undefined,
         color: z.color,
       })),
       terrain: this.terrain.map((t) => ({

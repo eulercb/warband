@@ -154,6 +154,12 @@ export const ZONE_TICK_INTERVAL = 0.5; // s
 // the zone's full duration for ticks/hit-tests; only the drawn opacity fades.
 export const ZONE_FADE_IN = 0.2; // s
 export const ZONE_FADE_OUT = 0.6; // s
+// item 12 — a ranged/at-a-distance AoE ARMS before it lands: an indicator travels
+// from the caster to the target over a brief window (distance ÷ speed, clamped),
+// so players see it coming and where it will hit. A centered/self cast never arms.
+export const ZONE_ARM_MARKER_SPEED = 950; // u/s the telegraph indicator flies
+export const ZONE_ARM_MIN = 0.22; // s — the shortest arming window (close casts)
+export const ZONE_ARM_MAX = 0.7; // s — the longest (a far cross-arena cast)
 
 // --- Terrain (static per-run environmental hazards) ---
 // Terrain patches are generated once at fight start from the run seed (so host

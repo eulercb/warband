@@ -63,6 +63,9 @@ import {
   CLASS_COLORS,
   PROJECTILE_MAX_RANGE,
   FORCE_OVERCOME_ROOT,
+  ZONE_ARM_MARKER_SPEED,
+  ZONE_ARM_MIN,
+  ZONE_ARM_MAX,
 } from '../core/constants';
 import type { SkillAreaKind } from '../core/types';
 
@@ -625,6 +628,7 @@ function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number):
   const pos = centered
     ? { ...p.pos }
     : clampToArena(world, vadd(p.pos, vscale(p.aim, range)), z.radius);
+  const arm = centered ? { armTime: 0, armFrom: p.pos } : zoneArm(p.pos, pos); // item 12
   spawnZone(world, {
     kind: z.zoneKind,
     pos,
@@ -640,6 +644,8 @@ function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number):
     airborne: z.airborne, // item 8
     allyBuff: z.allyBuff,
     duration: z.duration,
+    armTime: arm.armTime,
+    armFrom: arm.armFrom,
   });
 }
 
@@ -899,6 +905,9 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
   const pos = centered
     ? { ...p.pos }
     : clampToArena(world, vadd(p.pos, vscale(p.aim, ab.range ?? 500)), radius);
+  // item 12 — a ranged (non-centered) cast telegraphs: an indicator flies from the
+  // caster to `pos` while the zone arms, so players read where it will land.
+  const arm = centered ? { armTime: 0, armFrom: p.pos } : zoneArm(p.pos, pos);
   spawnZone(world, {
     kind,
     pos,
@@ -913,6 +922,8 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     castSlow: ab.castSlow, // item 9: carry the wind-up-slow factor onto the zone
     airborne: ab.airborne, // item 8: carry the airborne-reach flag onto the zone
     duration: ab.zoneDuration ?? 4,
+    armTime: arm.armTime,
+    armFrom: arm.armFrom,
   });
 }
 
@@ -1030,6 +1041,10 @@ export interface SpawnZoneOpts {
   /** Chaos Forge — a buff this zone refreshes on allies inside (player-side). */
   allyBuff?: import('../core/types').ZoneAllyBuff;
   duration: number;
+  /** item 12 — seconds the zone ARMS (inert, telegraphed) before it activates, with
+   * `armFrom` the travel origin of the indicator. Absent = a live-on-cast zone. */
+  armTime?: number;
+  armFrom?: Vec2;
   /** Themed tint override (affix/corruption hazards); falls back to the palette. */
   color?: number;
 }
@@ -1057,9 +1072,25 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     duration: o.duration,
     remaining: o.duration,
     tickAccum: 0,
+    // item 12 — a ranged cast arms (inert + telegraphed) before it bites.
+    armRemaining: o.armTime && o.armTime > 0 ? o.armTime : undefined,
+    armTotal: o.armTime && o.armTime > 0 ? o.armTime : undefined,
+    armFrom: o.armTime && o.armTime > 0 && o.armFrom ? { ...o.armFrom } : undefined,
     color: o.color,
   };
   world.groundZones.push(zone);
+}
+
+/**
+ * item 12 — the arming window + travel origin for a ranged AoE cast from `from` to
+ * `to`: the indicator flies at ZONE_ARM_MARKER_SPEED, so a far cast telegraphs
+ * longer (clamped). Returns 0 arm for a centered / on-the-spot cast (no travel).
+ */
+export function zoneArm(from: Vec2, to: Vec2): { armTime: number; armFrom: Vec2 } {
+  const d = dist(from, to);
+  if (d < 1) return { armTime: 0, armFrom: { ...from } };
+  const t = Math.min(ZONE_ARM_MAX, Math.max(ZONE_ARM_MIN, d / ZONE_ARM_MARKER_SPEED));
+  return { armTime: t, armFrom: { ...from } };
 }
 
 // ---------------------------------------------------------------------------

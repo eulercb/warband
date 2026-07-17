@@ -879,6 +879,17 @@ export interface GroundZone {
   duration: number; // seconds — full lifetime, used for the render fade envelope
   remaining: number; // seconds — counts down; zone is removed at <= 0
   tickAccum: number; // accumulates toward ZONE_TICK_INTERVAL
+  /**
+   * item 12 — a ranged/at-a-distance zone ARMS before it bites: for `armRemaining`
+   * seconds the zone is INERT (no ticks) while a telegraph indicator travels from
+   * `armFrom` (the caster) to `pos`, so players read where the AoE will land. Counts
+   * down each tick; the zone activates (ticks) at <= 0. Absent / 0 = an already-live
+   * zone (centered casts, boss/affix hazards). `armTotal` is the full window (render
+   * fill); `armFrom` is the travel origin. Serialized so clients draw the telegraph.
+   */
+  armRemaining?: number;
+  armTotal?: number;
+  armFrom?: Vec2;
   /** Themed tint override (affix/corruption hazards); falls back to the per-kind palette. */
   color?: number;
 }
@@ -1118,6 +1129,12 @@ export interface ZoneView {
   radius: number;
   duration: number;
   remaining: number;
+  /** item 12 — while > 0 the zone is ARMING: the renderer draws a telegraph
+   * indicator travelling from `armFrom` to `pos` (a filling target ring) instead of
+   * the live zone. `armTotal` is the full window for the fill fraction. */
+  armRemaining?: number;
+  armTotal?: number;
+  armFrom?: Vec2;
   /** Themed tint override (affix/corruption hazards); falls back to the palette. */
   color?: number;
 }

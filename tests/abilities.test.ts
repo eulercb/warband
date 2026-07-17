@@ -6,6 +6,7 @@ import {
   withLength,
   applyImpulse,
   applyForcedMove,
+  zoneArm,
   stepPlayerGlide,
   PLAYER_RADIUS,
 } from '../src/engine/combat/abilities';
@@ -22,6 +23,8 @@ import {
   ADD_MOVE_SPEED,
   ADD_RADIUS,
   FORCE_OVERCOME_ROOT,
+  ZONE_ARM_MIN,
+  ZONE_ARM_MAX,
 } from '../src/engine/core/constants';
 import type { Player, BossAction, ClassId, MonsterId, Add, Vec2 } from '../src/engine/core/types';
 
@@ -996,6 +999,47 @@ describe('player forced movement (item 11)', () => {
     expect(gust).toBeGreaterThan(0);
     expect(gust).toBeLessThan(FORCE_OVERCOME_ROOT);
     expect(getSubSkill('mg_abjurer_teleport')?.ability.swap).toBe(true);
+  });
+});
+
+// ===========================================================================
+// Ranged AoE arming telegraph (item 12)
+// ===========================================================================
+describe('ranged AoE arming telegraph (item 12)', () => {
+  it('zoneArm clamps the travel window and records the origin (0 for on-the-spot)', () => {
+    // 700u (within the torus half-width) exceeds MAX×speed → clamped to MAX.
+    const far = zoneArm({ x: 0, y: 0 }, { x: 700, y: 0 });
+    expect(far.armTime).toBeCloseTo(ZONE_ARM_MAX, 5);
+    expect(far.armFrom).toEqual({ x: 0, y: 0 });
+    const near = zoneArm({ x: 0, y: 0 }, { x: 40, y: 0 }); // close → clamped up to MIN
+    expect(near.armTime).toBeCloseTo(ZONE_ARM_MIN, 5);
+    const onSpot = zoneArm({ x: 100, y: 100 }, { x: 100, y: 100 }); // no travel
+    expect(onSpot.armTime).toBe(0);
+  });
+
+  it('a ranged zone arms (inert, telegraphed) before it bites; a centered one is live at once', () => {
+    // Ranger Rain of Arrows is ground-targeted at range → it arms with a travel origin.
+    const w = mkWorld('ranger');
+    const p = w.players[0];
+    p.pos = { x: 300, y: 500 };
+    p.aim = { ...RIGHT };
+    resolvePlayerAbility(w, p, 'a2', ZERO);
+    const z = w.groundZones[0];
+    expect(z.armRemaining!).toBeGreaterThan(0);
+    expect(z.armTotal!).toBeGreaterThan(0);
+    expect(z.armFrom).toEqual({ x: 300, y: 500 });
+
+    // A boss sitting under the telegraph takes NO damage while it is still arming.
+    const boss = w.boss!;
+    boss.pos = { ...z.pos };
+    const hp0 = boss.hp;
+    w.step(0.05, new Map()); // one tick — still arming, still inert
+    expect(boss.hp).toBe(hp0);
+
+    // Cleric Sanctuary is CENTERED on the caster → no travel, live immediately.
+    const cw = mkWorld('cleric');
+    resolvePlayerAbility(cw, cw.players[0], 'a2', ZERO);
+    expect(cw.groundZones[0].armRemaining ?? 0).toBe(0);
   });
 });
 
