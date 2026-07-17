@@ -9,7 +9,14 @@ import {
   REVIVE_MIN_TIME,
   BASIC_CD_FLOOR,
 } from '../src/engine/core/constants';
-import { coReviveSpeed, hasBuff, damageBoss } from '../src/engine/combat/combat';
+import {
+  coReviveSpeed,
+  hasBuff,
+  damageBoss,
+  applyBuff,
+  applyStun,
+  makeBuff,
+} from '../src/engine/combat/combat';
 import { spawnZone } from '../src/engine/combat/abilities';
 
 function buttons(over: Partial<ButtonState> = {}): ButtonState {
@@ -358,6 +365,29 @@ describe('world: progression-aware boss sustain + invuln (items 2 & 5)', () => {
     const hp = boss.hp;
     expect(damageBoss(w, w.players[0], boss, boss.maxHp)).toBe(0);
     expect(boss.hp).toBe(hp);
+  });
+
+  it('opening an invuln window cleanses existing CC and blocks new CC (item 1)', () => {
+    const w = strongWorld('treant');
+    const boss = w.boss!;
+    // Lock the boss down with a full spread of crowd control before the window.
+    applyStun(w, boss, 3, 'daze');
+    applyBuff(boss, makeBuff('moveSpeed', 0.3, 4, 'zoneSlow'));
+    applyBuff(boss, makeBuff('root', 0, 4, 'zoneRoot'));
+    applyBuff(boss, makeBuff('moveSpeed', 1.3, 4, 'bossHaste')); // a keeper
+    expect(hasBuff(boss, 'stun')).toBe(true);
+    // Cross the first threshold → the window opens on the next tick and cleanses.
+    boss.hp = boss.maxHp * 0.49;
+    w.step(DT, new Map([['a', inp()]]));
+    expect(hasBuff(boss, 'invuln')).toBe(true);
+    expect(hasBuff(boss, 'stun')).toBe(false); // cleansed
+    expect(hasBuff(boss, 'root')).toBe(false); // cleansed
+    expect(boss.buffs.some((b) => b.kind === 'moveSpeed' && b.mult < 1)).toBe(false); // slow gone
+    expect(boss.buffs.some((b) => b.source === 'bossHaste')).toBe(true); // haste kept
+    // New CC while the window holds is refused.
+    expect(applyStun(w, boss, 2, 'daze')).toBe(0);
+    applyBuff(boss, makeBuff('root', 0, 3, 'zoneRoot'));
+    expect(hasBuff(boss, 'root')).toBe(false);
   });
 
   it('boss invuln fires ≥once, is bounded to two windows, and never walls the kill (item 5)', () => {

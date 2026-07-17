@@ -88,8 +88,60 @@ export function isRooted(entity: { buffs: Buff[] }): boolean {
   return hasBuff(entity, 'root');
 }
 
+/**
+ * item 1 — the buff `source` tag on a boss's temporary-invulnerability window
+ * (world.tickBossInvuln). A window carrying THIS source also grants crowd-control
+ * immunity + cleanse; player i-frames (source 'dash' / 'phoenixCharm') carry the
+ * same `invuln` KIND but a different source, so they never gain CC immunity.
+ */
+export const BOSS_INVULN_SOURCE = 'bossInvuln';
+
+/**
+ * item 1 — the crowd-control family a boss invuln window cleanses on entry and
+ * blocks for its duration: stun, root, silence and a movement SLOW (moveSpeed
+ * < 1). A haste (moveSpeed > 1) or any non-control buff is left untouched, so a
+ * boss self-haste / affix accel survives and only the paralysing debuffs are
+ * purged. Derived from the buff KIND, so a future control debuff routed through
+ * `applyBuff` is caught here without per-call-site wiring.
+ */
+export function isControlBuff(b: Buff): boolean {
+  return (
+    b.kind === 'stun' ||
+    b.kind === 'root' ||
+    b.kind === 'silence' ||
+    (b.kind === 'moveSpeed' && b.mult < 1)
+  );
+}
+
+/**
+ * item 1 — is this entity currently immune to crowd control? True only while a
+ * boss's invuln window (source BOSS_INVULN_SOURCE) is up. Scoped to the boss
+ * mechanic on purpose: player i-frames don't confer CC immunity.
+ */
+export function isCcImmune(entity: { buffs: Buff[] }): boolean {
+  for (const b of entity.buffs) {
+    if (b.kind === 'invuln' && b.source === BOSS_INVULN_SOURCE) return true;
+  }
+  return false;
+}
+
+/**
+ * item 1 — strip every crowd-control debuff (see isControlBuff) from an entity.
+ * Called when a boss invuln window opens so a boss frozen/slowed/rooted going in
+ * comes out of it free to act; leaves beneficial buffs (haste, wards) in place.
+ */
+export function cleanseControl(entity: { buffs: Buff[] }): void {
+  for (let i = entity.buffs.length - 1; i >= 0; i--) {
+    if (isControlBuff(entity.buffs[i])) entity.buffs.splice(i, 1);
+  }
+}
+
 /** Apply/refresh a buff, de-duping by `source`. */
 export function applyBuff(entity: { buffs: Buff[] }, buff: Buff): void {
+  // item 1 — a CC-immune target (a boss in its invuln window) rejects incoming
+  // crowd control outright. Cheap KIND check first, so non-control buffs (and
+  // every player, who is never CC-immune) skip the buff scan entirely.
+  if (isControlBuff(buff) && isCcImmune(entity)) return;
   const existing = entity.buffs.find((b) => b.source === buff.source);
   if (existing) {
     existing.kind = buff.kind;
@@ -150,6 +202,17 @@ export function applyStun(
   source: string,
 ): number {
   if (seconds <= 0) return 0;
+  // item 1 — a boss in its invuln window shrugs off stuns/freezes entirely. Guard
+  // here (before the DR bookkeeping) so a blocked attempt banks no load and the
+  // caller sees 0; a one-shot "Resisted" cue keeps the immunity readable.
+  if (isCcImmune(target)) {
+    const dr0 = (target.stunDr ??= { load: 0, window: 0 });
+    if (!dr0.announced) {
+      dr0.announced = true;
+      sink.events.push({ t: 'stunResist', id: target.id, pos: { ...target.pos } });
+    }
+    return 0;
+  }
   const dr = (target.stunDr ??= { load: 0, window: 0 });
   const effective = seconds * Math.pow(STUN_DR_FACTOR, dr.load / seconds);
   if (effective < STUN_DR_FLOOR) {

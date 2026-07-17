@@ -185,6 +185,8 @@ import {
   healPlayer,
   coReviveSpeed,
   isRooted,
+  cleanseControl,
+  BOSS_INVULN_SOURCE,
   type HitMods,
 } from '../combat/combat';
 import { decayThreat, nthThreatTarget } from '../combat/threat';
@@ -2207,7 +2209,12 @@ export class World {
     if (idx >= thresholds.length || boss.hp <= 0) return;
     if (hasBuff(boss, 'invuln')) return; // one window at a time
     if (boss.hp / boss.maxHp <= thresholds[idx]) {
-      applyBuff(boss, makeBuff('invuln', 0, BOSS_INVULN_WINDOW_S, 'bossInvuln'));
+      applyBuff(boss, makeBuff('invuln', 0, BOSS_INVULN_WINDOW_S, BOSS_INVULN_SOURCE));
+      // item 1 — the window doesn't just soak damage: it CLEANSES the boss of any
+      // stun/slow/root/silence on it and (via combat.isCcImmune, keyed on the same
+      // source) blocks new crowd control until it lapses, so a long lock-down can't
+      // trivialise the fight through the immunity window.
+      cleanseControl(boss);
       boss.invulnNextIdx = idx + 1;
     }
   }
