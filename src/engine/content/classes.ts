@@ -194,10 +194,14 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         name: 'Multishot',
         kind: 'projectile',
         cooldown: 6,
-        damage: 16,
+        // item 10 — an AIMED volley: the archer draws (a brief wind-up) then looses
+        // a heavier three-arrow spread. Winding up at range is far safer than in
+        // melee, so the aimed-shot fantasy fits the Ranger, and Focus finds a home.
+        damage: 19,
         projSpeed: 700,
         projCount: 3,
         spreadDeg: 30,
+        castTime: 0.3,
       },
       a2: {
         slot: 'a2',
@@ -386,8 +390,12 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         name: 'Whirlwind',
         kind: 'pbaoe',
         cooldown: 9,
-        damage: 34,
+        // item 10 — a WIND-UP heavy hit: the Barbarian rears back and revs the
+        // spin (rooted, telegraphed) for a landslide blow. A committed trade a
+        // bruiser can afford, and the wind-up gives Focus a home on the class.
+        damage: 40,
         radius: 135,
+        castTime: 0.4,
       },
     },
   },
@@ -660,8 +668,13 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         name: 'Quivering Palm',
         kind: 'pbaoe',
         cooldown: 9,
-        damage: 30,
+        // item 10 — the ki death-touch is a FOCUSED, deliberate technique: a brief
+        // wind-up channels ki into a heavier strike. Thematically the Monk's one
+        // committed beat (its blur lives in Flurry + Step of the Wind), and Focus
+        // (— wind-up) resonates with the class's ki fantasy.
+        damage: 36,
         radius: 130,
+        castTime: 0.4,
       },
     },
   },
@@ -969,7 +982,9 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   }
 
   // --- Timing / control ---
-  if (def.castTime) parts.push(`${s(def.castTime * castMul)} cast`);
+  // item 10 — "wind-up" (not "cast"): the term now spans a caster charging a
+  // spell AND a warrior/archer reeling back a heavier blow or aimed shot.
+  if (def.castTime) parts.push(`${s(def.castTime * castMul)} wind-up`);
   if (def.stun) parts.push(`${s(def.stun)} stun`);
   if (def.freeze) parts.push(`${s(def.freeze)} freeze`);
   // A true root (item 3) supersedes its slow — the target is held fast (no move,

@@ -37,16 +37,18 @@ describe('describeAbility (base-kit abilities)', () => {
   });
 
   it('a multi-projectile attack shows the projectile count', () => {
-    // Ranger Multishot — projCount 3.
-    expect(describeAbility(CLASSES.ranger.abilities.a1)).toBe('3× 16 dmg · 6s cooldown');
+    // Ranger Multishot — projCount 3, now an aimed wind-up volley (item 10).
+    expect(describeAbility(CLASSES.ranger.abilities.a1)).toBe(
+      '3× 19 dmg · 0.3s wind-up · 6s cooldown',
+    );
     // Sorcerer Chaos Bolt — twin bolts.
     expect(describeAbility(CLASSES.sorcerer.abilities.basic)).toBe('2× 12 dmg · 0.5s cooldown');
   });
 
-  it('a projectile bomb: blast radius + cast time', () => {
-    // Mage Fireball — impactRadius + castTime.
+  it('a projectile bomb: blast radius + wind-up', () => {
+    // Mage Fireball — impactRadius + castTime (shown as "wind-up", item 10).
     expect(describeAbility(CLASSES.mage.abilities.a1)).toBe(
-      '80 dmg · 110u blast · 0.7s cast · 7s cooldown',
+      '80 dmg · 110u blast · 0.7s wind-up · 7s cooldown',
     );
   });
 
@@ -130,7 +132,7 @@ describe('describeAbility (upgrade-resolved values, item 19)', () => {
   it('reflects a character boon that boosts the numbers', () => {
     // Combustion: Fireball → +22 damage (102) across a +35 blast (145u).
     const table = previewAbilityTable('mage', ['mg_combust']);
-    expect(describeAbility(table.a1)).toBe('102 dmg · 145u blast · 0.7s cast · 14s cooldown');
+    expect(describeAbility(table.a1)).toBe('102 dmg · 145u blast · 0.7s wind-up · 14s cooldown');
   });
 
   it('reflects a boon that adds a brand-new effect (Deep Freeze)', () => {
@@ -147,7 +149,7 @@ describe('describeAbility (upgrade-resolved values, item 19)', () => {
     const line = describeAbility(table.a2);
     expect(line).toContain('80 dmg');
     expect(line).toContain('110u blast');
-    expect(line).toContain('0.7s cast');
+    expect(line).toContain('0.7s wind-up');
   });
 });
 
@@ -202,10 +204,10 @@ describe('describeAbility (generic mods fold + cooldown floor, item 2)', () => {
     range: 50,
   };
 
-  it('scales damage / cooldown / cast by the passed multipliers', () => {
+  it('scales damage / cooldown / wind-up by the passed multipliers', () => {
     const def: Omit<PlayerAbilityDef, 'slot'> = { ...jab, cooldown: 4, castTime: 1 };
     expect(describeAbility(def, { damageMult: 1.5, cooldownMult: 0.5, castMult: 0.5 })).toBe(
-      '15 dmg · 50u reach · 0.5s cast · 2s cooldown',
+      '15 dmg · 50u reach · 0.5s wind-up · 2s cooldown',
     );
   });
 

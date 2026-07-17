@@ -87,7 +87,10 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
     role: 'tempo',
     name: 'Focus',
     icon: '🎯',
-    desc: '-30% cast time',
+    // item 10 — "wind-up" spans a caster's spell charge AND a martial/aimed heavy
+    // hit (Barbarian Whirlwind, Ranger Multishot, Monk Quivering Palm, …), so
+    // Focus is a live tempo pick for far more of the roster than the casters alone.
+    desc: '-30% wind-up time',
     apply: (p) => {
       p.castMult *= 0.7;
     },

@@ -1199,11 +1199,14 @@ const GRAND: CharUpgradeDef[] = [
     'rg_grand_storm',
     'Arrow Storm',
     '🌩️',
-    'Multishot erupts into a storm — 5 extra arrows across a wide 55° fan (+6 each)',
+    // item 10 — a master archer draws in a blink: the aimed volley's wind-up is
+    // nearly halved, reinforcing the Ranger's precise-and-fast identity.
+    'Multishot erupts into a storm — 5 extra arrows across a wide 55° fan (+6 each), drawn in half the time',
     ({ abilities: a }) => {
       addN(a.a1, 'projCount', 5);
       addN(a.a1, 'spreadDeg', 25);
       addN(a.a1, 'damage', 6);
+      mul(a.a1, 'castTime', 0.55); // item 10 — looses the aimed volley far faster
     },
   ),
   g(
@@ -1404,12 +1407,15 @@ const GRAND: CharUpgradeDef[] = [
     'mo_grand_thousand',
     'Thousand Palms',
     '🙌',
-    'Stunning Strike locks foes down (+1.2s stun, +35 dmg); Quivering Palm devastates (+40 dmg, +55 radius)',
+    // item 10 — perfect ki focus halves Quivering Palm's wind-up: the death-touch
+    // lands almost instantly. The Monk's "Focus" fantasy made literal.
+    'Stunning Strike locks foes down (+1.2s stun, +35 dmg); Quivering Palm devastates (+40 dmg, +55 radius) and strikes in half the wind-up',
     ({ abilities: a }) => {
       addN(a.a1, 'stun', 1.2);
       addN(a.a1, 'damage', 35);
       addN(a.a3, 'damage', 40);
       addN(a.a3, 'radius', 55);
+      mul(a.a3, 'castTime', 0.5); // item 10 — focused ki snaps the death-touch out
     },
   ),
   g(

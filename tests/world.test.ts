@@ -420,6 +420,34 @@ describe('world: progression-aware boss sustain + invuln (items 2 & 5)', () => {
     expect(boss.action.remaining).toBeCloseTo(2 - DT / 1.5, 3);
   });
 
+  it('a martial wind-up ability enters a rooted cast when fired (item 10)', () => {
+    const w = new World({
+      monsterId: 'dummy',
+      seed: 1,
+      players: [{ peerId: 'a', name: 'A', classId: 'barbarian' }],
+    });
+    w.terrain = [];
+    const p = w.players[0];
+    // Press Whirlwind (a3) — a wind-up now, so it roots into a cast instead of
+    // resolving instantly.
+    w.step(DT, new Map([['a', inp({ buttons: buttons({ a3: true }) })]]));
+    expect(p.castSlot).toBe('a3');
+    expect(p.castTimer).toBeGreaterThan(0);
+    expect(p.castTimerMax).toBeCloseTo(0.4, 5); // Whirlwind wind-up
+
+    // Focus (castMult 0.7) shortens that wind-up.
+    const w2 = new World({
+      monsterId: 'dummy',
+      seed: 1,
+      players: [{ peerId: 'a', name: 'A', classId: 'barbarian' }],
+    });
+    w2.terrain = [];
+    const p2 = w2.players[0];
+    p2.castMult = 0.7; // as the Focus boon sets it at spawn
+    w2.step(DT, new Map([['a', inp({ buttons: buttons({ a3: true }) })]]));
+    expect(p2.castTimerMax).toBeCloseTo(0.4 * 0.7, 5);
+  });
+
   it("a SLUGGISH hero's cast bar advances slower (item 9)", () => {
     const w = new World({
       monsterId: 'dummy',

@@ -230,9 +230,9 @@ describe('player projectile', () => {
     const p = w.players[0];
     p.pos = { x: 400, y: 500 };
     p.aim = { ...RIGHT };
-    resolvePlayerAbility(w, p, 'a1', ZERO); // Multishot: count 3, spread 30, dmg 16
+    resolvePlayerAbility(w, p, 'a1', ZERO); // Multishot: count 3, spread 30, dmg 19 (item 10)
     expect(w.projectiles).toHaveLength(3);
-    for (const proj of w.projectiles) expect(proj.damage).toBeCloseTo(16, 6);
+    for (const proj of w.projectiles) expect(proj.damage).toBeCloseTo(19, 6);
     const mid = w.projectiles[1];
     expect(mid.vel.x).toBeCloseTo(700, 3);
     expect(mid.vel.y).toBeCloseTo(0, 3);
@@ -507,8 +507,8 @@ describe('player pbaoe', () => {
     p.pos = { x: 800, y: 500 };
     boss.pos = { x: 800, y: 520 };
     const before = boss.hp;
-    resolvePlayerAbility(w, p, 'a3', ZERO); // Whirlwind dmg 34, radius 135
-    expect(before - boss.hp).toBeCloseTo(34, 6);
+    resolvePlayerAbility(w, p, 'a3', ZERO); // Whirlwind dmg 40, radius 135 (item 10)
+    expect(before - boss.hp).toBeCloseTo(40, 6);
   });
 
   it('Whirlwind also shreds adds in the radius', () => {
@@ -519,7 +519,7 @@ describe('player pbaoe', () => {
     const add = mkAdd(w, { x: 800, y: 520 });
     w.adds = [add];
     resolvePlayerAbility(w, p, 'a3', ZERO);
-    expect(ADD_HP - add.hp).toBeCloseTo(34, 6);
+    expect(ADD_HP - add.hp).toBeCloseTo(40, 6);
   });
 
   it('ignores corpses (0-HP boss and adds) in the pbaoe', () => {
@@ -536,7 +536,7 @@ describe('player pbaoe', () => {
     resolvePlayerAbility(w, p, 'a3', ZERO);
     expect(boss.hp).toBe(0);
     expect(dead.hp).toBe(0);
-    expect(ADD_HP - live.hp).toBeCloseTo(34, 6);
+    expect(ADD_HP - live.hp).toBeCloseTo(40, 6);
   });
 
   it('does not hit a boss outside the radius', () => {
@@ -570,7 +570,7 @@ describe('player pbaoe', () => {
     p.pos = { x: 800, y: 500 };
     boss.pos = { x: 800, y: 520 };
     resolvePlayerAbility(w, p, 'a3', ZERO);
-    expect(p.hp).toBeCloseTo(p.maxHp - 40 + 34 * 0.5, 5);
+    expect(p.hp).toBeCloseTo(p.maxHp - 40 + 40 * 0.5, 5); // Whirlwind 40 (item 10)
   });
 });
 

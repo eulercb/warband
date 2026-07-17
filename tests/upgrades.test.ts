@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Player } from '../src/engine/core/types';
+import { CLASSES, describeAbility } from '../src/engine/content/classes';
 import {
   UPGRADES,
   UPGRADE_IDS,
@@ -200,12 +201,26 @@ describe('individual upgrade effects', () => {
     expect(p.cooldownMult).toBeCloseTo(0.81);
   });
 
-  it('focus: -30% cast time, multiplicative', () => {
+  it('focus: -30% wind-up time, multiplicative', () => {
     const p = mkPlayer({ castMult: 1 });
     UPGRADES.focus.apply(p);
     expect(p.castMult).toBeCloseTo(0.7);
     UPGRADES.focus.apply(p);
     expect(p.castMult).toBeCloseTo(0.49);
+  });
+
+  // item 10 — the wind-up mechanic (and so Focus) now spans non-casters: martial
+  // heavy hits carry a castTime, and its description reads "wind-up".
+  it('generalizes wind-up to martial heavy hits so Focus is a live pick', () => {
+    expect(CLASSES.barbarian.abilities.a3.castTime).toBeGreaterThan(0); // Whirlwind
+    expect(CLASSES.ranger.abilities.a1.castTime).toBeGreaterThan(0); // aimed Multishot
+    expect(CLASSES.monk.abilities.a3.castTime).toBeGreaterThan(0); // Quivering Palm
+    // Focus text is class-agnostic now.
+    expect(UPGRADES.focus.desc.toLowerCase()).toContain('wind-up');
+    // The card renders "wind-up", not "cast".
+    const line = describeAbility(CLASSES.barbarian.abilities.a3);
+    expect(line).toContain('wind-up');
+    expect(line).not.toContain(' cast');
   });
 
   it('surefooted: +0.5 terrain resist, additive, capped at 1', () => {

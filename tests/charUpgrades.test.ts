@@ -341,7 +341,7 @@ describe('ranger upgrades', () => {
     const a = apply('ranger', ['rg_pierce']).abilities!;
     expect(a.basic.damage).toBe(25);
     expect(a.basic.projSpeed).toBe(790);
-    expect(a.a1.damage).toBe(20);
+    expect(a.a1.damage).toBe(23); // Multishot 19 base + rg_pierce (item 10)
   });
   it('rg_frost chills Arrow and Multishot', () => {
     const a = apply('ranger', ['rg_frost']).abilities!;
@@ -452,7 +452,7 @@ describe('barbarian upgrades', () => {
     const a = apply('barbarian', ['bb_brutal']).abilities!;
     expect(a.basic.damage).toBe(32);
     expect(a.basic.range).toBe(92);
-    expect(a.a3.damage).toBe(43);
+    expect(a.a3.damage).toBe(49); // Whirlwind 40 base + bb_brutal (item 10)
     expect(a.a3.radius).toBe(150);
   });
   it('bb_thickhide toughens the barbarian (player-only)', () => {
