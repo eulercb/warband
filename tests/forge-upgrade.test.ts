@@ -17,6 +17,7 @@ import {
   applySubSkillUpgrades,
 } from '../src/engine/content/charUpgrades';
 import { CLASS_IDS, type PlayerAbilityDef } from '../src/engine/content/classes';
+import { getSubSkill, getSubclass } from '../src/engine/content/subclasses';
 import type { Player, AbilitySlot, ClassId } from '../src/engine/core/types';
 
 afterEach(() => {
@@ -90,6 +91,46 @@ describe('Chaos Forge char-upgrade synthesis', () => {
       }
       setForgeSeed(null);
     }
+  });
+
+  // item 3 — subclass-skill "Honed X" upgrades now generate a fresh Forge name (they
+  // used to keep the authored "Honed <original skill>" name).
+  it('a sub-skill upgrade gets a fresh reforged name + a description naming the fused skill', () => {
+    const id = 'subup_kn_champion_slam'; // authored "Honed Earthshaker"
+    const off = getCharUpgrade(id)!;
+    expect(off.name).toMatch(/^Honed /); // canonical off-Forge
+    setForgeSeed(4242);
+    const on = getCharUpgrade(id)!;
+    expect(on.name).not.toBe(off.name); // reforged, not the authored name
+    expect(on.apply).toBe(off.apply); // apply preserved (flows via components)
+    const fused = getSubSkill('kn_champion_slam')!;
+    expect(on.desc).toContain(fused.name); // copy names the run's blended sub-skill
+    expect(on.desc).not.toBe(off.desc); // regenerated
+  });
+
+  // item 4 — subclass grands rename AND their descriptions reference the run's blended
+  // subclass name instead of the original ("Your Champion skills…" → the fused name).
+  it('a subclass grand gets a fresh name + a description naming the blended subclass', () => {
+    const id = 'kn_champion_g_a'; // "Unbroken Champion" — "Your Champion skills strike 50% harder…"
+    const off = getCharUpgrade(id)!;
+    expect(off.desc).toContain('Champion'); // authored: names the canonical subclass
+    setForgeSeed(4242);
+    const on = getCharUpgrade(id)!;
+    expect(on.name).not.toBe(off.name); // renamed
+    expect(on.apply).toBe(off.apply);
+    const fused = getSubclass('kn_champion')!;
+    expect(on.desc).toContain(fused.name); // now names the blended subclass
+    expect(on.desc).not.toBe(off.desc); // no longer the original static copy
+  });
+
+  // item 4 — stat-only class capstones also get a fresh reforged name.
+  it('a stat-only class capstone gets a fresh reforged name', () => {
+    const id = 'kn_grand_immovable'; // touches only player stats (no ability slot)
+    const off = getCharUpgrade(id)!;
+    setForgeSeed(4242);
+    const on = getCharUpgrade(id)!;
+    expect(on.name).not.toBe(off.name);
+    expect(on.apply).toBe(off.apply); // stat capstone still applies as authored
   });
 
   it('two peers with the same seed derive the same reforged boon', () => {

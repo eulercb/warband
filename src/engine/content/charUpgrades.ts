@@ -4501,14 +4501,82 @@ export function getCharUpgrade(id: string): CharUpgradeDef | undefined {
   return forgeVariant('charUpgrade', id, (seed) => forgeCharUpgrade(seed, base)) ?? base;
 }
 
+/** Canonical (Forge-independent) NAME of a subclass or one of its skills — from the
+ *  static SUBCLASSES data, so a Forge description can swap the ORIGINAL name (which
+ *  the authored copy embeds) for the run's blended one (items 3 & 4). */
+function canonSubclassName(subclassId: string): string | undefined {
+  return ALL_SUBCLASSES.find((s) => s.id === subclassId)?.name;
+}
+function canonSubSkillName(subSkillId: string): string | undefined {
+  for (const sub of ALL_SUBCLASSES) {
+    const sk = sub.skills.find((s) => s.id === subSkillId);
+    if (sk) return sk.name;
+  }
+  return undefined;
+}
+/** Swap the ORIGINAL name for the run's blended one throughout a description; a no-op
+ *  when the original doesn't appear (or already equals the new name). */
+function swapDescName(desc: string, from: string | undefined, to: string): string {
+  return from && from !== to ? desc.split(from).join(to) : desc;
+}
+
+/**
+ * Re-present a character upgrade for the active Forge run (items: forge upgrade
+ * synthesis + naming). A skill-targeting boon / grand is given a NAME blended from
+ * the boon + the FUSED thing it now empowers (the same forgeName method skill names
+ * use), and a DESCRIPTION regenerated to reference that run's blended content:
+ *   • sub-skill "Honed X" upgrades (`subSkillId`, item 3) rename from the fused
+ *     sub-skill and swap its name in the copy;
+ *   • subclass grands (`subclassId`, item 4) rename from the fused SUBCLASS and swap
+ *     its name in the copy (so "Your Champion skills…" names the blended subclass);
+ *   • base-skill grands / class boons (a target slot) keep the existing
+ *     "empowers your <fused skill>" regeneration;
+ *   • stat-only CLASS capstones (`grand`, no slot) rename from the fused class.
+ * The `apply` is unchanged — it flows to the fused skill's components at spawn
+ * (applyCharUpgrades' refresh, item 2). Byte-identical to the canonical def off Forge;
+ * stat-only / hybrid boons are left as authored.
+ */
 function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
-  const slot = boonTargetSlot(base);
-  if (!slot) return base; // stat-only / hybrid — nothing skill-specific to rename
-  const fused = getClass(base.classId as ClassId).abilities[slot];
   const rng = new Rng(mixSeed(seed, FORGE_CHARUP_SALT, hashStr(base.id)));
-  const name = forgeName([base.name, fused.name], (k) => rng.int(0, k - 1));
-  const kind = base.grand ? 'Reforged capstone' : 'Reforged boon';
-  return { ...base, name, desc: `${kind} — empowers your ${fused.name}` };
+  const blend = (other: string): string => forgeName([base.name, other], (k) => rng.int(0, k - 1));
+
+  // item 3 — a per-sub-skill "Honed X" upgrade: rename after the fused sub-skill.
+  if (base.subSkillId) {
+    const fused = getSubSkill(base.subSkillId);
+    if (!fused) return base;
+    return {
+      ...base,
+      name: blend(fused.name),
+      desc: swapDescName(base.desc, canonSubSkillName(base.subSkillId), fused.name),
+    };
+  }
+
+  // item 4 — a subclass grand: rename after the fused subclass + swap its name in the copy.
+  if (base.subclassId) {
+    const fused = getSubclass(base.subclassId);
+    if (!fused) return base;
+    return {
+      ...base,
+      name: blend(fused.name),
+      desc: swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
+    };
+  }
+
+  // Skill-targeting boon / base-skill grand: rename after the fused base skill.
+  const slot = boonTargetSlot(base);
+  if (slot) {
+    const fused = getClass(base.classId as ClassId).abilities[slot];
+    const kind = base.grand ? 'Reforged capstone' : 'Reforged boon';
+    return { ...base, name: blend(fused.name), desc: `${kind} — empowers your ${fused.name}` };
+  }
+
+  // item 4 — a stat-only CLASS capstone: rename after the fused class (its copy names
+  // player stats, not a subclass, so it needs no name-swap).
+  if (base.grand && base.classId !== 'any') {
+    return { ...base, name: blend(getClass(base.classId).name) };
+  }
+
+  return base; // stat-only non-grand boon / hybrid — left exactly as authored.
 }
 
 /** A resolved label + description for an offer (a real, reclaim, or graftup id). */
