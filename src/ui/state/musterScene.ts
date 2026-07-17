@@ -29,6 +29,9 @@ export const MUSTER_DWELL_S = 0.4;
 export const START_DWELL_S = 0.7;
 /** Dwell to add a bot from a class effigy (item 1) — a quick, repeatable tap. */
 export const ADDBOT_DWELL_S = 0.4;
+/** Dwell to remove a bot from its band marker — a touch longer than adding, so
+ *  walking through the band area doesn't cull a bot by accident. */
+export const REMOVEBOT_DWELL_S = 0.5;
 
 // item 1: a top-of-hall row of class effigies (host only). Placed above the rune /
 // war-horn (right column) and clear of the left-docked lobby panel, within the
@@ -38,6 +41,21 @@ const BOT_ROW_X0 = 480;
 const BOT_ROW_X1 = 1260;
 const BOT_EFFIGY_RADIUS = 28;
 const BOT_EFFIGY_TRIGGER = 46;
+
+// "Your band" removal markers (host only): one per added bot, in a centred row
+// BELOW the y=780 spawn — its own area, clear of the top add-bot row, the right
+// rune/war-horn column, and the left-docked lobby panel. y=880 keeps every marker
+// within ARENA_H/2 of the spawn (torus-safe). Spacing 200 ≫ 2·trigger, and any
+// re-centre when a bot leaves shifts the others by only spacing/2 (100u) — well
+// past a trigger radius — so removing one can never slide another under the hero.
+const REMOVE_ROW_Y = 880;
+const REMOVE_ROW_CX = 800;
+const REMOVE_ROW_SPACING = 200;
+const REMOVE_BOT_RADIUS = 28;
+const REMOVE_BOT_TRIGGER = 46;
+/** Station-id base for removal markers — clear of the rune/horn (1,2), the add-bot
+ *  effigies (100+) and the world entity ids. */
+const REMOVE_BOT_ID_BASE = 200;
 
 const ZERO_INPUT: InputCommand = {
   seq: 0,
@@ -79,11 +97,15 @@ export class MusterScene {
   private pendingEvents: GameEvent[] = [];
 
   private readonly name: string;
+  private readonly isHost: boolean;
   private classId: ClassId;
   private ready = false;
   private canStart = false;
   /** item 1: the warband is full — the add-bot effigies grey out. */
   private partyFull = false;
+  /** Signature of the last bot list projected into removal markers, so setBots only
+   *  rebuilds the markers when the band actually changes (keeps ids/dwell stable). */
+  private lastBotsKey = '';
 
   private readonly stations: MusterStation[] = [];
   private dwellId: number | null = null;
@@ -94,6 +116,7 @@ export class MusterScene {
 
   constructor(name: string, classId: ClassId, isHost: boolean) {
     this.name = name;
+    this.isHost = isHost;
     this.classId = classId;
     this.world = this.build(null);
     this.stations.push({
@@ -136,7 +159,7 @@ export class MusterScene {
         refId: id,
         radius: BOT_EFFIGY_RADIUS,
         triggerRadius: BOT_EFFIGY_TRIGGER,
-        label: `+ ${CLASSES[id].name}`,
+        label: `+ ${CLASSES[id].name} bot`,
         color: CLASS_COLORS[id] ?? 0xffffff,
         dwell: ADDBOT_DWELL_S,
       });
@@ -183,6 +206,40 @@ export class MusterScene {
   /** item 1: mirror whether the warband is full (add-bot effigies grey out). */
   setPartyFull(on: boolean): void {
     this.partyFull = on;
+  }
+
+  /**
+   * Project the live bot roster (host only) into a data-driven row of "your band"
+   * removal markers — one per bot, labelled by class. Walking onto a marker removes
+   * THAT bot (via the removebot trigger). Fed every frame from MusterHall; a cheap
+   * signature guards against rebuilding (and resetting the in-progress dwell) when
+   * the band is unchanged. Non-host callers add nothing (only the host adds/removes).
+   */
+  setBots(bots: readonly { peerId: string; classId: ClassId }[]): void {
+    if (!this.isHost) return;
+    const key = bots.map((b) => `${b.peerId}:${b.classId}`).join(',');
+    if (key === this.lastBotsKey) return;
+    this.lastBotsKey = key;
+    // Drop the old markers, then lay one per current bot, centred so a removal
+    // re-centres the rest without sliding any marker onto the standing hero.
+    for (let i = this.stations.length - 1; i >= 0; i--) {
+      if (this.stations[i].kind === 'removebot') this.stations.splice(i, 1);
+    }
+    const n = bots.length;
+    bots.forEach((b, i) => {
+      const x = REMOVE_ROW_CX + (i - (n - 1) / 2) * REMOVE_ROW_SPACING;
+      this.stations.push({
+        id: REMOVE_BOT_ID_BASE + i,
+        kind: 'removebot',
+        pos: { x, y: REMOVE_ROW_Y },
+        refId: b.peerId,
+        radius: REMOVE_BOT_RADIUS,
+        triggerRadius: REMOVE_BOT_TRIGGER,
+        label: `✕ ${CLASSES[b.classId].name} bot`,
+        color: CLASS_COLORS[b.classId] ?? 0xffffff,
+        dwell: REMOVEBOT_DWELL_S,
+      });
+    });
   }
 
   frame(nowMs: number, frozen = false): RenderState {
@@ -289,8 +346,9 @@ export class MusterScene {
       refId: s.refId,
       label,
       color: s.color,
-      // The rune / war-horn are walk-INTO portals; the bot effigies are pedestals.
-      portal: s.kind !== 'addbot',
+      // The rune / war-horn are walk-INTO portals; the bot effigies + removal
+      // markers are pedestals.
+      portal: s.kind !== 'addbot' && s.kind !== 'removebot',
       selected,
       disabled,
       active: near && !disabled,

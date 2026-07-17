@@ -52,6 +52,34 @@ const EFFIGY_TRIGGER = 44;
 const PORTAL_RADIUS = 46;
 const PORTAL_TRIGGER = 84;
 
+// Run-mode MODIFIER toggles: ON/OFF pedestals in a row along the bottom, flanking
+// the host portal. Placed at y=820 so the whole row clears the run-mode portals
+// (y=660): the 160u vertical gap already exceeds any adjacent trigger sum, so the
+// only horizontal constraint is the host portal (x=800, r84) — toggle centres stay
+// clear of it — and each other (spacing 190 ≫ 2·TOGGLE_TRIGGER, so no ring touches).
+// Left pair = ungated (compose with any run); right pair = gauntlet-only.
+const TOGGLE_ROW_Y = 820;
+const TOGGLE_RADIUS = 30;
+const TOGGLE_TRIGGER = 46;
+interface ToggleSpec {
+  kind: StationKind;
+  x: number;
+  label: string;
+  color: number;
+  /** Only meaningful for a gauntlet — greyed out + inert for a single fight. */
+  gauntletOnly: boolean;
+}
+const TOGGLE_SPECS: readonly ToggleSpec[] = [
+  { kind: 'chaosforge', x: 430, label: '⚗️ Chaos Forge', color: 0x3fd0c0, gauntletOnly: false },
+  { kind: 'chaosdraft', x: 620, label: '🎲 Chaos Draft', color: 0xd85ac0, gauntletOnly: false },
+  { kind: 'hardcore', x: 980, label: '💀 Hardcore', color: 0xd9463e, gauntletOnly: true },
+  { kind: 'daily', x: 1170, label: '☀️ Run of the Day', color: 0xf2c14e, gauntletOnly: true },
+];
+/** Toggle kinds that only apply to a gauntlet (sealed for a single fight). */
+const GAUNTLET_ONLY_TOGGLES = new Set<StationKind>(
+  TOGGLE_SPECS.filter((t) => t.gauntletOnly).map((t) => t.kind),
+);
+
 const TIERS: readonly BossTier[] = ['easy', 'medium', 'hard'];
 const TIER_LABEL: Record<BossTier, string> = { easy: 'EASY', medium: 'MEDIUM', hard: 'HARD' };
 const TIER_COLOR: Record<BossTier, number> = {
@@ -96,6 +124,14 @@ export class WarScene {
   private gauntlet: boolean;
   private activeTier: BossTier;
 
+  // Run-mode modifier toggle states, mirrored from the store (setters below) and
+  // flipped in place on a walk-commit. `dailySeed` reflects seedMode === 'daily'
+  // (the walkable station only toggles daily ↔ random; 'custom' stays List-view only).
+  private hardcore = false;
+  private chaosForge = false;
+  private dailySeed = false;
+  private randomKits = false;
+
   private stations: WarStation[] = [];
   private dwellId: number | null = null;
   private dwellS = 0;
@@ -134,6 +170,27 @@ export class WarScene {
   /** Mirror the store's run mode so the right portal stays lit. */
   setGauntlet(on: boolean): void {
     this.gauntlet = on;
+  }
+
+  /** Mirror the store's Hardcore flag so its toggle stays lit (List-view sync). */
+  setHardcore(on: boolean): void {
+    this.hardcore = on;
+  }
+
+  /** Mirror the store's Chaos Forge flag so its toggle stays lit (List-view sync). */
+  setChaosForge(on: boolean): void {
+    this.chaosForge = on;
+  }
+
+  /** Mirror whether the store's seed mode is 'daily' so the Run-of-the-Day toggle
+   *  stays lit (List-view sync; a 'custom' seed reads as off here). */
+  setSeedDaily(on: boolean): void {
+    this.dailySeed = on;
+  }
+
+  /** Mirror the store's Chaos Draft flag so its toggle stays lit (List-view sync). */
+  setRandomKits(on: boolean): void {
+    this.randomKits = on;
   }
 
   frame(nowMs: number, frozen = false): RenderState {
@@ -263,6 +320,41 @@ export class WarScene {
       portal: true,
       dwell: WAR_HOST_DWELL_S,
     });
+    // Run-mode modifier toggles (ON/OFF pedestals flanking the host portal).
+    for (const t of TOGGLE_SPECS) {
+      this.stations.push({
+        id: this.nextId++,
+        kind: t.kind,
+        pos: { x: t.x, y: TOGGLE_ROW_Y },
+        radius: TOGGLE_RADIUS,
+        triggerRadius: TOGGLE_TRIGGER,
+        label: t.label,
+        color: t.color,
+        dwell: WAR_SELECT_DWELL_S,
+      });
+    }
+  }
+
+  /** Whether a modifier toggle is inert right now (a gauntlet-only one with the
+   *  run set to a single fight). Mirrors the war-horn's "sealed until ready" gate. */
+  private toggleDisabled(kind: StationKind): boolean {
+    return GAUNTLET_ONLY_TOGGLES.has(kind) && !this.gauntlet;
+  }
+
+  /** Current ON/OFF state a modifier toggle reflects, for its lit look. */
+  private toggleOn(kind: StationKind): boolean {
+    switch (kind) {
+      case 'hardcore':
+        return this.hardcore;
+      case 'chaosforge':
+        return this.chaosForge;
+      case 'daily':
+        return this.dailySeed;
+      case 'chaosdraft':
+        return this.randomKits;
+      default:
+        return false;
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -293,6 +385,7 @@ export class WarScene {
       if (s.kind === 'boss' && s.refId === this.monsterId) continue;
       if (s.kind === 'single' && !this.gauntlet) continue;
       if (s.kind === 'gauntlet' && this.gauntlet) continue;
+      if (this.toggleDisabled(s.kind)) continue; // gauntlet-only toggle, sealed for a single fight
       const d = dist(hp, s.pos);
       if (d > s.triggerRadius) continue;
       const frac = d / s.triggerRadius;
@@ -351,6 +444,29 @@ export class WarScene {
       this.pendingTriggers.push({ kind: 'gauntlet' });
       return;
     }
+    // Modifier toggles: flip the mirrored state in place (so the lit look updates
+    // this frame, like single/gauntlet) and relay a trigger the UI maps to the
+    // matching store setter. Guarded already in stationUnder for gauntlet-only ones.
+    if (s.kind === 'hardcore') {
+      this.hardcore = !this.hardcore;
+      this.pendingTriggers.push({ kind: 'hardcore' });
+      return;
+    }
+    if (s.kind === 'chaosforge') {
+      this.chaosForge = !this.chaosForge;
+      this.pendingTriggers.push({ kind: 'chaosforge' });
+      return;
+    }
+    if (s.kind === 'daily') {
+      this.dailySeed = !this.dailySeed;
+      this.pendingTriggers.push({ kind: 'daily' });
+      return;
+    }
+    if (s.kind === 'chaosdraft') {
+      this.randomKits = !this.randomKits;
+      this.pendingTriggers.push({ kind: 'chaosdraft' });
+      return;
+    }
     if (s.kind === 'host') {
       this.pendingTriggers.push({ kind: 'host' });
     }
@@ -364,11 +480,17 @@ export class WarScene {
     const hp = this.heroPos();
     const near = hp != null && dist(hp, s.pos) <= s.triggerRadius;
     const channel = this.dwellId === s.id ? Math.min(1, this.dwellS / s.dwell) : 0;
-    let selected = false;
+    const disabled = this.toggleDisabled(s.kind);
+    let selected: boolean;
     if (s.kind === 'tier') selected = s.refId === this.activeTier;
     else if (s.kind === 'boss') selected = s.refId === this.monsterId;
     else if (s.kind === 'single') selected = !this.gauntlet;
     else if (s.kind === 'gauntlet') selected = this.gauntlet;
+    // A modifier toggle lights only when it is both ON and actually applies (a
+    // gauntlet-only one reads as off — and greyed — while the run is a single fight).
+    else selected = this.toggleOn(s.kind) && !disabled;
+    // Gauntlet-only toggles say why they're sealed while single-fight is chosen.
+    const label = disabled ? `${s.label} — gauntlet only` : s.label;
     return {
       id: s.id,
       kind: s.kind,
@@ -376,11 +498,12 @@ export class WarScene {
       radius: s.radius,
       triggerRadius: s.triggerRadius,
       refId: s.refId,
-      label: s.label,
+      label,
       color: s.color,
       portal: s.portal,
       selected,
-      active: near,
+      disabled,
+      active: near && !disabled,
       channel,
     };
   }

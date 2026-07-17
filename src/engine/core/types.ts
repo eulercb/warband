@@ -760,12 +760,20 @@ export type StationKind =
   | 'tier' // filter the boss gallery to a difficulty tier (refId = BossTier)
   | 'single' // run mode: a single boss fight
   | 'gauntlet' // run mode: a full gauntlet run
+  // War-room run-mode MODIFIER toggles (walk-onto ON/OFF pedestals). Hardcore +
+  // dailyseed only apply to a gauntlet (greyed out for a single fight); chaosforge
+  // + chaosdraft compose with any run, so they are always active.
+  | 'hardcore' // toggle Hardcore (store: hardcore) — gauntlet only
+  | 'chaosforge' // toggle Chaos Forge (store: chaosForge)
+  | 'daily' // toggle Run of the Day (store: seedMode 'daily' ↔ 'random') — gauntlet only
+  | 'chaosdraft' // toggle Chaos Draft (store: randomKits)
   | 'host' // commit: raise your banner (host a room)
   | 'join' // walk into the join portal
   | 'controls' // open the controls/rebinding overlay
   | 'muster' // lobby: step on to ready up
   | 'start' // lobby: host steps on to start the fight
-  | 'addbot'; // lobby: host steps on a class effigy to add a bot of that class (item 1, refId = ClassId)
+  | 'addbot' // lobby: host steps on a class effigy to add a bot of that class (item 1, refId = ClassId)
+  | 'removebot'; // lobby: host steps on a band marker to remove that bot (refId = bot peerId)
 
 /** Render view of a menu station (local scene worlds only; never crosses the wire). */
 export interface StationView {

@@ -93,4 +93,20 @@ describe('<MusterHall>', () => {
     );
     expect(container.querySelector('.wb-muster-hint')?.textContent ?? '').toContain('muster rune');
   });
+
+  it('explains adding AND removing bots in the host signage', () => {
+    const { container } = render(<MusterHall />); // isHost: true (beforeEach)
+    const hint = container.querySelector('.wb-muster-hint')?.textContent ?? '';
+    expect(hint).toContain('Fill your band with bots');
+    expect(hint.toLowerCase()).toContain('add');
+    expect(hint.toLowerCase()).toContain('bot marker'); // the walkable removal path
+  });
+
+  it('drops the host-only bot signage for a non-host', () => {
+    useStore.setState({ isHost: false });
+    const { container } = render(<MusterHall />);
+    const hint = container.querySelector('.wb-muster-hint')?.textContent ?? '';
+    expect(hint).toContain('muster rune');
+    expect(hint).not.toContain('Fill your band with bots');
+  });
 });

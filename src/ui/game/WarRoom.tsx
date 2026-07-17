@@ -42,6 +42,10 @@ function padMenuPressed(): boolean {
 export default function WarRoom() {
   const monsterId = useStore((s) => s.monsterId);
   const gauntlet = useStore((s) => s.gauntlet);
+  const hardcore = useStore((s) => s.hardcore);
+  const chaosForge = useStore((s) => s.chaosForge);
+  const seedMode = useStore((s) => s.seedMode);
+  const randomKits = useStore((s) => s.randomKits);
   const localName = useStore((s) => s.localName);
   const setLocalName = useStore((s) => s.setLocalName);
   const error = useStore((s) => s.error);
@@ -69,6 +73,20 @@ export default function WarRoom() {
   useEffect(() => {
     sceneRef.current?.setGauntlet(gauntlet);
   }, [gauntlet]);
+  // The modifier toggles sync both ways too: a List-view flip lights/greys the
+  // matching walkable pedestal (mirrors setMonster/setGauntlet above).
+  useEffect(() => {
+    sceneRef.current?.setHardcore(hardcore);
+  }, [hardcore]);
+  useEffect(() => {
+    sceneRef.current?.setChaosForge(chaosForge);
+  }, [chaosForge]);
+  useEffect(() => {
+    sceneRef.current?.setSeedDaily(seedMode === 'daily');
+  }, [seedMode]);
+  useEffect(() => {
+    sceneRef.current?.setRandomKits(randomKits);
+  }, [randomKits]);
 
   const opener = MONSTERS[monsterId];
 
@@ -78,6 +96,13 @@ export default function WarRoom() {
 
     const st = useStore.getState();
     const scene = new WarScene(st.localName || 'Hero', st.localClass, st.monsterId, st.gauntlet);
+    // Seed the walkable modifier toggles from the store (the [dep] sync effects
+    // above only fire on later changes, and run before this mount effect sets the
+    // scene ref — so the initial lit/greyed state is applied here).
+    scene.setHardcore(st.hardcore);
+    scene.setChaosForge(st.chaosForge);
+    scene.setSeedDaily(st.seedMode === 'daily');
+    scene.setRandomKits(st.randomKits);
     sceneRef.current = scene;
 
     let renderer: Renderer | null = null;
@@ -156,6 +181,24 @@ export default function WarRoom() {
           } else if (trig.kind === 'gauntlet') {
             setGauntlet(true);
             playUiSound('uiClick');
+          } else if (trig.kind === 'hardcore') {
+            const s = useStore.getState();
+            s.setHardcore(!s.hardcore);
+            playUiSound('uiClick');
+          } else if (trig.kind === 'chaosforge') {
+            const s = useStore.getState();
+            s.setChaosForge(!s.chaosForge);
+            playUiSound('uiClick');
+          } else if (trig.kind === 'chaosdraft') {
+            const s = useStore.getState();
+            s.setRandomKits(!s.randomKits);
+            playUiSound('uiClick');
+          } else if (trig.kind === 'daily') {
+            // The walkable station toggles seedMode daily ↔ random; a 'custom'
+            // seed (needs text entry) stays List-view only, so from custom it lands on daily.
+            const s = useStore.getState();
+            s.setSeedMode(s.seedMode === 'daily' ? 'random' : 'daily');
+            playUiSound('uiClick');
           } else if (trig.kind === 'host') {
             doHost();
           }
@@ -186,6 +229,15 @@ export default function WarRoom() {
 
   const inspected = focusBoss ? MONSTERS[focusBoss] : null;
 
+  // Active run-mode modifiers, for the selection summary. Hardcore + Run of the Day
+  // only count for a gauntlet; Chaos Forge + Chaos Draft compose with any run.
+  const activeModifiers = [
+    gauntlet && hardcore ? 'Hardcore' : null,
+    gauntlet && seedMode === 'daily' ? 'Run of the Day' : null,
+    chaosForge ? 'Chaos Forge' : null,
+    randomKits ? 'Chaos Draft' : null,
+  ].filter((m): m is string => m !== null);
+
   return (
     <div className="wb-playground-root wb-war-root">
       <div ref={canvasRef} className="wb-playground-canvas" aria-hidden="true" />
@@ -196,9 +248,11 @@ export default function WarRoom() {
         <span className="wb-reward-banner-title">Choose your fight</span>
         <span className="wb-reward-banner-next">
           {opener.name} · {gauntlet ? `${RUN_LENGTH}-boss gauntlet` : 'single fight'}
+          {activeModifiers.length > 0 ? ` · ${activeModifiers.join(' · ')}` : ''}
         </span>
         <span className="wb-reward-banner-hint">
-          Walk to a boss to pick it, into a portal for the mode, then into the banner to host. Or
+          Walk to a boss to pick it, into a portal for the mode, onto a modifier rune (Hardcore,
+          Chaos Forge, Run of the Day, Chaos Draft) to toggle it, then into the banner to host. Or
           open the list view.
         </span>
       </div>
