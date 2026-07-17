@@ -844,6 +844,7 @@ export function synthesizeAbility(
   let effects = chosen.map((c) => c.effect);
   effects = foldAllyBuffsIntoZone(effects);
   effects = retargetOrphanAllyBuffs(delivery, effects);
+  effects = mergeBuffs(effects); // item 5 — one buff per target; honest pricing
   const assembled: AbilityComponents = { delivery, effects };
 
   // 7. Price to the slot budget at the slot's canonical pace, then cap + quantize.
@@ -891,6 +892,49 @@ function foldAllyBuffsIntoZone(effects: EffectComponent[]): EffectComponent[] {
   return effects
     .filter((e) => !(e.kind === 'buff' && e.target === 'allies'))
     .map((e) => (e === zone ? foldedZone : e));
+}
+
+/**
+ * item 5 — collapse redundant buff components: at most ONE buff component per
+ * TARGET (self / allies), combining its axes. Two same-axis buffs (e.g. two def
+ * self-buffs) otherwise BOTH price into the budget while the runtime delivers only
+ * one — applyForgeBuffs emits a fixed per-axis source and applyBuff de-dupes it —
+ * over-pricing the skill (heavier compression / longer cooldown) for resistance it
+ * never grants. Merging keeps the STRONGEST value per axis (def: most mitigation;
+ * dmg / move: highest) and the longest duration, so the price and the delivered
+ * effect agree AND a skill never carries two components on one axis. DISTINCT axes
+ * are preserved (a def buff + a dmg buff fuse into one two-axis buff, not dropped),
+ * keeping variety. Non-buff kinds are already de-duped at selection.
+ */
+function mergeBuffs(effects: EffectComponent[]): EffectComponent[] {
+  type BuffEff = Extract<EffectComponent, { kind: 'buff' }>;
+  const byTarget = new Map<BuffTarget, BuffEff>();
+  const out: EffectComponent[] = [];
+  for (const e of effects) {
+    if (e.kind !== 'buff') {
+      out.push(e);
+      continue;
+    }
+    const existing = byTarget.get(e.target);
+    if (!existing) {
+      const merged: BuffEff = { ...e };
+      byTarget.set(e.target, merged);
+      out.push(merged); // held by reference; later same-target buffs mutate it in place
+    } else {
+      if (e.defMult != null) {
+        existing.defMult = existing.defMult != null ? Math.min(existing.defMult, e.defMult) : e.defMult;
+      }
+      if (e.dmgMult != null) {
+        existing.dmgMult = existing.dmgMult != null ? Math.max(existing.dmgMult, e.dmgMult) : e.dmgMult;
+      }
+      if (e.moveMult != null) {
+        existing.moveMult =
+          existing.moveMult != null ? Math.max(existing.moveMult, e.moveMult) : e.moveMult;
+      }
+      existing.duration = Math.max(existing.duration, e.duration);
+    }
+  }
+  return out;
 }
 
 /** Retarget ally buffs that a non-rallying delivery can't deliver, onto the caster. */

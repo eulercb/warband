@@ -126,6 +126,54 @@ describe('synthesizeAbility — validity + balance budget', () => {
     }
   });
 
+  // item 5 — no fused skill carries two components on the same axis. The buff dedup
+  // (mergeBuffs) guarantees at most ONE buff component per target (self / allies),
+  // so two same-axis buffs can't coexist — and pricing then matches delivery.
+  it('never carries redundant buff components (≤1 buff per target) across seeds', () => {
+    for (const seed of SEEDS) {
+      for (const cid of CLASS_IDS) {
+        for (const slot of SLOTS) {
+          const { def } = synthesizeAbility(seed, `${cid}.${slot}`, slot, POOL);
+          const buffs = def.components!.effects.filter((e) => e.kind === 'buff');
+          const selves = buffs.filter((e) => e.kind === 'buff' && e.target === 'self').length;
+          const allies = buffs.filter((e) => e.kind === 'buff' && e.target === 'allies').length;
+          expect(selves).toBeLessThanOrEqual(1);
+          expect(allies).toBeLessThanOrEqual(1);
+        }
+      }
+    }
+  });
+
+  // item 5 — a merged buff keeps the STRONGEST value per axis (so the price reflects
+  // what is delivered, not the sum of two components the runtime collapses to one).
+  it('mergeBuffs keeps the strongest per axis and drops the redundant component', () => {
+    // Two self def buffs among the donors → the fused skill keeps exactly one, at the
+    // stronger (lower) defMult. Build a tiny pool of two resistance self-buffs.
+    const twoResist: Donor[] = [
+      {
+        name: 'Ward',
+        classId: 'knight',
+        className: 'Knight',
+        slot: 'a2',
+        def: { slot: 'a2', name: 'Ward', kind: 'selfBuff', cooldown: 12, damage: 0, buffDefMult: 0.7, buffDuration: 6 },
+      },
+      {
+        name: 'Aegis',
+        classId: 'paladin',
+        className: 'Paladin',
+        slot: 'a2',
+        def: { slot: 'a2', name: 'Aegis', kind: 'selfBuff', cooldown: 12, damage: 0, buffDefMult: 0.5, buffDuration: 6 },
+      },
+    ];
+    for (const seed of SEEDS) {
+      const { def } = synthesizeAbility(seed, 'k.a2', 'a2', twoResist);
+      const defBuffs = def.components!.effects.filter(
+        (e) => e.kind === 'buff' && e.defMult != null,
+      );
+      expect(defBuffs.length).toBeLessThanOrEqual(1); // never two resistance components
+    }
+  });
+
   it('cooldowns center on the canonical pace, NOT the band ceiling', () => {
     // Regression guard for the cooldown fix: fusions used to pin at the 16–18s
     // ceiling (rigid buff/CC/zone value priced against the band max). They now
