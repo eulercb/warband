@@ -504,10 +504,14 @@ function effectPhrase(e: EffectComponent): string {
       return `fly ${s(e.duration)}`;
     case 'shove':
       return e.pull ? `pull ${n(e.distance)}u` : `knock back ${n(e.distance)}u`;
-    case 'crit':
-      return e.mult > 0
-        ? `+${pct(e.chance * 100)} crit, +${round2(e.mult)}× crit dmg`
-        : `+${pct(e.chance * 100)} crit`;
+    case 'crit': {
+      // Guard each clause independently (mirroring the canonical describeAbility) so a
+      // chance-only OR mult-only lean reads cleanly — never a spurious "+0% crit".
+      const parts: string[] = [];
+      if (e.chance > 0) parts.push(`+${pct(e.chance * 100)} crit`);
+      if (e.mult > 0) parts.push(`+${round2(e.mult)}× crit dmg`);
+      return parts.join(', ');
+    }
     case 'buff':
       return buffPhrase(e);
     case 'zone':

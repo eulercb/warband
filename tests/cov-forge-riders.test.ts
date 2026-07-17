@@ -131,6 +131,15 @@ describe('forge rider components — description + value (items 7–13)', () => 
     expect(line2).toContain('pull 200u');
     expect(line2).toMatch(/\+\d+% crit/);
     expect(line2).not.toContain('crit dmg'); // mult 0 → the short crit phrase
+
+    // A MULT-only crit (chance 0) reads only the crit-damage clause — never a
+    // spurious "+0% crit" (each clause is guarded independently).
+    const line3 = describeComposed(
+      { delivery: { kind: 'meleeCone', range: 70, halfAngleDeg: 45 }, effects: [{ kind: 'crit', chance: 0, mult: 0.5 }] },
+      6,
+    );
+    expect(line3).toContain('+0.5× crit dmg');
+    expect(line3).not.toContain('% crit'); // no "+0% crit" prefix
   });
 
   it('componentValue prices each rider above the bare delivery', () => {

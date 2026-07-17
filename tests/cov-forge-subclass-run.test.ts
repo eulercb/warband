@@ -45,5 +45,6 @@ describe('subclass synthesis under a Forge run', () => {
     setForgeSeed(null);
     const canon = getSubclass('kn_champion')!;
     expect(canon.name).toBe('Champion');
+    expect(a.name).not.toBe('Champion'); // the Forge run actually reblended the name
   });
 });

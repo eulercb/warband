@@ -105,7 +105,6 @@ describe('projectile castSlow rider (world.applyProjRiders)', () => {
     resolvePlayerAbility(w, p, 'basic', ZERO);
     expect(w.projectiles).toHaveLength(1);
     w.projectiles[0].castSlow = 1.3; // the cursed rider on the live shot
-    expect(w.projectiles[0].castSlow).toBe(1.3);
 
     // Drop the boss (and the live arrow) together so the very next tick impacts.
     const before = boss.hp;
