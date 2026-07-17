@@ -1211,8 +1211,109 @@ export function refreshComponents(def: Omit<PlayerAbilityDef, 'slot'>): AbilityC
   // how initial synthesis builds them). In practice every caller passes a fused def.
   if (!prev) return capComponents(decompose(def));
   const delivery = decompose(def).delivery; // lossless: reflects upgrade-mutated delivery scalars
-  const effects = prev.effects.map((e) => patchEffect(e, def));
+  // 1. Patch the axes existing components already carry (valid magnitudes only). 2. ADD
+  // components for the boon's genuinely-NEW axes so it never silently no-ops (item 2).
+  const effects = addBoonComponents(
+    prev.effects.map((e) => patchEffect(e, def)),
+    def,
+  );
   return capComponents({ delivery, effects });
+}
+
+/**
+ * item 2 — a value inside the effect's valid band, else a sensible default. A boon's
+ * `mul` / `addN` on an ABSENT flat field yields garbage (a mul-of-undefined is 0/NaN),
+ * which a naive decompose would cap into a 0.2-defMult near-immunity; the default keeps
+ * a boon-ADDED axis meaningful instead of minting an immunity or silently dropping it.
+ */
+function sane(v: number | undefined, lo: number, hi: number, dflt: number): number {
+  return v != null && Number.isFinite(v) && v >= lo && v <= hi ? v : dflt;
+}
+
+/**
+ * item 2 — reconcile a boon's flat-field changes onto a fused skill's components
+ * ADDITIVELY: for every effect a flat field now implies but NO component yet carries,
+ * add (or extend) a component so the boon MEANINGFULLY applies even when the fused skill
+ * lacked the matching component — the exact gap that made Forge upgrades no-op. Synthesis
+ * keeps flat fields ⟺ components in sync, so an un-upgraded fused skill finds everything
+ * represented (a no-op); only a boon's genuinely-new axis is added. A magnitude comes
+ * from the flat field when it is in a sane band (a mul/addN on a PRESENT field stays
+ * valid) and from a capped default when it is garbage (a mul/addN on an ABSENT field),
+ * so a boon never mints a near-immunity nor no-ops. Per-component caps still apply
+ * downstream (capComponents); the boon is a deliberate power add, so no re-pricing.
+ */
+function addBoonComponents(
+  effects: EffectComponent[],
+  def: Omit<PlayerAbilityDef, 'slot'>,
+): EffectComponent[] {
+  type BuffEff = Extract<EffectComponent, { kind: 'buff' }>;
+  const out = effects.slice();
+  const has = (pred: (e: EffectComponent) => boolean): boolean => out.some(pred);
+
+  // Self-buff axes — extend the existing self buff (or mint one), one component per axis.
+  const wantDef = def.buffDefMult != null && !has((e) => e.kind === 'buff' && e.defMult != null);
+  const wantDmg = def.buffDamageMult != null && !has((e) => e.kind === 'buff' && e.dmgMult != null);
+  const wantMove = def.buffMoveMult != null && !has((e) => e.kind === 'buff' && e.moveMult != null);
+  if (wantDef || wantDmg || wantMove) {
+    let self = out.find((e): e is BuffEff => e.kind === 'buff' && e.target === 'self');
+    if (!self) {
+      self = { kind: 'buff', target: 'self', duration: sane(def.buffDuration, 2, 10, 6) };
+      out.push(self);
+    }
+    if (wantDef) self.defMult = sane(def.buffDefMult, 0.2, 0.95, 0.7);
+    if (wantDmg) self.dmgMult = sane(def.buffDamageMult, 1.05, 1.6, 1.25);
+    if (wantMove) self.moveMult = sane(def.buffMoveMult, 1.05, 1.5, 1.2);
+  }
+
+  // On-hit / self riders — add when a flat field implies one but no component carries it.
+  if (def.stun != null && !has((e) => e.kind === 'stun')) {
+    out.push({ kind: 'stun', seconds: sane(def.stun, 0.3, 1.4, 0.6) });
+  }
+  if (def.freeze != null && !has((e) => e.kind === 'freeze')) {
+    out.push({ kind: 'freeze', seconds: sane(def.freeze, 0.3, 1.4, 0.6) });
+  }
+  if (
+    def.slowMult != null &&
+    def.slowMult < 1 &&
+    !has((e) => e.kind === 'slow' || (e.kind === 'zone' && e.zone.slowMult != null))
+  ) {
+    out.push({
+      kind: 'slow',
+      mult: sane(def.slowMult, 0.2, 0.95, 0.6),
+      duration: sane(def.slowDuration, 1, 4, 2),
+    });
+  }
+  if (
+    def.castSlow != null &&
+    def.castSlow > 1 &&
+    !has((e) => e.kind === 'castSlow' || (e.kind === 'zone' && e.zone.castSlow != null))
+  ) {
+    out.push({
+      kind: 'castSlow',
+      mult: sane(def.castSlow, 1.1, CAST_SLOW_MAX, 1.3),
+      duration: sane(def.castSlowDuration, 1, 5, 3),
+    });
+  }
+  if (def.knockback != null && !has((e) => e.kind === 'shove' && !e.pull)) {
+    out.push({ kind: 'shove', distance: sane(def.knockback, 40, 260, 120), pull: false });
+  }
+  if (def.pull != null && !has((e) => e.kind === 'shove' && e.pull)) {
+    out.push({ kind: 'shove', distance: sane(def.pull, 40, 260, 120), pull: true });
+  }
+  if (def.grantsFlight != null && !has((e) => e.kind === 'flight')) {
+    out.push({ kind: 'flight', duration: sane(def.grantsFlight, 2, 8, 4) });
+  }
+  if (def.lifestealFrac != null && !has((e) => e.kind === 'lifesteal')) {
+    out.push({ kind: 'lifesteal', frac: sane(def.lifestealFrac, 0.02, 0.35, 0.15) });
+  }
+  if (def.healOnUse != null && def.healOnUse > 0 && !has((e) => e.kind === 'healOnUse')) {
+    out.push({ kind: 'healOnUse', amount: Math.max(1, Math.round(def.healOnUse)) });
+  }
+  if (def.landingDamage != null && def.landingDamage > 0 && !has((e) => e.kind === 'landingDamage')) {
+    out.push({ kind: 'landingDamage', amount: Math.max(1, Math.round(def.landingDamage)) });
+  }
+
+  return out;
 }
 
 /**

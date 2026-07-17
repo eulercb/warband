@@ -16,8 +16,8 @@ import {
   previewSubAbility,
   applySubSkillUpgrades,
 } from '../src/engine/content/charUpgrades';
-import type { PlayerAbilityDef } from '../src/engine/content/classes';
-import type { Player } from '../src/engine/core/types';
+import { CLASS_IDS, type PlayerAbilityDef } from '../src/engine/content/classes';
+import type { Player, AbilitySlot, ClassId } from '../src/engine/core/types';
 
 afterEach(() => {
   setForgeSeed(null);
@@ -61,6 +61,35 @@ describe('Chaos Forge char-upgrade synthesis', () => {
     const view = describeCharOffer('knight', [], 'kn_bulwark')!;
     expect(view.label).toContain(getCharUpgrade('kn_bulwark')!.name);
     expect(view.desc).toMatch(/empowers your/i);
+  });
+
+  // item 2 — across MANY seeds and MANY boons, every skill-targeting class boon
+  // MEANINGFULLY APPLIES to the fused kit: applying it changes the kit (flat fields
+  // reach the def; effect fields reach the components — see the direct axis test
+  // above), never a total no-op. Also proves the reforge is seed-deterministic.
+  it('every skill-targeting class boon meaningfully changes the fused kit across seeds', () => {
+    const SLOTS = ['basic', 'a1', 'a2', 'a3'] as const;
+    const kitStr = (t: Record<AbilitySlot, PlayerAbilityDef>): string =>
+      SLOTS.map((s) => JSON.stringify(t[s])).join('|');
+    // Skill-targeting boons: those whose apply changes the CANONICAL kit at all. Each
+    // carries its narrowed base ClassId (skip 'any'-class hybrids — they graft, not tune).
+    const boons = Object.values(CHAR_UPGRADES)
+      .map((up) => ({ up, cid: up.classId as ClassId }))
+      .filter(({ up, cid }) => {
+        if (!CLASS_IDS.includes(cid)) return false;
+        return kitStr(previewAbilityTable(cid, [])) !== kitStr(previewAbilityTable(cid, [up.id]));
+      });
+    expect(boons.length).toBeGreaterThan(20);
+
+    for (const seed of [1, 7, 4242, 271828]) {
+      setForgeSeed(seed);
+      for (const { up, cid } of boons) {
+        const before = kitStr(previewAbilityTable(cid, []));
+        const after = kitStr(previewAbilityTable(cid, [up.id]));
+        expect(after, `${up.id}@${seed}`).not.toBe(before); // the boon lands on the fused kit
+      }
+      setForgeSeed(null);
+    }
   });
 
   it('two peers with the same seed derive the same reforged boon', () => {
@@ -146,16 +175,53 @@ describe('refreshComponents (item 6 flat→components patch)', () => {
     expect(buff).toMatchObject({ target: 'allies', defMult: 0.4 }); // flowed through; target kept
   });
 
-  it('does NOT mint a buff on a skill that never had one (the mul-of-undefined degenerate case)', () => {
-    // The exact item-6 regression: a defence-buff boon on a fused skill with no such buff.
-    // mul(undefined→0) leaves flat buffDefMult 0; a decompose-rebuild would cap it to a 0.2
-    // (≈80% damage-reduction) near-immunity. The patch must leave it a harmless no-op.
+  it('mints a MEANINGFUL buff (not a no-op, not a 0.2 near-immunity) for a boon-added axis (item 2)', () => {
+    // item 2 supersedes the old no-op: a defence-buff boon on a fused skill with no such
+    // buff must now MEANINGFULLY apply. mul(undefined→0) leaves flat buffDefMult 0 (the
+    // garbage a mul-of-undefined produces); the reconcile adds a SELF buff at a SANE
+    // default — never the 0.2 (≈80%-DR) near-immunity a naive decompose would cap it to,
+    // and never a silent no-op (the exact upgrade-doesn't-apply bug).
     const def = fused('meleeCone', { damage: 30, buffDefMult: 0 }, [
       { kind: 'damage', amount: 30 },
     ]);
     const out = refreshComponents(def);
-    expect(buffsOf(out)).toHaveLength(0); // no fabricated near-immunity
+    const buffs = buffsOf(out);
+    expect(buffs).toHaveLength(1); // the boon now genuinely lands
+    expect(buffs[0].target).toBe('self');
+    expect(buffs[0].defMult!).toBeGreaterThan(0.2); // NOT the fabricated near-immunity floor
+    expect(buffs[0].defMult!).toBeLessThan(1); // a real, capped mitigation
     expect(out.effects.find((e) => e.kind === 'damage')).toMatchObject({ amount: 30 });
+  });
+
+  it('lands EVERY effect axis a boon can add onto a fused skill that lacks it (item 2)', () => {
+    // Each case is a boon-added flat field on a fused melee skill with NO matching
+    // component. The reconcile must add the effect (never a no-op) at a sane magnitude
+    // (never the 0.2 near-immunity). Covers buffs, hard CC, soft CC, forced movement,
+    // flight, sustain — the full rider vocabulary, so future boons flow through too.
+    const cases: Array<[Partial<PlayerAbilityDef>, (c: AbilityComponents) => boolean]> = [
+      [{ buffDefMult: 0 }, (c) => buffsOf(c).some((b) => (b.defMult ?? 0) > 0.2)], // mul-of-undefined
+      [{ buffDamageMult: 0 }, (c) => buffsOf(c).some((b) => b.dmgMult != null)],
+      [{ buffMoveMult: 0 }, (c) => buffsOf(c).some((b) => b.moveMult != null)],
+      [{ stun: 0.5 }, (c) => c.effects.some((e) => e.kind === 'stun')],
+      [{ freeze: 0.5 }, (c) => c.effects.some((e) => e.kind === 'freeze')],
+      [{ slowMult: 0.6, slowDuration: 2 }, (c) => c.effects.some((e) => e.kind === 'slow')],
+      [{ castSlow: 1.3 }, (c) => c.effects.some((e) => e.kind === 'castSlow')],
+      [{ knockback: 120 }, (c) => c.effects.some((e) => e.kind === 'shove' && !e.pull)],
+      [{ pull: 120 }, (c) => c.effects.some((e) => e.kind === 'shove' && e.pull)],
+      [{ grantsFlight: 4 }, (c) => c.effects.some((e) => e.kind === 'flight')],
+      [{ lifestealFrac: 0.15 }, (c) => c.effects.some((e) => e.kind === 'lifesteal')],
+      [{ healOnUse: 20 }, (c) => c.effects.some((e) => e.kind === 'healOnUse')],
+      [{ landingDamage: 20 }, (c) => c.effects.some((e) => e.kind === 'landingDamage')],
+    ];
+    for (const [flat, check] of cases) {
+      const def = fused('meleeCone', { damage: 30, ...flat }, [{ kind: 'damage', amount: 30 }]);
+      const out = refreshComponents(def);
+      expect(check(out), `boon ${JSON.stringify(flat)} should land`).toBe(true);
+      // A boon never fabricates a near-immunity, whatever the axis.
+      for (const b of buffsOf(out)) if (b.defMult != null) expect(b.defMult).toBeGreaterThan(0.2);
+      // The damage anchor is untouched.
+      expect(out.effects.find((e) => e.kind === 'damage')).toMatchObject({ amount: 30 });
+    }
   });
 
   it("preserves a zone's ally-buff (which flat fields cannot represent) while flowing the tick boon", () => {
