@@ -203,7 +203,9 @@ describe('MusterScene: your-band removal markers', () => {
   it('adds no removal markers for a client (only the host removes bots)', () => {
     const scene = new MusterScene('Aria', 'knight', false);
     scene.setBots(BAND);
-    expect((scene.frame(1000).stations ?? []).filter((s) => s.kind === 'removebot')).toHaveLength(0);
+    expect((scene.frame(1000).stations ?? []).filter((s) => s.kind === 'removebot')).toHaveLength(
+      0,
+    );
   });
 
   it('keeps the markers within a half-arena of the add-bot row (no torus wrap-flip)', () => {
@@ -264,7 +266,9 @@ describe('MusterScene: your-band removal markers', () => {
   it('re-lays the markers when the band changes (removed bot drops out)', () => {
     const scene = new MusterScene('Aria', 'knight', true);
     scene.setBots(BAND);
-    expect((scene.frame(1000).stations ?? []).filter((s) => s.kind === 'removebot')).toHaveLength(3);
+    expect((scene.frame(1000).stations ?? []).filter((s) => s.kind === 'removebot')).toHaveLength(
+      3,
+    );
     // The host removed bot2 → the store feeds the shorter roster next frame.
     scene.setBots([BAND[0], BAND[2]]);
     const markers = (scene.frame(1100).stations ?? []).filter((s) => s.kind === 'removebot');
@@ -278,7 +282,9 @@ describe('MusterScene: your-band removal markers', () => {
     scene.setBots(BAND);
     scene.setBots(BAND);
     scene.setBots(BAND);
-    expect((scene.frame(1000).stations ?? []).filter((s) => s.kind === 'removebot')).toHaveLength(3);
+    expect((scene.frame(1000).stations ?? []).filter((s) => s.kind === 'removebot')).toHaveLength(
+      3,
+    );
   });
 
   it('arms a re-laid marker that lands on the standing hero (no accidental cull on churn)', () => {

@@ -414,7 +414,9 @@ describe('WarScene: run-mode modifier toggles', () => {
     expect(daily.selected).toBe(false);
     walkOnto(scene, daily.pos, 1000);
     expect(scene.takeTriggers().filter((t) => t.kind === 'daily')).toHaveLength(1);
-    expect((scene.frame(60000).stations ?? []).find((x) => x.kind === 'daily')?.selected).toBe(true);
+    expect((scene.frame(60000).stations ?? []).find((x) => x.kind === 'daily')?.selected).toBe(
+      true,
+    );
   });
 
   it('survives a tier switch with the toggle states intact', () => {
