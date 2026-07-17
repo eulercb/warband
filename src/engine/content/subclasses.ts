@@ -191,8 +191,10 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'kn_champion_charge',
           'Bull Rush',
           '🐂',
-          'Charge in, landing for 30',
-          dash('Bull Rush', 7, { landingDamage: 30, radius: 110 }),
+          // item 11 — a true bull rush: the landing SHOVES struck enemies away hard
+          // enough to rip a rooted foe free (knockback ≥ FORCE_OVERCOME_ROOT).
+          'Charge in, landing for 30 and hurling enemies back',
+          dash('Bull Rush', 7, { landingDamage: 30, radius: 110, knockback: 170 }),
         ),
         sk(
           'kn_champion_rally',
@@ -396,8 +398,10 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'mg_abjurer_teleport',
           'Dimension Door',
           '🚪',
-          'Blink 300u away',
-          blink('Dimension Door', 6, { range: 300, iframes: 0.25 }),
+          // item 11 — the door shuffles space: on arrival, enemies within 220u are
+          // reflected across the mage (front ↔ back) — a teleport-swap peel.
+          'Blink 300u, then fling nearby enemies across you',
+          blink('Dimension Door', 6, { range: 300, iframes: 0.25, swap: true, radius: 220 }),
         ),
         sk(
           'mg_abjurer_mend',
@@ -511,11 +515,15 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           nova('Ground Slam', 8, 40, 150),
         ),
         sk(
-          'bb_berserker_leap',
-          'Rage Leap',
-          '🦵',
-          'Leap, landing for 34',
-          dash('Rage Leap', 7, { landingDamage: 34, radius: 120, leap: true }),
+          // item 11 — Rage Leap was a near-duplicate of the Barbarian's base Leap
+          // (both leap:true dashes). Replaced with a distinctive CHAIN PULL: hurl a
+          // chain and YANK a struck enemy to you — strong enough to rip a rooted foe
+          // free. A gap-closer that brings the fight to the bruiser, not vice-versa.
+          'bb_berserker_chain',
+          'Chain Pull',
+          '⛓️',
+          'Hurl a chain 220u for 28, yanking the struck enemy to you',
+          cone('Chain Pull', 7, 28, 220, 26, { pull: 200 }),
         ),
       ],
     },
@@ -771,8 +779,11 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'dr_land_wind',
           'Gust',
           '🌬️',
-          'A slowing 150u cyclone for 24',
-          nova('Gust', 8, 24, 150, { slowMult: 0.5, slowDuration: 2 }),
+          // item 11 — the wind now SHOVES: a light knockback (below FORCE_OVERCOME_ROOT,
+          // so it can't rip a rooted foe free — that's the Bull Rush's job) that
+          // scatters foes off the Druid. Wind that pushes, differentiating the class.
+          'A slowing 150u cyclone for 24 that blows foes back',
+          nova('Gust', 8, 24, 150, { slowMult: 0.5, slowDuration: 2, knockback: 90 }),
         ),
         sk(
           'dr_land_spring',

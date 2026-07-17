@@ -62,6 +62,7 @@ import {
   PLAYER_RADIUS,
   CLASS_COLORS,
   PROJECTILE_MAX_RANGE,
+  FORCE_OVERCOME_ROOT,
 } from '../core/constants';
 import type { SkillAreaKind } from '../core/types';
 
@@ -146,14 +147,14 @@ function applyDashLanding(world: World, p: Player, ab: PlayerAbilityDef): void {
     if (b.hp <= 0) continue;
     if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
       damageBoss(world, p, b, ab.landingDamage, world.critRoll(p));
-      applyStrikeRiders(world, b, ab);
+      applyStrikeRiders(world, p.pos, b, ab);
     }
   }
   for (const a of world.adds) {
     if (a.hp <= 0) continue;
     if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
       damageAdd(world, p, a, ab.landingDamage, world.critRoll(p));
-      applyStrikeRiders(world, a, ab);
+      applyStrikeRiders(world, p.pos, a, ab);
     }
   }
 }
@@ -250,7 +251,12 @@ function lowestHpAllyInRange(world: World, from: Vec2, range: number): Player | 
 /** Apply a strike's on-hit riders (stun / freeze / chill) to a boss or add.
  * Stuns honor diminishing returns (see combat.applyStun); slow riders let
  * Frostbrand-style upgrades chill through melee swings, not just projectiles. */
-function applyStrikeRiders(world: World, target: Boss | Add, ab: PlayerAbilityDef): void {
+function applyStrikeRiders(
+  world: World,
+  from: Vec2,
+  target: Boss | Add,
+  ab: PlayerAbilityDef,
+): void {
   if (ab.stun) applyStun(world, target, ab.stun, 'stun');
   if (ab.freeze) applyStun(world, target, ab.freeze, 'freeze');
   if (ab.slowMult != null && ab.slowMult < 1) {
@@ -261,6 +267,66 @@ function applyStrikeRiders(world: World, target: Boss | Add, ab: PlayerAbilityDe
   if (ab.castSlow != null && ab.castSlow > 1) {
     applyBuff(target, makeBuff('castSlow', ab.castSlow, ab.castSlowDuration ?? 3, 'castSlow'));
   }
+  // item 11 — forced movement: shove the enemy away from / pull it toward the caster.
+  applyForcedMove(world, from, target, ab);
+}
+
+/**
+ * item 11 — apply a player ability's FORCED MOVEMENT to a struck enemy: `knockback`
+ * shoves it away from `from` (the caster), `pull` drags it toward `from`. The
+ * root-vs-force rule: a rooted target holds fast UNLESS the impulse is strong
+ * enough (≥ FORCE_OVERCOME_ROOT) to rip it free — in which case the root is broken
+ * and the shove lands (it may re-root next tick if still in the zone). Shared by
+ * every delivery that strikes (melee / pbaoe / dash-landing).
+ */
+export function applyForcedMove(
+  world: World,
+  from: Vec2,
+  target: { pos: Vec2; buffs: import('../core/types').Buff[] },
+  ab: PlayerAbilityDef,
+): void {
+  const push = ab.knockback ?? 0;
+  const pull = ab.pull ?? 0;
+  if (push <= 0 && pull <= 0) return;
+  const impulse = push > 0 ? push : pull;
+  if (isRooted(target)) {
+    if (impulse < FORCE_OVERCOME_ROOT) return; // root wins — the target holds fast
+    // Strong enough to overpower the bind: rip the root off, then move.
+    target.buffs = target.buffs.filter((b) => b.kind !== 'root');
+  }
+  if (push > 0) applyImpulse(world, target, sub(target.pos, from), push);
+  else pullToward(world, target, from, pull);
+}
+
+/**
+ * item 11 — Dimension Door's teleport-swap: reflect every enemy within `range` of
+ * the mage across the mage's position (an enemy `d` ahead ends up `d` behind), a
+ * chaotic peel/reposition. The reflection displacement is 2·d, so a distant-enough
+ * foe is flung far; the root rule applies (a bound foe within FORCE_OVERCOME_ROOT/2
+ * of the mage stays put, a further one is ripped free). Flashes the swap radius.
+ */
+function applyDimensionSwap(world: World, p: Player, range: number, color: number): void {
+  emitSkillArea(world, p.id, color, {
+    kind: 'circle',
+    origin: { ...p.pos },
+    angle: 0,
+    range: 0,
+    radius: range,
+    halfAngle: 0,
+  });
+  const reflect = (t: { pos: Vec2; buffs: import('../core/types').Buff[]; radius: number }): void => {
+    const delta = sub(p.pos, t.pos); // shortest torus vector from the foe to the mage
+    const d = Math.hypot(delta.x, delta.y);
+    if (d > range || d < 1e-3) return;
+    const disp = 2 * d; // reflection lands the foe on the mage's far side
+    if (isRooted(t)) {
+      if (disp < FORCE_OVERCOME_ROOT) return; // a close-bound foe holds fast
+      t.buffs = t.buffs.filter((b) => b.kind !== 'root');
+    }
+    applyImpulse(world, t, delta, disp);
+  };
+  for (const b of world.bosses) if (b.hp > 0) reflect(b);
+  for (const a of world.adds) if (a.hp > 0) reflect(a);
 }
 
 // ---------------------------------------------------------------------------
@@ -315,14 +381,14 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
         if (pointInCone(b.pos, p.pos, aimAngle, range, half, b.radius)) {
           // item 5: a directional cone strike can crit AND backstab (rear arc).
           dealt += damageBoss(world, p, b, ab.damage, world.meleeHit(p, b));
-          applyStrikeRiders(world, b, ab);
+          applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
           dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p));
-          applyStrikeRiders(world, a, ab);
+          applyStrikeRiders(world, p.pos, a, ab);
         }
       }
       lifesteal(world, p, ab, dealt);
@@ -377,14 +443,14 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
         if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
           // item 5: a point-blank burst can crit (omnidirectional → no backstab).
           dealt += damageBoss(world, p, b, ab.damage, world.critRoll(p));
-          applyStrikeRiders(world, b, ab);
+          applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
           dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p));
-          applyStrikeRiders(world, a, ab);
+          applyStrikeRiders(world, p.pos, a, ab);
         }
       }
       lifesteal(world, p, ab, dealt);
@@ -414,6 +480,9 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
       if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
       if (ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
       world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
+      // item 11 — Dimension Door shuffles space: reflect nearby enemies across the
+      // mage's new position (front ↔ back), a teleport-swap peel.
+      if (ab.swap) applyDimensionSwap(world, p, ab.radius ?? 220, color);
       break;
     }
 
@@ -647,14 +716,14 @@ function resolveComposedAbility(
         if (b.hp <= 0) continue;
         if (pointInCone(b.pos, p.pos, aimAngle, range, half, b.radius)) {
           dealt += damageBoss(world, p, b, dmg, world.meleeHit(p, b));
-          applyStrikeRiders(world, b, ab);
+          applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
           dealt += damageAdd(world, p, a, dmg, world.critRoll(p));
-          applyStrikeRiders(world, a, ab);
+          applyStrikeRiders(world, p.pos, a, ab);
         }
       }
       lifesteal(world, p, ab, dealt);
@@ -678,14 +747,14 @@ function resolveComposedAbility(
         if (b.hp <= 0) continue;
         if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
           dealt += damageBoss(world, p, b, dmg, world.critRoll(p));
-          applyStrikeRiders(world, b, ab);
+          applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
           dealt += damageAdd(world, p, a, dmg, world.critRoll(p));
-          applyStrikeRiders(world, a, ab);
+          applyStrikeRiders(world, p.pos, a, ab);
         }
       }
       lifesteal(world, p, ab, dealt);

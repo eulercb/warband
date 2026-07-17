@@ -88,6 +88,9 @@ export type EffectComponent =
   /** item 7 — FLIGHT: lift the caster (self-buff) / allies airborne for `duration`
    * seconds, soaring over ground hazards + ground zones. A defensive/utility rider. */
   | { kind: 'flight'; duration: number }
+  /** item 11 — FORCED MOVEMENT on struck enemies: shove `distance` units away
+   * (`pull` false) or drag them toward the caster (`pull` true). A reposition rider. */
+  | { kind: 'shove'; distance: number; pull: boolean }
   | {
       kind: 'buff';
       target: BuffTarget;
@@ -202,6 +205,9 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.castSlow != null && def.castSlow > 1) {
       effects.push({ kind: 'castSlow', mult: def.castSlow, duration: def.castSlowDuration ?? 3 });
     }
+    // item 11 — a FORCED-MOVEMENT rider (knockback / pull).
+    if (def.knockback) effects.push({ kind: 'shove', distance: def.knockback, pull: false });
+    if (def.pull) effects.push({ kind: 'shove', distance: def.pull, pull: true });
     if (def.lifestealFrac) effects.push({ kind: 'lifesteal', frac: def.lifestealFrac });
     if (def.healOnUse) effects.push({ kind: 'healOnUse', amount: def.healOnUse });
     // Buffs — one component PER axis, so resistance is separable from +damage.
@@ -296,6 +302,10 @@ export function recompose(
       case 'flight': // item 7 — a flight-granting self/ally rider
         def.grantsFlight = e.duration;
         break;
+      case 'shove': // item 11 — forced movement (knockback / pull)
+        if (e.pull) def.pull = e.distance;
+        else def.knockback = e.distance;
+        break;
       case 'buff':
         if (e.defMult != null) def.buffDefMult = e.defMult;
         if (e.dmgMult != null) def.buffDamageMult = e.dmgMult;
@@ -367,6 +377,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return (e.mult - 1) * e.duration * 18; // soft tempo CC, priced by depth × time
     case 'flight':
       return e.duration * 10; // a defensive/mobility window (ignore ground hazards)
+    case 'shove':
+      return e.distance * 0.2; // a reposition — priced by displacement
     case 'buff':
       return buffValue(e);
     case 'zone':
@@ -477,6 +489,8 @@ function effectPhrase(e: EffectComponent): string {
       return `+${pct((e.mult - 1) * 100)} enemy wind-up for ${s(e.duration)}`;
     case 'flight':
       return `fly ${s(e.duration)}`;
+    case 'shove':
+      return e.pull ? `pull ${n(e.distance)}u` : `knock back ${n(e.distance)}u`;
     case 'buff':
       return buffPhrase(e);
     case 'zone':
@@ -712,6 +726,10 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
         kind === 'blink' ||
         kind === 'taunt'
       );
+    case 'shove':
+      // item 11 — forced movement rides a strike that lands ON an enemy: a
+      // melee/pbaoe hit or a dash's landing slam (which applies strike riders).
+      return kind === 'meleeCone' || kind === 'pbaoe' || kind === 'dash';
     case 'buff':
       return true; // buffs fit anywhere (folded into a zone / rallied / self)
     case 'zone':
@@ -1039,6 +1057,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, duration: e.duration * f }; // rigid: keeps its bite, sheds time
     case 'flight':
       return { ...e, duration: e.duration * f };
+    case 'shove':
+      return { ...e, distance: e.distance * f }; // scales the displacement
     case 'buff':
       return { ...e, duration: e.duration * f };
     case 'zone':
@@ -1129,6 +1149,10 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
         : e;
     case 'flight':
       return def.grantsFlight != null ? { ...e, duration: def.grantsFlight } : e;
+    case 'shove': {
+      const flat = e.pull ? def.pull : def.knockback;
+      return flat != null ? { ...e, distance: flat } : e;
+    }
     case 'buff': {
       // Update only the axes THIS buff already carries (so a mul-of-undefined that set a flat
       // axis the buff lacks is ignored) and keep its target + structure intact.
@@ -1183,6 +1207,8 @@ function capEffect(e: EffectComponent): EffectComponent {
       };
     case 'flight':
       return { ...e, duration: clamp(round1(e.duration), 2, 8) };
+    case 'shove':
+      return { ...e, distance: clamp(round5(e.distance), 40, 260) };
     case 'buff':
       return capBuff(e);
     case 'zone':

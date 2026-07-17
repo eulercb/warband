@@ -5,16 +5,24 @@ import {
   beamTick,
   withLength,
   applyImpulse,
+  applyForcedMove,
   stepPlayerGlide,
   PLAYER_RADIUS,
 } from '../src/engine/combat/abilities';
 import { World } from '../src/engine/world/world';
 import { getSubSkill } from '../src/engine/content/subclasses';
-import { getClass, describeAbility } from '../src/engine/content/classes';
+import { getClass, describeAbility, type PlayerAbilityDef } from '../src/engine/content/classes';
 import { getMonster, abilityById } from '../src/engine/content/monsters';
 import type { BossAbilityDef } from '../src/engine/content/monsters';
-import { makeBuff, applyBuff } from '../src/engine/combat/combat';
-import { ARENA_W, ARENA_H, ADD_HP, ADD_MOVE_SPEED, ADD_RADIUS } from '../src/engine/core/constants';
+import { makeBuff, applyBuff, isRooted } from '../src/engine/combat/combat';
+import {
+  ARENA_W,
+  ARENA_H,
+  ADD_HP,
+  ADD_MOVE_SPEED,
+  ADD_RADIUS,
+  FORCE_OVERCOME_ROOT,
+} from '../src/engine/core/constants';
 import type { Player, BossAction, ClassId, MonsterId, Add, Vec2 } from '../src/engine/core/types';
 
 // ---------------------------------------------------------------------------
@@ -894,6 +902,100 @@ describe('player selfBuff', () => {
     const fly = p.buffs.find((b) => b.kind === 'flight' && b.source === 'flight');
     expect(fly).toBeDefined();
     expect(fly!.remaining).toBeCloseTo(5, 6);
+  });
+});
+
+// ===========================================================================
+// Player forced movement — knockback / pull + the root-vs-force rule (item 11)
+// ===========================================================================
+describe('player forced movement (item 11)', () => {
+  const forceAb = (over: Partial<PlayerAbilityDef>): PlayerAbilityDef => ({
+    slot: 'a1',
+    name: 'x',
+    kind: 'meleeCone',
+    cooldown: 5,
+    damage: 0,
+    ...over,
+  });
+
+  it('knockback shoves an enemy away from the caster; pull drags it in', () => {
+    const w = mkWorld('knight');
+    const boss = w.boss!;
+    const from = { x: 500, y: 500 };
+    boss.pos = { x: 600, y: 500 }; // 100u to the caster's right
+    applyForcedMove(w, from, boss, forceAb({ knockback: 80 }));
+    expect(boss.pos.x).toBeGreaterThan(600); // pushed further away
+
+    boss.pos = { x: 600, y: 500 };
+    applyForcedMove(w, from, boss, forceAb({ pull: 40 }));
+    expect(boss.pos.x).toBeLessThan(600); // dragged back toward the caster
+  });
+
+  it('a rooted enemy resists a weak shove but a strong one rips it free (item 11)', () => {
+    const w = mkWorld('knight');
+    const boss = w.boss!;
+    const from = { x: 500, y: 500 };
+    boss.pos = { x: 600, y: 500 };
+    applyBuff(boss, makeBuff('root', 0, 3, 'zoneRoot'));
+
+    // Below the threshold → the root wins, the boss holds fast.
+    applyForcedMove(w, from, boss, forceAb({ knockback: FORCE_OVERCOME_ROOT - 1 }));
+    expect(boss.pos.x).toBe(600);
+    expect(isRooted(boss)).toBe(true);
+
+    // At/above the threshold → the shove overpowers the bind (root broken + moved).
+    applyForcedMove(w, from, boss, forceAb({ knockback: FORCE_OVERCOME_ROOT + 40 }));
+    expect(boss.pos.x).toBeGreaterThan(600);
+    expect(isRooted(boss)).toBe(false);
+  });
+
+  it('a knockback melee ability shoves a struck boss back (integration)', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    const boss = w.boss!;
+    tableOf(p).a3.knockback = 120; // Shield Bash + a shove
+    p.pos = { x: 800, y: 500 };
+    p.aim = { x: 1, y: 0 };
+    boss.pos = { x: 850, y: 500 }; // in the cone
+    const before = boss.pos.x;
+    resolvePlayerAbility(w, p, 'a3', ZERO);
+    expect(boss.pos.x).toBeGreaterThan(before); // knocked back
+  });
+
+  it('Dimension Door reflects a nearby enemy across the mage (swap)', () => {
+    const w = mkWorld('mage');
+    const p = w.players[0];
+    const boss = w.boss!;
+    w.obstacles = [];
+    // Make a2 a swap-blink parked so the mage stays put (range 0), enemy near it.
+    tableOf(p).a2 = {
+      slot: 'a2',
+      name: 'Door',
+      kind: 'blink',
+      cooldown: 6,
+      damage: 0,
+      range: 0,
+      swap: true,
+      radius: 300,
+    };
+    p.pos = { x: 800, y: 500 };
+    p.aim = { x: 1, y: 0 };
+    boss.pos = { x: 900, y: 500 }; // 100u to the mage's right
+    resolvePlayerAbility(w, p, 'a2', ZERO);
+    // Reflected across the mage → now ~100u to the LEFT.
+    expect(boss.pos.x).toBeLessThan(800);
+  });
+
+  it('Bull Rush / Chain Pull / Gust carry the intended forced movement (content)', () => {
+    expect(getSubSkill('kn_champion_charge')?.ability.knockback).toBeGreaterThanOrEqual(
+      FORCE_OVERCOME_ROOT,
+    );
+    expect(getSubSkill('bb_berserker_chain')?.ability.pull).toBeGreaterThan(0);
+    // The wind gust is a LIGHT push — below the root-break threshold by design.
+    const gust = getSubSkill('dr_land_wind')?.ability.knockback ?? 0;
+    expect(gust).toBeGreaterThan(0);
+    expect(gust).toBeLessThan(FORCE_OVERCOME_ROOT);
+    expect(getSubSkill('mg_abjurer_teleport')?.ability.swap).toBe(true);
   });
 });
 

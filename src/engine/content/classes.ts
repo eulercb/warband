@@ -51,6 +51,21 @@ export interface PlayerAbilityDef {
   slowMult?: number; // < 1 slows target move speed
   slowDuration?: number;
   /**
+   * item 11 — FORCED MOVEMENT on struck enemies (players can now shove, not just
+   * bosses). `knockback` pushes them this many units AWAY from the caster; `pull`
+   * drags them this many units TOWARD the caster. Mutually exclusive per ability.
+   * A rooted target resists unless the impulse ≥ FORCE_OVERCOME_ROOT (see
+   * combat/world). Applied by applyStrikeRiders on a melee/pbaoe/dash-landing hit.
+   */
+  knockback?: number;
+  pull?: number;
+  /**
+   * item 11 — a `blink` that SWAPS space: on arrival, every enemy within `range`
+   * of the caster is reflected across the caster's position (front ↔ back), a
+   * dimension-shuffle peel (Mage Dimension Door). Absent = a plain blink.
+   */
+  swap?: boolean;
+  /**
    * item 9 — SLUGGISH: a wind-up / cast-time factor (≥ 1) this ability inflicts on
    * enemies it affects, stretching their telegraphed wind-up (Warlock Hex, Rogue
    * Poison Vial). On a `groundZone` it rides the spawned zone (re-applied per tick
@@ -1013,6 +1028,10 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   if (def.castSlow != null && def.castSlow > 1) {
     parts.push(`+${n((def.castSlow - 1) * 100)}% enemy wind-up`);
   }
+  // item 11 — forced movement on struck enemies.
+  if (def.knockback) parts.push(`knock back ${n(def.knockback)}u`);
+  if (def.pull) parts.push(`pull in ${n(def.pull)}u`);
+  if (def.swap) parts.push('swap foes across you');
 
   // --- Buffs (damage/move up, damage-taken down) ---
   if (def.buffDamageMult) parts.push(`+${n((def.buffDamageMult - 1) * 100)}% dmg`);

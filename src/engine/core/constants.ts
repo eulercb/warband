@@ -80,6 +80,15 @@ export const MAX_SKILL_STACKS = 5;
  */
 export const CAST_SLOW_MAX = 1.75;
 
+/**
+ * item 11 — forced movement vs ROOT/bind. A rooted target is normally immovable
+ * (root/bind takes priority), but a forced-movement impulse of at least this many
+ * units RIPS it free — a strong Bull Rush / Chain Pull overpowers an Entangle,
+ * while a light gust does not. Keeps the two mechanics interacting rather than one
+ * flatly negating the other.
+ */
+export const FORCE_OVERCOME_ROOT = 150;
+
 // --- Arena ---
 export const ARENA_W = 1600; // world units
 export const ARENA_H = 1000;

@@ -183,6 +183,33 @@ describe('decompose / recompose round-trip', () => {
     expect(back.grantsFlight).toBe(5);
   });
 
+  // item 11 — FORCED MOVEMENT (knockback / pull) as a forge component.
+  it('decomposes a knockback / pull rider into a shove component and round-trips', () => {
+    const shove: Omit<PlayerAbilityDef, 'slot'> = {
+      name: 'bash',
+      kind: 'meleeCone',
+      cooldown: 6,
+      damage: 20,
+      range: 70,
+      halfAngleDeg: 45,
+      knockback: 160,
+    };
+    const comp = decompose(shove);
+    const sh = comp.effects.find((e) => e.kind === 'shove');
+    expect(sh?.kind === 'shove' && sh.distance).toBe(160);
+    expect(sh?.kind === 'shove' && sh.pull).toBe(false);
+    expect(componentValue(comp)).toBeGreaterThan(componentValue(decompose({ ...shove, knockback: undefined })));
+    expect(describeComposed(comp, 6)).toContain('knock back');
+    const back = recompose(comp, { slot: 'a3', name: 'x', cooldown: 6 });
+    expect(back.knockback).toBe(160);
+
+    // A pull round-trips to the pull field.
+    const pullComp = decompose({ ...shove, knockback: undefined, pull: 200 });
+    const pl = pullComp.effects.find((e) => e.kind === 'shove');
+    expect(pl?.kind === 'shove' && pl.pull).toBe(true);
+    expect(recompose(pullComp, { slot: 'a3', name: 'x', cooldown: 6 }).pull).toBe(200);
+  });
+
   // item 8 — the AIRBORNE zone facet survives decompose/recompose.
   it('carries a zone airborne flag through the round-trip', () => {
     const rain: Omit<PlayerAbilityDef, 'slot'> = {
