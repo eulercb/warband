@@ -9,23 +9,15 @@
  */
 import { useEffect, useRef } from 'react';
 import { useStore } from '../state/store';
-import { setReady, startFight, playUiSound, addBot, removeBot } from '../state/session';
 import Lobby from '../screens/Lobby';
 import HUD from './HUD';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
 import { MusterScene } from '../state/musterScene';
+import { computeCanStart, relayMusterTrigger } from './menuTriggers';
 import { Renderer } from '../../render/pipeline/renderer';
 import { InputManager } from '../../input/input';
 import { ARENA_W, ARENA_H, MAX_PLAYERS } from '../../engine/core/constants';
-import type { ClassId } from '../../engine/core/types';
-import type { AppState } from '../state/store';
-
-/** Whether the host may start now (no other humans, or all of them are ready). */
-function computeCanStart(s: Pick<AppState, 'players' | 'isHost'>): boolean {
-  const otherHumans = s.players.filter((p) => !p.isBot && !p.isHost);
-  return otherHumans.length === 0 || otherHumans.every((p) => p.ready);
-}
 
 export default function MusterHall() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -101,24 +93,7 @@ export default function MusterHall() {
 
         renderer.render(state);
 
-        for (const trig of scene.takeTriggers()) {
-          if (trig.kind === 'muster') {
-            setReady(!useStore.getState().localReady);
-            playUiSound('uiConfirm');
-          } else if (trig.kind === 'start') {
-            if (computeCanStart(useStore.getState())) startFight();
-          } else if (trig.kind === 'addbot' && trig.refId) {
-            // item 1: walk onto a class effigy to add a bot of that class.
-            if (useStore.getState().players.length < MAX_PLAYERS) {
-              addBot(trig.refId as ClassId);
-              playUiSound('uiConfirm');
-            }
-          } else if (trig.kind === 'removebot' && trig.refId) {
-            // Walk onto a band marker to remove that specific bot (host only).
-            removeBot(trig.refId);
-            playUiSound('uiClick');
-          }
-        }
+        for (const trig of scene.takeTriggers()) relayMusterTrigger(trig);
 
         if (now - lastHud > 66) {
           lastHud = now;

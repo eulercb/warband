@@ -374,7 +374,7 @@ describe('WarScene: run-mode modifier toggles', () => {
     );
   });
 
-  it('mirrors the store both ways: setters light the matching toggle', () => {
+  it('reflects the store setters on the pedestals (List view → scene sync)', () => {
     const scene = new WarScene('Aria', 'knight', EASY, false);
     scene.setGauntlet(true);
     scene.setHardcore(true);

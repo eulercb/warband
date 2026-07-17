@@ -42,13 +42,29 @@ const BOT_ROW_X1 = 1260;
 const BOT_EFFIGY_RADIUS = 28;
 const BOT_EFFIGY_TRIGGER = 46;
 
-// "Your band" removal markers (host only): one per added bot, in a centred row
-// BELOW the y=780 spawn — its own area, clear of the top add-bot row, the right
-// rune/war-horn column, and the left-docked lobby panel. y=880 keeps every marker
-// within ARENA_H/2 of the spawn (torus-safe). Spacing 200 ≫ 2·trigger, and any
-// re-centre when a bot leaves shifts the others by only spacing/2 (100u) — well
-// past a trigger radius — so removing one can never slide another under the hero.
-const REMOVE_ROW_Y = 880;
+// "Your band" removal markers (host only): one per added bot, in a centred row in
+// the open band just ABOVE the spawn — its own area, clear of the top add-bot row,
+// the right rune/war-horn column, and the left-docked lobby panel.
+//
+// TORUS SAFETY (why y=700, not below the spawn): the camera (renderer.frameOf) frames
+// the hero + EVERY station and takes each station's nearest torus copy relative to the
+// hero, so any station more than ARENA_H/2 (500u) from the hero wrap-flips to the far
+// side of the view. The host stands on the add-bot row (y≈313) while adding bots, so
+// the markers must stay within 500u of THAT row — not merely of the spawn: 700 − 313 =
+// 387 < 500. (An earlier y=880 was 880 − 313 = 567 > 500 and flipped the markers to the
+// top of the screen mid-add.) Placing them below the spawn instead is impossible: the
+// budget caps them at ~813, leaving only a sliver under the y=780 spawn that the hero
+// would spawn on top of.
+//
+// CASCADE SAFETY: spacing 200 ≫ 2·trigger. A re-centre when one bot leaves shifts each
+// survivor by exactly spacing/2 = 100u; the hero may dwell up to a trigger radius (46u)
+// off a marker's centre, so the worst-case closest approach of a survivor to the
+// standing hero is 100 − 46 = 54u > 46u trigger — a survivor can never slide into the
+// hero's trigger, so removing one bot can't cascade into removing another. (Do NOT
+// shrink the spacing below ~185 without re-checking this.) A same-frame drop of two
+// bots — only reachable by racing a DOM removal against a walkable one — is caught
+// separately by the re-lay arming guard in setBots.
+const REMOVE_ROW_Y = 700;
 const REMOVE_ROW_CX = 800;
 const REMOVE_ROW_SPACING = 200;
 const REMOVE_BOT_RADIUS = 28;
@@ -240,6 +256,19 @@ export class MusterScene {
         dwell: REMOVEBOT_DWELL_S,
       });
     });
+    // If this re-lay drops a marker onto the exact spot where the hero is already
+    // standing, arm it so it can't auto-commit until the hero steps off and walks
+    // back on. A single add/remove re-centres survivors ≥54u clear of the standing
+    // hero (see CASCADE SAFETY above), so this only bites when the roster jumps by
+    // more than one between frames — e.g. a DOM removal racing a walkable one — which
+    // could otherwise centre a survivor under the hero and cull it after the dwell.
+    const hp = this.heroPos();
+    if (hp) {
+      const under = this.stations.find(
+        (s) => s.kind === 'removebot' && dist(hp, s.pos) <= s.triggerRadius,
+      );
+      if (under) this.armedId = under.id;
+    }
   }
 
   frame(nowMs: number, frozen = false): RenderState {

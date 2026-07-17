@@ -11,13 +11,14 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
-import { hostGame, setMonster, setGauntlet, playUiSound } from '../state/session';
+import { hostGame, playUiSound } from '../state/session';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import HUD from './HUD';
 import HostSetup from '../screens/HostSetup';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
 import { WarScene } from '../state/warScene';
+import { relayWarTrigger } from './menuTriggers';
 import { Renderer } from '../../render/pipeline/renderer';
 import { InputManager } from '../../input/input';
 import { ARENA_W, ARENA_H, RUN_LENGTH } from '../../engine/core/constants';
@@ -171,38 +172,7 @@ export default function WarRoom() {
 
         renderer.render(state);
 
-        for (const trig of scene.takeTriggers()) {
-          if (trig.kind === 'boss' && trig.refId) {
-            setMonster(trig.refId as MonsterId);
-            playUiSound('uiClick');
-          } else if (trig.kind === 'single') {
-            setGauntlet(false);
-            playUiSound('uiClick');
-          } else if (trig.kind === 'gauntlet') {
-            setGauntlet(true);
-            playUiSound('uiClick');
-          } else if (trig.kind === 'hardcore') {
-            const s = useStore.getState();
-            s.setHardcore(!s.hardcore);
-            playUiSound('uiClick');
-          } else if (trig.kind === 'chaosforge') {
-            const s = useStore.getState();
-            s.setChaosForge(!s.chaosForge);
-            playUiSound('uiClick');
-          } else if (trig.kind === 'chaosdraft') {
-            const s = useStore.getState();
-            s.setRandomKits(!s.randomKits);
-            playUiSound('uiClick');
-          } else if (trig.kind === 'daily') {
-            // The walkable station toggles seedMode daily ↔ random; a 'custom'
-            // seed (needs text entry) stays List-view only, so from custom it lands on daily.
-            const s = useStore.getState();
-            s.setSeedMode(s.seedMode === 'daily' ? 'random' : 'daily');
-            playUiSound('uiClick');
-          } else if (trig.kind === 'host') {
-            doHost();
-          }
-        }
+        for (const trig of scene.takeTriggers()) relayWarTrigger(trig, doHost);
 
         if (now - lastPush > 90) {
           lastPush = now;
