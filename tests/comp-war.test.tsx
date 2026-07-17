@@ -50,6 +50,10 @@ beforeEach(() => {
   useStore.setState({
     monsterId: 'goblin',
     gauntlet: false,
+    hardcore: false,
+    chaosForge: false,
+    seedMode: 'random',
+    randomKits: false,
     localName: 'Alice',
     localClass: 'knight',
     showControls: false,
@@ -86,6 +90,39 @@ describe('<WarRoom>', () => {
     expect(container.querySelector('.wb-reward-banner-next')?.textContent ?? '').toContain(
       'gauntlet',
     );
+  });
+
+  it('summarises the active run-mode modifiers in the banner', () => {
+    useStore.setState({
+      gauntlet: true,
+      hardcore: true,
+      seedMode: 'daily',
+      chaosForge: true,
+      randomKits: false,
+    });
+    const { container } = render(<WarRoom />);
+    const banner = container.querySelector('.wb-reward-banner-next')?.textContent ?? '';
+    expect(banner).toContain('Hardcore');
+    expect(banner).toContain('Run of the Day');
+    expect(banner).toContain('Chaos Forge');
+    expect(banner).not.toContain('Chaos Draft');
+  });
+
+  it('omits gauntlet-only modifiers from the summary for a single fight', () => {
+    // Hardcore + Run of the Day are set, but a single fight ignores them; Chaos
+    // Forge (ungated) still shows.
+    useStore.setState({
+      gauntlet: false,
+      hardcore: true,
+      seedMode: 'daily',
+      chaosForge: true,
+    });
+    const { container } = render(<WarRoom />);
+    const banner = container.querySelector('.wb-reward-banner-next')?.textContent ?? '';
+    expect(banner).toContain('single fight');
+    expect(banner).toContain('Chaos Forge');
+    expect(banner).not.toContain('Hardcore');
+    expect(banner).not.toContain('Run of the Day');
   });
 
   it('opens the classic HostSetup form via the List view fallback', () => {

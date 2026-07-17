@@ -417,7 +417,14 @@ describe('flight state + AoE ground/airborne classification (items 7 & 8)', () =
 
   it('isAirborneZoneKind: only rain-of-arrows reaches flyers by default', () => {
     expect(isAirborneZoneKind('rainOfArrows')).toBe(true);
-    for (const k of ['voidZone', 'entangle', 'consecration', 'poison', 'sanctuary', 'antimagic'] as const) {
+    for (const k of [
+      'voidZone',
+      'entangle',
+      'consecration',
+      'poison',
+      'sanctuary',
+      'antimagic',
+    ] as const) {
       expect(isAirborneZoneKind(k)).toBe(false);
     }
   });

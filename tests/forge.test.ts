@@ -198,7 +198,9 @@ describe('decompose / recompose round-trip', () => {
     const sh = comp.effects.find((e) => e.kind === 'shove');
     expect(sh?.kind === 'shove' && sh.distance).toBe(160);
     expect(sh?.kind === 'shove' && sh.pull).toBe(false);
-    expect(componentValue(comp)).toBeGreaterThan(componentValue(decompose({ ...shove, knockback: undefined })));
+    expect(componentValue(comp)).toBeGreaterThan(
+      componentValue(decompose({ ...shove, knockback: undefined })),
+    );
     expect(describeComposed(comp, 6)).toContain('knock back');
     const back = recompose(comp, { slot: 'a3', name: 'x', cooldown: 6 });
     expect(back.knockback).toBe(160);

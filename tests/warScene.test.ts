@@ -292,6 +292,145 @@ describe('WarScene: commit edge cases', () => {
   });
 });
 
+describe('WarScene: run-mode modifier toggles', () => {
+  it('lays one pedestal per modifier toggle (hardcore / chaosforge / daily / chaosdraft)', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    const st = scene.frame(1000).stations ?? [];
+    for (const kind of ['hardcore', 'chaosforge', 'daily', 'chaosdraft'] as const) {
+      const matches = st.filter((x) => x.kind === kind);
+      expect(matches).toHaveLength(1);
+      expect(matches[0].portal).toBeFalsy(); // pedestals, not walk-into portals
+    }
+  });
+
+  it('keeps every toggle trigger ring clear of the other stations', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    const st = scene.frame(1000).stations ?? [];
+    const toggles = st.filter((x) =>
+      ['hardcore', 'chaosforge', 'daily', 'chaosdraft'].includes(x.kind),
+    );
+    for (const t of toggles) {
+      for (const other of st) {
+        if (other.id === t.id) continue;
+        const d = Math.hypot(t.pos.x - other.pos.x, t.pos.y - other.pos.y);
+        // Rings must not touch, or one station would channel another.
+        expect(d).toBeGreaterThan(t.triggerRadius + other.triggerRadius);
+      }
+    }
+  });
+
+  it('toggles an ungated modifier (Chaos Forge) on and back off across two visits', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    const first = scene.frame(1000);
+    const forge = (first.stations ?? []).find((x) => x.kind === 'chaosforge')!;
+    expect(forge.disabled).toBeFalsy(); // ungated — always active
+    // First visit: turns it ON.
+    let now = walkOnto(scene, forge.pos, 1000);
+    expect(scene.takeTriggers().filter((t) => t.kind === 'chaosforge')).toHaveLength(1);
+    expect((scene.frame(now).stations ?? []).find((x) => x.kind === 'chaosforge')?.selected).toBe(
+      true,
+    );
+    // Step away to re-arm, then a second visit turns it OFF.
+    now = walkOnto(scene, { x: 800, y: 780 }, now + 50);
+    scene.takeTriggers();
+    walkOnto(scene, forge.pos, now + 50);
+    expect(scene.takeTriggers().filter((t) => t.kind === 'chaosforge')).toHaveLength(1);
+    expect((scene.frame(60000).stations ?? []).find((x) => x.kind === 'chaosforge')?.selected).toBe(
+      false,
+    );
+  });
+
+  it('fires an ungated toggle only ONCE per visit (armed latch)', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    const first = scene.frame(1000);
+    const draft = (first.stations ?? []).find((x) => x.kind === 'chaosdraft')!;
+    walkOnto(scene, draft.pos, 1000, WAR_SELECT_DWELL_S * 4); // hold past several dwells
+    expect(scene.takeTriggers().filter((t) => t.kind === 'chaosdraft')).toHaveLength(1);
+  });
+
+  it('seals the gauntlet-only toggles (Hardcore / Run of the Day) for a single fight', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false); // gauntlet off
+    const first = scene.frame(1000);
+    for (const kind of ['hardcore', 'daily'] as const) {
+      const station = (first.stations ?? []).find((x) => x.kind === kind)!;
+      expect(station.disabled).toBe(true);
+      expect(station.selected).toBe(false);
+      expect(station.label).toContain('gauntlet only');
+      walkOnto(scene, station.pos, 1000 + 20000);
+      expect(scene.takeTriggers().some((t) => t.kind === kind)).toBe(false); // inert
+    }
+  });
+
+  it('unseals + toggles Hardcore once the run is a gauntlet', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    scene.setGauntlet(true); // as the gauntlet portal / List view would
+    const first = scene.frame(1000);
+    const hardcore = (first.stations ?? []).find((x) => x.kind === 'hardcore')!;
+    expect(hardcore.disabled).toBe(false);
+    walkOnto(scene, hardcore.pos, 1000);
+    expect(scene.takeTriggers().filter((t) => t.kind === 'hardcore')).toHaveLength(1);
+    expect((scene.frame(60000).stations ?? []).find((x) => x.kind === 'hardcore')?.selected).toBe(
+      true,
+    );
+  });
+
+  it('reflects the store setters on the pedestals (List view → scene sync)', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    scene.setGauntlet(true);
+    scene.setHardcore(true);
+    scene.setChaosForge(true);
+    scene.setSeedDaily(true);
+    scene.setRandomKits(true);
+    const st = scene.frame(1000).stations ?? [];
+    expect(st.find((x) => x.kind === 'hardcore')?.selected).toBe(true);
+    expect(st.find((x) => x.kind === 'chaosforge')?.selected).toBe(true);
+    expect(st.find((x) => x.kind === 'daily')?.selected).toBe(true);
+    expect(st.find((x) => x.kind === 'chaosdraft')?.selected).toBe(true);
+  });
+
+  it('a gauntlet-only toggle set ON still reads greyed + unlit while single-fight is chosen', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false); // gauntlet off
+    scene.setHardcore(true); // its store value persists, but it does not apply
+    scene.setSeedDaily(true);
+    const st = scene.frame(1000).stations ?? [];
+    for (const kind of ['hardcore', 'daily'] as const) {
+      const station = st.find((x) => x.kind === kind)!;
+      expect(station.disabled).toBe(true);
+      expect(station.selected).toBe(false); // ON underneath, but not lit while sealed
+    }
+    // Flip to a gauntlet and the preserved ON state lights up.
+    scene.setGauntlet(true);
+    const st2 = scene.frame(1100).stations ?? [];
+    expect(st2.find((x) => x.kind === 'hardcore')?.selected).toBe(true);
+    expect(st2.find((x) => x.kind === 'daily')?.selected).toBe(true);
+  });
+
+  it('toggles Run of the Day from any prior seed state (custom → daily)', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    scene.setGauntlet(true);
+    scene.setSeedDaily(false); // e.g. seedMode was 'custom' or 'random' — not daily
+    const first = scene.frame(1000);
+    const daily = (first.stations ?? []).find((x) => x.kind === 'daily')!;
+    expect(daily.selected).toBe(false);
+    walkOnto(scene, daily.pos, 1000);
+    expect(scene.takeTriggers().filter((t) => t.kind === 'daily')).toHaveLength(1);
+    expect((scene.frame(60000).stations ?? []).find((x) => x.kind === 'daily')?.selected).toBe(
+      true,
+    );
+  });
+
+  it('survives a tier switch with the toggle states intact', () => {
+    const scene = new WarScene('Aria', 'knight', EASY, false);
+    scene.setChaosForge(true);
+    const first = scene.frame(1000);
+    const hardGate = (first.stations ?? []).find((x) => x.kind === 'tier' && x.refId === 'hard')!;
+    walkOnto(scene, hardGate.pos, 1000); // rebuilds the station set
+    const st = scene.frame(60000).stations ?? [];
+    // The rebuilt Chaos Forge pedestal still reads its preserved ON state.
+    expect(st.find((x) => x.kind === 'chaosforge')?.selected).toBe(true);
+  });
+});
+
 describe('WarScene: hero-absent guards', () => {
   it('reports null / stays inert when the world has no hero', () => {
     const scene = new WarScene('Aria', 'knight', EASY, false);

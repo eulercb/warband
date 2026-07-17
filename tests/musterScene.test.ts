@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { MusterScene, MUSTER_DWELL_S, START_DWELL_S } from '../src/ui/state/musterScene';
+import {
+  MusterScene,
+  MUSTER_DWELL_S,
+  START_DWELL_S,
+  REMOVEBOT_DWELL_S,
+} from '../src/ui/state/musterScene';
 import { CLASS_IDS } from '../src/engine/content/classes';
 import { ARENA_W, ARENA_H } from '../src/engine/core/constants';
 import type { InputCommand, RenderState, Vec2 } from '../src/engine/core/types';
@@ -167,6 +172,171 @@ describe('MusterScene: add-bot effigies (item 1)', () => {
     expect(eff.label).toBe('BAND FULL');
     walkOnto(scene, eff.pos, 1000);
     expect(scene.takeTriggers().some((t) => t.kind === 'addbot')).toBe(false);
+  });
+});
+
+describe('MusterScene: your-band removal markers', () => {
+  const BAND = [
+    { peerId: 'bot1', classId: 'mage' as const },
+    { peerId: 'bot2', classId: 'mage' as const },
+    { peerId: 'bot3', classId: 'ranger' as const },
+  ];
+
+  it('projects one removal marker per bot for the host (labelled by class)', () => {
+    const scene = new MusterScene('Aria', 'knight', true);
+    scene.setBots(BAND);
+    const markers = (scene.frame(1000).stations ?? []).filter((s) => s.kind === 'removebot');
+    expect(markers).toHaveLength(3);
+    expect(markers.map((m) => m.refId)).toEqual(['bot1', 'bot2', 'bot3']);
+    expect(new Set(markers.map((m) => m.label))).toEqual(
+      new Set(['✕ Mage bot', '✕ Mage bot', '✕ Ranger bot']),
+    );
+    for (const m of markers) {
+      expect(m.portal).toBe(false); // pedestals, not walk-into portals
+      expect(m.disabled).toBeFalsy(); // always removable
+      // Torus-safe: on the same tile as the y=780 spawn (no nearest-copy flip).
+      expect(Math.abs(780 - m.pos.y)).toBeLessThan(ARENA_H / 2);
+      expect(Math.abs(800 - m.pos.x)).toBeLessThan(ARENA_W / 2);
+    }
+  });
+
+  it('adds no removal markers for a client (only the host removes bots)', () => {
+    const scene = new MusterScene('Aria', 'knight', false);
+    scene.setBots(BAND);
+    expect((scene.frame(1000).stations ?? []).filter((s) => s.kind === 'removebot')).toHaveLength(
+      0,
+    );
+  });
+
+  it('keeps the markers within a half-arena of the add-bot row (no torus wrap-flip)', () => {
+    // The host stands ON the add-bot row while adding bots; the camera (frameOf) takes
+    // each station's nearest torus copy relative to the hero, so a marker more than
+    // ARENA_H/2 from that row wrap-flips to the top of the screen. This guards the
+    // regression where the removal row (y=880) was 567u from the add-bot row (>500).
+    const scene = new MusterScene('Aria', 'knight', true);
+    scene.setBots(BAND);
+    const st = scene.frame(1000).stations ?? [];
+    const effigies = st.filter((s) => s.kind === 'addbot');
+    const markers = st.filter((s) => s.kind === 'removebot');
+    expect(effigies.length).toBeGreaterThan(0);
+    expect(markers.length).toBe(3);
+    for (const m of markers) {
+      for (const e of effigies) {
+        expect(Math.abs(m.pos.y - e.pos.y)).toBeLessThan(ARENA_H / 2);
+      }
+    }
+  });
+
+  it('keeps every marker trigger ring clear of the hall stations and each other', () => {
+    const scene = new MusterScene('Aria', 'knight', true);
+    scene.setBots(BAND);
+    const st = scene.frame(1000).stations ?? [];
+    const markers = st.filter((s) => s.kind === 'removebot');
+    for (const m of markers) {
+      for (const other of st) {
+        if (other.id === m.id) continue;
+        const d = Math.hypot(m.pos.x - other.pos.x, m.pos.y - other.pos.y);
+        expect(d).toBeGreaterThan(m.triggerRadius + other.triggerRadius);
+      }
+    }
+  });
+
+  it('removes the specific bot the host walks onto (emits its peerId)', () => {
+    // The task's worked example: 2 Mage bots + 1 Ranger → three markers; walk onto
+    // one to cull just that bot.
+    const scene = new MusterScene('Aria', 'knight', true);
+    scene.setBots(BAND);
+    const ranger = (scene.frame(1000).stations ?? []).find(
+      (s) => s.kind === 'removebot' && s.refId === 'bot3',
+    )!;
+    walkOnto(scene, ranger.pos, 1000, REMOVEBOT_DWELL_S + 0.2);
+    const trigs = scene.takeTriggers().filter((t) => t.kind === 'removebot');
+    expect(trigs).toHaveLength(1);
+    expect(trigs[0].refId).toBe('bot3');
+  });
+
+  it('fires a removal only ONCE per visit (armed latch)', () => {
+    const scene = new MusterScene('Aria', 'knight', true);
+    scene.setBots([{ peerId: 'bot1', classId: 'mage' }]);
+    const marker = (scene.frame(1000).stations ?? []).find((s) => s.kind === 'removebot')!;
+    walkOnto(scene, marker.pos, 1000, REMOVEBOT_DWELL_S * 4); // hold past several dwells
+    expect(scene.takeTriggers().filter((t) => t.kind === 'removebot')).toHaveLength(1);
+  });
+
+  it('re-lays the markers when the band changes (removed bot drops out)', () => {
+    const scene = new MusterScene('Aria', 'knight', true);
+    scene.setBots(BAND);
+    expect((scene.frame(1000).stations ?? []).filter((s) => s.kind === 'removebot')).toHaveLength(
+      3,
+    );
+    // The host removed bot2 → the store feeds the shorter roster next frame.
+    scene.setBots([BAND[0], BAND[2]]);
+    const markers = (scene.frame(1100).stations ?? []).filter((s) => s.kind === 'removebot');
+    expect(markers.map((m) => m.refId)).toEqual(['bot1', 'bot3']);
+  });
+
+  it('does not duplicate markers when fed the same band repeatedly (change-guard no-op)', () => {
+    // Repeated identical feeds hit the lastBotsKey early-return, so the marker set
+    // stays at exactly one-per-bot rather than accreting.
+    const scene = new MusterScene('Aria', 'knight', true);
+    scene.setBots(BAND);
+    scene.setBots(BAND);
+    scene.setBots(BAND);
+    expect((scene.frame(1000).stations ?? []).filter((s) => s.kind === 'removebot')).toHaveLength(
+      3,
+    );
+  });
+
+  it('arms a re-laid marker that lands on the standing hero (no accidental cull on churn)', () => {
+    // Guards the mixed-input race: a DOM removal + a walkable removal can drop the
+    // roster by more than one in a single frame-gap, re-centring a survivor onto the
+    // exact spot where the host is still standing. The re-lay arming guard must stop
+    // it from auto-committing until the host steps off and walks back on.
+    const scene = new MusterScene('Aria', 'knight', true);
+    scene.setBots([{ peerId: 'a', classId: 'mage' }]);
+    const p = (scene.frame(1000).stations ?? []).find((s) => s.kind === 'removebot')!.pos;
+    // Park the hero exactly on that marker, then churn the roster under it.
+    (scene as unknown as { world: { players: { pos: Vec2 }[] } }).world.players[0].pos = { ...p };
+    scene.setBots([{ peerId: 'b', classId: 'ranger' }]); // a fresh bot re-lays onto the same slot
+    const marker = (scene.frame(1050).stations ?? []).find((s) => s.kind === 'removebot')!;
+    expect(marker.refId).toBe('b');
+    expect(marker.pos).toEqual(p); // dropped onto the hero's spot
+    // Standing in place must NOT remove it (armed on re-lay).
+    let now = 1050;
+    for (let i = 0; i < 30; i++) {
+      scene.setInput(inp({ move: { x: 0, y: 0 } }));
+      now += 50;
+      scene.frame(now);
+    }
+    expect(scene.takeTriggers().filter((t) => t.kind === 'removebot')).toHaveLength(0);
+    // But it re-arms normally: stepping off and walking back on still removes it.
+    const off = walkOnto(scene, { x: 800, y: 780 }, now + 50);
+    scene.takeTriggers();
+    walkOnto(scene, p, off + 50, REMOVEBOT_DWELL_S + 0.2);
+    expect(scene.takeTriggers().some((t) => t.kind === 'removebot' && t.refId === 'b')).toBe(true);
+  });
+
+  it('re-centres a shrinking band without sliding a marker onto the standing hero', () => {
+    // Removing one bot shifts the rest by only half the spacing — comfortably past a
+    // trigger radius — so the hero standing where a bot was is never caught by another.
+    const scene = new MusterScene('Aria', 'knight', true);
+    scene.setBots(BAND);
+    const before = (scene.frame(1000).stations ?? []).filter((s) => s.kind === 'removebot');
+    const removed = before.find((m) => m.refId === 'bot2')!; // the middle marker
+    scene.setBots([BAND[0], BAND[2]]);
+    const after = (scene.frame(1100).stations ?? []).filter((s) => s.kind === 'removebot');
+    for (const m of after) {
+      const d = Math.hypot(m.pos.x - removed.pos.x, m.pos.y - removed.pos.y);
+      expect(d).toBeGreaterThan(m.triggerRadius);
+    }
+  });
+
+  it('labels the add-bot effigies as bot-adders', () => {
+    const scene = new MusterScene('Aria', 'knight', true);
+    const eff = (scene.frame(1000).stations ?? []).find(
+      (s) => s.kind === 'addbot' && s.refId === 'mage',
+    )!;
+    expect(eff.label).toBe('+ Mage bot');
   });
 });
 

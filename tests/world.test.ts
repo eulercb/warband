@@ -444,7 +444,13 @@ describe('world: progression-aware boss sustain + invuln (items 2 & 5)', () => {
       },
     ];
     applyBuff(flyer, makeBuff('flight', 0, 5, 'flight'));
-    w.step(DT, new Map([['a', inp()], ['b', inp()]]));
+    w.step(
+      DT,
+      new Map([
+        ['a', inp()],
+        ['b', inp()],
+      ]),
+    );
     expect(walker.buffs.some((b) => b.source === 'terrain')).toBe(true); // grounded: mired
     expect(flyer.buffs.some((b) => b.source === 'terrain')).toBe(false); // airborne: soars over
   });

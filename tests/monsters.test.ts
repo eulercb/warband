@@ -633,9 +633,9 @@ describe('boss decide: decideBy guard branches', () => {
     // item 7 — takeWing is the top periodic beat; treat it as spent to exercise the
     // ground rotation.
     const noWing = (id: string): boolean => id !== 'takeWing';
-    expect(
-      g.decide(ctx({ hpFrac: 1, distToTarget: 135, anyInMelee: false, usable: noWing })),
-    ).toBe('divebomb');
+    expect(g.decide(ctx({ hpFrac: 1, distToTarget: 135, anyInMelee: false, usable: noWing }))).toBe(
+      'divebomb',
+    );
     // hp>=0.5, not far(>130) at 120u, not in melee → no rule fires.
     expect(
       g.decide(ctx({ hpFrac: 1, distToTarget: 120, anyInMelee: false, usable: noWing })),

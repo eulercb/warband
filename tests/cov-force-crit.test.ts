@@ -280,9 +280,9 @@ describe('fireball AoE impact crits (item 5)', () => {
     expect(1000 - add.hp).toBeCloseTo(30 * CRIT_MULT_BASE, 4);
 
     // Both strikes are flagged as crits on their hit events.
-    expect(
-      w.events.some((e) => e.t === 'hit' && e.targetId === boss.id && e.crit === true),
-    ).toBe(true);
+    expect(w.events.some((e) => e.t === 'hit' && e.targetId === boss.id && e.crit === true)).toBe(
+      true,
+    );
     expect(w.events.some((e) => e.t === 'hit' && e.targetId === add.id && e.crit === true)).toBe(
       true,
     );

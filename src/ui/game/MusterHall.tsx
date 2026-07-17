@@ -9,23 +9,15 @@
  */
 import { useEffect, useRef } from 'react';
 import { useStore } from '../state/store';
-import { setReady, startFight, playUiSound, addBot } from '../state/session';
 import Lobby from '../screens/Lobby';
 import HUD from './HUD';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
 import { MusterScene } from '../state/musterScene';
+import { computeCanStart, relayMusterTrigger } from './menuTriggers';
 import { Renderer } from '../../render/pipeline/renderer';
 import { InputManager } from '../../input/input';
 import { ARENA_W, ARENA_H, MAX_PLAYERS } from '../../engine/core/constants';
-import type { ClassId } from '../../engine/core/types';
-import type { AppState } from '../state/store';
-
-/** Whether the host may start now (no other humans, or all of them are ready). */
-function computeCanStart(s: Pick<AppState, 'players' | 'isHost'>): boolean {
-  const otherHumans = s.players.filter((p) => !p.isBot && !p.isHost);
-  return otherHumans.length === 0 || otherHumans.every((p) => p.ready);
-}
 
 export default function MusterHall() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -72,6 +64,13 @@ export default function MusterHall() {
         scene.setReady(store.localReady);
         scene.setCanStart(computeCanStart(store));
         scene.setPartyFull(store.players.length >= MAX_PLAYERS); // item 1: grey out add-bot effigies
+        // Feed the live bot roster so the walkable "your band" removal markers track
+        // adds/removes (host-only; the scene ignores this for a client).
+        scene.setBots(
+          store.players
+            .filter((p) => p.isBot)
+            .map((p) => ({ peerId: p.peerId, classId: p.classId })),
+        );
         if (store.localClass !== lastClass) {
           lastClass = store.localClass;
           scene.setClass(store.localClass);
@@ -94,20 +93,7 @@ export default function MusterHall() {
 
         renderer.render(state);
 
-        for (const trig of scene.takeTriggers()) {
-          if (trig.kind === 'muster') {
-            setReady(!useStore.getState().localReady);
-            playUiSound('uiConfirm');
-          } else if (trig.kind === 'start') {
-            if (computeCanStart(useStore.getState())) startFight();
-          } else if (trig.kind === 'addbot' && trig.refId) {
-            // item 1: walk onto a class effigy to add a bot of that class.
-            if (useStore.getState().players.length < MAX_PLAYERS) {
-              addBot(trig.refId as ClassId);
-              playUiSound('uiConfirm');
-            }
-          }
-        }
+        for (const trig of scene.takeTriggers()) relayMusterTrigger(trig);
 
         if (now - lastHud > 66) {
           lastHud = now;
@@ -133,7 +119,9 @@ export default function MusterHall() {
       <HUD />
       <div className="wb-muster-hint" aria-hidden="true">
         Step onto the muster rune to ready up — the war-horn starts the fight.
-        {isHost ? ' Walk onto a class effigy to add a bot of that class.' : ''}
+        {isHost
+          ? ' Fill your band with bots — step on a class effigy up top to add that class, then step on a bot marker in your band below to send it home.'
+          : ''}
       </div>
       <Lobby />
     </div>

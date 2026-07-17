@@ -1003,7 +1003,9 @@ export function drawStation(
   drawEffigyStation(g, color, st, x, y, scale, timeSec);
 }
 
-/** Class effigy: a tall banner-shard in the class colour on a pedestal. */
+/** Class effigy / modifier toggle: a tall banner-shard in the accent colour on a
+ *  pedestal. A disabled effigy (a full add-bot slot, or a gauntlet-only modifier
+ *  while single-fight is chosen) greys out and dims, mirroring the sealed portal. */
 function drawEffigyStation(
   g: Graphics,
   color: number,
@@ -1014,21 +1016,23 @@ function drawEffigyStation(
   timeSec: number,
 ): void {
   const r = st.radius * scale;
-  const selected = st.selected === true;
-  const active = st.active === true;
+  const disabled = st.disabled === true;
+  const selected = st.selected === true && !disabled;
+  const active = st.active === true && !disabled;
+  const shardColor = disabled ? 0x555560 : color;
   g.ellipse(x, y + r * 0.5, r * 1.1, r * 0.45).fill({ color: 0x000000, alpha: 0.32 });
   g.ellipse(x, y + r * 0.34, r * 0.9, r * 0.34).fill({ color: 0x2e2a36 });
   g.ellipse(x, y + r * 0.34, r * 0.9, r * 0.34).stroke({ width: 1.5, color: 0x14121a, alpha: 0.9 });
-  const bob = Math.sin(timeSec * 1.8 + st.id) * 0.1 * r;
+  const bob = disabled ? 0 : Math.sin(timeSec * 1.8 + st.id) * 0.1 * r;
   const topY = y - r * 1.15 - bob;
   const midY = y - r * 0.1;
-  const alpha = selected ? 1 : active ? 0.95 : 0.72;
+  const alpha = disabled ? 0.4 : selected ? 1 : active ? 0.95 : 0.72;
   g.moveTo(x, topY)
     .lineTo(x + r * 0.5, midY)
     .lineTo(x, y + r * 0.15)
     .lineTo(x - r * 0.5, midY)
     .closePath()
-    .fill({ color, alpha });
+    .fill({ color: shardColor, alpha });
   g.moveTo(x, topY)
     .lineTo(x + r * 0.5, midY)
     .lineTo(x, midY)

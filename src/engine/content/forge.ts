@@ -213,7 +213,11 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.pull) effects.push({ kind: 'shove', distance: def.pull, pull: true });
     // item 13 — a CRIT lean rider (precision strike).
     if (def.critChanceBonus || def.critMultBonus) {
-      effects.push({ kind: 'crit', chance: def.critChanceBonus ?? 0, mult: def.critMultBonus ?? 0 });
+      effects.push({
+        kind: 'crit',
+        chance: def.critChanceBonus ?? 0,
+        mult: def.critMultBonus ?? 0,
+      });
     }
     if (def.lifestealFrac) effects.push({ kind: 'lifesteal', frac: def.lifestealFrac });
     if (def.healOnUse) effects.push({ kind: 'healOnUse', amount: def.healOnUse });
@@ -956,10 +960,12 @@ function mergeBuffs(effects: EffectComponent[]): EffectComponent[] {
       out.push(merged); // held by reference; later same-target buffs mutate it in place
     } else {
       if (e.defMult != null) {
-        existing.defMult = existing.defMult != null ? Math.min(existing.defMult, e.defMult) : e.defMult;
+        existing.defMult =
+          existing.defMult != null ? Math.min(existing.defMult, e.defMult) : e.defMult;
       }
       if (e.dmgMult != null) {
-        existing.dmgMult = existing.dmgMult != null ? Math.max(existing.dmgMult, e.dmgMult) : e.dmgMult;
+        existing.dmgMult =
+          existing.dmgMult != null ? Math.max(existing.dmgMult, e.dmgMult) : e.dmgMult;
       }
       if (e.moveMult != null) {
         existing.moveMult =
@@ -1324,7 +1330,10 @@ function addBoonComponents(
   if (def.pull != null && !has((e) => e.kind === 'shove' && e.pull)) {
     out.push({ kind: 'shove', distance: sane(def.pull, 40, 260, 120), pull: true });
   }
-  if ((def.critChanceBonus != null || def.critMultBonus != null) && !has((e) => e.kind === 'crit')) {
+  if (
+    (def.critChanceBonus != null || def.critMultBonus != null) &&
+    !has((e) => e.kind === 'crit')
+  ) {
     out.push({
       kind: 'crit',
       chance: sane(def.critChanceBonus, 0, 0.5, 0.15),
@@ -1340,7 +1349,11 @@ function addBoonComponents(
   if (def.healOnUse != null && def.healOnUse > 0 && !has((e) => e.kind === 'healOnUse')) {
     out.push({ kind: 'healOnUse', amount: Math.max(1, Math.round(def.healOnUse)) });
   }
-  if (def.landingDamage != null && def.landingDamage > 0 && !has((e) => e.kind === 'landingDamage')) {
+  if (
+    def.landingDamage != null &&
+    def.landingDamage > 0 &&
+    !has((e) => e.kind === 'landingDamage')
+  ) {
     out.push({ kind: 'landingDamage', amount: Math.max(1, Math.round(def.landingDamage)) });
   }
 

@@ -30,7 +30,11 @@ function mkAdd(w: World, pos: Vec2): Add {
   return a;
 }
 function solo(cls: ClassId): World {
-  return new World({ monsterId: 'dragon', seed: 1, players: [{ peerId: 'a', name: 'A', classId: cls }] });
+  return new World({
+    monsterId: 'dragon',
+    seed: 1,
+    players: [{ peerId: 'a', name: 'A', classId: cls }],
+  });
 }
 function input(over: Partial<InputCommand['buttons']>): InputCommand {
   return {
