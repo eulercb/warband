@@ -158,7 +158,15 @@ export type BuffKind =
   | 'stun'
   | 'invuln'
   /** Silenced (item 28): all abilities except the basic attack are disabled. */
-  | 'silence';
+  | 'silence'
+  /**
+   * item 9 — SLUGGISH: stretches the target's wind-up / cast time. `mult` is a
+   * DURATION factor ≥ 1 (1.4 = wind-ups take 40% longer); it slows the countdown
+   * of a player's cast bar AND a boss's telegraphed wind-up, so a curse/venom can
+   * buy the band reaction time without paralysing the target. Never affects a
+   * boss's active channel (that would prolong a beam) — wind-up only. Stacked
+   * factors are capped (combat.castTimeFactor) so it can't lock a caster out. */
+  | 'castSlow';
 
 export interface Buff {
   kind: BuffKind;
@@ -502,6 +510,8 @@ export interface ProjectileImpact {
   slowMult?: number;
   slowDuration?: number;
   roots?: boolean;
+  /** item 9 — a wind-up-slow factor (≥ 1) the bloomed zone applies to enemies inside. */
+  castSlow?: number;
   allyBuff?: ZoneAllyBuff;
 }
 
@@ -524,6 +534,10 @@ export interface Projectile {
   slowDuration?: number;
   /** Stun/"freeze" seconds applied to whatever the projectile strikes. */
   freeze?: number;
+  /** item 9 — wind-up-slow factor (≥ 1) applied to whatever the projectile strikes
+   * (a forged cursed bolt); with `castSlowDuration`. Absent = none. */
+  castSlow?: number;
+  castSlowDuration?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
   /**
@@ -829,6 +843,13 @@ export interface GroundZone {
    * 0 = a plain hazard. Boss-side zones only (players don't silence bosses).
    */
   silence?: number;
+  /**
+   * item 9 — SLUGGISH zone: a wind-up-time factor (≥ 1) re-applied each tick to an
+   * opposing-side creature standing inside, stretching its cast / wind-up (Warlock
+   * Hex, Rogue Poison Vial). Lingers ~slowDuration after leaving (source
+   * 'zoneCastSlow'). Absent / ≤ 1 = a plain hazard.
+   */
+  castSlow?: number;
   /**
    * Chaos Forge — a buff this zone refreshes each tick on allied players standing
    * inside it (a synthesized "sanctuary of resistance"). Player-side zones only;

@@ -25,6 +25,7 @@ import {
   REVIVE_MIN_TIME,
   REVIVE_COREVIVE_BONUS,
   REVIVE_COREVIVE_FALLOFF,
+  CAST_SLOW_MAX,
 } from '../core/constants';
 
 /** Minimal structural sink so combat needn't import the World. */
@@ -77,6 +78,19 @@ export function buffMult(entity: { buffs: Buff[] }, kind: BuffKind): number {
 export function hasBuff(entity: { buffs: Buff[] }, kind: BuffKind): boolean {
   for (const b of entity.buffs) if (b.kind === kind) return true;
   return false;
+}
+
+/**
+ * item 9 — the wind-up / cast-time factor a SLUGGISH-debuffed entity suffers: the
+ * product of every `castSlow` buff on it (each ≥ 1), CLAMPED to CAST_SLOW_MAX so
+ * a stack of sources can never lock a caster out. 1 (neutral) when un-debuffed. A
+ * cast bar / boss wind-up advances at `dt / castTimeFactor`, so a factor of 1.4
+ * makes it take 40% longer. Pure; shared by the player-cast and boss-wind-up ticks.
+ */
+export function castTimeFactor(entity: { buffs: Buff[] }): number {
+  let f = 1;
+  for (const b of entity.buffs) if (b.kind === 'castSlow') f *= b.mult;
+  return Math.min(CAST_SLOW_MAX, Math.max(1, f));
 }
 
 /**

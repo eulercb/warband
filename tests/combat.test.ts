@@ -16,9 +16,10 @@ import {
   isControlBuff,
   isCcImmune,
   cleanseControl,
+  castTimeFactor,
   BOSS_INVULN_SOURCE,
 } from '../src/engine/combat/combat';
-import { REVIVE_TIME, REVIVE_MIN_TIME } from '../src/engine/core/constants';
+import { REVIVE_TIME, REVIVE_MIN_TIME, CAST_SLOW_MAX } from '../src/engine/core/constants';
 
 function mkPlayer(over: Partial<Player> = {}): Player {
   return {
@@ -398,6 +399,34 @@ describe('boss invuln CC cleanse + immunity (item 1)', () => {
     expect(applyStun(sink(), p, 1, 'bossStun')).toBeCloseTo(1, 6);
     applyBuff(p, makeBuff('moveSpeed', 0.5, 2, 'bossSlow'));
     expect(p.buffs.some((b) => b.source === 'bossSlow')).toBe(true);
+  });
+});
+
+describe('castTimeFactor — SLUGGISH wind-up slow (item 9)', () => {
+  it('is 1 (neutral) with no castSlow buff', () => {
+    expect(castTimeFactor(mkBoss())).toBe(1);
+    expect(castTimeFactor(mkPlayer())).toBe(1);
+  });
+
+  it('returns the product of castSlow buffs', () => {
+    const boss = mkBoss();
+    applyBuff(boss, makeBuff('castSlow', 1.4, 3, 'zoneCastSlow'));
+    expect(castTimeFactor(boss)).toBeCloseTo(1.4, 6);
+    applyBuff(boss, makeBuff('castSlow', 1.2, 3, 'castSlow')); // a second source
+    expect(castTimeFactor(boss)).toBeCloseTo(Math.min(CAST_SLOW_MAX, 1.68), 6);
+  });
+
+  it('clamps stacked sources to CAST_SLOW_MAX so a caster is never locked out', () => {
+    const boss = mkBoss();
+    applyBuff(boss, makeBuff('castSlow', 1.7, 3, 'a'));
+    applyBuff(boss, makeBuff('castSlow', 1.7, 3, 'b'));
+    expect(castTimeFactor(boss)).toBe(CAST_SLOW_MAX); // 2.89 → clamped
+  });
+
+  it('never drops below 1 even if a source somehow carries < 1', () => {
+    const boss = mkBoss();
+    applyBuff(boss, makeBuff('castSlow', 0.5, 3, 'weird'));
+    expect(castTimeFactor(boss)).toBe(1);
   });
 });
 

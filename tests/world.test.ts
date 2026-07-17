@@ -367,6 +367,75 @@ describe('world: progression-aware boss sustain + invuln (items 2 & 5)', () => {
     expect(boss.hp).toBe(hp);
   });
 
+  it('a boss standing in a SLUGGISH zone gains a castSlow buff (item 9)', () => {
+    const w = new World({
+      monsterId: 'troll', // a grounded boss so a ground zone reaches it
+      seed: 7,
+      players: [{ peerId: 'a', name: 'A', classId: 'warlock' }],
+    });
+    w.terrain = [];
+    const boss = w.boss!;
+    // A Hex-style cast-slow zone parked on the boss (big enough it can't drift out).
+    spawnZone(w, {
+      kind: 'poison',
+      pos: { ...boss.pos },
+      radius: 420,
+      side: 'player',
+      ownerId: w.players[0].id,
+      damagePerTick: 0,
+      healPerTick: 0,
+      slowMult: 1,
+      slowDuration: 0,
+      castSlow: 1.5,
+      duration: 6,
+    });
+    for (let i = 0; i < 12; i++) w.step(DT, new Map([['a', inp()]])); // > one zone tick
+    expect(boss.buffs.some((b) => b.kind === 'castSlow' && b.mult === 1.5)).toBe(true);
+  });
+
+  it('a SLUGGISH boss winds up slower (item 9)', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 3,
+      players: [{ peerId: 'a', name: 'A', classId: 'warlock' }],
+    });
+    w.terrain = [];
+    const boss = w.boss!;
+    const def = getMonster('dragon');
+    const abId = Object.values(def.abilities).find(Boolean)!.id;
+    applyBuff(boss, makeBuff('castSlow', 1.5, 5, 'zoneCastSlow'));
+    // Force a fresh, long wind-up so the tick can't resolve it.
+    boss.action = {
+      kind: 'windup',
+      abilityId: abId,
+      remaining: 2,
+      total: 2,
+      targetId: w.players[0].id,
+      targetPos: { ...w.players[0].pos },
+      aimAngle: 0,
+      channelAccum: 0,
+    };
+    w.step(DT, new Map([['a', inp()]]));
+    // The wind-up advanced at dt / 1.5, not the full dt.
+    expect(boss.action.remaining).toBeCloseTo(2 - DT / 1.5, 3);
+  });
+
+  it("a SLUGGISH hero's cast bar advances slower (item 9)", () => {
+    const w = new World({
+      monsterId: 'dummy',
+      seed: 1,
+      players: [{ peerId: 'a', name: 'A', classId: 'mage' }],
+    });
+    w.terrain = [];
+    const p = w.players[0];
+    p.castTimer = 1;
+    p.castTimerMax = 1;
+    p.castSlot = 'a1';
+    applyBuff(p, makeBuff('castSlow', 1.5, 5, 'castSlow'));
+    w.step(DT, new Map([['a', inp()]]));
+    expect(p.castTimer).toBeCloseTo(1 - DT / 1.5, 3);
+  });
+
   it('opening an invuln window cleanses existing CC and blocks new CC (item 1)', () => {
     const w = strongWorld('treant');
     const boss = w.boss!;

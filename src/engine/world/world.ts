@@ -186,6 +186,7 @@ import {
   coReviveSpeed,
   isRooted,
   cleanseControl,
+  castTimeFactor,
   BOSS_INVULN_SOURCE,
   type HitMods,
 } from '../combat/combat';
@@ -1095,7 +1096,9 @@ export class World {
 
       if (p.castTimer > 0) {
         const was = p.castTimer;
-        p.castTimer = Math.max(0, p.castTimer - dt);
+        // item 9 — a SLUGGISH hero's cast bar advances slower (dt / factor), so a
+        // boss curse / venom that catches a caster mid-spell delays the payoff.
+        p.castTimer = Math.max(0, p.castTimer - dt / castTimeFactor(p));
         if (was > 0 && p.castTimer === 0 && p.castSlot) {
           const slot = p.castSlot;
           p.castSlot = null;
@@ -1519,18 +1522,23 @@ export class World {
       slowMult: oi.slowMult,
       slowDuration: oi.slowDuration,
       roots: oi.roots,
+      castSlow: oi.castSlow, // item 9
       allyBuff: oi.allyBuff,
       duration: oi.duration,
     });
   }
 
-  /** Apply a hostile projectile's on-hit riders (frost slow, freeze) to a target. */
+  /** Apply a hostile projectile's on-hit riders (frost slow, freeze, cast-slow). */
   private applyProjRiders(target: Boss | Add, proj: Projectile): void {
     if (proj.slowMult != null && proj.slowMult < 1) {
       applyBuff(target, makeBuff('moveSpeed', proj.slowMult, proj.slowDuration ?? 2, 'slow'));
     }
     if (proj.freeze != null && proj.freeze > 0) {
       applyStun(this, target, proj.freeze, 'freeze');
+    }
+    // item 9 — a forged cursed bolt stretches the target's wind-up on hit.
+    if (proj.castSlow != null && proj.castSlow > 1) {
+      applyBuff(target, makeBuff('castSlow', proj.castSlow, proj.castSlowDuration ?? 3, 'castSlow'));
     }
   }
 
@@ -1637,7 +1645,12 @@ export class World {
     // Re-applied each tick and floored above the tick interval so it clears shortly
     // after the boss leaves (or the zone expires).
     const rootDur = z.roots ? Math.max(z.slowDuration, ZONE_TICK_INTERVAL * 1.5) : 0;
-    if (z.damagePerTick > 0 || slows || z.roots) {
+    // item 9 — a SLUGGISH zone (Hex / Poison Vial) stretches a boss's wind-up while
+    // it stands inside; re-applied per tick and floored above the tick interval so
+    // it clears shortly after the boss leaves (mirrors the root cadence).
+    const castSlows = (z.castSlow ?? 1) > 1;
+    const castSlowDur = castSlows ? Math.max(z.slowDuration, ZONE_TICK_INTERVAL * 1.5) : 0;
+    if (z.damagePerTick > 0 || slows || z.roots || castSlows) {
       for (const b of this.aliveBosses()) {
         if (dist(z.pos, b.pos) > z.radius + b.radius) continue;
         // item 5: a FLYING boss hovers above ground-targeted zones — no damage,
@@ -1646,6 +1659,7 @@ export class World {
         if (z.damagePerTick > 0) this.applyProjDamageBoss(owner, z.damagePerTick, b);
         if (slows) applyBuff(b, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
         if (z.roots) applyBuff(b, makeBuff('root', 0, rootDur, 'zoneRoot'));
+        if (castSlows) applyBuff(b, makeBuff('castSlow', z.castSlow!, castSlowDur, 'zoneCastSlow'));
       }
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
@@ -1942,7 +1956,10 @@ export class World {
         break;
       }
       case 'windup': {
-        boss.action.remaining -= dt;
+        // item 9 — a SLUGGISH boss (Hex / venom) winds up slower, buying the band
+        // reaction + interrupt time. Only the telegraphed wind-up is stretched;
+        // the channel below is left alone so a curse never prolongs a beam.
+        boss.action.remaining -= dt / castTimeFactor(boss);
         if (boss.action.remaining <= 0) this.bossExecute(boss, def);
         break;
       }

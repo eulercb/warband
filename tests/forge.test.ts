@@ -153,6 +153,41 @@ describe('decompose / recompose round-trip', () => {
     expect(comp.effects[0]).toEqual({ kind: 'heal', amount: heal.damage });
   });
 
+  // item 9 — SLUGGISH (cast/wind-up slow) as a forge component.
+  it("decomposes a curse zone's castSlow into its zone rider and round-trips", () => {
+    const hex = CLASSES.warlock.abilities.a1; // Hex: castSlow 1.4 on a poison zone
+    const comp = decompose(hex);
+    const z = comp.effects.find((e) => e.kind === 'zone');
+    expect(z?.kind === 'zone' && z.zone.castSlow).toBe(1.4);
+    const back = recompose(comp, { slot: 'a1', name: 'x', cooldown: 11 });
+    expect(back.castSlow).toBe(1.4);
+  });
+
+  it('decomposes a direct-hit castSlow rider — priced, described, round-tripped', () => {
+    const cursed: Omit<PlayerAbilityDef, 'slot'> = {
+      name: 'cursed strike',
+      kind: 'meleeCone',
+      cooldown: 6,
+      damage: 20,
+      range: 70,
+      halfAngleDeg: 45,
+      castSlow: 1.5,
+      castSlowDuration: 3,
+    };
+    const comp = decompose(cursed);
+    const cs = comp.effects.find((e) => e.kind === 'castSlow');
+    expect(cs?.kind === 'castSlow' && cs.mult).toBe(1.5);
+    // Monotonic pricing — the rider adds value, never subtracts.
+    const withCs = componentValue(comp);
+    const without = componentValue(decompose({ ...cursed, castSlow: undefined }));
+    expect(withCs).toBeGreaterThan(without);
+    // Auto-generated card text surfaces it, and it round-trips to flat fields.
+    expect(describeComposed(comp, 6)).toContain('wind-up');
+    const back = recompose(comp, { slot: 'a1', name: 'x', cooldown: 6 });
+    expect(back.castSlow).toBe(1.5);
+    expect(back.castSlowDuration).toBe(3);
+  });
+
   it('covers the remaining decompose field-gates via synthetic defs', () => {
     // A healing zone with no explicit zoneKind → sanctuary default.
     const healZone = decompose({

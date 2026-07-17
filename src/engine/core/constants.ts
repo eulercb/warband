@@ -71,6 +71,15 @@ export const BOSS_INVULN_POWER_HARD = 1.2;
 /** Class SKILL stacking cap: the same class/graft upgrade can be taken at most this many times. */
 export const MAX_SKILL_STACKS = 5;
 
+/**
+ * item 9 — SLUGGISH (cast/wind-up slow) balance. A `castSlow` buff carries a
+ * duration factor ≥ 1; the effective factor is the product of every source
+ * (Hex + venom stack) but CLAMPED to CAST_SLOW_MAX so it can only ever stretch a
+ * wind-up so far — a boss stays able to act and a Mage is never locked out of a
+ * cast. A wind-up ticks down at dt / factor, so factor 1.4 ⇒ 40% longer.
+ */
+export const CAST_SLOW_MAX = 1.75;
+
 // --- Arena ---
 export const ARENA_W = 1600; // world units
 export const ARENA_H = 1000;

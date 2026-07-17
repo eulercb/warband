@@ -50,6 +50,17 @@ export interface PlayerAbilityDef {
   stun?: number; // applied to boss/adds on hit
   slowMult?: number; // < 1 slows target move speed
   slowDuration?: number;
+  /**
+   * item 9 — SLUGGISH: a wind-up / cast-time factor (≥ 1) this ability inflicts on
+   * enemies it affects, stretching their telegraphed wind-up (Warlock Hex, Rogue
+   * Poison Vial). On a `groundZone` it rides the spawned zone (re-applied per tick
+   * while an enemy stands inside); on a direct hit (meleeCone/projectile/pbaoe) it
+   * applies once as a timed debuff (`castSlowDuration`). Absent / ≤ 1 = none.
+   */
+  castSlow?: number;
+  /** item 9 — seconds a direct-hit `castSlow` debuff lasts (zone casts re-tick, so
+   * they ignore this). Defaults to a short window when the rider is present. */
+  castSlowDuration?: number;
 
   buffDamageMult?: number; // e.g. 1.25
   buffDefMult?: number; // damage-taken mult, e.g. 0.8 or 0.5
@@ -429,6 +440,10 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         radius: 105,
         zoneDuration: 4,
         zoneTickDamage: 11,
+        // item 9 — the venom fogs a boss's coordination: a lighter 25% wind-up
+        // slow while it stands in the cloud (the Rogue debilitates, the Warlock's
+        // Hex hits harder). Ground-based, so a flyer is unaffected (item 8).
+        castSlow: 1.25,
         zoneKind: 'poison',
       },
     },
@@ -742,6 +757,10 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         zoneTickDamage: 12,
         slowMult: 0.7,
         slowDuration: 1,
+        // item 9 — the curse saps its victim's ability to act: a boss standing in
+        // the Hex winds up its telegraphed attacks 40% slower, buying the band
+        // reaction / interrupt time. The Warlock's signature debilitating zone.
+        castSlow: 1.4,
         zoneKind: 'poison',
       },
       a2: {
@@ -960,6 +979,10 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   } else if (def.slowMult != null && def.slowMult < 1) {
     const dur = def.slowDuration ? ` for ${s(def.slowDuration)}` : '';
     parts.push(`slow to ${n(def.slowMult * 100)}%${dur}`);
+  }
+  // item 9 — SLUGGISH: how much this ability stretches an enemy's wind-up / cast.
+  if (def.castSlow != null && def.castSlow > 1) {
+    parts.push(`+${n((def.castSlow - 1) * 100)}% enemy wind-up`);
   }
 
   // --- Buffs (damage/move up, damage-taken down) ---

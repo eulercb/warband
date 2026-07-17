@@ -31,6 +31,7 @@ import type { ZoneKind, ClassId, AbilitySlot } from '../core/types';
 import type { PlayerAbilityDef, AbilityKind, ClassDef } from './classes';
 import type { BossAbilityDef, BossAbilityShape, MonsterDef, BossDecisionCtx } from './monsters';
 import { Rng, mixSeed, clamp } from '../core/math';
+import { CAST_SLOW_MAX } from '../core/constants';
 import { hashStr, bossAbilityVariant, MONSTER_EPITHETS } from './procgen';
 
 // ---------------------------------------------------------------------------
@@ -81,6 +82,9 @@ export type EffectComponent =
   | { kind: 'stun'; seconds: number }
   | { kind: 'freeze'; seconds: number }
   | { kind: 'slow'; mult: number; duration: number }
+  /** item 9 — SLUGGISH: stretch the target's wind-up / cast. `mult` ≥ 1 is the
+   * duration factor (1.4 = 40% longer). A soft, tempo-shifting rider (curse/venom). */
+  | { kind: 'castSlow'; mult: number; duration: number }
   | {
       kind: 'buff';
       target: BuffTarget;
@@ -109,6 +113,8 @@ export interface ZoneSpec {
   slowMult?: number;
   slowDuration?: number;
   roots?: boolean;
+  /** item 9 — a wind-up-slow factor (≥ 1) re-applied to enemies inside (Hex-style). */
+  castSlow?: number;
   allyBuff?: { defMult?: number; dmgMult?: number; moveMult?: number; duration: number };
 }
 
@@ -171,6 +177,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
       zone.slowDuration = def.slowDuration ?? 2;
     }
     if (def.roots) zone.roots = true;
+    if (def.castSlow != null && def.castSlow > 1) zone.castSlow = def.castSlow; // item 9
     effects.push({ kind: 'zone', zone });
   } else {
     // Direct-strike payload: damage, then on-hit riders.
@@ -184,6 +191,10 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.freeze) effects.push({ kind: 'freeze', seconds: def.freeze });
     if (def.slowMult != null && def.slowMult < 1) {
       effects.push({ kind: 'slow', mult: def.slowMult, duration: def.slowDuration ?? 2 });
+    }
+    // item 9 — a direct-hit SLUGGISH rider (envenomed strike / cursed shot).
+    if (def.castSlow != null && def.castSlow > 1) {
+      effects.push({ kind: 'castSlow', mult: def.castSlow, duration: def.castSlowDuration ?? 3 });
     }
     if (def.lifestealFrac) effects.push({ kind: 'lifesteal', frac: def.lifestealFrac });
     if (def.healOnUse) effects.push({ kind: 'healOnUse', amount: def.healOnUse });
@@ -270,6 +281,10 @@ export function recompose(
         def.slowMult = e.mult;
         def.slowDuration = e.duration;
         break;
+      case 'castSlow': // item 9 — direct-hit wind-up slow rider
+        def.castSlow = e.mult;
+        def.castSlowDuration = e.duration;
+        break;
       case 'buff':
         if (e.defMult != null) def.buffDefMult = e.defMult;
         if (e.dmgMult != null) def.buffDamageMult = e.dmgMult;
@@ -287,6 +302,7 @@ export function recompose(
           def.slowDuration = e.zone.slowDuration ?? 2;
         }
         if (e.zone.roots) def.roots = true;
+        if (e.zone.castSlow != null) def.castSlow = e.zone.castSlow; // item 9
         break;
     }
   }
@@ -335,6 +351,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return e.seconds * 50;
     case 'slow':
       return (1 - e.mult) * e.duration * 12; // soft CC, priced by depth × time
+    case 'castSlow':
+      return (e.mult - 1) * e.duration * 18; // soft tempo CC, priced by depth × time
     case 'buff':
       return buffValue(e);
     case 'zone':
@@ -357,6 +375,7 @@ function zoneValue(z: ZoneSpec): number {
   const ticks = (z.duration / 0.5) * 0.6;
   let v = ((z.tickDamage ?? 0) + (z.tickHeal ?? 0)) * ticks;
   if (z.slowMult != null) v += (1 - z.slowMult) * z.duration * 10;
+  if (z.castSlow != null && z.castSlow > 1) v += (z.castSlow - 1) * z.duration * 10; // item 9
   if (z.roots) v += z.duration * 14;
   if (z.allyBuff) {
     v += buffValue({ kind: 'buff', target: 'allies', ...z.allyBuff }) * 0.6;
@@ -440,6 +459,8 @@ function effectPhrase(e: EffectComponent): string {
       return `${s(e.seconds)} freeze`;
     case 'slow':
       return `slow to ${pct(e.mult * 100)} for ${s(e.duration)}`;
+    case 'castSlow':
+      return `+${pct((e.mult - 1) * 100)} enemy wind-up for ${s(e.duration)}`;
     case 'buff':
       return buffPhrase(e);
     case 'zone':
@@ -462,6 +483,7 @@ function zonePhrase(z: ZoneSpec): string {
   if (z.tickHeal) bits.push(`${n(z.tickHeal)}/tick heal`);
   if (z.roots) bits.push('roots');
   else if (z.slowMult != null) bits.push(`slow to ${pct(z.slowMult * 100)}`);
+  if (z.castSlow != null && z.castSlow > 1) bits.push(`+${pct((z.castSlow - 1) * 100)} wind-up`);
   if (z.allyBuff) {
     if (z.allyBuff.defMult != null)
       bits.push(`allies ${pct((1 - z.allyBuff.defMult) * 100)} less dmg taken`);
@@ -656,6 +678,7 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'stun':
     case 'freeze':
     case 'slow':
+    case 'castSlow':
     case 'lifesteal':
       return DIRECT_STRIKE.has(kind);
     case 'heal':
@@ -985,6 +1008,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, seconds: e.seconds * f };
     case 'slow':
       return { ...e, duration: e.duration * f };
+    case 'castSlow':
+      return { ...e, duration: e.duration * f }; // rigid: keeps its bite, sheds time
     case 'buff':
       return { ...e, duration: e.duration * f };
     case 'zone':
@@ -1069,6 +1094,10 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.slowMult != null
         ? { ...e, mult: def.slowMult, duration: def.slowDuration ?? e.duration }
         : e;
+    case 'castSlow':
+      return def.castSlow != null
+        ? { ...e, mult: def.castSlow, duration: def.castSlowDuration ?? e.duration }
+        : e;
     case 'buff': {
       // Update only the axes THIS buff already carries (so a mul-of-undefined that set a flat
       // axis the buff lacks is ignored) and keep its target + structure intact.
@@ -1090,6 +1119,7 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
         z.slowMult = def.slowMult;
         z.slowDuration = def.slowDuration ?? z.slowDuration;
       }
+      if (def.castSlow != null) z.castSlow = def.castSlow; // item 9
       return { kind: 'zone', zone: z };
     }
   }
@@ -1112,6 +1142,12 @@ function capEffect(e: EffectComponent): EffectComponent {
         ...e,
         mult: clamp(round05(e.mult), 0.2, 0.95),
         duration: clamp(round1(e.duration), 1, 4),
+      };
+    case 'castSlow':
+      return {
+        ...e,
+        mult: clamp(round05(e.mult), 1.1, CAST_SLOW_MAX),
+        duration: clamp(round1(e.duration), 1, 5),
       };
     case 'buff':
       return capBuff(e);
@@ -1137,6 +1173,7 @@ function capZone(z: ZoneSpec): ZoneSpec {
   if (out.tickDamage != null) out.tickDamage = Math.max(1, Math.round(out.tickDamage));
   if (out.tickHeal != null) out.tickHeal = Math.max(1, Math.round(out.tickHeal));
   if (out.slowMult != null) out.slowMult = clamp(round05(out.slowMult), 0.2, 0.95);
+  if (out.castSlow != null) out.castSlow = clamp(round05(out.castSlow), 1.1, CAST_SLOW_MAX); // item 9
   if (out.allyBuff) out.allyBuff = capAllyBuff(out.allyBuff);
   return out;
 }

@@ -256,6 +256,11 @@ function applyStrikeRiders(world: World, target: Boss | Add, ab: PlayerAbilityDe
   if (ab.slowMult != null && ab.slowMult < 1) {
     applySlow(target, ab.slowMult, ab.slowDuration ?? 2);
   }
+  // item 9 — a direct-hit SLUGGISH rider (envenomed strike / cursed shot) stretches
+  // the target's next wind-up for a short window.
+  if (ab.castSlow != null && ab.castSlow > 1) {
+    applyBuff(target, makeBuff('castSlow', ab.castSlow, ab.castSlowDuration ?? 3, 'castSlow'));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -531,6 +536,7 @@ function zoneToImpact(z: ZoneSpec): ProjectileImpact {
     slowMult: z.slowMult,
     slowDuration: z.slowDuration,
     roots: z.roots,
+    castSlow: z.castSlow, // item 9
     allyBuff: z.allyBuff,
   };
 }
@@ -552,6 +558,7 @@ function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number):
     slowMult: z.slowMult,
     slowDuration: z.slowDuration,
     roots: z.roots,
+    castSlow: z.castSlow, // item 9
     allyBuff: z.allyBuff,
     duration: z.duration,
   });
@@ -686,6 +693,8 @@ function resolveComposedAbility(
           slowMult: ab.slowMult,
           slowDuration: ab.slowDuration,
           freeze: ab.freeze,
+          castSlow: ab.castSlow, // item 9
+          castSlowDuration: ab.castSlowDuration,
           lifesteal: ab.lifestealFrac,
           onImpact,
         });
@@ -809,6 +818,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     slowMult,
     slowDuration,
     roots: ab.roots, // item 9: carry the true-root flag onto the spawned zone
+    castSlow: ab.castSlow, // item 9: carry the wind-up-slow factor onto the zone
     duration: ab.zoneDuration ?? 4,
   });
 }
@@ -836,6 +846,9 @@ interface SpawnProjOpts {
   slowMult?: number;
   slowDuration?: number;
   freeze?: number;
+  /** item 9 — wind-up-slow factor (≥ 1) applied on hit (a forged cursed bolt). */
+  castSlow?: number;
+  castSlowDuration?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
   /** Chaos Forge — on-impact payload (spawn a zone / ally-buff area on landing). */
@@ -865,6 +878,8 @@ function spawnPlayerProjectile(
     slowMult: o.slowMult,
     slowDuration: o.slowDuration,
     freeze: o.freeze,
+    castSlow: o.castSlow, // item 9
+    castSlowDuration: o.castSlowDuration,
     lifesteal: o.lifesteal,
     onImpact: o.onImpact,
   };
@@ -913,6 +928,9 @@ export interface SpawnZoneOpts {
   /** Seconds of silence re-applied per tick to opposing creatures inside (a
    * standable antimagic pool). Absent = a plain hazard. See GroundZone.silence. */
   silence?: number;
+  /** item 9 — wind-up-time factor (≥ 1) re-applied per tick to opposing creatures
+   * inside (Hex / Poison Vial). Absent / ≤ 1 = no cast-slow. See GroundZone.castSlow. */
+  castSlow?: number;
   /** Chaos Forge — a buff this zone refreshes on allies inside (player-side). */
   allyBuff?: import('../core/types').ZoneAllyBuff;
   duration: number;
@@ -937,6 +955,7 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     slowDuration: o.slowDuration ?? 0,
     roots: o.roots, // item 9
     silence: o.silence,
+    castSlow: o.castSlow, // item 9 — wind-up slow refreshed on enemies inside
     allyBuff: o.allyBuff, // Chaos Forge — buff refreshed on allies inside
     duration: o.duration,
     remaining: o.duration,

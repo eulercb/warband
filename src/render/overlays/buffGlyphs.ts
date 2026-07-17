@@ -27,6 +27,8 @@ function describe(
       return { glyph: '🔇', color: 0xc06cff, good: false, label: 'Silenced' };
     case 'root': // item 9 — immobilised (movement + blink/charge/teleport disabled)
       return { glyph: '🌿', color: 0x6bbf59, good: false, label: 'Rooted' };
+    case 'castSlow': // item 9 — wind-up / cast time stretched (Hex, venom)
+      return { glyph: '⏳', color: 0xb488e0, good: false, label: 'Sluggish' };
     case 'invuln':
       return { glyph: '✨', color: 0xbfe9ff, good: true, label: 'Invulnerable' };
     case 'moveSpeed':
