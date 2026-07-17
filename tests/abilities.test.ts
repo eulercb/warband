@@ -885,6 +885,16 @@ describe('player selfBuff', () => {
     expect(dmg!.remaining).toBeCloseTo(4, 6);
     expect(move!.remaining).toBeCloseTo(4, 6);
   });
+
+  it('a selfBuff that grants flight lifts the caster airborne (item 7)', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    tableOf(p).a2.grantsFlight = 5; // Shield Wall now also grants flight
+    resolvePlayerAbility(w, p, 'a2', ZERO);
+    const fly = p.buffs.find((b) => b.kind === 'flight' && b.source === 'flight');
+    expect(fly).toBeDefined();
+    expect(fly!.remaining).toBeCloseTo(5, 6);
+  });
 });
 
 // ===========================================================================

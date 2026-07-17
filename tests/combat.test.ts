@@ -17,6 +17,9 @@ import {
   isCcImmune,
   cleanseControl,
   castTimeFactor,
+  isFlying,
+  isAirborneZoneKind,
+  zoneReachesAir,
   BOSS_INVULN_SOURCE,
 } from '../src/engine/combat/combat';
 import { REVIVE_TIME, REVIVE_MIN_TIME, CAST_SLOW_MAX } from '../src/engine/core/constants';
@@ -399,6 +402,31 @@ describe('boss invuln CC cleanse + immunity (item 1)', () => {
     expect(applyStun(sink(), p, 1, 'bossStun')).toBeCloseTo(1, 6);
     applyBuff(p, makeBuff('moveSpeed', 0.5, 2, 'bossSlow'));
     expect(p.buffs.some((b) => b.source === 'bossSlow')).toBe(true);
+  });
+});
+
+describe('flight state + AoE ground/airborne classification (items 7 & 8)', () => {
+  it('isFlying is true only while a flight buff is present', () => {
+    const p = mkPlayer();
+    expect(isFlying(p)).toBe(false);
+    applyBuff(p, makeBuff('flight', 0, 5, 'flight'));
+    expect(isFlying(p)).toBe(true);
+    tickBuffs(p, 6);
+    expect(isFlying(p)).toBe(false);
+  });
+
+  it('isAirborneZoneKind: only rain-of-arrows reaches flyers by default', () => {
+    expect(isAirborneZoneKind('rainOfArrows')).toBe(true);
+    for (const k of ['voidZone', 'entangle', 'consecration', 'poison', 'sanctuary', 'antimagic'] as const) {
+      expect(isAirborneZoneKind(k)).toBe(false);
+    }
+  });
+
+  it('zoneReachesAir: explicit airborne flag overrides the kind default', () => {
+    expect(zoneReachesAir({ kind: 'rainOfArrows' })).toBe(true); // by kind
+    expect(zoneReachesAir({ kind: 'entangle' })).toBe(false); // ground by default
+    expect(zoneReachesAir({ kind: 'entangle', airborne: true })).toBe(true); // Otiluke override
+    expect(zoneReachesAir({ kind: 'rainOfArrows', airborne: false })).toBe(false); // forced ground
   });
 });
 

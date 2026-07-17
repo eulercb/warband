@@ -31,6 +31,8 @@ function describe(
       return { glyph: '⏳', color: 0xb488e0, good: false, label: 'Sluggish' };
     case 'invuln':
       return { glyph: '✨', color: 0xbfe9ff, good: true, label: 'Invulnerable' };
+    case 'flight': // item 7 — airborne: soaring over ground effects
+      return { glyph: '🕊️', color: 0xbfe0ff, good: true, label: 'Airborne' };
     case 'moveSpeed':
       return mult < 1
         ? { glyph: '🐌', color: 0x59a0ff, good: false, label: 'Slowed' }

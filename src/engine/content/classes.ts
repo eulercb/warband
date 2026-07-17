@@ -61,6 +61,18 @@ export interface PlayerAbilityDef {
   /** item 9 — seconds a direct-hit `castSlow` debuff lasts (zone casts re-tick, so
    * they ignore this). Defaults to a short window when the rider is present. */
   castSlowDuration?: number;
+  /**
+   * item 7 — FLIGHT: seconds of airborne flight this ability grants its caster (a
+   * selfBuff / buffAlly). While flying the hero soars over ground hazards + ground
+   * zones (Sorcerer Dragon Wings). Absent = grants no flight.
+   */
+  grantsFlight?: number;
+  /**
+   * item 8 — a `groundZone` ability whose zone reaches AIRBORNE targets too (Ranger
+   * Rain of Arrows rains on flyers; Mage Otiluke Bind is a floating cage). Absent =
+   * a GROUND effect that flyers hover over (the default for most zone kinds).
+   */
+  airborne?: boolean;
 
   buffDamageMult?: number; // e.g. 1.25
   buffDefMult?: number; // damage-taken mult, e.g. 0.8 or 0.5
@@ -213,6 +225,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         radius: 120,
         zoneDuration: 3,
         zoneTickDamage: 12,
+        // item 8 — arrows raining from above hit flyers too. AIRBORNE by its
+        // zoneKind ('rainOfArrows' → isAirborneZoneKind), so no explicit flag needed.
         zoneKind: 'rainOfArrows',
       },
       a3: {
@@ -1012,6 +1026,13 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   // --- Sustain / evasion / who it can reach ---
   if (def.lifestealFrac) parts.push(`${n(def.lifestealFrac * 100)}% lifesteal`);
   if (def.iframes) parts.push(`${s(def.iframes)} i-frames`);
+  // item 7 — flight granted (soar over ground hazards / zones for the window).
+  if (def.grantsFlight) parts.push(`fly ${s(def.grantsFlight)}`);
+  // item 8 — a zone that reaches flyers reads it out (else it's a ground effect).
+  // Display-only default mirrors combat.isAirborneZoneKind (rainOfArrows).
+  if (def.kind === 'groundZone' && (def.airborne ?? def.zoneKind === 'rainOfArrows')) {
+    parts.push('hits flyers');
+  }
   if ((def.kind === 'heal' || def.kind === 'buffAlly') && def.range && def.range > 1) {
     parts.push(`${n(def.range)}u range`);
   }

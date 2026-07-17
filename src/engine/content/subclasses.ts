@@ -387,6 +387,9 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
             zoneTickDamage: 8,
             zoneKind: 'entangle',
             roots: true, // item 3: a true bind — immobilises + locks out blink/charge/teleport
+            // item 8 — a floating force cage, not ground plants: it holds a FLYER
+            // fast too (airborne override on the ground 'entangle' kind).
+            airborne: true,
           }),
         ),
         sk(
@@ -957,8 +960,10 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'so_draconic_wing',
           'Dragon Wings',
           '🪽',
-          '+25% speed, take 45% less for 5s',
-          buff('Dragon Wings', 12, { buffMoveMult: 1.25, buffDefMult: 0.55 }),
+          // item 7 — the wings actually LIFT the sorcerer now: airborne for 5s,
+          // soaring over ground hazards + ground zones, plus the speed/mitigation.
+          'Take flight 5s: +25% speed, take 45% less, soar over ground hazards',
+          buff('Dragon Wings', 12, { buffMoveMult: 1.25, buffDefMult: 0.55, grantsFlight: 5 }),
         ),
         sk(
           'so_draconic_bolt',

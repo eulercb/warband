@@ -13,6 +13,7 @@ import type {
   Side,
   StunDr,
   Vec2,
+  ZoneKind,
 } from '../core/types';
 import { getClass } from '../content/classes';
 import {
@@ -78,6 +79,37 @@ export function buffMult(entity: { buffs: Buff[] }, kind: BuffKind): number {
 export function hasBuff(entity: { buffs: Buff[] }, kind: BuffKind): boolean {
   for (const b of entity.buffs) if (b.kind === kind) return true;
   return false;
+}
+
+/**
+ * item 7 — is this entity AIRBORNE right now via a timed flight buff? For a boss,
+ * the World ORs this with the static `MonsterDef.flying` (constant flyers); a
+ * player only ever flies through this buff. A flyer ignores ground effects (see
+ * world.applyZoneTick / the terrain tick).
+ */
+export function isFlying(entity: { buffs: Buff[] }): boolean {
+  return hasBuff(entity, 'flight');
+}
+
+/**
+ * item 8 — does a zone of this KIND reach airborne targets by default? Arrows
+ * raining from above (rainOfArrows) hit flyers; every other canonical kind is a
+ * GROUND effect (plants, pools, holy ground) a flyer hovers over. A per-zone
+ * `airborne` flag overrides this default (see zoneReachesAir) for oddities like a
+ * floating force cage. Data-driven off the kind, so new kinds classify here once.
+ */
+export function isAirborneZoneKind(kind: ZoneKind): boolean {
+  return kind === 'rainOfArrows';
+}
+
+/**
+ * item 8 — does this zone reach airborne targets? An explicit `airborne` flag wins
+ * (Mage Otiluke Bind — a floating cage on the ground 'entangle' kind); otherwise
+ * fall back to the kind default. A flyer is only exempted from a zone this returns
+ * false for.
+ */
+export function zoneReachesAir(z: { kind: ZoneKind; airborne?: boolean }): boolean {
+  return z.airborne ?? isAirborneZoneKind(z.kind);
 }
 
 /**

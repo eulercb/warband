@@ -1239,6 +1239,7 @@ describe('world-branches: boss decisions', () => {
     const boss = w.boss!;
     const p = w.players[0];
     p.state = 'dead';
+    boss.cooldowns.takeFlight = 99; // item 7 — past the periodic take-off, test the fireball path
     boss.decisionTimer = 0.01; // force a decision this tick
     w.step(DT, new Map());
     expect(boss.action.kind).toBe('windup');
@@ -2562,6 +2563,7 @@ describe('world-branches: fairness governor with no target', () => {
     const p = w.players[0];
     p.state = 'dead'; // no live target → target?.pos ?? boss.pos falls back to the boss
     boss.pos = { x: 800, y: 400 };
+    boss.cooldowns.takeFlight = 99; // item 7 — past the periodic take-off (not a walling attack)
     boss.decisionTimer = 0.01;
     // A strike overlapping the boss's own position walls the centred fireball.
     w.addPendingStrike({ pos: { x: 800, y: 400 }, radius: 120, fuse: 5, damage: 10 });

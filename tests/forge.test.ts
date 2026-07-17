@@ -163,6 +163,45 @@ describe('decompose / recompose round-trip', () => {
     expect(back.castSlow).toBe(1.4);
   });
 
+  // item 7 — FLIGHT as a forge effect component.
+  it('decomposes a flight-granting self-buff into a flight component and round-trips', () => {
+    const wings: Omit<PlayerAbilityDef, 'slot'> = {
+      name: 'wings',
+      kind: 'selfBuff',
+      cooldown: 12,
+      damage: 0,
+      buffDefMult: 0.6,
+      buffDuration: 5,
+      grantsFlight: 5,
+    };
+    const comp = decompose(wings);
+    const fl = comp.effects.find((e) => e.kind === 'flight');
+    expect(fl?.kind === 'flight' && fl.duration).toBe(5);
+    expect(componentValue(comp)).toBeGreaterThan(0);
+    expect(describeComposed(comp, 12)).toContain('fly');
+    const back = recompose(comp, { slot: 'a2', name: 'x', cooldown: 12 });
+    expect(back.grantsFlight).toBe(5);
+  });
+
+  // item 8 — the AIRBORNE zone facet survives decompose/recompose.
+  it('carries a zone airborne flag through the round-trip', () => {
+    const rain: Omit<PlayerAbilityDef, 'slot'> = {
+      name: 'rain',
+      kind: 'groundZone',
+      cooldown: 10,
+      damage: 0,
+      zoneDuration: 4,
+      zoneTickDamage: 10,
+      zoneKind: 'entangle',
+      airborne: true, // an Otiluke-style floating cage on the ground kind
+    };
+    const comp = decompose(rain);
+    const z = comp.effects.find((e) => e.kind === 'zone');
+    expect(z?.kind === 'zone' && z.zone.airborne).toBe(true);
+    const back = recompose(comp, { slot: 'a1', name: 'x', cooldown: 10 });
+    expect(back.airborne).toBe(true);
+  });
+
   it('decomposes a direct-hit castSlow rider — priced, described, round-tripped', () => {
     const cursed: Omit<PlayerAbilityDef, 'slot'> = {
       name: 'cursed strike',

@@ -430,6 +430,10 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
       if (ab.buffMoveMult) {
         applyBuff(p, makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 4, 'selfBuffMove'));
       }
+      // item 7 — Dragon Wings & co. lift the caster into the air for a window.
+      if (ab.grantsFlight) {
+        applyBuff(p, makeBuff('flight', 0, ab.grantsFlight, 'flight'));
+      }
       break;
     }
 
@@ -460,6 +464,10 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
           target,
           makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 6, 'blessingMove'),
         );
+      }
+      // item 7 — a rallying skill can lift its target into the air too.
+      if (ab.grantsFlight) {
+        applyBuff(target, makeBuff('flight', 0, ab.grantsFlight, 'flight'));
       }
       break;
     }
@@ -537,6 +545,7 @@ function zoneToImpact(z: ZoneSpec): ProjectileImpact {
     slowDuration: z.slowDuration,
     roots: z.roots,
     castSlow: z.castSlow, // item 9
+    airborne: z.airborne, // item 8
     allyBuff: z.allyBuff,
   };
 }
@@ -559,6 +568,7 @@ function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number):
     slowDuration: z.slowDuration,
     roots: z.roots,
     castSlow: z.castSlow, // item 9
+    airborne: z.airborne, // item 8
     allyBuff: z.allyBuff,
     duration: z.duration,
   });
@@ -589,16 +599,29 @@ function resolveComposedAbility(
   const healOnUse = effects.find((e) => e.kind === 'healOnUse');
   const dmg = ab.damage;
 
+  // item 7 — a flight rider lifts its recipients airborne for its window.
+  const flightEff = effects.find((e) => e.kind === 'flight');
+  const applyFlight = (target: { buffs: import('../core/types').Buff[] }): void => {
+    if (flightEff && flightEff.kind === 'flight') {
+      applyBuff(target, makeBuff('flight', 0, flightEff.duration, 'flight'));
+    }
+  };
   // Buff the caster with any self-targeted buffs, and heal the caster on-use.
-  const buffSelf = (): void => applyForgeBuffs(p, effects, 'self', 'forgeSelf');
+  const buffSelf = (): void => {
+    applyForgeBuffs(p, effects, 'self', 'forgeSelf');
+    applyFlight(p); // flight on a self-buff / mobility delivery lands on the caster
+  };
   const selfHeal = (): void => {
     if (healOnUse && healOnUse.kind === 'healOnUse') healPlayer(world, p, p, healOnUse.amount);
   };
   // Rally: put ally-targeted buffs on EVERY ally in reach (the caster included).
   const buffAllies = (range: number): void => {
-    if (!effects.some((e) => e.kind === 'buff' && e.target === 'allies')) return;
+    const rallies = effects.some((e) => e.kind === 'buff' && e.target === 'allies');
+    if (!rallies && !flightEff) return;
     for (const a of aliveAllies(world)) {
-      if (dist(p.pos, a.pos) <= range) applyForgeBuffs(a, effects, 'allies', 'forgeAlly');
+      if (dist(p.pos, a.pos) > range) continue;
+      applyForgeBuffs(a, effects, 'allies', 'forgeAlly');
+      applyFlight(a);
     }
   };
   const healAlly = (range: number): void => {
@@ -819,6 +842,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     slowDuration,
     roots: ab.roots, // item 9: carry the true-root flag onto the spawned zone
     castSlow: ab.castSlow, // item 9: carry the wind-up-slow factor onto the zone
+    airborne: ab.airborne, // item 8: carry the airborne-reach flag onto the zone
     duration: ab.zoneDuration ?? 4,
   });
 }
@@ -931,6 +955,9 @@ export interface SpawnZoneOpts {
   /** item 9 — wind-up-time factor (≥ 1) re-applied per tick to opposing creatures
    * inside (Hex / Poison Vial). Absent / ≤ 1 = no cast-slow. See GroundZone.castSlow. */
   castSlow?: number;
+  /** item 8 — the zone reaches airborne targets too (Rain of Arrows / Otiluke Bind).
+   * Absent = a ground effect flyers hover over (default per kind). See GroundZone.airborne. */
+  airborne?: boolean;
   /** Chaos Forge — a buff this zone refreshes on allies inside (player-side). */
   allyBuff?: import('../core/types').ZoneAllyBuff;
   duration: number;
@@ -956,6 +983,7 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     roots: o.roots, // item 9
     silence: o.silence,
     castSlow: o.castSlow, // item 9 — wind-up slow refreshed on enemies inside
+    airborne: o.airborne, // item 8 — reaches flyers too
     allyBuff: o.allyBuff, // Chaos Forge — buff refreshed on allies inside
     duration: o.duration,
     remaining: o.duration,
@@ -1256,6 +1284,8 @@ export function resolveBossAbility(
       if (ab.buffDefMult)
         applyBuff(boss, makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 5, 'bossWard'));
       if (ab.selfHealFrac) healBoss(boss, boss.maxHp * ab.selfHealFrac);
+      // item 7 — a periodic take-off: the boss soars, shrugging off ground zones.
+      if (ab.buffFlight) applyBuff(boss, makeBuff('flight', 0, ab.buffFlight, 'flight'));
       break;
     }
 

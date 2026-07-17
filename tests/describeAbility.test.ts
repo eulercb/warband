@@ -60,9 +60,9 @@ describe('describeAbility (base-kit abilities)', () => {
   });
 
   it('a damage ground-zone: per-tick damage, radius and lifetime', () => {
-    // Ranger Rain of Arrows.
+    // Ranger Rain of Arrows — an AIRBORNE zone (item 8), so it reads "hits flyers".
     expect(describeAbility(CLASSES.ranger.abilities.a2)).toBe(
-      '12/tick dmg · 120u radius · lasts 3s · 12s cooldown',
+      '12/tick dmg · 120u radius · lasts 3s · hits flyers · 12s cooldown',
     );
   });
 

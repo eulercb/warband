@@ -160,6 +160,14 @@ export type BuffKind =
   /** Silenced (item 28): all abilities except the basic attack are disabled. */
   | 'silence'
   /**
+   * item 7 — FLIGHT (timed): the entity is airborne for the buff's duration.
+   * `mult` is unused (presence is what matters). A flyer ignores GROUND effects —
+   * ground hazards + non-airborne ground zones pass under it (world) — but direct
+   * attacks still connect. Complements the static `MonsterDef.flying` (constant
+   * flyers); a player only ever flies via this buff (Sorcerer Dragon Wings, forged
+   * skills). Surfaced by the 🕊️ glyph + a hover/shadow in the render. */
+  | 'flight'
+  /**
    * item 9 — SLUGGISH: stretches the target's wind-up / cast time. `mult` is a
    * DURATION factor ≥ 1 (1.4 = wind-ups take 40% longer); it slows the countdown
    * of a player's cast bar AND a boss's telegraphed wind-up, so a curse/venom can
@@ -512,6 +520,8 @@ export interface ProjectileImpact {
   roots?: boolean;
   /** item 9 — a wind-up-slow factor (≥ 1) the bloomed zone applies to enemies inside. */
   castSlow?: number;
+  /** item 8 — the bloomed zone reaches airborne targets too (see GroundZone.airborne). */
+  airborne?: boolean;
   allyBuff?: ZoneAllyBuff;
 }
 
@@ -850,6 +860,15 @@ export interface GroundZone {
    * 'zoneCastSlow'). Absent / ≤ 1 = a plain hazard.
    */
   castSlow?: number;
+  /**
+   * item 8 — AIRBORNE reach: true = this zone affects flyers too (arrows raining
+   * from above, a floating force cage) — Ranger Rain of Arrows, Mage Otiluke Bind.
+   * false / absent = a GROUND effect (plants, holy ground, pools) that a flyer
+   * hovers over. Defaults per ZoneKind (see combat.isAirborneZoneKind) when unset,
+   * so canonical zones classify without per-instance wiring. Drives the flight
+   * bypass (world.applyZoneTick) for both bosses and grounded players.
+   */
+  airborne?: boolean;
   /**
    * Chaos Forge — a buff this zone refreshes each tick on allied players standing
    * inside it (a synthesized "sanctuary of resistance"). Player-side zones only;

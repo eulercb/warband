@@ -187,6 +187,8 @@ import {
   isRooted,
   cleanseControl,
   castTimeFactor,
+  isFlying,
+  zoneReachesAir,
   BOSS_INVULN_SOURCE,
   type HitMods,
 } from '../combat/combat';
@@ -687,6 +689,16 @@ export class World {
   /** The MonsterDef a given boss acts by (twin bosses differ from the lead). */
   defOf(boss: Boss): MonsterDef {
     return boss.monsterId === this.monsterDef.id ? this.monsterDef : getMonster(boss.monsterId);
+  }
+
+  /**
+   * item 7 — is this boss AIRBORNE right now? True for a constant flyer (its def's
+   * static `flying`) OR while a timed flight buff is up (a boss that takes off
+   * periodically, e.g. the Dragon). The single source of truth for the ground-effect
+   * bypass, so both flight kinds behave identically.
+   */
+  bossFlying(boss: Boss): boolean {
+    return this.defOf(boss).flying === true || isFlying(boss);
   }
 
   /** All bosses still fighting (hp > 0). */
@@ -1523,6 +1535,7 @@ export class World {
       slowDuration: oi.slowDuration,
       roots: oi.roots,
       castSlow: oi.castSlow, // item 9
+      airborne: oi.airborne, // item 8
       allyBuff: oi.allyBuff,
       duration: oi.duration,
     });
@@ -1624,6 +1637,9 @@ export class World {
       const silences = (z.silence ?? 0) > 0;
       for (const p of this.players) {
         if (p.state !== 'alive') continue;
+        // item 7/8: a FLYING hero hovers above a GROUND zone (a boss void pool);
+        // an AIRBORNE one (rain of arrows) still reaches it.
+        if (isFlying(p) && !zoneReachesAir(z)) continue;
         if (dist(z.pos, p.pos) <= z.radius + p.radius) {
           if (z.damagePerTick > 0) damagePlayer(this, p, z.damagePerTick);
           // Snare zones (Web Snare, Grasping Roots, Thorn Field…) also mire the party.
@@ -1653,9 +1669,10 @@ export class World {
     if (z.damagePerTick > 0 || slows || z.roots || castSlows) {
       for (const b of this.aliveBosses()) {
         if (dist(z.pos, b.pos) > z.radius + b.radius) continue;
-        // item 5: a FLYING boss hovers above ground-targeted zones — no damage,
-        // slow or root reaches it (direct attacks still connect).
-        if (this.defOf(b).flying) continue;
+        // item 7/8: a FLYING boss (constant OR timed) hovers above GROUND zones — no
+        // damage, slow, root or cast-slow reaches it. An AIRBORNE zone (Rain of
+        // Arrows, Otiluke Bind) still catches it; direct attacks always connect.
+        if (this.bossFlying(b) && !zoneReachesAir(z)) continue;
         if (z.damagePerTick > 0) this.applyProjDamageBoss(owner, z.damagePerTick, b);
         if (slows) applyBuff(b, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
         if (z.roots) applyBuff(b, makeBuff('root', 0, rootDur, 'zoneRoot'));
@@ -1737,6 +1754,9 @@ export class World {
     // Surefooted upgrade eases the slow back toward 1 (no effect at resist=1).
     for (const p of this.players) {
       if (p.state !== 'alive') continue;
+      // item 7 — a FLYING hero soars over ground hazards (magma / swamp / ice): no
+      // terrain slow reaches it while airborne.
+      if (isFlying(p)) continue;
       let slowest = 1;
       let slowDur = 0;
       for (const t of this.terrain) {
@@ -1760,6 +1780,7 @@ export class World {
         t.tickAccum -= TERRAIN_TICK_INTERVAL;
         for (const p of this.players) {
           if (p.state !== 'alive') continue;
+          if (isFlying(p)) continue; // item 7 — airborne over the hazard
           if (dist(t.pos, p.pos) <= t.radius + p.radius) {
             const dmg = t.damagePerTick * (1 - p.terrainResist);
             if (dmg > 0) damagePlayer(this, p, dmg);

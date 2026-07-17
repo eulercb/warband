@@ -420,6 +420,115 @@ describe('world: progression-aware boss sustain + invuln (items 2 & 5)', () => {
     expect(boss.action.remaining).toBeCloseTo(2 - DT / 1.5, 3);
   });
 
+  it('a flying hero is not slowed or burned by ground terrain (item 7)', () => {
+    const w = new World({
+      monsterId: 'dummy',
+      seed: 4,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'ranger' },
+        { peerId: 'b', name: 'B', classId: 'ranger' },
+      ],
+    });
+    const [flyer, walker] = w.players;
+    walker.pos = { ...flyer.pos };
+    w.terrain = [
+      {
+        id: w.allocId(),
+        kind: 'swamp',
+        pos: { ...flyer.pos },
+        radius: 500,
+        damagePerTick: 0,
+        slowMult: 0.4,
+        slowDuration: 2,
+        tickAccum: 0,
+      },
+    ];
+    applyBuff(flyer, makeBuff('flight', 0, 5, 'flight'));
+    w.step(DT, new Map([['a', inp()], ['b', inp()]]));
+    expect(walker.buffs.some((b) => b.source === 'terrain')).toBe(true); // grounded: mired
+    expect(flyer.buffs.some((b) => b.source === 'terrain')).toBe(false); // airborne: soars over
+  });
+
+  it('a flying boss ignores a GROUND zone but an AIRBORNE one still bites (items 7/8)', () => {
+    const w = new World({
+      monsterId: 'troll',
+      seed: 4,
+      players: [{ peerId: 'a', name: 'A', classId: 'ranger' }],
+    });
+    w.terrain = [];
+    const boss = w.boss!;
+    const owner = w.players[0].id;
+    applyBuff(boss, makeBuff('flight', 0, 6, 'flight'));
+    // Ground poison (slows + damages) — should pass under the flyer.
+    spawnZone(w, {
+      kind: 'poison',
+      pos: { ...boss.pos },
+      radius: 420,
+      side: 'player',
+      ownerId: owner,
+      damagePerTick: 20,
+      healPerTick: 0,
+      slowMult: 0.5,
+      slowDuration: 2,
+      duration: 6,
+    });
+    const hpAfterGroundOnly = boss.hp;
+    for (let i = 0; i < 12; i++) w.step(DT, new Map([['a', inp()]]));
+    expect(boss.buffs.some((b) => b.source === 'zoneSlow')).toBe(false); // ground slow skipped
+    expect(boss.hp).toBe(hpAfterGroundOnly); // ground poison dealt no damage to the flyer
+
+    // Now an AIRBORNE rain zone — it reaches the flyer.
+    spawnZone(w, {
+      kind: 'rainOfArrows',
+      pos: { ...boss.pos },
+      radius: 420,
+      side: 'player',
+      ownerId: owner,
+      damagePerTick: 20,
+      healPerTick: 0,
+      slowMult: 1,
+      slowDuration: 0,
+      duration: 6,
+    });
+    const hpBeforeRain = boss.hp;
+    for (let i = 0; i < 12; i++) w.step(DT, new Map([['a', inp()]]));
+    expect(boss.hp).toBeLessThan(hpBeforeRain); // airborne rain connects
+  });
+
+  it('a boss take-off grants a flight buff and reads as airborne (item 7)', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 5,
+      players: [{ peerId: 'a', name: 'A', classId: 'ranger' }],
+    });
+    w.terrain = [];
+    const boss = w.boss!;
+    expect(w.bossFlying(boss)).toBe(false); // grounded until it takes off
+    // Force the take-flight wind-up to resolve this tick.
+    boss.action = {
+      kind: 'windup',
+      abilityId: 'takeFlight',
+      remaining: 0.02,
+      total: 1.2,
+      targetId: null,
+      targetPos: null,
+      aimAngle: 0,
+      channelAccum: 0,
+    };
+    w.step(DT, new Map([['a', inp()]]));
+    expect(boss.buffs.some((b) => b.kind === 'flight')).toBe(true);
+    expect(w.bossFlying(boss)).toBe(true);
+  });
+
+  it('a constant-flyer boss reads as airborne with no buff (item 7)', () => {
+    const w = new World({
+      monsterId: 'beholder',
+      seed: 5,
+      players: [{ peerId: 'a', name: 'A', classId: 'ranger' }],
+    });
+    expect(w.bossFlying(w.boss!)).toBe(true); // Beholder floats permanently
+  });
+
   it('a martial wind-up ability enters a rooted cast when fired (item 10)', () => {
     const w = new World({
       monsterId: 'dummy',

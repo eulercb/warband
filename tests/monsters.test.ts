@@ -409,15 +409,26 @@ describe('boss decide: universal invariants', () => {
 
 describe('boss decide: Dragon priority list', () => {
   const dragon = MONSTERS.dragon;
+  // item 7 — the wyrm opens by taking flight (top priority, 17s cadence). These
+  // GROUND-rotation tests treat takeFlight as spent (on cooldown) so they still
+  // exercise the rest of the priority list.
+  const dctx = (o: Partial<BossDecisionCtx> = {}): BossDecisionCtx => {
+    const inner = o.usable ?? (() => true);
+    return ctx({ ...o, usable: (id) => id !== 'takeFlight' && inner(id) });
+  };
+
+  it('takes flight first when it is ready (item 7)', () => {
+    expect(dragon.decide(ctx({ hpFrac: 1, anyInMelee: true }))).toBe('takeFlight');
+  });
 
   it('wing-gusts below half HP when the coin flip passes', () => {
-    expect(dragon.decide(ctx({ hpFrac: 0.4, anyInMelee: true, rng: stubRng(0.2) }))).toBe(
+    expect(dragon.decide(dctx({ hpFrac: 0.4, anyInMelee: true, rng: stubRng(0.2) }))).toBe(
       'wingGust',
     );
   });
 
   it('skips wing gust when the coin flip fails, then tail-sweeps in melee', () => {
-    expect(dragon.decide(ctx({ hpFrac: 0.4, anyInMelee: true, rng: stubRng(0.8) }))).toBe(
+    expect(dragon.decide(dctx({ hpFrac: 0.4, anyInMelee: true, rng: stubRng(0.8) }))).toBe(
       'tailSweep',
     );
   });
@@ -425,7 +436,7 @@ describe('boss decide: Dragon priority list', () => {
   it('skips wing gust when it is on cooldown', () => {
     expect(
       dragon.decide(
-        ctx({
+        dctx({
           hpFrac: 0.4,
           anyInMelee: true,
           usable: (id) => id !== 'wingGust',
@@ -436,27 +447,42 @@ describe('boss decide: Dragon priority list', () => {
   });
 
   it('tail-sweeps in melee above half HP', () => {
-    expect(dragon.decide(ctx({ hpFrac: 1, anyInMelee: true }))).toBe('tailSweep');
+    expect(dragon.decide(dctx({ hpFrac: 1, anyInMelee: true }))).toBe('tailSweep');
   });
 
   it('fire-breathes at range within 420u', () => {
-    expect(dragon.decide(ctx({ anyInMelee: false, distToTarget: 400 }))).toBe('fireBreath');
+    expect(dragon.decide(dctx({ anyInMelee: false, distToTarget: 400 }))).toBe('fireBreath');
   });
 
   it('throws a fireball past fire-breath range', () => {
-    expect(dragon.decide(ctx({ anyInMelee: false, distToTarget: 500 }))).toBe('fireball');
+    expect(dragon.decide(dctx({ anyInMelee: false, distToTarget: 500 }))).toBe('fireball');
   });
 
   it('falls back to fireball when fire breath is unavailable', () => {
     expect(
       dragon.decide(
-        ctx({ anyInMelee: false, distToTarget: 100, usable: (id) => id !== 'fireBreath' }),
+        dctx({ anyInMelee: false, distToTarget: 100, usable: (id) => id !== 'fireBreath' }),
       ),
     ).toBe('fireball');
   });
 
   it('does nothing with everything on cooldown', () => {
     expect(dragon.decide(ctx({ usable: () => false }))).toBeNull();
+  });
+});
+
+describe('boss flight (item 7)', () => {
+  it('the Beholder is a constant flyer (it floats)', () => {
+    expect(MONSTERS.beholder.flying).toBe(true);
+  });
+
+  it('winged bosses carry a periodic take-flight buffSelf granting flight', () => {
+    for (const id of ['dragon', 'gargoyle', 'manticore'] as const) {
+      const ab = MONSTERS[id].abilities.find((a) => a.buffFlight != null);
+      expect(ab, `${id} should have a flight ability`).toBeDefined();
+      expect(ab!.shape).toBe('buffSelf');
+      expect(ab!.buffFlight).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -604,9 +630,20 @@ describe('boss decide: decideBy guard branches', () => {
 
   it('Gargoyle idles in its kite band (all guards fail → null)', () => {
     const g = MONSTERS.gargoyle;
-    expect(g.decide(ctx({ hpFrac: 1, distToTarget: 135, anyInMelee: false }))).toBe('divebomb');
+    // item 7 — takeWing is the top periodic beat; treat it as spent to exercise the
+    // ground rotation.
+    const noWing = (id: string): boolean => id !== 'takeWing';
+    expect(
+      g.decide(ctx({ hpFrac: 1, distToTarget: 135, anyInMelee: false, usable: noWing })),
+    ).toBe('divebomb');
     // hp>=0.5, not far(>130) at 120u, not in melee → no rule fires.
-    expect(g.decide(ctx({ hpFrac: 1, distToTarget: 120, anyInMelee: false }))).toBeNull();
+    expect(
+      g.decide(ctx({ hpFrac: 1, distToTarget: 120, anyInMelee: false, usable: noWing })),
+    ).toBeNull();
+  });
+
+  it('Gargoyle takes wing first when it is ready (item 7)', () => {
+    expect(MONSTERS.gargoyle.decide(ctx({ hpFrac: 1, distToTarget: 120 }))).toBe('takeWing');
   });
 });
 

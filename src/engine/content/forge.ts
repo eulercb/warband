@@ -85,6 +85,9 @@ export type EffectComponent =
   /** item 9 — SLUGGISH: stretch the target's wind-up / cast. `mult` ≥ 1 is the
    * duration factor (1.4 = 40% longer). A soft, tempo-shifting rider (curse/venom). */
   | { kind: 'castSlow'; mult: number; duration: number }
+  /** item 7 — FLIGHT: lift the caster (self-buff) / allies airborne for `duration`
+   * seconds, soaring over ground hazards + ground zones. A defensive/utility rider. */
+  | { kind: 'flight'; duration: number }
   | {
       kind: 'buff';
       target: BuffTarget;
@@ -115,6 +118,8 @@ export interface ZoneSpec {
   roots?: boolean;
   /** item 9 — a wind-up-slow factor (≥ 1) re-applied to enemies inside (Hex-style). */
   castSlow?: number;
+  /** item 8 — the zone reaches airborne targets too (rain-of-arrows style). */
+  airborne?: boolean;
   allyBuff?: { defMult?: number; dmgMult?: number; moveMult?: number; duration: number };
 }
 
@@ -178,6 +183,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     }
     if (def.roots) zone.roots = true;
     if (def.castSlow != null && def.castSlow > 1) zone.castSlow = def.castSlow; // item 9
+    if (def.airborne) zone.airborne = true; // item 8
     effects.push({ kind: 'zone', zone });
   } else {
     // Direct-strike payload: damage, then on-hit riders.
@@ -210,6 +216,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.buffMoveMult != null) {
       effects.push({ kind: 'buff', target, moveMult: def.buffMoveMult, duration: dur });
     }
+    // item 7 — a flight-granting rider (Dragon Wings) is its own component.
+    if (def.grantsFlight) effects.push({ kind: 'flight', duration: def.grantsFlight });
   }
 
   return { delivery, effects };
@@ -285,6 +293,9 @@ export function recompose(
         def.castSlow = e.mult;
         def.castSlowDuration = e.duration;
         break;
+      case 'flight': // item 7 — a flight-granting self/ally rider
+        def.grantsFlight = e.duration;
+        break;
       case 'buff':
         if (e.defMult != null) def.buffDefMult = e.defMult;
         if (e.dmgMult != null) def.buffDamageMult = e.dmgMult;
@@ -303,6 +314,7 @@ export function recompose(
         }
         if (e.zone.roots) def.roots = true;
         if (e.zone.castSlow != null) def.castSlow = e.zone.castSlow; // item 9
+        if (e.zone.airborne) def.airborne = true; // item 8
         break;
     }
   }
@@ -353,6 +365,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return (1 - e.mult) * e.duration * 12; // soft CC, priced by depth × time
     case 'castSlow':
       return (e.mult - 1) * e.duration * 18; // soft tempo CC, priced by depth × time
+    case 'flight':
+      return e.duration * 10; // a defensive/mobility window (ignore ground hazards)
     case 'buff':
       return buffValue(e);
     case 'zone':
@@ -461,6 +475,8 @@ function effectPhrase(e: EffectComponent): string {
       return `slow to ${pct(e.mult * 100)} for ${s(e.duration)}`;
     case 'castSlow':
       return `+${pct((e.mult - 1) * 100)} enemy wind-up for ${s(e.duration)}`;
+    case 'flight':
+      return `fly ${s(e.duration)}`;
     case 'buff':
       return buffPhrase(e);
     case 'zone':
@@ -484,6 +500,7 @@ function zonePhrase(z: ZoneSpec): string {
   if (z.roots) bits.push('roots');
   else if (z.slowMult != null) bits.push(`slow to ${pct(z.slowMult * 100)}`);
   if (z.castSlow != null && z.castSlow > 1) bits.push(`+${pct((z.castSlow - 1) * 100)} wind-up`);
+  if (z.airborne) bits.push('hits flyers');
   if (z.allyBuff) {
     if (z.allyBuff.defMult != null)
       bits.push(`allies ${pct((1 - z.allyBuff.defMult) * 100)} less dmg taken`);
@@ -685,6 +702,16 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'heal' || kind === 'buffAlly';
     case 'healOnUse':
       return kind === 'dash' || kind === 'blink' || kind === 'selfBuff' || kind === 'taunt';
+    case 'flight':
+      // item 7 — flight rides a self/ally state or a mobility skill (a soaring
+      // leap), never a pure ground zone (a zone doesn't lift the caster).
+      return (
+        kind === 'selfBuff' ||
+        kind === 'buffAlly' ||
+        kind === 'dash' ||
+        kind === 'blink' ||
+        kind === 'taunt'
+      );
     case 'buff':
       return true; // buffs fit anywhere (folded into a zone / rallied / self)
     case 'zone':
@@ -1010,6 +1037,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, duration: e.duration * f };
     case 'castSlow':
       return { ...e, duration: e.duration * f }; // rigid: keeps its bite, sheds time
+    case 'flight':
+      return { ...e, duration: e.duration * f };
     case 'buff':
       return { ...e, duration: e.duration * f };
     case 'zone':
@@ -1098,6 +1127,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.castSlow != null
         ? { ...e, mult: def.castSlow, duration: def.castSlowDuration ?? e.duration }
         : e;
+    case 'flight':
+      return def.grantsFlight != null ? { ...e, duration: def.grantsFlight } : e;
     case 'buff': {
       // Update only the axes THIS buff already carries (so a mul-of-undefined that set a flat
       // axis the buff lacks is ignored) and keep its target + structure intact.
@@ -1120,6 +1151,7 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
         z.slowDuration = def.slowDuration ?? z.slowDuration;
       }
       if (def.castSlow != null) z.castSlow = def.castSlow; // item 9
+      if (def.airborne != null) z.airborne = def.airborne; // item 8
       return { kind: 'zone', zone: z };
     }
   }
@@ -1149,6 +1181,8 @@ function capEffect(e: EffectComponent): EffectComponent {
         mult: clamp(round05(e.mult), 1.1, CAST_SLOW_MAX),
         duration: clamp(round1(e.duration), 1, 5),
       };
+    case 'flight':
+      return { ...e, duration: clamp(round1(e.duration), 2, 8) };
     case 'buff':
       return capBuff(e);
     case 'zone':
@@ -1174,6 +1208,7 @@ function capZone(z: ZoneSpec): ZoneSpec {
   if (out.tickHeal != null) out.tickHeal = Math.max(1, Math.round(out.tickHeal));
   if (out.slowMult != null) out.slowMult = clamp(round05(out.slowMult), 0.2, 0.95);
   if (out.castSlow != null) out.castSlow = clamp(round05(out.castSlow), 1.1, CAST_SLOW_MAX); // item 9
+  // item 8 — `airborne` is a boolean facet; it carries through capping unchanged.
   if (out.allyBuff) out.allyBuff = capAllyBuff(out.allyBuff);
   return out;
 }
