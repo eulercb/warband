@@ -826,7 +826,7 @@ describe('buildHarpySpec', () => {
     expect(spec.parts[2].local.x).toBeGreaterThan(spec.parts[1].local.x);
   });
 
-  it('perches on just TWO taloned legs (not the beast rig\'s four)', () => {
+  it("perches on just TWO taloned legs (not the beast rig's four)", () => {
     expect(spec.legs?.count).toBe(2);
     expect(spec.legs?.around).toBe('facing');
   });

@@ -1461,7 +1461,12 @@ export class World {
       for (const b of this.aliveBosses()) {
         if (dist(center, b.pos) <= proj.impactRadius + b.radius) {
           // item 5: ranged impacts can crit (per target); no backstab on a shot.
-          this.applyProjDamageBoss(owner, proj.damage, b, owner ? this.critRoll(owner, proj) : undefined);
+          this.applyProjDamageBoss(
+            owner,
+            proj.damage,
+            b,
+            owner ? this.critRoll(owner, proj) : undefined,
+          );
           dealt += proj.damage;
           this.applyProjRiders(b, proj);
         }
@@ -1551,7 +1556,10 @@ export class World {
     }
     // item 9 — a forged cursed bolt stretches the target's wind-up on hit.
     if (proj.castSlow != null && proj.castSlow > 1) {
-      applyBuff(target, makeBuff('castSlow', proj.castSlow, proj.castSlowDuration ?? 3, 'castSlow'));
+      applyBuff(
+        target,
+        makeBuff('castSlow', proj.castSlow, proj.castSlowDuration ?? 3, 'castSlow'),
+      );
     }
   }
 

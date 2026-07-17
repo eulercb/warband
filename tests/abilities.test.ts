@@ -2277,8 +2277,7 @@ describe('ability crit lean (item 13)', () => {
     const before = boss.hp;
     resolvePlayerAbility(w, p, 'a1', ZERO);
     const hit = w.events.find((e) => e.t === 'hit' && e.targetId === boss.id) as
-      | { crit?: boolean; backstab?: boolean }
-      | undefined;
+      { crit?: boolean; backstab?: boolean } | undefined;
     expect(hit?.crit).toBe(true);
     expect(hit?.backstab).toBeFalsy();
     expect(before - boss.hp).toBeCloseTo(50 * 2.0, 5); // damage 50 × (1.5 + 0.5)

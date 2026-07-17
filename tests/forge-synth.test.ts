@@ -181,14 +181,28 @@ describe('synthesizeAbility — validity + balance budget', () => {
         classId: 'knight',
         className: 'Knight',
         slot: 'a2',
-        def: { name: 'Ward', kind: 'selfBuff', cooldown: 12, damage: 0, buffDefMult: 0.7, buffDuration: 6 },
+        def: {
+          name: 'Ward',
+          kind: 'selfBuff',
+          cooldown: 12,
+          damage: 0,
+          buffDefMult: 0.7,
+          buffDuration: 6,
+        },
       },
       {
         name: 'Aegis',
         classId: 'paladin',
         className: 'Paladin',
         slot: 'a2',
-        def: { name: 'Aegis', kind: 'selfBuff', cooldown: 12, damage: 0, buffDefMult: 0.5, buffDuration: 6 },
+        def: {
+          name: 'Aegis',
+          kind: 'selfBuff',
+          cooldown: 12,
+          damage: 0,
+          buffDefMult: 0.5,
+          buffDuration: 6,
+        },
       },
     ];
     for (const seed of SEEDS) {

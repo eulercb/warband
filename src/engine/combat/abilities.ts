@@ -317,7 +317,11 @@ function applyDimensionSwap(world: World, p: Player, range: number, color: numbe
     radius: range,
     halfAngle: 0,
   });
-  const reflect = (t: { pos: Vec2; buffs: import('../core/types').Buff[]; radius: number }): void => {
+  const reflect = (t: {
+    pos: Vec2;
+    buffs: import('../core/types').Buff[];
+    radius: number;
+  }): void => {
     const delta = sub(p.pos, t.pos); // shortest torus vector from the foe to the mage
     const d = Math.hypot(delta.x, delta.y);
     if (d > range || d < 1e-3) return;

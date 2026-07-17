@@ -17,7 +17,12 @@ import {
   type EffectComponent,
   type Donor,
 } from '../src/engine/content/forge';
-import { CLASSES, CLASS_IDS, describeAbility, type PlayerAbilityDef } from '../src/engine/content/classes';
+import {
+  CLASSES,
+  CLASS_IDS,
+  describeAbility,
+  type PlayerAbilityDef,
+} from '../src/engine/content/classes';
 import { CAST_SLOW_MAX } from '../src/engine/core/constants';
 
 type Def = Omit<PlayerAbilityDef, 'slot'>;
@@ -27,8 +32,14 @@ const has = (c: AbilityComponents, k: EffectComponent['kind']): boolean =>
 describe('forge rider components — decompose ⇄ recompose round-trip (items 7–13)', () => {
   it('carries castSlow, flight, knockback, pull and airborne through the component form', () => {
     const hex: Def = {
-      name: 'Hex', kind: 'meleeCone', cooldown: 6, damage: 20, range: 70, halfAngleDeg: 45,
-      castSlow: 1.4, castSlowDuration: 3,
+      name: 'Hex',
+      kind: 'meleeCone',
+      cooldown: 6,
+      damage: 20,
+      range: 70,
+      halfAngleDeg: 45,
+      castSlow: 1.4,
+      castSlowDuration: 3,
     };
     const hc = decompose(hex);
     expect(has(hc, 'castSlow')).toBe(true);
@@ -37,28 +48,56 @@ describe('forge rider components — decompose ⇄ recompose round-trip (items 7
     expect(hr.castSlowDuration).toBeCloseTo(3, 5);
 
     const wings: Def = {
-      name: 'Wings', kind: 'selfBuff', cooldown: 12, damage: 0, grantsFlight: 5, buffDuration: 5,
+      name: 'Wings',
+      kind: 'selfBuff',
+      cooldown: 12,
+      damage: 0,
+      grantsFlight: 5,
+      buffDuration: 5,
     };
     const wc = decompose(wings);
     expect(has(wc, 'flight')).toBe(true);
-    expect(recompose(wc, { slot: 'a2', name: 'Wings', cooldown: 12 }).grantsFlight).toBeCloseTo(5, 5);
+    expect(recompose(wc, { slot: 'a2', name: 'Wings', cooldown: 12 }).grantsFlight).toBeCloseTo(
+      5,
+      5,
+    );
 
     const kb: Def = {
-      name: 'Bash', kind: 'meleeCone', cooldown: 7, damage: 30, range: 70, halfAngleDeg: 45, knockback: 170,
+      name: 'Bash',
+      kind: 'meleeCone',
+      cooldown: 7,
+      damage: 30,
+      range: 70,
+      halfAngleDeg: 45,
+      knockback: 170,
     };
     expect(decompose(kb).effects.some((e) => e.kind === 'shove' && !e.pull)).toBe(true);
     expect(recompose(decompose(kb), { slot: 'a1', name: 'Bash', cooldown: 7 }).knockback).toBe(170);
 
     const pull: Def = {
-      name: 'Hook', kind: 'meleeCone', cooldown: 7, damage: 30, range: 70, halfAngleDeg: 45, pull: 200,
+      name: 'Hook',
+      kind: 'meleeCone',
+      cooldown: 7,
+      damage: 30,
+      range: 70,
+      halfAngleDeg: 45,
+      pull: 200,
     };
     const pc = decompose(pull);
     expect(pc.effects.some((e) => e.kind === 'shove' && e.pull)).toBe(true);
     expect(recompose(pc, { slot: 'a1', name: 'Hook', cooldown: 7 }).pull).toBe(200);
 
     const rain: Def = {
-      name: 'Rain', kind: 'groundZone', cooldown: 12, damage: 0, range: 460, radius: 120,
-      zoneDuration: 3, zoneTickDamage: 12, zoneKind: 'rainOfArrows', airborne: true,
+      name: 'Rain',
+      kind: 'groundZone',
+      cooldown: 12,
+      damage: 0,
+      range: 460,
+      radius: 120,
+      zoneDuration: 3,
+      zoneTickDamage: 12,
+      zoneKind: 'rainOfArrows',
+      airborne: true,
     };
     const rc = decompose(rain);
     const z = rc.effects.find((e) => e.kind === 'zone');
@@ -68,7 +107,12 @@ describe('forge rider components — decompose ⇄ recompose round-trip (items 7
 
   it('carries a crit lean — chance-only, mult-only, and both (item 13)', () => {
     const chanceOnly: Def = {
-      name: 'Aim', kind: 'projectile', cooldown: 6, damage: 30, projSpeed: 700, projCount: 1,
+      name: 'Aim',
+      kind: 'projectile',
+      cooldown: 6,
+      damage: 30,
+      projSpeed: 700,
+      projCount: 1,
       critChanceBonus: 0.3,
     };
     const co = decompose(chanceOnly);
@@ -78,7 +122,12 @@ describe('forge rider components — decompose ⇄ recompose round-trip (items 7
     expect(cor.critMultBonus).toBeUndefined(); // e.mult === 0 → recompose leaves it unset
 
     const multOnly: Def = {
-      name: 'Deep', kind: 'meleeCone', cooldown: 6, damage: 40, range: 60, halfAngleDeg: 40,
+      name: 'Deep',
+      kind: 'meleeCone',
+      cooldown: 6,
+      damage: 40,
+      range: 60,
+      halfAngleDeg: 40,
       critMultBonus: 0.7,
     };
     const mo = decompose(multOnly);
@@ -88,8 +137,14 @@ describe('forge rider components — decompose ⇄ recompose round-trip (items 7
     expect(mor.critChanceBonus).toBeUndefined();
 
     const both: Def = {
-      name: 'Kill', kind: 'meleeCone', cooldown: 7, damage: 50, range: 58, halfAngleDeg: 32,
-      critChanceBonus: 0.35, critMultBonus: 0.6,
+      name: 'Kill',
+      kind: 'meleeCone',
+      cooldown: 7,
+      damage: 50,
+      range: 58,
+      halfAngleDeg: 32,
+      critChanceBonus: 0.35,
+      critMultBonus: 0.6,
     };
     const br = recompose(decompose(both), { slot: 'a1', name: 'Kill', cooldown: 7 });
     expect(br.critChanceBonus).toBeCloseTo(0.35, 5);
@@ -135,7 +190,10 @@ describe('forge rider components — description + value (items 7–13)', () => 
     // A MULT-only crit (chance 0) reads only the crit-damage clause — never a
     // spurious "+0% crit" (each clause is guarded independently).
     const line3 = describeComposed(
-      { delivery: { kind: 'meleeCone', range: 70, halfAngleDeg: 45 }, effects: [{ kind: 'crit', chance: 0, mult: 0.5 }] },
+      {
+        delivery: { kind: 'meleeCone', range: 70, halfAngleDeg: 45 },
+        effects: [{ kind: 'crit', chance: 0, mult: 0.5 }],
+      },
       6,
     );
     expect(line3).toContain('+0.5× crit dmg');
@@ -279,7 +337,15 @@ describe('forge synthesis — riders are capped + scaled on budget (items 9,11,1
         classId: cid,
         className: c.name,
         slot: 'a2',
-        def: { name: c.abilities.a2.name, kind: 'selfBuff', cooldown: 12, damage: 0, grantsFlight: 6, buffDuration: 6, buffDefMult: 0.6 },
+        def: {
+          name: c.abilities.a2.name,
+          kind: 'selfBuff',
+          cooldown: 12,
+          damage: 0,
+          grantsFlight: 6,
+          buffDuration: 6,
+          buffDefMult: 0.6,
+        },
       });
     }
     for (const seed of [2, 8, 21, 404, 9001]) {
@@ -301,7 +367,15 @@ describe('forge synthesis — riders are capped + scaled on budget (items 9,11,1
         classId: cid,
         className: c.name,
         slot: 'a1',
-        def: { name: c.abilities.a1.name, kind: 'heal', cooldown: 10, damage: 0, range: 400, buffDefMult: 0.7, buffDuration: 5 },
+        def: {
+          name: c.abilities.a1.name,
+          kind: 'heal',
+          cooldown: 10,
+          damage: 0,
+          range: 400,
+          buffDefMult: 0.7,
+          buffDuration: 5,
+        },
       });
     }
     for (const seed of [3, 17, 256, 4096, 31337]) {
@@ -323,8 +397,16 @@ describe('forge synthesis — riders are capped + scaled on budget (items 9,11,1
         className: c.name,
         slot: 'a1',
         def: {
-          name: c.abilities.a1.name, kind: 'meleeCone', cooldown: 8, damage: 30, range: 70, halfAngleDeg: 45,
-          stun: 1, freeze: 1, slowMult: 0.5, slowDuration: 2,
+          name: c.abilities.a1.name,
+          kind: 'meleeCone',
+          cooldown: 8,
+          damage: 30,
+          range: 70,
+          halfAngleDeg: 45,
+          stun: 1,
+          freeze: 1,
+          slowMult: 0.5,
+          slowDuration: 2,
         },
       });
     }
