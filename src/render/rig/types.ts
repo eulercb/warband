@@ -27,7 +27,8 @@ export type RigId =
   | 'golem'
   | 'gem'
   | 'eye'
-  | 'dragon';
+  | 'dragon'
+  | 'harpy';
 
 /** Painter bucket: parts sort back → front as behind → main → front. */
 export type PartZ = 'behind' | 'main' | 'front';

@@ -341,7 +341,7 @@ describe('ranger upgrades', () => {
     const a = apply('ranger', ['rg_pierce']).abilities!;
     expect(a.basic.damage).toBe(25);
     expect(a.basic.projSpeed).toBe(790);
-    expect(a.a1.damage).toBe(20);
+    expect(a.a1.damage).toBe(23); // Multishot 19 base + rg_pierce (item 10)
   });
   it('rg_frost chills Arrow and Multishot', () => {
     const a = apply('ranger', ['rg_frost']).abilities!;
@@ -452,7 +452,7 @@ describe('barbarian upgrades', () => {
     const a = apply('barbarian', ['bb_brutal']).abilities!;
     expect(a.basic.damage).toBe(32);
     expect(a.basic.range).toBe(92);
-    expect(a.a3.damage).toBe(43);
+    expect(a.a3.damage).toBe(49); // Whirlwind 40 base + bb_brutal (item 10)
     expect(a.a3.radius).toBe(150);
   });
   it('bb_thickhide toughens the barbarian (player-only)', () => {
@@ -466,7 +466,7 @@ describe('barbarian upgrades', () => {
 describe('rogue upgrades', () => {
   it('ro_assassin sharpens Backstab', () => {
     const a = apply('rogue', ['ro_assassin']).abilities!;
-    expect(a.a1.damage).toBe(82);
+    expect(a.a1.damage).toBe(74); // item 13: Backstab base 50 (crit-leaning) + 24
     expect(a.a1.cooldown).toBeCloseTo(3.9, 5); // 5 * 0.78
   });
   it('ro_poison spreads Poison Vial', () => {
@@ -490,6 +490,14 @@ describe('rogue upgrades', () => {
     const a = apply('rogue', ['ro_envenom']).abilities!;
     expect(a.basic.lifestealFrac!).toBeCloseTo(0.12, 5);
     expect(a.a1.lifestealFrac!).toBeCloseTo(0.12, 5);
+  });
+  it('ro_grand_shadow modernizes Shadow Master into a crit capstone (item 13)', () => {
+    const a = apply('rogue', ['ro_grand_shadow']).abilities!;
+    expect(a.a2.cooldown).toBeCloseTo(6 * 0.35, 5); // Shadowstep → 2.1s
+    // Backstab gains flat AND a crit lean stacking on its base +30% / +0.3×.
+    expect(a.a1.damage).toBe(85); // 50 + 35
+    expect(a.a1.critChanceBonus!).toBeCloseTo(0.5, 5); // 0.3 base + 0.2
+    expect(a.a1.critMultBonus!).toBeCloseTo(0.8, 5); // 0.3 base + 0.5
   });
 });
 

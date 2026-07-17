@@ -28,6 +28,7 @@ import { buildGolemSpec } from '../src/render/rig/specs/golem';
 import { buildGemSpec } from '../src/render/rig/specs/gem';
 import { buildEyeSpec } from '../src/render/rig/specs/eye';
 import { buildDragonSpec } from '../src/render/rig/specs/dragon';
+import { buildHarpySpec } from '../src/render/rig/specs/harpy';
 import {
   RIG_FLAGS,
   bossRigId,
@@ -92,6 +93,7 @@ const RIG_IDS: RigId[] = [
   'gem',
   'eye',
   'dragon',
+  'harpy',
 ];
 const PART_Z = ['behind', 'main', 'front'];
 const WEAPON_KINDS = ['sword', 'bow', 'staff', 'mace', 'axe', 'dagger', 'shield', 'claws'];
@@ -272,6 +274,7 @@ const BUILT_SPECS: { name: string; spec: RigSpec }[] = [
   { name: 'gem', spec: buildGemSpec() },
   { name: 'eye', spec: buildEyeSpec() },
   { name: 'dragon', spec: buildDragonSpec() },
+  { name: 'harpy', spec: buildHarpySpec() },
   { name: 'bossHumanoid', spec: buildBossHumanoidSpec() },
   ...ALL_CLASS_IDS.map((c) => ({ name: `humanoid:${c}`, spec: buildHumanoidSpec(c) })),
 ];
@@ -810,6 +813,40 @@ describe('buildDragonSpec', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Harpy (item 7) — a WINGED silhouette, not the shared quadruped beast rig
+// ---------------------------------------------------------------------------
+
+describe('buildHarpySpec', () => {
+  const spec = buildHarpySpec();
+
+  it('is a compact haunch → chest → head bird-of-prey profile', () => {
+    expect(spec.id).toBe('harpy');
+    expect(spec.parts.map((p) => p.id)).toEqual(['haunch', 'chest', 'head']);
+    // The head is the frontmost part.
+    expect(spec.parts[2].local.x).toBeGreaterThan(spec.parts[1].local.x);
+  });
+
+  it('perches on just TWO taloned legs (not the beast rig\'s four)', () => {
+    expect(spec.legs?.count).toBe(2);
+    expect(spec.legs?.around).toBe('facing');
+  });
+
+  it('beats a pair of broad wings in phase behind the body (the whole point)', () => {
+    const t = spec.tentacles ?? [];
+    const wings = t.filter((w) => w.anchorPart === 'chest');
+    expect(wings).toHaveLength(2);
+    expect(wings.every((w) => w.z === 'behind')).toBe(true);
+    expect(wings[0].phase).toBe(wings[1].phase); // in phase → a wing-beat, not a slither
+    expect(wings[0].baseAngleDeg).toBeCloseTo(-wings[1].baseAngleDeg, 6);
+    expect(wings[0].width).toBeGreaterThan(0.4); // broad feathered pinions
+  });
+
+  it('maps the harpy boss to the harpy rig (not beast)', () => {
+    expect(bossRigId('harpy')).toBe('harpy');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Humanoid (per-class biped + boss variant)
 // ---------------------------------------------------------------------------
 
@@ -1027,6 +1064,7 @@ const BOSS_RIG_OVERRIDE: Partial<Record<MonsterId, RigId>> = {
   kraken: 'kraken',
   treant: 'treant',
   basilisk: 'serpent',
+  harpy: 'harpy', // item 7 — winged rig instead of the beast-silhouette fallback
 };
 const SHAPE_TO_RIG: Partial<Record<BossBodyShape, RigId>> = {
   insect: 'spider',
@@ -1052,11 +1090,12 @@ describe('bossRigId', () => {
     expect(bossRigId(id)).toBe(expectedBossRig(id));
   });
 
-  it('maps the four explicit boss overrides', () => {
+  it('maps the explicit boss overrides', () => {
     expect(bossRigId('spider')).toBe('spider');
     expect(bossRigId('kraken')).toBe('kraken'); // override beats its 'serpent' silhouette
     expect(bossRigId('treant')).toBe('treant');
     expect(bossRigId('basilisk')).toBe('serpent');
+    expect(bossRigId('harpy')).toBe('harpy'); // item 7 — winged rig, not the beast fallback
   });
 
   it('maps humanoid silhouettes to the humanoid rig', () => {

@@ -71,6 +71,24 @@ export const BOSS_INVULN_POWER_HARD = 1.2;
 /** Class SKILL stacking cap: the same class/graft upgrade can be taken at most this many times. */
 export const MAX_SKILL_STACKS = 5;
 
+/**
+ * item 9 — SLUGGISH (cast/wind-up slow) balance. A `castSlow` buff carries a
+ * duration factor ≥ 1; the effective factor is the product of every source
+ * (Hex + venom stack) but CLAMPED to CAST_SLOW_MAX so it can only ever stretch a
+ * wind-up so far — a boss stays able to act and a Mage is never locked out of a
+ * cast. A wind-up ticks down at dt / factor, so factor 1.4 ⇒ 40% longer.
+ */
+export const CAST_SLOW_MAX = 1.75;
+
+/**
+ * item 11 — forced movement vs ROOT/bind. A rooted target is normally immovable
+ * (root/bind takes priority), but a forced-movement impulse of at least this many
+ * units RIPS it free — a strong Bull Rush / Chain Pull overpowers an Entangle,
+ * while a light gust does not. Keeps the two mechanics interacting rather than one
+ * flatly negating the other.
+ */
+export const FORCE_OVERCOME_ROOT = 150;
+
 // --- Arena ---
 export const ARENA_W = 1600; // world units
 export const ARENA_H = 1000;
@@ -136,6 +154,12 @@ export const ZONE_TICK_INTERVAL = 0.5; // s
 // the zone's full duration for ticks/hit-tests; only the drawn opacity fades.
 export const ZONE_FADE_IN = 0.2; // s
 export const ZONE_FADE_OUT = 0.6; // s
+// item 12 — a ranged/at-a-distance AoE ARMS before it lands: an indicator travels
+// from the caster to the target over a brief window (distance ÷ speed, clamped),
+// so players see it coming and where it will hit. A centered/self cast never arms.
+export const ZONE_ARM_MARKER_SPEED = 950; // u/s the telegraph indicator flies
+export const ZONE_ARM_MIN = 0.22; // s — the shortest arming window (close casts)
+export const ZONE_ARM_MAX = 0.7; // s — the longest (a far cross-arena cast)
 
 // --- Terrain (static per-run environmental hazards) ---
 // Terrain patches are generated once at fight start from the run seed (so host

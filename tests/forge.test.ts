@@ -153,6 +153,107 @@ describe('decompose / recompose round-trip', () => {
     expect(comp.effects[0]).toEqual({ kind: 'heal', amount: heal.damage });
   });
 
+  // item 9 — SLUGGISH (cast/wind-up slow) as a forge component.
+  it("decomposes a curse zone's castSlow into its zone rider and round-trips", () => {
+    const hex = CLASSES.warlock.abilities.a1; // Hex: castSlow 1.4 on a poison zone
+    const comp = decompose(hex);
+    const z = comp.effects.find((e) => e.kind === 'zone');
+    expect(z?.kind === 'zone' && z.zone.castSlow).toBe(1.4);
+    const back = recompose(comp, { slot: 'a1', name: 'x', cooldown: 11 });
+    expect(back.castSlow).toBe(1.4);
+  });
+
+  // item 7 — FLIGHT as a forge effect component.
+  it('decomposes a flight-granting self-buff into a flight component and round-trips', () => {
+    const wings: Omit<PlayerAbilityDef, 'slot'> = {
+      name: 'wings',
+      kind: 'selfBuff',
+      cooldown: 12,
+      damage: 0,
+      buffDefMult: 0.6,
+      buffDuration: 5,
+      grantsFlight: 5,
+    };
+    const comp = decompose(wings);
+    const fl = comp.effects.find((e) => e.kind === 'flight');
+    expect(fl?.kind === 'flight' && fl.duration).toBe(5);
+    expect(componentValue(comp)).toBeGreaterThan(0);
+    expect(describeComposed(comp, 12)).toContain('fly');
+    const back = recompose(comp, { slot: 'a2', name: 'x', cooldown: 12 });
+    expect(back.grantsFlight).toBe(5);
+  });
+
+  // item 11 — FORCED MOVEMENT (knockback / pull) as a forge component.
+  it('decomposes a knockback / pull rider into a shove component and round-trips', () => {
+    const shove: Omit<PlayerAbilityDef, 'slot'> = {
+      name: 'bash',
+      kind: 'meleeCone',
+      cooldown: 6,
+      damage: 20,
+      range: 70,
+      halfAngleDeg: 45,
+      knockback: 160,
+    };
+    const comp = decompose(shove);
+    const sh = comp.effects.find((e) => e.kind === 'shove');
+    expect(sh?.kind === 'shove' && sh.distance).toBe(160);
+    expect(sh?.kind === 'shove' && sh.pull).toBe(false);
+    expect(componentValue(comp)).toBeGreaterThan(componentValue(decompose({ ...shove, knockback: undefined })));
+    expect(describeComposed(comp, 6)).toContain('knock back');
+    const back = recompose(comp, { slot: 'a3', name: 'x', cooldown: 6 });
+    expect(back.knockback).toBe(160);
+
+    // A pull round-trips to the pull field.
+    const pullComp = decompose({ ...shove, knockback: undefined, pull: 200 });
+    const pl = pullComp.effects.find((e) => e.kind === 'shove');
+    expect(pl?.kind === 'shove' && pl.pull).toBe(true);
+    expect(recompose(pullComp, { slot: 'a3', name: 'x', cooldown: 6 }).pull).toBe(200);
+  });
+
+  // item 8 — the AIRBORNE zone facet survives decompose/recompose.
+  it('carries a zone airborne flag through the round-trip', () => {
+    const rain: Omit<PlayerAbilityDef, 'slot'> = {
+      name: 'rain',
+      kind: 'groundZone',
+      cooldown: 10,
+      damage: 0,
+      zoneDuration: 4,
+      zoneTickDamage: 10,
+      zoneKind: 'entangle',
+      airborne: true, // an Otiluke-style floating cage on the ground kind
+    };
+    const comp = decompose(rain);
+    const z = comp.effects.find((e) => e.kind === 'zone');
+    expect(z?.kind === 'zone' && z.zone.airborne).toBe(true);
+    const back = recompose(comp, { slot: 'a1', name: 'x', cooldown: 10 });
+    expect(back.airborne).toBe(true);
+  });
+
+  it('decomposes a direct-hit castSlow rider — priced, described, round-tripped', () => {
+    const cursed: Omit<PlayerAbilityDef, 'slot'> = {
+      name: 'cursed strike',
+      kind: 'meleeCone',
+      cooldown: 6,
+      damage: 20,
+      range: 70,
+      halfAngleDeg: 45,
+      castSlow: 1.5,
+      castSlowDuration: 3,
+    };
+    const comp = decompose(cursed);
+    const cs = comp.effects.find((e) => e.kind === 'castSlow');
+    expect(cs?.kind === 'castSlow' && cs.mult).toBe(1.5);
+    // Monotonic pricing — the rider adds value, never subtracts.
+    const withCs = componentValue(comp);
+    const without = componentValue(decompose({ ...cursed, castSlow: undefined }));
+    expect(withCs).toBeGreaterThan(without);
+    // Auto-generated card text surfaces it, and it round-trips to flat fields.
+    expect(describeComposed(comp, 6)).toContain('wind-up');
+    const back = recompose(comp, { slot: 'a1', name: 'x', cooldown: 6 });
+    expect(back.castSlow).toBe(1.5);
+    expect(back.castSlowDuration).toBe(3);
+  });
+
   it('covers the remaining decompose field-gates via synthetic defs', () => {
     // A healing zone with no explicit zoneKind → sanctuary default.
     const healZone = decompose({

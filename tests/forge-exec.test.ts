@@ -244,7 +244,9 @@ describe('resolveComposedAbility — ground zones + ally-buff tick', () => {
     });
     resolvePlayerAbility(w, p, 'a1', ZERO);
     expect(w.groundZones[0].pos.x).toBeGreaterThan(400); // placed toward the aim
-    for (let t = 0; t < 14; t++) w.step(0.05, new Map());
+    // item 12 — a ranged zone ARMS (telegraphs) before it bites; step past the
+    // arming window AND the first live tick before checking damage.
+    for (let t = 0; t < 22; t++) w.step(0.05, new Map());
     expect(w.boss!.hp).toBeLessThan(hp0);
   });
 });

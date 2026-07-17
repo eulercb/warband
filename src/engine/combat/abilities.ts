@@ -62,6 +62,10 @@ import {
   PLAYER_RADIUS,
   CLASS_COLORS,
   PROJECTILE_MAX_RANGE,
+  FORCE_OVERCOME_ROOT,
+  ZONE_ARM_MARKER_SPEED,
+  ZONE_ARM_MIN,
+  ZONE_ARM_MAX,
 } from '../core/constants';
 import type { SkillAreaKind } from '../core/types';
 
@@ -145,15 +149,15 @@ function applyDashLanding(world: World, p: Player, ab: PlayerAbilityDef): void {
   for (const b of world.bosses) {
     if (b.hp <= 0) continue;
     if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
-      damageBoss(world, p, b, ab.landingDamage, world.critRoll(p));
-      applyStrikeRiders(world, b, ab);
+      damageBoss(world, p, b, ab.landingDamage, world.critRoll(p, ab));
+      applyStrikeRiders(world, p.pos, b, ab);
     }
   }
   for (const a of world.adds) {
     if (a.hp <= 0) continue;
     if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-      damageAdd(world, p, a, ab.landingDamage, world.critRoll(p));
-      applyStrikeRiders(world, a, ab);
+      damageAdd(world, p, a, ab.landingDamage, world.critRoll(p, ab));
+      applyStrikeRiders(world, p.pos, a, ab);
     }
   }
 }
@@ -250,12 +254,82 @@ function lowestHpAllyInRange(world: World, from: Vec2, range: number): Player | 
 /** Apply a strike's on-hit riders (stun / freeze / chill) to a boss or add.
  * Stuns honor diminishing returns (see combat.applyStun); slow riders let
  * Frostbrand-style upgrades chill through melee swings, not just projectiles. */
-function applyStrikeRiders(world: World, target: Boss | Add, ab: PlayerAbilityDef): void {
+function applyStrikeRiders(
+  world: World,
+  from: Vec2,
+  target: Boss | Add,
+  ab: PlayerAbilityDef,
+): void {
   if (ab.stun) applyStun(world, target, ab.stun, 'stun');
   if (ab.freeze) applyStun(world, target, ab.freeze, 'freeze');
   if (ab.slowMult != null && ab.slowMult < 1) {
     applySlow(target, ab.slowMult, ab.slowDuration ?? 2);
   }
+  // item 9 — a direct-hit SLUGGISH rider (envenomed strike / cursed shot) stretches
+  // the target's next wind-up for a short window.
+  if (ab.castSlow != null && ab.castSlow > 1) {
+    applyBuff(target, makeBuff('castSlow', ab.castSlow, ab.castSlowDuration ?? 3, 'castSlow'));
+  }
+  // item 11 — forced movement: shove the enemy away from / pull it toward the caster.
+  applyForcedMove(world, from, target, ab);
+}
+
+/**
+ * item 11 — apply a player ability's FORCED MOVEMENT to a struck enemy: `knockback`
+ * shoves it away from `from` (the caster), `pull` drags it toward `from`. The
+ * root-vs-force rule: a rooted target holds fast UNLESS the impulse is strong
+ * enough (≥ FORCE_OVERCOME_ROOT) to rip it free — in which case the root is broken
+ * and the shove lands (it may re-root next tick if still in the zone). Shared by
+ * every delivery that strikes (melee / pbaoe / dash-landing).
+ */
+export function applyForcedMove(
+  world: World,
+  from: Vec2,
+  target: { pos: Vec2; buffs: import('../core/types').Buff[] },
+  ab: PlayerAbilityDef,
+): void {
+  const push = ab.knockback ?? 0;
+  const pull = ab.pull ?? 0;
+  if (push <= 0 && pull <= 0) return;
+  const impulse = push > 0 ? push : pull;
+  if (isRooted(target)) {
+    if (impulse < FORCE_OVERCOME_ROOT) return; // root wins — the target holds fast
+    // Strong enough to overpower the bind: rip the root off, then move.
+    target.buffs = target.buffs.filter((b) => b.kind !== 'root');
+  }
+  if (push > 0) applyImpulse(world, target, sub(target.pos, from), push);
+  else pullToward(world, target, from, pull);
+}
+
+/**
+ * item 11 — Dimension Door's teleport-swap: reflect every enemy within `range` of
+ * the mage across the mage's position (an enemy `d` ahead ends up `d` behind), a
+ * chaotic peel/reposition. The reflection displacement is 2·d, so a distant-enough
+ * foe is flung far; the root rule applies (a bound foe within FORCE_OVERCOME_ROOT/2
+ * of the mage stays put, a further one is ripped free). Flashes the swap radius.
+ */
+function applyDimensionSwap(world: World, p: Player, range: number, color: number): void {
+  emitSkillArea(world, p.id, color, {
+    kind: 'circle',
+    origin: { ...p.pos },
+    angle: 0,
+    range: 0,
+    radius: range,
+    halfAngle: 0,
+  });
+  const reflect = (t: { pos: Vec2; buffs: import('../core/types').Buff[]; radius: number }): void => {
+    const delta = sub(p.pos, t.pos); // shortest torus vector from the foe to the mage
+    const d = Math.hypot(delta.x, delta.y);
+    if (d > range || d < 1e-3) return;
+    const disp = 2 * d; // reflection lands the foe on the mage's far side
+    if (isRooted(t)) {
+      if (disp < FORCE_OVERCOME_ROOT) return; // a close-bound foe holds fast
+      t.buffs = t.buffs.filter((b) => b.kind !== 'root');
+    }
+    applyImpulse(world, t, delta, disp);
+  };
+  for (const b of world.bosses) if (b.hp > 0) reflect(b);
+  for (const a of world.adds) if (a.hp > 0) reflect(a);
 }
 
 // ---------------------------------------------------------------------------
@@ -309,15 +383,15 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
         if (b.hp <= 0) continue;
         if (pointInCone(b.pos, p.pos, aimAngle, range, half, b.radius)) {
           // item 5: a directional cone strike can crit AND backstab (rear arc).
-          dealt += damageBoss(world, p, b, ab.damage, world.meleeHit(p, b));
-          applyStrikeRiders(world, b, ab);
+          dealt += damageBoss(world, p, b, ab.damage, world.meleeHit(p, b, ab));
+          applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
-          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p));
-          applyStrikeRiders(world, a, ab);
+          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p, ab));
+          applyStrikeRiders(world, p.pos, a, ab);
         }
       }
       lifesteal(world, p, ab, dealt);
@@ -345,6 +419,8 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
           slowMult: ab.slowMult,
           slowDuration: ab.slowDuration,
           freeze: ab.freeze,
+          critChanceBonus: ab.critChanceBonus, // item 13 — a deadly/aimed shot
+          critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
         });
       }
@@ -371,15 +447,15 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
         if (b.hp <= 0) continue;
         if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
           // item 5: a point-blank burst can crit (omnidirectional → no backstab).
-          dealt += damageBoss(world, p, b, ab.damage, world.critRoll(p));
-          applyStrikeRiders(world, b, ab);
+          dealt += damageBoss(world, p, b, ab.damage, world.critRoll(p, ab));
+          applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p));
-          applyStrikeRiders(world, a, ab);
+          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p, ab));
+          applyStrikeRiders(world, p.pos, a, ab);
         }
       }
       lifesteal(world, p, ab, dealt);
@@ -409,6 +485,9 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
       if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
       if (ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
       world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
+      // item 11 — Dimension Door shuffles space: reflect nearby enemies across the
+      // mage's new position (front ↔ back), a teleport-swap peel.
+      if (ab.swap) applyDimensionSwap(world, p, ab.radius ?? 220, color);
       break;
     }
 
@@ -424,6 +503,10 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
       }
       if (ab.buffMoveMult) {
         applyBuff(p, makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 4, 'selfBuffMove'));
+      }
+      // item 7 — Dragon Wings & co. lift the caster into the air for a window.
+      if (ab.grantsFlight) {
+        applyBuff(p, makeBuff('flight', 0, ab.grantsFlight, 'flight'));
       }
       break;
     }
@@ -455,6 +538,10 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
           target,
           makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 6, 'blessingMove'),
         );
+      }
+      // item 7 — a rallying skill can lift its target into the air too.
+      if (ab.grantsFlight) {
+        applyBuff(target, makeBuff('flight', 0, ab.grantsFlight, 'flight'));
       }
       break;
     }
@@ -531,6 +618,8 @@ function zoneToImpact(z: ZoneSpec): ProjectileImpact {
     slowMult: z.slowMult,
     slowDuration: z.slowDuration,
     roots: z.roots,
+    castSlow: z.castSlow, // item 9
+    airborne: z.airborne, // item 8
     allyBuff: z.allyBuff,
   };
 }
@@ -541,6 +630,7 @@ function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number):
   const pos = centered
     ? { ...p.pos }
     : clampToArena(world, vadd(p.pos, vscale(p.aim, range)), z.radius);
+  const arm = centered ? { armTime: 0, armFrom: p.pos } : zoneArm(p.pos, pos); // item 12
   spawnZone(world, {
     kind: z.zoneKind,
     pos,
@@ -552,8 +642,12 @@ function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number):
     slowMult: z.slowMult,
     slowDuration: z.slowDuration,
     roots: z.roots,
+    castSlow: z.castSlow, // item 9
+    airborne: z.airborne, // item 8
     allyBuff: z.allyBuff,
     duration: z.duration,
+    armTime: arm.armTime,
+    armFrom: arm.armFrom,
   });
 }
 
@@ -582,16 +676,29 @@ function resolveComposedAbility(
   const healOnUse = effects.find((e) => e.kind === 'healOnUse');
   const dmg = ab.damage;
 
+  // item 7 — a flight rider lifts its recipients airborne for its window.
+  const flightEff = effects.find((e) => e.kind === 'flight');
+  const applyFlight = (target: { buffs: import('../core/types').Buff[] }): void => {
+    if (flightEff && flightEff.kind === 'flight') {
+      applyBuff(target, makeBuff('flight', 0, flightEff.duration, 'flight'));
+    }
+  };
   // Buff the caster with any self-targeted buffs, and heal the caster on-use.
-  const buffSelf = (): void => applyForgeBuffs(p, effects, 'self', 'forgeSelf');
+  const buffSelf = (): void => {
+    applyForgeBuffs(p, effects, 'self', 'forgeSelf');
+    applyFlight(p); // flight on a self-buff / mobility delivery lands on the caster
+  };
   const selfHeal = (): void => {
     if (healOnUse && healOnUse.kind === 'healOnUse') healPlayer(world, p, p, healOnUse.amount);
   };
   // Rally: put ally-targeted buffs on EVERY ally in reach (the caster included).
   const buffAllies = (range: number): void => {
-    if (!effects.some((e) => e.kind === 'buff' && e.target === 'allies')) return;
+    const rallies = effects.some((e) => e.kind === 'buff' && e.target === 'allies');
+    if (!rallies && !flightEff) return;
     for (const a of aliveAllies(world)) {
-      if (dist(p.pos, a.pos) <= range) applyForgeBuffs(a, effects, 'allies', 'forgeAlly');
+      if (dist(p.pos, a.pos) > range) continue;
+      applyForgeBuffs(a, effects, 'allies', 'forgeAlly');
+      applyFlight(a);
     }
   };
   const healAlly = (range: number): void => {
@@ -616,15 +723,15 @@ function resolveComposedAbility(
       for (const b of world.bosses) {
         if (b.hp <= 0) continue;
         if (pointInCone(b.pos, p.pos, aimAngle, range, half, b.radius)) {
-          dealt += damageBoss(world, p, b, dmg, world.meleeHit(p, b));
-          applyStrikeRiders(world, b, ab);
+          dealt += damageBoss(world, p, b, dmg, world.meleeHit(p, b, ab));
+          applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
-          dealt += damageAdd(world, p, a, dmg, world.critRoll(p));
-          applyStrikeRiders(world, a, ab);
+          dealt += damageAdd(world, p, a, dmg, world.critRoll(p, ab));
+          applyStrikeRiders(world, p.pos, a, ab);
         }
       }
       lifesteal(world, p, ab, dealt);
@@ -647,15 +754,15 @@ function resolveComposedAbility(
       for (const b of world.bosses) {
         if (b.hp <= 0) continue;
         if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
-          dealt += damageBoss(world, p, b, dmg, world.critRoll(p));
-          applyStrikeRiders(world, b, ab);
+          dealt += damageBoss(world, p, b, dmg, world.critRoll(p, ab));
+          applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-          dealt += damageAdd(world, p, a, dmg, world.critRoll(p));
-          applyStrikeRiders(world, a, ab);
+          dealt += damageAdd(world, p, a, dmg, world.critRoll(p, ab));
+          applyStrikeRiders(world, p.pos, a, ab);
         }
       }
       lifesteal(world, p, ab, dealt);
@@ -686,6 +793,10 @@ function resolveComposedAbility(
           slowMult: ab.slowMult,
           slowDuration: ab.slowDuration,
           freeze: ab.freeze,
+          castSlow: ab.castSlow, // item 9
+          castSlowDuration: ab.castSlowDuration,
+          critChanceBonus: ab.critChanceBonus, // item 13
+          critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
           onImpact,
         });
@@ -798,6 +909,9 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
   const pos = centered
     ? { ...p.pos }
     : clampToArena(world, vadd(p.pos, vscale(p.aim, ab.range ?? 500)), radius);
+  // item 12 — a ranged (non-centered) cast telegraphs: an indicator flies from the
+  // caster to `pos` while the zone arms, so players read where it will land.
+  const arm = centered ? { armTime: 0, armFrom: p.pos } : zoneArm(p.pos, pos);
   spawnZone(world, {
     kind,
     pos,
@@ -809,7 +923,11 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     slowMult,
     slowDuration,
     roots: ab.roots, // item 9: carry the true-root flag onto the spawned zone
+    castSlow: ab.castSlow, // item 9: carry the wind-up-slow factor onto the zone
+    airborne: ab.airborne, // item 8: carry the airborne-reach flag onto the zone
     duration: ab.zoneDuration ?? 4,
+    armTime: arm.armTime,
+    armFrom: arm.armFrom,
   });
 }
 
@@ -836,6 +954,12 @@ interface SpawnProjOpts {
   slowMult?: number;
   slowDuration?: number;
   freeze?: number;
+  /** item 9 — wind-up-slow factor (≥ 1) applied on hit (a forged cursed bolt). */
+  castSlow?: number;
+  castSlowDuration?: number;
+  /** item 13 — this shot's crit lean, added to the owner's base crit on hit. */
+  critChanceBonus?: number;
+  critMultBonus?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
   /** Chaos Forge — on-impact payload (spawn a zone / ally-buff area on landing). */
@@ -865,6 +989,10 @@ function spawnPlayerProjectile(
     slowMult: o.slowMult,
     slowDuration: o.slowDuration,
     freeze: o.freeze,
+    castSlow: o.castSlow, // item 9
+    castSlowDuration: o.castSlowDuration,
+    critChanceBonus: o.critChanceBonus, // item 13
+    critMultBonus: o.critMultBonus,
     lifesteal: o.lifesteal,
     onImpact: o.onImpact,
   };
@@ -913,9 +1041,19 @@ export interface SpawnZoneOpts {
   /** Seconds of silence re-applied per tick to opposing creatures inside (a
    * standable antimagic pool). Absent = a plain hazard. See GroundZone.silence. */
   silence?: number;
+  /** item 9 — wind-up-time factor (≥ 1) re-applied per tick to opposing creatures
+   * inside (Hex / Poison Vial). Absent / ≤ 1 = no cast-slow. See GroundZone.castSlow. */
+  castSlow?: number;
+  /** item 8 — the zone reaches airborne targets too (Rain of Arrows / Otiluke Bind).
+   * Absent = a ground effect flyers hover over (default per kind). See GroundZone.airborne. */
+  airborne?: boolean;
   /** Chaos Forge — a buff this zone refreshes on allies inside (player-side). */
   allyBuff?: import('../core/types').ZoneAllyBuff;
   duration: number;
+  /** item 12 — seconds the zone ARMS (inert, telegraphed) before it activates, with
+   * `armFrom` the travel origin of the indicator. Absent = a live-on-cast zone. */
+  armTime?: number;
+  armFrom?: Vec2;
   /** Themed tint override (affix/corruption hazards); falls back to the palette. */
   color?: number;
 }
@@ -937,13 +1075,31 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     slowDuration: o.slowDuration ?? 0,
     roots: o.roots, // item 9
     silence: o.silence,
+    castSlow: o.castSlow, // item 9 — wind-up slow refreshed on enemies inside
+    airborne: o.airborne, // item 8 — reaches flyers too
     allyBuff: o.allyBuff, // Chaos Forge — buff refreshed on allies inside
     duration: o.duration,
     remaining: o.duration,
     tickAccum: 0,
+    // item 12 — a ranged cast arms (inert + telegraphed) before it bites.
+    armRemaining: o.armTime && o.armTime > 0 ? o.armTime : undefined,
+    armTotal: o.armTime && o.armTime > 0 ? o.armTime : undefined,
+    armFrom: o.armTime && o.armTime > 0 && o.armFrom ? { ...o.armFrom } : undefined,
     color: o.color,
   };
   world.groundZones.push(zone);
+}
+
+/**
+ * item 12 — the arming window + travel origin for a ranged AoE cast from `from` to
+ * `to`: the indicator flies at ZONE_ARM_MARKER_SPEED, so a far cast telegraphs
+ * longer (clamped). Returns 0 arm for a centered / on-the-spot cast (no travel).
+ */
+export function zoneArm(from: Vec2, to: Vec2): { armTime: number; armFrom: Vec2 } {
+  const d = dist(from, to);
+  if (d < 1) return { armTime: 0, armFrom: { ...from } };
+  const t = Math.min(ZONE_ARM_MAX, Math.max(ZONE_ARM_MIN, d / ZONE_ARM_MARKER_SPEED));
+  return { armTime: t, armFrom: { ...from } };
 }
 
 // ---------------------------------------------------------------------------
@@ -1237,6 +1393,8 @@ export function resolveBossAbility(
       if (ab.buffDefMult)
         applyBuff(boss, makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 5, 'bossWard'));
       if (ab.selfHealFrac) healBoss(boss, boss.maxHp * ab.selfHealFrac);
+      // item 7 — a periodic take-off: the boss soars, shrugging off ground zones.
+      if (ab.buffFlight) applyBuff(boss, makeBuff('flight', 0, ab.buffFlight, 'flight'));
       break;
     }
 

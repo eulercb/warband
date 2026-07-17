@@ -185,6 +185,11 @@ import {
   healPlayer,
   coReviveSpeed,
   isRooted,
+  cleanseControl,
+  castTimeFactor,
+  isFlying,
+  zoneReachesAir,
+  BOSS_INVULN_SOURCE,
   type HitMods,
 } from '../combat/combat';
 import { decayThreat, nthThreatTarget } from '../combat/threat';
@@ -686,6 +691,16 @@ export class World {
     return boss.monsterId === this.monsterDef.id ? this.monsterDef : getMonster(boss.monsterId);
   }
 
+  /**
+   * item 7 — is this boss AIRBORNE right now? True for a constant flyer (its def's
+   * static `flying`) OR while a timed flight buff is up (a boss that takes off
+   * periodically, e.g. the Dragon). The single source of truth for the ground-effect
+   * bypass, so both flight kinds behave identically.
+   */
+  bossFlying(boss: Boss): boolean {
+    return this.defOf(boss).flying === true || isFlying(boss);
+  }
+
   /** All bosses still fighting (hp > 0). */
   aliveBosses(): Boss[] {
     return this.bosses.filter((b) => b.hp > 0);
@@ -1093,7 +1108,9 @@ export class World {
 
       if (p.castTimer > 0) {
         const was = p.castTimer;
-        p.castTimer = Math.max(0, p.castTimer - dt);
+        // item 9 — a SLUGGISH hero's cast bar advances slower (dt / factor), so a
+        // boss curse / venom that catches a caster mid-spell delays the payoff.
+        p.castTimer = Math.max(0, p.castTimer - dt / castTimeFactor(p));
         if (was > 0 && p.castTimer === 0 && p.castSlot) {
           const slot = p.castSlot;
           p.castSlot = null;
@@ -1444,7 +1461,7 @@ export class World {
       for (const b of this.aliveBosses()) {
         if (dist(center, b.pos) <= proj.impactRadius + b.radius) {
           // item 5: ranged impacts can crit (per target); no backstab on a shot.
-          this.applyProjDamageBoss(owner, proj.damage, b, owner ? this.critRoll(owner) : undefined);
+          this.applyProjDamageBoss(owner, proj.damage, b, owner ? this.critRoll(owner, proj) : undefined);
           dealt += proj.damage;
           this.applyProjRiders(b, proj);
         }
@@ -1452,7 +1469,7 @@ export class World {
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
         if (dist(center, a.pos) <= proj.impactRadius + a.radius) {
-          if (owner) damageAdd(this, owner, a, proj.damage, this.critRoll(owner));
+          if (owner) damageAdd(this, owner, a, proj.damage, this.critRoll(owner, proj));
           else a.hp -= proj.damage;
           dealt += proj.damage;
           this.applyProjRiders(a, proj);
@@ -1479,12 +1496,12 @@ export class World {
         owner,
         proj.damage,
         hitBoss,
-        owner ? this.critRoll(owner) : undefined,
+        owner ? this.critRoll(owner, proj) : undefined,
       );
       dealt += proj.damage;
       this.applyProjRiders(hitBoss, proj);
     } else if (hitAdd) {
-      if (owner) damageAdd(this, owner, hitAdd, proj.damage, this.critRoll(owner));
+      if (owner) damageAdd(this, owner, hitAdd, proj.damage, this.critRoll(owner, proj));
       else hitAdd.hp -= proj.damage;
       dealt += proj.damage;
       this.applyProjRiders(hitAdd, proj);
@@ -1517,12 +1534,14 @@ export class World {
       slowMult: oi.slowMult,
       slowDuration: oi.slowDuration,
       roots: oi.roots,
+      castSlow: oi.castSlow, // item 9
+      airborne: oi.airborne, // item 8
       allyBuff: oi.allyBuff,
       duration: oi.duration,
     });
   }
 
-  /** Apply a hostile projectile's on-hit riders (frost slow, freeze) to a target. */
+  /** Apply a hostile projectile's on-hit riders (frost slow, freeze, cast-slow). */
   private applyProjRiders(target: Boss | Add, proj: Projectile): void {
     if (proj.slowMult != null && proj.slowMult < 1) {
       applyBuff(target, makeBuff('moveSpeed', proj.slowMult, proj.slowDuration ?? 2, 'slow'));
@@ -1530,22 +1549,37 @@ export class World {
     if (proj.freeze != null && proj.freeze > 0) {
       applyStun(this, target, proj.freeze, 'freeze');
     }
+    // item 9 — a forged cursed bolt stretches the target's wind-up on hit.
+    if (proj.castSlow != null && proj.castSlow > 1) {
+      applyBuff(target, makeBuff('castSlow', proj.castSlow, proj.castSlowDuration ?? 3, 'castSlow'));
+    }
   }
 
-  /** item 5 — roll a crit for `source` on the isolated crit stream (no backstab).
-   *  Public so ability resolution (combat/abilities.ts) shares the one crit stream. */
-  critRoll(source: Player): HitMods {
-    const crit = this.critRng.next() < (source.critChance ?? 0);
-    return { crit, mult: crit ? (source.critMult ?? 1) : 1 };
+  /**
+   * item 5 — roll a crit for `source` on the isolated crit stream (no backstab).
+   * item 13 — a `bonus` (an ability's / shot's own crit lean) adds to the hero's base
+   * crit chance AND crit multiplier for THIS hit, so a signature high-crit strike
+   * (the Rogue's precision kit, a forged deadly shot) crits more often / harder than
+   * the hero's basic. Public so ability resolution shares the one crit stream.
+   */
+  critRoll(source: Player, bonus?: { critChanceBonus?: number; critMultBonus?: number }): HitMods {
+    const chance = (source.critChance ?? 0) + (bonus?.critChanceBonus ?? 0);
+    const crit = this.critRng.next() < chance;
+    return { crit, mult: crit ? (source.critMult ?? 1) + (bonus?.critMultBonus ?? 0) : 1 };
   }
 
   /**
    * item 5 — full modifiers for a MELEE player hit on a boss: a seeded crit plus a
    * backstab bonus when the attacker stands in the boss's rear arc. Adds carry no
-   * facing, so they take crits only (use `critRoll` for those).
+   * facing, so they take crits only (use `critRoll` for those). item 13 — `bonus`
+   * folds the ability's own crit lean into the roll.
    */
-  meleeHit(source: Player, boss: Boss): HitMods {
-    const { crit, mult } = this.critRoll(source);
+  meleeHit(
+    source: Player,
+    boss: Boss,
+    bonus?: { critChanceBonus?: number; critMultBonus?: number },
+  ): HitMods {
+    const { crit, mult } = this.critRoll(source, bonus);
     const toAttacker = angleOf(sub(source.pos, boss.pos));
     const backstab = inRearArc(boss.facing, toAttacker, BACKSTAB_REAR_ARC_DEG);
     return { crit, backstab, mult: (mult ?? 1) * (backstab ? BACKSTAB_MULT : 1) };
@@ -1597,6 +1631,16 @@ export class World {
   private updateZones(dt: number): void {
     const keep: GroundZone[] = [];
     for (const z of this.groundZones) {
+      // item 12 — while ARMING (a ranged AoE's telegraph is still travelling) the
+      // zone is inert: no lifetime decay, no ticks. It activates when the arm lapses.
+      if ((z.armRemaining ?? 0) > 0) {
+        z.armRemaining = (z.armRemaining ?? 0) - dt;
+        if ((z.armRemaining ?? 0) > 0) {
+          keep.push(z);
+          continue;
+        }
+        z.armRemaining = 0; // armed this tick — fall through to a normal live tick
+      }
       z.remaining -= dt;
       z.tickAccum += dt;
       while (z.tickAccum >= ZONE_TICK_INTERVAL) {
@@ -1614,6 +1658,9 @@ export class World {
       const silences = (z.silence ?? 0) > 0;
       for (const p of this.players) {
         if (p.state !== 'alive') continue;
+        // item 7/8: a FLYING hero hovers above a GROUND zone (a boss void pool);
+        // an AIRBORNE one (rain of arrows) still reaches it.
+        if (isFlying(p) && !zoneReachesAir(z)) continue;
         if (dist(z.pos, p.pos) <= z.radius + p.radius) {
           if (z.damagePerTick > 0) damagePlayer(this, p, z.damagePerTick);
           // Snare zones (Web Snare, Grasping Roots, Thorn Field…) also mire the party.
@@ -1635,15 +1682,22 @@ export class World {
     // Re-applied each tick and floored above the tick interval so it clears shortly
     // after the boss leaves (or the zone expires).
     const rootDur = z.roots ? Math.max(z.slowDuration, ZONE_TICK_INTERVAL * 1.5) : 0;
-    if (z.damagePerTick > 0 || slows || z.roots) {
+    // item 9 — a SLUGGISH zone (Hex / Poison Vial) stretches a boss's wind-up while
+    // it stands inside; re-applied per tick and floored above the tick interval so
+    // it clears shortly after the boss leaves (mirrors the root cadence).
+    const castSlows = (z.castSlow ?? 1) > 1;
+    const castSlowDur = castSlows ? Math.max(z.slowDuration, ZONE_TICK_INTERVAL * 1.5) : 0;
+    if (z.damagePerTick > 0 || slows || z.roots || castSlows) {
       for (const b of this.aliveBosses()) {
         if (dist(z.pos, b.pos) > z.radius + b.radius) continue;
-        // item 5: a FLYING boss hovers above ground-targeted zones — no damage,
-        // slow or root reaches it (direct attacks still connect).
-        if (this.defOf(b).flying) continue;
+        // item 7/8: a FLYING boss (constant OR timed) hovers above GROUND zones — no
+        // damage, slow, root or cast-slow reaches it. An AIRBORNE zone (Rain of
+        // Arrows, Otiluke Bind) still catches it; direct attacks always connect.
+        if (this.bossFlying(b) && !zoneReachesAir(z)) continue;
         if (z.damagePerTick > 0) this.applyProjDamageBoss(owner, z.damagePerTick, b);
         if (slows) applyBuff(b, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
         if (z.roots) applyBuff(b, makeBuff('root', 0, rootDur, 'zoneRoot'));
+        if (castSlows) applyBuff(b, makeBuff('castSlow', z.castSlow!, castSlowDur, 'zoneCastSlow'));
       }
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
@@ -1721,6 +1775,9 @@ export class World {
     // Surefooted upgrade eases the slow back toward 1 (no effect at resist=1).
     for (const p of this.players) {
       if (p.state !== 'alive') continue;
+      // item 7 — a FLYING hero soars over ground hazards (magma / swamp / ice): no
+      // terrain slow reaches it while airborne.
+      if (isFlying(p)) continue;
       let slowest = 1;
       let slowDur = 0;
       for (const t of this.terrain) {
@@ -1744,6 +1801,7 @@ export class World {
         t.tickAccum -= TERRAIN_TICK_INTERVAL;
         for (const p of this.players) {
           if (p.state !== 'alive') continue;
+          if (isFlying(p)) continue; // item 7 — airborne over the hazard
           if (dist(t.pos, p.pos) <= t.radius + p.radius) {
             const dmg = t.damagePerTick * (1 - p.terrainResist);
             if (dmg > 0) damagePlayer(this, p, dmg);
@@ -1940,7 +1998,10 @@ export class World {
         break;
       }
       case 'windup': {
-        boss.action.remaining -= dt;
+        // item 9 — a SLUGGISH boss (Hex / venom) winds up slower, buying the band
+        // reaction + interrupt time. Only the telegraphed wind-up is stretched;
+        // the channel below is left alone so a curse never prolongs a beam.
+        boss.action.remaining -= dt / castTimeFactor(boss);
         if (boss.action.remaining <= 0) this.bossExecute(boss, def);
         break;
       }
@@ -2207,7 +2268,12 @@ export class World {
     if (idx >= thresholds.length || boss.hp <= 0) return;
     if (hasBuff(boss, 'invuln')) return; // one window at a time
     if (boss.hp / boss.maxHp <= thresholds[idx]) {
-      applyBuff(boss, makeBuff('invuln', 0, BOSS_INVULN_WINDOW_S, 'bossInvuln'));
+      applyBuff(boss, makeBuff('invuln', 0, BOSS_INVULN_WINDOW_S, BOSS_INVULN_SOURCE));
+      // item 1 — the window doesn't just soak damage: it CLEANSES the boss of any
+      // stun/slow/root/silence on it and (via combat.isCcImmune, keyed on the same
+      // source) blocks new crowd control until it lapses, so a long lock-down can't
+      // trivialise the fight through the immunity window.
+      cleanseControl(boss);
       boss.invulnNextIdx = idx + 1;
     }
   }
@@ -3019,6 +3085,10 @@ export class World {
         radius: z.radius,
         duration: z.duration,
         remaining: z.remaining,
+        // item 12 — carry the arming telegraph so clients draw the incoming indicator.
+        armRemaining: z.armRemaining,
+        armTotal: z.armTotal,
+        armFrom: z.armFrom ? { ...z.armFrom } : undefined,
         color: z.color,
       })),
       terrain: this.terrain.map((t) => ({

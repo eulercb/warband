@@ -158,7 +158,23 @@ export type BuffKind =
   | 'stun'
   | 'invuln'
   /** Silenced (item 28): all abilities except the basic attack are disabled. */
-  | 'silence';
+  | 'silence'
+  /**
+   * item 7 — FLIGHT (timed): the entity is airborne for the buff's duration.
+   * `mult` is unused (presence is what matters). A flyer ignores GROUND effects —
+   * ground hazards + non-airborne ground zones pass under it (world) — but direct
+   * attacks still connect. Complements the static `MonsterDef.flying` (constant
+   * flyers); a player only ever flies via this buff (Sorcerer Dragon Wings, forged
+   * skills). Surfaced by the 🕊️ glyph + a hover/shadow in the render. */
+  | 'flight'
+  /**
+   * item 9 — SLUGGISH: stretches the target's wind-up / cast time. `mult` is a
+   * DURATION factor ≥ 1 (1.4 = wind-ups take 40% longer); it slows the countdown
+   * of a player's cast bar AND a boss's telegraphed wind-up, so a curse/venom can
+   * buy the band reaction time without paralysing the target. Never affects a
+   * boss's active channel (that would prolong a beam) — wind-up only. Stacked
+   * factors are capped (combat.castTimeFactor) so it can't lock a caster out. */
+  | 'castSlow';
 
 export interface Buff {
   kind: BuffKind;
@@ -502,6 +518,10 @@ export interface ProjectileImpact {
   slowMult?: number;
   slowDuration?: number;
   roots?: boolean;
+  /** item 9 — a wind-up-slow factor (≥ 1) the bloomed zone applies to enemies inside. */
+  castSlow?: number;
+  /** item 8 — the bloomed zone reaches airborne targets too (see GroundZone.airborne). */
+  airborne?: boolean;
   allyBuff?: ZoneAllyBuff;
 }
 
@@ -524,6 +544,14 @@ export interface Projectile {
   slowDuration?: number;
   /** Stun/"freeze" seconds applied to whatever the projectile strikes. */
   freeze?: number;
+  /** item 9 — wind-up-slow factor (≥ 1) applied to whatever the projectile strikes
+   * (a forged cursed bolt); with `castSlowDuration`. Absent = none. */
+  castSlow?: number;
+  castSlowDuration?: number;
+  /** item 13 — this shot's own crit lean, added to the owner's base crit on hit (a
+   * deadly/aimed shot). See PlayerAbilityDef.critChanceBonus. Absent = plain crit. */
+  critChanceBonus?: number;
+  critMultBonus?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
   /**
@@ -830,6 +858,22 @@ export interface GroundZone {
    */
   silence?: number;
   /**
+   * item 9 — SLUGGISH zone: a wind-up-time factor (≥ 1) re-applied each tick to an
+   * opposing-side creature standing inside, stretching its cast / wind-up (Warlock
+   * Hex, Rogue Poison Vial). Lingers ~slowDuration after leaving (source
+   * 'zoneCastSlow'). Absent / ≤ 1 = a plain hazard.
+   */
+  castSlow?: number;
+  /**
+   * item 8 — AIRBORNE reach: true = this zone affects flyers too (arrows raining
+   * from above, a floating force cage) — Ranger Rain of Arrows, Mage Otiluke Bind.
+   * false / absent = a GROUND effect (plants, holy ground, pools) that a flyer
+   * hovers over. Defaults per ZoneKind (see combat.isAirborneZoneKind) when unset,
+   * so canonical zones classify without per-instance wiring. Drives the flight
+   * bypass (world.applyZoneTick) for both bosses and grounded players.
+   */
+  airborne?: boolean;
+  /**
    * Chaos Forge — a buff this zone refreshes each tick on allied players standing
    * inside it (a synthesized "sanctuary of resistance"). Player-side zones only;
    * absent on canonical zones, so applyZoneTick stays byte-identical off-Forge.
@@ -839,6 +883,17 @@ export interface GroundZone {
   duration: number; // seconds — full lifetime, used for the render fade envelope
   remaining: number; // seconds — counts down; zone is removed at <= 0
   tickAccum: number; // accumulates toward ZONE_TICK_INTERVAL
+  /**
+   * item 12 — a ranged/at-a-distance zone ARMS before it bites: for `armRemaining`
+   * seconds the zone is INERT (no ticks) while a telegraph indicator travels from
+   * `armFrom` (the caster) to `pos`, so players read where the AoE will land. Counts
+   * down each tick; the zone activates (ticks) at <= 0. Absent / 0 = an already-live
+   * zone (centered casts, boss/affix hazards). `armTotal` is the full window (render
+   * fill); `armFrom` is the travel origin. Serialized so clients draw the telegraph.
+   */
+  armRemaining?: number;
+  armTotal?: number;
+  armFrom?: Vec2;
   /** Themed tint override (affix/corruption hazards); falls back to the per-kind palette. */
   color?: number;
 }
@@ -1078,6 +1133,12 @@ export interface ZoneView {
   radius: number;
   duration: number;
   remaining: number;
+  /** item 12 — while > 0 the zone is ARMING: the renderer draws a telegraph
+   * indicator travelling from `armFrom` to `pos` (a filling target ring) instead of
+   * the live zone. `armTotal` is the full window for the fill fraction. */
+  armRemaining?: number;
+  armTotal?: number;
+  armFrom?: Vec2;
   /** Themed tint override (affix/corruption hazards); falls back to the palette. */
   color?: number;
 }

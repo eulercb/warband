@@ -50,6 +50,44 @@ export interface PlayerAbilityDef {
   stun?: number; // applied to boss/adds on hit
   slowMult?: number; // < 1 slows target move speed
   slowDuration?: number;
+  /**
+   * item 11 — FORCED MOVEMENT on struck enemies (players can now shove, not just
+   * bosses). `knockback` pushes them this many units AWAY from the caster; `pull`
+   * drags them this many units TOWARD the caster. Mutually exclusive per ability.
+   * A rooted target resists unless the impulse ≥ FORCE_OVERCOME_ROOT (see
+   * combat/world). Applied by applyStrikeRiders on a melee/pbaoe/dash-landing hit.
+   */
+  knockback?: number;
+  pull?: number;
+  /**
+   * item 11 — a `blink` that SWAPS space: on arrival, every enemy within `range`
+   * of the caster is reflected across the caster's position (front ↔ back), a
+   * dimension-shuffle peel (Mage Dimension Door). Absent = a plain blink.
+   */
+  swap?: boolean;
+  /**
+   * item 9 — SLUGGISH: a wind-up / cast-time factor (≥ 1) this ability inflicts on
+   * enemies it affects, stretching their telegraphed wind-up (Warlock Hex, Rogue
+   * Poison Vial). On a `groundZone` it rides the spawned zone (re-applied per tick
+   * while an enemy stands inside); on a direct hit (meleeCone/projectile/pbaoe) it
+   * applies once as a timed debuff (`castSlowDuration`). Absent / ≤ 1 = none.
+   */
+  castSlow?: number;
+  /** item 9 — seconds a direct-hit `castSlow` debuff lasts (zone casts re-tick, so
+   * they ignore this). Defaults to a short window when the rider is present. */
+  castSlowDuration?: number;
+  /**
+   * item 7 — FLIGHT: seconds of airborne flight this ability grants its caster (a
+   * selfBuff / buffAlly). While flying the hero soars over ground hazards + ground
+   * zones (Sorcerer Dragon Wings). Absent = grants no flight.
+   */
+  grantsFlight?: number;
+  /**
+   * item 8 — a `groundZone` ability whose zone reaches AIRBORNE targets too (Ranger
+   * Rain of Arrows rains on flyers; Mage Otiluke Bind is a floating cage). Absent =
+   * a GROUND effect that flyers hover over (the default for most zone kinds).
+   */
+  airborne?: boolean;
 
   buffDamageMult?: number; // e.g. 1.25
   buffDefMult?: number; // damage-taken mult, e.g. 0.8 or 0.5
@@ -80,6 +118,15 @@ export interface PlayerAbilityDef {
   healOnUse?: number;
   /** Point-blank AoE damage dealt on a dash/leap landing (0 = none). */
   landingDamage?: number;
+  /**
+   * item 13 — a SIGNATURE crit lean this ability carries, ADDED to the hero's base
+   * crit stats for its own hits: `critChanceBonus` raises the crit chance (0.25 =
+   * +25% chance), `critMultBonus` sharpens the crit (0.5 = +0.5× on a crit). Lets a
+   * precision strike crit more often / harder than the basic — the modern way to
+   * key an ability off crit (the Rogue's identity). Absent = plain crit stats.
+   */
+  critChanceBonus?: number;
+  critMultBonus?: number;
 
   /**
    * Chaos Forge (docs/CHAOS_FORGE.md) — the recombined component form of a
@@ -183,10 +230,14 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         name: 'Multishot',
         kind: 'projectile',
         cooldown: 6,
-        damage: 16,
+        // item 10 — an AIMED volley: the archer draws (a brief wind-up) then looses
+        // a heavier three-arrow spread. Winding up at range is far safer than in
+        // melee, so the aimed-shot fantasy fits the Ranger, and Focus finds a home.
+        damage: 19,
         projSpeed: 700,
         projCount: 3,
         spreadDeg: 30,
+        castTime: 0.3,
       },
       a2: {
         slot: 'a2',
@@ -198,6 +249,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         radius: 120,
         zoneDuration: 3,
         zoneTickDamage: 12,
+        // item 8 — arrows raining from above hit flyers too. AIRBORNE by its
+        // zoneKind ('rainOfArrows' → isAirborneZoneKind), so no explicit flag needed.
         zoneKind: 'rainOfArrows',
       },
       a3: {
@@ -375,8 +428,12 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         name: 'Whirlwind',
         kind: 'pbaoe',
         cooldown: 9,
-        damage: 34,
+        // item 10 — a WIND-UP heavy hit: the Barbarian rears back and revs the
+        // spin (rooted, telegraphed) for a landslide blow. A committed trade a
+        // bruiser can afford, and the wind-up gives Focus a home on the class.
+        damage: 40,
         radius: 135,
+        castTime: 0.4,
       },
     },
   },
@@ -400,15 +457,24 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         damage: 18,
         range: 62,
         halfAngleDeg: 42,
+        // item 13 — the Rogue lands its blade precisely: a touch of extra crit even
+        // on the basic, keying the class off the (previously barely-used) crit stat.
+        critChanceBonus: 0.12,
       },
       a1: {
         slot: 'a1',
         name: 'Backstab',
         kind: 'meleeCone',
         cooldown: 5,
-        damage: 58,
+        // item 13 — the flagship CRIT strike. Lower flat damage, a big crit lean:
+        // Backstab crits ~35% of the time for ~1.8×, so it reads as a devastating
+        // gamble (its namesake) rather than a flat nuke — same-ish output, far more
+        // crit-driven. The Rogue's identity, modernized around crit.
+        damage: 50,
         range: 58,
         halfAngleDeg: 32,
+        critChanceBonus: 0.3,
+        critMultBonus: 0.3,
       },
       a2: {
         slot: 'a2',
@@ -429,6 +495,10 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         radius: 105,
         zoneDuration: 4,
         zoneTickDamage: 11,
+        // item 9 — the venom fogs a boss's coordination: a lighter 25% wind-up
+        // slow while it stands in the cloud (the Rogue debilitates, the Warlock's
+        // Hex hits harder). Ground-based, so a flyer is unaffected (item 8).
+        castSlow: 1.25,
         zoneKind: 'poison',
       },
     },
@@ -645,8 +715,13 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         name: 'Quivering Palm',
         kind: 'pbaoe',
         cooldown: 9,
-        damage: 30,
+        // item 10 — the ki death-touch is a FOCUSED, deliberate technique: a brief
+        // wind-up channels ki into a heavier strike. Thematically the Monk's one
+        // committed beat (its blur lives in Flurry + Step of the Wind), and Focus
+        // (— wind-up) resonates with the class's ki fantasy.
+        damage: 36,
         radius: 130,
+        castTime: 0.4,
       },
     },
   },
@@ -742,6 +817,10 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         zoneTickDamage: 12,
         slowMult: 0.7,
         slowDuration: 1,
+        // item 9 — the curse saps its victim's ability to act: a boss standing in
+        // the Hex winds up its telegraphed attacks 40% slower, buying the band
+        // reaction / interrupt time. The Warlock's signature debilitating zone.
+        castSlow: 1.4,
         zoneKind: 'poison',
       },
       a2: {
@@ -950,7 +1029,9 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   }
 
   // --- Timing / control ---
-  if (def.castTime) parts.push(`${s(def.castTime * castMul)} cast`);
+  // item 10 — "wind-up" (not "cast"): the term now spans a caster charging a
+  // spell AND a warrior/archer reeling back a heavier blow or aimed shot.
+  if (def.castTime) parts.push(`${s(def.castTime * castMul)} wind-up`);
   if (def.stun) parts.push(`${s(def.stun)} stun`);
   if (def.freeze) parts.push(`${s(def.freeze)} freeze`);
   // A true root (item 3) supersedes its slow — the target is held fast (no move,
@@ -961,6 +1042,17 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
     const dur = def.slowDuration ? ` for ${s(def.slowDuration)}` : '';
     parts.push(`slow to ${n(def.slowMult * 100)}%${dur}`);
   }
+  // item 9 — SLUGGISH: how much this ability stretches an enemy's wind-up / cast.
+  if (def.castSlow != null && def.castSlow > 1) {
+    parts.push(`+${n((def.castSlow - 1) * 100)}% enemy wind-up`);
+  }
+  // item 11 — forced movement on struck enemies.
+  if (def.knockback) parts.push(`knock back ${n(def.knockback)}u`);
+  if (def.pull) parts.push(`pull in ${n(def.pull)}u`);
+  if (def.swap) parts.push('swap foes across you');
+  // item 13 — a signature crit lean.
+  if (def.critChanceBonus) parts.push(`+${n(def.critChanceBonus * 100)}% crit`);
+  if (def.critMultBonus) parts.push(`+${Math.round(def.critMultBonus * 100) / 100}× crit dmg`);
 
   // --- Buffs (damage/move up, damage-taken down) ---
   if (def.buffDamageMult) parts.push(`+${n((def.buffDamageMult - 1) * 100)}% dmg`);
@@ -974,6 +1066,13 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   // --- Sustain / evasion / who it can reach ---
   if (def.lifestealFrac) parts.push(`${n(def.lifestealFrac * 100)}% lifesteal`);
   if (def.iframes) parts.push(`${s(def.iframes)} i-frames`);
+  // item 7 — flight granted (soar over ground hazards / zones for the window).
+  if (def.grantsFlight) parts.push(`fly ${s(def.grantsFlight)}`);
+  // item 8 — a zone that reaches flyers reads it out (else it's a ground effect).
+  // Display-only default mirrors combat.isAirborneZoneKind (rainOfArrows).
+  if (def.kind === 'groundZone' && (def.airborne ?? def.zoneKind === 'rainOfArrows')) {
+    parts.push('hits flyers');
+  }
   if ((def.kind === 'heal' || def.kind === 'buffAlly') && def.range && def.range > 1) {
     parts.push(`${n(def.range)}u range`);
   }

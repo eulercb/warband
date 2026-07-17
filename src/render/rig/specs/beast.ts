@@ -1,8 +1,9 @@
 /**
  * Warband — beast rig: a lean four-legged predator (direwolf, gnoll, manticore,
- * minotaur; the winged harpy shares it for now). An elongated haunch → chest →
- * head body over four IK legs with a trot gait, a swishing tail and a pair of
- * horns/ears. Reads as a stalking quadruped from structure + motion alone.
+ * minotaur). An elongated haunch → chest → head body over four IK legs with a trot
+ * gait, a swishing tail and a pair of horns/ears. Reads as a stalking quadruped
+ * from structure + motion alone. (The winged harpy has its own rig now — item 7,
+ * specs/harpy.ts — she no longer borrows this wingless silhouette.)
  */
 import type { RigSpec } from '../types';
 

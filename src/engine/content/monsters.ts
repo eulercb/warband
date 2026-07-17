@@ -78,6 +78,10 @@ export interface BossAbilityDef {
   buffDefMult?: number;
   buffDuration?: number;
   selfHealFrac?: number; // heal boss by this fraction of maxHp
+  /** item 7 — seconds of FLIGHT this buffSelf grants the boss (a periodic take-off:
+   * the Dragon / Gargoyle / Manticore beat their wings and soar, shrugging off
+   * ground zones until they land). Absent = no flight. */
+  buffFlight?: number;
 }
 
 export interface BossDecisionCtx {
@@ -335,8 +339,13 @@ const DRAGON: MonsterDef = {
     A.circle('fireball', 'Fireball', 1.0, 4, 45, 700, 110),
     A.nova('tailSweep', 'Tail Sweep', 0.9, 8, 40, 160, { knockback: 120 }),
     A.nova('wingGust', 'Wing Gust', 1.5, 14, 15, 300, { knockback: 200, minHpFrac: 0.5 }),
+    // item 7 — the wyrm beats its wings and takes to the air on a cadence: for the
+    // window it soars above ground zones (Entangle / Poison / Consecration) and
+    // moves a touch faster. A periodic, telegraphed take-off (not constant flight).
+    A.buff('takeFlight', 'Take Flight', 1.2, 17, { buffFlight: 6, buffMoveMult: 1.2 }),
   ],
   decide: ({ usable, anyInMelee, distToTarget, hpFrac, rng }) => {
+    if (usable('takeFlight')) return 'takeFlight';
     if (hpFrac <= 0.5 && usable('wingGust') && rng.next() < 0.5) return 'wingGust';
     if (anyInMelee && usable('tailSweep')) return 'tailSweep';
     if (usable('fireBreath') && distToTarget <= 420) return 'fireBreath';
@@ -786,8 +795,12 @@ const MANTICORE: MonsterDef = {
       spreadDeg: 40,
     }),
     A.line('pounce', 'Pounce', 0.7, 7, 44, 560, 46, { knockback: 110 }),
+    // item 7 — the winged lion springs into the air on a cadence, soaring over
+    // ground zones for the window (a periodic take-off, not constant flight).
+    A.buff('takeWing', 'Take Wing', 0.9, 16, { buffFlight: 5, buffMoveMult: 1.15 }),
   ],
   decide: decideBy([
+    { id: 'takeWing' },
     { id: 'pounce', cond: far(240) },
     { id: 'tailSpikes', cond: far(160) },
     { id: 'rake', cond: melee },
@@ -944,10 +957,14 @@ const GARGOYLE: MonsterDef = {
       buffDuration: 4,
       selfHealFrac: 0.06,
     }),
+    // item 7 — the sentinel unfurls its stone wings and takes to the sky on a
+    // cadence, gliding over ground zones for the window (periodic take-off).
+    A.buff('takeWing', 'Take Wing', 1, 15, { buffFlight: 5 }),
   ],
   // divebomb closes from anywhere past melee, so a kiting Gargoyle can't idle in
   // the 135–240px band (it dives at the target instead of standing still).
   decide: decideBy([
+    { id: 'takeWing' },
     { id: 'petrify', cond: (c) => c.hpFrac < 0.5 },
     { id: 'divebomb', cond: far(130) },
     { id: 'claw', cond: melee },
@@ -1096,6 +1113,9 @@ const BEHOLDER: MonsterDef = {
     { id: 'antimagic' },
     { id: 'deathRay', cond: (c) => c.target != null },
   ]),
+  // item 7 — a floating horror: it fights from the air, so ground zones pass under
+  // it (its own antimagic pools still land on grounded casters). Constant flight.
+  flying: true,
 };
 
 const VAMPIRE: MonsterDef = {

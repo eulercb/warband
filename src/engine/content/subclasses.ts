@@ -191,8 +191,10 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'kn_champion_charge',
           'Bull Rush',
           '🐂',
-          'Charge in, landing for 30',
-          dash('Bull Rush', 7, { landingDamage: 30, radius: 110 }),
+          // item 11 — a true bull rush: the landing SHOVES struck enemies away hard
+          // enough to rip a rooted foe free (knockback ≥ FORCE_OVERCOME_ROOT).
+          'Charge in, landing for 30 and hurling enemies back',
+          dash('Bull Rush', 7, { landingDamage: 30, radius: 110, knockback: 170 }),
         ),
         sk(
           'kn_champion_rally',
@@ -387,14 +389,19 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
             zoneTickDamage: 8,
             zoneKind: 'entangle',
             roots: true, // item 3: a true bind — immobilises + locks out blink/charge/teleport
+            // item 8 — a floating force cage, not ground plants: it holds a FLYER
+            // fast too (airborne override on the ground 'entangle' kind).
+            airborne: true,
           }),
         ),
         sk(
           'mg_abjurer_teleport',
           'Dimension Door',
           '🚪',
-          'Blink 300u away',
-          blink('Dimension Door', 6, { range: 300, iframes: 0.25 }),
+          // item 11 — the door shuffles space: on arrival, enemies within 220u are
+          // reflected across the mage (front ↔ back) — a teleport-swap peel.
+          'Blink 300u, then fling nearby enemies across you',
+          blink('Dimension Door', 6, { range: 300, iframes: 0.25, swap: true, radius: 220 }),
         ),
         sk(
           'mg_abjurer_mend',
@@ -508,11 +515,15 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           nova('Ground Slam', 8, 40, 150),
         ),
         sk(
-          'bb_berserker_leap',
-          'Rage Leap',
-          '🦵',
-          'Leap, landing for 34',
-          dash('Rage Leap', 7, { landingDamage: 34, radius: 120, leap: true }),
+          // item 11 — Rage Leap was a near-duplicate of the Barbarian's base Leap
+          // (both leap:true dashes). Replaced with a distinctive CHAIN PULL: hurl a
+          // chain and YANK a struck enemy to you — strong enough to rip a rooted foe
+          // free. A gap-closer that brings the fight to the bruiser, not vice-versa.
+          'bb_berserker_chain',
+          'Chain Pull',
+          '⛓️',
+          'Hurl a chain 220u for 28, yanking the struck enemy to you',
+          cone('Chain Pull', 7, 28, 220, 26, { pull: 200 }),
         ),
       ],
     },
@@ -564,15 +575,32 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'ro_assassin_strike',
           'Death Strike',
           '🗡️',
-          'A devastating stab for 72',
-          melee('Death Strike', 7, 72, { range: 58, halfAngleDeg: 30 }),
+          // item 13 — the Assassin's signature finds the vital point: less flat damage,
+          // a heavy crit lean, so it reads as a lethal gamble that spikes on a crit
+          // (the modern crit-keyed identity) rather than a flat nuke.
+          'A precise stab for 60 that strikes true — crits often and hard',
+          melee('Death Strike', 7, 60, {
+            range: 58,
+            halfAngleDeg: 30,
+            critChanceBonus: 0.2,
+            critMultBonus: 0.4,
+          }),
         ),
         sk(
-          'ro_assassin_vanish',
-          'Vanish',
-          '💨',
-          'Blink 280u with i-frames',
-          blink('Vanish', 6, { range: 280, iframes: 0.35 }),
+          // item 13 — REPLACES the old "Vanish" blink, which merely duplicated the
+          // Rogue's base Shadowstep (and the Trickster's Misty Step) — three near
+          // identical teleports across the class. The Assassin instead gets a
+          // distinctive at-range finisher keyed on the modern crit mechanic: a hurled
+          // blade that buries in a vital point.
+          'ro_assassin_throw',
+          'Deadly Throw',
+          '🔪',
+          'Hurl a blade for 38 that finds a vital point — crits ~40% for a huge blow',
+          proj('Deadly Throw', 6, 38, {
+            projSpeed: 720,
+            critChanceBonus: 0.35,
+            critMultBonus: 0.6,
+          }),
         ),
         sk(
           'ro_assassin_poison',
@@ -768,8 +796,11 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'dr_land_wind',
           'Gust',
           '🌬️',
-          'A slowing 150u cyclone for 24',
-          nova('Gust', 8, 24, 150, { slowMult: 0.5, slowDuration: 2 }),
+          // item 11 — the wind now SHOVES: a light knockback (below FORCE_OVERCOME_ROOT,
+          // so it can't rip a rooted foe free — that's the Bull Rush's job) that
+          // scatters foes off the Druid. Wind that pushes, differentiating the class.
+          'A slowing 150u cyclone for 24 that blows foes back',
+          nova('Gust', 8, 24, 150, { slowMult: 0.5, slowDuration: 2, knockback: 90 }),
         ),
         sk(
           'dr_land_spring',
@@ -957,8 +988,10 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'so_draconic_wing',
           'Dragon Wings',
           '🪽',
-          '+25% speed, take 45% less for 5s',
-          buff('Dragon Wings', 12, { buffMoveMult: 1.25, buffDefMult: 0.55 }),
+          // item 7 — the wings actually LIFT the sorcerer now: airborne for 5s,
+          // soaring over ground hazards + ground zones, plus the speed/mitigation.
+          'Take flight 5s: +25% speed, take 45% less, soar over ground hazards',
+          buff('Dragon Wings', 12, { buffMoveMult: 1.25, buffDefMult: 0.55, grantsFlight: 5 }),
         ),
         sk(
           'so_draconic_bolt',

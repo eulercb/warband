@@ -42,7 +42,10 @@ fine-grained enough to separate the three facets the flagship needs:
 `meleeCone · projectile · groundZone · pbaoe · dash · blink · selfBuff ·
 buffAlly · heal · taunt` for players; the boss shapes for bosses. Each carries
 its geometric facets (range, radius, halfAngle, projSpeed, projCount, spreadDeg,
-castTime, impactRadius, maxRange, iframes, zoneKind).
+castTime, impactRadius, maxRange, iframes, zoneKind, `airborne`). `castTime` is
+the generalized **wind-up** (item 10 — the reel-back before a heavier martial
+blow or aimed shot, no longer caster-only), and `airborne` (item 8) marks a zone
+that reaches flyers (rain-of-arrows) instead of being a ground-only hazard.
 
 The **new primitive** that unlocks the flagship is not a new delivery but a
 **payload on the projectile's impact point**: a projectile whose impact spawns a
@@ -51,10 +54,27 @@ zone and/or area-buffs allies. It is expressed as effects attached to a
 
 ### Effect components (the payload)
 
-`damage · zoneSpawn(kind,duration,tick,radius,slow,root,allyBuff) ·
+`damage · zoneSpawn(kind,duration,tick,radius,slow,root,allyBuff,castSlow,airborne) ·
 buff(target=self|allies, def↓/dmg↑/move↑, duration) · stun · freeze · slow ·
-root · heal · healOnUse · lifesteal · landingDamage · knockback/pull(boss)`.
+root · heal · healOnUse · lifesteal · landingDamage · castSlow · flight · shove
+(knockback/pull) · crit(chance,mult)`.
 Each carries its own numbers and a **balance weight** (see §3).
+
+Items 7–13 folded five new mechanics into this same component pipeline — each is
+decomposed from the flat def and recomposed back, so any skill (canonical OR
+fused) can carry them, and each stays canonical byte-identical when Forge is off:
+
+- **`castSlow`** (item 9) — a direct-hit / zone rider that stretches the target's
+  wind-up (Warlock Hex, Rogue poison); the soft counter to the cast-time mechanic.
+- **`flight`** (item 7) — a self/ally rider granting timed, visible flight (Dragon
+  Wings); a flyer soars over ground hazards, but an `airborne` zone still reaches it.
+- **`shove`** (item 11) — forced movement on struck enemies (knockback OR pull),
+  now a PLAYER effect, not boss-only; a shove ≥ `FORCE_OVERCOME_ROOT` rips a rooted
+  foe free (the root-vs-force rule).
+- **`crit`** (item 13) — a signature crit lean (`critChanceBonus`/`critMultBonus`)
+  folded onto the hero's base crit for that ability's own hits (the Rogue identity).
+- **`airborne`** (item 8) — the zone facet above: a hazard that reaches flyers
+  rather than being negated by flight.
 
 ## 2. Decomposition & round-trip (future-proofing, req. 10)
 
@@ -78,8 +98,16 @@ are set so total value lands on budget, exactly mirroring procgen's
 "a hotter roll cycles slower" link. Degenerate fusions are capped:
 
 - at most **one hard CC** (stun/freeze/root) per skill; extra CC is dropped;
+- **one buff per target axis** (item 5): duplicate def/dmg/move buffs on the same
+  target merge to the strongest, so a fusion is priced for what actually lands
+  (no double-charging redundant components — honest pricing);
 - buff ceilings reuse procgen's (def-mult floored at 0.2 → never immunity, dmg
   ≤ 1.6×, move ≤ 1.5×); buff duration capped;
+- new-mechanic ceilings: `castSlow` ≤ `CAST_SLOW_MAX` (×1.75, ≤ 5s), a `crit`
+  lean ≤ +50% chance / +1.5× mult, `shove` ≤ 260u, `flight` ≤ 8s;
+- an output delivery can't roll dead (item 6): a `COMPRESSION_FLOOR` on the
+  price-to-budget squeeze plus a guaranteed damage/heal **anchor** keep a
+  synthesized attack/heal from pricing itself down to negligible numbers;
 - cast/stun/telegraph readability floors preserved (boss wind-up ≥ 85% / ≥ 0.3s).
 
 ## 4. Naming (req. §2 — "legible + fun")
@@ -178,6 +206,21 @@ forged bosses cast, the shop rerolls, and a typed seed reproduces the world.
   authored. (Scope note: the name blends the boon with the fused skill it empowers rather
   than reconstructing each component's specific donor-upgrade — the functional guarantee
   "every offered upgrade meaningfully applies" is the load-bearing requirement, and it holds.)
+- **New mechanic components (items 7–13)** — every mechanic added to the game in this
+  wave became a first-class Forge component (`castSlow`, `flight`, `shove`, `crit`,
+  the `airborne` zone facet), wired end-to-end through `decompose`/`recompose`,
+  `componentValue`/`capEffect`, `describeComposed`, and `effectFitsDelivery` (so a
+  fusion only carries a rider its delivery can actually resolve). A synthesized skill
+  can therefore roll a hex that slows an enemy's wind-up, a rider that grants flight,
+  a knockback/pull shove, or a crit lean — priced and capped like every other effect.
+- **Content modernized onto the new mechanics (item 13).** Canonical content was
+  refreshed to actually use the newer systems rather than leave them forge-only: the
+  Rogue is re-keyed around the long-dormant **crit** stat (Slash/Backstab carry a
+  signature crit lean; the Assassin's redundant "Vanish" blink — one of three
+  near-identical teleports — becomes **Deadly Throw**, a ranged crit finisher; the
+  **Shadow Master** grand is rebuilt as a crit capstone). Older abilities also pick up
+  wind-ups (item 10) and the airborne/ground split (item 8). All still deterministic
+  and byte-identical when Forge is off — the content just changed, not the engine gate.
 
 **Deliberately deferred (with rationale)**
 

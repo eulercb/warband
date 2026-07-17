@@ -492,7 +492,7 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_assassin',
     'Assassinate',
     '🗡️',
-    'Backstab bursts for 82 (+24) and returns 22% sooner (3.9s)',
+    'Backstab bursts for 74 (+24) and returns 22% sooner (3.9s)',
     ({ abilities: a }) => {
       addN(a.a1, 'damage', 24);
       mul(a.a1, 'cooldown', 0.78);
@@ -1199,11 +1199,14 @@ const GRAND: CharUpgradeDef[] = [
     'rg_grand_storm',
     'Arrow Storm',
     '🌩️',
-    'Multishot erupts into a storm — 5 extra arrows across a wide 55° fan (+6 each)',
+    // item 10 — a master archer draws in a blink: the aimed volley's wind-up is
+    // nearly halved, reinforcing the Ranger's precise-and-fast identity.
+    'Multishot erupts into a storm — 5 extra arrows across a wide 55° fan (+6 each), drawn in half the time',
     ({ abilities: a }) => {
       addN(a.a1, 'projCount', 5);
       addN(a.a1, 'spreadDeg', 25);
       addN(a.a1, 'damage', 6);
+      mul(a.a1, 'castTime', 0.55); // item 10 — looses the aimed volley far faster
     },
   ),
   g(
@@ -1289,11 +1292,16 @@ const GRAND: CharUpgradeDef[] = [
     'ro_grand_shadow',
     'Shadow Master',
     '🌑',
-    'Shadowstep resets almost instantly (−65% cd); Backstab annihilates for +60 and drinks 25% as health',
+    // item 13 — the Rogue's crit capstone, modernized off the newer crit mechanic:
+    // rather than a flat +60 nuke, Backstab now strikes for the KILL — a big crit
+    // lean stacking on its base +30% (→ 50% crit chance for +0.8× crit damage), so
+    // the grand reads as an assassin's finisher, not a damage number bump.
+    'Shadowstep resets almost instantly (−65% cd); Backstab strikes for the kill — +35 damage, +20% crit chance, +0.5× crit damage',
     ({ abilities: a }) => {
       mul(a.a2, 'cooldown', 0.35);
-      addN(a.a1, 'damage', 60);
-      addN(a.a1, 'lifestealFrac', 0.25);
+      addN(a.a1, 'damage', 35);
+      addN(a.a1, 'critChanceBonus', 0.2);
+      addN(a.a1, 'critMultBonus', 0.5);
     },
   ),
   g(
@@ -1404,12 +1412,15 @@ const GRAND: CharUpgradeDef[] = [
     'mo_grand_thousand',
     'Thousand Palms',
     '🙌',
-    'Stunning Strike locks foes down (+1.2s stun, +35 dmg); Quivering Palm devastates (+40 dmg, +55 radius)',
+    // item 10 — perfect ki focus halves Quivering Palm's wind-up: the death-touch
+    // lands almost instantly. The Monk's "Focus" fantasy made literal.
+    'Stunning Strike locks foes down (+1.2s stun, +35 dmg); Quivering Palm devastates (+40 dmg, +55 radius) and strikes in half the wind-up',
     ({ abilities: a }) => {
       addN(a.a1, 'stun', 1.2);
       addN(a.a1, 'damage', 35);
       addN(a.a3, 'damage', 40);
       addN(a.a3, 'radius', 55);
+      mul(a.a3, 'castTime', 0.5); // item 10 — focused ki snaps the death-touch out
     },
   ),
   g(
@@ -4495,14 +4506,82 @@ export function getCharUpgrade(id: string): CharUpgradeDef | undefined {
   return forgeVariant('charUpgrade', id, (seed) => forgeCharUpgrade(seed, base)) ?? base;
 }
 
+/** Canonical (Forge-independent) NAME of a subclass or one of its skills — from the
+ *  static SUBCLASSES data, so a Forge description can swap the ORIGINAL name (which
+ *  the authored copy embeds) for the run's blended one (items 3 & 4). */
+function canonSubclassName(subclassId: string): string | undefined {
+  return ALL_SUBCLASSES.find((s) => s.id === subclassId)?.name;
+}
+function canonSubSkillName(subSkillId: string): string | undefined {
+  for (const sub of ALL_SUBCLASSES) {
+    const sk = sub.skills.find((s) => s.id === subSkillId);
+    if (sk) return sk.name;
+  }
+  return undefined;
+}
+/** Swap the ORIGINAL name for the run's blended one throughout a description; a no-op
+ *  when the original doesn't appear (or already equals the new name). */
+function swapDescName(desc: string, from: string | undefined, to: string): string {
+  return from && from !== to ? desc.split(from).join(to) : desc;
+}
+
+/**
+ * Re-present a character upgrade for the active Forge run (items: forge upgrade
+ * synthesis + naming). A skill-targeting boon / grand is given a NAME blended from
+ * the boon + the FUSED thing it now empowers (the same forgeName method skill names
+ * use), and a DESCRIPTION regenerated to reference that run's blended content:
+ *   • sub-skill "Honed X" upgrades (`subSkillId`, item 3) rename from the fused
+ *     sub-skill and swap its name in the copy;
+ *   • subclass grands (`subclassId`, item 4) rename from the fused SUBCLASS and swap
+ *     its name in the copy (so "Your Champion skills…" names the blended subclass);
+ *   • base-skill grands / class boons (a target slot) keep the existing
+ *     "empowers your <fused skill>" regeneration;
+ *   • stat-only CLASS capstones (`grand`, no slot) rename from the fused class.
+ * The `apply` is unchanged — it flows to the fused skill's components at spawn
+ * (applyCharUpgrades' refresh, item 2). Byte-identical to the canonical def off Forge;
+ * stat-only / hybrid boons are left as authored.
+ */
 function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
-  const slot = boonTargetSlot(base);
-  if (!slot) return base; // stat-only / hybrid — nothing skill-specific to rename
-  const fused = getClass(base.classId as ClassId).abilities[slot];
   const rng = new Rng(mixSeed(seed, FORGE_CHARUP_SALT, hashStr(base.id)));
-  const name = forgeName([base.name, fused.name], (k) => rng.int(0, k - 1));
-  const kind = base.grand ? 'Reforged capstone' : 'Reforged boon';
-  return { ...base, name, desc: `${kind} — empowers your ${fused.name}` };
+  const blend = (other: string): string => forgeName([base.name, other], (k) => rng.int(0, k - 1));
+
+  // item 3 — a per-sub-skill "Honed X" upgrade: rename after the fused sub-skill.
+  if (base.subSkillId) {
+    const fused = getSubSkill(base.subSkillId);
+    if (!fused) return base;
+    return {
+      ...base,
+      name: blend(fused.name),
+      desc: swapDescName(base.desc, canonSubSkillName(base.subSkillId), fused.name),
+    };
+  }
+
+  // item 4 — a subclass grand: rename after the fused subclass + swap its name in the copy.
+  if (base.subclassId) {
+    const fused = getSubclass(base.subclassId);
+    if (!fused) return base;
+    return {
+      ...base,
+      name: blend(fused.name),
+      desc: swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
+    };
+  }
+
+  // Skill-targeting boon / base-skill grand: rename after the fused base skill.
+  const slot = boonTargetSlot(base);
+  if (slot) {
+    const fused = getClass(base.classId as ClassId).abilities[slot];
+    const kind = base.grand ? 'Reforged capstone' : 'Reforged boon';
+    return { ...base, name: blend(fused.name), desc: `${kind} — empowers your ${fused.name}` };
+  }
+
+  // item 4 — a stat-only CLASS capstone: rename after the fused class (its copy names
+  // player stats, not a subclass, so it needs no name-swap).
+  if (base.grand && base.classId !== 'any') {
+    return { ...base, name: blend(getClass(base.classId).name) };
+  }
+
+  return base; // stat-only non-grand boon / hybrid — left exactly as authored.
 }
 
 /** A resolved label + description for an offer (a real, reclaim, or graftup id). */

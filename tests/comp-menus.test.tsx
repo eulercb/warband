@@ -429,7 +429,7 @@ describe('ownedSkillRows (item 6)', () => {
   it('folds the hero generic multipliers into the numeric line (item: real effective values)', () => {
     const dmgOf = (line: string): number => Number(line.match(/(\d+) dmg/)?.[1]);
     const cdOf = (line: string): number => Number(line.match(/([\d.]+)s cooldown/)?.[1]);
-    const castOf = (line: string): number => Number(line.match(/([\d.]+)s cast/)?.[1]);
+    const castOf = (line: string): number => Number(line.match(/([\d.]+)s wind-up/)?.[1]);
 
     const [plain] = ownedSkillRows('knight', 'knight', [], [], []);
     const [mighty] = ownedSkillRows('knight', 'knight', ['mighty'], [], []); // +15% damage dealt

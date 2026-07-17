@@ -37,16 +37,18 @@ describe('describeAbility (base-kit abilities)', () => {
   });
 
   it('a multi-projectile attack shows the projectile count', () => {
-    // Ranger Multishot — projCount 3.
-    expect(describeAbility(CLASSES.ranger.abilities.a1)).toBe('3× 16 dmg · 6s cooldown');
+    // Ranger Multishot — projCount 3, now an aimed wind-up volley (item 10).
+    expect(describeAbility(CLASSES.ranger.abilities.a1)).toBe(
+      '3× 19 dmg · 0.3s wind-up · 6s cooldown',
+    );
     // Sorcerer Chaos Bolt — twin bolts.
     expect(describeAbility(CLASSES.sorcerer.abilities.basic)).toBe('2× 12 dmg · 0.5s cooldown');
   });
 
-  it('a projectile bomb: blast radius + cast time', () => {
-    // Mage Fireball — impactRadius + castTime.
+  it('a projectile bomb: blast radius + wind-up', () => {
+    // Mage Fireball — impactRadius + castTime (shown as "wind-up", item 10).
     expect(describeAbility(CLASSES.mage.abilities.a1)).toBe(
-      '80 dmg · 110u blast · 0.7s cast · 7s cooldown',
+      '80 dmg · 110u blast · 0.7s wind-up · 7s cooldown',
     );
   });
 
@@ -58,9 +60,9 @@ describe('describeAbility (base-kit abilities)', () => {
   });
 
   it('a damage ground-zone: per-tick damage, radius and lifetime', () => {
-    // Ranger Rain of Arrows.
+    // Ranger Rain of Arrows — an AIRBORNE zone (item 8), so it reads "hits flyers".
     expect(describeAbility(CLASSES.ranger.abilities.a2)).toBe(
-      '12/tick dmg · 120u radius · lasts 3s · 12s cooldown',
+      '12/tick dmg · 120u radius · lasts 3s · hits flyers · 12s cooldown',
     );
   });
 
@@ -126,11 +128,35 @@ describe('describeAbility (base-kit abilities)', () => {
   });
 });
 
+describe('describeAbility (crit lean, item 13)', () => {
+  it("the Rogue's base kit reads its signature crit on Slash + Backstab", () => {
+    // Slash carries only a crit-CHANCE lean (no sharper multiplier).
+    expect(describeAbility(CLASSES.rogue.abilities.basic)).toBe(
+      '18 dmg · 62u reach · 84° arc · +12% crit · 0.42s cooldown',
+    );
+    // Backstab — the flagship crit strike — leans both chance AND multiplier.
+    expect(describeAbility(CLASSES.rogue.abilities.a1)).toBe(
+      '50 dmg · 58u reach · 64° arc · +30% crit · +0.3× crit dmg · 5s cooldown',
+    );
+  });
+
+  it('the Assassin subclass surfaces crit on Death Strike and the new Deadly Throw', () => {
+    expect(describeAbility(getSubSkill('ro_assassin_strike')!.ability)).toBe(
+      '60 dmg · 58u reach · 60° arc · +20% crit · +0.4× crit dmg · 7s cooldown',
+    );
+    // Deadly Throw REPLACES the old redundant "Vanish" blink with a ranged crit finisher.
+    expect(describeAbility(getSubSkill('ro_assassin_throw')!.ability)).toBe(
+      '38 dmg · +35% crit · +0.6× crit dmg · 6s cooldown',
+    );
+    expect(getSubSkill('ro_assassin_vanish')).toBeUndefined(); // the blink is gone
+  });
+});
+
 describe('describeAbility (upgrade-resolved values, item 19)', () => {
   it('reflects a character boon that boosts the numbers', () => {
     // Combustion: Fireball → +22 damage (102) across a +35 blast (145u).
     const table = previewAbilityTable('mage', ['mg_combust']);
-    expect(describeAbility(table.a1)).toBe('102 dmg · 145u blast · 0.7s cast · 14s cooldown');
+    expect(describeAbility(table.a1)).toBe('102 dmg · 145u blast · 0.7s wind-up · 14s cooldown');
   });
 
   it('reflects a boon that adds a brand-new effect (Deep Freeze)', () => {
@@ -147,7 +173,7 @@ describe('describeAbility (upgrade-resolved values, item 19)', () => {
     const line = describeAbility(table.a2);
     expect(line).toContain('80 dmg');
     expect(line).toContain('110u blast');
-    expect(line).toContain('0.7s cast');
+    expect(line).toContain('0.7s wind-up');
   });
 });
 
@@ -202,10 +228,10 @@ describe('describeAbility (generic mods fold + cooldown floor, item 2)', () => {
     range: 50,
   };
 
-  it('scales damage / cooldown / cast by the passed multipliers', () => {
+  it('scales damage / cooldown / wind-up by the passed multipliers', () => {
     const def: Omit<PlayerAbilityDef, 'slot'> = { ...jab, cooldown: 4, castTime: 1 };
     expect(describeAbility(def, { damageMult: 1.5, cooldownMult: 0.5, castMult: 0.5 })).toBe(
-      '15 dmg · 50u reach · 0.5s cast · 2s cooldown',
+      '15 dmg · 50u reach · 0.5s wind-up · 2s cooldown',
     );
   });
 

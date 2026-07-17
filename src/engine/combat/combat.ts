@@ -13,6 +13,7 @@ import type {
   Side,
   StunDr,
   Vec2,
+  ZoneKind,
 } from '../core/types';
 import { getClass } from '../content/classes';
 import {
@@ -25,6 +26,7 @@ import {
   REVIVE_MIN_TIME,
   REVIVE_COREVIVE_BONUS,
   REVIVE_COREVIVE_FALLOFF,
+  CAST_SLOW_MAX,
 } from '../core/constants';
 
 /** Minimal structural sink so combat needn't import the World. */
@@ -80,6 +82,50 @@ export function hasBuff(entity: { buffs: Buff[] }, kind: BuffKind): boolean {
 }
 
 /**
+ * item 7 — is this entity AIRBORNE right now via a timed flight buff? For a boss,
+ * the World ORs this with the static `MonsterDef.flying` (constant flyers); a
+ * player only ever flies through this buff. A flyer ignores ground effects (see
+ * world.applyZoneTick / the terrain tick).
+ */
+export function isFlying(entity: { buffs: Buff[] }): boolean {
+  return hasBuff(entity, 'flight');
+}
+
+/**
+ * item 8 — does a zone of this KIND reach airborne targets by default? Arrows
+ * raining from above (rainOfArrows) hit flyers; every other canonical kind is a
+ * GROUND effect (plants, pools, holy ground) a flyer hovers over. A per-zone
+ * `airborne` flag overrides this default (see zoneReachesAir) for oddities like a
+ * floating force cage. Data-driven off the kind, so new kinds classify here once.
+ */
+export function isAirborneZoneKind(kind: ZoneKind): boolean {
+  return kind === 'rainOfArrows';
+}
+
+/**
+ * item 8 — does this zone reach airborne targets? An explicit `airborne` flag wins
+ * (Mage Otiluke Bind — a floating cage on the ground 'entangle' kind); otherwise
+ * fall back to the kind default. A flyer is only exempted from a zone this returns
+ * false for.
+ */
+export function zoneReachesAir(z: { kind: ZoneKind; airborne?: boolean }): boolean {
+  return z.airborne ?? isAirborneZoneKind(z.kind);
+}
+
+/**
+ * item 9 — the wind-up / cast-time factor a SLUGGISH-debuffed entity suffers: the
+ * product of every `castSlow` buff on it (each ≥ 1), CLAMPED to CAST_SLOW_MAX so
+ * a stack of sources can never lock a caster out. 1 (neutral) when un-debuffed. A
+ * cast bar / boss wind-up advances at `dt / castTimeFactor`, so a factor of 1.4
+ * makes it take 40% longer. Pure; shared by the player-cast and boss-wind-up ticks.
+ */
+export function castTimeFactor(entity: { buffs: Buff[] }): number {
+  let f = 1;
+  for (const b of entity.buffs) if (b.kind === 'castSlow') f *= b.mult;
+  return Math.min(CAST_SLOW_MAX, Math.max(1, f));
+}
+
+/**
  * item 9 — is this entity ROOTED? A rooted boss/add cannot self-move: base
  * movement AND blink / charge / teleport abilities (including the Teleporting
  * affix) are gated while the root holds. It can still turn, cast and be shoved.
@@ -88,8 +134,60 @@ export function isRooted(entity: { buffs: Buff[] }): boolean {
   return hasBuff(entity, 'root');
 }
 
+/**
+ * item 1 — the buff `source` tag on a boss's temporary-invulnerability window
+ * (world.tickBossInvuln). A window carrying THIS source also grants crowd-control
+ * immunity + cleanse; player i-frames (source 'dash' / 'phoenixCharm') carry the
+ * same `invuln` KIND but a different source, so they never gain CC immunity.
+ */
+export const BOSS_INVULN_SOURCE = 'bossInvuln';
+
+/**
+ * item 1 — the crowd-control family a boss invuln window cleanses on entry and
+ * blocks for its duration: stun, root, silence and a movement SLOW (moveSpeed
+ * < 1). A haste (moveSpeed > 1) or any non-control buff is left untouched, so a
+ * boss self-haste / affix accel survives and only the paralysing debuffs are
+ * purged. Derived from the buff KIND, so a future control debuff routed through
+ * `applyBuff` is caught here without per-call-site wiring.
+ */
+export function isControlBuff(b: Buff): boolean {
+  return (
+    b.kind === 'stun' ||
+    b.kind === 'root' ||
+    b.kind === 'silence' ||
+    (b.kind === 'moveSpeed' && b.mult < 1)
+  );
+}
+
+/**
+ * item 1 — is this entity currently immune to crowd control? True only while a
+ * boss's invuln window (source BOSS_INVULN_SOURCE) is up. Scoped to the boss
+ * mechanic on purpose: player i-frames don't confer CC immunity.
+ */
+export function isCcImmune(entity: { buffs: Buff[] }): boolean {
+  for (const b of entity.buffs) {
+    if (b.kind === 'invuln' && b.source === BOSS_INVULN_SOURCE) return true;
+  }
+  return false;
+}
+
+/**
+ * item 1 — strip every crowd-control debuff (see isControlBuff) from an entity.
+ * Called when a boss invuln window opens so a boss frozen/slowed/rooted going in
+ * comes out of it free to act; leaves beneficial buffs (haste, wards) in place.
+ */
+export function cleanseControl(entity: { buffs: Buff[] }): void {
+  for (let i = entity.buffs.length - 1; i >= 0; i--) {
+    if (isControlBuff(entity.buffs[i])) entity.buffs.splice(i, 1);
+  }
+}
+
 /** Apply/refresh a buff, de-duping by `source`. */
 export function applyBuff(entity: { buffs: Buff[] }, buff: Buff): void {
+  // item 1 — a CC-immune target (a boss in its invuln window) rejects incoming
+  // crowd control outright. Cheap KIND check first, so non-control buffs (and
+  // every player, who is never CC-immune) skip the buff scan entirely.
+  if (isControlBuff(buff) && isCcImmune(entity)) return;
   const existing = entity.buffs.find((b) => b.source === buff.source);
   if (existing) {
     existing.kind = buff.kind;
@@ -150,6 +248,17 @@ export function applyStun(
   source: string,
 ): number {
   if (seconds <= 0) return 0;
+  // item 1 — a boss in its invuln window shrugs off stuns/freezes entirely. Guard
+  // here (before the DR bookkeeping) so a blocked attempt banks no load and the
+  // caller sees 0; a one-shot "Resisted" cue keeps the immunity readable.
+  if (isCcImmune(target)) {
+    const dr0 = (target.stunDr ??= { load: 0, window: 0 });
+    if (!dr0.announced) {
+      dr0.announced = true;
+      sink.events.push({ t: 'stunResist', id: target.id, pos: { ...target.pos } });
+    }
+    return 0;
+  }
   const dr = (target.stunDr ??= { load: 0, window: 0 });
   const effective = seconds * Math.pow(STUN_DR_FACTOR, dr.load / seconds);
   if (effective < STUN_DR_FLOOR) {

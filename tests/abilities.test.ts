@@ -5,16 +5,27 @@ import {
   beamTick,
   withLength,
   applyImpulse,
+  applyForcedMove,
+  zoneArm,
   stepPlayerGlide,
   PLAYER_RADIUS,
 } from '../src/engine/combat/abilities';
 import { World } from '../src/engine/world/world';
 import { getSubSkill } from '../src/engine/content/subclasses';
-import { getClass, describeAbility } from '../src/engine/content/classes';
+import { getClass, describeAbility, type PlayerAbilityDef } from '../src/engine/content/classes';
 import { getMonster, abilityById } from '../src/engine/content/monsters';
 import type { BossAbilityDef } from '../src/engine/content/monsters';
-import { makeBuff, applyBuff } from '../src/engine/combat/combat';
-import { ARENA_W, ARENA_H, ADD_HP, ADD_MOVE_SPEED, ADD_RADIUS } from '../src/engine/core/constants';
+import { makeBuff, applyBuff, isRooted } from '../src/engine/combat/combat';
+import {
+  ARENA_W,
+  ARENA_H,
+  ADD_HP,
+  ADD_MOVE_SPEED,
+  ADD_RADIUS,
+  FORCE_OVERCOME_ROOT,
+  ZONE_ARM_MIN,
+  ZONE_ARM_MAX,
+} from '../src/engine/core/constants';
 import type { Player, BossAction, ClassId, MonsterId, Add, Vec2 } from '../src/engine/core/types';
 
 // ---------------------------------------------------------------------------
@@ -230,9 +241,9 @@ describe('player projectile', () => {
     const p = w.players[0];
     p.pos = { x: 400, y: 500 };
     p.aim = { ...RIGHT };
-    resolvePlayerAbility(w, p, 'a1', ZERO); // Multishot: count 3, spread 30, dmg 16
+    resolvePlayerAbility(w, p, 'a1', ZERO); // Multishot: count 3, spread 30, dmg 19 (item 10)
     expect(w.projectiles).toHaveLength(3);
-    for (const proj of w.projectiles) expect(proj.damage).toBeCloseTo(16, 6);
+    for (const proj of w.projectiles) expect(proj.damage).toBeCloseTo(19, 6);
     const mid = w.projectiles[1];
     expect(mid.vel.x).toBeCloseTo(700, 3);
     expect(mid.vel.y).toBeCloseTo(0, 3);
@@ -507,8 +518,8 @@ describe('player pbaoe', () => {
     p.pos = { x: 800, y: 500 };
     boss.pos = { x: 800, y: 520 };
     const before = boss.hp;
-    resolvePlayerAbility(w, p, 'a3', ZERO); // Whirlwind dmg 34, radius 135
-    expect(before - boss.hp).toBeCloseTo(34, 6);
+    resolvePlayerAbility(w, p, 'a3', ZERO); // Whirlwind dmg 40, radius 135 (item 10)
+    expect(before - boss.hp).toBeCloseTo(40, 6);
   });
 
   it('Whirlwind also shreds adds in the radius', () => {
@@ -519,7 +530,7 @@ describe('player pbaoe', () => {
     const add = mkAdd(w, { x: 800, y: 520 });
     w.adds = [add];
     resolvePlayerAbility(w, p, 'a3', ZERO);
-    expect(ADD_HP - add.hp).toBeCloseTo(34, 6);
+    expect(ADD_HP - add.hp).toBeCloseTo(40, 6);
   });
 
   it('ignores corpses (0-HP boss and adds) in the pbaoe', () => {
@@ -536,7 +547,7 @@ describe('player pbaoe', () => {
     resolvePlayerAbility(w, p, 'a3', ZERO);
     expect(boss.hp).toBe(0);
     expect(dead.hp).toBe(0);
-    expect(ADD_HP - live.hp).toBeCloseTo(34, 6);
+    expect(ADD_HP - live.hp).toBeCloseTo(40, 6);
   });
 
   it('does not hit a boss outside the radius', () => {
@@ -570,7 +581,7 @@ describe('player pbaoe', () => {
     p.pos = { x: 800, y: 500 };
     boss.pos = { x: 800, y: 520 };
     resolvePlayerAbility(w, p, 'a3', ZERO);
-    expect(p.hp).toBeCloseTo(p.maxHp - 40 + 34 * 0.5, 5);
+    expect(p.hp).toBeCloseTo(p.maxHp - 40 + 40 * 0.5, 5); // Whirlwind 40 (item 10)
   });
 });
 
@@ -884,6 +895,151 @@ describe('player selfBuff', () => {
     expect(move!.mult).toBeCloseTo(1.2, 6);
     expect(dmg!.remaining).toBeCloseTo(4, 6);
     expect(move!.remaining).toBeCloseTo(4, 6);
+  });
+
+  it('a selfBuff that grants flight lifts the caster airborne (item 7)', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    tableOf(p).a2.grantsFlight = 5; // Shield Wall now also grants flight
+    resolvePlayerAbility(w, p, 'a2', ZERO);
+    const fly = p.buffs.find((b) => b.kind === 'flight' && b.source === 'flight');
+    expect(fly).toBeDefined();
+    expect(fly!.remaining).toBeCloseTo(5, 6);
+  });
+});
+
+// ===========================================================================
+// Player forced movement — knockback / pull + the root-vs-force rule (item 11)
+// ===========================================================================
+describe('player forced movement (item 11)', () => {
+  const forceAb = (over: Partial<PlayerAbilityDef>): PlayerAbilityDef => ({
+    slot: 'a1',
+    name: 'x',
+    kind: 'meleeCone',
+    cooldown: 5,
+    damage: 0,
+    ...over,
+  });
+
+  it('knockback shoves an enemy away from the caster; pull drags it in', () => {
+    const w = mkWorld('knight');
+    const boss = w.boss!;
+    const from = { x: 500, y: 500 };
+    boss.pos = { x: 600, y: 500 }; // 100u to the caster's right
+    applyForcedMove(w, from, boss, forceAb({ knockback: 80 }));
+    expect(boss.pos.x).toBeGreaterThan(600); // pushed further away
+
+    boss.pos = { x: 600, y: 500 };
+    applyForcedMove(w, from, boss, forceAb({ pull: 40 }));
+    expect(boss.pos.x).toBeLessThan(600); // dragged back toward the caster
+  });
+
+  it('a rooted enemy resists a weak shove but a strong one rips it free (item 11)', () => {
+    const w = mkWorld('knight');
+    const boss = w.boss!;
+    const from = { x: 500, y: 500 };
+    boss.pos = { x: 600, y: 500 };
+    applyBuff(boss, makeBuff('root', 0, 3, 'zoneRoot'));
+
+    // Below the threshold → the root wins, the boss holds fast.
+    applyForcedMove(w, from, boss, forceAb({ knockback: FORCE_OVERCOME_ROOT - 1 }));
+    expect(boss.pos.x).toBe(600);
+    expect(isRooted(boss)).toBe(true);
+
+    // At/above the threshold → the shove overpowers the bind (root broken + moved).
+    applyForcedMove(w, from, boss, forceAb({ knockback: FORCE_OVERCOME_ROOT + 40 }));
+    expect(boss.pos.x).toBeGreaterThan(600);
+    expect(isRooted(boss)).toBe(false);
+  });
+
+  it('a knockback melee ability shoves a struck boss back (integration)', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    const boss = w.boss!;
+    tableOf(p).a3.knockback = 120; // Shield Bash + a shove
+    p.pos = { x: 800, y: 500 };
+    p.aim = { x: 1, y: 0 };
+    boss.pos = { x: 850, y: 500 }; // in the cone
+    const before = boss.pos.x;
+    resolvePlayerAbility(w, p, 'a3', ZERO);
+    expect(boss.pos.x).toBeGreaterThan(before); // knocked back
+  });
+
+  it('Dimension Door reflects a nearby enemy across the mage (swap)', () => {
+    const w = mkWorld('mage');
+    const p = w.players[0];
+    const boss = w.boss!;
+    w.obstacles = [];
+    // Make a2 a swap-blink parked so the mage stays put (range 0), enemy near it.
+    tableOf(p).a2 = {
+      slot: 'a2',
+      name: 'Door',
+      kind: 'blink',
+      cooldown: 6,
+      damage: 0,
+      range: 0,
+      swap: true,
+      radius: 300,
+    };
+    p.pos = { x: 800, y: 500 };
+    p.aim = { x: 1, y: 0 };
+    boss.pos = { x: 900, y: 500 }; // 100u to the mage's right
+    resolvePlayerAbility(w, p, 'a2', ZERO);
+    // Reflected across the mage → now ~100u to the LEFT.
+    expect(boss.pos.x).toBeLessThan(800);
+  });
+
+  it('Bull Rush / Chain Pull / Gust carry the intended forced movement (content)', () => {
+    expect(getSubSkill('kn_champion_charge')?.ability.knockback).toBeGreaterThanOrEqual(
+      FORCE_OVERCOME_ROOT,
+    );
+    expect(getSubSkill('bb_berserker_chain')?.ability.pull).toBeGreaterThan(0);
+    // The wind gust is a LIGHT push — below the root-break threshold by design.
+    const gust = getSubSkill('dr_land_wind')?.ability.knockback ?? 0;
+    expect(gust).toBeGreaterThan(0);
+    expect(gust).toBeLessThan(FORCE_OVERCOME_ROOT);
+    expect(getSubSkill('mg_abjurer_teleport')?.ability.swap).toBe(true);
+  });
+});
+
+// ===========================================================================
+// Ranged AoE arming telegraph (item 12)
+// ===========================================================================
+describe('ranged AoE arming telegraph (item 12)', () => {
+  it('zoneArm clamps the travel window and records the origin (0 for on-the-spot)', () => {
+    // 700u (within the torus half-width) exceeds MAX×speed → clamped to MAX.
+    const far = zoneArm({ x: 0, y: 0 }, { x: 700, y: 0 });
+    expect(far.armTime).toBeCloseTo(ZONE_ARM_MAX, 5);
+    expect(far.armFrom).toEqual({ x: 0, y: 0 });
+    const near = zoneArm({ x: 0, y: 0 }, { x: 40, y: 0 }); // close → clamped up to MIN
+    expect(near.armTime).toBeCloseTo(ZONE_ARM_MIN, 5);
+    const onSpot = zoneArm({ x: 100, y: 100 }, { x: 100, y: 100 }); // no travel
+    expect(onSpot.armTime).toBe(0);
+  });
+
+  it('a ranged zone arms (inert, telegraphed) before it bites; a centered one is live at once', () => {
+    // Ranger Rain of Arrows is ground-targeted at range → it arms with a travel origin.
+    const w = mkWorld('ranger');
+    const p = w.players[0];
+    p.pos = { x: 300, y: 500 };
+    p.aim = { ...RIGHT };
+    resolvePlayerAbility(w, p, 'a2', ZERO);
+    const z = w.groundZones[0];
+    expect(z.armRemaining!).toBeGreaterThan(0);
+    expect(z.armTotal!).toBeGreaterThan(0);
+    expect(z.armFrom).toEqual({ x: 300, y: 500 });
+
+    // A boss sitting under the telegraph takes NO damage while it is still arming.
+    const boss = w.boss!;
+    boss.pos = { ...z.pos };
+    const hp0 = boss.hp;
+    w.step(0.05, new Map()); // one tick — still arming, still inert
+    expect(boss.hp).toBe(hp0);
+
+    // Cleric Sanctuary is CENTERED on the caster → no travel, live immediately.
+    const cw = mkWorld('cleric');
+    resolvePlayerAbility(cw, cw.players[0], 'a2', ZERO);
+    expect(cw.groundZones[0].armRemaining ?? 0).toBe(0);
   });
 });
 
@@ -2063,5 +2219,68 @@ describe('crit + backstab (item 5)', () => {
     expect(hit?.backstab).toBe(true);
     expect(hit?.crit).toBeFalsy();
     expect(before - boss.hp).toBeCloseTo(22 * 1.4, 4); // Cleave 22 × BACKSTAB_MULT
+  });
+});
+
+// ===========================================================================
+// Ability-signature crit lean (item 13) — an ability's own critChanceBonus /
+// critMultBonus folds INTO the seeded crit roll, on top of the hero's base crit.
+// This is the modern way to key a strike off crit (the Rogue's identity).
+// ===========================================================================
+describe('ability crit lean (item 13)', () => {
+  it('critRoll folds an ability bonus onto the base crit chance + multiplier', () => {
+    const w = mkWorld('rogue');
+    const p = w.players[0];
+    p.critChance = 0; // 0% base → never crits on its own
+    p.critMult = 1.5;
+    expect(w.critRoll(p).crit).toBe(false); // no lean, no crit
+    // A +100% ability lean guarantees the crit; +0.5× sharpens the multiplier.
+    const mods = w.critRoll(p, { critChanceBonus: 1, critMultBonus: 0.5 });
+    expect(mods.crit).toBe(true);
+    expect(mods.mult).toBeCloseTo(2.0, 5); // base 1.5 + bonus 0.5
+  });
+
+  it('meleeHit stacks the ability lean with a rear-arc backstab', () => {
+    const w = mkWorld('rogue');
+    const p = w.players[0];
+    const boss = w.boss!;
+    p.critChance = 0;
+    p.critMult = 1.5;
+    boss.facing = 0; // faces +x, away from a player standing behind (−x side)
+    p.pos = { x: 720, y: 500 };
+    boss.pos = { x: 760, y: 500 };
+    const mods = w.meleeHit(p, boss, { critChanceBonus: 1, critMultBonus: 0.5 });
+    expect(mods.crit).toBe(true);
+    expect(mods.backstab).toBe(true);
+    // (base 1.5 + 0.5 crit) × 1.4 backstab.
+    expect(mods.mult).toBeCloseTo(2.0 * 1.4, 5);
+  });
+
+  it("Backstab's crit lean reaches its resolved damage end-to-end", () => {
+    const w = mkWorld('rogue');
+    const p = w.players[0];
+    const boss = w.boss!;
+    const a1 = tableOf(p).a1;
+    expect(a1.name).toBe('Backstab');
+    expect(a1.damage).toBe(50); // item 13 — lowered flat, crit-leaning
+    // Force the lean to a guaranteed crit so the assertion is deterministic; keep
+    // the hero's own base crit at 0 so ONLY the ability lean is under test.
+    p.critChance = 0;
+    p.critMult = 1.5;
+    a1.critChanceBonus = 1; // guaranteed crit from the ability's signature
+    a1.critMultBonus = 0.5; // → ×2.0
+    // Stand in FRONT of the boss so a backstab doesn't confound the multiplier.
+    boss.facing = 0;
+    p.pos = { x: 800, y: 500 };
+    p.aim = { x: -1, y: 0 };
+    boss.pos = { x: 760, y: 500 };
+    const before = boss.hp;
+    resolvePlayerAbility(w, p, 'a1', ZERO);
+    const hit = w.events.find((e) => e.t === 'hit' && e.targetId === boss.id) as
+      | { crit?: boolean; backstab?: boolean }
+      | undefined;
+    expect(hit?.crit).toBe(true);
+    expect(hit?.backstab).toBeFalsy();
+    expect(before - boss.hp).toBeCloseTo(50 * 2.0, 5); // damage 50 × (1.5 + 0.5)
   });
 });

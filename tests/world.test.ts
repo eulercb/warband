@@ -9,7 +9,14 @@ import {
   REVIVE_MIN_TIME,
   BASIC_CD_FLOOR,
 } from '../src/engine/core/constants';
-import { coReviveSpeed, hasBuff, damageBoss } from '../src/engine/combat/combat';
+import {
+  coReviveSpeed,
+  hasBuff,
+  damageBoss,
+  applyBuff,
+  applyStun,
+  makeBuff,
+} from '../src/engine/combat/combat';
 import { spawnZone } from '../src/engine/combat/abilities';
 
 function buttons(over: Partial<ButtonState> = {}): ButtonState {
@@ -358,6 +365,235 @@ describe('world: progression-aware boss sustain + invuln (items 2 & 5)', () => {
     const hp = boss.hp;
     expect(damageBoss(w, w.players[0], boss, boss.maxHp)).toBe(0);
     expect(boss.hp).toBe(hp);
+  });
+
+  it('a boss standing in a SLUGGISH zone gains a castSlow buff (item 9)', () => {
+    const w = new World({
+      monsterId: 'troll', // a grounded boss so a ground zone reaches it
+      seed: 7,
+      players: [{ peerId: 'a', name: 'A', classId: 'warlock' }],
+    });
+    w.terrain = [];
+    const boss = w.boss!;
+    // A Hex-style cast-slow zone parked on the boss (big enough it can't drift out).
+    spawnZone(w, {
+      kind: 'poison',
+      pos: { ...boss.pos },
+      radius: 420,
+      side: 'player',
+      ownerId: w.players[0].id,
+      damagePerTick: 0,
+      healPerTick: 0,
+      slowMult: 1,
+      slowDuration: 0,
+      castSlow: 1.5,
+      duration: 6,
+    });
+    for (let i = 0; i < 12; i++) w.step(DT, new Map([['a', inp()]])); // > one zone tick
+    expect(boss.buffs.some((b) => b.kind === 'castSlow' && b.mult === 1.5)).toBe(true);
+  });
+
+  it('a SLUGGISH boss winds up slower (item 9)', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 3,
+      players: [{ peerId: 'a', name: 'A', classId: 'warlock' }],
+    });
+    w.terrain = [];
+    const boss = w.boss!;
+    const def = getMonster('dragon');
+    const abId = Object.values(def.abilities).find(Boolean)!.id;
+    applyBuff(boss, makeBuff('castSlow', 1.5, 5, 'zoneCastSlow'));
+    // Force a fresh, long wind-up so the tick can't resolve it.
+    boss.action = {
+      kind: 'windup',
+      abilityId: abId,
+      remaining: 2,
+      total: 2,
+      targetId: w.players[0].id,
+      targetPos: { ...w.players[0].pos },
+      aimAngle: 0,
+      channelAccum: 0,
+    };
+    w.step(DT, new Map([['a', inp()]]));
+    // The wind-up advanced at dt / 1.5, not the full dt.
+    expect(boss.action.remaining).toBeCloseTo(2 - DT / 1.5, 3);
+  });
+
+  it('a flying hero is not slowed or burned by ground terrain (item 7)', () => {
+    const w = new World({
+      monsterId: 'dummy',
+      seed: 4,
+      players: [
+        { peerId: 'a', name: 'A', classId: 'ranger' },
+        { peerId: 'b', name: 'B', classId: 'ranger' },
+      ],
+    });
+    const [flyer, walker] = w.players;
+    walker.pos = { ...flyer.pos };
+    w.terrain = [
+      {
+        id: w.allocId(),
+        kind: 'swamp',
+        pos: { ...flyer.pos },
+        radius: 500,
+        damagePerTick: 0,
+        slowMult: 0.4,
+        slowDuration: 2,
+        tickAccum: 0,
+      },
+    ];
+    applyBuff(flyer, makeBuff('flight', 0, 5, 'flight'));
+    w.step(DT, new Map([['a', inp()], ['b', inp()]]));
+    expect(walker.buffs.some((b) => b.source === 'terrain')).toBe(true); // grounded: mired
+    expect(flyer.buffs.some((b) => b.source === 'terrain')).toBe(false); // airborne: soars over
+  });
+
+  it('a flying boss ignores a GROUND zone but an AIRBORNE one still bites (items 7/8)', () => {
+    const w = new World({
+      monsterId: 'troll',
+      seed: 4,
+      players: [{ peerId: 'a', name: 'A', classId: 'ranger' }],
+    });
+    w.terrain = [];
+    const boss = w.boss!;
+    const owner = w.players[0].id;
+    applyBuff(boss, makeBuff('flight', 0, 6, 'flight'));
+    // Ground poison (slows + damages) — should pass under the flyer.
+    spawnZone(w, {
+      kind: 'poison',
+      pos: { ...boss.pos },
+      radius: 420,
+      side: 'player',
+      ownerId: owner,
+      damagePerTick: 20,
+      healPerTick: 0,
+      slowMult: 0.5,
+      slowDuration: 2,
+      duration: 6,
+    });
+    const hpAfterGroundOnly = boss.hp;
+    for (let i = 0; i < 12; i++) w.step(DT, new Map([['a', inp()]]));
+    expect(boss.buffs.some((b) => b.source === 'zoneSlow')).toBe(false); // ground slow skipped
+    expect(boss.hp).toBe(hpAfterGroundOnly); // ground poison dealt no damage to the flyer
+
+    // Now an AIRBORNE rain zone — it reaches the flyer.
+    spawnZone(w, {
+      kind: 'rainOfArrows',
+      pos: { ...boss.pos },
+      radius: 420,
+      side: 'player',
+      ownerId: owner,
+      damagePerTick: 20,
+      healPerTick: 0,
+      slowMult: 1,
+      slowDuration: 0,
+      duration: 6,
+    });
+    const hpBeforeRain = boss.hp;
+    for (let i = 0; i < 12; i++) w.step(DT, new Map([['a', inp()]]));
+    expect(boss.hp).toBeLessThan(hpBeforeRain); // airborne rain connects
+  });
+
+  it('a boss take-off grants a flight buff and reads as airborne (item 7)', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 5,
+      players: [{ peerId: 'a', name: 'A', classId: 'ranger' }],
+    });
+    w.terrain = [];
+    const boss = w.boss!;
+    expect(w.bossFlying(boss)).toBe(false); // grounded until it takes off
+    // Force the take-flight wind-up to resolve this tick.
+    boss.action = {
+      kind: 'windup',
+      abilityId: 'takeFlight',
+      remaining: 0.02,
+      total: 1.2,
+      targetId: null,
+      targetPos: null,
+      aimAngle: 0,
+      channelAccum: 0,
+    };
+    w.step(DT, new Map([['a', inp()]]));
+    expect(boss.buffs.some((b) => b.kind === 'flight')).toBe(true);
+    expect(w.bossFlying(boss)).toBe(true);
+  });
+
+  it('a constant-flyer boss reads as airborne with no buff (item 7)', () => {
+    const w = new World({
+      monsterId: 'beholder',
+      seed: 5,
+      players: [{ peerId: 'a', name: 'A', classId: 'ranger' }],
+    });
+    expect(w.bossFlying(w.boss!)).toBe(true); // Beholder floats permanently
+  });
+
+  it('a martial wind-up ability enters a rooted cast when fired (item 10)', () => {
+    const w = new World({
+      monsterId: 'dummy',
+      seed: 1,
+      players: [{ peerId: 'a', name: 'A', classId: 'barbarian' }],
+    });
+    w.terrain = [];
+    const p = w.players[0];
+    // Press Whirlwind (a3) — a wind-up now, so it roots into a cast instead of
+    // resolving instantly.
+    w.step(DT, new Map([['a', inp({ buttons: buttons({ a3: true }) })]]));
+    expect(p.castSlot).toBe('a3');
+    expect(p.castTimer).toBeGreaterThan(0);
+    expect(p.castTimerMax).toBeCloseTo(0.4, 5); // Whirlwind wind-up
+
+    // Focus (castMult 0.7) shortens that wind-up.
+    const w2 = new World({
+      monsterId: 'dummy',
+      seed: 1,
+      players: [{ peerId: 'a', name: 'A', classId: 'barbarian' }],
+    });
+    w2.terrain = [];
+    const p2 = w2.players[0];
+    p2.castMult = 0.7; // as the Focus boon sets it at spawn
+    w2.step(DT, new Map([['a', inp({ buttons: buttons({ a3: true }) })]]));
+    expect(p2.castTimerMax).toBeCloseTo(0.4 * 0.7, 5);
+  });
+
+  it("a SLUGGISH hero's cast bar advances slower (item 9)", () => {
+    const w = new World({
+      monsterId: 'dummy',
+      seed: 1,
+      players: [{ peerId: 'a', name: 'A', classId: 'mage' }],
+    });
+    w.terrain = [];
+    const p = w.players[0];
+    p.castTimer = 1;
+    p.castTimerMax = 1;
+    p.castSlot = 'a1';
+    applyBuff(p, makeBuff('castSlow', 1.5, 5, 'castSlow'));
+    w.step(DT, new Map([['a', inp()]]));
+    expect(p.castTimer).toBeCloseTo(1 - DT / 1.5, 3);
+  });
+
+  it('opening an invuln window cleanses existing CC and blocks new CC (item 1)', () => {
+    const w = strongWorld('treant');
+    const boss = w.boss!;
+    // Lock the boss down with a full spread of crowd control before the window.
+    applyStun(w, boss, 3, 'daze');
+    applyBuff(boss, makeBuff('moveSpeed', 0.3, 4, 'zoneSlow'));
+    applyBuff(boss, makeBuff('root', 0, 4, 'zoneRoot'));
+    applyBuff(boss, makeBuff('moveSpeed', 1.3, 4, 'bossHaste')); // a keeper
+    expect(hasBuff(boss, 'stun')).toBe(true);
+    // Cross the first threshold → the window opens on the next tick and cleanses.
+    boss.hp = boss.maxHp * 0.49;
+    w.step(DT, new Map([['a', inp()]]));
+    expect(hasBuff(boss, 'invuln')).toBe(true);
+    expect(hasBuff(boss, 'stun')).toBe(false); // cleansed
+    expect(hasBuff(boss, 'root')).toBe(false); // cleansed
+    expect(boss.buffs.some((b) => b.kind === 'moveSpeed' && b.mult < 1)).toBe(false); // slow gone
+    expect(boss.buffs.some((b) => b.source === 'bossHaste')).toBe(true); // haste kept
+    // New CC while the window holds is refused.
+    expect(applyStun(w, boss, 2, 'daze')).toBe(0);
+    applyBuff(boss, makeBuff('root', 0, 3, 'zoneRoot'));
+    expect(hasBuff(boss, 'root')).toBe(false);
   });
 
   it('boss invuln fires ≥once, is bounded to two windows, and never walls the kill (item 5)', () => {

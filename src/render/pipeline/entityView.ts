@@ -509,6 +509,14 @@ export function drawZone(g: Graphics, z: ZoneView, screen: Vec2, scale: number):
   const r = z.radius * scale;
   const { x, y } = screen;
 
+  // item 12 — a ranged AoE ARMS first: draw the incoming telegraph (an indicator
+  // travelling from the caster + a filling target ring) instead of the live zone,
+  // so players read where it will land before it bites.
+  if ((z.armRemaining ?? 0) > 0 && z.armTotal && z.armFrom) {
+    drawZoneArming(g, z, screen, scale, color, r);
+    return;
+  }
+
   // Ease the whole zone in on spawn and out near expiry so it visibly appears
   // and then disappears after a while rather than popping.
   const fade = zoneFadeAlpha(z.remaining, z.duration);
@@ -518,6 +526,56 @@ export function drawZone(g: Graphics, z: ZoneView, screen: Vec2, scale: number):
   const pulse = 0.13 + 0.06 * (0.5 + 0.5 * Math.sin(z.remaining * 6));
   g.circle(x, y, r).fill({ color, alpha: pulse * fade });
   g.circle(x, y, r).stroke({ width: 2, color, alpha: 0.55 * fade });
+}
+
+/**
+ * item 12 — the arming telegraph for a ranged AoE: a faint guide line from the
+ * caster, a dashed target ring that fills as it arms, and a marker travelling toward
+ * the impact point. The marker style varies by zone kind (a dart cluster for the
+ * Ranger's arrow rain, a lobbed blob for a curse/venom pool) so each class reads
+ * differently. Camera is a linear pan/zoom, so the caster's screen point is the
+ * zone's screen plus the scaled world offset.
+ */
+function drawZoneArming(
+  g: Graphics,
+  z: ZoneView,
+  screen: Vec2,
+  scale: number,
+  color: number,
+  r: number,
+): void {
+  const { x, y } = screen;
+  const progress = Math.min(1, Math.max(0, 1 - (z.armRemaining ?? 0) / (z.armTotal ?? 1)));
+  const fx = x + (z.armFrom!.x - z.pos.x) * scale; // caster's screen point
+  const fy = y + (z.armFrom!.y - z.pos.y) * scale;
+  const ix = fx + (x - fx) * progress; // travelling marker
+  const iy = fy + (y - fy) * progress;
+
+  // Faint guide line caster → target.
+  g.moveTo(fx, fy)
+    .lineTo(x, y)
+    .stroke({ width: Math.max(1, 1.2 * scale), color, alpha: 0.22 });
+
+  // Target ring + a sweeping arc that fills as the AoE arms.
+  g.circle(x, y, r).stroke({ width: 2, color, alpha: 0.45 });
+  const start = -Math.PI / 2;
+  const end = start + progress * Math.PI * 2;
+  g.moveTo(x + Math.cos(start) * r, y + Math.sin(start) * r)
+    .arc(x, y, r, start, end)
+    .stroke({ width: Math.max(2, 3 * scale), color, alpha: 0.9 });
+
+  // The travelling indicator — per-kind so classes read distinctly.
+  const m = Math.max(4, 7 * scale);
+  if (z.kind === 'rainOfArrows') {
+    for (const o of [-0.55, 0, 0.55]) {
+      g.moveTo(ix + o * m, iy - m)
+        .lineTo(ix + o * m * 0.35, iy + m)
+        .stroke({ width: Math.max(1.5, 2 * scale), color, alpha: 0.95 });
+    }
+  } else {
+    g.circle(ix, iy, m * 0.55).fill({ color, alpha: 0.9 });
+    g.circle(ix, iy, m).stroke({ width: Math.max(1, 1.5 * scale), color, alpha: 0.55 });
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -31,6 +31,7 @@ import type { ZoneKind, ClassId, AbilitySlot } from '../core/types';
 import type { PlayerAbilityDef, AbilityKind, ClassDef } from './classes';
 import type { BossAbilityDef, BossAbilityShape, MonsterDef, BossDecisionCtx } from './monsters';
 import { Rng, mixSeed, clamp } from '../core/math';
+import { CAST_SLOW_MAX } from '../core/constants';
 import { hashStr, bossAbilityVariant, MONSTER_EPITHETS } from './procgen';
 
 // ---------------------------------------------------------------------------
@@ -81,6 +82,18 @@ export type EffectComponent =
   | { kind: 'stun'; seconds: number }
   | { kind: 'freeze'; seconds: number }
   | { kind: 'slow'; mult: number; duration: number }
+  /** item 9 — SLUGGISH: stretch the target's wind-up / cast. `mult` ≥ 1 is the
+   * duration factor (1.4 = 40% longer). A soft, tempo-shifting rider (curse/venom). */
+  | { kind: 'castSlow'; mult: number; duration: number }
+  /** item 7 — FLIGHT: lift the caster (self-buff) / allies airborne for `duration`
+   * seconds, soaring over ground hazards + ground zones. A defensive/utility rider. */
+  | { kind: 'flight'; duration: number }
+  /** item 11 — FORCED MOVEMENT on struck enemies: shove `distance` units away
+   * (`pull` false) or drag them toward the caster (`pull` true). A reposition rider. */
+  | { kind: 'shove'; distance: number; pull: boolean }
+  /** item 13 — a CRIT lean this ability carries: `chance` added to the hero's crit
+   * chance, `mult` added to the crit multiplier, for its own hits (a precision strike). */
+  | { kind: 'crit'; chance: number; mult: number }
   | {
       kind: 'buff';
       target: BuffTarget;
@@ -109,6 +122,10 @@ export interface ZoneSpec {
   slowMult?: number;
   slowDuration?: number;
   roots?: boolean;
+  /** item 9 — a wind-up-slow factor (≥ 1) re-applied to enemies inside (Hex-style). */
+  castSlow?: number;
+  /** item 8 — the zone reaches airborne targets too (rain-of-arrows style). */
+  airborne?: boolean;
   allyBuff?: { defMult?: number; dmgMult?: number; moveMult?: number; duration: number };
 }
 
@@ -171,6 +188,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
       zone.slowDuration = def.slowDuration ?? 2;
     }
     if (def.roots) zone.roots = true;
+    if (def.castSlow != null && def.castSlow > 1) zone.castSlow = def.castSlow; // item 9
+    if (def.airborne) zone.airborne = true; // item 8
     effects.push({ kind: 'zone', zone });
   } else {
     // Direct-strike payload: damage, then on-hit riders.
@@ -184,6 +203,17 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.freeze) effects.push({ kind: 'freeze', seconds: def.freeze });
     if (def.slowMult != null && def.slowMult < 1) {
       effects.push({ kind: 'slow', mult: def.slowMult, duration: def.slowDuration ?? 2 });
+    }
+    // item 9 — a direct-hit SLUGGISH rider (envenomed strike / cursed shot).
+    if (def.castSlow != null && def.castSlow > 1) {
+      effects.push({ kind: 'castSlow', mult: def.castSlow, duration: def.castSlowDuration ?? 3 });
+    }
+    // item 11 — a FORCED-MOVEMENT rider (knockback / pull).
+    if (def.knockback) effects.push({ kind: 'shove', distance: def.knockback, pull: false });
+    if (def.pull) effects.push({ kind: 'shove', distance: def.pull, pull: true });
+    // item 13 — a CRIT lean rider (precision strike).
+    if (def.critChanceBonus || def.critMultBonus) {
+      effects.push({ kind: 'crit', chance: def.critChanceBonus ?? 0, mult: def.critMultBonus ?? 0 });
     }
     if (def.lifestealFrac) effects.push({ kind: 'lifesteal', frac: def.lifestealFrac });
     if (def.healOnUse) effects.push({ kind: 'healOnUse', amount: def.healOnUse });
@@ -199,6 +229,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.buffMoveMult != null) {
       effects.push({ kind: 'buff', target, moveMult: def.buffMoveMult, duration: dur });
     }
+    // item 7 — a flight-granting rider (Dragon Wings) is its own component.
+    if (def.grantsFlight) effects.push({ kind: 'flight', duration: def.grantsFlight });
   }
 
   return { delivery, effects };
@@ -270,6 +302,21 @@ export function recompose(
         def.slowMult = e.mult;
         def.slowDuration = e.duration;
         break;
+      case 'castSlow': // item 9 — direct-hit wind-up slow rider
+        def.castSlow = e.mult;
+        def.castSlowDuration = e.duration;
+        break;
+      case 'flight': // item 7 — a flight-granting self/ally rider
+        def.grantsFlight = e.duration;
+        break;
+      case 'shove': // item 11 — forced movement (knockback / pull)
+        if (e.pull) def.pull = e.distance;
+        else def.knockback = e.distance;
+        break;
+      case 'crit': // item 13 — a crit lean
+        if (e.chance) def.critChanceBonus = e.chance;
+        if (e.mult) def.critMultBonus = e.mult;
+        break;
       case 'buff':
         if (e.defMult != null) def.buffDefMult = e.defMult;
         if (e.dmgMult != null) def.buffDamageMult = e.dmgMult;
@@ -287,6 +334,8 @@ export function recompose(
           def.slowDuration = e.zone.slowDuration ?? 2;
         }
         if (e.zone.roots) def.roots = true;
+        if (e.zone.castSlow != null) def.castSlow = e.zone.castSlow; // item 9
+        if (e.zone.airborne) def.airborne = true; // item 8
         break;
     }
   }
@@ -335,6 +384,14 @@ function effectValue(e: EffectComponent, fan: number): number {
       return e.seconds * 50;
     case 'slow':
       return (1 - e.mult) * e.duration * 12; // soft CC, priced by depth × time
+    case 'castSlow':
+      return (e.mult - 1) * e.duration * 18; // soft tempo CC, priced by depth × time
+    case 'flight':
+      return e.duration * 10; // a defensive/mobility window (ignore ground hazards)
+    case 'shove':
+      return e.distance * 0.2; // a reposition — priced by displacement
+    case 'crit':
+      return e.chance * 90 + e.mult * 35; // expected extra output from the crit lean
     case 'buff':
       return buffValue(e);
     case 'zone':
@@ -357,6 +414,7 @@ function zoneValue(z: ZoneSpec): number {
   const ticks = (z.duration / 0.5) * 0.6;
   let v = ((z.tickDamage ?? 0) + (z.tickHeal ?? 0)) * ticks;
   if (z.slowMult != null) v += (1 - z.slowMult) * z.duration * 10;
+  if (z.castSlow != null && z.castSlow > 1) v += (z.castSlow - 1) * z.duration * 10; // item 9
   if (z.roots) v += z.duration * 14;
   if (z.allyBuff) {
     v += buffValue({ kind: 'buff', target: 'allies', ...z.allyBuff }) * 0.6;
@@ -440,6 +498,20 @@ function effectPhrase(e: EffectComponent): string {
       return `${s(e.seconds)} freeze`;
     case 'slow':
       return `slow to ${pct(e.mult * 100)} for ${s(e.duration)}`;
+    case 'castSlow':
+      return `+${pct((e.mult - 1) * 100)} enemy wind-up for ${s(e.duration)}`;
+    case 'flight':
+      return `fly ${s(e.duration)}`;
+    case 'shove':
+      return e.pull ? `pull ${n(e.distance)}u` : `knock back ${n(e.distance)}u`;
+    case 'crit': {
+      // Guard each clause independently (mirroring the canonical describeAbility) so a
+      // chance-only OR mult-only lean reads cleanly — never a spurious "+0% crit".
+      const parts: string[] = [];
+      if (e.chance > 0) parts.push(`+${pct(e.chance * 100)} crit`);
+      if (e.mult > 0) parts.push(`+${round2(e.mult)}× crit dmg`);
+      return parts.join(', ');
+    }
     case 'buff':
       return buffPhrase(e);
     case 'zone':
@@ -462,6 +534,8 @@ function zonePhrase(z: ZoneSpec): string {
   if (z.tickHeal) bits.push(`${n(z.tickHeal)}/tick heal`);
   if (z.roots) bits.push('roots');
   else if (z.slowMult != null) bits.push(`slow to ${pct(z.slowMult * 100)}`);
+  if (z.castSlow != null && z.castSlow > 1) bits.push(`+${pct((z.castSlow - 1) * 100)} wind-up`);
+  if (z.airborne) bits.push('hits flyers');
   if (z.allyBuff) {
     if (z.allyBuff.defMult != null)
       bits.push(`allies ${pct((1 - z.allyBuff.defMult) * 100)} less dmg taken`);
@@ -646,6 +720,17 @@ const COOLDOWN_BAND: Record<AbilitySlot, [number, number]> = {
  * hand-tuned kit. Cosmetic: a hotter cooldown carries proportionally more value. */
 const COOLDOWN_JITTER: [number, number] = [0.72, 1.28];
 
+/**
+ * item 6 — the deepest a single linear compression may water an effect. The old
+ * 0.05 floor let an over-stuffed fusion (a primary + two strong secondaries) scale
+ * everything to ~5%, bottoming damage/heal at the `1` quantize floor (single-digit
+ * or literally-1 hits). At 0.3 the ANCHOR keeps ≥30% of its donor magnitude; the
+ * excess is instead shed as whole rigid riders (priceToBudget's dropCheapestRigid
+ * loop) and absorbed by a longer cooldown, so output stays on budget while a
+ * crafted skill lands in a playable band. Curbing over-stuffing, not minting power.
+ */
+const COMPRESSION_FLOOR = 0.3;
+
 /** Can effect `e` be delivered by delivery `kind`? Keeps fusions coherent. */
 function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
   switch (e.kind) {
@@ -656,12 +741,28 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'stun':
     case 'freeze':
     case 'slow':
+    case 'castSlow':
+    case 'crit':
     case 'lifesteal':
       return DIRECT_STRIKE.has(kind);
     case 'heal':
       return kind === 'heal' || kind === 'buffAlly';
     case 'healOnUse':
       return kind === 'dash' || kind === 'blink' || kind === 'selfBuff' || kind === 'taunt';
+    case 'flight':
+      // item 7 — flight rides a self/ally state or a mobility skill (a soaring
+      // leap), never a pure ground zone (a zone doesn't lift the caster).
+      return (
+        kind === 'selfBuff' ||
+        kind === 'buffAlly' ||
+        kind === 'dash' ||
+        kind === 'blink' ||
+        kind === 'taunt'
+      );
+    case 'shove':
+      // item 11 — forced movement rides a strike that lands ON an enemy: a
+      // melee/pbaoe hit or a dash's landing slam (which applies strike riders).
+      return kind === 'meleeCone' || kind === 'pbaoe' || kind === 'dash';
     case 'buff':
       return true; // buffs fit anywhere (folded into a zone / rallied / self)
     case 'zone':
@@ -776,6 +877,8 @@ export function synthesizeAbility(
   let effects = chosen.map((c) => c.effect);
   effects = foldAllyBuffsIntoZone(effects);
   effects = retargetOrphanAllyBuffs(delivery, effects);
+  effects = mergeBuffs(effects); // item 5 — one buff per target; honest pricing
+  effects = ensureOutputAnchor(delivery, effects, donors, slot); // item 6 — a real hit/heal
   const assembled: AbilityComponents = { delivery, effects };
 
   // 7. Price to the slot budget at the slot's canonical pace, then cap + quantize.
@@ -823,6 +926,88 @@ function foldAllyBuffsIntoZone(effects: EffectComponent[]): EffectComponent[] {
   return effects
     .filter((e) => !(e.kind === 'buff' && e.target === 'allies'))
     .map((e) => (e === zone ? foldedZone : e));
+}
+
+/**
+ * item 5 — collapse redundant buff components: at most ONE buff component per
+ * TARGET (self / allies), combining its axes. Two same-axis buffs (e.g. two def
+ * self-buffs) otherwise BOTH price into the budget while the runtime delivers only
+ * one — applyForgeBuffs emits a fixed per-axis source and applyBuff de-dupes it —
+ * over-pricing the skill (heavier compression / longer cooldown) for resistance it
+ * never grants. Merging keeps the STRONGEST value per axis (def: most mitigation;
+ * dmg / move: highest) and the longest duration, so the price and the delivered
+ * effect agree AND a skill never carries two components on one axis. DISTINCT axes
+ * are preserved (a def buff + a dmg buff fuse into one two-axis buff, not dropped),
+ * keeping variety. Non-buff kinds are already de-duped at selection.
+ */
+function mergeBuffs(effects: EffectComponent[]): EffectComponent[] {
+  type BuffEff = Extract<EffectComponent, { kind: 'buff' }>;
+  const byTarget = new Map<BuffTarget, BuffEff>();
+  const out: EffectComponent[] = [];
+  for (const e of effects) {
+    if (e.kind !== 'buff') {
+      out.push(e);
+      continue;
+    }
+    const existing = byTarget.get(e.target);
+    if (!existing) {
+      const merged: BuffEff = { ...e };
+      byTarget.set(e.target, merged);
+      out.push(merged); // held by reference; later same-target buffs mutate it in place
+    } else {
+      if (e.defMult != null) {
+        existing.defMult = existing.defMult != null ? Math.min(existing.defMult, e.defMult) : e.defMult;
+      }
+      if (e.dmgMult != null) {
+        existing.dmgMult = existing.dmgMult != null ? Math.max(existing.dmgMult, e.dmgMult) : e.dmgMult;
+      }
+      if (e.moveMult != null) {
+        existing.moveMult =
+          existing.moveMult != null ? Math.max(existing.moveMult, e.moveMult) : e.moveMult;
+      }
+      existing.duration = Math.max(existing.duration, e.duration);
+    }
+  }
+  return out;
+}
+
+/**
+ * item 6 — guarantee a fusion whose DELIVERY implies direct output actually carries
+ * a damage/heal anchor. primaryWant('projectile') accepts a zone as the primary, so
+ * a projectile could carry ONLY a zone and deal 0 impact (recompose defaults
+ * damage:0 → a dud shot). A melee/pbaoe/projectile with no `damage` effect — and a
+ * heal delivery with no `heal` — gets one injected, sized to the slot's canonical
+ * median so it prices on budget. No-op when an anchor is already present.
+ */
+function ensureOutputAnchor(
+  delivery: Delivery,
+  effects: EffectComponent[],
+  donors: Donor[],
+  slot: AbilitySlot,
+): EffectComponent[] {
+  const wantsDamage =
+    delivery.kind === 'meleeCone' || delivery.kind === 'pbaoe' || delivery.kind === 'projectile';
+  if (wantsDamage && !effects.some((e) => e.kind === 'damage')) {
+    return [{ kind: 'damage', amount: medianDonorMagnitude(donors, slot, false) }, ...effects];
+  }
+  if (delivery.kind === 'heal' && !effects.some((e) => e.kind === 'heal')) {
+    return [{ kind: 'heal', amount: medianDonorMagnitude(donors, slot, true) }, ...effects];
+  }
+  return effects;
+}
+
+/** Median direct damage (or heal) magnitude among same-slot donors — a sane size for
+ *  an injected output anchor (item 6). Falls back to the whole pool, then a constant. */
+function medianDonorMagnitude(donors: Donor[], slot: AbilitySlot, heal: boolean): number {
+  const want = (d: Donor): boolean =>
+    heal
+      ? d.def.kind === 'heal' && d.def.damage > 0
+      : DIRECT_STRIKE.has(d.def.kind) && d.def.damage > 0;
+  let vals = donors.filter((d) => d.slot === slot && want(d)).map((d) => d.def.damage);
+  if (vals.length === 0) vals = donors.filter(want).map((d) => d.def.damage);
+  if (vals.length === 0) return 20;
+  vals.sort((a, b) => a - b);
+  return vals[Math.floor(vals.length / 2)];
 }
 
 /** Retarget ally buffs that a non-rallying delivery can't deliver, onto the caster. */
@@ -943,7 +1128,9 @@ function compressToBudget(
 ): AbilityComponents {
   const total = componentValue({ delivery, effects });
   const scaled =
-    total > ceiling ? effects.map((e) => scaleEffect(e, clamp(ceiling / total, 0.05, 1))) : effects;
+    total > ceiling
+      ? effects.map((e) => scaleEffect(e, clamp(ceiling / total, COMPRESSION_FLOOR, 1)))
+      : effects;
   return capComponents({ delivery, effects: scaled });
 }
 
@@ -985,6 +1172,14 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, seconds: e.seconds * f };
     case 'slow':
       return { ...e, duration: e.duration * f };
+    case 'castSlow':
+      return { ...e, duration: e.duration * f }; // rigid: keeps its bite, sheds time
+    case 'flight':
+      return { ...e, duration: e.duration * f };
+    case 'shove':
+      return { ...e, distance: e.distance * f }; // scales the displacement
+    case 'crit':
+      return { ...e, chance: e.chance * f, mult: e.mult * f };
     case 'buff':
       return { ...e, duration: e.duration * f };
     case 'zone':
@@ -1040,8 +1235,116 @@ export function refreshComponents(def: Omit<PlayerAbilityDef, 'slot'>): AbilityC
   // how initial synthesis builds them). In practice every caller passes a fused def.
   if (!prev) return capComponents(decompose(def));
   const delivery = decompose(def).delivery; // lossless: reflects upgrade-mutated delivery scalars
-  const effects = prev.effects.map((e) => patchEffect(e, def));
+  // 1. Patch the axes existing components already carry (valid magnitudes only). 2. ADD
+  // components for the boon's genuinely-NEW axes so it never silently no-ops (item 2).
+  const effects = addBoonComponents(
+    prev.effects.map((e) => patchEffect(e, def)),
+    def,
+  );
   return capComponents({ delivery, effects });
+}
+
+/**
+ * item 2 — a value inside the effect's valid band, else a sensible default. A boon's
+ * `mul` / `addN` on an ABSENT flat field yields garbage (a mul-of-undefined is 0/NaN),
+ * which a naive decompose would cap into a 0.2-defMult near-immunity; the default keeps
+ * a boon-ADDED axis meaningful instead of minting an immunity or silently dropping it.
+ */
+function sane(v: number | undefined, lo: number, hi: number, dflt: number): number {
+  return v != null && Number.isFinite(v) && v >= lo && v <= hi ? v : dflt;
+}
+
+/**
+ * item 2 — reconcile a boon's flat-field changes onto a fused skill's components
+ * ADDITIVELY: for every effect a flat field now implies but NO component yet carries,
+ * add (or extend) a component so the boon MEANINGFULLY applies even when the fused skill
+ * lacked the matching component — the exact gap that made Forge upgrades no-op. Synthesis
+ * keeps flat fields ⟺ components in sync, so an un-upgraded fused skill finds everything
+ * represented (a no-op); only a boon's genuinely-new axis is added. A magnitude comes
+ * from the flat field when it is in a sane band (a mul/addN on a PRESENT field stays
+ * valid) and from a capped default when it is garbage (a mul/addN on an ABSENT field),
+ * so a boon never mints a near-immunity nor no-ops. Per-component caps still apply
+ * downstream (capComponents); the boon is a deliberate power add, so no re-pricing.
+ */
+function addBoonComponents(
+  effects: EffectComponent[],
+  def: Omit<PlayerAbilityDef, 'slot'>,
+): EffectComponent[] {
+  type BuffEff = Extract<EffectComponent, { kind: 'buff' }>;
+  const out = effects.slice();
+  const has = (pred: (e: EffectComponent) => boolean): boolean => out.some(pred);
+
+  // Self-buff axes — extend the existing self buff (or mint one), one component per axis.
+  const wantDef = def.buffDefMult != null && !has((e) => e.kind === 'buff' && e.defMult != null);
+  const wantDmg = def.buffDamageMult != null && !has((e) => e.kind === 'buff' && e.dmgMult != null);
+  const wantMove = def.buffMoveMult != null && !has((e) => e.kind === 'buff' && e.moveMult != null);
+  if (wantDef || wantDmg || wantMove) {
+    let self = out.find((e): e is BuffEff => e.kind === 'buff' && e.target === 'self');
+    if (!self) {
+      self = { kind: 'buff', target: 'self', duration: sane(def.buffDuration, 2, 10, 6) };
+      out.push(self);
+    }
+    if (wantDef) self.defMult = sane(def.buffDefMult, 0.2, 0.95, 0.7);
+    if (wantDmg) self.dmgMult = sane(def.buffDamageMult, 1.05, 1.6, 1.25);
+    if (wantMove) self.moveMult = sane(def.buffMoveMult, 1.05, 1.5, 1.2);
+  }
+
+  // On-hit / self riders — add when a flat field implies one but no component carries it.
+  if (def.stun != null && !has((e) => e.kind === 'stun')) {
+    out.push({ kind: 'stun', seconds: sane(def.stun, 0.3, 1.4, 0.6) });
+  }
+  if (def.freeze != null && !has((e) => e.kind === 'freeze')) {
+    out.push({ kind: 'freeze', seconds: sane(def.freeze, 0.3, 1.4, 0.6) });
+  }
+  if (
+    def.slowMult != null &&
+    def.slowMult < 1 &&
+    !has((e) => e.kind === 'slow' || (e.kind === 'zone' && e.zone.slowMult != null))
+  ) {
+    out.push({
+      kind: 'slow',
+      mult: sane(def.slowMult, 0.2, 0.95, 0.6),
+      duration: sane(def.slowDuration, 1, 4, 2),
+    });
+  }
+  if (
+    def.castSlow != null &&
+    def.castSlow > 1 &&
+    !has((e) => e.kind === 'castSlow' || (e.kind === 'zone' && e.zone.castSlow != null))
+  ) {
+    out.push({
+      kind: 'castSlow',
+      mult: sane(def.castSlow, 1.1, CAST_SLOW_MAX, 1.3),
+      duration: sane(def.castSlowDuration, 1, 5, 3),
+    });
+  }
+  if (def.knockback != null && !has((e) => e.kind === 'shove' && !e.pull)) {
+    out.push({ kind: 'shove', distance: sane(def.knockback, 40, 260, 120), pull: false });
+  }
+  if (def.pull != null && !has((e) => e.kind === 'shove' && e.pull)) {
+    out.push({ kind: 'shove', distance: sane(def.pull, 40, 260, 120), pull: true });
+  }
+  if ((def.critChanceBonus != null || def.critMultBonus != null) && !has((e) => e.kind === 'crit')) {
+    out.push({
+      kind: 'crit',
+      chance: sane(def.critChanceBonus, 0, 0.5, 0.15),
+      mult: sane(def.critMultBonus, 0, 1.5, 0),
+    });
+  }
+  if (def.grantsFlight != null && !has((e) => e.kind === 'flight')) {
+    out.push({ kind: 'flight', duration: sane(def.grantsFlight, 2, 8, 4) });
+  }
+  if (def.lifestealFrac != null && !has((e) => e.kind === 'lifesteal')) {
+    out.push({ kind: 'lifesteal', frac: sane(def.lifestealFrac, 0.02, 0.35, 0.15) });
+  }
+  if (def.healOnUse != null && def.healOnUse > 0 && !has((e) => e.kind === 'healOnUse')) {
+    out.push({ kind: 'healOnUse', amount: Math.max(1, Math.round(def.healOnUse)) });
+  }
+  if (def.landingDamage != null && def.landingDamage > 0 && !has((e) => e.kind === 'landingDamage')) {
+    out.push({ kind: 'landingDamage', amount: Math.max(1, Math.round(def.landingDamage)) });
+  }
+
+  return out;
 }
 
 /**
@@ -1069,6 +1372,20 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.slowMult != null
         ? { ...e, mult: def.slowMult, duration: def.slowDuration ?? e.duration }
         : e;
+    case 'castSlow':
+      return def.castSlow != null
+        ? { ...e, mult: def.castSlow, duration: def.castSlowDuration ?? e.duration }
+        : e;
+    case 'flight':
+      return def.grantsFlight != null ? { ...e, duration: def.grantsFlight } : e;
+    case 'shove': {
+      const flat = e.pull ? def.pull : def.knockback;
+      return flat != null ? { ...e, distance: flat } : e;
+    }
+    case 'crit':
+      return def.critChanceBonus != null || def.critMultBonus != null
+        ? { ...e, chance: def.critChanceBonus ?? e.chance, mult: def.critMultBonus ?? e.mult }
+        : e;
     case 'buff': {
       // Update only the axes THIS buff already carries (so a mul-of-undefined that set a flat
       // axis the buff lacks is ignored) and keep its target + structure intact.
@@ -1090,6 +1407,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
         z.slowMult = def.slowMult;
         z.slowDuration = def.slowDuration ?? z.slowDuration;
       }
+      if (def.castSlow != null) z.castSlow = def.castSlow; // item 9
+      if (def.airborne != null) z.airborne = def.airborne; // item 8
       return { kind: 'zone', zone: z };
     }
   }
@@ -1113,6 +1432,18 @@ function capEffect(e: EffectComponent): EffectComponent {
         mult: clamp(round05(e.mult), 0.2, 0.95),
         duration: clamp(round1(e.duration), 1, 4),
       };
+    case 'castSlow':
+      return {
+        ...e,
+        mult: clamp(round05(e.mult), 1.1, CAST_SLOW_MAX),
+        duration: clamp(round1(e.duration), 1, 5),
+      };
+    case 'flight':
+      return { ...e, duration: clamp(round1(e.duration), 2, 8) };
+    case 'shove':
+      return { ...e, distance: clamp(round5(e.distance), 40, 260) };
+    case 'crit':
+      return { ...e, chance: clamp(round2(e.chance), 0, 0.5), mult: clamp(round1(e.mult), 0, 1.5) };
     case 'buff':
       return capBuff(e);
     case 'zone':
@@ -1137,6 +1468,8 @@ function capZone(z: ZoneSpec): ZoneSpec {
   if (out.tickDamage != null) out.tickDamage = Math.max(1, Math.round(out.tickDamage));
   if (out.tickHeal != null) out.tickHeal = Math.max(1, Math.round(out.tickHeal));
   if (out.slowMult != null) out.slowMult = clamp(round05(out.slowMult), 0.2, 0.95);
+  if (out.castSlow != null) out.castSlow = clamp(round05(out.castSlow), 1.1, CAST_SLOW_MAX); // item 9
+  // item 8 — `airborne` is a boolean facet; it carries through capping unchanged.
   if (out.allyBuff) out.allyBuff = capAllyBuff(out.allyBuff);
   return out;
 }

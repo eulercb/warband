@@ -13,8 +13,16 @@ import {
   tickBuffs,
   coReviveSpeed,
   isRooted,
+  isControlBuff,
+  isCcImmune,
+  cleanseControl,
+  castTimeFactor,
+  isFlying,
+  isAirborneZoneKind,
+  zoneReachesAir,
+  BOSS_INVULN_SOURCE,
 } from '../src/engine/combat/combat';
-import { REVIVE_TIME, REVIVE_MIN_TIME } from '../src/engine/core/constants';
+import { REVIVE_TIME, REVIVE_MIN_TIME, CAST_SLOW_MAX } from '../src/engine/core/constants';
 
 function mkPlayer(over: Partial<Player> = {}): Player {
   return {
@@ -301,6 +309,152 @@ describe('coReviveSpeed (item 10)', () => {
     for (const n of [2, 3, 4, 10, 100]) {
       expect(REVIVE_TIME / coReviveSpeed(n)).toBeGreaterThanOrEqual(REVIVE_MIN_TIME - 1e-9);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Boss invuln → crowd-control cleanse + immunity (item 1)
+// ---------------------------------------------------------------------------
+
+describe('boss invuln CC cleanse + immunity (item 1)', () => {
+  it('isControlBuff tags stun / root / silence / slow, not hastes or non-control buffs', () => {
+    expect(isControlBuff(makeBuff('stun', 0, 1, 's'))).toBe(true);
+    expect(isControlBuff(makeBuff('root', 0, 1, 's'))).toBe(true);
+    expect(isControlBuff(makeBuff('silence', 0, 1, 's'))).toBe(true);
+    expect(isControlBuff(makeBuff('moveSpeed', 0.4, 1, 's'))).toBe(true); // a slow
+    // Not control:
+    expect(isControlBuff(makeBuff('moveSpeed', 1.5, 1, 's'))).toBe(false); // a haste
+    expect(isControlBuff(makeBuff('damageDealt', 0.5, 1, 's'))).toBe(false);
+    expect(isControlBuff(makeBuff('damageTaken', 2, 1, 's'))).toBe(false);
+    expect(isControlBuff(makeBuff('invuln', 0, 1, 's'))).toBe(false);
+  });
+
+  it('isCcImmune is true only for a boss-invuln window, never for player i-frames', () => {
+    const boss = mkBoss();
+    expect(isCcImmune(boss)).toBe(false);
+    applyBuff(boss, makeBuff('invuln', 0, 1.6, BOSS_INVULN_SOURCE));
+    expect(isCcImmune(boss)).toBe(true);
+    // A player i-frame (dash / Phoenix Charm) is the same KIND but a different
+    // source — it must NOT confer CC immunity.
+    const p = mkPlayer();
+    applyBuff(p, makeBuff('invuln', 0, 0.3, 'dash'));
+    expect(isCcImmune(p)).toBe(false);
+    const p2 = mkPlayer();
+    applyBuff(p2, makeBuff('invuln', 0, 2, 'phoenixCharm'));
+    expect(isCcImmune(p2)).toBe(false);
+  });
+
+  it('cleanseControl strips CC but leaves beneficial / non-control buffs', () => {
+    const boss = mkBoss();
+    applyBuff(boss, makeBuff('stun', 0, 2, 'daze'));
+    applyBuff(boss, makeBuff('moveSpeed', 0.3, 2, 'zoneSlow'));
+    applyBuff(boss, makeBuff('root', 0, 2, 'zoneRoot'));
+    applyBuff(boss, makeBuff('moveSpeed', 1.4, 2, 'bossHaste')); // haste — kept
+    applyBuff(boss, makeBuff('damageTaken', 0.6, 2, 'bossWard')); // ward — kept
+    cleanseControl(boss);
+    expect(boss.buffs.some((b) => b.kind === 'stun')).toBe(false);
+    expect(boss.buffs.some((b) => b.kind === 'root')).toBe(false);
+    expect(boss.buffs.some((b) => b.kind === 'moveSpeed' && b.mult < 1)).toBe(false);
+    expect(boss.buffs.some((b) => b.source === 'bossHaste')).toBe(true);
+    expect(boss.buffs.some((b) => b.source === 'bossWard')).toBe(true);
+  });
+
+  it('applyBuff rejects new CC on a CC-immune boss but allows a haste / ward', () => {
+    const boss = mkBoss();
+    applyBuff(boss, makeBuff('invuln', 0, 1.6, BOSS_INVULN_SOURCE));
+    applyBuff(boss, makeBuff('moveSpeed', 0.3, 2, 'zoneSlow'));
+    applyBuff(boss, makeBuff('root', 0, 2, 'zoneRoot'));
+    applyBuff(boss, makeBuff('silence', 0, 2, 'bossSilence'));
+    expect(boss.buffs.some((b) => b.source === 'zoneSlow')).toBe(false);
+    expect(boss.buffs.some((b) => b.source === 'zoneRoot')).toBe(false);
+    expect(boss.buffs.some((b) => b.source === 'bossSilence')).toBe(false);
+    // A beneficial haste still lands.
+    applyBuff(boss, makeBuff('moveSpeed', 1.4, 2, 'bossHaste'));
+    expect(boss.buffs.some((b) => b.source === 'bossHaste')).toBe(true);
+  });
+
+  it('applyStun on a CC-immune boss returns 0, banks no DR load and cues a Resisted', () => {
+    const boss = mkBoss();
+    applyBuff(boss, makeBuff('invuln', 0, 1.6, BOSS_INVULN_SOURCE));
+    const s = sink();
+    const applied = applyStun(s, boss, 2, 'daze');
+    expect(applied).toBe(0);
+    expect(boss.buffs.some((b) => b.kind === 'stun')).toBe(false);
+    expect(boss.stunDr?.load ?? 0).toBe(0); // no load banked — the attempt was free
+    expect(s.events.some((e) => e.t === 'stunResist' && e.id === boss.id)).toBe(true);
+  });
+
+  it('CC resumes normally the instant the invuln window lapses', () => {
+    const boss = mkBoss();
+    applyBuff(boss, makeBuff('invuln', 0, 1.6, BOSS_INVULN_SOURCE));
+    expect(applyStun(sink(), boss, 1.5, 'daze')).toBe(0);
+    tickBuffs(boss, 2); // window lapses
+    expect(isCcImmune(boss)).toBe(false);
+    expect(applyStun(sink(), boss, 1.5, 'daze')).toBeCloseTo(1.5, 6);
+    applyBuff(boss, makeBuff('moveSpeed', 0.4, 2, 'zoneSlow'));
+    expect(boss.buffs.some((b) => b.source === 'zoneSlow')).toBe(true);
+  });
+
+  it('a player i-frame does NOT block CC (scoped to the boss mechanic)', () => {
+    const p = mkPlayer();
+    applyBuff(p, makeBuff('invuln', 0, 0.3, 'dash'));
+    // A boss stun landing on this player still applies (players keep taking CC).
+    expect(applyStun(sink(), p, 1, 'bossStun')).toBeCloseTo(1, 6);
+    applyBuff(p, makeBuff('moveSpeed', 0.5, 2, 'bossSlow'));
+    expect(p.buffs.some((b) => b.source === 'bossSlow')).toBe(true);
+  });
+});
+
+describe('flight state + AoE ground/airborne classification (items 7 & 8)', () => {
+  it('isFlying is true only while a flight buff is present', () => {
+    const p = mkPlayer();
+    expect(isFlying(p)).toBe(false);
+    applyBuff(p, makeBuff('flight', 0, 5, 'flight'));
+    expect(isFlying(p)).toBe(true);
+    tickBuffs(p, 6);
+    expect(isFlying(p)).toBe(false);
+  });
+
+  it('isAirborneZoneKind: only rain-of-arrows reaches flyers by default', () => {
+    expect(isAirborneZoneKind('rainOfArrows')).toBe(true);
+    for (const k of ['voidZone', 'entangle', 'consecration', 'poison', 'sanctuary', 'antimagic'] as const) {
+      expect(isAirborneZoneKind(k)).toBe(false);
+    }
+  });
+
+  it('zoneReachesAir: explicit airborne flag overrides the kind default', () => {
+    expect(zoneReachesAir({ kind: 'rainOfArrows' })).toBe(true); // by kind
+    expect(zoneReachesAir({ kind: 'entangle' })).toBe(false); // ground by default
+    expect(zoneReachesAir({ kind: 'entangle', airborne: true })).toBe(true); // Otiluke override
+    expect(zoneReachesAir({ kind: 'rainOfArrows', airborne: false })).toBe(false); // forced ground
+  });
+});
+
+describe('castTimeFactor — SLUGGISH wind-up slow (item 9)', () => {
+  it('is 1 (neutral) with no castSlow buff', () => {
+    expect(castTimeFactor(mkBoss())).toBe(1);
+    expect(castTimeFactor(mkPlayer())).toBe(1);
+  });
+
+  it('returns the product of castSlow buffs', () => {
+    const boss = mkBoss();
+    applyBuff(boss, makeBuff('castSlow', 1.4, 3, 'zoneCastSlow'));
+    expect(castTimeFactor(boss)).toBeCloseTo(1.4, 6);
+    applyBuff(boss, makeBuff('castSlow', 1.2, 3, 'castSlow')); // a second source
+    expect(castTimeFactor(boss)).toBeCloseTo(Math.min(CAST_SLOW_MAX, 1.68), 6);
+  });
+
+  it('clamps stacked sources to CAST_SLOW_MAX so a caster is never locked out', () => {
+    const boss = mkBoss();
+    applyBuff(boss, makeBuff('castSlow', 1.7, 3, 'a'));
+    applyBuff(boss, makeBuff('castSlow', 1.7, 3, 'b'));
+    expect(castTimeFactor(boss)).toBe(CAST_SLOW_MAX); // 2.89 → clamped
+  });
+
+  it('never drops below 1 even if a source somehow carries < 1', () => {
+    const boss = mkBoss();
+    applyBuff(boss, makeBuff('castSlow', 0.5, 3, 'weird'));
+    expect(castTimeFactor(boss)).toBe(1);
   });
 });
 
