@@ -1562,34 +1562,59 @@ describe('charUpgradeAtMax — graft occupancy gate (item 8)', () => {
   });
 });
 
-describe('graft name↔effect never desync for a given owned list (item 8/i)', () => {
-  // The report: "the name changed to Hex but casting still did Blink." Root cause is a
-  // stale spawn-time kit vs a live-recomputed name. Both the HUD table (previewAbilityTable)
-  // and the spawned kit (applyCharUpgrades) resolve from the SAME replay of the owned list,
-  // so once the authoritative list carries the pick they agree — name AND effect together.
-  const lists: string[][] = [
-    ['hy_hexbrand'], // Mage's Blink → Warlock's Hex, freshly grafted (the report's exact case)
-    ['hy_hexbrand', 'restore:a3'], // reclaimed → Blink back in a3
-    ['hy_hexbrand', 'restore:a3', 'hy_hexbrand'], // re-grafted → Hex again, evolutions retained
-  ];
-  for (const owned of lists) {
-    it(`HUD table matches the spawned cast for ${JSON.stringify(owned)}`, () => {
-      const shown = previewAbilityTable('mage', owned).a3; // what the HUD/card shows
-      // Reproduce the sim's spawn exactly: applyCharUpgrades then the global attack
-      // slow-down (world.ts:766 + 772), so this is the ability the hero really casts.
-      const p = apply('mage', owned);
-      slowAttackCooldowns(p.abilities!);
-      const cast = p.abilities!.a3;
-      expect(cast.name).toBe(shown.name); // name agrees…
-      expect(JSON.stringify(cast)).toBe(JSON.stringify(shown)); // …and so does the whole effect
-    });
+describe('graft name↔effect agree because the host accepts what the client shows (item 8/i)', () => {
+  // The report: the HUD shows "Hex" but casting still does "Blink". The HUD names skills from
+  // the client's OPTIMISTIC owned list (previewAbilityTable, fed by store.myCharUpgrades, which
+  // session.chooseCharUpgrade appends to UNCONDITIONALLY); the sim casts the HOST-AUTHORITATIVE
+  // kit (applyCharUpgrades at spawn, built from the list host.recordUpgrade actually accepted).
+  // The two agree only if the host accepts every pick the client makes. Comparing preview vs
+  // apply on ONE list is tautological (previewAbilityTable IS applyCharUpgrades + the slow-down),
+  // so instead model the host's per-interstitial accept gate over a sequence of single picks
+  // (roundPickedChar resets each reward room) and prove the occupancy-aware predicate keeps the
+  // two lists in lock-step across acquire → reclaim → re-graft — exactly where the old
+  // count-based gate rejected the re-graft and split them.
+
+  /** Mirror host.recordUpgrade (host.ts:981): append a pick to the AUTHORITATIVE list iff accepted. */
+  function hostAccepts(picks: string[], gate: (id: string, arr: string[]) => boolean): string[] {
+    const authoritative: string[] = [];
+    for (const id of picks) if (gate(id, authoritative)) authoritative.push(id);
+    return authoritative;
+  }
+  /** The a3 name the SIM casts: the exact spawn pipeline (applyCharUpgrades then slow-down). */
+  function spawnedName(owned: string[]): string {
+    const p = apply('mage', owned);
+    slowAttackCooldowns(p.abilities!); // world.ts:766 + 772
+    return p.abilities!.a3.name;
   }
 
-  it('grafting actually changes the cast effect, not merely the displayed name', () => {
-    const native = apply('mage', []).abilities!.a3; // Blink
-    const grafted = apply('mage', ['hy_hexbrand']).abilities!.a3; // Hex
-    expect(grafted.name).not.toBe(native.name); // name changed…
-    expect(JSON.stringify(grafted)).not.toBe(JSON.stringify(native)); // …and the effect changed with it
+  const clientPicks = ['hy_hexbrand', 'restore:a3', 'hy_hexbrand']; // Blink→Hex, reclaim, re-graft
+  const nativeA3 = previewAbilityTable('mage', []).a3.name; // Blink
+  const hudName = previewAbilityTable('mage', clientPicks).a3.name; // Hex (client's optimistic list)
+
+  it('grafting genuinely swaps the skill, so a name↔effect split would be observable', () => {
+    expect(hudName).not.toBe(nativeA3); // the re-graft really changes the cast, not just the label
+    // …and the whole effect object moves with the name, never just the name (report's core claim).
+    expect(JSON.stringify(apply('mage', ['hy_hexbrand']).abilities!.a3)).not.toBe(
+      JSON.stringify(apply('mage', []).abilities!.a3),
+    );
+  });
+
+  it('the occupancy-aware host gate accepts the re-graft, so name and effect converge on Hex', () => {
+    // host.ts:981 — accept iff NOT at max; a stashed graft is not at max, so all three land.
+    const authoritative = hostAccepts(clientPicks, (id, arr) => !charUpgradeAtMax(id, arr));
+    expect(authoritative).toEqual(clientPicks); // every pick accepted → authoritative == optimistic
+    expect(spawnedName(authoritative)).toBe(hudName); // sim cast == HUD name (both Hex)
+  });
+
+  it('the OLD count-based gate rejects the re-graft, resurrecting the name↔effect desync', () => {
+    // The pre-fix predicate: reject once the owned COUNT hits the (1) cap, ignoring occupancy.
+    const authoritative = hostAccepts(clientPicks, (id, arr) => {
+      const have = arr.reduce((n, o) => (o === id ? n + 1 : n), 0);
+      return have < charUpgradeMaxStacks(id);
+    });
+    expect(authoritative).toEqual(['hy_hexbrand', 'restore:a3']); // re-graft dropped by the host
+    expect(spawnedName(authoritative)).toBe(nativeA3); // sim casts the reclaimed Blink…
+    expect(spawnedName(authoritative)).not.toBe(hudName); // …while the HUD still shows Hex → desync
   });
 });
 

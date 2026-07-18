@@ -261,6 +261,25 @@ describe('forced-move slide over time (item 2)', () => {
     w.step(DT, new Map()); // stepShoves must clear the shove for a non-alive hero
     expect(p.shove == null).toBe(true);
   });
+
+  it('drops a boss’s in-flight shove when it BLINKS away (instant reposition, not a slide)', () => {
+    // A blink teleports the boss, so a knockback still carrying it must be dropped or it
+    // keeps ghost-sliding from the spot it left (world.ts:2599). A fresh boss starts idle —
+    // the branch where handleBlink runs each tick — so a single step fires the blink.
+    const w = mkWorld('knight', 'lich'); // lich has a native blink (threatenRange 100)
+    const boss = w.boss!;
+    const p = w.players[0];
+    boss.pos = { x: p.pos.x + 30, y: p.pos.y }; // inside threatenRange → it blinks off the hero
+    boss.blinkTimer = 0; // blink off cooldown
+    applyForcedMove(w, { x: boss.pos.x - 50, y: boss.pos.y }, boss, forceAb({ knockback: 80 }));
+    expect(boss.shove).toBeTruthy(); // knockback in flight
+    const before = { ...boss.pos };
+
+    w.step(DT, new Map());
+
+    expect(boss.shove == null).toBe(true); // the blink dropped the slide…
+    expect(distXY(before, boss.pos)).toBeGreaterThan(100); // …and it teleported clear (blink range 300)
+  });
 });
 
 // ===========================================================================

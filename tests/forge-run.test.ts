@@ -83,8 +83,10 @@ describe('Chaos Forge active-run registry', () => {
     // Every base name is renamed for the run; at least most differ from canonical.
     const renamed = CLASS_IDS.filter((cid) => getClass(cid).name !== CLASSES[cid].name);
     expect(renamed.length).toBeGreaterThan(CLASS_IDS.length / 2);
-    // The name a picker/card would show is exactly what the engine plays.
-    expect(getClass('mage').name).toBe(getClass('mage').name); // stable within the run
+    // The name a picker/card would show comes from getClass, so for a renamed class it shows
+    // the FORGED name the engine plays — never the canonical one still sitting in CLASSES.
+    const sample = renamed[0];
+    expect(getClass(sample).name).not.toBe(CLASSES[sample].name);
   });
 
   // item 4 — vitals are RECOMPUTED from the fused kit, not inherited: in the canonical
