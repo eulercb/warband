@@ -373,8 +373,10 @@ describe('componentValue — balance pricing', () => {
       [{ kind: 'heal', amount: 50 }, 50],
       [{ kind: 'healOnUse', amount: 18 }, 18],
       [{ kind: 'lifesteal', frac: 0.2 }, 12],
-      [{ kind: 'stun', seconds: 1 }, 55],
-      [{ kind: 'freeze', seconds: 1 }, 50],
+      // item 5 — hard-CC weights lowered (a boss-fight rider, not a DPS-race winner)
+      // so a fusion can afford both a viable hit and its rider.
+      [{ kind: 'stun', seconds: 1 }, 34],
+      [{ kind: 'freeze', seconds: 1 }, 30],
       [{ kind: 'slow', mult: 0.5, duration: 2 }, 12],
     ];
     for (const [e, want] of each) {

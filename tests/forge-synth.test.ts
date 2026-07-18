@@ -37,9 +37,14 @@ function donorPool(): Donor[] {
 }
 const POOL = donorPool();
 
-/** Median canonical output-per-second of a slot — the synthesis budget target. */
-function slotBudget(slot: AbilitySlot): number {
-  const vals = POOL.filter((d) => d.slot === slot)
+/** Median canonical output-per-second of a slot — the synthesis budget target. item 5 —
+ * a HEAL delivery budgets against same-slot HEAL donors (healing is worth more per second
+ * than damage), so mirror that here to bound a heal fusion's on-budget check. */
+function slotBudget(slot: AbilitySlot, heal = false): number {
+  const inSlot = POOL.filter((d) => d.slot === slot);
+  const src = heal ? inSlot.filter((d) => d.def.kind === 'heal' && d.def.damage > 0) : inSlot;
+  const pool = src.length > 0 ? src : inSlot;
+  const vals = pool
     .map((d) => componentValue(decompose(d.def)) / Math.max(0.1, d.def.cooldown))
     .sort((a, b) => a - b);
   return vals[Math.floor(vals.length / 2)];
@@ -120,9 +125,10 @@ describe('synthesizeAbility — validity + balance budget', () => {
           }
 
           // Budget: output-per-second never far exceeds the slot's canonical median
-          // (synthesis prices power to the budget; it never mints it).
+          // (synthesis prices power to the budget; it never mints it). A heal fusion is
+          // priced against the HEAL budget (item 5), so bound it against that.
           const ops = componentValue(comp) / def.cooldown;
-          expect(ops).toBeLessThanOrEqual(slotBudget(slot) * 1.75 + 2);
+          expect(ops).toBeLessThanOrEqual(slotBudget(slot, comp.delivery.kind === 'heal') * 1.75 + 2);
         }
       }
     }
@@ -168,6 +174,61 @@ describe('synthesizeAbility — validity + balance budget', () => {
             if (heal?.kind === 'heal') expect(heal.amount, where).toBeGreaterThan(2);
           }
         }
+      }
+    }
+  });
+
+  // item 5 — forged skills must clear a VIABILITY bar: their per-use damage/heal output
+  // per second lands in the same league as a canonical ability of the slot, so a forged
+  // kit can actually progress a run (the old pricing starved a hit that also bundled
+  // utility to ~15–30% of canonical, making runs impossible from turn one).
+  it('forged damage/heal output clears a minimum output-vs-canonical bar', () => {
+    const dk = ['meleeCone', 'pbaoe', 'projectile'];
+    const median = (a: number[]): number => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)] ?? 0;
+    // Canonical median per-hit DPS / HPS of a slot (× projCount for a fan).
+    const canonDps = (slot: AbilitySlot): number =>
+      median(
+        POOL.filter((d) => d.slot === slot && dk.includes(d.def.kind) && d.def.damage > 0).map(
+          (d) => (d.def.damage * Math.max(1, d.def.projCount ?? 1)) / d.def.cooldown,
+        ),
+      );
+    const canonHps = (slot: AbilitySlot): number =>
+      median(
+        POOL.filter((d) => d.slot === slot && d.def.kind === 'heal' && d.def.damage > 0).map(
+          (d) => d.def.damage / d.def.cooldown,
+        ),
+      );
+
+    for (const slot of SLOTS) {
+      const cD = canonDps(slot);
+      const cH = canonHps(slot);
+      const dps: number[] = [];
+      const hps: number[] = [];
+      for (const seed of SEEDS) {
+        for (const cid of CLASS_IDS) {
+          const { def } = synthesizeAbility(seed, `${cid}.${slot}`, slot, POOL);
+          const comp = def.components!;
+          const fan = Math.max(1, comp.delivery.projCount ?? 1);
+          if (dk.includes(comp.delivery.kind)) {
+            const d = comp.effects.find((e) => e.kind === 'damage');
+            if (d?.kind === 'damage') dps.push((d.amount * fan) / def.cooldown);
+          }
+          if (comp.delivery.kind === 'heal') {
+            const h = comp.effects.find((e) => e.kind === 'heal');
+            if (h?.kind === 'heal') hps.push(h.amount / def.cooldown);
+          }
+        }
+      }
+      // The TYPICAL forged hit/heal is in the same league as canonical (≥ 0.5 of median),
+      // and even the WEAKEST (a utility-heavy fusion) never craters below ~1/3 — far above
+      // the old ~0.15 floor. Bars are conservative to absorb seed/quantization variance.
+      if (dps.length > 0) {
+        expect(median(dps) / cD, `${slot} damage median`).toBeGreaterThanOrEqual(0.5);
+        expect(Math.min(...dps) / cD, `${slot} damage min`).toBeGreaterThanOrEqual(0.3);
+      }
+      if (hps.length > 0 && cH > 0) {
+        expect(median(hps) / cH, `${slot} heal median`).toBeGreaterThanOrEqual(0.5);
+        expect(Math.min(...hps) / cH, `${slot} heal min`).toBeGreaterThanOrEqual(0.3);
       }
     }
   });
