@@ -1163,7 +1163,11 @@ export function applyImpulse(
  * the shove on touchdown. Host-authoritative + deterministic; peers interpolate the
  * intermediate positions for free. Shared by players, bosses and adds.
  */
-export function stepShove(world: World, target: { pos: Vec2; shove?: Shove | null }, dt: number): void {
+export function stepShove(
+  world: World,
+  target: { pos: Vec2; shove?: Shove | null },
+  dt: number,
+): void {
   const s = target.shove;
   if (!s) return;
   const t = Math.min(dt, s.remaining);

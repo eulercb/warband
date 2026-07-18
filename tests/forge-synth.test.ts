@@ -128,7 +128,9 @@ describe('synthesizeAbility — validity + balance budget', () => {
           // (synthesis prices power to the budget; it never mints it). A heal fusion is
           // priced against the HEAL budget (item 5), so bound it against that.
           const ops = componentValue(comp) / def.cooldown;
-          expect(ops).toBeLessThanOrEqual(slotBudget(slot, comp.delivery.kind === 'heal') * 1.75 + 2);
+          expect(ops).toBeLessThanOrEqual(
+            slotBudget(slot, comp.delivery.kind === 'heal') * 1.75 + 2,
+          );
         }
       }
     }
@@ -184,7 +186,8 @@ describe('synthesizeAbility — validity + balance budget', () => {
   // utility to ~15–30% of canonical, making runs impossible from turn one).
   it('forged damage/heal output clears a minimum output-vs-canonical bar', () => {
     const dk = ['meleeCone', 'pbaoe', 'projectile'];
-    const median = (a: number[]): number => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)] ?? 0;
+    const median = (a: number[]): number =>
+      a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)] ?? 0;
     // Canonical median per-hit DPS / HPS of a slot (× projCount for a fan).
     const canonDps = (slot: AbilitySlot): number =>
       median(

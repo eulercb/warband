@@ -1549,9 +1549,9 @@ describe('charUpgradeAtMax — graft occupancy gate (item 8)', () => {
     // Reclaimed off its slot but still in the append-only list → NOT capped → re-offerable.
     expect(charUpgradeAtMax('hy_pyromancer', ['hy_pyromancer', 'restore:a2'])).toBe(false);
     // …and re-grafting installs it again (the player alternates the skill back and forth).
-    expect(charUpgradeAtMax('hy_pyromancer', ['hy_pyromancer', 'restore:a2', 'hy_pyromancer'])).toBe(
-      true,
-    );
+    expect(
+      charUpgradeAtMax('hy_pyromancer', ['hy_pyromancer', 'restore:a2', 'hy_pyromancer']),
+    ).toBe(true);
   });
 
   it('a graft buried by ANOTHER graft on the same slot is no longer at max', () => {
@@ -1624,7 +1624,10 @@ describe('rollCharChoices re-offers a reclaimed graft on both reward paths (item
   // may wield it, so a forced hybrid slot (0 < HYBRID_OFFER_CHANCE) at index 0 lands on it —
   // but ONLY while it is eligible (not currently installed).
   it('surfaces a stashed graft again after a reclaim', () => {
-    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0, 0]), ['hy_pyromancer', 'restore:a2']);
+    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0, 0]), [
+      'hy_pyromancer',
+      'restore:a2',
+    ]);
     expect(off[off.length - 1]).toBe('hy_pyromancer'); // reclaimed → re-offerable
   });
 
@@ -1638,7 +1641,9 @@ describe('offerableGrands stays consistent with the graft across a reclaim (item
   it('a graft grand persists through graft → reclaim → re-graft', () => {
     const held = offerableGrands('knight', ['hy_pyromancer'], []).map((d) => d.id);
     expect(held).toContain('hy_pyromancer_g_a'); // installed → offered
-    const reclaimed = offerableGrands('knight', ['hy_pyromancer', 'restore:a2'], []).map((d) => d.id);
+    const reclaimed = offerableGrands('knight', ['hy_pyromancer', 'restore:a2'], []).map(
+      (d) => d.id,
+    );
     expect(reclaimed).toContain('hy_pyromancer_g_a'); // stashed but owned → STILL offered (was the bug)
     const regrafted = offerableGrands(
       'knight',
@@ -1653,7 +1658,11 @@ describe('offerableGrands stays consistent with the graft across a reclaim (item
     // (a2) → reclaim Shield Wall → take Living Cataclysm (+60 dmg / +80 radius) while Fireball
     // is stashed. The grand must land on the stashed Fireball's own def, leaving the reclaimed
     // Shield Wall byte-identical to a plain reclaim, then re-seat intact when Fireball returns.
-    const stashed = apply('knight', ['hy_pyromancer', 'restore:a2', 'hy_pyromancer_g_a']).abilities!;
+    const stashed = apply('knight', [
+      'hy_pyromancer',
+      'restore:a2',
+      'hy_pyromancer_g_a',
+    ]).abilities!;
     const plain = apply('knight', ['hy_pyromancer', 'restore:a2']).abilities!;
     expect(stashed.a2.name).toBe('Shield Wall'); // native still equipped…
     expect(JSON.stringify(stashed.a2)).toBe(JSON.stringify(plain.a2)); // …and untouched by the grand

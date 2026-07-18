@@ -62,7 +62,8 @@ function rerolledUpgradeIds(
   let out: UpgradeId[] = [];
   let exclude: UpgradeId[] = [];
   for (let k = 0; k <= rerollCount; k++) {
-    const rnd = k === 0 ? rewardRnd(rewardSeed, ...baseSalts) : rewardRnd(rewardSeed, ...baseSalts, k);
+    const rnd =
+      k === 0 ? rewardRnd(rewardSeed, ...baseSalts) : rewardRnd(rewardSeed, ...baseSalts, k);
     out = rollUpgradeChoices(3, rnd, owned, exclude);
     exclude = out;
   }
@@ -81,7 +82,8 @@ function rerolledCharIds(
   let out: string[] = [];
   let exclude: string[] = [];
   for (let k = 0; k <= rerollCount; k++) {
-    const rnd = k === 0 ? rewardRnd(rewardSeed, ...baseSalts) : rewardRnd(rewardSeed, ...baseSalts, k);
+    const rnd =
+      k === 0 ? rewardRnd(rewardSeed, ...baseSalts) : rewardRnd(rewardSeed, ...baseSalts, k);
     out = rollCharChoices(classId, 4, rnd, owned, extraClasses, subSkills, exclude);
     exclude = out;
   }

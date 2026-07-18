@@ -79,7 +79,13 @@ export function buffBadges(buffs: BuffView[] | undefined, cap = 4, flying = fals
       if (existing?.permanent) continue; // constant status already shown — don't overwrite it
       const secs = Math.max(1, Math.ceil(b.remaining));
       if (!existing || secs > existing.secs) {
-        byGlyph.set(d.glyph, { glyph: d.glyph, secs, color: d.color, good: d.good, label: d.label });
+        byGlyph.set(d.glyph, {
+          glyph: d.glyph,
+          secs,
+          color: d.color,
+          good: d.good,
+          label: d.label,
+        });
       }
     }
   }

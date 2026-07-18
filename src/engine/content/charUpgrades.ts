@@ -4354,7 +4354,8 @@ function graftHeld(graftId: string, slot: AbilitySlot, owned: readonly string[])
   let held = false;
   for (const id of owned) {
     if (id === graftId) held = true;
-    else if (parseRestore(id) === slot) held = false; // native reclaimed this slot
+    else if (parseRestore(id) === slot)
+      held = false; // native reclaimed this slot
     else if (CHAR_UPGRADES[id]?.replaces === slot) held = false; // another graft took the slot
   }
   return held;

@@ -13,14 +13,7 @@ import { Rng, mixSeed } from '../core/math';
 import { hashStr } from './procgen';
 import { forgeVariant } from './forge';
 
-export type EphemeralId =
-  | 'speed'
-  | 'damage'
-  | 'defense'
-  | 'potion'
-  | 'revive'
-  | 'retry'
-  | 'reroll';
+export type EphemeralId = 'speed' | 'damage' | 'defense' | 'potion' | 'revive' | 'retry' | 'reroll';
 
 /**
  * item: reroll — how many times a hero may re-randomize their current upgrade offers

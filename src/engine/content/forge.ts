@@ -921,7 +921,12 @@ export function synthesizeAbility(
   const isHeal = delivery.kind === 'heal';
   const target =
     slotCooldownTarget(donors, slot, isHeal) * rng.range(COOLDOWN_JITTER[0], COOLDOWN_JITTER[1]);
-  const { comp, cooldown } = priceToBudget(assembled, slotBudget(donors, slot, isHeal), target, slot);
+  const { comp, cooldown } = priceToBudget(
+    assembled,
+    slotBudget(donors, slot, isHeal),
+    target,
+    slot,
+  );
 
   // 8. Blend a name from the contributing donor names.
   const donorNames = [deliveryDonor.name, ...chosen.map((c) => c.donor.name)];
@@ -1095,7 +1100,9 @@ function slotCooldownTarget(donors: Donor[], slot: AbilitySlot, heal = false): n
   // the mixed slot), so budget × targetCd lands a heal fusion's envelope where a real
   // heal's does. Damage deliveries keep the whole-slot median. Falls back gracefully.
   const inSlotDonors = donors.filter((d) => d.slot === slot);
-  const src = heal ? inSlotDonors.filter((d) => d.def.kind === 'heal' && d.def.damage > 0) : inSlotDonors;
+  const src = heal
+    ? inSlotDonors.filter((d) => d.def.kind === 'heal' && d.def.damage > 0)
+    : inSlotDonors;
   const inSlot = (src.length > 0 ? src : inSlotDonors).map((d) => d.def.cooldown);
   const pool = inSlot.length > 0 ? inSlot : donors.map((d) => d.def.cooldown);
   if (pool.length === 0) return slot === 'basic' ? 0.6 : 8;
