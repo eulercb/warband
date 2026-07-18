@@ -20,7 +20,7 @@ import { Playground } from '../state/playground';
 import { Renderer } from '../../render/pipeline/renderer';
 import { InputManager } from '../../input/input';
 import { ARENA_W, ARENA_H } from '../../engine/core/constants';
-import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
+import { getClass, CLASS_IDS } from '../../engine/content/classes';
 import type { ClassId, InputCommand, TotemKind } from '../../engine/core/types';
 import { formatBuildLabel } from './buildInfo';
 import { CodexCard } from './CodexCard';
@@ -252,7 +252,7 @@ export function MainMenu() {
         </div>
         <div className="wb-menu-secondary">
           <button type="button" className="wb-btn wb-btn-ghost" onClick={() => setShowPicker(true)}>
-            Hero: {CLASSES[localClass].name}
+            Hero: {getClass(localClass).name}
           </button>
           <button type="button" className="wb-btn wb-btn-ghost" onClick={goControls}>
             Controls

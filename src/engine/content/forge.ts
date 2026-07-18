@@ -1495,13 +1495,127 @@ function capAllyBuff(b: NonNullable<ZoneSpec['allyBuff']>): NonNullable<ZoneSpec
   return out;
 }
 
+// --- Capability classifier (shared by bots §8 + class-stat derivation item 4) -
+
+/** The capability an ability expresses, read from its recombined components. */
+export type AbilityCapability =
+  | 'heal'
+  | 'allyBuff'
+  | 'selfDefense'
+  | 'mobility'
+  | 'control'
+  | 'offensiveMelee'
+  | 'offensiveRanged';
+
+/**
+ * Classify an ability by reading its COMPONENTS (falling back to the flat fields
+ * for canonical content). This is the single classifier the mode uses for both bot
+ * casting (docs/CHAOS_FORGE.md §8) and forged-class stat derivation (item 4), so a
+ * class's vitals always agree with how bots read its kit. PURE.
+ */
+export function abilityCapability(ab: PlayerAbilityDef): AbilityCapability {
+  const kind = ab.kind;
+  let heal = kind === 'heal';
+  let allyBuff = kind === 'buffAlly';
+  let selfDef = kind === 'selfBuff' || kind === 'taunt';
+  const control =
+    (ab.stun ?? 0) > 0 ||
+    (ab.freeze ?? 0) > 0 ||
+    ab.roots === true ||
+    (ab.slowMult != null && ab.slowMult < 1);
+  const damage = ab.damage > 0 || (ab.landingDamage ?? 0) > 0 || (ab.zoneTickDamage ?? 0) > 0;
+  // Refine from the recombined payload (buff targeting + a zone's ally-buff/heal
+  // that the flat fields can't express).
+  const comp = ab.components;
+  if (comp) {
+    heal = comp.effects.some((e) => e.kind === 'heal');
+    allyBuff = comp.effects.some(
+      (e) =>
+        (e.kind === 'buff' && e.target === 'allies') ||
+        (e.kind === 'zone' && (e.zone.allyBuff != null || (e.zone.tickHeal ?? 0) > 0)),
+    );
+    selfDef =
+      kind === 'taunt' ||
+      comp.effects.some((e) => e.kind === 'buff' && e.target === 'self' && e.defMult != null);
+  }
+  if (heal) return 'heal';
+  if (allyBuff) return 'allyBuff';
+  if (selfDef || kind === 'selfBuff') return 'selfDefense';
+  if (kind === 'dash' || kind === 'blink') return 'mobility';
+  if (control && !damage) return 'control';
+  return kind === 'meleeCone' || kind === 'pbaoe' ? 'offensiveMelee' : 'offensiveRanged';
+}
+
 // --- Class synthesis + renaming ---------------------------------------------
+
+/**
+ * The canonical vitals envelope (min→max across the authored CLASSES table) a forged
+ * class is priced into: maxHp 100 (Mage) → 240 (Knight); moveSpeed 190 (Knight) →
+ * 252 (Rogue); threatMult 0.5 (Cleric) → 1.5 (Knight). A fused class is always mapped
+ * INTO this band, so it can never mint a 240-HP / 252-speed outlier.
+ */
+const FORGE_HP = { min: 100, max: 240 };
+const FORGE_SPEED = { min: 190, max: 252 };
+const FORGE_THREAT = { min: 0.5, max: 1.5 };
+
+/**
+ * Idealised position in the vitals envelope (0 = min, 1 = max) each capability pulls a
+ * class toward — the archetype trade-offs distilled: a melee / self-defence kit reads
+ * tanky + slow + high-threat; a ranged / mobility kit reads squishy + fast; a heal /
+ * ally-buff support reads mid + low-threat. Durability trades against mobility; threat
+ * tracks how melee/tanky vs support/ranged the kit is (docs balance note, item 4).
+ */
+const CAP_VITALS: Record<AbilityCapability, { hp: number; spd: number; thr: number }> = {
+  offensiveMelee: { hp: 0.7, spd: 0.35, thr: 0.75 },
+  selfDefense: { hp: 0.9, spd: 0.15, thr: 0.7 },
+  control: { hp: 0.6, spd: 0.4, thr: 0.75 },
+  offensiveRanged: { hp: 0.2, spd: 0.75, thr: 0.35 },
+  mobility: { hp: 0.25, spd: 0.95, thr: 0.4 },
+  heal: { hp: 0.45, spd: 0.4, thr: 0.1 },
+  allyBuff: { hp: 0.5, spd: 0.45, thr: 0.15 },
+};
+
+/**
+ * item 4 — derive a forged class's vitals from the COMPONENT profile of its
+ * synthesized kit rather than inheriting the donor/base numbers: each ability's
+ * capability contributes an idealised point in the canonical envelope, the class
+ * averages the four, and the mean is lerped into that envelope. Archetype-appropriate
+ * (melee → tankier/slower/higher-threat; ranged/mobile → faster/squishier; support →
+ * mid/low-threat), bounded to a sane band, and PURE + seed-free (a deterministic
+ * function of the seed-derived kit). Exported for the derivation tests.
+ */
+export function forgeClassStats(abilities: Record<AbilitySlot, PlayerAbilityDef>): {
+  maxHp: number;
+  moveSpeed: number;
+  threatMult: number;
+} {
+  const slots: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
+  let hp = 0;
+  let spd = 0;
+  let thr = 0;
+  for (const slot of slots) {
+    const v = CAP_VITALS[abilityCapability(abilities[slot])];
+    hp += v.hp;
+    spd += v.spd;
+    thr += v.thr;
+  }
+  const n = slots.length;
+  const lerp = (band: { min: number; max: number }, t: number): number =>
+    band.min + (band.max - band.min) * clamp(t, 0, 1);
+  return {
+    maxHp: Math.round(lerp(FORGE_HP, hp / n)),
+    moveSpeed: Math.round(lerp(FORGE_SPEED, spd / n)),
+    threatMult: Math.round(lerp(FORGE_THREAT, thr / n) * 100) / 100,
+  };
+}
 
 /**
  * Synthesize a whole class kit: a fused ability in each slot, then RENAME the
  * class after the two classes that donated the most components (rogue + paladin
  * → "Palarogue" / "Rodin" …), keeping the new identity tied to its sources. Id,
- * colour, role, radius, threat and stats are preserved. Deterministic.
+ * colour and role are preserved; maxHp / moveSpeed / threatMult are RECOMPUTED from
+ * the fused kit's component profile (item 4) so the archetype trade-offs survive the
+ * recombination instead of carrying the base class's vitals. Deterministic.
  */
 export function synthesizeClass(seed: number, base: ClassDef, donors: Donor[]): ClassDef {
   const abilities = {} as Record<AbilitySlot, PlayerAbilityDef>;
@@ -1521,7 +1635,9 @@ export function synthesizeClass(seed: number, base: ClassDef, donors: Donor[]): 
     .map((e) => classNames.get(e[0])!);
   const rng = new Rng(mixSeed(seed, FORGE_SALT.className, hashStr(base.id)));
   const name = forgeName(top, (k) => rng.int(0, k - 1), { connectiveChance: 0.35 });
-  return { ...base, name, abilities };
+  // item 4 — recompute vitals from the fused kit's component profile (not inherited).
+  const { maxHp, moveSpeed, threatMult } = forgeClassStats(abilities);
+  return { ...base, name, abilities, maxHp, moveSpeed, threatMult };
 }
 
 // ---------------------------------------------------------------------------

@@ -7,6 +7,8 @@ import { describe, it, expect } from 'vitest';
 import {
   synthesizeAbility,
   synthesizeClass,
+  forgeClassStats,
+  abilityCapability,
   decompose,
   componentValue,
   type Donor,
@@ -292,11 +294,50 @@ describe('synthesizeClass — kit + rename', () => {
     expect(names.size).toBeGreaterThan(1);
   });
 
-  it('preserves class stats and slot layout', () => {
+  it('recomputes vitals from the fused kit; preserves role + slot layout (item 4)', () => {
     const c = synthesizeClass(42, CLASSES.knight, POOL);
-    expect(c.maxHp).toBe(CLASSES.knight.maxHp);
+    // Role + a complete 4-slot kit are still inherited.
     expect(c.role).toBe(CLASSES.knight.role);
     expect(Object.keys(c.abilities).sort()).toEqual(['a1', 'a2', 'a3', 'basic']);
+    // Vitals are DERIVED from the fused kit's component profile (not inherited from
+    // the base class), and match the pure derivation exactly.
+    expect({ maxHp: c.maxHp, moveSpeed: c.moveSpeed, threatMult: c.threatMult }).toEqual(
+      forgeClassStats(c.abilities),
+    );
+    // …bounded to the canonical envelope, so a fusion is never a stat outlier.
+    expect(c.maxHp).toBeGreaterThanOrEqual(100);
+    expect(c.maxHp).toBeLessThanOrEqual(240);
+    expect(c.moveSpeed).toBeGreaterThanOrEqual(190);
+    expect(c.moveSpeed).toBeLessThanOrEqual(252);
+    expect(c.threatMult).toBeGreaterThanOrEqual(0.5);
+    expect(c.threatMult).toBeLessThanOrEqual(1.5);
+  });
+
+  it('derives archetype-appropriate vitals: a melee/defensive kit reads tankier + slower + higher-threat than a ranged/mobile one (item 4)', () => {
+    // Two synthetic 4-ability kits, classified purely by capability.
+    const ab = (over: Partial<import('../src/engine/content/classes').PlayerAbilityDef>) =>
+      ({ slot: 'a1', name: 'x', kind: 'meleeCone', cooldown: 5, damage: 20, ...over }) as const;
+    const meleeKit = {
+      basic: ab({ kind: 'meleeCone' }),
+      a1: ab({ kind: 'meleeCone' }),
+      a2: ab({ kind: 'selfBuff', damage: 0 }), // self-defence → tanky
+      a3: ab({ kind: 'pbaoe' }),
+    } as Record<AbilitySlot, import('../src/engine/content/classes').PlayerAbilityDef>;
+    const rangedKit = {
+      basic: ab({ kind: 'projectile' }),
+      a1: ab({ kind: 'projectile' }),
+      a2: ab({ kind: 'dash', damage: 0 }), // mobility → squishy/fast
+      a3: ab({ kind: 'projectile' }),
+    } as Record<AbilitySlot, import('../src/engine/content/classes').PlayerAbilityDef>;
+    // Sanity: the classifier reads those kinds as expected.
+    expect(abilityCapability(meleeKit.basic)).toBe('offensiveMelee');
+    expect(abilityCapability(rangedKit.a2)).toBe('mobility');
+
+    const melee = forgeClassStats(meleeKit);
+    const ranged = forgeClassStats(rangedKit);
+    expect(melee.maxHp).toBeGreaterThan(ranged.maxHp); // tankier
+    expect(melee.moveSpeed).toBeLessThan(ranged.moveSpeed); // slower
+    expect(melee.threatMult).toBeGreaterThan(ranged.threatMult); // pulls more aggro
   });
 });
 
