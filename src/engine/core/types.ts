@@ -185,6 +185,21 @@ export interface Buff {
 }
 
 /**
+ * item 2 — an in-progress forced-move slide shared by players, bosses and adds. A
+ * knockback / pull / grab sets this instead of writing `pos` instantly, and the sim
+ * advances `pos` along `(vx, vy)` each tick until `remaining` hits 0, landing exactly
+ * at the same endpoint the old instant write produced. Host-authoritative + never
+ * serialized — peers see the slide through the ordinary snapshot + interpolation path.
+ */
+export interface Shove {
+  /** Slide velocity (world units / second). */
+  vx: number;
+  vy: number;
+  /** Seconds of travel left before the shove lands and clears. */
+  remaining: number;
+}
+
+/**
  * Stun diminishing-returns bookkeeping, shared by players, bosses and adds.
  * The falloff is magnitude-relative: each landed stun banks its requested seconds
  * onto `load`, and an incoming stun keeps only STUN_DR_FACTOR^(load/seconds) — so a
@@ -328,15 +343,13 @@ export interface Player {
   stunDr?: StunDr;
 
   /**
-   * Purely-visual slide (item 28). A knockback / pull sets the authoritative `pos`
-   * instantly (so all logic — collisions, the lethal-chasm plunge — is unaffected),
-   * but records the pre-move offset here so the RENDERED position eases in from it
-   * over `slideTotal` seconds — the hero visibly travels instead of teleporting,
-   * like the Rogue roll. Never read by the simulation; only `playerView` uses it.
+   * item 2 — an in-progress forced-move SLIDE (knockback / pull / grab). Unlike a
+   * dash glide, this is not self-willed: the authoritative `pos` advances along the
+   * shove each tick (world.stepShoves) so a push/pull visibly travels instead of
+   * teleporting, and replicates + interpolates to peers for free. Absent/null when
+   * not being shoved. Set by combat.applyImpulse; see the `Shove` type.
    */
-  slideOff?: Vec2;
-  slideRemaining?: number;
-  slideTotal?: number;
+  shove?: Shove | null;
 
   /**
    * item 2 — an in-progress dash / roll / charge / leap GLIDE. A dash-nature mover
@@ -408,6 +421,9 @@ export interface Boss {
   /** Stun diminishing-returns state (see combat.applyStun). Lazily created. */
   stunDr?: StunDr;
 
+  /** item 2 — in-progress forced-move slide (knockback / pull). See `Shove`. */
+  shove?: Shove | null;
+
   /**
    * Damage scale for shared arenas: a twin boss deals a fraction of its solo
    * damage so a duo isn't simply twice as lethal. 1 (or absent) = solo boss.
@@ -468,6 +484,8 @@ export interface Add {
   buffs: Buff[];
   /** Stun diminishing-returns state (see combat.applyStun). Lazily created. */
   stunDr?: StunDr;
+  /** item 2 — in-progress forced-move slide (knockback / pull). See `Shove`. */
+  shove?: Shove | null;
 }
 
 /**

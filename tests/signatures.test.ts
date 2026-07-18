@@ -26,6 +26,7 @@ import {
   resolveBossAbility,
   beamTick,
   spawnZone,
+  stepShove,
 } from '../src/engine/combat/abilities';
 import { getMonster, abilityById, MONSTERS_BY_TIER } from '../src/engine/content/monsters';
 import { generateTerrain, themeFor, SIGNATURE_TERRAINS } from '../src/engine/world/terrain';
@@ -44,9 +45,20 @@ import type {
   TerrainPatch,
   ClassId,
   MonsterId,
+  Vec2,
+  Shove,
 } from '../src/engine/core/types';
 
 const DT = 0.05;
+
+/**
+ * item 2 — forced movement (knockback / pull / grab) now slides over a few ticks as
+ * an authoritative displacement. Fast-forward a target's shove to its endpoint so a
+ * unit test can assert the settled position (a no-op if nothing was shoved).
+ */
+function settle(w: World, e: { pos: Vec2; shove?: Shove | null }): void {
+  for (let i = 0; i < 16 && e.shove; i++) stepShove(w, e, DT);
+}
 
 function buttons(over: Partial<ButtonState> = {}): ButtonState {
   return { basic: false, a1: false, a2: false, a3: false, revive: false, ...over };
@@ -86,39 +98,44 @@ function counter(): () => number {
 describe('signatures: impulse primitive', () => {
   it('applyImpulse shoves a target along a direction (degenerate dir → +x)', () => {
     const w = mkWorld('dragon');
-    const t = { pos: { x: 800, y: 500 } };
+    const t: { pos: Vec2; shove?: Shove | null } = { pos: { x: 800, y: 500 } };
     applyImpulse(w, t, { x: 1, y: 0 }, 100);
+    settle(w, t); // item 2: the shove slides in over ticks — resolve it to its endpoint
     expect(t.pos.x).toBeCloseTo(900, 4);
     expect(t.pos.y).toBeCloseTo(500, 4);
     // A zero direction never no-ops — it falls back to +x so a shove always lands.
-    const u = { pos: { x: 400, y: 400 } };
+    const u: { pos: Vec2; shove?: Shove | null } = { pos: { x: 400, y: 400 } };
     applyImpulse(w, u, { x: 0, y: 0 }, 50);
+    settle(w, u);
     expect(u.pos.x).toBeCloseTo(450, 4);
   });
 
   it('applyImpulse wraps around the torus instead of clamping to a wall', () => {
     const w = mkWorld('dragon');
-    const t = { pos: { x: w.arena.w - 20, y: 500 } };
+    const t: { pos: Vec2; shove?: Shove | null } = { pos: { x: w.arena.w - 20, y: 500 } };
     applyImpulse(w, t, { x: 1, y: 0 }, 60);
+    settle(w, t);
     // 1580 + 60 = 1640 → wraps to 40 on a 1600-wide torus.
     expect(t.pos.x).toBeCloseTo(40, 3);
   });
 
   it('pullToward drags a target toward a centre, never overshooting it', () => {
     const w = mkWorld('dragon');
-    const t = { pos: { x: 800, y: 300 } };
+    const t: { pos: Vec2; shove?: Shove | null } = { pos: { x: 800, y: 300 } };
     const moved = pullToward(w, t, { x: 800, y: 500 }, 50); // centre 200 below
+    settle(w, t);
     expect(moved).toBeCloseTo(50, 4);
     expect(t.pos.y).toBeCloseTo(350, 4);
 
     // A pull longer than the gap lands exactly on the centre (no overshoot).
-    const u = { pos: { x: 800, y: 300 } };
+    const u: { pos: Vec2; shove?: Shove | null } = { pos: { x: 800, y: 300 } };
     const moved2 = pullToward(w, u, { x: 800, y: 500 }, 999);
+    settle(w, u);
     expect(moved2).toBeCloseTo(200, 4);
     expect(u.pos.y).toBeCloseTo(500, 4);
 
-    // Already at the centre → no movement.
-    const v = { pos: { x: 800, y: 500 } };
+    // Already at the centre → no movement (and no shove armed).
+    const v: { pos: Vec2; shove?: Shove | null } = { pos: { x: 800, y: 500 } };
     expect(pullToward(w, v, { x: 800, y: 500 }, 100)).toBe(0);
   });
 });
@@ -195,7 +212,9 @@ describe('signatures: lethal abyss void', () => {
       damage: 0,
       pull: { strength: 150, lethalRadius: 0, lethalDamage: 100000 }, // no core → never lethal
     });
-    w.step(DT, idle(w));
+    w.step(DT, idle(w)); // the fuse expires → the surge detonates and arms the pull slide
+    // item 2: the tide's haul now slides in over a few ticks — advance until it settles.
+    for (let i = 0; i < 12 && victim.shove; i++) w.step(DT, idle(w));
     expect(victim.state).toBe('alive'); // dragged, but the tide has no bottomless core
     expect(dist(victim.pos, centre)).toBeCloseTo(50, 0); // 200 - 150 pull
   });
@@ -414,6 +433,7 @@ describe('signatures: new per-boss abilities', () => {
       ab,
       mkAction({ abilityId: 'tentacleGrab', targetId: p.id, targetPos: { ...p.pos } }),
     );
+    settle(w, p); // item 2: the grab now hauls the hero in over ticks — resolve the slide
     const after = dist(p.pos, boss.pos);
     expect(after).toBeLessThan(before); // grabbed and dragged inward
     expect(before - after).toBeCloseTo(ab.pull!, 0); // pulled ~the grab distance
@@ -594,6 +614,7 @@ describe('signatures: deepened Hard-tier boss kits', () => {
       ab,
       mkAction({ abilityId: 'deathGrip', targetId: p.id, targetPos: { ...p.pos } }),
     );
+    settle(w, p); // item 2: Death Grip now hauls the hero in over ticks — resolve the slide
     const after = dist(p.pos, boss.pos);
     expect(after).toBeLessThan(before); // hauled toward the champion
     expect(before - after).toBeCloseTo(ab.pull!, 0);

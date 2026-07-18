@@ -29,6 +29,7 @@ import {
   fromAngle,
   angleOf,
   withLength,
+  clamp,
 } from '../core/math';
 // Toroidal geometry (drop-in for the Euclidean sub/dist/point-in-shape helpers)
 // so abilities resolve correctly across the wrap-around seam. See engine/torus.
@@ -66,8 +67,12 @@ import {
   ZONE_ARM_MARKER_SPEED,
   ZONE_ARM_MIN,
   ZONE_ARM_MAX,
+  SHOVE_SPEED,
+  SHOVE_MIN_TIME,
+  SHOVE_MAX_TIME,
+  SHOVE_MIN,
 } from '../core/constants';
-import type { SkillAreaKind } from '../core/types';
+import type { SkillAreaKind, Shove } from '../core/types';
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -1111,36 +1116,63 @@ export function zoneArm(from: Vec2, to: Vec2): { armTime: number; armFrom: Vec2 
 // ---------------------------------------------------------------------------
 
 /**
- * The shared movement-impulse primitive (item 28): shove `target` `distance`
- * world-units along `dir`, wrapped around the torus. A degenerate direction
- * falls back to +x so an impulse is never a no-op. Knockbacks (push away) and
- * pulls (drag toward) both build on this; terrain surges and boss grabs reuse it.
+ * The shared movement-impulse primitive (item 2/28): shove `target` `distance`
+ * world-units along `dir`, wrapped around the torus. A degenerate direction falls
+ * back to +x so an impulse is never a no-op. Knockbacks (push away) and pulls (drag
+ * toward) both build on this; terrain surges and boss grabs reuse it.
+ *
+ * A push/pull travels over a few ticks as an AUTHORITATIVE slide (item 2) rather than
+ * an instant `pos` write: it records a `Shove` velocity the sim advances each tick
+ * (world.stepShoves), landing at the same endpoint the instant write used to. Because
+ * `pos` moves incrementally, the slide replicates + interpolates to peers for free —
+ * heroes, bosses and adds all travel identically. A sub-SHOVE_MIN nudge is too small
+ * to be worth animating, so it snaps instantly. Stacked shoves fold together so a
+ * double-hit never drops displacement (magnitude preserved).
  */
-/** Below this a shove isn't worth animating; above it eases in over SHOVE_TIME. */
-const SHOVE_MIN = 24;
-const SHOVE_TIME = 0.18;
-
 export function applyImpulse(
   world: World,
-  target: {
-    pos: Vec2;
-    slideOff?: Vec2;
-    slideRemaining?: number;
-    slideTotal?: number;
-  },
+  target: { pos: Vec2; shove?: Shove | null },
   dir: Vec2,
   distance: number,
 ): void {
   const n = normalize(dir);
   const d = n.x === 0 && n.y === 0 ? { x: 1, y: 0 } : n;
-  target.pos = clampToArena(world, vadd(target.pos, vscale(d, distance)));
-  // Record a purely-visual slide-IN so the hero travels rather than teleporting
-  // (item 28). The authoritative pos above is final; only `playerView` reads this.
-  if (distance >= SHOVE_MIN) {
-    target.slideOff = { x: -d.x * distance, y: -d.y * distance };
-    target.slideRemaining = SHOVE_TIME;
-    target.slideTotal = SHOVE_TIME;
+  if (distance < SHOVE_MIN) {
+    // Too small to read as travel — snap it (imperceptible), clearing any slide.
+    target.pos = clampToArena(world, vadd(target.pos, vscale(d, distance)));
+    target.shove = null;
+    return;
   }
+  // Total remaining displacement from the CURRENT pos = this shove + whatever travel
+  // an in-flight shove had left, so overlapping shoves accumulate instead of clobber.
+  const prev = target.shove;
+  let dx = d.x * distance;
+  let dy = d.y * distance;
+  if (prev) {
+    dx += prev.vx * prev.remaining;
+    dy += prev.vy * prev.remaining;
+  }
+  const mag = Math.hypot(dx, dy);
+  const duration = clamp(mag / SHOVE_SPEED, SHOVE_MIN_TIME, SHOVE_MAX_TIME);
+  target.shove = { vx: dx / duration, vy: dy / duration, remaining: duration };
+}
+
+/**
+ * Advance an entity's in-progress forced-move slide by one tick (item 2): move the
+ * authoritative `pos` along the stored velocity (wrapped around the torus) and clear
+ * the shove on touchdown. Host-authoritative + deterministic; peers interpolate the
+ * intermediate positions for free. Shared by players, bosses and adds.
+ */
+export function stepShove(world: World, target: { pos: Vec2; shove?: Shove | null }, dt: number): void {
+  const s = target.shove;
+  if (!s) return;
+  const t = Math.min(dt, s.remaining);
+  target.pos = clampToArena(world, {
+    x: target.pos.x + s.vx * t,
+    y: target.pos.y + s.vy * t,
+  });
+  s.remaining -= t;
+  if (s.remaining <= 1e-6) target.shove = null;
 }
 
 /**
@@ -1282,6 +1314,7 @@ export function resolveBossAbility(
         }
       }
       boss.pos = clampToArena(world, to, boss.radius);
+      boss.shove = null; // item 2: the charge relocation is an instant reposition, not a slide
       world.events.push({ t: 'telegraph', pos: to, shape: 'line' });
       break;
     }

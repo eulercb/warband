@@ -201,6 +201,7 @@ import {
   abilityForSlot,
   pullToward,
   stepPlayerGlide,
+  stepShove,
 } from '../combat/abilities';
 import type { BossAbilityDef } from '../content/monsters';
 import { stepCorruption, firstCorruptionDelay } from './corruption';
@@ -1056,6 +1057,7 @@ export class World {
     this.tickTimers(dt);
     this.applyInputs(dt, inputs);
     this.stepGlides(dt); // item 2: advance in-progress dash/leap glides host-side
+    this.stepShoves(dt); // item 2: advance in-progress knockback/pull slides host-side
     this.checkDownedTransitions();
     this.updateRevive(dt, inputs);
     this.updateProjectiles(dt);
@@ -1100,10 +1102,6 @@ export class World {
       // Multiclass swap gate + per-class cooldown decay for the INACTIVE classes,
       // so a swapped-away kit keeps recovering while you fight with another.
       if (p.swapCd != null && p.swapCd > 0) p.swapCd = Math.max(0, p.swapCd - dt);
-      // Decay the purely-visual knockback/pull slide (item 28); logic never reads it.
-      if (p.slideRemaining != null && p.slideRemaining > 0) {
-        p.slideRemaining = Math.max(0, p.slideRemaining - dt);
-      }
       this.tickInactiveClassCooldowns(p, dt);
 
       if (p.castTimer > 0) {
@@ -1154,8 +1152,12 @@ export class World {
       // item 2: a committed dash/leap owns the hero for its brief glide — normal
       // walking and firing another ability are held until it lands (like a cast).
       const gliding = p.glide != null;
+      // item 2: while a forced-move slide carries the hero (knockback / pull), the
+      // shove owns their position — input movement + abilities hold until it lands,
+      // so the push travels its full distance rather than being walked out of.
+      const shoved = p.shove != null;
 
-      if (!stunned && !casting && !gliding) {
+      if (!stunned && !casting && !gliding && !shoved) {
         const move = clampLength(cmd.move, 1);
         const speed = p.moveSpeed * buffMult(p, 'moveSpeed');
         p.pos = vadd(p.pos, vscale(move, speed * dt));
@@ -1200,6 +1202,22 @@ export class World {
     for (const p of this.players) {
       if (p.glide) stepPlayerGlide(this, p, dt);
     }
+  }
+
+  /**
+   * item 2 — advance every in-progress forced-move slide (knockback / pull / grab)
+   * one tick, for heroes, bosses AND adds alike, so a push/pull visibly travels to
+   * its endpoint instead of teleporting. Host-authoritative; the intermediate
+   * positions replicate + interpolate to peers through the snapshot pipeline. A
+   * felled hero drops its shove (no ghost-sliding a corpse).
+   */
+  private stepShoves(dt: number): void {
+    for (const p of this.players) {
+      if (p.state !== 'alive') p.shove = null;
+      else stepShove(this, p, dt);
+    }
+    for (const b of this.bosses) stepShove(this, b, dt);
+    for (const a of this.adds) stepShove(this, a, dt);
   }
 
   private tryUseAbility(p: Player, slot: ExtSlot, moveDir: Vec2): void {
@@ -2424,8 +2442,23 @@ export class World {
         // i-frame slips the grip entirely (never a cheap-shot). Dragged into a
         // bottomless core → a plunge into the void (an environmental kill).
         if (s.pull && !hasBuff(p, 'invuln')) {
-          pullToward(this, p, s.pos, s.pull.strength);
-          if (s.pull.lethalRadius > 0 && dist(p.pos, s.pos) <= s.pull.lethalRadius) {
+          // item 2: the pull now slides the hero in over a few ticks, so predict the
+          // SETTLED distance from how far the drag will travel (a pull never overshoots
+          // the centre) rather than reading the not-yet-moved pos — the lethal plunge
+          // into a bottomless core still fires the instant the drag commits to it.
+          const distBefore = dist(p.pos, s.pos);
+          const dragged = pullToward(this, p, s.pos, s.pull.strength);
+          const distAfter = Math.max(0, distBefore - dragged);
+          if (s.pull.lethalRadius > 0 && distAfter <= s.pull.lethalRadius) {
+            // A bottomless plunge is a FALL, not a gentle slide: fast-forward the drag
+            // to its settled spot in the core and down the hero there.
+            if (p.shove) {
+              p.pos = wrapPos({
+                x: p.pos.x + p.shove.vx * p.shove.remaining,
+                y: p.pos.y + p.shove.vy * p.shove.remaining,
+              });
+              p.shove = null;
+            }
             damagePlayer(this, p, s.pull.lethalDamage);
             this.events.push({ t: 'telegraph', pos: { ...p.pos }, shape: 'circle' });
           }
@@ -2500,9 +2533,11 @@ export class World {
   private bossMove(dt: number, boss: Boss, def: MonsterDef, target: Player | null): void {
     if (!target) return;
     const d = dist(boss.pos, target.pos);
-    // item 9: a rooted boss can't walk (it can still turn to face). Speed 0 freezes
-    // its position while it stands in the root zone.
-    const speed = isRooted(boss) ? 0 : boss.moveSpeed * buffMult(boss, 'moveSpeed');
+    // item 9: a rooted boss can't walk (it can still turn to face). item 2: nor can a
+    // boss mid-shove — the knockback/pull slide owns its position until it lands, so
+    // the push reads clearly instead of being fought by its own approach. Speed 0
+    // freezes self-movement while either holds (it can still turn to face).
+    const speed = isRooted(boss) || boss.shove ? 0 : boss.moveSpeed * buffMult(boss, 'moveSpeed');
 
     if (def.blink) {
       // kiter: keep within casting range but don't crowd the target
@@ -2554,6 +2589,7 @@ export class World {
       y: boss.pos.y + dir.y * cfg.range,
     });
     boss.pos = to;
+    boss.shove = null; // item 2: a blink is an instant reposition — drop any in-flight slide
     boss.blinkTimer = cfg.internalCd;
     this.events.push({ t: 'blink', id: boss.id, from, to });
   }
@@ -2707,9 +2743,13 @@ export class World {
         const d = Math.sqrt(best);
         const reach = a.radius + target.radius + 6;
         if (d > reach) {
-          const dir = normalize(sub(target.pos, a.pos));
-          const speed = a.moveSpeed * buffMult(a, 'moveSpeed');
-          a.pos = vadd(a.pos, vscale(dir, speed * dt));
+          // item 2: a shoved add is carried by its knockback/pull slide — it doesn't
+          // also walk, so the push reads clearly (mirrors the boss + hero gate).
+          if (!a.shove) {
+            const dir = normalize(sub(target.pos, a.pos));
+            const speed = a.moveSpeed * buffMult(a, 'moveSpeed');
+            a.pos = vadd(a.pos, vscale(dir, speed * dt));
+          }
         } else if (a.attackCd <= 0) {
           damagePlayer(this, target, ADD_DAMAGE);
           a.attackCd = ADD_ATTACK_CD;
@@ -2999,20 +3039,15 @@ export class World {
   }
 
   private playerView(p: Player): PlayerView {
-    // Purely-visual knockback/pull slide (item 28): the RENDERED position eases in
-    // from the pre-shove offset while `slideRemaining` burns down, so the hero
-    // travels rather than teleporting. `p.pos` (logic) is untouched.
-    const ease = p.slideRemaining && p.slideTotal ? p.slideRemaining / p.slideTotal : 0;
-    const rpos =
-      p.slideOff && ease > 0
-        ? wrapPos({ x: p.pos.x + p.slideOff.x * ease, y: p.pos.y + p.slideOff.y * ease })
-        : p.pos;
+    // item 2 — a knockback/pull now advances the authoritative `pos` over a few ticks
+    // (world.stepShoves), so the slide replicates through the snapshot pipeline like
+    // any other movement; no separate render offset is needed here.
     return {
       id: p.id,
       peerId: p.peerId,
       name: p.name,
       classId: p.classId,
-      pos: { ...rpos },
+      pos: { ...p.pos },
       aim: { ...p.aim },
       hp: Math.max(0, Math.round(p.hp)),
       maxHp: p.maxHp,

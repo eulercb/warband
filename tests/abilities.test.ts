@@ -8,6 +8,7 @@ import {
   applyForcedMove,
   zoneArm,
   stepPlayerGlide,
+  stepShove,
   PLAYER_RADIUS,
 } from '../src/engine/combat/abilities';
 import { World } from '../src/engine/world/world';
@@ -25,8 +26,17 @@ import {
   FORCE_OVERCOME_ROOT,
   ZONE_ARM_MIN,
   ZONE_ARM_MAX,
+  SIM_DT,
 } from '../src/engine/core/constants';
-import type { Player, BossAction, ClassId, MonsterId, Add, Vec2 } from '../src/engine/core/types';
+import type {
+  Player,
+  BossAction,
+  ClassId,
+  MonsterId,
+  Add,
+  Vec2,
+  Shove,
+} from '../src/engine/core/types';
 
 // ---------------------------------------------------------------------------
 // Fixtures / helpers
@@ -34,6 +44,15 @@ import type { Player, BossAction, ClassId, MonsterId, Add, Vec2 } from '../src/e
 
 function mkWorld(classId: ClassId = 'knight', monsterId: MonsterId = 'dragon'): World {
   return new World({ monsterId, seed: 1, players: [{ peerId: 'a', name: 'A', classId }] });
+}
+
+/**
+ * item 2 — forced movement (knockback / pull) now travels over a few ticks as an
+ * authoritative slide. Fast-forward an entity's shove to its endpoint so these unit
+ * tests can assert the settled position (a no-op when nothing was shoved).
+ */
+function settle(w: World, e: { pos: Vec2; shove?: Shove | null }): void {
+  for (let i = 0; i < 16 && e.shove; i++) stepShove(w, e, SIM_DT);
 }
 
 /** Two-player world (caster first, ally second). */
@@ -927,10 +946,13 @@ describe('player forced movement (item 11)', () => {
     const from = { x: 500, y: 500 };
     boss.pos = { x: 600, y: 500 }; // 100u to the caster's right
     applyForcedMove(w, from, boss, forceAb({ knockback: 80 }));
+    settle(w, boss);
     expect(boss.pos.x).toBeGreaterThan(600); // pushed further away
 
     boss.pos = { x: 600, y: 500 };
+    boss.shove = null;
     applyForcedMove(w, from, boss, forceAb({ pull: 40 }));
+    settle(w, boss);
     expect(boss.pos.x).toBeLessThan(600); // dragged back toward the caster
   });
 
@@ -941,13 +963,15 @@ describe('player forced movement (item 11)', () => {
     boss.pos = { x: 600, y: 500 };
     applyBuff(boss, makeBuff('root', 0, 3, 'zoneRoot'));
 
-    // Below the threshold → the root wins, the boss holds fast.
+    // Below the threshold → the root wins, the boss holds fast (never shoved).
     applyForcedMove(w, from, boss, forceAb({ knockback: FORCE_OVERCOME_ROOT - 1 }));
+    settle(w, boss);
     expect(boss.pos.x).toBe(600);
     expect(isRooted(boss)).toBe(true);
 
     // At/above the threshold → the shove overpowers the bind (root broken + moved).
     applyForcedMove(w, from, boss, forceAb({ knockback: FORCE_OVERCOME_ROOT + 40 }));
+    settle(w, boss);
     expect(boss.pos.x).toBeGreaterThan(600);
     expect(isRooted(boss)).toBe(false);
   });
@@ -962,6 +986,7 @@ describe('player forced movement (item 11)', () => {
     boss.pos = { x: 850, y: 500 }; // in the cone
     const before = boss.pos.x;
     resolvePlayerAbility(w, p, 'a3', ZERO);
+    settle(w, boss);
     expect(boss.pos.x).toBeGreaterThan(before); // knocked back
   });
 
@@ -985,6 +1010,7 @@ describe('player forced movement (item 11)', () => {
     p.aim = { x: 1, y: 0 };
     boss.pos = { x: 900, y: 500 }; // 100u to the mage's right
     resolvePlayerAbility(w, p, 'a2', ZERO);
+    settle(w, boss);
     // Reflected across the mage → now ~100u to the LEFT.
     expect(boss.pos.x).toBeLessThan(800);
   });
@@ -1393,6 +1419,7 @@ describe('boss pbaoe', () => {
     const ab = bossAb('dragon', 'tailSweep'); // dmg 40, radius 160, knockback 120
     const before = p.hp;
     resolveBossAbility(w, boss, ab, mkAction());
+    settle(w, p);
     expect(before - p.hp).toBeCloseTo(40, 6);
     expect(p.pos.y).toBeCloseTo(570, 4); // pushed +120 away from the boss
     expect(w.events.some((e) => e.t === 'telegraph' && e.shape === 'circle')).toBe(true);
@@ -1406,6 +1433,7 @@ describe('boss pbaoe', () => {
     p.pos = { x: 800, y: 400 };
     const ab = bossAb('dragon', 'tailSweep');
     resolveBossAbility(w, boss, ab, mkAction());
+    settle(w, p);
     expect(p.pos.x).toBeCloseTo(920, 4); // fallback {1,0} * 120
     expect(p.pos.y).toBeCloseTo(400, 4);
   });
@@ -2023,38 +2051,57 @@ describe('player ability resolution defaults', () => {
 });
 
 // ---------------------------------------------------------------------------
-// applyImpulse — knockback/pull VISUAL slide (item 28)
+// applyImpulse — knockback/pull authoritative slide over time (item 2)
 // ---------------------------------------------------------------------------
-describe('applyImpulse visual slide', () => {
-  it('moves the logical pos instantly but slides the RENDERED pos in from the origin', () => {
+describe('applyImpulse authoritative slide (item 2)', () => {
+  it('does NOT jump the pos — it slides authoritatively over multiple ticks to the endpoint', () => {
     const w = mkWorld('knight');
     const p = w.players[0];
     p.pos = { x: 800, y: 500 };
     applyImpulse(w, p, { x: 1, y: 0 }, 100); // shove +x by 100u
 
-    // The authoritative position jumps to the final spot (logic/collisions intact).
+    // The push does not teleport: a shove is armed and the pos is still at the origin.
+    expect(p.shove).toBeTruthy();
+    expect(p.pos.x).toBeCloseTo(800, 3);
+
+    // It advances a little each tick (not all at once) — resolving over several ticks.
+    const xs: number[] = [];
+    for (let i = 0; i < 12 && p.shove; i++) {
+      stepShove(w, p, SIM_DT);
+      xs.push(p.pos.x);
+    }
+    expect(xs.length).toBeGreaterThan(2); // took multiple ticks, not one
+    // Strictly-increasing partial progress: it travels rather than snapping.
+    expect(xs[0]).toBeGreaterThan(800);
+    expect(xs[0]).toBeLessThan(900);
+    // Lands exactly at the same endpoint the old instant write produced, and clears.
     expect(p.pos.x).toBeCloseTo(900, 3);
-    expect(p.slideOff).toBeTruthy();
-    expect(p.slideRemaining).toBeGreaterThan(0);
-
-    // Right after the shove (ease ≈ 1) the RENDERED pos is still back at the origin,
-    // so the hero visibly travels rather than teleporting.
-    const rendered0 = w.serialize().players[0].pos.x;
-    expect(rendered0).toBeCloseTo(800, 0);
-
-    // Once the slide settles, the rendered pos catches up to the logical pos.
-    p.slideRemaining = 0;
-    expect(w.serialize().players[0].pos.x).toBeCloseTo(900, 0);
+    expect(p.pos.y).toBeCloseTo(500, 3);
+    expect(p.shove == null).toBe(true);
   });
 
-  it('does not animate a tiny shove (below the SHOVE_MIN threshold)', () => {
+  it('snaps a tiny shove instantly (below the SHOVE_MIN threshold — no slide)', () => {
     const w = mkWorld('knight');
     const p = w.players[0];
     p.pos = { x: 800, y: 500 };
     applyImpulse(w, p, { x: 1, y: 0 }, 10); // < SHOVE_MIN
-    expect(p.pos.x).toBeCloseTo(810, 3);
-    expect(p.slideRemaining).toBeUndefined(); // no slide recorded
-    expect(w.serialize().players[0].pos.x).toBeCloseTo(810, 0);
+    expect(p.pos.x).toBeCloseTo(810, 3); // moved immediately
+    expect(p.shove == null).toBe(true); // no slide armed
+  });
+
+  it('folds a second shove into an in-flight one (stacked displacement is preserved)', () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    p.pos = { x: 800, y: 500 };
+    applyImpulse(w, p, { x: 1, y: 0 }, 100); // +100x
+    stepShove(w, p, SIM_DT); // partway through the first slide
+    const midX = p.pos.x;
+    expect(midX).toBeGreaterThan(800);
+    applyImpulse(w, p, { x: 0, y: 1 }, 60); // a fresh +60y shove mid-slide
+    for (let i = 0; i < 20 && p.shove; i++) stepShove(w, p, SIM_DT);
+    // Both displacements land: full +100x from the origin and +60y.
+    expect(p.pos.x).toBeCloseTo(900, 1);
+    expect(p.pos.y).toBeCloseTo(560, 1);
   });
 });
 
