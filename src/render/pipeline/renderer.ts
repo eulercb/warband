@@ -660,7 +660,9 @@ export class Renderer {
       }
       t.visible = true;
       const name = boss.modName ? `${boss.modName} ${def.name}` : def.name;
-      const badges = buffLabel(boss.buffs);
+      // item 1 — a constant flyer (def.flying) carries no timed 'flight' buff, so
+      // surface its permanent airborne state as a no-countdown 🕊️ on the nameplate.
+      const badges = buffLabel(boss.buffs, 4, def.flying === true);
       t.text = badges ? `${name}\n${badges}` : name;
       const s = this.camera.worldToScreen(boss.pos);
       t.position.set(s.x, s.y - def.radius * scale - 10);

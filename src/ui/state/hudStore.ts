@@ -34,6 +34,9 @@ export interface HudBoss {
   maxHp: number;
   phase: 'normal' | 'enraged';
   buffs: BuffView[];
+  /** item 1 — a constant flyer (MonsterDef.flying): surfaces a permanent 🕊️ chip
+   * on the boss bar even though it carries no timed 'flight' buff. */
+  flying: boolean;
   /** Endless "type" prefix ("Frost"), or '' if none. */
   modName: string;
   /** Affixes on this boss (Vampiric, Frenzied…), for the name chips. */

@@ -65,6 +65,8 @@ export function buffGlow(kind: BuffKind, mult: number): BuffGlow | null {
       return { color: 0xc06cff, good: false }; // violet — abilities muted
     case 'invuln':
       return { color: 0xbfe9ff, good: true }; // pale cyan — untouchable
+    case 'flight':
+      return { color: 0xbfe0ff, good: true }; // pale sky-blue — airborne (item 1)
     case 'moveSpeed':
       return mult < 1
         ? { color: 0x59a0ff, good: false } // icy blue — slowed
@@ -94,18 +96,28 @@ export function drawBuffGlows(
   bodyR: number,
   buffs: BuffView[] | undefined,
   timeSec: number,
+  // item 1 — a constant flyer (MonsterDef.flying) carries no timed 'flight' buff, so
+  // its permanent airborne aura is drawn from this flag. Timed flyers glow via the
+  // 'flight' buff in the loop below; the two never coincide on the same body.
+  flying = false,
 ): void {
-  if (!buffs || buffs.length === 0) return;
   let i = 0;
-  for (const b of buffs) {
-    const glow = buffGlow(b.kind, b.mult);
-    if (!glow) continue;
+  const drawRing = (glow: BuffGlow): void => {
     const pulse = 0.5 + 0.5 * Math.sin(timeSec * 4 + i * 1.7);
     const ringR = bodyR + 3 + i * 3.5;
     const baseA = glow.good ? 0.5 : 0.42;
     g.circle(x, y, ringR + 2).fill({ color: glow.color, alpha: 0.05 + 0.05 * pulse });
     g.circle(x, y, ringR).stroke({ width: 2, color: glow.color, alpha: baseA + 0.35 * pulse });
-    if (++i >= 4) break; // cap the stack so a buff pile doesn't smother the body
+    i++;
+  };
+  if (flying) drawRing({ color: 0xbfe0ff, good: true });
+  if (buffs) {
+    for (const b of buffs) {
+      const glow = buffGlow(b.kind, b.mult);
+      if (!glow) continue;
+      drawRing(glow);
+      if (i >= 4) break; // cap the stack so a buff pile doesn't smother the body
+    }
   }
 }
 
@@ -355,8 +367,9 @@ export function drawBoss(
   const { x, y } = screen;
   const enraged = b.phase === 'enraged';
 
-  // Active buff/debuff auras (e.g. stunned by Shield Bash, slowed by Frost Nova).
-  drawBuffGlows(g, x, y, r, b.buffs, timeSec);
+  // Active buff/debuff auras (e.g. stunned by Shield Bash, slowed by Frost Nova),
+  // plus a permanent airborne aura for a constant flyer (item 1).
+  drawBuffGlows(g, x, y, r, b.buffs, timeSec, def.flying === true);
 
   // Endless "type" modifier glow (Frost/Dark/Infernal…), pulsing under the body.
   if (b.modColor != null) {
@@ -408,7 +421,7 @@ export function drawBossOverlay(
   const r = def.radius * scale;
   const { x, y } = screen;
 
-  drawBuffGlows(g, x, y, r, b.buffs, timeSec);
+  drawBuffGlows(g, x, y, r, b.buffs, timeSec, def.flying === true);
 
   // Endless "type" modifier glow (Frost/Dark/Infernal…), pulsing under the body —
   // drawn by the body pass for geometry bosses, so it lives here for sprite/rig ones.

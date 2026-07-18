@@ -33,9 +33,10 @@ function pct(v: number, max: number): number {
   return Math.max(0, Math.min(100, (v / max) * 100));
 }
 
-/** A compact row of buff/debuff chips (glyph + seconds), colour-coded. */
-function BuffChips({ buffs }: { buffs: BuffView[] }) {
-  const badges = buffBadges(buffs);
+/** A compact row of buff/debuff chips (glyph + seconds), colour-coded. `flying`
+ * (item 1) surfaces a constant flyer's permanent 🕊️ chip, shown with no countdown. */
+function BuffChips({ buffs, flying = false }: { buffs: BuffView[]; flying?: boolean }) {
+  const badges = buffBadges(buffs, 4, flying);
   if (badges.length === 0) return null;
   return (
     <span className="hud-buffs">
@@ -43,13 +44,13 @@ function BuffChips({ buffs }: { buffs: BuffView[] }) {
         <span
           key={`${b.glyph}-${i}`}
           className={`hud-buff${b.good ? ' good' : ' bad'}`}
-          title={`${b.label} · ${b.secs}s`}
+          title={b.permanent ? b.label : `${b.label} · ${b.secs}s`}
           style={{ borderColor: `#${b.color.toString(16).padStart(6, '0')}` }}
         >
           <span className="hud-buff-glyph" aria-hidden="true">
             {b.glyph}
           </span>
-          <span className="hud-buff-secs">{b.secs}</span>
+          {!b.permanent && <span className="hud-buff-secs">{b.secs}</span>}
         </span>
       ))}
     </span>
@@ -175,7 +176,7 @@ function BossBar({
         {label}
         {boss.phase === 'enraged' && <span className="hud-enrage-tag">ENRAGED</span>}
         <AffixChips affixes={boss.affixes} />
-        <BuffChips buffs={boss.buffs} />
+        <BuffChips buffs={boss.buffs} flying={boss.flying} />
       </div>
       <div className="hud-bossbar-track">
         <div

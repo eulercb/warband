@@ -168,6 +168,7 @@ describe('<HUD>', () => {
       maxHp: 300,
       phase: 'enraged',
       buffs: [{ kind: 'damageTaken', remaining: 5, mult: 1.5 }], // vulnerable
+      flying: false,
       modName: 'Frost',
       affixes: [],
     };
@@ -190,6 +191,28 @@ describe('<HUD>', () => {
     expect(bossBuff?.querySelector('.hud-buff-secs')?.textContent).toBe('5');
   });
 
+  it('shows a permanent airborne chip (no countdown) for a constant flyer (item 1)', () => {
+    const boss: HudBoss = {
+      id: 3,
+      name: 'Harpy Matriarch',
+      hp: 100,
+      maxHp: 200,
+      phase: 'normal',
+      buffs: [],
+      flying: true,
+      modName: '',
+      affixes: [],
+    };
+    useHudStore
+      .getState()
+      .set({ active: true, classId: 'knight', hp: 10, maxHp: 100, bosses: [boss] });
+    const { container } = render(<HUD />);
+    const chip = container.querySelector('.hud-bossbar-label .hud-buff');
+    expect(chip?.querySelector('.hud-buff-glyph')?.textContent).toBe('🕊️');
+    // Permanent status → no seconds counter is rendered.
+    expect(chip?.querySelector('.hud-buff-secs')).toBeNull();
+  });
+
   it('renders no boss bars when there are no bosses', () => {
     useHudStore.getState().set({ active: true, classId: 'knight', hp: 10, maxHp: 100, bosses: [] });
     const { container } = render(<HUD />);
@@ -205,6 +228,7 @@ describe('<HUD>', () => {
       maxHp: 100,
       phase: 'normal',
       buffs: [],
+      flying: false,
       modName: '',
       affixes: ['vampiric', 'frenzied'],
     };
@@ -246,6 +270,7 @@ describe('<HUD>', () => {
       maxHp: 50,
       phase: 'normal',
       buffs: [],
+      flying: false,
       modName: '',
       affixes: [],
     };
@@ -449,6 +474,7 @@ describe('<HUD>', () => {
     maxHp: 300,
     phase: 'normal',
     buffs: [],
+    flying: false,
     modName: '',
     affixes: [],
   };

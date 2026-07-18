@@ -69,6 +69,7 @@ describe('hudStore: set', () => {
       maxHp: 200,
       phase: 'enraged',
       buffs: [],
+      flying: false,
       modName: 'Frost',
       affixes: [],
     };
@@ -184,7 +185,17 @@ describe('hudStore: resetHud', () => {
       buffs: [{ kind: 'stun', remaining: 1, mult: 0 }],
       score: 1234,
       bosses: [
-        { id: 1, name: 'X', hp: 1, maxHp: 2, phase: 'normal', buffs: [], modName: '', affixes: [] },
+        {
+          id: 1,
+          name: 'X',
+          hp: 1,
+          maxHp: 2,
+          phase: 'normal',
+          buffs: [],
+          flying: false,
+          modName: '',
+          affixes: [],
+        },
       ],
       teammates: [
         {
