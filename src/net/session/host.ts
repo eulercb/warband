@@ -59,7 +59,7 @@ import type { UpgradeId } from '../../engine/content/upgrades';
 import { isCharUpgradeId, charUpgradeMaxStacks } from '../../engine/content/charUpgrades';
 import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
 import { CLASS_IDS } from '../../engine/content/classes';
-import { getEphemeral, isEphemeralId } from '../../engine/content/ephemeral';
+import { getEphemeral, isEphemeralId, REROLL_CAP } from '../../engine/content/ephemeral';
 import type { EphemeralId, EphemeralStock } from '../../engine/content/ephemeral';
 import type {
   MonsterId,
@@ -260,6 +260,9 @@ export class Host implements NetSession {
   private readonly scoreByPeer = new Map<string, number>();
   /** Ephemeral-shop coin balance per peer (item 21; carries across the run). */
   private readonly coinsByPeer = new Map<string, number>();
+  /** item: reroll — offer-rerolls each peer has spent THIS between-boss stop (reset per
+   *  finishFight), coin-gated + capped at REROLL_CAP. */
+  private readonly rerollsByPeer = new Map<string, number>();
   /** Ephemeral perks bought for the NEXT fight per peer (consumed at spawn). */
   private readonly ephemeralByPeer = new Map<string, EphemeralStock>();
   /** Banked hardcore retries (shared): a wipe can spend one to restart the boss. */
@@ -940,6 +943,11 @@ export class Host implements NetSession {
     this.recordEphemeral(selfId, id);
   }
 
+  /** NetSession: the host spends coins to re-randomize its own upgrade offers (item: reroll). */
+  rerollOffers(): void {
+    this.recordReroll(selfId);
+  }
+
   /** NetSession: host marks itself ready (or not) to advance to the next boss. */
   setNextReady(ready: boolean): void {
     this.recordNextReady(selfId, ready);
@@ -1048,6 +1056,27 @@ export class Host implements NetSession {
       }
     }
     if (msg.buyEphemeral) this.recordEphemeral(peerId, msg.buyEphemeral);
+    if (msg.rerollOffers) this.recordReroll(peerId);
+  }
+
+  /**
+   * item: reroll — a peer spends coins to re-randomize its current upgrade offers,
+   * host-authoritative: coin-gated against the peer's banked coins and capped at
+   * REROLL_CAP per between-boss stop (reset each finishFight). The offers themselves are
+   * re-drawn CLIENT-side (deterministic from the reward seed + a reroll salt), so the
+   * host only owns the coin spend — keeping the ledger consistent for the next roster.
+   */
+  private recordReroll(peerId: string): void {
+    const cost = getEphemeral('reroll').cost;
+    const used = this.rerollsByPeer.get(peerId) ?? 0;
+    if (used >= REROLL_CAP) return; // capped for this stop
+    const coins = this.coinsByPeer.get(peerId) ?? 0;
+    if (coins < cost) return; // can't afford it
+    this.coinsByPeer.set(peerId, coins - cost);
+    this.rerollsByPeer.set(peerId, used + 1);
+    netLog('host', `reroll #${used + 1} for ${peerId.slice(0, 6)}`, {
+      coinsLeft: this.coinsByPeer.get(peerId),
+    });
   }
 
   /**
@@ -1059,6 +1088,9 @@ export class Host implements NetSession {
    */
   private recordEphemeral(peerId: string, id: EphemeralId): void {
     if (!isEphemeralId(id)) return;
+    // item: reroll — the reroll is an ACTION handled by recordReroll (the offers re-draw
+    // client-side); it is not a next-fight perk, so never process it as one here.
+    if (id === 'reroll') return;
     const def = getEphemeral(id);
     if (def.hardcoreOnly && !this.hardcore) return;
     const coins = this.coinsByPeer.get(peerId) ?? 0;
@@ -1285,6 +1317,7 @@ export class Host implements NetSession {
     // who all receive the result screen below).
     this.roundPickedGeneric.clear();
     this.roundPickedChar.clear();
+    this.rerollsByPeer.clear(); // item: reroll — a fresh reroll allowance for this stop
     this.nextReadyPeers.clear();
     this.roundParticipants = new Set<string>([selfId, ...this.lobby.keys()]);
     // Stop stepping but keep `world` so the host can render the final frame.

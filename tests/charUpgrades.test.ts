@@ -915,6 +915,28 @@ describe('rollCharChoices', () => {
     expect(HYBRID_OFFER_CHANCE).toBeCloseTo(0.45, 5);
   });
 
+  // item: reroll — the exclude-bias steers the base draw away from the shown ids so a
+  // re-roll surfaces different boons (an empty exclude reproduces the seeded draw). n=2
+  // keeps the fresh pool (5 knight boons − 2 shown = 3) able to fill without degrading.
+  it('biases the char draw away from excluded ids (reroll)', () => {
+    const base = rollCharChoices('knight', 2, seq([0, 0, 0.9, 0.9, 0.9]));
+    expect(base).toEqual(['kn_bulwark', 'kn_concuss']);
+    // Excluding the shown ids (7th arg) shifts the head-of-pool draw to the NEXT boons.
+    const rerolled = rollCharChoices('knight', 2, seq([0, 0, 0.9, 0.9, 0.9]), [], [], [], base);
+    expect(rerolled.some((id) => base.includes(id))).toBe(false);
+    expect(rerolled).toHaveLength(2);
+    // An empty exclude is byte-for-byte the un-excluded draw.
+    expect(rollCharChoices('knight', 2, seq([0, 0, 0.9, 0.9, 0.9]), [], [], [], [])).toEqual(base);
+  });
+
+  it('the reroll exclude degrades gracefully when it would starve the pool', () => {
+    // Exclude the WHOLE knight base pool → the fresh pool is empty, so the excluded ids
+    // come back and the roll still fills n (never returns short just because of a reroll).
+    const whole = rollCharChoices('knight', 5, seq([0, 0, 0, 0, 0, 0.9, 0.9]));
+    const out = rollCharChoices('knight', 3, seq([0, 0, 0, 0.9, 0.9]), [], [], [], whole);
+    expect(out).toHaveLength(3);
+  });
+
   it('offers n distinct picks, capped at the pool size', () => {
     // rng 0 => always index 0 of the shrinking pool => pool order; 0.9 => no hybrid
     // and (final draw) no grand swap.

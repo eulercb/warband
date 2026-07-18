@@ -357,6 +357,11 @@ export class Client implements NetSession {
     this.specialAction.send({ buyEphemeral: id });
   }
 
+  /** NetSession: relay this player's offer-reroll purchase (item: reroll). */
+  rerollOffers(): void {
+    this.specialAction.send({ rerollOffers: true });
+  }
+
   /** NetSession: relay this player's "ready for the next boss" flag. */
   setNextReady(ready: boolean): void {
     this.nextReadyAction.send({ ready });

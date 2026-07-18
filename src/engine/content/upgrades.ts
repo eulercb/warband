@@ -200,8 +200,18 @@ export function rollUpgradeChoices(
   n: number,
   rnd: () => number,
   owned: readonly string[] = [],
+  /**
+   * item: reroll — ids the draw should be BIASED AWAY FROM (the offers currently shown),
+   * so a re-roll surfaces different boons. A soft bias: if dropping them would leave too
+   * few to fill `n`, the excluded ids come back (graceful degradation). Empty by default,
+   * so a normal roll is byte-for-byte the seeded stream it always was.
+   */
+  exclude: readonly string[] = [],
 ): UpgradeId[] {
-  const pool = UPGRADE_IDS.filter((id) => !upgradeAtMax(id, owned));
+  const eligible = UPGRADE_IDS.filter((id) => !upgradeAtMax(id, owned));
+  const ex = new Set(exclude);
+  const fresh = eligible.filter((id) => !ex.has(id));
+  const pool = fresh.length >= n ? fresh : eligible;
   const out: UpgradeId[] = [];
   const count = Math.min(n, pool.length);
   while (out.length < count) {

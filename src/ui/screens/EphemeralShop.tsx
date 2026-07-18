@@ -15,7 +15,12 @@
  */
 import { useStore } from '../state/store';
 import { playUiSound } from '../state/session';
-import { getEphemeral, EPHEMERAL_IDS, type EphemeralId } from '../../engine/content/ephemeral';
+import {
+  getEphemeral,
+  EPHEMERAL_IDS,
+  REROLL_CAP,
+  type EphemeralId,
+} from '../../engine/content/ephemeral';
 
 /** How many of this perk the hero has already banked for the next fight. */
 function owned(
@@ -43,12 +48,16 @@ export default function EphemeralShop() {
   const stock = useStore((s) => s.myEphemeral);
   const hardcore = useStore((s) => s.activeHardcore);
   const buy = useStore((s) => s.buyEphemeral);
+  // item: reroll — the reroll stall is an ACTION (re-draw the offers), capped per stop.
+  const rerollOffers = useStore((s) => s.rerollOffers);
+  const rerollCount = useStore((s) => s.rerollCount);
 
   // Passive perks (speed/damage/defence) are one-and-done for a fight; potions and
   // revives stack. Hardcore-only perks stay hidden outside a hardcore run.
   const ids = EPHEMERAL_IDS.filter((id) => !getEphemeral(id).hardcoreOnly || hardcore);
   const onBuy = (id: EphemeralId): void => {
-    if (buy(id)) playUiSound('uiConfirm');
+    const ok = id === 'reroll' ? rerollOffers() : buy(id);
+    if (ok) playUiSound('uiConfirm');
     else playUiSound('uiClick');
   };
 
@@ -66,10 +75,13 @@ export default function EphemeralShop() {
       <div className="wb-shop-cards">
         {ids.map((id) => {
           const def = getEphemeral(id);
-          const have = owned(id, stock);
-          // A single-shot passive can't be double-bought; stackables always can.
+          // item: reroll — its "have" is the rerolls spent this stop, and it's maxed once
+          // the per-stop cap is reached (not a next-fight stock, so `owned` returns 0).
+          const have = id === 'reroll' ? rerollCount : owned(id, stock);
+          // A single-shot passive can't be double-bought; the reroll caps at REROLL_CAP;
+          // stackables always can.
           const single = def.kind === 'passive';
-          const maxed = single && have > 0;
+          const maxed = id === 'reroll' ? rerollCount >= REROLL_CAP : single && have > 0;
           const afford = coins >= def.cost;
           const disabled = maxed || !afford;
           return (

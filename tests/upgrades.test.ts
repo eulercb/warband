@@ -380,6 +380,29 @@ describe('rollUpgradeChoices', () => {
     expect(rollUpgradeChoices(UPGRADE_IDS.length, () => 0)).toEqual([...UPGRADE_IDS]);
   });
 
+  // item: reroll — the exclude-bias drops the currently-shown ids so a re-roll differs.
+  it('biases AWAY from excluded ids (drops them from the pool head)', () => {
+    // Without exclude the head-draw is swift/vigor/haste; excluding them shifts the head.
+    const base = rollUpgradeChoices(3, () => 0);
+    const rerolled = rollUpgradeChoices(3, () => 0, [], base);
+    expect(rerolled.some((id) => base.includes(id))).toBe(false); // none of the shown ids
+    expect(rerolled).toHaveLength(3);
+  });
+
+  it('falls back to the excluded ids when dropping them would starve n (graceful)', () => {
+    // Exclude ALL but two ids, then ask for 3 → the fresh pool (2) can't fill n, so the
+    // full eligible pool is used and 3 are still returned.
+    const exclude = UPGRADE_IDS.slice(2);
+    const out = rollUpgradeChoices(3, () => 0, [], exclude);
+    expect(out).toHaveLength(3);
+  });
+
+  it('an empty exclude reproduces the un-excluded draw byte-for-byte', () => {
+    const rng1 = cyclingRng([0.3, 0.9, 0.0, 0.5]);
+    const rng2 = cyclingRng([0.3, 0.9, 0.0, 0.5]);
+    expect(rollUpgradeChoices(4, rng1, [], [])).toEqual(rollUpgradeChoices(4, rng2));
+  });
+
   it('a near-1 rng draws the pool tail each time (reverse order)', () => {
     expect(rollUpgradeChoices(UPGRADE_IDS.length, () => 0.999)).toEqual([...UPGRADE_IDS].reverse());
   });

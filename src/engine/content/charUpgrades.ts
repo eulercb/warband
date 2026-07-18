@@ -4728,6 +4728,23 @@ export const REOFFER_CHANCE = 0.5;
 /** Selection weight for the hero's MAIN class over an extra multiclass (item 23). */
 export const MAIN_CLASS_WEIGHT = 2.5;
 
+/**
+ * item: reroll — return a fresh, mutable copy of `pool` with the `exclude` ids dropped
+ * so a re-draw is biased AWAY from the offers currently shown; but if dropping them would
+ * leave fewer than `need`, keep them (graceful degradation, so the roll still fills up).
+ */
+function biasAway<T>(
+  pool: readonly T[],
+  exclude: readonly string[],
+  need: number,
+  idOf: (x: T) => string,
+): T[] {
+  if (exclude.length === 0) return pool.slice();
+  const ex = new Set(exclude);
+  const fresh = pool.filter((x) => !ex.has(idOf(x)));
+  return fresh.length >= need ? fresh : pool.slice();
+}
+
 export function rollCharChoices(
   classId: ClassId,
   n: number,
@@ -4735,6 +4752,13 @@ export function rollCharChoices(
   owned: readonly string[] = [],
   extraClasses: readonly ClassId[] = [],
   subSkills: readonly string[] = [],
+  /**
+   * item: reroll — boon ids to BIAS AWAY FROM (the offers currently shown) so a re-roll
+   * surfaces different picks. A soft bias applied to the main draw pool: if dropping them
+   * would starve `n`, the excluded ids come back (graceful degradation). Empty by default
+   * → the seeded offer stream is byte-for-byte unchanged.
+   */
+  exclude: readonly string[] = [],
 ): string[] {
   const out: string[] = [];
   const extras = extraClasses.filter((c) => c !== classId);
@@ -4778,24 +4802,27 @@ export function rollCharChoices(
     for (const c of extras) push(c, 1);
     // item 6: equipped-sub-skill boons weight with the main class.
     for (const id of subEligible) weighted.push({ id, w: MAIN_CLASS_WEIGHT });
-    const count = Math.min(n, weighted.length);
-    while (out.length < count && weighted.length > 0) {
-      const total = weighted.reduce((s, x) => s + x.w, 0);
+    // item: reroll — bias away from the currently-shown ids, unless that starves `n`.
+    const drawW = biasAway(weighted, exclude, n, (x) => x.id);
+    const count = Math.min(n, drawW.length);
+    while (out.length < count && drawW.length > 0) {
+      const total = drawW.reduce((s, x) => s + x.w, 0);
       let roll = rnd() * total;
-      let idx = weighted.length - 1;
-      for (let i = 0; i < weighted.length; i++) {
-        roll -= weighted[i].w;
+      let idx = drawW.length - 1;
+      for (let i = 0; i < drawW.length; i++) {
+        roll -= drawW[i].w;
         if (roll <= 0) {
           idx = i;
           break;
         }
       }
-      out.push(weighted[idx].id);
-      weighted.splice(idx, 1);
+      out.push(drawW[idx].id);
+      drawW.splice(idx, 1);
     }
   } else {
-    const pool = [...(CHAR_UPGRADES_BY_CLASS[classId] ?? []).map((d) => d.id), ...subEligible] // item 6
+    const base = [...(CHAR_UPGRADES_BY_CLASS[classId] ?? []).map((d) => d.id), ...subEligible] // item 6
       .filter((id) => !charUpgradeAtMax(id, owned) && liveBoonFor(classId, id)); // item 26 filter
+    const pool = biasAway(base, exclude, n, (id) => id); // item: reroll exclude-bias
     const count = Math.min(n, pool.length);
     while (out.length < count) {
       const i = Math.floor(rnd() * pool.length) % pool.length;

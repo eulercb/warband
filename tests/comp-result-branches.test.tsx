@@ -381,6 +381,20 @@ describe('<ResultScreen> branch coverage', () => {
     expect(vi.mocked(returnToLobby)).toHaveBeenCalledTimes(1);
   });
 
+  it('re-draws the endless-bank offers, still full, after a reroll (item: reroll)', () => {
+    // rerollCount > 0 drives the salted + exclude-biased re-draw (a reroll bought via the
+    // shared coin stall on this screen). setState bypasses setResult, so it stays set.
+    useStore.setState({
+      isHost: true,
+      result: makeResult({ endlessAvailable: true, rewardSeed: 12345 }),
+      rerollCount: 2,
+    });
+    const { container } = render(<ResultScreen />);
+    // Both offer sets still fill after two rerolls (biased to differ, degrading gracefully).
+    expect(genCards(container).length).toBe(3);
+    expect(charCards(container).length).toBe(4);
+  });
+
   it('picks a generic upgrade: relays chooseUpgrade, marks it picked, dims the rest, swaps the heading', () => {
     useStore.setState({ isHost: true, result: makeResult({ endlessAvailable: true }) });
     const { container } = render(<ResultScreen />);

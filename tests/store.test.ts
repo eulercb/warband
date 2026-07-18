@@ -36,6 +36,7 @@ function makeSession(onLeave: () => void = noop): NetSession {
     chooseExtraClass: noop,
     swapClass: noop,
     buyEphemeral: noop,
+    rerollOffers: noop,
     setNextReady: noop,
     leave: onLeave,
   };
@@ -499,6 +500,58 @@ describe('ephemeral shop (item 21)', () => {
     expect(ok).toBe(false);
     expect(useStore.getState().myCoins).toBe(1);
     expect(useStore.getState().myEphemeral.revives).toBeUndefined();
+  });
+
+  // item: reroll — a reroll spends coins, bumps the offer salt, relays to the host, and
+  // is capped per stop; it never grants a next-fight perk.
+  it('rerollOffers spends coins, bumps rerollCount, relays, and caps per stop', () => {
+    let relays = 0;
+    const session: NetSession = { ...makeSession(), rerollOffers: () => void relays++ };
+    useStore.getState().setSession(session);
+    useStore.setState({ myCoins: 10, rerollCount: 0, myEphemeral: {} });
+
+    // reroll costs 2; three succeed (REROLL_CAP), the fourth is capped.
+    expect(useStore.getState().rerollOffers()).toBe(true);
+    expect(useStore.getState().rerollOffers()).toBe(true);
+    expect(useStore.getState().rerollOffers()).toBe(true);
+    expect(useStore.getState().rerollCount).toBe(3);
+    expect(useStore.getState().myCoins).toBe(4); // 10 - 3×2
+    expect(relays).toBe(3);
+
+    const capped = useStore.getState().rerollOffers(); // 4th — over the cap
+    expect(capped).toBe(false);
+    expect(useStore.getState().rerollCount).toBe(3); // unchanged
+    expect(useStore.getState().myCoins).toBe(4);
+    expect(relays).toBe(3);
+    // never a perk.
+    expect(useStore.getState().myEphemeral).toEqual({});
+  });
+
+  it('rerollOffers refuses when the hero cannot afford it', () => {
+    useStore.getState().setSession(makeSession());
+    useStore.setState({ myCoins: 1, rerollCount: 0 }); // reroll costs 2
+    expect(useStore.getState().rerollOffers()).toBe(false);
+    expect(useStore.getState().rerollCount).toBe(0);
+    expect(useStore.getState().myCoins).toBe(1);
+  });
+
+  it('buyEphemeral routes a stray reroll id to rerollOffers (never a wasted perk)', () => {
+    let relays = 0;
+    const session: NetSession = { ...makeSession(), rerollOffers: () => void relays++ };
+    useStore.getState().setSession(session);
+    useStore.setState({ myCoins: 10, rerollCount: 0, myEphemeral: {} });
+    const ok = useStore.getState().buyEphemeral('reroll');
+    expect(ok).toBe(true);
+    expect(useStore.getState().rerollCount).toBe(1); // re-drew the offers…
+    expect(useStore.getState().myCoins).toBe(8); // …at the reroll cost (2), not a perk
+    expect(useStore.getState().myEphemeral).toEqual({});
+    expect(relays).toBe(1);
+  });
+
+  it('a new result resets the reroll allowance for the fresh stop', () => {
+    useStore.setState({ rerollCount: 3 });
+    useStore.getState().setResult(null);
+    expect(useStore.getState().rerollCount).toBe(0);
   });
 
   it('resetEphemeralStock clears the pending stock but keeps coins', () => {

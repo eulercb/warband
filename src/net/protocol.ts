@@ -131,6 +131,9 @@ export interface SpecialMsg {
   extraClass?: ClassId;
   /** Ephemeral-shop purchase (item 21): the coin-priced perk this player is buying. */
   buyEphemeral?: EphemeralId;
+  /** item: reroll — spend coins to re-randomize this player's current upgrade offers.
+   * The host coin-gates the spend; offers are re-drawn client-side (deterministic). */
+  rerollOffers?: true;
 }
 
 /**
@@ -197,6 +200,8 @@ export interface NetSession {
   swapClass(target?: ClassId): void;
   /** Buy a coin-priced ephemeral perk for the next fight (item 21). */
   buyEphemeral(id: EphemeralId): void;
+  /** item: reroll — spend coins to re-randomize this player's current upgrade offers. */
+  rerollOffers(): void;
   /** Mark this player ready (or not) to advance to the next boss. */
   setNextReady(ready: boolean): void;
   leave(): void;
