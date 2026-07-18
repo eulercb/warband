@@ -154,7 +154,8 @@ export default function SpecialReward() {
   // Grands are only ever offered for classes the hero actually fields (item 19), and
   // now also cover base skills + subclasses (item 17) and skill-replacing grafts
   // (item 18): a skill grand only while its native slot is still equipped, a subclass
-  // grand only for a picked subclass, a graft grand only while that graft is held.
+  // grand only for a picked subclass, a graft grand while that graft is OWNED (item 8:
+  // it persists through a reclaim, consistent with the graft itself staying re-offerable).
   // A graft grand is class-agnostic, so the same one can surface under more than one
   // owned class — dedupe by id so it shows once.
   // Keep the class each grand was offered under, so its "Now →" preview resolves

@@ -67,6 +67,26 @@ describe('pickBotUpgrades', () => {
     }
   });
 
+  it('re-picks a reclaimed graft but never one still installed (item 8 — shared gate)', () => {
+    // Bots and the host validate class picks through the SAME occupancy-aware gate
+    // (charUpgradeAtMax), so a graft still in its slot is capped for an AI band member…
+    const p = persona({});
+    for (let seed = 1; seed <= 200; seed++) {
+      const pick = pickBotUpgrades('knight', p, [], ['hy_pyromancer'], new Rng(seed));
+      expect(pick.char).not.toBe('hy_pyromancer'); // installed → never re-picked
+    }
+    // …but once reclaimed off its slot it is owned-but-stashed, so the bot may graft it
+    // back in — matching the human offer path, so an AI hero can alternate skills too.
+    const stashed = ['hy_pyromancer', 'restore:a2'];
+    let reoffered = false;
+    for (let seed = 1; seed <= 600 && !reoffered; seed++) {
+      if (pickBotUpgrades('knight', p, [], stashed, new Rng(seed)).char === 'hy_pyromancer') {
+        reoffered = true;
+      }
+    }
+    expect(reoffered).toBe(true); // stashed graft returns to the bot's eligible pool
+  });
+
   it('never offers a boon already at its stacking cap', () => {
     // Surefooted caps at 2; owning two must keep it out of every roll.
     const owned = ['surefooted', 'surefooted'];

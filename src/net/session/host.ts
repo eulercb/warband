@@ -56,7 +56,7 @@ import { recordEncounter } from '../../engine/content/balance';
 import { Rng, mixSeed } from '../../engine/core/math';
 import { isUpgradeId, upgradeMaxStacks } from '../../engine/content/upgrades';
 import type { UpgradeId } from '../../engine/content/upgrades';
-import { isCharUpgradeId, charUpgradeMaxStacks } from '../../engine/content/charUpgrades';
+import { isCharUpgradeId, charUpgradeAtMax } from '../../engine/content/charUpgrades';
 import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
 import { CLASS_IDS } from '../../engine/content/classes';
 import { getEphemeral, isEphemeralId, REROLL_CAP } from '../../engine/content/ephemeral';
@@ -973,8 +973,12 @@ export class Host implements NetSession {
     }
     if (isCharUpgradeId(msg.char) && !this.roundPickedChar.has(peerId)) {
       const arr = this.charUpgrades.get(peerId) ?? [];
-      const have = arr.reduce((n, id) => (id === msg.char ? n + 1 : n), 0);
-      if (have < charUpgradeMaxStacks(msg.char)) {
+      // Occupancy-aware cap (item 8): a GRAFT reclaimed off its slot is still in this
+      // append-only list yet NOT "at max", so the host re-accepts it — matching the
+      // client's offer filter (rollCharChoices) and its optimistic local list. The
+      // authoritative kit the next World spawns from then agrees with the name the HUD
+      // already shows live, so a re-grafted skill's name and cast effect never desync.
+      if (!charUpgradeAtMax(msg.char, arr)) {
         this.roundPickedChar.add(peerId);
         arr.push(msg.char);
         this.charUpgrades.set(peerId, arr);

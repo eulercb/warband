@@ -28,7 +28,13 @@ import {
   previewSubAbility,
   PERSISTENT_STATS,
 } from '../src/engine/content/charUpgrades';
-import { CLASSES, CLASS_IDS, cloneAbilities, getClass } from '../src/engine/content/classes';
+import {
+  CLASSES,
+  CLASS_IDS,
+  cloneAbilities,
+  getClass,
+  slowAttackCooldowns,
+} from '../src/engine/content/classes';
 import type { PlayerAbilityDef, AbilityKind } from '../src/engine/content/classes';
 import { SUBCLASSES, getSubSkill, subclassOfSkill } from '../src/engine/content/subclasses';
 import { setProceduralSeed } from '../src/engine/content/procgen';
@@ -1524,6 +1530,122 @@ describe('rollCharChoices re-offer swap', () => {
 });
 
 // ---------------------------------------------------------------------------
+// item 8 — graft replace / reclaim: the cap gate is OCCUPANCY-based, so a graft
+// alternates in and out all run; the HUD name path and the spawned cast effect
+// resolve from the same replay, so they never desync for a given owned list.
+// ---------------------------------------------------------------------------
+
+describe('charUpgradeAtMax — graft occupancy gate (item 8)', () => {
+  it('a non-graft boon is capped by its plain owned count', () => {
+    const cap = charUpgradeMaxStacks('kn_bulwark');
+    expect(charUpgradeAtMax('kn_bulwark', [])).toBe(false);
+    expect(charUpgradeAtMax('kn_bulwark', ['kn_bulwark'])).toBe(false); // below cap
+    expect(charUpgradeAtMax('kn_bulwark', Array<string>(cap).fill('kn_bulwark'))).toBe(true);
+  });
+
+  it('a graft is "at max" only WHILE it occupies its slot, so a reclaimed one stays pickable', () => {
+    expect(charUpgradeAtMax('hy_pyromancer', [])).toBe(false); // never taken → offerable
+    expect(charUpgradeAtMax('hy_pyromancer', ['hy_pyromancer'])).toBe(true); // held in a2 → not re-offered
+    // Reclaimed off its slot but still in the append-only list → NOT capped → re-offerable.
+    expect(charUpgradeAtMax('hy_pyromancer', ['hy_pyromancer', 'restore:a2'])).toBe(false);
+    // …and re-grafting installs it again (the player alternates the skill back and forth).
+    expect(charUpgradeAtMax('hy_pyromancer', ['hy_pyromancer', 'restore:a2', 'hy_pyromancer'])).toBe(
+      true,
+    );
+  });
+
+  it('a graft buried by ANOTHER graft on the same slot is no longer at max', () => {
+    // hy_pyromancer and hy_fieldmedic both replace a2; the later pick seizes the slot.
+    const owned = ['hy_pyromancer', 'hy_fieldmedic'];
+    expect(charUpgradeAtMax('hy_pyromancer', owned)).toBe(false); // buried → re-offerable
+    expect(charUpgradeAtMax('hy_fieldmedic', owned)).toBe(true); // the live occupant
+  });
+});
+
+describe('graft name↔effect never desync for a given owned list (item 8/i)', () => {
+  // The report: "the name changed to Hex but casting still did Blink." Root cause is a
+  // stale spawn-time kit vs a live-recomputed name. Both the HUD table (previewAbilityTable)
+  // and the spawned kit (applyCharUpgrades) resolve from the SAME replay of the owned list,
+  // so once the authoritative list carries the pick they agree — name AND effect together.
+  const lists: string[][] = [
+    ['hy_hexbrand'], // Mage's Blink → Warlock's Hex, freshly grafted (the report's exact case)
+    ['hy_hexbrand', 'restore:a3'], // reclaimed → Blink back in a3
+    ['hy_hexbrand', 'restore:a3', 'hy_hexbrand'], // re-grafted → Hex again, evolutions retained
+  ];
+  for (const owned of lists) {
+    it(`HUD table matches the spawned cast for ${JSON.stringify(owned)}`, () => {
+      const shown = previewAbilityTable('mage', owned).a3; // what the HUD/card shows
+      // Reproduce the sim's spawn exactly: applyCharUpgrades then the global attack
+      // slow-down (world.ts:766 + 772), so this is the ability the hero really casts.
+      const p = apply('mage', owned);
+      slowAttackCooldowns(p.abilities!);
+      const cast = p.abilities!.a3;
+      expect(cast.name).toBe(shown.name); // name agrees…
+      expect(JSON.stringify(cast)).toBe(JSON.stringify(shown)); // …and so does the whole effect
+    });
+  }
+
+  it('grafting actually changes the cast effect, not merely the displayed name', () => {
+    const native = apply('mage', []).abilities!.a3; // Blink
+    const grafted = apply('mage', ['hy_hexbrand']).abilities!.a3; // Hex
+    expect(grafted.name).not.toBe(native.name); // name changed…
+    expect(JSON.stringify(grafted)).not.toBe(JSON.stringify(native)); // …and the effect changed with it
+  });
+});
+
+describe('rollCharChoices re-offers a reclaimed graft on both reward paths (item 8/ii-iii)', () => {
+  // The between-boss RewardRoom and the endless ResultScreen both draw from rollCharChoices,
+  // so one occupancy-aware gate keeps them consistent. hy_pyromancer is HYBRID[0] and knight
+  // may wield it, so a forced hybrid slot (0 < HYBRID_OFFER_CHANCE) at index 0 lands on it —
+  // but ONLY while it is eligible (not currently installed).
+  it('surfaces a stashed graft again after a reclaim', () => {
+    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0, 0]), ['hy_pyromancer', 'restore:a2']);
+    expect(off[off.length - 1]).toBe('hy_pyromancer'); // reclaimed → re-offerable
+  });
+
+  it('never re-offers a graft still installed in its slot', () => {
+    const off = rollCharChoices('knight', 4, seq([0, 0, 0, 0, 0, 0]), ['hy_pyromancer']);
+    expect(off).not.toContain('hy_pyromancer'); // held → filtered out of the eligible hybrids
+  });
+});
+
+describe('offerableGrands stays consistent with the graft across a reclaim (item 8/iii)', () => {
+  it('a graft grand persists through graft → reclaim → re-graft', () => {
+    const held = offerableGrands('knight', ['hy_pyromancer'], []).map((d) => d.id);
+    expect(held).toContain('hy_pyromancer_g_a'); // installed → offered
+    const reclaimed = offerableGrands('knight', ['hy_pyromancer', 'restore:a2'], []).map((d) => d.id);
+    expect(reclaimed).toContain('hy_pyromancer_g_a'); // stashed but owned → STILL offered (was the bug)
+    const regrafted = offerableGrands(
+      'knight',
+      ['hy_pyromancer', 'restore:a2', 'hy_pyromancer'],
+      [],
+    ).map((d) => d.id);
+    expect(regrafted).toContain('hy_pyromancer_g_a'); // re-installed → offered
+  });
+
+  it('a graft grand taken WHILE the graft is stashed accrues onto the graft, not the native', () => {
+    // Newly reachable via item 8 (the grand is now offered while stashed). Graft Fireball
+    // (a2) → reclaim Shield Wall → take Living Cataclysm (+60 dmg / +80 radius) while Fireball
+    // is stashed. The grand must land on the stashed Fireball's own def, leaving the reclaimed
+    // Shield Wall byte-identical to a plain reclaim, then re-seat intact when Fireball returns.
+    const stashed = apply('knight', ['hy_pyromancer', 'restore:a2', 'hy_pyromancer_g_a']).abilities!;
+    const plain = apply('knight', ['hy_pyromancer', 'restore:a2']).abilities!;
+    expect(stashed.a2.name).toBe('Shield Wall'); // native still equipped…
+    expect(JSON.stringify(stashed.a2)).toBe(JSON.stringify(plain.a2)); // …and untouched by the grand
+
+    const reGrafted = apply('knight', [
+      'hy_pyromancer',
+      'restore:a2',
+      'hy_pyromancer_g_a',
+      'hy_pyromancer', // re-graft: the stashed Fireball returns WITH the grand applied
+    ]).abilities!;
+    expect(reGrafted.a2.name).toBe('Fireball');
+    expect(reGrafted.a2.damage).toBe(140); // 80 + 60 accrued while stashed
+    expect(reGrafted.a2.impactRadius).toBe(190); // 110 + 80
+  });
+});
+
+// ---------------------------------------------------------------------------
 // rollCharChoices — graceful degradation + reachability (items 12, 13, 14)
 // ---------------------------------------------------------------------------
 
@@ -2224,10 +2346,13 @@ describe('offerableGrands (items 17 & 19)', () => {
     expect(held).not.toContain('hy_shadowpact_g_a'); // a graft the hero doesn't hold
   });
 
-  it('stops offering a graft grand once the graft is reclaimed away (item 18)', () => {
+  it('keeps offering a graft grand after the graft is reclaimed away (item 8)', () => {
+    // Item 8/(iii): a reclaimed graft is owned-but-stashed and stays re-offerable (its pick
+    // returns via rollCharChoices), so its grand must persist consistently — the player can
+    // re-graft the skill and keep improving it, and any grand already applied is re-seated.
     const ids = offerableGrands('knight', ['hy_pyromancer', 'restore:a2'], []).map((d) => d.id);
-    expect(ids).not.toContain('hy_pyromancer_g_a'); // Fireball dropped → its grand is gone
-    expect(ids).not.toContain('hy_pyromancer_g_b');
+    expect(ids).toContain('hy_pyromancer_g_a'); // Fireball stashed but owned → grand still offered
+    expect(ids).toContain('hy_pyromancer_g_b');
   });
 
   it('never offers a graft grand to a class the graft excludes (item 18)', () => {
