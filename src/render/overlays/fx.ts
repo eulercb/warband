@@ -41,6 +41,9 @@ function isHeavyBossCast(shape: string | undefined, damage: number | undefined):
 
 /** Confetti palette for the post-win fireworks. */
 const FIREWORK_COLORS = [0xffe066, 0xff7a6e, 0x8fd3ff, 0x9c5cf0, 0x66ff88, 0xf2c14e];
+// Somber palette for the defeat lap — dim ash-grey + a bruised crimson, the desaturated
+// counterpoint to the bright fireworks.
+const DEFEAT_COLORS = [0x5a5f68, 0x6a2b30, 0x8a7f86, 0x3f434b];
 
 // --- Pooled objects ---------------------------------------------------------
 
@@ -329,12 +332,49 @@ export class Fx {
           });
           break;
         }
+        case 'fightStart': {
+          // A fight just began — a heroic beat: a camera thump and an amber ring
+          // blooming up at the boss, so the encounter opens with intent (the boss-name
+          // "Get ready" banner is raised by GameView from this same event).
+          camera.addShake(10);
+          this.spawnFloater(e.pos, 'FIGHT!', 0xffd23f);
+          this.spawnBurst(e.pos, {
+            startR: 8,
+            endR: 260,
+            ttl: 0.7,
+            color: 0xffcf5a,
+            alpha0: 0.75,
+            filled: false,
+            lineWidth: 5,
+            rise: 12,
+          });
+          break;
+        }
         case 'victory': {
           // The fight is won — kick off a procedural fireworks celebration that
           // update() keeps feeding for a couple of seconds (the victory lap).
           this.celebration = { age: 0, dur: 2.6, sinceLast: 0, center: { ...e.pos } };
           camera.addShake(12);
           this.spawnFloater(e.pos, 'VICTORY!', 0xffe066);
+          break;
+        }
+        case 'defeat': {
+          // The party wiped — a SOMBER collapse, distinct from the victory fireworks: a
+          // hard camera thump, a dark shockwave IMPLODING inward at the victorious boss,
+          // and a slow rain of grey embers that updateDefeat() feeds for the defeat lap
+          // (the "The warband falls" banner is raised by GameView from this event).
+          this.defeat = { age: 0, dur: 2.2, sinceLast: 0, center: { ...e.pos } };
+          camera.addShake(20);
+          this.spawnFloater(e.pos, 'DEFEAT', 0xc0555a);
+          this.spawnBurst(e.pos, {
+            startR: 380,
+            endR: 30,
+            ttl: 1.0,
+            color: 0x6a2b30,
+            alpha0: 0.8,
+            filled: false,
+            lineWidth: 6,
+          });
           break;
         }
         case 'deadline': {
@@ -380,6 +420,39 @@ export class Fx {
 
   /** Live fireworks state during the post-win victory lap (null = none). */
   private celebration: { age: number; dur: number; sinceLast: number; center: Vec2 } | null = null;
+
+  /** Live somber-ember state during the post-wipe defeat lap (null = none). */
+  private defeat: { age: number; dur: number; sinceLast: number; center: Vec2 } | null = null;
+
+  /** Feed the defeat embers: slow, dim, desaturated motes sinking around the fallen
+   *  party — the visual opposite of the victory fireworks (down, grey, sparse). */
+  private updateDefeat(dt: number): void {
+    const c = this.defeat;
+    if (!c) return;
+    c.age += dt;
+    c.sinceLast += dt;
+    if (c.age >= c.dur) {
+      this.defeat = null;
+      return;
+    }
+    while (c.sinceLast >= 0.16) {
+      c.sinceLast -= 0.16;
+      const ang = Math.random() * Math.PI * 2;
+      const d = 40 + Math.random() * 320;
+      const pos = { x: c.center.x + Math.cos(ang) * d, y: c.center.y + Math.sin(ang) * d };
+      const color = DEFEAT_COLORS[(Math.random() * DEFEAT_COLORS.length) | 0];
+      this.spawnBurst(pos, {
+        startR: 2,
+        endR: 20 + Math.random() * 30,
+        ttl: 0.7 + Math.random() * 0.4,
+        color,
+        alpha0: 0.5,
+        filled: Math.random() < 0.25,
+        lineWidth: 2,
+        rise: -(14 + Math.random() * 20), // sinks DOWNWARD (embers falling), unlike fireworks
+      });
+    }
+  }
 
   /** Feed the victory fireworks: colorful bursts raining around the arena. */
   private updateCelebration(dt: number): void {
@@ -466,8 +539,9 @@ export class Fx {
   update(dtMs: number): void {
     const dt = dtMs / 1000;
 
-    // Victory fireworks (spawns more bursts while a celebration is live).
+    // Victory fireworks / defeat embers (each spawns more bursts while live).
     this.updateCelebration(dt);
+    this.updateDefeat(dt);
 
     // Decay hit flashes.
     for (const [id, v] of this.flashes) {

@@ -24,6 +24,7 @@ import { SwapGesture, hoveredSlot } from '../../input/radial';
 import { rawGamepadAim } from '../../input/gamepad';
 import { touchSwapAim } from '../../input/touch';
 import { ARENA_W, ARENA_H } from '../../engine/core/constants';
+import { getMonster } from '../../engine/content/monsters';
 import type { ClassId, InputCommand, InputState, Vec2 } from '../../engine/core/types';
 
 /** Gamepad "Options / Start" button index (standard mapping) for the menu toggle. */
@@ -228,6 +229,16 @@ export default function GameView() {
             // the transient banner instead of a ticking on-screen timer.
             bannerSeq += 1;
             hudSet({ banner: { text: e.text, good: e.good === true, seq: bannerSeq } });
+          } else if (e.t === 'fightStart') {
+            // Fight-start transition: name the boss the band is about to face.
+            bannerSeq += 1;
+            const boss = state.bosses[0];
+            const name = boss ? getMonster(boss.monsterId).name : 'the boss';
+            hudSet({ banner: { text: `${name} — get ready!`, good: true, seq: bannerSeq } });
+          } else if (e.t === 'defeat') {
+            // Party-wipe transition: a somber close, distinct from the victory banner.
+            bannerSeq += 1;
+            hudSet({ banner: { text: 'The warband falls', good: false, seq: bannerSeq } });
           }
         }
 

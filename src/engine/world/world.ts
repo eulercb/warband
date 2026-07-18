@@ -1054,6 +1054,13 @@ export class World {
     this.events = [];
     this.elapsed += dt;
 
+    // item: fight-start transition — on the very first step of a REAL boss fight (not
+    // the reward room / muster hall / practice), announce the fight so it opens with a
+    // boss-name banner + camera beat instead of a hard cut. Peer-synced via the snapshot.
+    if (this.tick === 0 && this.scene === null && !this.practice && this.bosses.length > 0) {
+      this.events.push({ t: 'fightStart', pos: { ...this.bosses[0].pos } });
+    }
+
     this.tickTimers(dt);
     this.applyInputs(dt, inputs);
     this.stepGlides(dt); // item 2: advance in-progress dash/leap glides host-side
@@ -2954,7 +2961,12 @@ export class World {
       this.finished = true;
       this.outcome = 'defeat';
       this.endMs = this.elapsed * 1000;
-      // If the closing chasm caused this wipe, fire the classic time's-up cue at
+      // item: party-wipe transition — the boss won. Fire a defeat cue at the victorious
+      // boss (mirroring the victory push) so the wipe closes with a somber transition +
+      // banner instead of cutting straight to the result screen.
+      const center = this.bosses[0] ? { ...this.bosses[0].pos } : { x: 0, y: 0 };
+      this.events.push({ t: 'defeat', pos: center });
+      // If the closing chasm caused this wipe, ALSO fire the classic time's-up cue at
       // its centre (items 21/24/27) — the render layer flashes the "TIME'S UP" burst.
       if (this.deadlineChasm) {
         this.events.push({ t: 'deadline', pos: { ...this.deadlineChasm.center } });

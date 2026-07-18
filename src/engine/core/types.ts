@@ -1036,8 +1036,16 @@ export type GameEvent =
   // A stun failed to land because the target's diminishing returns hit the
   // immunity floor (see combat.applyStun). Renderer flashes "Resisted".
   | { t: 'stunResist'; id: EntityId; pos: Vec2 }
+  // A fight just BEGAN (item: fight-start transition) — emitted on the World's first
+  // step of a real boss fight (not the reward room / muster hall / practice). Drives a
+  // boss-name "Get ready" banner + a camera beat so a fight opens with intent.
+  | { t: 'fightStart'; pos: Vec2 }
   // The fight was just won — heroes cheer and fireworks fly (victory lap).
   | { t: 'victory'; pos: Vec2 }
+  // The party just WIPED (item: party-wipe transition) — the boss won. Drives a somber
+  // collapse + a "The warband falls" banner, mirroring the victory lap. Distinct from
+  // the hardcore `deadline` cue (which still fires for a closing-chasm timeout too).
+  | { t: 'defeat'; pos: Vec2 }
   // Hardcore kill-deadline expired (item 11) — the clock ran out with a boss
   // still up and the band wiped. Drives a "time's up" cue on the final frame.
   | { t: 'deadline'; pos: Vec2 }

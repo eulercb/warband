@@ -86,6 +86,9 @@ interface NetAction<T> {
 
 /** How long (ms) the post-win victory dance plays before the result screen. */
 const VICTORY_LAP_MS = 2600;
+/** How long (ms) the post-wipe defeat transition plays before the result screen
+ *  (item: party-wipe transition — mirrors the victory lap, a touch shorter). */
+const DEFEAT_LAP_MS = 2200;
 
 /** One connected (non-host) player's lobby entry. */
 interface PeerEntry {
@@ -298,9 +301,9 @@ export class Host implements NetSession {
   private lastTime = 0;
   private acc = 0;
   /** Wall-clock deadline of the post-win victory lap (0 = no lap pending). */
-  private victoryLapUntil = 0;
+  private resultLapUntil = 0;
   /** Backstop for the lap: rAF stalls in hidden tabs, a timer does not. */
-  private victoryLapTimer: ReturnType<typeof setTimeout> | null = null;
+  private resultLapTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Debug: keys already logged once (first-input-per-peer, first snapshot, …).
   private readonly loggedOnce = new Set<string>();
@@ -688,7 +691,7 @@ export class Host implements NetSession {
   /** Spin up a fresh World for `runOrder[runIndex]` and start the sim loop. */
   private beginFight(): void {
     this.clearResumeCountdown();
-    this.clearVictoryLap();
+    this.clearResultLap();
     const slot = this.runOrder[this.runIndex] ?? [this.monsterId];
     const seed = this.fightSeed();
     // Chaos Draft (item 10): each boss slot drafts a random monster off the fight
@@ -1136,7 +1139,7 @@ export class Host implements NetSession {
 
   returnToLobby(): void {
     this.stopLoop();
-    this.clearVictoryLap();
+    this.clearResultLap();
     this.clearResumeCountdown();
     this.world = null;
     this.localPlayerId = null;
@@ -1175,7 +1178,7 @@ export class Host implements NetSession {
     netLog('host', 'leaving room (host)');
     this.byeAction.send({ reason: 'hostLeft' });
     this.stopLoop();
-    this.clearVictoryLap();
+    this.clearResultLap();
     this.clearResumeCountdown();
     this.stopDiag();
     // Fire-and-forget: room teardown races the tab closing; we don't await it.
@@ -1235,28 +1238,27 @@ export class Host implements NetSession {
     }
 
     if (world.finished) {
-      // Victory lap: hold the result screen for a beat so everyone sees the
-      // heroes' victory dance + fireworks (the `victory` event already shipped
-      // in the final snapshot). Defeats cut straight to the result. A timer
-      // backstops the rAF-driven loop so a hidden host tab (rAF suspended)
-      // can't stall the result screen for every client.
-      if (world.outcome === 'victory') {
-        if (this.victoryLapUntil === 0) {
-          this.victoryLapUntil = now + VICTORY_LAP_MS;
-          this.victoryLapTimer = setTimeout(() => this.finishFight(), VICTORY_LAP_MS + 150);
-        }
-        if (now < this.victoryLapUntil) return;
+      // Result lap: hold the result screen for a beat so everyone sees the end-of-fight
+      // transition — the heroes' victory dance + fireworks on a win, or the somber
+      // collapse on a wipe (item: party-wipe transition). The matching `victory`/`defeat`
+      // event already shipped in the final snapshot. A timer backstops the rAF-driven
+      // loop so a hidden host tab (rAF suspended) can't stall the result for every client.
+      const lapMs = world.outcome === 'victory' ? VICTORY_LAP_MS : DEFEAT_LAP_MS;
+      if (this.resultLapUntil === 0) {
+        this.resultLapUntil = now + lapMs;
+        this.resultLapTimer = setTimeout(() => this.finishFight(), lapMs + 150);
       }
+      if (now < this.resultLapUntil) return;
       this.finishFight();
     }
   }
 
-  private clearVictoryLap(): void {
-    if (this.victoryLapTimer !== null) {
-      clearTimeout(this.victoryLapTimer);
-      this.victoryLapTimer = null;
+  private clearResultLap(): void {
+    if (this.resultLapTimer !== null) {
+      clearTimeout(this.resultLapTimer);
+      this.resultLapTimer = null;
     }
-    this.victoryLapUntil = 0;
+    this.resultLapUntil = 0;
   }
 
   /** Synthesize AI input for each bot from the current world state (per step). */
@@ -1274,7 +1276,7 @@ export class Host implements NetSession {
     const world = this.world;
     if (!world) return;
     this.resultSent = true;
-    this.clearVictoryLap();
+    this.clearResultLap();
     this.clearResumeCountdown();
     this.paused = false;
     this.pausedByName = undefined;
