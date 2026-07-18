@@ -13,7 +13,17 @@ import { Rng, mixSeed } from '../core/math';
 import { hashStr } from './procgen';
 import { forgeVariant } from './forge';
 
-export type EphemeralId = 'speed' | 'damage' | 'defense' | 'potion' | 'revive' | 'retry';
+export type EphemeralId = 'speed' | 'damage' | 'defense' | 'potion' | 'revive' | 'retry' | 'reroll';
+
+/**
+ * item: reroll — how many times a hero may re-randomize their current upgrade offers
+ * per between-boss stop. Recurring-but-CAPPED (not one-time, not unlimited): a single
+ * reroll is too weak to steer a build, while an unlimited one lets a coin-rich player
+ * brute-force the exact offers they want, defeating the point of a random shop. A few
+ * cheap rerolls let a player nudge toward the build they want while keeping randomness
+ * and leaving coins a meaningful choice against potions / buffs.
+ */
+export const REROLL_CAP = 3;
 
 /** How the perk is consumed. */
 export type EphemeralKind =
@@ -84,6 +94,14 @@ export const EPHEMERAL: Record<EphemeralId, EphemeralDef> = {
     kind: 'meta',
     hardcoreOnly: true,
   },
+  reroll: {
+    id: 'reroll',
+    name: "Gambler's Coin",
+    icon: '🎲',
+    desc: `Re-randomize your current upgrade offers — biased to differ (up to ${REROLL_CAP}/stop)`,
+    cost: 2, // the cheapest stall — a small, repeatable nudge toward the build you want
+    kind: 'meta', // a between-boss ACTION, not a next-fight perk (like retry); no stock
+  },
 };
 
 export const EPHEMERAL_IDS: EphemeralId[] = Object.keys(EPHEMERAL) as EphemeralId[];
@@ -103,6 +121,7 @@ const EPHEMERAL_NAME_BANKS: Record<EphemeralId, string[]> = {
   potion: ['Healing Vial', 'Mending Draught', 'Restorative Phial', 'Salve of Renewal'],
   revive: ['Phoenix Charm', 'Everflame Token', 'Second Wind Charm', 'Rebirth Sigil'],
   retry: ['Second Chance', "Fate's Reroll", 'Last Stand Pact', 'Mulligan Rite'],
+  reroll: ["Gambler's Coin", 'Chancewheel Token', 'Loaded Die', "Fortune's Whim"],
 };
 
 /**

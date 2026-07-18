@@ -529,7 +529,20 @@ export const ADD_ATTACK_RANGE = 26; // u reach beyond radii
 
 // --- Physics ---
 export const SEPARATION_ITERATIONS = 2;
-export const KNOCKBACK_FRICTION = 0; // knockback is applied instantly as displacement
+
+// item 2 — forced movement (knockback / pull / grab) travels over a few ticks as an
+// authoritative slide instead of an instant pos write, so a push reads as a push and
+// not a teleport. Because the authoritative `pos` advances each tick (world.stepShoves),
+// the slide replicates + interpolates to peers through the normal snapshot pipeline —
+// heroes, bosses AND adds all slide identically with no client-side work. The travel
+// SPEED sets how long a given distance takes; a 90–240u shove resolves over ~0.14–0.34s
+// (≈3–7 ticks at 20Hz), clamped so a tiny nudge still eases and a big fling doesn't
+// crawl. Magnitudes/endpoints are unchanged — only the instantaneous jump becomes travel.
+export const SHOVE_SPEED = 850; // world units / s
+export const SHOVE_MIN_TIME = 0.12; // s — floor (a short shove still eases in)
+export const SHOVE_MAX_TIME = 0.34; // s — ceiling (a huge fling doesn't crawl)
+/** Below this a shove isn't worth animating — it snaps instantly (imperceptible). */
+export const SHOVE_MIN = 24; // world units
 
 // --- Class colors (PixiJS hex) ---
 export const CLASS_COLORS: Record<string, number> = {

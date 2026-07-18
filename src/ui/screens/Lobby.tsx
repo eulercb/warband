@@ -22,7 +22,7 @@ import {
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import { LoadoutEditor } from './LoadoutEditor';
 import { CodexCard } from './CodexCard';
-import { CLASS_IDS, CLASSES } from '../../engine/content/classes';
+import { CLASS_IDS, getClass } from '../../engine/content/classes';
 import { MONSTER_IDS, MONSTERS } from '../../engine/content/monsters';
 import { MAX_PLAYERS } from '../../engine/core/constants';
 import type { ClassId } from '../../engine/core/types';
@@ -173,7 +173,7 @@ export function Lobby() {
                       addBot(id);
                     }}
                   >
-                    {CLASSES[id].name}
+                    {getClass(id).name}
                   </button>
                 ))}
                 {partyFull ? <span className="wb-addbot-full">Party full</span> : null}
@@ -213,7 +213,7 @@ export function Lobby() {
                 <li key={p.peerId} className="wb-player-row">
                   <span className={`wb-player-name cls-${p.classId}`}>{p.name || 'Hero'}</span>
                   <span className={`wb-player-class cls-${p.classId}`}>
-                    {CLASSES[p.classId].name}
+                    {getClass(p.classId).name}
                   </span>
                   <span className="wb-player-tags">
                     {p.isHost ? <span className="wb-badge wb-badge-host">Host</span> : null}

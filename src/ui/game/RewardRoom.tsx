@@ -43,6 +43,7 @@ import {
 import {
   getEphemeral,
   EPHEMERAL_IDS,
+  REROLL_CAP,
   type EphemeralId,
   type EphemeralStock,
 } from '../../engine/content/ephemeral';
@@ -74,19 +75,40 @@ function rollOffers(
   extraClasses: ClassId[],
   subSkills: string[],
   rewardSeed?: number,
+  // item: reroll — how many times the hero has re-randomized this stop's offers. Each
+  // reroll advances the RNG salt to a fresh draw AND biases it away from the previous
+  // draw's ids, so a purchase actually changes the offers. rerollCount 0 reproduces the
+  // original seeded draw byte-for-byte (same salt, no exclude), so non-reroll runs are
+  // unchanged.
+  rerollCount = 0,
 ): RewardOffers {
-  // With a shared seed, roll from a deterministic per-class stream so the same
-  // seed reproduces the same boons between the same bosses (seed mode / daily
-  // run). Without one (legacy single fights), fall back to Math.random.
-  let rnd: () => number = Math.random;
-  if (rewardSeed != null) {
-    const rng = new Rng(mixSeed(rewardSeed, CLASS_IDS.indexOf(classId) + 1));
-    rnd = () => rng.next();
+  const classSalt = CLASS_IDS.indexOf(classId) + 1;
+  // Replay the draw from 0..rerollCount so each reroll excludes the PREVIOUS draw's ids
+  // (a soft bias; the roll degrades gracefully if the pool would be exhausted). Bounded
+  // by the reroll cap, so this loops a handful of times at most.
+  let gen: UpgradeId[] = [];
+  let chr: string[] = [];
+  let exGen: UpgradeId[] = [];
+  let exChar: string[] = [];
+  for (let k = 0; k <= rerollCount; k++) {
+    // With a shared seed, roll from a deterministic per-class stream so the same seed
+    // reproduces the same boons between the same bosses (seed mode / daily run). Without
+    // one (legacy single fights), fall back to Math.random.
+    let rnd: () => number = Math.random;
+    if (rewardSeed != null) {
+      // k===0 keeps the ORIGINAL salt so the base offers are byte-identical; k>0 folds
+      // the reroll count in for a fresh stream.
+      const seed = k === 0 ? mixSeed(rewardSeed, classSalt) : mixSeed(rewardSeed, classSalt, k);
+      const rng = new Rng(seed);
+      rnd = () => rng.next();
+    }
+    gen = rollUpgradeChoices(3, rnd, ownedGen, exGen);
+    // Multiclass heroes see every owned class's upgrades, weighted toward the main;
+    // per-sub-skill boons (item 6) surface only for the sub skills the hero equips.
+    chr = rollCharChoices(classId, 4, rnd, ownedChar, extraClasses, subSkills, exChar);
+    exGen = gen; // the next reroll biases away from THIS draw
+    exChar = chr;
   }
-  const gen = rollUpgradeChoices(3, rnd, ownedGen);
-  // Multiclass heroes see every owned class's upgrades, weighted toward the main;
-  // per-sub-skill boons (item 6) surface only for the sub skills the hero equips.
-  const chr = rollCharChoices(classId, 4, rnd, ownedChar, extraClasses, subSkills);
   return {
     generic: gen.map((id) => {
       const u = getUpgrade(id);
@@ -115,12 +137,14 @@ function buildShopOffers(hardcore: boolean): ShopOffer[] {
   });
 }
 
-/** Which shop ids can't be bought again — single-buy passives already owned (item 2). */
-function soldOutIds(stock: EphemeralStock): string[] {
+/** Which shop ids can't be bought again — single-buy passives already owned (item 2),
+ *  and the reroll once its per-stop cap is spent (item: reroll). */
+function soldOutIds(stock: EphemeralStock, rerollCount: number): string[] {
   const out: string[] = [];
   if (stock.speed) out.push('speed');
   if (stock.damage) out.push('damage');
   if (stock.defense) out.push('defense');
+  if (rerollCount >= REROLL_CAP) out.push('reroll');
   return out;
 }
 
@@ -138,6 +162,8 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   // each result phase, so this is stable for the room's whole lifetime). The
   // owned picks are snapshotted at mount so claiming here never re-rolls the
   // floor — only maxed-out boons carried IN from prior bosses are filtered.
+  // item: reroll — the offers re-draw whenever the hero buys a reroll (rerollCount bumps).
+  const rerollCount = useStore((s) => s.rerollCount);
   const offers = useMemo(
     () =>
       rollOffers(
@@ -147,8 +173,9 @@ export default function RewardRoom({ result }: { result: FightResult }) {
         useStore.getState().myExtraClasses,
         useStore.getState().mySubSkills,
         result.rewardSeed,
+        rerollCount,
       ),
-    [localClass, result.rewardSeed],
+    [localClass, result.rewardSeed, rerollCount],
   );
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -294,7 +321,10 @@ export default function RewardRoom({ result }: { result: FightResult }) {
         // item 2: mirror the coin purse + sold-out passives so the walk-up shop gates
         // buys exactly like the List-view stall.
         const shopState = useStore.getState();
-        scene.setShopState(shopState.myCoins, soldOutIds(shopState.myEphemeral));
+        scene.setShopState(
+          shopState.myCoins,
+          soldOutIds(shopState.myEphemeral, shopState.rerollCount),
+        );
 
         const state = scene.frame(now, uiOpen);
         const localId = state.localPlayerId;
@@ -333,9 +363,14 @@ export default function RewardRoom({ result }: { result: FightResult }) {
         }
 
         // item 2: walk-up shop buys → the same optimistic store.buyEphemeral the
-        // List-view stall uses (host validates against its coin ledger).
+        // List-view stall uses (host validates against its coin ledger). item: reroll —
+        // the reroll stall is an ACTION (re-draw the offers), routed to rerollOffers.
         for (const b of scene.takeShopBuys()) {
-          if (useStore.getState().buyEphemeral(b.id as EphemeralId)) sfx.play('uiConfirm');
+          const ok =
+            b.id === 'reroll'
+              ? useStore.getState().rerollOffers()
+              : useStore.getState().buyEphemeral(b.id as EphemeralId);
+          if (ok) sfx.play('uiConfirm');
         }
 
         // Readiness follows a committed vortex descent (or a list-view toggle).

@@ -107,10 +107,11 @@ export interface CharUpgradeDef {
   subSkillId?: string;
   /**
    * A GRAFT grand (item 18): tied to a skill-replacing hybrid graft by its id (e.g.
-   * `hy_pyromancer`). Offered only while the hero currently holds that graft (its id
-   * occupies the slot it replaced), and its `apply` accrues onto the grafted skill
-   * itself — live in its slot or stashed after a reclaim — never onto a native skill
-   * that has reclaimed the slot. Class-agnostic (`classId: 'any'`). Set by `gg`.
+   * `hy_pyromancer`). Offered while the hero OWNS that graft and can wield it — it
+   * persists through a reclaim (item 8), consistent with the graft itself staying
+   * re-offerable — and its `apply` accrues onto the grafted skill itself — live in its
+   * slot or stashed after a reclaim — never onto a native skill that has reclaimed the
+   * slot. Class-agnostic (`classId: 'any'`). Set by `gg`.
    */
   graftId?: string;
   apply: (ctx: CharUpgradeCtx) => void;
@@ -4339,8 +4340,39 @@ export function charUpgradeMaxStacks(id: string): number {
   return CHAR_UPGRADES[id]?.maxStacks ?? MAX_SKILL_STACKS;
 }
 
-/** Whether the hero already owns `id` at its stacking cap (so it shouldn't reroll). */
+/**
+ * item 18/reclaim — whether a GRAFT currently OCCUPIES its replaced slot, computed from
+ * the owned list alone (class-agnostic; keys off the `replaces` data model, so a newly
+ * added graft is covered automatically). A graft is append-only in `owned`, so its live
+ * state is the net of its own picks vs `restore:<slot>` reclaims and any OTHER graft that
+ * later seizes the same slot. Distinguishes "installed" from "owned-but-stashed" — the
+ * missing distinction behind the reclaim bugs (a stashed graft must stay re-offerable and
+ * re-pickable so a hero can swap the skill back and forth). Given the graft's replaced
+ * `slot` (the caller already resolved it), so there is no unreachable "not a graft" guard.
+ */
+function graftHeld(graftId: string, slot: AbilitySlot, owned: readonly string[]): boolean {
+  let held = false;
+  for (const id of owned) {
+    if (id === graftId) held = true;
+    else if (parseRestore(id) === slot)
+      held = false; // native reclaimed this slot
+    else if (CHAR_UPGRADES[id]?.replaces === slot) held = false; // another graft took the slot
+  }
+  return held;
+}
+
+/**
+ * Whether `id` is at its stacking cap, so it should not be re-offered / re-picked. A
+ * GRAFT (maxStacks 1) is special: "at max" means CURRENTLY INSTALLED, not merely owned —
+ * a graft reclaimed off its slot (still in the append-only owned list) is NOT at max, so
+ * it can be re-offered and re-grafted (the replay engine re-seats the stashed def with its
+ * boons intact). Every other upgrade is the plain owned-count vs its cap.
+ */
 export function charUpgradeAtMax(id: string, owned: readonly string[]): boolean {
+  // A graft is capped only while it occupies its slot (item 18/reclaim); a stashed one
+  // is re-offerable so the hero can alternate the skill back and forth.
+  const slot = CHAR_UPGRADES[id]?.replaces;
+  if (slot) return graftHeld(id, slot, owned);
   const have = owned.reduce((n, o) => (o === id ? n + 1 : n), 0);
   return have >= charUpgradeMaxStacks(id);
 }
@@ -4421,9 +4453,12 @@ export function reofferCandidates(classId: ClassId, owned: readonly string[]): s
  *   • base-SKILL grands — only while that slot still holds its NATIVE skill, so a
  *     grafted-over slot never offers its lost skill's grand;
  *   • SUBCLASS grands — only for subclasses the hero has actually picked;
- *   • GRAFT grands (item 18) — only while the hero currently holds that graft (its
- *     id occupies the slot it replaced). These are class-agnostic, so the SAME graft
- *     grand can surface for more than one owned class; the caller dedupes by id.
+ *   • GRAFT grands (item 18) — while the hero OWNS that graft, even if it is currently
+ *     reclaimed off its slot. A stashed graft stays re-offerable (charUpgradeAtMax is
+ *     occupancy-aware) and re-seats its grands intact on re-graft, so its grand must
+ *     persist across a reclaim too — else the graft returns but its grand stays gone,
+ *     the exact path-split of item 8. Class-agnostic, so the SAME graft grand can
+ *     surface for more than one owned class; the caller dedupes by id.
  * A grand already held at its (1) cap drops out. Pure. See SpecialReward.tsx.
  */
 export function offerableGrands(
@@ -4445,13 +4480,18 @@ export function offerableGrands(
     if (d.subclassId && !pickedSubclasses.has(d.subclassId)) continue;
     out.push(d);
   }
-  // Graft grands (item 18): offered only while the graft is live in the kit — its id
-  // sits in an occupied slot. An excluded or reclaimed graft leaves no such slot, so
-  // its grand stays hidden; a per-class occupancy replay keeps that honest.
-  const held = new Set<SkillKey>(Object.values(occupant));
+  // Graft grands (item 18): offered while the hero OWNS the graft AND it applies to this
+  // class — NOT only while it is live in a slot. A reclaimed graft is owned-but-stashed yet
+  // stays re-offerable and re-seats its grands on re-graft, so gating its grand on live
+  // occupancy would make the grand vanish after a reclaim while the graft itself came back
+  // — item 8's path split. Ownership (append-only list) + applicability is the honest,
+  // graft-data-model-driven condition: a graft the hero never took, or one this class can't
+  // wield (its `exclude` list, so it never seated), still leaks no grand.
   for (const d of GRAFT_GRANDS) {
     if (charUpgradeAtMax(d.id, ownedChar)) continue;
-    if (!held.has(d.graftId!)) continue;
+    if (!ownedChar.includes(d.graftId!)) continue;
+    const graft = CHAR_UPGRADES[d.graftId!];
+    if (!graft || !upgradeAllowedFor(graft, classId)) continue;
     out.push(d);
   }
   return out;
@@ -4728,6 +4768,23 @@ export const REOFFER_CHANCE = 0.5;
 /** Selection weight for the hero's MAIN class over an extra multiclass (item 23). */
 export const MAIN_CLASS_WEIGHT = 2.5;
 
+/**
+ * item: reroll — return a fresh, mutable copy of `pool` with the `exclude` ids dropped
+ * so a re-draw is biased AWAY from the offers currently shown; but if dropping them would
+ * leave fewer than `need`, keep them (graceful degradation, so the roll still fills up).
+ */
+function biasAway<T>(
+  pool: readonly T[],
+  exclude: readonly string[],
+  need: number,
+  idOf: (x: T) => string,
+): T[] {
+  if (exclude.length === 0) return pool.slice();
+  const ex = new Set(exclude);
+  const fresh = pool.filter((x) => !ex.has(idOf(x)));
+  return fresh.length >= need ? fresh : pool.slice();
+}
+
 export function rollCharChoices(
   classId: ClassId,
   n: number,
@@ -4735,6 +4792,13 @@ export function rollCharChoices(
   owned: readonly string[] = [],
   extraClasses: readonly ClassId[] = [],
   subSkills: readonly string[] = [],
+  /**
+   * item: reroll — boon ids to BIAS AWAY FROM (the offers currently shown) so a re-roll
+   * surfaces different picks. A soft bias applied to the main draw pool: if dropping them
+   * would starve `n`, the excluded ids come back (graceful degradation). Empty by default
+   * → the seeded offer stream is byte-for-byte unchanged.
+   */
+  exclude: readonly string[] = [],
 ): string[] {
   const out: string[] = [];
   const extras = extraClasses.filter((c) => c !== classId);
@@ -4778,24 +4842,27 @@ export function rollCharChoices(
     for (const c of extras) push(c, 1);
     // item 6: equipped-sub-skill boons weight with the main class.
     for (const id of subEligible) weighted.push({ id, w: MAIN_CLASS_WEIGHT });
-    const count = Math.min(n, weighted.length);
-    while (out.length < count && weighted.length > 0) {
-      const total = weighted.reduce((s, x) => s + x.w, 0);
+    // item: reroll — bias away from the currently-shown ids, unless that starves `n`.
+    const drawW = biasAway(weighted, exclude, n, (x) => x.id);
+    const count = Math.min(n, drawW.length);
+    while (out.length < count && drawW.length > 0) {
+      const total = drawW.reduce((s, x) => s + x.w, 0);
       let roll = rnd() * total;
-      let idx = weighted.length - 1;
-      for (let i = 0; i < weighted.length; i++) {
-        roll -= weighted[i].w;
+      let idx = drawW.length - 1;
+      for (let i = 0; i < drawW.length; i++) {
+        roll -= drawW[i].w;
         if (roll <= 0) {
           idx = i;
           break;
         }
       }
-      out.push(weighted[idx].id);
-      weighted.splice(idx, 1);
+      out.push(drawW[idx].id);
+      drawW.splice(idx, 1);
     }
   } else {
-    const pool = [...(CHAR_UPGRADES_BY_CLASS[classId] ?? []).map((d) => d.id), ...subEligible] // item 6
+    const base = [...(CHAR_UPGRADES_BY_CLASS[classId] ?? []).map((d) => d.id), ...subEligible] // item 6
       .filter((id) => !charUpgradeAtMax(id, owned) && liveBoonFor(classId, id)); // item 26 filter
+    const pool = biasAway(base, exclude, n, (id) => id); // item: reroll exclude-bias
     const count = Math.min(n, pool.length);
     while (out.length < count) {
       const i = Math.floor(rnd() * pool.length) % pool.length;

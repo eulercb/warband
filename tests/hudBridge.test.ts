@@ -75,6 +75,19 @@ describe('pushHud', () => {
     expect(h.bosses[0].hp).toBe(250);
   });
 
+  it('flags a constant flyer so the HUD can show a permanent airborne chip (item 1)', () => {
+    // Constant flyers (harpy / wisp / beholder) surface flight from the static
+    // MonsterDef.flying trait, not a timed buff, so the bridge derives it per boss.
+    for (const id of ['harpy', 'wisp', 'beholder'] as const) {
+      expect(getMonster(id).flying).toBe(true);
+      pushHud(renderState({ bosses: [boss({ monsterId: id })] }), 'keyboard');
+      expect(useHudStore.getState().bosses[0].flying).toBe(true);
+    }
+    // A non-flyer stays grounded.
+    pushHud(renderState({ bosses: [boss({ monsterId: 'troll' })] }), 'keyboard');
+    expect(useHudStore.getState().bosses[0].flying).toBe(false);
+  });
+
   it('maps the whole roster as teammates, flagging the local player', () => {
     pushHud(
       renderState({

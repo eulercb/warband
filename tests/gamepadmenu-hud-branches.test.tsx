@@ -423,6 +423,7 @@ describe('HUD — branch coverage', () => {
       maxHp: 300,
       phase: 'enraged',
       buffs: [{ kind: 'damageTaken', remaining: 5, mult: 1.5 }],
+      flying: false,
       modName: 'Frost',
       affixes: [],
     };
@@ -449,6 +450,7 @@ describe('HUD — branch coverage', () => {
       maxHp: 50,
       phase: 'normal',
       buffs: [],
+      flying: false,
       modName: '',
       affixes: [],
     };
@@ -470,6 +472,7 @@ describe('HUD — branch coverage', () => {
       maxHp: 100,
       phase: 'normal',
       buffs: [],
+      flying: false,
       modName: '',
       affixes: ['vampiric', 'frenzied'],
     };

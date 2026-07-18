@@ -75,6 +75,57 @@ describe('Chaos Forge active-run registry', () => {
     setForgeSeed(5);
     expect(forgeVariant('thing', 'id', () => 'made')).toBe('made');
   });
+
+  // item 3 — the lobby class-picker/roster/cards read class identity through
+  // getClass, so a Forge run shows the FORGED name (not the base class name).
+  it('a forged class carries a fused NAME distinct from the base (item 3)', () => {
+    setForgeSeed(4242);
+    // Every base name is renamed for the run; at least most differ from canonical.
+    const renamed = CLASS_IDS.filter((cid) => getClass(cid).name !== CLASSES[cid].name);
+    expect(renamed.length).toBeGreaterThan(CLASS_IDS.length / 2);
+    // The name a picker/card would show comes from getClass, so for a renamed class it shows
+    // the FORGED name the engine plays — never the canonical one still sitting in CLASSES.
+    const sample = renamed[0];
+    expect(getClass(sample).name).not.toBe(CLASSES[sample].name);
+  });
+
+  // item 4 — vitals are RECOMPUTED from the fused kit, not inherited: in the canonical
+  // envelope, and at least some class ends up with stats that differ from its base.
+  it('forged classes derive HP/speed/threat in-band, not inherited from the base (item 4)', () => {
+    setForgeSeed(4242);
+    let anyChanged = false;
+    for (const cid of CLASS_IDS) {
+      const c = getClass(cid);
+      expect(c.maxHp).toBeGreaterThanOrEqual(100);
+      expect(c.maxHp).toBeLessThanOrEqual(240);
+      expect(c.moveSpeed).toBeGreaterThanOrEqual(190);
+      expect(c.moveSpeed).toBeLessThanOrEqual(252);
+      expect(c.threatMult).toBeGreaterThanOrEqual(0.5);
+      expect(c.threatMult).toBeLessThanOrEqual(1.5);
+      const base = CLASSES[cid];
+      if (
+        c.maxHp !== base.maxHp ||
+        c.moveSpeed !== base.moveSpeed ||
+        c.threatMult !== base.threatMult
+      ) {
+        anyChanged = true;
+      }
+    }
+    expect(anyChanged).toBe(true); // the derivation actually re-tunes vitals
+  });
+
+  it('forged names + vitals are seed-reproducible across peers (item 3/4)', () => {
+    setForgeSeed(2024);
+    const snap = (cid: (typeof CLASS_IDS)[number]) => {
+      const c = getClass(cid);
+      return { name: c.name, maxHp: c.maxHp, moveSpeed: c.moveSpeed, threatMult: c.threatMult };
+    };
+    const a = CLASS_IDS.map(snap);
+    setForgeSeed(null);
+    setForgeSeed(2024);
+    const b = CLASS_IDS.map(snap);
+    expect(a).toEqual(b);
+  });
 });
 
 describe('store integration — Chaos Forge activation from the run seed', () => {

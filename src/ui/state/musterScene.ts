@@ -10,7 +10,7 @@
  */
 import { World } from '../../engine/world/world';
 import { SIM_DT, CLASS_COLORS } from '../../engine/core/constants';
-import { CLASS_IDS, CLASSES } from '../../engine/content/classes';
+import { CLASS_IDS, getClass } from '../../engine/content/classes';
 import { dist } from '../../engine/core/torus';
 import type {
   ClassId,
@@ -175,7 +175,7 @@ export class MusterScene {
         refId: id,
         radius: BOT_EFFIGY_RADIUS,
         triggerRadius: BOT_EFFIGY_TRIGGER,
-        label: `+ ${CLASSES[id].name} bot`,
+        label: `+ ${getClass(id).name} bot`,
         color: CLASS_COLORS[id] ?? 0xffffff,
         dwell: ADDBOT_DWELL_S,
       });
@@ -251,7 +251,7 @@ export class MusterScene {
         refId: b.peerId,
         radius: REMOVE_BOT_RADIUS,
         triggerRadius: REMOVE_BOT_TRIGGER,
-        label: `✕ ${CLASSES[b.classId].name} bot`,
+        label: `✕ ${getClass(b.classId).name} bot`,
         color: CLASS_COLORS[b.classId] ?? 0xffffff,
         dwell: REMOVEBOT_DWELL_S,
       });

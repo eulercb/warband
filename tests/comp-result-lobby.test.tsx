@@ -49,6 +49,8 @@ import { useStore, EMPTY_SF_LOADOUT } from '../src/ui/state/store';
 import type { AppState } from '../src/ui/state/store';
 import type { FightResult, ResultPlayerStat } from '../src/engine/core/types';
 import type { LobbyPlayer } from '../src/net/protocol';
+import { CLASSES, getClass } from '../src/engine/content/classes';
+import { setForgeSeed } from '../src/engine/content/forge';
 import {
   leaveToMenu,
   retryFight,
@@ -152,6 +154,7 @@ afterEach(() => {
   Math.random = realRandom;
   vi.unstubAllGlobals();
   vi.clearAllMocks(); // clears call history; keeps the shareLink/copyShareLink impls
+  setForgeSeed(null); // item 3/4 — never leak an active Forge run into a sibling test
 });
 
 // ===========================================================================
@@ -342,6 +345,28 @@ describe('<Lobby>', () => {
     fireEvent.click(mageCard);
     expect(vi.mocked(selectClass)).toHaveBeenCalledWith('mage');
     expect(vi.mocked(playUiSound)).toHaveBeenCalledWith('uiClick');
+  });
+
+  it('shows FORGED class names + recomputed vitals in a Chaos Forge lobby (item 3/4)', () => {
+    setForgeSeed(4242); // activate a Forge run before rendering the picker
+    useStore.setState({ isHost: true, players: HOST_ROSTER, localClass: 'mage' });
+    const { container } = render(<Lobby />);
+
+    // The mage card's NAME is the forged name (not "Mage") — no base-name/forged-rows
+    // mismatch — because the card resolves identity through getClass (item 3).
+    const forged = getClass('mage');
+    expect(forged.name).not.toBe(CLASSES.mage.name);
+    const mageCard = container.querySelector('.wb-class-grid [data-cls="mage"]');
+    expect(mageCard?.querySelector('.wb-codex-name')?.textContent).toBe(forged.name);
+
+    // The stat line shows the DERIVED vitals (item 4), matching what the fight commits.
+    const stats = mageCard?.querySelector('.wb-codex-stats')?.textContent ?? '';
+    expect(stats).toContain(String(forged.maxHp));
+    expect(stats).toContain(String(forged.moveSpeed));
+
+    // The add-bot buttons read the forged name too (the whole picker is consistent).
+    const addBot = container.querySelector('[aria-label="Add a bot"]')?.textContent ?? '';
+    expect(addBot).toContain(getClass('knight').name);
   });
 
   it('toggles readiness through setReady in both directions', () => {

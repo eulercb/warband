@@ -522,6 +522,7 @@ function makeSession(onLeave: () => void = noop): NetSession {
     chooseExtraClass: noop,
     swapClass: noop,
     buyEphemeral: noop,
+    rerollOffers: noop,
     setNextReady: noop,
     leave: onLeave,
   };

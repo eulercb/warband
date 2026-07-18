@@ -9,7 +9,9 @@
  * pending selection (or a cancel / recharging hint).
  */
 import { useRadialStore } from '../state/radialStore';
-import { CLASSES } from '../../engine/content/classes';
+// getClass (not CLASSES[...]) so a Chaos Forge swap wheel shows forged class names;
+// canonical when Forge is off (item 3). Colour is identity, unchanged either way.
+import { getClass } from '../../engine/content/classes';
 import { slotOffset } from '../../input/radial';
 
 /** Ring radius (px) the class nodes sit on, from the wheel centre. */
@@ -31,7 +33,7 @@ export default function ClassRadial() {
   const n = options.length;
   const hovered = hover >= 0 && hover < n ? options[hover] : null;
   const centreText = hovered
-    ? CLASSES[hovered].name
+    ? getClass(hovered).name
     : ready
       ? 'Release to cancel'
       : 'Swap recharging…';
@@ -41,7 +43,7 @@ export default function ClassRadial() {
       <div className={`wb-radial-wheel${ready ? '' : ' recharging'}`}>
         {options.map((c, i) => {
           const off = slotOffset(i, n);
-          const hex = hexColor(CLASSES[c].color);
+          const hex = hexColor(getClass(c).color);
           const isActive = c === activeClassId;
           const isHover = i === hover;
           const cls = 'wb-radial-node' + (isActive ? ' active' : '') + (isHover ? ' hover' : '');
@@ -57,7 +59,7 @@ export default function ClassRadial() {
                 background: isHover ? hex : undefined,
               }}
             >
-              {CLASSES[c].name}
+              {getClass(c).name}
             </div>
           );
         })}

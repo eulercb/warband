@@ -21,6 +21,7 @@ import {
   playUiSound,
 } from '../state/session';
 import { CLASSES, CLASS_IDS } from '../../engine/content/classes';
+import type { ClassId } from '../../engine/core/types';
 import { getMonster } from '../../engine/content/monsters';
 import { Rng, mixSeed } from '../../engine/core/math';
 import { getUpgrade, rollUpgradeChoices, type UpgradeId } from '../../engine/content/upgrades';
@@ -43,6 +44,50 @@ function rewardRnd(rewardSeed: number | null | undefined, ...salts: number[]): (
   if (rewardSeed == null) return Math.random;
   const rng = new Rng(mixSeed(rewardSeed, ...salts));
   return () => rng.next();
+}
+
+/**
+ * item: reroll — replay a draw 0..rerollCount so each reroll advances the salt to a
+ * fresh stream AND biases away from the prior draw's ids (mirrors RewardRoom.rollOffers).
+ * k === 0 keeps the ORIGINAL salt/no-exclude, so the base endless-bank offers — and the
+ * item-8 multiclass re-roll — are byte-for-byte unchanged. `baseSalts` is the salt tuple
+ * the un-rerolled draw uses (class index, and for char the multiclass/sub-skill counts).
+ */
+function rerolledUpgradeIds(
+  rewardSeed: number | null | undefined,
+  baseSalts: number[],
+  rerollCount: number,
+  owned: readonly string[],
+): UpgradeId[] {
+  let out: UpgradeId[] = [];
+  let exclude: UpgradeId[] = [];
+  for (let k = 0; k <= rerollCount; k++) {
+    const rnd =
+      k === 0 ? rewardRnd(rewardSeed, ...baseSalts) : rewardRnd(rewardSeed, ...baseSalts, k);
+    out = rollUpgradeChoices(3, rnd, owned, exclude);
+    exclude = out;
+  }
+  return out;
+}
+
+function rerolledCharIds(
+  rewardSeed: number | null | undefined,
+  baseSalts: number[],
+  rerollCount: number,
+  classId: ClassId,
+  owned: readonly string[],
+  extraClasses: readonly ClassId[],
+  subSkills: readonly string[],
+): string[] {
+  let out: string[] = [];
+  let exclude: string[] = [];
+  for (let k = 0; k <= rerollCount; k++) {
+    const rnd =
+      k === 0 ? rewardRnd(rewardSeed, ...baseSalts) : rewardRnd(rewardSeed, ...baseSalts, k);
+    out = rollCharChoices(classId, 4, rnd, owned, extraClasses, subSkills, exclude);
+    exclude = out;
+  }
+  return out;
 }
 
 /** Format milliseconds as `m:ss.mmm` (>= 1 min) or `s.d`s (under a minute). */
@@ -72,6 +117,8 @@ export function ResultScreen() {
   // class or sub-skill is acquired on THIS screen via SpecialReward (item 8).
   const myExtraClasses = useStore((s) => s.myExtraClasses);
   const mySubSkills = useStore((s) => s.mySubSkills);
+  // item: reroll — the endless-bank offers re-draw when the hero buys a reroll here.
+  const rerollCount = useStore((s) => s.rerollCount);
 
   const panelRef = useRef<HTMLDivElement>(null);
   useGamepadMenu(panelRef);
@@ -96,11 +143,18 @@ export function ResultScreen() {
   useEffect(() => {
     if (!showUpgrades) return;
     const st = useStore.getState();
-    const rnd = rewardRnd(result?.rewardSeed, CLASS_IDS.indexOf(localClass) + 1);
-    setGenOffers(rollUpgradeChoices(3, rnd, st.myUpgrades));
+    // item: reroll — re-draw (biased to differ) whenever the hero buys a reroll here.
+    setGenOffers(
+      rerolledUpgradeIds(
+        result?.rewardSeed,
+        [CLASS_IDS.indexOf(localClass) + 1],
+        st.rerollCount,
+        st.myUpgrades,
+      ),
+    );
     setPickedGen(null);
     setPickedChar(null);
-  }, [showUpgrades, localClass, result]);
+  }, [showUpgrades, localClass, result, rerollCount]);
 
   // Character offers span EVERY owned class (weighted toward the primary) and RE-ROLL
   // whenever a class or sub-skill is acquired here via SpecialReward (item 8) — so the
@@ -109,17 +163,20 @@ export function ResultScreen() {
   useEffect(() => {
     if (!showUpgrades || pickedChar) return;
     const st = useStore.getState();
-    const rnd = rewardRnd(
-      result?.rewardSeed,
-      CLASS_IDS.indexOf(localClass) + 1,
-      myExtraClasses.length,
-      mySubSkills.length,
-    );
     // item 6: equipped sub skills bring their per-sub-skill boons into the pool.
+    // item: reroll — re-draw (biased to differ) whenever the hero buys a reroll here.
     setCharOffers(
-      rollCharChoices(localClass, 4, rnd, st.myCharUpgrades, myExtraClasses, mySubSkills),
+      rerolledCharIds(
+        result?.rewardSeed,
+        [CLASS_IDS.indexOf(localClass) + 1, myExtraClasses.length, mySubSkills.length],
+        st.rerollCount,
+        localClass,
+        st.myCharUpgrades,
+        myExtraClasses,
+        mySubSkills,
+      ),
     );
-  }, [showUpgrades, localClass, result, myExtraClasses, mySubSkills, pickedChar]);
+  }, [showUpgrades, localClass, result, myExtraClasses, mySubSkills, pickedChar, rerollCount]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const onPickGen = (id: UpgradeId): void => {

@@ -383,9 +383,9 @@ function effectValue(e: EffectComponent, fan: number): number {
     case 'lifesteal':
       return e.frac * 60; // ~ a slice of a strike's worth of sustain
     case 'stun':
-      return e.seconds * 55; // hard CC is expensive
+      return e.seconds * 34; // hard CC is expensive (item 5 — but a boss-fight rider,
     case 'freeze':
-      return e.seconds * 50;
+      return e.seconds * 30; //   not a DPS race winner, so priced nearer a real hit)
     case 'slow':
       return (1 - e.mult) * e.duration * 12; // soft CC, priced by depth × time
     case 'castSlow':
@@ -403,13 +403,23 @@ function effectValue(e: EffectComponent, fan: number): number {
   }
 }
 
-/** Buff output: each axis' magnitude × duration, def-mitigation weighted highest. */
+/**
+ * Buff output: each axis' magnitude × duration, def-mitigation weighted highest.
+ *
+ * item 5 — these weights were tuned so a strong buff priced AS HIGH AS (a def buff up
+ * to ~280) or higher than a whole damage anchor (~50), so any fusion that bundled a
+ * buff spent most of its per-use budget on the rider and had its hit compressed to a
+ * fraction. A buff/CC rider is real value but does NOT win a boss DPS race, so it is
+ * now priced NEARER a real hit (roughly halved): a fusion can afford both a viable hit
+ * and its rider. The magnitude CAPS (capEffect) are unchanged, so this reprices utility
+ * without loosening the anti-degenerate ceilings.
+ */
 function buffValue(e: Extract<EffectComponent, { kind: 'buff' }>): number {
   const dur = e.duration;
   let v = 0;
-  if (e.dmgMult != null) v += (e.dmgMult - 1) * 100 * dur * 0.25;
-  if (e.moveMult != null) v += (e.moveMult - 1) * 100 * dur * 0.2;
-  if (e.defMult != null) v += (1 - e.defMult) * 100 * dur * 0.35;
+  if (e.dmgMult != null) v += (e.dmgMult - 1) * 100 * dur * 0.18;
+  if (e.moveMult != null) v += (e.moveMult - 1) * 100 * dur * 0.15;
+  if (e.defMult != null) v += (1 - e.defMult) * 100 * dur * 0.16;
   return v;
 }
 
@@ -735,6 +745,21 @@ const COOLDOWN_JITTER: [number, number] = [0.72, 1.28];
  */
 const COMPRESSION_FLOOR = 0.3;
 
+/**
+ * item 5 — the share of a fusion's per-use envelope reserved for its damage/heal ANCHOR.
+ * The old single linear compression scaled the anchor down in lockstep with whatever
+ * buff/CC/zone riders a fusion carried, AND a fusion's raw anchor was just whatever
+ * (often small, cross-slot) damage effect got drawn — so a hit that also bundled utility
+ * landed at ~30–50% of a canonical hit and sustained DPS fell 4–7×. The anchor is now
+ * SIZED to a guaranteed share of the envelope (a small draw is boosted UP, a huge one
+ * capped so riders keep room) and the riders fit into the remainder — so a forged
+ * direct-output skill keeps a viable, canonical-comparable punch regardless of what it
+ * fused. The cooldown still prices the WHOLE mix to budget (see priceToBudget), so this
+ * re-SIZES the hit within the budget — it never mints power.
+ */
+const ANCHOR_MIN_SHARE = 0.6; // the hit is guaranteed ≥60% of the per-use envelope…
+const ANCHOR_MAX_SHARE = 0.85; // …and capped at 85% when riders ride along, so they fit
+
 /** Can effect `e` be delivered by delivery `kind`? Keeps fusions coherent. */
 function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
   switch (e.kind) {
@@ -890,9 +915,18 @@ export function synthesizeAbility(
   //    cooldown variety instead of every special landing on one number — output
   //    stays on budget either way (value tracks the cooldown), so it's cosmetic
   //    spread within the canonical band, not a power lever.
+  // item 5 — a heal delivery budgets + paces against canonical HEALS (worth more per
+  // second than damage), so a forged heal outputs like a real heal instead of the
+  // damage-dominated mixed-slot median.
+  const isHeal = delivery.kind === 'heal';
   const target =
-    slotCooldownTarget(donors, slot) * rng.range(COOLDOWN_JITTER[0], COOLDOWN_JITTER[1]);
-  const { comp, cooldown } = priceToBudget(assembled, slotBudget(donors, slot), target, slot);
+    slotCooldownTarget(donors, slot, isHeal) * rng.range(COOLDOWN_JITTER[0], COOLDOWN_JITTER[1]);
+  const { comp, cooldown } = priceToBudget(
+    assembled,
+    slotBudget(donors, slot, isHeal),
+    target,
+    slot,
+  );
 
   // 8. Blend a name from the contributing donor names.
   const donorNames = [deliveryDonor.name, ...chosen.map((c) => c.donor.name)];
@@ -1031,10 +1065,19 @@ function retargetOrphanAllyBuffs(
 
 // --- Balance pricing --------------------------------------------------------
 
-/** Median output-per-second of the donors in this slot — the target budget. */
-function slotBudget(donors: Donor[], slot: AbilitySlot): number {
-  const vals = donors
-    .filter((d) => d.slot === slot)
+/**
+ * Median output-per-second of the donors in this slot — the target budget. item 5 —
+ * for a HEAL delivery, budget against the same-slot HEAL donors instead of the whole
+ * (damage-dominated) slot: healing is worth more per second than damage, so pricing a
+ * heal fusion to the mixed median under-powered it to ~1/3 of a canonical heal. Damage
+ * deliveries keep the whole-slot median (already damage-dominated). Falls back to the
+ * whole slot, then a constant, if a slot has no heal donor.
+ */
+function slotBudget(donors: Donor[], slot: AbilitySlot, heal = false): number {
+  const inSlot = donors.filter((d) => d.slot === slot);
+  const src = heal ? inSlot.filter((d) => d.def.kind === 'heal' && d.def.damage > 0) : inSlot;
+  const pool = src.length > 0 ? src : inSlot;
+  const vals = pool
     .map((d) => componentValue(decompose(d.def)) / Math.max(0.1, d.def.cooldown))
     .sort((a, b) => a - b);
   if (vals.length === 0) return 20;
@@ -1052,8 +1095,15 @@ function slotBudget(donors: Donor[], slot: AbilitySlot): number {
  * Data-driven (median of the same-slot donors), so a class added in a future update
  * shifts the target automatically; falls back to the whole pool, then a constant.
  */
-function slotCooldownTarget(donors: Donor[], slot: AbilitySlot): number {
-  const inSlot = donors.filter((d) => d.slot === slot).map((d) => d.def.cooldown);
+function slotCooldownTarget(donors: Donor[], slot: AbilitySlot, heal = false): number {
+  // item 5 — pace a heal fusion by the canonical HEAL cadence (heals cycle faster than
+  // the mixed slot), so budget × targetCd lands a heal fusion's envelope where a real
+  // heal's does. Damage deliveries keep the whole-slot median. Falls back gracefully.
+  const inSlotDonors = donors.filter((d) => d.slot === slot);
+  const src = heal
+    ? inSlotDonors.filter((d) => d.def.kind === 'heal' && d.def.damage > 0)
+    : inSlotDonors;
+  const inSlot = (src.length > 0 ? src : inSlotDonors).map((d) => d.def.cooldown);
   const pool = inSlot.length > 0 ? inSlot : donors.map((d) => d.def.cooldown);
   if (pool.length === 0) return slot === 'basic' ? 0.6 : 8;
   pool.sort((a, b) => a - b);
@@ -1122,21 +1172,52 @@ function priceToBudget(
 }
 
 /**
- * Compress a delivery's effects toward `ceiling` with a single linear factor, then cap
- * + quantize. Every effect's `effectValue` is linear in the quantity `scaleEffect`
- * scales, so `f = ceiling/total` lands the whole mix on the envelope regardless of its
- * composition (no per-kind bookkeeping). Under-envelope (light) fusions pass through.
+ * Compress a delivery's effects toward `ceiling`, then cap + quantize. Every effect's
+ * `effectValue` is linear in the quantity `scaleEffect` scales, so a linear factor lands
+ * the mix on the envelope regardless of composition. Under-envelope (light) fusions pass
+ * through untouched.
+ *
+ * item 5 — but the damage/heal ANCHOR is the ability's defining output, so it is priced
+ * FIRST: it claims up to `ANCHOR_ENVELOPE_SHARE` of the envelope at full magnitude, and
+ * the riders compress into whatever envelope remains (down to `COMPRESSION_FLOOR`). The
+ * old single factor scaled damage down in lockstep with its riders, starving a fusion
+ * that also carried utility; splitting the factor shifts that squeeze onto the riders —
+ * heavier utility ⇒ a smaller rider, not a smaller hit. The total is unchanged (the
+ * caller still prices the cooldown from the whole mix), so it stays on budget: no power
+ * minted, only the damage-vs-utility split corrected.
  */
 function compressToBudget(
   delivery: Delivery,
   effects: EffectComponent[],
   ceiling: number,
 ): AbilityComponents {
-  const total = componentValue({ delivery, effects });
-  const scaled =
-    total > ceiling
-      ? effects.map((e) => scaleEffect(e, clamp(ceiling / total, COMPRESSION_FLOOR, 1)))
-      : effects;
+  const fan = Math.max(1, delivery.projCount ?? 1);
+  const isAnchor = (e: EffectComponent): boolean => ANCHOR_KINDS.has(e.kind);
+  const sum = (keep: boolean): number =>
+    effects.filter((e) => isAnchor(e) === keep).reduce((s, e) => s + effectValue(e, fan), 0);
+  const anchorVal = sum(true);
+  const riderVal = sum(false);
+
+  // A pure-utility fusion (no damage/heal anchor): the plain uniform squeeze — compress
+  // to the envelope when over, else pass through. Riders keep their readable magnitude.
+  if (anchorVal <= 0) {
+    const total = componentValue({ delivery, effects });
+    if (total <= ceiling) return capComponents({ delivery, effects });
+    const f = clamp(ceiling / total, COMPRESSION_FLOOR, 1);
+    return capComponents({ delivery, effects: effects.map((e) => scaleEffect(e, f)) });
+  }
+
+  // A damage/heal fusion: SIZE the anchor to its guaranteed share of the envelope (boost
+  // a small draw up, cap a big one when riders ride along), then fit the riders into
+  // whatever envelope remains. Riders may compress past COMPRESSION_FLOOR here (a short
+  // buff is still readable via capEffect's duration floor) since the ANCHOR is the output
+  // that must stay viable; a residual overflow is trimmed by priceToBudget's drop loop.
+  const anchorCap = riderVal > 0 ? ANCHOR_MAX_SHARE * ceiling : ceiling;
+  const anchorTarget = clamp(anchorVal, ANCHOR_MIN_SHARE * ceiling, anchorCap);
+  const anchorFactor = anchorTarget / anchorVal;
+  const riderCeil = Math.max(0, ceiling - anchorTarget);
+  const riderFactor = riderVal > 0 ? Math.min(1, riderCeil / riderVal) : 1;
+  const scaled = effects.map((e) => scaleEffect(e, isAnchor(e) ? anchorFactor : riderFactor));
   return capComponents({ delivery, effects: scaled });
 }
 
@@ -1495,13 +1576,127 @@ function capAllyBuff(b: NonNullable<ZoneSpec['allyBuff']>): NonNullable<ZoneSpec
   return out;
 }
 
+// --- Capability classifier (shared by bots §8 + class-stat derivation item 4) -
+
+/** The capability an ability expresses, read from its recombined components. */
+export type AbilityCapability =
+  | 'heal'
+  | 'allyBuff'
+  | 'selfDefense'
+  | 'mobility'
+  | 'control'
+  | 'offensiveMelee'
+  | 'offensiveRanged';
+
+/**
+ * Classify an ability by reading its COMPONENTS (falling back to the flat fields
+ * for canonical content). This is the single classifier the mode uses for both bot
+ * casting (docs/CHAOS_FORGE.md §8) and forged-class stat derivation (item 4), so a
+ * class's vitals always agree with how bots read its kit. PURE.
+ */
+export function abilityCapability(ab: PlayerAbilityDef): AbilityCapability {
+  const kind = ab.kind;
+  let heal = kind === 'heal';
+  let allyBuff = kind === 'buffAlly';
+  let selfDef = kind === 'selfBuff' || kind === 'taunt';
+  const control =
+    (ab.stun ?? 0) > 0 ||
+    (ab.freeze ?? 0) > 0 ||
+    ab.roots === true ||
+    (ab.slowMult != null && ab.slowMult < 1);
+  const damage = ab.damage > 0 || (ab.landingDamage ?? 0) > 0 || (ab.zoneTickDamage ?? 0) > 0;
+  // Refine from the recombined payload (buff targeting + a zone's ally-buff/heal
+  // that the flat fields can't express).
+  const comp = ab.components;
+  if (comp) {
+    heal = comp.effects.some((e) => e.kind === 'heal');
+    allyBuff = comp.effects.some(
+      (e) =>
+        (e.kind === 'buff' && e.target === 'allies') ||
+        (e.kind === 'zone' && (e.zone.allyBuff != null || (e.zone.tickHeal ?? 0) > 0)),
+    );
+    selfDef =
+      kind === 'taunt' ||
+      comp.effects.some((e) => e.kind === 'buff' && e.target === 'self' && e.defMult != null);
+  }
+  if (heal) return 'heal';
+  if (allyBuff) return 'allyBuff';
+  if (selfDef || kind === 'selfBuff') return 'selfDefense';
+  if (kind === 'dash' || kind === 'blink') return 'mobility';
+  if (control && !damage) return 'control';
+  return kind === 'meleeCone' || kind === 'pbaoe' ? 'offensiveMelee' : 'offensiveRanged';
+}
+
 // --- Class synthesis + renaming ---------------------------------------------
+
+/**
+ * The canonical vitals envelope (min→max across the authored CLASSES table) a forged
+ * class is priced into: maxHp 100 (Mage) → 240 (Knight); moveSpeed 190 (Knight) →
+ * 252 (Rogue); threatMult 0.5 (Cleric) → 1.5 (Knight). A fused class is always mapped
+ * INTO this band, so it can never mint a 240-HP / 252-speed outlier.
+ */
+const FORGE_HP = { min: 100, max: 240 };
+const FORGE_SPEED = { min: 190, max: 252 };
+const FORGE_THREAT = { min: 0.5, max: 1.5 };
+
+/**
+ * Idealised position in the vitals envelope (0 = min, 1 = max) each capability pulls a
+ * class toward — the archetype trade-offs distilled: a melee / self-defence kit reads
+ * tanky + slow + high-threat; a ranged / mobility kit reads squishy + fast; a heal /
+ * ally-buff support reads mid + low-threat. Durability trades against mobility; threat
+ * tracks how melee/tanky vs support/ranged the kit is (docs balance note, item 4).
+ */
+const CAP_VITALS: Record<AbilityCapability, { hp: number; spd: number; thr: number }> = {
+  offensiveMelee: { hp: 0.7, spd: 0.35, thr: 0.75 },
+  selfDefense: { hp: 0.9, spd: 0.15, thr: 0.7 },
+  control: { hp: 0.6, spd: 0.4, thr: 0.75 },
+  offensiveRanged: { hp: 0.2, spd: 0.75, thr: 0.35 },
+  mobility: { hp: 0.25, spd: 0.95, thr: 0.4 },
+  heal: { hp: 0.45, spd: 0.4, thr: 0.1 },
+  allyBuff: { hp: 0.5, spd: 0.45, thr: 0.15 },
+};
+
+/**
+ * item 4 — derive a forged class's vitals from the COMPONENT profile of its
+ * synthesized kit rather than inheriting the donor/base numbers: each ability's
+ * capability contributes an idealised point in the canonical envelope, the class
+ * averages the four, and the mean is lerped into that envelope. Archetype-appropriate
+ * (melee → tankier/slower/higher-threat; ranged/mobile → faster/squishier; support →
+ * mid/low-threat), bounded to a sane band, and PURE + seed-free (a deterministic
+ * function of the seed-derived kit). Exported for the derivation tests.
+ */
+export function forgeClassStats(abilities: Record<AbilitySlot, PlayerAbilityDef>): {
+  maxHp: number;
+  moveSpeed: number;
+  threatMult: number;
+} {
+  const slots: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
+  let hp = 0;
+  let spd = 0;
+  let thr = 0;
+  for (const slot of slots) {
+    const v = CAP_VITALS[abilityCapability(abilities[slot])];
+    hp += v.hp;
+    spd += v.spd;
+    thr += v.thr;
+  }
+  const n = slots.length;
+  const lerp = (band: { min: number; max: number }, t: number): number =>
+    band.min + (band.max - band.min) * clamp(t, 0, 1);
+  return {
+    maxHp: Math.round(lerp(FORGE_HP, hp / n)),
+    moveSpeed: Math.round(lerp(FORGE_SPEED, spd / n)),
+    threatMult: Math.round(lerp(FORGE_THREAT, thr / n) * 100) / 100,
+  };
+}
 
 /**
  * Synthesize a whole class kit: a fused ability in each slot, then RENAME the
  * class after the two classes that donated the most components (rogue + paladin
  * → "Palarogue" / "Rodin" …), keeping the new identity tied to its sources. Id,
- * colour, role, radius, threat and stats are preserved. Deterministic.
+ * colour and role are preserved; maxHp / moveSpeed / threatMult are RECOMPUTED from
+ * the fused kit's component profile (item 4) so the archetype trade-offs survive the
+ * recombination instead of carrying the base class's vitals. Deterministic.
  */
 export function synthesizeClass(seed: number, base: ClassDef, donors: Donor[]): ClassDef {
   const abilities = {} as Record<AbilitySlot, PlayerAbilityDef>;
@@ -1521,7 +1716,9 @@ export function synthesizeClass(seed: number, base: ClassDef, donors: Donor[]): 
     .map((e) => classNames.get(e[0])!);
   const rng = new Rng(mixSeed(seed, FORGE_SALT.className, hashStr(base.id)));
   const name = forgeName(top, (k) => rng.int(0, k - 1), { connectiveChance: 0.35 });
-  return { ...base, name, abilities };
+  // item 4 — recompute vitals from the fused kit's component profile (not inherited).
+  const { maxHp, moveSpeed, threatMult } = forgeClassStats(abilities);
+  return { ...base, name, abilities, maxHp, moveSpeed, threatMult };
 }
 
 // ---------------------------------------------------------------------------

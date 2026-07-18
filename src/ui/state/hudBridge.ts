@@ -32,6 +32,7 @@ export function pushHud(state: RenderState, source: InputSource): void {
       maxHp: b.maxHp,
       phase: b.phase,
       buffs: b.buffs,
+      flying: getMonster(b.monsterId).flying === true, // item 1
       modName: b.modName ?? '',
       affixes: b.affixes ?? [],
     })),

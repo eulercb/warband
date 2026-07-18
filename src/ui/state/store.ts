@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import type { ClassId, MonsterId, FightResult } from '../../engine/core/types';
 import type { UpgradeId } from '../../engine/content/upgrades';
-import { getEphemeral } from '../../engine/content/ephemeral';
+import { getEphemeral, REROLL_CAP } from '../../engine/content/ephemeral';
 import type { EphemeralId, EphemeralStock } from '../../engine/content/ephemeral';
 import type { LobbyPlayer, NetSession } from '../../net/protocol';
 import type { NetMode } from '../../net/transport/room';
@@ -218,6 +218,9 @@ export interface AppState {
   myCoins: number;
   /** Ephemeral perks this hero has bought for the next fight (item 21). */
   myEphemeral: EphemeralStock;
+  /** item: reroll — how many times this hero has re-randomized their offers at the
+   * CURRENT between-boss stop (reset each result). Feeds the offer RNG salt + the cap. */
+  rerollCount: number;
   /** Between-boss readiness tally from the host (upgrade screen). */
   nextReadyReady: number;
   nextReadyTotal: number;
@@ -289,6 +292,9 @@ export interface AppState {
   resetCoins: () => void;
   /** Buy an ephemeral perk if affordable; returns true on success (item 21). */
   buyEphemeral: (id: EphemeralId) => boolean;
+  /** item: reroll — spend coins to re-randomize the current upgrade offers, if under the
+   *  per-stop cap and affordable. Returns true on success (bumps rerollCount + relays it). */
+  rerollOffers: () => boolean;
   /** Clear the pending ephemeral stock once a fight consumes it (item 21). */
   resetEphemeralStock: () => void;
   setNextReadyState: (ready: number, total: number) => void;
@@ -347,6 +353,7 @@ export const useStore = create<AppState>((set, get) => ({
   sfLoadoutOpen: false,
   myCoins: 0,
   myEphemeral: {},
+  rerollCount: 0,
   nextReadyReady: 0,
   nextReadyTotal: 0,
 
@@ -417,6 +424,7 @@ export const useStore = create<AppState>((set, get) => ({
       myExtraClasses: [],
       myCoins: 0,
       myEphemeral: {},
+      rerollCount: 0,
     }),
   addMySubSkill: (subclassId, skillId) =>
     // No longer capped at 2 (item 15): a multiclass hero accrues a full 2-skill
@@ -449,6 +457,9 @@ export const useStore = create<AppState>((set, get) => ({
   },
   resetCoins: () => set({ myCoins: 0, myEphemeral: {} }),
   buyEphemeral: (id) => {
+    // item: reroll — a reroll is an ACTION (re-draw offers), not a next-fight perk; if it
+    // ever arrives through the buy path, route it correctly instead of wasting coins.
+    if (id === 'reroll') return get().rerollOffers();
     const def = getEphemeral(id);
     if (!def) return false;
     const { myCoins, myEphemeral, session } = get();
@@ -466,9 +477,22 @@ export const useStore = create<AppState>((set, get) => ({
     session?.buyEphemeral(id);
     return true;
   },
+  rerollOffers: () => {
+    const { myCoins, rerollCount, session } = get();
+    const cost = getEphemeral('reroll').cost;
+    // Cap + affordability gate the SAME way the host does (recordReroll), so the
+    // optimistic bump below never disagrees with the authoritative coin ledger.
+    if (rerollCount >= REROLL_CAP || myCoins < cost) return false;
+    // Optimistically spend + bump the salt so the offers re-draw at once (the host
+    // confirms the coin spend independently); mirrors the optimistic buyEphemeral path.
+    set({ myCoins: myCoins - cost, rerollCount: rerollCount + 1 });
+    session?.rerollOffers();
+    return true;
+  },
   resetEphemeralStock: () => set({ myEphemeral: {} }),
   setNextReadyState: (ready, total) => set({ nextReadyReady: ready, nextReadyTotal: total }),
-  setResult: (result) => set({ result }),
+  // A new result opens a fresh between-boss stop → the reroll allowance resets (item: reroll).
+  setResult: (result) => set({ result, rerollCount: 0 }),
   toggleMute: () => set({ muted: !get().muted }),
   setVolume: (volume) => {
     const v = Math.max(0, Math.min(1, volume));
@@ -525,6 +549,7 @@ export const useStore = create<AppState>((set, get) => ({
       sfLoadout: EMPTY_SF_LOADOUT,
       myCoins: 0,
       myEphemeral: {},
+      rerollCount: 0,
       nextReadyReady: 0,
       nextReadyTotal: 0,
       result: null,

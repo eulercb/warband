@@ -25,7 +25,7 @@ import type { World } from '../world/world';
 import type { PlayerAbilityDef } from '../content/classes';
 import { abilityById } from '../content/monsters';
 import { abilityForSlot } from '../combat/abilities';
-import { forgeSeed } from '../content/forge';
+import { forgeSeed, abilityCapability, type AbilityCapability } from '../content/forge';
 import {
   UPGRADE_IDS,
   UPGRADES,
@@ -476,15 +476,9 @@ function telegraphFlee(world: World, boss: Boss, bot: Player, p: BotPersonality)
 // Ability decisions
 // ---------------------------------------------------------------------------
 
-/** How a bot should reason about an ability (derived from its components). */
-type BotRole =
-  | 'heal'
-  | 'allyBuff'
-  | 'selfDefense'
-  | 'mobility'
-  | 'control'
-  | 'offensiveMelee'
-  | 'offensiveRanged';
+/** How a bot should reason about an ability (derived from its components). This is
+ * the shared Forge capability classifier (docs §8), reused for forged-class stats. */
+type BotRole = AbilityCapability;
 
 interface BotCap {
   role: BotRole;
@@ -495,47 +489,16 @@ interface BotCap {
 }
 
 /**
- * Classify an ability for bot casting by reading its COMPONENTS (falling back to
- * the flat fields for canonical content) — so a bot casts a synthesized ally-buff
- * zone as support, a fused control shot as control, a heal-fusion as a heal, etc.
- * Chaos Forge (docs/CHAOS_FORGE.md §8). PURE.
+ * Classify an ability for bot casting. The capability (role) comes from the single
+ * shared classifier `abilityCapability` (docs/CHAOS_FORGE.md §8) — read from the
+ * recombined COMPONENTS, falling back to the flat fields for canonical content — so a
+ * bot casts a synthesized ally-buff zone as support, a fused control shot as control,
+ * etc. Adds the rooted-cast + reach facets a bot also needs. PURE.
  */
 export function classifyForBot(ab: PlayerAbilityDef): BotCap {
-  const kind = ab.kind;
   const rooted = (ab.castTime ?? 0) > 0;
   const reach = ab.range ?? ab.radius ?? ab.impactRadius ?? 150;
-  // Flat-field defaults (always present; the only path for canonical abilities).
-  let heal = kind === 'heal';
-  let allyBuff = kind === 'buffAlly';
-  let selfDef = kind === 'selfBuff' || kind === 'taunt';
-  const control =
-    (ab.stun ?? 0) > 0 ||
-    (ab.freeze ?? 0) > 0 ||
-    ab.roots === true ||
-    (ab.slowMult != null && ab.slowMult < 1);
-  const damage = ab.damage > 0 || (ab.landingDamage ?? 0) > 0 || (ab.zoneTickDamage ?? 0) > 0;
-  // Refine from the recombined payload (buff targeting + a zone's ally-buff/heal
-  // that the flat fields can't express).
-  const comp = ab.components;
-  if (comp) {
-    heal = comp.effects.some((e) => e.kind === 'heal');
-    allyBuff = comp.effects.some(
-      (e) =>
-        (e.kind === 'buff' && e.target === 'allies') ||
-        (e.kind === 'zone' && (e.zone.allyBuff != null || (e.zone.tickHeal ?? 0) > 0)),
-    );
-    selfDef =
-      kind === 'taunt' ||
-      comp.effects.some((e) => e.kind === 'buff' && e.target === 'self' && e.defMult != null);
-  }
-  let role: BotRole;
-  if (heal) role = 'heal';
-  else if (allyBuff) role = 'allyBuff';
-  else if (selfDef || kind === 'selfBuff') role = 'selfDefense';
-  else if (kind === 'dash' || kind === 'blink') role = 'mobility';
-  else if (control && !damage) role = 'control';
-  else role = kind === 'meleeCone' || kind === 'pbaoe' ? 'offensiveMelee' : 'offensiveRanged';
-  return { role, rooted, reach };
+  return { role: abilityCapability(ab), rooted, reach };
 }
 
 /** World signals a bot weighs when deciding whether to cast. */

@@ -13,7 +13,7 @@
  * observable effect (position moved, root kept/broken, HP lost, crit multiplier).
  */
 import { describe, it, expect } from 'vitest';
-import { resolvePlayerAbility, applyForcedMove } from '../src/engine/combat/abilities';
+import { resolvePlayerAbility, applyForcedMove, stepShove } from '../src/engine/combat/abilities';
 import { World } from '../src/engine/world/world';
 import { makeBuff, applyBuff, isRooted } from '../src/engine/combat/combat';
 import {
@@ -23,7 +23,15 @@ import {
   ADD_MOVE_SPEED,
   ADD_RADIUS,
 } from '../src/engine/core/constants';
-import type { Player, ClassId, MonsterId, Add, Vec2, Projectile } from '../src/engine/core/types';
+import type {
+  Player,
+  Boss,
+  ClassId,
+  MonsterId,
+  Add,
+  Vec2,
+  Projectile,
+} from '../src/engine/core/types';
 import type { PlayerAbilityDef } from '../src/engine/content/classes';
 
 // ---------------------------------------------------------------------------
@@ -88,6 +96,15 @@ const forceAb = (over: Partial<PlayerAbilityDef>): PlayerAbilityDef => ({
 
 const distXY = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 
+/**
+ * item 2 — forced movement now travels over a few ticks as an authoritative slide
+ * rather than an instant pos write. Fast-forward an entity's shove to its endpoint so
+ * these unit tests can assert the settled position (a no-op if nothing was shoved).
+ */
+function settle(w: World, e: Boss | Add): void {
+  for (let i = 0; i < 16 && e.shove; i++) stepShove(w, e, DT);
+}
+
 // ===========================================================================
 // item 11 — applyForcedMove: knockback / pull / root-vs-force
 // ===========================================================================
@@ -100,6 +117,7 @@ describe('applyForcedMove (item 11)', () => {
     const d0 = distXY(from, boss.pos);
 
     applyForcedMove(w, from, boss, forceAb({ knockback: 80 }));
+    settle(w, boss); // item 2: the shove now slides in over ticks — resolve it
 
     expect(boss.pos.x).toBeCloseTo(680, 3); // pushed a further 80u along +x
     expect(boss.pos.y).toBeCloseTo(500, 3); // straight away — no lateral drift
@@ -115,6 +133,7 @@ describe('applyForcedMove (item 11)', () => {
     const d0 = distXY(from, boss.pos);
 
     applyForcedMove(w, from, boss, forceAb({ pull: 40 }));
+    settle(w, boss); // item 2: the pull now slides in over ticks — resolve it
 
     expect(boss.pos.x).toBeCloseTo(560, 3); // dragged 40u back toward x=500
     expect(boss.pos.y).toBeCloseTo(500, 3);
@@ -130,18 +149,136 @@ describe('applyForcedMove (item 11)', () => {
     applyBuff(boss, makeBuff('root', 0, 5, 'test'));
     expect(isRooted(boss)).toBe(true);
 
-    // Below FORCE_OVERCOME_ROOT → the bind wins: no movement, root intact.
+    // Below FORCE_OVERCOME_ROOT → the bind wins: no movement (no shove), root intact.
     applyForcedMove(w, from, boss, forceAb({ knockback: FORCE_OVERCOME_ROOT - 1 }));
+    settle(w, boss); // no-op: a held target was never shoved
     expect(boss.pos.x).toBe(600); // held fast
     expect(boss.pos.y).toBe(500);
     expect(isRooted(boss)).toBe(true); // root still present
 
     // At/above the threshold → the shove overpowers the bind: root broken + moved.
     applyForcedMove(w, from, boss, forceAb({ knockback: FORCE_OVERCOME_ROOT + 50 }));
+    settle(w, boss); // item 2: resolve the slide to its endpoint
     expect(boss.pos.x).toBeGreaterThan(600); // finally shoved out
     expect(boss.pos.x).toBeCloseTo(800, 3); // 600 + 200 impulse
     expect(isRooted(boss)).toBe(false); // root ripped free
     expect(boss.buffs.some((b) => b.kind === 'root')).toBe(false);
+  });
+});
+
+// ===========================================================================
+// item 2 — forced movement travels over a few ticks (heroes, bosses AND adds)
+// ===========================================================================
+describe('forced-move slide over time (item 2)', () => {
+  const forceAb = (over: Partial<PlayerAbilityDef>): PlayerAbilityDef => ({
+    slot: 'a1',
+    name: 'Shove',
+    kind: 'meleeCone',
+    cooldown: 5,
+    damage: 0,
+    ...over,
+  });
+
+  it('does not teleport a boss or add — it arms a shove and slides them over MULTIPLE ticks', () => {
+    const w = mkWorld('knight');
+    const boss = w.boss!;
+    const add = mkAdd(w, { x: 300, y: 300 });
+    boss.pos = { x: 800, y: 500 };
+    applyForcedMove(w, { x: 600, y: 500 }, boss, forceAb({ knockback: 200 })); // +200x
+    applyForcedMove(w, { x: 300, y: 100 }, add, forceAb({ knockback: 200 })); // +200y
+
+    // Neither jumps to the endpoint: a shove is armed, positions are unchanged.
+    expect(boss.shove).toBeTruthy();
+    expect(add.shove).toBeTruthy();
+    expect(boss.pos.x).toBeCloseTo(800, 3);
+    expect(add.pos.y).toBeCloseTo(300, 3);
+
+    // A single tick advances each only PART of the way (it travels, not a jump).
+    stepShove(w, boss, DT);
+    stepShove(w, add, DT);
+    expect(boss.pos.x).toBeGreaterThan(800);
+    expect(boss.pos.x).toBeLessThan(1000);
+    expect(add.pos.y).toBeGreaterThan(300);
+    expect(add.pos.y).toBeLessThan(500);
+
+    // Counting the ticks it takes to settle proves it resolves over several, not one.
+    let ticks = 1;
+    while (boss.shove && ticks < 20) {
+      stepShove(w, boss, DT);
+      ticks++;
+    }
+    expect(ticks).toBeGreaterThan(2);
+    settle(w, add);
+
+    // Both land at exactly the endpoint the old instant write produced, then clear.
+    expect(boss.pos.x).toBeCloseTo(1000, 3); // 800 + 200
+    expect(add.pos.y).toBeCloseTo(500, 3); // 300 + 200
+    expect(boss.shove == null).toBe(true);
+    expect(add.shove == null).toBe(true);
+  });
+
+  it('the world sim loop advances an in-flight shove each tick, and freezes the boss walk', () => {
+    const w = mkWorld('knight');
+    const boss = w.boss!;
+    w.players[0].pos = { x: 100, y: 100 }; // tuck the hero away — no separation nudges
+    boss.pos = { x: 800, y: 500 };
+    boss.decisionTimer = 999; // keep the boss from choosing an ability
+    applyForcedMove(w, { x: 600, y: 500 }, boss, forceAb({ knockback: 200 }));
+    const x0 = boss.pos.x;
+
+    w.step(DT, new Map()); // one full sim tick — its stepShoves must advance the slide
+    expect(boss.pos.x).toBeGreaterThan(x0); // moved by the loop's shove step
+    expect(boss.pos.x).toBeLessThan(x0 + 200); // only part-way (a slide, not a jump)
+    // The boss is being carried by the shove, so it did NOT also walk toward the hero
+    // at (100,100) — that would have pulled its x DOWN, not up.
+    expect(boss.pos.y).toBeCloseTo(500, 0);
+  });
+
+  it('a shoved add is carried by its slide, not its own walk toward the hero', () => {
+    const w = mkWorld('knight');
+    w.boss!.pos = { x: 100, y: 100 }; // boss well away
+    w.players[0].pos = { x: 800, y: 500 }; // hero ABOVE the add
+    const add = mkAdd(w, { x: 800, y: 800 });
+    w.adds = [add];
+    // Shove the add DOWN (+y), i.e. AWAY from the hero it would otherwise chase upward.
+    applyForcedMove(w, { x: 800, y: 700 }, add, forceAb({ knockback: 200 }));
+    expect(add.shove).toBeTruthy();
+    const y0 = add.pos.y;
+
+    w.step(DT, new Map());
+    // The slide carried it DOWN; had it walked toward the hero it would have gone UP.
+    expect(add.pos.y).toBeGreaterThan(y0);
+  });
+
+  it("drops a felled hero's shove mid-slide (no ghost-sliding a corpse)", () => {
+    const w = mkWorld('knight');
+    const p = w.players[0];
+    p.pos = { x: 800, y: 500 };
+    applyForcedMove(w, { x: 600, y: 500 }, p, forceAb({ knockback: 200 }));
+    expect(p.shove).toBeTruthy();
+
+    p.state = 'downed'; // fell while the knockback was still carrying them
+    w.step(DT, new Map()); // stepShoves must clear the shove for a non-alive hero
+    expect(p.shove == null).toBe(true);
+  });
+
+  it('drops a boss’s in-flight shove when it BLINKS away (instant reposition, not a slide)', () => {
+    // A blink teleports the boss, so a knockback still carrying it must be dropped or it
+    // keeps ghost-sliding from the spot it left (world.ts:2599). A fresh boss starts idle —
+    // the branch where handleBlink runs each tick — so a single step fires the blink.
+    const w = mkWorld('knight', 'lich'); // lich has a native blink (threatenRange 100)
+    const boss = w.boss!;
+    const p = w.players[0];
+    boss.pos = { x: p.pos.x + 30, y: p.pos.y }; // inside threatenRange → it blinks off the hero
+    boss.blinkTimer = 0; // blink off cooldown
+    applyForcedMove(w, { x: boss.pos.x - 50, y: boss.pos.y }, boss, forceAb({ knockback: 80 }));
+    expect(boss.shove).toBeTruthy(); // knockback in flight
+    const before = { ...boss.pos };
+
+    w.step(DT, new Map());
+
+    expect(boss.shove == null).toBe(true); // the blink dropped the slide…
+    expect(distXY(before, boss.pos)).toBeGreaterThan(100); // …and it teleported clear (blink range 300)
   });
 });
 
@@ -176,6 +313,9 @@ describe('blink swap / applyDimensionSwap (item 11)', () => {
     w.adds = [addFar, addNearRooted, addFarRooted];
 
     resolvePlayerAbility(w, p, 'a3', ZERO); // Dimension Door
+    // item 2: the reflected foes now slide across over ticks — resolve every shove.
+    settle(w, boss);
+    for (const a of w.adds) settle(w, a);
 
     // The mage itself did not move (range 0) — the reflection is across its spot.
     expect(p.pos.x).toBeCloseTo(800, 3);

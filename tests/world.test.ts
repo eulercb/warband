@@ -693,6 +693,58 @@ describe('world: victory + robustness', () => {
     expect(w.result().outcome).toBe('victory');
   });
 
+  // item: fight-start transition — a real boss fight opens with a fightStart event on
+  // its very first step (drives the boss-name banner + camera beat), then never again.
+  it('emits a fightStart event on the first step of a real fight, once', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 3,
+      players: [{ peerId: 'a', name: 'A', classId: 'ranger' }],
+    });
+    w.step(DT, new Map([['a', inp()]]));
+    expect(w.events.filter((e) => e.t === 'fightStart')).toHaveLength(1);
+    // A subsequent step does not re-announce.
+    w.step(DT, new Map([['a', inp()]]));
+    expect(w.events.some((e) => e.t === 'fightStart')).toBe(false);
+  });
+
+  it('does NOT emit fightStart in the reward room or the practice playground', () => {
+    const reward = new World({
+      monsterId: 'dragon',
+      seed: 3,
+      players: [{ peerId: 'a', name: 'A', classId: 'ranger' }],
+      scene: 'reward',
+    });
+    reward.step(DT, new Map([['a', inp()]]));
+    expect(reward.events.some((e) => e.t === 'fightStart')).toBe(false);
+
+    const practice = new World({
+      monsterId: 'dummy',
+      seed: 3,
+      players: [{ peerId: 'a', name: 'A', classId: 'ranger' }],
+      practice: true,
+    });
+    practice.step(DT, new Map([['a', inp()]]));
+    expect(practice.events.some((e) => e.t === 'fightStart')).toBe(false);
+  });
+
+  // item: party-wipe transition — a wipe closes with a defeat event (drives the somber
+  // collapse + "The warband falls" banner + the host defeat lap), mirroring victory.
+  it('emits a defeat event when the party wipes', () => {
+    const w = new World({
+      monsterId: 'dragon',
+      seed: 9,
+      players: [{ peerId: 'a', name: 'A', classId: 'ranger' }],
+    });
+    w.step(DT, new Map([['a', inp()]])); // first step (clears the fightStart)
+    w.players[0].hp = 0;
+    w.players[0].state = 'dead';
+    w.step(DT, new Map([['a', inp()]]));
+    expect(w.finished).toBe(true);
+    expect(w.outcome).toBe('defeat');
+    expect(w.events.filter((e) => e.t === 'defeat')).toHaveLength(1);
+  });
+
   it('runs a 4-player fight for many ticks without throwing or NaNs', () => {
     const w = new World({
       monsterId: 'lich',

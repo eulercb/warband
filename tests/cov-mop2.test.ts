@@ -5,7 +5,7 @@
  * a root on an add, and a sub-slot press with nothing bound. Behaviour-asserting.
  */
 import { describe, it, expect } from 'vitest';
-import { resolvePlayerAbility } from '../src/engine/combat/abilities';
+import { resolvePlayerAbility, stepShove } from '../src/engine/combat/abilities';
 import { World } from '../src/engine/world/world';
 import { refreshComponents, recompose } from '../src/engine/content/forge';
 import { isRooted } from '../src/engine/combat/combat';
@@ -133,6 +133,8 @@ describe('forced shove lands on an add (item 11)', () => {
     basic.knockback = 200;
     const x0 = add.pos.x;
     resolvePlayerAbility(w, p, 'basic', ZERO);
+    // item 2: the shove now slides the add over ticks — resolve it to its endpoint.
+    for (let i = 0; i < 16 && add.shove; i++) stepShove(w, add, SIM_DT);
     expect(add.pos.x).toBeGreaterThan(x0); // shoved further along +x (away from caster)
   });
 });

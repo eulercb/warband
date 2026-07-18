@@ -71,3 +71,44 @@ describe('Fx: attack bursts do not accumulate on the ground', () => {
     expect(instructionCount(expired)).toBe(0); // no lingering circle on the ground
   });
 });
+
+describe('Fx: fight-start and party-wipe transitions (item)', () => {
+  it('a fightStart event paints an opening burst that then clears', () => {
+    const fx = new Fx(new Container());
+    const camera = new Camera(1600, 1000);
+
+    fx.processEvents([{ t: 'fightStart', pos: { x: 800, y: 500 } }], camera);
+    const alive = new Graphics();
+    fx.draw(alive, camera);
+    expect(instructionCount(alive)).toBeGreaterThan(0); // the opening ring is drawn
+
+    for (let frame = 0; frame < 80; frame++) fx.update(16);
+    const cleared = new Graphics();
+    fx.draw(cleared, camera);
+    expect(instructionCount(cleared)).toBe(0); // and it doesn't linger
+  });
+
+  it('a defeat event kicks off a somber ember lap that feeds bursts, then settles', () => {
+    const fx = new Fx(new Container());
+    const camera = new Camera(1600, 1000);
+
+    fx.processEvents([{ t: 'defeat', pos: { x: 800, y: 500 } }], camera);
+
+    // Over the defeat lap, updateDefeat keeps spawning embers — the layer stays lit
+    // (and bounded) rather than empty, distinguishing it from a single one-shot burst.
+    let peak = 0;
+    for (let frame = 0; frame < 30; frame++) {
+      fx.update(16);
+      const g = new Graphics();
+      fx.draw(g, camera);
+      peak = Math.max(peak, instructionCount(g));
+    }
+    expect(peak).toBeGreaterThan(0); // embers were actively drawn during the lap
+
+    // After the lap (~2.2s) the embers stop and the ground clears.
+    for (let frame = 0; frame < 200; frame++) fx.update(16);
+    const settled = new Graphics();
+    fx.draw(settled, camera);
+    expect(instructionCount(settled)).toBe(0);
+  });
+});

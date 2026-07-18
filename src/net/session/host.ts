@@ -56,10 +56,10 @@ import { recordEncounter } from '../../engine/content/balance';
 import { Rng, mixSeed } from '../../engine/core/math';
 import { isUpgradeId, upgradeMaxStacks } from '../../engine/content/upgrades';
 import type { UpgradeId } from '../../engine/content/upgrades';
-import { isCharUpgradeId, charUpgradeMaxStacks } from '../../engine/content/charUpgrades';
+import { isCharUpgradeId, charUpgradeAtMax } from '../../engine/content/charUpgrades';
 import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
 import { CLASS_IDS } from '../../engine/content/classes';
-import { getEphemeral, isEphemeralId } from '../../engine/content/ephemeral';
+import { getEphemeral, isEphemeralId, REROLL_CAP } from '../../engine/content/ephemeral';
 import type { EphemeralId, EphemeralStock } from '../../engine/content/ephemeral';
 import type {
   MonsterId,
@@ -86,6 +86,9 @@ interface NetAction<T> {
 
 /** How long (ms) the post-win victory dance plays before the result screen. */
 const VICTORY_LAP_MS = 2600;
+/** How long (ms) the post-wipe defeat transition plays before the result screen
+ *  (item: party-wipe transition — mirrors the victory lap, a touch shorter). */
+const DEFEAT_LAP_MS = 2200;
 
 /** One connected (non-host) player's lobby entry. */
 interface PeerEntry {
@@ -257,6 +260,9 @@ export class Host implements NetSession {
   private readonly scoreByPeer = new Map<string, number>();
   /** Ephemeral-shop coin balance per peer (item 21; carries across the run). */
   private readonly coinsByPeer = new Map<string, number>();
+  /** item: reroll — offer-rerolls each peer has spent THIS between-boss stop (reset per
+   *  finishFight), coin-gated + capped at REROLL_CAP. */
+  private readonly rerollsByPeer = new Map<string, number>();
   /** Ephemeral perks bought for the NEXT fight per peer (consumed at spawn). */
   private readonly ephemeralByPeer = new Map<string, EphemeralStock>();
   /** Banked hardcore retries (shared): a wipe can spend one to restart the boss. */
@@ -298,9 +304,9 @@ export class Host implements NetSession {
   private lastTime = 0;
   private acc = 0;
   /** Wall-clock deadline of the post-win victory lap (0 = no lap pending). */
-  private victoryLapUntil = 0;
+  private resultLapUntil = 0;
   /** Backstop for the lap: rAF stalls in hidden tabs, a timer does not. */
-  private victoryLapTimer: ReturnType<typeof setTimeout> | null = null;
+  private resultLapTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Debug: keys already logged once (first-input-per-peer, first snapshot, …).
   private readonly loggedOnce = new Set<string>();
@@ -688,7 +694,7 @@ export class Host implements NetSession {
   /** Spin up a fresh World for `runOrder[runIndex]` and start the sim loop. */
   private beginFight(): void {
     this.clearResumeCountdown();
-    this.clearVictoryLap();
+    this.clearResultLap();
     const slot = this.runOrder[this.runIndex] ?? [this.monsterId];
     const seed = this.fightSeed();
     // Chaos Draft (item 10): each boss slot drafts a random monster off the fight
@@ -937,6 +943,11 @@ export class Host implements NetSession {
     this.recordEphemeral(selfId, id);
   }
 
+  /** NetSession: the host spends coins to re-randomize its own upgrade offers (item: reroll). */
+  rerollOffers(): void {
+    this.recordReroll(selfId);
+  }
+
   /** NetSession: host marks itself ready (or not) to advance to the next boss. */
   setNextReady(ready: boolean): void {
     this.recordNextReady(selfId, ready);
@@ -962,8 +973,12 @@ export class Host implements NetSession {
     }
     if (isCharUpgradeId(msg.char) && !this.roundPickedChar.has(peerId)) {
       const arr = this.charUpgrades.get(peerId) ?? [];
-      const have = arr.reduce((n, id) => (id === msg.char ? n + 1 : n), 0);
-      if (have < charUpgradeMaxStacks(msg.char)) {
+      // Occupancy-aware cap (item 8): a GRAFT reclaimed off its slot is still in this
+      // append-only list yet NOT "at max", so the host re-accepts it — matching the
+      // client's offer filter (rollCharChoices) and its optimistic local list. The
+      // authoritative kit the next World spawns from then agrees with the name the HUD
+      // already shows live, so a re-grafted skill's name and cast effect never desync.
+      if (!charUpgradeAtMax(msg.char, arr)) {
         this.roundPickedChar.add(peerId);
         arr.push(msg.char);
         this.charUpgrades.set(peerId, arr);
@@ -1045,6 +1060,27 @@ export class Host implements NetSession {
       }
     }
     if (msg.buyEphemeral) this.recordEphemeral(peerId, msg.buyEphemeral);
+    if (msg.rerollOffers) this.recordReroll(peerId);
+  }
+
+  /**
+   * item: reroll — a peer spends coins to re-randomize its current upgrade offers,
+   * host-authoritative: coin-gated against the peer's banked coins and capped at
+   * REROLL_CAP per between-boss stop (reset each finishFight). The offers themselves are
+   * re-drawn CLIENT-side (deterministic from the reward seed + a reroll salt), so the
+   * host only owns the coin spend — keeping the ledger consistent for the next roster.
+   */
+  private recordReroll(peerId: string): void {
+    const cost = getEphemeral('reroll').cost;
+    const used = this.rerollsByPeer.get(peerId) ?? 0;
+    if (used >= REROLL_CAP) return; // capped for this stop
+    const coins = this.coinsByPeer.get(peerId) ?? 0;
+    if (coins < cost) return; // can't afford it
+    this.coinsByPeer.set(peerId, coins - cost);
+    this.rerollsByPeer.set(peerId, used + 1);
+    netLog('host', `reroll #${used + 1} for ${peerId.slice(0, 6)}`, {
+      coinsLeft: this.coinsByPeer.get(peerId),
+    });
   }
 
   /**
@@ -1056,6 +1092,9 @@ export class Host implements NetSession {
    */
   private recordEphemeral(peerId: string, id: EphemeralId): void {
     if (!isEphemeralId(id)) return;
+    // item: reroll — the reroll is an ACTION handled by recordReroll (the offers re-draw
+    // client-side); it is not a next-fight perk, so never process it as one here.
+    if (id === 'reroll') return;
     const def = getEphemeral(id);
     if (def.hardcoreOnly && !this.hardcore) return;
     const coins = this.coinsByPeer.get(peerId) ?? 0;
@@ -1136,7 +1175,7 @@ export class Host implements NetSession {
 
   returnToLobby(): void {
     this.stopLoop();
-    this.clearVictoryLap();
+    this.clearResultLap();
     this.clearResumeCountdown();
     this.world = null;
     this.localPlayerId = null;
@@ -1175,7 +1214,7 @@ export class Host implements NetSession {
     netLog('host', 'leaving room (host)');
     this.byeAction.send({ reason: 'hostLeft' });
     this.stopLoop();
-    this.clearVictoryLap();
+    this.clearResultLap();
     this.clearResumeCountdown();
     this.stopDiag();
     // Fire-and-forget: room teardown races the tab closing; we don't await it.
@@ -1235,28 +1274,27 @@ export class Host implements NetSession {
     }
 
     if (world.finished) {
-      // Victory lap: hold the result screen for a beat so everyone sees the
-      // heroes' victory dance + fireworks (the `victory` event already shipped
-      // in the final snapshot). Defeats cut straight to the result. A timer
-      // backstops the rAF-driven loop so a hidden host tab (rAF suspended)
-      // can't stall the result screen for every client.
-      if (world.outcome === 'victory') {
-        if (this.victoryLapUntil === 0) {
-          this.victoryLapUntil = now + VICTORY_LAP_MS;
-          this.victoryLapTimer = setTimeout(() => this.finishFight(), VICTORY_LAP_MS + 150);
-        }
-        if (now < this.victoryLapUntil) return;
+      // Result lap: hold the result screen for a beat so everyone sees the end-of-fight
+      // transition — the heroes' victory dance + fireworks on a win, or the somber
+      // collapse on a wipe (item: party-wipe transition). The matching `victory`/`defeat`
+      // event already shipped in the final snapshot. A timer backstops the rAF-driven
+      // loop so a hidden host tab (rAF suspended) can't stall the result for every client.
+      const lapMs = world.outcome === 'victory' ? VICTORY_LAP_MS : DEFEAT_LAP_MS;
+      if (this.resultLapUntil === 0) {
+        this.resultLapUntil = now + lapMs;
+        this.resultLapTimer = setTimeout(() => this.finishFight(), lapMs + 150);
       }
+      if (now < this.resultLapUntil) return;
       this.finishFight();
     }
   }
 
-  private clearVictoryLap(): void {
-    if (this.victoryLapTimer !== null) {
-      clearTimeout(this.victoryLapTimer);
-      this.victoryLapTimer = null;
+  private clearResultLap(): void {
+    if (this.resultLapTimer !== null) {
+      clearTimeout(this.resultLapTimer);
+      this.resultLapTimer = null;
     }
-    this.victoryLapUntil = 0;
+    this.resultLapUntil = 0;
   }
 
   /** Synthesize AI input for each bot from the current world state (per step). */
@@ -1274,7 +1312,7 @@ export class Host implements NetSession {
     const world = this.world;
     if (!world) return;
     this.resultSent = true;
-    this.clearVictoryLap();
+    this.clearResultLap();
     this.clearResumeCountdown();
     this.paused = false;
     this.pausedByName = undefined;
@@ -1283,6 +1321,7 @@ export class Host implements NetSession {
     // who all receive the result screen below).
     this.roundPickedGeneric.clear();
     this.roundPickedChar.clear();
+    this.rerollsByPeer.clear(); // item: reroll — a fresh reroll allowance for this stop
     this.nextReadyPeers.clear();
     this.roundParticipants = new Set<string>([selfId, ...this.lobby.keys()]);
     // Stop stepping but keep `world` so the host can render the final frame.

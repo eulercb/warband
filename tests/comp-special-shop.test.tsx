@@ -39,7 +39,7 @@ import {
 } from '../src/ui/state/session';
 import { subclassesFor, specialRewardStep } from '../src/engine/content/subclasses';
 import { offerableGrands } from '../src/engine/content/charUpgrades';
-import { EPHEMERAL } from '../src/engine/content/ephemeral';
+import { EPHEMERAL, REROLL_CAP } from '../src/engine/content/ephemeral';
 
 const initial: AppState = { ...useStore.getState() };
 
@@ -251,7 +251,8 @@ describe('EphemeralShop — coin stall (item 21)', () => {
     // The hardcore-only Second Chance is hidden outside a hardcore run.
     expect(screen.queryByText(EPHEMERAL.retry.name)).toBeNull();
     expect(screen.getByText(EPHEMERAL.potion.name)).toBeTruthy();
-    expect(container.querySelectorAll('.wb-shop-card').length).toBe(5);
+    // speed / damage / defense / potion / revive + the reroll stall (item: reroll) = 6.
+    expect(container.querySelectorAll('.wb-shop-card').length).toBe(6);
   });
 
   it('buying an affordable perk deducts coins and stocks it', () => {
@@ -269,6 +270,26 @@ describe('EphemeralShop — coin stall (item 21)', () => {
     expect(card.disabled).toBe(true);
     fireEvent.click(card);
     expect(useStore.getState().myCoins).toBe(1);
+  });
+
+  // item: reroll — the reroll stall is an ACTION: it spends coins and bumps the reroll
+  // count (re-drawing the offers), never banking a next-fight perk.
+  it('the reroll stall spends coins and bumps the reroll count', () => {
+    useStore.setState({ myCoins: 10, myEphemeral: {}, rerollCount: 0 });
+    render(<EphemeralShop />);
+    fireEvent.click(screen.getByText(EPHEMERAL.reroll.name).closest('button')!);
+    expect(useStore.getState().rerollCount).toBe(1);
+    expect(useStore.getState().myCoins).toBe(10 - EPHEMERAL.reroll.cost);
+    expect(useStore.getState().myEphemeral).toEqual({}); // no perk banked
+  });
+
+  it('the reroll stall is disabled once its per-stop cap is spent', () => {
+    useStore.setState({ myCoins: 20, myEphemeral: {}, rerollCount: REROLL_CAP });
+    render(<EphemeralShop />);
+    const card = screen.getByText(EPHEMERAL.reroll.name).closest('button')!;
+    expect(card.disabled).toBe(true);
+    fireEvent.click(card);
+    expect(useStore.getState().rerollCount).toBe(REROLL_CAP); // unchanged — over the cap
   });
 
   it('surfaces the hardcore Second Chance inside a hardcore run', () => {

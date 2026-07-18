@@ -13,6 +13,12 @@ export interface BuffBadge {
   color: number;
   good: boolean;
   label: string;
+  /**
+   * item 1 — a CONSTANT status with no duration (a permanent flyer's airborne
+   * state): the badge shows the glyph alone, with no (misleading) countdown. Timed
+   * buffs leave this unset and keep their shrinking `secs`.
+   */
+  permanent?: boolean;
 }
 
 /** Emoji + accent for one buff/debuff, or null if it shouldn't surface. */
@@ -50,25 +56,46 @@ function describe(
   }
 }
 
-/** Build compact badges for a list of buffs (deduped by glyph, longest wins). */
-export function buffBadges(buffs: BuffView[] | undefined, cap = 4): BuffBadge[] {
-  if (!buffs || buffs.length === 0) return [];
+/**
+ * Build compact badges for a list of buffs (deduped by glyph, longest wins).
+ *
+ * item 1 — `flying` surfaces a CONSTANT flyer's airborne state (a boss with
+ * `MonsterDef.flying`, which carries no timed `'flight'` buff): a permanent 🕊️
+ * badge with no countdown, inserted first so it survives the `cap` and wins over
+ * any same-glyph timed buff. Timed flyers surface through their real buff instead,
+ * so the default `flying = false` keeps every non-flyer byte-identical.
+ */
+export function buffBadges(buffs: BuffView[] | undefined, cap = 4, flying = false): BuffBadge[] {
   const byGlyph = new Map<string, BuffBadge>();
-  for (const b of buffs) {
-    const d = describe(b.kind, b.mult);
-    if (!d) continue;
-    const secs = Math.max(1, Math.ceil(b.remaining));
-    const existing = byGlyph.get(d.glyph);
-    if (!existing || secs > existing.secs) {
-      byGlyph.set(d.glyph, { glyph: d.glyph, secs, color: d.color, good: d.good, label: d.label });
+  if (flying) {
+    const d = describe('flight', 0);
+    if (d) byGlyph.set(d.glyph, { ...d, secs: 0, permanent: true });
+  }
+  if (buffs) {
+    for (const b of buffs) {
+      const d = describe(b.kind, b.mult);
+      if (!d) continue;
+      const existing = byGlyph.get(d.glyph);
+      if (existing?.permanent) continue; // constant status already shown — don't overwrite it
+      const secs = Math.max(1, Math.ceil(b.remaining));
+      if (!existing || secs > existing.secs) {
+        byGlyph.set(d.glyph, {
+          glyph: d.glyph,
+          secs,
+          color: d.color,
+          good: d.good,
+          label: d.label,
+        });
+      }
     }
   }
   return [...byGlyph.values()].slice(0, cap);
 }
 
-/** One-line text summary ("🛡️2 ❄3") for a canvas label. */
-export function buffLabel(buffs: BuffView[] | undefined, cap = 4): string {
-  return buffBadges(buffs, cap)
-    .map((b) => `${b.glyph}${b.secs}`)
+/** One-line text summary ("🛡️2 ❄3") for a canvas label. A permanent badge (a
+ * constant flyer's flight) shows the glyph alone, without a countdown. */
+export function buffLabel(buffs: BuffView[] | undefined, cap = 4, flying = false): string {
+  return buffBadges(buffs, cap, flying)
+    .map((b) => (b.permanent ? b.glyph : `${b.glyph}${b.secs}`))
     .join(' ');
 }

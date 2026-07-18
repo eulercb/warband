@@ -93,6 +93,39 @@ describe('buffBadges', () => {
     expect(badges[0].secs).toBe(5);
   });
 
+  it('surfaces a constant flyer (item 1) as a permanent, no-countdown Airborne badge', () => {
+    // A constant flyer (MonsterDef.flying) carries no timed 'flight' buff, so the
+    // `flying` flag synthesises the chip. It must read as permanent (no shrinking
+    // timer), which is what tells it apart from a timed Dragon take-off.
+    const [air] = buffBadges(undefined, 4, true);
+    expect(air.glyph).toBe('🕊️');
+    expect(air.good).toBe(true);
+    expect(air.label).toBe('Airborne');
+    expect(air.permanent).toBe(true);
+    // Empty / absent buff lists still surface the constant status.
+    expect(buffBadges([], 4, true)).toHaveLength(1);
+  });
+
+  it('keeps the constant flyer badge first (surviving the cap) alongside real buffs', () => {
+    const badges = buffBadges([buff('stun', 2), buff('moveSpeed', 3, 0.5)], 4, true);
+    expect(badges[0].glyph).toBe('🕊️');
+    expect(badges[0].permanent).toBe(true);
+    expect(badges.map((b) => b.glyph)).toContain('💫');
+  });
+
+  it('the permanent flight badge is not overwritten by a same-glyph timed flight buff', () => {
+    const badges = buffBadges([buff('flight', 9)], 4, true);
+    expect(badges).toHaveLength(1);
+    expect(badges[0].permanent).toBe(true);
+    expect(badges[0].secs).toBe(0);
+  });
+
+  it('leaves non-flyers byte-identical (flying defaults to false)', () => {
+    const buffs = [buff('stun', 2)];
+    expect(buffBadges(buffs)).toEqual(buffBadges(buffs, 4, false));
+    expect(buffBadges(buffs, 4, false).some((b) => b.glyph === '🕊️')).toBe(false);
+  });
+
   it('caps the number of badges returned', () => {
     const many = [
       buff('stun', 2),
@@ -119,5 +152,11 @@ describe('buffLabel', () => {
   it('honours the cap', () => {
     const many = [buff('stun', 2), buff('invuln', 2), buff('moveSpeed', 2, 1.5)];
     expect(buffLabel(many, 1).split(' ')).toHaveLength(1);
+  });
+
+  it('renders a constant flyer with the glyph alone — no countdown number (item 1)', () => {
+    expect(buffLabel(undefined, 4, true)).toBe('🕊️');
+    // Timed buffs keep their seconds; the permanent flight glyph stays bare.
+    expect(buffLabel([buff('stun', 2)], 4, true)).toBe('🕊️ 💫2');
   });
 });

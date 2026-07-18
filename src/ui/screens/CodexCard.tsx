@@ -4,14 +4,17 @@
  * A parchment Player's-Handbook stat block for one class: name / role / blurb,
  * the Hit-Points · Speed · Threat line, and one row per base ability (a key chip
  * + the ability name + its concrete effect line). Every number is read LIVE from
- * the engine — `CLASSES[id]` for the vitals and `previewAbilityTable` +
+ * the engine — `getClass(id)` for the name + vitals and `previewAbilityTable` +
  * `describeAbility` for the kit (exactly what the fight commits) — so the card can
- * never drift from the real values. Slot chips follow the player's live keyboard
- * bindings (LMB / Q / E / R by default). Used by both the lobby class grid and the
- * main-menu hero picker.
+ * never drift from the real values. Resolving through `getClass` (not the raw
+ * `CLASSES` table) means a Chaos Forge run shows the FORGED name + recomputed vitals
+ * over the forged ability rows, instead of a base name above fused rows (item 3/4);
+ * it returns the canonical def when Forge is off, so non-Forge cards are unchanged.
+ * Slot chips follow the player's live keyboard bindings (LMB / Q / E / R by default).
+ * Used by both the lobby class grid and the main-menu hero picker.
  */
 import type { CSSProperties } from 'react';
-import { CLASSES, describeAbility } from '../../engine/content/classes';
+import { getClass, describeAbility } from '../../engine/content/classes';
 import { previewAbilityTable } from '../../engine/content/charUpgrades';
 import { useBindings, codeToLabel, SLOT_ACTION } from '../../input/bindings';
 import type { ClassId, AbilitySlot } from '../../engine/core/types';
@@ -65,7 +68,9 @@ export interface CodexCardProps {
 }
 
 export function CodexCard({ classId, selected, onSelect }: CodexCardProps) {
-  const def = CLASSES[classId];
+  // getClass (not CLASSES[...]) so a Forge run shows the forged name + recomputed
+  // vitals that match the forged ability rows below (item 3/4); canonical when off.
+  const def = getClass(classId);
   // Subscribe to the bindings store so the key chips stay live if a player rebinds.
   const keys = useBindings((s) => s.bindings.keys);
   // Spawn-resolved kit table — the same source the lobby tooltip used, rendered
