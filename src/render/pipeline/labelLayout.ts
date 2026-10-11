@@ -33,3 +33,9 @@ export function topBandFade(screenY: number, band: number): number {
 export function staggerOffset(index: number, rowHeight: number): number {
   return (Math.abs(Math.trunc(index)) % 2) * rowHeight;
 }
+
+/** Short floor markers on phones; full descriptions live in the nearby inspector. */
+export function rewardMarker(kind: 'generic' | 'char' | 'shop', ordinal: number): string {
+  const prefix = { generic: 'G', char: 'C', shop: 'S' }[kind];
+  return `${prefix}${ordinal}`;
+}

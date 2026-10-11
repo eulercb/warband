@@ -60,3 +60,36 @@ Before merging, try the changed build on a real phone:
 A pull request lets you inspect the patch and CI results without changing the
 published game. Merging into `main` triggers the repository's Pages deployment;
 keep the PR unmerged until desktop checks and the phone check are satisfactory.
+
+## Reward-room clarity
+
+Phones show numbered gold **G**, purple **C**, and teal **S** markers instead of
+all offer names at once. Approach an option for its full name, description,
+price/status, and dwell progress in a single scrollable panel. The blue **↓**
+marks the exit; its descent prompt appears when you approach or are descending.
+A compact G/C/coin readout replaces the mobile room banner; the list view keeps
+next-boss information and the run seed.
+
+On the first reward-room visit in a browser tab, a short guide explains each
+category in turn. Next tip and Skip guide let you control it. Touching a gameplay
+control dismisses it immediately and restores nearby-option information. Room
+guide replays it at any time; it never picks an upgrade or spends coins. Desktop
+captions and the list view remain unchanged.
+
+For the focused browser regression, start the development server, then run:
+
+```sh
+CHROMIUM_PATH=/usr/bin/chromium npm run smoke:rewards
+```
+
+Unlike the production smoke, this check uses Vite's development server on port 5173. It injects a between-boss state fixture, then exercises the real scene,
+renderer, and touch controls to buy a potion, reroll offers, claim both boon
+categories, use the list fallback, and descend. It also checks compact captions
+at three phone sizes and full captions on desktop. CI runs this check too. A
+failure screenshot is saved under SHOT_DIR (the system temporary directory by
+default). This does not replace playing a complete run or testing networking.
+
+Example layouts captured from development fixtures:
+
+- [First-visit guide on a small phone](images/rewards-mobile-guide.png)
+- [Compact markers and a nearby shop description](images/rewards-mobile-room.png)

@@ -217,3 +217,25 @@ describe('<RewardRoom>', () => {
     expect(screen.queryByRole('dialog', { name: 'Paused' })).toBeNull();
   });
 });
+
+it('offers a first-visit mobile guide that can be dismissed, replayed, and remembered', () => {
+  sessionStorage.clear();
+  vi.stubGlobal('matchMedia', () => ({
+    matches: true,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
+  const { container } = render(<RewardRoom result={makeResult()} />);
+  expect(screen.getByRole('region', { name: 'Reward room guide' })).toBeTruthy();
+  fireEvent.pointerDown(container.firstChild as Element);
+  expect(screen.getByRole('region', { name: 'Reward room guide' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Skip guide' }));
+  expect(screen.queryByRole('region', { name: 'Reward room guide' })).toBeNull();
+  expect(sessionStorage.getItem('warband:reward-guide-seen')).toBe('1');
+  fireEvent.click(screen.getByRole('button', { name: 'Room guide' }));
+  expect(screen.getByRole('region', { name: 'Reward room guide' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Close guide' }));
+  cleanup();
+  render(<RewardRoom result={makeResult()} />);
+  expect(screen.queryByRole('region', { name: 'Reward room guide' })).toBeNull();
+});

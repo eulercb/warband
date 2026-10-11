@@ -26,7 +26,7 @@ import { getClass } from '../../engine/content/classes';
 import { themeFor } from '../../engine/world/terrain';
 import { Rng } from '../../engine/core/math';
 import { Camera } from './camera';
-import { topBandFade, staggerOffset } from './labelLayout';
+import { topBandFade, staggerOffset, rewardMarker } from './labelLayout';
 import { Fx } from '../overlays/fx';
 import { Balloons } from '../overlays/balloons';
 import {
@@ -169,7 +169,7 @@ export class Renderer {
   }
 
   /** Draw one frame from the given render state. Caller drives the cadence. */
-  render(state: RenderState): void {
+  render(state: RenderState, presentation: { compactRewardLabels?: boolean } = {}): void {
     const now = performance.now();
     const dtMs = this.lastRenderMs === 0 ? 16 : Math.min(100, now - this.lastRenderMs);
     this.lastRenderMs = now;
@@ -217,7 +217,7 @@ export class Renderer {
     this.particles.update(dtMs);
     this.particles.draw(this.camera);
 
-    this.updateLabels(state);
+    this.updateLabels(state, presentation.compactRewardLabels ?? false);
   }
 
   /**
@@ -618,7 +618,7 @@ export class Renderer {
     }
   }
 
-  private updateLabels(state: RenderState): void {
+  private updateLabels(state: RenderState, compactRewardLabels: boolean): void {
     const totems = state.totems ?? [];
     const loot = state.loot ?? [];
     const vortex = state.vortex ?? null;
@@ -682,10 +682,14 @@ export class Renderer {
     // item 78: stagger alternate relics' captions onto a lifted row so two
     // horizontally-adjacent names never merge into one string.
     let lootIdx = 0;
+    const ordinals = { generic: 0, char: 0, shop: 0 };
     for (const l of loot) {
       const t = this.labels[i++];
       t.visible = true;
-      t.text = l.claimed ? `${l.label ?? ''} ✓` : (l.label ?? '');
+      const caption = compactRewardLabels
+        ? rewardMarker(l.kind, ++ordinals[l.kind])
+        : (l.label ?? '');
+      t.text = l.claimed ? `${caption} ✓` : caption;
       const s = this.camera.worldToScreen(l.pos);
       t.position.set(s.x, s.y - l.radius * scale - 24 - staggerOffset(lootIdx++, LABEL_STAGGER));
       t.alpha = l.claimed ? 0.85 : l.locked ? 0.3 : l.active ? 1 : 0.7;
@@ -695,7 +699,7 @@ export class Renderer {
     if (vortex) {
       const t = this.labels[i++];
       t.visible = true;
-      t.text = vortex.open ? '🌀 DESCEND' : '🌀 CLAIM YOUR BOONS';
+      t.text = compactRewardLabels ? '↓' : vortex.open ? '🌀 DESCEND' : '🌀 CLAIM YOUR BOONS';
       const s = this.camera.worldToScreen(vortex.pos);
       t.position.set(s.x, s.y - vortex.radius * scale - 30);
       t.alpha = vortex.open ? 1 : 0.6;
