@@ -936,3 +936,43 @@
   font-weight: 800;
   color: #7dffa0;
 }
+
+/* Fit the full kit on phone portrait and short landscape viewports. */
+@media (pointer: coarse) and (max-width: 480px), (pointer: coarse) and (max-height: 500px) {
+  .wb-touch-controls {
+    --touch-size: 52px;
+    --stick-size: 112px;
+  }
+  .wb-touch-stick {
+    width: var(--stick-size);
+    height: var(--stick-size);
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .wb-touch-stick-left {
+    left: max(12px, env(safe-area-inset-left));
+  }
+  .wb-touch-stick-right {
+    right: max(12px, env(safe-area-inset-right));
+  }
+  .wb-touch-buttons {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + var(--stick-size) + 12px);
+    grid-template-columns: repeat(2, var(--touch-size));
+    gap: 6px;
+  }
+  .wb-touch-btn {
+    width: var(--touch-size);
+    height: var(--touch-size);
+  }
+  .wb-touch-side {
+    top: auto;
+    right: auto;
+    left: max(12px, env(safe-area-inset-left));
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + var(--stick-size) + 12px);
+  }
+}
+@media (pointer: coarse) and (max-height: 500px) {
+  .wb-touch-buttons {
+    grid-template-columns: repeat(3, var(--touch-size));
+  }
+}

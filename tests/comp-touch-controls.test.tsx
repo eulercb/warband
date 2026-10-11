@@ -498,3 +498,53 @@ describe('<TouchControls> swap radial button', () => {
     expect(setTouchSwapAimMock).not.toHaveBeenCalled();
   });
 });
+
+describe('interrupted mobile gestures', () => {
+  it('clears movement on lost pointer capture and accepts the next gesture', () => {
+    useHudStore.getState().set({ classId: 'knight' });
+    const { container } = render(<TouchControls />);
+    const stick = container.querySelector('.wb-touch-stick-left')!;
+    centreStickAtOrigin(stick);
+    fireEvent.pointerDown(stick, { pointerId: 1, clientX: 30, clientY: 0 });
+    fireEvent(stick, new PointerEvent('lostpointercapture', { pointerId: 1 }));
+    expect(setTouchMoveMock).toHaveBeenLastCalledWith(0, 0);
+    fireEvent.pointerDown(stick, { pointerId: 2, clientX: 0, clientY: 30 });
+    expect(setTouchMoveMock).toHaveBeenLastCalledWith(0, 30 / STICK_R);
+  });
+
+  it('clears held input and resets the stick after backgrounding the browser', () => {
+    useHudStore.getState().set({ classId: 'knight' });
+    const { container } = render(<TouchControls />);
+    const stick = container.querySelector('.wb-touch-stick-left')!;
+    centreStickAtOrigin(stick);
+    fireEvent.pointerDown(stick, { pointerId: 1, clientX: 30, clientY: 0 });
+    fireEvent(window, new Event('blur'));
+    expect(resetTouchMock).toHaveBeenCalled();
+    const restored = container.querySelector('.wb-touch-stick-left')!;
+    expect(restored).not.toBe(stick);
+    centreStickAtOrigin(restored);
+    fireEvent.pointerDown(restored, { pointerId: 2, clientX: 0, clientY: 30 });
+    expect(setTouchMoveMock).toHaveBeenLastCalledWith(0, 30 / STICK_R);
+  });
+});
+
+it('releases input when the document becomes hidden and leaves visible gestures alone', () => {
+  useHudStore.getState().set({ classId: 'knight' });
+  const { container } = render(<TouchControls />);
+  let hidden = false;
+  const original = Object.getOwnPropertyDescriptor(document, 'hidden');
+  Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+  try {
+    fireEvent(document, new Event('visibilitychange'));
+    expect(resetTouchMock).not.toHaveBeenCalled();
+    const btn = container.querySelector('.wb-touch-btn-basic')!;
+    fireEvent.pointerDown(btn, { pointerId: 1 });
+    hidden = true;
+    fireEvent(document, new Event('visibilitychange'));
+    expect(resetTouchMock).toHaveBeenCalled();
+    expect(container.querySelector('.wb-touch-btn.held')).toBeNull();
+  } finally {
+    if (original) Object.defineProperty(document, 'hidden', original);
+    else Reflect.deleteProperty(document, 'hidden');
+  }
+});
