@@ -7,7 +7,7 @@
  * tests/musterScene.test.ts; the panel itself by tests/comp-result-lobby.test.tsx.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 
 vi.mock('../src/ui/state/session', () => ({
   setReady: vi.fn(),
@@ -109,4 +109,22 @@ describe('<MusterHall>', () => {
     expect(hint).toContain('muster rune');
     expect(hint).not.toContain('Fill your band with bots');
   });
+});
+
+it('keeps the mobile hall clear with a usable lobby fallback and restored movement controls', () => {
+  vi.stubGlobal('matchMedia', () => ({
+    matches: true,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
+  useHudStore.getState().set({ classId: 'knight' });
+  render(<MusterHall />);
+  expect(screen.queryByRole('button', { name: /Ready up/ })).toBeNull();
+  expect(screen.getByText(/Room ABCDEF/)).toBeTruthy();
+  expect(screen.getByRole('group', { name: 'Touch controls' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Lobby menu' }));
+  expect(screen.getByRole('button', { name: /Ready up/ })).toBeTruthy();
+  expect(screen.queryByRole('group', { name: 'Touch controls' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Close menu' }));
+  expect(screen.getByRole('group', { name: 'Touch controls' })).toBeTruthy();
 });

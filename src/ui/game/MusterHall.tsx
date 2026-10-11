@@ -11,6 +11,9 @@ import { useEffect, useRef } from 'react';
 import { useStore } from '../state/store';
 import Lobby from '../screens/Lobby';
 import HUD from './HUD';
+import TouchControls from './TouchControls';
+import MobileMenu from './MobileMenu';
+import { useMobileMenu } from './useMobileMenu';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
 import { MusterScene } from '../state/musterScene';
@@ -20,6 +23,15 @@ import { InputManager } from '../../input/input';
 import { ARENA_W, ARENA_H, MAX_PLAYERS } from '../../engine/core/constants';
 
 export default function MusterHall() {
+  const menu = useMobileMenu();
+  const menuOpenRef = useRef(menu.open);
+  useEffect(() => {
+    menuOpenRef.current = menu.open;
+  }, [menu.open]);
+  const showControls = useStore((s) => s.showControls);
+  const roomCode = useStore((s) => s.roomCode);
+  const localReady = useStore((s) => s.localReady);
+
   const canvasRef = useRef<HTMLDivElement>(null);
   const isHost = useStore((s) => s.isHost);
 
@@ -58,7 +70,7 @@ export default function MusterHall() {
         if (!renderer || !input) return;
         const now = performance.now();
         const store = useStore.getState();
-        const uiOpen = store.showControls;
+        const uiOpen = menuOpenRef.current || store.showControls;
 
         // Keep the rune/horn + avatar in sync with the shared lobby state.
         scene.setReady(store.localReady);
@@ -117,13 +129,21 @@ export default function MusterHall() {
     <div className="wb-playground-root wb-muster-hall">
       <div ref={canvasRef} className="wb-playground-canvas" aria-hidden="true" />
       <HUD />
+      {!menu.open && !showControls ? <TouchControls navigationOnly /> : null}
+      {menu.mobile && !menu.open ? (
+        <div className="wb-mobile-room-status">
+          Room {roomCode} · {localReady ? 'Ready' : 'Not ready'}
+        </div>
+      ) : null}
       <div className="wb-muster-hint" aria-hidden="true">
         Step onto the muster rune to ready up — the war-horn starts the fight.
         {isHost
           ? ' Fill your band with bots — step on a class effigy up top to add that class, then step on a bot marker in your band below to send it home.'
           : ''}
       </div>
-      <Lobby />
+      <MobileMenu {...menu} label="Lobby menu">
+        <Lobby />
+      </MobileMenu>
     </div>
   );
 }

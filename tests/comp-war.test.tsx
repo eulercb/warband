@@ -140,3 +140,27 @@ describe('<WarRoom>', () => {
     expect(useStore.getState().phase).toBe('menu');
   });
 });
+
+describe('mobile war room', () => {
+  it('keeps movement controls across list open/close and keeps camp options available', () => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    useHudStore.getState().set({ classId: 'knight' });
+    const { container } = render(<WarRoom />);
+    expect(screen.queryByLabelText('Your display name')).toBeNull();
+    expect(screen.getByRole('group', { name: 'Touch controls' })).toBeTruthy();
+    expect(container.querySelector('.wb-touch-stick-right')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'List view' }));
+    expect(screen.queryByRole('group', { name: 'Touch controls' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Close list' }));
+    expect(screen.getByRole('group', { name: 'Touch controls' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Camp options' }));
+    expect(screen.getByLabelText('Your display name')).toBeTruthy();
+    expect(screen.queryByRole('group', { name: 'Touch controls' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Close menu' }));
+    expect(screen.getByRole('group', { name: 'Touch controls' })).toBeTruthy();
+  });
+});

@@ -9,11 +9,14 @@
  * for pointer / keyboard / screen-reader players. Networking is unchanged — the
  * host portal calls the same hostGame() the Create Room button did.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { hostGame, playUiSound } from '../state/session';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import HUD from './HUD';
+import TouchControls from './TouchControls';
+import MobileMenu from './MobileMenu';
+import { useMobileMenu } from './useMobileMenu';
 import HostSetup from '../screens/HostSetup';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
@@ -51,11 +54,26 @@ export default function WarRoom() {
   const setLocalName = useStore((s) => s.setLocalName);
   const error = useStore((s) => s.error);
 
+  const menu = useMobileMenu();
+  const menuOpenRef = useRef(menu.open);
+  useEffect(() => {
+    menuOpenRef.current = menu.open;
+  }, [menu.open]);
+  const showControls = useStore((s) => s.showControls);
+
   const canvasRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<WarScene | null>(null);
 
   const [showList, setShowList] = useState(false);
+  const setExpandedMenu = menu.setOpen;
+  const setMenuOpen = useCallback(
+    (open: boolean) => {
+      setExpandedMenu(open);
+      if (open) setShowList(false);
+    },
+    [setExpandedMenu],
+  );
   const [focusBoss, setFocusBoss] = useState<MonsterId | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -147,7 +165,8 @@ export default function WarRoom() {
         raf = requestAnimationFrame(loop);
         if (!renderer || !input) return;
         const now = performance.now();
-        const uiOpen = showListRef.current || useStore.getState().showControls;
+        const uiOpen =
+          menuOpenRef.current || showListRef.current || useStore.getState().showControls;
 
         const padMenu = padMenuPressed();
         if (padMenu && !padMenuPrev && !useStore.getState().showControls) {
@@ -212,6 +231,7 @@ export default function WarRoom() {
     <div className="wb-playground-root wb-war-root">
       <div ref={canvasRef} className="wb-playground-canvas" aria-hidden="true" />
       <HUD />
+      {!showList && !menu.open && !showControls ? <TouchControls navigationOnly /> : null}
 
       {/* Current selection banner. */}
       <div className="wb-reward-banner wb-war-banner">
@@ -232,6 +252,7 @@ export default function WarRoom() {
         className="wb-btn wb-btn-ghost wb-reward-listbtn"
         onClick={() => {
           playUiSound('uiClick');
+          menu.setOpen(false);
           setShowList((v) => !v);
         }}
         aria-expanded={showList}
@@ -240,37 +261,45 @@ export default function WarRoom() {
       </button>
 
       {/* Corner: your name + the diegetic Back, plus any error. */}
-      <div className="wb-panel wb-war-panel">
-        <label className="wb-field">
-          <span className="wb-field-label">Your name</span>
-          <input
-            className="wb-input"
-            type="text"
-            value={localName}
-            maxLength={16}
-            placeholder="Nameless Hero"
-            onChange={(e) => setLocalName(e.target.value)}
-            aria-label="Your display name"
-          />
-        </label>
-        <button
-          type="button"
-          className="wb-btn wb-btn-ghost"
-          onClick={() => {
-            playUiSound('uiClick');
-            useStore.getState().setError(null);
-            useStore.getState().setPhase('menu');
-          }}
-          disabled={creating}
-        >
-          Back to camp
-        </button>
-        {error ? (
-          <div className="wb-error" role="alert">
-            {error}
-          </div>
-        ) : null}
-      </div>
+      <MobileMenu {...menu} setOpen={setMenuOpen} label="Camp options">
+        <div className="wb-panel wb-war-panel">
+          <label className="wb-field">
+            <span className="wb-field-label">Your name</span>
+            <input
+              className="wb-input"
+              type="text"
+              value={localName}
+              maxLength={16}
+              placeholder="Nameless Hero"
+              onChange={(e) => setLocalName(e.target.value)}
+              aria-label="Your display name"
+            />
+          </label>
+          <button
+            type="button"
+            className="wb-btn wb-btn-ghost"
+            onClick={() => {
+              playUiSound('uiClick');
+              useStore.getState().setError(null);
+              useStore.getState().setPhase('menu');
+            }}
+            disabled={creating}
+          >
+            Back to camp
+          </button>
+          {error ? (
+            <div className="wb-error" role="alert">
+              {error}
+            </div>
+          ) : null}
+        </div>
+      </MobileMenu>
+
+      {menu.mobile && !menu.open && !showList && error ? (
+        <div className="wb-error wb-mobile-error" role="alert">
+          {error}
+        </div>
+      ) : null}
 
       {/* Boss inspector when standing near an effigy. */}
       {inspected && !showList ? (

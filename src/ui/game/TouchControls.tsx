@@ -11,7 +11,7 @@
  * Rendered as a sibling of <HUD/>. Purely presentational + input; no gameplay
  * logic lives here.
  */
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { useHudStore } from '../state/hudStore';
 import {
@@ -98,11 +98,13 @@ function VirtualStick({
     base.addEventListener('pointermove', move);
     base.addEventListener('pointerup', up);
     base.addEventListener('pointercancel', up);
+    base.addEventListener('lostpointercapture', up);
     return () => {
       base.removeEventListener('pointerdown', down);
       base.removeEventListener('pointermove', move);
       base.removeEventListener('pointerup', up);
       base.removeEventListener('pointercancel', up);
+      base.removeEventListener('lostpointercapture', up);
     };
   }, [onVec, deadzone]);
 
@@ -158,11 +160,13 @@ function TouchButton({
     el.addEventListener('pointerdown', press);
     el.addEventListener('pointerup', release);
     el.addEventListener('pointercancel', release);
+    el.addEventListener('lostpointercapture', release);
     el.addEventListener('pointerleave', release);
     return () => {
       el.removeEventListener('pointerdown', press);
       el.removeEventListener('pointerup', release);
       el.removeEventListener('pointercancel', release);
+      el.removeEventListener('lostpointercapture', release);
       el.removeEventListener('pointerleave', release);
     };
   }, [slot]);
@@ -245,11 +249,13 @@ function SwapRadialButton() {
     el.addEventListener('pointermove', move);
     el.addEventListener('pointerup', release);
     el.addEventListener('pointercancel', release);
+    el.addEventListener('lostpointercapture', release);
     return () => {
       el.removeEventListener('pointerdown', press);
       el.removeEventListener('pointermove', move);
       el.removeEventListener('pointerup', release);
       el.removeEventListener('pointercancel', release);
+      el.removeEventListener('lostpointercapture', release);
     };
   }, []);
   return (
@@ -259,7 +265,8 @@ function SwapRadialButton() {
   );
 }
 
-export default function TouchControls() {
+export default function TouchControls({ navigationOnly = false }: { navigationOnly?: boolean }) {
+  const [gestureEpoch, setGestureEpoch] = useState(0);
   const capable = useMemo(() => isTouchCapable(), []);
   const localClass = useStore((s) => s.localClass);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
@@ -274,7 +281,22 @@ export default function TouchControls() {
   const multiclass = useHudStore((s) => s.classes.length > 1);
   const potions = useHudStore((s) => s.potions);
 
-  useEffect(() => () => resetTouch(), []);
+  useEffect(() => {
+    const cancel = () => {
+      resetTouch();
+      setGestureEpoch((v) => v + 1);
+    };
+    const hidden = () => {
+      if (document.hidden) cancel();
+    };
+    window.addEventListener('blur', cancel);
+    document.addEventListener('visibilitychange', hidden);
+    return () => {
+      window.removeEventListener('blur', cancel);
+      document.removeEventListener('visibilitychange', hidden);
+      resetTouch();
+    };
+  }, []);
 
   if (!capable || !hasHud) return null;
 
@@ -297,62 +319,66 @@ export default function TouchControls() {
     (id ? previewSubAbility(id, myCharUpgrades)?.cooldown : 0) ?? 0;
 
   return (
-    <div className="wb-touch-controls" role="group" aria-label="Touch controls">
+    <div key={gestureEpoch} className="wb-touch-controls" role="group" aria-label="Touch controls">
       <VirtualStick side="left" label="MOVE" onVec={setTouchMove} />
-      <VirtualStick side="right" label="AIM" onVec={setTouchAim} deadzone={AIM_DEAD_ZONE} />
-      <div className="wb-touch-buttons">
-        {subVisible(subSkills[1]) ? (
-          <TouchButton
-            slot="sub2"
-            label={subName(subSkills[1])}
-            kind="sub"
-            cdSlot="sub2"
-            total={subCd(subSkills[1])}
-          />
-        ) : null}
-        {subVisible(subSkills[0]) ? (
-          <TouchButton
-            slot="sub1"
-            label={subName(subSkills[0])}
-            kind="sub"
-            cdSlot="sub1"
-            total={subCd(subSkills[0])}
-          />
-        ) : null}
-        <TouchButton
-          slot="a3"
-          label={shortName('a3')}
-          kind="a3"
-          cdSlot="a3"
-          total={abilities.a3?.cooldown}
-        />
-        <TouchButton
-          slot="a2"
-          label={shortName('a2')}
-          kind="a2"
-          cdSlot="a2"
-          total={abilities.a2?.cooldown}
-        />
-        <TouchButton
-          slot="a1"
-          label={shortName('a1')}
-          kind="a1"
-          cdSlot="a1"
-          total={abilities.a1?.cooldown}
-        />
-        <TouchButton
-          slot="basic"
-          label={shortName('basic')}
-          kind="basic"
-          cdSlot="basic"
-          total={abilities.basic?.cooldown}
-        />
-      </div>
-      <div className="wb-touch-side">
-        {potions > 0 ? <TouchButton slot="item" label={`🧪${potions}`} kind="item" /> : null}
-        {multiclass ? <SwapRadialButton /> : null}
-        <TouchButton slot="revive" label="Revive" kind="revive" />
-      </div>
+      {!navigationOnly ? (
+        <>
+          <VirtualStick side="right" label="AIM" onVec={setTouchAim} deadzone={AIM_DEAD_ZONE} />
+          <div className="wb-touch-buttons">
+            {subVisible(subSkills[1]) ? (
+              <TouchButton
+                slot="sub2"
+                label={subName(subSkills[1])}
+                kind="sub"
+                cdSlot="sub2"
+                total={subCd(subSkills[1])}
+              />
+            ) : null}
+            {subVisible(subSkills[0]) ? (
+              <TouchButton
+                slot="sub1"
+                label={subName(subSkills[0])}
+                kind="sub"
+                cdSlot="sub1"
+                total={subCd(subSkills[0])}
+              />
+            ) : null}
+            <TouchButton
+              slot="a3"
+              label={shortName('a3')}
+              kind="a3"
+              cdSlot="a3"
+              total={abilities.a3?.cooldown}
+            />
+            <TouchButton
+              slot="a2"
+              label={shortName('a2')}
+              kind="a2"
+              cdSlot="a2"
+              total={abilities.a2?.cooldown}
+            />
+            <TouchButton
+              slot="a1"
+              label={shortName('a1')}
+              kind="a1"
+              cdSlot="a1"
+              total={abilities.a1?.cooldown}
+            />
+            <TouchButton
+              slot="basic"
+              label={shortName('basic')}
+              kind="basic"
+              cdSlot="basic"
+              total={abilities.basic?.cooldown}
+            />
+          </div>
+          <div className="wb-touch-side">
+            {potions > 0 ? <TouchButton slot="item" label={`🧪${potions}`} kind="item" /> : null}
+            {multiclass ? <SwapRadialButton /> : null}
+            <TouchButton slot="revive" label="Revive" kind="revive" />
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

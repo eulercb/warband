@@ -17,6 +17,7 @@
     "format:check": "prettier --check .",
     "icons": "node scripts/gen-icons.mjs",
     "smoke": "node scripts/smoke.mjs",
+    "smoke:mobile": "node scripts/smoke-mobile.mjs",
     "relay": "node server/relay.mjs"
   },
   "dependencies": {

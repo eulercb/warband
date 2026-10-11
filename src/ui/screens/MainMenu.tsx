@@ -14,6 +14,8 @@ import { useGamepadMenu } from '../../input/useGamepadMenu';
 import VolumeControl from '../game/VolumeControl';
 import HUD from '../game/HUD';
 import TouchControls from '../game/TouchControls';
+import MobileMenu from '../game/MobileMenu';
+import { useMobileMenu } from '../game/useMobileMenu';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
 import { Playground } from '../state/playground';
@@ -48,6 +50,13 @@ export function MainMenu() {
   const panelRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const playgroundRef = useRef<Playground | null>(null);
+
+  const menu = useMobileMenu();
+  const menuOpenRef = useRef(menu.open);
+  useEffect(() => {
+    menuOpenRef.current = menu.open;
+  }, [menu.open]);
+  const showControls = useStore((s) => s.showControls);
 
   const [showPicker, setShowPicker] = useState(false);
   const [introDone, setIntroDone] = useState(false);
@@ -113,7 +122,8 @@ export function MainMenu() {
         lastNow = now;
 
         // Freeze the hero while an overlay (class picker / controls) is up.
-        const uiOpen = showPickerRef.current || useStore.getState().showControls;
+        const uiOpen =
+          menuOpenRef.current || showPickerRef.current || useStore.getState().showControls;
 
         const state = playground.frame(now, uiOpen);
         const localId = state.localPlayerId;
@@ -236,40 +246,62 @@ export function MainMenu() {
       <div ref={canvasRef} className="wb-playground-canvas" />
       <HUD />
       {/* Touch overlay so mobile players can walk the camp + swing at the dummy. */}
-      <TouchControls />
+      {!menu.open && !showPicker && !showControls ? <TouchControls /> : null}
 
       {/* Corner panel: the classic menu, for pointer/keyboard users. */}
-      <div className="wb-panel wb-playground-panel" ref={panelRef}>
-        <h1 className="wb-title">WARBAND</h1>
-        <p className="wb-tagline">Walk to a totem — or just start swinging.</p>
-        <div className="wb-menu-actions">
-          <button type="button" className="wb-btn wb-btn-primary" onClick={goHost}>
-            Host Game
-          </button>
-          <button type="button" className="wb-btn wb-btn-primary" onClick={goJoin}>
-            Join Game
-          </button>
-        </div>
-        <div className="wb-menu-secondary">
-          <button type="button" className="wb-btn wb-btn-ghost" onClick={() => setShowPicker(true)}>
-            Hero: {getClass(localClass).name}
-          </button>
-          <button type="button" className="wb-btn wb-btn-ghost" onClick={goControls}>
-            Controls
-          </button>
-          <VolumeControl />
-        </div>
-        {error ? (
-          <div className="wb-error" role="alert">
-            {error}
+      <MobileMenu {...menu} label="Menu">
+        <div className="wb-panel wb-playground-panel" ref={panelRef}>
+          <h1 className="wb-title">WARBAND</h1>
+          <p className="wb-tagline">Walk to a totem — or just start swinging.</p>
+          <div className="wb-menu-actions">
+            <button type="button" className="wb-btn wb-btn-primary" onClick={goHost}>
+              Host Game
+            </button>
+            <button type="button" className="wb-btn wb-btn-primary" onClick={goJoin}>
+              Join Game
+            </button>
           </div>
-        ) : null}
-        {/* item 1 (extends item 7): version + per-build SHA · date, tucked in the
+          <div className="wb-menu-secondary">
+            <button
+              type="button"
+              className="wb-btn wb-btn-ghost"
+              onClick={() => {
+                menu.setOpen(false);
+                setShowPicker(true);
+              }}
+            >
+              Hero: {getClass(localClass).name}
+            </button>
+            <button
+              type="button"
+              className="wb-btn wb-btn-ghost"
+              onClick={() => {
+                menu.setOpen(false);
+                goControls();
+              }}
+            >
+              Controls
+            </button>
+            <VolumeControl />
+          </div>
+          {error ? (
+            <div className="wb-error" role="alert">
+              {error}
+            </div>
+          ) : null}
+          {/* item 1 (extends item 7): version + per-build SHA · date, tucked in the
             menu corner, so a shipped update is identifiable at a glance. */}
-        <p className="wb-version" aria-label={BUILD_LABEL.aria}>
-          {BUILD_LABEL.text}
-        </p>
-      </div>
+          <p className="wb-version" aria-label={BUILD_LABEL.aria}>
+            {BUILD_LABEL.text}
+          </p>
+        </div>
+      </MobileMenu>
+
+      {menu.mobile && !menu.open && error ? (
+        <div className="wb-error wb-mobile-error" role="alert">
+          {error}
+        </div>
+      ) : null}
 
       {/* Totem channel progress */}
       {dwell && (
