@@ -181,3 +181,9 @@ For a local static preview of the production build:
 ```bash
 npm run build && npm run preview
 ```
+
+### Class identity pilot
+
+Rogue can use Shadowstep to prepare its next Backstab (or Assassin Death Strike) for a guaranteed critical hit within four seconds. Ordinary attacks leave preparation available. Warlock can curse enemies with Hex for extra personal damage; Hellish Rebuke also prepares a short, one-use counterburst if hurt. Timed badges show these opportunities on desktop and mobile.
+
+See [the class and subclass roadmap](docs/CLASS_REVAMP_ROADMAP.md) for the pilot rules, proposed defining subclass passives, and the staged plan for companions, forms, and the remaining classes. Later roadmap entries are proposals.

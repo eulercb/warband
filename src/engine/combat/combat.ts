@@ -32,6 +32,7 @@ import {
 /** Minimal structural sink so combat needn't import the World. */
 export interface EventSink {
   events: GameEvent[];
+  onPlayerDamaged?: (target: Player) => void;
 }
 
 /**
@@ -193,6 +194,7 @@ export function applyBuff(entity: { buffs: Buff[] }, buff: Buff): void {
     existing.kind = buff.kind;
     existing.mult = buff.mult;
     existing.remaining = buff.remaining;
+    existing.retaliation = buff.retaliation;
   } else {
     entity.buffs.push({ ...buff });
   }
@@ -339,7 +341,8 @@ export function damageBoss(
     (mods?.mult ?? 1) *
     buffMult(source, 'damageDealt') *
     source.damageMult *
-    buffMult(boss, 'damageTaken');
+    buffMult(boss, 'damageTaken') *
+    curseMultiplier(source, boss);
   const before = boss.hp;
   boss.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(boss.hp, 0));
@@ -363,6 +366,15 @@ export function damageBoss(
   return outgoing;
 }
 
+/** Personal curses never amplify another player's hits or multiply together. */
+function curseMultiplier(source: Player, target: { buffs: Buff[] }): number {
+  return (
+    target.buffs.find(
+      (b) => b.kind === 'curse' && b.source === `curse:${source.id}` && b.remaining > 0,
+    )?.mult ?? 1
+  );
+}
+
 /** Player deals damage to an add (no boss threat). Returns outgoing damage. */
 export function damageAdd(
   sink: EventSink,
@@ -372,7 +384,11 @@ export function damageAdd(
   mods?: HitMods,
 ): number {
   const outgoing =
-    baseDamage * (mods?.mult ?? 1) * buffMult(source, 'damageDealt') * source.damageMult;
+    baseDamage *
+    (mods?.mult ?? 1) *
+    buffMult(source, 'damageDealt') *
+    source.damageMult *
+    curseMultiplier(source, add);
   const before = add.hp;
   add.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(add.hp, 0));
@@ -409,6 +425,7 @@ export function damagePlayer(sink: EventSink, target: Player, base: number): num
     targetId: target.id,
     side: 'player',
   });
+  if (dmg > 0 && target.hp > 0) sink.onPlayerDamaged?.(target);
   return dmg;
 }
 

@@ -468,6 +468,7 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
         }
       }
       lifesteal(world, p, ab, dealt);
+      if (ab.rebukeDuration) armRebuke(p, ab);
       break;
     }
 
@@ -493,6 +494,7 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
       p.pos = clampToArena(world, target, p.radius);
       if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
       if (ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
+      if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
       world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
       // item 11 — Dimension Door shuffles space: reflect nearby enemies across the
       // mage's new position (front ↔ back), a teleport-swap peel.
@@ -627,6 +629,7 @@ function zoneToImpact(z: ZoneSpec): ProjectileImpact {
     slowMult: z.slowMult,
     slowDuration: z.slowDuration,
     roots: z.roots,
+    curseBonus: z.curseBonus,
     castSlow: z.castSlow, // item 9
     airborne: z.airborne, // item 8
     allyBuff: z.allyBuff,
@@ -651,6 +654,7 @@ function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number):
     slowMult: z.slowMult,
     slowDuration: z.slowDuration,
     roots: z.roots,
+    curseBonus: z.curseBonus,
     castSlow: z.castSlow, // item 9
     airborne: z.airborne, // item 8
     allyBuff: z.allyBuff,
@@ -775,6 +779,7 @@ function resolveComposedAbility(
         }
       }
       lifesteal(world, p, ab, dealt);
+      if (ab.rebukeDuration) armRebuke(p, ab);
       buffSelf();
       buffAllies(FORGE_RALLY_RANGE);
       break;
@@ -834,6 +839,7 @@ function resolveComposedAbility(
         const target = vadd(p.pos, vscale(dir, ab.range ?? 220));
         p.pos = clampToArena(world, target, p.radius);
         if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
+        if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
         world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
       } else {
         let dir = moveDir;
@@ -899,6 +905,13 @@ function resolveComposedAbility(
   }
 }
 
+/** One-use retaliation. Payload lives in host buffs; peers receive its ordinary badge. */
+function armRebuke(p: Player, ab: PlayerAbilityDef): void {
+  const buff = makeBuff('rebuke', ab.damage * 0.4, ab.rebukeDuration!, 'hellishRebuke');
+  buff.retaliation = { radius: ab.radius ?? 150, lifesteal: ab.lifestealFrac ?? 0 };
+  applyBuff(p, buff);
+}
+
 /** Heal the caster for a fraction of the damage a lifesteal ability dealt. */
 function lifesteal(world: World, p: Player, ab: PlayerAbilityDef, dealt: number): void {
   if (ab.lifestealFrac && dealt > 0) {
@@ -932,6 +945,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     slowMult,
     slowDuration,
     roots: ab.roots, // item 9: carry the true-root flag onto the spawned zone
+    curseBonus: ab.curseBonus,
     castSlow: ab.castSlow, // item 9: carry the wind-up-slow factor onto the zone
     airborne: ab.airborne, // item 8: carry the airborne-reach flag onto the zone
     duration: ab.zoneDuration ?? 4,
@@ -1053,6 +1067,8 @@ export interface SpawnZoneOpts {
   /** item 9 — wind-up-time factor (≥ 1) re-applied per tick to opposing creatures
    * inside (Hex / Poison Vial). Absent / ≤ 1 = no cast-slow. See GroundZone.castSlow. */
   castSlow?: number;
+  /** Extra owner-only damage on enemies marked by the zone. */
+  curseBonus?: number;
   /** item 8 — the zone reaches airborne targets too (Rain of Arrows / Otiluke Bind).
    * Absent = a ground effect flyers hover over (default per kind). See GroundZone.airborne. */
   airborne?: boolean;
@@ -1084,6 +1100,7 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     slowDuration: o.slowDuration ?? 0,
     roots: o.roots, // item 9
     silence: o.silence,
+    curseBonus: o.curseBonus,
     castSlow: o.castSlow, // item 9 — wind-up slow refreshed on enemies inside
     airborne: o.airborne, // item 8 — reaches flyers too
     allyBuff: o.allyBuff, // Chaos Forge — buff refreshed on allies inside

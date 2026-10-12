@@ -174,7 +174,10 @@ export type BuffKind =
    * buy the band reaction time without paralysing the target. Never affects a
    * boss's active channel (that would prolong a beam) — wind-up only. Stacked
    * factors are capped (combat.castTimeFactor) so it can't lock a caster out. */
-  | 'castSlow';
+  | 'castSlow'
+  | 'precision' // one prepared critical strike; mult unused
+  | 'curse' // owner-only vulnerability; source = curse:<ownerId>, mult = damage factor
+  | 'rebuke'; // one counterburst; mult = damage, payload host-only
 
 export interface Buff {
   kind: BuffKind;
@@ -182,6 +185,7 @@ export interface Buff {
   remaining: number; // seconds
   /** Source label, used for de-duping refreshable buffs (e.g. 'shieldWall'). */
   source: string;
+  retaliation?: { radius: number; lifesteal: number };
 }
 
 /**
@@ -536,6 +540,8 @@ export interface ProjectileImpact {
   slowMult?: number;
   slowDuration?: number;
   roots?: boolean;
+  /** Extra owner-only damage on enemies marked by the bloomed zone. */
+  curseBonus?: number;
   /** item 9 — a wind-up-slow factor (≥ 1) the bloomed zone applies to enemies inside. */
   castSlow?: number;
   /** item 8 — the bloomed zone reaches airborne targets too (see GroundZone.airborne). */
@@ -890,6 +896,8 @@ export interface GroundZone {
    * 'zoneCastSlow'). Absent / ≤ 1 = a plain hazard.
    */
   castSlow?: number;
+  /** Owner-only vulnerability refreshed on enemies inside. */
+  curseBonus?: number;
   /**
    * item 8 — AIRBORNE reach: true = this zone affects flyers too (arrows raining
    * from above, a floating force cage) — Ranger Rain of Arrows, Mage Otiluke Bind.

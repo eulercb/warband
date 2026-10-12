@@ -93,7 +93,9 @@ export type EffectComponent =
   | { kind: 'shove'; distance: number; pull: boolean }
   /** item 13 — a CRIT lean this ability carries: `chance` added to the hero's crit
    * chance, `mult` added to the crit multiplier, for its own hits (a precision strike). */
-  | { kind: 'crit'; chance: number; mult: number }
+  | { kind: 'crit'; chance: number; mult: number; prepared?: boolean }
+  | { kind: 'prepareCrit'; duration: number }
+  | { kind: 'rebuke'; duration: number }
   | {
       kind: 'buff';
       target: BuffTarget;
@@ -122,6 +124,8 @@ export interface ZoneSpec {
   slowMult?: number;
   slowDuration?: number;
   roots?: boolean;
+  /** Extra owner-only damage on marked enemies. */
+  curseBonus?: number;
   /** item 9 — a wind-up-slow factor (≥ 1) re-applied to enemies inside (Hex-style). */
   castSlow?: number;
   /** item 8 — the zone reaches airborne targets too (rain-of-arrows style). */
@@ -189,6 +193,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     }
     if (def.roots) zone.roots = true;
     if (def.castSlow != null && def.castSlow > 1) zone.castSlow = def.castSlow; // item 9
+    if (def.curseBonus) zone.curseBonus = def.curseBonus;
     if (def.airborne) zone.airborne = true; // item 8
     effects.push({ kind: 'zone', zone });
   } else {
@@ -212,13 +217,16 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.knockback) effects.push({ kind: 'shove', distance: def.knockback, pull: false });
     if (def.pull) effects.push({ kind: 'shove', distance: def.pull, pull: true });
     // item 13 — a CRIT lean rider (precision strike).
-    if (def.critChanceBonus || def.critMultBonus) {
+    if (def.critChanceBonus || def.critMultBonus || def.consumesPrecision) {
       effects.push({
         kind: 'crit',
         chance: def.critChanceBonus ?? 0,
         mult: def.critMultBonus ?? 0,
+        ...(def.consumesPrecision ? { prepared: true } : {}),
       });
     }
+    if (def.prepareCrit) effects.push({ kind: 'prepareCrit', duration: def.prepareCrit });
+    if (def.rebukeDuration) effects.push({ kind: 'rebuke', duration: def.rebukeDuration });
     if (def.lifestealFrac) effects.push({ kind: 'lifesteal', frac: def.lifestealFrac });
     if (def.healOnUse) effects.push({ kind: 'healOnUse', amount: def.healOnUse });
     // Buffs — one component PER axis, so resistance is separable from +damage.
@@ -317,7 +325,14 @@ export function recompose(
         if (e.pull) def.pull = e.distance;
         else def.knockback = e.distance;
         break;
+      case 'prepareCrit':
+        def.prepareCrit = e.duration;
+        break;
+      case 'rebuke':
+        def.rebukeDuration = e.duration;
+        break;
       case 'crit': // item 13 — a crit lean
+        if (e.prepared) def.consumesPrecision = true;
         if (e.chance) def.critChanceBonus = e.chance;
         if (e.mult) def.critMultBonus = e.mult;
         break;
@@ -331,6 +346,7 @@ export function recompose(
         def.zoneKind = e.zone.zoneKind;
         def.zoneDuration = e.zone.duration;
         def.radius = e.zone.radius;
+        if (e.zone.curseBonus) def.curseBonus = e.zone.curseBonus;
         if (e.zone.tickDamage) def.zoneTickDamage = e.zone.tickDamage;
         if (e.zone.tickHeal) def.zoneTickHeal = e.zone.tickHeal;
         if (e.zone.slowMult != null) {
@@ -390,6 +406,10 @@ function effectValue(e: EffectComponent, fan: number): number {
       return (1 - e.mult) * e.duration * 12; // soft CC, priced by depth × time
     case 'castSlow':
       return (e.mult - 1) * e.duration * 18; // soft tempo CC, priced by depth × time
+    case 'prepareCrit':
+      return e.duration * 5;
+    case 'rebuke':
+      return e.duration * 4;
     case 'flight':
       return e.duration * 10; // a defensive/mobility window (ignore ground hazards)
     case 'shove':
@@ -428,6 +448,7 @@ function zoneValue(z: ZoneSpec): number {
   const ticks = (z.duration / 0.5) * 0.6;
   let v = ((z.tickDamage ?? 0) + (z.tickHeal ?? 0)) * ticks;
   if (z.slowMult != null) v += (1 - z.slowMult) * z.duration * 10;
+  if (z.curseBonus) v += z.curseBonus * z.duration * 30;
   if (z.castSlow != null && z.castSlow > 1) v += (z.castSlow - 1) * z.duration * 10; // item 9
   if (z.roots) v += z.duration * 14;
   if (z.allyBuff) {
@@ -514,6 +535,10 @@ function effectPhrase(e: EffectComponent): string {
       return `slow to ${pct(e.mult * 100)} for ${s(e.duration)}`;
     case 'castSlow':
       return `+${pct((e.mult - 1) * 100)} enemy wind-up for ${s(e.duration)}`;
+    case 'prepareCrit':
+      return `prepare next precision crit for ${s(e.duration)}`;
+    case 'rebuke':
+      return `one 40%-damage counterburst if hurt within ${s(e.duration)}`;
     case 'flight':
       return `fly ${s(e.duration)}`;
     case 'shove':
@@ -522,6 +547,7 @@ function effectPhrase(e: EffectComponent): string {
       // Guard each clause independently (mirroring the canonical describeAbility) so a
       // chance-only OR mult-only lean reads cleanly — never a spurious "+0% crit".
       const parts: string[] = [];
+      if (e.prepared) parts.push('consumes prepared crit');
       if (e.chance > 0) parts.push(`+${pct(e.chance * 100)} crit`);
       if (e.mult > 0) parts.push(`+${round2(e.mult)}× crit dmg`);
       return parts.join(', ');
@@ -549,6 +575,7 @@ function zonePhrase(z: ZoneSpec): string {
   if (z.roots) bits.push('roots');
   else if (z.slowMult != null) bits.push(`slow to ${pct(z.slowMult * 100)}`);
   if (z.castSlow != null && z.castSlow > 1) bits.push(`+${pct((z.castSlow - 1) * 100)} wind-up`);
+  if (z.curseBonus) bits.push(`curse +${pct(z.curseBonus * 100)} owner dmg`);
   if (z.airborne) bits.push('hits flyers');
   if (z.allyBuff) {
     if (z.allyBuff.defMult != null)
@@ -771,13 +798,19 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'freeze':
     case 'slow':
     case 'castSlow':
+      return DIRECT_STRIKE.has(kind);
     case 'crit':
+      return e.prepared ? kind === 'meleeCone' : DIRECT_STRIKE.has(kind);
     case 'lifesteal':
       return DIRECT_STRIKE.has(kind);
     case 'heal':
       return kind === 'heal' || kind === 'buffAlly';
     case 'healOnUse':
       return kind === 'dash' || kind === 'blink' || kind === 'selfBuff' || kind === 'taunt';
+    case 'prepareCrit':
+      return kind === 'blink';
+    case 'rebuke':
+      return kind === 'pbaoe';
     case 'flight':
       // item 7 — flight rides a self/ally state or a mobility skill (a soaring
       // leap), never a pure ground zone (a zone doesn't lift the caster).
@@ -1261,6 +1294,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, duration: e.duration * f };
     case 'castSlow':
       return { ...e, duration: e.duration * f }; // rigid: keeps its bite, sheds time
+    case 'prepareCrit':
+    case 'rebuke':
     case 'flight':
       return { ...e, duration: e.duration * f };
     case 'shove':
@@ -1470,6 +1505,10 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.castSlow != null
         ? { ...e, mult: def.castSlow, duration: def.castSlowDuration ?? e.duration }
         : e;
+    case 'prepareCrit':
+      return def.prepareCrit != null ? { ...e, duration: def.prepareCrit } : e;
+    case 'rebuke':
+      return def.rebukeDuration != null ? { ...e, duration: def.rebukeDuration } : e;
     case 'flight':
       return def.grantsFlight != null ? { ...e, duration: def.grantsFlight } : e;
     case 'shove': {
@@ -1501,6 +1540,7 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
         z.slowMult = def.slowMult;
         z.slowDuration = def.slowDuration ?? z.slowDuration;
       }
+      if (def.curseBonus != null) z.curseBonus = def.curseBonus;
       if (def.castSlow != null) z.castSlow = def.castSlow; // item 9
       if (def.airborne != null) z.airborne = def.airborne; // item 8
       return { kind: 'zone', zone: z };
@@ -1532,6 +1572,9 @@ function capEffect(e: EffectComponent): EffectComponent {
         mult: clamp(round05(e.mult), 1.1, CAST_SLOW_MAX),
         duration: clamp(round1(e.duration), 1, 5),
       };
+    case 'prepareCrit':
+    case 'rebuke':
+      return { ...e, duration: clamp(round1(e.duration), 1, 5) };
     case 'flight':
       return { ...e, duration: clamp(round1(e.duration), 2, 8) };
     case 'shove':
@@ -1562,6 +1605,7 @@ function capZone(z: ZoneSpec): ZoneSpec {
   if (out.tickDamage != null) out.tickDamage = Math.max(1, Math.round(out.tickDamage));
   if (out.tickHeal != null) out.tickHeal = Math.max(1, Math.round(out.tickHeal));
   if (out.slowMult != null) out.slowMult = clamp(round05(out.slowMult), 0.2, 0.95);
+  if (out.curseBonus != null) out.curseBonus = clamp(round2(out.curseBonus), 0, 0.2);
   if (out.castSlow != null) out.castSlow = clamp(round05(out.castSlow), 1.1, CAST_SLOW_MAX); // item 9
   // item 8 — `airborne` is a boolean facet; it carries through capping unchanged.
   if (out.allyBuff) out.allyBuff = capAllyBuff(out.allyBuff);

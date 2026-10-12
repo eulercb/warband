@@ -136,13 +136,13 @@ describe('describeAbility (crit lean, item 13)', () => {
     );
     // Backstab — the flagship crit strike — leans both chance AND multiplier.
     expect(describeAbility(CLASSES.rogue.abilities.a1)).toBe(
-      '50 dmg · 58u reach · 64° arc · +30% crit · +0.3× crit dmg · 5s cooldown',
+      '50 dmg · 58u reach · 64° arc · +30% crit · +0.3× crit dmg · consumes prepared crit · 5s cooldown',
     );
   });
 
   it('the Assassin subclass surfaces crit on Death Strike and the new Deadly Throw', () => {
     expect(describeAbility(getSubSkill('ro_assassin_strike')!.ability)).toBe(
-      '60 dmg · 58u reach · 60° arc · +20% crit · +0.4× crit dmg · 7s cooldown',
+      '60 dmg · 58u reach · 60° arc · +20% crit · +0.4× crit dmg · consumes prepared crit · 7s cooldown',
     );
     // Deadly Throw REPLACES the old redundant "Vanish" blink with a ranged crit finisher.
     expect(describeAbility(getSubSkill('ro_assassin_throw')!.ability)).toBe(
