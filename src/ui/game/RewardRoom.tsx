@@ -14,7 +14,7 @@
  * Networking is unchanged — claims relay through chooseUpgrade/chooseCharUpgrade
  * and readiness through setNextReady, just as the flat screen did.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import {
   chooseUpgrade,
@@ -30,6 +30,9 @@ import { useGamepadMenu } from '../../input/useGamepadMenu';
 import HUD from './HUD';
 import { CharacterSheet } from './PauseMenu';
 import TouchControls from './TouchControls';
+import RewardGuide from './RewardGuide';
+import { useMobileMenu } from './useMobileMenu';
+import { rewardMarker } from '../../render/pipeline/labelLayout';
 import EphemeralShop from '../screens/EphemeralShop';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
@@ -149,6 +152,28 @@ function soldOutIds(stock: EphemeralStock, rerollCount: number): string[] {
 }
 
 export default function RewardRoom({ result }: { result: FightResult }) {
+  const { mobile } = useMobileMenu();
+  const mobileRef = useRef(mobile);
+  useEffect(() => {
+    mobileRef.current = mobile;
+  }, [mobile]);
+  const [guideOpen, setGuideOpen] = useState(() => {
+    if (!mobile || (result.runIndex ?? 0) !== 0) return false;
+    try {
+      return sessionStorage.getItem('warband:reward-guide-seen') !== '1';
+    } catch {
+      return true;
+    }
+  });
+  const closeGuide = useCallback(() => {
+    setGuideOpen(false);
+    try {
+      sessionStorage.setItem('warband:reward-guide-seen', '1');
+    } catch {
+      /* Storage is optional; the guide can always be skipped. */
+    }
+  }, []);
+
   // Effective class: the Chaos-Draft class in a randomized run (item 10), else the
   // pick — so the between-boss boons offered are the drafted class's correct ones.
   const localClass = useStore((s) => s.activeDraftedClass ?? s.localClass);
@@ -345,7 +370,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
           autofire: useStore.getState().autofire,
         });
 
-        renderer.render(state);
+        renderer.render(state, { compactRewardLabels: mobileRef.current });
         if (!useStore.getState().muted && state.events.length > 0) {
           sfx.handleEvents(state.events);
         }
@@ -434,7 +459,17 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   const chars = offers.char;
 
   return (
-    <div className="wb-playground-root wb-reward-root">
+    <div
+      className={`wb-playground-root wb-reward-root${mobile ? ' wb-reward-mobile' : ''}`}
+      onPointerDownCapture={(event) => {
+        if (
+          guideOpen &&
+          event.target instanceof Element &&
+          event.target.closest('.wb-touch-controls')
+        )
+          closeGuide();
+      }}
+    >
       <div ref={canvasRef} className="wb-playground-canvas" aria-hidden="true" />
       <HUD onPause={() => setPaused(true)} />
       {/* Touch overlay so mobile players can walk to relics + the vortex. */}
@@ -442,6 +477,28 @@ export default function RewardRoom({ result }: { result: FightResult }) {
 
       {/* Local pause menu (no shared sim — freezes the hero + shows your stats). */}
       {paused ? <RewardPauseOverlay onResume={() => setPaused(false)} /> : null}
+
+      {mobile && !showList && !paused ? (
+        <>
+          <button
+            type="button"
+            className="wb-btn wb-btn-ghost wb-reward-helpbtn"
+            aria-expanded={guideOpen}
+            onClick={() => {
+              if (guideOpen) closeGuide();
+              else setGuideOpen(true);
+            }}
+          >
+            {guideOpen ? 'Close guide' : 'Room guide'}
+          </button>
+          <div className="wb-reward-mobile-progress" aria-label="Reward progress">
+            <span>G {pickedGen || offers.generic.length === 0 ? '✓' : '○'}</span>
+            <span>C {pickedChar || offers.char.length === 0 ? '✓' : '○'}</span>
+            <span>💰 {myCoins}</span>
+          </div>
+          {guideOpen ? <RewardGuide onClose={closeGuide} /> : null}
+        </>
+      ) : null}
 
       {/* Room banner: run progress + next boss. */}
       <div className="wb-reward-banner">
@@ -484,9 +541,14 @@ export default function RewardRoom({ result }: { result: FightResult }) {
       </button>
 
       {/* Diegetic relic inspector (what you're standing on / near). */}
-      {focus && !showList ? (
+      {focus && !showList && !paused && !(mobile && guideOpen) ? (
         <div className="wb-totem-hint wb-reward-inspect">
-          <div className="wb-reward-inspect-name">{focus.offer.label}</div>
+          <div className="wb-reward-inspect-name">
+            {mobile
+              ? `${rewardMarker(focus.kind, offers[focus.kind === 'generic' ? 'generic' : 'char'].findIndex((o) => o.id === focus.offer.id) + 1)} · `
+              : ''}
+            {focus.offer.label}
+          </div>
           <div className="wb-reward-inspect-desc">{focus.offer.desc}</div>
           {focus.claimed ? (
             <div className="wb-reward-inspect-tag claimed">Claimed ✓</div>
@@ -506,9 +568,14 @@ export default function RewardRoom({ result }: { result: FightResult }) {
           does, and its cost — readable without opening the List view, gamepad too.
           Relic focus wins if both are somehow in range (they never overlap: the
           shop sits below spawn, the relics above). */}
-      {shopFocus && !focus && !showList ? (
+      {shopFocus && !focus && !showList && !paused && !(mobile && guideOpen) ? (
         <div className="wb-totem-hint wb-reward-inspect wb-reward-inspect-shop">
-          <div className="wb-reward-inspect-name">{shopFocus.offer.label}</div>
+          <div className="wb-reward-inspect-name">
+            {mobile
+              ? `${rewardMarker('shop', buildShopOffers(useStore.getState().activeHardcore).findIndex((o) => o.id === shopFocus.offer.id) + 1)} · `
+              : ''}
+            {shopFocus.offer.label}
+          </div>
           <div className="wb-reward-inspect-desc">{shopFocus.offer.desc}</div>
           {shopFocus.soldOut ? (
             <div className="wb-reward-inspect-tag claimed">Bought ✓</div>
@@ -523,7 +590,10 @@ export default function RewardRoom({ result }: { result: FightResult }) {
       ) : null}
 
       {/* Descend prompt + band tally (near the vortex, once it's open). */}
-      {vortexOpen && !showList ? (
+      {vortexOpen &&
+      !showList &&
+      !paused &&
+      (!mobile || ((descending || ready) && !guideOpen && !focus && !shopFocus)) ? (
         <div className="wb-reward-descend" role="status">
           <div className="wb-reward-descend-title">
             {ready ? 'Descending…' : descending ? 'Charging descent…' : 'The vortex yawns open'}
@@ -549,6 +619,9 @@ export default function RewardRoom({ result }: { result: FightResult }) {
         <div className="wb-overlay" role="dialog" aria-label="Between-boss upgrades">
           <div className="wb-panel wb-reward-list" ref={listRef}>
             <h2 className="wb-title-sm">Claim your boons</h2>
+            {mobile && result.runSeed != null ? (
+              <p>Seed: {result.runSeed.toString(36).toUpperCase()}</p>
+            ) : null}
             {nextName ? (
               <p className="wb-reward-list-next" role="status">
                 {result.runTotal && result.runTotal > 1

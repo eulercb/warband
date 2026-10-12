@@ -112,6 +112,20 @@ jobs:
           kill "$PREVIEW_PID" 2>/dev/null || true
           exit $code
 
+      - name: Reward-room touch interactions
+        run: |
+          export SHOT_DIR="$RUNNER_TEMP/smoke-shots"
+          CHROMIUM_PATH="$(node -e "console.log(require('playwright-core').chromium.executablePath())")"
+          export CHROMIUM_PATH
+          npm run dev -- --host 127.0.0.1 --port 5173 --strictPort &
+          REWARD_DEV_PID=$!
+          trap 'kill "$REWARD_DEV_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:5173/ >/dev/null && break
+            sleep 1
+          done
+          npm run smoke:rewards
+
       - name: Upload smoke screenshots
         if: always()
         uses: actions/upload-artifact@v4

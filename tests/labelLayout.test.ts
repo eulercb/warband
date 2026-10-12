@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { topBandFade, staggerOffset } from '../src/render/pipeline/labelLayout';
+import { topBandFade, staggerOffset, rewardMarker } from '../src/render/pipeline/labelLayout';
 
 describe('topBandFade (item 78: world labels fade under the top HUD band)', () => {
   it('is fully opaque at or below the band', () => {
@@ -40,5 +40,13 @@ describe('staggerOffset (item 78: neighbouring relic/effigy labels stagger rows)
   it('is robust to odd inputs (negative / fractional indices)', () => {
     expect(staggerOffset(-1, 16)).toBe(16);
     expect(staggerOffset(2.9, 16)).toBe(0);
+  });
+});
+
+describe('compact reward markers', () => {
+  it('distinguishes generic, class, and shop options without long names', () => {
+    expect(rewardMarker('generic', 1)).toBe('G1');
+    expect(rewardMarker('char', 3)).toBe('C3');
+    expect(rewardMarker('shop', 6)).toBe('S6');
   });
 });
