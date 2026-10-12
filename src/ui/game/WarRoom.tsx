@@ -17,6 +17,10 @@ import HUD from './HUD';
 import TouchControls from './TouchControls';
 import MobileMenu from './MobileMenu';
 import { useMobileMenu } from './useMobileMenu';
+import RoomHelp from './RoomHelp';
+import { useRoomGuide } from './useRoomGuide';
+import { ROOM_GUIDES } from './roomGuides';
+import { nearbyRoomChoice, type RoomFocus } from './roomFocus';
 import HostSetup from '../screens/HostSetup';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
@@ -54,7 +58,14 @@ export default function WarRoom() {
   const setLocalName = useStore((s) => s.setLocalName);
   const error = useStore((s) => s.error);
 
+  const guide = useRoomGuide('host');
+  const dismissGuideOnMove = guide.activity;
+  const [nearby, setNearby] = useState<RoomFocus | null>(null);
   const menu = useMobileMenu();
+  const mobileRef = useRef(menu.mobile);
+  useEffect(() => {
+    mobileRef.current = menu.mobile;
+  }, [menu.mobile]);
   const menuOpenRef = useRef(menu.open);
   useEffect(() => {
     menuOpenRef.current = menu.open;
@@ -181,6 +192,7 @@ export default function WarRoom() {
           ? renderer.worldToScreen(lp.pos)
           : { x: container.clientWidth / 2, y: container.clientHeight / 2 };
         const sampled = input.sample(localScreen);
+        if (!uiOpen && (sampled.move.x !== 0 || sampled.move.y !== 0)) dismissGuideOnMove();
         seq += 1;
         scene.setInput({
           seq,
@@ -189,7 +201,7 @@ export default function WarRoom() {
           buttons: { basic: false, a1: false, a2: false, a3: false, revive: false },
         });
 
-        renderer.render(state);
+        renderer.render(state, { compactMenuLabels: mobileRef.current });
 
         for (const trig of scene.takeTriggers()) relayWarTrigger(trig, doHost);
 
@@ -199,6 +211,7 @@ export default function WarRoom() {
         }
         if (now - lastHud > 66) {
           lastHud = now;
+          setNearby(nearbyRoomChoice(state));
           pushHud(state, input.activeSource);
         }
       };
@@ -214,7 +227,7 @@ export default function WarRoom() {
       useHudStore.getState().resetHud();
     };
     // Mount-once by design (mirrors MainMenu / RewardRoom).
-  }, []);
+  }, [dismissGuideOnMove]);
 
   const inspected = focusBoss ? MONSTERS[focusBoss] : null;
 
@@ -228,11 +241,31 @@ export default function WarRoom() {
   ].filter((m): m is string => m !== null);
 
   return (
-    <div className="wb-playground-root wb-war-root">
+    <div
+      className={`wb-playground-root wb-war-root wb-guided-room${menu.mobile ? ' wb-guided-mobile' : ''}`}
+      onPointerDownCapture={guide.pointer}
+    >
       <div ref={canvasRef} className="wb-playground-canvas" aria-hidden="true" />
       <HUD />
       {!showList && !menu.open && !showControls ? <TouchControls navigationOnly /> : null}
 
+      <RoomHelp
+        guide={guide}
+        steps={ROOM_GUIDES.host}
+        label="Host setup guide"
+        focus={nearby}
+        mobile={menu.mobile}
+        blocked={showList || menu.open || showControls || creating || Boolean(error)}
+      />
+      {menu.mobile && !menu.open && !showList ? (
+        <div
+          className="wb-mobile-choice-status"
+          title={`${opener.name} · ${activeModifiers.join(' · ')}`}
+        >
+          {gauntlet ? 'Gauntlet' : `Single · ${opener.name}`}
+          {activeModifiers.length ? ` · ${activeModifiers.length} mods` : ''}
+        </div>
+      ) : null}
       {/* Current selection banner. */}
       <div className="wb-reward-banner wb-war-banner">
         <span className="wb-reward-banner-title">Choose your fight</span>
@@ -302,7 +335,7 @@ export default function WarRoom() {
       ) : null}
 
       {/* Boss inspector when standing near an effigy. */}
-      {inspected && !showList ? (
+      {inspected && !showList && !menu.mobile && !guide.open ? (
         <div className="wb-totem-hint wb-reward-inspect wb-war-inspect">
           <div className="wb-reward-inspect-name">{inspected.name}</div>
           <div className="wb-reward-inspect-desc">{inspected.theme}</div>

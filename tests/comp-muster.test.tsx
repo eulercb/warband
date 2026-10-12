@@ -57,6 +57,7 @@ beforeEach(() => {
   localStorage.clear();
   useStore.setState({
     phase: 'lobby',
+    error: null,
     roomCode: 'ABCDEF',
     isHost: true,
     localClass: 'knight',
@@ -127,4 +128,17 @@ it('keeps the mobile hall clear with a usable lobby fallback and restored moveme
   expect(screen.queryByRole('group', { name: 'Touch controls' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Close menu' }));
   expect(screen.getByRole('group', { name: 'Touch controls' })).toBeTruthy();
+});
+
+it('gives a mobile lobby error priority over a guide while retaining the fallback menu', () => {
+  vi.stubGlobal('matchMedia', () => ({
+    matches: true,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
+  useStore.setState({ error: 'Connection interrupted' });
+  render(<MusterHall />);
+  expect(screen.getByRole('alert').textContent).toContain('Connection interrupted');
+  expect(screen.queryByRole('region', { name: 'Lobby guide' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Lobby menu' })).toBeTruthy();
 });

@@ -39,3 +39,29 @@ export function rewardMarker(kind: 'generic' | 'char' | 'shop', ordinal: number)
   const prefix = { generic: 'G', char: 'C', shop: 'S' }[kind];
   return `${prefix}${ordinal}`;
 }
+
+/** Packed menu choices have stable, short markers on touch devices. */
+export function menuMarker(
+  station: import('../../engine/core/types').StationView,
+  ordinal: number,
+): string {
+  const names = {
+    class: `H${ordinal}`,
+    boss: `B${ordinal}`,
+    tier: station.refId?.toUpperCase() ?? 'Tier',
+    single: 'Single',
+    gauntlet: 'Run',
+    hardcore: 'HC',
+    chaosforge: 'Forge',
+    daily: 'Daily',
+    chaosdraft: 'Draft',
+    host: 'Host',
+    join: 'Join',
+    controls: 'Keys',
+    muster: 'Ready',
+    start: 'Start',
+    addbot: `Bot${ordinal}`,
+    removebot: `−${ordinal}`,
+  };
+  return names[station.kind];
+}

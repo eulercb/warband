@@ -93,3 +93,48 @@ Example layouts captured from development fixtures:
 
 - [First-visit guide on a small phone](images/rewards-mobile-guide.png)
 - [Compact markers and a nearby shop description](images/rewards-mobile-room.png)
+
+## Camp, host setup, and lobby guides
+
+Camp, host setup, lobby, and reward rooms offer first-visit guides on **desktop
+and mobile**. Each shows one tip at a time, fades between tips, and can be
+advanced or skipped. Moving with the keyboard/gamepad or touching gameplay
+controls dismisses the guide immediately. **Guide** replays it in camp, host
+setup, and the lobby; **Room guide** replays the reward guide. Guides remember
+completion per room in the current browser tab. They yield to menus, important
+errors, and contextual descriptions; they do not pause a shared game or make
+selections for the player. Reduced-motion preferences disable the fading.
+
+Mobile floor captions use H markers for heroes, B markers for bosses, Bot markers
+for adding bots, and minus markers for removing bots. Action/tier/modifier names
+stay short (Host, Join, Ready, Start, Single, Run, HC, Forge, Draft, Daily). Approach
+an option for its full name, class role/boss lore, availability, and selection
+progress. Host selection and lobby status remain visible in a compact row. Full
+settings, invitations, and bot controls remain available in the menus. Pregame
+scenes hide their inactive pause icon; fight and reward-room pause controls stay
+available. Desktop
+floor captions retain their full names.
+
+With a freshly started Vite development server (restart after source edits), run:
+
+```sh
+CHROMIUM_PATH=/usr/bin/chromium npm run smoke:rooms
+```
+
+This drives the real camp → host setup → lobby → fight flow at three phone sizes
+and one desktop size, checking first-visit/replay guides, floor captions, nearby
+information, unobstructed touch controls, menus, bot addition, readiness, and
+starting a fight. ROOM_SMOKE_URL overrides the development URL. Run interactive
+browser checks sequentially; the reward check uses gentle joystick movement and
+waits for actual purchases/claims and renderer refreshes. CI runs both room
+checks alongside the production desktop/mobile smoke.
+
+Before merging, check these rooms on Android/Brave and a desktop browser with a
+fresh tab. Try skipping/replaying tips, walking near several choices, using both
+the walking and menu paths, changing run modifiers, adding/removing bots, and
+readying/starting. Confirm the reward tutorial works on desktop too. Join/forms,
+results, and combat keep their existing UI; camp guidance explains combat input
+without interrupting a live multiplayer fight.
+
+[Desktop camp guide](images/camp-guide-desktop.png) ·
+[Mobile host choices and nearby information](images/host-choices-mobile.png)

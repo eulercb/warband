@@ -19,6 +19,7 @@
     "smoke": "node scripts/smoke.mjs",
     "smoke:mobile": "node scripts/smoke-mobile.mjs",
     "smoke:rewards": "node scripts/smoke-rewards.mjs",
+    "smoke:rooms": "node scripts/smoke-rooms.mjs",
     "relay": "node server/relay.mjs"
   },
   "dependencies": {

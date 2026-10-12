@@ -7,13 +7,17 @@
  * Start buttons remain as the pointer / keyboard / screen-reader path; both feed
  * the same setReady / startFight, so nothing about networking changes.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import Lobby from '../screens/Lobby';
 import HUD from './HUD';
 import TouchControls from './TouchControls';
 import MobileMenu from './MobileMenu';
 import { useMobileMenu } from './useMobileMenu';
+import RoomHelp from './RoomHelp';
+import { useRoomGuide } from './useRoomGuide';
+import { ROOM_GUIDES } from './roomGuides';
+import { nearbyRoomChoice, type RoomFocus } from './roomFocus';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
 import { MusterScene } from '../state/musterScene';
@@ -23,12 +27,20 @@ import { InputManager } from '../../input/input';
 import { ARENA_W, ARENA_H, MAX_PLAYERS } from '../../engine/core/constants';
 
 export default function MusterHall() {
+  const guide = useRoomGuide('lobby');
+  const dismissGuideOnMove = guide.activity;
+  const [nearby, setNearby] = useState<RoomFocus | null>(null);
   const menu = useMobileMenu();
+  const mobileRef = useRef(menu.mobile);
+  useEffect(() => {
+    mobileRef.current = menu.mobile;
+  }, [menu.mobile]);
   const menuOpenRef = useRef(menu.open);
   useEffect(() => {
     menuOpenRef.current = menu.open;
   }, [menu.open]);
   const showControls = useStore((s) => s.showControls);
+  const error = useStore((s) => s.error);
   const roomCode = useStore((s) => s.roomCode);
   const localReady = useStore((s) => s.localReady);
 
@@ -95,6 +107,7 @@ export default function MusterHall() {
           ? renderer.worldToScreen(lp.pos)
           : { x: container.clientWidth / 2, y: container.clientHeight / 2 };
         const sampled = input.sample(localScreen);
+        if (!uiOpen && (sampled.move.x !== 0 || sampled.move.y !== 0)) dismissGuideOnMove();
         seq += 1;
         scene.setInput({
           seq,
@@ -103,12 +116,13 @@ export default function MusterHall() {
           buttons: { basic: false, a1: false, a2: false, a3: false, revive: false },
         });
 
-        renderer.render(state);
+        renderer.render(state, { compactMenuLabels: mobileRef.current });
 
         for (const trig of scene.takeTriggers()) relayMusterTrigger(trig);
 
         if (now - lastHud > 66) {
           lastHud = now;
+          setNearby(nearbyRoomChoice(state));
           pushHud(state, input.activeSource);
         }
       };
@@ -123,10 +137,13 @@ export default function MusterHall() {
       useHudStore.getState().resetHud();
     };
     // Mount-once by design (mirrors MainMenu / WarRoom).
-  }, []);
+  }, [dismissGuideOnMove]);
 
   return (
-    <div className="wb-playground-root wb-muster-hall">
+    <div
+      className={`wb-playground-root wb-muster-hall wb-guided-room${menu.mobile ? ' wb-guided-mobile' : ''}`}
+      onPointerDownCapture={guide.pointer}
+    >
       <div ref={canvasRef} className="wb-playground-canvas" aria-hidden="true" />
       <HUD />
       {!menu.open && !showControls ? <TouchControls navigationOnly /> : null}
@@ -141,6 +158,19 @@ export default function MusterHall() {
           ? ' Fill your band with bots — step on a class effigy up top to add that class, then step on a bot marker in your band below to send it home.'
           : ''}
       </div>
+      <RoomHelp
+        guide={guide}
+        steps={ROOM_GUIDES.lobby}
+        label="Lobby guide"
+        focus={nearby}
+        mobile={menu.mobile}
+        blocked={menu.open || showControls || Boolean(error)}
+      />
+      {menu.mobile && !menu.open && error ? (
+        <div className="wb-error wb-mobile-error" role="alert">
+          {error}
+        </div>
+      ) : null}
       <MobileMenu {...menu} label="Lobby menu">
         <Lobby />
       </MobileMenu>

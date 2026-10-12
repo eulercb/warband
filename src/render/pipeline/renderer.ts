@@ -26,7 +26,7 @@ import { getClass } from '../../engine/content/classes';
 import { themeFor } from '../../engine/world/terrain';
 import { Rng } from '../../engine/core/math';
 import { Camera } from './camera';
-import { topBandFade, staggerOffset, rewardMarker } from './labelLayout';
+import { topBandFade, staggerOffset, rewardMarker, menuMarker } from './labelLayout';
 import { Fx } from '../overlays/fx';
 import { Balloons } from '../overlays/balloons';
 import {
@@ -169,7 +169,10 @@ export class Renderer {
   }
 
   /** Draw one frame from the given render state. Caller drives the cadence. */
-  render(state: RenderState, presentation: { compactRewardLabels?: boolean } = {}): void {
+  render(
+    state: RenderState,
+    presentation: { compactRewardLabels?: boolean; compactMenuLabels?: boolean } = {},
+  ): void {
     const now = performance.now();
     const dtMs = this.lastRenderMs === 0 ? 16 : Math.min(100, now - this.lastRenderMs);
     this.lastRenderMs = now;
@@ -217,7 +220,11 @@ export class Renderer {
     this.particles.update(dtMs);
     this.particles.draw(this.camera);
 
-    this.updateLabels(state, presentation.compactRewardLabels ?? false);
+    this.updateLabels(
+      state,
+      presentation.compactRewardLabels ?? false,
+      presentation.compactMenuLabels ?? false,
+    );
   }
 
   /**
@@ -618,7 +625,11 @@ export class Renderer {
     }
   }
 
-  private updateLabels(state: RenderState, compactRewardLabels: boolean): void {
+  private updateLabels(
+    state: RenderState,
+    compactRewardLabels: boolean,
+    compactMenuLabels: boolean,
+  ): void {
     const totems = state.totems ?? [];
     const loot = state.loot ?? [];
     const vortex = state.vortex ?? null;
@@ -672,7 +683,9 @@ export class Renderer {
     for (const tot of totems) {
       const t = this.labels[i++];
       t.visible = true;
-      t.text = TOTEM_LABELS[tot.kind];
+      t.text = compactMenuLabels
+        ? { host: 'Host', join: 'Join', class: 'Hero', controls: 'Keys' }[tot.kind]
+        : TOTEM_LABELS[tot.kind];
       const s = this.camera.worldToScreen(tot.pos);
       t.position.set(s.x, s.y - tot.radius * scale - 26);
       t.alpha = tot.active ? 1 : 0.75;
@@ -709,10 +722,14 @@ export class Renderer {
     // The selected one shows a check so the current pick reads at a glance.
     // item 78: stagger alternates so a packed effigy row doesn't mash into soup.
     let stationIdx = 0;
+    const menuOrdinals: Partial<Record<import('../../engine/core/types').StationKind, number>> = {};
     for (const st of stations) {
       const t = this.labels[i++];
       t.visible = true;
-      t.text = st.selected ? `${st.label ?? ''} ✓` : (st.label ?? '');
+      const ordinal = (menuOrdinals[st.kind] ?? 0) + 1;
+      menuOrdinals[st.kind] = ordinal;
+      const caption = compactMenuLabels ? menuMarker(st, ordinal) : (st.label ?? '');
+      t.text = st.selected ? `${caption} ✓` : caption;
       const s = this.camera.worldToScreen(st.pos);
       t.position.set(
         s.x,

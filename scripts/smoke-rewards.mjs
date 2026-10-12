@@ -28,6 +28,7 @@ try {
     await page.waitForSelector('canvas');
     await page.evaluate(async () => {
       const { useStore } = await import('/src/ui/state/store.ts');
+      window.rewardState = useStore.getState;
       const { Renderer } = await import('/src/render/pipeline/renderer.ts');
       const original = Renderer.prototype.render;
       Renderer.prototype.render = function (state, presentation) {
@@ -46,6 +47,7 @@ try {
         }
         window.rewardProbe = {
           generation: window.rewardGeneration,
+          tick: state.tick,
           hero: state.players.find((p) => p.id === state.localPlayerId).pos,
           loot: state.loot,
           vortex: state.vortex,
@@ -85,7 +87,8 @@ try {
         labels.some((text) => text.includes('💰')),
         'Desktop retains full shop captions',
       );
-      assert.equal(await page.getByRole('region', { name: 'Reward room guide' }).count(), 0);
+      assert.equal(await page.getByRole('region', { name: 'Reward room guide' }).count(), 1);
+      assert.ok(await page.getByText('Gold · Generic boons', { exact: true }).isVisible());
       await context.close();
       console.log('PASS reward desktop: full captions retained');
       continue;
@@ -120,23 +123,43 @@ try {
     await checkTouchTargets();
     assert.equal(await page.locator('.wb-reward-inspect').count(), 0);
     const cdp = await context.newCDPSession(page);
-    const moveTo = async (target, stop = 8) => {
+    const moveTo = async (target, stop = 8, stopAfterReroll = false) => {
       await page.locator('.wb-touch-stick-left').waitFor({ state: 'visible' });
       const box = await page.locator('.wb-touch-stick-left').boundingBox();
       assert.ok(box, 'Movement stick is available');
       let holding = false;
       try {
         for (let i = 0; i < 180; i++) {
+          if (stopAfterReroll && (await page.evaluate(() => window.rewardState().rerollCount > 0)))
+            return;
           const hero = await page.evaluate(() => window.rewardProbe.hero);
           let dx = target.x - hero.x,
             dy = target.y - hero.y;
           dx -= Math.round(dx / 1600) * 1600;
           dy -= Math.round(dy / 1000) * 1000;
           const distance = Math.hypot(dx, dy);
-          if (distance <= stop) return;
+          if (distance <= stop) {
+            if (holding) {
+              await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+              holding = false;
+            }
+            const tick = await page.evaluate(() => window.rewardProbe.tick);
+            await page.waitForFunction((previous) => window.rewardProbe.tick > previous, tick);
+            const settled = await page.evaluate(() => window.rewardProbe.hero);
+            const sx = target.x - settled.x,
+              sy = target.y - settled.y;
+            if (
+              Math.hypot(sx - Math.round(sx / 1600) * 1600, sy - Math.round(sy / 1000) * 1000) <=
+              stop
+            )
+              return;
+            continue;
+          }
+          // Slow the real joystick near the target so a delayed render frame cannot overshoot.
+          const magnitude = Math.min(48, Math.max(6, distance * 0.2));
           const point = {
-            x: box.x + box.width / 2 + (48 * dx) / distance,
-            y: box.y + box.height / 2 + (48 * dy) / distance,
+            x: box.x + box.width / 2 + (magnitude * dx) / distance,
+            y: box.y + box.height / 2 + (magnitude * dy) / distance,
           };
           await cdp.send('Input.dispatchTouchEvent', {
             type: holding ? 'touchMove' : 'touchStart',
@@ -159,10 +182,8 @@ try {
     console.log(`reward ${viewport.width}: walked to shop`);
     await checkTouchTargets();
     assert.equal(await guide.count(), 0);
-    await page.waitForFunction(async () => {
-      const { useStore } = await import('/src/ui/state/store.ts');
-      return useStore.getState().myCoins < 100;
-    });
+    await page.waitForFunction(() => window.rewardState().myEphemeral.potions > 2);
+
     assert.equal(await page.locator('.wb-reward-inspect').count(), 1);
     await page.getByRole('button', { name: 'Room guide', exact: true }).tap();
     await guide.waitFor();
@@ -177,11 +198,9 @@ try {
         window.rewardProbe.loot.find((l) => l.kind === 'shop' && l.label.includes('🎲')),
       );
       const generation = await page.evaluate(() => window.rewardProbe.generation);
-      await moveTo(reroll.pos);
-      await page.waitForFunction(async () => {
-        const { useStore } = await import('/src/ui/state/store.ts');
-        return useStore.getState().rerollCount > 0;
-      });
+      await moveTo(reroll.pos, 8, true);
+      await page.waitForFunction(() => window.rewardState().rerollCount > 0);
+
       // Reroll rebuilds the existing scene/renderer; wait for its new first frame.
       await page.waitForFunction(
         (previous) =>
