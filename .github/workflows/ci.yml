@@ -112,7 +112,7 @@ jobs:
           kill "$PREVIEW_PID" 2>/dev/null || true
           exit $code
 
-      - name: Reward-room touch interactions
+      - name: Room guides and touch interactions
         run: |
           export SHOT_DIR="$RUNNER_TEMP/smoke-shots"
           CHROMIUM_PATH="$(node -e "console.log(require('playwright-core').chromium.executablePath())")"
@@ -125,6 +125,7 @@ jobs:
             sleep 1
           done
           npm run smoke:rewards
+          npm run smoke:rooms
 
       - name: Upload smoke screenshots
         if: always()

@@ -16,6 +16,10 @@ import HUD from '../game/HUD';
 import TouchControls from '../game/TouchControls';
 import MobileMenu from '../game/MobileMenu';
 import { useMobileMenu } from '../game/useMobileMenu';
+import RoomHelp from '../game/RoomHelp';
+import { useRoomGuide } from '../game/useRoomGuide';
+import { ROOM_GUIDES } from '../game/roomGuides';
+import { nearbyRoomChoice, type RoomFocus } from '../game/roomFocus';
 import { useHudStore } from '../state/hudStore';
 import { pushHud } from '../state/hudBridge';
 import { Playground } from '../state/playground';
@@ -51,7 +55,14 @@ export function MainMenu() {
   const pickerRef = useRef<HTMLDivElement>(null);
   const playgroundRef = useRef<Playground | null>(null);
 
+  const guide = useRoomGuide('camp');
+  const dismissGuideOnMove = guide.activity;
+  const [nearby, setNearby] = useState<RoomFocus | null>(null);
   const menu = useMobileMenu();
+  const mobileRef = useRef(menu.mobile);
+  useEffect(() => {
+    mobileRef.current = menu.mobile;
+  }, [menu.mobile]);
   const menuOpenRef = useRef(menu.open);
   useEffect(() => {
     menuOpenRef.current = menu.open;
@@ -133,6 +144,7 @@ export function MainMenu() {
           : { x: container.clientWidth / 2, y: container.clientHeight / 2 };
 
         const sampled = input.sample(localScreen);
+        if (!uiOpen && (sampled.move.x !== 0 || sampled.move.y !== 0)) dismissGuideOnMove();
         if (!moved && (sampled.move.x !== 0 || sampled.move.y !== 0)) {
           moved = true;
           setIntroDone(true);
@@ -149,7 +161,7 @@ export function MainMenu() {
         };
         playground.setInput(cmd);
 
-        renderer.render(state);
+        renderer.render(state, { compactMenuLabels: mobileRef.current });
         if (!useStore.getState().muted && state.events.length > 0) {
           sfx.handleEvents(state.events);
         }
@@ -203,6 +215,7 @@ export function MainMenu() {
 
         if (now - lastHud > 66) {
           lastHud = now;
+          setNearby(nearbyRoomChoice(state));
           pushHud(state, input.activeSource);
         }
       };
@@ -220,7 +233,7 @@ export function MainMenu() {
     };
     // Mount-once by design: the playground grabs its config from the store and
     // owns its own loop (mirrors GameView's []-dep effect).
-  }, [setPhase]);
+  }, [setPhase, dismissGuideOnMove]);
 
   const goHost = (): void => {
     playUiSound('uiClick');
@@ -242,7 +255,10 @@ export function MainMenu() {
   };
 
   return (
-    <div className="wb-playground-root">
+    <div
+      className={`wb-playground-root wb-camp-root wb-guided-room${menu.mobile ? ' wb-guided-mobile' : ''}`}
+      onPointerDownCapture={guide.pointer}
+    >
       <div ref={canvasRef} className="wb-playground-canvas" />
       <HUD />
       {/* Touch overlay so mobile players can walk the camp + swing at the dummy. */}
@@ -303,8 +319,17 @@ export function MainMenu() {
         </div>
       ) : null}
 
+      <RoomHelp
+        guide={guide}
+        steps={ROOM_GUIDES.camp}
+        label="Camp guide"
+        focus={nearby && dwell ? { ...nearby, channel: dwell.frac } : nearby}
+        mobile={menu.mobile}
+        blocked={menu.open || showPicker || showControls || Boolean(error)}
+      />
+
       {/* Totem channel progress */}
-      {dwell && (
+      {dwell && !guide.open && !menu.mobile && (
         <div className="wb-totem-hint">
           <div className="wb-totem-hint-label">{TOTEM_VERBS[dwell.kind]}</div>
           <div className="wb-totem-hint-track">
@@ -314,7 +339,7 @@ export function MainMenu() {
       )}
 
       {/* Opening title: procedural per-letter reveal, dismissed on first step. */}
-      {!introDone && (
+      {!introDone && !guide.open && (
         <div className="wb-intro" aria-hidden="true">
           <div className="wb-intro-title">
             {'WARBAND'.split('').map((ch, i) => (

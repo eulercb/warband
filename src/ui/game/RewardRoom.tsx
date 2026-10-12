@@ -158,7 +158,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
     mobileRef.current = mobile;
   }, [mobile]);
   const [guideOpen, setGuideOpen] = useState(() => {
-    if (!mobile || (result.runIndex ?? 0) !== 0) return false;
+    if ((result.runIndex ?? 0) !== 0) return false;
     try {
       return sessionStorage.getItem('warband:reward-guide-seen') !== '1';
     } catch {
@@ -173,6 +173,11 @@ export default function RewardRoom({ result }: { result: FightResult }) {
       /* Storage is optional; the guide can always be skipped. */
     }
   }, []);
+
+  const guideOpenRef = useRef(guideOpen);
+  useEffect(() => {
+    guideOpenRef.current = guideOpen;
+  }, [guideOpen]);
 
   // Effective class: the Chaos-Draft class in a randomized run (item 10), else the
   // pick — so the between-boss boons offered are the drafted class's correct ones.
@@ -359,6 +364,8 @@ export default function RewardRoom({ result }: { result: FightResult }) {
           : { x: container.clientWidth / 2, y: container.clientHeight / 2 };
 
         const sampled = input.sample(localScreen);
+        if (!uiOpen && guideOpenRef.current && (sampled.move.x !== 0 || sampled.move.y !== 0))
+          closeGuide();
         seq += 1;
         scene.setInput({
           seq,
@@ -478,7 +485,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
       {/* Local pause menu (no shared sim — freezes the hero + shows your stats). */}
       {paused ? <RewardPauseOverlay onResume={() => setPaused(false)} /> : null}
 
-      {mobile && !showList && !paused ? (
+      {!showList && !paused ? (
         <>
           <button
             type="button"
@@ -491,12 +498,12 @@ export default function RewardRoom({ result }: { result: FightResult }) {
           >
             {guideOpen ? 'Close guide' : 'Room guide'}
           </button>
-          <div className="wb-reward-mobile-progress" aria-label="Reward progress">
+          <div hidden={!mobile} className="wb-reward-mobile-progress" aria-label="Reward progress">
             <span>G {pickedGen || offers.generic.length === 0 ? '✓' : '○'}</span>
             <span>C {pickedChar || offers.char.length === 0 ? '✓' : '○'}</span>
             <span>💰 {myCoins}</span>
           </div>
-          {guideOpen ? <RewardGuide onClose={closeGuide} /> : null}
+          {guideOpen ? <RewardGuide compact={mobile} onClose={closeGuide} /> : null}
         </>
       ) : null}
 
@@ -541,7 +548,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
       </button>
 
       {/* Diegetic relic inspector (what you're standing on / near). */}
-      {focus && !showList && !paused && !(mobile && guideOpen) ? (
+      {focus && !showList && !paused && !guideOpen ? (
         <div className="wb-totem-hint wb-reward-inspect">
           <div className="wb-reward-inspect-name">
             {mobile
@@ -568,7 +575,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
           does, and its cost — readable without opening the List view, gamepad too.
           Relic focus wins if both are somehow in range (they never overlap: the
           shop sits below spawn, the relics above). */}
-      {shopFocus && !focus && !showList && !paused && !(mobile && guideOpen) ? (
+      {shopFocus && !focus && !showList && !paused && !guideOpen ? (
         <div className="wb-totem-hint wb-reward-inspect wb-reward-inspect-shop">
           <div className="wb-reward-inspect-name">
             {mobile

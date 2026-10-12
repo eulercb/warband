@@ -45,3 +45,9 @@ describe('reward guide', () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 });
+
+it('explains the desktop colors without referring to mobile marker letters', () => {
+  render(<RewardGuide compact={false} onClose={() => {}} />);
+  expect(screen.getByText('Gold · Generic boons')).toBeTruthy();
+  expect(screen.queryByText('Gold G · Generic boons')).toBeNull();
+});
