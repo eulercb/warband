@@ -333,10 +333,11 @@ const MAGE: CharUpgradeDef[] = [
     'mg_combust',
     'Combustion',
     '🔥',
-    'Fireball erupts for 102 (+22) across a 145u blast (+35)',
+    'Fireball gains 22 damage, 35u blast radius, and +2% damage against controlled foes',
     ({ abilities: a }) => {
       addN(a.a1, 'impactRadius', 35);
       addN(a.a1, 'damage', 22);
+      addN(a.a1, 'controlDamageBonus', 0.02);
     },
   ),
   u(
@@ -824,10 +825,11 @@ const SORCERER: CharUpgradeDef[] = [
     'so_mirror',
     'Greater Mirror Image',
     '🪞',
-    'Mirror Image blocks 52% of damage (up from 40%), lasts 7s (+2), and returns 15% sooner',
+    'Mirror Image blocks 52% of damage, lasts 2s longer, returns 15% sooner, and extends surge readiness by 0.4s',
     ({ abilities: a }) => {
       mul(a.a2, 'buffDefMult', 0.8);
       addN(a.a2, 'buffDuration', 2);
+      addN(a.a2, 'prepareSurge', 0.4);
       mul(a.a2, 'cooldown', 0.85);
     },
   ),

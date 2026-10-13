@@ -21,7 +21,8 @@
     "smoke:rewards": "node scripts/smoke-rewards.mjs",
     "smoke:rooms": "node scripts/smoke-rooms.mjs",
     "relay": "node server/relay.mjs",
-    "smoke:passives": "node scripts/smoke-passives.mjs"
+    "smoke:passives": "node scripts/smoke-passives.mjs",
+    "smoke:spells": "node scripts/smoke-spells.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

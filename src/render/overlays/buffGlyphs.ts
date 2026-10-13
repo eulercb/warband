@@ -27,6 +27,13 @@ function describe(
   mult: number,
 ): { glyph: string; color: number; good: boolean; label: string } | null {
   switch (kind) {
+    case 'spellSurge':
+      return {
+        glyph: '🔮',
+        color: 0xc06cff,
+        good: true,
+        label: 'Spell surge: next heavy spell empowered',
+      };
     case 'spellblade':
       return {
         glyph: '⚔️',

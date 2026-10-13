@@ -154,6 +154,7 @@ import {
   previewAbilityTable,
   grandCount,
 } from '../content/charUpgrades';
+import { consumeSpellSurge, controlledSpellMultiplier } from '../combat/spellCombos';
 import {
   setSubclassPassive,
   tickSubclassPassives,
@@ -1130,10 +1131,12 @@ export class World {
         p.castTimer = Math.max(0, p.castTimer - dt / castTimeFactor(p));
         if (was > 0 && p.castTimer === 0 && p.castSlot) {
           const slot = p.castSlot;
+          const reserved = p.castAbility;
+          p.castAbility = undefined;
           p.castSlot = null;
           p.castTimerMax = 0; // cast finished; the bar clears
           if (p.state === 'alive' && !hasBuff(p, 'stun')) {
-            resolvePlayerAbility(this, p, slot, { x: 0, y: 0 });
+            resolvePlayerAbility(this, p, slot, { x: 0, y: 0 }, reserved);
           }
         }
       }
@@ -1240,12 +1243,13 @@ export class World {
   }
 
   private tryUseAbility(p: Player, slot: ExtSlot, moveDir: Vec2): void {
-    const ab = abilityForSlot(p, slot);
-    if (!ab) return; // sub slot with no bound skill
+    const original = abilityForSlot(p, slot);
+    if (!original) return; // sub slot with no bound skill
     if ((p.cooldowns[slot] ?? 0) > 0) return;
     if (hasBuff(p, 'silence') && slot !== 'basic') return; // silenced: only the basic works
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
 
+    const ab = consumeSpellSurge(p, original);
     // Basics are the fire-rate spam vector: ×0.5 basic grands (Thousand Cuts /
     // Hundred Hands) plus stacking Haste compound with no natural bound, so floor
     // the basic slot's effective cooldown (#71). Other slots keep their raw value —
@@ -1256,6 +1260,7 @@ export class World {
       p.castTimer = ab.castTime * p.castMult;
       p.castTimerMax = p.castTimer; // full duration, so the render's cast bar is accurate under Focus
       p.castSlot = slot;
+      p.castAbility = ab;
       p.cooldowns[slot] = nextCd;
       this.events.push({
         t: 'cast',
@@ -1266,7 +1271,7 @@ export class World {
         slot,
       });
     } else {
-      resolvePlayerAbility(this, p, slot, moveDir);
+      resolvePlayerAbility(this, p, slot, moveDir, ab);
       p.cooldowns[slot] = nextCd;
     }
   }
@@ -1344,6 +1349,7 @@ export class World {
     p.castTimer = 0;
     p.castTimerMax = 0;
     p.castSlot = null;
+    p.castAbility = undefined;
     p.swapCd = SWAP_FX_CD; // cosmetic only — the swap already happened
   }
 
@@ -1500,7 +1506,7 @@ export class World {
           // item 5: ranged impacts can crit (per target); no backstab on a shot.
           this.applyProjDamageBoss(
             owner,
-            proj.damage,
+            proj.damage * controlledSpellMultiplier(b, proj.controlDamageBonus),
             b,
             owner ? this.critRoll(owner, proj) : undefined,
           );
@@ -1511,8 +1517,15 @@ export class World {
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
         if (dist(center, a.pos) <= proj.impactRadius + a.radius) {
-          if (owner) damageAdd(this, owner, a, proj.damage, this.critRoll(owner, proj));
-          else a.hp -= proj.damage;
+          if (owner)
+            damageAdd(
+              this,
+              owner,
+              a,
+              proj.damage * controlledSpellMultiplier(a, proj.controlDamageBonus),
+              this.critRoll(owner, proj),
+            );
+          else a.hp -= proj.damage * controlledSpellMultiplier(a, proj.controlDamageBonus);
           dealt += proj.damage;
           this.applyProjRiders(a, proj);
         }
@@ -1536,15 +1549,22 @@ export class World {
     } else if (hitBoss) {
       this.applyProjDamageBoss(
         owner,
-        proj.damage,
+        proj.damage * controlledSpellMultiplier(hitBoss, proj.controlDamageBonus),
         hitBoss,
         owner ? this.critRoll(owner, proj) : undefined,
       );
       dealt += proj.damage;
       this.applyProjRiders(hitBoss, proj);
     } else if (hitAdd) {
-      if (owner) damageAdd(this, owner, hitAdd, proj.damage, this.critRoll(owner, proj));
-      else hitAdd.hp -= proj.damage;
+      if (owner)
+        damageAdd(
+          this,
+          owner,
+          hitAdd,
+          proj.damage * controlledSpellMultiplier(hitAdd, proj.controlDamageBonus),
+          this.critRoll(owner, proj),
+        );
+      else hitAdd.hp -= proj.damage * controlledSpellMultiplier(hitAdd, proj.controlDamageBonus);
       dealt += proj.damage;
       this.applyProjRiders(hitAdd, proj);
     }
@@ -1615,6 +1635,7 @@ export class World {
       critMultBonus?: number;
       consumesPrecision?: boolean;
       kind?: string;
+      controlDamageBonus?: number;
     },
   ): HitMods {
     const ready =
@@ -1649,6 +1670,7 @@ export class World {
       critMultBonus?: number;
       consumesPrecision?: boolean;
       kind?: string;
+      controlDamageBonus?: number;
     },
   ): HitMods {
     const hit = this.critRoll(
@@ -1657,7 +1679,14 @@ export class World {
     );
     const toAttacker = angleOf(sub(source.pos, boss.pos));
     const backstab = inRearArc(boss.facing, toAttacker, BACKSTAB_REAR_ARC_DEG);
-    return { ...hit, backstab, mult: (hit.mult ?? 1) * (backstab ? BACKSTAB_MULT : 1) };
+    return {
+      ...hit,
+      backstab,
+      mult:
+        (hit.mult ?? 1) *
+        (backstab ? BACKSTAB_MULT : 1) *
+        controlledSpellMultiplier(boss, bonus?.controlDamageBonus),
+    };
   }
 
   /** Consume a counterburst before resolving damage, so it cannot recurse. */
@@ -2960,6 +2989,7 @@ export class World {
         p.castTimer = 0;
         p.castTimerMax = 0;
         p.castSlot = null;
+        p.castAbility = undefined;
         p.stats.deaths += 1;
         this.events.push({ t: 'downed', id: p.id, pos: { ...p.pos } });
       }

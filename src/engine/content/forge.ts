@@ -65,6 +65,7 @@ export interface Delivery {
   maxRange?: number;
   /** Dash / blink i-frame window. */
   iframes?: number;
+  surgeTwin?: boolean;
 }
 
 /**
@@ -94,6 +95,9 @@ export type EffectComponent =
   /** item 13 — a CRIT lean this ability carries: `chance` added to the hero's crit
    * chance, `mult` added to the crit multiplier, for its own hits (a precision strike). */
   | { kind: 'crit'; chance: number; mult: number; prepared?: boolean }
+  | { kind: 'controlDamage'; bonus: number }
+  | { kind: 'prepareSurge'; duration: number }
+  | { kind: 'surgeStrike' }
   | { kind: 'prepareCrit'; duration: number }
   | { kind: 'rebuke'; duration: number }
   | {
@@ -170,6 +174,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.castTime != null) delivery.castTime = def.castTime;
   if (def.impactRadius != null) delivery.impactRadius = def.impactRadius;
   if (def.maxRange != null) delivery.maxRange = def.maxRange;
+  if (def.surgeTwin) delivery.surgeTwin = true;
   if (def.iframes != null) delivery.iframes = def.iframes;
   // pbaoe / dash-landing radius rides the delivery; a groundZone's radius rides
   // its zone effect instead (see below), so the two never fight over `radius`.
@@ -225,6 +230,10 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
         ...(def.consumesPrecision ? { prepared: true } : {}),
       });
     }
+    if (def.controlDamageBonus)
+      effects.push({ kind: 'controlDamage', bonus: def.controlDamageBonus });
+    if (def.prepareSurge) effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
+    if (def.consumesSurge) effects.push({ kind: 'surgeStrike' });
     if (def.prepareCrit) effects.push({ kind: 'prepareCrit', duration: def.prepareCrit });
     if (def.rebukeDuration) effects.push({ kind: 'rebuke', duration: def.rebukeDuration });
     if (def.lifestealFrac) effects.push({ kind: 'lifesteal', frac: def.lifestealFrac });
@@ -284,6 +293,7 @@ export function recompose(
   if (d.castTime != null) def.castTime = d.castTime;
   if (d.impactRadius != null) def.impactRadius = d.impactRadius;
   if (d.maxRange != null) def.maxRange = d.maxRange;
+  if (d.surgeTwin && d.kind === 'projectile') def.surgeTwin = true;
   if (d.iframes != null) def.iframes = d.iframes;
 
   for (const e of comp.effects) {
@@ -324,6 +334,15 @@ export function recompose(
       case 'shove': // item 11 — forced movement (knockback / pull)
         if (e.pull) def.pull = e.distance;
         else def.knockback = e.distance;
+        break;
+      case 'controlDamage':
+        def.controlDamageBonus = e.bonus;
+        break;
+      case 'prepareSurge':
+        def.prepareSurge = e.duration;
+        break;
+      case 'surgeStrike':
+        def.consumesSurge = true;
         break;
       case 'prepareCrit':
         def.prepareCrit = e.duration;
@@ -406,6 +425,12 @@ function effectValue(e: EffectComponent, fan: number): number {
       return (1 - e.mult) * e.duration * 12; // soft CC, priced by depth × time
     case 'castSlow':
       return (e.mult - 1) * e.duration * 18; // soft tempo CC, priced by depth × time
+    case 'controlDamage':
+      return e.bonus * 40;
+    case 'prepareSurge':
+      return e.duration * 3;
+    case 'surgeStrike':
+      return 0; // Requires a separately priced preparation effect.
     case 'prepareCrit':
       return e.duration * 5;
     case 'rebuke':
@@ -481,6 +506,13 @@ export function describeComposed(comp: AbilityComponents, cooldown: number): str
 
   // Every effect yields a non-empty clause, so no gap-filtering is needed.
   for (const e of comp.effects) parts.push(effectPhrase(e));
+  if (
+    comp.delivery.surgeTwin &&
+    comp.delivery.kind === 'projectile' &&
+    !comp.effects.some((e) => e.kind === 'zone') &&
+    comp.effects.some((e) => e.kind === 'surgeStrike')
+  )
+    parts.push('surge adds 1 projectile sharing its total damage');
   parts.push(`${s(cooldown)} cooldown`);
   return parts.join(' · ');
 }
@@ -535,6 +567,12 @@ function effectPhrase(e: EffectComponent): string {
       return `slow to ${pct(e.mult * 100)} for ${s(e.duration)}`;
     case 'castSlow':
       return `+${pct((e.mult - 1) * 100)} enemy wind-up for ${s(e.duration)}`;
+    case 'controlDamage':
+      return `+${pct(e.bonus * 100)} dmg vs slowed/rooted/stunned foes`;
+    case 'prepareSurge':
+      return `prepare spell surge for ${s(e.duration)}`;
+    case 'surgeStrike':
+      return 'surge +20% dmg, half wind-up';
     case 'prepareCrit':
       return `prepare next precision crit for ${s(e.duration)}`;
     case 'rebuke':
@@ -807,6 +845,11 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'heal' || kind === 'buffAlly';
     case 'healOnUse':
       return kind === 'dash' || kind === 'blink' || kind === 'selfBuff' || kind === 'taunt';
+    case 'controlDamage':
+    case 'surgeStrike':
+      return DIRECT_STRIKE.has(kind);
+    case 'prepareSurge':
+      return kind === 'blink' || kind === 'selfBuff';
     case 'prepareCrit':
       return kind === 'blink';
     case 'rebuke':
@@ -1294,6 +1337,11 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, duration: e.duration * f };
     case 'castSlow':
       return { ...e, duration: e.duration * f }; // rigid: keeps its bite, sheds time
+    case 'controlDamage':
+      return { ...e, bonus: e.bonus * f };
+    case 'surgeStrike':
+      return e;
+    case 'prepareSurge':
     case 'prepareCrit':
     case 'rebuke':
     case 'flight':
@@ -1395,6 +1443,19 @@ function addBoonComponents(
   type BuffEff = Extract<EffectComponent, { kind: 'buff' }>;
   const out = effects.slice();
   const has = (pred: (e: EffectComponent) => boolean): boolean => out.some(pred);
+
+  if (DIRECT_STRIKE.has(def.kind)) {
+    if (def.controlDamageBonus != null && !has((e) => e.kind === 'controlDamage'))
+      out.push({ kind: 'controlDamage', bonus: sane(def.controlDamageBonus, 0, 0.4, 0.2) });
+    if (def.consumesSurge && !has((e) => e.kind === 'surgeStrike'))
+      out.push({ kind: 'surgeStrike' });
+  }
+  if (
+    (def.kind === 'blink' || def.kind === 'selfBuff') &&
+    def.prepareSurge != null &&
+    !has((e) => e.kind === 'prepareSurge')
+  )
+    out.push({ kind: 'prepareSurge', duration: sane(def.prepareSurge, 2, 12, 8) });
 
   // Self-buff axes — extend the existing self buff (or mint one), one component per axis.
   const wantDef = def.buffDefMult != null && !has((e) => e.kind === 'buff' && e.defMult != null);
@@ -1505,6 +1566,12 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.castSlow != null
         ? { ...e, mult: def.castSlow, duration: def.castSlowDuration ?? e.duration }
         : e;
+    case 'controlDamage':
+      return def.controlDamageBonus != null ? { ...e, bonus: def.controlDamageBonus } : e;
+    case 'prepareSurge':
+      return def.prepareSurge != null ? { ...e, duration: def.prepareSurge } : e;
+    case 'surgeStrike':
+      return e;
     case 'prepareCrit':
       return def.prepareCrit != null ? { ...e, duration: def.prepareCrit } : e;
     case 'rebuke':
@@ -1572,6 +1639,12 @@ function capEffect(e: EffectComponent): EffectComponent {
         mult: clamp(round05(e.mult), 1.1, CAST_SLOW_MAX),
         duration: clamp(round1(e.duration), 1, 5),
       };
+    case 'controlDamage':
+      return { ...e, bonus: clamp(round2(e.bonus), 0, 0.4) };
+    case 'prepareSurge':
+      return { ...e, duration: clamp(round1(e.duration), 2, 12) };
+    case 'surgeStrike':
+      return e;
     case 'prepareCrit':
     case 'rebuke':
       return { ...e, duration: clamp(round1(e.duration), 1, 5) };

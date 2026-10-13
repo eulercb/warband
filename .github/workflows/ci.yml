@@ -112,6 +112,10 @@ jobs:
             npm run smoke:passives
             code=$?
           fi
+          if [ "$code" -eq 0 ]; then
+            npm run smoke:spells
+            code=$?
+          fi
           set -e
           kill "$PREVIEW_PID" 2>/dev/null || true
           exit $code

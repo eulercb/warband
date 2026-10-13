@@ -341,8 +341,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'mg_evoker_lightning',
           'Lightning Bolt',
           '⚡',
-          'A fast bolt for 40',
-          proj('Lightning Bolt', 5, 40, { projSpeed: 820 }),
+          'A fast bolt for 40, +20% damage against controlled foes',
+          proj('Lightning Bolt', 5, 40, { projSpeed: 820, controlDamageBonus: 0.2 }),
         ),
         sk(
           'mg_evoker_cone',
@@ -355,8 +355,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'mg_evoker_sculpt',
           'Sculpted Blast',
           '💥',
-          'Charge a 170u detonation for 58',
-          nova('Sculpted Blast', 11, 58, 170, { castTime: 0.6 }),
+          'Charge a 170u detonation for 58, +25% against controlled foes',
+          nova('Sculpted Blast', 11, 58, 170, { castTime: 0.6, controlDamageBonus: 0.25 }),
         ),
         sk(
           'mg_evoker_shield',
@@ -984,8 +984,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'so_draconic_breath',
           'Dragon Breath',
           '🐉',
-          'A 240u breath cone for 42', // item 3: a cone, not a circle
-          cone('Dragon Breath', 8, 42, 240, 42),
+          'A 240u breath cone for 42; consumes spell surge', // item 3: a cone, not a circle
+          cone('Dragon Breath', 8, 42, 240, 42, { consumesSurge: true }),
         ),
         sk(
           'so_draconic_wing',
@@ -993,15 +993,25 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           '🪽',
           // item 7 — the wings actually LIFT the sorcerer now: airborne for 5s,
           // soaring over ground hazards + ground zones, plus the speed/mitigation.
-          'Take flight 5s: +25% speed, take 45% less, soar over ground hazards',
-          buff('Dragon Wings', 12, { buffMoveMult: 1.25, buffDefMult: 0.55, grantsFlight: 5 }),
+          'Take flight 5s: +25% speed, take 45% less, and prepare spell surge for 8s',
+          buff('Dragon Wings', 12, {
+            buffMoveMult: 1.25,
+            buffDefMult: 0.55,
+            grantsFlight: 5,
+            prepareSurge: 8,
+          }),
         ),
         sk(
           'so_draconic_bolt',
           'Chromatic Bolt',
           '🌈',
-          'Charge a heavy chromatic bolt for 60',
-          proj('Chromatic Bolt', 8, 60, { projSpeed: 700, castTime: 0.5 }),
+          'Charge a heavy chromatic bolt for 60; surge forks it, sharing +20% total damage',
+          proj('Chromatic Bolt', 8, 60, {
+            consumesSurge: true,
+            surgeTwin: true,
+            projSpeed: 700,
+            castTime: 0.5,
+          }),
         ),
         sk(
           'so_draconic_scales',
@@ -1022,22 +1032,22 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'so_wild_surge',
           'Chaos Surge',
           '🎲',
-          'Six chaotic bolts, 12 each',
-          proj('Chaos Surge', 7, 12, { projCount: 6, spreadDeg: 60 }),
+          'Six chaotic bolts, 12 each; consumes spell surge',
+          proj('Chaos Surge', 7, 12, { consumesSurge: true, projCount: 6, spreadDeg: 60 }),
         ),
         sk(
           'so_wild_tides',
           'Tides of Chaos',
           '🌀',
-          'A 170u wild burst for 40',
-          nova('Tides of Chaos', 8, 40, 170),
+          'A 170u wild burst for 40; consumes spell surge',
+          nova('Tides of Chaos', 8, 40, 170, { consumesSurge: true }),
         ),
         sk(
           'so_wild_bend',
           'Bend Luck',
           '🍀',
-          'Blink 280u with i-frames',
-          blink('Bend Luck', 6, { range: 280, iframes: 0.3 }),
+          'Blink 280u with i-frames and prepare spell surge for 8s',
+          blink('Bend Luck', 6, { range: 280, iframes: 0.3, prepareSurge: 8 }),
         ),
         sk(
           'so_wild_font',
