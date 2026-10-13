@@ -1,7 +1,8 @@
 # Class identity and subclass roadmap
 
-Status: Rogue/Warlock pilot implemented for review. All later milestones and
-subclass passives below are proposals, not released mechanics.
+Status: the Rogue/Warlock skill pilot was merged and playtested. Defining passives
+for Assassin, Arcane Trickster, Fiend and Great Old One are implemented for review.
+Other subclasses, companions, forms and later milestones remain proposals.
 
 ## Goals and boundaries
 
@@ -42,8 +43,62 @@ DPS or hide unbounded power outside the estimator.
   name. New states use compact timed badges and the existing snapshot pipeline.
 
 These interactions are bounded: no automatic cooldown resets, permanent marks,
-extra basic attacks, or infinitely chaining procs. All class/subclass passives
-remain deferred, including those proposed for Rogue and Warlock.
+extra basic attacks, or infinitely chaining procs. The following milestone adds
+bounded passives for the four pilot subclasses; other passives remain deferred.
+
+## Milestone 2: four defining passives
+
+A subclass grants its passive when its first skill is committed, independently
+of which skill was chosen. It consumes neither sub1 nor sub2. The existing
+persistent subclass-skill roster records the committed subclass, so normal run
+progression, loadout presets and the Start message already reproduce ownership.
+If unequipping all subclass skills is added later, preserve an explicit subclass
+ownership record rather than inferring ownership from the equipped list.
+
+- **Assassin — Death's Opening:** prepared precision strikes gain +0.2× crit
+  damage and deal 15% extra damage at or below 35% enemy health. This never creates
+  additional preparation or crit chains. Death Strike and base Backstab benefit.
+- **Arcane Trickster — Spellblade:** a non-melee special prepares the next
+  connecting melee hit for +20% damage within 5 seconds, once per 6 seconds.
+  Basic attacks may consume it but never prepare it. Magic, zones and utility
+  skills can prepare it; rooted mobility cannot. Misses and invulnerable enemies
+  preserve readiness. Base skills, subclass spells and grafted spells work.
+- **Fiend — Soul Ember:** effective damage to a personally cursed enemy heals
+  2% maximum health and grants 10% mitigation for 3 seconds, once per 6 seconds.
+  Direct attacks, zones and counterbursts qualify. Healing is capped at missing
+  health and credited normally. Other owners' curses and dead casters cannot proc it.
+- **Great Old One — Dread Insight:** personally cursed targets take 8% extra
+  damage while slowed, rooted, stunned or suffering longer wind-ups. Ally control
+  can establish the opportunity, but only your own curse qualifies. All damaging
+  skills can exploit it; expired effects, haste and neutral wind-ups do not count.
+
+Only the active class's committed passive operates. On a class change, passive
+readiness and temporary passive wards expire; per-passive cooldowns continue
+counting down and never reset on swap or rebind. Ordinary skill effects retain
+the pilot's existing behavior. Each new encounter starts fresh combat timers.
+Copied skills do not grant a subclass passive. Procedural variants and Forge
+retain the chosen subclass's authored passive identity; passives are not Forge
+components or donors, and no passive recombination is introduced.
+
+Subclass cards, the loadout editor and pause explain the passive. Combat uses a
+small identity icon, existing ward/crit badges, and one timed Spellblade badge.
+Readiness travels through existing buff snapshots; proc cooldowns remain private
+host state. No new buttons, resource bars, networking messages or difficulty
+rules are introduced.
+
+The production browser check is `npm run smoke:passives` after building and
+starting the preview server. It selects all four subclasses through real menus
+and checks the fight icon and pause description on desktop and a small phone.
+CI runs this alongside the existing desktop/mobile and room-navigation checks.
+
+### Passive playtest checklist
+
+Use the single-fight Test loadout panel to choose any one skill of each subclass.
+Compare the resulting passive with an unsubclassed character. Try Assassin's
+prepared strike above and below 35% boss health; Trickster's utility → blade hit;
+Fiend's Hex followed by damage and its six-second reward limit; Great Old One's
+curse with and without control. Try second subclass skills, bots, mobile controls,
+multiclass swaps, and a normal adaptive run. Review power and clarity separately.
 
 ## A defining passive for each subclass
 
@@ -61,13 +116,13 @@ panel or making each class require a resource bar.
 | Mage      | Evoker — combining control and damage prepares an enhanced detonation.                                                       | Abjurer — defensive casts build a capped protective ward with a useful ally option.                                                                 |
 | Cleric    | Light — offensive spells prepare a small healing opportunity.                                                                | Life — effective healing creates capped, short-lived protective overflow; never reward overheal spam.                                               |
 | Barbarian | Berserker — maintain attack momentum during Rage for a capped offensive benefit.                                             | Totem Warrior — active protection grants a brief nearby ally benefit.                                                                               |
-| Rogue     | Assassin — prepared precision strikes improve finishing pressure, without repeated guaranteed crit chains.                   | Arcane Trickster — alternate a control/magic action and a blade strike for a limited payoff.                                                        |
+| Rogue     | **Implemented:** Assassin — Death's Opening strengthens prepared precision and finishing pressure.                           | **Implemented:** Arcane Trickster — Spellblade connects non-melee specials and blade hits.                                                          |
 | Paladin   | Devotion — frontline holy actions provide short, capped nearby protection.                                                   | Vengeance — pursuing the chosen enemy prepares an empowered smite.                                                                                  |
 | Druid     | Moon — temporary animal form connects melee actions and recovery; form behavior and input mapping need a separate prototype. | Land — zones generate limited growth that strengthens a subsequent nature effect.                                                                   |
 | Bard      | Valor — varied offensive/support actions culminate in a rally.                                                               | Whispers — sustained disruption prepares a focused psychic payoff.                                                                                  |
 | Monk      | Open Hand — alternating strike and movement prepares control or a finisher.                                                  | Shadow — repositioning prepares an ambush opportunity, with forgiving timing.                                                                       |
 | Sorcerer  | Draconic — breath and flight interact with a capped draconic empowerment.                                                    | Wild Magic — a clearly previewed, bounded surge modifies a future cast.                                                                             |
-| Warlock   | Fiend — curse exploitation prepares a limited drain/retaliation benefit.                                                     | Great Old One — debilitation prepares a personal curse payoff.                                                                                      |
+| Warlock   | **Implemented:** Fiend — Soul Ember grants bounded sustain/protection from personal curse damage.                            | **Implemented:** Great Old One — Dread Insight exploits personally cursed, debilitated foes.                                                        |
 
 The companion belongs most naturally to **Beast Master**; Hunter can remain the
 precision-focused alternative. Neither companions nor forms should require
@@ -80,9 +135,9 @@ and rendering need explicit decisions.
 1. Review/playtest this two-class pilot on desktop and mobile. Confirm distinct
    decisions, understandable feedback, and a modest power gain. Compare solo,
    mixed co-op, and bots; ground and flying bosses; early and upgraded builds.
-2. Build subclass-passive infrastructure and prototype only Assassin/Trickster
-   and Fiend/Great Old One. Choose persistent IDs, unlock rules, swap behavior,
-   ownership, limits, and replay/snapshot handling before implementing all 24.
+2. **Implemented for review:** subclass-passive infrastructure and the four pilot
+   passives above. Review unlock, swap, ownership, limits and feedback before
+   implementing the remaining subclasses.
 3. Separate Mage's deliberate control/burst from Sorcerer's spell modification.
 4. Separate support identities: Cleric rescue, Paladin frontline protection,
    Druid territory/recovery, Bard sequences/rallies.

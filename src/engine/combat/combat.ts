@@ -15,6 +15,7 @@ import type {
   Vec2,
   ZoneKind,
 } from '../core/types';
+import { subclassDamageMultiplier, subclassHitHealing } from './subclassPassives';
 import { getClass } from '../content/classes';
 import {
   HEAL_THREAT_FACTOR,
@@ -45,6 +46,8 @@ export interface HitMods {
   mult?: number;
   crit?: boolean;
   backstab?: boolean;
+  prepared?: boolean;
+  melee?: boolean;
 }
 
 /**
@@ -336,13 +339,14 @@ export function damageBoss(
   // Honor the boss's own damage-taken buffs (Brace / Petrify / Regrow / Aegis…),
   // so a boss defensive cooldown actually mitigates incoming damage. `mods.mult`
   // folds in the crit × backstab bonus (item 5).
-  const outgoing =
+  let outgoing =
     baseDamage *
     (mods?.mult ?? 1) *
     buffMult(source, 'damageDealt') *
     source.damageMult *
     buffMult(boss, 'damageTaken') *
     curseMultiplier(source, boss);
+  if (outgoing > 0 && boss.hp > 0) outgoing *= subclassDamageMultiplier(source, boss, mods);
   const before = boss.hp;
   boss.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(boss.hp, 0));
@@ -363,6 +367,8 @@ export function damageBoss(
     crit: mods?.crit,
     backstab: mods?.backstab,
   });
+  const passiveHeal = subclassHitHealing(source, boss, effective);
+  if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);
   return outgoing;
 }
 
@@ -383,12 +389,13 @@ export function damageAdd(
   baseDamage: number,
   mods?: HitMods,
 ): number {
-  const outgoing =
+  let outgoing =
     baseDamage *
     (mods?.mult ?? 1) *
     buffMult(source, 'damageDealt') *
     source.damageMult *
     curseMultiplier(source, add);
+  if (outgoing > 0 && add.hp > 0) outgoing *= subclassDamageMultiplier(source, add, mods);
   const before = add.hp;
   add.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(add.hp, 0));
@@ -402,6 +409,8 @@ export function damageAdd(
     crit: mods?.crit,
     backstab: mods?.backstab,
   });
+  const passiveHeal = subclassHitHealing(source, add, effective);
+  if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);
   return outgoing;
 }
 

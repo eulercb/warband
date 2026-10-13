@@ -10,7 +10,11 @@ import { isTouchCapable } from '../../input/touch';
 import { requestPause, playUiSound } from '../state/session';
 import VolumeControl from './VolumeControl';
 import { previewAbilityTable, previewSubAbility } from '../../engine/content/charUpgrades';
-import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
+import {
+  getSubSkill,
+  subclassOfSkill,
+  activeSubclassPassive,
+} from '../../engine/content/subclasses';
 import { AFFIXES } from '../../engine/content/affixes';
 import {
   useBindings,
@@ -207,6 +211,7 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
   useBindings((s) => s.bindings);
 
   const hpPct = pct(hud.hp, hud.maxHp);
+  const passive = activeSubclassPassive(hud.classId, hud.subSkills);
 
   // Resolve the local hero's live ability table (hybrid grafts rename slots and
   // change cooldowns; the buttons should follow what the hero actually has).
@@ -315,6 +320,15 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
         <div className={`hud-selfhp cls-${hud.classId ?? 'knight'}`}>
           <div className="hud-self-row">
             <BuffChips buffs={hud.buffs} />
+            {passive && (
+              <span
+                className="hud-buff-glyph"
+                title={`${passive.name}: ${passive.desc}`}
+                aria-label={`Subclass passive: ${passive.name}`}
+              >
+                {passive.icon}
+              </span>
+            )}
             <span className="hud-score" title="Your run score">
               ★ {hud.score}
             </span>

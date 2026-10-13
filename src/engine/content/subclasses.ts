@@ -9,6 +9,7 @@
  * to 'sub1'/'sub2' when bound), so it flows through the exact same cast/cooldown
  * machinery as the base kit. PURE data + lookups — no UI, no networking.
  */
+import { SUBCLASS_PASSIVES, type SubclassPassiveDef } from './subclassPassives';
 import type { ClassId, AbilitySlot } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
 import { describeAbility } from './classes';
@@ -33,6 +34,7 @@ export interface SubclassDef {
   blurb: string;
   /** Exactly four skills; a hero picks up to two of them. */
   skills: SubSkillDef[];
+  passive?: SubclassPassiveDef;
 }
 
 /** Terse skill builder. */
@@ -1127,6 +1129,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
 /** Every subclass, flat. */
 export const ALL_SUBCLASSES: SubclassDef[] = Object.values(SUBCLASSES).flat();
 
+for (const sub of ALL_SUBCLASSES) sub.passive = SUBCLASS_PASSIVES[sub.id];
+
 /** Flat lookup: subclass id → def. */
 const SUBCLASS_BY_ID: Record<string, SubclassDef> = Object.fromEntries(
   ALL_SUBCLASSES.map((s) => [s.id, s]),
@@ -1319,4 +1323,12 @@ export function specialRewardStep(
     }
   }
   return { kind: 'classOrGrand' };
+}
+
+/** The first committed subclass of the active class owns the passive, regardless of chosen skill. */
+export function activeSubclassPassive(
+  classId: ClassId | null,
+  skills: readonly string[],
+): SubclassPassiveDef | undefined {
+  return skills.map(subclassOfSkill).find((sub) => sub?.classId === classId)?.passive;
 }

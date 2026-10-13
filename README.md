@@ -187,3 +187,5 @@ npm run build && npm run preview
 Rogue can use Shadowstep to prepare its next Backstab (or Assassin Death Strike) for a guaranteed critical hit within four seconds. Ordinary attacks leave preparation available. Warlock can curse enemies with Hex for extra personal damage; Hellish Rebuke also prepares a short, one-use counterburst if hurt. Timed badges show these opportunities on desktop and mobile.
 
 See [the class and subclass roadmap](docs/CLASS_REVAMP_ROADMAP.md) for the pilot rules, proposed defining subclass passives, and the staged plan for companions, forms, and the remaining classes. Later roadmap entries are proposals.
+
+Choosing your first Assassin, Arcane Trickster, Fiend or Great Old One skill also grants a defining passive, without another ability slot. Subclass selection and the pause menu explain it; a small combat icon identifies your active passive. See the roadmap for exact effects and limits.
