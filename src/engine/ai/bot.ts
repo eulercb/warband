@@ -642,7 +642,14 @@ function decideAbilities(
     case 'rogue': {
       if (hasTarget && cd.basic <= 0) want.basic = true; // Slash
       if (bossPos && cd.a1 <= 0 && distBoss <= reach(BOT_MELEE_RANGE + 20)) want.a1 = true; // Backstab
-      if (cd.a2 <= 0 && inDanger) want.a2 = true; // Shadowstep out
+      // Preserve defensive escapes; also close a safe gap when Backstab is nearly ready.
+      const step = bot.abilities?.a2;
+      const prepareApproach =
+        !!step?.prepareCrit &&
+        cd.a1 <= 1 &&
+        distBoss >= (step.range ?? 240) - 50 &&
+        distBoss <= (step.range ?? 240) + 40;
+      if (cd.a2 <= 0 && (inDanger || prepareApproach)) want.a2 = true;
       if (bossPos && cd.a3 <= 0) want.a3 = true; // Poison Vial toward boss
       break;
     }

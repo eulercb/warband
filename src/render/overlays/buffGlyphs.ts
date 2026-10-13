@@ -27,6 +27,17 @@ function describe(
   mult: number,
 ): { glyph: string; color: number; good: boolean; label: string } | null {
   switch (kind) {
+    case 'precision':
+      return { glyph: '🗡️', color: 0xffd36b, good: true, label: 'Prepared critical strike' };
+    case 'curse':
+      return {
+        glyph: '🕸️',
+        color: 0xb488e0,
+        good: false,
+        label: 'Hexed: caster deals extra damage',
+      };
+    case 'rebuke':
+      return { glyph: '🔥', color: 0xff9a3d, good: true, label: 'Counterburst ready' };
     case 'stun':
       return { glyph: '💫', color: 0xffe14d, good: false, label: 'Stunned' };
     case 'silence':

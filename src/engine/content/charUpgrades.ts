@@ -493,9 +493,10 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_assassin',
     'Assassinate',
     '🗡️',
-    'Backstab bursts for 74 (+24) and returns 22% sooner (3.9s)',
+    'Backstab gains 24 damage, returns 22% sooner, and gains +0.1× critical damage',
     ({ abilities: a }) => {
       addN(a.a1, 'damage', 24);
+      addN(a.a1, 'critMultBonus', 0.1);
       mul(a.a1, 'cooldown', 0.78);
     },
   ),
@@ -516,11 +517,12 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_vanish',
     'Vanish',
     '💨',
-    'Shadowstep resets 30% faster (4.2s), phases for 0.5s, and heals 22 on use',
+    'Shadowstep resets 30% faster, phases longer, heals 22, and extends preparation by 0.4s',
     ({ abilities: a }) => {
       mul(a.a2, 'cooldown', 0.7);
       addN(a.a2, 'iframes', 0.2);
       addN(a.a2, 'healOnUse', 22);
+      addN(a.a2, 'prepareCrit', 0.4);
     },
   ),
   u(
@@ -871,9 +873,10 @@ const WARLOCK: CharUpgradeDef[] = [
     'wa_hex',
     'Deepening Hex',
     '🕸️',
-    'Hex festers for 18/tick (+6), lasts 6.5s (+1.5), and covers 138u (+18)',
+    'Hex gains 6/tick damage, 1.5s duration, 18u radius, and +1% owner curse damage',
     ({ abilities: a }) => {
       addN(a.a1, 'zoneTickDamage', 6);
+      addN(a.a1, 'curseBonus', 0.01);
       addN(a.a1, 'zoneDuration', 1.5);
       addN(a.a1, 'radius', 18);
     },

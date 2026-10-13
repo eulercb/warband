@@ -578,8 +578,9 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           // item 13 — the Assassin's signature finds the vital point: less flat damage,
           // a heavy crit lean, so it reads as a lethal gamble that spikes on a crit
           // (the modern crit-keyed identity) rather than a flat nuke.
-          'A precise stab for 60 that strikes true — crits often and hard',
+          'A precise stab for 60; consumes preparation for a guaranteed crit',
           melee('Death Strike', 7, 60, {
+            consumesPrecision: true,
             range: 58,
             halfAngleDeg: 30,
             critChanceBonus: 0.2,
@@ -648,8 +649,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'ro_trickster_step',
           'Misty Step',
           '🌫️',
-          'Blink 270u with i-frames',
-          blink('Misty Step', 6, { iframes: 0.3, healOnUse: 20 }),
+          'Blink 270u, heal 20, and prepare your next precision crit for 4s',
+          blink('Misty Step', 6, { iframes: 0.3, healOnUse: 20, prepareCrit: 4 }),
         ),
         sk(
           'ro_trickster_shield',
@@ -1071,8 +1072,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'wa_fiend_rebuke',
           'Fiendish Rebuke',
           '💥',
-          'A 150u hell-burst for 36',
-          nova('Fiendish Rebuke', 8, 36, 150, { lifestealFrac: 0.2 }),
+          'A 150u hell-burst for 36; arm one 40%-damage counterburst for 3s',
+          nova('Fiendish Rebuke', 8, 36, 150, { lifestealFrac: 0.2, rebukeDuration: 3 }),
         ),
         sk(
           'wa_fiend_resilience',
@@ -1101,8 +1102,9 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'wa_goo_whispers',
           'Dissonant Whispers',
           '🌀',
-          'A maddening zone, 11/tick',
+          'A maddening zone, 11/tick; cursed foes take 15% more damage from you',
           zone('Dissonant Whispers', 9, {
+            curseBonus: 0.15,
             radius: 115,
             zoneTickDamage: 11,
             slowMult: 0.5,

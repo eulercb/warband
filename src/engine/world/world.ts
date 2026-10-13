@@ -1564,6 +1564,7 @@ export class World {
       slowMult: oi.slowMult,
       slowDuration: oi.slowDuration,
       roots: oi.roots,
+      curseBonus: oi.curseBonus,
       castSlow: oi.castSlow, // item 9
       airborne: oi.airborne, // item 8
       allyBuff: oi.allyBuff,
@@ -1595,8 +1596,15 @@ export class World {
    * (the Rogue's precision kit, a forged deadly shot) crits more often / harder than
    * the hero's basic. Public so ability resolution shares the one crit stream.
    */
-  critRoll(source: Player, bonus?: { critChanceBonus?: number; critMultBonus?: number }): HitMods {
-    const chance = (source.critChance ?? 0) + (bonus?.critChanceBonus ?? 0);
+  critRoll(
+    source: Player,
+    bonus?: { critChanceBonus?: number; critMultBonus?: number; consumesPrecision?: boolean },
+  ): HitMods {
+    const ready =
+      bonus?.consumesPrecision &&
+      source.buffs.find((b) => b.kind === 'precision' && b.remaining > 0);
+    if (ready) source.buffs.splice(source.buffs.indexOf(ready), 1);
+    const chance = ready ? 1 : (source.critChance ?? 0) + (bonus?.critChanceBonus ?? 0);
     const crit = this.critRng.next() < chance;
     return { crit, mult: crit ? (source.critMult ?? 1) + (bonus?.critMultBonus ?? 0) : 1 };
   }
@@ -1610,12 +1618,33 @@ export class World {
   meleeHit(
     source: Player,
     boss: Boss,
-    bonus?: { critChanceBonus?: number; critMultBonus?: number },
+    bonus?: { critChanceBonus?: number; critMultBonus?: number; consumesPrecision?: boolean },
   ): HitMods {
-    const { crit, mult } = this.critRoll(source, bonus);
+    const { crit, mult } = this.critRoll(
+      source,
+      hasBuff(boss, 'invuln') ? { ...bonus, consumesPrecision: false } : bonus,
+    );
     const toAttacker = angleOf(sub(source.pos, boss.pos));
     const backstab = inRearArc(boss.facing, toAttacker, BACKSTAB_REAR_ARC_DEG);
     return { crit, backstab, mult: (mult ?? 1) * (backstab ? BACKSTAB_MULT : 1) };
+  }
+
+  /** Consume a counterburst before resolving damage, so it cannot recurse. */
+  onPlayerDamaged(target: Player): void {
+    const ward = target.buffs.find((b) => b.kind === 'rebuke' && b.remaining > 0 && b.retaliation);
+    if (!ward?.retaliation) return;
+    target.buffs.splice(target.buffs.indexOf(ward), 1);
+    let dealt = 0;
+    for (const boss of this.aliveBosses()) {
+      if (dist(target.pos, boss.pos) <= ward.retaliation.radius + boss.radius)
+        dealt += damageBoss(this, target, boss, ward.mult);
+    }
+    for (const add of this.adds) {
+      if (add.hp > 0 && dist(target.pos, add.pos) <= ward.retaliation.radius + add.radius)
+        dealt += damageAdd(this, target, add, ward.mult);
+    }
+    if (dealt > 0 && ward.retaliation.lifesteal > 0)
+      healPlayer(this, target, target, dealt * ward.retaliation.lifesteal);
   }
 
   private applyProjDamageBoss(
@@ -1720,13 +1749,18 @@ export class World {
     // it clears shortly after the boss leaves (mirrors the root cadence).
     const castSlows = (z.castSlow ?? 1) > 1;
     const castSlowDur = castSlows ? Math.max(z.slowDuration, ZONE_TICK_INTERVAL * 1.5) : 0;
-    if (z.damagePerTick > 0 || slows || z.roots || castSlows) {
+    if (z.damagePerTick > 0 || slows || z.roots || castSlows || z.curseBonus) {
       for (const b of this.aliveBosses()) {
         if (dist(z.pos, b.pos) > z.radius + b.radius) continue;
         // item 7/8: a FLYING boss (constant OR timed) hovers above GROUND zones — no
         // damage, slow, root or cast-slow reaches it. An AIRBORNE zone (Rain of
         // Arrows, Otiluke Bind) still catches it; direct attacks always connect.
         if (this.bossFlying(b) && !zoneReachesAir(z)) continue;
+        if (owner && z.curseBonus)
+          applyBuff(
+            b,
+            makeBuff('curse', 1 + z.curseBonus, Math.max(1.5, z.slowDuration), `curse:${owner.id}`),
+          );
         if (z.damagePerTick > 0) this.applyProjDamageBoss(owner, z.damagePerTick, b);
         if (slows) applyBuff(b, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
         if (z.roots) applyBuff(b, makeBuff('root', 0, rootDur, 'zoneRoot'));
@@ -1735,6 +1769,16 @@ export class World {
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
         if (dist(z.pos, a.pos) <= z.radius + a.radius) {
+          if (owner && z.curseBonus)
+            applyBuff(
+              a,
+              makeBuff(
+                'curse',
+                1 + z.curseBonus,
+                Math.max(1.5, z.slowDuration),
+                `curse:${owner.id}`,
+              ),
+            );
           if (z.damagePerTick > 0) {
             if (owner) damageAdd(this, owner, a, z.damagePerTick);
             else a.hp -= z.damagePerTick;

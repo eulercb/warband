@@ -59,6 +59,12 @@ export interface BuffGlow {
 /** Map one buff/debuff to a glow color, or null if it shouldn't glow. */
 export function buffGlow(kind: BuffKind, mult: number): BuffGlow | null {
   switch (kind) {
+    case 'precision':
+      return { color: 0xffd36b, good: true };
+    case 'curse':
+      return { color: 0xb488e0, good: false };
+    case 'rebuke':
+      return { color: 0xff9a3d, good: true };
     case 'stun':
       return { color: 0xffe14d, good: false }; // yellow — crowd-controlled
     case 'silence':

@@ -127,6 +127,14 @@ export interface PlayerAbilityDef {
    */
   critChanceBonus?: number;
   critMultBonus?: number;
+  /** Prepare one guaranteed critical precision strike for this many seconds. */
+  prepareCrit?: number;
+  /** Only marked melee skills consume preparation; basics leave it available. */
+  consumesPrecision?: boolean;
+  /** A damaging burst also arms one counterburst (40% damage) for this window. */
+  rebukeDuration?: number;
+  /** This zone marks enemies: only its owner deals this much extra damage. */
+  curseBonus?: number;
 
   /**
    * Chaos Forge (docs/CHAOS_FORGE.md) — the recombined component form of a
@@ -464,6 +472,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Backstab',
+        consumesPrecision: true,
         kind: 'meleeCone',
         cooldown: 5,
         // item 13 — the flagship CRIT strike. Lower flat damage, a big crit lean:
@@ -479,6 +488,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a2: {
         slot: 'a2',
         name: 'Shadowstep',
+        prepareCrit: 4,
         kind: 'blink',
         cooldown: 6,
         damage: 0,
@@ -488,6 +498,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a3: {
         slot: 'a3',
         name: 'Poison Vial',
+        slowMult: 0.8,
+        slowDuration: 1.2,
         kind: 'groundZone',
         cooldown: 10,
         damage: 0,
@@ -808,6 +820,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Hex',
+        curseBonus: 0.15,
         kind: 'groundZone',
         cooldown: 11,
         damage: 0,
@@ -826,6 +839,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a2: {
         slot: 'a2',
         name: 'Hellish Rebuke',
+        rebukeDuration: 3,
         kind: 'pbaoe',
         cooldown: 9,
         damage: 30,
@@ -1053,6 +1067,14 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   // item 13 — a signature crit lean.
   if (def.critChanceBonus) parts.push(`+${n(def.critChanceBonus * 100)}% crit`);
   if (def.critMultBonus) parts.push(`+${Math.round(def.critMultBonus * 100) / 100}× crit dmg`);
+
+  if (def.prepareCrit) parts.push(`prepare next precision crit for ${s(def.prepareCrit)}`);
+  if (def.consumesPrecision) parts.push('consumes prepared crit');
+  if (def.rebukeDuration)
+    parts.push(
+      `counterburst once for ${n(def.damage * dmgMul * 0.4)} dmg if hurt within ${s(def.rebukeDuration)}`,
+    );
+  if (def.curseBonus) parts.push(`curse +${n(def.curseBonus * 100)}% owner dmg`);
 
   // --- Buffs (damage/move up, damage-taken down) ---
   if (def.buffDamageMult) parts.push(`+${n((def.buffDamageMult - 1) * 100)}% dmg`);
