@@ -127,6 +127,14 @@ export interface PlayerAbilityDef {
    */
   critChanceBonus?: number;
   critMultBonus?: number;
+  /** Extra damage against currently slowed, rooted or stunned enemies. */
+  controlDamageBonus?: number;
+  /** Seconds of one-use spell surge granted by a utility ability. */
+  prepareSurge?: number;
+  /** Consume surge +20% direct damage and half wind-up for this spell. */
+  consumesSurge?: boolean;
+  /** Surge adds one projectile, sharing its enhanced damage budget. */
+  surgeTwin?: boolean;
   /** Prepare one guaranteed critical precision strike for this many seconds. */
   prepareCrit?: number;
   /** Only marked melee skills consume preparation; basics leave it available. */
@@ -282,7 +290,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     moveSpeed: 200,
     threatMult: 1.0,
     radius: PLAYER_RADIUS,
-    blurb: 'Highest burst, lowest HP. Brings crowd control.',
+    blurb: 'Control the enemy, then exploit the opening with a devastating spell.',
     abilities: {
       basic: {
         slot: 'basic',
@@ -296,6 +304,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Fireball',
+        controlDamageBonus: 0.25,
         kind: 'projectile',
         cooldown: 7,
         // item 56: the Mage's blurb promises "highest burst"; keep its bomb the
@@ -747,7 +756,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     moveSpeed: 205,
     threatMult: 1.0,
     radius: PLAYER_RADIUS,
-    blurb: 'Raw innate magic — twin chaos bolts, a falling meteor, a blink to safety.',
+    blurb: 'Prepare a surge with defensive magic, then unleash a faster, stronger spell.',
     abilities: {
       basic: {
         slot: 'basic',
@@ -766,6 +775,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Meteor',
+        consumesSurge: true,
+        surgeTwin: true,
         kind: 'projectile',
         cooldown: 8,
         damage: 78,
@@ -777,6 +788,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a2: {
         slot: 'a2',
         name: 'Mirror Image',
+        prepareSurge: 8,
         kind: 'selfBuff',
         cooldown: 14,
         damage: 0,
@@ -787,6 +799,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a3: {
         slot: 'a3',
         name: 'Arcane Phase',
+        prepareSurge: 8,
         kind: 'blink',
         cooldown: 6,
         damage: 0,
@@ -1068,6 +1081,15 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   if (def.critChanceBonus) parts.push(`+${n(def.critChanceBonus * 100)}% crit`);
   if (def.critMultBonus) parts.push(`+${Math.round(def.critMultBonus * 100) / 100}× crit dmg`);
 
+  if (def.controlDamageBonus)
+    parts.push(`+${n(def.controlDamageBonus * 100)}% dmg vs slowed/rooted/stunned foes`);
+  if (def.prepareSurge) parts.push(`prepare spell surge for ${s(def.prepareSurge)}`);
+  if (def.consumesSurge)
+    parts.push(
+      def.surgeTwin
+        ? 'surge +1 projectile sharing +20% total dmg, half wind-up'
+        : 'surge +20% dmg, half wind-up',
+    );
   if (def.prepareCrit) parts.push(`prepare next precision crit for ${s(def.prepareCrit)}`);
   if (def.consumesPrecision) parts.push('consumes prepared crit');
   if (def.rebukeDuration)

@@ -59,6 +59,8 @@ export interface BuffGlow {
 /** Map one buff/debuff to a glow color, or null if it shouldn't glow. */
 export function buffGlow(kind: BuffKind, mult: number): BuffGlow | null {
   switch (kind) {
+    case 'spellSurge':
+      return { color: 0xc06cff, good: true };
     case 'spellblade':
       return { color: 0xb488e0, good: true };
     case 'precision':

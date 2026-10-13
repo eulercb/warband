@@ -1,7 +1,8 @@
 # Class identity and subclass roadmap
 
 Status: the Rogue/Warlock skill pilot was merged and playtested. Defining passives
-for Assassin, Arcane Trickster, Fiend and Great Old One are implemented for review.
+for Assassin, Arcane Trickster, Fiend and Great Old One were merged and playtested.
+Mage/Sorcerer differentiation is implemented for review.
 Other subclasses, companions, forms and later milestones remain proposals.
 
 ## Goals and boundaries
@@ -138,7 +139,8 @@ and rendering need explicit decisions.
 2. **Implemented for review:** subclass-passive infrastructure and the four pilot
    passives above. Review unlock, swap, ownership, limits and feedback before
    implementing the remaining subclasses.
-3. Separate Mage's deliberate control/burst from Sorcerer's spell modification.
+3. **Implemented for review:** Mage control-to-burst and Sorcerer prepared spell
+   surge, including relevant subclass skills and upgrades (see below).
 4. Separate support identities: Cleric rescue, Paladin frontline protection,
    Druid territory/recovery, Bard sequences/rallies.
 5. Develop Knight, Ranger, Barbarian, and Monk loops, reviewing subclass skills
@@ -184,3 +186,49 @@ stage. Quota consumption cannot be predicted reliably.
 6. Play a normal multi-fight run with adaptation enabled and report whether
    difficulty still feels excessive. Keep that feedback separate from whether
    the new loops are enjoyable; difficulty tuning may need a later change.
+
+## Milestone 3: Mage and Sorcerer
+
+Mage Fireball deals 25% extra damage against a slowed, rooted or stunned enemy.
+The condition is checked at impact, before that shot's own on-hit riders; expired
+control and haste do not qualify. Frost Nova, Evoker Cone of Cold and Abjurer Bind
+provide setup; ally control can help too. Evoker Lightning Bolt gains a 20% bonus
+and Sculpted Blast gains 25%. Combustion adds two percentage points per stack.
+Direct spells still reach flying enemies, and boss invulnerability/CC resistance
+continue to work normally.
+
+Sorcerer Mirror Image and Arcane Phase prepare one spell surge for 8 seconds.
+Meteor consumes it for half wind-up and an extra projectile sharing +20% total
+direct damage; ordinary Chaos Bolts leave it available. Dragon Wings and Bend Luck also prepare it.
+Chromatic Bolt also gains an extra projectile sharing its enhanced damage budget;
+Chaos Surge, Dragon Breath and Tides of Chaos gain +20% damage with their existing
+delivery. Greater Mirror Image extends readiness by 0.4 seconds per stack. Preparation refreshes without stacking
+or shortening a stronger remaining window. Surge is committed when a cast starts:
+its damage stays reserved through the wind-up, even if the readiness window would
+expire. A blocked attempt does not spend it; an interrupted committed spell does.
+Fused projectile spells with zone payloads retain their original projectile count
+to avoid duplicating the zone effects. Swapping classes cancels a pending cast
+and its reserved definition, while a still unused surge remains subject to its ordinary expiration. Copied abilities carry
+their own interaction flags, and Forge preserves and prices the new components.
+
+Base damage, cooldowns, existing defenses, inputs and boss difficulty rules are
+retained. No additional subclass passives are introduced in this milestone. The
+new indicator is one compact timed surge badge; descriptions explain the loops
+in the existing codex and pause skill list.
+
+Playtest Mage Fireball with and without a Frost Nova/ally-control setup, including
+flight and immunity windows. Compare Sorcerer Meteor with and without surge, then
+try its subclass spells, upgrades, copied skills, mobile controls and normal runs.
+Assess how different the decisions feel as well as clear speed.
+
+## Balance feedback to revisit
+
+Live playtest feedback after milestone 2: some passives feel undertuned or
+underwhelming, especially Fiend's Soul Ember. Keep this as a priority for a
+separate balance/feel pass rather than silently changing it during another class
+revamp. Its current maximum healing cadence is 2% max HP every 6 seconds (about
+0.33% max HP/s before missed opportunities/overheal), plus a brief 10% ward.
+Investigate both effective strength and whether the reward is noticeable; possible
+changes include a stronger sustain/ward payoff or a clearer curse-to-retaliation
+interaction. Compare proc frequency, effective healing, survival and feedback
+before settling values. No Fiend buff is included in milestone 3.

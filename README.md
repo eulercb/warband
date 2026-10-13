@@ -189,3 +189,5 @@ Rogue can use Shadowstep to prepare its next Backstab (or Assassin Death Strike)
 See [the class and subclass roadmap](docs/CLASS_REVAMP_ROADMAP.md) for the pilot rules, proposed defining subclass passives, and the staged plan for companions, forms, and the remaining classes. Later roadmap entries are proposals.
 
 Choosing your first Assassin, Arcane Trickster, Fiend or Great Old One skill also grants a defining passive, without another ability slot. Subclass selection and the pause menu explain it; a small combat icon identifies your active passive. See the roadmap for exact effects and limits.
+
+Mage can exploit slowing/rooting/stunning with Fireball and Evoker burst spells. Sorcerer can prepare a timed surge using Mirror Image or Arcane Phase, then consume it with Meteor or selected subclass spells for +20% total damage and half wind-up. Surged Meteor and Chromatic Bolt gain an extra projectile sharing that damage budget. Basics preserve the surge; the codex and pause descriptions show each interaction.

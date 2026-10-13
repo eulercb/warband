@@ -48,7 +48,7 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a projectile bomb: blast radius + wind-up', () => {
     // Mage Fireball — impactRadius + castTime (shown as "wind-up", item 10).
     expect(describeAbility(CLASSES.mage.abilities.a1)).toBe(
-      '80 dmg · 110u blast · 0.7s wind-up · 7s cooldown',
+      '80 dmg · 110u blast · 0.7s wind-up · +25% dmg vs slowed/rooted/stunned foes · 7s cooldown',
     );
   });
 
@@ -156,7 +156,9 @@ describe('describeAbility (upgrade-resolved values, item 19)', () => {
   it('reflects a character boon that boosts the numbers', () => {
     // Combustion: Fireball → +22 damage (102) across a +35 blast (145u).
     const table = previewAbilityTable('mage', ['mg_combust']);
-    expect(describeAbility(table.a1)).toBe('102 dmg · 145u blast · 0.7s wind-up · 14s cooldown');
+    expect(describeAbility(table.a1)).toBe(
+      '102 dmg · 145u blast · 0.7s wind-up · +27% dmg vs slowed/rooted/stunned foes · 14s cooldown',
+    );
   });
 
   it('reflects a boon that adds a brand-new effect (Deep Freeze)', () => {

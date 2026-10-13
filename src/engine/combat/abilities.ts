@@ -2,6 +2,7 @@
  * Warband — ability resolution for players and bosses. Geometric hit tests
  * (math.ts) resolve cones / circles / lines; effects mutate world entities.
  */
+import { consumeSpellSurge, prepareSpellSurge, controlledSpellMultiplier } from './spellCombos';
 import { onSubclassAbility } from './subclassPassives';
 import type {
   Player,
@@ -351,8 +352,15 @@ function applyDimensionSwap(world: World, p: Player, range: number, color: numbe
  * stun checks are handled by the World before calling this. `moveDir` is the
  * player's current movement input (used by dashes).
  */
-export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, moveDir: Vec2): void {
-  const ab = abilityForSlot(p, slot);
+export function resolvePlayerAbility(
+  world: World,
+  p: Player,
+  slot: ExtSlot,
+  moveDir: Vec2,
+  reserved?: PlayerAbilityDef,
+): void {
+  const original = reserved ?? abilityForSlot(p, slot);
+  const ab = original && (reserved ? original : consumeSpellSurge(p, original));
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
   onSubclassAbility(p, ab);
   const aimAngle = angleOf(p.aim);
@@ -401,7 +409,13 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
-          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p, ab));
+          dealt += damageAdd(
+            world,
+            p,
+            a,
+            ab.damage * controlledSpellMultiplier(a, ab.controlDamageBonus),
+            world.critRoll(p, ab),
+          );
           applyStrikeRiders(world, p.pos, a, ab);
         }
       }
@@ -431,6 +445,7 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
           slowDuration: ab.slowDuration,
           freeze: ab.freeze,
           critChanceBonus: ab.critChanceBonus, // item 13 — a deadly/aimed shot
+          controlDamageBonus: ab.controlDamageBonus,
           critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
         });
@@ -458,14 +473,26 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
         if (b.hp <= 0) continue;
         if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
           // item 5: a point-blank burst can crit (omnidirectional → no backstab).
-          dealt += damageBoss(world, p, b, ab.damage, world.critRoll(p, ab));
+          dealt += damageBoss(
+            world,
+            p,
+            b,
+            ab.damage * controlledSpellMultiplier(b, ab.controlDamageBonus),
+            world.critRoll(p, ab),
+          );
           applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-          dealt += damageAdd(world, p, a, ab.damage, world.critRoll(p, ab));
+          dealt += damageAdd(
+            world,
+            p,
+            a,
+            ab.damage * controlledSpellMultiplier(a, ab.controlDamageBonus),
+            world.critRoll(p, ab),
+          );
           applyStrikeRiders(world, p.pos, a, ab);
         }
       }
@@ -496,6 +523,7 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
       p.pos = clampToArena(world, target, p.radius);
       if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
       if (ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
+      prepareSpellSurge(p, ab);
       if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
       world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
       // item 11 — Dimension Door shuffles space: reflect nearby enemies across the
@@ -505,6 +533,7 @@ export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, mov
     }
 
     case 'selfBuff': {
+      prepareSpellSurge(p, ab);
       if (ab.buffDefMult) {
         applyBuff(p, makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 4, 'selfBuffDef'));
       }
@@ -745,7 +774,13 @@ function resolveComposedAbility(
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
-          dealt += damageAdd(world, p, a, dmg, world.critRoll(p, ab));
+          dealt += damageAdd(
+            world,
+            p,
+            a,
+            dmg * controlledSpellMultiplier(a, ab.controlDamageBonus),
+            world.critRoll(p, ab),
+          );
           applyStrikeRiders(world, p.pos, a, ab);
         }
       }
@@ -769,14 +804,26 @@ function resolveComposedAbility(
       for (const b of world.bosses) {
         if (b.hp <= 0) continue;
         if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
-          dealt += damageBoss(world, p, b, dmg, world.critRoll(p, ab));
+          dealt += damageBoss(
+            world,
+            p,
+            b,
+            dmg * controlledSpellMultiplier(b, ab.controlDamageBonus),
+            world.critRoll(p, ab),
+          );
           applyStrikeRiders(world, p.pos, b, ab);
         }
       }
       for (const a of world.adds) {
         if (a.hp <= 0) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
-          dealt += damageAdd(world, p, a, dmg, world.critRoll(p, ab));
+          dealt += damageAdd(
+            world,
+            p,
+            a,
+            dmg * controlledSpellMultiplier(a, ab.controlDamageBonus),
+            world.critRoll(p, ab),
+          );
           applyStrikeRiders(world, p.pos, a, ab);
         }
       }
@@ -812,6 +859,7 @@ function resolveComposedAbility(
           castSlow: ab.castSlow, // item 9
           castSlowDuration: ab.castSlowDuration,
           critChanceBonus: ab.critChanceBonus, // item 13
+          controlDamageBonus: ab.controlDamageBonus,
           critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
           onImpact,
@@ -841,6 +889,7 @@ function resolveComposedAbility(
         const target = vadd(p.pos, vscale(dir, ab.range ?? 220));
         p.pos = clampToArena(world, target, p.radius);
         if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
+        prepareSpellSurge(p, ab);
         if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
         world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
       } else {
@@ -854,6 +903,7 @@ function resolveComposedAbility(
     }
 
     case 'selfBuff': {
+      prepareSpellSurge(p, ab);
       buffSelf();
       selfHeal();
       break;
@@ -985,6 +1035,7 @@ interface SpawnProjOpts {
   /** item 13 — this shot's crit lean, added to the owner's base crit on hit. */
   critChanceBonus?: number;
   critMultBonus?: number;
+  controlDamageBonus?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
   /** Chaos Forge — on-impact payload (spawn a zone / ally-buff area on landing). */
@@ -1017,6 +1068,7 @@ function spawnPlayerProjectile(
     castSlow: o.castSlow, // item 9
     castSlowDuration: o.castSlowDuration,
     critChanceBonus: o.critChanceBonus, // item 13
+    controlDamageBonus: o.controlDamageBonus,
     critMultBonus: o.critMultBonus,
     lifesteal: o.lifesteal,
     onImpact: o.onImpact,

@@ -175,6 +175,7 @@ export type BuffKind =
    * boss's active channel (that would prolong a beam) — wind-up only. Stacked
    * factors are capped (combat.castTimeFactor) so it can't lock a caster out. */
   | 'castSlow'
+  | 'spellSurge' // one enhanced special spell
   | 'spellblade' // one empowered melee hit from Arcane Trickster
   | 'precision' // one prepared critical strike; mult unused
   | 'curse' // owner-only vulnerability; source = curse:<ownerId>, mult = damage factor
@@ -315,6 +316,8 @@ export interface Player {
   subAbilities?: Partial<Record<SubSlot, import('../content/classes').PlayerAbilityDef>>;
   /** The chosen subclass-skill ids (serialized to PlayerView so clients label the buttons). */
   subSkillIds?: string[];
+  /** Reserved spell definition while a wind-up is running (host only). */
+  castAbility?: import('../content/classes').PlayerAbilityDef;
   /** Active authored passive and per-passive host cooldowns (persist across swaps). */
   subclassPassiveId?: string;
   subclassPassiveCooldowns?: Record<string, number>;
@@ -580,6 +583,7 @@ export interface Projectile {
    * deadly/aimed shot). See PlayerAbilityDef.critChanceBonus. Absent = plain crit. */
   critChanceBonus?: number;
   critMultBonus?: number;
+  controlDamageBonus?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
   /**
