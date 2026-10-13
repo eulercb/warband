@@ -154,7 +154,17 @@ import {
   previewAbilityTable,
   grandCount,
 } from '../content/charUpgrades';
-import { getSubSkill, subclassOfSkill, subSkillsForClass } from '../content/subclasses';
+import {
+  setSubclassPassive,
+  tickSubclassPassives,
+  preparedSubclassCritBonus,
+} from '../combat/subclassPassives';
+import {
+  getSubSkill,
+  subclassOfSkill,
+  subSkillsForClass,
+  activeSubclassPassive,
+} from '../content/subclasses';
 import { coinsForRank } from '../content/ephemeral';
 import type { EphemeralStock } from '../content/ephemeral';
 import { getMonster, abilityById } from '../content/monsters';
@@ -803,6 +813,7 @@ export class World {
   /** Rebuild sub1/sub2 from the sub skills belonging to the hero's ACTIVE class. */
   private rebindActiveSubs(p: Player): void {
     const active = activeSubSkillIds(p);
+    setSubclassPassive(p, activeSubclassPassive(p.classId, active)?.id);
     p.subAbilities = {};
     active.forEach((id, i) => {
       const skill = getSubSkill(id);
@@ -1094,6 +1105,7 @@ export class World {
   private tickTimers(dt: number): void {
     for (const p of this.players) {
       tickBuffs(p, dt);
+      tickSubclassPassives(p, dt);
       tickStunDr(p, dt);
       // Passive regeneration (Renewal upgrade) — only while up and fighting.
       if (p.regenPerSec > 0 && p.state === 'alive' && p.hp > 0) {
@@ -1598,7 +1610,12 @@ export class World {
    */
   critRoll(
     source: Player,
-    bonus?: { critChanceBonus?: number; critMultBonus?: number; consumesPrecision?: boolean },
+    bonus?: {
+      critChanceBonus?: number;
+      critMultBonus?: number;
+      consumesPrecision?: boolean;
+      kind?: string;
+    },
   ): HitMods {
     const ready =
       bonus?.consumesPrecision &&
@@ -1606,7 +1623,16 @@ export class World {
     if (ready) source.buffs.splice(source.buffs.indexOf(ready), 1);
     const chance = ready ? 1 : (source.critChance ?? 0) + (bonus?.critChanceBonus ?? 0);
     const crit = this.critRng.next() < chance;
-    return { crit, mult: crit ? (source.critMult ?? 1) + (bonus?.critMultBonus ?? 0) : 1 };
+    return {
+      crit,
+      mult: crit
+        ? (source.critMult ?? 1) +
+          (bonus?.critMultBonus ?? 0) +
+          (ready ? preparedSubclassCritBonus(source) : 0)
+        : 1,
+      ...(ready ? { prepared: true } : {}),
+      ...(bonus?.kind === 'meleeCone' ? { melee: true } : {}),
+    };
   }
 
   /**
@@ -1618,15 +1644,20 @@ export class World {
   meleeHit(
     source: Player,
     boss: Boss,
-    bonus?: { critChanceBonus?: number; critMultBonus?: number; consumesPrecision?: boolean },
+    bonus?: {
+      critChanceBonus?: number;
+      critMultBonus?: number;
+      consumesPrecision?: boolean;
+      kind?: string;
+    },
   ): HitMods {
-    const { crit, mult } = this.critRoll(
+    const hit = this.critRoll(
       source,
       hasBuff(boss, 'invuln') ? { ...bonus, consumesPrecision: false } : bonus,
     );
     const toAttacker = angleOf(sub(source.pos, boss.pos));
     const backstab = inRearArc(boss.facing, toAttacker, BACKSTAB_REAR_ARC_DEG);
-    return { crit, backstab, mult: (mult ?? 1) * (backstab ? BACKSTAB_MULT : 1) };
+    return { ...hit, backstab, mult: (hit.mult ?? 1) * (backstab ? BACKSTAB_MULT : 1) };
   }
 
   /** Consume a counterburst before resolving damage, so it cannot recurse. */

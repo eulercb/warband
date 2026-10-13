@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Warband — a browser-hosted, peer-to-peer co-op boss fight. Host in your tab, share a link, fell one great monster together.",
+  "description": "Warband \u2014 a browser-hosted, peer-to-peer co-op boss fight. Host in your tab, share a link, fell one great monster together.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -20,7 +20,8 @@
     "smoke:mobile": "node scripts/smoke-mobile.mjs",
     "smoke:rewards": "node scripts/smoke-rewards.mjs",
     "smoke:rooms": "node scripts/smoke-rooms.mjs",
-    "relay": "node server/relay.mjs"
+    "relay": "node server/relay.mjs",
+    "smoke:passives": "node scripts/smoke-passives.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

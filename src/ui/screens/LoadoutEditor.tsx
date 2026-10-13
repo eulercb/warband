@@ -237,6 +237,11 @@ export function LoadoutEditor() {
             const locked = committedLocal != null && committedLocal !== sub.id;
             return (
               <div key={sub.id} className="wb-pad-scheme-row" role="group" aria-label={sub.name}>
+                {sub.passive && (
+                  <span className="wb-field-label" title={sub.passive.desc}>
+                    {sub.passive.icon} {sub.passive.name} · passive with any {sub.name} skill
+                  </span>
+                )}
                 {sub.skills.map((sk) => {
                   const on = lo.subSkills.includes(sk.id);
                   const blocked = !on && (lo.subSkills.length >= MAX_SF_SUBSKILLS || locked);

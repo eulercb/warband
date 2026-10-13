@@ -175,6 +175,7 @@ export type BuffKind =
    * boss's active channel (that would prolong a beam) — wind-up only. Stacked
    * factors are capped (combat.castTimeFactor) so it can't lock a caster out. */
   | 'castSlow'
+  | 'spellblade' // one empowered melee hit from Arcane Trickster
   | 'precision' // one prepared critical strike; mult unused
   | 'curse' // owner-only vulnerability; source = curse:<ownerId>, mult = damage factor
   | 'rebuke'; // one counterburst; mult = damage, payload host-only
@@ -314,6 +315,9 @@ export interface Player {
   subAbilities?: Partial<Record<SubSlot, import('../content/classes').PlayerAbilityDef>>;
   /** The chosen subclass-skill ids (serialized to PlayerView so clients label the buttons). */
   subSkillIds?: string[];
+  /** Active authored passive and per-passive host cooldowns (persist across swaps). */
+  subclassPassiveId?: string;
+  subclassPassiveCooldowns?: Record<string, number>;
   /**
    * The hero's chosen character-upgrade ids (item 17), stashed host-side at spawn so
    * the subclass grands among them can be re-applied to the bound sub-abilities on

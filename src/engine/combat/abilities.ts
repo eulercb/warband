@@ -2,6 +2,7 @@
  * Warband — ability resolution for players and bosses. Geometric hit tests
  * (math.ts) resolve cones / circles / lines; effects mutate world entities.
  */
+import { onSubclassAbility } from './subclassPassives';
 import type {
   Player,
   Boss,
@@ -353,6 +354,7 @@ function applyDimensionSwap(world: World, p: Player, range: number, color: numbe
 export function resolvePlayerAbility(world: World, p: Player, slot: ExtSlot, moveDir: Vec2): void {
   const ab = abilityForSlot(p, slot);
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
+  onSubclassAbility(p, ab);
   const aimAngle = angleOf(p.aim);
   const color = CLASS_COLORS[p.classId] ?? 0xffffff;
 

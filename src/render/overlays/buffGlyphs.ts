@@ -27,6 +27,13 @@ function describe(
   mult: number,
 ): { glyph: string; color: number; good: boolean; label: string } | null {
   switch (kind) {
+    case 'spellblade':
+      return {
+        glyph: '⚔️',
+        color: 0xb488e0,
+        good: true,
+        label: 'Spellblade: next melee hit empowered',
+      };
     case 'precision':
       return { glyph: '🗡️', color: 0xffd36b, good: true, label: 'Prepared critical strike' };
     case 'curse':

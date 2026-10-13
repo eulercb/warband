@@ -92,6 +92,11 @@ export default function SpecialReward() {
               >
                 <span className="wb-upgrade-name">{sub.name}</span>
                 <span className="wb-upgrade-desc">{sub.blurb}</span>
+                {sub.passive && (
+                  <span className="wb-upgrade-desc">
+                    {sub.passive.icon} Passive · {sub.passive.name}: {sub.passive.desc}
+                  </span>
+                )}
               </button>
             ))}
           </div>

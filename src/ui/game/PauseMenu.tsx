@@ -10,6 +10,7 @@ import { useHudStore } from '../state/hudStore';
 import { endRun, leaveToMenu, openControls, playUiSound } from '../state/session';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
 import { previewPlayerStats, PERSISTENT_STATS } from '../../engine/content/charUpgrades';
+import { activeSubclassPassive } from '../../engine/content/subclasses';
 import { CLASSES, getClass } from '../../engine/content/classes';
 import { useBindings, keyLabelFor, padLabelFor, SLOT_ACTION } from '../../input/bindings';
 import type { InputSource } from '../../input/input';
@@ -107,10 +108,16 @@ export function OwnedSkills() {
         : [],
     [classId, identityClass, myUpgrades, myCharUpgrades, subSkills],
   );
+  const passive = activeSubclassPassive(classId, subSkills);
   if (!classId || rows.length === 0) return null;
   return (
     <div className="wb-pause-skills">
       <span className="wb-field-label">Your skills</span>
+      {passive && (
+        <p className="wb-pause-skill-line" aria-label={`Subclass passive: ${passive.name}`}>
+          {passive.icon} <strong>{passive.name}</strong> · {passive.desc}
+        </p>
+      )}
       <ul className="wb-pause-skill-list">
         {rows.map((r) => (
           <li key={r.key} className="wb-pause-skill" aria-label={`${r.name}: ${r.line}`}>
