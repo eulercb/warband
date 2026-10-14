@@ -175,6 +175,8 @@ export type BuffKind =
    * boss's active channel (that would prolong a beam) — wind-up only. Stacked
    * factors are capped (combat.castTimeFactor) so it can't lock a caster out. */
   | 'castSlow'
+  | 'harmony' // effective healing verse, readied for a Bard chorus
+  | 'discord' // disruptive special verse, readied for a Bard chorus
   | 'spellSurge' // one enhanced special spell
   | 'spellblade' // one empowered melee hit from Arcane Trickster
   | 'precision' // one prepared critical strike; mult unused
@@ -883,6 +885,8 @@ export interface GroundZone {
   ownerId: EntityId;
   damagePerTick: number; // applied to the opposing side
   healPerTick: number; // applied to the owning side
+  /** Host-only: a healing skill may keep only one recovery grove per owner. */
+  recovery?: boolean;
   /** Move-speed multiplier applied to enemies standing inside (1 = none). */
   slowMult: number;
   slowDuration: number; // s the slow lingers after leaving

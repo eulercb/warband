@@ -127,6 +127,16 @@ export interface PlayerAbilityDef {
    */
   critChanceBonus?: number;
   critMultBonus?: number;
+  /** Extra direct healing at <=35% HP, plus a 15% ward for 2s after effective rescue. */
+  rescueHealBonus?: number;
+  /** One non-stacking recovery grove at the healed ally's location. */
+  recoveryZone?: { radius: number; duration: number; tickHeal: number };
+  /** Share a timed ward with nearby OTHER allies when this utility resolves. */
+  allyWard?: { range: number; mult: number; duration: number };
+  /** Mitigation refreshed on allies standing in this ground zone. */
+  zoneAllyDefMult?: number;
+  /** Two timed verses empower a subsequent group rally; basics never contribute. */
+  bardSong?: 'harmony' | 'discord' | 'chorus';
   /** Extra damage against currently slowed, rooted or stunned enemies. */
   controlDamageBonus?: number;
   /** Seconds of one-use spell surge granted by a utility ability. */
@@ -350,7 +360,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     moveSpeed: 200,
     threatMult: 0.5,
     radius: PLAYER_RADIUS,
-    blurb: 'Keeps the team alive. Light damage, strong buffs.',
+    blurb: 'Rescues the critically wounded and creates safe healing ground.',
     abilities: {
       basic: {
         slot: 'basic',
@@ -364,6 +374,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Heal',
+        rescueHealBonus: 0.3,
         kind: 'heal',
         cooldown: 3,
         damage: 60, // heal amount
@@ -534,7 +545,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     moveSpeed: 196,
     threatMult: 1.3,
     radius: PLAYER_RADIUS,
-    blurb: 'Holy warrior. Shields the band, mends wounds, and smites the wicked.',
+    blurb: 'Holds holy ground and shares frontline protection with nearby allies.',
     abilities: {
       basic: {
         slot: 'basic',
@@ -548,6 +559,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Consecration',
+        zoneAllyDefMult: 0.9,
         kind: 'groundZone',
         cooldown: 13,
         damage: 0,
@@ -568,6 +580,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a3: {
         slot: 'a3',
         name: 'Divine Shield',
+        allyWard: { range: 180, mult: 0.85, duration: 4 },
         kind: 'selfBuff',
         cooldown: 16,
         damage: 0,
@@ -586,7 +599,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     moveSpeed: 206,
     threatMult: 0.8,
     radius: PLAYER_RADIUS,
-    blurb: 'Bends nature to snare the enemy and knit the wounded back together.',
+    blurb: 'Roots foes in living territory and plants recovery groves for wounded allies.',
     abilities: {
       basic: {
         slot: 'basic',
@@ -600,6 +613,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Entangle',
+        zoneTickHeal: 4,
         kind: 'groundZone',
         cooldown: 10,
         damage: 0,
@@ -615,6 +629,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a2: {
         slot: 'a2',
         name: 'Regrowth',
+        recoveryZone: { radius: 95, duration: 3, tickHeal: 4 },
         kind: 'heal',
         cooldown: 4,
         damage: 55,
@@ -646,7 +661,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     moveSpeed: 212,
     threatMult: 0.7,
     radius: PLAYER_RADIUS,
-    blurb: 'Weaves song into war: mocks foes, mends allies, and rallies the band.',
+    blurb: 'Weave healing and disruption into verses, then rally the band with Inspiration.',
     abilities: {
       basic: {
         slot: 'basic',
@@ -662,6 +677,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Inspiration',
+        bardSong: 'chorus',
         kind: 'buffAlly',
         cooldown: 12,
         damage: 0,
@@ -673,6 +689,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a2: {
         slot: 'a2',
         name: 'Healing Word',
+        bardSong: 'harmony',
         kind: 'heal',
         cooldown: 4,
         damage: 50,
@@ -681,6 +698,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a3: {
         slot: 'a3',
         name: 'Dissonant Whispers',
+        bardSong: 'discord',
         kind: 'pbaoe',
         cooldown: 10,
         damage: 22,
@@ -1044,6 +1062,33 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   if (def.zoneTickDamage) parts.push(`${n(def.zoneTickDamage * dmgMul)}/tick dmg`);
   if (def.zoneTickHeal) parts.push(`${n(def.zoneTickHeal)}/tick heal`);
   if (def.healOnUse) parts.push(`heal ${n(def.healOnUse)}`);
+
+  if (def.rescueHealBonus)
+    parts.push(
+      `+${n(def.rescueHealBonus * 100)}% heal at ≤35% HP; effective rescue wards 15% for 2s`,
+    );
+  if (def.recoveryZone) {
+    const g = def.recoveryZone;
+    parts.push(
+      `effective heal plants ${n(g.radius)}u recovery grove, ${n(g.tickHeal)}/tick for ${s(g.duration)}; one per caster`,
+    );
+  }
+  if (def.allyWard) {
+    const w = def.allyWard;
+    parts.push(
+      `other allies within ${n(w.range)}u take ${n((1 - w.mult) * 100)}% less damage for ${s(w.duration)}`,
+    );
+  }
+  if (def.zoneAllyDefMult)
+    parts.push(`allies inside take ${n((1 - def.zoneAllyDefMult) * 100)}% less damage`);
+  if (def.bardSong)
+    parts.push(
+      def.bardSong === 'chorus'
+        ? 'spend both 8s verses for group buffs and +15% speed'
+        : def.bardSong === 'harmony'
+          ? 'effective heal prepares harmony for 8s'
+          : 'cast prepares discord for 8s',
+    );
 
   // --- Shape / reach ---
   if (def.impactRadius) parts.push(`${n(def.impactRadius)}u blast`);

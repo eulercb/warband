@@ -681,6 +681,15 @@ function decideAbilities(
       if (needHeal && cd.a2 <= 0) want.a2 = true; // Healing Word
       if (cd.a1 <= 0) want.a1 = true; // Inspiration on cooldown
       if (bossPos && cd.a3 <= 0 && distBoss <= reach(150)) want.a3 = true; // Dissonant Whispers
+      // Prepare available verses before spending Inspiration; never delay urgent healing.
+      if (
+        bot.abilities?.a1.bardSong === 'chorus' &&
+        (want.a2 || want.a3) &&
+        !(['harmony', 'discord'] as const).every((kind) =>
+          bot.buffs.some((b) => b.kind === kind && b.remaining > 0),
+        )
+      )
+        want.a1 = false;
       break;
     }
     case 'monk': {

@@ -371,10 +371,11 @@ const CLERIC: CharUpgradeDef[] = [
     'cl_greaterheal',
     'Greater Heal',
     '💚',
-    'Heal restores 88 HP (+28) from up to 450u away (+50)',
+    'Heal restores 88 HP (+28) from 450u (+50); critical rescue bonus grows by 5 percentage points',
     ({ abilities: a }) => {
       addN(a.a1, 'damage', 28);
       addN(a.a1, 'range', 50);
+      if (a.a1.rescueHealBonus) a.a1.rescueHealBonus += 0.05;
     },
   ),
   u(
@@ -568,11 +569,17 @@ const PALADIN: CharUpgradeDef[] = [
     'pa_aegis',
     'Greater Aegis',
     '🛡️',
-    'Divine Shield blocks 72% of damage (up from 65%), lasts 6s (+2), returns 15% sooner',
+    'Divine Shield blocks 72% of damage, lasts 6s (+2), returns 15% sooner; shared ward lasts 1s longer and reaches 20u farther',
     ({ abilities: a }) => {
       mul(a.a3, 'buffDefMult', 0.8);
       addN(a.a3, 'buffDuration', 2);
       mul(a.a3, 'cooldown', 0.85);
+      if (a.a3.allyWard)
+        a.a3.allyWard = {
+          ...a.a3.allyWard,
+          duration: a.a3.allyWard.duration + 1,
+          range: a.a3.allyWard.range + 20,
+        };
     },
   ),
   u(
@@ -629,11 +636,13 @@ const DRUID: CharUpgradeDef[] = [
     'dr_regrowth',
     'Wild Growth',
     '💚',
-    'Regrowth heals 81 HP (+26) from 430u (+50), and recharges 15% faster',
+    'Regrowth heals 81 HP (+26) from 430u (+50), recharges 15% faster; recovery grove heals 1 more per tick',
     ({ abilities: a }) => {
       addN(a.a2, 'damage', 26);
       addN(a.a2, 'range', 50);
       mul(a.a2, 'cooldown', 0.85);
+      if (a.a2.recoveryZone)
+        a.a2.recoveryZone = { ...a.a2.recoveryZone, tickHeal: a.a2.recoveryZone.tickHeal + 1 };
     },
   ),
   u(
