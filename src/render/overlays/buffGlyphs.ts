@@ -27,19 +27,49 @@ function describe(
   mult: number,
 ): { glyph: string; color: number; good: boolean; label: string } | null {
   switch (kind) {
+    case 'guard':
+      return {
+        glyph: '🏰',
+        color: 0x59d9ff,
+        good: true,
+        label: 'Guard: taking a nonlethal hit readies one +30% melee counter',
+      };
+    case 'counter':
+      return {
+        glyph: '⚔️',
+        color: 0xffd36b,
+        good: true,
+        label: 'Counter ready: next connecting melee hit deals +30% damage',
+      };
+    case 'momentum':
+      return {
+        glyph: '🔥',
+        color: 0xff9a3d,
+        good: true,
+        label: `Momentum ${Math.round(mult)}/3: finisher gains +10% damage and more reach per stack`,
+      };
+    case 'flow':
+      return {
+        glyph: '🌊',
+        color: 0x59d9ff,
+        good: true,
+        label: 'Flow: next marked strike or palm has no wind-up and more reach',
+      };
     case 'harmony':
       return {
         glyph: '🎶',
         color: 0x7dffa0,
         good: true,
-        label: 'Harmony verse: combine with discord, then rally',
+        label:
+          'Harmony verse: stored healing, no effect alone. Get Discord, then use Inspiration/Battle Hymn.',
       };
     case 'discord':
       return {
         glyph: '🎭',
         color: 0xc06cff,
         good: true,
-        label: 'Discord verse: combine with harmony, then rally',
+        label:
+          'Discord verse: stored disruption, no effect alone. Get Harmony by healing, then use Inspiration/Battle Hymn.',
       };
     case 'spellSurge':
       return {

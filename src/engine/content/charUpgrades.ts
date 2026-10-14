@@ -188,10 +188,11 @@ const KNIGHT: CharUpgradeDef[] = [
     'kn_bulwark',
     'Impenetrable',
     '🛡️',
-    'Shield Wall blocks 60% of damage (up from 50%) and lasts 5.5s (up from 4s)',
+    'Shield Wall blocks 60% of damage and lasts 5.5s; its guard window also grows by 1.5s',
     ({ abilities: a }) => {
       mul(a.a2, 'buffDefMult', 0.8);
       addN(a.a2, 'buffDuration', 1.5);
+      if (a.a2.guardWindow) a.a2.guardWindow += 1.5;
     },
   ),
   u(
@@ -773,11 +774,12 @@ const MONK: CharUpgradeDef[] = [
     'mo_wind',
     'Wind Walker',
     '🍃',
-    'Step of the Wind travels 300u (+50), heals 38 (+20), and refreshes 25% faster',
+    'Step of the Wind travels 300u (+50), heals 38 (+20), refreshes 25% faster; Flow lasts 0.5s longer',
     ({ abilities: a }) => {
       mul(a.a2, 'cooldown', 0.75);
       addN(a.a2, 'range', 50);
       addN(a.a2, 'healOnUse', 20);
+      if (a.a2.prepareFlow) a.a2.prepareFlow += 0.5;
     },
   ),
   u(

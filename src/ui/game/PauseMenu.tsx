@@ -1,3 +1,4 @@
+import { BARD_VERSE_GUIDE } from '../../engine/content/bardText';
 /**
  * Warband — in-fight pause menu overlay. Shown to EVERY player while the shared
  * sim is paused (any player may pause; the host is authoritative). Anyone can
@@ -116,6 +117,11 @@ export function OwnedSkills() {
       {passive && (
         <p className="wb-pause-skill-line" aria-label={`Subclass passive: ${passive.name}`}>
           {passive.icon} <strong>{passive.name}</strong> · {passive.desc}
+        </p>
+      )}
+      {rows.some((r) => /8s verses|prepares harmony|prepares discord/.test(r.line)) && (
+        <p className="wb-pause-skill-line" aria-label="Bard verse guide">
+          {BARD_VERSE_GUIDE}
         </p>
       )}
       <ul className="wb-pause-skill-list">

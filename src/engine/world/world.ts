@@ -154,6 +154,7 @@ import {
   previewAbilityTable,
   grandCount,
 } from '../content/charUpgrades';
+import { consumeMartialFinishers } from '../combat/martial';
 import { consumeSpellSurge, controlledSpellMultiplier } from '../combat/spellCombos';
 import {
   setSubclassPassive,
@@ -1249,7 +1250,7 @@ export class World {
     if (hasBuff(p, 'silence') && slot !== 'basic') return; // silenced: only the basic works
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
 
-    const ab = consumeSpellSurge(p, original);
+    const ab = consumeMartialFinishers(p, consumeSpellSurge(p, original));
     // Basics are the fire-rate spam vector: ×0.5 basic grands (Thousand Cuts /
     // Hundred Hands) plus stacking Haste compound with no natural bound, so floor
     // the basic slot's effective cooldown (#71). Other slots keep their raw value —
@@ -1480,6 +1481,7 @@ export class World {
     // find first collision (any boss, else an add)
     let hitBoss: Boss | null = null;
     for (const b of this.aliveBosses()) {
+      if (proj.hitIds?.includes(b.id)) continue;
       if (dist(proj.pos, b.pos) <= proj.hitRadius + b.radius) {
         hitBoss = b;
         break;
@@ -1488,7 +1490,7 @@ export class World {
     let hitAdd: Add | null = null;
     if (!hitBoss) {
       for (const a of this.adds) {
-        if (a.hp <= 0) continue;
+        if (a.hp <= 0 || proj.hitIds?.includes(a.id)) continue;
         if (dist(proj.pos, a.pos) <= proj.hitRadius + a.radius) {
           hitAdd = a;
           break;
@@ -1497,6 +1499,8 @@ export class World {
     }
     if (!hitBoss && !hitAdd) return false;
 
+    const body = (hitBoss ?? hitAdd)!;
+    const before = body.hp;
     let dealt = 0;
     if (proj.impactRadius > 0) {
       // AoE on impact
@@ -1578,6 +1582,17 @@ export class World {
     // projectile→area→ally-buff fusion). Gated by the optional field, so
     // canonical shots never take this branch.
     if (proj.onImpact) this.spawnImpactZone(proj);
+    if (
+      (proj.pierceLeft ?? 0) > 0 &&
+      proj.impactRadius <= 0 &&
+      !proj.onImpact &&
+      body.hp < before
+    ) {
+      proj.hitIds ??= [];
+      proj.hitIds.push(body.id);
+      proj.pierceLeft = proj.pierceLeft! - 1;
+      return false;
+    }
     return true;
   }
 

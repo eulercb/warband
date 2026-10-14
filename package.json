@@ -23,7 +23,8 @@
     "relay": "node server/relay.mjs",
     "smoke:passives": "node scripts/smoke-passives.mjs",
     "smoke:spells": "node scripts/smoke-spells.mjs",
-    "smoke:support": "node scripts/smoke-support.mjs"
+    "smoke:support": "node scripts/smoke-support.mjs",
+    "smoke:martial": "node scripts/smoke-martial.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",
