@@ -75,7 +75,9 @@ describe('describeAbility (base-kit abilities)', () => {
 
   it('a direct heal: heal amount + who it can reach', () => {
     // Cleric Heal — heal magnitude + range.
-    expect(describeAbility(CLASSES.cleric.abilities.a1)).toBe('Heal 60 · 400u range · 3s cooldown');
+    expect(describeAbility(CLASSES.cleric.abilities.a1)).toBe(
+      'Heal 60 · +30% heal at ≤35% HP; effective rescue wards 15% for 2s · 400u range · 3s cooldown',
+    );
   });
 
   it('an ally buff: damage up, damage-taken down, duration + range', () => {

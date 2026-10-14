@@ -2,6 +2,7 @@
  * Warband — ability resolution for players and bosses. Geometric hit tests
  * (math.ts) resolve cones / circles / lines; effects mutate world entities.
  */
+import { beginSupportCast, nearbySupportAllies, healSupportAlly } from './support';
 import { consumeSpellSurge, prepareSpellSurge, controlledSpellMultiplier } from './spellCombos';
 import { onSubclassAbility } from './subclassPassives';
 import type {
@@ -380,8 +381,9 @@ export function resolvePlayerAbility(
   // ally-buff zone on impact). Canonical/variance/Chaos-Draft content never has
   // `.components`, so it takes the untouched switch below — byte-for-byte
   // identical when Forge is off. See docs/CHAOS_FORGE.md.
+  const chorus = beginSupportCast(world, p, ab);
   if (ab.components) {
-    resolveComposedAbility(world, p, ab, moveDir, ab.components);
+    resolveComposedAbility(world, p, ab, moveDir, ab.components, chorus);
     return;
   }
 
@@ -534,21 +536,29 @@ export function resolvePlayerAbility(
 
     case 'selfBuff': {
       prepareSpellSurge(p, ab);
-      if (ab.buffDefMult) {
-        applyBuff(p, makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 4, 'selfBuffDef'));
-      }
-      if (ab.buffDamageMult) {
-        applyBuff(
-          p,
-          makeBuff('damageDealt', ab.buffDamageMult, ab.buffDuration ?? 4, 'selfBuffDmg'),
-        );
-      }
-      if (ab.buffMoveMult) {
-        applyBuff(p, makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 4, 'selfBuffMove'));
-      }
-      // item 7 — Dragon Wings & co. lift the caster into the air for a window.
-      if (ab.grantsFlight) {
-        applyBuff(p, makeBuff('flight', 0, ab.grantsFlight, 'flight'));
+      for (const target of chorus ? nearbySupportAllies(world, p, ab.range ?? 420) : [p]) {
+        if (ab.buffDefMult) {
+          applyBuff(
+            target,
+            makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 4, 'selfBuffDef'),
+          );
+        }
+        if (ab.buffDamageMult) {
+          applyBuff(
+            target,
+            makeBuff('damageDealt', ab.buffDamageMult, ab.buffDuration ?? 4, 'selfBuffDmg'),
+          );
+        }
+        if (ab.buffMoveMult) {
+          applyBuff(
+            target,
+            makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 4, 'selfBuffMove'),
+          );
+        }
+        // item 7 — Dragon Wings & co. lift the caster into the air for a window.
+        if (ab.grantsFlight) {
+          applyBuff(target, makeBuff('flight', 0, ab.grantsFlight, 'flight'));
+        }
       }
       break;
     }
@@ -563,27 +573,29 @@ export function resolvePlayerAbility(
         halfAngle: 0,
       });
       const target = lowestHpAllyInRange(world, p.pos, ab.range ?? 400) ?? p;
-      if (ab.buffDamageMult) {
-        applyBuff(
-          target,
-          makeBuff('damageDealt', ab.buffDamageMult, ab.buffDuration ?? 6, 'blessingDmg'),
-        );
-      }
-      if (ab.buffDefMult) {
-        applyBuff(
-          target,
-          makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 6, 'blessingDef'),
-        );
-      }
-      if (ab.buffMoveMult) {
-        applyBuff(
-          target,
-          makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 6, 'blessingMove'),
-        );
-      }
-      // item 7 — a rallying skill can lift its target into the air too.
-      if (ab.grantsFlight) {
-        applyBuff(target, makeBuff('flight', 0, ab.grantsFlight, 'flight'));
+      for (const recipient of chorus ? nearbySupportAllies(world, p, ab.range ?? 420) : [target]) {
+        if (ab.buffDamageMult) {
+          applyBuff(
+            recipient,
+            makeBuff('damageDealt', ab.buffDamageMult, ab.buffDuration ?? 6, 'blessingDmg'),
+          );
+        }
+        if (ab.buffDefMult) {
+          applyBuff(
+            recipient,
+            makeBuff('damageTaken', ab.buffDefMult, ab.buffDuration ?? 6, 'blessingDef'),
+          );
+        }
+        if (ab.buffMoveMult) {
+          applyBuff(
+            recipient,
+            makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 6, 'blessingMove'),
+          );
+        }
+        // item 7 — a rallying skill can lift its target into the air too.
+        if (ab.grantsFlight) {
+          applyBuff(recipient, makeBuff('flight', 0, ab.grantsFlight, 'flight'));
+        }
       }
       break;
     }
@@ -599,7 +611,7 @@ export function resolvePlayerAbility(
         halfAngle: 0,
       });
       const target = lowestHpAllyInRange(world, p.pos, ab.range ?? 400);
-      if (target) healPlayer(world, p, target, ab.damage);
+      if (target) healSupportAlly(world, p, target, ab.damage, ab);
       break;
     }
 
@@ -710,6 +722,7 @@ function resolveComposedAbility(
   ab: PlayerAbilityDef,
   moveDir: Vec2,
   comp: AbilityComponents,
+  chorus: boolean,
 ): void {
   const d = comp.delivery;
   const effects = comp.effects;
@@ -729,8 +742,10 @@ function resolveComposedAbility(
   };
   // Buff the caster with any self-targeted buffs, and heal the caster on-use.
   const buffSelf = (): void => {
-    applyForgeBuffs(p, effects, 'self', 'forgeSelf');
-    applyFlight(p); // flight on a self-buff / mobility delivery lands on the caster
+    for (const target of chorus ? nearbySupportAllies(world, p, ab.range ?? 420) : [p]) {
+      applyForgeBuffs(target, effects, 'self', 'forgeSelf');
+      applyFlight(target);
+    }
   };
   const selfHeal = (): void => {
     if (healOnUse && healOnUse.kind === 'healOnUse') healPlayer(world, p, p, healOnUse.amount);
@@ -748,7 +763,7 @@ function resolveComposedAbility(
   const healAlly = (range: number): void => {
     if (!healEff || healEff.kind !== 'heal') return;
     const t = lowestHpAllyInRange(world, p.pos, range);
-    if (t) healPlayer(world, p, t, healEff.amount);
+    if (t) healSupportAlly(world, p, t, healEff.amount, ab);
   };
 
   switch (d.kind) {
@@ -1000,6 +1015,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     curseBonus: ab.curseBonus,
     castSlow: ab.castSlow, // item 9: carry the wind-up-slow factor onto the zone
     airborne: ab.airborne, // item 8: carry the airborne-reach flag onto the zone
+    allyBuff: ab.zoneAllyDefMult ? { defMult: ab.zoneAllyDefMult, duration: 0.75 } : undefined,
     duration: ab.zoneDuration ?? 4,
     armTime: arm.armTime,
     armFrom: arm.armFrom,
@@ -1107,6 +1123,7 @@ export interface SpawnZoneOpts {
   kind: GroundZone['kind'];
   pos: Vec2;
   radius: number;
+  recovery?: boolean;
   side: GroundZone['side'];
   ownerId: number;
   damagePerTick: number;
@@ -1143,6 +1160,7 @@ export interface SpawnZoneOpts {
 export function spawnZone(world: World, o: SpawnZoneOpts): void {
   const zone: GroundZone = {
     id: world.allocId(),
+    recovery: o.recovery,
     kind: o.kind,
     pos: o.pos,
     radius: o.radius,

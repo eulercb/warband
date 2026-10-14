@@ -99,7 +99,13 @@ function abilityRates(ab: PlayerAbilityDef, cdMult: number, castMult: number): K
     (ab.healOnUse ?? 0) +
     (ab.zoneTickHeal ?? 0) * zoneCommit +
     // A 'heal' kind's `damage` field IS its heal magnitude — sustain, not offense.
-    (ab.kind === 'heal' ? ab.damage : 0);
+    (ab.kind === 'heal' ? ab.damage * (1 + (ab.rescueHealBonus ?? 0) * 0.25) : 0) +
+    // Critical rescue gets a conservative 25% opportunity assumption; groves use
+    // the same occupancy discount as existing healing ground, not full uptime.
+    (ab.recoveryZone
+      ? ((ab.recoveryZone.tickHeal * ab.recoveryZone.duration) / ZONE_TICK_INTERVAL) *
+        BALANCE_ZONE_COMMIT
+      : 0);
   const damagePerUse =
     ab.kind === 'heal'
       ? 0

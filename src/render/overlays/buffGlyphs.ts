@@ -27,6 +27,20 @@ function describe(
   mult: number,
 ): { glyph: string; color: number; good: boolean; label: string } | null {
   switch (kind) {
+    case 'harmony':
+      return {
+        glyph: '🎶',
+        color: 0x7dffa0,
+        good: true,
+        label: 'Harmony verse: combine with discord, then rally',
+      };
+    case 'discord':
+      return {
+        glyph: '🎭',
+        color: 0xc06cff,
+        good: true,
+        label: 'Discord verse: combine with harmony, then rally',
+      };
     case 'spellSurge':
       return {
         glyph: '🔮',

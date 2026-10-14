@@ -2,8 +2,9 @@
 
 Status: the Rogue/Warlock skill pilot was merged and playtested. Defining passives
 for Assassin, Arcane Trickster, Fiend and Great Old One were merged and playtested.
-Mage/Sorcerer differentiation is implemented for review.
-Other subclasses, companions, forms and later milestones remain proposals.
+Mage/Sorcerer differentiation was merged and playtested.
+Support-class differentiation is implemented for review.
+Remaining defining passives, companions, forms and later milestones remain proposals.
 
 ## Goals and boundaries
 
@@ -136,12 +137,12 @@ and rendering need explicit decisions.
 1. Review/playtest this two-class pilot on desktop and mobile. Confirm distinct
    decisions, understandable feedback, and a modest power gain. Compare solo,
    mixed co-op, and bots; ground and flying bosses; early and upgraded builds.
-2. **Implemented for review:** subclass-passive infrastructure and the four pilot
+2. **Merged and playtested:** subclass-passive infrastructure and the four pilot
    passives above. Review unlock, swap, ownership, limits and feedback before
    implementing the remaining subclasses.
-3. **Implemented for review:** Mage control-to-burst and Sorcerer prepared spell
+3. **Merged and playtested:** Mage control-to-burst and Sorcerer prepared spell
    surge, including relevant subclass skills and upgrades (see below).
-4. Separate support identities: Cleric rescue, Paladin frontline protection,
+4. **Implemented for review:** separate support identities: Cleric rescue, Paladin frontline protection,
    Druid territory/recovery, Bard sequences/rallies.
 5. Develop Knight, Ranger, Barbarian, and Monk loops, reviewing subclass skills
    and capstones with each class rather than adding isolated bonus systems.
@@ -232,3 +233,79 @@ Investigate both effective strength and whether the reward is noticeable; possib
 changes include a stronger sustain/ward payoff or a clearer curse-to-retaliation
 interaction. Compare proc frequency, effective healing, survival and feedback
 before settling values. No Fiend buff is included in milestone 3.
+
+## Milestone 4: distinct support identities
+
+- **Cleric rescue:** Heal, Light Flash of Light and Life Mass Cure heal 30% more
+  when the chosen ally is at or below 35% HP **before** healing. Effective rescue
+  also wards that target for 15% less damage for 2 seconds. Ordinary healing remains
+  unchanged; overheal/downed targets cannot trigger it. Greater Heal adds five
+  percentage points per stack to its rescue bonus. Healing remains automatically
+  targeted, capped at missing HP, and credited through the existing heal path.
+- **Paladin frontline protection:** Divine Shield retains its personal mitigation
+  and shares a 15% ward for 4 seconds with other living allies within 180u **at cast**.
+  Devotion Aura of Protection shares 20% for 6 seconds within 220u. These are timed
+  cast pulses, not following auras; they do not double-ward the caster. Shared wards
+  refresh one source rather than multiplying with each other. Consecration also
+  refreshes 10% mitigation for allies standing inside, lingering 0.75s after leaving.
+  Greater Aegis increases its shared ward's duration by 1s and reach by 20u per stack.
+- **Druid territory/recovery:** Entangle and Land Wall of Thorns retain their enemy
+  effects and heal allies inside for 4/tick. Effective Regrowth and Moon Frenzied
+  Regen plant a stationary 95u recovery grove at the healed target, healing 4/tick
+  for 3 seconds. Each caster can keep **one** recovery grove across these skills,
+  including grafts; later effective casts replace that caster's grove, not other
+  healing zones. Overheal never creates or replaces it. Wild Growth adds 1/tick
+  to Regrowth's grove per stack. Enemy flight still bypasses ground control; friendly
+  healing/protection retains existing reach to airborne allies.
+- **Bard verses/rallies:** an effective Healing Word or Whispers Healing Refrain
+  prepares Harmony for 8 seconds. Casting Dissonant Whispers, Valor Blade Flourish
+  or Shatter, or Whispers Psychic Blade/Words of Terror prepares Discord for 8 seconds.
+  A cast contributes once; ticks and basic attacks never generate verses. Repeated
+  verses refresh without stacking. Inspiration (or Valor Battle Hymn) consumes
+  **both different verses** to share its existing buffs with all living allies in
+  420u and add 15% speed for the buff duration. Without both, the original targeting
+  and effects remain available. Bots prepare available verses before Inspiration.
+
+This adds no support subclass passives, companion/form systems, buttons, permanent
+text panels or networking messages. Skills carry their own hooks across grafts,
+procedural variants and Forge compositions. Blocked casts never generate or spend
+verses; preparation follows ordinary timed-buff expiration across class swaps and
+never resets on swapping. Cast targeting uses toroidal distance. New support effects
+are priced, capped, described and constrained to suitable deliveries in Forge.
+Existing difficulty adjustment rules and weights are retained; the power estimator
+includes recovery sustain with the existing territory occupancy discount and rescue
+with a conservative 25% opportunity assumption. This estimates output, not human balance.
+
+Playtest critically wounded vs moderately wounded allies; shared wards near and far
+from a Paladin; choosing safe territory versus leaving a recovery grove; Bard heal →
+disrupt → Inspiration in either verse order. Compare solo, co-op, bots, upgrades,
+subclass choices and copied skills. `npm run smoke:support` exercises all four kits
+on desktop and a 320px phone; combat tests verify their conditional outcomes.
+
+### Additional balance/feel feedback after milestone 3
+
+The player found the new Mage/Sorcerer interactions interesting, but highlighted
+subclass coverage and redundant defenses. Treat these as a dedicated balance/skill
+identity pass, preserving current functionality until replacements are reviewed:
+
+- **Abjurer:** Otiluke Bind sets up control, but Fireball is currently its only
+  clear burst payoff. Explore a ward-to-release or control-to-protection interaction
+  that makes its defensive choices work with the base kit without copying Evoker's
+  damage identity. Arcane Ward should offer an active decision or useful ally payoff,
+  rather than only a timed reduction in damage taken.
+- **Sorcerer:** Draconic Scales and Wild Ward duplicate simple mitigation.
+  Give each a distinct themed job, such as draconic retaliation/positioning versus
+  a clearly previewed wild-magic alteration of the next cast. Avoid three defenses
+  with different names and percentages.
+- **Dragon Wings:** already gives flight, speed and surge. Prefer replacing its
+  damage reduction with a wing-themed interaction (a takeoff peel, aerial targeting,
+  or a landing payoff), rather than adding another bonus on top. Prototype one
+  bounded effect and inspect flight/ground-zone and mobile execution behavior.
+- Audit other mitigation-only skills as their classes are revisited. Protection
+  can remain valuable, but a replacement should add decisions and thematic variety.
+  Do not force a damage bonus onto every subclass skill; every offered skill should
+  have a legible purpose in its class/subclass loop.
+
+No Abjurer, Sorcerer defense, Dragon Wings or Fiend balance change is included in
+milestone 4. The existing proposed subclass passives should be revised alongside
+these skill decisions rather than bolted onto redundant defenses unchanged.

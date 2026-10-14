@@ -95,6 +95,10 @@ export type EffectComponent =
   /** item 13 — a CRIT lean this ability carries: `chance` added to the hero's crit
    * chance, `mult` added to the crit multiplier, for its own hits (a precision strike). */
   | { kind: 'crit'; chance: number; mult: number; prepared?: boolean }
+  | { kind: 'rescueHeal'; bonus: number }
+  | { kind: 'recovery'; grove: { radius: number; duration: number; tickHeal: number } }
+  | { kind: 'allyWard'; ward: { range: number; mult: number; duration: number } }
+  | { kind: 'bardSong'; part: 'harmony' | 'discord' | 'chorus' }
   | { kind: 'controlDamage'; bonus: number }
   | { kind: 'prepareSurge'; duration: number }
   | { kind: 'surgeStrike' }
@@ -199,6 +203,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.roots) zone.roots = true;
     if (def.castSlow != null && def.castSlow > 1) zone.castSlow = def.castSlow; // item 9
     if (def.curseBonus) zone.curseBonus = def.curseBonus;
+    if (def.zoneAllyDefMult) zone.allyBuff = { defMult: def.zoneAllyDefMult, duration: 0.75 };
     if (def.airborne) zone.airborne = true; // item 8
     effects.push({ kind: 'zone', zone });
   } else {
@@ -254,6 +259,10 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.grantsFlight) effects.push({ kind: 'flight', duration: def.grantsFlight });
   }
 
+  if (def.rescueHealBonus) effects.push({ kind: 'rescueHeal', bonus: def.rescueHealBonus });
+  if (def.recoveryZone) effects.push({ kind: 'recovery', grove: { ...def.recoveryZone } });
+  if (def.allyWard) effects.push({ kind: 'allyWard', ward: { ...def.allyWard } });
+  if (def.bardSong) effects.push({ kind: 'bardSong', part: def.bardSong });
   return { delivery, effects };
 }
 
@@ -335,6 +344,18 @@ export function recompose(
         if (e.pull) def.pull = e.distance;
         else def.knockback = e.distance;
         break;
+      case 'rescueHeal':
+        def.rescueHealBonus = e.bonus;
+        break;
+      case 'recovery':
+        def.recoveryZone = { ...e.grove };
+        break;
+      case 'allyWard':
+        def.allyWard = { ...e.ward };
+        break;
+      case 'bardSong':
+        def.bardSong = e.part;
+        break;
       case 'controlDamage':
         def.controlDamageBonus = e.bonus;
         break;
@@ -365,6 +386,7 @@ export function recompose(
         def.zoneKind = e.zone.zoneKind;
         def.zoneDuration = e.zone.duration;
         def.radius = e.zone.radius;
+        if (e.zone.allyBuff?.defMult) def.zoneAllyDefMult = e.zone.allyBuff.defMult;
         if (e.zone.curseBonus) def.curseBonus = e.zone.curseBonus;
         if (e.zone.tickDamage) def.zoneTickDamage = e.zone.tickDamage;
         if (e.zone.tickHeal) def.zoneTickHeal = e.zone.tickHeal;
@@ -425,6 +447,14 @@ function effectValue(e: EffectComponent, fan: number): number {
       return (1 - e.mult) * e.duration * 12; // soft CC, priced by depth × time
     case 'castSlow':
       return (e.mult - 1) * e.duration * 18; // soft tempo CC, priced by depth × time
+    case 'rescueHeal':
+      return e.bonus * 45 + 5;
+    case 'recovery':
+      return e.grove.tickHeal * e.grove.duration * 1.2;
+    case 'allyWard':
+      return (1 - e.ward.mult) * e.ward.duration * 24;
+    case 'bardSong':
+      return e.part === 'chorus' ? 15 : 8;
     case 'controlDamage':
       return e.bonus * 40;
     case 'prepareSurge':
@@ -567,6 +597,18 @@ function effectPhrase(e: EffectComponent): string {
       return `slow to ${pct(e.mult * 100)} for ${s(e.duration)}`;
     case 'castSlow':
       return `+${pct((e.mult - 1) * 100)} enemy wind-up for ${s(e.duration)}`;
+    case 'rescueHeal':
+      return `+${pct(e.bonus * 100)} heal at ≤35% HP; effective rescue wards 15% for 2s`;
+    case 'recovery':
+      return `effective heal plants ${n(e.grove.radius)}u recovery grove, ${n(e.grove.tickHeal)}/tick for ${s(e.grove.duration)}; one per caster`;
+    case 'allyWard':
+      return `other allies within ${n(e.ward.range)}u take ${pct((1 - e.ward.mult) * 100)} less damage for ${s(e.ward.duration)}`;
+    case 'bardSong':
+      return e.part === 'chorus'
+        ? 'spend both 8s verses for group buffs and +15% speed'
+        : e.part === 'harmony'
+          ? 'effective heal prepares harmony for 8s'
+          : 'cast prepares discord for 8s';
     case 'controlDamage':
       return `+${pct(e.bonus * 100)} dmg vs slowed/rooted/stunned foes`;
     case 'prepareSurge':
@@ -845,6 +887,17 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'heal' || kind === 'buffAlly';
     case 'healOnUse':
       return kind === 'dash' || kind === 'blink' || kind === 'selfBuff' || kind === 'taunt';
+    case 'rescueHeal':
+    case 'recovery':
+      return kind === 'heal';
+    case 'allyWard':
+      return kind === 'selfBuff';
+    case 'bardSong':
+      return e.part === 'harmony'
+        ? kind === 'heal'
+        : e.part === 'chorus'
+          ? kind === 'selfBuff' || kind === 'buffAlly'
+          : DIRECT_STRIKE.has(kind) || kind === 'groundZone';
     case 'controlDamage':
     case 'surgeStrike':
       return DIRECT_STRIKE.has(kind);
@@ -1337,6 +1390,14 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, duration: e.duration * f };
     case 'castSlow':
       return { ...e, duration: e.duration * f }; // rigid: keeps its bite, sheds time
+    case 'rescueHeal':
+      return { ...e, bonus: e.bonus * f };
+    case 'recovery':
+      return { ...e, grove: { ...e.grove, duration: e.grove.duration * f } };
+    case 'allyWard':
+      return { ...e, ward: { ...e.ward, duration: e.ward.duration * f } };
+    case 'bardSong':
+      return e;
     case 'controlDamage':
       return { ...e, bonus: e.bonus * f };
     case 'surgeStrike':
@@ -1443,6 +1504,15 @@ function addBoonComponents(
   type BuffEff = Extract<EffectComponent, { kind: 'buff' }>;
   const out = effects.slice();
   const has = (pred: (e: EffectComponent) => boolean): boolean => out.some(pred);
+
+  for (const effect of decompose(def).effects) {
+    if (
+      ['rescueHeal', 'recovery', 'allyWard', 'bardSong'].includes(effect.kind) &&
+      effectFitsDelivery(def.kind, effect) &&
+      !has((e) => e.kind === effect.kind)
+    )
+      out.push(effect);
+  }
 
   if (DIRECT_STRIKE.has(def.kind)) {
     if (def.controlDamageBonus != null && !has((e) => e.kind === 'controlDamage'))
@@ -1566,6 +1636,14 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.castSlow != null
         ? { ...e, mult: def.castSlow, duration: def.castSlowDuration ?? e.duration }
         : e;
+    case 'rescueHeal':
+      return def.rescueHealBonus != null ? { ...e, bonus: def.rescueHealBonus } : e;
+    case 'recovery':
+      return def.recoveryZone ? { ...e, grove: { ...def.recoveryZone } } : e;
+    case 'allyWard':
+      return def.allyWard ? { ...e, ward: { ...def.allyWard } } : e;
+    case 'bardSong':
+      return e;
     case 'controlDamage':
       return def.controlDamageBonus != null ? { ...e, bonus: def.controlDamageBonus } : e;
     case 'prepareSurge':
@@ -1607,6 +1685,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
         z.slowMult = def.slowMult;
         z.slowDuration = def.slowDuration ?? z.slowDuration;
       }
+      if (def.zoneAllyDefMult != null && z.allyBuff)
+        z.allyBuff = { ...z.allyBuff, defMult: def.zoneAllyDefMult };
       if (def.curseBonus != null) z.curseBonus = def.curseBonus;
       if (def.castSlow != null) z.castSlow = def.castSlow; // item 9
       if (def.airborne != null) z.airborne = def.airborne; // item 8
@@ -1639,6 +1719,28 @@ function capEffect(e: EffectComponent): EffectComponent {
         mult: clamp(round05(e.mult), 1.1, CAST_SLOW_MAX),
         duration: clamp(round1(e.duration), 1, 5),
       };
+    case 'rescueHeal':
+      return { ...e, bonus: clamp(round2(e.bonus), 0.05, 0.5) };
+    case 'recovery':
+      return {
+        ...e,
+        grove: {
+          radius: clamp(round5(e.grove.radius), 60, 160),
+          duration: clamp(round1(e.grove.duration), 1, 5),
+          tickHeal: clamp(Math.round(e.grove.tickHeal), 1, 10),
+        },
+      };
+    case 'allyWard':
+      return {
+        ...e,
+        ward: {
+          range: clamp(round5(e.ward.range), 100, 300),
+          duration: clamp(round1(e.ward.duration), 1, 8),
+          mult: clamp(round2(e.ward.mult), 0.7, 0.95),
+        },
+      };
+    case 'bardSong':
+      return e;
     case 'controlDamage':
       return { ...e, bonus: clamp(round2(e.bonus), 0, 0.4) };
     case 'prepareSurge':
