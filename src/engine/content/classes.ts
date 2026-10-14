@@ -2,6 +2,7 @@
  * Warband — data-driven class definitions (Knight / Ranger / Mage / Cleric).
  * All balance numbers per the build brief §7; tweak freely.
  */
+import { bardSongText } from './bardText';
 import type { ClassId, AbilitySlot, ExtSlot, ZoneKind } from '../core/types';
 import { PLAYER_RADIUS, CLASS_COLORS, ATTACK_CD_SCALE } from '../core/constants';
 import { procVariant, classVariant } from './procgen';
@@ -127,6 +128,16 @@ export interface PlayerAbilityDef {
    */
   critChanceBonus?: number;
   critMultBonus?: number;
+  /** Guarded real damage readies one +30% connecting melee counter for 4s. */
+  guardWindow?: number;
+  /** During this window, melee hits build up to 3 finisher momentum stacks. */
+  momentumWindow?: number;
+  spendsMomentum?: boolean;
+  /** Successful mobility prepares an instant, wider/longer special for this long. */
+  prepareFlow?: number;
+  consumesFlow?: boolean;
+  /** Additional distinct bodies a direct projectile may pass through (no blast/zone). */
+  pierce?: number;
   /** Extra direct healing at <=35% HP, plus a 15% ward for 2s after effective rescue. */
   rescueHealBonus?: number;
   /** One non-stacking recovery grove at the healed ally's location. */
@@ -190,7 +201,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     moveSpeed: 190,
     threatMult: 1.5,
     radius: PLAYER_RADIUS,
-    blurb: 'Durable frontline. Holds the boss and protects the squishies.',
+    blurb:
+      'Guard incoming hits, then counter with a stronger melee strike while holding the frontline.',
     abilities: {
       basic: {
         slot: 'basic',
@@ -212,6 +224,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a2: {
         slot: 'a2',
         name: 'Shield Wall',
+        guardWindow: 4,
         kind: 'selfBuff',
         cooldown: 16,
         damage: 0,
@@ -240,7 +253,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     moveSpeed: 240,
     threatMult: 1.0,
     radius: PLAYER_RADIUS,
-    blurb: 'Fast, safe, consistent damage from range.',
+    blurb: 'Hold firing lanes with Rain of Arrows and send piercing volleys through enemy ranks.',
     abilities: {
       basic: {
         slot: 'basic',
@@ -254,6 +267,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Multishot',
+        pierce: 1,
         kind: 'projectile',
         cooldown: 6,
         // item 10 — an AIMED volley: the archer draws (a brief wind-up) then looses
@@ -275,6 +289,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         radius: 120,
         zoneDuration: 3,
         zoneTickDamage: 12,
+        slowMult: 0.75,
+        slowDuration: 0.8,
         // item 8 — arrows raining from above hit flyers too. AIRBORNE by its
         // zoneKind ('rainOfArrows' → isAirborneZoneKind), so no explicit flag needed.
         zoneKind: 'rainOfArrows',
@@ -418,7 +434,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     moveSpeed: 205,
     threatMult: 1.2,
     radius: PLAYER_RADIUS,
-    blurb: 'Reckless frontliner. Whirls into the fray and hits like a landslide.',
+    blurb: 'Build momentum with melee hits during Rage, then spend it on a larger finisher.',
     abilities: {
       basic: {
         slot: 'basic',
@@ -432,6 +448,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Rage',
+        momentumWindow: 6,
         kind: 'selfBuff',
         cooldown: 14,
         damage: 0,
@@ -454,6 +471,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a3: {
         slot: 'a3',
         name: 'Whirlwind',
+        spendsMomentum: true,
         kind: 'pbaoe',
         cooldown: 9,
         // item 10 — a WIND-UP heavy hit: the Barbarian rears back and revs the
@@ -718,7 +736,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     moveSpeed: 250,
     threatMult: 0.95,
     radius: PLAYER_RADIUS,
-    blurb: 'Flowing martial artist — a blur of strikes that stuns, then vanishes.',
+    blurb:
+      'Reposition to prepare Flow, then unleash a longer strike or a wider, instant palm attack.',
     abilities: {
       basic: {
         slot: 'basic',
@@ -732,6 +751,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Stunning Strike',
+        consumesFlow: true,
         kind: 'meleeCone',
         cooldown: 8,
         damage: 34,
@@ -742,6 +762,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a2: {
         slot: 'a2',
         name: 'Step of the Wind',
+        prepareFlow: 4,
         kind: 'dash',
         cooldown: 5,
         damage: 0,
@@ -752,6 +773,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a3: {
         slot: 'a3',
         name: 'Quivering Palm',
+        consumesFlow: true,
         kind: 'pbaoe',
         cooldown: 9,
         // item 10 — the ki death-touch is a FOCUSED, deliberate technique: a brief
@@ -1081,13 +1103,27 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   }
   if (def.zoneAllyDefMult)
     parts.push(`allies inside take ${n((1 - def.zoneAllyDefMult) * 100)}% less damage`);
-  if (def.bardSong)
+  if (def.bardSong) parts.push(bardSongText(def.bardSong));
+
+  if (def.guardWindow)
     parts.push(
-      def.bardSong === 'chorus'
-        ? 'spend both 8s verses for group buffs and +15% speed'
-        : def.bardSong === 'harmony'
-          ? 'effective heal prepares harmony for 8s'
-          : 'cast prepares discord for 8s',
+      `guard ${s(def.guardWindow)}; first damaging nonlethal hit readies next melee hit +30% for 4s`,
+    );
+  if (def.momentumWindow)
+    parts.push(
+      `melee hits build up to 3 momentum during ${s(def.momentumWindow)}; marked finishers gain +10% dmg per stack (at most 1 stack per 0.4s)`,
+    );
+  if (def.spendsMomentum)
+    parts.push('spend momentum for +10% dmg and +8u cone reach / +10u burst radius per stack');
+  if (def.prepareFlow)
+    parts.push(
+      `successful movement readies Flow for ${s(def.prepareFlow)}; next marked special is instant with more reach`,
+    );
+  if (def.consumesFlow)
+    parts.push('spend Flow for no wind-up and +30u cone reach / +35u burst radius');
+  if (def.pierce)
+    parts.push(
+      `pierce ${n(def.pierce)} additional ${def.pierce === 1 ? 'enemy' : 'enemies'} (direct shots only; blasts/zones use one impact)`,
     );
 
   // --- Shape / reach ---

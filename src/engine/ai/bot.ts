@@ -637,6 +637,14 @@ function decideAbilities(
       if (cd.a1 <= 0 && (hpFrac < 0.7 || distBoss <= BOT_MELEE_RANGE + 60)) want.a1 = true; // Rage
       if (bossPos && cd.a2 <= 0 && (inDanger || distBoss > 220)) want.a2 = true; // Leap
       if (cd.a3 <= 0 && distBoss <= reach(150)) want.a3 = true; // Whirlwind
+      const rhythm = bot.buffs.find((b) => b.kind === 'rageRhythm' && b.remaining > 0);
+      const momentum = bot.buffs.find((b) => b.kind === 'momentum' && b.remaining > 0)?.mult ?? 0;
+      if (
+        bot.abilities?.a3.spendsMomentum &&
+        !inDanger &&
+        (want.a1 || (rhythm && rhythm.remaining > 1 && momentum < 3))
+      )
+        want.a3 = false;
       break;
     }
     case 'rogue': {

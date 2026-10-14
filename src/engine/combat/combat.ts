@@ -3,6 +3,7 @@
  * Pure functions operating on entities + an event sink. No world import (to
  * keep this decoupled and trivially unit-testable).
  */
+import { martialHitMultiplier, onMartialHit, onGuardedDamage } from './martial';
 import type {
   Player,
   Boss,
@@ -346,7 +347,10 @@ export function damageBoss(
     source.damageMult *
     buffMult(boss, 'damageTaken') *
     curseMultiplier(source, boss);
-  if (outgoing > 0 && boss.hp > 0) outgoing *= subclassDamageMultiplier(source, boss, mods);
+  if (outgoing > 0 && boss.hp > 0) {
+    outgoing *=
+      subclassDamageMultiplier(source, boss, mods) * martialHitMultiplier(source, mods?.melee);
+  }
   const before = boss.hp;
   boss.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(boss.hp, 0));
@@ -367,6 +371,7 @@ export function damageBoss(
     crit: mods?.crit,
     backstab: mods?.backstab,
   });
+  onMartialHit(source, effective, mods?.melee);
   const passiveHeal = subclassHitHealing(source, boss, effective);
   if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);
   return outgoing;
@@ -395,7 +400,10 @@ export function damageAdd(
     buffMult(source, 'damageDealt') *
     source.damageMult *
     curseMultiplier(source, add);
-  if (outgoing > 0 && add.hp > 0) outgoing *= subclassDamageMultiplier(source, add, mods);
+  if (outgoing > 0 && add.hp > 0) {
+    outgoing *=
+      subclassDamageMultiplier(source, add, mods) * martialHitMultiplier(source, mods?.melee);
+  }
   const before = add.hp;
   add.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(add.hp, 0));
@@ -409,6 +417,7 @@ export function damageAdd(
     crit: mods?.crit,
     backstab: mods?.backstab,
   });
+  onMartialHit(source, effective, mods?.melee);
   const passiveHeal = subclassHitHealing(source, add, effective);
   if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);
   return outgoing;
@@ -434,7 +443,10 @@ export function damagePlayer(sink: EventSink, target: Player, base: number): num
     targetId: target.id,
     side: 'player',
   });
-  if (dmg > 0 && target.hp > 0) sink.onPlayerDamaged?.(target);
+  if (dmg > 0 && target.hp > 0) {
+    onGuardedDamage(target);
+    sink.onPlayerDamaged?.(target);
+  }
   return dmg;
 }
 

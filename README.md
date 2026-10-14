@@ -196,3 +196,9 @@ Support kits have distinct jobs: Cleric rescues critically wounded allies, Palad
 shares nearby protection and holds holy ground, Druid plants recovery territory,
 and Bard combines healing/disruption verses into a group rally. These interactions
 use existing controls and carry through relevant subclass skills and Forge grafts.
+
+Martial kits also have distinct decisions: Knight guards a hit to ready one melee
+counter; Ranger volleys pierce enemy ranks; Barbarian builds Rage momentum for a
+finisher; Monk movement prepares wider/longer, instant specials. Bard's Harmony
+and Discord are stored verses with no effect alone; combine both, then use
+Inspiration/Battle Hymn to rally nearby allies. The pause menu explains the recipe.

@@ -2,6 +2,7 @@
  * Warband — ability resolution for players and bosses. Geometric hit tests
  * (math.ts) resolve cones / circles / lines; effects mutate world entities.
  */
+import { armMartialUtility, prepareMartialFlow, consumeMartialFinishers } from './martial';
 import { beginSupportCast, nearbySupportAllies, healSupportAlly } from './support';
 import { consumeSpellSurge, prepareSpellSurge, controlledSpellMultiplier } from './spellCombos';
 import { onSubclassAbility } from './subclassPassives';
@@ -194,6 +195,7 @@ function startGlide(
     applyBuff(p, makeBuff('invuln', 0, dur, 'dash'));
   }
   if (fireHeal && ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
+  prepareMartialFlow(p, ab);
   world.events.push({ t: 'dodge', id: p.id, pos: { ...p.pos } });
   p.glide = { dir: d, remaining: range, leap: ab.leap === true, ab };
 }
@@ -361,7 +363,8 @@ export function resolvePlayerAbility(
   reserved?: PlayerAbilityDef,
 ): void {
   const original = reserved ?? abilityForSlot(p, slot);
-  const ab = original && (reserved ? original : consumeSpellSurge(p, original));
+  const ab =
+    original && (reserved ? original : consumeMartialFinishers(p, consumeSpellSurge(p, original)));
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
   onSubclassAbility(p, ab);
   const aimAngle = angleOf(p.aim);
@@ -448,6 +451,7 @@ export function resolvePlayerAbility(
           freeze: ab.freeze,
           critChanceBonus: ab.critChanceBonus, // item 13 — a deadly/aimed shot
           controlDamageBonus: ab.controlDamageBonus,
+          pierce: ab.pierce,
           critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
         });
@@ -526,6 +530,7 @@ export function resolvePlayerAbility(
       if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
       if (ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
       prepareSpellSurge(p, ab);
+      prepareMartialFlow(p, ab);
       if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
       world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
       // item 11 — Dimension Door shuffles space: reflect nearby enemies across the
@@ -535,7 +540,9 @@ export function resolvePlayerAbility(
     }
 
     case 'selfBuff': {
+      armMartialUtility(p, ab);
       prepareSpellSurge(p, ab);
+      prepareMartialFlow(p, ab);
       for (const target of chorus ? nearbySupportAllies(world, p, ab.range ?? 420) : [p]) {
         if (ab.buffDefMult) {
           applyBuff(
@@ -875,6 +882,7 @@ function resolveComposedAbility(
           castSlowDuration: ab.castSlowDuration,
           critChanceBonus: ab.critChanceBonus, // item 13
           controlDamageBonus: ab.controlDamageBonus,
+          pierce: ab.pierce,
           critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
           onImpact,
@@ -905,6 +913,7 @@ function resolveComposedAbility(
         p.pos = clampToArena(world, target, p.radius);
         if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
         prepareSpellSurge(p, ab);
+        prepareMartialFlow(p, ab);
         if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
         world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
       } else {
@@ -918,7 +927,9 @@ function resolveComposedAbility(
     }
 
     case 'selfBuff': {
+      armMartialUtility(p, ab);
       prepareSpellSurge(p, ab);
+      prepareMartialFlow(p, ab);
       buffSelf();
       selfHeal();
       break;
@@ -1052,6 +1063,7 @@ interface SpawnProjOpts {
   critChanceBonus?: number;
   critMultBonus?: number;
   controlDamageBonus?: number;
+  pierce?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
   /** Chaos Forge — on-impact payload (spawn a zone / ally-buff area on landing). */
@@ -1085,6 +1097,9 @@ function spawnPlayerProjectile(
     castSlowDuration: o.castSlowDuration,
     critChanceBonus: o.critChanceBonus, // item 13
     controlDamageBonus: o.controlDamageBonus,
+    // Do not repeat an explosive/zone payload on several bodies.
+    pierceLeft: o.pierce && o.impactRadius <= 0 && !o.onImpact ? o.pierce : undefined,
+    hitIds: o.pierce && o.impactRadius <= 0 && !o.onImpact ? [] : undefined,
     critMultBonus: o.critMultBonus,
     lifesteal: o.lifesteal,
     onImpact: o.onImpact,

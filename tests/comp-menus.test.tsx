@@ -378,6 +378,22 @@ describe('<PauseMenu>', () => {
     expect(slamLine).toMatch(/cooldown/);
   });
 
+  it('explains Bard verses and the rally payoff without hover', () => {
+    useHudStore.setState({
+      classId: 'bard',
+      classes: ['bard'],
+      subSkills: [],
+      inputSource: 'keyboard',
+    });
+    useStore.setState({ myUpgrades: [], myCharUpgrades: [] });
+    renderMenu();
+    const guide = screen.getByLabelText('Bard verse guide');
+    expect(guide.textContent).toContain('Neither changes your stats alone');
+    expect(guide.textContent).toContain('Inspiration or Battle Hymn');
+    expect(guide.textContent).toContain('15% move speed');
+    expect(guide.textContent).toContain('full-health target gives no Harmony');
+  });
+
   it('labels owned-skill rows with pad glyphs on a controller (item 6)', () => {
     useHudStore.setState({ classId: 'knight', subSkills: [], inputSource: 'gamepad' });
     useStore.setState({ myCharUpgrades: [] });

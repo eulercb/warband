@@ -175,6 +175,12 @@ export type BuffKind =
    * boss's active channel (that would prolong a beam) — wind-up only. Stacked
    * factors are capped (combat.castTimeFactor) so it can't lock a caster out. */
   | 'castSlow'
+  | 'guard' // one guarded hit may prepare a counter
+  | 'counter' // one stronger connecting melee hit
+  | 'rageRhythm' // melee hits may generate bounded momentum
+  | 'momentum' // up to three finisher stacks; mult = count
+  | 'momentumBeat' // hidden 0.4s anti-multi-target stack gate
+  | 'flow' // next marked special is instant and wider/longer
   | 'harmony' // effective healing verse, readied for a Bard chorus
   | 'discord' // disruptive special verse, readied for a Bard chorus
   | 'spellSurge' // one enhanced special spell
@@ -586,6 +592,9 @@ export interface Projectile {
   critChanceBonus?: number;
   critMultBonus?: number;
   controlDamageBonus?: number;
+  /** Host-only piercing budget and distinct bodies already hit. */
+  pierceLeft?: number;
+  hitIds?: EntityId[];
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
   /**

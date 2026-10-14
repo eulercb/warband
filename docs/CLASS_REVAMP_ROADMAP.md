@@ -3,7 +3,8 @@
 Status: the Rogue/Warlock skill pilot was merged and playtested. Defining passives
 for Assassin, Arcane Trickster, Fiend and Great Old One were merged and playtested.
 Mage/Sorcerer differentiation was merged and playtested.
-Support-class differentiation is implemented for review.
+Support-class differentiation was merged and playtested.
+Knight/Ranger/Barbarian/Monk differentiation is implemented for review.
 Remaining defining passives, companions, forms and later milestones remain proposals.
 
 ## Goals and boundaries
@@ -142,9 +143,9 @@ and rendering need explicit decisions.
    implementing the remaining subclasses.
 3. **Merged and playtested:** Mage control-to-burst and Sorcerer prepared spell
    surge, including relevant subclass skills and upgrades (see below).
-4. **Implemented for review:** separate support identities: Cleric rescue, Paladin frontline protection,
+4. **Merged and playtested:** separate support identities: Cleric rescue, Paladin frontline protection,
    Druid territory/recovery, Bard sequences/rallies.
-5. Develop Knight, Ranger, Barbarian, and Monk loops, reviewing subclass skills
+5. **Implemented for review:** Knight, Ranger, Barbarian, and Monk loops, reviewing subclass skills
    and capstones with each class rather than adding isolated bonus systems.
 6. Prototype persistent companions and temporary forms independently. Add broader
    status combinations only when existing loops demonstrably need them.
@@ -309,3 +310,135 @@ identity pass, preserving current functionality until replacements are reviewed:
 No Abjurer, Sorcerer defense, Dragon Wings or Fiend balance change is included in
 milestone 4. The existing proposed subclass passives should be revised alongside
 these skill decisions rather than bolted onto redundant defenses unchanged.
+
+## Progress and revised review sequence
+
+The original six milestones grouped work by theme; they did not include every
+remaining passive or the balance work discovered during playtests. Avoid treating
+“milestone 5 of 6” as “one patch left until everything is finished.”
+
+| Workstream                 | Merged and playtested | This PR                                       | Still outstanding                                                   |
+| -------------------------- | --------------------- | --------------------------------------------- | ------------------------------------------------------------------- |
+| Base class loops           | 8/12 classes          | Knight, Ranger, Barbarian, Monk (remaining 4) | Review/playtest this batch, then tuning                             |
+| Defining subclass passives | 4/24                  | None                                          | 20; retain proposals until implemented                              |
+| Balance/skill identity     | Feedback collected    | Clearer Bard explanation                      | Fiend, Abjurer, Sorcerer defenses, Cleric absorption, Paladin auras |
+| Companion/form systems     | None                  | None                                          | Beast Master companion and Moon form prototypes                     |
+
+**Suggested next sequence after this PR:**
+
+1. Cleric absorption foundation and its rescue/defensive/Sanctuary uses.
+2. Paladin moving auras and their distinct skill-triggered roles.
+3. Existing skill/passive balance and identity pass: Fiend, Abjurer, Sorcerer,
+   Dragon Wings, and mitigation-only skills; use the two new defensive systems
+   only where they fit rather than applying them everywhere.
+4. Three batches for the 18 remaining non-companion/non-form subclass passives,
+   roughly six passives per PR, with their related skill/upgrade coherence reviewed
+   together. Revise each proposed passive around its final class loop first.
+5. Beast Master companion prototype plus its defining passive.
+6. Moon form prototype plus its defining passive.
+
+This is **about eight further PRs after this one** (3 defensive/balance PRs,
+3 passive batches, companion, form), plausibly 7–9 if playtests justify combining
+or splitting related work. It is a scope estimate, not a quota or calendar estimate.
+Integration/balance checks belong in every batch; a final tuning patch may still
+be warranted. Recommend increasing _related content_ per PR (the current four-class
+batch and future six-passive batches), while keeping new shared systems independently
+reviewable. Combining all mechanics at once would obscure which change caused a
+balance or networking regression. These are proposals for the next review gates,
+not authorization to implement all remaining systems in this PR.
+
+## Milestone 5: martial decisions
+
+- **Knight guarded counter:** Shield Wall guards for 4s; Battlemaster Rally guards
+  for 5s. The first damaging, nonlethal hit in that window readies one +30% melee
+  hit for 4s. Existing mitigation remains. Dodges, zero damage and lethal damage
+  cannot prepare it; misses, invulnerability and ranged hits preserve the readied
+  counter. A cone's first connecting enemy consumes it, not every enemy in the cone.
+  Champion's melee skills also spend it. Impenetrable extends the guard window
+  alongside Shield Wall's defense duration. This rewards responding to a hit that
+  was already guarded, not intentionally standing in a dangerous telegraph.
+- **Ranger firing lanes:** each direct Multishot/Volley arrow passes through one
+  additional distinct enemy; Hunter's Mark passes through two. Basic Arrow stays
+  single-hit. The same arrow never damages the same body again; cover still stops
+  it, and its lifetime/range budget is unchanged. Blast/zone-bearing upgrades and
+  Forge fusions keep a single impact so payloads cannot duplicate. Rain of Arrows
+  adds a 25% movement slow, lingering 0.8s, retaining its airborne reach and damage.
+  This favors aligned packs/adds without simply increasing every single-target hit.
+  Existing Beast Master snares can help hold a lane; the pet remains deferred.
+- **Barbarian momentum:** Rage/Frenzy/Wolf Spirit enables melee-hit momentum for
+  its authored window. Actual melee damage earns up to three stacks, at most one
+  per 0.4s across all targets. Whirlwind, Reckless Cleave, Ground Slam and Earth
+  Totem spend them for +10% direct damage per stack and +8u cone reach or +10u
+  burst radius per stack. This is a finisher payout, not a permanent damage buff.
+  Momentum expires with its preparation window; a fresh rage clears old stacks.
+  Wind-up casts reserve the payout at cast start; interruption spends it without
+  a hit/refund. Bots wait for stacks or imminent expiry unless danger calls for
+  an immediate finisher.
+- **Monk movement/Flow:** Step of the Wind, Open Hand Wind Step and Shadow Step
+  prepare Flow for 4s after unrooted mobility. Stunning Strike, Quivering Palm,
+  Flurry Barrage, Wave Palm and Shadow Strike spend it to remove wind-up and gain
+  +30u cone reach or +35u burst radius. Existing damage, control and movement
+  remain. Basics leave Flow available. A committed finisher spends it even on a
+  miss; blocked cast attempts preserve it. Wind Walker extends Flow by 0.5s per stack.
+
+Copied/rolled/Forge skills carry their own interaction flags; no new subclass
+passives, buttons or resources are unlocked. Existing timed-buff expiration applies
+across swaps; swapping never refreshes preparation, and pending casts use the
+existing cancellation rules. Enemy immunity, flight, crit/backstab, attribution,
+CC resistance and projectile cover remain on their established paths. The adaptive
+difficulty rules are unchanged; conditional counters, geometry and piercing are
+bounded utility/conditional output rather than new permanent stats.
+
+Bard's status and skill descriptions now explicitly explain that Harmony and
+Discord have **no standalone stat effect**. The pause menu provides a readable
+recipe (effective heal + disruptive special → Inspiration/Battle Hymn before either
+8s verse expires → shared skill buffs and 15% speed). No permanent combat text panel
+is added. This is a clarity fix; the Bard's mechanics are unchanged.
+
+### Feedback after support playtesting: prioritize defensive identity
+
+Druid territory felt good. Bard's two preparations were visible but their individual
+meaning and payoff were unclear; address that explanation immediately (above).
+Cleric rescue mitigation should become absorption; Paladin's brief cast-pulse wards
+felt too small/short-lived to establish its role. The following mechanics remain
+**planned for the next defensive/balance PRs**, not implemented here:
+
+- **Cleric absorption bubbles:** a separate temporary pool absorbs incoming damage
+  before real HP, with any excess reaching HP normally. It is not increased max HP
+  and must not count as healing twice. Start with post-mitigation damage consuming
+  absorption; explicitly verify immunity, lethal overflow, lifesteal, counterattack
+  triggers, death/revive, attribution, swaps and replicated HUD amounts. Show a small
+  shield segment/bubble so players understand how much protection remains.
+- Replace the rescue ward with a bounded absorption pool, preserving the rescue heal.
+  Rework Warding Flare/Preserve Life into distinct targeted or nearby-group bubble
+  applications rather than multiple mitigation-only buttons. Keep solo usefulness.
+- **Sanctuary overflow:** unused healing can add absorption when health is full,
+  capped across overlapping Sanctuaries/casters by a shared target ceiling. Convert
+  only the unused healing, not both the entire heal and a full shield. Expire the pool
+  after a short window out of the zone, and prevent indefinite pre-fight stockpiling.
+  Scale pool generation from healing with a max-HP ceiling; a tank's large HP pool
+  should not automatically multiply every healer's output. This gives preemptive
+  protection a different job from reactive rescue; it also increases effective
+  durability and must be reflected conservatively in the power estimator.
+- **Paladin moving auras:** skill use creates a timed area following the Paladin,
+  refreshing a short-lived benefit on nearby living allies. Repositioning then
+  matters throughout its duration, rather than only at cast. One active aura per
+  owner is a useful first constraint; strongest equivalent aura wins across multiple
+  Paladins instead of multiplying all sources. End it on expiry, downing or owner
+  departure; make class-swap/copy ownership explicit.
+- Proposed aura roles: **Divine Shield → Bulwark** (protection, possibly limited
+  control-duration reduction rather than full CC immunity); **Sacred Weapon/Hunter's
+  Vow → Pursuit** (movement assistance toward combat, with a bounded empowered hit
+  rather than another permanent damage multiplier); **Lay on Hands/Bless → Renewal**
+  (brief nearby recovery after an effective heal, without generating shields or
+  rewarding overheal). Choose concrete delivery/targeting and values in its PR.
+  Retain Consecration as stationary holy ground so it does not become redundant
+  with a moving recovery aura. Offer visible, restrained aura feedback without
+  covering mobile screens with multiple rings and descriptions.
+
+These ideas add distinct defensive decisions, but also risk trivializing sustained
+boss pressure if regeneration, absorption and mitigation all stack unchecked.
+Prefer replacing redundant effects and shared caps over adding every proposed bonus
+on top. Evaluate solo and multi-support parties, fixed encounters and adaptive runs,
+and clarity separately from numeric strength. Do not require players to stay inside
+an aura at the cost of avoiding a dangerous telegraph.

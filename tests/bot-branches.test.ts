@@ -965,7 +965,7 @@ describe('bot: barbarian abilities', () => {
     readyCds(bot);
     const c = computeBotInput(w, bot, 0, persona());
     expect(c.buttons.a1).toBe(true); // Rage via distance
-    expect(c.buttons.a3).toBe(true); // Whirlwind
+    expect(c.buttons.a3).toBe(false); // Prepare Rage momentum before the finisher.
     expect(c.buttons.a2).toBe(false); // safe + close -> no Leap
   });
 

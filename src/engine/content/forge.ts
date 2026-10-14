@@ -27,6 +27,7 @@
  * the balance-pricing weight, the component describer and the name blender. The
  * synthesizers and the active-run registry build on these (phase B+).
  */
+import { bardSongText } from './bardText';
 import type { ZoneKind, ClassId, AbilitySlot } from '../core/types';
 import type { PlayerAbilityDef, AbilityKind, ClassDef } from './classes';
 import type { BossAbilityDef, BossAbilityShape, MonsterDef, BossDecisionCtx } from './monsters';
@@ -95,6 +96,12 @@ export type EffectComponent =
   /** item 13 — a CRIT lean this ability carries: `chance` added to the hero's crit
    * chance, `mult` added to the crit multiplier, for its own hits (a precision strike). */
   | { kind: 'crit'; chance: number; mult: number; prepared?: boolean }
+  | { kind: 'guard'; duration: number }
+  | { kind: 'momentum'; duration: number }
+  | { kind: 'momentumStrike' }
+  | { kind: 'prepareFlow'; duration: number }
+  | { kind: 'flowStrike' }
+  | { kind: 'pierce'; count: number }
   | { kind: 'rescueHeal'; bonus: number }
   | { kind: 'recovery'; grove: { radius: number; duration: number; tickHeal: number } }
   | { kind: 'allyWard'; ward: { range: number; mult: number; duration: number } }
@@ -259,6 +266,12 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.grantsFlight) effects.push({ kind: 'flight', duration: def.grantsFlight });
   }
 
+  if (def.guardWindow) effects.push({ kind: 'guard', duration: def.guardWindow });
+  if (def.momentumWindow) effects.push({ kind: 'momentum', duration: def.momentumWindow });
+  if (def.spendsMomentum) effects.push({ kind: 'momentumStrike' });
+  if (def.prepareFlow) effects.push({ kind: 'prepareFlow', duration: def.prepareFlow });
+  if (def.consumesFlow) effects.push({ kind: 'flowStrike' });
+  if (def.pierce) effects.push({ kind: 'pierce', count: def.pierce });
   if (def.rescueHealBonus) effects.push({ kind: 'rescueHeal', bonus: def.rescueHealBonus });
   if (def.recoveryZone) effects.push({ kind: 'recovery', grove: { ...def.recoveryZone } });
   if (def.allyWard) effects.push({ kind: 'allyWard', ward: { ...def.allyWard } });
@@ -343,6 +356,24 @@ export function recompose(
       case 'shove': // item 11 — forced movement (knockback / pull)
         if (e.pull) def.pull = e.distance;
         else def.knockback = e.distance;
+        break;
+      case 'guard':
+        def.guardWindow = e.duration;
+        break;
+      case 'momentum':
+        def.momentumWindow = e.duration;
+        break;
+      case 'momentumStrike':
+        def.spendsMomentum = true;
+        break;
+      case 'prepareFlow':
+        def.prepareFlow = e.duration;
+        break;
+      case 'flowStrike':
+        def.consumesFlow = true;
+        break;
+      case 'pierce':
+        def.pierce = e.count;
         break;
       case 'rescueHeal':
         def.rescueHealBonus = e.bonus;
@@ -447,6 +478,16 @@ function effectValue(e: EffectComponent, fan: number): number {
       return (1 - e.mult) * e.duration * 12; // soft CC, priced by depth × time
     case 'castSlow':
       return (e.mult - 1) * e.duration * 18; // soft tempo CC, priced by depth × time
+    case 'guard':
+      return e.duration * 3;
+    case 'momentum':
+    case 'prepareFlow':
+      return e.duration * 2;
+    case 'momentumStrike':
+    case 'flowStrike':
+      return 0; // Requires its separately priced preparation window.
+    case 'pierce':
+      return e.count * 15;
     case 'rescueHeal':
       return e.bonus * 45 + 5;
     case 'recovery':
@@ -597,6 +638,18 @@ function effectPhrase(e: EffectComponent): string {
       return `slow to ${pct(e.mult * 100)} for ${s(e.duration)}`;
     case 'castSlow':
       return `+${pct((e.mult - 1) * 100)} enemy wind-up for ${s(e.duration)}`;
+    case 'guard':
+      return `guard ${s(e.duration)}; first damaging nonlethal hit readies next melee hit +30% for 4s`;
+    case 'momentum':
+      return `melee hits build up to 3 momentum during ${s(e.duration)}; marked finishers gain +10% dmg per stack (at most 1 stack per 0.4s)`;
+    case 'momentumStrike':
+      return 'spend momentum for +10% dmg and +8u cone reach / +10u burst radius per stack';
+    case 'prepareFlow':
+      return `successful movement readies Flow for ${s(e.duration)}; next marked special is instant with more reach`;
+    case 'flowStrike':
+      return 'spend Flow for no wind-up and +30u cone reach / +35u burst radius';
+    case 'pierce':
+      return `pierce ${e.count} additional ${e.count === 1 ? 'enemy' : 'enemies'} (direct shots only; blasts/zones use one impact)`;
     case 'rescueHeal':
       return `+${pct(e.bonus * 100)} heal at ≤35% HP; effective rescue wards 15% for 2s`;
     case 'recovery':
@@ -604,11 +657,7 @@ function effectPhrase(e: EffectComponent): string {
     case 'allyWard':
       return `other allies within ${n(e.ward.range)}u take ${pct((1 - e.ward.mult) * 100)} less damage for ${s(e.ward.duration)}`;
     case 'bardSong':
-      return e.part === 'chorus'
-        ? 'spend both 8s verses for group buffs and +15% speed'
-        : e.part === 'harmony'
-          ? 'effective heal prepares harmony for 8s'
-          : 'cast prepares discord for 8s';
+      return bardSongText(e.part);
     case 'controlDamage':
       return `+${pct(e.bonus * 100)} dmg vs slowed/rooted/stunned foes`;
     case 'prepareSurge':
@@ -887,6 +936,16 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'heal' || kind === 'buffAlly';
     case 'healOnUse':
       return kind === 'dash' || kind === 'blink' || kind === 'selfBuff' || kind === 'taunt';
+    case 'guard':
+    case 'momentum':
+      return kind === 'selfBuff';
+    case 'momentumStrike':
+    case 'flowStrike':
+      return kind === 'meleeCone' || kind === 'pbaoe';
+    case 'prepareFlow':
+      return kind === 'dash' || kind === 'blink';
+    case 'pierce':
+      return kind === 'projectile';
     case 'rescueHeal':
     case 'recovery':
       return kind === 'heal';
@@ -1390,6 +1449,14 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, duration: e.duration * f };
     case 'castSlow':
       return { ...e, duration: e.duration * f }; // rigid: keeps its bite, sheds time
+    case 'guard':
+    case 'momentum':
+    case 'prepareFlow':
+      return { ...e, duration: e.duration * f };
+    case 'momentumStrike':
+    case 'flowStrike':
+    case 'pierce':
+      return e;
     case 'rescueHeal':
       return { ...e, bonus: e.bonus * f };
     case 'recovery':
@@ -1507,7 +1574,18 @@ function addBoonComponents(
 
   for (const effect of decompose(def).effects) {
     if (
-      ['rescueHeal', 'recovery', 'allyWard', 'bardSong'].includes(effect.kind) &&
+      [
+        'guard',
+        'momentum',
+        'momentumStrike',
+        'prepareFlow',
+        'flowStrike',
+        'pierce',
+        'rescueHeal',
+        'recovery',
+        'allyWard',
+        'bardSong',
+      ].includes(effect.kind) &&
       effectFitsDelivery(def.kind, effect) &&
       !has((e) => e.kind === effect.kind)
     )
@@ -1636,6 +1714,17 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.castSlow != null
         ? { ...e, mult: def.castSlow, duration: def.castSlowDuration ?? e.duration }
         : e;
+    case 'guard':
+      return def.guardWindow != null ? { ...e, duration: def.guardWindow } : e;
+    case 'momentum':
+      return def.momentumWindow != null ? { ...e, duration: def.momentumWindow } : e;
+    case 'prepareFlow':
+      return def.prepareFlow != null ? { ...e, duration: def.prepareFlow } : e;
+    case 'pierce':
+      return def.pierce != null ? { ...e, count: def.pierce } : e;
+    case 'momentumStrike':
+    case 'flowStrike':
+      return e;
     case 'rescueHeal':
       return def.rescueHealBonus != null ? { ...e, bonus: def.rescueHealBonus } : e;
     case 'recovery':
@@ -1719,6 +1808,16 @@ function capEffect(e: EffectComponent): EffectComponent {
         mult: clamp(round05(e.mult), 1.1, CAST_SLOW_MAX),
         duration: clamp(round1(e.duration), 1, 5),
       };
+    case 'guard':
+    case 'prepareFlow':
+      return { ...e, duration: clamp(round1(e.duration), 1, 8) };
+    case 'momentum':
+      return { ...e, duration: clamp(round1(e.duration), 2, 10) };
+    case 'pierce':
+      return { ...e, count: clamp(Math.round(e.count), 1, 3) };
+    case 'momentumStrike':
+    case 'flowStrike':
+      return e;
     case 'rescueHeal':
       return { ...e, bonus: clamp(round2(e.bonus), 0.05, 0.5) };
     case 'recovery':

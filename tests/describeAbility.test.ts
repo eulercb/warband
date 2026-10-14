@@ -28,7 +28,7 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a self-buff: damage-reduction percentage + duration', () => {
     // Knight Shield Wall — buffDefMult 0.5 → "50% less dmg taken".
     expect(describeAbility(CLASSES.knight.abilities.a2)).toBe(
-      '50% less dmg taken · for 4s · 16s cooldown',
+      'guard 4s; first damaging nonlethal hit readies next melee hit +30% for 4s · 50% less dmg taken · for 4s · 16s cooldown',
     );
   });
 
@@ -39,7 +39,7 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a multi-projectile attack shows the projectile count', () => {
     // Ranger Multishot — projCount 3, now an aimed wind-up volley (item 10).
     expect(describeAbility(CLASSES.ranger.abilities.a1)).toBe(
-      '3× 19 dmg · 0.3s wind-up · 6s cooldown',
+      '3× 19 dmg · pierce 1 additional enemy (direct shots only; blasts/zones use one impact) · 0.3s wind-up · 6s cooldown',
     );
     // Sorcerer Chaos Bolt — twin bolts.
     expect(describeAbility(CLASSES.sorcerer.abilities.basic)).toBe('2× 12 dmg · 0.5s cooldown');
@@ -62,7 +62,7 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a damage ground-zone: per-tick damage, radius and lifetime', () => {
     // Ranger Rain of Arrows — an AIRBORNE zone (item 8), so it reads "hits flyers".
     expect(describeAbility(CLASSES.ranger.abilities.a2)).toBe(
-      '12/tick dmg · 120u radius · lasts 3s · hits flyers · 12s cooldown',
+      '12/tick dmg · 120u radius · slow to 75% for 0.8s · lasts 3s · hits flyers · 12s cooldown',
     );
   });
 
@@ -90,7 +90,7 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a self-buff with a move bonus reads +dmg and +move', () => {
     // Barbarian Rage — buffDamageMult 1.35 + buffMoveMult 1.2.
     expect(describeAbility(CLASSES.barbarian.abilities.a1)).toBe(
-      '+35% dmg · +20% move · for 6s · 14s cooldown',
+      'melee hits build up to 3 momentum during 6s; marked finishers gain +10% dmg per stack (at most 1 stack per 0.4s) · +35% dmg · +20% move · for 6s · 14s cooldown',
     );
   });
 
@@ -125,7 +125,7 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a mobility skill that heals on use shows the flat heal', () => {
     // Monk Step of the Wind — healOnUse 18.
     expect(describeAbility(CLASSES.monk.abilities.a2)).toBe(
-      'heal 18 · 250u dash · 0.3s i-frames · 5s cooldown',
+      'heal 18 · successful movement readies Flow for 4s; next marked special is instant with more reach · 250u dash · 0.3s i-frames · 5s cooldown',
     );
   });
 });

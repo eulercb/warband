@@ -146,3 +146,43 @@ jobs:
           name: smoke-screenshots
           path: ${{ runner.temp }}/smoke-shots
           if-no-files-found: ignore
+
+  # Run the eight new martial scenarios alongside the existing browser suite,
+  # rather than extending its already long serial class/subclass selection loop.
+  martial-smoke:
+    name: Martial classes (desktop and touch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium for Playwright
+        run: npx playwright-core install --with-deps chromium
+      - name: Build
+        run: npm run build
+      - name: Martial keyboard and touch casting
+        run: |
+          export SHOT_DIR="$RUNNER_TEMP/martial-shots"
+          mkdir -p "$SHOT_DIR"
+          npm run preview &
+          MARTIAL_PREVIEW_PID=$!
+          trap 'kill "$MARTIAL_PREVIEW_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4173/ >/dev/null && break
+            sleep 1
+          done
+          npm run smoke:martial
+      - name: Upload martial screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: martial-smoke-screenshots
+          path: ${{ runner.temp }}/martial-shots
+          if-no-files-found: ignore

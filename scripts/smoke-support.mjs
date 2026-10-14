@@ -2,6 +2,10 @@
 import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright-core';
+const selectedClasses = ['cleric', 'paladin', 'druid', 'bard'].filter(
+  (classId) => !process.env.SMOKE_CLASS || process.env.SMOKE_CLASS === classId,
+);
+assert.ok(selectedClasses.length, 'Unknown SMOKE_CLASS');
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || chromium.executablePath(),
   headless: true,
@@ -9,7 +13,7 @@ const browser = await chromium.launch({
 let currentPage;
 try {
   for (const mobile of [false, true])
-    for (const classId of ['cleric', 'paladin', 'druid', 'bard']) {
+    for (const classId of selectedClasses) {
       const context = await browser.newContext({
         viewport: mobile ? { width: 320, height: 568 } : { width: 1280, height: 800 },
         isMobile: mobile,
@@ -84,8 +88,12 @@ try {
       else await page.keyboard.press('Escape');
       await page.locator('.wb-pause-skills').waitFor();
       assert.match(await page.locator('.wb-pause-skills').textContent(), test.text);
-      if (classId === 'bard')
+      if (classId === 'bard') {
         assert.match(await page.locator('.wb-pause-skills').textContent(), /spend both 8s verses/);
+        const guide = await page.getByLabel('Bard verse guide').textContent();
+        assert.match(guide, /Neither changes your stats alone/);
+        assert.match(guide, /15% move speed/);
+      }
       if (classId === 'druid')
         assert.match(await page.locator('.wb-pause-skills').textContent(), /recovery grove/);
       assert.deepEqual(errors, []);
