@@ -976,3 +976,20 @@
     grid-template-columns: repeat(3, var(--touch-size));
   }
 }
+
+/* Separate protection pool; does not inflate the health fill or maximum. */
+.hud-absorption {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  height: 3px;
+  background: #7edfff;
+  z-index: 1;
+}
+.hud-absorption-num {
+  color: #b9edff;
+}
+
+.hud-absorption ~ .hud-healthbar-num {
+  z-index: 2;
+}

@@ -1,3 +1,4 @@
+import { absorbDamage } from './absorption';
 /**
  * Warband — damage / heal application, buff helpers and threat contribution.
  * Pure functions operating on entities + an event sink. No world import (to
@@ -440,16 +441,20 @@ export function damagePlayer(sink: EventSink, target: Player, base: number): num
     sink.events.push({ t: 'dodge', id: target.id, pos: { ...target.pos } });
     return 0;
   }
-  const dmg = base * buffMult(target, 'damageTaken') * target.damageTakenMult;
+  const incoming = base * buffMult(target, 'damageTaken') * target.damageTakenMult;
+  const dmg = absorbDamage(target, incoming);
   target.hp -= dmg;
-  sink.events.push({
-    t: 'hit',
-    pos: { x: target.pos.x, y: target.pos.y },
-    amount: dmg,
-    targetId: target.id,
-    side: 'player',
-  });
-  if (dmg > 0 && target.hp > 0) {
+  if (dmg > 0)
+    sink.events.push({
+      t: 'hit',
+      pos: { x: target.pos.x, y: target.pos.y },
+      amount: dmg,
+      targetId: target.id,
+      side: 'player',
+    });
+  // A real absorbed hit still counts for guarded counters/rebuke, but returns
+  // only HP damage to enemy lifesteal callers. Immunity exits before this path.
+  if (incoming > 0 && target.hp > 0) {
     onGuardedDamage(target);
     sink.onPlayerDamaged?.(target);
   }

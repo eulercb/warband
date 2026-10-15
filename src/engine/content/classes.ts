@@ -1,3 +1,4 @@
+import type { AbsorptionGrant } from '../combat/absorption';
 /**
  * Warband — data-driven class definitions (Knight / Ranger / Mage / Cleric).
  * All balance numbers per the build brief §7; tweak freely.
@@ -148,6 +149,8 @@ export interface PlayerAbilityDef {
   /** Additional distinct bodies a direct projectile may pass through (no blast/zone). */
   pierce?: number;
   /** Extra direct healing at <=35% HP, plus a 15% ward for 2s after effective rescue. */
+  absorption?: AbsorptionGrant;
+  overflowShield?: boolean;
   rescueHealBonus?: number;
   /** One non-stacking recovery grove at the healed ally's location. */
   recoveryZone?: { radius: number; duration: number; tickHeal: number };
@@ -414,6 +417,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         radius: 140,
         zoneDuration: 4,
         zoneTickHeal: 10,
+        overflowShield: true,
         zoneKind: 'sanctuary',
       },
       a3: {
@@ -1092,12 +1096,18 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   }
   if (def.landingDamage) parts.push(`${n(def.landingDamage * dmgMul)} landing dmg`);
   if (def.zoneTickDamage) parts.push(`${n(def.zoneTickDamage * dmgMul)}/tick dmg`);
+  if (def.absorption)
+    parts.push(
+      `${n(def.absorption.amount)} absorption for ${s(def.absorption.duration)} to ${def.absorption.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}; shared cap 30% max HP, strongest cast wins`,
+    );
+  if (def.overflowShield)
+    parts.push('unused healing builds a 3s bubble, capped at 15% max HP across all zones');
   if (def.zoneTickHeal) parts.push(`${n(def.zoneTickHeal)}/tick heal`);
   if (def.healOnUse) parts.push(`heal ${n(def.healOnUse)}`);
 
   if (def.rescueHealBonus)
     parts.push(
-      `+${n(def.rescueHealBonus * 100)}% heal at ≤35% HP; effective rescue wards 15% for 2s`,
+      `+${n(def.rescueHealBonus * 100)}% heal at ≤35% HP; effective rescue grants 50% of healed HP as a 3s bubble (up to 15% max HP)`,
     );
   if (def.recoveryZone) {
     const g = def.recoveryZone;

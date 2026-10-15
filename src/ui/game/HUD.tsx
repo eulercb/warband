@@ -1,3 +1,4 @@
+import { absorptionAmount, ABSORPTION_CAP } from '../../engine/combat/absorption';
 /**
  * Warband — HUD overlay (React). Reads the throttled hudStore updated by the
  * game loop; never re-renders from the hot per-frame path directly.
@@ -35,6 +36,24 @@ const SLOT_ORDER: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
 function pct(v: number, max: number): number {
   if (max <= 0) return 0;
   return Math.max(0, Math.min(100, (v / max) * 100));
+}
+
+/** Absorption is a separate cyan strip, never a larger health maximum. */
+function AbsorptionBar({ buffs, maxHp }: { buffs: BuffView[]; maxHp: number }) {
+  const amount = absorptionAmount(buffs);
+  if (amount <= 0) return null;
+  return (
+    <div
+      className="hud-absorption"
+      role="meter"
+      aria-label="Absorption"
+      aria-valuenow={Math.ceil(amount)}
+      aria-valuemin={0}
+      aria-valuemax={Math.ceil(maxHp * ABSORPTION_CAP)}
+      title={`${Math.ceil(amount)} absorption HP`}
+      style={{ width: `${pct(amount, maxHp)}%` }}
+    />
+  );
 }
 
 /** A compact row of buff/debuff chips (glyph + seconds), colour-coded. `flying`
@@ -277,6 +296,7 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
               <BuffChips buffs={t.buffs} />
             </div>
             <div className="hud-healthbar hud-teammate-hp">
+              <AbsorptionBar buffs={t.buffs} maxHp={t.maxHp} />
               <div
                 className="hud-healthbar-fill"
                 style={{ width: `${t.state === 'dead' ? 0 : pct(t.hp, t.maxHp)}%` }}
@@ -334,9 +354,16 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
             </span>
           </div>
           <div className="hud-healthbar">
+            <AbsorptionBar buffs={hud.buffs} maxHp={hud.maxHp} />
             <div className="hud-healthbar-fill" style={{ width: `${hpPct}%` }} />
             <span className="hud-healthbar-num">
               {Math.round(hud.hp)} / {Math.round(hud.maxHp)}
+              {absorptionAmount(hud.buffs) > 0 && (
+                <span className="hud-absorption-num">
+                  {' '}
+                  +{Math.ceil(absorptionAmount(hud.buffs))} 🫧
+                </span>
+              )}
             </span>
           </div>
         </div>

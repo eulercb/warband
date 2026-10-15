@@ -1,3 +1,4 @@
+import type { AbsorptionGrant } from '../combat/absorption';
 /**
  * Warband — CHAOS FORGE: component-recombination content synthesis. PURE TS.
  *
@@ -107,6 +108,7 @@ export type EffectComponent =
   | { kind: 'prepareFlow'; duration: number }
   | { kind: 'flowStrike' }
   | { kind: 'pierce'; count: number }
+  | { kind: 'absorption'; grant: AbsorptionGrant }
   | { kind: 'rescueHeal'; bonus: number }
   | { kind: 'recovery'; grove: { radius: number; duration: number; tickHeal: number } }
   | { kind: 'allyWard'; ward: { range: number; mult: number; duration: number } }
@@ -141,6 +143,7 @@ export interface ZoneSpec {
   radius: number;
   tickDamage?: number;
   tickHeal?: number;
+  overflowShield?: boolean;
   slowMult?: number;
   slowDuration?: number;
   roots?: boolean;
@@ -208,6 +211,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     };
     if (def.zoneTickDamage) zone.tickDamage = def.zoneTickDamage;
     if (def.zoneTickHeal) zone.tickHeal = def.zoneTickHeal;
+    if (def.overflowShield) zone.overflowShield = true;
     if (def.slowMult != null && def.slowMult < 1) {
       zone.slowMult = def.slowMult;
       zone.slowDuration = def.slowDuration ?? 2;
@@ -281,6 +285,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.prepareFlow) effects.push({ kind: 'prepareFlow', duration: def.prepareFlow });
   if (def.consumesFlow) effects.push({ kind: 'flowStrike' });
   if (def.pierce) effects.push({ kind: 'pierce', count: def.pierce });
+  if (def.absorption) effects.push({ kind: 'absorption', grant: { ...def.absorption } });
   if (def.rescueHealBonus) effects.push({ kind: 'rescueHeal', bonus: def.rescueHealBonus });
   if (def.recoveryZone) effects.push({ kind: 'recovery', grove: { ...def.recoveryZone } });
   if (def.allyWard) effects.push({ kind: 'allyWard', ward: { ...def.allyWard } });
@@ -396,6 +401,9 @@ export function recompose(
       case 'pierce':
         def.pierce = e.count;
         break;
+      case 'absorption':
+        def.absorption = { ...e.grant };
+        break;
       case 'rescueHeal':
         def.rescueHealBonus = e.bonus;
         break;
@@ -442,6 +450,7 @@ export function recompose(
         if (e.zone.curseBonus) def.curseBonus = e.zone.curseBonus;
         if (e.zone.tickDamage) def.zoneTickDamage = e.zone.tickDamage;
         if (e.zone.tickHeal) def.zoneTickHeal = e.zone.tickHeal;
+        if (e.zone.overflowShield) def.overflowShield = true;
         if (e.zone.slowMult != null) {
           def.slowMult = e.zone.slowMult;
           def.slowDuration = e.zone.slowDuration ?? 2;
@@ -517,6 +526,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return 0; // Requires its separately priced preparation window.
     case 'pierce':
       return e.count * 15;
+    case 'absorption':
+      return e.grant.amount * (e.grant.target === 'nearby' ? 1.5 : 1);
     case 'rescueHeal':
       return e.bonus * 45 + 5;
     case 'recovery':
@@ -573,6 +584,7 @@ function zoneValue(z: ZoneSpec): number {
   const ticks = (z.duration / 0.5) * 0.6;
   let v = ((z.tickDamage ?? 0) + (z.tickHeal ?? 0)) * ticks;
   if (z.slowMult != null) v += (1 - z.slowMult) * z.duration * 10;
+  if (z.overflowShield) v += (z.tickHeal ?? 0) * ticks * 0.4;
   if (z.curseBonus) v += z.curseBonus * z.duration * 30;
   if (z.castSlow != null && z.castSlow > 1) v += (z.castSlow - 1) * z.duration * 10; // item 9
   if (z.roots) v += z.duration * 14;
@@ -687,8 +699,10 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return flowPayoff(delivery);
     case 'pierce':
       return `pierce ${e.count} additional ${e.count === 1 ? 'enemy' : 'enemies'} (direct shots only; blasts/zones use one impact)`;
+    case 'absorption':
+      return `${n(e.grant.amount)} absorption for ${s(e.grant.duration)} to ${e.grant.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}; shared cap 30% max HP, strongest cast wins`;
     case 'rescueHeal':
-      return `+${pct(e.bonus * 100)} heal at ≤35% HP; effective rescue wards 15% for 2s`;
+      return `+${pct(e.bonus * 100)} heal at ≤35% HP; effective rescue grants 50% of healed HP as a 3s bubble (up to 15% max HP)`;
     case 'recovery':
       return `effective heal plants ${n(e.grove.radius)}u recovery grove, ${n(e.grove.tickHeal)}/tick for ${s(e.grove.duration)}; one per caster`;
     case 'allyWard':
@@ -737,6 +751,8 @@ function buffPhrase(e: Extract<EffectComponent, { kind: 'buff' }>): string {
 function zonePhrase(z: ZoneSpec): string {
   const bits: string[] = [];
   if (z.tickDamage) bits.push(`${n(z.tickDamage)}/tick dmg`);
+  if (z.overflowShield)
+    bits.push('unused healing builds a 3s bubble, capped at 15% max HP across all zones');
   if (z.tickHeal) bits.push(`${n(z.tickHeal)}/tick heal`);
   if (z.roots) bits.push('roots');
   else if (z.slowMult != null) bits.push(`slow to ${pct(z.slowMult * 100)}`);
@@ -992,6 +1008,8 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'rescueHeal':
     case 'recovery':
       return kind === 'heal';
+    case 'absorption':
+      return kind === 'selfBuff' || kind === 'buffAlly';
     case 'allyWard':
       return kind === 'selfBuff';
     case 'bardSong':
@@ -1505,6 +1523,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
     case 'flowStrike':
     case 'pierce':
       return e;
+    case 'absorption':
+      return { ...e, grant: { ...e.grant, amount: e.grant.amount * f } };
     case 'rescueHeal':
       return { ...e, bonus: e.bonus * f };
     case 'recovery':
@@ -1633,6 +1653,7 @@ function addBoonComponents(
         'prepareFlow',
         'flowStrike',
         'pierce',
+        'absorption',
         'rescueHeal',
         'recovery',
         'allyWard',
@@ -1785,6 +1806,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
     case 'momentumStrike':
     case 'flowStrike':
       return e;
+    case 'absorption':
+      return def.absorption ? { ...e, grant: { ...def.absorption } } : e;
     case 'rescueHeal':
       return def.rescueHealBonus != null ? { ...e, bonus: def.rescueHealBonus } : e;
     case 'recovery':
@@ -1828,6 +1851,7 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       const z: ZoneSpec = { ...e.zone };
       if (def.zoneTickDamage != null) z.tickDamage = def.zoneTickDamage;
       if (def.zoneTickHeal != null) z.tickHeal = def.zoneTickHeal;
+      if (def.overflowShield != null) z.overflowShield = def.overflowShield;
       if (def.zoneDuration != null) z.duration = def.zoneDuration;
       if (def.radius != null) z.radius = def.radius;
       if (def.slowMult != null) {
@@ -1885,6 +1909,15 @@ function capEffect(e: EffectComponent): EffectComponent {
     case 'momentumStrike':
     case 'flowStrike':
       return e;
+    case 'absorption':
+      return {
+        ...e,
+        grant: {
+          ...e.grant,
+          amount: clamp(Math.round(e.grant.amount), 10, 60),
+          duration: clamp(round1(e.grant.duration), 2, 6),
+        },
+      };
     case 'rescueHeal':
       return { ...e, bonus: clamp(round2(e.bonus), 0.05, 0.5) };
     case 'recovery':
@@ -1982,7 +2015,7 @@ export type AbilityCapability =
 export function abilityCapability(ab: PlayerAbilityDef): AbilityCapability {
   const kind = ab.kind;
   let heal = kind === 'heal';
-  let allyBuff = kind === 'buffAlly';
+  let allyBuff = kind === 'buffAlly' || ab.absorption != null;
   let selfDef = kind === 'selfBuff' || kind === 'taunt';
   const control =
     (ab.stun ?? 0) > 0 ||
@@ -1997,6 +2030,7 @@ export function abilityCapability(ab: PlayerAbilityDef): AbilityCapability {
     heal = comp.effects.some((e) => e.kind === 'heal');
     allyBuff = comp.effects.some(
       (e) =>
+        e.kind === 'absorption' ||
         (e.kind === 'buff' && e.target === 'allies') ||
         (e.kind === 'zone' && (e.zone.allyBuff != null || (e.zone.tickHeal ?? 0) > 0)),
     );

@@ -27,6 +27,13 @@ function describe(
   mult: number,
 ): { glyph: string; color: number; good: boolean; label: string } | null {
   switch (kind) {
+    case 'absorption':
+      return {
+        glyph: '🫧',
+        color: 0x7edfff,
+        good: true,
+        label: `Absorption: ${Math.ceil(mult)} protection HP; consumed before health, after damage reduction`,
+      };
     case 'bloodRage':
       return {
         glyph: '🩸',
