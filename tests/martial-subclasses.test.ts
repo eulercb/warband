@@ -167,6 +167,7 @@ describe('subclass martial identities', () => {
     (id) => {
       const { p } = fixture();
       const original = skill(id);
+      const before = structuredClone(original);
       for (const ab of [original, recompose(decompose(original), original)]) {
         prepareMartialFlow(p, { ...original, prepareFlow: 3 });
         const out = consumeMartialFinishers(p, ab);
@@ -178,7 +179,7 @@ describe('subclass martial identities', () => {
           expect(out.radius).toBe((ab.radius ?? 130) + 35);
           expect(out.slowMult).toBe(0.6);
         }
-        expect(original).toEqual(skill(id));
+        expect(original).toEqual(before);
       }
     },
   );
@@ -287,4 +288,27 @@ it('values blood sustain conservatively and explains both rage modes in HUD badg
       .map((b) => b.label)
       .join(' '),
   ).toContain('walk 120u');
+});
+
+it('initializes missing preparation bookkeeping and preserves updated Forge durations', () => {
+  const { p } = fixture();
+  p.buffs.push({ kind: 'flow', mult: 0, remaining: 2 });
+  onMartialHit(p, 10, true, 0.25);
+  expect(p.buffs[0]).toMatchObject({ remaining: 2.25, flowExtended: 0.25 });
+  armMartialUtility(p, skill('bb_totem_wolf'));
+  p.huntDistance = undefined;
+  onHuntWalk(p, 60);
+  expect(p.huntDistance).toBe(60);
+  for (const [source, key, value] of [
+    [skill('kn_champion_riposte'), 'parryOnHit', 1],
+    [skill('bb_berserker_frenzy'), 'bloodRage', 7],
+    [skill('bb_totem_wolf'), 'wolfHunt', 6],
+    [getClass('monk').abilities.basic, 'flowExtendOnHit', 0.4],
+  ] as const) {
+    const fused = recompose(decompose(source), source);
+    fused[key] = value;
+    expect(recompose(refreshComponents(fused), source)[key]).toBe(value);
+    fused[key] = undefined;
+    expect(recompose(refreshComponents(fused), source)[key]).toBe(source[key]);
+  }
 });

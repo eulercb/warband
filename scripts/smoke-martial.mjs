@@ -60,7 +60,7 @@ try {
         monk: { name: 'Step of the Wind', slot: 'a2', key: 'KeyE', text: /Flow for 4s/ },
       };
       const test = subclass ? { ...subclass, slot: 'sub1', key: 'KeyZ' } : cases[classId];
-      const tile = page.locator(`.hud-ability[aria-label^="${test.name}"]`);
+      const tile = page.locator(`.hud-ability[aria-label*="${test.name} —"]`);
       await tile.waitFor({ state: mobile ? 'attached' : 'visible' });
       if (mobile) await page.locator(`.wb-touch-btn-${test.slot}`).waitFor();
       assert.match(await tile.getAttribute('aria-label'), test.text);
@@ -94,7 +94,7 @@ try {
         mobile
           ? page.locator(`.wb-touch-btn-${test.slot} .wb-touch-btn-label.cooling`).waitFor()
           : page.waitForFunction((n) => {
-              const el = document.querySelector(`.hud-ability[aria-label^="${n}"]`);
+              const el = document.querySelector(`.hud-ability[aria-label*="${n} —"]`);
               return el && !el.classList.contains('ready');
             }, test.name),
       );
