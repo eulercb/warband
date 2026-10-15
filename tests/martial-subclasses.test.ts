@@ -292,7 +292,7 @@ it('values blood sustain conservatively and explains both rage modes in HUD badg
 
 it('initializes missing preparation bookkeeping and preserves updated Forge durations', () => {
   const { p } = fixture();
-  p.buffs.push({ kind: 'flow', mult: 0, remaining: 2 });
+  p.buffs.push({ kind: 'flow', mult: 0, remaining: 2, source: 'martialFlow' });
   onMartialHit(p, 10, true, 0.25);
   expect(p.buffs[0]).toMatchObject({ remaining: 2.25, flowExtended: 0.25 });
   armMartialUtility(p, skill('bb_totem_wolf'));
