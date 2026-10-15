@@ -154,7 +154,7 @@ import {
   previewAbilityTable,
   grandCount,
 } from '../content/charUpgrades';
-import { consumeMartialFinishers } from '../combat/martial';
+import { consumeMartialFinishers, tickBloodPrice, onHuntWalk } from '../combat/martial';
 import { consumeSpellSurge, controlledSpellMultiplier } from '../combat/spellCombos';
 import {
   setSubclassPassive,
@@ -1065,6 +1065,7 @@ export class World {
   step(dt: number, inputs: Map<string, InputCommand>): void {
     if (this.finished) return;
     this.events = [];
+    this.huntWalks.clear();
     this.elapsed += dt;
 
     // item: fight-start transition — on the very first step of a REAL boss fight (not
@@ -1098,14 +1099,25 @@ export class World {
     decayThreat(this.players, dt);
     this.tauntTimer = Math.max(0, this.tauntTimer - dt);
     this.separateAndClamp();
+    for (const [p, walk] of this.huntWalks) {
+      if (p.glide || p.shove || this.events.some((e) => e.t === 'blink' && e.id === p.id)) continue;
+      const intended = Math.hypot(walk.move.x, walk.move.y);
+      const delta = sub(p.pos, walk.from);
+      if (intended <= 0 || Math.hypot(delta.x, delta.y) > intended + 0.001) continue;
+      const forward = (delta.x * walk.move.x + delta.y * walk.move.y) / intended;
+      onHuntWalk(p, Math.max(0, Math.min(intended, forward)));
+    }
     this.checkDownedTransitions();
     this.checkEndConditions();
 
     this.tick++;
   }
 
+  private huntWalks = new Map<Player, { from: Vec2; move: Vec2 }>();
+
   private tickTimers(dt: number): void {
     for (const p of this.players) {
+      tickBloodPrice(p, dt);
       tickBuffs(p, dt);
       tickSubclassPassives(p, dt);
       tickStunDr(p, dt);
@@ -1183,7 +1195,14 @@ export class World {
       if (!stunned && !casting && !gliding && !shoved) {
         const move = clampLength(cmd.move, 1);
         const speed = p.moveSpeed * buffMult(p, 'moveSpeed');
-        p.pos = vadd(p.pos, vscale(move, speed * dt));
+        const walk = vscale(move, speed * dt);
+        if (
+          this.scene === null &&
+          !isRooted(p) &&
+          p.buffs.some((b) => b.kind === 'wolfHunt' && b.remaining > 0)
+        )
+          this.huntWalks.set(p, { from: { ...p.pos }, move: walk });
+        p.pos = vadd(p.pos, walk);
 
         // The reward chamber is a calm, no-combat scene: the hero walks freely
         // but abilities are inert (no stray projectiles, and no cast-time root
@@ -1651,6 +1670,7 @@ export class World {
       consumesPrecision?: boolean;
       kind?: string;
       controlDamageBonus?: number;
+      flowExtendOnHit?: number;
     },
   ): HitMods {
     const ready =
@@ -1660,6 +1680,8 @@ export class World {
     const chance = ready ? 1 : (source.critChance ?? 0) + (bonus?.critChanceBonus ?? 0);
     const crit = this.critRng.next() < chance;
     return {
+      direct: true,
+      ...(bonus?.flowExtendOnHit ? { flowExtend: bonus.flowExtendOnHit } : {}),
       crit,
       mult: crit
         ? (source.critMult ?? 1) +
@@ -1686,6 +1708,7 @@ export class World {
       consumesPrecision?: boolean;
       kind?: string;
       controlDamageBonus?: number;
+      flowExtendOnHit?: number;
     },
   ): HitMods {
     const hit = this.critRoll(

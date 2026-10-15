@@ -4,7 +4,8 @@ Status: the Rogue/Warlock skill pilot was merged and playtested. Defining passiv
 for Assassin, Arcane Trickster, Fiend and Great Old One were merged and playtested.
 Mage/Sorcerer differentiation was merged and playtested.
 Support-class differentiation was merged and playtested.
-Knight/Ranger/Barbarian/Monk differentiation is implemented for review.
+Knight/Ranger/Barbarian/Monk differentiation was merged and playtested.
+Martial subclass coherence is implemented for review.
 Remaining defining passives, companions, forms and later milestones remain proposals.
 
 ## Goals and boundaries
@@ -442,3 +443,53 @@ Prefer replacing redundant effects and shared caps over adding every proposed bo
 on top. Evaluate solo and multi-support parties, fixed encounters and adaptive runs,
 and clarity separately from numeric strength. Do not require players to stay inside
 an aura at the cost of avoiding a dangerous telegraph.
+
+## Martial subclass coherence follow-up
+
+The twelve base-class loops are now merged and playtested. This follow-up addresses
+subclass gaps before starting the defensive foundation:
+
+- Champion Riposte connects to counter readiness: a connecting strike prepares one
+  +30% melee hit for 4s and a 0.75s parry reducing incoming damage by 40%. Misses do
+  neither; readiness is awarded after the full cone, never chained between victims.
+- Berserker Frenzy retains its offensive buffs and hit-built momentum, but costs
+  2% maximum HP per second and leeches 20% of effective direct-hit damage. The cost
+  stops at 1 HP; zones, retaliation and overkill cannot farm healing.
+- Totem Wolf Spirit instead builds momentum through 120 units of actual walking
+  per stack, retaining the shared three-stack cap and 0.4s gate. Blocked input,
+  jumps, teleports and forced movement do not qualify. Starting another rage mode
+  replaces the previous mode and its momentum, preventing stance stacking.
+- Shadow Dart spends Flow for an instant cast and a brief 0.6s stun. Cloud of Shadow
+  spends Flow for an instant, wider (+35 units) slowing cloud (60% movement, 0.8s).
+  Flurry basics extend existing Flow by 0.25s per effective hit, capped at one extra
+  second per preparation. Existing stronger control is preserved. These rules also
+  survive Forge composition and use existing enemy immunity/resistance paths.
+- Beast Master remains unchanged pending its defining companion passive, as agreed.
+
+### Plain recovery skills: review with the defensive work
+
+Avoid adding another full heal on top of every defensive mechanic. Audit actual
+current skills rather than assuming every heal is still plain: Druid regeneration
+already creates a grove, Bard recovery prepares a verse, and Cleric heals rescue.
+The remaining candidates include Second Wind, Nature Bond, Life Transfer, Spirit
+Mend, Bless and Wholeness of Body. Proposed directions, not implemented here:
+
+- Second Wind: recovery tied to a guarded counter rather than another mitigation buff.
+- Nature Bond: companion mend/recall alongside the future pet, retaining solo use.
+- Life Transfer: deliberate protective ward transfer after absorption is available.
+- Spirit Mend: momentum-finisher recovery or a distinct recovery totem.
+- Bless: the planned Renewal aura rather than a redundant standalone heal.
+- Wholeness of Body: Centering Breath, a usable ordinary recovery that can spend
+  Flow for healing over time and a limited slow/root cleanse. Decide amounts and
+  interruption rules during its defensive pass; do not make recovery require Flow.
+
+### Remaining delivery estimate
+
+After this extra feedback patch, approximately eight reviewable PRs remain at the
+current scope: three defensive/balance passes (absorption, auras, remaining defense
+and recovery reworks), three batches of non-companion/form defining passives,
+then Beast Master's companion and Moon Druid's form. This is a scope estimate,
+not a quota/time promise. Six related passives per batch is a reasonable increase;
+keep absorption, moving auras and companion AI separate because each creates new
+state, replication and stacking risks. Fiend tuning and the Abjurer/Sorcerer
+redundant protection feedback remain on that defensive/balance list.

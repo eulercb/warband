@@ -8,8 +8,19 @@ const browser = await chromium.launch({
 });
 let currentPage;
 try {
-  for (const mobile of [false, true])
-    for (const classId of ['knight', 'ranger', 'barbarian', 'monk']) {
+  for (const mobile of process.env.SMOKE_MOBILE_ONLY === '1' ? [true] : [false, true])
+    for (const [classId, subclass] of [
+      ['knight'],
+      ['ranger'],
+      ['barbarian'],
+      ['monk'],
+      ['knight', { name: 'Riposte', text: /readies next melee counter/ }],
+      ['barbarian', { name: 'Frenzy', text: /pay 2% max HP/ }],
+      ['barbarian', { name: 'Wolf Spirit', text: /walk 120u/ }],
+      ['monk', { name: 'Shadow Dart', text: /at least 0.6s stun/ }],
+      ['monk', { name: 'Cloud of Shadow', text: /slow to 60%/ }],
+    ]) {
+      if (process.env.SMOKE_SUBCLASSES_ONLY === '1' && !subclass) continue;
       const context = await browser.newContext({
         viewport: mobile ? { width: 320, height: 568 } : { width: 1280, height: 800 },
         isMobile: mobile,
@@ -38,6 +49,10 @@ try {
       await click(button('List view'));
       await click(button('Create Room'));
       if (mobile) await click(button('Lobby menu'));
+      if (subclass) {
+        await click(page.locator('.wb-sf-loadout-toggle'));
+        await click(page.getByRole('button', { name: new RegExp(subclass.name) }));
+      }
       await click(button('Start Fight'));
       const cases = {
         knight: { name: 'Shield Wall', slot: 'a2', key: 'KeyE', text: /guard 4s/ },
@@ -45,15 +60,19 @@ try {
         barbarian: { name: 'Rage', slot: 'a1', key: 'KeyQ', text: /3 momentum/ },
         monk: { name: 'Step of the Wind', slot: 'a2', key: 'KeyE', text: /Flow for 4s/ },
       };
-      const test = cases[classId];
-      const tile = page.locator(`.hud-ability[aria-label^="${test.name}"]`);
+      const test = subclass ? { ...subclass, slot: 'sub1', key: 'KeyZ' } : cases[classId];
+      const touchButton = (slot) =>
+        slot === 'sub1'
+          ? page.locator('.wb-touch-btn-sub').last()
+          : page.locator(`.wb-touch-btn-${slot}`);
+      const tile = page.locator(`.hud-ability[aria-label*="${test.name} —"]`);
       await tile.waitFor({ state: mobile ? 'attached' : 'visible' });
-      if (mobile) await page.locator(`.wb-touch-btn-${test.slot}`).waitFor();
+      if (mobile) await touchButton(test.slot).waitFor();
       assert.match(await tile.getAttribute('aria-label'), test.text);
       const touch = mobile ? await context.newCDPSession(page) : null;
       const hold = async (slot, key, until) => {
         if (mobile) {
-          const b = await page.locator(`.wb-touch-btn-${slot}`).boundingBox();
+          const b = await touchButton(slot).boundingBox();
           assert.ok(b);
           await touch.send('Input.dispatchTouchEvent', {
             type: 'touchStart',
@@ -68,28 +87,41 @@ try {
           else await page.keyboard.up(key);
         }
       };
+      if (subclass && classId === 'monk') {
+        await hold('a2', 'KeyE', () =>
+          page
+            .locator('.hud-selfhp')
+            .getByTitle(/Flow: next marked skill/)
+            .waitFor(),
+        );
+      }
       await hold(test.slot, test.key, () =>
         mobile
-          ? page.locator(`.wb-touch-btn-${test.slot} .wb-touch-btn-label.cooling`).waitFor()
+          ? touchButton(test.slot).locator('.wb-touch-btn-label.cooling').waitFor()
           : page.waitForFunction((n) => {
-              const el = document.querySelector(`.hud-ability[aria-label^="${n}"]`);
+              const el = document.querySelector(`.hud-ability[aria-label*="${n} —"]`);
               return el && !el.classList.contains('ready');
             }, test.name),
       );
       const self = page.locator('.hud-selfhp');
-      if (classId === 'knight') await self.getByTitle(/Guard: taking a nonlethal hit/).waitFor();
-      if (classId === 'monk') {
-        const flow = self.getByTitle(/Flow: next marked strike/);
+      if (classId === 'knight' && !subclass)
+        await self.getByTitle(/Guard: taking a nonlethal hit/).waitFor();
+      if (classId === 'monk' && !subclass) {
+        const flow = self.getByTitle(/Flow: next marked skill/);
         await flow.waitFor();
         await hold('a3', 'KeyR', () => flow.waitFor({ state: 'hidden' }));
       }
+      if (subclass && classId === 'monk')
+        await self.getByTitle(/Flow: next marked skill/).waitFor({ state: 'hidden' });
+      if (subclass?.name === 'Frenzy') await self.getByTitle(/Blood Frenzy/).waitFor();
+      if (subclass?.name === 'Wolf Spirit') await self.getByTitle(/Wolf Hunt/).waitFor();
       if (mobile) await click(button('Pause'));
       else await page.keyboard.press('Escape');
       await page.locator('.wb-pause-skills').waitFor();
       assert.match(await page.locator('.wb-pause-skills').textContent(), test.text);
       assert.deepEqual(errors, []);
       console.log(
-        `PASS ${mobile ? 'mobile 320×568' : 'desktop'} ${classId}: martial descriptions, real casting, pause${classId === 'monk' ? ', Flow preparation/consumption' : ''}`,
+        `PASS ${mobile ? 'mobile 320×568' : 'desktop'} ${classId}${subclass ? ' / ' + subclass.name : ''}: martial descriptions, real casting, pause${classId === 'monk' ? ', Flow preparation/consumption' : ''}`,
       );
       await context.close();
     }

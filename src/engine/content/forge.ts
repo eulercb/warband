@@ -27,6 +27,7 @@
  * the balance-pricing weight, the component describer and the name blender. The
  * synthesizers and the active-run registry build on these (phase B+).
  */
+import { flowPayoff } from './martialRules';
 import { bardSongText } from './bardText';
 import type { ZoneKind, ClassId, AbilitySlot } from '../core/types';
 import type { PlayerAbilityDef, AbilityKind, ClassDef } from './classes';
@@ -96,6 +97,10 @@ export type EffectComponent =
   /** item 13 — a CRIT lean this ability carries: `chance` added to the hero's crit
    * chance, `mult` added to the crit multiplier, for its own hits (a precision strike). */
   | { kind: 'crit'; chance: number; mult: number; prepared?: boolean }
+  | { kind: 'parry'; duration: number }
+  | { kind: 'bloodRage'; duration: number }
+  | { kind: 'wolfHunt'; duration: number }
+  | { kind: 'flowExtend'; seconds: number }
   | { kind: 'guard'; duration: number }
   | { kind: 'momentum'; duration: number }
   | { kind: 'momentumStrike' }
@@ -266,6 +271,10 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.grantsFlight) effects.push({ kind: 'flight', duration: def.grantsFlight });
   }
 
+  if (def.parryOnHit) effects.push({ kind: 'parry', duration: def.parryOnHit });
+  if (def.bloodRage) effects.push({ kind: 'bloodRage', duration: def.bloodRage });
+  if (def.wolfHunt) effects.push({ kind: 'wolfHunt', duration: def.wolfHunt });
+  if (def.flowExtendOnHit) effects.push({ kind: 'flowExtend', seconds: def.flowExtendOnHit });
   if (def.guardWindow) effects.push({ kind: 'guard', duration: def.guardWindow });
   if (def.momentumWindow) effects.push({ kind: 'momentum', duration: def.momentumWindow });
   if (def.spendsMomentum) effects.push({ kind: 'momentumStrike' });
@@ -356,6 +365,18 @@ export function recompose(
       case 'shove': // item 11 — forced movement (knockback / pull)
         if (e.pull) def.pull = e.distance;
         else def.knockback = e.distance;
+        break;
+      case 'parry':
+        def.parryOnHit = e.duration;
+        break;
+      case 'bloodRage':
+        def.bloodRage = e.duration;
+        break;
+      case 'wolfHunt':
+        def.wolfHunt = e.duration;
+        break;
+      case 'flowExtend':
+        def.flowExtendOnHit = e.seconds;
         break;
       case 'guard':
         def.guardWindow = e.duration;
@@ -478,6 +499,14 @@ function effectValue(e: EffectComponent, fan: number): number {
       return (1 - e.mult) * e.duration * 12; // soft CC, priced by depth × time
     case 'castSlow':
       return (e.mult - 1) * e.duration * 18; // soft tempo CC, priced by depth × time
+    case 'parry':
+      return 12 + e.duration * 8;
+    case 'bloodRage':
+      return e.duration * 5; // Value the leech without a discount for its voluntary cost.
+    case 'wolfHunt':
+      return e.duration * 3;
+    case 'flowExtend':
+      return e.seconds * 16;
     case 'guard':
       return e.duration * 3;
     case 'momentum':
@@ -576,7 +605,7 @@ export function describeComposed(comp: AbilityComponents, cooldown: number): str
   parts.push(deliveryPhrase(d));
 
   // Every effect yields a non-empty clause, so no gap-filtering is needed.
-  for (const e of comp.effects) parts.push(effectPhrase(e));
+  for (const e of comp.effects) parts.push(effectPhrase(e, d.kind));
   if (
     comp.delivery.surgeTwin &&
     comp.delivery.kind === 'projectile' &&
@@ -618,7 +647,7 @@ function deliveryPhrase(d: Delivery): string {
 }
 
 /** A short clause for one effect, or '' when it carries no player-facing number. */
-function effectPhrase(e: EffectComponent): string {
+function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
   switch (e.kind) {
     case 'damage':
       return `${n(e.amount)} dmg`;
@@ -638,6 +667,14 @@ function effectPhrase(e: EffectComponent): string {
       return `slow to ${pct(e.mult * 100)} for ${s(e.duration)}`;
     case 'castSlow':
       return `+${pct((e.mult - 1) * 100)} enemy wind-up for ${s(e.duration)}`;
+    case 'parry':
+      return `connecting hit readies next melee counter +30% for 4s; parry takes 40% less damage for ${s(e.duration)}`;
+    case 'bloodRage':
+      return `blood rage ${s(e.duration)} — pay 2% max HP/s (cannot kill you); heal 20% of effective direct damage`;
+    case 'wolfHunt':
+      return `wolf hunt ${s(e.duration)} — walk 120u per momentum stack instead of melee hits; up to 3 stacks, at most 1 per 0.4s`;
+    case 'flowExtend':
+      return `connecting hits extend existing Flow by ${s(e.seconds)}, up to 1s total per preparation`;
     case 'guard':
       return `guard ${s(e.duration)}; first damaging nonlethal hit readies next melee hit +30% for 4s`;
     case 'momentum':
@@ -647,7 +684,7 @@ function effectPhrase(e: EffectComponent): string {
     case 'prepareFlow':
       return `successful movement readies Flow for ${s(e.duration)}; next marked special is instant with more reach`;
     case 'flowStrike':
-      return 'spend Flow for no wind-up and +30u cone reach / +35u burst radius';
+      return flowPayoff(delivery);
     case 'pierce':
       return `pierce ${e.count} additional ${e.count === 1 ? 'enemy' : 'enemies'} (direct shots only; blasts/zones use one impact)`;
     case 'rescueHeal':
@@ -936,12 +973,18 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'heal' || kind === 'buffAlly';
     case 'healOnUse':
       return kind === 'dash' || kind === 'blink' || kind === 'selfBuff' || kind === 'taunt';
+    case 'parry':
+    case 'flowExtend':
+      return kind === 'meleeCone';
+    case 'bloodRage':
+    case 'wolfHunt':
     case 'guard':
     case 'momentum':
       return kind === 'selfBuff';
     case 'momentumStrike':
-    case 'flowStrike':
       return kind === 'meleeCone' || kind === 'pbaoe';
+    case 'flowStrike':
+      return DIRECT_STRIKE.has(kind) || kind === 'groundZone';
     case 'prepareFlow':
       return kind === 'dash' || kind === 'blink';
     case 'pierce':
@@ -1449,10 +1492,15 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, duration: e.duration * f };
     case 'castSlow':
       return { ...e, duration: e.duration * f }; // rigid: keeps its bite, sheds time
+    case 'parry':
+    case 'bloodRage':
+    case 'wolfHunt':
     case 'guard':
     case 'momentum':
     case 'prepareFlow':
       return { ...e, duration: e.duration * f };
+    case 'flowExtend':
+      return { ...e, seconds: e.seconds * f };
     case 'momentumStrike':
     case 'flowStrike':
     case 'pierce':
@@ -1575,6 +1623,10 @@ function addBoonComponents(
   for (const effect of decompose(def).effects) {
     if (
       [
+        'parry',
+        'bloodRage',
+        'wolfHunt',
+        'flowExtend',
         'guard',
         'momentum',
         'momentumStrike',
@@ -1714,6 +1766,14 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.castSlow != null
         ? { ...e, mult: def.castSlow, duration: def.castSlowDuration ?? e.duration }
         : e;
+    case 'parry':
+      return def.parryOnHit != null ? { ...e, duration: def.parryOnHit } : e;
+    case 'bloodRage':
+      return def.bloodRage != null ? { ...e, duration: def.bloodRage } : e;
+    case 'wolfHunt':
+      return def.wolfHunt != null ? { ...e, duration: def.wolfHunt } : e;
+    case 'flowExtend':
+      return def.flowExtendOnHit != null ? { ...e, seconds: def.flowExtendOnHit } : e;
     case 'guard':
       return def.guardWindow != null ? { ...e, duration: def.guardWindow } : e;
     case 'momentum':
@@ -1808,6 +1868,13 @@ function capEffect(e: EffectComponent): EffectComponent {
         mult: clamp(round05(e.mult), 1.1, CAST_SLOW_MAX),
         duration: clamp(round1(e.duration), 1, 5),
       };
+    case 'parry':
+      return { ...e, duration: clamp(round05(e.duration), 0.3, 1.2) };
+    case 'bloodRage':
+    case 'wolfHunt':
+      return { ...e, duration: clamp(round1(e.duration), 2, 8) };
+    case 'flowExtend':
+      return { ...e, seconds: clamp(round05(e.seconds), 0.1, 0.5) };
     case 'guard':
     case 'prepareFlow':
       return { ...e, duration: clamp(round1(e.duration), 1, 8) };

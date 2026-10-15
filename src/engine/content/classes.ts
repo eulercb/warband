@@ -2,6 +2,7 @@
  * Warband — data-driven class definitions (Knight / Ranger / Mage / Cleric).
  * All balance numbers per the build brief §7; tweak freely.
  */
+import { flowPayoff } from './martialRules';
 import { bardSongText } from './bardText';
 import type { ClassId, AbilitySlot, ExtSlot, ZoneKind } from '../core/types';
 import { PLAYER_RADIUS, CLASS_COLORS, ATTACK_CD_SCALE } from '../core/constants';
@@ -130,6 +131,14 @@ export interface PlayerAbilityDef {
   critMultBonus?: number;
   /** Guarded real damage readies one +30% connecting melee counter for 4s. */
   guardWindow?: number;
+  /** A connecting cone readies a counter AFTER the entire strike and a short parry. */
+  parryOnHit?: number;
+  /** Fixed 2% max-HP/s cost and 20% effective direct-damage leech, duration in seconds. */
+  bloodRage?: number;
+  /** Walking, rather than melee hits, builds momentum during this window. */
+  wolfHunt?: number;
+  /** Connecting hits extend existing Flow by this amount, at most 1s per preparation. */
+  flowExtendOnHit?: number;
   /** During this window, melee hits build up to 3 finisher momentum stacks. */
   momentumWindow?: number;
   spendsMomentum?: boolean;
@@ -742,6 +751,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       basic: {
         slot: 'basic',
         name: 'Flurry of Blows',
+        flowExtendOnHit: 0.25,
         kind: 'meleeCone',
         cooldown: 0.4,
         damage: 15,
@@ -1105,6 +1115,22 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
     parts.push(`allies inside take ${n((1 - def.zoneAllyDefMult) * 100)}% less damage`);
   if (def.bardSong) parts.push(bardSongText(def.bardSong));
 
+  if (def.parryOnHit)
+    parts.push(
+      `connecting hit readies next melee counter +30% for 4s; parry takes 40% less damage for ${s(def.parryOnHit)}`,
+    );
+  if (def.bloodRage)
+    parts.push(
+      `blood rage ${s(def.bloodRage)} — pay 2% max HP/s (cannot kill you); heal 20% of effective direct damage`,
+    );
+  if (def.wolfHunt)
+    parts.push(
+      `wolf hunt ${s(def.wolfHunt)} — walk 120u per momentum stack instead of melee hits; up to 3 stacks, at most 1 per 0.4s`,
+    );
+  if (def.flowExtendOnHit)
+    parts.push(
+      `connecting hits extend existing Flow by ${s(def.flowExtendOnHit)}, up to 1s total per preparation`,
+    );
   if (def.guardWindow)
     parts.push(
       `guard ${s(def.guardWindow)}; first damaging nonlethal hit readies next melee hit +30% for 4s`,
@@ -1119,8 +1145,7 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
     parts.push(
       `successful movement readies Flow for ${s(def.prepareFlow)}; next marked special is instant with more reach`,
     );
-  if (def.consumesFlow)
-    parts.push('spend Flow for no wind-up and +30u cone reach / +35u burst radius');
+  if (def.consumesFlow) parts.push(flowPayoff(def.kind));
   if (def.pierce)
     parts.push(
       `pierce ${n(def.pierce)} additional ${def.pierce === 1 ? 'enemy' : 'enemies'} (direct shots only; blasts/zones use one impact)`,
