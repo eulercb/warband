@@ -102,22 +102,22 @@ jobs:
           CHROMIUM_PATH="$(node -e "console.log(require('playwright-core').chromium.executablePath())")"
           export CHROMIUM_PATH
           set +e
-          npm run smoke
+          node scripts/run-smoke.mjs smoke
           code=$?
           if [ "$code" -eq 0 ]; then
-            npm run smoke:mobile
+            node scripts/run-smoke.mjs smoke:mobile
             code=$?
           fi
           if [ "$code" -eq 0 ]; then
-            npm run smoke:passives
+            node scripts/run-smoke.mjs smoke:passives
             code=$?
           fi
           if [ "$code" -eq 0 ]; then
-            npm run smoke:spells
+            node scripts/run-smoke.mjs smoke:spells
             code=$?
           fi
           if [ "$code" -eq 0 ]; then
-            npm run smoke:support
+            node scripts/run-smoke.mjs smoke:support
             code=$?
           fi
           set -e
@@ -136,8 +136,8 @@ jobs:
             curl -sf http://127.0.0.1:5173/ >/dev/null && break
             sleep 1
           done
-          npm run smoke:rewards
-          npm run smoke:rooms
+          node scripts/run-smoke.mjs smoke:rewards
+          node scripts/run-smoke.mjs smoke:rooms
 
       - name: Upload smoke screenshots
         if: always()
@@ -178,7 +178,7 @@ jobs:
             curl -sf http://localhost:4173/ >/dev/null && break
             sleep 1
           done
-          npm run smoke:martial
+          node scripts/run-smoke.mjs smoke:martial
       - name: Upload martial screenshots
         if: failure()
         uses: actions/upload-artifact@v4

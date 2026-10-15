@@ -59,6 +59,8 @@ export interface BuffGlow {
 /** Map one buff/debuff to a glow color, or null if it shouldn't glow. */
 export function buffGlow(kind: BuffKind, mult: number): BuffGlow | null {
   switch (kind) {
+    case 'bloodRage':
+    case 'wolfHunt':
     case 'guard':
     case 'counter':
     case 'momentum':

@@ -3,7 +3,7 @@
  * Pure functions operating on entities + an event sink. No world import (to
  * keep this decoupled and trivially unit-testable).
  */
-import { martialHitMultiplier, onMartialHit, onGuardedDamage } from './martial';
+import { martialHitMultiplier, onMartialHit, onGuardedDamage, bloodHitHealing } from './martial';
 import type {
   Player,
   Boss,
@@ -49,6 +49,8 @@ export interface HitMods {
   backstab?: boolean;
   prepared?: boolean;
   melee?: boolean;
+  direct?: boolean;
+  flowExtend?: number;
 }
 
 /**
@@ -371,7 +373,9 @@ export function damageBoss(
     crit: mods?.crit,
     backstab: mods?.backstab,
   });
-  onMartialHit(source, effective, mods?.melee);
+  onMartialHit(source, effective, mods?.melee, mods?.flowExtend);
+  const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
+  if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
   const passiveHeal = subclassHitHealing(source, boss, effective);
   if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);
   return outgoing;
@@ -417,7 +421,9 @@ export function damageAdd(
     crit: mods?.crit,
     backstab: mods?.backstab,
   });
-  onMartialHit(source, effective, mods?.melee);
+  onMartialHit(source, effective, mods?.melee, mods?.flowExtend);
+  const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
+  if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
   const passiveHeal = subclassHitHealing(source, add, effective);
   if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);
   return outgoing;

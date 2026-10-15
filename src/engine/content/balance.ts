@@ -33,8 +33,10 @@
  * their class baseline run through the same estimator, so systematic modelling
  * error cancels in the ratio and an un-upgraded hero measures exactly 1.
  * Deliberately un-modelled (utility, not raw power): terrain resist, i-frames,
- * stuns/slows, knockbacks and lifesteal.
+ * stuns/slows, knockbacks and ordinary ability lifesteal. Blood rage sustain is
+ * modelled conservatively because it applies across the direct-hit kit.
  */
+import { BLOOD_LEECH } from './martialRules';
 import type { Player, BossTier } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
 import { getClass } from './classes';
@@ -125,12 +127,23 @@ function kitRates(
   castMult: number,
 ): KitRates {
   const total: KitRates = { dps: 0, hps: 0, offenseBuff: 0 };
+  let bloodUptime = 0;
+  let directDps = 0;
   for (const ab of abilities) {
+    const cycle = Math.max(
+      ab.cooldown * cdMult + (ab.castTime ?? 0) * castMult,
+      BALANCE_MIN_CYCLE_S,
+    );
+    bloodUptime = Math.max(bloodUptime, clamp((ab.bloodRage ?? 0) / cycle, 0, 1));
+    if (ab.kind !== 'heal')
+      directDps += (ab.damage * Math.max(1, ab.projCount ?? 1) + (ab.landingDamage ?? 0)) / cycle;
     const r = abilityRates(ab, cdMult, castMult);
     total.dps += r.dps;
     total.hps += r.hps;
     total.offenseBuff += r.offenseBuff;
   }
+  // Value bounded direct-hit sustain conservatively; self-cost never buys cheaper power.
+  total.hps += directDps * bloodUptime * BLOOD_LEECH * 0.6;
   return total;
 }
 

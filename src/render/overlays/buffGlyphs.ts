@@ -27,6 +27,20 @@ function describe(
   mult: number,
 ): { glyph: string; color: number; good: boolean; label: string } | null {
   switch (kind) {
+    case 'bloodRage':
+      return {
+        glyph: '🩸',
+        color: 0xff6655,
+        good: true,
+        label: 'Blood Frenzy: pay 2% max HP/s; leech 20% of direct damage; cost cannot kill you',
+      };
+    case 'wolfHunt':
+      return {
+        glyph: '🐺',
+        color: 0x6bbf59,
+        good: true,
+        label: 'Wolf Hunt: walk 120u for a momentum stack; melee hits do not build stacks',
+      };
     case 'guard':
       return {
         glyph: '🏰',
@@ -53,7 +67,7 @@ function describe(
         glyph: '🌊',
         color: 0x59d9ff,
         good: true,
-        label: 'Flow: next marked strike or palm has no wind-up and more reach',
+        label: 'Flow: next marked skill is instant, with its listed reach/control bonus',
       };
     case 'harmony':
       return {

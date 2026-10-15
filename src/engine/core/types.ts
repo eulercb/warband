@@ -177,6 +177,8 @@ export type BuffKind =
   | 'castSlow'
   | 'guard' // one guarded hit may prepare a counter
   | 'counter' // one stronger connecting melee hit
+  | 'bloodRage' // leech direct damage while paying a nonlethal life cost
+  | 'wolfHunt' // walking replaces melee momentum generation
   | 'rageRhythm' // melee hits may generate bounded momentum
   | 'momentum' // up to three finisher stacks; mult = count
   | 'momentumBeat' // hidden 0.4s anti-multi-target stack gate
@@ -195,6 +197,8 @@ export interface Buff {
   remaining: number; // seconds
   /** Source label, used for de-duping refreshable buffs (e.g. 'shieldWall'). */
   source: string;
+  /** Host-only extension already spent from this Flow preparation. */
+  flowExtended?: number;
   retaliation?: { radius: number; lifesteal: number };
 }
 
@@ -294,6 +298,8 @@ export interface Player {
   castTimerMax: number; // the cast's full duration (castTime × castMult); drives the cast bar
   castSlot: ExtSlot | null;
   buffs: Buff[];
+  /** Host-only ordinary walking distance toward a Wolf Hunt momentum beat. */
+  huntDistance?: number;
 
   // Persistent per-run upgrade modifiers (see engine/upgrades.ts). Applied once
   // at spawn; all default to their neutral value for an un-upgraded hero.

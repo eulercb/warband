@@ -2,7 +2,12 @@
  * Warband — ability resolution for players and bosses. Geometric hit tests
  * (math.ts) resolve cones / circles / lines; effects mutate world entities.
  */
-import { armMartialUtility, prepareMartialFlow, consumeMartialFinishers } from './martial';
+import {
+  armMartialUtility,
+  prepareMartialFlow,
+  consumeMartialFinishers,
+  onParryHit,
+} from './martial';
 import { beginSupportCast, nearbySupportAllies, healSupportAlly } from './support';
 import { consumeSpellSurge, prepareSpellSurge, controlledSpellMultiplier } from './spellCombos';
 import { onSubclassAbility } from './subclassPassives';
@@ -424,6 +429,7 @@ export function resolvePlayerAbility(
           applyStrikeRiders(world, p.pos, a, ab);
         }
       }
+      onParryHit(p, ab, dealt);
       lifesteal(world, p, ab, dealt);
       break;
     }
@@ -502,6 +508,7 @@ export function resolvePlayerAbility(
           applyStrikeRiders(world, p.pos, a, ab);
         }
       }
+      onParryHit(p, ab, dealt);
       lifesteal(world, p, ab, dealt);
       if (ab.rebukeDuration) armRebuke(p, ab);
       break;
@@ -806,6 +813,7 @@ function resolveComposedAbility(
           applyStrikeRiders(world, p.pos, a, ab);
         }
       }
+      onParryHit(p, ab, dealt);
       lifesteal(world, p, ab, dealt);
       buffSelf();
       buffAllies(FORGE_RALLY_RANGE);
@@ -849,6 +857,7 @@ function resolveComposedAbility(
           applyStrikeRiders(world, p.pos, a, ab);
         }
       }
+      onParryHit(p, ab, dealt);
       lifesteal(world, p, ab, dealt);
       if (ab.rebukeDuration) armRebuke(p, ab);
       buffSelf();
