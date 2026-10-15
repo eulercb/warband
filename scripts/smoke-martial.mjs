@@ -8,7 +8,7 @@ const browser = await chromium.launch({
 });
 let currentPage;
 try {
-  for (const mobile of [false, true])
+  for (const mobile of process.env.SMOKE_MOBILE_ONLY === '1' ? [true] : [false, true])
     for (const [classId, subclass] of [
       ['knight'],
       ['ranger'],
@@ -20,6 +20,7 @@ try {
       ['monk', { name: 'Shadow Dart', text: /at least 0.6s stun/ }],
       ['monk', { name: 'Cloud of Shadow', text: /slow to 60%/ }],
     ]) {
+      if (process.env.SMOKE_SUBCLASSES_ONLY === '1' && !subclass) continue;
       const context = await browser.newContext({
         viewport: mobile ? { width: 320, height: 568 } : { width: 1280, height: 800 },
         isMobile: mobile,
@@ -60,14 +61,18 @@ try {
         monk: { name: 'Step of the Wind', slot: 'a2', key: 'KeyE', text: /Flow for 4s/ },
       };
       const test = subclass ? { ...subclass, slot: 'sub1', key: 'KeyZ' } : cases[classId];
+      const touchButton = (slot) =>
+        slot === 'sub1'
+          ? page.locator('.wb-touch-btn-sub').last()
+          : page.locator(`.wb-touch-btn-${slot}`);
       const tile = page.locator(`.hud-ability[aria-label*="${test.name} —"]`);
       await tile.waitFor({ state: mobile ? 'attached' : 'visible' });
-      if (mobile) await page.locator(`.wb-touch-btn-${test.slot}`).waitFor();
+      if (mobile) await touchButton(test.slot).waitFor();
       assert.match(await tile.getAttribute('aria-label'), test.text);
       const touch = mobile ? await context.newCDPSession(page) : null;
       const hold = async (slot, key, until) => {
         if (mobile) {
-          const b = await page.locator(`.wb-touch-btn-${slot}`).boundingBox();
+          const b = await touchButton(slot).boundingBox();
           assert.ok(b);
           await touch.send('Input.dispatchTouchEvent', {
             type: 'touchStart',
@@ -92,7 +97,7 @@ try {
       }
       await hold(test.slot, test.key, () =>
         mobile
-          ? page.locator(`.wb-touch-btn-${test.slot} .wb-touch-btn-label.cooling`).waitFor()
+          ? touchButton(test.slot).locator('.wb-touch-btn-label.cooling').waitFor()
           : page.waitForFunction((n) => {
               const el = document.querySelector(`.hud-ability[aria-label*="${n} —"]`);
               return el && !el.classList.contains('ready');
