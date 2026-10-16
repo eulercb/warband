@@ -778,3 +778,41 @@ describe('<Controls>', () => {
     expect(useBindings.getState().bindings.pad.basic[0]).not.toBe(3);
   });
 });
+
+describe('absorption HUD', () => {
+  it('shows separate protection amounts for local and remote heroes without inflating HP', () => {
+    const buffs: BuffView[] = [{ kind: 'absorption', mult: 24, remaining: 3 }];
+    useHudStore.setState({
+      active: true,
+      classId: 'cleric',
+      hp: 80,
+      maxHp: 100,
+      buffs,
+      teammates: [
+        {
+          id: 2,
+          name: 'Ally',
+          classId: 'knight',
+          hp: 90,
+          maxHp: 120,
+          state: 'alive',
+          isLocal: false,
+          buffs,
+          score: 0,
+        },
+      ],
+    });
+    const { container } = render(<HUD />);
+    expect(screen.getAllByRole('meter', { name: 'Absorption' })).toHaveLength(2);
+    expect(
+      screen.getAllByRole('meter', { name: 'Absorption' })[0].getAttribute('aria-valuenow'),
+    ).toBe('24');
+    expect(
+      container.querySelector('.hud-selfhp .hud-healthbar-fill')?.getAttribute('style'),
+    ).toContain('80%');
+    expect(container.querySelector('.hud-selfhp')?.textContent).toContain('80 / 100');
+    expect(container.querySelector('.hud-absorption-num')?.textContent).toContain('+24');
+    act(() => useHudStore.setState({ buffs: [], teammates: [] }));
+    expect(screen.queryByRole('meter', { name: 'Absorption' })).toBeNull();
+  });
+});

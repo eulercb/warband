@@ -2844,6 +2844,10 @@ function amplify(ab: PlayerAbilityDef, mag: number, size: number): void {
   scaleField(ab, 'zoneTickDamage', mag);
   scaleField(ab, 'zoneTickHeal', mag);
   scaleField(ab, 'healOnUse', mag);
+  if (ab.absorption) {
+    ab.absorption = { ...ab.absorption, amount: Math.round(ab.absorption.amount * (1 + mag)) };
+    scaleField(ab, 'range', size);
+  }
   scaleField(ab, 'radius', size);
   scaleField(ab, 'impactRadius', size);
   if (ab.kind === 'meleeCone') scaleField(ab, 'range', size);

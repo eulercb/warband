@@ -63,10 +63,11 @@ describe('Cleric rescue', () => {
     expect(ally.hp).toBeCloseTo(84 + 78);
     expect(p.stats.healingDone).toBe(78);
     expect(p.threat).toBeGreaterThan(0);
-    expect(buffMult(ally, 'damageTaken')).toBe(0.85);
+    expect(buffMult(ally, 'damageTaken')).toBe(1);
+    expect(ally.buffs.find((b) => b.kind === 'absorption')?.mult).toBe(36);
     const hp = ally.hp;
     damagePlayer(w, ally, 40);
-    expect(ally.hp).toBeCloseTo(hp - 34);
+    expect(ally.hp).toBeCloseTo(hp - 4);
     tickBuffs(ally, 2.1);
     expect(buffMult(ally, 'damageTaken')).toBe(1);
   });
@@ -86,7 +87,7 @@ describe('Cleric rescue', () => {
     expect(p.stats.healingDone).toBe(60);
     expect(p.buffs).toEqual([]);
   });
-  it('rescues solo, caps healing at missing HP, and refreshes a single ward', () => {
+  it('rescues solo, caps healing at missing HP, and keeps one capped absorption pool', () => {
     const w = world('cleric');
     const p = w.players[0];
     p.hp = 30;
@@ -97,7 +98,7 @@ describe('Cleric rescue', () => {
     expect(p.threat).toBe(0);
     p.hp = 30;
     resolvePlayerAbility(w, p, 'a1', ZERO);
-    expect(p.buffs.filter((b) => b.source === 'rescueWard')).toHaveLength(1);
+    expect(p.buffs.filter((b) => b.kind === 'absorption')).toHaveLength(1);
   });
   it.each(['cl_light_flash', 'cl_life_mend'])('extends rescue to %s and copied skills', (id) => {
     const w = world('knight');
@@ -107,7 +108,7 @@ describe('Cleric rescue', () => {
     const amount = p.subAbilities!.sub1!.damage;
     resolvePlayerAbility(w, p, 'sub1', ZERO);
     expect(ally.hp).toBeCloseTo(20 + amount * 1.3);
-    expect(ally.buffs.some((b) => b.source === 'rescueWard')).toBe(true);
+    expect(ally.buffs.some((b) => b.kind === 'absorption')).toBe(true);
   });
 });
 

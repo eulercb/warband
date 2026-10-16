@@ -99,6 +99,10 @@ function abilityRates(ab: PlayerAbilityDef, cdMult: number, castMult: number): K
   const zoneCommit = zoneTicks * BALANCE_ZONE_COMMIT;
   const healPerUse =
     (ab.healOnUse ?? 0) +
+    // Temporary absorption has a bounded chance to be used before expiry.
+    (ab.absorption?.amount ?? 0) * 0.6 +
+    (ab.rescueHealBonus ? ab.damage * 0.5 * 0.25 * 0.6 : 0) +
+    (ab.overflowShield ? (ab.zoneTickHeal ?? 0) * zoneCommit * 0.25 : 0) +
     (ab.zoneTickHeal ?? 0) * zoneCommit +
     // A 'heal' kind's `damage` field IS its heal magnitude — sustain, not offense.
     (ab.kind === 'heal' ? ab.damage * (1 + (ab.rescueHealBonus ?? 0) * 0.25) : 0) +

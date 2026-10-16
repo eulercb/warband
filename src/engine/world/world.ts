@@ -1,3 +1,4 @@
+import { grantAbsorption, maintainAbsorption, OVERFLOW_SECONDS } from '../combat/absorption';
 /**
  * Warband — authoritative world state + fixed-timestep `step`. PURE TS.
  * Only the host runs a World; clients render interpolated snapshots.
@@ -1117,6 +1118,7 @@ export class World {
 
   private tickTimers(dt: number): void {
     for (const p of this.players) {
+      maintainAbsorption(p);
       tickBloodPrice(p, dt);
       tickBuffs(p, dt);
       tickSubclassPassives(p, dt);
@@ -1627,6 +1629,7 @@ export class World {
       ownerId: proj.ownerId,
       damagePerTick: oi.tickDamage ?? 0,
       healPerTick: oi.tickHeal ?? 0,
+      overflowShield: oi.overflowShield,
       slowMult: oi.slowMult,
       slowDuration: oi.slowDuration,
       roots: oi.roots,
@@ -1891,7 +1894,10 @@ export class World {
         if (p.state !== 'alive') continue;
         if (dist(z.pos, p.pos) <= z.radius + p.radius) {
           // heal via combat.healPlayer for stats/threat
+          const missing = Math.max(0, p.maxHp - p.hp);
           this.healViaZone(owner, p, z.healPerTick);
+          if (z.overflowShield && owner?.state === 'alive')
+            grantAbsorption(p, Math.max(0, z.healPerTick - missing), OVERFLOW_SECONDS, true);
         }
       }
     }
@@ -3009,6 +3015,7 @@ export class World {
   private checkDownedTransitions(): void {
     for (const p of this.players) {
       if (p.state === 'alive' && p.hp <= 0) {
+        p.buffs = p.buffs.filter((b) => b.kind !== 'absorption');
         // Phoenix charm (item 21): spend a self-revive to spring straight back up
         // with a short invulnerability window instead of falling. Fires once per
         // charge, before the normal downed transition.

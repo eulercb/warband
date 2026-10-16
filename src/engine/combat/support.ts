@@ -1,3 +1,4 @@
+import { grantAbsorption } from './absorption';
 /** Authored support interactions travel with copied skills, not the active class. */
 import type { Player } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
@@ -12,6 +13,14 @@ export function nearbySupportAllies(world: World, p: Player, range: number): Pla
 
 /** Both verses last eight seconds. A repeated verse refreshes, never adds stacks. */
 export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef): boolean {
+  if (ab.absorption) {
+    const nearby = nearbySupportAllies(world, p, ab.range ?? 420);
+    const targets =
+      ab.absorption.target === 'nearby'
+        ? nearby
+        : nearby.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp).slice(0, 1);
+    for (const ally of targets) grantAbsorption(ally, ab.absorption.amount, ab.absorption.duration);
+  }
   if (ab.allyWard) {
     const ward = ab.allyWard;
     for (const ally of nearbySupportAllies(world, p, ward.range)) {
@@ -44,7 +53,7 @@ export function healSupportAlly(
   const rescue = !!ab.rescueHealBonus && target.hp <= target.maxHp * 0.35;
   const effective = healPlayer(world, p, target, amount * (rescue ? 1 + ab.rescueHealBonus! : 1));
   if (effective <= 0) return 0;
-  if (rescue) applyBuff(target, makeBuff('damageTaken', 0.85, 2, 'rescueWard'));
+  if (rescue) grantAbsorption(target, Math.min(effective * 0.5, target.maxHp * 0.15), 3);
   if (ab.bardSong === 'harmony') applyBuff(p, makeBuff('harmony', 0, 8, 'bardHarmony'));
   if (ab.recoveryZone) {
     // One grove per caster across base/subclass/copied heals; unrelated zones survive.

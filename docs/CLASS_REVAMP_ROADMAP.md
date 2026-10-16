@@ -5,7 +5,8 @@ for Assassin, Arcane Trickster, Fiend and Great Old One were merged and playtest
 Mage/Sorcerer differentiation was merged and playtested.
 Support-class differentiation was merged and playtested.
 Knight/Ranger/Barbarian/Monk differentiation was merged and playtested.
-Martial subclass coherence is implemented for review.
+Martial subclass coherence was merged and playtested.
+Cleric absorption and Chain Pull momentum are implemented for review.
 Remaining defining passives, companions, forms and later milestones remain proposals.
 
 ## Goals and boundaries
@@ -318,16 +319,16 @@ The original six milestones grouped work by theme; they did not include every
 remaining passive or the balance work discovered during playtests. Avoid treating
 “milestone 5 of 6” as “one patch left until everything is finished.”
 
-| Workstream                 | Merged and playtested | This PR                                       | Still outstanding                                                   |
-| -------------------------- | --------------------- | --------------------------------------------- | ------------------------------------------------------------------- |
-| Base class loops           | 8/12 classes          | Knight, Ranger, Barbarian, Monk (remaining 4) | Review/playtest this batch, then tuning                             |
-| Defining subclass passives | 4/24                  | None                                          | 20; retain proposals until implemented                              |
-| Balance/skill identity     | Feedback collected    | Clearer Bard explanation                      | Fiend, Abjurer, Sorcerer defenses, Cleric absorption, Paladin auras |
-| Companion/form systems     | None                  | None                                          | Beast Master companion and Moon form prototypes                     |
+| Workstream                 | Merged and playtested                | This PR                                         | Still outstanding                                                   |
+| -------------------------- | ------------------------------------ | ----------------------------------------------- | ------------------------------------------------------------------- |
+| Base class loops           | 12/12 classes plus martial coherence | Chain Pull momentum                             | Ongoing tuning                                                      |
+| Defining subclass passives | 4/24                                 | None                                            | 20: 18 in ordinary batches, companion and form                      |
+| Balance/skill identity     | Feedback collected                   | Cleric absorption and full protection inventory | Paladin auras, catalogue-wide defense/recovery review, Fiend tuning |
+| Companion/form systems     | None                                 | None                                            | Beast Master companion and Moon form prototypes                     |
 
-**Suggested next sequence after this PR:**
+**Current sequence:**
 
-1. Cleric absorption foundation and its rescue/defensive/Sanctuary uses.
+1. **This PR:** Cleric absorption foundation and its rescue/defensive/Sanctuary uses.
 2. Paladin moving auras and their distinct skill-triggered roles.
 3. Existing skill/passive balance and identity pass: Fiend, Abjurer, Sorcerer,
    Dragon Wings, and mitigation-only skills; use the two new defensive systems
@@ -338,9 +339,9 @@ remaining passive or the balance work discovered during playtests. Avoid treatin
 5. Beast Master companion prototype plus its defining passive.
 6. Moon form prototype plus its defining passive.
 
-This is **about eight further PRs after this one** (3 defensive/balance PRs,
-3 passive batches, companion, form), plausibly 7–9 if playtests justify combining
-or splitting related work. It is a scope estimate, not a quota or calendar estimate.
+After this absorption batch, **about seven further PRs remain** (2 defensive/balance
+PRs, 3 passive batches, companion, form), with scope adjusted if playtests justify
+combining or splitting related work. It is a scope estimate, not a quota or calendar estimate.
 Integration/balance checks belong in every batch; a final tuning patch may still
 be warranted. Recommend increasing _related content_ per PR (the current four-class
 batch and future six-passive batches), while keeping new shared systems independently
@@ -493,3 +494,73 @@ not a quota/time promise. Six related passives per batch is a reasonable increas
 keep absorption, moving auras and companion AI separate because each creates new
 state, replication and stacking risks. Fiend tuning and the Abjurer/Sorcerer
 redundant protection feedback remain on that defensive/balance list.
+
+## Defensive batch 1: absorption and the full protection audit
+
+Martial subclass coherence is merged and playtested. This batch implements the
+absorption foundation, Cleric rescue/defensive/healing-ground uses, and the small
+Chain Pull follow-up. Chain Pull spends the same bounded momentum as other marked
+finishers (+10% damage and +8u cone reach per stack); its pull distance stays fixed.
+Bear Spirit is deliberately reserved for the protection rework below.
+
+Absorption is temporary protection HP, separate from real HP and maximum HP.
+Damage reduction applies first, then absorption, then remaining damage reaches HP.
+A single shared target pool caps at 30% max HP; direct casts keep the strongest
+amount rather than adding multiple casters' bubbles. A weaker/equal direct cast
+cannot refresh a full stronger bubble. Shield grants produce neither healing
+score nor healing threat. Real hits absorbed by the pool retain guard/rebuke
+reactions; immunity bypasses consumption and reactions, and enemy lifesteal counts
+only HP damage. Death/downing and Phoenix revival clear protection. Ordinary
+class swapping does not refresh it, and max-HP changes clamp the ceiling.
+
+- Rescue heals keep their low-health healing bonus and replace their old mitigation
+  with absorption equal to half the effective heal, capped at 15% max HP, for 3s.
+- Warding Flare protects the lowest-health living ally (including the caster) within
+  420u: 40 absorption for 4s. Preserve Life protects nearby living allies within
+  260u: 30 absorption for 5s. Both use the shared ceiling and retain solo use.
+- Sanctuary and Blessed Bloom convert only unused healing into absorption, capped
+  at a shared 15% max HP across all overlapping zones/casters. It lingers 3s after
+  renewal stops. Overflow cannot extend a larger direct-cast bubble. Druid groves
+  and unrelated healing zones retain their own behavior. Copied/Forge zones carry
+  the explicit overflow property, including projectile impact zones.
+- Protection has a cyan bubble/health strip, a visible local amount and descriptive
+  buff badge. Existing snapshot buff fields replicate the amount and remaining time.
+- Skill upgrades and Forge budgets include absorption; the power estimator values
+  temporary sustain conservatively. Adaptive difficulty formulas are unchanged.
+
+### Scope clarification: audit every mitigation-only skill
+
+The request applies to **the entire authored catalogue**, not only named examples.
+The earlier "as their classes are revisited" wording was too weak: explicitly
+inventory all base and subclass abilities before the identity/balance pass. Evaluate
+copied skills, their Honed/grand upgrades, subclass passives and Forge compatibility
+alongside each rework. This is not an instruction to remove every damage reduction
+rider: keep useful protection when the skill already has meaningful decisions.
+
+Current remaining primary candidates include:
+
+| Class     | Skills to review                                           | Planned handling                                                                       |
+| --------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Knight    | Stand as One; review Rally/Shield Wall coherence           | Add a distinct frontline/team purpose; retain existing counter identity                |
+| Mage      | Arcane Shield, Arcane Ward                                 | Give warding/control choices useful beyond Fireball                                    |
+| Barbarian | **Bear Spirit**                                            | Rework a thematic defensive/rage choice; do not add momentum merely to fill a checkbox |
+| Rogue     | Smoke Bomb, Shield Spell                                   | Distinct evasive/control or spellblade decisions; preserve existing passives           |
+| Paladin   | Divine Shield, Aura of Protection                          | Next batch's moving aura roles                                                         |
+| Bard      | Bolster                                                    | A meaningful Valor protection decision connected to the verse loop                     |
+| Sorcerer  | Draconic Scales, Wild Ward; Dragon Wings' mitigation rider | Replace repetitive protection; give Wings an aerial payoff rather than more mitigation |
+| Warlock   | Dark Resilience                                            | Fit Fiend's sustain/counter identity and planned tuning                                |
+
+Also review skills bundling mitigation with damage, movement or shared protection
+(e.g. Blessing, Inspiration, Mirror Image, Rally and Battle Hymn variants) for
+redundancy and clarity. Keep their useful existing interactions unless a rework
+improves their role. Review all newly found candidates even if absent from this
+inventory; membership is determined by actual effects, not this finite name list.
+
+### Updated remaining sequence
+
+After this batch is merged/playtested: approximately seven PRs remain at the
+previous pace — Paladin auras; the catalogue-wide defensive/recovery/identity
+balance pass; three batches of non-companion/form passives; Beast Master companion;
+Moon form. The broad balance pass may need splitting after its audit: keep the
+estimate provisional rather than promising a fixed patch count. The plain-heal
+review and Fiend tuning remain included in that pass.

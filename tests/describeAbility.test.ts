@@ -69,14 +69,14 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a healing ground-zone reads per-tick heal', () => {
     // Cleric Sanctuary.
     expect(describeAbility(CLASSES.cleric.abilities.a2)).toBe(
-      '10/tick heal · 140u radius · lasts 4s · 14s cooldown',
+      'unused healing builds a 3s bubble, capped at 15% max HP across all zones · 10/tick heal · 140u radius · lasts 4s · 14s cooldown',
     );
   });
 
   it('a direct heal: heal amount + who it can reach', () => {
     // Cleric Heal — heal magnitude + range.
     expect(describeAbility(CLASSES.cleric.abilities.a1)).toBe(
-      'Heal 60 · +30% heal at ≤35% HP; effective rescue wards 15% for 2s · 400u range · 3s cooldown',
+      'Heal 60 · +30% heal at ≤35% HP; effective rescue grants 50% of healed HP as a 3s bubble (up to 15% max HP) · 400u range · 3s cooldown',
     );
   });
 

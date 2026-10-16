@@ -45,7 +45,12 @@ try {
       const cases = {
         cleric: { name: 'Heal', slot: 'a1', key: 'KeyQ', text: /effective rescue/ },
         paladin: { name: 'Divine Shield', slot: 'a3', key: 'KeyR', text: /other allies within/ },
-        druid: { name: 'Entangle', slot: 'a1', key: 'KeyQ', text: /4\/tick heal/ },
+        druid: {
+          name: 'Entangle',
+          slot: 'a1',
+          key: 'KeyQ',
+          text: /\b[1-9]\d*(?:\.\d+)?\/tick heal\b/,
+        },
         bard: { name: 'Dissonant Whispers', slot: 'a3', key: 'KeyR', text: /prepares discord/ },
       };
       const test = cases[classId];
@@ -53,6 +58,8 @@ try {
       await tile.waitFor({ state: mobile ? 'attached' : 'visible' });
       if (mobile) await page.locator(`.wb-touch-btn-${test.slot}`).waitFor();
       assert.match(await tile.getAttribute('aria-label'), test.text);
+      // Procedural variants change Entangle's tick value; healing + root are invariant.
+      if (classId === 'druid') assert.match(await tile.getAttribute('aria-label'), /\broots\b/);
       const touch = mobile ? await context.newCDPSession(page) : null;
       const hold = async (slot, key, until) => {
         if (mobile) {

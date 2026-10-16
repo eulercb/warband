@@ -130,6 +130,10 @@ export function drawBuffGlows(
   };
   if (flying) drawRing({ color: 0xbfe0ff, good: true });
   if (buffs) {
+    if (buffs.some((b) => b.kind === 'absorption' && b.mult > 0 && b.remaining > 0))
+      g.circle(x, y, bodyR + 6)
+        .fill({ color: 0x7edfff, alpha: 0.08 })
+        .stroke({ color: 0x7edfff, width: 1.5, alpha: 0.8 });
     for (const b of buffs) {
       const glow = buffGlow(b.kind, b.mult);
       if (!glow) continue;

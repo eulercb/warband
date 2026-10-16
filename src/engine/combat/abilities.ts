@@ -683,6 +683,7 @@ function zoneToImpact(z: ZoneSpec): ProjectileImpact {
     duration: z.duration,
     tickDamage: z.tickDamage,
     tickHeal: z.tickHeal,
+    overflowShield: z.overflowShield,
     slowMult: z.slowMult,
     slowDuration: z.slowDuration,
     roots: z.roots,
@@ -708,6 +709,7 @@ function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number):
     ownerId: p.id,
     damagePerTick: z.tickDamage ?? 0,
     healPerTick: z.tickHeal ?? 0,
+    overflowShield: z.overflowShield,
     slowMult: z.slowMult,
     slowDuration: z.slowDuration,
     roots: z.roots,
@@ -1029,6 +1031,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     ownerId: p.id,
     damagePerTick: dmgPerTick,
     healPerTick,
+    overflowShield: ab.overflowShield,
     slowMult,
     slowDuration,
     roots: ab.roots, // item 9: carry the true-root flag onto the spawned zone
@@ -1152,6 +1155,7 @@ export interface SpawnZoneOpts {
   ownerId: number;
   damagePerTick: number;
   healPerTick: number;
+  overflowShield?: boolean;
   slowMult?: number;
   slowDuration?: number;
   /** item 9 — a true-root zone (immobilises enemies inside). See GroundZone.roots. */
@@ -1192,6 +1196,7 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     ownerId: o.ownerId,
     damagePerTick: o.damagePerTick,
     healPerTick: o.healPerTick,
+    overflowShield: o.overflowShield,
     slowMult: o.slowMult ?? 1,
     slowDuration: o.slowDuration ?? 0,
     roots: o.roots, // item 9

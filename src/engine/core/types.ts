@@ -177,6 +177,7 @@ export type BuffKind =
   | 'castSlow'
   | 'guard' // one guarded hit may prepare a counter
   | 'counter' // one stronger connecting melee hit
+  | 'absorption' // mult is remaining temporary protection HP
   | 'bloodRage' // leech direct damage while paying a nonlethal life cost
   | 'wolfHunt' // walking replaces melee momentum generation
   | 'rageRhythm' // melee hits may generate bounded momentum
@@ -568,6 +569,7 @@ export interface ProjectileImpact {
   /** item 8 — the bloomed zone reaches airborne targets too (see GroundZone.airborne). */
   airborne?: boolean;
   allyBuff?: ZoneAllyBuff;
+  overflowShield?: boolean;
 }
 
 export interface Projectile {
@@ -899,6 +901,7 @@ export interface GroundZone {
   side: Side; // whose side placed it (determines who it affects)
   ownerId: EntityId;
   damagePerTick: number; // applied to the opposing side
+  overflowShield?: boolean; // unused healing can build bounded absorption
   healPerTick: number; // applied to the owning side
   /** Host-only: a healing skill may keep only one recovery grove per owner. */
   recovery?: boolean;
