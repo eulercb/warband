@@ -575,6 +575,12 @@ const PALADIN: CharUpgradeDef[] = [
       mul(a.a3, 'buffDefMult', 0.8);
       addN(a.a3, 'buffDuration', 2);
       mul(a.a3, 'cooldown', 0.85);
+      if (a.a3.paladinAura)
+        a.a3.paladinAura = {
+          ...a.a3.paladinAura,
+          radius: a.a3.paladinAura.radius + 20,
+          duration: a.a3.paladinAura.duration + 1,
+        };
       if (a.a3.allyWard)
         a.a3.allyWard = {
           ...a.a3.allyWard,
@@ -2844,8 +2850,16 @@ function amplify(ab: PlayerAbilityDef, mag: number, size: number): void {
   scaleField(ab, 'zoneTickDamage', mag);
   scaleField(ab, 'zoneTickHeal', mag);
   scaleField(ab, 'healOnUse', mag);
+  if (ab.paladinAura)
+    ab.paladinAura = { ...ab.paladinAura, radius: Math.round(ab.paladinAura.radius * (1 + size)) };
   if (ab.absorption) {
-    ab.absorption = { ...ab.absorption, amount: Math.round(ab.absorption.amount * (1 + mag)) };
+    ab.absorption = {
+      ...ab.absorption,
+      amount: Math.round(ab.absorption.amount * (1 + mag)),
+      ...(ab.absorption.balanceAmount != null
+        ? { balanceAmount: Math.round(ab.absorption.balanceAmount * (1 + mag)) }
+        : {}),
+    };
     scaleField(ab, 'range', size);
   }
   scaleField(ab, 'radius', size);

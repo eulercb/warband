@@ -1,3 +1,4 @@
+import { armPaladinAura } from './paladinAuras';
 import { grantAbsorption } from './absorption';
 /** Authored support interactions travel with copied skills, not the active class. */
 import type { Player } from '../core/types';
@@ -13,6 +14,7 @@ export function nearbySupportAllies(world: World, p: Player, range: number): Pla
 
 /** Both verses last eight seconds. A repeated verse refreshes, never adds stacks. */
 export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef): boolean {
+  if (ab.paladinAura && ab.paladinAura.kind !== 'renewal') armPaladinAura(world, p, ab);
   if (ab.absorption) {
     const nearby = nearbySupportAllies(world, p, ab.range ?? 420);
     const targets =
@@ -53,7 +55,12 @@ export function healSupportAlly(
   const rescue = !!ab.rescueHealBonus && target.hp <= target.maxHp * 0.35;
   const effective = healPlayer(world, p, target, amount * (rescue ? 1 + ab.rescueHealBonus! : 1));
   if (effective <= 0) return 0;
-  if (rescue) grantAbsorption(target, Math.min(effective * 0.5, target.maxHp * 0.15), 3);
+  if (ab.paladinAura?.kind === 'renewal') armPaladinAura(world, p, ab);
+  if (ab.rescueHealBonus) {
+    const ordinary = Math.min(effective * 0.25, target.maxHp * 0.15);
+    const rescueBubble = rescue ? Math.min(effective * 0.75, target.maxHp * 0.3) : 0;
+    grantAbsorption(target, ordinary + rescueBubble, 6, 'heal');
+  }
   if (ab.bardSong === 'harmony') applyBuff(p, makeBuff('harmony', 0, 8, 'bardHarmony'));
   if (ab.recoveryZone) {
     // One grove per caster across base/subclass/copied heals; unrelated zones survive.

@@ -25,7 +25,8 @@
     "smoke:spells": "node scripts/smoke-spells.mjs",
     "smoke:support": "node scripts/smoke-support.mjs",
     "smoke:martial": "node scripts/smoke-martial.mjs",
-    "smoke:absorption": "node scripts/smoke-absorption.mjs"
+    "smoke:absorption": "node scripts/smoke-absorption.mjs",
+    "smoke:auras": "node scripts/smoke-auras.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

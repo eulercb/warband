@@ -11,8 +11,8 @@ try {
   for (const mobile of [false, true])
     for (const subclass of [
       null,
-      { name: 'Warding Flare', text: /40 absorption for 4s to lowest-health ally/ },
-      { name: 'Preserve Life', text: /30 absorption for 5s to nearby allies/ },
+      { name: 'Warding Flare', text: /70 absorption for 7s to lowest-health ally/ },
+      { name: 'Preserve Life', text: /55 absorption for 8s to nearby allies/ },
     ]) {
       const classId = 'cleric';
       const context = await browser.newContext({
@@ -50,7 +50,7 @@ try {
       await click(button('Start Fight'));
       const test = subclass
         ? { ...subclass, slot: 'sub1', key: 'KeyZ' }
-        : { name: 'Sanctuary', slot: 'a2', key: 'KeyE', text: /unused healing builds a 3s bubble/ };
+        : { name: 'Sanctuary', slot: 'a2', key: 'KeyE', text: /unused healing builds a 6s bubble/ };
       const touchButton = (slot) =>
         slot === 'sub1'
           ? page.locator('.wb-touch-btn-sub').last()

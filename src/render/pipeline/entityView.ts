@@ -209,6 +209,19 @@ export function drawPlayer(
   const bodyColor = downed ? 0x808088 : classColor;
 
   // Active buff/debuff auras (under the body so the silhouette stays crisp).
+  if (!downed && p.paladinAura) {
+    const color =
+      p.paladinAura.kind === 'renewal'
+        ? 0x7fe3a5
+        : p.paladinAura.kind === 'pursuit'
+          ? 0xf1b16a
+          : 0xffdc79;
+    g.circle(x, y, p.paladinAura.radius * scale).stroke({
+      width: 1,
+      color,
+      alpha: isLocal ? 0.22 : 0.12,
+    });
+  }
   if (!downed) drawBuffGlows(g, x, y, r, p.buffs, timeSec);
 
   // Grounding shadow.
@@ -310,6 +323,19 @@ export function drawPlayerOverlay(
   const { x, y } = screen;
   const downed = p.state === 'downed';
 
+  if (!downed && p.paladinAura) {
+    const color =
+      p.paladinAura.kind === 'renewal'
+        ? 0x7fe3a5
+        : p.paladinAura.kind === 'pursuit'
+          ? 0xf1b16a
+          : 0xffdc79;
+    g.circle(x, y, p.paladinAura.radius * scale).stroke({
+      width: 1,
+      color,
+      alpha: isLocal ? 0.22 : 0.12,
+    });
+  }
   if (!downed) drawBuffGlows(g, x, y, r, p.buffs, timeSec);
 
   if (downed) {

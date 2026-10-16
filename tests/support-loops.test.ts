@@ -60,14 +60,14 @@ describe('Cleric rescue', () => {
     const [p, ally] = w.players;
     ally.hp = ally.maxHp * 0.35;
     resolvePlayerAbility(w, p, 'a1', ZERO);
-    expect(ally.hp).toBeCloseTo(84 + 78);
-    expect(p.stats.healingDone).toBe(78);
+    expect(ally.hp).toBeCloseTo(84 + 97.5);
+    expect(p.stats.healingDone).toBe(97.5);
     expect(p.threat).toBeGreaterThan(0);
     expect(buffMult(ally, 'damageTaken')).toBe(1);
-    expect(ally.buffs.find((b) => b.kind === 'absorption')?.mult).toBe(36);
+    expect(ally.buffs.find((b) => b.kind === 'absorption')?.mult).toBe(96.375);
     const hp = ally.hp;
     damagePlayer(w, ally, 40);
-    expect(ally.hp).toBeCloseTo(hp - 4);
+    expect(ally.hp).toBeCloseTo(hp);
     tickBuffs(ally, 2.1);
     expect(buffMult(ally, 'damageTaken')).toBe(1);
   });
@@ -76,15 +76,16 @@ describe('Cleric rescue', () => {
     const [p, ally] = w.players;
     ally.hp = 85;
     resolvePlayerAbility(w, p, 'a1', ZERO);
-    expect(ally.hp).toBe(145);
-    expect(ally.buffs).toEqual([]);
+    expect(ally.hp).toBe(160);
+    expect(ally.buffs.find((b) => b.kind === 'absorption')?.mult).toBe(18.75);
+    ally.buffs = [];
     ally.hp = ally.maxHp;
     ally.state = 'downed';
     expect(healSupportAlly(w, p, ally, 60, p.abilities!.a1)).toBe(0);
     expect(ally.buffs).toEqual([]);
     ally.state = 'alive';
     resolvePlayerAbility(w, p, 'a1', ZERO);
-    expect(p.stats.healingDone).toBe(60);
+    expect(p.stats.healingDone).toBe(75);
     expect(p.buffs).toEqual([]);
   });
   it('rescues solo, caps healing at missing HP, and keeps one capped absorption pool', () => {
@@ -116,10 +117,10 @@ describe('Paladin frontline protection', () => {
   it('retains the personal shield and shares a bounded ward with nearby living allies only', () => {
     const w = world('paladin');
     const [p, ally, far] = w.players;
-    far.pos.x = p.pos.x + 181;
+    far.pos.x = p.pos.x + 221;
     resolvePlayerAbility(w, p, 'a3', ZERO);
     expect(buffMult(p, 'damageTaken')).toBe(0.35);
-    expect(buffMult(ally, 'damageTaken')).toBe(0.85);
+    expect(buffMult(ally, 'auraBulwark')).toBe(0.9);
     expect(far.buffs).toEqual([]);
     ally.state = 'downed';
     ally.buffs = [];
@@ -135,8 +136,8 @@ describe('Paladin frontline protection', () => {
     ally.pos.x = ARENA_W - 5;
     resolvePlayerAbility(w, p, 'a3', ZERO);
     resolvePlayerAbility(w, p, 'a3', ZERO);
-    expect(ally.buffs.filter((b) => b.source === 'sharedWard')).toHaveLength(1);
-    expect(buffMult(ally, 'damageTaken')).toBe(0.85);
+    expect(ally.buffs.filter((b) => b.kind === 'auraBulwark')).toHaveLength(1);
+    expect(buffMult(ally, 'auraBulwark')).toBe(0.9);
   });
   it('Consecration heals, damages, and protects inside; leaving/flight respects ground rules', () => {
     const w = world('paladin');
@@ -165,7 +166,7 @@ describe('Paladin frontline protection', () => {
     sub(w, 'pa_devotion_aura');
     resolvePlayerAbility(w, p, 'sub1', ZERO);
     expect(buffMult(p, 'damageTaken')).toBe(0.55);
-    expect(buffMult(ally, 'damageTaken')).toBe(0.8);
+    expect(buffMult(ally, 'auraBulwark')).toBe(0.9);
   });
 });
 
@@ -349,11 +350,11 @@ it.each(['cleric', 'paladin', 'druid', 'bard'] as const)(
     }
     if (classId === 'cleric') {
       resolvePlayerAbility(w, p, 'a1', ZERO);
-      expect(ally.hp).toBe(98);
+      expect(ally.hp).toBe(117.5);
     }
     if (classId === 'paladin') {
       resolvePlayerAbility(w, p, 'a3', ZERO);
-      expect(buffMult(ally, 'damageTaken')).toBe(0.85);
+      expect(buffMult(ally, 'auraBulwark')).toBe(0.9);
       resolvePlayerAbility(w, p, 'a1', ZERO);
       expect(w.groundZones[0].allyBuff?.defMult).toBe(0.9);
     }
@@ -378,8 +379,8 @@ it('support upgrades preserve nested values through Forge refresh', () => {
     decompose(getClass('paladin').abilities.a3),
     getClass('paladin').abilities.a3,
   );
-  ward.allyWard = { ...ward.allyWard!, duration: 5, range: 200 };
-  expect(recompose(refreshComponents(ward), ward).allyWard).toEqual(ward.allyWard);
+  ward.paladinAura = { ...ward.paladinAura!, duration: 6, radius: 260 };
+  expect(recompose(refreshComponents(ward), ward).paladinAura).toEqual(ward.paladinAura);
 });
 
 it.each([
@@ -397,7 +398,7 @@ it.each([
     const updated = recompose(p.abilities![slot].components!, p.abilities![slot]);
     if (classId === 'cleric') expect(updated.rescueHealBonus).toBeCloseTo(0.35);
     if (classId === 'paladin')
-      expect(updated.allyWard).toEqual({ range: 200, mult: 0.85, duration: 5 });
+      expect(updated.paladinAura).toEqual({ kind: 'bulwark', radius: 240, duration: 6 });
     if (classId === 'druid') expect(updated.recoveryZone?.tickHeal).toBe(5);
   },
 );

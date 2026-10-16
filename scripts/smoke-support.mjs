@@ -44,7 +44,7 @@ try {
       await click(button('Start Fight'));
       const cases = {
         cleric: { name: 'Heal', slot: 'a1', key: 'KeyQ', text: /effective rescue/ },
-        paladin: { name: 'Divine Shield', slot: 'a3', key: 'KeyR', text: /other allies within/ },
+        paladin: { name: 'Divine Shield', slot: 'a3', key: 'KeyR', text: /bulwark aura/ },
         druid: {
           name: 'Entangle',
           slot: 'a1',

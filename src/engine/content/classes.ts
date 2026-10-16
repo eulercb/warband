@@ -1,3 +1,4 @@
+import { auraText } from './paladinText';
 import type { AbsorptionGrant } from '../combat/absorption';
 /**
  * Warband — data-driven class definitions (Knight / Ranger / Mage / Cleric).
@@ -149,6 +150,10 @@ export interface PlayerAbilityDef {
   /** Additional distinct bodies a direct projectile may pass through (no blast/zone). */
   pierce?: number;
   /** Extra direct healing at <=35% HP, plus a 15% ward for 2s after effective rescue. */
+  /** Preserve pre-buff adaptive difficulty credit while retaining real combat values. */
+  balanceDamageScale?: number;
+  balanceZoneHealScale?: number;
+  paladinAura?: { kind: 'bulwark' | 'pursuit' | 'renewal'; radius: number; duration: number };
   absorption?: AbsorptionGrant;
   overflowShield?: boolean;
   rescueHealBonus?: number;
@@ -395,7 +400,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         name: 'Smite',
         kind: 'projectile',
         cooldown: 0.6,
-        damage: 12,
+        damage: 16,
+        balanceDamageScale: 12 / 16,
         projSpeed: 560,
         projCount: 1,
       },
@@ -405,7 +411,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         rescueHealBonus: 0.3,
         kind: 'heal',
         cooldown: 3,
-        damage: 60, // heal amount
+        damage: 75, // heal amount
+        balanceDamageScale: 60 / 75,
         range: 400,
       },
       a2: {
@@ -416,7 +423,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         damage: 0,
         radius: 140,
         zoneDuration: 4,
-        zoneTickHeal: 10,
+        zoneTickHeal: 14,
+        balanceZoneHealScale: 10 / 14,
         overflowShield: true,
         zoneKind: 'sanctuary',
       },
@@ -603,6 +611,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a2: {
         slot: 'a2',
         name: 'Lay on Hands',
+        paladinAura: { kind: 'renewal', radius: 220, duration: 5 },
         kind: 'heal',
         cooldown: 6,
         damage: 90,
@@ -611,7 +620,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a3: {
         slot: 'a3',
         name: 'Divine Shield',
-        allyWard: { range: 180, mult: 0.85, duration: 4 },
+        paladinAura: { kind: 'bulwark', radius: 220, duration: 5 },
         kind: 'selfBuff',
         cooldown: 16,
         damage: 0,
@@ -1096,18 +1105,19 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   }
   if (def.landingDamage) parts.push(`${n(def.landingDamage * dmgMul)} landing dmg`);
   if (def.zoneTickDamage) parts.push(`${n(def.zoneTickDamage * dmgMul)}/tick dmg`);
+  if (def.paladinAura) parts.push(auraText(def.paladinAura));
   if (def.absorption)
     parts.push(
-      `${n(def.absorption.amount)} absorption for ${s(def.absorption.duration)} to ${def.absorption.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}; shared cap 30% max HP, strongest cast wins`,
+      `${n(def.absorption.amount)} absorption for ${s(def.absorption.duration)} to ${def.absorption.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}; shared cap 50% max HP, strongest cast wins`,
     );
   if (def.overflowShield)
-    parts.push('unused healing builds a 3s bubble, capped at 15% max HP across all zones');
+    parts.push('unused healing builds a 6s bubble, capped at 30% max HP across all zones');
   if (def.zoneTickHeal) parts.push(`${n(def.zoneTickHeal)}/tick heal`);
   if (def.healOnUse) parts.push(`heal ${n(def.healOnUse)}`);
 
   if (def.rescueHealBonus)
     parts.push(
-      `+${n(def.rescueHealBonus * 100)}% heal at ≤35% HP; effective rescue grants 50% of healed HP as a 3s bubble (up to 15% max HP)`,
+      `+${n(def.rescueHealBonus * 100)}% heal at ≤35% HP; effective heals add a 6s bubble — 25% healed HP (cap 15% max HP), plus 75% on rescue (extra cap 30% max HP); shared cap 50% max HP`,
     );
   if (def.recoveryZone) {
     const g = def.recoveryZone;

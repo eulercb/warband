@@ -1,3 +1,4 @@
+import { updatePaladinAuras } from '../combat/paladinAuras';
 import { grantAbsorption, maintainAbsorption, OVERFLOW_SECONDS } from '../combat/absorption';
 /**
  * Warband — authoritative world state + fixed-timestep `step`. PURE TS.
@@ -1081,6 +1082,7 @@ export class World {
     this.stepGlides(dt); // item 2: advance in-progress dash/leap glides host-side
     this.stepShoves(dt); // item 2: advance in-progress knockback/pull slides host-side
     this.checkDownedTransitions();
+    this.auraClock = updatePaladinAuras(this, dt, this.auraClock);
     this.updateRevive(dt, inputs);
     this.updateProjectiles(dt);
     this.updateZones(dt);
@@ -1109,15 +1111,18 @@ export class World {
       onHuntWalk(p, Math.max(0, Math.min(intended, forward)));
     }
     this.checkDownedTransitions();
+    updatePaladinAuras(this, 0, 0);
     this.checkEndConditions();
 
     this.tick++;
   }
 
+  private auraClock = 0;
   private huntWalks = new Map<Player, { from: Vec2; move: Vec2 }>();
 
   private tickTimers(dt: number): void {
     for (const p of this.players) {
+      if (p.paladinAura) p.paladinAura.remaining -= dt;
       maintainAbsorption(p);
       tickBloodPrice(p, dt);
       tickBuffs(p, dt);
@@ -3207,6 +3212,15 @@ export class World {
     return {
       id: p.id,
       peerId: p.peerId,
+      ...(p.paladinAura
+        ? {
+            paladinAura: {
+              kind: p.paladinAura.kind,
+              radius: p.paladinAura.radius,
+              remaining: p.paladinAura.remaining,
+            },
+          }
+        : {}),
       name: p.name,
       classId: p.classId,
       pos: { ...p.pos },

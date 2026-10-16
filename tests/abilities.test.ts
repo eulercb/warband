@@ -308,7 +308,7 @@ describe('player projectile', () => {
     resolvePlayerAbility(w, w.players[0], 'basic', ZERO);
     const proj = w.projectiles[0];
     expect(proj.kind).toBe('smite');
-    expect(proj.damage).toBeCloseTo(12, 6);
+    expect(proj.damage).toBeCloseTo(16, 6);
     expect(Math.hypot(proj.vel.x, proj.vel.y)).toBeCloseTo(560, 3);
   });
 
@@ -382,7 +382,7 @@ describe('player groundZone', () => {
     expect(z.kind).toBe('sanctuary');
     expect(z.side).toBe('player');
     expect(z.ownerId).toBe(p.id);
-    expect(z.healPerTick).toBe(10);
+    expect(z.healPerTick).toBe(14);
     expect(z.damagePerTick).toBe(0);
     expect(z.radius).toBe(140);
     expect(z.duration).toBe(4);
@@ -1128,8 +1128,8 @@ describe('player heal', () => {
     const w = mkWorld('cleric');
     const p = w.players[0];
     p.hp = p.maxHp - 100;
-    resolvePlayerAbility(w, p, 'a1', ZERO); // Heal 60
-    expect(p.hp).toBeCloseTo(p.maxHp - 40, 5);
+    resolvePlayerAbility(w, p, 'a1', ZERO); // Heal 75
+    expect(p.hp).toBeCloseTo(p.maxHp - 25, 5);
     expect(w.events.some((e) => e.t === 'heal' && e.targetId === p.id)).toBe(true);
   });
 
@@ -1147,7 +1147,7 @@ describe('player heal', () => {
     const knight = w.players[1];
     knight.hp = knight.maxHp - 80;
     resolvePlayerAbility(w, cleric, 'a1', ZERO);
-    expect(knight.hp).toBeCloseTo(knight.maxHp - 20, 5); // healed +60
+    expect(knight.hp).toBeCloseTo(knight.maxHp - 5, 5); // healed +75
   });
 
   it('is a safe no-op when there is no valid ally to heal', () => {

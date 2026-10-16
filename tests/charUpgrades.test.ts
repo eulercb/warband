@@ -408,7 +408,7 @@ describe('mage upgrades', () => {
 describe('cleric upgrades', () => {
   it('cl_greaterheal boosts Heal', () => {
     const a = apply('cleric', ['cl_greaterheal']).abilities!;
-    expect(a.a1.damage).toBe(88);
+    expect(a.a1.damage).toBe(103);
     expect(a.a1.range).toBe(450);
   });
   it('cl_blessing empowers Blessing', () => {
@@ -419,13 +419,13 @@ describe('cleric upgrades', () => {
   });
   it('cl_sanctuary enlarges Sanctuary', () => {
     const a = apply('cleric', ['cl_sanctuary']).abilities!;
-    expect(a.a2.zoneTickHeal).toBe(17);
+    expect(a.a2.zoneTickHeal).toBe(21);
     expect(a.a2.radius).toBe(165);
     expect(a.a2.zoneDuration!).toBeCloseTo(5.5, 5);
   });
   it('cl_smite makes Smite hit + daze', () => {
     const a = apply('cleric', ['cl_smite']).abilities!;
-    expect(a.basic.damage).toBe(20);
+    expect(a.basic.damage).toBe(24);
     expect(a.basic.freeze!).toBeCloseTo(0.5, 5);
   });
   it('cl_warpriest toughens the cleric (player-only)', () => {
@@ -613,11 +613,11 @@ describe('hybrid grafts replace a slot with a foreign ability', () => {
     const a = apply('knight', ['hy_fieldmedic']).abilities!;
     expect(a.a2.name).toBe('Field Dressing');
     expect(a.a2.kind).toBe('heal');
-    expect(a.a2.damage).toBe(45); // round(60 * 0.75)
+    expect(a.a2.damage).toBe(56); // round(75 * 0.75)
     expect(a.a2.cooldown).toBe(5); // 3 + 2
     expect(a.a2.range).toBe(400);
     // Source Heal stays pristine (tweak mutated the copy only).
-    expect(CLASSES.cleric.abilities.a1.damage).toBe(60);
+    expect(CLASSES.cleric.abilities.a1.damage).toBe(75);
     expect(CLASSES.cleric.abilities.a1.name).toBe('Heal');
   });
 
@@ -769,7 +769,7 @@ describe('graft grands transform the grafted skill, and only with the graft held
     // Field Dressing is the tweaked Heal (dmg 45, range 400).
     const a2 = apply('knight', ['hy_fieldmedic', 'hy_fieldmedic_g_a']).abilities!.a2;
     expect(a2.name).toBe('Field Dressing');
-    expect(a2.damage).toBe(45 + 75);
+    expect(a2.damage).toBe(56 + 75);
     expect(a2.range).toBe(400 + 150);
   });
 
