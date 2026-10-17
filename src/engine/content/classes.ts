@@ -1108,7 +1108,7 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   if (def.paladinAura) parts.push(auraText(def.paladinAura));
   if (def.absorption)
     parts.push(
-      `${n(def.absorption.amount)} absorption for ${s(def.absorption.duration)} to ${def.absorption.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}; shared cap 50% max HP, strongest cast wins`,
+      `${n(def.absorption.amount)} absorption for ${s(def.absorption.duration)} to ${def.absorption.target === 'self' ? 'yourself' : def.absorption.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}; shared cap 50% max HP, strongest cast wins`,
     );
   if (def.overflowShield)
     parts.push('unused healing builds a 6s bubble, capped at 30% max HP across all zones');

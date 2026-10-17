@@ -15,7 +15,11 @@ export function nearbySupportAllies(world: World, p: Player, range: number): Pla
 
 /** Both verses last eight seconds. A repeated verse refreshes, never adds stacks. */
 export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef): boolean {
-  if (ab.kind === 'heal' || ab.kind === 'buffAlly' || ab.absorption)
+  if (
+    ab.kind === 'heal' ||
+    ab.kind === 'buffAlly' ||
+    (ab.absorption && ab.absorption.target !== 'self')
+  )
     world.events.push({
       t: 'skillArea',
       sourceId: p.id,
@@ -35,9 +39,11 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
   if (ab.absorption) {
     const nearby = nearbySupportAllies(world, p, ab.range ?? 420);
     const targets =
-      ab.absorption.target === 'nearby'
-        ? nearby
-        : nearby.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp).slice(0, 1);
+      ab.absorption.target === 'self'
+        ? [p]
+        : ab.absorption.target === 'nearby'
+          ? nearby
+          : nearby.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp).slice(0, 1);
     for (const ally of targets)
       if (grantAbsorption(ally, ab.absorption.amount, ab.absorption.duration) > 0)
         supportCue(world, p, ally, 'absorb');

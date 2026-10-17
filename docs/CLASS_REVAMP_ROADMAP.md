@@ -8,7 +8,8 @@ Knight/Ranger/Barbarian/Monk differentiation was merged and playtested.
 Martial subclass coherence was merged and playtested.
 Cleric absorption and Chain Pull momentum were merged and playtested.
 Cleric retuning and Paladin moving auras were merged and playtested.
-Ability readability across all classes and Paladin aura tuning are implemented for review.
+Ability readability and Paladin aura tuning were merged and playtested; further readability changes are deferred pending more feedback.
+Caster defense identity (Mage/Sorcerer) is implemented for review.
 Remaining defining passives, companions, forms and later milestones remain proposals.
 
 ## Goals and boundaries
@@ -321,25 +322,25 @@ The original six milestones grouped work by theme; they did not include every
 remaining passive or the balance work discovered during playtests. Avoid treating
 “milestone 5 of 6” as “one patch left until everything is finished.”
 
-| Workstream                 | Merged and playtested                | This PR                     | Still outstanding                                    |
-| -------------------------- | ------------------------------------ | --------------------------- | ---------------------------------------------------- |
-| Base class loops           | 12/12 classes plus martial coherence | None                        | Ongoing tuning                                       |
-| Defining subclass passives | 4/24                                 | None                        | 20: 18 in ordinary batches, companion and form       |
-| Balance/skill identity     | Feedback collected                   | Readability and aura tuning | Catalogue-wide defense/recovery review, Fiend tuning |
-| Companion/form systems     | None                                 | None                        | Beast Master companion and Moon form prototypes      |
+| Workstream                 | Merged and playtested                | This PR                   | Still outstanding                                    |
+| -------------------------- | ------------------------------------ | ------------------------- | ---------------------------------------------------- |
+| Base class loops           | 12/12 classes plus martial coherence | None                      | Ongoing tuning                                       |
+| Defining subclass passives | 4/24                                 | None                      | 20: 18 in ordinary batches, companion and form       |
+| Balance/skill identity     | Feedback collected                   | Caster defensive identity | Catalogue-wide defense/recovery review, Fiend tuning |
+| Companion/form systems     | None                                 | None                      | Beast Master companion and Moon form prototypes      |
 
 **Current sequence:**
 
 1. **Merged/playtested:** Cleric absorption, Chain Pull momentum, Cleric tuning and Paladin auras.
-2. **This PR:** Shared ability readability, visible bubbles, distinct aura shapes and aura tuning.
-3. Existing skill/passive balance and identity pass: Fiend, Abjurer, Sorcerer,
-   Dragon Wings, and mitigation-only skills; use the two new defensive systems
-   only where they fit rather than applying them everywhere.
-4. Three batches for the 18 remaining non-companion/non-form subclass passives,
+2. **Merged/playtested:** Shared ability readability and Paladin aura tuning.
+3. **This PR:** Mage/Sorcerer defensive skill identity; first half of the broad balance pass.
+4. Balance pass B: remaining defense/recovery identity and Fiend tuning.
+   Keep all unnamed candidates in scope; retain useful aura/class interactions.
+5. Three batches for the 18 remaining non-companion/non-form subclass passives,
    roughly six passives per PR, with their related skill/upgrade coherence reviewed
    together. Revise each proposed passive around its final class loop first.
-5. Beast Master companion prototype plus its defining passive.
-6. Moon form prototype plus its defining passive.
+6. Beast Master companion prototype plus its defining passive.
+7. Moon form prototype plus its defining passive.
 
 After this absorption batch, **about seven further PRs remain** (2 defensive/balance
 PRs, 3 passive batches, companion, form), with scope adjusted if playtests justify
@@ -666,3 +667,58 @@ the broad identity/balance audit, three passive batches, companion, and form.
 Split the broad audit into two if its size warrants it (seven remaining). This
 patch adds a deliberate review checkpoint; continue bundling related tuning,
 without combining companion AI or form state with unrelated systems.
+
+## Balance pass A: caster defensive identity
+
+The broad pass is deliberately split into coherent reviews. This first batch
+reworks five repetitive Mage/Sorcerer defenses, retaining IDs and compatible
+upgrade/Forge paths. It does not implement new subclass passives or revisit the
+readability presentation, which needs more live testing.
+
+| Skill                  | New job                                                                                                                                                          |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Arcane Shield (Evoker) | 180u directional cone, 28 damage and 90u knockback, plus 35 self absorption for 4s. A peel rather than another generic mitigation timer.                         |
+| Arcane Ward (Abjurer)  | 50 self absorption for 6s and a 150u burst for 24, +35% against already controlled foes; applies 50% slow for 3s to prepare the next spell.                      |
+| Dragon Wings           | 7s flight and 40% movement speed, retaining 8s Surge preparation; removes the mitigation rider. Mobility and ground-hazard avoidance are its defensive identity. |
+| Draconic Scales        | 55 self absorption for 6s with a 145u burst for 22. Can spend Surge on the burst; the shield does not multiply with Surge.                                       |
+| Wild Ward              | A centered 125u, 4s recovery field: 10 healing/tick, enemies slowed to 65%; prepares Surge for 8s. Territory/party sustain instead of a third mitigation timer.  |
+
+Self bubbles retain the common 50%-max-HP cap and strongest-cast rules; they do
+not divert to a nearby injured ally. Ground-zone slowing respects existing flight
+and ground rules. Current Honed/grand behavior remains compatible pending the
+larger upgrade redesign. Fix cone range being scaled twice by a shield-bearing
+upgrade; do not silently add an extra growth multiplier.
+
+The previous pure defenses carried no damage/healing party-power credit. New
+payloads retain that pre-rework credit through existing tuning metadata, including
+upgrades and composition. Forge budgets price the real effects. Wave/kill-pace
+feedback remains active. This is a balance decision for these replacements, not
+blanket permission to make future upgrade growth free in the estimator.
+
+**Next:** balance pass B retains all remaining defensive/recovery candidates,
+including base Paladin wards despite their auras, Knight/Ranger defenses, Bear
+Spirit, Rogue defenses, Bard Bolster, Warlock resilience/Fiend tuning and the
+plain-heal inventory. Review related redundant bundled skills too; these names
+are examples, not the boundary of the audit. Then resume the three passive batches,
+companion and form work, retaining useful interactions and doing necessary upgrade
+compatibility alongside each implementation.
+
+## New workstream: upgrade identity and branching builds
+
+The request includes the entire upgrade catalogue: base and subclass skills,
+Honed upgrades, grands, grafts and their followups. See
+[Upgrade identity roadmap](UPGRADE_IDENTITY_ROADMAP.md) for the measured inventory,
+research/design checkpoint, candidate branches, compatibility requirements and
+staged rollout. This is a larger design task; do not disguise generic numerical
+scaling with more colorful descriptions or make every branch depend on the same
+class mechanic.
+
+After this patch, **six skill/passive/system PRs** remain at the current grouping:
+balance pass B, three passive batches, companion and form. The upgrade workstream
+adds an estimated **four to six PRs** (audit/design, pilot and two to four followup
+batches), bringing the provisional total to **ten to twelve**. This is revised
+scope, not slower completion of the old scope or a time/quota commitment. Begin upgrade inventory/research alongside the remaining balance/passive work.
+Finalize the pilot once its chosen classes have stable contracts, rather than
+waiting for the whole catalogue; companion/form-specific upgrade design follows
+those prototypes. Revisit the
+batch sizes after the pilot rather than implementing hundreds of upgrades at once.

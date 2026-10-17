@@ -2860,7 +2860,7 @@ function amplify(ab: PlayerAbilityDef, mag: number, size: number): void {
         ? { balanceAmount: Math.round(ab.absorption.balanceAmount * (1 + mag)) }
         : {}),
     };
-    scaleField(ab, 'range', size);
+    if (ab.absorption.target !== 'self') scaleField(ab, 'range', size);
   }
   scaleField(ab, 'radius', size);
   scaleField(ab, 'impactRadius', size);

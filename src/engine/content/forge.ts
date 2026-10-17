@@ -291,6 +291,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.bloodRage) effects.push({ kind: 'bloodRage', duration: def.bloodRage });
   if (def.wolfHunt) effects.push({ kind: 'wolfHunt', duration: def.wolfHunt });
   if (def.flowExtendOnHit) effects.push({ kind: 'flowExtend', seconds: def.flowExtendOnHit });
+  if (kind === 'groundZone' && def.prepareSurge)
+    effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
   if (def.guardWindow) effects.push({ kind: 'guard', duration: def.guardWindow });
   if (def.momentumWindow) effects.push({ kind: 'momentum', duration: def.momentumWindow });
   if (def.spendsMomentum) effects.push({ kind: 'momentumStrike' });
@@ -723,7 +725,7 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
     case 'paladinAura':
       return auraText(e.aura);
     case 'absorption':
-      return `${n(e.grant.amount)} absorption for ${s(e.grant.duration)} to ${e.grant.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}; shared cap 50% max HP, strongest cast wins`;
+      return `${n(e.grant.amount)} absorption for ${s(e.grant.duration)} to ${e.grant.target === 'self' ? 'yourself' : e.grant.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}; shared cap 50% max HP, strongest cast wins`;
     case 'rescueHeal':
       return `+${pct(e.bonus * 100)} heal at ≤35% HP; effective heals add a 6s bubble — 25% healed HP (cap 15% max HP), plus 75% on rescue (extra cap 30% max HP); shared cap 50% max HP`;
     case 'recovery':
@@ -1036,7 +1038,7 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
         ? kind === 'heal'
         : kind === 'selfBuff' || kind === 'buffAlly';
     case 'absorption':
-      return kind === 'selfBuff' || kind === 'buffAlly';
+      return kind === 'selfBuff' || kind === 'buffAlly' || kind === 'meleeCone' || kind === 'pbaoe';
     case 'allyWard':
       return kind === 'selfBuff';
     case 'bardSong':
@@ -1049,7 +1051,7 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'surgeStrike':
       return DIRECT_STRIKE.has(kind);
     case 'prepareSurge':
-      return kind === 'blink' || kind === 'selfBuff';
+      return kind === 'blink' || kind === 'selfBuff' || kind === 'groundZone';
     case 'prepareCrit':
       return kind === 'blink';
     case 'rebuke':
@@ -2068,8 +2070,11 @@ export type AbilityCapability =
 export function abilityCapability(ab: PlayerAbilityDef): AbilityCapability {
   const kind = ab.kind;
   let heal = kind === 'heal';
-  let allyBuff = kind === 'buffAlly' || ab.absorption != null || ab.paladinAura != null;
-  let selfDef = kind === 'selfBuff' || kind === 'taunt';
+  let allyBuff =
+    kind === 'buffAlly' ||
+    (ab.absorption != null && ab.absorption.target !== 'self') ||
+    ab.paladinAura != null;
+  let selfDef = kind === 'selfBuff' || kind === 'taunt' || ab.absorption?.target === 'self';
   const control =
     (ab.stun ?? 0) > 0 ||
     (ab.freeze ?? 0) > 0 ||
@@ -2083,14 +2088,18 @@ export function abilityCapability(ab: PlayerAbilityDef): AbilityCapability {
     heal = comp.effects.some((e) => e.kind === 'heal');
     allyBuff = comp.effects.some(
       (e) =>
-        e.kind === 'absorption' ||
+        (e.kind === 'absorption' && e.grant.target !== 'self') ||
         e.kind === 'paladinAura' ||
         (e.kind === 'buff' && e.target === 'allies') ||
         (e.kind === 'zone' && (e.zone.allyBuff != null || (e.zone.tickHeal ?? 0) > 0)),
     );
     selfDef =
       kind === 'taunt' ||
-      comp.effects.some((e) => e.kind === 'buff' && e.target === 'self' && e.defMult != null);
+      comp.effects.some(
+        (e) =>
+          (e.kind === 'buff' && e.target === 'self' && e.defMult != null) ||
+          (e.kind === 'absorption' && e.grant.target === 'self'),
+      );
   }
   if (heal) return 'heal';
   if (allyBuff) return 'allyBuff';
