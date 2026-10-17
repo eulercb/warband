@@ -105,8 +105,12 @@ cover slow, root, stun, slower casting, silence, curse, weakened damage and
 vulnerability. The control bracket predicate is shared with control-burst damage;
 Fireball still evaluates it at impact. A curse or casting slow alone does not
 qualify. The optional curse-owner field adds a personal-curse dot while preserving
-generic display for older snapshots. Bosses use up to six categories and adds two;
-viewport-clamped, fixed-size badges and no new floating text keep the display
-bounded. The pause key explains the shapes. Existing positive-support visuals are
+generic display for older snapshots. All eight active categories can appear together on bosses and adds; root and
+stun do not hide slow. Repeated sources of a category share one badge, which lasts
+until the last instance ends. The personal curse dot independently tracks whether
+your own mark remains. Control badges come first, then personal curse, then other
+team debuffs; priority never removes an active category. Adds use four columns
+instead of three to shorten the grid. Viewport-clamped, fixed-size badges and no
+new floating text keep the display bounded. The pause key explains the shapes. Existing positive-support visuals are
 unchanged. Browser fixtures stress the real renderer with dense damage numbers
 and exercise expiry/ownership on desktop, portrait and landscape views.

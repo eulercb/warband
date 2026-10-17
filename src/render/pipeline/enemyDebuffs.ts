@@ -18,12 +18,8 @@ export const ENEMY_DEBUFF_COLORS: Record<EnemyDebuffKind, number> = {
   weak: 0xffb18b,
   vulnerable: 0xff8299,
 };
-/** One primary control marker; other harmful states stay distinct. Never infer control from hue. */
-export function enemyDebuffs(
-  buffs: readonly BuffView[],
-  localId: number | null,
-  compact = false,
-): EnemyDebuff[] {
+/** One badge per active harmful category, across all sources. Never hide weaker control. */
+export function enemyDebuffs(buffs: readonly BuffView[], localId: number | null): EnemyDebuff[] {
   const active = buffs.filter((b) => b.remaining > 0);
   const result: EnemyDebuff[] = [];
   for (const kind of [
@@ -51,25 +47,19 @@ export function enemyDebuffs(
       }
     });
     if (!matching.length) continue;
-    if (
-      (kind === 'root' || kind === 'slow') &&
-      result.some((s) => s.kind === 'stun' || s.kind === 'root')
-    )
-      continue;
     const personal =
       kind === 'curse' ? matching.filter((b) => localId !== null && b.ownerId === localId) : [];
-    const selected = personal.length ? personal : matching;
     result.push({
       kind,
-      remaining: Math.max(...selected.map((b) => b.remaining)),
+      remaining: Math.max(...matching.map((b) => b.remaining)),
       own: personal.length > 0,
     });
   }
-  if (compact) {
-    const important = (s: EnemyDebuff) => s.own || ['stun', 'root', 'slow'].includes(s.kind);
-    return [...result.filter(important), ...result.filter((s) => !important(s))].slice(0, 2);
-  }
-  return result;
+  // Control windows first, then personal curse access, then the remaining team state.
+  // Stable ordering within each group; priority affects position, never membership.
+  const priority = (s: EnemyDebuff) =>
+    ['stun', 'root', 'slow'].includes(s.kind) ? 0 : s.own ? 1 : 2;
+  return result.sort((a, b) => priority(a) - priority(b));
 }
 export function drawEnemyDebuffSymbol(
   g: Graphics,
@@ -151,7 +141,7 @@ export function drawEnemyDebuffs(
   viewport?: Vec2,
 ): void {
   if (viewport && (x + r < 0 || x - r > viewport.x || y + r < 0 || y - r > viewport.y)) return;
-  const states = enemyDebuffs(buffs, localId, compact);
+  const states = enemyDebuffs(buffs, localId);
   if (!states.length) return;
   if (buffs.some(isBurstControl)) {
     const q = r + 7;
@@ -173,9 +163,10 @@ export function drawEnemyDebuffs(
         .stroke({ color: 0x8de4ff, width: 2.5, alpha: 1 });
     }
   }
-  const shown = states.slice(0, 6);
-  const columns = Math.min(3, shown.length),
-    rows = Math.ceil(shown.length / 3);
+  const shown = states;
+  const columnLimit = compact ? 4 : 3;
+  const columns = Math.min(columnLimit, shown.length),
+    rows = Math.ceil(shown.length / columnLimit);
   const anchorX = viewport
     ? Math.max(11, Math.min(x + Math.min(r * 0.5, 30), viewport.x - 11 - (columns - 1) * 21))
     : x + Math.min(r * 0.5, 30);
@@ -183,8 +174,8 @@ export function drawEnemyDebuffs(
     ? Math.max(11, Math.min(y + r * 0.7 + 17, viewport.y - 11 - (rows - 1) * 22))
     : y + r * 0.7 + 17;
   shown.forEach((s, i) => {
-    const bx = anchorX + (i % 3) * 21,
-      by = anchorY + Math.floor(i / 3) * 22;
+    const bx = anchorX + (i % columnLimit) * 21,
+      by = anchorY + Math.floor(i / columnLimit) * 22;
     const alpha = 0.55 + 0.45 * Math.min(1, s.remaining);
     g.roundRect(bx - 10, by - 10, 20, 20, 4)
       .fill({ color: 0x090d18, alpha: 0.95 })

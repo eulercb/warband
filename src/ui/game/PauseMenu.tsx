@@ -222,8 +222,9 @@ export default function PauseMenu({ onResume }: { onResume: () => void }) {
             Enemy corner brackets mean slowed, rooted or stunned: control-burst bonuses check this
             when the hit lands. Down-chevron: slow; anchor: root; star: stun. Hourglass: slower
             casting; crossed circle: silence; diamond: curse; falling sword: weakened; cracked
-            shield: vulnerable. A white dot marks your own curse. Other debuffs alone do not enable
-            Fireball’s control bonus.
+            shield: vulnerable. Each active type keeps its own badge, including overlapping slow and
+            root. Repeated sources share a badge; a white dot marks your own active curse. Other
+            debuffs alone do not enable Fireball’s control bonus.
           </p>
         </details>
 

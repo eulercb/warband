@@ -46,9 +46,23 @@ try {
       world.boss.pos = { x: 800, y: 440 };
       const renderer = await Renderer.create(document.querySelector('#fixture'), world.arena);
       let buffs = [];
+      let useAdd = false;
+      const add = {
+        id: world.allocId(),
+        pos: { ...world.boss.pos },
+        hp: 100,
+        maxHp: 100,
+        radius: 12,
+        moveSpeed: 0,
+        targetId: null,
+        attackCd: 0,
+        buffs: [],
+      };
       let frame = 0;
       const render = () => {
-        world.boss.buffs = buffs;
+        world.boss.buffs = useAdd ? [] : buffs;
+        add.buffs = buffs;
+        world.adds = useAdd ? [add] : [];
         const state = { ...world.serialize(), localPlayerId: owner.id, arena: world.arena };
         // Enough fresh numbers to fill the normal pool, over the enemy's body and status lane.
         state.events = Array.from({ length: 40 }, (_, i) => ({
@@ -63,7 +77,8 @@ try {
         requestAnimationFrame(render);
       };
       window.debuffFixture = {
-        set(next) {
+        set(next, compact = false) {
+          useAdd = compact;
           buffs = next.map((b) => ({
             ...b,
             source:
@@ -73,13 +88,17 @@ try {
           }));
         },
         probe() {
-          const snapshot = world.serialize().bosses[0];
+          const state = world.serialize();
+          const snapshot = state.adds[0] ?? state.bosses[0];
           return {
             frame,
             kinds: enemyDebuffs(snapshot.buffs, owner.id).map((x) => x.kind),
             own: enemyDebuffs(snapshot.buffs, owner.id).some((x) => x.own),
             controlled: snapshot.buffs.some(isBurstControl),
             instructions: renderer.enemyStatusLayer.context.instructions.length,
+            plates: renderer.enemyStatusLayer.context.instructions.filter(
+              (i) => i.action === 'fill' && i.data.style.color === 0x090d18,
+            ).length,
             foreground:
               renderer.root.getChildIndex(renderer.enemyStatusLayer) >
               renderer.root.getChildIndex(renderer.fxTextLayer),
@@ -108,8 +127,26 @@ try {
           { kind: 'damageTaken', mult: 1.2, remaining: 4 },
         ],
         controlled: true,
-        kinds: ['stun', 'castSlow', 'silence', 'curse', 'weak', 'vulnerable'],
+        kinds: ['stun', 'root', 'slow', 'curse', 'castSlow', 'silence', 'weak', 'vulnerable'],
         own: true,
+      },
+      {
+        name: 'slow-and-root',
+        buffs: [
+          { kind: 'moveSpeed', mult: 0.5, remaining: 4 },
+          { kind: 'root', mult: 0, remaining: 2 },
+        ],
+        controlled: true,
+        kinds: ['root', 'slow'],
+      },
+      {
+        name: 'slow-after-root',
+        buffs: [
+          { kind: 'moveSpeed', mult: 0.5, remaining: 2 },
+          { kind: 'root', mult: 0, remaining: 0 },
+        ],
+        controlled: true,
+        kinds: ['slow'],
       },
       {
         name: 'other-curse',
@@ -131,18 +168,20 @@ try {
         kinds: [],
       },
     ];
+    cases.push({ ...cases.find((c) => c.name === 'combined'), name: 'combined-add', add: true });
     for (const test of cases) {
       const previous = await page.evaluate((next) => {
         const f = window.debuffFixture;
-        f.set(next);
+        f.set(next.buffs, next.add);
         return f.probe().frame;
-      }, test.buffs);
+      }, test);
       await page.waitForFunction(
         (frame) => window.debuffFixture.probe().frame > frame + 2,
         previous,
       );
       const probe = await page.evaluate(() => window.debuffFixture.probe());
       assert.deepEqual(probe.kinds, test.kinds);
+      assert.equal(probe.plates, test.kinds.length);
       assert.equal(probe.controlled, test.controlled);
       assert.equal(probe.foreground, true);
       if (test.own !== undefined) assert.equal(probe.own, test.own);
