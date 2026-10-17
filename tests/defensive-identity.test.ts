@@ -499,3 +499,25 @@ it.each(['kn_gk_a2_a', 'kn_gk_a2_b', 'pa_gk_a3_a', 'pa_gk_a3_b'])(
     }
   },
 );
+it('keeps the curse watermark inside its own translated field', () => {
+  const g = new Graphics();
+  drawZone(
+    g,
+    {
+      id: 1,
+      kind: 'hex',
+      pos: ZERO,
+      radius: 90,
+      remaining: 3,
+      duration: 5,
+      side: 'player',
+      curseStyle: 'hex',
+    },
+    { x: 200, y: 200 },
+    1,
+  );
+  const bounds = g.getLocalBounds();
+  expect(bounds.maxX).toBeLessThan(292);
+  expect(bounds.maxY).toBeLessThan(292);
+  g.destroy();
+});
