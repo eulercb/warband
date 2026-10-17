@@ -1,3 +1,5 @@
+import { ADD_RADIUS } from '../../engine/core/constants';
+import { drawEnemyDebuffs } from './enemyDebuffs';
 /**
  * Warband — PixiJS v8 renderer.
  *
@@ -73,6 +75,7 @@ export class Renderer {
   private readonly overlayLayer = new Graphics();
   private readonly projectilesLayer = new Graphics();
   private readonly fxLayer = new Graphics();
+  private readonly enemyStatusLayer = new Graphics();
   private readonly fxTextLayer = new Container();
   private readonly labelLayer = new Container();
 
@@ -122,6 +125,7 @@ export class Renderer {
       this.fxLayer,
       this.particles.container,
       this.fxTextLayer,
+      this.enemyStatusLayer, // readable above damage numbers and particles
       this.labelLayer,
       this.balloons.container, // ability speech balloons, above everything
     );
@@ -208,6 +212,35 @@ export class Renderer {
     this.updateLights(dtMs); // cull + project the shared light set (after rig glows settle)
     this.drawOverlays(state, now); // vector bars/rings for sprite- and rig-driven actors
     this.drawProjectiles(state); // geometry for flag-off projectiles
+    this.enemyStatusLayer.clear();
+    for (const boss of state.bosses) {
+      if (boss.hp <= 0) continue;
+      const pos = this.camera.worldToScreen(boss.pos);
+      drawEnemyDebuffs(
+        this.enemyStatusLayer,
+        boss.buffs,
+        state.localPlayerId,
+        pos.x,
+        pos.y,
+        getMonster(boss.monsterId).radius * this.camera.scale,
+        false,
+        this.camera.viewSize,
+      );
+    }
+    for (const add of state.adds) {
+      if (add.hp <= 0) continue;
+      const pos = this.camera.worldToScreen(add.pos);
+      drawEnemyDebuffs(
+        this.enemyStatusLayer,
+        add.buffs,
+        state.localPlayerId,
+        pos.x,
+        pos.y,
+        ADD_RADIUS * this.camera.scale,
+        true,
+        this.camera.viewSize,
+      );
+    }
 
     this.fx.update(dtMs);
     this.fx.draw(this.fxLayer, this.camera);

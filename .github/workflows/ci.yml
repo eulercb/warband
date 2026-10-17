@@ -138,6 +138,7 @@ jobs:
           done
           node scripts/run-smoke.mjs smoke:rewards
           node scripts/run-smoke.mjs smoke:rooms
+          node scripts/run-smoke.mjs smoke:enemy-debuffs
 
       - name: Upload smoke screenshots
         if: always()

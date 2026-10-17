@@ -27,7 +27,8 @@
     "smoke:martial": "node scripts/smoke-martial.mjs",
     "smoke:absorption": "node scripts/smoke-absorption.mjs",
     "smoke:auras": "node scripts/smoke-auras.mjs",
-    "smoke:caster-defense": "node scripts/smoke-caster-defense.mjs"
+    "smoke:caster-defense": "node scripts/smoke-caster-defense.mjs",
+    "smoke:enemy-debuffs": "node scripts/smoke-enemy-debuffs.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

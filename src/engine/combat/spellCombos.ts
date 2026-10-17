@@ -1,16 +1,10 @@
+import { isBurstControl } from '../core/control';
 /** Shared authored spell interactions; copied skills retain their own behavior. */
 import type { Player, Boss, Add } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
 
 export function controlledSpellMultiplier(target: Boss | Add, bonus: number | undefined): number {
-  return bonus &&
-    target.buffs.some(
-      (b) =>
-        b.remaining > 0 &&
-        (b.kind === 'stun' || b.kind === 'root' || (b.kind === 'moveSpeed' && b.mult < 1)),
-    )
-    ? 1 + bonus
-    : 1;
+  return bonus && target.buffs.some(isBurstControl) ? 1 + bonus : 1;
 }
 
 /** Reserve the one-use surge at cast start; the resolved spell carries its boost. */

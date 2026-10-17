@@ -202,18 +202,18 @@ describe('Fiend: Soul Ember', () => {
     p.hp = 80;
     curse(w);
     damageBoss(w, p, w.boss!, 100);
-    expect(p.hp).toBeCloseTo(82.6);
-    expect(p.stats.healingDone).toBeCloseTo(2.6);
+    expect(p.hp).toBeCloseTo(86.5);
+    expect(p.stats.healingDone).toBeCloseTo(6.5);
     damageBoss(w, p, w.boss!, 100);
-    expect(p.hp).toBeCloseTo(82.6);
+    expect(p.hp).toBeCloseTo(86.5);
     damagePlayer(w, p, 10);
-    expect(p.hp).toBeCloseTo(73.6);
+    expect(p.hp).toBeCloseTo(77.5);
     tickBuffs(p, 3.1);
     damagePlayer(w, p, 10);
-    expect(p.hp).toBeCloseTo(63.6);
+    expect(p.hp).toBeCloseTo(67.5);
     tickSubclassPassives(p, 6);
     damageBoss(w, p, w.boss!, 100);
-    expect(p.hp).toBeCloseTo(66.2);
+    expect(p.hp).toBeCloseTo(74);
   });
   it("does not proc on another owner's curse, zero damage, invulnerability or a dead caster", () => {
     const w = world('warlock', ['wa_fiend_rebuke']);

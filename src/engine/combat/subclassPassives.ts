@@ -106,5 +106,5 @@ export function subclassHitHealing(p: Player, target: Target, effective: number)
     return 0;
   spendCooldown(p, id);
   putBuff(p, { kind: 'damageTaken', mult: 0.9, remaining: 3, source: PREFIX + id });
-  return p.maxHp * 0.02;
+  return p.maxHp * 0.05;
 }
