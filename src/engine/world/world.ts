@@ -1,3 +1,4 @@
+import { buffView } from '../core/buffView';
 import { zoneSupportKinds } from '../combat/visualCues';
 import { updatePaladinAuras } from '../combat/paladinAuras';
 import { grantAbsorption, maintainAbsorption, OVERFLOW_SECONDS } from '../combat/absorption';
@@ -3268,7 +3269,7 @@ export class World {
       maxHp: b.maxHp,
       phase: b.phase,
       telegraph: this.buildTelegraph(b),
-      buffs: b.buffs.map((bf) => ({ kind: bf.kind, remaining: bf.remaining, mult: bf.mult })),
+      buffs: b.buffs.map(buffView),
       action: b.action.kind,
       abilityId: b.action.abilityId,
       modName: this.modifier?.prefix,
@@ -3288,7 +3289,7 @@ export class World {
         pos: { ...a.pos },
         hp: Math.max(0, Math.round(a.hp)),
         maxHp: a.maxHp,
-        buffs: a.buffs.map((b) => ({ kind: b.kind, remaining: b.remaining, mult: b.mult })),
+        buffs: a.buffs.map(buffView),
       })),
       projectiles: this.projectiles.map((p) => ({
         id: p.id,

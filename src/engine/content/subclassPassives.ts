@@ -29,7 +29,7 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'warlock',
     name: 'Soul Ember',
     icon: '🔥',
-    desc: 'Damaging an enemy bearing your curse heals 2% max health and grants 10% damage reduction for 3s. Once per 6s.',
+    desc: 'Damaging an enemy bearing your curse heals 5% max health and grants 10% damage reduction for 3s. Once per 6s.',
   },
   wa_great_old_one: {
     id: 'old_one_dread_insight',

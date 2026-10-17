@@ -96,3 +96,17 @@ touch. Browser CI retains successful aura/bubble screenshots in the martial
 artifact as well as failure captures. Automated geometry checks distinguish the
 symbol silhouettes, check expiry/bounds, and exercise all authored support skills
 through native and composed resolution.
+
+## Enemy debuff follow-up
+
+Enemy control brackets and backed status badges now draw above damage text and
+particles, rather than relying on under-body rings or tiny HP-bar icons. They
+cover slow, root, stun, slower casting, silence, curse, weakened damage and
+vulnerability. The control bracket predicate is shared with control-burst damage;
+Fireball still evaluates it at impact. A curse or casting slow alone does not
+qualify. The optional curse-owner field adds a personal-curse dot while preserving
+generic display for older snapshots. Bosses use up to six categories and adds two;
+viewport-clamped, fixed-size badges and no new floating text keep the display
+bounded. The pause key explains the shapes. Existing positive-support visuals are
+unchanged. Browser fixtures stress the real renderer with dense damage numbers
+and exercise expiry/ownership on desktop, portrait and landscape views.

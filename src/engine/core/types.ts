@@ -245,6 +245,8 @@ export interface StunDr {
  * vulnerability, and pick the matching glow color per effect (§ visual-cues).
  */
 export interface BuffView {
+  /** Optional public curse owner; old snapshots omit it. */
+  ownerId?: EntityId;
   kind: BuffKind;
   remaining: number;
   mult: number;

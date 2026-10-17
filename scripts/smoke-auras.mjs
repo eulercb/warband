@@ -2,6 +2,32 @@
 import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright-core';
+const tests = [
+  {
+    name: 'Divine Shield',
+    slot: 'a3',
+    key: 'KeyR',
+    text: /bulwark aura/,
+    badge: /Bulwark aura:/,
+  },
+  {
+    name: 'Sacred Weapon',
+    slot: 'sub1',
+    key: 'KeyZ',
+    text: /pursuit aura/,
+    badge: /Pursuit: next connecting/,
+    loadout: true,
+  },
+  {
+    name: 'Lay on Hands',
+    slot: 'a2',
+    key: 'KeyE',
+    text: /renewal aura/,
+    badge: /Renewal aura:/,
+    recovery: true,
+  },
+].filter((test) => !process.env.SMOKE_AURA || test.name === process.env.SMOKE_AURA);
+assert.ok(tests.length, 'Unknown SMOKE_AURA');
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || chromium.executablePath(),
   headless: true,
@@ -9,31 +35,7 @@ const browser = await chromium.launch({
 let currentPage;
 try {
   for (const mobile of [false, true])
-    for (const test of [
-      {
-        name: 'Divine Shield',
-        slot: 'a3',
-        key: 'KeyR',
-        text: /bulwark aura/,
-        badge: /Bulwark aura:/,
-      },
-      {
-        name: 'Sacred Weapon',
-        slot: 'sub1',
-        key: 'KeyZ',
-        text: /pursuit aura/,
-        badge: /Pursuit: next connecting/,
-        loadout: true,
-      },
-      {
-        name: 'Lay on Hands',
-        slot: 'a2',
-        key: 'KeyE',
-        text: /renewal aura/,
-        badge: /Renewal aura:/,
-        recovery: true,
-      },
-    ]) {
+    for (const test of tests) {
       const classId = 'paladin';
       const context = await browser.newContext({
         viewport: mobile ? { width: 320, height: 568 } : { width: 1280, height: 800 },
@@ -94,25 +96,27 @@ try {
           else await page.keyboard.up(key);
         }
       };
-      if (test.recovery)
+      const self = page.locator('.hud-selfhp');
+      if (test.recovery) {
+        // Receiving an uncontrolled boss hit can down/control the caster before the heal.
+        // Use the real defensive skill first, then require an injured, living hero.
+        await hold('a3', 'KeyR', () => self.getByTitle(/Bulwark aura:/).waitFor());
         await page.waitForFunction(
           () => {
             const fill = document.querySelector('.hud-selfhp .hud-healthbar-fill');
-            return fill && parseFloat(fill.style.width) < 95;
+            const hp = fill ? parseFloat(fill.style.width) : 100;
+            return hp > 0 && hp < 95;
           },
           null,
           { timeout: 30000 },
         );
-      await hold(test.slot, test.key, () =>
-        mobile
-          ? touchButton(test.slot).locator('.wb-touch-btn-label.cooling').waitFor()
-          : page.waitForFunction((n) => {
-              const el = document.querySelector(`.hud-ability[aria-label*="${n} —"]`);
-              return el && !el.classList.contains('ready');
-            }, test.name),
-      );
-      const self = page.locator('.hud-selfhp');
-      await self.getByTitle(test.badge).waitFor();
+      }
+      // Verify the resolved effect itself, including an effective Renewal heal.
+      // Keeping input held lets ordinary short control expire; no gameplay gates are bypassed.
+      await hold(test.slot, test.key, () => self.getByTitle(test.badge).waitFor());
+      if (mobile)
+        assert.ok(await touchButton(test.slot).locator('.wb-touch-btn-label.cooling').isVisible());
+      else assert.ok(!(await tile.getAttribute('class')).split(/\s+/).includes('ready'));
       if (mobile) assert.ok(await page.getByRole('group', { name: 'Touch controls' }).isVisible());
       if (process.env.SHOT_DIR)
         await page.screenshot({
@@ -131,6 +135,13 @@ try {
       await context.close();
     }
 } catch (error) {
+  if (currentPage && !currentPage.isClosed()) {
+    const status = await currentPage
+      .locator('.hud-selfhp')
+      .textContent()
+      .catch(() => null);
+    console.error('Aura failure hero status:', status);
+  }
   if (currentPage && !currentPage.isClosed())
     await currentPage
       .screenshot({ path: `${process.env.SHOT_DIR || tmpdir()}/smoke-auras-failure.png` })

@@ -218,6 +218,13 @@ export default function PauseMenu({ onResume }: { onResume: () => void }) {
             actual recipients. Moving auras use shield posts for Bulwark, chevrons for Pursuit, and
             crosses for Renewal. Their symbols also appear on affected allies.
           </p>
+          <p>
+            Enemy corner brackets mean slowed, rooted or stunned: control-burst bonuses check this
+            when the hit lands. Down-chevron: slow; anchor: root; star: stun. Hourglass: slower
+            casting; crossed circle: silence; diamond: curse; falling sword: weakened; cracked
+            shield: vulnerable. A white dot marks your own curse. Other debuffs alone do not enable
+            Fireball’s control bonus.
+          </p>
         </details>
 
         <TerrainLegend />

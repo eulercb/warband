@@ -8,8 +8,10 @@ Knight/Ranger/Barbarian/Monk differentiation was merged and playtested.
 Martial subclass coherence was merged and playtested.
 Cleric absorption and Chain Pull momentum were merged and playtested.
 Cleric retuning and Paladin moving auras were merged and playtested.
-Ability readability and Paladin aura tuning were merged and playtested; further readability changes are deferred pending more feedback.
-Caster defense identity (Mage/Sorcerer) is implemented for review.
+Support readability and Paladin aura tuning were merged and playtested.
+Enemy debuff visibility is now being improved from additional playtest feedback.
+Caster defense identity (Mage/Sorcerer) was merged and playtested.
+Enemy debuff cues and the Soul Ember sustain adjustment are implemented for review.
 Remaining defining passives, companions, forms and later milestones remain proposals.
 
 ## Goals and boundaries
@@ -72,7 +74,7 @@ ownership record rather than inferring ownership from the equipped list.
   skills can prepare it; rooted mobility cannot. Misses and invulnerable enemies
   preserve readiness. Base skills, subclass spells and grafted spells work.
 - **Fiend — Soul Ember:** effective damage to a personally cursed enemy heals
-  2% maximum health and grants 10% mitigation for 3 seconds, once per 6 seconds.
+  5% maximum health (retuned from 2%) and grants 10% mitigation for 3 seconds, once per 6 seconds.
   Direct attacks, zones and counterbursts qualify. Healing is capped at missing
   health and credited normally. Other owners' curses and dead casters cannot proc it.
 - **Great Old One — Dread Insight:** personally cursed targets take 8% extra
@@ -233,7 +235,7 @@ Assess how different the decisions feel as well as clear speed.
 Live playtest feedback after milestone 2: some passives feel undertuned or
 underwhelming, especially Fiend's Soul Ember. Keep this as a priority for a
 separate balance/feel pass rather than silently changing it during another class
-revamp. Its current maximum healing cadence is 2% max HP every 6 seconds (about
+revamp. Its original maximum healing cadence was 2% max HP every 6 seconds (about
 0.33% max HP/s before missed opportunities/overheal), plus a brief 10% ward.
 Investigate both effective strength and whether the reward is noticeable; possible
 changes include a stronger sustain/ward payoff or a clearer curse-to-retaliation
@@ -322,25 +324,26 @@ The original six milestones grouped work by theme; they did not include every
 remaining passive or the balance work discovered during playtests. Avoid treating
 “milestone 5 of 6” as “one patch left until everything is finished.”
 
-| Workstream                 | Merged and playtested                | This PR                   | Still outstanding                                    |
-| -------------------------- | ------------------------------------ | ------------------------- | ---------------------------------------------------- |
-| Base class loops           | 12/12 classes plus martial coherence | None                      | Ongoing tuning                                       |
-| Defining subclass passives | 4/24                                 | None                      | 20: 18 in ordinary batches, companion and form       |
-| Balance/skill identity     | Feedback collected                   | Caster defensive identity | Catalogue-wide defense/recovery review, Fiend tuning |
-| Companion/form systems     | None                                 | None                      | Beast Master companion and Moon form prototypes      |
+| Workstream                 | Merged and playtested                | This PR                       | Still outstanding                                    |
+| -------------------------- | ------------------------------------ | ----------------------------- | ---------------------------------------------------- |
+| Base class loops           | 12/12 classes plus martial coherence | None                          | Ongoing tuning                                       |
+| Defining subclass passives | 4/24                                 | None                          | 20: 18 in ordinary batches, companion and form       |
+| Balance/skill identity     | Feedback collected                   | Enemy debuffs / Fiend sustain | Catalogue-wide defense/recovery review, Fiend tuning |
+| Companion/form systems     | None                                 | None                          | Beast Master companion and Moon form prototypes      |
 
 **Current sequence:**
 
 1. **Merged/playtested:** Cleric absorption, Chain Pull momentum, Cleric tuning and Paladin auras.
 2. **Merged/playtested:** Shared ability readability and Paladin aura tuning.
-3. **This PR:** Mage/Sorcerer defensive skill identity; first half of the broad balance pass.
-4. Balance pass B: remaining defense/recovery identity and Fiend tuning.
+3. **Merged/playtested:** Mage/Sorcerer defensive skill identity.
+4. **This PR:** Enemy debuff feedback and the targeted Soul Ember sustain adjustment.
+5. Balance pass B: remaining defensive/recovery skill identity; evaluate the new Soul Ember values live.
    Keep all unnamed candidates in scope; retain useful aura/class interactions.
-5. Three batches for the 18 remaining non-companion/non-form subclass passives,
+6. Three batches for the 18 remaining non-companion/non-form subclass passives,
    roughly six passives per PR, with their related skill/upgrade coherence reviewed
    together. Revise each proposed passive around its final class loop first.
-6. Beast Master companion prototype plus its defining passive.
-7. Moon form prototype plus its defining passive.
+7. Beast Master companion prototype plus its defining passive.
+8. Moon form prototype plus its defining passive.
 
 After this absorption batch, **about seven further PRs remain** (2 defensive/balance
 PRs, 3 passive batches, companion, form), with scope adjusted if playtests justify
@@ -722,3 +725,45 @@ Finalize the pilot once its chosen classes have stable contracts, rather than
 waiting for the whole catalogue; companion/form-specific upgrade design follows
 those prototypes. Revisit the
 batch sizes after the pilot rather than implementing hundreds of upgrades at once.
+
+## Enemy debuff feedback and Fiend sustain tuning
+
+Additional live feedback identified enemy debuffs as hard to read under damage
+numbers. This requested visibility checkpoint precedes the broader balance-B
+skill reworks; it does not mark balance B complete.
+
+- Draw enemy status cues in a separate foreground layer above combat numbers and
+  particles, for all boss/add body paths. Cyan corner brackets mean live slow,
+  root or stun, using the same predicate as control-burst damage at impact.
+- Distinct backed geometric badges identify primary control, slower casting,
+  silence, curses, weakened damage and vulnerability. Stun takes display priority
+  over root/slow; the control window persists while any qualifying control remains.
+  Bosses show up to six categories, adds two to keep crowds readable. Existing
+  HUD badges remain available for the rest; there is no additional floating text.
+- A dot identifies a personal curse. Serialize an optional numeric curse owner
+  on enemy buff views, without private source/proc fields. Old snapshots display
+  a generic curse rather than claiming ownership.
+- Match real remaining durations, clamp badge rows to the viewport, clear on
+  expiry/death, and explain the symbols in the collapsed pause key. Casting slow
+  and curse alone must not imply Fireball's control bonus; bonuses check on hit.
+- **Soul Ember:** heal 5% max HP rather than 2% from personal-curse damage, once
+  per 6s; retain its 10% mitigation for 3s and all effective-damage/death/ownership
+  gates. This is the targeted Fiend sustain adjustment already on the balance
+  list, not a rewrite of its defensive skills. Passive power credit and difficulty
+  formulas are unchanged; normal wave/kill-pace feedback remains active.
+
+Validation includes debuff/control-condition parity, overlapping/expiring states,
+personal versus other/unknown curses, snapshot boundaries, bounded geometry and a
+real-renderer browser fixture under dense hit-number traffic at desktop, portrait
+mobile and landscape sizes. The fixture is development-only; it adds no production
+combat/debug controls.
+
+**Next remains the broader defensive/recovery balance batch**, including Dark
+Resilience and Paladin base wards despite their useful new interactions, the other
+recorded mitigation-only candidates and plain heals. Fiend sustain tuning is now
+implemented; evaluate it live before adding more passive power. Keep the upgrade
+research/pilot workstream and remaining passive/companion/form sequence from
+[the upgrade roadmap](UPGRADE_IDENTITY_ROADMAP.md). The provisional future count
+remains six skill/system batches plus four to six upgrade batches, subject to
+scope and playtesting; this new feedback patch does not silently complete the
+remaining skill reworks.
