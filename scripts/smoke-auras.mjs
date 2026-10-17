@@ -65,6 +65,17 @@ try {
       await click(button('List view'));
       await click(button('Create Room'));
       if (mobile) await click(button('Lobby menu'));
+      if (test.recovery) {
+        // An aura visibility check needs a survivable injury, not the default
+        // dragon's knockback/burst sequence. Select a fixed easy, non-control
+        // encounter through the normal UI; keep the effective-heal requirement.
+        await click(
+          page.getByRole('group', { name: 'Change boss' }).getByRole('button', {
+            name: 'Kobold Firebrand',
+            exact: true,
+          }),
+        );
+      }
       if (test.loadout) {
         await click(page.locator('.wb-sf-loadout-toggle'));
         await click(page.getByRole('button', { name: new RegExp(test.name) }));

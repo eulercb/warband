@@ -11,7 +11,8 @@ Cleric retuning and Paladin moving auras were merged and playtested.
 Support readability and Paladin aura tuning were merged and playtested.
 Enemy debuff visibility is now being improved from additional playtest feedback.
 Caster defense identity (Mage/Sorcerer) was merged and playtested.
-Enemy debuff cues and the Soul Ember sustain adjustment are implemented for review.
+Enemy debuff cues and the Soul Ember sustain adjustment were merged and playtested.
+Simultaneous debuff visibility is corrected in the current follow-up; see the final section.
 Remaining defining passives, companions, forms and later milestones remain proposals.
 
 ## Goals and boundaries
@@ -737,9 +738,9 @@ skill reworks; it does not mark balance B complete.
   root or stun, using the same predicate as control-burst damage at impact.
 - Distinct backed geometric badges identify primary control, slower casting,
   silence, curses, weakened damage and vulnerability. Stun takes display priority
-  over root/slow; the control window persists while any qualifying control remains.
-  Bosses show up to six categories, adds two to keep crowds readable. Existing
-  HUD badges remain available for the rest; there is no additional floating text.
+  over root/slow in the original implementation; this was a visibility defect,
+  corrected below. The control window persists while any qualifying control remains.
+  The original six-boss/two-add caps are also removed; no extra floating text is added.
 - A dot identifies a personal curse. Serialize an optional numeric curse owner
   on enemy buff views, without private source/proc fields. Old snapshots display
   a generic curse rather than claiming ownership.
@@ -767,3 +768,113 @@ research/pilot workstream and remaining passive/companion/form sequence from
 remains six skill/system batches plus four to six upgrade batches, subject to
 scope and playtesting; this new feedback patch does not silently complete the
 remaining skill reworks.
+
+## Simultaneous effects correction and class-coherence checkpoint
+
+Live testing exposed a flawed display compromise: root/stun suppressed slow, and
+boss/add limits hid other still-active categories. This patch shows all eight
+supported harmful categories together, grouping repeated sources by **effect type**,
+not choosing one ability or one caster. Control comes first, personal curse next,
+then other team state. Adds use a shorter four-column grid. The curse badge lasts
+through any remaining caster's mark, while its personal dot expires independently.
+No combat magnitude, duration, passive or difficulty calculation changes here.
+
+Only curses currently replicate reliable ownership. Do not label unowned slow/root
+as yours or infer ownership from the current class. Their categories remain visible
+regardless of origin. Per-caster attribution for every debuff is a separate engine
+contract, not something the renderer can safely invent. A single slow badge denotes
+an active slow; it does not promise that multiple sources stack multiplicatively.
+Regression checks cover both root/slow expiry orders, mixed ownership, eight badges
+on bosses and adds, and the real foreground renderer on three viewport sizes.
+
+### Next implementation: balance B1 — Warlock kit coherence
+
+The existing pilot improved the base loop but did not sufficiently distinguish
+subclass choices. Code inspection confirms Hex and Dissonant Whispers are both
+personal-curse damage zones with movement slowing; Hex also slows wind-up. Fire
+Pit is currently only a damage zone, and Dark Resilience remains a 45%-mitigation
+self buff. The recent Soul Ember increase does **not** complete this work.
+
+Review these four contracts together before coding the next balance batch:
+
+| Skill              | Design direction to prototype                                                                         | Required distinction / guardrail                                                                                                                |
+| ------------------ | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hex                | Keep the baseline hindering curse and owner damage access                                             | Useful without a subclass; retain wind-up/slow identity and flight rules                                                                        |
+| Dissonant Whispers | A debilitating curse that weakens enemy outgoing damage instead of duplicating Hex's movement slow    | A team-facing enemy effect, with capped/nonmultiplying overlap; compare value against interrupt/control needs                                   |
+| Fire Pit           | A searing curse zone, giving Fiend another personal-mark source and deliberate area placement         | Sustain/pressure access rather than another copy of Hex's hindering package; do not add unlimited healing per tick or per enemy                 |
+| Dark Resilience    | Prototype a bounded curse-siphon defensive action, e.g. a short barrier drawn from nearby marked foes | Must still work in a boss-only encounter and weak builds; cap enemy-count scaling, preserve curse access and give meaningful timing/positioning |
+
+These are prototype directions, not shipped promises or final numbers. Compare an
+alternative if the siphon merely creates another automatic bubble with no changed
+decision. Retain stable skill IDs and existing useful counterburst interactions.
+Check Hurl Flame, Mind Blast, Tentacle and Entropic Ward in the same kit review:
+not every skill must apply a curse, but each must have an understandable role and
+an intentional relationship or useful alternative to the subclass loop.
+
+Before implementing differentiated marks, resolve the engine contract explicitly:
+currently personal curses share `curse:<owner>` and refresh by source; the damage
+multiplier reads that single refreshed personal mark rather than multiplying marks.
+Multiple curse _riders_ must not accidentally overwrite one another, amplify other
+players' damage, or disappear in copied/composed skills. Specify overlap, expiry,
+flight, ownership, proc cadence and effective-hit rules first. New curse categories
+must also have legible feedback; simply tinting identical zones is insufficient.
+Keep Soul Ember at its current 5%-max-HP / 6s gate until testing this full kit. A
+stronger passive cannot substitute for meaningful active choices.
+
+### Remaining balance B2 and catalogue-wide audit
+
+Dark Resilience remains mandatory in B1. B2 covers remaining mitigation/plain-heal
+and redundant defensive candidates **across the catalogue**, including unmentioned
+ones. An aura, preparation effect or other new rider does not clear the underlying
+rework debt. The current authored `buffDefMult` search also identifies Shield Wall,
+Rally, Stand as One, Bear Spirit, Smoke Bomb, Shield Spell, Divine Shield, Aura of
+Protection, Bolster and Mirror Image; inspect mixed Blessing/Inspiration as well,
+without assuming every mitigation rider should be removed. Retain useful class
+interactions and assess the base action itself. Search recovery-only skills and
+upgrades too; the names above are a starting inventory, not a whitelist.
+
+Add a cross-class coherence review to each planned passive/upgrade batch, prioritizing
+early Rogue/Warlock, then Mage/Sorcerer, support and martial loops. Look for duplicate
+jobs, unreachable subclass payoffs, insufficient setup choices and misleading
+upgrade text. Intentional alternatives need comparable value, not forced interaction
+with every resource. Avoid turning every defense into a bubble, every attack into
+a spender or every subclass into the same class loop with a different color.
+
+### Pre-delivery design review (in addition to correctness tests)
+
+For each touched class, record a short review in its PR:
+
+1. **Decision and alternatives:** state what changes in timing, placement, target or
+   risk; compare with the nearest existing skill. If only names/numbers differ,
+   justify that simplicity or revise the design.
+2. **Access and payoff:** map base kit and both subclasses separately. Demonstrate
+   two useful sequences per subclass and a fallback when a reward/setup is absent.
+   Check boss-only, adds, solo and cooperative cases; a full-catalogue average can
+   hide a subclass with no access to the advertised mechanic.
+3. **Adversarial examples:** try overlapping sources, early expiry, resisted control,
+   flight, no effective damage/healing, no injured allies, and capped resources.
+   Verify the displayed promise still matches actual behavior. This patch's example:
+   root must not conceal an independently active slow, even though both enable burst.
+4. **Integration and balance:** inspect Honed/grand/graft/Forge/native/composed paths,
+   attribution, recursion, stacking and party-power credit; compare a fixed encounter
+   before adaptive runs. Keep meaningful bounds instead of blanket difficulty exemptions.
+5. **Evidence and limits:** cite relevant tests and desktop/touch observations; state
+   what still needs human playtesting. Passing tests proves contracts, not fun or balance.
+
+Apply this review to the current visibility fix: every active category survives the
+priority policy; duplicate-source badges stay bounded; curse ownership expiry is
+independent of other casters; boss/add and portrait/landscape cases are exercised.
+No extra unverified ownership labels or unrelated numerical buffs are introduced.
+
+For larger redesigns, research specific decisions in comparable games (curse limits,
+overlap, defensive counterplay, build opportunity costs), recording sources and why
+they fit this game's boss/co-op/mobile constraints. Prior research targets remain
+in the upgrade roadmap; they are not evidence that those mechanics were validated
+here. Do not copy complexity or claim external research without checking sources.
+
+**Progress:** this is a corrective visibility patch, not completed balance B.
+Split the former broad B into **B1 Warlock coherence**, then **B2 remaining defenses**.
+That makes seven planned core/system batches (B1, B2, three passive batches,
+companion and form), plus four to six upgrade batches: roughly **11–13 future PRs**.
+Coherence review is part of those deliveries, not a new chain of audit-only PRs.
+Revisit grouping after B1 playtesting; do not enlarge a patch merely to reduce its count.

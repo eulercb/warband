@@ -27,14 +27,28 @@ const all = [
   b('damageTaken', 1.2),
 ];
 describe('enemy debuff semantics', () => {
-  it('shows only live detrimental states, deduplicates refreshes and prioritizes hard control', () => {
+  it('shows every live detrimental category, deduplicates refreshes and prioritizes control', () => {
     expect(
       enemyDebuffs([b('root'), b('stun'), ...all, b('moveSpeed', 0.2, 5)], 1).map((x) => x.kind),
-    ).toEqual(['stun', 'castSlow', 'silence', 'curse', 'weak', 'vulnerable']);
+    ).toEqual(['stun', 'root', 'slow', 'curse', 'castSlow', 'silence', 'weak', 'vulnerable']);
     expect(enemyDebuffs([b('root'), ...all], 1)[0].kind).toBe('root');
     expect(enemyDebuffs(all, 1)[0].kind).toBe('slow');
-    expect(enemyDebuffs(all, 1, true).map((x) => x.kind)).toEqual(['slow', 'curse']);
-    expect(enemyDebuffs(all, 2, true).map((x) => x.kind)).toEqual(['slow', 'castSlow']);
+    expect(enemyDebuffs(all, 1).map((x) => x.kind)).toEqual([
+      'slow',
+      'curse',
+      'castSlow',
+      'silence',
+      'weak',
+      'vulnerable',
+    ]);
+    expect(enemyDebuffs(all, 2).map((x) => x.kind)).toEqual([
+      'slow',
+      'castSlow',
+      'silence',
+      'curse',
+      'weak',
+      'vulnerable',
+    ]);
     expect(
       enemyDebuffs(
         [
@@ -50,6 +64,29 @@ describe('enemy debuff semantics', () => {
       ),
     ).toEqual([]);
     expect(enemyDebuffs([b('moveSpeed', 0.7, 1), b('moveSpeed', 0.5, 4)], 1)[0].remaining).toBe(4);
+  });
+  it('keeps overlapping slow and root independently visible through either expiry order', () => {
+    // Different skills/players can supply these; neither replaces the other category.
+    for (const first of ['root', 'moveSpeed'] as const) {
+      const buffs = [b('root'), b('moveSpeed', 0.5)];
+      expect(enemyDebuffs(buffs, 1).map((s) => s.kind)).toEqual(['root', 'slow']);
+      buffs.find((s) => s.kind === first)!.remaining = 0;
+      expect(enemyDebuffs(buffs, 1).map((s) => s.kind)).toEqual([
+        first === 'root' ? 'slow' : 'root',
+      ]);
+    }
+  });
+  it('draws all eight categories on bosses and adds rather than truncating the grid', () => {
+    const buffs = [b('stun'), b('root'), ...all];
+    for (const compact of [false, true]) {
+      const g = new Graphics();
+      drawEnemyDebuffs(g, buffs, 1, 100, 100, 40, compact);
+      // One opaque backed plate per distinct category (not one per source).
+      const plates = g.context.instructions.filter(
+        (i) => i.action === 'fill' && i.data.style.color === 0x090d18,
+      );
+      expect(plates).toHaveLength(8);
+    }
   });
   it('uses exactly Fireball control conditions, not curse, casting slow or other debuffs', () => {
     const w = new World({
@@ -72,7 +109,7 @@ describe('enemy debuff semantics', () => {
   });
   it('tracks personal curse expiry independently of other casters and supports legacy snapshots', () => {
     const curses = [b('curse', 1.15, 1, 1), b('curse', 1.15, 7, 2)];
-    expect(enemyDebuffs(curses, 1)).toEqual([{ kind: 'curse', remaining: 1, own: true }]);
+    expect(enemyDebuffs(curses, 1)).toEqual([{ kind: 'curse', remaining: 7, own: true }]);
     expect(enemyDebuffs([{ ...curses[0], remaining: 0 }, curses[1]], 1)).toEqual([
       { kind: 'curse', remaining: 7, own: false },
     ]);
@@ -127,7 +164,7 @@ describe('bounded enemy status geometry', () => {
     });
     expect(new Set(shapes).size).toBe(8);
   });
-  it('clears after expiry, limits adds, clamps badges at viewport edges and distinguishes curse ownership', () => {
+  it('clears after expiry, retains all add badges, clamps at viewport edges and distinguishes ownership', () => {
     const g = new Graphics();
     drawEnemyDebuffs(g, [], 1, 100, 100, 40);
     expect(g.context.instructions).toHaveLength(0);
@@ -135,14 +172,14 @@ describe('bounded enemy status geometry', () => {
     const full = g.context.instructions.length;
     expect(full).toBeGreaterThan(12);
     g.clear();
-    drawEnemyDebuffs(g, all, 2, 100, 100, 40, true);
-    expect(g.context.instructions.length).toBeLessThan(full);
+    drawEnemyDebuffs(g, all, 1, 100, 100, 40, true);
+    expect(g.context.instructions.length).toBe(full);
     for (const [x, y] of [
       [310, 560],
       [-30, -30],
     ]) {
       g.clear();
-      drawEnemyDebuffs(g, all.slice(1), 1, x, y, 40, false, { x: 320, y: 568 });
+      drawEnemyDebuffs(g, all.slice(1), 1, x, y, 40, true, { x: 320, y: 568 });
       const bounds = g.getLocalBounds();
       expect(bounds.minX).toBeGreaterThanOrEqual(0);
       expect(bounds.maxX).toBeLessThanOrEqual(320);
