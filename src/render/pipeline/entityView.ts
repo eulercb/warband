@@ -597,7 +597,8 @@ export function drawZone(g: Graphics, z: ZoneView, screen: Vec2, scale: number):
   if (style) {
     // One large unbacked watermark inside the player's field; never little badges
     // that look attached to an overlapping boss pool or environmental prop.
-    g.context.save().scale(3, 3).translate(x, y);
+    const symbolScale = Math.min(3, r / 12);
+    g.context.save().scale(symbolScale, symbolScale).translate(x, y);
     drawCurseSigil(g, style, 0, 0, fade * 0.5);
     g.context.restore();
   }

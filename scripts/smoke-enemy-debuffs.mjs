@@ -105,7 +105,7 @@ try {
               duration: 8,
             });
             spawnZone(world, {
-              kind: 'hex',
+              kind: 'voidZone',
               pos: { x: pos.x + 35, y: pos.y + 20 },
               radius: 90,
               side: 'player',
