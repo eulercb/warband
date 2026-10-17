@@ -43,8 +43,13 @@ try {
       if (mobile) await click(button('Lobby menu'));
       await click(button('Start Fight'));
       const cases = {
-        cleric: { name: 'Heal', slot: 'a1', key: 'KeyQ', text: /effective rescue/ },
-        paladin: { name: 'Divine Shield', slot: 'a3', key: 'KeyR', text: /other allies within/ },
+        cleric: {
+          name: 'Heal',
+          slot: 'a1',
+          key: 'KeyQ',
+          text: /effective heals add a 6s bubble.*25% healed HP.*75% on rescue.*shared cap 50% max HP/,
+        },
+        paladin: { name: 'Divine Shield', slot: 'a3', key: 'KeyR', text: /bulwark aura/ },
         druid: {
           name: 'Entangle',
           slot: 'a1',

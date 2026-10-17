@@ -92,20 +92,26 @@ interface KitRates {
   offenseBuff: number;
 }
 
+// Round credited buffs down: seeded rounding must not turn tuning into harder bosses.
+const credit = (value: number, scale: number | undefined) =>
+  scale == null ? value : Math.floor(value * scale + 1e-9);
+
 /** Rate contribution of a single ability, at the hero's cd/cast multipliers. */
 function abilityRates(ab: PlayerAbilityDef, cdMult: number, castMult: number): KitRates {
   const cycle = Math.max(ab.cooldown * cdMult + (ab.castTime ?? 0) * castMult, BALANCE_MIN_CYCLE_S);
+  const creditedDamage = credit(ab.damage, ab.balanceDamageScale);
+  const creditedZoneHeal = credit(ab.zoneTickHeal ?? 0, ab.balanceZoneHealScale);
   const zoneTicks = (ab.zoneDuration ?? 0) / ZONE_TICK_INTERVAL;
   const zoneCommit = zoneTicks * BALANCE_ZONE_COMMIT;
   const healPerUse =
     (ab.healOnUse ?? 0) +
     // Temporary absorption has a bounded chance to be used before expiry.
-    (ab.absorption?.amount ?? 0) * 0.6 +
-    (ab.rescueHealBonus ? ab.damage * 0.5 * 0.25 * 0.6 : 0) +
-    (ab.overflowShield ? (ab.zoneTickHeal ?? 0) * zoneCommit * 0.25 : 0) +
-    (ab.zoneTickHeal ?? 0) * zoneCommit +
+    (ab.absorption?.balanceAmount ?? ab.absorption?.amount ?? 0) * 0.6 +
+    (ab.rescueHealBonus ? creditedDamage * 0.5 * 0.25 * 0.6 : 0) +
+    (ab.overflowShield ? creditedZoneHeal * zoneCommit * 0.25 : 0) +
+    creditedZoneHeal * zoneCommit +
     // A 'heal' kind's `damage` field IS its heal magnitude — sustain, not offense.
-    (ab.kind === 'heal' ? ab.damage * (1 + (ab.rescueHealBonus ?? 0) * 0.25) : 0) +
+    (ab.kind === 'heal' ? creditedDamage * (1 + (ab.rescueHealBonus ?? 0) * 0.25) : 0) +
     // Critical rescue gets a conservative 25% opportunity assumption; groves use
     // the same occupancy discount as existing healing ground, not full uptime.
     (ab.recoveryZone
@@ -115,7 +121,7 @@ function abilityRates(ab: PlayerAbilityDef, cdMult: number, castMult: number): K
   const damagePerUse =
     ab.kind === 'heal'
       ? 0
-      : ab.damage * Math.max(1, ab.projCount ?? 1) +
+      : creditedDamage * Math.max(1, ab.projCount ?? 1) +
         (ab.zoneTickDamage ?? 0) * zoneCommit +
         (ab.landingDamage ?? 0);
   // A damage buff (Rage, Inspiration) uplifts the rest of the kit while it's up.
@@ -140,7 +146,10 @@ function kitRates(
     );
     bloodUptime = Math.max(bloodUptime, clamp((ab.bloodRage ?? 0) / cycle, 0, 1));
     if (ab.kind !== 'heal')
-      directDps += (ab.damage * Math.max(1, ab.projCount ?? 1) + (ab.landingDamage ?? 0)) / cycle;
+      directDps +=
+        (credit(ab.damage, ab.balanceDamageScale) * Math.max(1, ab.projCount ?? 1) +
+          (ab.landingDamage ?? 0)) /
+        cycle;
     const r = abilityRates(ab, cdMult, castMult);
     total.dps += r.dps;
     total.hps += r.hps;

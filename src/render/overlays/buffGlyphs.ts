@@ -27,6 +27,27 @@ function describe(
   mult: number,
 ): { glyph: string; color: number; good: boolean; label: string } | null {
   switch (kind) {
+    case 'auraBulwark':
+      return {
+        glyph: '🏰',
+        color: 0xffdc79,
+        good: true,
+        label: 'Bulwark aura: 10% less damage; stuns, roots, slows and silence last 25% less',
+      };
+    case 'auraStrike':
+      return {
+        glyph: '⚔️',
+        color: 0xffdc79,
+        good: true,
+        label: 'Pursuit: next connecting melee hit deals 15% more damage; once per activation',
+      };
+    case 'auraRenewal':
+      return {
+        glyph: '💚',
+        color: 0x7fe3a5,
+        good: true,
+        label: 'Renewal aura: 6 HP/s while nearby; equivalent auras do not stack',
+      };
     case 'absorption':
       return {
         glyph: '🫧',

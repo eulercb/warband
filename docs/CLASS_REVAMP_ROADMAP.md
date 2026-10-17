@@ -6,7 +6,8 @@ Mage/Sorcerer differentiation was merged and playtested.
 Support-class differentiation was merged and playtested.
 Knight/Ranger/Barbarian/Monk differentiation was merged and playtested.
 Martial subclass coherence was merged and playtested.
-Cleric absorption and Chain Pull momentum are implemented for review.
+Cleric absorption and Chain Pull momentum were merged and playtested.
+Cleric retuning and Paladin moving auras are implemented for review.
 Remaining defining passives, companions, forms and later milestones remain proposals.
 
 ## Goals and boundaries
@@ -319,17 +320,17 @@ The original six milestones grouped work by theme; they did not include every
 remaining passive or the balance work discovered during playtests. Avoid treating
 “milestone 5 of 6” as “one patch left until everything is finished.”
 
-| Workstream                 | Merged and playtested                | This PR                                         | Still outstanding                                                   |
-| -------------------------- | ------------------------------------ | ----------------------------------------------- | ------------------------------------------------------------------- |
-| Base class loops           | 12/12 classes plus martial coherence | Chain Pull momentum                             | Ongoing tuning                                                      |
-| Defining subclass passives | 4/24                                 | None                                            | 20: 18 in ordinary batches, companion and form                      |
-| Balance/skill identity     | Feedback collected                   | Cleric absorption and full protection inventory | Paladin auras, catalogue-wide defense/recovery review, Fiend tuning |
-| Companion/form systems     | None                                 | None                                            | Beast Master companion and Moon form prototypes                     |
+| Workstream                 | Merged and playtested                | This PR                                  | Still outstanding                                    |
+| -------------------------- | ------------------------------------ | ---------------------------------------- | ---------------------------------------------------- |
+| Base class loops           | 12/12 classes plus martial coherence | Chain Pull momentum                      | Ongoing tuning                                       |
+| Defining subclass passives | 4/24                                 | None                                     | 20: 18 in ordinary batches, companion and form       |
+| Balance/skill identity     | Feedback collected                   | Cleric retuning and Paladin moving auras | Catalogue-wide defense/recovery review, Fiend tuning |
+| Companion/form systems     | None                                 | None                                     | Beast Master companion and Moon form prototypes      |
 
 **Current sequence:**
 
-1. **This PR:** Cleric absorption foundation and its rescue/defensive/Sanctuary uses.
-2. Paladin moving auras and their distinct skill-triggered roles.
+1. **Merged/playtested:** Cleric absorption foundation and Chain Pull momentum.
+2. **This PR:** Paladin moving auras and related Cleric tuning.
 3. Existing skill/passive balance and identity pass: Fiend, Abjurer, Sorcerer,
    Dragon Wings, and mitigation-only skills; use the two new defensive systems
    only where they fit rather than applying them everywhere.
@@ -495,7 +496,7 @@ keep absorption, moving auras and companion AI separate because each creates new
 state, replication and stacking risks. Fiend tuning and the Abjurer/Sorcerer
 redundant protection feedback remain on that defensive/balance list.
 
-## Defensive batch 1: absorption and the full protection audit
+## Defensive batch 1 (merged/playtested): absorption and the full protection audit
 
 Martial subclass coherence is merged and playtested. This batch implements the
 absorption foundation, Cleric rescue/defensive/healing-ground uses, and the small
@@ -564,3 +565,68 @@ balance pass; three batches of non-companion/form passives; Beast Master compani
 Moon form. The broad balance pass may need splitting after its audit: keep the
 estimate provisional rather than promising a fixed patch count. The plain-heal
 review and Fiend tuning remain included in that pass.
+
+## Support batch 2: Cleric tuning and Paladin moving auras
+
+The first bubbles were too restrictive in playtests. Their small caps and short
+expiry limited visible value, and rescue-only delivery made ordinary healing feel
+unrewarding. Include Cleric tuning immediately alongside the related Paladin work.
+Smite also needs a modest increase: bubbles alone do not shorten weak solo fights.
+
+| Cleric effect                            | Previous                                         | This batch                                                                |
+| ---------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------- |
+| Shared absorption ceiling                | 30% target max HP                                | 50%                                                                       |
+| Healing-ground overflow ceiling / linger | 15% / 3s                                         | 30% / 6s                                                                  |
+| Warding Flare                            | 40 protection / 4s                               | 70 / 7s                                                                   |
+| Preserve Life                            | 30 protection / 5s                               | 55 / 8s                                                                   |
+| Effective ordinary direct heal           | No bubble                                        | Adds 25% effective healing, capped at 15% max HP                          |
+| Effective rescue direct heal             | 50% effective healing, capped at 15% max HP / 3s | Ordinary bubble **plus** 75% effective healing, extra cap 30% max HP / 6s |
+| Smite                                    | 12 damage                                        | 16                                                                        |
+| Heal                                     | 60                                               | 75                                                                        |
+| Flash of Light / Mass Cure               | 70 / 80                                          | 85 / 100                                                                  |
+| Sanctuary / Blessed Bloom                | 10 / 14 heal per tick                            | 14 / 18                                                                   |
+
+Heal-generated bubbles add to existing protection within the shared ceiling;
+ordinary and rescue contributions combine in one cast. They require effective
+healing, preserving Sanctuary's distinct role as preemptive protection at full HP.
+Adding protection does not shorten an existing longer-lived pool. Ordinary direct
+shield casts retain strongest-amount behavior rather than adding multiple casters.
+
+These authored buffs retain their **pre-tuning party-power credit**, including
+copied skills and Forge composition. The estimator uses explicit tuning metadata;
+Forge's content budget still prices the real effects. Upgrade and seeded rounding
+must not turn this balance buff into a higher party-power difficulty charge.
+Wave progression and the existing performance/pace feedback remain unchanged;
+this is not a promise that subsequent encounters never scale in a faster run.
+
+Paladin skills now activate one following field per caster:
+
+- **Bulwark:** Divine Shield and Aura of Protection give nearby living allies 10%
+  damage reduction and 25% shorter new stuns, roots, slows and silence. Retain each
+  skill's existing personal defense. This is proactive control resistance, not cleanse.
+- **Pursuit:** Sacred Weapon and Hunter's Vow give nearby allies 12% movement speed
+  and one +15% connecting melee hit per activation. Reentering does not replenish
+  the hit. Overlapping equivalent fields do not multiply the preparation.
+- **Renewal:** an effective Lay on Hands or Bless starts 6 HP/s nearby recovery.
+  Equivalent recovery fields share one pulse; healing attribution is stable rather
+  than rewarding the number of overlapping Paladins. Recovery pulses cannot trigger
+  rescue bubbles or recursively restart the aura.
+
+Default radius 220u, duration 5s; Aura of Protection uses 240u / 6s. Fields move
+with the owner and stop on expiry, downing/death, departure, scene change or class
+swap. New activation replaces the previous field. Allied recipients use strongest
+equivalent effects; fields and readiness are visible through restrained rings,
+status badges and pause descriptions. Existing legacy shared-ward components remain
+functional for copied/composed data. Honed/grand and Divine Shield upgrades preserve
+and improve their applicable field geometry/duration.
+
+### Pace and remaining scope
+
+This larger support batch pairs a planned shared system with related playtest
+feedback. Continue grouping related skill tuning with each six-passive batch;
+keep companion AI and transformation state in separate PRs. Approximately **six
+planned PRs** remain after this batch (broad identity/balance pass, three passive
+batches, companion, form). The full defensive/recovery audit may warrant two
+cohesive passes, which would make seven; this is provisional scope, not a time or
+quota estimate. Bear Spirit and the complete mitigation-only inventory remain
+part of that audit, alongside plain-heal reworks and Fiend tuning.

@@ -177,6 +177,9 @@ export type BuffKind =
   | 'castSlow'
   | 'guard' // one guarded hit may prepare a counter
   | 'counter' // one stronger connecting melee hit
+  | 'auraBulwark'
+  | 'auraStrike'
+  | 'auraRenewal'
   | 'absorption' // mult is remaining temporary protection HP
   | 'bloodRage' // leech direct damage while paying a nonlethal life cost
   | 'wolfHunt' // walking replaces melee momentum generation
@@ -282,6 +285,15 @@ export interface Player {
   name: string;
   classId: ClassId;
 
+  paladinAura?: {
+    id: number;
+    kind: 'bulwark' | 'pursuit' | 'renewal';
+    radius: number;
+    duration: number;
+    remaining: number;
+    classId: ClassId;
+    spent: number[];
+  };
   pos: Vec2;
   aim: Vec2; // unit vector
   hp: number;
@@ -1126,6 +1138,7 @@ export interface PlayerView {
   peerId: string;
   name: string;
   classId: ClassId;
+  paladinAura?: { kind: 'bulwark' | 'pursuit' | 'renewal'; radius: number; remaining: number };
   pos: Vec2;
   aim: Vec2;
   hp: number;

@@ -180,6 +180,7 @@ jobs:
           done
           node scripts/run-smoke.mjs smoke:martial
           node scripts/run-smoke.mjs smoke:absorption
+          node scripts/run-smoke.mjs smoke:auras
       - name: Upload martial screenshots
         if: failure()
         uses: actions/upload-artifact@v4

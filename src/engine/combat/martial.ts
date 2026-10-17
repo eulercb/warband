@@ -51,10 +51,15 @@ export function onGuardedDamage(p: Player): void {
 }
 /** Only a connecting, positive melee hit consumes the one counterattack. */
 export function martialHitMultiplier(p: Player, melee: boolean | undefined): number {
-  const counter = melee && ready(p, 'counter');
-  if (!counter) return 1;
-  p.buffs.splice(p.buffs.indexOf(counter), 1);
-  return counter.mult;
+  let mult = 1;
+  for (const kind of ['counter', 'auraStrike'] as const) {
+    const buff = melee && ready(p, kind);
+    if (buff) {
+      p.buffs.splice(p.buffs.indexOf(buff), 1);
+      mult *= buff.mult;
+    }
+  }
+  return mult;
 }
 /** Parry is armed after the entire cone, never chained across its victims. */
 export function onParryHit(p: Player, ab: PlayerAbilityDef, dealt: number): void {

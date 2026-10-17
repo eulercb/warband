@@ -191,7 +191,9 @@ export function cleanseControl(entity: { buffs: Buff[] }): void {
 }
 
 /** Apply/refresh a buff, de-duping by `source`. */
-export function applyBuff(entity: { buffs: Buff[] }, buff: Buff): void {
+export function applyBuff(entity: { buffs: Buff[] }, buff: Buff, controlAdjusted = false): void {
+  if (!controlAdjusted && isControlBuff(buff) && hasBuff(entity, 'auraBulwark'))
+    buff = { ...buff, remaining: buff.remaining * 0.75 };
   // item 1 — a CC-immune target (a boss in its invuln window) rejects incoming
   // crowd control outright. Cheap KIND check first, so non-control buffs (and
   // every player, who is never CC-immune) skip the buff scan entirely.
@@ -269,7 +271,10 @@ export function applyStun(
     return 0;
   }
   const dr = (target.stunDr ??= { load: 0, window: 0 });
-  const effective = seconds * Math.pow(STUN_DR_FACTOR, dr.load / seconds);
+  const effective =
+    seconds *
+    Math.pow(STUN_DR_FACTOR, dr.load / seconds) *
+    (hasBuff(target, 'auraBulwark') ? 0.75 : 1);
   if (effective < STUN_DR_FLOOR) {
     if (!dr.announced) {
       dr.announced = true;
@@ -285,7 +290,7 @@ export function applyStun(
   dr.load += seconds; // bank this stun's requested seconds (uniform chain ⇒ old falloff)
   dr.window = STUN_DR_WINDOW;
   dr.announced = false;
-  applyBuff(target, makeBuff('stun', 0, effective, source));
+  applyBuff(target, makeBuff('stun', 0, effective, source), true);
   return effective;
 }
 
@@ -441,7 +446,11 @@ export function damagePlayer(sink: EventSink, target: Player, base: number): num
     sink.events.push({ t: 'dodge', id: target.id, pos: { ...target.pos } });
     return 0;
   }
-  const incoming = base * buffMult(target, 'damageTaken') * target.damageTakenMult;
+  const incoming =
+    base *
+    buffMult(target, 'damageTaken') *
+    buffMult(target, 'auraBulwark') *
+    target.damageTakenMult;
   const dmg = absorbDamage(target, incoming);
   target.hp -= dmg;
   if (dmg > 0)

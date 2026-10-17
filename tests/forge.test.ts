@@ -150,7 +150,7 @@ describe('decompose / recompose round-trip', () => {
   it('a heal delivery decomposes damage as a heal effect', () => {
     const heal = CLASSES.cleric.abilities.a1;
     const comp = decompose(heal);
-    expect(comp.effects[0]).toEqual({ kind: 'heal', amount: heal.damage });
+    expect(comp.effects[0]).toEqual({ kind: 'heal', amount: heal.damage, balanceScale: 0.8 });
   });
 
   // item 9 — SLUGGISH (cast/wind-up slow) as a forge component.
