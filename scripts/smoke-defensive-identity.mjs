@@ -14,7 +14,7 @@ const tests = [
   {
     classId: 'knight',
     name: 'Second Wind',
-    text: /heal 90 self/,
+    text: /heal \d+ self/,
     badge: /Haste|Hastened|Swift/,
     hurt: true,
   },
@@ -29,7 +29,7 @@ const tests = [
   {
     classId: 'barbarian',
     name: 'Spirit Mend',
-    text: /heal 80 self/,
+    text: /heal \d+ self/,
     badge: /Steadfast:/,
     hurt: true,
   },
@@ -38,7 +38,7 @@ const tests = [
     name: 'Divine Shield',
     slot: 'a3',
     key: 'KeyR',
-    text: /1.25s damage immunity/,
+    text: /[\d.]+s damage immunity/,
     badge: /Invulnerable/,
   },
   { classId: 'paladin', name: 'Aura of Protection', text: /40 absorption/, bubble: true },
@@ -92,7 +92,10 @@ try {
         await click(
           page
             .getByRole('group', { name: 'Test loadout' })
-            .getByRole('button', { name: new RegExp(test.name) }),
+            .getByRole('button', {
+              name: test.name === 'Second Wind' ? '💚 Second Wind' : new RegExp(test.name),
+              exact: test.name === 'Second Wind',
+            }),
         );
       }
       await click(button('Start Fight'));

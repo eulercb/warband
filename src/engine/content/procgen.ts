@@ -235,7 +235,16 @@ export function abilityVariant<T extends Omit<PlayerAbilityDef, 'slot'>>(
   if (base.stun) out.stun = q05(Math.min(base.stun + 0.4, base.stun * u(r[16], 0.85, 1.15)));
   if (base.freeze)
     out.freeze = q05(Math.min(base.freeze + 0.4, base.freeze * u(r[17], 0.85, 1.15)));
-  if (base.iframes) out.iframes = q05(clamp(base.iframes * u(r[18], 0.85, 1.15), 0.15, 0.5));
+  if (base.iframes) {
+    const selfImmunity = base.kind === 'selfBuff';
+    out.iframes = q05(
+      clamp(
+        base.iframes * u(r[18], 0.85, 1.15),
+        selfImmunity ? 0.25 : 0.15,
+        selfImmunity ? 2 : 0.5,
+      ),
+    );
+  }
   if (base.slowMult != null && base.slowMult < 1) {
     const strength = (1 - base.slowMult) * u(r[19], 0.8, 1.2);
     out.slowMult = q05(clamp(1 - strength, 0.2, 0.95));
