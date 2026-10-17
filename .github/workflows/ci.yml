@@ -188,3 +188,41 @@ jobs:
           name: martial-smoke-screenshots
           path: ${{ runner.temp }}/martial-shots
           if-no-files-found: ignore
+
+  caster-defense-smoke:
+    name: Caster defense (desktop and touch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium for Playwright
+        run: npx playwright-core install --with-deps chromium
+      - name: Build
+        run: npm run build
+      - name: Caster defense keyboard and touch casting
+        run: |
+          export SHOT_DIR="$RUNNER_TEMP/caster-shots"
+          mkdir -p "$SHOT_DIR"
+          npm run preview &
+          CASTER_PREVIEW_PID=$!
+          trap 'kill "$CASTER_PREVIEW_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4173/ >/dev/null && break
+            sleep 1
+          done
+          node scripts/run-smoke.mjs smoke:caster-defense
+      - name: Upload caster screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: caster-defense-screenshots
+          path: ${{ runner.temp }}/caster-shots
+          if-no-files-found: ignore

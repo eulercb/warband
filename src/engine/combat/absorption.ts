@@ -8,7 +8,7 @@ export interface AbsorptionGrant {
   /** Pre-tuning power credit; buffs must not automatically strengthen bosses. */
   balanceAmount?: number;
   duration: number;
-  target: 'weakest' | 'nearby';
+  target: 'weakest' | 'nearby' | 'self';
 }
 export function absorptionAmount(buffs: readonly BuffView[]): number {
   return buffs.reduce(

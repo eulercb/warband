@@ -467,6 +467,7 @@ export function resolvePlayerAbility(
     }
 
     case 'groundZone': {
+      prepareSpellSurge(p, ab);
       resolveGroundZone(world, p, ab);
       break;
     }
@@ -898,6 +899,7 @@ function resolveComposedAbility(
     }
 
     case 'groundZone': {
+      prepareSpellSurge(p, ab);
       if (zoneEff && zoneEff.kind === 'zone')
         spawnComposedZone(world, p, zoneEff.zone, ab.range ?? 500);
       buffSelf();
