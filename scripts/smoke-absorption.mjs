@@ -93,6 +93,10 @@ try {
       await self.getByTitle(/Absorption: .*protection HP/).waitFor();
       assert.match(await self.locator('.hud-absorption-num').textContent(), /\+\d+/);
       if (mobile) assert.ok(await page.getByRole('group', { name: 'Touch controls' }).isVisible());
+      if (process.env.SHOT_DIR)
+        await page.screenshot({
+          path: `${process.env.SHOT_DIR}/bubble-${subclass?.name || 'Sanctuary'}-${mobile ? 'touch' : 'desktop'}.png`,
+        });
       if (mobile) await click(button('Pause'));
       else await page.keyboard.press('Escape');
       await page.locator('.wb-pause-skills').waitFor();

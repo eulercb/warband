@@ -207,6 +207,19 @@ export default function PauseMenu({ onResume }: { onResume: () => void }) {
 
         <OwnedSkills />
 
+        <details className="wb-pause-cues">
+          <summary>Combat effect symbols</summary>
+          <p>
+            Cross: healing. Star: damage boost. Shield: damage reduction. Double chevrons: speed. A
+            visible shell means damage-absorbing protection.
+          </p>
+          <p>
+            A faint outline shows search reach, not a group effect. A short link and symbols mark
+            actual recipients. Moving auras use shield posts for Bulwark, chevrons for Pursuit, and
+            crosses for Renewal. Their symbols also appear on affected allies.
+          </p>
+        </details>
+
         <TerrainLegend />
 
         {/* Primary actions pinned to the panel's bottom edge: with a tall run

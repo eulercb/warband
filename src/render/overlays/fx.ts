@@ -1,3 +1,5 @@
+import { sub as torusSub } from '../../engine/core/torus';
+import { drawSupportSymbol, SUPPORT_COLORS } from '../pipeline/supportVisuals';
 /**
  * Warband — visual FX / "juice": telegraphs, floating damage numbers, hit
  * flashes, event bursts and screen shake.
@@ -13,7 +15,13 @@
  */
 import { Text, TextStyle } from 'pixi.js';
 import type { Container, Graphics } from 'pixi.js';
-import type { GameEvent, Telegraph, SkillArea, Vec2 } from '../../engine/core/types';
+import type {
+  GameEvent,
+  Telegraph,
+  SkillArea,
+  Vec2,
+  SupportCueKind,
+} from '../../engine/core/types';
 import type { Camera } from '../pipeline/camera';
 import { clamp } from '../../engine/core/math';
 
@@ -65,6 +73,7 @@ interface Burst {
   alpha0: number;
   filled: boolean;
   lineWidth: number;
+  glyph?: SupportCueKind;
   rise: number; // screen px the burst floats upward over its life
 }
 
@@ -76,7 +85,17 @@ interface AreaFlash {
   age: number;
 }
 
+interface SupportFlash {
+  sourceId: number;
+  targetId: number;
+  from: Vec2;
+  pos: Vec2;
+  kinds: SupportCueKind[];
+  age: number;
+}
+
 export class Fx {
+  private supportFlashes: SupportFlash[] = [];
   private readonly floaters: Floater[] = [];
   private readonly bursts: Burst[] = [];
   private readonly areaFlashes: AreaFlash[] = [];
@@ -159,6 +178,25 @@ export class Fx {
           }
           break;
         }
+        case 'support': {
+          const existing = this.supportFlashes.find(
+            (f) => f.age === 0 && f.sourceId === e.sourceId && f.targetId === e.targetId,
+          );
+          if (existing) {
+            if (!existing.kinds.includes(e.kind)) existing.kinds.push(e.kind);
+          } else {
+            if (this.supportFlashes.length >= 32) this.supportFlashes.shift();
+            this.supportFlashes.push({
+              sourceId: e.sourceId,
+              targetId: e.targetId,
+              from: { ...e.from },
+              pos: { ...e.pos },
+              kinds: [e.kind],
+              age: 0,
+            });
+          }
+          break;
+        }
         case 'heal': {
           this.spawnFloater(e.pos, '+' + Math.round(e.amount), 0x66ff88);
           this.spawnBurst(e.pos, {
@@ -166,6 +204,7 @@ export class Fx {
             endR: 26,
             ttl: 0.5,
             color: 0x66ff88,
+            glyph: 'heal',
             alpha0: 0.4,
             filled: false,
             lineWidth: 2,
@@ -235,6 +274,7 @@ export class Fx {
             endR: 20,
             ttl: 0.7,
             color: 0x66ff88,
+            glyph: 'heal',
             alpha0: 0.9,
             filled: true,
             rise: 34,
@@ -567,6 +607,8 @@ export class Fx {
       if (b.age >= b.ttl) b.active = false;
     }
 
+    this.supportFlashes = this.supportFlashes.filter((f) => (f.age += dt) < 0.7);
+
     // Advance ability area flashes.
     for (const a of this.areaFlashes) {
       if (!a.active) continue;
@@ -583,6 +625,30 @@ export class Fx {
     // the ground (the fx layer, unlike the others, is only cleared here).
     g.clear();
 
+    for (const f of this.supportFlashes) {
+      const fade = 1 - f.age / 0.7;
+      const to = camera.worldToScreen(f.pos);
+      const offset = torusSub(f.from, f.pos);
+      const from = { x: to.x + offset.x * camera.scale, y: to.y + offset.y * camera.scale };
+      const color = SUPPORT_COLORS[f.kinds[0]];
+      // Immediate receipt, not a fake projectile that delays a completed effect.
+      if (f.age < 0.25)
+        g.moveTo(from.x, from.y)
+          .lineTo(to.x, to.y)
+          .stroke({ color, width: 1.5, alpha: 0.55 * fade });
+      g.circle(to.x, to.y, 18 + f.age * 12).stroke({ color, width: 2, alpha: fade * 0.7 });
+      f.kinds.forEach((kind, index) =>
+        drawSupportSymbol(
+          g,
+          kind,
+          to.x + (index - (f.kinds.length - 1) / 2) * 20,
+          to.y - 32 - f.age * 12,
+          7,
+          fade,
+        ),
+      );
+    }
+
     // Ability area cues (under the bursts): flash the region an ability hit.
     for (const a of this.areaFlashes) {
       if (!a.active) continue;
@@ -598,6 +664,7 @@ export class Fx {
       const rad = Math.max(0.5, (b.startR + (b.endR - b.startR) * e) * camera.scale);
       const alpha = b.alpha0 * (1 - t);
       const cy = scr.y - b.rise * e;
+      if (b.glyph) drawSupportSymbol(g, b.glyph, scr.x, cy, 5, alpha);
       if (b.filled) {
         g.circle(scr.x, cy, rad).fill({ color: b.color, alpha });
       } else {
@@ -655,10 +722,12 @@ export class Fx {
       filled: boolean;
       lineWidth?: number;
       rise?: number;
+      glyph?: SupportCueKind;
     },
   ): void {
     const b = this.acquireBurst();
     b.active = true;
+    b.glyph = opts.glyph;
     b.age = 0;
     b.world.x = pos.x;
     b.world.y = pos.y;
@@ -689,6 +758,7 @@ export class Fx {
     // Deep-copy the geometry (events are transient / reused).
     a.area = {
       kind: area.kind,
+      reach: area.reach,
       origin: { x: area.origin.x, y: area.origin.y },
       angle: area.angle,
       range: area.range,
@@ -718,8 +788,12 @@ export class Fx {
     if (area.kind === 'circle') {
       const c = camera.worldToScreen(area.origin);
       const R = area.radius * s;
-      g.circle(c.x, c.y, R).fill({ color, alpha: fillAlpha });
-      g.circle(c.x, c.y, R).stroke({ width: 2, color, alpha: strokeAlpha });
+      if (!area.reach) g.circle(c.x, c.y, R).fill({ color, alpha: fillAlpha });
+      g.circle(c.x, c.y, R).stroke({
+        width: area.reach ? 1 : 2,
+        color,
+        alpha: area.reach ? 0.2 * fade : strokeAlpha,
+      });
     } else if (area.kind === 'cone') {
       const o = camera.worldToScreen(area.origin);
       const R = area.range * s;

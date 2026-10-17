@@ -7,7 +7,8 @@ Support-class differentiation was merged and playtested.
 Knight/Ranger/Barbarian/Monk differentiation was merged and playtested.
 Martial subclass coherence was merged and playtested.
 Cleric absorption and Chain Pull momentum were merged and playtested.
-Cleric retuning and Paladin moving auras are implemented for review.
+Cleric retuning and Paladin moving auras were merged and playtested.
+Ability readability across all classes and Paladin aura tuning are implemented for review.
 Remaining defining passives, companions, forms and later milestones remain proposals.
 
 ## Goals and boundaries
@@ -320,17 +321,17 @@ The original six milestones grouped work by theme; they did not include every
 remaining passive or the balance work discovered during playtests. Avoid treating
 “milestone 5 of 6” as “one patch left until everything is finished.”
 
-| Workstream                 | Merged and playtested                | This PR                                  | Still outstanding                                    |
-| -------------------------- | ------------------------------------ | ---------------------------------------- | ---------------------------------------------------- |
-| Base class loops           | 12/12 classes plus martial coherence | Chain Pull momentum                      | Ongoing tuning                                       |
-| Defining subclass passives | 4/24                                 | None                                     | 20: 18 in ordinary batches, companion and form       |
-| Balance/skill identity     | Feedback collected                   | Cleric retuning and Paladin moving auras | Catalogue-wide defense/recovery review, Fiend tuning |
-| Companion/form systems     | None                                 | None                                     | Beast Master companion and Moon form prototypes      |
+| Workstream                 | Merged and playtested                | This PR                     | Still outstanding                                    |
+| -------------------------- | ------------------------------------ | --------------------------- | ---------------------------------------------------- |
+| Base class loops           | 12/12 classes plus martial coherence | None                        | Ongoing tuning                                       |
+| Defining subclass passives | 4/24                                 | None                        | 20: 18 in ordinary batches, companion and form       |
+| Balance/skill identity     | Feedback collected                   | Readability and aura tuning | Catalogue-wide defense/recovery review, Fiend tuning |
+| Companion/form systems     | None                                 | None                        | Beast Master companion and Moon form prototypes      |
 
 **Current sequence:**
 
-1. **Merged/playtested:** Cleric absorption foundation and Chain Pull momentum.
-2. **This PR:** Paladin moving auras and related Cleric tuning.
+1. **Merged/playtested:** Cleric absorption, Chain Pull momentum, Cleric tuning and Paladin auras.
+2. **This PR:** Shared ability readability, visible bubbles, distinct aura shapes and aura tuning.
 3. Existing skill/passive balance and identity pass: Fiend, Abjurer, Sorcerer,
    Dragon Wings, and mitigation-only skills; use the two new defensive systems
    only where they fit rather than applying them everywhere.
@@ -542,11 +543,11 @@ Current remaining primary candidates include:
 
 | Class     | Skills to review                                           | Planned handling                                                                       |
 | --------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Knight    | Stand as One; review Rally/Shield Wall coherence           | Add a distinct frontline/team purpose; retain existing counter identity                |
+| Knight    | Review Rally/Shield Wall coherence                         | Add a distinct frontline/team purpose; retain existing counter identity                |
 | Mage      | Arcane Shield, Arcane Ward                                 | Give warding/control choices useful beyond Fireball                                    |
 | Barbarian | **Bear Spirit**                                            | Rework a thematic defensive/rage choice; do not add momentum merely to fill a checkbox |
 | Rogue     | Smoke Bomb, Shield Spell                                   | Distinct evasive/control or spellblade decisions; preserve existing passives           |
-| Paladin   | Divine Shield, Aura of Protection                          | Next batch's moving aura roles                                                         |
+| Paladin   | Divine Shield, Aura of Protection                          | Reevaluate base wards; retain moving aura roles                                        |
 | Bard      | Bolster                                                    | A meaningful Valor protection decision connected to the verse loop                     |
 | Sorcerer  | Draconic Scales, Wild Ward; Dragon Wings' mitigation rider | Replace repetitive protection; give Wings an aerial payoff rather than more mitigation |
 | Warlock   | Dark Resilience                                            | Fit Fiend's sustain/counter identity and planned tuning                                |
@@ -630,3 +631,38 @@ batches, companion, form). The full defensive/recovery audit may warrant two
 cohesive passes, which would make seven; this is provisional scope, not a time or
 quota estimate. Bear Spirit and the complete mitigation-only inventory remain
 part of that audit, alongside plain-heal reworks and Fiend tuning.
+
+## Readability batch: actual recipients and recognizable effects
+
+Insert this focused presentation patch before the broad identity/balance pass.
+It addresses playtest feedback across the shared base/subclass/Forge paths, rather
+than waiting for every class to be reworked. See [the full audit and visual
+language](ABILITY_READABILITY.md). Cleric bubbles and Paladin auras have been merged
+and playtested; their historical numbers above describe those earlier patches.
+
+- Faint hollow reach hints are distinct from actual recipient feedback. Healing,
+  empowerment, mitigation, speed and absorption have different geometric symbols.
+- Actual applications produce short caster-to-recipient links and grouped symbols;
+  full-health direct heals and unsuccessful bubble refreshes do not claim receipt.
+- Bubbles have a visible enclosing shell; positive states have small persistent
+  symbols. Friendly healing/mixed ground effects identify their actual payloads.
+- Bulwark uses shield posts; Pursuit rotating chevrons; Renewal crosses. Each
+  keeps an exact circular range boundary and recipient status cues.
+- Aura tuning: Bulwark 15% damage reduction / 35% shorter new control; Pursuit
+  18% speed / one 25% prepared hit; Renewal 10 HP/s. Radius, duration and strongest
+  equivalent rules stay unchanged. No new party-power charge is introduced;
+  existing wave/pace feedback remains active. Forge budgets price real effects.
+
+**Rework eligibility is based on the original job and actual gameplay decisions,
+not whether another system added a rider.** Divine Shield and Aura of Protection
+still require base-skill evaluation while preserving their auras. Apply this rule
+to every class, upgrade and copied/composed skill. Stand as One belongs to Ranger;
+include it in that class's defensive/recovery audit, correcting the earlier Knight
+inventory attribution. All other candidates, including Bear Spirit, plain heals,
+Dragon Wings and Fiend tuning, remain in scope.
+
+After this additional readability patch, approximately six planned PRs remain:
+the broad identity/balance audit, three passive batches, companion, and form.
+Split the broad audit into two if its size warrants it (seven remaining). This
+patch adds a deliberate review checkpoint; continue bundling related tuning,
+without combining companion AI or form state with unrelated systems.

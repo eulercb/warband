@@ -50,20 +50,20 @@ export function updatePaladinAuras(world: World, dt: number, clock: number): num
       if (target.state !== 'alive' || target.hp <= 0 || dist(owner.pos, target.pos) > a.radius)
         continue;
       if (a.kind === 'bulwark')
-        applyBuff(target, makeBuff('auraBulwark', 0.9, 0.35, 'paladinFieldBulwark'));
+        applyBuff(target, makeBuff('auraBulwark', 0.85, 0.35, 'paladinFieldBulwark'));
       if (a.kind === 'pursuit') {
-        applyBuff(target, makeBuff('moveSpeed', 1.12, 0.35, 'paladinFieldPursuit'));
+        applyBuff(target, makeBuff('moveSpeed', 1.18, 0.35, 'paladinFieldPursuit'));
         if (!a.spent.includes(target.id)) {
           a.spent.push(target.id);
           if (!target.buffs.some((b) => b.kind === 'auraStrike' && b.remaining > 0))
             applyBuff(
               target,
-              makeBuff('auraStrike', 1.15, Math.min(4, a.remaining), `paladinStrike:${a.id}`),
+              makeBuff('auraStrike', 1.25, Math.min(4, a.remaining), `paladinStrike:${a.id}`),
             );
         }
       }
       if (a.kind === 'renewal') {
-        applyBuff(target, makeBuff('auraRenewal', 6, 0.35, 'paladinFieldRenewal'));
+        applyBuff(target, makeBuff('auraRenewal', 10, 0.35, 'paladinFieldRenewal'));
         // Stable owner selection attributes one equivalent recovery pulse, never one per caster.
         if (!renewals.has(target) || owner.id < renewals.get(target)!.id)
           renewals.set(target, owner);
@@ -72,6 +72,6 @@ export function updatePaladinAuras(world: World, dt: number, clock: number): num
   }
   const next = clock + dt;
   if (next >= 1)
-    for (const [target, owner] of renewals) healPlayer(world, owner, target, 6 * Math.floor(next));
+    for (const [target, owner] of renewals) healPlayer(world, owner, target, 10 * Math.floor(next));
   return next % 1;
 }

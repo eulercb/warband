@@ -1,3 +1,4 @@
+import { buffCues } from './visualCues';
 /**
  * Warband — ability resolution for players and bosses. Geometric hit tests
  * (math.ts) resolve cones / circles / lines; effects mutate world entities.
@@ -569,6 +570,7 @@ export function resolvePlayerAbility(
             makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 4, 'selfBuffMove'),
           );
         }
+        buffCues(world, p, target, ab);
         // item 7 — Dragon Wings & co. lift the caster into the air for a window.
         if (ab.grantsFlight) {
           applyBuff(target, makeBuff('flight', 0, ab.grantsFlight, 'flight'));
@@ -578,14 +580,6 @@ export function resolvePlayerAbility(
     }
 
     case 'buffAlly': {
-      emitSkillArea(world, p.id, color, {
-        kind: 'circle',
-        origin: { ...p.pos },
-        angle: 0,
-        range: 0,
-        radius: ab.range ?? 400,
-        halfAngle: 0,
-      });
       const target = lowestHpAllyInRange(world, p.pos, ab.range ?? 400) ?? p;
       for (const recipient of chorus ? nearbySupportAllies(world, p, ab.range ?? 420) : [target]) {
         if (ab.buffDamageMult) {
@@ -606,6 +600,7 @@ export function resolvePlayerAbility(
             makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 6, 'blessingMove'),
           );
         }
+        buffCues(world, p, recipient, ab);
         // item 7 — a rallying skill can lift its target into the air too.
         if (ab.grantsFlight) {
           applyBuff(recipient, makeBuff('flight', 0, ab.grantsFlight, 'flight'));
@@ -615,15 +610,6 @@ export function resolvePlayerAbility(
     }
 
     case 'heal': {
-      // Flash the heal's reach so the Cleric (and allies) can read the range.
-      emitSkillArea(world, p.id, color, {
-        kind: 'circle',
-        origin: { ...p.pos },
-        angle: 0,
-        range: 0,
-        radius: ab.range ?? 400,
-        halfAngle: 0,
-      });
       const target = lowestHpAllyInRange(world, p.pos, ab.range ?? 400);
       if (target) healSupportAlly(world, p, target, ab.damage, ab);
       break;
@@ -659,13 +645,20 @@ const FORGE_RALLY_RANGE = 320;
 
 /** Apply the buff components in `effects` that target `who` onto `target`. */
 function applyForgeBuffs(
-  target: { buffs: import('../core/types').Buff[] },
+  target: Player,
   effects: EffectComponent[],
   who: BuffTarget,
   src: string,
+  world: World,
+  source: Player,
 ): void {
   for (const e of effects) {
     if (e.kind !== 'buff' || e.target !== who) continue;
+    buffCues(world, source, target, {
+      buffDefMult: e.defMult,
+      buffDamageMult: e.dmgMult,
+      buffMoveMult: e.moveMult,
+    });
     if (e.defMult != null)
       applyBuff(target, makeBuff('damageTaken', e.defMult, e.duration, `${src}Def`));
     if (e.dmgMult != null)
@@ -751,15 +744,16 @@ function resolveComposedAbility(
 
   // item 7 — a flight rider lifts its recipients airborne for its window.
   const flightEff = effects.find((e) => e.kind === 'flight');
-  const applyFlight = (target: { buffs: import('../core/types').Buff[] }): void => {
+  const applyFlight = (target: Player): void => {
     if (flightEff && flightEff.kind === 'flight') {
       applyBuff(target, makeBuff('flight', 0, flightEff.duration, 'flight'));
+      buffCues(world, p, target, { grantsFlight: flightEff.duration });
     }
   };
   // Buff the caster with any self-targeted buffs, and heal the caster on-use.
   const buffSelf = (): void => {
     for (const target of chorus ? nearbySupportAllies(world, p, ab.range ?? 420) : [p]) {
-      applyForgeBuffs(target, effects, 'self', 'forgeSelf');
+      applyForgeBuffs(target, effects, 'self', 'forgeSelf', world, p);
       applyFlight(target);
     }
   };
@@ -772,7 +766,7 @@ function resolveComposedAbility(
     if (!rallies && !flightEff) return;
     for (const a of aliveAllies(world)) {
       if (dist(p.pos, a.pos) > range) continue;
-      applyForgeBuffs(a, effects, 'allies', 'forgeAlly');
+      applyForgeBuffs(a, effects, 'allies', 'forgeAlly', world, p);
       applyFlight(a);
     }
   };
@@ -948,14 +942,6 @@ function resolveComposedAbility(
 
     case 'buffAlly': {
       const range = ab.range ?? 400;
-      emitSkillArea(world, p.id, color, {
-        kind: 'circle',
-        origin: { ...p.pos },
-        angle: 0,
-        range: 0,
-        radius: range,
-        halfAngle: 0,
-      });
       buffAllies(range);
       healAlly(range);
       break;
@@ -963,14 +949,6 @@ function resolveComposedAbility(
 
     case 'heal': {
       const range = ab.range ?? 400;
-      emitSkillArea(world, p.id, color, {
-        kind: 'circle',
-        origin: { ...p.pos },
-        angle: 0,
-        range: 0,
-        radius: range,
-        halfAngle: 0,
-      });
       healAlly(range);
       break;
     }

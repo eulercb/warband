@@ -1,3 +1,4 @@
+import { zoneSupportKinds } from '../combat/visualCues';
 import { updatePaladinAuras } from '../combat/paladinAuras';
 import { grantAbsorption, maintainAbsorption, OVERFLOW_SECONDS } from '../combat/absorption';
 /**
@@ -3298,6 +3299,7 @@ export class World {
         color: p.color,
       })),
       groundZones: this.groundZones.map((z) => ({
+        supportKinds: zoneSupportKinds(z),
         id: z.id,
         kind: z.kind,
         pos: { ...z.pos },
