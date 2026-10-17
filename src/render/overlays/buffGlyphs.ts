@@ -69,6 +69,20 @@ function describe(
         good: true,
         label: 'Wolf Hunt: walk 120u for a momentum stack; melee hits do not build stacks',
       };
+    case 'frontGuard':
+      return {
+        glyph: '◖',
+        color: 0x80e4ff,
+        good: true,
+        label: `Frontal guard: ${Math.round(mult)} damage blocks, aim within 120°; ground hazards and control bypass it`,
+      };
+    case 'steadfast':
+      return {
+        glyph: '⚓',
+        color: 0xffce70,
+        good: true,
+        label: 'Steadfast: prevents roots, stuns, pushes and pulls; slows still apply',
+      };
     case 'guard':
       return {
         glyph: '🏰',

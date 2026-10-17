@@ -119,7 +119,9 @@ and exercise expiry/ownership on desktop, portrait and landscape views.
 
 Ground curse zones now carry an optional public family cue: Hex uses linked
 purple diamonds, Fire Pit orange flames, and Dissonant Whispers pale-blue eyes.
-The silhouettes repeat on the rim so body art is less likely to cover every seal.
+Each silhouette is one large unbacked central watermark. Friendly fields use a
+broken boundary; hostile pools use a solid pink boundary and never curse seals.
+This avoids confusing overlapping fields with debuffs applied to terrain.
 Dread adds the existing weakened-attack badge; it is not Fireball control by itself.
 All simultaneous status categories remain visible under the existing aggregation
 rules. Personal curse dots recognize independently timed cast sources and legacy
@@ -130,3 +132,13 @@ from up to two marked enemies that successfully supply its siphon barrier. Faile
 hits provide no contribution. The pause key and actual skill descriptions explain
 the mark ownership, reach, target cap and unchanged marks; stronger shared shields
 still win. Review crowded mobile/co-op cases and overlapping curse zones live.
+
+## Active defensive states
+
+Shield Wall uses a cyan 120° front arc following actual aim, with white pips for
+remaining damage blocks. Its ◖ badge is distinct from percentage mitigation.
+Steadfast uses gold planted-foot brackets and an anchor badge; it resists roots,
+stuns and forced movement, while slows still apply. Absorption and brief Divine
+Shield immunity keep their existing shell/invulnerability cues. No persistent
+ability names or extra floating explanations are added. Pause descriptions and
+the collapsed symbol key explain facing and ground/control exceptions.

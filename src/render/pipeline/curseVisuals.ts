@@ -1,4 +1,4 @@
-/** Shape-coded zone seals; tint is secondary and no battle text is added. */
+/** Floor sigils have no status-badge backing: a field marking is not a debuff on terrain. */
 import type { Graphics } from 'pixi.js';
 import type { CurseStyle } from '../../engine/core/curses';
 export const CURSE_COLORS = { hex: 0xce95ff, searing: 0xffaa64, dread: 0x9ecaff };
@@ -10,7 +10,6 @@ export function drawCurseSigil(
   alpha: number,
 ): void {
   const color = CURSE_COLORS[style];
-  g.circle(x, y, 10).fill({ color: 0x090d18, alpha: alpha * 0.8 });
   if (style === 'searing') {
     g.poly([
       x,

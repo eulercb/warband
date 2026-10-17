@@ -1786,7 +1786,11 @@ export class World {
     for (const p of this.players) {
       if (p.state !== 'alive') continue;
       if (dist(proj.pos, p.pos) <= proj.hitRadius + p.radius) {
-        damagePlayer(this, p, proj.damage);
+        const incomingSpeed = Math.hypot(proj.vel.x, proj.vel.y) || 1;
+        damagePlayer(this, p, proj.damage, {
+          x: p.pos.x - (proj.vel.x / incomingSpeed) * 20,
+          y: p.pos.y - (proj.vel.y / incomingSpeed) * 20,
+        });
         // Frost bosses' bolts chill whoever they strike.
         if (proj.slowMult != null && proj.slowMult < 1) {
           applyBuff(p, makeBuff('moveSpeed', proj.slowMult, proj.slowDuration ?? 2, 'bossSlow'));
@@ -2918,7 +2922,7 @@ export class World {
             a.pos = vadd(a.pos, vscale(dir, speed * dt));
           }
         } else if (a.attackCd <= 0) {
-          damagePlayer(this, target, ADD_DAMAGE * buffMult(a, 'damageDealt'));
+          damagePlayer(this, target, ADD_DAMAGE * buffMult(a, 'damageDealt'), a.pos);
           a.attackCd = ADD_ATTACK_CD;
         }
       }
@@ -3306,7 +3310,8 @@ export class World {
       })),
       groundZones: this.groundZones.map((z) => ({
         supportKinds: zoneSupportKinds(z),
-        curseStyle: z.curseBonus ? (z.curseStyle ?? 'hex') : undefined,
+        side: z.side,
+        curseStyle: z.side === 'player' && z.curseBonus ? (z.curseStyle ?? 'hex') : undefined,
         id: z.id,
         kind: z.kind,
         pos: { ...z.pos },

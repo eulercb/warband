@@ -35,6 +35,7 @@ try {
       const { Renderer } = await import('/src/render/pipeline/renderer.ts');
       const { World } = await import('/src/engine/world/world.ts');
       const { enemyDebuffs } = await import('/src/render/pipeline/enemyDebuffs.ts');
+      const { spawnZone } = await import('/src/engine/combat/abilities.ts');
       const { isBurstControl } = await import('/src/engine/core/control.ts');
       const world = new World({
         monsterId: 'dragon',
@@ -87,11 +88,53 @@ try {
                 : 'fixture',
           }));
         },
+        zones() {
+          useAdd = false;
+          buffs = [{ kind: 'curse', mult: 1.15, remaining: 4, source: `curse:${owner.id}` }];
+          world.groundZones = [];
+          for (const [i, style] of ['hex', 'searing', 'dread'].entries()) {
+            const pos = { x: 640 + i * 150, y: 550 };
+            spawnZone(world, {
+              kind: 'voidZone',
+              pos,
+              radius: 90,
+              side: 'boss',
+              ownerId: world.boss.id,
+              damagePerTick: 12,
+              healPerTick: 0,
+              duration: 8,
+            });
+            spawnZone(world, {
+              kind: 'voidZone',
+              pos: { x: pos.x + 35, y: pos.y + 20 },
+              radius: 90,
+              side: 'player',
+              ownerId: owner.id,
+              damagePerTick: 0,
+              healPerTick: 0,
+              duration: 8,
+              curseBonus: 0.15,
+              curseStyle: style,
+            });
+          }
+          // This fixture renders a frozen world: advance past spawn fade-in.
+          for (const z of world.groundZones) z.remaining = z.duration - 1;
+          owner.buffs = [
+            { kind: 'frontGuard', mult: 2, remaining: 4, source: 'guard' },
+            { kind: 'steadfast', mult: 0, remaining: 4, source: 'steady' },
+          ];
+          return frame;
+        },
         probe() {
           const state = world.serialize();
           const snapshot = state.adds[0] ?? state.bosses[0];
           return {
             frame,
+            zones: state.groundZones.map((z) => ({ side: z.side, curseStyle: z.curseStyle })),
+            zonePlates: renderer.zonesLayer.context.instructions.filter(
+              (i) => i.action === 'fill' && i.data.style.color === 0x090d18,
+            ).length,
+            zoneInstructions: renderer.zonesLayer.context.instructions.length,
             kinds: enemyDebuffs(snapshot.buffs, owner.id).map((x) => x.kind),
             own: enemyDebuffs(snapshot.buffs, owner.id).some((x) => x.own),
             controlled: snapshot.buffs.some(isBurstControl),
@@ -195,6 +238,30 @@ try {
         `PASS ${viewport.width}×${viewport.height} ${test.name}: foreground statuses, ownership, control semantics`,
       );
     }
+    const beforeZones = await page.evaluate(() => window.debuffFixture.zones());
+    await page.waitForFunction(
+      (frame) => window.debuffFixture.probe().frame > frame + 2,
+      beforeZones,
+    );
+    const zones = await page.evaluate(() => window.debuffFixture.probe());
+    assert.deepEqual(
+      zones.zones.filter((z) => z.side === 'boss'),
+      Array.from({ length: 3 }, () => ({ side: 'boss', curseStyle: undefined })),
+    );
+    assert.deepEqual(
+      zones.zones.filter((z) => z.side === 'player').map((z) => z.curseStyle),
+      ['hex', 'searing', 'dread'],
+    );
+    assert.equal(zones.zonePlates, 0, 'floor markings must not use enemy status plates');
+    assert.ok(zones.zoneInstructions > 6);
+    if (process.env.SHOT_DIR)
+      await page.screenshot({
+        path: `${process.env.SHOT_DIR}/hazard-overlap-${viewport.width}x${viewport.height}.png`,
+      });
+    assert.deepEqual(errors, []);
+    console.log(
+      `PASS ${viewport.width}×${viewport.height} hostile pools/friendly curse fields and defensive player cues`,
+    );
     await context.close();
   }
 } catch (error) {

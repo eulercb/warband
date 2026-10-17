@@ -48,13 +48,13 @@ describe('Chaos Forge char-upgrade synthesis', () => {
     expect(secondwind.desc).toBe(CHAR_UPGRADES['kn_secondwind'].desc);
   });
 
-  it('a component-sourced boon meaningfully changes a fused skill (no longer a no-op)', () => {
+  it('a directional-guard boon adapts to a forged delivery without that guard', () => {
     setForgeSeed(4242);
     const before = previewAbilityTable('knight', []);
     const after = previewAbilityTable('knight', ['kn_bulwark']); // tugs a2's buff (component-sourced)
-    // The fused a2's COMPONENTS differ — the boon flowed through instead of no-opping.
+    // This fused burst has no directional guard: the boon improves its real recharge.
     expect(after.a2.components).toBeDefined();
-    expect(JSON.stringify(after.a2.components)).not.toBe(JSON.stringify(before.a2.components));
+    expect(after.a2.cooldown).toBeLessThan(before.a2.cooldown);
   });
 
   it('the offer card shows the reforged boon name + a real fused-skill preview', () => {

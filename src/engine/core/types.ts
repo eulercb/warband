@@ -176,6 +176,8 @@ export type BuffKind =
    * boss's active channel (that would prolong a beam) — wind-up only. Stacked
    * factors are capped (combat.castTimeFactor) so it can't lock a caster out. */
   | 'castSlow'
+  | 'frontGuard' // mult is remaining directional blocks
+  | 'steadfast' // rejects new root/stun and forced movement
   | 'guard' // one guarded hit may prepare a counter
   | 'counter' // one stronger connecting melee hit
   | 'auraBulwark'
@@ -1229,6 +1231,7 @@ export interface ProjectileView {
 }
 
 export interface ZoneView {
+  side?: Side;
   curseStyle?: CurseStyle;
   /** Actual friendly payloads, for color-independent ground markers. */
   supportKinds?: SupportCueKind[];

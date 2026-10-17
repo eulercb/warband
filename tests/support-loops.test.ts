@@ -119,7 +119,7 @@ describe('Paladin frontline protection', () => {
     const [p, ally, far] = w.players;
     far.pos.x = p.pos.x + 221;
     resolvePlayerAbility(w, p, 'a3', ZERO);
-    expect(buffMult(p, 'damageTaken')).toBe(0.35);
+    expect(p.buffs.some((b) => b.kind === 'invuln' && b.remaining === 1.25)).toBe(true);
     expect(buffMult(ally, 'auraBulwark')).toBe(0.85);
     expect(far.buffs).toEqual([]);
     ally.state = 'downed';
@@ -165,7 +165,8 @@ describe('Paladin frontline protection', () => {
     const [p, ally] = w.players;
     sub(w, 'pa_devotion_aura');
     resolvePlayerAbility(w, p, 'sub1', ZERO);
-    expect(buffMult(p, 'damageTaken')).toBe(0.55);
+    expect(p.buffs.find((b) => b.kind === 'absorption')?.mult).toBe(40);
+    expect(ally.buffs.find((b) => b.kind === 'absorption')?.mult).toBe(40);
     expect(buffMult(ally, 'auraBulwark')).toBe(0.85);
   });
 });

@@ -192,8 +192,9 @@ describe('classVariant identity envelope', () => {
             expect(r.buffDefMult!).toBeLessThanOrEqual(0.95);
           }
           if (b.iframes != null) {
-            expect(r.iframes!).toBeGreaterThanOrEqual(0.15);
-            expect(r.iframes!).toBeLessThanOrEqual(0.5);
+            expect(r.iframes!).toBeGreaterThanOrEqual(b.kind === 'selfBuff' ? 0.25 : 0.15);
+            expect(r.iframes!).toBeLessThanOrEqual(b.kind === 'selfBuff' ? 2 : 0.5);
+            if (b.kind === 'selfBuff') expect(r.iframes!).toBeGreaterThanOrEqual(1);
           }
           if (b.stun) expect(r.stun!).toBeLessThanOrEqual(b.stun + 0.4);
           if (b.castTime) expect(r.castTime!).toBeGreaterThanOrEqual(0.3);

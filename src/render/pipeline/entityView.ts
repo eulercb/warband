@@ -1,3 +1,4 @@
+import { drawDefenseState } from './defenseVisuals';
 import { CURSE_COLORS, drawCurseSigil } from './curseVisuals';
 import { drawAuraField, drawBubble, drawSupportSymbol, supportStateKind } from './supportVisuals';
 /**
@@ -221,7 +222,10 @@ export function drawPlayer(
 
   // Active buff/debuff auras (under the body so the silhouette stays crisp).
   if (!downed && p.paladinAura) drawAuraField(g, p.paladinAura, x, y, scale, isLocal, timeSec);
-  if (!downed) drawBuffGlows(g, x, y, r, p.buffs, timeSec);
+  if (!downed) {
+    drawBuffGlows(g, x, y, r, p.buffs, timeSec);
+    drawDefenseState(g, p, x, y, r);
+  }
 
   // Grounding shadow.
   g.ellipse(x, y + r * 0.55, r * 0.95, r * 0.42).fill({ color: 0x000000, alpha: 0.22 });
@@ -323,7 +327,10 @@ export function drawPlayerOverlay(
   const downed = p.state === 'downed';
 
   if (!downed && p.paladinAura) drawAuraField(g, p.paladinAura, x, y, scale, isLocal, timeSec);
-  if (!downed) drawBuffGlows(g, x, y, r, p.buffs, timeSec);
+  if (!downed) {
+    drawBuffGlows(g, x, y, r, p.buffs, timeSec);
+    drawDefenseState(g, p, x, y, r);
+  }
 
   if (downed) {
     const frac = clamp(p.reviveProgress / REVIVE_TIME, 0, 1);
@@ -553,8 +560,8 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
 
 export function drawZone(g: Graphics, z: ZoneView, screen: Vec2, scale: number): void {
   // A themed tint override (affix/corruption hazards) wins over the per-kind palette.
-  const color =
-    z.color ?? (z.curseStyle ? CURSE_COLORS[z.curseStyle] : ZONE_COLORS[z.kind]) ?? 0xffffff;
+  const style = z.side === 'boss' ? undefined : z.curseStyle;
+  const color = z.color ?? (style ? CURSE_COLORS[style] : ZONE_COLORS[z.kind]) ?? 0xffffff;
   const r = z.radius * scale;
   const { x, y } = screen;
 
@@ -574,17 +581,26 @@ export function drawZone(g: Graphics, z: ZoneView, screen: Vec2, scale: number):
   // Gentle alpha pulse driven by the zone's own countdown.
   const pulse = 0.13 + 0.06 * (0.5 + 0.5 * Math.sin(z.remaining * 6));
   g.circle(x, y, r).fill({ color, alpha: pulse * fade });
-  g.circle(x, y, r).stroke({ width: 2, color, alpha: 0.55 * fade });
-  if (z.curseStyle) {
-    for (const angle of [-Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6]) {
-      drawCurseSigil(
-        g,
-        z.curseStyle,
-        x + Math.cos(angle) * r * 0.72,
-        y + Math.sin(angle) * r * 0.72,
-        fade,
-      );
+  if (z.side === 'player') {
+    for (let i = 0; i < 12; i++) {
+      const angle = (i * Math.PI) / 6;
+      g.moveTo(x + Math.cos(angle) * r, y + Math.sin(angle) * r)
+        .arc(x, y, r, angle, angle + Math.PI / 9)
+        .stroke({ width: 2, color, alpha: 0.65 * fade });
     }
+  } else
+    g.circle(x, y, r).stroke({
+      width: 2,
+      color: z.side === 'boss' ? 0xff7b89 : color,
+      alpha: 0.65 * fade,
+    });
+  if (style) {
+    // One large unbacked watermark inside the player's field; never little badges
+    // that look attached to an overlapping boss pool or environmental prop.
+    const symbolScale = Math.min(3, r / 12);
+    g.context.save().scale(symbolScale, symbolScale).translate(x, y);
+    drawCurseSigil(g, style, 0, 0, fade * 0.5);
+    g.context.restore();
   }
   const marks = z.supportKinds ?? [];
   marks.forEach((kind, index) =>

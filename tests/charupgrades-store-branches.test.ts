@@ -285,7 +285,7 @@ describe('hybrid grafts, styles & skill-keyed progression', () => {
     expect(leveled.a2.damage).toBe(102); // 80 + 22
     const reclaimed = apply('knight', ['kn_bulwark', 'hy_pyromancer', 'restore:a2']).abilities!;
     expect(reclaimed.a2.name).toBe('Shield Wall');
-    expect(reclaimed.a2.buffDefMult!).toBeCloseTo(0.4, 5); // boon preserved
+    expect(reclaimed.a2.frontGuard).toEqual({ charges: 3, duration: 5.5 });
   });
 
   it('re-seats a previously-stashed graft with its accrued boons intact', () => {
