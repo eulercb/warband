@@ -1,5 +1,6 @@
+import { isSteadfast } from './defense';
 import type { CurseStyle } from '../core/curses';
-import { buffCues } from './visualCues';
+import { buffCues, supportCue } from './visualCues';
 /**
  * Warband — ability resolution for players and bosses. Geometric hit tests
  * (math.ts) resolve cones / circles / lines; effects mutate world entities.
@@ -762,7 +763,10 @@ function resolveComposedAbility(
     }
   };
   const selfHeal = (): void => {
-    if (healOnUse && healOnUse.kind === 'healOnUse') healPlayer(world, p, p, healOnUse.amount);
+    if (healOnUse && healOnUse.kind === 'healOnUse') {
+      const healed = healPlayer(world, p, p, healOnUse.amount);
+      if (healed > 0 && d.kind === 'selfBuff') supportCue(world, p, p, 'heal');
+    }
   };
   // Rally: put ally-targeted buffs on EVERY ally in reach (the caster included).
   const buffAllies = (range: number): void => {
@@ -1022,7 +1026,10 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     curseStyle: ab.curseStyle,
     castSlow: ab.castSlow, // item 9: carry the wind-up-slow factor onto the zone
     airborne: ab.airborne, // item 8: carry the airborne-reach flag onto the zone
-    allyBuff: ab.zoneAllyDefMult ? { defMult: ab.zoneAllyDefMult, duration: 0.75 } : undefined,
+    allyBuff:
+      ab.zoneAllyDefMult || ab.zoneAllyMoveMult
+        ? { defMult: ab.zoneAllyDefMult, moveMult: ab.zoneAllyMoveMult, duration: 0.75 }
+        : undefined,
     duration: ab.zoneDuration ?? 4,
     armTime: arm.armTime,
     armFrom: arm.armFrom,
@@ -1186,8 +1193,8 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     slowDuration: o.slowDuration ?? 0,
     roots: o.roots, // item 9
     silence: o.silence,
-    curseBonus: o.curseBonus,
-    curseStyle: o.curseStyle,
+    curseBonus: o.side === 'player' ? o.curseBonus : undefined,
+    curseStyle: o.side === 'player' ? o.curseStyle : undefined,
     castSlow: o.castSlow, // item 9 — wind-up slow refreshed on enemies inside
     airborne: o.airborne, // item 8 — reaches flyers too
     allyBuff: o.allyBuff, // Chaos Forge — buff refreshed on allies inside
@@ -1235,10 +1242,11 @@ export function zoneArm(from: Vec2, to: Vec2): { armTime: number; armFrom: Vec2 
  */
 export function applyImpulse(
   world: World,
-  target: { pos: Vec2; shove?: Shove | null },
+  target: { pos: Vec2; shove?: Shove | null; buffs?: import('../core/types').Buff[] },
   dir: Vec2,
   distance: number,
 ): void {
+  if (isSteadfast(target)) return;
   const n = normalize(dir);
   const d = n.x === 0 && n.y === 0 ? { x: 1, y: 0 } : n;
   if (distance < SHOVE_MIN) {
@@ -1269,7 +1277,7 @@ export function applyImpulse(
  */
 export function stepShove(
   world: World,
-  target: { pos: Vec2; shove?: Shove | null },
+  target: { pos: Vec2; shove?: Shove | null; buffs?: import('../core/types').Buff[] },
   dt: number,
 ): void {
   const s = target.shove;
@@ -1364,7 +1372,7 @@ export function resolveBossAbility(
       const half = ((ab.halfAngleDeg ?? 30) * Math.PI) / 180;
       for (const p of alivePlayers) {
         if (pointInCone(p.pos, boss.pos, action.aimAngle, range, half, p.radius)) {
-          dealtToPlayers += damagePlayer(world, p, dmg);
+          dealtToPlayers += damagePlayer(world, p, dmg, boss.pos);
           bossHitRider(world, boss, p, ab);
           if (ab.stun) applyStun(world, p, ab.stun, 'bossStun');
         }
@@ -1390,7 +1398,7 @@ export function resolveBossAbility(
       const radius = ab.radius ?? 160;
       for (const p of alivePlayers) {
         if (pointInCircle(p.pos, boss.pos, radius, p.radius)) {
-          dealtToPlayers += damagePlayer(world, p, dmg);
+          dealtToPlayers += damagePlayer(world, p, dmg, boss.pos);
           if (ab.knockback) knockback(world, p, boss.pos, ab.knockback);
           bossHitRider(world, boss, p, ab);
           if (ab.stun) applyStun(world, p, ab.stun, 'bossStun');
@@ -1416,7 +1424,7 @@ export function resolveBossAbility(
       const halfWidth = (ab.width ?? 45) + boss.radius * 0.5;
       for (const p of alivePlayers) {
         if (pointInSegment(p.pos, from, to, halfWidth, p.radius)) {
-          dealtToPlayers += damagePlayer(world, p, dmg);
+          dealtToPlayers += damagePlayer(world, p, dmg, boss.pos);
           if (ab.knockback) knockback(world, p, from, ab.knockback);
           bossHitRider(world, boss, p, ab);
         }
@@ -1573,6 +1581,7 @@ export function beamTick(world: World, boss: Boss, ab: BossAbilityDef, action: B
     world,
     target,
     ab.damage * world.bossDamageScalar() * (boss.dmgScale ?? 1) * buffMult(boss, 'damageDealt'),
+    boss.pos,
   );
   if (ab.healSelf) healBoss(boss, dealt);
   return dealt;

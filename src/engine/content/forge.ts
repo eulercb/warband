@@ -106,6 +106,9 @@ export type EffectComponent =
   | { kind: 'wolfHunt'; duration: number }
   | { kind: 'flowExtend'; seconds: number }
   | { kind: 'guard'; duration: number }
+  | { kind: 'frontGuard'; charges: number; duration: number }
+  | { kind: 'steadfast'; duration: number }
+  | { kind: 'cleanse' }
   | { kind: 'momentum'; duration: number }
   | { kind: 'momentumStrike' }
   | { kind: 'prepareFlow'; duration: number }
@@ -114,7 +117,7 @@ export type EffectComponent =
   | { kind: 'paladinAura'; aura: NonNullable<PlayerAbilityDef['paladinAura']> }
   | { kind: 'absorption'; grant: AbsorptionGrant }
   | { kind: 'rescueHeal'; bonus: number }
-  | { kind: 'recovery'; grove: { radius: number; duration: number; tickHeal: number } }
+  | { kind: 'recovery'; grove: NonNullable<PlayerAbilityDef['recoveryZone']> }
   | { kind: 'allyWard'; ward: { range: number; mult: number; duration: number } }
   | { kind: 'bardSong'; part: 'harmony' | 'discord' | 'chorus' }
   | { kind: 'controlDamage'; bonus: number }
@@ -146,6 +149,7 @@ export interface ZoneSpec {
   duration: number;
   radius: number;
   tickDamage?: number;
+  balanceDamageScale?: number;
   tickHeal?: number;
   balanceHealScale?: number;
   overflowShield?: boolean;
@@ -216,6 +220,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
       radius: def.radius ?? 130,
     };
     if (def.zoneTickDamage) zone.tickDamage = def.zoneTickDamage;
+    if (def.balanceZoneDamageScale != null) zone.balanceDamageScale = def.balanceZoneDamageScale;
     if (def.zoneTickHeal) zone.tickHeal = def.zoneTickHeal;
     if (def.balanceZoneHealScale != null) zone.balanceHealScale = def.balanceZoneHealScale;
     if (def.overflowShield) zone.overflowShield = true;
@@ -227,7 +232,12 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.castSlow != null && def.castSlow > 1) zone.castSlow = def.castSlow; // item 9
     if (def.curseBonus) zone.curseBonus = def.curseBonus;
     if (def.curseStyle) zone.curseStyle = def.curseStyle;
-    if (def.zoneAllyDefMult) zone.allyBuff = { defMult: def.zoneAllyDefMult, duration: 0.75 };
+    if (def.zoneAllyDefMult || def.zoneAllyMoveMult)
+      zone.allyBuff = {
+        defMult: def.zoneAllyDefMult,
+        moveMult: def.zoneAllyMoveMult,
+        duration: 0.75,
+      };
     if (def.airborne) zone.airborne = true; // item 8
     effects.push({ kind: 'zone', zone });
   } else {
@@ -297,6 +307,9 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.flowExtendOnHit) effects.push({ kind: 'flowExtend', seconds: def.flowExtendOnHit });
   if (kind === 'groundZone' && def.prepareSurge)
     effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
+  if (def.frontGuard) effects.push({ kind: 'frontGuard', ...def.frontGuard });
+  if (def.steadfastDuration) effects.push({ kind: 'steadfast', duration: def.steadfastDuration });
+  if (def.cleanseOnHeal) effects.push({ kind: 'cleanse' });
   if (def.guardWindow) effects.push({ kind: 'guard', duration: def.guardWindow });
   if (def.momentumWindow) effects.push({ kind: 'momentum', duration: def.momentumWindow });
   if (def.spendsMomentum) effects.push({ kind: 'momentumStrike' });
@@ -404,6 +417,15 @@ export function recompose(
       case 'flowExtend':
         def.flowExtendOnHit = e.seconds;
         break;
+      case 'frontGuard':
+        def.frontGuard = { charges: e.charges, duration: e.duration };
+        break;
+      case 'steadfast':
+        def.steadfastDuration = e.duration;
+        break;
+      case 'cleanse':
+        def.cleanseOnHeal = true;
+        break;
       case 'guard':
         def.guardWindow = e.duration;
         break;
@@ -474,6 +496,9 @@ export function recompose(
         if (e.zone.curseBonus) def.curseBonus = e.zone.curseBonus;
         if (e.zone.curseStyle) def.curseStyle = e.zone.curseStyle;
         if (e.zone.tickDamage) def.zoneTickDamage = e.zone.tickDamage;
+        if (e.zone.balanceDamageScale != null)
+          def.balanceZoneDamageScale = e.zone.balanceDamageScale;
+        if (e.zone.allyBuff?.moveMult) def.zoneAllyMoveMult = e.zone.allyBuff.moveMult;
         if (e.zone.tickHeal) def.zoneTickHeal = e.zone.tickHeal;
         if (e.zone.balanceHealScale != null) def.balanceZoneHealScale = e.zone.balanceHealScale;
         if (e.zone.overflowShield) def.overflowShield = true;
@@ -504,7 +529,7 @@ export function recompose(
  */
 export function componentValue(comp: AbilityComponents): number {
   const fan = Math.max(1, comp.delivery.projCount ?? 1);
-  let v = 0;
+  let v = comp.delivery.kind === 'selfBuff' ? (comp.delivery.iframes ?? 0) * 30 : 0;
   for (const e of comp.effects) {
     v += effectValue(e, fan);
   }
@@ -542,6 +567,12 @@ function effectValue(e: EffectComponent, fan: number): number {
       return e.duration * 3;
     case 'flowExtend':
       return e.seconds * 16;
+    case 'frontGuard':
+      return e.charges * 20 + e.duration * 2;
+    case 'steadfast':
+      return e.duration * 6;
+    case 'cleanse':
+      return 18;
     case 'guard':
       return e.duration * 3;
     case 'momentum':
@@ -650,6 +681,7 @@ export function describeComposed(comp: AbilityComponents, cooldown: number): str
 
   // Lead with the delivery vehicle so the fusion reads as one coherent ability.
   parts.push(deliveryPhrase(d));
+  if (d.kind === 'selfBuff' && d.iframes) parts.push(`${s(d.iframes)} damage immunity`);
 
   // Every effect yields a non-empty clause, so no gap-filtering is needed.
   for (const e of comp.effects) parts.push(effectPhrase(e, d.kind));
@@ -722,6 +754,12 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return `wolf hunt ${s(e.duration)} — walk 120u per momentum stack instead of melee hits; up to 3 stacks, at most 1 per 0.4s`;
     case 'flowExtend':
       return `connecting hits extend existing Flow by ${s(e.seconds)}, up to 1s total per preparation`;
+    case 'frontGuard':
+      return `block ${n(e.charges)} frontal damage hits for ${s(e.duration)}; aim within 120°; hazards and control bypass`;
+    case 'steadfast':
+      return `resist roots, stuns and forced movement for ${s(e.duration)} (slows still apply)`;
+    case 'cleanse':
+      return 'cleanse roots, stuns, slows, silence and sluggishness';
     case 'guard':
       return `guard ${s(e.duration)}; first damaging nonlethal hit readies next melee hit +30% for 4s`;
     case 'momentum':
@@ -1029,9 +1067,13 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'parry':
     case 'flowExtend':
       return kind === 'meleeCone';
+    case 'guard':
+    case 'cleanse':
+    case 'steadfast':
+      return kind === 'selfBuff' || kind === 'heal';
+    case 'frontGuard':
     case 'bloodRage':
     case 'wolfHunt':
-    case 'guard':
     case 'momentum':
       return kind === 'selfBuff';
     case 'momentumStrike':
@@ -1115,8 +1157,13 @@ function primaryWant(kind: DeliveryKind): (e: EffectComponent) => boolean {
     case 'heal':
       return (e) => e.kind === 'heal';
     case 'buffAlly':
-    case 'selfBuff':
       return (e) => e.kind === 'buff';
+    case 'selfBuff':
+      return (e) =>
+        e.kind === 'buff' ||
+        e.kind === 'frontGuard' ||
+        e.kind === 'absorption' ||
+        e.kind === 'healOnUse';
     case 'dash':
     case 'blink':
       return (e) => e.kind === 'landingDamage' || e.kind === 'healOnUse' || e.kind === 'buff';
@@ -1551,6 +1598,11 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, duration: e.duration * f };
     case 'castSlow':
       return { ...e, duration: e.duration * f }; // rigid: keeps its bite, sheds time
+    case 'frontGuard':
+      return { ...e, charges: Math.max(1, e.charges * f), duration: e.duration * f };
+    case 'cleanse':
+      return e;
+    case 'steadfast':
     case 'parry':
     case 'bloodRage':
     case 'wolfHunt':
@@ -1616,7 +1668,10 @@ const roundCd = (x: number, slot: AbilitySlot): number =>
 // --- Caps + quantization (identity-true ceilings, clean numbers) ------------
 
 function capComponents(comp: AbilityComponents): AbilityComponents {
-  return { delivery: comp.delivery, effects: comp.effects.map(capEffect) };
+  const delivery = { ...comp.delivery };
+  if (delivery.kind === 'selfBuff' && delivery.iframes != null)
+    delivery.iframes = clamp(round05(delivery.iframes), 0.25, 2);
+  return { delivery, effects: comp.effects.map(capEffect) };
 }
 
 /**
@@ -1691,6 +1746,9 @@ function addBoonComponents(
         'wolfHunt',
         'flowExtend',
         'guard',
+        'frontGuard',
+        'steadfast',
+        'cleanse',
         'momentum',
         'momentumStrike',
         'prepareFlow',
@@ -1843,6 +1901,12 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.wolfHunt != null ? { ...e, duration: def.wolfHunt } : e;
     case 'flowExtend':
       return def.flowExtendOnHit != null ? { ...e, seconds: def.flowExtendOnHit } : e;
+    case 'frontGuard':
+      return def.frontGuard ? { ...e, ...def.frontGuard } : e;
+    case 'steadfast':
+      return def.steadfastDuration != null ? { ...e, duration: def.steadfastDuration } : e;
+    case 'cleanse':
+      return e;
     case 'guard':
       return def.guardWindow != null ? { ...e, duration: def.guardWindow } : e;
     case 'momentum':
@@ -1900,6 +1964,9 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       // Patch the zone's scalars from the flat fields; preserve its ally-buff + kind.
       const z: ZoneSpec = { ...e.zone };
       if (def.zoneTickDamage != null) z.tickDamage = def.zoneTickDamage;
+      if (def.balanceZoneDamageScale != null) z.balanceDamageScale = def.balanceZoneDamageScale;
+      if (def.zoneAllyMoveMult != null && z.allyBuff)
+        z.allyBuff = { ...z.allyBuff, moveMult: def.zoneAllyMoveMult };
       if (def.zoneTickHeal != null) z.tickHeal = def.zoneTickHeal;
       if (def.balanceZoneHealScale != null) z.balanceHealScale = def.balanceZoneHealScale;
       if (def.overflowShield != null) z.overflowShield = def.overflowShield;
@@ -1951,6 +2018,15 @@ function capEffect(e: EffectComponent): EffectComponent {
       return { ...e, duration: clamp(round1(e.duration), 2, 8) };
     case 'flowExtend':
       return { ...e, seconds: clamp(round05(e.seconds), 0.1, 0.5) };
+    case 'frontGuard':
+      return {
+        ...e,
+        charges: clamp(Math.round(e.charges), 1, 4),
+        duration: clamp(round1(e.duration), 1, 8),
+      };
+    case 'cleanse':
+      return e;
+    case 'steadfast':
     case 'guard':
     case 'prepareFlow':
       return { ...e, duration: clamp(round1(e.duration), 1, 8) };
@@ -1994,6 +2070,7 @@ function capEffect(e: EffectComponent): EffectComponent {
       return {
         ...e,
         grove: {
+          ...e.grove,
           radius: clamp(round5(e.grove.radius), 60, 160),
           duration: clamp(round1(e.grove.duration), 1, 5),
           tickHeal: clamp(Math.round(e.grove.tickHeal), 1, 10),

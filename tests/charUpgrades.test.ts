@@ -311,8 +311,8 @@ describe('applyCharUpgrades guards', () => {
 describe('knight upgrades', () => {
   it('kn_bulwark thickens and extends Shield Wall', () => {
     const a = apply('knight', ['kn_bulwark']).abilities!;
-    expect(a.a2.buffDefMult!).toBeCloseTo(0.4, 5); // 0.5 * 0.8
-    expect(a.a2.buffDuration!).toBeCloseTo(5.5, 5); // 4 + 1.5
+    expect(a.a2.frontGuard).toEqual({ charges: 3, duration: 5.5 });
+    expect(a.a2.guardWindow!).toBeCloseTo(5.5, 5); // 4 + 1.5
   });
   it('kn_concuss lengthens the Shield Bash stun and adds damage', () => {
     const a = apply('knight', ['kn_concuss']).abilities!;
@@ -517,8 +517,8 @@ describe('paladin upgrades', () => {
   });
   it('pa_aegis fortifies Divine Shield', () => {
     const a = apply('paladin', ['pa_aegis']).abilities!;
-    expect(a.a3.buffDefMult!).toBeCloseTo(0.28, 5); // 0.35 * 0.8
-    expect(a.a3.buffDuration).toBe(6);
+    expect(a.a3.iframes).toBe(1.5);
+    expect(a.a3.buffDefMult).toBeUndefined();
     expect(a.a3.cooldown).toBeCloseTo(13.6, 5); // 16 * 0.85
   });
   it('pa_mercy boosts Lay on Hands', () => {
@@ -1336,8 +1336,8 @@ describe('skill-keyed progression: isolation (item 17)', () => {
     const p = apply('knight', ['hy_pyromancer', 'kn_bulwark', 'restore:a2']);
     const a2 = p.abilities!.a2;
     expect(a2.name).toBe('Shield Wall');
-    expect(a2.buffDefMult!).toBeCloseTo(0.4, 5); // 0.5 * 0.8 — the boon was preserved on the native
-    expect(a2.buffDuration!).toBeCloseTo(5.5, 5); // 4 + 1.5
+    expect(a2.frontGuard).toEqual({ charges: 3, duration: 5.5 });
+    expect(a2.guardWindow!).toBeCloseTo(5.5, 5); // 4 + 1.5
   });
 
   it('a whole-kit combat style still lands on the CURRENT occupant (the graft)', () => {
@@ -1355,15 +1355,15 @@ describe('skill-keyed progression: stash / restore round-trip (item 15)', () => 
     const p = apply('knight', ['kn_bulwark', 'hy_pyromancer', 'restore:a2']);
     const a2 = p.abilities!.a2;
     expect(a2.name).toBe('Shield Wall'); // reclaimed
-    expect(a2.buffDefMult!).toBeCloseTo(0.4, 5); // boon intact
-    expect(a2.buffDuration!).toBeCloseTo(5.5, 5);
+    expect(a2.frontGuard).toEqual({ charges: 3, duration: 5.5 });
+    expect(a2.guardWindow!).toBeCloseTo(5.5, 5);
   });
 
   it('reclaim is a no-op when the native skill was never displaced', () => {
     const p = apply('knight', ['kn_bulwark', 'restore:a2']);
     const a2 = p.abilities!.a2;
     expect(a2.name).toBe('Shield Wall');
-    expect(a2.buffDefMult!).toBeCloseTo(0.4, 5);
+    expect(a2.frontGuard).toEqual({ charges: 3, duration: 5.5 });
   });
 
   it('re-seats a previously-stashed GRAFT with its accrued graftup boons intact', () => {
@@ -1384,7 +1384,7 @@ describe('skill-keyed progression: stash / restore round-trip (item 15)', () => 
   it('previewAbilityTable (HUD path) reflects reclaimed progression too', () => {
     const t = previewAbilityTable('knight', ['kn_bulwark', 'hy_pyromancer', 'restore:a2']);
     expect(t.a2.name).toBe('Shield Wall');
-    expect(t.a2.buffDefMult!).toBeCloseTo(0.4, 5);
+    expect(t.a2.frontGuard).toEqual({ charges: 3, duration: 5.5 });
   });
 });
 

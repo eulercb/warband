@@ -189,10 +189,14 @@ const KNIGHT: CharUpgradeDef[] = [
     'kn_bulwark',
     'Impenetrable',
     '🛡️',
-    'Shield Wall blocks 60% of damage and lasts 5.5s; its guard window also grows by 1.5s',
+    'Shield Wall gains one frontal damage block (cap 4) and 1.5s duration; its counter window also grows by 1.5s',
     ({ abilities: a }) => {
-      mul(a.a2, 'buffDefMult', 0.8);
-      addN(a.a2, 'buffDuration', 1.5);
+      if (a.a2.frontGuard)
+        a.a2.frontGuard = {
+          charges: Math.min(4, a.a2.frontGuard.charges + 1),
+          duration: Math.min(8, a.a2.frontGuard.duration + 1.5),
+        };
+      else mul(a.a2, 'cooldown', 0.9); // A forged replacement without directional guard gets real tempo.
       if (a.a2.guardWindow) a.a2.guardWindow += 1.5;
     },
   ),
@@ -571,10 +575,9 @@ const PALADIN: CharUpgradeDef[] = [
     'pa_aegis',
     'Greater Aegis',
     '🛡️',
-    'Divine Shield blocks 72% of damage, lasts 6s (+2), returns 15% sooner; shared ward lasts 1s longer and reaches 20u farther',
+    'Divine Shield immunity lasts 0.25s longer (cap 2s), returns 15% sooner; its aura lasts 1s longer and reaches 20u farther',
     ({ abilities: a }) => {
-      mul(a.a3, 'buffDefMult', 0.8);
-      addN(a.a3, 'buffDuration', 2);
+      if (a.a3.iframes) a.a3.iframes = Math.min(2, a.a3.iframes + 0.25);
       mul(a.a3, 'cooldown', 0.85);
       if (a.a3.paladinAura)
         a.a3.paladinAura = {
@@ -1347,9 +1350,10 @@ const GRAND: CharUpgradeDef[] = [
     'pa_grand_aegis',
     'Eternal Aegis',
     '🛡️',
-    'An unbreakable guardian: Divine Shield nears invulnerability, −20% dmg taken always, +20% max HP',
+    'An unbreakable guardian: Divine Shield gives 2s immunity, −20% dmg taken always, +20% max HP',
     ({ player: p, abilities: a }) => {
-      mul(a.a3, 'buffDefMult', 0.4);
+      if (a.a3.kind === 'selfBuff') a.a3.iframes = 2;
+      else mul(a.a3, 'cooldown', 0.85); // Forged non-self delivery retains a useful skill payoff.
       p.damageTakenMult *= 0.8;
       p.maxHp = Math.round(p.maxHp * 1.2);
       p.hp = p.maxHp;
@@ -1594,10 +1598,12 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'kn_gk_a2_a',
     'Aegis Eternal',
     '✨',
-    'Shield Wall nears invulnerability (85% mitigation) and holds 3s longer',
+    'Shield Wall blocks four frontal damage hits for 7s; its counter window also lasts 7s',
     (ab) => {
-      mul(ab, 'buffDefMult', 0.3);
-      addN(ab, 'buffDuration', 3);
+      if (ab.frontGuard) {
+        ab.frontGuard = { charges: 4, duration: Math.max(ab.frontGuard.duration, 7) };
+        ab.guardWindow = Math.max(ab.guardWindow ?? 0, 7);
+      } else mul(ab, 'cooldown', 0.7);
     },
   ),
   gk(
@@ -1606,10 +1612,12 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'kn_gk_a2_b',
     'Living Fortress',
     '🏰',
-    'Shield Wall is up far more often (−40% cd), deepens to 25% taken, and lasts +5s',
+    'Shield Wall recharges 40% faster, gains one block (cap 4), and holds its blocks/counter window for 8s',
     (ab) => {
-      mul(ab, 'buffDefMult', 0.5);
-      addN(ab, 'buffDuration', 5);
+      if (ab.frontGuard) {
+        ab.frontGuard = { charges: Math.min(4, ab.frontGuard.charges + 1), duration: 8 };
+        ab.guardWindow = Math.max(ab.guardWindow ?? 0, 8);
+      }
       mul(ab, 'cooldown', 0.6);
     },
   ),
@@ -2258,10 +2266,12 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'pa_gk_a3_a',
     'Unbreakable',
     '🛡️',
-    'Divine Shield nears invulnerability (86% mitigation) and holds 3s longer',
+    'Divine Shield gives 2s damage immunity; its Bulwark aura holds 3s longer (cap 8s)',
     (ab) => {
-      mul(ab, 'buffDefMult', 0.4);
-      addN(ab, 'buffDuration', 3);
+      if (ab.kind === 'selfBuff') ab.iframes = 2;
+      else mul(ab, 'cooldown', 0.7);
+      if (ab.paladinAura)
+        ab.paladinAura = { ...ab.paladinAura, duration: Math.min(8, ab.paladinAura.duration + 3) };
     },
   ),
   gk(
@@ -2270,10 +2280,11 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'pa_gk_a3_b',
     'Bastion of Light',
     '🌅',
-    'Divine Shield is up far more often (−45% cd), deepens, and holds +4s',
+    'Divine Shield recharges 45% faster, gives 1.75s immunity (2s cap), and extends Bulwark by 1s (cap 8s)',
     (ab) => {
-      mul(ab, 'buffDefMult', 0.6);
-      addN(ab, 'buffDuration', 4);
+      if (ab.kind === 'selfBuff') ab.iframes = Math.min(2, Math.max(ab.iframes ?? 0, 1.75));
+      if (ab.paladinAura)
+        ab.paladinAura = { ...ab.paladinAura, duration: Math.min(8, ab.paladinAura.duration + 1) };
       mul(ab, 'cooldown', 0.55);
     },
   ),
@@ -2851,6 +2862,19 @@ function amplify(ab: PlayerAbilityDef, mag: number, size: number): void {
   scaleField(ab, 'zoneTickDamage', mag);
   scaleField(ab, 'zoneTickHeal', mag);
   scaleField(ab, 'healOnUse', mag);
+  if (ab.frontGuard)
+    ab.frontGuard = {
+      ...ab.frontGuard,
+      duration: Math.min(8, ab.frontGuard.duration * (1 + size)),
+    };
+  if (ab.steadfastDuration) ab.steadfastDuration = Math.min(8, ab.steadfastDuration * (1 + size));
+  if (ab.kind === 'selfBuff' && ab.iframes) ab.iframes = Math.min(2, ab.iframes * (1 + mag));
+  if (ab.recoveryZone)
+    ab.recoveryZone = {
+      ...ab.recoveryZone,
+      radius: Math.round(ab.recoveryZone.radius * (1 + size)),
+      tickHeal: Math.round(ab.recoveryZone.tickHeal * (1 + mag)),
+    };
   if (ab.paladinAura)
     ab.paladinAura = { ...ab.paladinAura, radius: Math.round(ab.paladinAura.radius * (1 + size)) };
   if (ab.absorption) {
@@ -3508,7 +3532,19 @@ function subSkillTune(ab: PlayerAbilityDef): void {
   mul(ab, 'cooldown', 0.92); // -8% cooldown
 }
 
-const WARLOCK_TUNE_TEXT: Record<string, string> = {
+const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
+  kn_champion_rally:
+    'Increase self-healing by 12%, sprint speed by 4.8 percentage points, and reduce recharge by 8%',
+  kn_battle_rally:
+    'Increase healing and recovery ticks by 12%, grove radius by 8%, and reduce recharge by 8%; retain counter preparation',
+  rg_hunter_stand:
+    'Increase skirmish-field damage by 12% and radius by 8%, and reduce recharge by 8%; retain ally speed and enemy slow',
+  bb_totem_bear:
+    'Extend control resistance by 8% (cap 8s), improve mitigation, and reduce recharge by 8%',
+  bb_totem_mend:
+    'Increase self-healing by 12%, extend control resistance by 8% (cap 8s), and reduce recharge by 8%; retain cleanse',
+  pa_devotion_aura:
+    'Increase barrier by 12% and barrier/aura reach by 8%, and reduce recharge by 8%; retain the shared protection aura',
   wa_fiend_resilience:
     'Increase base barrier, siphon damage and per-hit protection by 12%, siphon reach by 8%, and reduce recharge by 8%',
   wa_fiend_pit:
@@ -3525,8 +3561,8 @@ function us(subSkillId: string, classId: ClassId, name: string, icon: string): C
     subSkillId,
     name: `Honed ${name}`,
     icon,
-    desc: WARLOCK_TUNE_TEXT[subSkillId]
-      ? `${WARLOCK_TUNE_TEXT[subSkillId]} (stacks to ${MAX_SKILL_STACKS}).`
+    desc: SUB_SKILL_TUNE_TEXT[subSkillId]
+      ? `${SUB_SKILL_TUNE_TEXT[subSkillId]} (stacks to ${MAX_SKILL_STACKS}).`
       : `Hone ${name} — it strikes harder, reaches wider and recharges faster (stacks to ${MAX_SKILL_STACKS}).`,
     apply: ({ subAbilities }) => {
       if (!subAbilities) return;

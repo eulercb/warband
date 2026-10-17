@@ -893,13 +893,13 @@ describe('player blink', () => {
 // Player: selfBuff
 // ===========================================================================
 describe('player selfBuff', () => {
-  it('Shield Wall applies a damage-taken mitigation buff (default 4s duration)', () => {
+  it('Shield Wall applies two directional damage blocks for 4s', () => {
     const w = mkWorld('knight');
     const p = w.players[0];
     tableOf(p).a2.buffDuration = undefined; // exercises the 4s default
     resolvePlayerAbility(w, p, 'a2', ZERO); // buffDefMult 0.5
-    const buff = p.buffs.find((b) => b.kind === 'damageTaken' && b.source === 'selfBuffDef');
-    expect(buff!.mult).toBeCloseTo(0.5, 6);
+    const buff = p.buffs.find((b) => b.kind === 'frontGuard');
+    expect(buff!.mult).toBe(2);
     expect(buff!.remaining).toBeCloseTo(4, 6);
   });
 

@@ -925,7 +925,8 @@ counterburst, so the barrier does not disable that interaction.
 ### Readability and compatibility
 
 Curse zones use linked-diamond, flame and eye seals for Hex, searing and dread,
-respectively, repeated on the rim rather than adding battle text. Tint is secondary.
+respectively. B2a replaces their original repeated rim badges with a central
+watermark and friendly/hostile boundaries; tint remains secondary.
 Dread also shows the existing weakened-attack badge. Dark Resilience uses the
 visible absorption shell plus brief incoming protection links from contributing
 marks. The collapsed pause symbol key explains these cues.
@@ -971,3 +972,76 @@ batches, companion and form work. That is **six remaining core/system batches**,
 plus **four to six upgrade batches**, roughly **10–12 future PRs**. The class-loop
 coherence review remains embedded in those deliveries. Reassess Soul Ember and
 shield values after B1 live testing before adding another numerical buff.
+
+## Balance B2a delivered for review — active defense and recovery
+
+The catalogue audit found too much remaining work for one coherent B2 patch.
+This first cohort covers eight skills, preserving earlier class-loop and aura
+interactions. B2 is **not complete**.
+
+| Skill              | New job and limits                                                                                                                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shield Wall        | Two frontal damage blocks within a 120° facing arc for 4s. Charge pips follow aim; rear attacks and ground damage bypass. Control riders still apply. Actual blocked contact still readies the existing counter.                           |
+| Second Wind        | Existing 90 self-heal plus 30% movement for 4s; reliable self targeting even beside an injured ally.                                                                                                                                       |
+| Rally              | 45 healing to the lowest-health ally within 280u; effective healing plants a 180u, 3s recovery field healing 6 per tick. One field per caster. Retains 5s counter preparation even when nobody needs healing.                              |
+| Stand as One       | Centered 170u, 4s arrow field: 6/tick, slows enemies to 60%, grants allies 20% movement. Reaches airborne enemies. A kiting/repositioning option, distinct from ranged damage zones and piercing shots.                                    |
+| Bear Spirit        | Retains its 40% mitigation rider for 6s, but its defining job is releasing roots/ongoing shoves and resisting new roots, stuns, pushes and pulls. Slows and damage remain threats. Cast before a stun; normal casting restrictions remain. |
+| Spirit Mend        | Existing 80 self-heal plus control/movement cleanse and 2s steadfast resistance. Cleanse works even at full health. Does not cleanse unrelated debuffs or grant damage immunity.                                                           |
+| Divine Shield      | Replaces prolonged percentage mitigation with a timed 1.25s damage immunity. Existing 5s Bulwark aura remains, with its original recipient/range rules. Greater/Eternal Aegis adapt to immunity, capped at 2s.                             |
+| Aura of Protection | Immediate 40-point, 6s barriers to living allies within 240u, alongside existing following Bulwark. Shared 50%-max-HP cap and strongest direct barrier rules; does not replace Cleric's stronger barriers.                                 |
+
+### Coherence and boundaries
+
+- Knight can face a direct threat with Shield Wall and answer with the prepared
+  counter, or Rally an injured ally and fight in the recovery territory. Champion
+  can instead recover/reposition with Second Wind and re-enter using Bull Rush.
+- Hunter can hold a skirmish field, reposition with its movement advantage and line
+  up piercing shots. Totem can preempt a control-heavy sequence with Bear Spirit,
+  or recover from roots/slows with Spirit Mend before rebuilding momentum.
+- Paladin chooses precise personal damage immunity or immediate party barriers.
+  Both retain following auras; neither becomes another copy of a long percentage
+  reduction. Existing Consecration/Pursuit/Renewal choices remain relevant.
+- Guard charges resist damage, not stun/pull. Steadfast resists hard displacement
+  and control, not damage or slow. This separation gives the tools distinct jobs.
+- Forge carries, prices, caps and describes the new payloads. Native, copied and
+  composed casts are covered; self-heals fire once. Honed and affected base/grand
+  upgrades tune the actual new effects. Forged replacements without directional
+  guard/immunity receive a recharge improvement from the affected base upgrades.
+- Added Rally healing, the skirmish-field damage and Protection barriers retain
+  their former zero party-power credit. Existing Second Wind/Spirit Mend healing
+  credit is preserved. No boss scaling formula changes; real kill pace still matters.
+- Bear Spirit and Shield Wall have different weaknesses from their former broad
+  mitigation. Playtest them against burst, repeated projectiles and ground-heavy
+  bosses; this is a gameplay redesign, not a promise of uniformly higher defense.
+
+### Hazard/curse readability correction
+
+Lich **Void Zones** are temporary damaging/strong-slow pools (canonical 8s,
+90u, 12 damage per 0.5s, speed to 30%). Its arena can also contain persistent
+**Deathfog** terrain (6 damage per 0.5s, speed to 85%) and ice. Encounter scaling
+and procedural content can change values. Neither pools nor terrain are curse
+targets; only living bosses/adds receive marks.
+
+The small black-backed curse seals repeated on friendly field rims could look like
+status icons attached to overlapping hostile pools. Friendly curse fields now use
+one large unbacked central watermark and a broken boundary; hostile zones use a
+solid pink boundary and reject curse metadata. Creature status plates remain.
+This applies to every boss-side ground zone, including affix/corruption hazards,
+not just Lich spells. The symbol key explains ownership without adding battle text.
+
+### Next and remaining scope
+
+**B2b is next:** Rogue, Bard and Sorcerer defenses (including Smoke Bomb,
+Shield Spell, Bolster and Mirror Image), plus remaining plain recovery skills such
+as Nature's Bond, Life Transfer and Wholeness of Body. Continue the catalogue-wide
+check: an added aura, passive or other rider does not cancel a base rework debt.
+Mixed skills such as Blessing/Inspiration need an explicit retain/rework decision,
+not automatic deletion of every mitigation rider. Reassess early kits and subclass
+coverage as part of the same coherence gate.
+
+After this cohort: **six core/system batches** (B2b, three passive cohorts,
+companion and form), plus **four to six upgrade batches**: about **10–12 further
+PRs**. The count stays similar because B2 was larger than its original estimate.
+Upgrade branching/grands/grafts remain a dedicated later programme, not completed
+by the compatibility adjustments here. Enemy-debuff and general readability polish
+remain under live testing; no further unrelated Warlock passive buff in this batch.

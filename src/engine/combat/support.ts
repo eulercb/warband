@@ -1,3 +1,5 @@
+import { cleanseMovement } from './defense';
+import { armMartialUtility } from './martial';
 import { personallyCursed } from '../core/curses';
 import { supportCue } from './visualCues';
 import { armPaladinAura } from './paladinAuras';
@@ -16,6 +18,23 @@ export function nearbySupportAllies(world: World, p: Player, range: number): Pla
 
 /** Both verses last eight seconds. A repeated verse refreshes, never adds stacks. */
 export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef): boolean {
+  if (ab.frontGuard)
+    applyBuff(
+      p,
+      makeBuff('frontGuard', ab.frontGuard.charges, ab.frontGuard.duration, 'frontGuard'),
+    );
+  if (ab.steadfastDuration) {
+    p.buffs = p.buffs.filter((b) => b.kind !== 'root');
+    p.shove = null;
+    applyBuff(p, makeBuff('steadfast', 0, ab.steadfastDuration, 'steadfast'));
+  }
+  if (ab.kind !== 'selfBuff' && ab.guardWindow) armMartialUtility(p, ab);
+  if (ab.kind === 'selfBuff') {
+    if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'divineGuard'));
+    if (ab.cleanseOnHeal) cleanseMovement(p);
+    if (!ab.components && ab.healOnUse && healPlayer(world, p, p, ab.healOnUse) > 0)
+      supportCue(world, p, p, 'heal');
+  }
   if (
     ab.kind === 'heal' ||
     ab.kind === 'buffAlly' ||
@@ -106,6 +125,7 @@ export function healSupportAlly(
   amount: number,
   ab: PlayerAbilityDef,
 ): number {
+  if (ab.cleanseOnHeal) cleanseMovement(target);
   const rescue = !!ab.rescueHealBonus && target.hp <= target.maxHp * 0.35;
   const effective = healPlayer(world, p, target, amount * (rescue ? 1 + ab.rescueHealBonus! : 1));
   if (effective <= 0) return 0;

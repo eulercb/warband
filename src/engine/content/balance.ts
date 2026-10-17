@@ -115,14 +115,16 @@ function abilityRates(ab: PlayerAbilityDef, cdMult: number, castMult: number): K
     // Critical rescue gets a conservative 25% opportunity assumption; groves use
     // the same occupancy discount as existing healing ground, not full uptime.
     (ab.recoveryZone
-      ? ((ab.recoveryZone.tickHeal * ab.recoveryZone.duration) / ZONE_TICK_INTERVAL) *
+      ? ((credit(ab.recoveryZone.tickHeal, ab.recoveryZone.balanceHealScale) *
+          ab.recoveryZone.duration) /
+          ZONE_TICK_INTERVAL) *
         BALANCE_ZONE_COMMIT
       : 0);
   const damagePerUse =
     ab.kind === 'heal'
       ? 0
       : creditedDamage * Math.max(1, ab.projCount ?? 1) +
-        (ab.zoneTickDamage ?? 0) * zoneCommit +
+        credit(ab.zoneTickDamage ?? 0, ab.balanceZoneDamageScale) * zoneCommit +
         (ab.landingDamage ?? 0);
   // A damage buff (Rage, Inspiration) uplifts the rest of the kit while it's up.
   const uptime = clamp((ab.buffDuration ?? 0) / cycle, 0, 1);

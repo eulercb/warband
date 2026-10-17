@@ -44,7 +44,7 @@ export interface PlayerAbilityDef {
   castTime?: number; // rooted cast before firing (Fireball)
   impactRadius?: number; // projectile AoE-on-impact radius
 
-  iframes?: number; // dash i-frame duration
+  iframes?: number; // dash or timed self-immunity duration
   /**
    * item 2 — marks a dash-nature mover (kind:'dash') as a LEAP/JUMP: it clears LOW
    * cover mid-flight and lands at the target (tall silhouettes — pillars, monoliths,
@@ -135,6 +135,9 @@ export interface PlayerAbilityDef {
   critMultBonus?: number;
   /** Guarded real damage readies one +30% connecting melee counter for 4s. */
   guardWindow?: number;
+  frontGuard?: { charges: number; duration: number };
+  steadfastDuration?: number;
+  cleanseOnHeal?: boolean;
   /** A connecting cone readies a counter AFTER the entire strike and a short parry. */
   parryOnHit?: number;
   /** Fixed 2% max-HP/s cost and 20% effective direct-damage leech, duration in seconds. */
@@ -160,11 +163,13 @@ export interface PlayerAbilityDef {
   overflowShield?: boolean;
   rescueHealBonus?: number;
   /** One non-stacking recovery grove at the healed ally's location. */
-  recoveryZone?: { radius: number; duration: number; tickHeal: number };
+  recoveryZone?: { radius: number; duration: number; tickHeal: number; balanceHealScale?: number };
   /** Share a timed ward with nearby OTHER allies when this utility resolves. */
   allyWard?: { range: number; mult: number; duration: number };
   /** Mitigation refreshed on allies standing in this ground zone. */
   zoneAllyDefMult?: number;
+  zoneAllyMoveMult?: number;
+  balanceZoneDamageScale?: number;
   /** Two timed verses empower a subsequent group rally; basics never contribute. */
   bardSong?: 'harmony' | 'discord' | 'chorus';
   /** Extra damage against currently slowed, rooted or stunned enemies. */
@@ -248,7 +253,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         kind: 'selfBuff',
         cooldown: 16,
         damage: 0,
-        buffDefMult: 0.5,
+        frontGuard: { charges: 2, duration: 4 },
         buffDuration: 4,
       },
       a3: {
@@ -627,8 +632,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         kind: 'selfBuff',
         cooldown: 16,
         damage: 0,
-        buffDefMult: 0.35,
-        buffDuration: 4,
+        iframes: 1.25,
       },
     },
   },
@@ -1113,7 +1117,8 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   if (def.overflowShield)
     parts.push('unused healing builds a 6s bubble, capped at 30% max HP across all zones');
   if (def.zoneTickHeal) parts.push(`${n(def.zoneTickHeal)}/tick heal`);
-  if (def.healOnUse) parts.push(`heal ${n(def.healOnUse)}`);
+  if (def.healOnUse)
+    parts.push(`heal ${n(def.healOnUse)}${def.kind === 'selfBuff' ? ' self' : ''}`);
 
   if (def.rescueHealBonus)
     parts.push(
@@ -1151,6 +1156,18 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
     parts.push(
       `connecting hits extend existing Flow by ${s(def.flowExtendOnHit)}, up to 1s total per preparation`,
     );
+  if (def.frontGuard)
+    parts.push(
+      `block ${def.frontGuard.charges} frontal damage hits in a 120° arc for ${s(def.frontGuard.duration)}; aim to face attacks; ground hazards and control bypass it`,
+    );
+  if (def.steadfastDuration)
+    parts.push(
+      `steadfast ${s(def.steadfastDuration)} — release roots and prevent new roots, stuns, pushes and pulls; slows still apply`,
+    );
+  if (def.cleanseOnHeal)
+    parts.push('cleanse movement/control effects from the recipient, even at full health');
+  if (def.zoneAllyMoveMult)
+    parts.push(`allies in the field gain ${n((def.zoneAllyMoveMult - 1) * 100)}% speed`);
   if (def.guardWindow)
     parts.push(
       `guard ${s(def.guardWindow)}; first damaging nonlethal hit readies next melee hit +30% for 4s`,
@@ -1235,7 +1252,8 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
 
   // --- Sustain / evasion / who it can reach ---
   if (def.lifestealFrac) parts.push(`${n(def.lifestealFrac * 100)}% lifesteal`);
-  if (def.iframes) parts.push(`${s(def.iframes)} i-frames`);
+  if (def.iframes)
+    parts.push(`${s(def.iframes)} ${def.kind === 'selfBuff' ? 'damage immunity' : 'i-frames'}`);
   // item 7 — flight granted (soar over ground hazards / zones for the window).
   if (def.grantsFlight) parts.push(`fly ${s(def.grantsFlight)}`);
   // item 8 — a zone that reaches flyers reads it out (else it's a ground effect).

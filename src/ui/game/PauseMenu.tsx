@@ -229,6 +229,12 @@ export default function PauseMenu({ onResume }: { onResume: () => void }) {
             this alone is not Fireball control. Incoming protection links show Dark Resilience
             drawing on your marks.
           </p>
+          <p>
+            Broken field borders are friendly; solid pink borders mark hostile timed zones. Large
+            unbacked curse symbols mark your spell field, not a curse on the ground. A cyan front
+            arc and white pips show directional damage blocks; golden feet mean resistance to roots,
+            stuns and forced movement. Ground damage bypasses the front arc.
+          </p>
         </details>
 
         <TerrainLegend />

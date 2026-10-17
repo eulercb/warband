@@ -1,3 +1,4 @@
+import { blockFromFront, isSteadfast } from './defense';
 import { curseOwner } from '../core/curses';
 import { absorbDamage } from './absorption';
 /**
@@ -199,6 +200,7 @@ export function cleanseControl(entity: { buffs: Buff[] }): void {
 
 /** Apply/refresh a buff, de-duping by `source`. */
 export function applyBuff(entity: { buffs: Buff[] }, buff: Buff, controlAdjusted = false): void {
+  if ((buff.kind === 'root' || buff.kind === 'stun') && isSteadfast(entity)) return;
   if (!controlAdjusted && isControlBuff(buff) && hasBuff(entity, 'auraBulwark'))
     buff = { ...buff, remaining: buff.remaining * 0.65 };
   // item 1 — a CC-immune target (a boss in its invuln window) rejects incoming
@@ -449,7 +451,7 @@ export function damageAdd(
  * damage scaling + soft-enrage. Honors i-frames and damage-taken buffs.
  * Returns damage actually dealt (0 if dodged). Downed/dead take no damage.
  */
-export function damagePlayer(sink: EventSink, target: Player, base: number): number {
+export function damagePlayer(sink: EventSink, target: Player, base: number, origin?: Vec2): number {
   if (target.state !== 'alive') return 0;
   if (hasBuff(target, 'invuln')) {
     sink.events.push({ t: 'dodge', id: target.id, pos: { ...target.pos } });
@@ -460,7 +462,17 @@ export function damagePlayer(sink: EventSink, target: Player, base: number): num
     buffMult(target, 'damageTaken') *
     buffMult(target, 'auraBulwark') *
     target.damageTakenMult;
-  const dmg = absorbDamage(target, incoming);
+  const blocked = blockFromFront(target, origin, incoming);
+  if (blocked)
+    sink.events.push({
+      t: 'support',
+      sourceId: target.id,
+      targetId: target.id,
+      from: { ...target.pos },
+      pos: { ...target.pos },
+      kind: 'protect',
+    });
+  const dmg = blocked ? 0 : absorbDamage(target, incoming);
   target.hp -= dmg;
   if (dmg > 0)
     sink.events.push({

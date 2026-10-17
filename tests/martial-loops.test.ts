@@ -75,13 +75,13 @@ function sub(w: World, id: string) {
 }
 
 describe('Knight guarded counter', () => {
-  it('a real guarded hit readies one stronger melee counter while retaining mitigation', () => {
+  it('a frontal block readies one stronger melee counter', () => {
     const w = world('knight');
     const p = w.players[0];
     resolvePlayerAbility(w, p, 'a2', ZERO);
     const hp = p.hp;
-    damagePlayer(w, p, 40);
-    expect(p.hp).toBe(hp - 20);
+    damagePlayer(w, p, 40, w.boss!.pos);
+    expect(p.hp).toBe(hp);
     expect(p.buffs.some((b) => b.kind === 'counter')).toBe(true);
     resolvePlayerAbility(w, p, 'basic', ZERO);
     expect(w.boss!.hp).toBeCloseTo(10000 - 22 * 1.3);
@@ -445,7 +445,7 @@ it('real upgrades extend guard and Flow on composed skills without changing old 
   knight.abilities!.a2 = recompose(decompose(knight.abilities!.a2), knight.abilities!.a2);
   applyCharUpgrades(knight, ['kn_bulwark']);
   expect(knight.abilities!.a2.guardWindow).toBe(5.5);
-  expect(knight.abilities!.a2.buffDefMult).toBe(0.4);
+  expect(knight.abilities!.a2.frontGuard).toEqual({ charges: 3, duration: 5.5 });
   expect(recompose(knight.abilities!.a2.components!, knight.abilities!.a2).guardWindow).toBe(5.5);
   const monk = world('monk').players[0];
   applyCharUpgrades(monk, ['mo_wind']);
