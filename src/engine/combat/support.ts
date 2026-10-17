@@ -1,3 +1,4 @@
+import { supportCue } from './visualCues';
 import { armPaladinAura } from './paladinAuras';
 import { grantAbsorption } from './absorption';
 /** Authored support interactions travel with copied skills, not the active class. */
@@ -14,6 +15,22 @@ export function nearbySupportAllies(world: World, p: Player, range: number): Pla
 
 /** Both verses last eight seconds. A repeated verse refreshes, never adds stacks. */
 export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef): boolean {
+  if (ab.kind === 'heal' || ab.kind === 'buffAlly' || ab.absorption)
+    world.events.push({
+      t: 'skillArea',
+      sourceId: p.id,
+      side: 'player',
+      color: 0xaecde1,
+      area: {
+        kind: 'circle',
+        reach: true,
+        origin: { ...p.pos },
+        angle: 0,
+        range: 0,
+        radius: ab.range ?? 400,
+        halfAngle: 0,
+      },
+    });
   if (ab.paladinAura && ab.paladinAura.kind !== 'renewal') armPaladinAura(world, p, ab);
   if (ab.absorption) {
     const nearby = nearbySupportAllies(world, p, ab.range ?? 420);
@@ -21,7 +38,9 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
       ab.absorption.target === 'nearby'
         ? nearby
         : nearby.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp).slice(0, 1);
-    for (const ally of targets) grantAbsorption(ally, ab.absorption.amount, ab.absorption.duration);
+    for (const ally of targets)
+      if (grantAbsorption(ally, ab.absorption.amount, ab.absorption.duration) > 0)
+        supportCue(world, p, ally, 'absorb');
   }
   if (ab.allyWard) {
     const ward = ab.allyWard;
@@ -55,6 +74,7 @@ export function healSupportAlly(
   const rescue = !!ab.rescueHealBonus && target.hp <= target.maxHp * 0.35;
   const effective = healPlayer(world, p, target, amount * (rescue ? 1 + ab.rescueHealBonus! : 1));
   if (effective <= 0) return 0;
+  supportCue(world, p, target, 'heal');
   if (ab.paladinAura?.kind === 'renewal') armPaladinAura(world, p, ab);
   if (ab.rescueHealBonus) {
     const ordinary = Math.min(effective * 0.25, target.maxHp * 0.15);

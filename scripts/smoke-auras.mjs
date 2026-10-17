@@ -9,7 +9,31 @@ const browser = await chromium.launch({
 let currentPage;
 try {
   for (const mobile of [false, true])
-    for (const subclass of [null, { name: 'Sacred Weapon', text: /pursuit aura/ }]) {
+    for (const test of [
+      {
+        name: 'Divine Shield',
+        slot: 'a3',
+        key: 'KeyR',
+        text: /bulwark aura/,
+        badge: /Bulwark aura:/,
+      },
+      {
+        name: 'Sacred Weapon',
+        slot: 'sub1',
+        key: 'KeyZ',
+        text: /pursuit aura/,
+        badge: /Pursuit: next connecting/,
+        loadout: true,
+      },
+      {
+        name: 'Lay on Hands',
+        slot: 'a2',
+        key: 'KeyE',
+        text: /renewal aura/,
+        badge: /Renewal aura:/,
+        recovery: true,
+      },
+    ]) {
       const classId = 'paladin';
       const context = await browser.newContext({
         viewport: mobile ? { width: 320, height: 568 } : { width: 1280, height: 800 },
@@ -39,14 +63,11 @@ try {
       await click(button('List view'));
       await click(button('Create Room'));
       if (mobile) await click(button('Lobby menu'));
-      if (subclass) {
+      if (test.loadout) {
         await click(page.locator('.wb-sf-loadout-toggle'));
-        await click(page.getByRole('button', { name: new RegExp(subclass.name) }));
+        await click(page.getByRole('button', { name: new RegExp(test.name) }));
       }
       await click(button('Start Fight'));
-      const test = subclass
-        ? { ...subclass, slot: 'sub1', key: 'KeyZ' }
-        : { name: 'Divine Shield', slot: 'a3', key: 'KeyR', text: /bulwark aura/ };
       const touchButton = (slot) =>
         slot === 'sub1'
           ? page.locator('.wb-touch-btn-sub').last()
@@ -73,6 +94,15 @@ try {
           else await page.keyboard.up(key);
         }
       };
+      if (test.recovery)
+        await page.waitForFunction(
+          () => {
+            const fill = document.querySelector('.hud-selfhp .hud-healthbar-fill');
+            return fill && parseFloat(fill.style.width) < 95;
+          },
+          null,
+          { timeout: 30000 },
+        );
       await hold(test.slot, test.key, () =>
         mobile
           ? touchButton(test.slot).locator('.wb-touch-btn-label.cooling').waitFor()
@@ -82,12 +112,18 @@ try {
             }, test.name),
       );
       const self = page.locator('.hud-selfhp');
-      await self.getByTitle(subclass ? /Pursuit: next connecting/ : /Bulwark aura:/).waitFor();
+      await self.getByTitle(test.badge).waitFor();
       if (mobile) assert.ok(await page.getByRole('group', { name: 'Touch controls' }).isVisible());
+      if (process.env.SHOT_DIR)
+        await page.screenshot({
+          path: `${process.env.SHOT_DIR}/aura-${test.slot}-${mobile ? 'touch' : 'desktop'}.png`,
+        });
       if (mobile) await click(button('Pause'));
       else await page.keyboard.press('Escape');
       await page.locator('.wb-pause-skills').waitFor();
       assert.match(await page.locator('.wb-pause-skills').textContent(), test.text);
+      await click(page.getByText('Combat effect symbols', { exact: true }));
+      assert.ok(await page.getByText(/A faint outline shows search reach/).isVisible());
       assert.deepEqual(errors, []);
       console.log(
         `PASS ${mobile ? 'mobile 320×568' : 'desktop'} ${test.name}: real cast, aura readiness, pause description`,

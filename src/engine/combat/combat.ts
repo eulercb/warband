@@ -193,7 +193,7 @@ export function cleanseControl(entity: { buffs: Buff[] }): void {
 /** Apply/refresh a buff, de-duping by `source`. */
 export function applyBuff(entity: { buffs: Buff[] }, buff: Buff, controlAdjusted = false): void {
   if (!controlAdjusted && isControlBuff(buff) && hasBuff(entity, 'auraBulwark'))
-    buff = { ...buff, remaining: buff.remaining * 0.75 };
+    buff = { ...buff, remaining: buff.remaining * 0.65 };
   // item 1 — a CC-immune target (a boss in its invuln window) rejects incoming
   // crowd control outright. Cheap KIND check first, so non-control buffs (and
   // every player, who is never CC-immune) skip the buff scan entirely.
@@ -274,7 +274,7 @@ export function applyStun(
   const effective =
     seconds *
     Math.pow(STUN_DR_FACTOR, dr.load / seconds) *
-    (hasBuff(target, 'auraBulwark') ? 0.75 : 1);
+    (hasBuff(target, 'auraBulwark') ? 0.65 : 1);
   if (effective < STUN_DR_FLOOR) {
     if (!dr.announced) {
       dr.announced = true;

@@ -1,3 +1,4 @@
+import { drawAuraField, drawBubble, drawSupportSymbol, supportStateKind } from './supportVisuals';
 /**
  * Warband — immediate-mode entity drawing helpers.
  *
@@ -131,9 +132,18 @@ export function drawBuffGlows(
   if (flying) drawRing({ color: 0xbfe0ff, good: true });
   if (buffs) {
     if (buffs.some((b) => b.kind === 'absorption' && b.mult > 0 && b.remaining > 0))
-      g.circle(x, y, bodyR + 6)
-        .fill({ color: 0x7edfff, alpha: 0.08 })
-        .stroke({ color: 0x7edfff, width: 1.5, alpha: 0.8 });
+      drawBubble(g, x, y, bodyR, timeSec);
+    const states = [...new Set(buffs.map(supportStateKind).filter((k) => k !== null))].slice(0, 3);
+    states.forEach((kind, index) =>
+      drawSupportSymbol(
+        g,
+        kind,
+        x + (index - (states.length - 1) / 2) * 13,
+        y + bodyR + 12,
+        4.5,
+        0.85,
+      ),
+    );
     for (const b of buffs) {
       const glow = buffGlow(b.kind, b.mult);
       if (!glow) continue;
@@ -209,19 +219,7 @@ export function drawPlayer(
   const bodyColor = downed ? 0x808088 : classColor;
 
   // Active buff/debuff auras (under the body so the silhouette stays crisp).
-  if (!downed && p.paladinAura) {
-    const color =
-      p.paladinAura.kind === 'renewal'
-        ? 0x7fe3a5
-        : p.paladinAura.kind === 'pursuit'
-          ? 0xf1b16a
-          : 0xffdc79;
-    g.circle(x, y, p.paladinAura.radius * scale).stroke({
-      width: 1,
-      color,
-      alpha: isLocal ? 0.22 : 0.12,
-    });
-  }
+  if (!downed && p.paladinAura) drawAuraField(g, p.paladinAura, x, y, scale, isLocal, timeSec);
   if (!downed) drawBuffGlows(g, x, y, r, p.buffs, timeSec);
 
   // Grounding shadow.
@@ -323,19 +321,7 @@ export function drawPlayerOverlay(
   const { x, y } = screen;
   const downed = p.state === 'downed';
 
-  if (!downed && p.paladinAura) {
-    const color =
-      p.paladinAura.kind === 'renewal'
-        ? 0x7fe3a5
-        : p.paladinAura.kind === 'pursuit'
-          ? 0xf1b16a
-          : 0xffdc79;
-    g.circle(x, y, p.paladinAura.radius * scale).stroke({
-      width: 1,
-      color,
-      alpha: isLocal ? 0.22 : 0.12,
-    });
-  }
+  if (!downed && p.paladinAura) drawAuraField(g, p.paladinAura, x, y, scale, isLocal, timeSec);
   if (!downed) drawBuffGlows(g, x, y, r, p.buffs, timeSec);
 
   if (downed) {
@@ -587,6 +573,10 @@ export function drawZone(g: Graphics, z: ZoneView, screen: Vec2, scale: number):
   const pulse = 0.13 + 0.06 * (0.5 + 0.5 * Math.sin(z.remaining * 6));
   g.circle(x, y, r).fill({ color, alpha: pulse * fade });
   g.circle(x, y, r).stroke({ width: 2, color, alpha: 0.55 * fade });
+  const marks = z.supportKinds ?? [];
+  marks.forEach((kind, index) =>
+    drawSupportSymbol(g, kind, x + (index - (marks.length - 1) / 2) * 17, y, 6, 0.8 * fade),
+  );
 }
 
 /**

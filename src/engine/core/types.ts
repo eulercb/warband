@@ -1030,6 +1030,8 @@ export interface InputCommand {
 export type SkillAreaKind = 'cone' | 'circle' | 'line';
 
 export interface SkillArea {
+  /** Search reach, not an area-wide application. Draw an unfilled, subdued outline. */
+  reach?: boolean;
   kind: SkillAreaKind;
   origin: Vec2; // cone/line emanation point, or circle center
   angle: number; // radians — cone/line facing (unused for circle)
@@ -1038,7 +1040,17 @@ export interface SkillArea {
   halfAngle: number; // cone half-angle (radians)
 }
 
+export type SupportCueKind = 'heal' | 'empower' | 'protect' | 'haste' | 'absorb';
+
 export type GameEvent =
+  | {
+      t: 'support';
+      sourceId: EntityId;
+      targetId: EntityId;
+      from: Vec2;
+      pos: Vec2;
+      kind: SupportCueKind;
+    }
   | {
       t: 'hit';
       pos: Vec2;
@@ -1212,6 +1224,8 @@ export interface ProjectileView {
 }
 
 export interface ZoneView {
+  /** Actual friendly payloads, for color-independent ground markers. */
+  supportKinds?: SupportCueKind[];
   id: EntityId;
   kind: ZoneKind;
   pos: Vec2;

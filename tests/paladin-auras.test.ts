@@ -50,11 +50,11 @@ describe('following Paladin auras', () => {
   it('Bulwark follows its owner, applies to nearby living allies, and respects departure/downing', () => {
     const { w, p, a, b } = setup();
     armPaladinAura(w, p, p.abilities!.a3);
-    expect(a.buffs.find((x) => x.kind === 'auraBulwark')?.mult).toBe(0.9);
+    expect(a.buffs.find((x) => x.kind === 'auraBulwark')?.mult).toBe(0.85);
     expect(b.buffs).toEqual([]);
     const hp = a.hp;
-    expect(damagePlayer(w, a, 100)).toBe(90);
-    expect(a.hp).toBe(hp - 90);
+    expect(damagePlayer(w, a, 100)).toBe(85);
+    expect(a.hp).toBe(hp - 85);
     a.pos = { ...b.pos };
     updatePaladinAuras(w, 0, 0);
     expect(a.buffs.some((x) => x.kind === 'auraBulwark')).toBe(false);
@@ -69,10 +69,10 @@ describe('following Paladin auras', () => {
   it('shortens stuns once and other control, leaving ordinary buffs unchanged', () => {
     const { w, p, a } = setup();
     armPaladinAura(w, p, p.abilities!.a3);
-    expect(applyStun(w, a, 2, 'test')).toBe(1.5);
-    expect(a.buffs.find((x) => x.kind === 'stun')?.remaining).toBe(1.5);
+    expect(applyStun(w, a, 2, 'test')).toBe(1.3);
+    expect(a.buffs.find((x) => x.kind === 'stun')?.remaining).toBe(1.3);
     applyBuff(a, makeBuff('root', 0, 2, 'root'));
-    expect(a.buffs.find((x) => x.kind === 'root')?.remaining).toBe(1.5);
+    expect(a.buffs.find((x) => x.kind === 'root')?.remaining).toBe(1.3);
     applyBuff(a, makeBuff('moveSpeed', 1.2, 2, 'haste'));
     expect(a.buffs.find((x) => x.source === 'haste')?.remaining).toBe(2);
   });
@@ -96,9 +96,9 @@ describe('following Paladin auras', () => {
     const { w, p, a } = setup();
     const ab = sub('pa_vengeance_hunt');
     armPaladinAura(w, p, ab);
-    expect(a.buffs.find((x) => x.source === 'paladinFieldPursuit')?.mult).toBe(1.12);
+    expect(a.buffs.find((x) => x.source === 'paladinFieldPursuit')?.mult).toBe(1.18);
     expect(martialHitMultiplier(a, false)).toBe(1);
-    expect(martialHitMultiplier(a, true)).toBe(1.15);
+    expect(martialHitMultiplier(a, true)).toBe(1.25);
     expect(martialHitMultiplier(a, true)).toBe(1);
     a.pos.x = 1100;
     updatePaladinAuras(w, 0, 0);
@@ -106,7 +106,7 @@ describe('following Paladin auras', () => {
     updatePaladinAuras(w, 0, 0);
     expect(martialHitMultiplier(a, true)).toBe(1);
     armPaladinAura(w, p, ab);
-    expect(martialHitMultiplier(a, true)).toBe(1.15);
+    expect(martialHitMultiplier(a, true)).toBe(1.25);
     armPaladinAura(w, p, p.abilities!.a3);
     expect(a.buffs.some((x) => x.source === 'paladinFieldPursuit' || x.kind === 'auraStrike')).toBe(
       false,
@@ -119,7 +119,7 @@ describe('following Paladin auras', () => {
     armPaladinAura(w, p, ab);
     armPaladinAura(w, b, ab);
     expect(a.buffs.filter((x) => x.kind === 'auraStrike')).toHaveLength(1);
-    expect(martialHitMultiplier(a, true)).toBe(1.15);
+    expect(martialHitMultiplier(a, true)).toBe(1.25);
     updatePaladinAuras(w, 0, 0);
     expect(martialHitMultiplier(a, true)).toBe(1);
   });
@@ -138,8 +138,8 @@ describe('following Paladin auras', () => {
     expect(updatePaladinAuras(w, 0.5, 0)).toBe(0.5);
     expect(a.hp).toBe(hp);
     updatePaladinAuras(w, 0.5, 0.5);
-    expect(a.hp).toBe(hp + 6);
-    expect(p.stats.healingDone).toBe(stats + 6);
+    expect(a.hp).toBe(hp + 10);
+    expect(p.stats.healingDone).toBe(stats + 10);
     b.state = 'dead';
     p.paladinAura!.remaining = 0;
     updatePaladinAuras(w, 0, 0);
@@ -169,7 +169,7 @@ describe('following Paladin auras', () => {
     armPaladinAura(w, p, sub('pa_vengeance_hunt'));
     const before = w.boss!.hp;
     damageBoss(w, a, w.boss!, 10, { melee: true });
-    expect(before - w.boss!.hp).toBeCloseTo(11.5);
+    expect(before - w.boss!.hp).toBeCloseTo(12.5);
   });
   it.each(['pa_devotion_sanctuary', 'pa_devotion_bless', 'pa_devotion_aura', 'pa_vengeance_hunt'])(
     'preserves %s through Forge and refresh',
@@ -281,8 +281,8 @@ it('Renewal resolves overlapping attribution independently of owner iteration or
   w.players.reverse();
   a.hp = 50;
   updatePaladinAuras(w, 1, 0);
-  expect(a.hp).toBe(56);
-  expect(p.stats.healingDone).toBe(6);
+  expect(a.hp).toBe(60);
+  expect(p.stats.healingDone).toBe(10);
   expect(b.stats.healingDone).toBe(0);
 });
 
@@ -321,7 +321,7 @@ it('describes aura benefits and classifies their proactive support role for bots
     { kind: 'auraStrike', mult: 1.15, remaining: 4 },
     { kind: 'auraRenewal', mult: 6, remaining: 0.35 },
   ]);
-  expect(badges.map((b) => b.label).join(' ')).toMatch(/25% less.*15% more.*6 HP\/s/);
+  expect(badges.map((b) => b.label).join(' ')).toMatch(/35% less.*25% more.*10 HP\/s/);
 });
 
 it('Cleric upgrade stacks cannot charge higher difficulty for these balance buffs', () => {

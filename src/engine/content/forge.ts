@@ -546,7 +546,7 @@ function effectValue(e: EffectComponent, fan: number): number {
     case 'pierce':
       return e.count * 15;
     case 'paladinAura':
-      return e.aura.duration * (e.aura.kind === 'renewal' ? 6 : 4);
+      return e.aura.duration * (e.aura.kind === 'renewal' ? 10 : 6);
     case 'absorption':
       return e.grant.amount * (e.grant.target === 'nearby' ? 1.5 : 1);
     case 'rescueHeal':

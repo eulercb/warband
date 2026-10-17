@@ -120,7 +120,7 @@ describe('Paladin frontline protection', () => {
     far.pos.x = p.pos.x + 221;
     resolvePlayerAbility(w, p, 'a3', ZERO);
     expect(buffMult(p, 'damageTaken')).toBe(0.35);
-    expect(buffMult(ally, 'auraBulwark')).toBe(0.9);
+    expect(buffMult(ally, 'auraBulwark')).toBe(0.85);
     expect(far.buffs).toEqual([]);
     ally.state = 'downed';
     ally.buffs = [];
@@ -137,7 +137,7 @@ describe('Paladin frontline protection', () => {
     resolvePlayerAbility(w, p, 'a3', ZERO);
     resolvePlayerAbility(w, p, 'a3', ZERO);
     expect(ally.buffs.filter((b) => b.kind === 'auraBulwark')).toHaveLength(1);
-    expect(buffMult(ally, 'auraBulwark')).toBe(0.9);
+    expect(buffMult(ally, 'auraBulwark')).toBe(0.85);
   });
   it('Consecration heals, damages, and protects inside; leaving/flight respects ground rules', () => {
     const w = world('paladin');
@@ -166,7 +166,7 @@ describe('Paladin frontline protection', () => {
     sub(w, 'pa_devotion_aura');
     resolvePlayerAbility(w, p, 'sub1', ZERO);
     expect(buffMult(p, 'damageTaken')).toBe(0.55);
-    expect(buffMult(ally, 'auraBulwark')).toBe(0.9);
+    expect(buffMult(ally, 'auraBulwark')).toBe(0.85);
   });
 });
 
@@ -354,7 +354,7 @@ it.each(['cleric', 'paladin', 'druid', 'bard'] as const)(
     }
     if (classId === 'paladin') {
       resolvePlayerAbility(w, p, 'a3', ZERO);
-      expect(buffMult(ally, 'auraBulwark')).toBe(0.9);
+      expect(buffMult(ally, 'auraBulwark')).toBe(0.85);
       resolvePlayerAbility(w, p, 'a1', ZERO);
       expect(w.groundZones[0].allyBuff?.defMult).toBe(0.9);
     }
