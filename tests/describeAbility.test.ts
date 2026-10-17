@@ -28,7 +28,7 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a self-buff: directional charges, counter and duration', () => {
     // Knight Shield Wall explains facing and hazard/control exceptions.
     expect(describeAbility(CLASSES.knight.abilities.a2)).toBe(
-      'block 2 frontal damage hits in a 120° arc for 4s; aim to face attacks; ground hazards and control bypass it · guard 4s; first damaging nonlethal hit readies next melee hit +30% for 4s · for 4s · 16s cooldown',
+      'block 2 frontal damage hits in a 120° arc for 4s; aim to face attacks; ground hazards and control bypass it · guard 4s; first damaging nonlethal hit readies next melee hit +30% for 4s · 16s cooldown',
     );
   });
 

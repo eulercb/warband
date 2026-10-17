@@ -90,12 +90,10 @@ try {
       if (!test.slot) {
         await click(page.locator('.wb-sf-loadout-toggle'));
         await click(
-          page
-            .getByRole('group', { name: 'Test loadout' })
-            .getByRole('button', {
-              name: test.name === 'Second Wind' ? '💚 Second Wind' : new RegExp(test.name),
-              exact: test.name === 'Second Wind',
-            }),
+          page.getByRole('group', { name: 'Test loadout' }).getByRole('button', {
+            name: test.name === 'Second Wind' ? '💚 Second Wind' : new RegExp(test.name),
+            exact: test.name === 'Second Wind',
+          }),
         );
       }
       await click(button('Start Fight'));

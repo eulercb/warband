@@ -254,7 +254,6 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         cooldown: 16,
         damage: 0,
         frontGuard: { charges: 2, duration: 4 },
-        buffDuration: 4,
       },
       a3: {
         slot: 'a3',

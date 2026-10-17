@@ -117,6 +117,8 @@ try {
               curseStyle: style,
             });
           }
+          // This fixture renders a frozen world: advance past spawn fade-in.
+          for (const z of world.groundZones) z.remaining = z.duration - 1;
           owner.buffs = [
             { kind: 'frontGuard', mult: 2, remaining: 4, source: 'guard' },
             { kind: 'steadfast', mult: 0, remaining: 4, source: 'steady' },
