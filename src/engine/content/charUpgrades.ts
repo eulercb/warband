@@ -1,3 +1,4 @@
+import { scaleAbsorption } from '../combat/absorption';
 /**
  * Warband — character (class-specific) upgrades earned between bosses. PURE TS.
  *
@@ -2853,13 +2854,14 @@ function amplify(ab: PlayerAbilityDef, mag: number, size: number): void {
   if (ab.paladinAura)
     ab.paladinAura = { ...ab.paladinAura, radius: Math.round(ab.paladinAura.radius * (1 + size)) };
   if (ab.absorption) {
-    ab.absorption = {
-      ...ab.absorption,
-      amount: Math.round(ab.absorption.amount * (1 + mag)),
-      ...(ab.absorption.balanceAmount != null
-        ? { balanceAmount: Math.round(ab.absorption.balanceAmount * (1 + mag)) }
-        : {}),
-    };
+    ab.absorption = scaleAbsorption(ab.absorption, 1 + mag, 1 + size);
+    ab.absorption.amount = Math.round(ab.absorption.amount);
+    if (ab.absorption.balanceAmount != null)
+      ab.absorption.balanceAmount = Math.round(ab.absorption.balanceAmount);
+    if (ab.absorption.curseSiphon) {
+      ab.absorption.curseSiphon.amount = Math.round(ab.absorption.curseSiphon.amount);
+      ab.absorption.curseSiphon.range = Math.round(ab.absorption.curseSiphon.range);
+    }
     if (ab.absorption.target !== 'self') scaleField(ab, 'range', size);
   }
   scaleField(ab, 'radius', size);
@@ -3448,7 +3450,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'wa_fiend_g_a',
     'Hellfire Ascendant',
     '🔥',
-    'Your Fiend skills scorch 55% harder over a wider area and drink 25% as health',
+    'Fiend damage and barrier amounts grow 55%; areas and siphon reach grow 30%; direct strikes leech 25%',
     (ab) => {
       amplify(ab, 0.55, 0.3);
       lifeRider(ab, 0.25);
@@ -3459,7 +3461,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'wa_fiend_g_b',
     'Infernal Pact',
     '😈',
-    'Your Fiend skills recharge 40% faster, hit 30% harder, and leech 20%',
+    'Fiend skills recharge 40% faster; damage and barrier amounts grow 30%, areas and siphon reach 15%; direct strikes leech 20%',
     (ab) => {
       mul(ab, 'cooldown', 0.6);
       amplify(ab, 0.3, 0.15);
@@ -3506,6 +3508,15 @@ function subSkillTune(ab: PlayerAbilityDef): void {
   mul(ab, 'cooldown', 0.92); // -8% cooldown
 }
 
+const WARLOCK_TUNE_TEXT: Record<string, string> = {
+  wa_fiend_resilience:
+    'Increase base barrier, siphon damage and per-hit protection by 12%, siphon reach by 8%, and reduce recharge by 8%',
+  wa_fiend_pit:
+    'Increase burning-zone damage by 12% and radius by 8%, and reduce recharge by 8%; retain the 4s searing mark',
+  wa_goo_whispers:
+    'Increase dread-zone damage by 12% and radius by 8%, and reduce recharge by 8%; weakening stays 20%',
+};
+
 /** Per-subclass-skill upgrade builder — tied to one sub skill id (non-grand, cap 5). */
 function us(subSkillId: string, classId: ClassId, name: string, icon: string): CharUpgradeDef {
   return {
@@ -3514,7 +3525,9 @@ function us(subSkillId: string, classId: ClassId, name: string, icon: string): C
     subSkillId,
     name: `Honed ${name}`,
     icon,
-    desc: `Hone ${name} — it strikes harder, reaches wider and recharges faster (stacks to ${MAX_SKILL_STACKS}).`,
+    desc: WARLOCK_TUNE_TEXT[subSkillId]
+      ? `${WARLOCK_TUNE_TEXT[subSkillId]} (stacks to ${MAX_SKILL_STACKS}).`
+      : `Hone ${name} — it strikes harder, reaches wider and recharges faster (stacks to ${MAX_SKILL_STACKS}).`,
     apply: ({ subAbilities }) => {
       if (!subAbilities) return;
       for (const slot of SUB_SLOTS) {

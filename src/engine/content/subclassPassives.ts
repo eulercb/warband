@@ -29,14 +29,14 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'warlock',
     name: 'Soul Ember',
     icon: '🔥',
-    desc: 'Damaging an enemy bearing your curse heals 5% max health and grants 10% damage reduction for 3s. Once per 6s.',
+    desc: 'While injured, damaging an enemy bearing your curse heals 5% max health and grants 10% damage reduction for 3s. Once per 6s; full health does not spend the trigger.',
   },
   wa_great_old_one: {
     id: 'old_one_dread_insight',
     classId: 'warlock',
     name: 'Dread Insight',
     icon: '👁️',
-    desc: 'Deal 8% more damage to enemies bearing your curse while they are slowed, rooted, stunned, or have slower wind-ups.',
+    desc: 'Deal 8% more damage to enemies bearing your curse while they are slowed, rooted, stunned, have slower wind-ups, or deal weakened damage.',
   },
 };
 

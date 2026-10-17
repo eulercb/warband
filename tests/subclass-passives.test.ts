@@ -306,6 +306,7 @@ describe('swap, timers, snapshots and replay', () => {
     expect(p.subclassPassiveId).toBe('fiend_soul_ember');
     expect(p.buffs.some((b) => b.kind === 'spellblade')).toBe(false);
     curse(w);
+    p.hp = p.maxHp - 10;
     damageBoss(w, p, w.boss!, 10);
     w.setActiveClass(p, 'rogue');
     prepare(w);

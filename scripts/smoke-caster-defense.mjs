@@ -1,7 +1,36 @@
-/** Production caster-defense loadouts, real casting, recipient states and touch controls. */
+/** Production caster/Warlock loadouts, real casting, recipient states and touch controls. */
 import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright-core';
+const tests = [
+  { classId: 'mage', name: 'Arcane Shield', text: /absorption.*yourself/, bubble: true },
+  { classId: 'mage', name: 'Arcane Ward', text: /absorption.*yourself/, bubble: true },
+  { classId: 'sorcerer', name: 'Draconic Scales', text: /surge \+20% dmg/, bubble: true },
+  { classId: 'sorcerer', name: 'Dragon Wings', text: /fly 7s/, badge: /Airborne/ },
+  {
+    classId: 'sorcerer',
+    name: 'Wild Ward',
+    text: /prepare spell surge/,
+    badge: /Spell surge:/,
+  },
+
+  {
+    classId: 'warlock',
+    name: 'Dark Resilience',
+    text: /30 absorption.*personally cursed enemies/,
+    bubble: true,
+  },
+  { classId: 'warlock', name: 'Fire Pit', text: /searing curse.*4s minimum linger/, zone: true },
+  {
+    classId: 'warlock',
+    name: 'Dissonant Whispers',
+    text: /dread curse.*20% less damage/,
+    zone: true,
+  },
+].filter(
+  (test) => !process.env.SMOKE_CASTER_CLASS || test.classId === process.env.SMOKE_CASTER_CLASS,
+);
+assert.ok(tests.length, 'Unknown SMOKE_CASTER_CLASS');
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || chromium.executablePath(),
   headless: true,
@@ -9,18 +38,7 @@ const browser = await chromium.launch({
 let currentPage;
 try {
   for (const mobile of [false, true])
-    for (const test of [
-      { classId: 'mage', name: 'Arcane Shield', text: /absorption.*yourself/, bubble: true },
-      { classId: 'mage', name: 'Arcane Ward', text: /absorption.*yourself/, bubble: true },
-      { classId: 'sorcerer', name: 'Draconic Scales', text: /surge \+20% dmg/, bubble: true },
-      { classId: 'sorcerer', name: 'Dragon Wings', text: /fly 7s/, badge: /Airborne/ },
-      {
-        classId: 'sorcerer',
-        name: 'Wild Ward',
-        text: /prepare spell surge/,
-        badge: /Spell surge:/,
-      },
-    ]) {
+    for (const test of tests) {
       const classId = test.classId;
       const context = await browser.newContext({
         viewport: mobile ? { width: 320, height: 568 } : { width: 1280, height: 800 },
@@ -50,9 +68,20 @@ try {
       await click(button('List view'));
       await click(button('Create Room'));
       if (mobile) await click(button('Lobby menu'));
+      if (classId === 'warlock')
+        await click(
+          page.getByRole('group', { name: 'Change boss' }).getByRole('button', {
+            name: 'Kobold Firebrand',
+            exact: true,
+          }),
+        );
       {
         await click(page.locator('.wb-sf-loadout-toggle'));
-        await click(page.getByRole('button', { name: new RegExp(test.name) }));
+        await click(
+          page
+            .getByRole('group', { name: 'Test loadout' })
+            .getByRole('button', { name: new RegExp(test.name) }),
+        );
       }
       await click(button('Start Fight'));
       const touchButton = () => page.locator('.wb-touch-btn-sub').last();
@@ -78,6 +107,7 @@ try {
           else await page.keyboard.up(key);
         }
       };
+      if (!mobile && classId === 'warlock') await page.mouse.move(640, 200);
       await hold('KeyZ', () =>
         mobile
           ? touchButton().locator('.wb-touch-btn-label.cooling').waitFor()
@@ -92,7 +122,9 @@ try {
         await meter.waitFor();
         const amount = Number(await meter.getAttribute('aria-valuenow'));
         assert.ok(amount > 0 && amount <= Number(await meter.getAttribute('aria-valuemax')));
-      } else await self.getByTitle(test.badge).waitFor();
+      } else if (test.badge) await self.getByTitle(test.badge).waitFor();
+      // Let the normal ranged-zone arming animation finish for the review capture.
+      if (test.zone) await page.waitForTimeout(700);
       if (mobile) assert.ok(await page.getByRole('group', { name: 'Touch controls' }).isVisible());
       if (process.env.SHOT_DIR)
         await page.screenshot({
@@ -102,9 +134,13 @@ try {
       else await page.keyboard.press('Escape');
       await page.locator('.wb-pause-skills').waitFor();
       assert.match(await page.locator('.wb-pause-skills').textContent(), test.text);
+      if (classId === 'warlock') {
+        await click(page.getByText('Combat effect symbols', { exact: true }));
+        assert.ok(await page.getByText(/Curse zones use linked diamonds/).isVisible());
+      }
       assert.deepEqual(errors, []);
       console.log(
-        `PASS ${mobile ? 'mobile 320×568' : 'desktop'} ${test.name}: real cast, defense state, pause description`,
+        `PASS ${mobile ? 'mobile 320×568' : 'desktop'} ${test.name}: real cast, effect state, pause description`,
       );
       await context.close();
     }

@@ -13,6 +13,7 @@ Enemy debuff visibility is now being improved from additional playtest feedback.
 Caster defense identity (Mage/Sorcerer) was merged and playtested.
 Enemy debuff cues and the Soul Ember sustain adjustment were merged and playtested.
 Simultaneous debuff visibility is corrected in the current follow-up; see the final section.
+Warlock balance B1 is implemented for review; see the final section for contracts and next work.
 Remaining defining passives, companions, forms and later milestones remain proposals.
 
 ## Goals and boundaries
@@ -787,7 +788,7 @@ an active slow; it does not promise that multiple sources stack multiplicatively
 Regression checks cover both root/slow expiry orders, mixed ownership, eight badges
 on bosses and adds, and the real foreground renderer on three viewport sizes.
 
-### Next implementation: balance B1 — Warlock kit coherence
+### Balance B1 design brief — Warlock kit coherence (implementation below)
 
 The existing pilot improved the base loop but did not sufficiently distinguish
 subclass choices. Code inspection confirms Hex and Dissonant Whispers are both
@@ -878,3 +879,95 @@ That makes seven planned core/system batches (B1, B2, three passive batches,
 companion and form), plus four to six upgrade batches: roughly **11–13 future PRs**.
 Coherence review is part of those deliveries, not a new chain of audit-only PRs.
 Revisit grouping after B1 playtesting; do not enlarge a patch merely to reduce its count.
+
+## Balance B1 delivered for review — Warlock curse coherence
+
+This batch implements the Warlock kit checkpoint. It does not complete B2, the
+other plain-defense/plain-heal candidates, or the larger branching-upgrade redesign.
+
+| Ability / passive  | Implemented role and bounds                                                                                                                                                                                                                               |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hex                | Baseline hindering curse: movement to 70%, wind-up +40%, personal damage +15%. Existing damage/cooldown/flight rules stay.                                                                                                                                |
+| Fire Pit           | Searing pressure curse: existing 13/tick zone plus +15% owner damage mark, lingering at least 4s. No extra movement slow or per-tick healing proc.                                                                                                        |
+| Dissonant Whispers | Dread zone: existing 11/tick, +15% owner damage and 20% weaker enemy attacks, at least 2s linger. Replaces its movement slow; equivalent dread weakness uses only the strongest instance.                                                                 |
+| Dark Resilience    | Replaces 45% damage reduction with 30 self absorption for 6s. Siphons up to two distinct personally cursed enemies within 300u for 20 base damage each; each successful damaging hit adds 20 protection. 50% max-HP shared shield cap; no marks consumed. |
+| Soul Ember         | Retains 5% max-HP heal, 10% mitigation for 3s, and 6s cooldown. Requires missing health, so full-health damage no longer spends the trigger **or grants the mitigation**. Effective damage, alive-caster and ownership gates remain.                      |
+| Dread Insight      | Retains +8%; personally cursed foes with weakened damage now qualify as well as slow/root/stun/wind-up slow. Whispers therefore enables its own subclass payoff. Weakness alone does not enable Fireball control-burst.                                   |
+
+### Overlap, ownership and combat boundaries
+
+Each curse cast has an independent owner/family/zone source. Repeated ticks refresh
+that cast; a weaker overlapping cast, including another cast of the same family,
+cannot overwrite a stronger mark or prolong its strength. Damage uses the strongest
+active **personal** mark across all casts, never their product and never another
+player's mark. Legacy `curse:<owner>` sources still work. Optional numeric ownership
+continues to cross the snapshot boundary without private source labels.
+
+Dread weakening is independently timed per cast and takes its strongest multiplier
+across casters, while ordinary unrelated damage buffs retain their existing rules.
+It affects ordinary boss ability execution (including committed projectiles/zones)
+and add attacks. It does not retroactively weaken already-launched attacks or
+claim to suppress environmental terrain/affix damage. Ground curse zones still
+respect boss flight and ranged arming; airborne composed zones retain reach.
+Hex wind-up slowing now also reaches adds in range, matching its snapshot/payload,
+though ordinary adds have no ability wind-up to slow.
+
+Siphon has no recursive damage or shield tick. It targets at most two bodies,
+regardless of mark count, and earns no bonus from invulnerable targets, allied
+marks, expired marks, dead enemies or out-of-range enemies. The 30 baseline works
+without setup; a marked solo boss normally gives 50, two hits give 70 before the
+shared cap (65 on an unupgraded 130-HP Warlock). Existing stronger shields cannot
+be prolonged by weaker casts. Its damage can trigger the usual gated Soul Ember,
+but does not create a separate unlimited leech loop. Existing Hellish/Fiendish
+Rebuke behavior remains: real shield-absorbed contact can release the armed
+counterburst, so the barrier does not disable that interaction.
+
+### Readability and compatibility
+
+Curse zones use linked-diamond, flame and eye seals for Hex, searing and dread,
+respectively, repeated on the rim rather than adding battle text. Tint is secondary.
+Dread also shows the existing weakened-attack badge. Dark Resilience uses the
+visible absorption shell plus brief incoming protection links from contributing
+marks. The collapsed pause symbol key explains these cues.
+
+Fields survive authored, copied, upgraded, composed-ground and projectile-impact
+zone paths. Self absorption is already a portable component; its siphon payload
+is preserved and priced for **maximum barrier plus maximum damage** in Forge.
+Honed/grands scale base shield, siphon damage/protection and reach while retaining
+the target cap. Updated the three touched Honed descriptions and Fiend grand copy
+so they do not claim a barrier itself strikes or that a zone receives direct-hit
+lifesteal. This is compatibility work, not completion of the full upgrade catalogue.
+
+Dark Resilience keeps its pre-rework zero healing/damage party-power credit through
+existing `balanceAmount: 0`; new curse utility uses the existing mark estimator
+contract. No difficulty formula is changed. Normal kill-pace feedback can still
+respond. A capped shield will differ from percentage mitigation under heavy focus;
+playtest its timing and survivability rather than assuming it is universally stronger.
+
+### Pre-delivery coherence review
+
+- **Fiend sequence A:** Fire Pit tags a route, then Hurl Flame/Eldritch Blast pressure
+  the marked boss while repositioning; the longer mark leaves a sustain window
+  outside the zone. **Sequence B:** Hex/Fire Pit setup, approach within 300u, then
+  Dark Resilience to siphon and absorb the next threat; base Rebuke can then
+  counterburst even on absorbed contact. Fiendish Rebuke is the stronger subclass
+  strike alternative for a closer-range loadout. All examples respect
+  the two equipped subclass slots; base Hex/Rebuke remain available.
+- **Great Old One sequence A:** Whispers weakens attacks and enables Dread Insight,
+  then Mind Blast applies focused pressure. **Sequence B:** Hex plus Tentacle snares
+  a nearby target for controlled curse damage; Entropic Ward is the repositioning
+  alternative. No particular random upgrade is required for either route.
+- **Distinct jobs:** Hurl Flame is a charged leech strike, Mind Blast a quicker
+  focused shot, Tentacle close snare, Entropic Ward blink/recovery. Each supplies
+  pressure, setup or repositioning rather than another mandatory curse button.
+- **Counterexamples exercised:** same-family and mixed-family overlaps, weaker
+  cast arrival, independent expiry, another caster, zero effective damage, flight,
+  boss-only and adds, no marks, cap saturation, existing shields, full HP, and
+  copied abilities on another active class. Passing contracts does not prove balance.
+
+**Next: balance B2**, covering the remaining catalogue-wide defensive/recovery
+inventory, including skills with useful riders. Then the three remaining passive
+batches, companion and form work. That is **six remaining core/system batches**,
+plus **four to six upgrade batches**, roughly **10–12 future PRs**. The class-loop
+coherence review remains embedded in those deliveries. Reassess Soul Ember and
+shield values after B1 live testing before adding another numerical buff.

@@ -1,3 +1,4 @@
+import type { CurseStyle } from './curses';
 /**
  * Warband — shared engine types.
  *
@@ -192,7 +193,7 @@ export type BuffKind =
   | 'spellSurge' // one enhanced special spell
   | 'spellblade' // one empowered melee hit from Arcane Trickster
   | 'precision' // one prepared critical strike; mult unused
-  | 'curse' // owner-only vulnerability; source = curse:<ownerId>, mult = damage factor
+  | 'curse' // owner-only vulnerability; source = curse:<owner>[:<style>:<zone>], mult = factor
   | 'rebuke'; // one counterburst; mult = damage, payload host-only
 
 export interface Buff {
@@ -578,6 +579,7 @@ export interface ProjectileImpact {
   roots?: boolean;
   /** Extra owner-only damage on enemies marked by the bloomed zone. */
   curseBonus?: number;
+  curseStyle?: CurseStyle;
   /** item 9 — a wind-up-slow factor (≥ 1) the bloomed zone applies to enemies inside. */
   castSlow?: number;
   /** item 8 — the bloomed zone reaches airborne targets too (see GroundZone.airborne). */
@@ -942,6 +944,7 @@ export interface GroundZone {
   castSlow?: number;
   /** Owner-only vulnerability refreshed on enemies inside. */
   curseBonus?: number;
+  curseStyle?: CurseStyle;
   /**
    * item 8 — AIRBORNE reach: true = this zone affects flyers too (arrows raining
    * from above, a floating force cage) — Ranger Rain of Arrows, Mage Otiluke Bind.
@@ -1226,6 +1229,7 @@ export interface ProjectileView {
 }
 
 export interface ZoneView {
+  curseStyle?: CurseStyle;
   /** Actual friendly payloads, for color-independent ground markers. */
   supportKinds?: SupportCueKind[];
   id: EntityId;

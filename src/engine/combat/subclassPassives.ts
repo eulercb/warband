@@ -1,3 +1,4 @@
+import { personallyCursed } from '../core/curses';
 /** Bounded passive hooks. All state is host-owned; no randomness or recursive hits. */
 import type { Buff, Player } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
@@ -58,12 +59,6 @@ interface PassiveHit {
   prepared?: boolean;
   melee?: boolean;
 }
-function personallyCursed(p: Player, target: Target): boolean {
-  return target.buffs.some(
-    (b) => b.kind === 'curse' && b.source === `curse:${p.id}` && b.remaining > 0,
-  );
-}
-
 /** Only connecting, positive hits call this; misses and invulnerability preserve readiness. */
 export function subclassDamageMultiplier(p: Player, target: Target, hit?: PassiveHit): number {
   switch (p.subclassPassiveId) {
@@ -76,14 +71,15 @@ export function subclassDamageMultiplier(p: Player, target: Target, hit?: Passiv
       return ready.mult;
     }
     case 'old_one_dread_insight':
-      return personallyCursed(p, target) &&
+      return personallyCursed(p.id, target) &&
         target.buffs.some(
           (b) =>
             b.remaining > 0 &&
             (b.kind === 'root' ||
               b.kind === 'stun' ||
               (b.kind === 'moveSpeed' && b.mult < 1) ||
-              (b.kind === 'castSlow' && b.mult > 1)),
+              (b.kind === 'castSlow' && b.mult > 1) ||
+              (b.kind === 'damageDealt' && b.mult < 1)),
         )
         ? 1.08
         : 1;
@@ -100,7 +96,8 @@ export function subclassHitHealing(p: Player, target: Target, effective: number)
     effective <= 0 ||
     p.state !== 'alive' ||
     p.hp <= 0 ||
-    !personallyCursed(p, target) ||
+    p.hp >= p.maxHp ||
+    !personallyCursed(p.id, target) ||
     !offCooldown(p, id)
   )
     return 0;

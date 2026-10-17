@@ -114,3 +114,19 @@ instead of three to shorten the grid. Viewport-clamped, fixed-size badges and no
 new floating text keep the display bounded. The pause key explains the shapes. Existing positive-support visuals are
 unchanged. Browser fixtures stress the real renderer with dense damage numbers
 and exercise expiry/ownership on desktop, portrait and landscape views.
+
+## Warlock curse families
+
+Ground curse zones now carry an optional public family cue: Hex uses linked
+purple diamonds, Fire Pit orange flames, and Dissonant Whispers pale-blue eyes.
+The silhouettes repeat on the rim so body art is less likely to cover every seal.
+Dread adds the existing weakened-attack badge; it is not Fireball control by itself.
+All simultaneous status categories remain visible under the existing aggregation
+rules. Personal curse dots recognize independently timed cast sources and legacy
+marks. No additional floating instructions or skill-name text is introduced.
+
+Dark Resilience has a normal absorption shell and brief incoming protection links
+from up to two marked enemies that successfully supply its siphon barrier. Failed
+hits provide no contribution. The pause key and actual skill descriptions explain
+the mark ownership, reach, target cap and unchanged marks; stronger shared shields
+still win. Review crowded mobile/co-op cases and overlapping curse zones live.

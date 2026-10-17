@@ -1,3 +1,4 @@
+import { personallyCursed } from '../core/curses';
 import { supportCue } from './visualCues';
 import { armPaladinAura } from './paladinAuras';
 import { grantAbsorption } from './absorption';
@@ -6,7 +7,7 @@ import type { Player } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
 import type { World } from '../world/world';
 import { dist } from '../core/torus';
-import { applyBuff, makeBuff, healPlayer } from './combat';
+import { applyBuff, makeBuff, healPlayer, damageBoss, damageAdd } from './combat';
 import { spawnZone } from './abilities';
 
 export function nearbySupportAllies(world: World, p: Player, range: number): Player[] {
@@ -44,9 +45,37 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
         : ab.absorption.target === 'nearby'
           ? nearby
           : nearby.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp).slice(0, 1);
-    for (const ally of targets)
-      if (grantAbsorption(ally, ab.absorption.amount, ab.absorption.duration) > 0)
-        supportCue(world, p, ally, 'absorb');
+    const siphon = ab.absorption.target === 'self' ? ab.absorption.curseSiphon : undefined;
+    const candidates =
+      siphon && p.state === 'alive' && p.hp > 0
+        ? [...world.aliveBosses(), ...world.adds]
+            .filter(
+              (e) => e.hp > 0 && dist(p.pos, e.pos) <= siphon.range && personallyCursed(p.id, e),
+            )
+            .slice(0, siphon.maxTargets)
+        : [];
+    const marked = candidates.filter((enemy) => {
+      const before = enemy.hp;
+      if ('monsterId' in enemy) damageBoss(world, p, enemy, siphon!.amount);
+      else damageAdd(world, p, enemy, siphon!.amount);
+      return enemy.hp < before;
+    });
+    const amount = ab.absorption.amount + (siphon ? marked.length * siphon.amount : 0);
+    for (const ally of targets) {
+      if (grantAbsorption(ally, amount, ab.absorption.duration) <= 0) continue;
+      supportCue(world, p, ally, 'absorb');
+      // Cosmetic incoming links identify the marks supplying the barrier, without
+      // consuming the curse. Bound to the same target cap.
+      for (const enemy of marked)
+        world.events.push({
+          t: 'support',
+          sourceId: enemy.id,
+          targetId: p.id,
+          from: { ...enemy.pos },
+          pos: { ...p.pos },
+          kind: 'absorb',
+        });
+    }
   }
   if (ab.allyWard) {
     const ward = ab.allyWard;
