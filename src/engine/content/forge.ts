@@ -1,3 +1,5 @@
+import { curseDescription, type CurseStyle } from '../core/curses';
+import { absorptionDescription, absorptionMaximum, scaleAbsorption } from '../combat/absorption';
 import { auraText } from './paladinText';
 import type { AbsorptionGrant } from '../combat/absorption';
 /**
@@ -152,6 +154,7 @@ export interface ZoneSpec {
   roots?: boolean;
   /** Extra owner-only damage on marked enemies. */
   curseBonus?: number;
+  curseStyle?: CurseStyle;
   /** item 9 — a wind-up-slow factor (≥ 1) re-applied to enemies inside (Hex-style). */
   castSlow?: number;
   /** item 8 — the zone reaches airborne targets too (rain-of-arrows style). */
@@ -223,6 +226,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.roots) zone.roots = true;
     if (def.castSlow != null && def.castSlow > 1) zone.castSlow = def.castSlow; // item 9
     if (def.curseBonus) zone.curseBonus = def.curseBonus;
+    if (def.curseStyle) zone.curseStyle = def.curseStyle;
     if (def.zoneAllyDefMult) zone.allyBuff = { defMult: def.zoneAllyDefMult, duration: 0.75 };
     if (def.airborne) zone.airborne = true; // item 8
     effects.push({ kind: 'zone', zone });
@@ -468,6 +472,7 @@ export function recompose(
         def.radius = e.zone.radius;
         if (e.zone.allyBuff?.defMult) def.zoneAllyDefMult = e.zone.allyBuff.defMult;
         if (e.zone.curseBonus) def.curseBonus = e.zone.curseBonus;
+        if (e.zone.curseStyle) def.curseStyle = e.zone.curseStyle;
         if (e.zone.tickDamage) def.zoneTickDamage = e.zone.tickDamage;
         if (e.zone.tickHeal) def.zoneTickHeal = e.zone.tickHeal;
         if (e.zone.balanceHealScale != null) def.balanceZoneHealScale = e.zone.balanceHealScale;
@@ -550,7 +555,13 @@ function effectValue(e: EffectComponent, fan: number): number {
     case 'paladinAura':
       return e.aura.duration * (e.aura.kind === 'renewal' ? 10 : 6);
     case 'absorption':
-      return e.grant.amount * (e.grant.target === 'nearby' ? 1.5 : 1);
+      return (
+        (absorptionMaximum(e.grant) +
+          (e.grant.target === 'self' && e.grant.curseSiphon
+            ? e.grant.curseSiphon.amount * e.grant.curseSiphon.maxTargets
+            : 0)) *
+        (e.grant.target === 'nearby' ? 1.5 : 1)
+      );
     case 'rescueHeal':
       return e.bonus * 45 + 5;
     case 'recovery':
@@ -609,6 +620,7 @@ function zoneValue(z: ZoneSpec): number {
   if (z.slowMult != null) v += (1 - z.slowMult) * z.duration * 10;
   if (z.overflowShield) v += (z.tickHeal ?? 0) * ticks * 0.4;
   if (z.curseBonus) v += z.curseBonus * z.duration * 30;
+  if (z.curseStyle === 'dread' && z.curseBonus) v += z.duration * 4;
   if (z.castSlow != null && z.castSlow > 1) v += (z.castSlow - 1) * z.duration * 10; // item 9
   if (z.roots) v += z.duration * 14;
   if (z.allyBuff) {
@@ -725,7 +737,7 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
     case 'paladinAura':
       return auraText(e.aura);
     case 'absorption':
-      return `${n(e.grant.amount)} absorption for ${s(e.grant.duration)} to ${e.grant.target === 'self' ? 'yourself' : e.grant.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}; shared cap 50% max HP, strongest cast wins`;
+      return absorptionDescription(e.grant);
     case 'rescueHeal':
       return `+${pct(e.bonus * 100)} heal at ≤35% HP; effective heals add a 6s bubble — 25% healed HP (cap 15% max HP), plus 75% on rescue (extra cap 30% max HP); shared cap 50% max HP`;
     case 'recovery':
@@ -782,7 +794,7 @@ function zonePhrase(z: ZoneSpec): string {
   if (z.roots) bits.push('roots');
   else if (z.slowMult != null) bits.push(`slow to ${pct(z.slowMult * 100)}`);
   if (z.castSlow != null && z.castSlow > 1) bits.push(`+${pct((z.castSlow - 1) * 100)} wind-up`);
-  if (z.curseBonus) bits.push(`curse +${pct(z.curseBonus * 100)} owner dmg`);
+  if (z.curseBonus) bits.push(curseDescription(z.curseBonus, z.curseStyle));
   if (z.airborne) bits.push('hits flyers');
   if (z.allyBuff) {
     if (z.allyBuff.defMult != null)
@@ -1555,14 +1567,7 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
     case 'paladinAura':
       return { ...e, aura: { ...e.aura, duration: e.aura.duration * f } };
     case 'absorption':
-      return {
-        ...e,
-        grant: {
-          ...e.grant,
-          amount: e.grant.amount * f,
-          ...(e.grant.balanceAmount != null ? { balanceAmount: e.grant.balanceAmount * f } : {}),
-        },
-      };
+      return { ...e, grant: scaleAbsorption(e.grant, f) };
     case 'rescueHeal':
       return { ...e, bonus: e.bonus * f };
     case 'recovery':
@@ -1907,6 +1912,7 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       if (def.zoneAllyDefMult != null && z.allyBuff)
         z.allyBuff = { ...z.allyBuff, defMult: def.zoneAllyDefMult };
       if (def.curseBonus != null) z.curseBonus = def.curseBonus;
+      if (def.curseStyle != null) z.curseStyle = def.curseStyle;
       if (def.castSlow != null) z.castSlow = def.castSlow; // item 9
       if (def.airborne != null) z.airborne = def.airborne; // item 8
       return { kind: 'zone', zone: z };
@@ -1971,6 +1977,15 @@ function capEffect(e: EffectComponent): EffectComponent {
           ...e.grant,
           amount: clamp(Math.round(e.grant.amount), 10, 100),
           duration: clamp(round1(e.grant.duration), 2, 10),
+          ...(e.grant.curseSiphon
+            ? {
+                curseSiphon: {
+                  amount: clamp(Math.round(e.grant.curseSiphon.amount), 1, 50),
+                  range: clamp(round5(e.grant.curseSiphon.range), 100, 500),
+                  maxTargets: clamp(Math.round(e.grant.curseSiphon.maxTargets), 1, 2),
+                },
+              }
+            : {}),
         },
       };
     case 'rescueHeal':

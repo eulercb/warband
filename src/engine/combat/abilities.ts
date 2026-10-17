@@ -1,3 +1,4 @@
+import type { CurseStyle } from '../core/curses';
 import { buffCues } from './visualCues';
 /**
  * Warband — ability resolution for players and bosses. Geometric hit tests
@@ -682,6 +683,7 @@ function zoneToImpact(z: ZoneSpec): ProjectileImpact {
     slowDuration: z.slowDuration,
     roots: z.roots,
     curseBonus: z.curseBonus,
+    curseStyle: z.curseStyle,
     castSlow: z.castSlow, // item 9
     airborne: z.airborne, // item 8
     allyBuff: z.allyBuff,
@@ -708,6 +710,7 @@ function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number):
     slowDuration: z.slowDuration,
     roots: z.roots,
     curseBonus: z.curseBonus,
+    curseStyle: z.curseStyle,
     castSlow: z.castSlow, // item 9
     airborne: z.airborne, // item 8
     allyBuff: z.allyBuff,
@@ -1016,6 +1019,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     slowDuration,
     roots: ab.roots, // item 9: carry the true-root flag onto the spawned zone
     curseBonus: ab.curseBonus,
+    curseStyle: ab.curseStyle,
     castSlow: ab.castSlow, // item 9: carry the wind-up-slow factor onto the zone
     airborne: ab.airborne, // item 8: carry the airborne-reach flag onto the zone
     allyBuff: ab.zoneAllyDefMult ? { defMult: ab.zoneAllyDefMult, duration: 0.75 } : undefined,
@@ -1148,6 +1152,7 @@ export interface SpawnZoneOpts {
   castSlow?: number;
   /** Extra owner-only damage on enemies marked by the zone. */
   curseBonus?: number;
+  curseStyle?: CurseStyle;
   /** item 8 — the zone reaches airborne targets too (Rain of Arrows / Otiluke Bind).
    * Absent = a ground effect flyers hover over (default per kind). See GroundZone.airborne. */
   airborne?: boolean;
@@ -1182,6 +1187,7 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     roots: o.roots, // item 9
     silence: o.silence,
     curseBonus: o.curseBonus,
+    curseStyle: o.curseStyle,
     castSlow: o.castSlow, // item 9 — wind-up slow refreshed on enemies inside
     airborne: o.airborne, // item 8 — reaches flyers too
     allyBuff: o.allyBuff, // Chaos Forge — buff refreshed on allies inside

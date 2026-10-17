@@ -224,7 +224,10 @@ export default function PauseMenu({ onResume }: { onResume: () => void }) {
             casting; crossed circle: silence; diamond: curse; falling sword: weakened; cracked
             shield: vulnerable. Each active type keeps its own badge, including overlapping slow and
             root. Repeated sources share a badge; a white dot marks your own active curse. Other
-            debuffs alone do not enable Fireball’s control bonus.
+            debuffs alone do not enable Fireball’s control bonus. Curse zones use linked diamonds
+            for Hex, flames for Fire Pit, and eyes for Dissonant Whispers. Whispers weakens attacks;
+            this alone is not Fireball control. Incoming protection links show Dark Resilience
+            drawing on your marks.
           </p>
         </details>
 

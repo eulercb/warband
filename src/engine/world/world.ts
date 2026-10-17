@@ -1,3 +1,4 @@
+import { curseDuration, DREAD_DAMAGE_MULT } from '../core/curses';
 import { buffView } from '../core/buffView';
 import { zoneSupportKinds } from '../combat/visualCues';
 import { updatePaladinAuras } from '../combat/paladinAuras';
@@ -8,6 +9,7 @@ import { grantAbsorption, maintainAbsorption, OVERFLOW_SECONDS } from '../combat
  */
 import type {
   Player,
+  Buff,
   Boss,
   Add,
   Projectile,
@@ -1641,6 +1643,7 @@ export class World {
       slowDuration: oi.slowDuration,
       roots: oi.roots,
       curseBonus: oi.curseBonus,
+      curseStyle: oi.curseStyle,
       castSlow: oi.castSlow, // item 9
       airborne: oi.airborne, // item 8
       allyBuff: oi.allyBuff,
@@ -1864,11 +1867,7 @@ export class World {
         // damage, slow, root or cast-slow reaches it. An AIRBORNE zone (Rain of
         // Arrows, Otiluke Bind) still catches it; direct attacks always connect.
         if (this.bossFlying(b) && !zoneReachesAir(z)) continue;
-        if (owner && z.curseBonus)
-          applyBuff(
-            b,
-            makeBuff('curse', 1 + z.curseBonus, Math.max(1.5, z.slowDuration), `curse:${owner.id}`),
-          );
+        if (owner && z.curseBonus) this.applyZoneCurse(b, owner, z);
         if (z.damagePerTick > 0) this.applyProjDamageBoss(owner, z.damagePerTick, b);
         if (slows) applyBuff(b, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
         if (z.roots) applyBuff(b, makeBuff('root', 0, rootDur, 'zoneRoot'));
@@ -1877,22 +1876,15 @@ export class World {
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
         if (dist(z.pos, a.pos) <= z.radius + a.radius) {
-          if (owner && z.curseBonus)
-            applyBuff(
-              a,
-              makeBuff(
-                'curse',
-                1 + z.curseBonus,
-                Math.max(1.5, z.slowDuration),
-                `curse:${owner.id}`,
-              ),
-            );
+          if (owner && z.curseBonus) this.applyZoneCurse(a, owner, z);
           if (z.damagePerTick > 0) {
             if (owner) damageAdd(this, owner, a, z.damagePerTick);
             else a.hp -= z.damagePerTick;
           }
           if (slows) applyBuff(a, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
           if (z.roots) applyBuff(a, makeBuff('root', 0, rootDur, 'zoneRoot'));
+          if (castSlows)
+            applyBuff(a, makeBuff('castSlow', z.castSlow!, castSlowDur, 'zoneCastSlow'));
         }
       }
     }
@@ -1924,6 +1916,19 @@ export class World {
           applyBuff(p, makeBuff('moveSpeed', b.moveMult, b.duration, 'zoneAllyMove'));
       }
     }
+  }
+
+  /** Separate mark families coexist; equivalent dread weakness never multiplies. */
+  private applyZoneCurse(target: { buffs: Buff[] }, owner: Player, z: GroundZone): void {
+    const style = z.curseStyle ?? 'hex';
+    const duration = curseDuration(style, z.slowDuration);
+    const source = `curse:${owner.id}:${style}:${z.id}`;
+    applyBuff(target, makeBuff('curse', 1 + z.curseBonus!, duration, source));
+    if (style === 'dread')
+      applyBuff(
+        target,
+        makeBuff('damageDealt', DREAD_DAMAGE_MULT, duration, `curseWeakness:${owner.id}:${z.id}`),
+      );
   }
 
   private healViaZone(owner: Player | null, target: Player, amount: number): void {
@@ -2913,7 +2918,7 @@ export class World {
             a.pos = vadd(a.pos, vscale(dir, speed * dt));
           }
         } else if (a.attackCd <= 0) {
-          damagePlayer(this, target, ADD_DAMAGE);
+          damagePlayer(this, target, ADD_DAMAGE * buffMult(a, 'damageDealt'));
           a.attackCd = ADD_ATTACK_CD;
         }
       }
@@ -3301,6 +3306,7 @@ export class World {
       })),
       groundZones: this.groundZones.map((z) => ({
         supportKinds: zoneSupportKinds(z),
+        curseStyle: z.curseBonus ? (z.curseStyle ?? 'hex') : undefined,
         id: z.id,
         kind: z.kind,
         pos: { ...z.pos },

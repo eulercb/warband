@@ -1,3 +1,4 @@
+import { curseOwner } from '../core/curses';
 import { absorbDamage } from './absorption';
 /**
  * Warband — damage / heal application, buff helpers and threat contribution.
@@ -80,8 +81,14 @@ export function coReviveSpeed(reviverCount: number): number {
 
 export function buffMult(entity: { buffs: Buff[] }, kind: BuffKind): number {
   let m = 1;
-  for (const b of entity.buffs) if (b.kind === kind) m *= b.mult;
-  return m;
+  let dread = 1;
+  for (const b of entity.buffs) {
+    if (b.kind !== kind) continue;
+    if (kind === 'damageDealt' && b.source.startsWith('curseWeakness:')) {
+      if (b.remaining > 0) dread = Math.min(dread, b.mult);
+    } else m *= b.mult;
+  }
+  return m * dread;
 }
 
 export function hasBuff(entity: { buffs: Buff[] }, kind: BuffKind): boolean {
@@ -389,10 +396,12 @@ export function damageBoss(
 
 /** Personal curses never amplify another player's hits or multiply together. */
 function curseMultiplier(source: Player, target: { buffs: Buff[] }): number {
-  return (
-    target.buffs.find(
-      (b) => b.kind === 'curse' && b.source === `curse:${source.id}` && b.remaining > 0,
-    )?.mult ?? 1
+  return target.buffs.reduce(
+    (mult, b) =>
+      b.kind === 'curse' && curseOwner(b.source) === source.id && b.remaining > 0
+        ? Math.max(mult, b.mult)
+        : mult,
+    1,
   );
 }
 

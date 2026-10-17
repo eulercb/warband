@@ -1,3 +1,4 @@
+import { CURSE_COLORS, drawCurseSigil } from './curseVisuals';
 import { drawAuraField, drawBubble, drawSupportSymbol, supportStateKind } from './supportVisuals';
 /**
  * Warband — immediate-mode entity drawing helpers.
@@ -552,7 +553,8 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
 
 export function drawZone(g: Graphics, z: ZoneView, screen: Vec2, scale: number): void {
   // A themed tint override (affix/corruption hazards) wins over the per-kind palette.
-  const color = z.color ?? ZONE_COLORS[z.kind] ?? 0xffffff;
+  const color =
+    z.color ?? (z.curseStyle ? CURSE_COLORS[z.curseStyle] : ZONE_COLORS[z.kind]) ?? 0xffffff;
   const r = z.radius * scale;
   const { x, y } = screen;
 
@@ -573,6 +575,17 @@ export function drawZone(g: Graphics, z: ZoneView, screen: Vec2, scale: number):
   const pulse = 0.13 + 0.06 * (0.5 + 0.5 * Math.sin(z.remaining * 6));
   g.circle(x, y, r).fill({ color, alpha: pulse * fade });
   g.circle(x, y, r).stroke({ width: 2, color, alpha: 0.55 * fade });
+  if (z.curseStyle) {
+    for (const angle of [-Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6]) {
+      drawCurseSigil(
+        g,
+        z.curseStyle,
+        x + Math.cos(angle) * r * 0.72,
+        y + Math.sin(angle) * r * 0.72,
+        fade,
+      );
+    }
+  }
   const marks = z.supportKinds ?? [];
   marks.forEach((kind, index) =>
     drawSupportSymbol(g, kind, x + (index - (marks.length - 1) / 2) * 17, y, 6, 0.8 * fade),

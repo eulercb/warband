@@ -1,3 +1,5 @@
+import { curseDescription, type CurseStyle } from '../core/curses';
+import { absorptionDescription } from '../combat/absorption';
 import { auraText } from './paladinText';
 import type { AbsorptionGrant } from '../combat/absorption';
 /**
@@ -181,6 +183,7 @@ export interface PlayerAbilityDef {
   rebukeDuration?: number;
   /** This zone marks enemies: only its owner deals this much extra damage. */
   curseBonus?: number;
+  curseStyle?: CurseStyle;
 
   /**
    * Chaos Forge (docs/CHAOS_FORGE.md) — the recombined component form of a
@@ -1106,10 +1109,7 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   if (def.landingDamage) parts.push(`${n(def.landingDamage * dmgMul)} landing dmg`);
   if (def.zoneTickDamage) parts.push(`${n(def.zoneTickDamage * dmgMul)}/tick dmg`);
   if (def.paladinAura) parts.push(auraText(def.paladinAura));
-  if (def.absorption)
-    parts.push(
-      `${n(def.absorption.amount)} absorption for ${s(def.absorption.duration)} to ${def.absorption.target === 'self' ? 'yourself' : def.absorption.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}; shared cap 50% max HP, strongest cast wins`,
-    );
+  if (def.absorption) parts.push(absorptionDescription(def.absorption));
   if (def.overflowShield)
     parts.push('unused healing builds a 6s bubble, capped at 30% max HP across all zones');
   if (def.zoneTickHeal) parts.push(`${n(def.zoneTickHeal)}/tick heal`);
@@ -1222,7 +1222,7 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
     parts.push(
       `counterburst once for ${n(def.damage * dmgMul * 0.4)} dmg if hurt within ${s(def.rebukeDuration)}`,
     );
-  if (def.curseBonus) parts.push(`curse +${n(def.curseBonus * 100)}% owner dmg`);
+  if (def.curseBonus) parts.push(curseDescription(def.curseBonus, def.curseStyle));
 
   // --- Buffs (damage/move up, damage-taken down) ---
   if (def.buffDamageMult) parts.push(`+${n((def.buffDamageMult - 1) * 100)}% dmg`);
