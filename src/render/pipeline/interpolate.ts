@@ -176,6 +176,14 @@ export class SnapshotInterpolator {
     return carry.players.map((p) => ({
       ...p,
       pos: this.lerpVec(prev?.get(p.id)?.pos, p.pos, t),
+      ...(p.spiritCompanion
+        ? {
+            spiritCompanion: {
+              ...p.spiritCompanion,
+              pos: this.lerpVec(prev?.get(p.id)?.spiritCompanion?.pos, p.spiritCompanion.pos, t),
+            },
+          }
+        : {}),
     }));
   }
 

@@ -104,6 +104,14 @@ function describe(
         good: true,
         label: 'Counter ready: next connecting melee hit deals +30% damage',
       };
+    case 'packBond':
+      return {
+        glyph: '🐾',
+        color: 0xffdc79,
+        good: true,
+        label:
+          'Pack Bond: next successful spirit bite grants the healed ally 12 absorption for 4s, within 420u',
+      };
     case 'rampage':
       return {
         glyph: '🪓',

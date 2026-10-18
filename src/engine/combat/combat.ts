@@ -1,3 +1,4 @@
+import { commandCompanion } from './companions';
 import { blockFromFront, isSteadfast, mirrorDamage } from './defense';
 import { curseOwner } from '../core/curses';
 import { absorbDamage } from './absorption';
@@ -396,6 +397,7 @@ export function damageBoss(
   onMartialHit(source, effective, mods?.melee, mods?.flowExtend);
   const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
+  commandCompanion(source, boss, 'boss', effective, mods?.direct);
   onSubclassDirectHit(sink, source, boss, effective, mods?.direct, mods?.melee, counter);
   const passiveHeal = subclassHitHealing(source, boss, effective);
   if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);
@@ -449,6 +451,7 @@ export function damageAdd(
   onMartialHit(source, effective, mods?.melee, mods?.flowExtend);
   const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
+  commandCompanion(source, add, 'add', effective, mods?.direct);
   onSubclassDirectHit(sink, source, add, effective, mods?.direct, mods?.melee, counter);
   const passiveHeal = subclassHitHealing(source, add, effective);
   if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);

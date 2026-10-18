@@ -135,6 +135,7 @@ jobs:
           node scripts/run-smoke.mjs smoke:rewards
           node scripts/run-smoke.mjs smoke:rooms
           node scripts/run-smoke.mjs smoke:enemy-debuffs
+          node scripts/run-smoke.mjs smoke:companions
 
       - name: Upload smoke screenshots
         if: always()
@@ -160,7 +161,7 @@ jobs:
           - cohort: support
             names: 'Victorious Reprise,Tactical Opening,Refulgence,Abundance,Oath Anchor,Relentless Procession'
           - cohort: final
-            names: 'Rampage,Spirit Shelter,Flowguard,Shadow Rhythm,Exposed Quarry,Living Paths'
+            names: 'Rampage,Spirit Shelter,Flowguard,Shadow Rhythm,Exposed Quarry,Living Paths,Pack Bond'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

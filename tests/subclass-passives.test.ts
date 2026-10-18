@@ -83,7 +83,7 @@ describe('passive ownership', () => {
     prepare(w);
     expect(w.players[0].subclassPassiveId).toBeUndefined();
     expect(world('rogue', ['not-a-skill']).players[0].subclassPassiveId).toBeUndefined();
-    expect(world('ranger', ['rg_beast_pounce']).players[0].subclassPassiveId).toBeUndefined();
+    expect(world('druid', ['dr_moon_maul']).players[0].subclassPassiveId).toBeUndefined();
   });
   it('retains authored passive identity under numeric variance and Forge', () => {
     try {

@@ -8,6 +8,7 @@ const cases = [
   ['monk', 'Flurry Barrage', 'Flowguard'],
   ['monk', 'Shadow Dart', 'Shadow Rhythm'],
   ['ranger', 'Hail of Thorns', 'Exposed Quarry'],
+  ['ranger', "Nature's Bond", 'Pack Bond'],
   ['druid', 'Wall of Thorns', 'Living Paths'],
   ['knight', 'Riposte', 'Victorious Reprise'],
   ['knight', 'Trip Attack', 'Tactical Opening'],

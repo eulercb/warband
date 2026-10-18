@@ -1,3 +1,4 @@
+import { updateCompanions, PACK_BOND } from '../combat/companions';
 import { curseDuration, DREAD_DAMAGE_MULT } from '../core/curses';
 import { buffView } from '../core/buffView';
 import { zoneSupportKinds } from '../combat/visualCues';
@@ -1090,6 +1091,7 @@ export class World {
     this.updateRevive(dt, inputs);
     this.updateProjectiles(dt);
     this.updateZones(dt);
+    updateCompanions(this, dt);
     this.updatePendingStrikes(dt);
     this.updateTerrain(dt);
     this.checkDownedTransitions();
@@ -1116,6 +1118,7 @@ export class World {
     }
     this.checkDownedTransitions();
     updatePaladinAuras(this, 0, 0);
+    updateCompanions(this, 0);
     this.checkEndConditions();
 
     this.tick++;
@@ -3223,6 +3226,20 @@ export class World {
     return {
       id: p.id,
       peerId: p.peerId,
+      ...(p.spiritCompanion &&
+      p.subclassPassiveId === PACK_BOND &&
+      p.state === 'alive' &&
+      p.hp > 0 &&
+      this.scene === null
+        ? {
+            spiritCompanion: {
+              pos: { ...p.spiritCompanion.pos },
+              facing: p.spiritCompanion.facing,
+              attacking: !!p.spiritCompanion.order,
+              bondReady: p.buffs.some((b) => b.kind === 'packBond' && b.remaining > 0),
+            },
+          }
+        : {}),
       ...(p.paladinAura
         ? {
             paladinAura: {

@@ -18,7 +18,14 @@ const tests = [
     badge: /Haste|Hastened|Swift/,
     hurt: true,
   },
-  { classId: 'knight', name: 'Rally', text: /recovery grove/, badge: /Guard:/, hurt: true },
+  {
+    classId: 'knight',
+    name: 'Rally',
+    text: /recovery grove/,
+    // A real incoming hit can consume Guard before Playwright reads it, readying a Counter.
+    badge: /Guard:|Counter ready:/,
+    hurt: true,
+  },
   {
     classId: 'ranger',
     name: 'Stand as One',
@@ -172,10 +179,25 @@ try {
       await context.close();
     }
 } catch (error) {
-  if (currentPage && !currentPage.isClosed())
+  if (currentPage && !currentPage.isClosed()) {
+    console.error(
+      'Self HUD at failure:',
+      await currentPage
+        .locator('.hud-selfhp')
+        .textContent()
+        .catch(() => 'unavailable'),
+    );
+    console.error(
+      'Effect badges at failure:',
+      await currentPage
+        .locator('.hud-selfhp [title]')
+        .evaluateAll((els) => els.map((el) => el.getAttribute('title')))
+        .catch(() => []),
+    );
     await currentPage
       .screenshot({ path: `${process.env.SHOT_DIR || tmpdir()}/smoke-defense-defense-failure.png` })
       .catch(() => {});
+  }
   throw error;
 } finally {
   await browser.close();
