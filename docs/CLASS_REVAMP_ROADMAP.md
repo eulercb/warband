@@ -1386,3 +1386,10 @@ several Beast Masters, direct versus zone hits, native/composed damage and heali
 multishot gating, victim disappearance/immunity, owner down/revive/swap/disconnect,
 room transitions, cover/flight/torus/teleport, remote interpolation and small screens.
 Do not treat a pet's presence or a passive icon alone as proof its command works.
+
+CI also exposed an existing Rally smoke assertion that accepted only the initial
+Guard badge. A real incoming hit can validly consume Guard and prepare Counter
+before the browser reads it. The check now accepts either state while retaining
+the injured-player setup and cast/description assertions; failure output includes
+actual HUD/badge state. Existing engine tests verify Rally's guard-to-counter
+transition. No Knight gameplay change is included in this correction.
