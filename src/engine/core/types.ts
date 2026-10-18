@@ -194,7 +194,8 @@ export type BuffKind =
   | 'harmony' // effective healing verse, readied for a Bard chorus
   | 'discord' // disruptive special verse, readied for a Bard chorus
   | 'spellSurge' // one enhanced special spell
-  | 'wildWeave' // mult encodes last special delivery; timed combo memory
+  | 'wildWeave' // mult is basic-cast progress toward a Surge
+  | 'radiantCharge' // Light: next direct hit empowered and slows wind-ups
   | 'refrainEcho' // one dedicated heal echo
   | 'spellblade' // one empowered melee hit from Arcane Trickster
   | 'precision' // one prepared critical strike; mult unused
@@ -302,6 +303,8 @@ export interface Player {
     remaining: number;
     classId: ClassId;
     spent: number[];
+    /** Host-only, one Vengeance extension per aura activation. */
+    passiveExtended?: boolean;
   };
   pos: Vec2;
   aim: Vec2; // unit vector

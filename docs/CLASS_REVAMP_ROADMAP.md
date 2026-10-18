@@ -1,21 +1,19 @@
 # Class identity and subclass roadmap
 
-Current delivery: **defining passives, cohort 1 of 3** — both Mage, Sorcerer
-and Bard subclasses. The preceding Dimension Door correction is merged/playtested.
-See the final section for exact triggers and the coherence review.
+Current delivery: **defining passives, cohort 2 of 3** — both Knight, Cleric
+and Paladin subclasses, with the Spell Weave usability rework and solo Taunt.
 
-Previously merged and playtested: all twelve class loops, the four Rogue/Warlock
-passives, martial coherence, defense/recovery redesigns, Cleric absorption and
-retuning, Paladin auras, debuff/readability work, and the Dimension Door correction.
+Previously merged/playtested: all class loops and defense/recovery work, the
+Dimension Door correction, and ten defining passives. Playtesting found Spell
+Weave impractical; its delivery-matching contract is superseded below.
 
-**Progress:** 4/24 subclass passives merged; this PR adds six, bringing the
-implemented total to **10/24**. Fourteen remain: twelve ordinary passives plus
-Beast Master's companion and Moon Druid's form.
+**Progress:** 10/24 subclass passives merged; this PR adds six, bringing the
+implemented total to **16/24**. Eight remain: six ordinary passives plus Beast
+Master's companion and Moon Druid's form.
 
-**Next:** Knight, Cleric and Paladin's six passives, including the recorded solo
-Taunt review. Then Barbarian, Monk, Hunter and Land Druid's six ordinary passives;
-companion and form remain separate. After this delivery, approximately **8–10
-feature PRs** remain (two ordinary cohorts, companion, form, and four to six
+**Next:** Barbarian, Monk, Hunter and Land Druid's six ordinary passives, then
+companion and form as separate systems. After this delivery, approximately
+**7–9 feature PRs** remain (one ordinary cohort, companion, form, and four to six
 upgrade/grand/graft batches). This is a scope estimate, not a quota/time promise.
 Older status tables preserve history and are superseded by this header.
 
@@ -1212,3 +1210,83 @@ Numbers are bounded starting values for playtesting, not a claim of final balanc
 **Next:** Knight/Cleric/Paladin cohort, with the recorded solo-Taunt limitation and
 protection/aura interactions reviewed together. The remaining ordinary cohort then
 covers Barbarian/Monk/Hunter/Land Druid; pet AI and Moon form stay separate systems.
+
+## Cohort 2 — practical passives, Spell Weave and solo Taunt
+
+### Spell Weave rework and design correction
+
+Playtesting showed that delivery matching was too restrictive and did not reliably
+produce useful extra Surge opportunities in ordinary play. Basics did not count,
+while the base defensive spells already prepared Surge themselves. A theoretical
+sequence in an engine test was insufficient evidence of practical value with a
+small equipped kit and mobile controls.
+
+Spell Weave now counts **three basic casts within 8s** to prepare one 8s Surge.
+A two-bolt basic is one cast; no special, hit, delivery change or particular
+subclass skill is required. It counts casts deliberately, so misses and a boss's
+invulnerability do not obstruct preparation; existing defensive preparation can
+already be used before an enemy is vulnerable. The third cast prepares a future
+Surge, not a retroactive bonus to that cast. The trigger has an 8s cooldown.
+Basics build no progress while Surge is held or the gate is cooling down;
+unfinished progress expires after 8s. Native preparation never spends the passive
+trigger, and preparation still maintains one shared charge. Disabled rooted
+movement cannot build progress if a basic is replaced by a movement ability.
+
+The badge reports **1/3 or 2/3 basic casts** instead of a delivery taxonomy.
+Tests cover all four individual Wild choices using only basics, a forged basic,
+held/native Surge, cooldown, expiry, rooted movement, and real desktop/touch input
+through preparation and consumption. This replaces the old cohort-1 Weave spec.
+
+### Six defining passives
+
+| Subclass     | Passive               | Payoff                                                                                                                                                                                         | Available route with any one subclass choice                                                                            |
+| ------------ | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Champion     | Victorious Reprise    | A connecting readied melee counter heals 8% max HP, capped at 20, once per 6s. Full HP does not spend the gate.                                                                                | Base Taunt or Shield Wall → frontal block/guard → basic counter. Riposte adds another route.                            |
+| Battlemaster | Tactical Opening      | A direct hit on a slowed/rooted/stunned foe readies a 4s counter and gives that foe 30% slower wind-ups for 3s, once per 6s. An unspent counter is preserved.                                  | Base Shield Bash → basic hit → counter. Trip and throwing blades add options.                                           |
+| Light        | Refulgence            | Effective dedicated healing or a successful direct barrier grant readies a 6s charge. The next connecting direct hit gains 25% damage and slows the victim's wind-ups 30% for 3s. Once per 6s. | Base Heal after real damage → basic Smite; Warding Flare also prepares it at full HP. Zones cannot spend the charge.    |
+| Life         | Abundance             | Dedicated heals convert 50% of unused healing into additive absorption, capped at 25 per trigger for 6s, once per 6s. Shared 50%-max-HP cap; failed grants preserve the gate.                  | Base Heal at full health or with partial overheal. Every Life choice retains this preemptive use.                       |
+| Devotion     | Oath Anchor           | Starting any aura cleanses nearby living allies, including the caster, and grants 2s Steadfast against roots/stuns/forced movement, once per 8s. Activation only, not aura pulses.             | Base Divine Shield; effective Lay on Hands also starts an aura. No injured ally or specific subclass aura is mandatory. |
+| Vengeance    | Relentless Procession | The first positive direct melee hit during an aura adds 2s to its remaining duration and slows its victim 25% for 2s. Once per aura activation; no Pursuit-strike reset.                       | Base Divine Shield → basic Holy Strike, regardless of subclass choice. Any aura type benefits.                          |
+
+All six unlock with any skill from their subclass. Authored identity persists
+through variance and Forge; copied skills do not grant a donor passive. Personal
+readiness clears on a class change and proc gates do not reset. Vengeance's one-use
+activation flag is host-only and expires with the existing aura object.
+
+### Solo Taunt and shared guard safety
+
+Taunt retains its existing global boss threat/focus behavior, locked-attack rules
+and summon exception. It additionally grants **one frontal block for 4s and a 4s
+guard window**; blocking the incoming hit can ready the ordinary melee counter.
+It therefore has a useful solo role while retaining its party role. Rear attacks,
+ground hazards and control still bypass the block. No invulnerability is added.
+
+Front guards use one shared pool: Taunt cannot erase Shield Wall's two charges,
+add a separate pool behind another caster's guard, or prolong a stronger pool.
+A stronger cast replaces the weaker pool, and an equal cast can refresh only to
+its own authored duration. Native/composed and Forge Taunt retain the guard facets.
+Existing Bastion mitigation upgrades remain intact for the later upgrade audit.
+
+### Feasibility and integration gate for future cohorts
+
+Before delivery, verify an ordinary route with **every individual subclass choice**
+and the actual always-equipped base kit. Include basic attacks, available slots,
+real cooldowns, normal target/HP conditions and mobile execution in the assessment.
+Do not call a passive useful merely because one specially constructed sequence
+can trigger it. Distinctive advanced interactions may still be proposed, but must
+include the extra game support they require rather than assuming it exists.
+
+This cohort has an engine matrix for all 24 new subclass choices and all four
+Wild choices, plus native/composed paths, immunity/expiry, stronger protection,
+solo/party scope and proc bounds. Production checks cover passive selection and
+pause descriptions, and perform the new basic-only Weave sequence on desktop and
+touch. Review the numbers through fixed encounters and normal adaptive runs.
+
+Readability reuses physical frontal guards, absorption, Steadfast and enemy
+slow/sluggish indicators; Refulgence has a distinct ready badge. Vengeance extends
+the real aura shown to players. Adaptive boss rules/power credit are unchanged.
+These riders do not erase the catalogue-wide active-skill or upgrade review debt.
+
+**Next:** final six ordinary passives (Barbarian, Monk, Hunter, Land Druid), followed
+by companion/form systems and the separate upgrade/grand/graft workstream. The
+full-kit practical-use gate above also applies to those designs.

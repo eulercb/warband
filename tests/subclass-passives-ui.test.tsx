@@ -63,24 +63,34 @@ it('keeps combat compact and provides the full passive explanation in pause', ()
   );
 });
 
-it.each(['mg_evoker', 'mg_abjurer', 'so_draconic', 'so_wild', 'ba_valor', 'ba_whispers'])(
-  'surfaces the full %s passive in pause while keeping combat compact',
-  (id) => {
-    const sub = getSubclass(id)!;
-    useStore.setState({ localClass: sub.classId });
-    useHudStore.setState({
-      classId: sub.classId,
-      classes: [sub.classId],
-      subSkills: [sub.skills[0].id],
-    });
-    const view = render(<HUD />);
-    expect(screen.getByLabelText(`Subclass passive: ${sub.passive!.name}`).textContent).toBe(
-      sub.passive!.icon,
-    );
-    view.unmount();
-    render(<OwnedSkills />);
-    expect(screen.getByLabelText(`Subclass passive: ${sub.passive!.name}`).textContent).toContain(
-      sub.passive!.desc,
-    );
-  },
-);
+it.each([
+  'kn_champion',
+  'kn_battlemaster',
+  'cl_light',
+  'cl_life',
+  'pa_devotion',
+  'pa_vengeance',
+  'mg_evoker',
+  'mg_abjurer',
+  'so_draconic',
+  'so_wild',
+  'ba_valor',
+  'ba_whispers',
+])('surfaces the full %s passive in pause while keeping combat compact', (id) => {
+  const sub = getSubclass(id)!;
+  useStore.setState({ localClass: sub.classId });
+  useHudStore.setState({
+    classId: sub.classId,
+    classes: [sub.classId],
+    subSkills: [sub.skills[0].id],
+  });
+  const view = render(<HUD />);
+  expect(screen.getByLabelText(`Subclass passive: ${sub.passive!.name}`).textContent).toBe(
+    sub.passive!.icon,
+  );
+  view.unmount();
+  render(<OwnedSkills />);
+  expect(screen.getByLabelText(`Subclass passive: ${sub.passive!.name}`).textContent).toContain(
+    sub.passive!.desc,
+  );
+});
