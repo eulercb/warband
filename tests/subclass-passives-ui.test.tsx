@@ -71,6 +71,7 @@ it.each([
   'rg_hunter',
   'rg_beastmaster',
   'dr_land',
+  'dr_moon',
   'kn_champion',
   'kn_battlemaster',
   'cl_light',

@@ -1,3 +1,4 @@
+import { drawMoonBear } from './moonFormVisuals';
 import { drawCompanion } from './companionVisuals';
 import { drawTauntState } from './defenseVisuals';
 import { ADD_RADIUS } from '../../engine/core/constants';
@@ -600,7 +601,7 @@ export class Renderer {
     }
     if (!SPRITE_FLAGS.player) {
       for (const p of state.players) {
-        if (playerUsesRig(p)) continue; // rig draws the body (dead → geometry ghost here)
+        if (p.form || playerUsesRig(p)) continue; // rig draws the body (dead → geometry ghost here)
         drawPlayer(
           g,
           p,
@@ -632,6 +633,8 @@ export class Renderer {
       }
     }
     for (const p of state.players) {
+      if (p.form === 'moonBear' && p.state === 'alive')
+        drawMoonBear(g, p, this.camera.worldToScreen(p.pos), scale, timeSec);
       if (p.state === 'alive' && p.spiritCompanion)
         drawCompanion(
           g,
@@ -639,7 +642,7 @@ export class Renderer {
           this.camera.worldToScreen(p.spiritCompanion.pos),
           scale,
         );
-      if (SPRITE_FLAGS.player || playerUsesRig(p)) {
+      if (p.form || SPRITE_FLAGS.player || playerUsesRig(p)) {
         drawPlayerOverlay(
           g,
           p,
@@ -715,7 +718,7 @@ export class Renderer {
       const badges = p.state === 'alive' ? buffLabel(p.buffs) : '';
       t.text = badges ? `${p.name}\n${badges}` : p.name;
       const s = this.camera.worldToScreen(p.pos);
-      t.position.set(s.x, s.y - PLAYER_RADIUS * scale - 12);
+      t.position.set(s.x, s.y - (p.form === 'moonBear' ? 25 : PLAYER_RADIUS) * scale - 12);
       t.alpha = p.state === 'dead' ? 0.4 : 1;
     }
 

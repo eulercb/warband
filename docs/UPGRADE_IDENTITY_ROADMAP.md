@@ -1,5 +1,15 @@
 # Upgrade identity: audit and staged redesign
 
+## Prerequisite: completed class-coherence review
+
+After Moon Aspect completes the first 24/24 passive round, perform the full
+[class milestone review](CLASS_MILESTONE_REVIEW.md) and its agreed kit retouches
+**before** this upgrade redesign. Do not design large upgrade trees against class
+behavior already scheduled for revision. Keep an inventory of upgrade compatibility
+issues during that review and fix breakage immediately; broad branching redesign
+waits for the stronger baseline. This applies to base skills, subclass skills,
+grands and grafts alike. An added passive/rider does not exempt an older active.
+
 ## Why this is a separate workstream
 
 The current registry has **350 upgrade definitions**, including **96 per-skill

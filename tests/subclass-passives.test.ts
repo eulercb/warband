@@ -76,14 +76,13 @@ describe('passive ownership', () => {
       }
     },
   );
-  it('does not grant a passive from a graft, an invalid skill, another class or an unimplemented subclass', () => {
+  it('does not grant a passive from a graft, an invalid skill, another class', () => {
     expect(world('rogue').players[0].subclassPassiveId).toBeUndefined();
     const w = world('knight', ['ro_assassin_strike']);
     w.players[0].abilities!.a2 = { ...getClass('rogue').abilities.a2 };
     prepare(w);
     expect(w.players[0].subclassPassiveId).toBeUndefined();
     expect(world('rogue', ['not-a-skill']).players[0].subclassPassiveId).toBeUndefined();
-    expect(world('druid', ['dr_moon_maul']).players[0].subclassPassiveId).toBeUndefined();
   });
   it('retains authored passive identity under numeric variance and Forge', () => {
     try {

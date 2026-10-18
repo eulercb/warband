@@ -104,6 +104,22 @@ function describe(
         good: true,
         label: 'Counter ready: next connecting melee hit deals +30% damage',
       };
+    case 'moonRest':
+      return {
+        glyph: '🌙',
+        color: 0xa5a0c9,
+        good: true,
+        label:
+          'Moon rest: next special can transform when this countdown ends; all abilities remain usable',
+      };
+    case 'moonForm':
+      return {
+        glyph: '🐻',
+        color: 0xd8c7ff,
+        good: true,
+        label:
+          'Moon bear: +20% movement; basics add a 14-damage aimed claw at 95u; close direct hits/claws mend 4 HP once per 1s; all spells retained',
+      };
     case 'packBond':
       return {
         glyph: '🐾',

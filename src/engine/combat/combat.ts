@@ -1,3 +1,4 @@
+import { onMoonDirectHit } from './moonForm';
 import { commandCompanion } from './companions';
 import { blockFromFront, isSteadfast, mirrorDamage } from './defense';
 import { curseOwner } from '../core/curses';
@@ -397,6 +398,7 @@ export function damageBoss(
   onMartialHit(source, effective, mods?.melee, mods?.flowExtend);
   const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
+  onMoonDirectHit(sink, source, boss, effective, mods?.direct);
   commandCompanion(source, boss, 'boss', effective, mods?.direct);
   onSubclassDirectHit(sink, source, boss, effective, mods?.direct, mods?.melee, counter);
   const passiveHeal = subclassHitHealing(source, boss, effective);
@@ -451,6 +453,7 @@ export function damageAdd(
   onMartialHit(source, effective, mods?.melee, mods?.flowExtend);
   const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
+  onMoonDirectHit(sink, source, add, effective, mods?.direct);
   commandCompanion(source, add, 'add', effective, mods?.direct);
   onSubclassDirectHit(sink, source, add, effective, mods?.direct, mods?.melee, counter);
   const passiveHeal = subclassHitHealing(source, add, effective);

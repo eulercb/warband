@@ -1,3 +1,4 @@
+import { maintainMoonForms, inMoonForm } from '../combat/moonForm';
 import { updateCompanions, PACK_BOND } from '../combat/companions';
 import { curseDuration, DREAD_DAMAGE_MULT } from '../core/curses';
 import { buffView } from '../core/buffView';
@@ -1083,6 +1084,7 @@ export class World {
     }
 
     this.tickTimers(dt);
+    maintainMoonForms(this);
     this.applyInputs(dt, inputs);
     this.stepGlides(dt); // item 2: advance in-progress dash/leap glides host-side
     this.stepShoves(dt); // item 2: advance in-progress knockback/pull slides host-side
@@ -1119,6 +1121,7 @@ export class World {
     this.checkDownedTransitions();
     updatePaladinAuras(this, 0, 0);
     updateCompanions(this, 0);
+    maintainMoonForms(this);
     this.checkEndConditions();
 
     this.tick++;
@@ -3226,6 +3229,7 @@ export class World {
     return {
       id: p.id,
       peerId: p.peerId,
+      ...(this.scene === null && inMoonForm(p) ? { form: 'moonBear' as const } : {}),
       ...(p.spiritCompanion &&
       p.subclassPassiveId === PACK_BOND &&
       p.state === 'alive' &&

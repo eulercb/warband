@@ -323,7 +323,7 @@ export function drawPlayerOverlay(
   timeSec = 0,
 ): void {
   if (p.state === 'dead') return; // ghost body only, no bar/rings
-  const r = PLAYER_RADIUS * scale;
+  const r = (p.form === 'moonBear' ? 25 : PLAYER_RADIUS) * scale;
   const { x, y } = screen;
   const downed = p.state === 'downed';
 
