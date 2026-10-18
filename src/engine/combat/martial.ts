@@ -3,7 +3,10 @@ import { BLOOD_PRICE, BLOOD_LEECH, HUNT_STEP, FLOW_EXTENSION_CAP } from '../cont
 import type { Buff, Player } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
 function put(p: Player, buff: Buff): void {
-  const index = p.buffs.findIndex((b) => b.source === buff.source);
+  // Counters are one readiness state, including a Battlemaster-prepared counter.
+  const index = p.buffs.findIndex(
+    (b) => b.source === buff.source || (buff.kind === 'counter' && b.kind === 'counter'),
+  );
   if (index < 0) p.buffs.push(buff);
   else p.buffs[index] = buff;
 }

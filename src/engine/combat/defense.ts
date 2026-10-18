@@ -38,3 +38,11 @@ export function mirrorDamage(p: Player, origin: Vec2 | undefined, damage: number
   if (images.mult <= 0) p.buffs.splice(p.buffs.indexOf(images), 1);
   return damage * 0.4;
 }
+
+/** One shared frontal guard; a weaker cast cannot erase or add to stronger blocks. */
+export function grantFrontGuard(p: Player, charges: number, duration: number): void {
+  const old = p.buffs.find((b) => b.kind === 'frontGuard' && b.remaining > 0 && b.mult > 0);
+  if (old && (old.mult > charges || (old.mult === charges && old.remaining >= duration))) return;
+  p.buffs = p.buffs.filter((b) => b.kind !== 'frontGuard');
+  p.buffs.push({ kind: 'frontGuard', mult: charges, remaining: duration, source: 'frontGuard' });
+}

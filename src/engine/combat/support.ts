@@ -1,5 +1,10 @@
-import { onSubclassChorus, onSubclassHeal } from './subclassPassives';
-import { cleanseMovement } from './defense';
+import {
+  onSubclassChorus,
+  onSubclassHeal,
+  onSubclassProtection,
+  onSubclassOverheal,
+} from './subclassPassives';
+import { cleanseMovement, grantFrontGuard } from './defense';
 import { armMartialUtility } from './martial';
 import { personallyCursed } from '../core/curses';
 import { supportCue, buffCues } from './visualCues';
@@ -26,11 +31,7 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
     );
   if ((ab.kind === 'selfBuff' || ab.kind === 'groundZone') && ab.prepareCrit)
     applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
-  if (ab.frontGuard)
-    applyBuff(
-      p,
-      makeBuff('frontGuard', ab.frontGuard.charges, ab.frontGuard.duration, 'frontGuard'),
-    );
+  if (ab.frontGuard) grantFrontGuard(p, ab.frontGuard.charges, ab.frontGuard.duration);
   if (ab.steadfastDuration) {
     p.buffs = p.buffs.filter((b) => b.kind !== 'root');
     p.shove = null;
@@ -89,7 +90,9 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
     });
     const amount = ab.absorption.amount + (siphon ? marked.length * siphon.amount : 0);
     for (const ally of targets) {
-      if (grantAbsorption(ally, amount, ab.absorption.duration) <= 0) continue;
+      const gained = grantAbsorption(ally, amount, ab.absorption.duration);
+      if (gained <= 0) continue;
+      onSubclassProtection(p, gained);
       supportCue(world, p, ally, 'absorb');
       // Cosmetic incoming links identify the marks supplying the barrier, without
       // consuming the curse. Bound to the same target cap.
@@ -138,7 +141,9 @@ export function healSupportAlly(
 ): number {
   if (ab.cleanseOnHeal) cleanseMovement(target);
   const rescue = !!ab.rescueHealBonus && target.hp <= target.maxHp * 0.35;
-  const effective = healPlayer(world, p, target, amount * (rescue ? 1 + ab.rescueHealBonus! : 1));
+  const requested = amount * (rescue ? 1 + ab.rescueHealBonus! : 1);
+  const effective = healPlayer(world, p, target, requested);
+  onSubclassOverheal(world, p, target, Math.max(0, requested - effective));
   if (effective <= 0) return 0;
   supportCue(world, p, target, 'heal');
   if (ab.kind === 'heal') {

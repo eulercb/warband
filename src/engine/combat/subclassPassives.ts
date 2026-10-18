@@ -1,3 +1,4 @@
+import { cleanseMovement } from './defense';
 import { grantAbsorption } from './absorption';
 import { isBurstControl } from '../core/control';
 import { dist } from '../core/torus';
@@ -7,10 +8,10 @@ import { personallyCursed } from '../core/curses';
 /** Bounded passive hooks. All state is host-owned; no randomness or recursive hits. */
 import type { Buff, Player } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
-import { getSubclassPassive, WEAVE_DELIVERIES } from '../content/subclassPassives';
+import { getSubclassPassive } from '../content/subclassPassives';
 
 const PREFIX = 'subclass:';
-function putBuff(p: Player, buff: Buff): void {
+function putBuff(p: { buffs: Buff[] }, buff: Buff): void {
   const old = p.buffs.findIndex((b) => b.source === buff.source);
   if (old >= 0) p.buffs[old] = buff;
   else p.buffs.push(buff);
@@ -40,30 +41,27 @@ function spendCooldown(p: Player, id: string, seconds = 6): void {
 export function onSubclassAbility(p: Player, ab: PlayerAbilityDef): void {
   if (
     p.subclassPassiveId === 'wild_spell_weave' &&
-    ab.slot !== 'basic' &&
+    ab.slot === 'basic' &&
     !(
       (ab.kind === 'blink' || ab.kind === 'dash') &&
       p.buffs.some((b) => b.kind === 'root' && b.remaining > 0)
-    )
+    ) &&
+    offCooldown(p, 'wild_spell_weave') &&
+    !p.buffs.some((b) => b.kind === 'spellSurge' && b.remaining > 0)
   ) {
     const last = p.buffs.find((b) => b.kind === 'wildWeave' && b.remaining > 0);
-    const delivery = WEAVE_DELIVERIES.indexOf(ab.kind);
-    if (
-      last &&
-      last.mult !== delivery &&
-      offCooldown(p, 'wild_spell_weave') &&
-      !ab.prepareSurge &&
-      !p.buffs.some((b) => b.kind === 'spellSurge' && b.remaining > 0)
-    ) {
-      spendCooldown(p, 'wild_spell_weave', 8);
+    const count = (last?.mult ?? 0) + 1;
+    if (count >= 3) {
+      p.buffs = p.buffs.filter((b) => b.kind !== 'wildWeave');
       putBuff(p, {
         kind: 'spellSurge',
         mult: 1.2,
         remaining: 8,
         source: PREFIX + 'wild_spell_weave',
       });
-    }
-    putBuff(p, { kind: 'wildWeave', mult: delivery, remaining: 8, source: PREFIX + 'wildMemory' });
+      spendCooldown(p, 'wild_spell_weave', 8);
+    } else
+      putBuff(p, { kind: 'wildWeave', mult: count, remaining: 8, source: PREFIX + 'wildMemory' });
   }
 
   const passive = getSubclassPassive(p.subclassPassiveId);
@@ -89,12 +87,21 @@ interface Target {
   buffs: Buff[];
 }
 interface PassiveHit {
+  direct?: boolean;
   prepared?: boolean;
   melee?: boolean;
 }
 /** Only connecting, positive hits call this; misses and invulnerability preserve readiness. */
 export function subclassDamageMultiplier(p: Player, target: Target, hit?: PassiveHit): number {
   switch (p.subclassPassiveId) {
+    case 'light_refulgence': {
+      const ready =
+        hit?.direct && p.buffs.find((b) => b.kind === 'radiantCharge' && b.remaining > 0);
+      if (!ready) return 1;
+      p.buffs.splice(p.buffs.indexOf(ready), 1);
+      putBuff(target, { kind: 'castSlow', mult: 1.3, remaining: 3, source: 'lightRefulgence' });
+      return 1.25;
+    }
     case 'assassin_opening':
       return hit?.prepared && target.hp <= target.maxHp * 0.35 ? 1.15 : 1;
     case 'trickster_spellblade': {
@@ -146,13 +153,42 @@ export function onSubclassDirectHit(
   target: Target,
   effective: number,
   direct?: boolean,
+  melee?: boolean,
+  counter?: boolean,
 ): void {
   const id = p.subclassPassiveId;
+  if (!direct || effective <= 0 || p.state !== 'alive' || p.hp <= 0) return;
+  if (id === 'champion_reprise' && counter && offCooldown(p, id) && p.hp < p.maxHp) {
+    healPlayer(sink, p, p, Math.min(20, p.maxHp * 0.08));
+    spendCooldown(p, id);
+    return;
+  }
   if (
-    !direct ||
-    effective <= 0 ||
-    p.state !== 'alive' ||
-    p.hp <= 0 ||
+    id === 'battle_opening' &&
+    target.buffs.some(isBurstControl) &&
+    offCooldown(p, id) &&
+    !p.buffs.some((b) => b.kind === 'counter' && b.remaining > 0)
+  ) {
+    putBuff(p, { kind: 'counter', mult: 1.3, remaining: 4, source: PREFIX + id });
+    putBuff(target, { kind: 'castSlow', mult: 1.3, remaining: 3, source: 'battleOpening' });
+    spendCooldown(p, id);
+    return;
+  }
+  const aura = p.paladinAura;
+  if (
+    id === 'vengeance_procession' &&
+    melee &&
+    aura &&
+    aura.remaining > 0 &&
+    aura.classId === p.classId &&
+    !aura.passiveExtended
+  ) {
+    aura.remaining = Math.min(aura.duration + 2, aura.remaining + 2);
+    aura.passiveExtended = true;
+    putBuff(target, { kind: 'moveSpeed', mult: 0.75, remaining: 2, source: 'vengeanceProcession' });
+    return;
+  }
+  if (
     (id !== 'evoker_arcane_cadence' && id !== 'abjurer_binding_ward') ||
     !target.buffs.some(isBurstControl) ||
     !offCooldown(p, id)
@@ -223,6 +259,7 @@ export function onSubclassHeal(
   recipient: Player,
   effective: number,
 ): void {
+  onSubclassProtection(p, effective);
   if (p.subclassPassiveId !== 'whispers_echoed_refrain' || effective <= 0) return;
   const ready = p.buffs.find((b) => b.kind === 'refrainEcho' && b.remaining > 0);
   if (!ready) return;
@@ -248,4 +285,62 @@ export function onSubclassHeal(
       pos: { ...target.pos },
       kind: 'heal',
     });
+}
+
+/** Only an effective heal or a real direct shield gain may ready Light's follow-through. */
+export function onSubclassProtection(p: Player, effective: number): void {
+  const id = 'light_refulgence';
+  if (
+    p.subclassPassiveId !== id ||
+    p.state !== 'alive' ||
+    p.hp <= 0 ||
+    effective <= 0 ||
+    !offCooldown(p, id)
+  )
+    return;
+  if (p.buffs.some((b) => b.kind === 'radiantCharge' && b.remaining > 0)) return;
+  putBuff(p, { kind: 'radiantCharge', mult: 1.25, remaining: 6, source: PREFIX + id });
+  spendCooldown(p, id);
+}
+
+export function onSubclassOverheal(world: World, p: Player, target: Player, unused: number): void {
+  const id = 'life_abundance';
+  if (
+    p.subclassPassiveId !== id ||
+    p.state !== 'alive' ||
+    p.hp <= 0 ||
+    unused <= 0 ||
+    !offCooldown(p, id)
+  )
+    return;
+  if (grantAbsorption(target, Math.min(25, unused * 0.5), 6, 'heal') <= 0) return;
+  spendCooldown(p, id);
+  world.events.push({
+    t: 'support',
+    sourceId: p.id,
+    targetId: target.id,
+    from: { ...p.pos },
+    pos: { ...target.pos },
+    kind: 'absorb',
+  });
+}
+
+export function onSubclassAura(world: World, p: Player, radius: number): void {
+  const id = 'devotion_anchor';
+  if (p.subclassPassiveId !== id || !offCooldown(p, id)) return;
+  for (const ally of world.players) {
+    if (ally.state !== 'alive' || ally.hp <= 0 || dist(p.pos, ally.pos) > radius) continue;
+    cleanseMovement(ally);
+    ally.shove = null;
+    putBuff(ally, { kind: 'steadfast', mult: 0, remaining: 2, source: PREFIX + id + ':' + p.id });
+    world.events.push({
+      t: 'support',
+      sourceId: p.id,
+      targetId: ally.id,
+      from: { ...p.pos },
+      pos: { ...ally.pos },
+      kind: 'protect',
+    });
+  }
+  spendCooldown(p, id, 8);
 }

@@ -1088,11 +1088,13 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'flowExtend':
       return kind === 'meleeCone';
     case 'guard':
+      return kind === 'selfBuff' || kind === 'heal' || kind === 'taunt';
     case 'cleanse':
     case 'steadfast':
       return kind === 'selfBuff' || kind === 'heal';
-    case 'mirrorImages':
     case 'frontGuard':
+      return kind === 'selfBuff' || kind === 'taunt';
+    case 'mirrorImages':
     case 'bloodRage':
     case 'wolfHunt':
     case 'momentum':

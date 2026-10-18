@@ -244,64 +244,53 @@ describe('Sorcerer identity', () => {
     consumeSpellSurge(p, p.abilities!.a1);
     expect(p.buffs.find((b) => b.kind === 'flight')!.remaining).toBe(12);
   });
-  it('Wild requires different specials and saves its trigger when native preparation already supplies Surge', () => {
+  it('Wild builds one step per basic cast, not per projectile, without special setup', () => {
     const { w, p } = setup('so_wild');
     resolvePlayerAbility(w, p, 'basic', ZERO);
+    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(1);
+    expect(buffBadges(p.buffs, 20).some((b) => b.label.includes('1/3 basic casts'))).toBe(true);
+    onSubclassAbility(p, p.abilities!.a1);
+    applyBuff(p, makeBuff('root', 0, 2, 'testRoot'));
+    onSubclassAbility(p, { ...p.abilities!.basic, kind: 'dash' });
+    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(1);
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(2);
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    expect(w.projectiles).toHaveLength(6);
+    expect(p.buffs.filter((b) => b.kind === 'spellSurge')).toHaveLength(1);
     expect(p.buffs.some((b) => b.kind === 'wildWeave')).toBe(false);
-    resolvePlayerAbility(w, p, 'a1', ZERO);
-    resolvePlayerAbility(w, p, 'a1', ZERO);
-    expect(p.buffs.some((b) => b.kind === 'spellSurge')).toBe(false);
-    resolvePlayerAbility(w, p, 'a2', ZERO);
-    expect(p.buffs.filter((b) => b.kind === 'spellSurge')).toHaveLength(1);
-    expect(p.subclassPassiveCooldowns?.wild_spell_weave).toBeUndefined();
-    expect(
-      buffBadges(p.buffs, 20).some((b) => b.label.includes('previous special was self buff')),
-    ).toBe(true);
-    resolvePlayerAbility(w, p, 'a1', ZERO); // consumes native Surge and prepares the next
-    expect(p.buffs.filter((b) => b.kind === 'spellSurge')).toHaveLength(1);
     expect(p.subclassPassiveCooldowns!.wild_spell_weave).toBe(8);
+    const boosted = consumeSpellSurge(p, p.abilities!.a1);
+    expect(boosted.damage * (boosted.projCount ?? 1)).toBeCloseTo(
+      p.abilities!.a1.damage * (p.abilities!.a1.projCount ?? 1) * 1.2,
+    );
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    expect(p.buffs.some((b) => b.kind === 'wildWeave')).toBe(false);
+  });
+  it('Wild pauses for held Surge and its cooldown, expires unfinished progress and works with a forged basic', () => {
+    const { w, p } = setup('so_wild');
+    p.abilities!.basic = recompose(decompose(p.abilities!.basic), {
+      slot: 'basic',
+      name: 'Forged basic',
+      cooldown: 0.5,
+    });
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    prepareSpellSurge(p, { ...p.abilities!.a1, prepareSurge: 10 });
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(1);
+    expect(p.subclassPassiveCooldowns?.wild_spell_weave).toBeUndefined();
     consumeSpellSurge(p, p.abilities!.a1);
-    onSubclassAbility(p, { ...p.abilities!.a1, kind: 'pbaoe' });
-    expect(p.buffs.some((b) => b.kind === 'spellSurge')).toBe(false);
-    tickSubclassPassives(p, 8);
-    onSubclassAbility(p, { ...p.abilities!.a1, kind: 'heal' });
-    const ready = p.buffs.find((b) => b.kind === 'spellSurge')!;
-    expect(ready).toBeTruthy();
-    onSubclassAbility(p, { ...p.abilities!.a1, kind: 'projectile' });
-    expect(p.buffs.find((b) => b.kind === 'spellSurge')).toBe(ready);
+    tickBuffs(p, 9);
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(1);
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    resolvePlayerAbility(w, p, 'basic', ZERO);
     prepareSpellSurge(p, { ...p.abilities!.a1, prepareSurge: 10 });
     expect(p.buffs.filter((b) => b.kind === 'spellSurge')).toHaveLength(1);
-    expect(p.buffs.find((b) => b.kind === 'spellSurge')!.remaining).toBe(10);
-  });
-  it('Wild counts Forge delivery, does not empower the generating spell, and rooted movement does not count', () => {
-    const { w, p } = setup('so_wild');
-    p.abilities!.a1 = recompose(decompose(p.abilities!.a1), {
-      slot: 'a1',
-      name: 'Forged',
-      cooldown: 5,
-    });
-    resolvePlayerAbility(w, p, 'a1', ZERO);
-    applyBuff(p, makeBuff('root', 0, 4, 'test'));
-    resolvePlayerAbility(w, p, 'a3', ZERO);
-    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(1); // projectile
-    p.buffs = p.buffs.filter((b) => b.kind !== 'root');
-    p.abilities!.a3 = {
-      ...p.abilities!.a1,
-      slot: 'a3',
-      kind: 'pbaoe',
-      components: undefined,
-      consumesSurge: true,
-      radius: 200,
-      damage: 10,
-    };
-    const before = w.boss!.hp;
-    resolvePlayerAbility(w, p, 'a3', ZERO);
-    expect(before - w.boss!.hp).toBe(10);
-    expect(p.buffs.filter((b) => b.kind === 'spellSurge')).toHaveLength(1);
-    tickBuffs(p, 9);
-    tickSubclassPassives(p, 9);
-    onSubclassAbility(p, { ...p.abilities!.a1, kind: 'heal' });
-    expect(p.buffs.some((b) => b.kind === 'spellSurge')).toBe(false);
+    consumeSpellSurge(p, p.abilities!.a1);
+    tickSubclassPassives(p, 8);
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(1);
   });
 });
 

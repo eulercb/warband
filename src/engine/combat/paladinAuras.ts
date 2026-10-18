@@ -1,3 +1,4 @@
+import { onSubclassAura } from './subclassPassives';
 /** Following support fields. Only one field per owner; equivalent effects never stack. */
 import type { Player } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
@@ -14,6 +15,7 @@ export function armPaladinAura(world: World, p: Player, ab: PlayerAbilityDef): v
     remaining: a.duration,
     spent: [],
   };
+  onSubclassAura(world, p, a.radius);
   updatePaladinAuras(world, 0, 0);
 }
 /** Called after movement/casts and again with dt=0 after combat to remove invalid owners. */

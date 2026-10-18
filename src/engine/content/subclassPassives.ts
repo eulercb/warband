@@ -9,33 +9,49 @@ export interface SubclassPassiveDef {
   desc: string;
 }
 
-/** Shared encoding for the timed Wild Magic combo and its public badge. */
-export const WEAVE_DELIVERIES = [
-  'meleeCone',
-  'projectile',
-  'pbaoe',
-  'dash',
-  'blink',
-  'selfBuff',
-  'buffAlly',
-  'heal',
-  'taunt',
-  'groundZone',
-] as const;
-export const WEAVE_LABELS = [
-  'melee cone',
-  'projectile',
-  'nearby burst',
-  'dash',
-  'teleport',
-  'self buff',
-  'ally buff',
-  'direct heal',
-  'taunt',
-  'ground zone',
-];
-
 export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
+  kn_champion: {
+    id: 'champion_reprise',
+    classId: 'knight',
+    name: 'Victorious Reprise',
+    icon: '⚔️',
+    desc: 'Landing a readied melee counter heals you for 8% max HP, up to 20. Once per 6s; misses, immunity and unused counters do not spend it. Taunt, Shield Wall and Riposte can ready counters.',
+  },
+  kn_battlemaster: {
+    id: 'battle_opening',
+    classId: 'knight',
+    name: 'Tactical Opening',
+    icon: '🎯',
+    desc: 'A direct hit on a slowed, rooted or stunned foe readies your next melee counter for 4s and makes that foe wind up 30% slower for 3s. Once per 6s; an existing counter is preserved. Shield Bash supplies control with any subclass choice.',
+  },
+  cl_light: {
+    id: 'light_refulgence',
+    classId: 'cleric',
+    name: 'Refulgence',
+    icon: '☀️',
+    desc: 'Effective dedicated healing or a successful direct barrier grant readies your next direct hit for +25% damage and 30% slower enemy wind-ups for 3s. Readiness lasts 6s; once per 6s. Basics can spend it; damage zones cannot.',
+  },
+  cl_life: {
+    id: 'life_abundance',
+    classId: 'cleric',
+    name: 'Abundance',
+    icon: '🌱',
+    desc: 'Dedicated heals convert 50% of unused healing into added absorption, up to 25 per trigger for 6s. Works at full health. Once per 6s; shared 50%-max-HP barrier cap applies; no healing score or rescue from overheal.',
+  },
+  pa_devotion: {
+    id: 'devotion_anchor',
+    classId: 'paladin',
+    name: 'Oath Anchor',
+    icon: '⚓',
+    desc: 'Starting any aura cleanses nearby living allies (including you) of movement/control effects and grants 2s Steadfast against roots, stuns and forced movement. Once per 8s on activation, not every aura tick. Direct damage still hits.',
+  },
+  pa_vengeance: {
+    id: 'vengeance_procession',
+    classId: 'paladin',
+    name: 'Relentless Procession',
+    icon: '🔥',
+    desc: 'Your first connecting melee hit during each aura slows its victim by 25% for 2s and extends that aura by 2s. Once per aura; it does not reset Pursuit strikes or change the aura radius. Your basic melee works with every subclass choice.',
+  },
   mg_evoker: {
     id: 'evoker_arcane_cadence',
     classId: 'mage',
@@ -62,7 +78,7 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'sorcerer',
     name: 'Spell Weave',
     icon: '🌀',
-    desc: 'Use two different special delivery types within 8s to prepare Spell Surge for 8s. Once per 8s; basics do not count. Existing Surge or a spell that already prepares Surge does not spend the trigger. The current special can spend only a previously prepared Surge.',
+    desc: 'Three basic casts within 8s prepare Spell Surge for 8s, empowering your next heavy spell. Once per 8s; basics cannot build progress while Surge is held or the trigger is cooling down. No special delivery combination is required; native preparation does not spend the trigger.',
   },
   ba_valor: {
     id: 'valor_rallying_chorus',

@@ -368,6 +368,7 @@ export function damageBoss(
     source.damageMult *
     buffMult(boss, 'damageTaken') *
     curseMultiplier(source, boss);
+  const counter = mods?.melee && source.buffs.some((b) => b.kind === 'counter' && b.remaining > 0);
   if (outgoing > 0 && boss.hp > 0) {
     outgoing *=
       subclassDamageMultiplier(source, boss, mods) * martialHitMultiplier(source, mods?.melee);
@@ -395,7 +396,7 @@ export function damageBoss(
   onMartialHit(source, effective, mods?.melee, mods?.flowExtend);
   const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
-  onSubclassDirectHit(sink, source, boss, effective, mods?.direct);
+  onSubclassDirectHit(sink, source, boss, effective, mods?.direct, mods?.melee, counter);
   const passiveHeal = subclassHitHealing(source, boss, effective);
   if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);
   return outgoing;
@@ -426,6 +427,7 @@ export function damageAdd(
     buffMult(source, 'damageDealt') *
     source.damageMult *
     curseMultiplier(source, add);
+  const counter = mods?.melee && source.buffs.some((b) => b.kind === 'counter' && b.remaining > 0);
   if (outgoing > 0 && add.hp > 0) {
     outgoing *=
       subclassDamageMultiplier(source, add, mods) * martialHitMultiplier(source, mods?.melee);
@@ -446,7 +448,7 @@ export function damageAdd(
   onMartialHit(source, effective, mods?.melee, mods?.flowExtend);
   const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
-  onSubclassDirectHit(sink, source, add, effective, mods?.direct);
+  onSubclassDirectHit(sink, source, add, effective, mods?.direct, mods?.melee, counter);
   const passiveHeal = subclassHitHealing(source, add, effective);
   if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);
   return outgoing;

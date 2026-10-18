@@ -10,6 +10,12 @@ let currentPage;
 try {
   for (const mobile of [false, true]) {
     for (const [classId, skill, passive] of [
+      ['knight', 'Riposte', 'Victorious Reprise'],
+      ['knight', 'Trip Attack', 'Tactical Opening'],
+      ['cleric', 'Warding Flare', 'Refulgence'],
+      ['cleric', 'Preserve Life', 'Abundance'],
+      ['paladin', 'Sacred Weapon', 'Oath Anchor'],
+      ['paladin', 'Wrathful Smite', 'Relentless Procession'],
       ['mage', 'Lightning Bolt', 'Arcane Cadence'],
       ['mage', 'Arcane Ward', 'Binding Ward'],
       ['sorcerer', 'Dragon Wings', 'Surge Ascent'],
@@ -20,7 +26,11 @@ try {
       ['rogue', 'Shield Spell', 'Spellblade'],
       ['warlock', 'Dark Resilience', 'Soul Ember'],
       ['warlock', 'Mind Blast', 'Dread Insight'],
-    ]) {
+    ].filter(
+      ([, , passive]) =>
+        !process.env.SMOKE_PASSIVE_NAMES ||
+        process.env.SMOKE_PASSIVE_NAMES.split(',').includes(passive),
+    )) {
       const context = await browser.newContext({
         viewport: mobile ? { width: 320, height: 568 } : { width: 1280, height: 800 },
         isMobile: mobile,
@@ -55,6 +65,47 @@ try {
       await icon.waitFor();
       assert.equal(await icon.count(), 1);
       assert.ok((await icon.getAttribute('title')).includes(passive));
+      if (passive === 'Spell Weave') {
+        if (mobile) await page.locator('.wb-touch-btn-basic').waitFor();
+        const touch = mobile ? await context.newCDPSession(page) : null;
+        const hold = async (slot, key, until) => {
+          if (mobile) {
+            const box = await page.locator(`.wb-touch-btn-${slot}`).boundingBox();
+            assert.ok(box);
+            await touch.send('Input.dispatchTouchEvent', {
+              type: 'touchStart',
+              touchPoints: [{ id: 1, x: box.x + box.width / 2, y: box.y + box.height / 2 }],
+            });
+          } else await page.keyboard.down(key);
+          try {
+            await until();
+          } finally {
+            if (mobile)
+              await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+            else await page.keyboard.up(key);
+          }
+        };
+        const surge = page
+          .locator('.hud-selfhp')
+          .getByTitle(/Spell surge: next heavy spell empowered/);
+        for (let count = 1; count <= 3; count++) {
+          await hold('basic', 'Space', () =>
+            count === 3
+              ? surge.waitFor()
+              : page
+                  .locator('.hud-selfhp')
+                  .getByTitle(new RegExp(`Spell Weave: ${count}/3 basic casts`))
+                  .waitFor(),
+          );
+          if (count < 3)
+            await page.waitForFunction(() =>
+              document
+                .querySelector('.hud-ability[aria-label^="Chaos Bolt"]')
+                ?.classList.contains('ready'),
+            );
+        }
+        await hold('a1', 'KeyQ', () => surge.waitFor({ state: 'hidden' }));
+      }
       if (mobile) {
         assert.ok(await page.getByRole('group', { name: 'Touch controls' }).isVisible());
         await click(button('Pause'));
@@ -64,6 +115,10 @@ try {
         .getByLabel(`Subclass passive: ${passive}`);
       await description.waitFor();
       assert.ok((await description.textContent()).length > 70);
+      if (process.env.SHOT_DIR)
+        await page.screenshot({
+          path: `${process.env.SHOT_DIR}/passive-${passive.replace(/[^a-z0-9]/gi, '-')}-${mobile ? 'touch' : 'desktop'}.png`,
+        });
       assert.deepEqual(errors, []);
       console.log(
         `PASS ${mobile ? 'mobile 320×568' : 'desktop'}: ${passive} unlock, fight icon, pause description`,

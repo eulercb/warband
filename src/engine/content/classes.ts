@@ -242,6 +242,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Taunt',
+        guardWindow: 4,
+        frontGuard: { charges: 1, duration: 4 },
         kind: 'taunt',
         cooldown: 12,
         damage: 0,
