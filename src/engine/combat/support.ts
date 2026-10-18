@@ -1,4 +1,5 @@
 import {
+  onSubclassFinisher,
   onSubclassChorus,
   onSubclassHeal,
   onSubclassProtection,
@@ -24,6 +25,7 @@ export function nearbySupportAllies(world: World, p: Player, range: number): Pla
 
 /** Both verses last eight seconds. A repeated verse refreshes, never adds stacks. */
 export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef): boolean {
+  onSubclassFinisher(world, p, ab);
   if (ab.mirrorImages)
     applyBuff(
       p,

@@ -104,6 +104,13 @@ function describe(
         good: true,
         label: 'Counter ready: next connecting melee hit deals +30% damage',
       };
+    case 'rampage':
+      return {
+        glyph: '🪓',
+        color: 0xff9a3d,
+        good: true,
+        label: `Rampage: next basic cast +${Math.round(mult * 10)}% damage and +${mult * 8}u melee reach; a miss spends it`,
+      };
     case 'momentum':
       return {
         glyph: '🔥',

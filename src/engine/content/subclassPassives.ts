@@ -10,6 +10,48 @@ export interface SubclassPassiveDef {
 }
 
 export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
+  bb_berserker: {
+    id: 'berserker_rampage',
+    classId: 'barbarian',
+    name: 'Rampage',
+    icon: '🪓',
+    desc: 'Spending Momentum readies your next basic cast for 4s: +10% damage per stack spent (up to 30%) and +8u melee reach per stack. The basic cast spends readiness, even on a miss. Rage and Whirlwind provide the base-kit route.',
+  },
+  bb_totem: {
+    id: 'totem_shelter',
+    classId: 'barbarian',
+    name: 'Spirit Shelter',
+    icon: '🐻',
+    desc: 'Spending Momentum grants you and living allies within 180u 8 + 4 absorption per stack spent (up to 20), lasting 4s. Once per 6s; shared cap and strongest-cast rules apply. Rage and Whirlwind work with every subclass choice.',
+  },
+  mo_openhand: {
+    id: 'openhand_flowguard',
+    classId: 'monk',
+    name: 'Flowguard',
+    icon: '✋',
+    desc: 'Spending Flow grants one frontal damage block for 3s. Aim toward the attack; ground and rear damage bypass it. Stronger existing guards are preserved; charges do not stack. Step of the Wind and Quivering Palm provide the base-kit route.',
+  },
+  mo_shadow: {
+    id: 'shadow_rhythm',
+    classId: 'monk',
+    name: 'Shadow Rhythm',
+    icon: '🌑',
+    desc: 'Spending Flow removes 2s from running dash and blink special cooldowns in your active kit. Once per 4s; ready movement skills do not spend the trigger. Step of the Wind and Quivering Palm work with every subclass choice.',
+  },
+  rg_hunter: {
+    id: 'hunter_quarry',
+    classId: 'ranger',
+    name: 'Exposed Quarry',
+    icon: '🎯',
+    desc: 'Connecting direct hits expose foes for 3s: they take 10% more damage from the party. Marks refresh and never stack between Hunters. Piercing shots can expose several foes; damage-zone ticks do not apply marks. Basics work with every subclass choice.',
+  },
+  dr_land: {
+    id: 'land_paths',
+    classId: 'druid',
+    name: 'Living Paths',
+    icon: '🌿',
+    desc: 'Your friendly ground zones grant allies 20% movement speed and make enemy wind-ups 25% slower while inside, briefly lingering after departure. Stronger zone effects are preserved. Entangle works with every subclass choice; ground zones still cannot reach flyers.',
+  },
   kn_champion: {
     id: 'champion_reprise',
     classId: 'knight',

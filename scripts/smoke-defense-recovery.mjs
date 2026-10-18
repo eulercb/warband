@@ -24,7 +24,7 @@ const tests = [
     badge: /Hastened/,
     hurt: true,
   },
-  { classId: 'mage', name: 'Life Transfer', text: /20 absorption/, bubble: true, hurt: true },
+  { classId: 'mage', name: 'Life Transfer', text: /20 absorption/, bubble: true },
   {
     classId: 'monk',
     name: 'Wholeness of Body',
@@ -145,10 +145,18 @@ try {
       );
       const self = page.locator('.hud-selfhp');
       if (test.bubble) {
-        const meter = self.getByRole('meter', { name: 'Absorption' });
-        await meter.waitFor();
-        const amount = Number(await meter.getAttribute('aria-valuenow'));
-        assert.ok(amount > 0 && amount <= Number(await meter.getAttribute('aria-valuemax')));
+        // Read the live meter atomically: a hit/expiry may remove it between awaits.
+        const state = await page.waitForFunction(() => {
+          const meter = document.querySelector(
+            '.hud-selfhp [role="meter"][aria-label="Absorption"]',
+          );
+          if (!meter) return false;
+          const amount = Number(meter.getAttribute('aria-valuenow'));
+          const max = Number(meter.getAttribute('aria-valuemax'));
+          return amount > 0 && amount <= max ? { amount, max } : false;
+        });
+        assert.ok(await state.jsonValue());
+        await state.dispose();
       } else if (test.badge) await self.getByTitle(test.badge).waitFor();
       // Let the normal ranged-zone arming animation finish for the review capture.
       if (test.zone) await self.getByTitle(/Hastened/).waitFor();

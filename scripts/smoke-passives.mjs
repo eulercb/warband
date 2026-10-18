@@ -2,6 +2,39 @@
 import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright-core';
+const cases = [
+  ['barbarian', 'Chain Pull', 'Rampage'],
+  ['barbarian', 'Bear Spirit', 'Spirit Shelter'],
+  ['monk', 'Flurry Barrage', 'Flowguard'],
+  ['monk', 'Shadow Dart', 'Shadow Rhythm'],
+  ['ranger', 'Hail of Thorns', 'Exposed Quarry'],
+  ['druid', 'Wall of Thorns', 'Living Paths'],
+  ['knight', 'Riposte', 'Victorious Reprise'],
+  ['knight', 'Trip Attack', 'Tactical Opening'],
+  ['cleric', 'Warding Flare', 'Refulgence'],
+  ['cleric', 'Preserve Life', 'Abundance'],
+  ['paladin', 'Sacred Weapon', 'Oath Anchor'],
+  ['paladin', 'Wrathful Smite', 'Relentless Procession'],
+  ['mage', 'Lightning Bolt', 'Arcane Cadence'],
+  ['mage', 'Arcane Ward', 'Binding Ward'],
+  ['sorcerer', 'Dragon Wings', 'Surge Ascent'],
+  ['sorcerer', 'Chaos Surge', 'Spell Weave'],
+  ['bard', 'Bolster', 'Rallying Chorus'],
+  ['bard', 'Healing Refrain', 'Echoed Refrain'],
+  ['rogue', 'Smoke Bomb', "Death's Opening"],
+  ['rogue', 'Shield Spell', 'Spellblade'],
+  ['warlock', 'Dark Resilience', 'Soul Ember'],
+  ['warlock', 'Mind Blast', 'Dread Insight'],
+];
+const selected = process.env.SMOKE_PASSIVE_NAMES?.split(',');
+if (selected)
+  for (const name of selected)
+    assert.ok(
+      cases.some(([, , passive]) => passive === name),
+      `Unknown passive: ${name}`,
+    );
+const tests = cases.filter(([, , passive]) => !selected || selected.includes(passive));
+assert.ok(tests.length, 'No passive cases selected');
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || chromium.executablePath(),
   headless: true,
@@ -9,28 +42,7 @@ const browser = await chromium.launch({
 let currentPage;
 try {
   for (const mobile of [false, true]) {
-    for (const [classId, skill, passive] of [
-      ['knight', 'Riposte', 'Victorious Reprise'],
-      ['knight', 'Trip Attack', 'Tactical Opening'],
-      ['cleric', 'Warding Flare', 'Refulgence'],
-      ['cleric', 'Preserve Life', 'Abundance'],
-      ['paladin', 'Sacred Weapon', 'Oath Anchor'],
-      ['paladin', 'Wrathful Smite', 'Relentless Procession'],
-      ['mage', 'Lightning Bolt', 'Arcane Cadence'],
-      ['mage', 'Arcane Ward', 'Binding Ward'],
-      ['sorcerer', 'Dragon Wings', 'Surge Ascent'],
-      ['sorcerer', 'Chaos Surge', 'Spell Weave'],
-      ['bard', 'Bolster', 'Rallying Chorus'],
-      ['bard', 'Healing Refrain', 'Echoed Refrain'],
-      ['rogue', 'Smoke Bomb', "Death's Opening"],
-      ['rogue', 'Shield Spell', 'Spellblade'],
-      ['warlock', 'Dark Resilience', 'Soul Ember'],
-      ['warlock', 'Mind Blast', 'Dread Insight'],
-    ].filter(
-      ([, , passive]) =>
-        !process.env.SMOKE_PASSIVE_NAMES ||
-        process.env.SMOKE_PASSIVE_NAMES.split(',').includes(passive),
-    )) {
+    for (const [classId, skill, passive] of tests) {
       const context = await browser.newContext({
         viewport: mobile ? { width: 320, height: 568 } : { width: 1280, height: 800 },
         isMobile: mobile,
@@ -65,7 +77,7 @@ try {
       await icon.waitFor();
       assert.equal(await icon.count(), 1);
       assert.ok((await icon.getAttribute('title')).includes(passive));
-      if (passive === 'Spell Weave') {
+      if (['Spell Weave', 'Flowguard', 'Shadow Rhythm'].includes(passive)) {
         if (mobile) await page.locator('.wb-touch-btn-basic').waitFor();
         const touch = mobile ? await context.newCDPSession(page) : null;
         const hold = async (slot, key, until) => {
@@ -85,26 +97,39 @@ try {
             else await page.keyboard.up(key);
           }
         };
-        const surge = page
-          .locator('.hud-selfhp')
-          .getByTitle(/Spell surge: next heavy spell empowered/);
-        for (let count = 1; count <= 3; count++) {
-          await hold('basic', 'Space', () =>
-            count === 3
-              ? surge.waitFor()
-              : page
-                  .locator('.hud-selfhp')
-                  .getByTitle(new RegExp(`Spell Weave: ${count}/3 basic casts`))
-                  .waitFor(),
-          );
-          if (count < 3)
-            await page.waitForFunction(() =>
-              document
-                .querySelector('.hud-ability[aria-label^="Chaos Bolt"]')
-                ?.classList.contains('ready'),
+        if (passive === 'Spell Weave') {
+          const surge = page
+            .locator('.hud-selfhp')
+            .getByTitle(/Spell surge: next heavy spell empowered/);
+          for (let count = 1; count <= 3; count++) {
+            await hold('basic', 'Space', () =>
+              count === 3
+                ? surge.waitFor()
+                : page
+                    .locator('.hud-selfhp')
+                    .getByTitle(new RegExp(`Spell Weave: ${count}/3 basic casts`))
+                    .waitFor(),
             );
+            if (count < 3)
+              await page.waitForFunction(() =>
+                document
+                  .querySelector('.hud-ability[aria-label^="Chaos Bolt"]')
+                  ?.classList.contains('ready'),
+              );
+          }
+          await hold('a1', 'KeyQ', () => surge.waitFor({ state: 'hidden' }));
+        } else {
+          const flow = page.locator('.hud-selfhp').getByTitle(/Flow: next marked/);
+          await hold('a2', 'KeyE', () => flow.waitFor());
+          // The dash owns the hero until landing; release, then press after it finishes.
+          await page.waitForTimeout(700);
+          await hold('a3', 'KeyR', () => flow.waitFor({ state: 'hidden' }));
+          if (passive === 'Flowguard')
+            await page
+              .locator('.hud-selfhp')
+              .getByTitle(/Frontal guard: 1 damage blocks/)
+              .waitFor();
         }
-        await hold('a1', 'KeyQ', () => surge.waitFor({ state: 'hidden' }));
       }
       if (mobile) {
         assert.ok(await page.getByRole('group', { name: 'Touch controls' }).isVisible());
