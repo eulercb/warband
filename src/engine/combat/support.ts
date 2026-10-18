@@ -1,3 +1,4 @@
+import { onSubclassChorus, onSubclassHeal } from './subclassPassives';
 import { cleanseMovement } from './defense';
 import { armMartialUtility } from './martial';
 import { personallyCursed } from '../core/curses';
@@ -119,6 +120,7 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
     p.buffs.some((b) => b.kind === kind && b.remaining > 0);
   if (!ready('harmony') || !ready('discord')) return false;
   p.buffs = p.buffs.filter((b) => b.kind !== 'harmony' && b.kind !== 'discord');
+  onSubclassChorus(world, p, ab.range ?? 420);
   for (const ally of nearbySupportAllies(world, p, ab.range ?? 420)) {
     if (ab.cleanseOnHeal) cleanseMovement(ally);
     applyBuff(ally, makeBuff('moveSpeed', 1.15, ab.buffDuration ?? 6, 'chorusMove'));
@@ -172,6 +174,7 @@ export function healSupportAlly(
     const rescueBubble = rescue ? Math.min(effective * 0.75, target.maxHp * 0.3) : 0;
     grantAbsorption(target, ordinary + rescueBubble, 6, 'heal');
   }
+  onSubclassHeal(world, p, target, effective);
   if (ab.bardSong === 'harmony') applyBuff(p, makeBuff('harmony', 0, 8, 'bardHarmony'));
   if (ab.recoveryZone) {
     // One grove per caster across base/subclass/copied heals; unrelated zones survive.

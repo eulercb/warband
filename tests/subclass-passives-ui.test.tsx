@@ -1,3 +1,4 @@
+import { getSubclass } from '../src/engine/content/subclasses';
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent } from '@testing-library/react';
@@ -61,3 +62,25 @@ it('keeps combat compact and provides the full passive explanation in pause', ()
     'next connecting melee hit',
   );
 });
+
+it.each(['mg_evoker', 'mg_abjurer', 'so_draconic', 'so_wild', 'ba_valor', 'ba_whispers'])(
+  'surfaces the full %s passive in pause while keeping combat compact',
+  (id) => {
+    const sub = getSubclass(id)!;
+    useStore.setState({ localClass: sub.classId });
+    useHudStore.setState({
+      classId: sub.classId,
+      classes: [sub.classId],
+      subSkills: [sub.skills[0].id],
+    });
+    const view = render(<HUD />);
+    expect(screen.getByLabelText(`Subclass passive: ${sub.passive!.name}`).textContent).toBe(
+      sub.passive!.icon,
+    );
+    view.unmount();
+    render(<OwnedSkills />);
+    expect(screen.getByLabelText(`Subclass passive: ${sub.passive!.name}`).textContent).toContain(
+      sub.passive!.desc,
+    );
+  },
+);

@@ -194,6 +194,8 @@ export type BuffKind =
   | 'harmony' // effective healing verse, readied for a Bard chorus
   | 'discord' // disruptive special verse, readied for a Bard chorus
   | 'spellSurge' // one enhanced special spell
+  | 'wildWeave' // mult encodes last special delivery; timed combo memory
+  | 'refrainEcho' // one dedicated heal echo
   | 'spellblade' // one empowered melee hit from Arcane Trickster
   | 'precision' // one prepared critical strike; mult unused
   | 'curse' // owner-only vulnerability; source = curse:<owner>[:<style>:<zone>], mult = factor

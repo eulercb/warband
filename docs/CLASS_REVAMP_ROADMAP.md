@@ -1,17 +1,23 @@
 # Class identity and subclass roadmap
 
-Current delivery: **Dimension Door corrective patch**, before the next passive
-cohort. See the final section for its teleport and control contracts.
+Current delivery: **defining passives, cohort 1 of 3** — both Mage, Sorcerer
+and Bard subclasses. The preceding Dimension Door correction is merged/playtested.
+See the final section for exact triggers and the coherence review.
 
-Previously merged and playtested: the class skill-loop cohorts, initial
-Rogue/Warlock passives, martial coherence, Cleric absorption/retuning, Paladin
-auras, caster defenses, enemy-debuff readability, Warlock balance B1, B2a and B2b.
+Previously merged and playtested: all twelve class loops, the four Rogue/Warlock
+passives, martial coherence, defense/recovery redesigns, Cleric absorption and
+retuning, Paladin auras, debuff/readability work, and the Dimension Door correction.
 
-**Next:** the first remaining defining-passive cohort. Five core/system batches
-remain (three passive cohorts, companion and form), plus four to six upgrade
-batches: approximately **9–11 further PRs**. Larger branching upgrades, grands
-and graft redesigns remain a separate milestone. Earlier sections below preserve
-the design history; their old “next” estimates are superseded by this status.
+**Progress:** 4/24 subclass passives merged; this PR adds six, bringing the
+implemented total to **10/24**. Fourteen remain: twelve ordinary passives plus
+Beast Master's companion and Moon Druid's form.
+
+**Next:** Knight, Cleric and Paladin's six passives, including the recorded solo
+Taunt review. Then Barbarian, Monk, Hunter and Land Druid's six ordinary passives;
+companion and form remain separate. After this delivery, approximately **8–10
+feature PRs** remain (two ordinary cohorts, companion, form, and four to six
+upgrade/grand/graft batches). This is a scope estimate, not a quota/time promise.
+Older status tables preserve history and are superseded by this header.
 
 ## Goals and boundaries
 
@@ -1151,3 +1157,58 @@ by four to six upgrade/grand/graft batches (about 9–11 planned feature PRs).
 The earlier solo-Taunt limitation belongs to Knight's passive/kit review: a pure
 taunt adds little with one player and needs a useful solo expression, without
 changing forced aggro or locked attack rules accidentally.
+
+## Defining passives — cohort 1: Mage, Sorcerer and Bard
+
+The first of the three six-passive cohorts builds on the now-playtested class
+loops. A subclass grants its passive with **any** of its skills, without taking
+another slot. Authored identity survives variance and Forge; grafting a skill does
+not grant its donor's subclass passive. Personal readiness clears when changing
+active subclass, while proc cooldowns continue, so swapping cannot reset gates.
+
+| Subclass            | Passive         | Implemented loop and bounds                                                                                                                                                                                                                                                                                                            |
+| ------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Evoker              | Arcane Cadence  | A positive direct hit on a currently slowed/rooted/stunned foe removes 1s from each running special cooldown, never the basic. Once per 6s across all targets/shots.                                                                                                                                                                   |
+| Abjurer             | Binding Ward    | The same control follow-through grants 20 self absorption for 5s, once per 6s. Uses the shared 50%-max-HP cap and strongest-direct-grant rule. A stronger existing pool neither shrinks nor spends the trigger.                                                                                                                        |
+| Draconic Bloodline  | Surge Ascent    | Actually spending Surge grants 2s flight. If already flying, extend the longest live flight by 1s, capped at 9s remaining without shortening longer flight. Once per 6s. Ground hazards are bypassed; direct attacks still connect.                                                                                                    |
+| Wild Magic          | Spell Weave     | Two different special delivery types within 8s prepare a single 8s Surge, once per 8s. Basics and rooted movement do not count. Already-held Surge and native Surge preparation do not waste the trigger. Newly prepared Surge is for a later cast.                                                                                    |
+| College of Valor    | Rallying Chorus | A completed two-verse chorus grants living allies in the chorus range, including the caster, one frontal block for 3s. Once per 8s. Existing active guards are preserved, not stacked or refreshed; rear/ground damage still bypasses them.                                                                                            |
+| College of Whispers | Echoed Refrain  | A completed chorus readies the next effective dedicated heal for 8s. Echo 50% of effective healing, capped at 35, to the most injured other living ally in 420u; otherwise return it to the original recipient if still injured. Once per 8s. No echo recursion, extra verse or rescue trigger; no target to heal preserves readiness. |
+
+### Coherence review before delivery
+
+- **Every choice retains a path into the passive:** Mage's base Frost Nova sets up
+  direct follow-through, while Evoker Cold and Abjurer Bind/Ward/Door add alternatives.
+  All Sorcerers retain preparation and spending in their base kits; Wings also
+  benefits from Ascent through its bounded extension. All Bards retain healing,
+  Discord and Inspiration, including Whispers' movement or offensive selections.
+- **Different decisions:** Evoker seeks spell cadence, Abjurer trades control for
+  personal protection, Draconic times aerial exposure, Wild varies delivery rather
+  than repeating a single nuke, Valor times frontal cover, and Whispers holds a
+  follow-up heal. No generic passive damage multiplier is added in this cohort.
+- **Bounded proc sources:** damage zones cannot trigger Mage gates, multiple direct
+  targets share one gate, and Surge spending happens once at cast reservation.
+  A native preparation and a passive preparation maintain one shared charge. An
+  echo uses ordinary healing directly, avoiding dedicated-heal recursion/rescue.
+- **Solo and co-op:** Valor includes the caster. Whispers can echo back into its
+  solo recipient; effective healing, recipient HP and party availability bound it.
+  Barriers and guards preserve stronger effects from other classes.
+- **Readability:** existing flight, absorption and physical frontal-block visuals
+  carry their actual effects. A control follow-through emits the appropriate
+  absorb/empower cue. Wild's timed badge identifies the previous delivery type;
+  Echoed Refrain has a distinct ready badge. Full passive descriptions are available
+  before selection and in pause, with compact combat icons.
+- **Compatibility:** direct native/composed impacts share the hit gate; composed
+  chorus/heal paths retain their payoff. Grands/multishot cannot multiply gates.
+  Adaptive boss rules and existing ability power-credit metadata are unchanged.
+  Full branching upgrades, grands and graft redesigns remain the planned workstream;
+  these passive riders do not erase any active-skill/redundancy review debt.
+
+Validate fixed encounters first, then adaptive live runs. Pay particular attention
+to aerial uptime against ground-heavy bosses, the value of a short frontal block,
+Echo's solo versus party healing, and whether Cadence visibly improves spell rhythm.
+Numbers are bounded starting values for playtesting, not a claim of final balance.
+
+**Next:** Knight/Cleric/Paladin cohort, with the recorded solo-Taunt limitation and
+protection/aura interactions reviewed together. The remaining ordinary cohort then
+covers Barbarian/Monk/Hunter/Land Druid; pet AI and Moon form stay separate systems.
