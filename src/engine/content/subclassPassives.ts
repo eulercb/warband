@@ -52,6 +52,13 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     icon: '🎯',
     desc: 'Connecting direct hits expose foes for 3s: they take 10% more damage from the party. Marks refresh and never stack between Hunters. Piercing shots can expose several foes; damage-zone ticks do not apply marks. Basics work with every subclass choice.',
   },
+  dr_moon: {
+    id: 'moon_aspect',
+    classId: 'druid',
+    name: 'Moon Aspect',
+    icon: '🐻',
+    desc: 'Casting a special enters bear form for 6s, once per 12s, even at full health. Gain 20% movement speed; basic casts also swipe a 95u aimed claw for 14 damage. Thornlash and all spells remain usable. Claws or nearby positive direct hits heal you for 4, once per 1s; zones cannot mend. Claws share one cast across multishot, cannot crit or trigger direct-hit riders. All four Moon choices and base specials can activate it; downing, class changes and noncombat rooms end it.',
+  },
   dr_land: {
     id: 'land_paths',
     classId: 'druid',

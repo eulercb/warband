@@ -103,7 +103,11 @@ export function bossUsesRig(b: BossView): boolean {
 /** Dead heroes fall back to the geometry ghost, so they are NOT rig-rendered. */
 export function playerUsesRig(p: PlayerView): boolean {
   return (
-    RIG_FLAGS.player && !SPRITE_FLAGS.player && p.state !== 'dead' && classRigId(p.classId) !== null
+    RIG_FLAGS.player &&
+    !SPRITE_FLAGS.player &&
+    !p.form &&
+    p.state !== 'dead' &&
+    classRigId(p.classId) !== null
   );
 }
 

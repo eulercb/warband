@@ -1,16 +1,22 @@
 # Class identity and subclass roadmap
 
-Current delivery: **Beast Master companion prototype and defining passive**.
+Current delivery: **Moon Druid's bear form and the final defining passive**.
 
-**Progress:** 22/24 subclass passives merged; this PR adds Pack Bond, bringing the
-implemented total to **23/24**. Only Moon Druid's form remains. All ordinary
-passives, class loops and defense/recovery reworks have been delivered.
+**Progress:** 23/24 subclass passives merged; this PR adds Moon Aspect, completing
+**24/24** and the first full class/subclass identity round. This is implementation
+coverage, not proof every kit is equally strong, intuitive or satisfying.
 
-**Next:** Moon Druid's form as a separate system, then four to six batches for
-base/subclass upgrades, grand improvements and grafts. Approximately **5–7 feature
-PRs** remain after this delivery, adjusted after the upgrade audit and playtests.
-This is a scope estimate, not a quota/time promise. Earlier status tables preserve
-history and are superseded by this header.
+**Next: cross-class coherence review before upgrade redesign.** Audit the entire
+base/subclass/passive catalogue, compare early and late work, and propose focused
+retouches. Then apply the agreed retouches before broad upgrade/grand/graft work.
+See [Milestone assessment and review gates](CLASS_MILESTONE_REVIEW.md).
+
+Provisional remaining scope: one audit/design pass, perhaps two to four retouch
+batches, then the four to six upgrade batches: roughly **7–11 further PRs** if the
+audit supports that retouch scope. This replaces the earlier 5–7 estimate; the
+review explicitly adds work to reduce later redesign churn. Art direction and a
+broader visual overhaul are separate future work, without a firm patch estimate.
+Earlier status tables preserve history and are superseded by this header.
 
 ## Goals and boundaries
 
@@ -1393,3 +1399,57 @@ before the browser reads it. The check now accepts either state while retaining
 the injured-player setup and cast/description assertions; failure output includes
 actual HUD/badge state. Existing engine tests verify Rally's guard-to-counter
 transition. No Knight gameplay change is included in this correction.
+
+## Moon Druid: Moon Aspect closes the first identity round
+
+Any special cast enters bear form for 6s, once per 12s. Full-health Regrowth works
+with each individual Moon choice, and Maul/Pounce/Roar/Regeneration can each activate
+it independently. A rooted movement cast cannot activate it. The transformation
+occurs on resolution, not while an interruptible cast is merely winding up.
+
+The bear retains Thornlash and every equipped spell, subclass skill and Forge
+payload. No hotbar replacement, extra button, forced melee-only period, health
+pool, damage immunity, altered collision radius or resource bar is introduced.
+Form grants 20% movement speed and one aimed 95u/55° supplemental claw for 14 base
+damage per basic cast. Multishot cannot multiply the swipe. Claws use ordinary
+owner/enemy damage modifiers but do not crit, backstab, consume counters or trigger
+direct-hit riders. Positive claws or direct hits within 130u plus enemy radius
+mend 4 HP, once per 1s across all victims and skills. Full health, misses, immunity,
+zone ticks and distant hits do not spend the mend gate; mending cannot trigger
+dedicated-heal loops or create a recovery grove.
+
+Entangle and Cyclone help hold a safe approach; Maul and Pounce can mend through
+actual connecting hits. Roar retains its damage/movement buff; Frenzied Regen
+retains its heal and recovery field. Natural mending complements these effects
+rather than replacing them. Outside claw range, Thornlash remains an effective
+ranged basic, so a full-health heal does not accidentally disable ranged play.
+
+Downing, death, zero HP, passive/class changes and noncombat rooms clear form and
+stride. Cooldowns survive swaps/downing; re-entering combat never restores a stale
+form. A rest badge shows the remaining recovery after the six-second form ends,
+including after returning to the class. Form has a distinct moon-marked bear body;
+the humanoid rig/sprite is removed, normal health/status overlays remain, and
+position interpolation is unchanged. Snapshots carry the public form tag and buff
+countdowns; private gates stay host-owned.
+
+At an unmodified 1s basic cadence, six successful close swipes add at most 84 base
+damage per 12s cycle; mending adds at most roughly 24 HP in that form window.
+Timing, misses, enemy defenses, upgrades and actual contact matter. These are
+bounded design ceilings, not a measured class balance verdict. Adaptive difficulty
+formulas and enemy stats remain unchanged.
+
+### New order of work after this milestone
+
+The catalogue review covers every class and all active/passive skills, including
+previously reworked defensive skills and recently added riders. No class is exempt
+because its tests pass or it received a recent passive. Review base-kit viability,
+each individual subclass pick, class/subclass interactions, redundant actions,
+control/burst access, real input/cooldown cadence, power and visual comprehension.
+An interesting passive must not hide an uninteresting active skill underneath it.
+
+Prior user feedback (Warlock/Fiend, Bard explanations, Mage/control access, plain
+protection skills, Paladin impact, upgrade disconnection and visual clutter)
+remains audit input, not an automatic mandate to rewrite all those systems again.
+Separate confirmed defects, observed playtest issues and design hypotheses. Freeze
+class behavior after agreed retouches before mapping the broad upgrade branches;
+necessary bug/compatibility fixes remain allowed throughout.

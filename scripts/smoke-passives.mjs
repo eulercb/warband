@@ -10,6 +10,7 @@ const cases = [
   ['ranger', 'Hail of Thorns', 'Exposed Quarry'],
   ['ranger', "Nature's Bond", 'Pack Bond'],
   ['druid', 'Wall of Thorns', 'Living Paths'],
+  ['druid', 'Frenzied Regen', 'Moon Aspect'],
   ['knight', 'Riposte', 'Victorious Reprise'],
   ['knight', 'Trip Attack', 'Tactical Opening'],
   ['cleric', 'Warding Flare', 'Refulgence'],
@@ -78,7 +79,7 @@ try {
       await icon.waitFor();
       assert.equal(await icon.count(), 1);
       assert.ok((await icon.getAttribute('title')).includes(passive));
-      if (['Spell Weave', 'Flowguard', 'Shadow Rhythm'].includes(passive)) {
+      if (['Spell Weave', 'Flowguard', 'Shadow Rhythm', 'Moon Aspect'].includes(passive)) {
         if (mobile) await page.locator('.wb-touch-btn-basic').waitFor();
         const touch = mobile ? await context.newCDPSession(page) : null;
         const hold = async (slot, key, until) => {
@@ -119,6 +120,16 @@ try {
               );
           }
           await hold('a1', 'KeyQ', () => surge.waitFor({ state: 'hidden' }));
+        } else if (passive === 'Moon Aspect') {
+          const form = page.locator('.hud-selfhp').getByTitle(/Moon bear:/);
+          await hold('a2', 'KeyE', () => form.waitFor());
+          await hold('basic', 'Space', () =>
+            page.waitForFunction(() => {
+              const tile = document.querySelector('.hud-ability[aria-label^="Thornlash"]');
+              return tile && !tile.classList.contains('ready');
+            }),
+          );
+          assert.ok(await form.isVisible());
         } else {
           const flow = page.locator('.hud-selfhp').getByTitle(/Flow: next marked/);
           await hold('a2', 'KeyE', () => flow.waitFor());

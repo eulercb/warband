@@ -194,6 +194,8 @@ export type BuffKind =
   | 'harmony' // effective healing verse, readied for a Bard chorus
   | 'discord' // disruptive special verse, readied for a Bard chorus
   | 'spellSurge' // one enhanced special spell
+  | 'moonRest' // public remaining recovery before another Moon transformation
+  | 'moonForm' // temporary Moon bear shape; abilities and health remain intact
   | 'packBond' // next successful spirit bite shields the dedicated heal recipient
   | 'rampage' // Berserker: next basic cast; mult = Momentum spent
   | 'wildWeave' // mult is basic-cast progress toward a Surge
@@ -1178,6 +1180,7 @@ export interface Telegraph {
 // ---------------------------------------------------------------------------
 
 export interface PlayerView {
+  form?: 'moonBear';
   spiritCompanion?: SpiritCompanionView;
   id: EntityId;
   peerId: string;

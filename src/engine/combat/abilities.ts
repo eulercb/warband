@@ -1,3 +1,4 @@
+import { onMoonAbility } from './moonForm';
 import { dimensionDoor } from './dimensionDoor';
 import { isSteadfast } from './defense';
 import type { CurseStyle } from '../core/curses';
@@ -361,6 +362,7 @@ export function resolvePlayerAbility(
     original && (reserved ? original : consumeMartialFinishers(p, consumeSpellSurge(p, original)));
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
   onSubclassAbility(p, ab);
+  onMoonAbility(world, p, ab);
   const aimAngle = angleOf(p.aim);
   const color = CLASS_COLORS[p.classId] ?? 0xffffff;
 
