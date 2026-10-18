@@ -231,7 +231,7 @@ describe('Sorcerer identity', () => {
     ).tryUseAbility(p, 'a1', ZERO);
     expect(p.castTimer).toBeGreaterThan(0);
     expect(p.buffs.find((b) => b.kind === 'flight')!.remaining).toBe(2);
-    resolvePlayerAbility(w, p, 'a1', ZERO, p.castAbility!);
+    resolvePlayerAbility(w, p, 'a1', ZERO, p.castAbility);
     expect(p.buffs.find((b) => b.kind === 'flight')!.remaining).toBe(2);
     p.buffs = [makeBuff('flight', 0, 8.5, 'wings')];
     tickSubclassPassives(p, 6);
