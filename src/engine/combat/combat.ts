@@ -19,7 +19,11 @@ import type {
   Vec2,
   ZoneKind,
 } from '../core/types';
-import { subclassDamageMultiplier, subclassHitHealing } from './subclassPassives';
+import {
+  subclassDamageMultiplier,
+  subclassHitHealing,
+  onSubclassDirectHit,
+} from './subclassPassives';
 import { getClass } from '../content/classes';
 import {
   HEAL_THREAT_FACTOR,
@@ -391,6 +395,7 @@ export function damageBoss(
   onMartialHit(source, effective, mods?.melee, mods?.flowExtend);
   const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
+  onSubclassDirectHit(sink, source, boss, effective, mods?.direct);
   const passiveHeal = subclassHitHealing(source, boss, effective);
   if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);
   return outgoing;
@@ -441,6 +446,7 @@ export function damageAdd(
   onMartialHit(source, effective, mods?.melee, mods?.flowExtend);
   const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
+  onSubclassDirectHit(sink, source, add, effective, mods?.direct);
   const passiveHeal = subclassHitHealing(source, add, effective);
   if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);
   return outgoing;

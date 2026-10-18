@@ -1,3 +1,4 @@
+import { WEAVE_LABELS } from '../../engine/content/subclassPassives';
 /**
  * Warband — buff/debuff glyphs shared by the canvas labels and the React HUD.
  * Pure (only depends on the BuffView shape) so both the renderer and the HUD can
@@ -140,6 +141,20 @@ function describe(
         color: 0xc06cff,
         good: true,
         label: 'Spell surge: next heavy spell empowered',
+      };
+    case 'wildWeave':
+      return {
+        glyph: '🌀',
+        color: 0xc06cff,
+        good: true,
+        label: `Spell Weave: previous special was ${WEAVE_LABELS[mult]}; change delivery to prepare Surge (8s trigger cooldown)`,
+      };
+    case 'refrainEcho':
+      return {
+        glyph: '🎶',
+        color: 0x66ff88,
+        good: true,
+        label: 'Echoed Refrain: next effective dedicated heal echoes 50%, up to 35 HP',
       };
     case 'spellblade':
       return {

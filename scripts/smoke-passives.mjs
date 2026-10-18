@@ -10,6 +10,12 @@ let currentPage;
 try {
   for (const mobile of [false, true]) {
     for (const [classId, skill, passive] of [
+      ['mage', 'Lightning Bolt', 'Arcane Cadence'],
+      ['mage', 'Arcane Ward', 'Binding Ward'],
+      ['sorcerer', 'Dragon Wings', 'Surge Ascent'],
+      ['sorcerer', 'Chaos Surge', 'Spell Weave'],
+      ['bard', 'Bolster', 'Rallying Chorus'],
+      ['bard', 'Healing Refrain', 'Echoed Refrain'],
       ['rogue', 'Smoke Bomb', "Death's Opening"],
       ['rogue', 'Shield Spell', 'Spellblade'],
       ['warlock', 'Dark Resilience', 'Soul Ember'],

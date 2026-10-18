@@ -1,3 +1,4 @@
+import { onSubclassSurge } from './subclassPassives';
 import { isBurstControl } from '../core/control';
 /** Shared authored spell interactions; copied skills retain their own behavior. */
 import type { Player, Boss, Add } from '../core/types';
@@ -13,6 +14,7 @@ export function consumeSpellSurge(p: Player, ab: PlayerAbilityDef): PlayerAbilit
   const index = p.buffs.findIndex((b) => b.kind === 'spellSurge' && b.remaining > 0);
   if (index < 0) return ab;
   p.buffs.splice(index, 1);
+  onSubclassSurge(p);
   const count = Math.max(1, ab.projCount ?? 1);
   // Zone-payload fusions keep their original delivery: extra shots must not duplicate zones.
   const twin =
@@ -35,7 +37,7 @@ export function prepareSpellSurge(p: Player, ab: PlayerAbilityDef): void {
     remaining: ab.prepareSurge,
     source: 'spellSurge',
   };
-  const index = p.buffs.findIndex((b) => b.source === buff.source);
+  const index = p.buffs.findIndex((b) => b.kind === 'spellSurge');
   if (index < 0) p.buffs.push(buff);
   else p.buffs[index] = { ...buff, remaining: Math.max(p.buffs[index].remaining, buff.remaining) };
 }
