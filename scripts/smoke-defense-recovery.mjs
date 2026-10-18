@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright-core';
 const tests = [
+  { classId: 'mage', name: 'Dimension Door', text: /arrival foes return to departure/ },
   {
     classId: 'rogue',
     name: 'Smoke Bomb',

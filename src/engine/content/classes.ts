@@ -1226,7 +1226,10 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   // item 11 — forced movement on struck enemies.
   if (def.knockback) parts.push(`knock back ${n(def.knockback)}u`);
   if (def.pull) parts.push(`pull in ${n(def.pull)}u`);
-  if (def.swap) parts.push('swap foes across you');
+  if (def.swap)
+    parts.push(
+      'arrival foes return to departure; departure foes scatter outward; moved foes slowed 35% for 2s; roots resist relocation',
+    );
   // item 13 — a signature crit lean.
   if (def.critChanceBonus) parts.push(`+${n(def.critChanceBonus * 100)}% crit`);
   if (def.critMultBonus) parts.push(`+${Math.round(def.critMultBonus * 100) / 100}× crit dmg`);

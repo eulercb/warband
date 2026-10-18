@@ -1,12 +1,11 @@
 # Class identity and subclass roadmap
 
-Current delivery: **balance B2b**, the remaining active-defense/plain-recovery
-cohort, plus reactive shield and Taunt readability. See the final section for
-implemented contracts and review cases.
+Current delivery: **Dimension Door corrective patch**, before the next passive
+cohort. See the final section for its teleport and control contracts.
 
 Previously merged and playtested: the class skill-loop cohorts, initial
 Rogue/Warlock passives, martial coherence, Cleric absorption/retuning, Paladin
-auras, caster defenses, enemy-debuff readability, Warlock balance B1, and B2a.
+auras, caster defenses, enemy-debuff readability, Warlock balance B1, B2a and B2b.
 
 **Next:** the first remaining defining-passive cohort. Five core/system batches
 remain (three passive cohorts, companion and form), plus four to six upgrade
@@ -1112,3 +1111,43 @@ remain (three passive cohorts, companion and form), plus four to six upgrade
 batches: roughly **9–11 further PRs**. Assess the new reactive defenses in live play;
 readability feedback remains part of the existing delivery review, not a separate
 open-ended graphics project.
+
+## Dimension Door corrective patch
+
+Playtesting exposed that the old “swap” was actually a shove reflected around the
+arrival point. Crossing slides, roots, collision separation and a missing composed
+path produced inconsistent results. Repair this separately from six new passives;
+this is a corrective detour, not completion of the next passive milestone.
+
+- A single pre-movement snapshot identifies departure and arrival enemies.
+  Arrival wins when the circles overlap; each living boss/add is processed once.
+- Arrival enemies teleport back near the departure point, preserving their offset
+  direction. Departure enemies teleport outward along their original radial
+  direction, at least 100u farther and beyond the departure radius. Exact-center
+  enemies use the caster's aim. Stable IDs resolve crowded placements consistently.
+- Endpoints check solid cover, totems, allies and enemies, including bosses of
+  different sizes. A bounded, deterministic nearby search finds a clear pocket;
+  an enemy with no safe pocket stays put. If the caster cannot land, all planned
+  relocations are rolled back. Teleports pass through intervening cover.
+- Rooted/control-resistant enemies remain anchored. Root still prevents the
+  caster's teleport. A successful relocation cancels the old shove and emits
+  familiar violet departure/arrival flashes. Existing locked boss attack targeting
+  remains intact; this is relocation, not a stun or attack cancellation.
+- Moved enemies receive a 35% movement slow for 2s, using existing slow readability
+  and enabling Fireball's control-burst payoff. No additional stun chain, damage,
+  party-power scaling adjustment, or new input is introduced.
+- Native, copied and Forge-composed blink deliveries retain the exchange;
+  composed descriptions explain it and synthesis budgets price the utility.
+
+Review: mixed departure/arrival groups, overlaps and exact centers, cover and
+wrap seams, roots/control resistance, dead enemies, crowded/failed landings,
+previous shoves, and native/composed parity. Recheck against a live mobile boss
+and summons after merge; safety adjustments may move a landing slightly away
+from the exact aim endpoint.
+
+**Next remains:** first six ordinary defining passives. There are still 18 ordinary
+passives in three cohorts, then the separate companion and form systems, followed
+by four to six upgrade/grand/graft batches (about 9–11 planned feature PRs).
+The earlier solo-Taunt limitation belongs to Knight's passive/kit review: a pure
+taunt adds little with one player and needs a useful solo expression, without
+changing forced aggro or locked attack rules accidentally.

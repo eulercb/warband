@@ -1,3 +1,6 @@
+import { decompose, recompose } from '../src/engine/content/forge';
+import { isBurstControl } from '../src/engine/core/control';
+import { dist } from '../src/engine/core/torus';
 /**
  * Branch-coverage tests for NEW game mechanics that the happy-path suites miss:
  *
@@ -283,61 +286,127 @@ describe('forced-move slide over time (item 2)', () => {
 });
 
 // ===========================================================================
-// item 11 — Dimension Door: a swap-blink reflects enemies across the caster
+// Dimension Door uses endpoint snapshots and instant relocation.
 // ===========================================================================
-describe('blink swap / applyDimensionSwap (item 11)', () => {
-  it('reflects a boss and an add across the mage, while a close-bound foe holds fast', () => {
+describe('Dimension Door', () => {
+  function door(composed = false) {
     const w = mkWorld('mage');
     w.obstacles = [];
+    w.terrain = [];
     const p = w.players[0];
-    // Park the mage in place (range 0) and turn its Blink into a Dimension Door.
-    const t = tableOf(p);
-    t.a3.range = 0;
-    t.a3.swap = true;
-    t.a3.radius = 220;
-    p.pos = { x: 800, y: 500 };
+    p.pos = { x: 500, y: 500 };
     p.aim = { ...RIGHT };
-
-    // A boss 100u to the right — unrooted, so it reflects to the mage's far (left) side.
-    const boss = w.boss!;
-    boss.pos = { x: 900, y: 500 };
-
-    // An add 200u below — unrooted, reflects across to the top side (line 332).
-    const addFar = mkAdd(w, { x: 800, y: 700 });
-    // A rooted add 50u away — 2·d = 100 < FORCE_OVERCOME_ROOT(150) → stays put (line 326).
-    const addNearRooted = mkAdd(w, { x: 850, y: 500 });
-    applyBuff(addNearRooted, makeBuff('root', 0, 5, 'test'));
-    // A rooted add 150u away — 2·d = 300 ≥ 150 → root ripped off, then reflected (line 327).
-    const addFarRooted = mkAdd(w, { x: 800, y: 650 });
-    applyBuff(addFarRooted, makeBuff('root', 0, 5, 'test'));
-    w.adds = [addFar, addNearRooted, addFarRooted];
-
-    resolvePlayerAbility(w, p, 'a3', ZERO); // Dimension Door
-    // item 2: the reflected foes now slide across over ticks — resolve every shove.
-    settle(w, boss);
-    for (const a of w.adds) settle(w, a);
-
-    // The mage itself did not move (range 0) — the reflection is across its spot.
-    expect(p.pos.x).toBeCloseTo(800, 3);
-    expect(p.pos.y).toBeCloseTo(500, 3);
-
-    // Boss: 100u right → 100u left of the mage (crossed x = 800). [line 331]
-    expect(boss.pos.x).toBeCloseTo(700, 3);
-    expect(boss.pos.x).toBeLessThan(800);
-
-    // Far add: 200u below → 200u above the mage (crossed y = 500). [line 332]
-    expect(addFar.pos.y).toBeCloseTo(300, 3);
-    expect(addFar.pos.y).toBeLessThan(500);
-
-    // Near rooted add: the bind holds — unmoved and still rooted. [line 326]
-    expect(addNearRooted.pos.x).toBeCloseTo(850, 3);
-    expect(addNearRooted.pos.y).toBeCloseTo(500, 3);
-    expect(isRooted(addNearRooted)).toBe(true);
-
-    // Far rooted add: strong enough swap tears the root off and flings it across. [line 327]
-    expect(addFarRooted.pos.y).toBeCloseTo(350, 3);
-    expect(addFarRooted.pos.y).toBeLessThan(500);
-    expect(isRooted(addFarRooted)).toBe(false);
+    const def = { ...tableOf(p).a3, range: 300, swap: true, radius: 120 };
+    p.abilities!.a3 = composed
+      ? recompose(decompose(def), { slot: 'a3', name: 'Door', cooldown: 6 })
+      : def;
+    w.boss!.pos = { x: 800, y: 500 };
+    return { w, p, boss: w.boss! };
+  }
+  for (const composed of [false, true]) {
+    it(`instantly exchanges arrival foes and scatters departure foes (${composed ? 'Forge' : 'native'})`, () => {
+      const { w, p, boss } = door(composed);
+      const add = mkAdd(w, { x: 500, y: 550 });
+      const untouched = mkAdd(w, { x: 1100, y: 700 });
+      w.adds = [add, untouched];
+      boss.shove = { vx: 900, vy: 0, remaining: 1 };
+      resolvePlayerAbility(w, p, 'a3', ZERO);
+      expect(p.pos).toEqual({ x: 800, y: 500 });
+      expect(boss.pos).toEqual({ x: 500, y: 500 });
+      expect(boss.shove).toBeNull();
+      expect(add.pos.x).toBeCloseTo(500);
+      expect(add.pos.y).toBeGreaterThanOrEqual(650);
+      expect(untouched.pos).toEqual({ x: 1100, y: 700 });
+      for (const enemy of [boss, add]) {
+        expect(enemy.buffs.some((b) => b.source === 'dimensionDisorient' && b.mult === 0.65)).toBe(
+          true,
+        );
+        expect(w.events.some((e) => e.t === 'blink' && e.id === enemy.id)).toBe(true);
+        expect(enemy.buffs.some(isBurstControl)).toBe(true);
+      }
+      expect(dist(p.pos, boss.pos)).toBeGreaterThan(p.radius + boss.radius);
+    });
+  }
+  it('keeps rooted/steadfast foes and dead enemies unchanged, without blocking the caster landing', () => {
+    const { w, p, boss } = door();
+    applyBuff(boss, makeBuff('root', 0, 5, 'test'));
+    const resistant = mkAdd(w, { x: 500, y: 530 });
+    applyBuff(resistant, makeBuff('steadfast', 0, 5, 'test'));
+    const dead = mkAdd(w, { x: 820, y: 500 });
+    dead.hp = 0;
+    w.adds = [resistant, dead];
+    resolvePlayerAbility(w, p, 'a3', ZERO);
+    expect(boss.pos).toEqual({ x: 800, y: 500 });
+    expect(resistant.pos).toEqual({ x: 500, y: 530 });
+    expect(dead.pos).toEqual({ x: 820, y: 500 });
+    expect(dist(p.pos, boss.pos)).toBeGreaterThan(p.radius + boss.radius);
+    expect(boss.buffs.some((b) => b.source === 'dimensionDisorient')).toBe(false);
+  });
+  it('does nothing while the caster is rooted', () => {
+    const { w, p, boss } = door();
+    applyBuff(p, makeBuff('root', 0, 5, 'test'));
+    resolvePlayerAbility(w, p, 'a3', ZERO);
+    expect(p.pos.x).toBe(500);
+    expect(boss.pos.x).toBe(800);
+  });
+  it('crosses cover, avoids solid landing points and wraps the arena seam', () => {
+    const { w, p, boss } = door();
+    p.pos = { x: w.arena.w - 100, y: 500 };
+    boss.pos = { x: 200, y: 500 };
+    w.obstacles = [
+      { id: w.allocId(), pos: { x: 200, y: 500 }, radius: 50, kind: 'rock', variant: 0 },
+    ];
+    resolvePlayerAbility(w, p, 'a3', ZERO);
+    expect(dist(p.pos, { x: 200, y: 500 })).toBeGreaterThan(50 + p.radius);
+    expect(p.pos.x).toBeLessThan(450);
+    expect(dist(boss.pos, { x: w.arena.w - 100, y: 500 })).toBeLessThan(150);
+  });
+  it('handles overlapping endpoints once, with stable ordering and no queued collision slide', () => {
+    const run = (reverse: boolean) => {
+      const { w, p, boss } = door();
+      p.abilities!.a3.range = 0;
+      const first = mkAdd(w, { ...p.pos });
+      const second = mkAdd(w, { ...p.pos });
+      boss.pos = { x: 1100, y: 700 };
+      w.adds = reverse ? [second, first] : [first, second];
+      resolvePlayerAbility(w, p, 'a3', ZERO);
+      expect(w.events.filter((e) => e.t === 'blink' && e.id !== p.id)).toHaveLength(2);
+      expect(dist(first.pos, second.pos)).toBeGreaterThan(first.radius + second.radius);
+      return [first.pos, second.pos, p.pos];
+    };
+    expect(run(false)).toEqual(run(true));
+  });
+  it('rolls back already planned enemy moves when only the destination is sealed', () => {
+    const { w, p, boss } = door();
+    w.obstacles = [
+      { id: w.allocId(), pos: { x: 800, y: 500 }, radius: 280, kind: 'rock', variant: 0 },
+    ];
+    const oldShove = { vx: 10, vy: 0, remaining: 1 };
+    boss.shove = oldShove;
+    resolvePlayerAbility(w, p, 'a3', ZERO);
+    expect(p.pos).toEqual({ x: 500, y: 500 });
+    expect(boss.pos).toEqual({ x: 800, y: 500 });
+    expect(boss.shove).toBe(oldShove);
+    expect(boss.buffs).toHaveLength(0);
+    expect(w.events.some((e) => e.t === 'blink' && e.id === boss.id)).toBe(false);
+  });
+  it('does not disorient an enemy whose safe destination equals its current position', () => {
+    const { w, p, boss } = door();
+    p.abilities!.a3.range = 0;
+    boss.pos = { x: 600, y: 500 };
+    resolvePlayerAbility(w, p, 'a3', ZERO);
+    expect(boss.pos).toEqual({ x: 600, y: 500 });
+    expect(boss.buffs).toHaveLength(0);
+  });
+  it('leaves everyone safely in place when no legal landing exists', () => {
+    const { w, p, boss } = door();
+    w.obstacles = [
+      { id: w.allocId(), pos: { x: 650, y: 500 }, radius: 2000, kind: 'rock', variant: 0 },
+    ];
+    resolvePlayerAbility(w, p, 'a3', ZERO);
+    expect(p.pos).toEqual({ x: 500, y: 500 });
+    expect(boss.pos).toEqual({ x: 800, y: 500 });
+    expect(boss.buffs).toHaveLength(0);
   });
 });
 

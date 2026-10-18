@@ -989,29 +989,31 @@ describe('player forced movement (item 11)', () => {
     expect(boss.pos.x).toBeGreaterThan(before); // knocked back
   });
 
-  it('Dimension Door reflects a nearby enemy across the mage (swap)', () => {
+  it('Dimension Door exchanges an arrival enemy toward departure without a shove', () => {
     const w = mkWorld('mage');
     const p = w.players[0];
     const boss = w.boss!;
     w.obstacles = [];
-    // Make a2 a swap-blink parked so the mage stays put (range 0), enemy near it.
+    // An enemy at the destination returns toward the departure portal.
     tableOf(p).a2 = {
       slot: 'a2',
       name: 'Door',
       kind: 'blink',
       cooldown: 6,
       damage: 0,
-      range: 0,
+      range: 300,
       swap: true,
       radius: 300,
     };
     p.pos = { x: 800, y: 500 };
     p.aim = { x: 1, y: 0 };
-    boss.pos = { x: 900, y: 500 }; // 100u to the mage's right
+    boss.pos = { x: 1100, y: 500 }; // at the arrival portal
     resolvePlayerAbility(w, p, 'a2', ZERO);
     settle(w, boss);
-    // Reflected across the mage → now ~100u to the LEFT.
-    expect(boss.pos.x).toBeLessThan(800);
+    // Return near departure with room for the boss hitbox.
+    expect(boss.pos.x).toBeLessThan(1000);
+    expect(p.pos.x).toBe(1100);
+    expect(boss.shove).toBeNull();
   });
 
   it('Bull Rush / Chain Pull / Gust carry the intended forced movement (content)', () => {
