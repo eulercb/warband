@@ -106,6 +106,7 @@ export type EffectComponent =
   | { kind: 'wolfHunt'; duration: number }
   | { kind: 'flowExtend'; seconds: number }
   | { kind: 'guard'; duration: number }
+  | { kind: 'mirrorImages'; count: number; duration: number }
   | { kind: 'frontGuard'; charges: number; duration: number }
   | { kind: 'steadfast'; duration: number }
   | { kind: 'cleanse' }
@@ -307,6 +308,9 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.flowExtendOnHit) effects.push({ kind: 'flowExtend', seconds: def.flowExtendOnHit });
   if (kind === 'groundZone' && def.prepareSurge)
     effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
+  if (def.mirrorImages) effects.push({ kind: 'mirrorImages', ...def.mirrorImages });
+  if (kind === 'groundZone' && def.prepareCrit)
+    effects.push({ kind: 'prepareCrit', duration: def.prepareCrit });
   if (def.frontGuard) effects.push({ kind: 'frontGuard', ...def.frontGuard });
   if (def.steadfastDuration) effects.push({ kind: 'steadfast', duration: def.steadfastDuration });
   if (def.cleanseOnHeal) effects.push({ kind: 'cleanse' });
@@ -416,6 +420,9 @@ export function recompose(
         break;
       case 'flowExtend':
         def.flowExtendOnHit = e.seconds;
+        break;
+      case 'mirrorImages':
+        def.mirrorImages = { count: e.count, duration: e.duration };
         break;
       case 'frontGuard':
         def.frontGuard = { charges: e.charges, duration: e.duration };
@@ -567,6 +574,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return e.duration * 3;
     case 'flowExtend':
       return e.seconds * 16;
+    case 'mirrorImages':
+      return e.count * 15 + e.duration * 2;
     case 'frontGuard':
       return e.charges * 20 + e.duration * 2;
     case 'steadfast':
@@ -754,6 +763,8 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return `wolf hunt ${s(e.duration)} — walk 120u per momentum stack instead of melee hits; up to 3 stacks, at most 1 per 0.4s`;
     case 'flowExtend':
       return `connecting hits extend existing Flow by ${s(e.seconds)}, up to 1s total per preparation`;
+    case 'mirrorImages':
+      return `${n(e.count)} mirror images for ${s(e.duration)}; each reduces one direct hit by 60%, then breaks; ground damage bypasses`;
     case 'frontGuard':
       return `block ${n(e.charges)} frontal damage hits for ${s(e.duration)}; aim within 120°; hazards and control bypass`;
     case 'steadfast':
@@ -767,7 +778,7 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
     case 'momentumStrike':
       return 'spend momentum for +10% dmg and +8u cone reach / +10u burst radius per stack';
     case 'prepareFlow':
-      return `successful movement readies Flow for ${s(e.duration)}; next marked special is instant with more reach`;
+      return `${delivery === 'selfBuff' ? 'centering yourself' : 'successful movement'} readies Flow for ${s(e.duration)}; next marked special is instant with more reach`;
     case 'flowStrike':
       return flowPayoff(delivery);
     case 'pierce':
@@ -1071,6 +1082,7 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'cleanse':
     case 'steadfast':
       return kind === 'selfBuff' || kind === 'heal';
+    case 'mirrorImages':
     case 'frontGuard':
     case 'bloodRage':
     case 'wolfHunt':
@@ -1081,7 +1093,7 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'flowStrike':
       return DIRECT_STRIKE.has(kind) || kind === 'groundZone';
     case 'prepareFlow':
-      return kind === 'dash' || kind === 'blink';
+      return kind === 'dash' || kind === 'blink' || kind === 'selfBuff';
     case 'pierce':
       return kind === 'projectile';
     case 'rescueHeal':
@@ -1092,7 +1104,13 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
         ? kind === 'heal'
         : kind === 'selfBuff' || kind === 'buffAlly';
     case 'absorption':
-      return kind === 'selfBuff' || kind === 'buffAlly' || kind === 'meleeCone' || kind === 'pbaoe';
+      return (
+        kind === 'selfBuff' ||
+        kind === 'buffAlly' ||
+        kind === 'heal' ||
+        kind === 'meleeCone' ||
+        kind === 'pbaoe'
+      );
     case 'allyWard':
       return kind === 'selfBuff';
     case 'bardSong':
@@ -1107,7 +1125,7 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'prepareSurge':
       return kind === 'blink' || kind === 'selfBuff' || kind === 'groundZone';
     case 'prepareCrit':
-      return kind === 'blink';
+      return kind === 'blink' || kind === 'selfBuff' || kind === 'groundZone';
     case 'rebuke':
       return kind === 'pbaoe';
     case 'flight':
@@ -1162,6 +1180,7 @@ function primaryWant(kind: DeliveryKind): (e: EffectComponent) => boolean {
       return (e) =>
         e.kind === 'buff' ||
         e.kind === 'frontGuard' ||
+        e.kind === 'mirrorImages' ||
         e.kind === 'absorption' ||
         e.kind === 'healOnUse';
     case 'dash':
@@ -1598,6 +1617,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, duration: e.duration * f };
     case 'castSlow':
       return { ...e, duration: e.duration * f }; // rigid: keeps its bite, sheds time
+    case 'mirrorImages':
+      return { ...e, count: Math.max(1, e.count * f), duration: e.duration * f };
     case 'frontGuard':
       return { ...e, charges: Math.max(1, e.charges * f), duration: e.duration * f };
     case 'cleanse':
@@ -1747,6 +1768,8 @@ function addBoonComponents(
         'flowExtend',
         'guard',
         'frontGuard',
+        'mirrorImages',
+        'prepareCrit',
         'steadfast',
         'cleanse',
         'momentum',
@@ -1901,6 +1924,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.wolfHunt != null ? { ...e, duration: def.wolfHunt } : e;
     case 'flowExtend':
       return def.flowExtendOnHit != null ? { ...e, seconds: def.flowExtendOnHit } : e;
+    case 'mirrorImages':
+      return def.mirrorImages ? { ...e, ...def.mirrorImages } : e;
     case 'frontGuard':
       return def.frontGuard ? { ...e, ...def.frontGuard } : e;
     case 'steadfast':
@@ -2018,6 +2043,12 @@ function capEffect(e: EffectComponent): EffectComponent {
       return { ...e, duration: clamp(round1(e.duration), 2, 8) };
     case 'flowExtend':
       return { ...e, seconds: clamp(round05(e.seconds), 0.1, 0.5) };
+    case 'mirrorImages':
+      return {
+        ...e,
+        count: clamp(Math.round(e.count), 1, 5),
+        duration: clamp(round1(e.duration), 1, 9),
+      };
     case 'frontGuard':
       return {
         ...e,

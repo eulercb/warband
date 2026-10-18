@@ -230,10 +230,16 @@ export default function PauseMenu({ onResume }: { onResume: () => void }) {
             drawing on your marks.
           </p>
           <p>
-            Broken field borders are friendly; solid pink borders mark hostile timed zones. Large
-            unbacked curse symbols mark your spell field, not a curse on the ground. A cyan front
-            arc and white pips show directional damage blocks; golden feet mean resistance to roots,
-            stuns and forced movement. Ground damage bypasses the front arc.
+            A golden hexagonal shell means Divine Shield damage immunity; it ends with the immunity.
+            One cyan shield plate per frontal block follows aim and disappears when spent. Violet
+            silhouettes are remaining Mirror Images, not invulnerability. A bullseye above a boss
+            means Taunt is forcing its next target choices; gold means you are the taunter, cyan
+            means an ally, and its arrow points toward them. Already committed attacks keep their
+            targets; summons are unaffected. Broken field borders are friendly; solid pink borders
+            mark hostile timed zones. Large unbacked curse symbols mark your spell field, not a
+            curse on the ground. A cyan front arc and white pips show directional damage blocks;
+            golden feet mean resistance to roots, stuns and forced movement. Ground damage bypasses
+            the front arc.
           </p>
         </details>
 

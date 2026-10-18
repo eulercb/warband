@@ -3241,7 +3241,7 @@ export class World {
       moveSpeed: p.moveSpeed,
       state: p.state,
       cooldowns: { ...p.cooldowns },
-      buffs: p.buffs.map((b) => ({ kind: b.kind, remaining: b.remaining, mult: b.mult })),
+      buffs: p.buffs.map(buffView),
       downedTimer: p.downedTimer,
       reviveProgress: p.reviveProgress,
       castSlot: p.castSlot,
@@ -3271,6 +3271,13 @@ export class World {
   private bossView(b: Boss): BossView {
     return {
       id: b.id,
+      taunt:
+        this.tauntTimer > 0 &&
+        this.tauntTargetId != null &&
+        b.hp > 0 &&
+        this.players.some((p) => p.id === this.tauntTargetId && p.state === 'alive' && p.hp > 0)
+          ? { targetId: this.tauntTargetId, remaining: this.tauntTimer }
+          : undefined,
       monsterId: b.monsterId,
       pos: { ...b.pos },
       facing: b.facing,

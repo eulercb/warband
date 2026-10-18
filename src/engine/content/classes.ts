@@ -135,6 +135,7 @@ export interface PlayerAbilityDef {
   critMultBonus?: number;
   /** Guarded real damage readies one +30% connecting melee counter for 4s. */
   guardWindow?: number;
+  mirrorImages?: { count: number; duration: number };
   frontGuard?: { charges: number; duration: number };
   steadfastDuration?: number;
   cleanseOnHeal?: boolean;
@@ -861,7 +862,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         kind: 'selfBuff',
         cooldown: 14,
         damage: 0,
-        buffDefMult: 0.6,
+        mirrorImages: { count: 3, duration: 5 },
         buffMoveMult: 1.15,
         buffDuration: 5,
       },
@@ -1101,7 +1102,10 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   const parts: string[] = [];
 
   // --- Primary magnitude (what it does when it lands) ---
-  if (def.kind === 'taunt') parts.push('Pull aggro');
+  if (def.kind === 'taunt')
+    parts.push(
+      'Force all bosses to target you for new attacks; raises threat; locked attacks and summons unaffected',
+    );
   if (def.kind === 'heal' && def.damage > 0) {
     parts.push(`Heal ${n(def.damage)}`); // heals aren't damage-scaled
   } else if (def.damage > 0) {
@@ -1155,6 +1159,10 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
     parts.push(
       `connecting hits extend existing Flow by ${s(def.flowExtendOnHit)}, up to 1s total per preparation`,
     );
+  if (def.mirrorImages)
+    parts.push(
+      `${def.mirrorImages.count} mirror images for ${s(def.mirrorImages.duration)}; each reduces one direct hit by 60%, then breaks; ground damage bypasses`,
+    );
   if (def.frontGuard)
     parts.push(
       `block ${def.frontGuard.charges} frontal damage hits in a 120° arc for ${s(def.frontGuard.duration)}; aim to face attacks; ground hazards and control bypass it`,
@@ -1179,7 +1187,7 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
     parts.push('spend momentum for +10% dmg and +8u cone reach / +10u burst radius per stack');
   if (def.prepareFlow)
     parts.push(
-      `successful movement readies Flow for ${s(def.prepareFlow)}; next marked special is instant with more reach`,
+      `${def.kind === 'selfBuff' ? 'centering yourself' : 'successful movement'} readies Flow for ${s(def.prepareFlow)}; next marked special is instant with more reach`,
     );
   if (def.consumesFlow) parts.push(flowPayoff(def.kind));
   if (def.pierce)
@@ -1242,7 +1250,10 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
 
   // --- Buffs (damage/move up, damage-taken down) ---
   if (def.buffDamageMult) parts.push(`+${n((def.buffDamageMult - 1) * 100)}% dmg`);
-  if (def.buffMoveMult) parts.push(`+${n((def.buffMoveMult - 1) * 100)}% move`);
+  if (def.buffMoveMult)
+    parts.push(
+      `+${n((def.buffMoveMult - 1) * 100)}% move${def.kind === 'heal' ? ' for the effectively healed recipient' : ''}`,
+    );
   if (def.buffDefMult) parts.push(`${n((1 - def.buffDefMult) * 100)}% less dmg taken`);
 
   // --- Duration (a buff's or a ground zone's) ---

@@ -168,6 +168,7 @@ const PROJECTILE_COLORS: Record<ProjectileKind, number> = {
 };
 
 const ZONE_COLORS: Record<ZoneKind, number> = {
+  smoke: 0xb4b9d3, // concealment/escape, distinct from damaging poison
   voidZone: 0x9c4bd6, // purple
   rainOfArrows: 0x4caf50, // green
   sanctuary: 0xf2c14e, // gold

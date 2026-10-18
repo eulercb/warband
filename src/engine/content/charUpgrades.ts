@@ -846,9 +846,13 @@ const SORCERER: CharUpgradeDef[] = [
     'so_mirror',
     'Greater Mirror Image',
     '🪞',
-    'Mirror Image blocks 52% of damage, lasts 2s longer, returns 15% sooner, and extends surge readiness by 0.4s',
+    'Mirror Image gains one image (cap 5), lasts 2s longer (cap 9s), returns 15% sooner, and extends surge readiness by 0.4s',
     ({ abilities: a }) => {
-      mul(a.a2, 'buffDefMult', 0.8);
+      if (a.a2.mirrorImages)
+        a.a2.mirrorImages = {
+          count: Math.min(5, a.a2.mirrorImages.count + 1),
+          duration: Math.min(9, a.a2.mirrorImages.duration + 2),
+        };
       addN(a.a2, 'buffDuration', 2);
       addN(a.a2, 'prepareSurge', 0.4);
       mul(a.a2, 'cooldown', 0.85);
@@ -2669,9 +2673,9 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'so_gk_a2_a',
     'Legion of Mirrors',
     '🪞',
-    'Mirror Image blocks 76%, grants +35% move, and holds 4s longer',
+    'Mirror Image gains five images for 9s and grants +35% movement',
     (ab) => {
-      mul(ab, 'buffDefMult', 0.4);
+      if (ab.kind === 'selfBuff') ab.mirrorImages = { count: 5, duration: 9 };
       ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.35);
       addN(ab, 'buffDuration', 4);
     },
@@ -2682,9 +2686,13 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'so_gk_a2_b',
     'Blurred Form',
     '💨',
-    'Mirror Image is up far more often (−45% cd), deepens to ~35% taken, +30% move',
+    'Mirror Image recharges 45% faster, gains one image (cap 5), holds 2s longer (cap 9s), and grants +30% movement',
     (ab) => {
-      mul(ab, 'buffDefMult', 0.58);
+      if (ab.mirrorImages)
+        ab.mirrorImages = {
+          count: Math.min(5, ab.mirrorImages.count + 1),
+          duration: Math.min(9, ab.mirrorImages.duration + 2),
+        };
       mul(ab, 'cooldown', 0.55);
       ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.3);
       addN(ab, 'buffDuration', 2);
@@ -2862,6 +2870,11 @@ function amplify(ab: PlayerAbilityDef, mag: number, size: number): void {
   scaleField(ab, 'zoneTickDamage', mag);
   scaleField(ab, 'zoneTickHeal', mag);
   scaleField(ab, 'healOnUse', mag);
+  if (ab.mirrorImages)
+    ab.mirrorImages = {
+      ...ab.mirrorImages,
+      duration: Math.min(9, ab.mirrorImages.duration * (1 + size)),
+    };
   if (ab.frontGuard)
     ab.frontGuard = {
       ...ab.frontGuard,
@@ -3533,6 +3546,17 @@ function subSkillTune(ab: PlayerAbilityDef): void {
 }
 
 const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
+  ro_assassin_smoke:
+    'Increase smoke radius by 8% and reduce recharge by 8%; retain hindrance, allied haste and precision setup',
+  ro_trickster_shield:
+    'Extend the frontal block by 8% (cap 8s) and reduce recharge by 8%; retain precision setup',
+  ba_valor_bolster:
+    'Improve rally movement, extend self control resistance by 8% (cap 8s), and reduce recharge by 8%; retain cleanse and chorus',
+  rg_beast_bond:
+    'Increase healing by 12%, improve recipient haste, and reduce recharge by 8%; retain cleanse',
+  mg_abjurer_mend: 'Increase healing and barrier by 12%, reach by 8%, and reduce recharge by 8%',
+  mo_openhand_ki: 'Increase self-healing by 12% and reduce recharge by 8%; retain Flow preparation',
+
   kn_champion_rally:
     'Increase self-healing by 12%, sprint speed by 4.8 percentage points, and reduce recharge by 8%',
   kn_battle_rally:

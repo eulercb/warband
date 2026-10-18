@@ -35,7 +35,9 @@ try {
       const { Renderer } = await import('/src/render/pipeline/renderer.ts');
       const { World } = await import('/src/engine/world/world.ts');
       const { enemyDebuffs } = await import('/src/render/pipeline/enemyDebuffs.ts');
-      const { spawnZone } = await import('/src/engine/combat/abilities.ts');
+      const { spawnZone, resolvePlayerAbility } = await import('/src/engine/combat/abilities.ts');
+      const { damagePlayer, tickBuffs } = await import('/src/engine/combat/combat.ts');
+      const { getClass } = await import('/src/engine/content/classes.ts');
       const { isBurstControl } = await import('/src/engine/core/control.ts');
       const world = new World({
         monsterId: 'dragon',
@@ -125,11 +127,49 @@ try {
           ];
           return frame;
         },
+        defense(kind) {
+          world.groundZones = [];
+          useAdd = false;
+          buffs = [];
+          owner.buffs = [];
+          owner.state = 'alive';
+          owner.hp = owner.maxHp;
+          owner.aim = { x: 0, y: -1 };
+          delete owner.paladinAura;
+          world.tauntTimer = 0;
+          world.tauntTargetId = null;
+          if (kind.startsWith('guard')) {
+            owner.abilities.a2 = { ...getClass('knight').abilities.a2 };
+            resolvePlayerAbility(world, owner, 'a2', { x: 0, y: 0 });
+            const hits = 2 - Number(kind.at(-1));
+            for (let i = 0; i < hits; i++) damagePlayer(world, owner, 10, world.boss.pos);
+          } else if (kind.startsWith('divine')) {
+            owner.abilities.a3 = { ...getClass('paladin').abilities.a3 };
+            resolvePlayerAbility(world, owner, 'a3', { x: 0, y: 0 });
+            if (kind === 'divine-expired') tickBuffs(owner, 2);
+          } else if (kind.startsWith('taunt')) {
+            owner.abilities.a1 = { ...getClass('knight').abilities.a1 };
+            resolvePlayerAbility(world, owner, 'a1', { x: 0, y: 0 });
+            if (kind === 'taunt-expired') world.tauntTimer = 0;
+            if (kind === 'taunt-downed') owner.state = 'downed';
+          } else {
+            owner.abilities.a2 = { ...getClass('sorcerer').abilities.a2 };
+            resolvePlayerAbility(world, owner, 'a2', { x: 0, y: 0 });
+          }
+          return frame;
+        },
         probe() {
           const state = world.serialize();
           const snapshot = state.adds[0] ?? state.bosses[0];
           return {
             frame,
+            guard: state.players[0].buffs.find((b) => b.kind === 'frontGuard')?.mult ?? 0,
+            divine: state.players[0].buffs.some((b) => b.visual === 'divineShield'),
+            images: state.players[0].buffs.find((b) => b.kind === 'mirrorImages')?.mult ?? 0,
+            taunted: !!state.bosses[0].taunt,
+            tauntInk: renderer.enemyStatusLayer.context.instructions.some(
+              (i) => i.action === 'fill' && i.data.style.color === 0xffd36b,
+            ),
             zones: state.groundZones.map((z) => ({ side: z.side, curseStyle: z.curseStyle })),
             zonePlates: renderer.zonesLayer.context.instructions.filter(
               (i) => i.action === 'fill' && i.data.style.color === 0x090d18,
@@ -212,7 +252,7 @@ try {
       },
     ];
     cases.push({ ...cases.find((c) => c.name === 'combined'), name: 'combined-add', add: true });
-    for (const test of cases) {
+    for (const test of process.env.SMOKE_DEFENSE_ONLY ? [] : cases) {
       const previous = await page.evaluate((next) => {
         const f = window.debuffFixture;
         f.set(next.buffs, next.add);
@@ -238,30 +278,60 @@ try {
         `PASS ${viewport.width}×${viewport.height} ${test.name}: foreground statuses, ownership, control semantics`,
       );
     }
-    const beforeZones = await page.evaluate(() => window.debuffFixture.zones());
-    await page.waitForFunction(
-      (frame) => window.debuffFixture.probe().frame > frame + 2,
-      beforeZones,
-    );
-    const zones = await page.evaluate(() => window.debuffFixture.probe());
-    assert.deepEqual(
-      zones.zones.filter((z) => z.side === 'boss'),
-      Array.from({ length: 3 }, () => ({ side: 'boss', curseStyle: undefined })),
-    );
-    assert.deepEqual(
-      zones.zones.filter((z) => z.side === 'player').map((z) => z.curseStyle),
-      ['hex', 'searing', 'dread'],
-    );
-    assert.equal(zones.zonePlates, 0, 'floor markings must not use enemy status plates');
-    assert.ok(zones.zoneInstructions > 6);
-    if (process.env.SHOT_DIR)
-      await page.screenshot({
-        path: `${process.env.SHOT_DIR}/hazard-overlap-${viewport.width}x${viewport.height}.png`,
-      });
-    assert.deepEqual(errors, []);
-    console.log(
-      `PASS ${viewport.width}×${viewport.height} hostile pools/friendly curse fields and defensive player cues`,
-    );
+    if (!process.env.SMOKE_DEFENSE_ONLY) {
+      const beforeZones = await page.evaluate(() => window.debuffFixture.zones());
+      await page.waitForFunction(
+        (frame) => window.debuffFixture.probe().frame > frame + 2,
+        beforeZones,
+      );
+      const zones = await page.evaluate(() => window.debuffFixture.probe());
+      assert.deepEqual(
+        zones.zones.filter((z) => z.side === 'boss'),
+        Array.from({ length: 3 }, () => ({ side: 'boss', curseStyle: undefined })),
+      );
+      assert.deepEqual(
+        zones.zones.filter((z) => z.side === 'player').map((z) => z.curseStyle),
+        ['hex', 'searing', 'dread'],
+      );
+      assert.equal(zones.zonePlates, 0, 'floor markings must not use enemy status plates');
+      assert.ok(zones.zoneInstructions > 6);
+      if (process.env.SHOT_DIR)
+        await page.screenshot({
+          path: `${process.env.SHOT_DIR}/hazard-overlap-${viewport.width}x${viewport.height}.png`,
+        });
+      assert.deepEqual(errors, []);
+      console.log(
+        `PASS ${viewport.width}×${viewport.height} hostile pools/friendly curse fields and defensive player cues`,
+      );
+    }
+    for (const kind of [
+      'guard2',
+      'guard1',
+      'guard0',
+      'divine-active',
+      'divine-expired',
+      'taunt-active',
+      'taunt-expired',
+      'taunt-downed',
+      'images',
+    ]) {
+      const frame = await page.evaluate((kind) => window.debuffFixture.defense(kind), kind);
+      await page.waitForFunction((frame) => window.debuffFixture.probe().frame > frame + 2, frame);
+      const effect = await page.evaluate(() => window.debuffFixture.probe());
+      assert.equal(effect.guard, kind.startsWith('guard') ? Number(kind.at(-1)) : 0);
+      assert.equal(effect.divine, kind === 'divine-active');
+      assert.equal(effect.images, kind === 'images' ? 3 : 0);
+      assert.equal(effect.taunted, kind === 'taunt-active');
+      assert.equal(effect.tauntInk, kind === 'taunt-active');
+      if (process.env.SHOT_DIR)
+        await page.screenshot({
+          path: `${process.env.SHOT_DIR}/defense-state-${viewport.width}x${viewport.height}-${kind}.png`,
+        });
+      assert.deepEqual(errors, []);
+      console.log(
+        `PASS ${viewport.width}×${viewport.height} ${kind}: authoritative defense/taunt rendering`,
+      );
+    }
     await context.close();
   }
 } catch (error) {

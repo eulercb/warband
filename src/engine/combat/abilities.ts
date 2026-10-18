@@ -255,14 +255,34 @@ function aliveAllies(world: World): Player[] {
   return world.players.filter((p) => p.state === 'alive');
 }
 
-function lowestHpAllyInRange(world: World, from: Vec2, range: number): Player | null {
+function lowestHpAllyInRange(
+  world: World,
+  from: Vec2,
+  range: number,
+  cleanse = false,
+): Player | null {
   let best: Player | null = null;
   let bestRatio = Infinity;
+  let bestControl = -1;
   for (const p of aliveAllies(world)) {
     if (dist(from, p.pos) > range) continue;
     const ratio = p.hp / p.maxHp;
-    if (ratio < bestRatio) {
+    const control =
+      cleanse &&
+      p.buffs.some(
+        (b) =>
+          b.remaining > 0 &&
+          (b.kind === 'root' ||
+            b.kind === 'stun' ||
+            b.kind === 'silence' ||
+            (b.kind === 'moveSpeed' && b.mult < 1) ||
+            (b.kind === 'castSlow' && b.mult > 1)),
+      )
+        ? 1
+        : 0;
+    if (ratio < bestRatio || (ratio === bestRatio && control > bestControl)) {
       bestRatio = ratio;
+      bestControl = control;
       best = p;
     }
   }
@@ -613,7 +633,7 @@ export function resolvePlayerAbility(
     }
 
     case 'heal': {
-      const target = lowestHpAllyInRange(world, p.pos, ab.range ?? 400);
+      const target = lowestHpAllyInRange(world, p.pos, ab.range ?? 400, ab.cleanseOnHeal);
       if (target) healSupportAlly(world, p, target, ab.damage, ab);
       break;
     }
@@ -780,7 +800,7 @@ function resolveComposedAbility(
   };
   const healAlly = (range: number): void => {
     if (!healEff || healEff.kind !== 'heal') return;
-    const t = lowestHpAllyInRange(world, p.pos, range);
+    const t = lowestHpAllyInRange(world, p.pos, range, ab.cleanseOnHeal);
     if (t) healSupportAlly(world, p, t, healEff.amount, ab);
   };
 

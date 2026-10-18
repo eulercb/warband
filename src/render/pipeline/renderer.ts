@@ -1,3 +1,4 @@
+import { drawTauntState } from './defenseVisuals';
 import { ADD_RADIUS } from '../../engine/core/constants';
 import { drawEnemyDebuffs } from './enemyDebuffs';
 /**
@@ -216,6 +217,21 @@ export class Renderer {
     for (const boss of state.bosses) {
       if (boss.hp <= 0) continue;
       const pos = this.camera.worldToScreen(boss.pos);
+      const taunter =
+        boss.taunt && boss.taunt.remaining > 0
+          ? state.players.find(
+              (p) => p.id === boss.taunt!.targetId && p.state === 'alive' && p.hp > 0,
+            )
+          : undefined;
+      if (taunter)
+        drawTauntState(
+          this.enemyStatusLayer,
+          pos,
+          this.camera.worldToScreen(taunter.pos),
+          getMonster(boss.monsterId).radius * this.camera.scale,
+          taunter.id === state.localPlayerId,
+          this.camera.viewSize,
+        );
       drawEnemyDebuffs(
         this.enemyStatusLayer,
         boss.buffs,

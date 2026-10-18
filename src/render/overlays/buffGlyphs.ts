@@ -69,6 +69,13 @@ function describe(
         good: true,
         label: 'Wolf Hunt: walk 120u for a momentum stack; melee hits do not build stacks',
       };
+    case 'mirrorImages':
+      return {
+        glyph: '🪞',
+        color: 0xc7b8ff,
+        good: true,
+        label: `Mirror images: ${Math.round(mult)} left; each reduces one direct hit by 60%, then breaks; ground damage bypasses`,
+      };
     case 'frontGuard':
       return {
         glyph: '◖',
