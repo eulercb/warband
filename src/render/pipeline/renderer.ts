@@ -1,3 +1,4 @@
+import { drawCompanion } from './companionVisuals';
 import { drawTauntState } from './defenseVisuals';
 import { ADD_RADIUS } from '../../engine/core/constants';
 import { drawEnemyDebuffs } from './enemyDebuffs';
@@ -631,6 +632,13 @@ export class Renderer {
       }
     }
     for (const p of state.players) {
+      if (p.state === 'alive' && p.spiritCompanion)
+        drawCompanion(
+          g,
+          p.spiritCompanion,
+          this.camera.worldToScreen(p.spiritCompanion.pos),
+          scale,
+        );
       if (SPRITE_FLAGS.player || playerUsesRig(p)) {
         drawPlayerOverlay(
           g,

@@ -1,3 +1,4 @@
+import { prepareCompanionWard } from './companions';
 import { cleanseMovement, grantFrontGuard } from './defense';
 import { grantAbsorption } from './absorption';
 import { isBurstControl } from '../core/control';
@@ -21,6 +22,7 @@ function putBuff(p: { buffs: Buff[] }, buff: Buff): void {
 export function setSubclassPassive(p: Player, id: string | undefined): void {
   if (p.subclassPassiveId === id) return;
   p.buffs = p.buffs.filter((b) => !b.source.startsWith(PREFIX));
+  delete p.spiritCompanion;
   p.subclassPassiveId = id;
 }
 
@@ -263,6 +265,7 @@ export function onSubclassHeal(
   recipient: Player,
   effective: number,
 ): void {
+  prepareCompanionWard(p, recipient, effective);
   onSubclassProtection(p, effective);
   if (p.subclassPassiveId !== 'whispers_echoed_refrain' || effective <= 0) return;
   const ready = p.buffs.find((b) => b.kind === 'refrainEcho' && b.remaining > 0);

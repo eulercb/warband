@@ -1,18 +1,16 @@
 # Class identity and subclass roadmap
 
-Current delivery: **defining passives, cohort 3 of 3** — both Barbarian and Monk
-subclasses, Hunter and Land Druid, alongside repairs to the smoke checks.
+Current delivery: **Beast Master companion prototype and defining passive**.
 
-**Progress:** 16/24 subclass passives merged; this PR adds six, bringing the
-implemented total to **22/24**. Only Beast Master's companion and Moon Druid's
-form remain. Existing defense/recovery reworks and all class loops are delivered.
+**Progress:** 22/24 subclass passives merged; this PR adds Pack Bond, bringing the
+implemented total to **23/24**. Only Moon Druid's form remains. All ordinary
+passives, class loops and defense/recovery reworks have been delivered.
 
-**Next:** Beast Master companion, then Moon form, each as a separate system.
-After this delivery, approximately **6–8 feature PRs** remain: companion, form,
-and four to six upgrade/grand/graft batches. Upgrade work includes base and subclass
-skills and must interact with the completed class loops, rather than repeat generic
-number increases. This is a scope estimate, not a quota/time promise.
-Older status tables preserve history and are superseded by this header.
+**Next:** Moon Druid's form as a separate system, then four to six batches for
+base/subclass upgrades, grand improvements and grafts. Approximately **5–7 feature
+PRs** remain after this delivery, adjusted after the upgrade audit and playtests.
+This is a scope estimate, not a quota/time promise. Earlier status tables preserve
+history and are superseded by this header.
 
 ## Goals and boundaries
 
@@ -1329,3 +1327,62 @@ resolution and clear feedback. The remaining companion/form systems require
 separate lifecycle, targeting, multiplayer and mobile control checks; they are not
 squeezed into this cohort. Continue observing earlier readability and Warlock
 balance feedback during playtests rather than declaring those permanently solved.
+
+## Beast Master: commanded spirit companion prototype
+
+Pack Bond is granted with any of the four Beast Master choices. A visible spirit
+wolf follows its Ranger, including walking and wrap-around movement. A connecting
+positive direct hit orders a single bite at that victim within 600u. Basics provide
+a reliable solo route with every choice; no additional button, second subclass
+skill, kill or special loadout is needed. Multiple arrows/victims share a 2.5s
+owner gate. There is no autonomous target search or attack while the Ranger is idle.
+
+The spirit travels toward the victim, with a minimum 0.3s wind-up and 0.9s maximum
+pursuit. It bites once for 16 base damage, increased to 20 against a currently
+slowed, rooted or stunned foe. Rain of Arrows and Snare supply control; Pounce's
+landing and Savage Bite can directly command it. Wind-up slowing alone does not
+qualify. Bites use the owner's damage modifiers and ordinary enemy defenses,
+credit the owner, and cannot crit, generate direct-hit procs, lifesteal or recursively
+issue commands. Dead, missing, distant and immune victims never produce phantom
+successful hits; a canceled command still spends its gate.
+
+Effective dedicated healing (Nature's Bond, including composed/copy routes)
+prepares a 6s link to the actually healed recipient. The next successful bite grants
+that living ally 12 absorption for 4s if within 420u of the owner. Full-health
+casts and lifesteal do not prepare links. One link at a time; the last effective
+recipient replaces the previous one. Stronger barriers are preserved, and failed
+barrier grants leave the link available until expiry. Solo self-heals work too.
+
+### Explicit system decisions
+
+- One host-owned spirit state per active Beast Master, separate from party bots,
+  adds and living-party counts. It never holds aggro, collides, tanks, takes hazard
+  damage, needs reviving, or affects wipe/revive rules. Spiritual movement crosses
+  cover and reaches flying targets; there is no pathfinding or physical pet AI.
+- Downing, death, zero HP, class/passive changes, room transitions and disconnects
+  remove the pending bite and healing link. Recovery creates a following spirit,
+  never a stale attack; its command gate survives class swaps/downing. Each new
+  fight starts a fresh companion with ordinary fresh-fight cooldowns.
+- Long owner teleports recall the spirit; normal movement follows smoothly on
+  the torus. Leash checks occur both at command and impact. Owner positioning,
+  controls, enemies and collision resolution are untouched.
+- Snapshots contain only position, facing, attack pose and link readiness. Orders,
+  recipients and timers stay host-only. Client interpolation moves the spirit's
+  position independently and respects appearance/removal from newer snapshots.
+- A turquoise wolf silhouette, attack ring and golden prepared-link glow identify
+  the companion. The HUD shows a paw readiness badge for the next protective bite;
+  ordinary absorption shells identify its actual beneficiary. Full explanations
+  remain in loadout/reward/pause views instead of adding floating combat text.
+
+The bounded ceiling is 6.4 base single-target DPS, or 8 against controlled foes,
+plus at most one non-stacking 12-HP barrier per effective heal/connecting bite cycle.
+Owner upgrades can increase damage normally; this is player power, not an enemy
+stat increase. Adaptive difficulty formulas remain unchanged. Independently
+surviving, targetable pets, pet skill bars, autonomous AI, multiple companions and
+pet-specific upgrades are deferred, rather than partially implemented here.
+
+Review/playtest priorities: all four individual choices, solo and party recipients,
+several Beast Masters, direct versus zone hits, native/composed damage and healing,
+multishot gating, victim disappearance/immunity, owner down/revive/swap/disconnect,
+room transitions, cover/flight/torus/teleport, remote interpolation and small screens.
+Do not treat a pet's presence or a passive icon alone as proof its command works.

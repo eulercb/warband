@@ -38,6 +38,13 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     icon: '🌑',
     desc: 'Spending Flow removes 2s from running dash and blink special cooldowns in your active kit. Once per 4s; ready movement skills do not spend the trigger. Step of the Wind and Quivering Palm work with every subclass choice.',
   },
+  rg_beastmaster: {
+    id: 'beast_pack_bond',
+    classId: 'ranger',
+    name: 'Pack Bond',
+    icon: '🐺',
+    desc: 'A spirit wolf follows you. Your connecting direct hits command a 16-damage bite within 600u, once per 2.5s; +25% bite damage against slowed, rooted or stunned foes. Effective dedicated healing prepares your next successful bite to grant the healed ally 12 absorption for 4s, if within 420u; preparation lasts 6s. The spirit crosses cover, reaches flyers, cannot tank or block movement, and rests while you are downed or outside combat. Basics work with every subclass choice.',
+  },
   rg_hunter: {
     id: 'hunter_quarry',
     classId: 'ranger',

@@ -69,6 +69,7 @@ it.each([
   'mo_openhand',
   'mo_shadow',
   'rg_hunter',
+  'rg_beastmaster',
   'dr_land',
   'kn_champion',
   'kn_battlemaster',

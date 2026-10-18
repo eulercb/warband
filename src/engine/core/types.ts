@@ -194,6 +194,7 @@ export type BuffKind =
   | 'harmony' // effective healing verse, readied for a Bard chorus
   | 'discord' // disruptive special verse, readied for a Bard chorus
   | 'spellSurge' // one enhanced special spell
+  | 'packBond' // next successful spirit bite shields the dedicated heal recipient
   | 'rampage' // Berserker: next basic cast; mult = Momentum spent
   | 'wildWeave' // mult is basic-cast progress toward a Surge
   | 'radiantCharge' // Light: next direct hit empowered and slows wind-ups
@@ -290,7 +291,22 @@ export interface PlayerStats {
 // Full authoritative entities (host-only `World` state)
 // ---------------------------------------------------------------------------
 
+/** Host-only companion orders; clients receive only the visual pose. */
+export interface SpiritCompanion {
+  pos: Vec2;
+  facing: number;
+  order?: { targetId: EntityId; kind: 'boss' | 'add'; windup: number; remaining: number };
+  wardTargetId?: EntityId;
+}
+export interface SpiritCompanionView {
+  pos: Vec2;
+  facing: number;
+  attacking: boolean;
+  bondReady: boolean;
+}
+
 export interface Player {
+  spiritCompanion?: SpiritCompanion;
   id: EntityId;
   peerId: string; // network identity ('' allowed but host uses its own selfId)
   name: string;
@@ -1162,6 +1178,7 @@ export interface Telegraph {
 // ---------------------------------------------------------------------------
 
 export interface PlayerView {
+  spiritCompanion?: SpiritCompanionView;
   id: EntityId;
   peerId: string;
   name: string;
