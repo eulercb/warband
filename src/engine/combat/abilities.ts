@@ -1,3 +1,4 @@
+import { dimensionDoor } from './dimensionDoor';
 import { isSteadfast } from './defense';
 import type { CurseStyle } from '../core/curses';
 import { buffCues, supportCue } from './visualCues';
@@ -339,41 +340,6 @@ export function applyForcedMove(
   else pullToward(world, target, from, pull);
 }
 
-/**
- * item 11 — Dimension Door's teleport-swap: reflect every enemy within `range` of
- * the mage across the mage's position (an enemy `d` ahead ends up `d` behind), a
- * chaotic peel/reposition. The reflection displacement is 2·d, so a distant-enough
- * foe is flung far; the root rule applies (a bound foe within FORCE_OVERCOME_ROOT/2
- * of the mage stays put, a further one is ripped free). Flashes the swap radius.
- */
-function applyDimensionSwap(world: World, p: Player, range: number, color: number): void {
-  emitSkillArea(world, p.id, color, {
-    kind: 'circle',
-    origin: { ...p.pos },
-    angle: 0,
-    range: 0,
-    radius: range,
-    halfAngle: 0,
-  });
-  const reflect = (t: {
-    pos: Vec2;
-    buffs: import('../core/types').Buff[];
-    radius: number;
-  }): void => {
-    const delta = sub(p.pos, t.pos); // shortest torus vector from the foe to the mage
-    const d = Math.hypot(delta.x, delta.y);
-    if (d > range || d < 1e-3) return;
-    const disp = 2 * d; // reflection lands the foe on the mage's far side
-    if (isRooted(t)) {
-      if (disp < FORCE_OVERCOME_ROOT) return; // a close-bound foe holds fast
-      t.buffs = t.buffs.filter((b) => b.kind !== 'root');
-    }
-    applyImpulse(world, t, delta, disp);
-  };
-  for (const b of world.bosses) if (b.hp > 0) reflect(b);
-  for (const a of world.adds) if (a.hp > 0) reflect(a);
-}
-
 // ---------------------------------------------------------------------------
 // Player ability resolution
 // ---------------------------------------------------------------------------
@@ -557,16 +523,14 @@ export function resolvePlayerAbility(
       const dir = normalize(p.aim);
       const from = { ...p.pos };
       const target = vadd(p.pos, vscale(dir, ab.range ?? 250));
-      p.pos = clampToArena(world, target, p.radius);
+      if (ab.swap) dimensionDoor(world, p, target, ab.radius ?? 220);
+      else p.pos = clampToArena(world, target, p.radius);
       if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
       if (ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
       prepareSpellSurge(p, ab);
       prepareMartialFlow(p, ab);
       if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
       world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
-      // item 11 — Dimension Door shuffles space: reflect nearby enemies across the
-      // mage's new position (front ↔ back), a teleport-swap peel.
-      if (ab.swap) applyDimensionSwap(world, p, ab.radius ?? 220, color);
       break;
     }
 
@@ -944,7 +908,8 @@ function resolveComposedAbility(
         const dir = normalize(p.aim);
         const from = { ...p.pos };
         const target = vadd(p.pos, vscale(dir, ab.range ?? 220));
-        p.pos = clampToArena(world, target, p.radius);
+        if (ab.swap) dimensionDoor(world, p, target, ab.radius ?? 220);
+        else p.pos = clampToArena(world, target, p.radius);
         if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
         prepareSpellSurge(p, ab);
         prepareMartialFlow(p, ab);

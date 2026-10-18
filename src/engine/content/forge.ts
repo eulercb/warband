@@ -72,6 +72,8 @@ export interface Delivery {
   /** Dash / blink i-frame window. */
   iframes?: number;
   surgeTwin?: boolean;
+  /** Dimension Door endpoint exchange; only valid on blink delivery. */
+  swap?: boolean;
 }
 
 /**
@@ -205,6 +207,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.impactRadius != null) delivery.impactRadius = def.impactRadius;
   if (def.maxRange != null) delivery.maxRange = def.maxRange;
   if (def.surgeTwin) delivery.surgeTwin = true;
+  if (def.swap && kind === 'blink') delivery.swap = true;
   if (def.iframes != null) delivery.iframes = def.iframes;
   // pbaoe / dash-landing radius rides the delivery; a groundZone's radius rides
   // its zone effect instead (see below), so the two never fight over `radius`.
@@ -366,6 +369,7 @@ export function recompose(
   if (d.impactRadius != null) def.impactRadius = d.impactRadius;
   if (d.maxRange != null) def.maxRange = d.maxRange;
   if (d.surgeTwin && d.kind === 'projectile') def.surgeTwin = true;
+  if (d.swap && d.kind === 'blink') def.swap = true;
   if (d.iframes != null) def.iframes = d.iframes;
 
   for (const e of comp.effects) {
@@ -537,6 +541,7 @@ export function recompose(
 export function componentValue(comp: AbilityComponents): number {
   const fan = Math.max(1, comp.delivery.projCount ?? 1);
   let v = comp.delivery.kind === 'selfBuff' ? (comp.delivery.iframes ?? 0) * 30 : 0;
+  if (comp.delivery.swap && comp.delivery.kind === 'blink') v += 30;
   for (const e of comp.effects) {
     v += effectValue(e, fan);
   }
@@ -690,6 +695,10 @@ export function describeComposed(comp: AbilityComponents, cooldown: number): str
 
   // Lead with the delivery vehicle so the fusion reads as one coherent ability.
   parts.push(deliveryPhrase(d));
+  if (d.swap && d.kind === 'blink')
+    parts.push(
+      'arrival foes return to departure; departure foes scatter outward; moved foes slowed 35% for 2s; roots resist relocation',
+    );
   if (d.kind === 'selfBuff' && d.iframes) parts.push(`${s(d.iframes)} damage immunity`);
 
   // Every effect yields a non-empty clause, so no gap-filtering is needed.

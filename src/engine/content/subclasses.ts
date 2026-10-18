@@ -430,9 +430,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'mg_abjurer_teleport',
           'Dimension Door',
           '🚪',
-          // item 11 — the door shuffles space: on arrival, enemies within 220u are
-          // reflected across the mage (front ↔ back) — a teleport-swap peel.
-          'Blink 300u, then fling nearby enemies across you',
+          'Teleport 300u: arrival foes return to your departure, departure foes scatter outward. Moved foes are slowed 35% for 2s, enabling control burst. Roots resist relocation.',
           blink('Dimension Door', 6, { range: 300, iframes: 0.25, swap: true, radius: 220 }),
         ),
         sk(
