@@ -29,6 +29,9 @@ export type AbilityKind =
 export interface PlayerAbilityDef {
   /** Base kit slot, or a subclass slot (sub1/sub2) once a subclass skill is bound. */
   slot: ExtSlot;
+  /** Resolved-cast metadata, never authored or retained between casts. */
+  momentumUsed?: number;
+  flowUsed?: boolean;
   name: string;
   kind: AbilityKind;
   cooldown: number; // s

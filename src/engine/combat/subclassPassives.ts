@@ -1,4 +1,4 @@
-import { cleanseMovement } from './defense';
+import { cleanseMovement, grantFrontGuard } from './defense';
 import { grantAbsorption } from './absorption';
 import { isBurstControl } from '../core/control';
 import { dist } from '../core/torus';
@@ -158,6 +158,10 @@ export function onSubclassDirectHit(
 ): void {
   const id = p.subclassPassiveId;
   if (!direct || effective <= 0 || p.state !== 'alive' || p.hp <= 0) return;
+  if (id === 'hunter_quarry') {
+    putBuff(target, { kind: 'damageTaken', mult: 1.1, remaining: 3, source: 'hunterQuarry' });
+    return;
+  }
   if (id === 'champion_reprise' && counter && offCooldown(p, id) && p.hp < p.maxHp) {
     healPlayer(sink, p, p, Math.min(20, p.maxHp * 0.08));
     spendCooldown(p, id);
@@ -343,4 +347,60 @@ export function onSubclassAura(world: World, p: Player, radius: number): void {
     });
   }
   spendCooldown(p, id, 8);
+}
+
+/** Fires once at resolution, on both native and composed paths. */
+export function onSubclassFinisher(world: World, p: Player, ab: PlayerAbilityDef): void {
+  if (p.state !== 'alive' || p.hp <= 0) return;
+  const id = p.subclassPassiveId;
+  if (ab.momentumUsed && id === 'berserker_rampage') {
+    putBuff(p, {
+      kind: 'rampage',
+      mult: Math.min(3, ab.momentumUsed),
+      remaining: 4,
+      source: PREFIX + id,
+    });
+  }
+  if (ab.momentumUsed && id === 'totem_shelter' && offCooldown(p, id)) {
+    let gained = false;
+    for (const ally of world.players) {
+      if (ally.state !== 'alive' || ally.hp <= 0 || dist(p.pos, ally.pos) > 180) continue;
+      if (grantAbsorption(ally, 8 + 4 * Math.min(3, ab.momentumUsed), 4) <= 0) continue;
+      gained = true;
+      world.events.push({
+        t: 'support',
+        sourceId: p.id,
+        targetId: ally.id,
+        from: { ...p.pos },
+        pos: { ...ally.pos },
+        kind: 'absorb',
+      });
+    }
+    if (gained) spendCooldown(p, id);
+  }
+  if (!ab.flowUsed) return;
+  if (id === 'openhand_flowguard') grantFrontGuard(p, 1, 3);
+  if (id === 'shadow_rhythm' && offCooldown(p, id)) {
+    let reduced = false;
+    for (const slot of ['a1', 'a2', 'a3', 'sub1', 'sub2'] as const) {
+      const skill =
+        slot === 'sub1' || slot === 'sub2' ? p.subAbilities?.[slot] : p.abilities?.[slot];
+      if (!skill || (skill.kind !== 'dash' && skill.kind !== 'blink')) continue;
+      const remaining = p.cooldowns[slot] ?? 0;
+      if (remaining <= 0) continue;
+      p.cooldowns[slot] = Math.max(0, remaining - 2);
+      reduced = true;
+    }
+    if (reduced) {
+      spendCooldown(p, id, 4);
+      world.events.push({
+        t: 'support',
+        sourceId: p.id,
+        targetId: p.id,
+        from: { ...p.pos },
+        pos: { ...p.pos },
+        kind: 'empower',
+      });
+    }
+  }
 }

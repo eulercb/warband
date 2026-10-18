@@ -1192,6 +1192,20 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     armFrom: o.armTime && o.armTime > 0 && o.armFrom ? { ...o.armFrom } : undefined,
     color: o.color,
   };
+  const owner = o.side === 'player' && world.players.find((p) => p.id === o.ownerId);
+  if (
+    owner &&
+    owner.state === 'alive' &&
+    owner.hp > 0 &&
+    owner.subclassPassiveId === 'land_paths'
+  ) {
+    zone.castSlow = Math.max(zone.castSlow ?? 1, 1.25);
+    zone.allyBuff = {
+      ...zone.allyBuff,
+      moveMult: Math.max(zone.allyBuff?.moveMult ?? 1, 1.2),
+      duration: Math.max(zone.allyBuff?.duration ?? 0, 0.8),
+    };
+  }
   world.groundZones.push(zone);
 }
 

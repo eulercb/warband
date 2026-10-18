@@ -194,6 +194,7 @@ export type BuffKind =
   | 'harmony' // effective healing verse, readied for a Bard chorus
   | 'discord' // disruptive special verse, readied for a Bard chorus
   | 'spellSurge' // one enhanced special spell
+  | 'rampage' // Berserker: next basic cast; mult = Momentum spent
   | 'wildWeave' // mult is basic-cast progress toward a Surge
   | 'radiantCharge' // Light: next direct hit empowered and slows wind-ups
   | 'refrainEcho' // one dedicated heal echo

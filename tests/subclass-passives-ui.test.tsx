@@ -64,6 +64,12 @@ it('keeps combat compact and provides the full passive explanation in pause', ()
 });
 
 it.each([
+  'bb_berserker',
+  'bb_totem',
+  'mo_openhand',
+  'mo_shadow',
+  'rg_hunter',
+  'dr_land',
   'kn_champion',
   'kn_battlemaster',
   'cl_light',

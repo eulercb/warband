@@ -426,6 +426,7 @@ export function damageAdd(
     (mods?.mult ?? 1) *
     buffMult(source, 'damageDealt') *
     source.damageMult *
+    buffMult(add, 'damageTaken') *
     curseMultiplier(source, add);
   const counter = mods?.melee && source.buffs.some((b) => b.kind === 'counter' && b.remaining > 0);
   if (outgoing > 0 && add.hp > 0) {

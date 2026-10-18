@@ -119,11 +119,21 @@ export function onMartialHit(
 /** Commit finisher preparation after normal cast gates, carrying the resolved def. */
 export function consumeMartialFinishers(p: Player, ab: PlayerAbilityDef): PlayerAbilityDef {
   let out = ab;
+  const rampage = ab.slot === 'basic' && ready(p, 'rampage');
+  if (rampage) {
+    p.buffs.splice(p.buffs.indexOf(rampage), 1);
+    out = {
+      ...out,
+      damage: out.damage * (1 + rampage.mult * 0.1),
+      ...(out.kind === 'meleeCone' ? { range: (out.range ?? 70) + rampage.mult * 8 } : {}),
+    };
+  }
   const momentum = ab.spendsMomentum && ready(p, 'momentum');
   if (momentum && ready(p, 'rageRhythm')) {
     p.buffs.splice(p.buffs.indexOf(momentum), 1);
     out = {
       ...out,
+      momentumUsed: momentum.mult,
       damage: out.damage * (1 + momentum.mult * 0.1),
       ...(out.kind === 'meleeCone'
         ? { range: (out.range ?? 70) + momentum.mult * 8 }
@@ -133,7 +143,7 @@ export function consumeMartialFinishers(p: Player, ab: PlayerAbilityDef): Player
   const flow = ab.consumesFlow && ready(p, 'flow');
   if (flow) {
     p.buffs.splice(p.buffs.indexOf(flow), 1);
-    out = { ...out, castTime: 0 };
+    out = { ...out, castTime: 0, flowUsed: true };
     if (out.kind === 'projectile') out.freeze = Math.max(out.freeze ?? 0, 0.6);
     else if (out.kind === 'groundZone') {
       out.radius = (out.radius ?? 130) + 35;

@@ -109,10 +109,6 @@ jobs:
             code=$?
           fi
           if [ "$code" -eq 0 ]; then
-            node scripts/run-smoke.mjs smoke:passives
-            code=$?
-          fi
-          if [ "$code" -eq 0 ]; then
             node scripts/run-smoke.mjs smoke:spells
             code=$?
           fi
@@ -146,6 +142,54 @@ jobs:
         with:
           name: smoke-screenshots
           path: ${{ runner.temp }}/smoke-shots
+          if-no-files-found: ignore
+
+  # Keep all passive loadouts covered without a long serial browser job.
+  passive-smoke:
+    name: Subclass passives (${{ matrix.cohort }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cohort: pilot
+            names: "Death's Opening,Spellblade,Soul Ember,Dread Insight"
+          - cohort: casters
+            names: 'Arcane Cadence,Binding Ward,Surge Ascent,Spell Weave,Rallying Chorus,Echoed Refrain'
+          - cohort: support
+            names: 'Victorious Reprise,Tactical Opening,Refulgence,Abundance,Oath Anchor,Relentless Procession'
+          - cohort: final
+            names: 'Rampage,Spirit Shelter,Flowguard,Shadow Rhythm,Exposed Quarry,Living Paths'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright-core install --with-deps chromium
+      - run: npm run build
+      - name: Passive keyboard and touch loadouts
+        env:
+          SMOKE_PASSIVE_NAMES: ${{ matrix.names }}
+        run: |
+          export SHOT_DIR="$RUNNER_TEMP/passive-shots"
+          mkdir -p "$SHOT_DIR"
+          export CHROMIUM_PATH="$(node -e "console.log(require('playwright-core').chromium.executablePath())")"
+          npm run preview &
+          PREVIEW_PID=$!
+          trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4173/ >/dev/null && break
+            sleep 1
+          done
+          node scripts/run-smoke.mjs smoke:passives
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: passive-${{ matrix.cohort }}-screenshots
+          path: ${{ runner.temp }}/passive-shots
           if-no-files-found: ignore
 
   # Run martial and absorption scenarios alongside the existing browser suite,

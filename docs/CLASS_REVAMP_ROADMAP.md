@@ -1,20 +1,17 @@
 # Class identity and subclass roadmap
 
-Current delivery: **defining passives, cohort 2 of 3** — both Knight, Cleric
-and Paladin subclasses, with the Spell Weave usability rework and solo Taunt.
+Current delivery: **defining passives, cohort 3 of 3** — both Barbarian and Monk
+subclasses, Hunter and Land Druid, alongside repairs to the smoke checks.
 
-Previously merged/playtested: all class loops and defense/recovery work, the
-Dimension Door correction, and ten defining passives. Playtesting found Spell
-Weave impractical; its delivery-matching contract is superseded below.
+**Progress:** 16/24 subclass passives merged; this PR adds six, bringing the
+implemented total to **22/24**. Only Beast Master's companion and Moon Druid's
+form remain. Existing defense/recovery reworks and all class loops are delivered.
 
-**Progress:** 10/24 subclass passives merged; this PR adds six, bringing the
-implemented total to **16/24**. Eight remain: six ordinary passives plus Beast
-Master's companion and Moon Druid's form.
-
-**Next:** Barbarian, Monk, Hunter and Land Druid's six ordinary passives, then
-companion and form as separate systems. After this delivery, approximately
-**7–9 feature PRs** remain (one ordinary cohort, companion, form, and four to six
-upgrade/grand/graft batches). This is a scope estimate, not a quota/time promise.
+**Next:** Beast Master companion, then Moon form, each as a separate system.
+After this delivery, approximately **6–8 feature PRs** remain: companion, form,
+and four to six upgrade/grand/graft batches. Upgrade work includes base and subclass
+skills and must interact with the completed class loops, rather than repeat generic
+number increases. This is a scope estimate, not a quota/time promise.
 Older status tables preserve history and are superseded by this header.
 
 ## Goals and boundaries
@@ -1290,3 +1287,45 @@ These riders do not erase the catalogue-wide active-skill or upgrade review debt
 **Next:** final six ordinary passives (Barbarian, Monk, Hunter, Land Druid), followed
 by companion/form systems and the separate upgrade/grand/graft workstream. The
 full-kit practical-use gate above also applies to those designs.
+
+## Final ordinary passive cohort: playability before complexity
+
+Each of the 24 individual subclass choices below has a base-kit activation route.
+No trigger requires acquiring both subclass skills or a particular Forge donor.
+
+| Subclass      | Defining passive                                                                                                                                                                   | Reliable base-kit route                                                    |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Berserker     | Rampage: spending Momentum prepares the next basic cast for +10% damage and +8u melee reach per stack, up to three; lasts 4s, consumed even on a miss.                             | Rage → connecting basics → Whirlwind → basic.                              |
+| Totem Warrior | Spirit Shelter: a Momentum spender grants self and allies within 180u 8 + 4 absorption per stack (up to 20) for 4s, once per 6s. Existing stronger barriers and shared caps apply. | Rage → basics → Whirlwind; Wolf walking also works.                        |
+| Open Hand     | Flowguard: spending Flow grants one 3s frontal block. Stronger guards survive; no charge stacking or automatic Knight counter.                                                     | Step of the Wind → Stunning Strike or Quivering Palm.                      |
+| Shadow        | Shadow Rhythm: spending Flow removes 2s from running dash/blink special cooldowns in the active kit, once per 4s. An unused trigger is preserved.                                  | Step of the Wind → either base Flow spender.                               |
+| Hunter        | Exposed Quarry: positive direct hits mark foes for 3s, granting the party +10% damage taken; a shared refreshing mark, never multiplied between Hunters.                           | Basic arrows, including pierced victims. Zone ticks cannot apply the mark. |
+| Land          | Living Paths: friendly zones give allies +20% movement speed and foes +25% wind-up duration; stronger authored zone parameters survive. No change to flight/arming/affiliation.    | Entangle; recovery groves and subclass zones also qualify.                 |
+
+Feedback reuses the existing shield arc, absorption shell, enemy vulnerability and
+wind-up status cues. Rampage has an explicit next-basic HUD badge; cooldown
+reductions emit empowerment feedback. Full passive explanations remain in loadout,
+reward and pause menus without adding combat text clutter.
+
+### Check failures investigated
+
+- The enemy-debuff smoke fixture still assumed Taunt granted zero guards. It now
+  expects the intentional one-block state and genuinely expires its buff in the
+  expired-state fixture. Downed rendering remains suppressed.
+- Life Transfer's recovery check separately waited for the barrier and then read
+  its attributes, allowing a boss hit to remove it between operations. The check
+  now validates a positive, bounded meter value atomically and verifies the
+  preemptive full-health cast, which is an intended part of the ability.
+- Passive browser loadouts run in four parallel CI cohorts, retaining all desktop
+  and touch cases. Unknown cohort names fail immediately instead of passing with
+  zero cases. The general smoke job retains its existing non-passive scenarios.
+
+Summoned enemies now honor damage-taken modifiers, making Hunter vulnerability
+consistent with bosses. Difficulty scaling formulas and enemy stats are unchanged.
+
+Before delivery, review each passive for solo/base-kit feasibility, actual cooldown
+cadence (including the global attack slowdown), caps/stacking, native/composed
+resolution and clear feedback. The remaining companion/form systems require
+separate lifecycle, targeting, multiplayer and mobile control checks; they are not
+squeezed into this cohort. Continue observing earlier readability and Warlock
+balance feedback during playtests rather than declaring those permanently solved.

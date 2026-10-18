@@ -150,7 +150,10 @@ try {
           } else if (kind.startsWith('taunt')) {
             owner.abilities.a1 = { ...getClass('knight').abilities.a1 };
             resolvePlayerAbility(world, owner, 'a1', { x: 0, y: 0 });
-            if (kind === 'taunt-expired') world.tauntTimer = 0;
+            if (kind === 'taunt-expired') {
+              world.tauntTimer = 0;
+              tickBuffs(owner, 4);
+            }
             if (kind === 'taunt-downed') owner.state = 'downed';
           } else {
             owner.abilities.a2 = { ...getClass('sorcerer').abilities.a2 };
@@ -318,7 +321,14 @@ try {
       const frame = await page.evaluate((kind) => window.debuffFixture.defense(kind), kind);
       await page.waitForFunction((frame) => window.debuffFixture.probe().frame > frame + 2, frame);
       const effect = await page.evaluate(() => window.debuffFixture.probe());
-      assert.equal(effect.guard, kind.startsWith('guard') ? Number(kind.at(-1)) : 0);
+      assert.equal(
+        effect.guard,
+        kind.startsWith('guard')
+          ? Number(kind.at(-1))
+          : kind === 'taunt-active' || kind === 'taunt-downed'
+            ? 1
+            : 0,
+      );
       assert.equal(effect.divine, kind === 'divine-active');
       assert.equal(effect.images, kind === 'images' ? 3 : 0);
       assert.equal(effect.taunted, kind === 'taunt-active');
