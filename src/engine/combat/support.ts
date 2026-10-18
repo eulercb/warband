@@ -1,7 +1,7 @@
 import { cleanseMovement } from './defense';
 import { armMartialUtility } from './martial';
 import { personallyCursed } from '../core/curses';
-import { supportCue } from './visualCues';
+import { supportCue, buffCues } from './visualCues';
 import { armPaladinAura } from './paladinAuras';
 import { grantAbsorption } from './absorption';
 /** Authored support interactions travel with copied skills, not the active class. */
@@ -18,6 +18,13 @@ export function nearbySupportAllies(world: World, p: Player, range: number): Pla
 
 /** Both verses last eight seconds. A repeated verse refreshes, never adds stacks. */
 export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef): boolean {
+  if (ab.mirrorImages)
+    applyBuff(
+      p,
+      makeBuff('mirrorImages', ab.mirrorImages.count, ab.mirrorImages.duration, 'mirrorImages'),
+    );
+  if ((ab.kind === 'selfBuff' || ab.kind === 'groundZone') && ab.prepareCrit)
+    applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
   if (ab.frontGuard)
     applyBuff(
       p,
@@ -112,8 +119,10 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
     p.buffs.some((b) => b.kind === kind && b.remaining > 0);
   if (!ready('harmony') || !ready('discord')) return false;
   p.buffs = p.buffs.filter((b) => b.kind !== 'harmony' && b.kind !== 'discord');
-  for (const ally of nearbySupportAllies(world, p, ab.range ?? 420))
+  for (const ally of nearbySupportAllies(world, p, ab.range ?? 420)) {
+    if (ab.cleanseOnHeal) cleanseMovement(ally);
     applyBuff(ally, makeBuff('moveSpeed', 1.15, ab.buffDuration ?? 6, 'chorusMove'));
+  }
   return true;
 }
 
@@ -130,6 +139,33 @@ export function healSupportAlly(
   const effective = healPlayer(world, p, target, amount * (rescue ? 1 + ab.rescueHealBonus! : 1));
   if (effective <= 0) return 0;
   supportCue(world, p, target, 'heal');
+  if (ab.kind === 'heal') {
+    const boons = ab.components
+      ? ab.components.effects.filter((e) => e.kind === 'buff' && e.target === 'allies')
+      : [
+          {
+            kind: 'buff' as const,
+            defMult: ab.buffDefMult,
+            dmgMult: ab.buffDamageMult,
+            moveMult: ab.buffMoveMult,
+            duration: ab.buffDuration ?? 4,
+          },
+        ];
+    for (const b of boons) {
+      if (b.kind !== 'buff') continue;
+      if (b.defMult != null)
+        applyBuff(target, makeBuff('damageTaken', b.defMult, b.duration, 'healBoonDef'));
+      if (b.dmgMult != null)
+        applyBuff(target, makeBuff('damageDealt', b.dmgMult, b.duration, 'healBoonDmg'));
+      if (b.moveMult != null)
+        applyBuff(target, makeBuff('moveSpeed', b.moveMult, b.duration, 'healBoonMove'));
+      buffCues(world, p, target, {
+        buffDefMult: b.defMult,
+        buffDamageMult: b.dmgMult,
+        buffMoveMult: b.moveMult,
+      });
+    }
+  }
   if (ab.paladinAura?.kind === 'renewal') armPaladinAura(world, p, ab);
   if (ab.rescueHealBonus) {
     const ordinary = Math.min(effective * 0.25, target.maxHp * 0.15);

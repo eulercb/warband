@@ -142,3 +142,18 @@ stuns and forced movement, while slows still apply. Absorption and brief Divine
 Shield immunity keep their existing shell/invulnerability cues. No persistent
 ability names or extra floating explanations are added. Pause descriptions and
 the collapsed symbol key explain facing and ground/control exceptions.
+
+## Reactive defenses and boss focus
+
+Frontal guards now show one cyan shield plate per remaining charge along the real
+120° aim arc, rather than tiny charge dots. Divine Shield's brief all-direction
+damage immunity uses a gold hexagonal shell, white inner ring and radiant rays;
+its semantic public tag excludes ordinary dash immunity. Remaining Mirror Images
+are violet silhouettes and soften direct hits only. Timers/charge consumption,
+not cosmetic animation durations, determine when these states disappear.
+
+Taunt uses a foreground bullseye on affected living bosses, with a short pointer
+toward its caster: gold for local ownership, cyan for another player. The marker
+represents forced **future target choices**, not a promise that a committed attack
+will turn. Summons are unaffected. The pause symbol key and Taunt's description
+state these limits; no persistent combat paragraphs or long linking lines are added.

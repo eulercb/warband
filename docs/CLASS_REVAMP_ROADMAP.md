@@ -1,20 +1,18 @@
 # Class identity and subclass roadmap
 
-Status: the Rogue/Warlock skill pilot was merged and playtested. Defining passives
-for Assassin, Arcane Trickster, Fiend and Great Old One were merged and playtested.
-Mage/Sorcerer differentiation was merged and playtested.
-Support-class differentiation was merged and playtested.
-Knight/Ranger/Barbarian/Monk differentiation was merged and playtested.
-Martial subclass coherence was merged and playtested.
-Cleric absorption and Chain Pull momentum were merged and playtested.
-Cleric retuning and Paladin moving auras were merged and playtested.
-Support readability and Paladin aura tuning were merged and playtested.
-Enemy debuff visibility is now being improved from additional playtest feedback.
-Caster defense identity (Mage/Sorcerer) was merged and playtested.
-Enemy debuff cues and the Soul Ember sustain adjustment were merged and playtested.
-Simultaneous debuff visibility is corrected in the current follow-up; see the final section.
-Warlock balance B1 is implemented for review; see the final section for contracts and next work.
-Remaining defining passives, companions, forms and later milestones remain proposals.
+Current delivery: **balance B2b**, the remaining active-defense/plain-recovery
+cohort, plus reactive shield and Taunt readability. See the final section for
+implemented contracts and review cases.
+
+Previously merged and playtested: the class skill-loop cohorts, initial
+Rogue/Warlock passives, martial coherence, Cleric absorption/retuning, Paladin
+auras, caster defenses, enemy-debuff readability, Warlock balance B1, and B2a.
+
+**Next:** the first remaining defining-passive cohort. Five core/system batches
+remain (three passive cohorts, companion and form), plus four to six upgrade
+batches: approximately **9–11 further PRs**. Larger branching upgrades, grands
+and graft redesigns remain a separate milestone. Earlier sections below preserve
+the design history; their old “next” estimates are superseded by this status.
 
 ## Goals and boundaries
 
@@ -1045,3 +1043,72 @@ PRs**. The count stays similar because B2 was larger than its original estimate.
 Upgrade branching/grands/grafts remain a dedicated later programme, not completed
 by the compatibility adjustments here. Enemy-debuff and general readability polish
 remain under live testing; no further unrelated Warlock passive buff in this batch.
+
+## Balance B2b delivered for review — remaining defenses and plain recovery
+
+This closes the audited base/subclass plain-defense/plain-heal cohort. These are
+base-skill redesigns, not merely passive riders that waive the rework debt.
+
+| Skill             | Role and limits                                                                                                                                                                                                                                                                                                                              |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Smoke Bomb        | Centered 120u smoke for 4s; enemies move at 65% and wind up 40% slower, allies gain 25% movement, caster prepares precision for 4s. No damage, curse, invisibility or immunity. Enables an escape/return strike rather than another mitigation timer.                                                                                        |
+| Shield Spell      | One 4s frontal damage block and 4s precision preparation. Same facing/ground/control rules as Shield Wall, without Knight counter preparation. An arcane parry/re-entry option alongside Trickster's teleport.                                                                                                                               |
+| Bolster           | Self cleanse, 3s steadfast and 20% movement for 5s. With Harmony and Discord ready, consumes both to spread movement and cleanse to nearby living allies; steadfast stays personal. Movement/recovery chorus contrasts with Battle Hymn's damage chorus.                                                                                     |
+| Mirror Image      | Three images for 5s; each reduces one direct hit by 60% and breaks. Ground damage bypasses, immunity/front blocks preserve charges. Retains movement and spell-surge preparation. Upgrades cap at five images/9s.                                                                                                                            |
+| Nature's Bond     | Existing 60 targeted heal plus recipient control cleanse; effective healing grants that recipient 25% movement for 4s. Full-health casts can cleanse but do not grant haste; equal-HP ties prefer an ally with active control over a healthy caster. Future companions can reuse recipient support semantics rather than being required now. |
+| Life Transfer     | Existing 55 targeted heal plus a 20-point, 5s preemptive barrier to the lowest-health ally, including at full health. Existing stronger shields and shared caps win. A small portable Abjuration support ward, distinct from Cleric's larger dedicated barriers.                                                                             |
+| Wholeness of Body | Existing 80 self-heal plus 4s Flow preparation, including at full health. Reliable self targeting; Flow is spent by the next marked special. A centering option alongside Open Hand's movement preparation.                                                                                                                                  |
+
+### Readability follow-up incorporated here
+
+- Shield Wall's cyan 120° arc now carries one visible shield plate per charge,
+  following aim. Each consumed charge removes a plate; expiry removes the state.
+  It also explains the shared frontal-block vocabulary for Shield Spell.
+- Divine Shield has a gold hexagonal shell, white inner ring and short radiant
+  rays. A public semantic tag distinguishes its timed self-immunity from dash
+  invulnerability; no private source labels cross the wire. The shell ends with
+  the actual immunity, not the longer Bulwark aura.
+- Mirror Image shows one translucent silhouette per remaining image.
+- Taunt exports its actual forced target and remaining time on living bosses.
+  A foreground bullseye identifies affected bosses; gold means the local player
+  is taunting, cyan an ally, and the short arrow points toward the taunter.
+  Markers disappear on expiry, loss of the caster or boss death. No long tethers
+  or extra floating text obscure combat.
+
+Taunt behavior is preserved: global boss focus (including both twins), no 150u
+range restriction, and threat set to the current party maximum plus 100 before
+ordinary decay. Canonical duration is 4s (upgrades/procedural tuning can change it).
+New movement/attack choices use that focus; committed wind-ups/channels retain
+locked targets. Summons select their nearest living player and are not taunted.
+A later taunt replaces ownership. After expiry ordinary threat targeting resumes,
+so the Knight can retain focus without an active forced-target marker.
+
+### Audit decisions and coherence check
+
+Only Bear Spirit (active control resistance), Blessing (targeted offensive boon)
+and Inspiration (party boon/chorus spender) retain native mitigation fields.
+They were explicitly reviewed and retained for those mixed roles; a future numeric
+balance or upgrade pass can still revisit them. Direct heals with rescue, recovery,
+Renewal, Harmony or drain effects retain those distinct interactions. Generated
+boons/stat passives are outside the plain active-skill inventory, not forgotten.
+
+Assassin can smoke/reposition then spend precision on a marked strike; Trickster
+can choose a mobile Misty Step setup or a stationary frontal parry. Valor can build
+verses with heal/disruption then choose a recovery/movement or offensive chorus.
+Sorcerer can prepare surge behind finite images, reposition and cast its payoff;
+rapid direct hits and ground pressure remain weaknesses. Beast Master can free and
+mobilize an injured ally; Abjurer can pre-ward an ally while healing; Open Hand can
+center then spend Flow on a controlled finisher. None requires a random upgrade.
+
+New utility retains prior party-power credit; Life Transfer's added barrier has
+zero added credit. No boss difficulty formula changes. Forge prices the actual
+new payloads, carries/caps them through recomposition and updates affected Honed
+and Mirror Image grands. Targeted heal buff components now reach the actual healed
+recipient rather than silently disappearing; they never become a free party buff.
+The larger branching-upgrade/grand/graft redesign remains future work.
+
+**Next: the first remaining subclass-passive cohort.** Five core/system batches
+remain (three passive cohorts, companion and form), plus four to six upgrade
+batches: roughly **9–11 further PRs**. Assess the new reactive defenses in live play;
+readability feedback remains part of the existing delivery review, not a separate
+open-ended graphics project.

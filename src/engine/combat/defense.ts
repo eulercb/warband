@@ -28,3 +28,13 @@ export function cleanseMovement(target: { buffs: Buff[] }): void {
       ),
   );
 }
+
+/** Images intercept direct contact before absorption; immunity/front blocks preserve them. */
+export function mirrorDamage(p: Player, origin: Vec2 | undefined, damage: number): number {
+  if (!origin || damage <= 0) return damage;
+  const images = p.buffs.find((b) => b.kind === 'mirrorImages' && b.remaining > 0 && b.mult > 0);
+  if (!images) return damage;
+  images.mult--;
+  if (images.mult <= 0) p.buffs.splice(p.buffs.indexOf(images), 1);
+  return damage * 0.4;
+}

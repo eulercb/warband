@@ -176,6 +176,7 @@ export type BuffKind =
    * boss's active channel (that would prolong a beam) — wind-up only. Stacked
    * factors are capped (combat.castTimeFactor) so it can't lock a caster out. */
   | 'castSlow'
+  | 'mirrorImages' // mult is remaining images; each softens one direct hit by 60%
   | 'frontGuard' // mult is remaining directional blocks
   | 'steadfast' // rejects new root/stun and forced movement
   | 'guard' // one guarded hit may prepare a counter
@@ -248,6 +249,7 @@ export interface StunDr {
  * vulnerability, and pick the matching glow color per effect (§ visual-cues).
  */
 export interface BuffView {
+  visual?: 'divineShield';
   /** Optional public curse owner; old snapshots omit it. */
   ownerId?: EntityId;
   kind: BuffKind;
@@ -633,6 +635,7 @@ export interface Projectile {
 }
 
 export type ZoneKind =
+  | 'smoke'
   | 'voidZone'
   | 'rainOfArrows'
   | 'sanctuary'
@@ -1188,6 +1191,7 @@ export interface PlayerView {
 }
 
 export interface BossView {
+  taunt?: { targetId: EntityId; remaining: number };
   id: EntityId;
   monsterId: MonsterId;
   pos: Vec2;

@@ -229,7 +229,11 @@ jobs:
           if-no-files-found: ignore
 
   defensive-identity-smoke:
-    name: Defensive identity (desktop and touch)
+    name: Defense and recovery (${{ matrix.cohort }})
+    strategy:
+      fail-fast: false
+      matrix:
+        cohort: [first, remaining]
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -257,11 +261,11 @@ jobs:
             curl -sf http://localhost:4173/ >/dev/null && break
             sleep 1
           done
-          node scripts/run-smoke.mjs smoke:defensive-identity
+          node scripts/run-smoke.mjs ${{ matrix.cohort == 'first' && 'smoke:defensive-identity' || 'smoke:defense-recovery' }}
       - name: Upload caster screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: defensive-identity-screenshots
+          name: defensive-identity-${{ matrix.cohort }}-screenshots
           path: ${{ runner.temp }}/defense-shots
           if-no-files-found: ignore

@@ -1,4 +1,4 @@
-import { blockFromFront, isSteadfast } from './defense';
+import { blockFromFront, isSteadfast, mirrorDamage } from './defense';
 import { curseOwner } from '../core/curses';
 import { absorbDamage } from './absorption';
 /**
@@ -472,7 +472,7 @@ export function damagePlayer(sink: EventSink, target: Player, base: number, orig
       pos: { ...target.pos },
       kind: 'protect',
     });
-  const dmg = blocked ? 0 : absorbDamage(target, incoming);
+  const dmg = blocked ? 0 : absorbDamage(target, mirrorDamage(target, origin, incoming));
   target.hp -= dmg;
   if (dmg > 0)
     sink.events.push({
