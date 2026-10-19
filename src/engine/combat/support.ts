@@ -33,7 +33,8 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
     );
   if ((ab.kind === 'selfBuff' || ab.kind === 'groundZone') && ab.prepareCrit)
     applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
-  if (ab.frontGuard) grantFrontGuard(p, ab.frontGuard.charges, ab.frontGuard.duration);
+  if (ab.frontGuard)
+    grantFrontGuard(p, ab.frontGuard.charges, ab.frontGuard.duration, ab.frontGuard.counter);
   if (ab.steadfastDuration) {
     p.buffs = p.buffs.filter((b) => b.kind !== 'root');
     p.shove = null;

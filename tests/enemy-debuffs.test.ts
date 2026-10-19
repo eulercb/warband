@@ -162,7 +162,7 @@ describe('bounded enemy status geometry', () => {
         })),
       );
     });
-    expect(new Set(shapes).size).toBe(8);
+    expect(new Set(shapes).size).toBe(9);
   });
   it('clears after expiry, retains all add badges, clamps at viewport edges and distinguishes ownership', () => {
     const g = new Graphics();

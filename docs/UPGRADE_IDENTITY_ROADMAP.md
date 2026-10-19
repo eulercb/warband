@@ -11,6 +11,10 @@ issues during that review and fix breakage immediately; broad branching redesign
 waits for the stronger baseline. This applies to base skills, subclass skills,
 grands and grafts alike. An added passive/rider does not exempt an older active.
 
+Batch A is merged/live-tested; [Batch B](COHERENCE_BATCH_B.md) is delivered.
+Batch C remains before broad upgrade redesign. Continue fixing compatibility
+with every active rework rather than postponing it.
+
 ## Why this is a separate workstream
 
 The current registry has **350 upgrade definitions**, including **96 per-skill

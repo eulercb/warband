@@ -1,3 +1,4 @@
+import { applyCoating, tickVenoms } from '../combat/skillRetouches';
 import { maintainMoonForms, inMoonForm } from '../combat/moonForm';
 import { updateCompanions, PACK_BOND } from '../combat/companions';
 import { curseDuration, DREAD_DAMAGE_MULT } from '../core/curses';
@@ -163,7 +164,11 @@ import {
   grandCount,
 } from '../content/charUpgrades';
 import { consumeMartialFinishers, tickBloodPrice, onHuntWalk } from '../combat/martial';
-import { consumeSpellSurge, controlledSpellMultiplier } from '../combat/spellCombos';
+import {
+  consumeSpellSurge,
+  consumeEvocation,
+  controlledSpellMultiplier,
+} from '../combat/spellCombos';
 import {
   setSubclassPassive,
   tickSubclassPassives,
@@ -1083,6 +1088,7 @@ export class World {
       this.events.push({ t: 'fightStart', pos: { ...this.bosses[0].pos } });
     }
 
+    tickVenoms(this, dt);
     this.tickTimers(dt);
     maintainMoonForms(this);
     this.maintainCloseBursts();
@@ -1288,7 +1294,7 @@ export class World {
     if (hasBuff(p, 'silence') && slot !== 'basic') return; // silenced: only the basic works
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
 
-    const ab = consumeMartialFinishers(p, consumeSpellSurge(p, original));
+    const ab = consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original)));
     // Basics are the fire-rate spam vector: ×0.5 basic grands (Thousand Cuts /
     // Hundred Hands) plus stacking Haste compound with no natural bound, so floor
     // the basic slot's effective cooldown (#71). Other slots keep their raw value —
@@ -1310,8 +1316,9 @@ export class World {
         slot,
       });
     } else {
-      resolvePlayerAbility(this, p, slot, moveDir, ab);
+      // Commit before instant effects: refunds earned by this cast must not be overwritten.
       p.cooldowns[slot] = nextCd;
+      resolvePlayerAbility(this, p, slot, moveDir, ab);
     }
   }
 
@@ -1692,6 +1699,11 @@ export class World {
       kind?: string;
       controlDamageBonus?: number;
       cursePayoff?: number;
+      slowMult?: number;
+      slowDuration?: number;
+      stun?: number;
+      freeze?: number;
+      controlOnHit?: 'slow' | 'stun';
       flowExtendOnHit?: number;
     },
   ): HitMods {
@@ -1704,6 +1716,13 @@ export class World {
     return {
       direct: true,
       cursePayoff: bonus?.cursePayoff,
+      controlOnHit:
+        bonus?.controlOnHit ??
+        ((bonus?.slowMult ?? 1) < 1 && (bonus?.slowDuration ?? 2) > 0
+          ? 'slow'
+          : Math.max(bonus?.stun ?? 0, bonus?.freeze ?? 0) > 0
+            ? 'stun'
+            : undefined),
       ...(bonus?.flowExtendOnHit ? { flowExtend: bonus.flowExtendOnHit } : {}),
       crit,
       mult: crit
@@ -1732,6 +1751,11 @@ export class World {
       kind?: string;
       controlDamageBonus?: number;
       cursePayoff?: number;
+      slowMult?: number;
+      slowDuration?: number;
+      stun?: number;
+      freeze?: number;
+      controlOnHit?: 'slow' | 'stun';
       flowExtendOnHit?: number;
     },
   ): HitMods {
@@ -1755,16 +1779,28 @@ export class World {
     for (const p of this.players)
       p.buffs = p.buffs.filter(
         (b) =>
-          b.kind !== 'brambleReady' ||
+          !['brambleReady', 'challengeReady', 'venomReady', 'evocation'].includes(b.kind) ||
           (p.state === 'alive' &&
             p.hp > 0 &&
             this.scene === null &&
-            b.source === `closeBurst:${p.classId}`),
+            (b.kind === 'evocation'
+              ? p.subclassPassiveId === 'evoker_arcane_cadence'
+              : b.source === `${b.kind === 'brambleReady' ? 'closeBurst' : b.kind}:${p.classId}`)),
       );
   }
 
   /** Consume before resolving the splash: supplemental damage never recursively releases charges. */
   onPlayerDirectHit(
+    source: Player,
+    target: Boss | Add,
+    effective: number,
+    prepared?: boolean,
+  ): void {
+    if (effective > 0) applyCoating(this, source, target, prepared);
+    this.releaseCloseBurst(source, target, effective);
+  }
+
+  releaseCloseBurst(
     source: Player,
     target: { pos: Vec2; radius: number },
     effective: number,

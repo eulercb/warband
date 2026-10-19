@@ -2,7 +2,7 @@ import type { Graphics } from 'pixi.js';
 import type { BuffView, Vec2 } from '../../engine/core/types';
 import { isBurstControl } from '../../engine/core/control';
 export type EnemyDebuffKind =
-  'stun' | 'root' | 'slow' | 'castSlow' | 'silence' | 'curse' | 'weak' | 'vulnerable';
+  'stun' | 'root' | 'slow' | 'castSlow' | 'silence' | 'curse' | 'weak' | 'vulnerable' | 'venom';
 export interface EnemyDebuff {
   kind: EnemyDebuffKind;
   remaining: number;
@@ -17,6 +17,7 @@ export const ENEMY_DEBUFF_COLORS: Record<EnemyDebuffKind, number> = {
   curse: 0xce95ff,
   weak: 0xffb18b,
   vulnerable: 0xff8299,
+  venom: 0x85c75a,
 };
 /** One badge per active harmful category, across all sources. Never hide weaker control. */
 export function enemyDebuffs(buffs: readonly BuffView[], localId: number | null): EnemyDebuff[] {
@@ -31,6 +32,7 @@ export function enemyDebuffs(buffs: readonly BuffView[], localId: number | null)
     'curse',
     'weak',
     'vulnerable',
+    'venom',
   ] as const) {
     const matching = active.filter((b) => {
       switch (kind) {
@@ -48,7 +50,9 @@ export function enemyDebuffs(buffs: readonly BuffView[], localId: number | null)
     });
     if (!matching.length) continue;
     const personal =
-      kind === 'curse' ? matching.filter((b) => localId !== null && b.ownerId === localId) : [];
+      kind === 'curse' || kind === 'venom'
+        ? matching.filter((b) => localId !== null && b.ownerId === localId)
+        : [];
     result.push({
       kind,
       remaining: Math.max(...matching.map((b) => b.remaining)),
@@ -112,6 +116,8 @@ export function drawEnemyDebuffSymbol(
     g.poly([x, y - r, x + r, y, x, y + r, x - r, y])
       .moveTo(x, y + r)
       .lineTo(x, y + r * 1.5);
+  } else if (kind === 'venom') {
+    g.poly([x, y - r, x + r * 0.7, y + r * 0.4, x, y + r, x - r * 0.7, y + r * 0.4, x, y - r]);
   } else if (kind === 'weak') {
     g.moveTo(x, y - r)
       .lineTo(x, y + r)

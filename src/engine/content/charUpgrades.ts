@@ -2865,6 +2865,13 @@ function scaleField(ab: PlayerAbilityDef, k: keyof PlayerAbilityDef, frac: numbe
  * i-frames, so even a magnitude-less mobility skill transforms measurably.
  */
 function amplify(ab: PlayerAbilityDef, mag: number, size: number): void {
+  if (ab.venomCoating)
+    ab.venomCoating = {
+      ...ab.venomCoating,
+      damage: Math.round(ab.venomCoating.damage * (1 + mag)),
+    };
+  if (ab.warCry) ab.warCry = { ...ab.warCry, radius: Math.round(ab.warCry.radius * (1 + size)) };
+  if (ab.momentumFissure) ab.momentumFissure *= 1 + mag;
   scaleField(ab, 'damage', mag);
   scaleField(ab, 'landingDamage', mag);
   scaleField(ab, 'zoneTickDamage', mag);
@@ -3552,6 +3559,17 @@ function subSkillTune(ab: PlayerAbilityDef): void {
 }
 
 const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
+  kn_battle_menacing:
+    'Improve the personal damage buff, increase challenge radius by 8%, and reduce recharge by 8%; retain weakening and counter preparation',
+  bb_berserker_slam:
+    'Increase burst and fissure damage by 12%, burst radius by 8%, and reduce recharge by 8%; fissures still require Momentum',
+  bb_totem_quake:
+    'Increase field damage by 12% (rounded), radius by 8%, and reduce recharge by 8%; retain Momentum and enemy slow',
+  ro_assassin_poison:
+    'Increase poison damage by 12% (rounded) and reduce recharge by 8%; retain the precision bonus and single-owner stacking rule',
+  dr_land_spike:
+    'Increase damage by 12% and blast radius by 8%, and reduce recharge by 8%; retain the controlled-target bonus',
+
   ro_assassin_smoke:
     'Increase smoke radius by 8% and reduce recharge by 8%; retain hindrance, allied haste and precision setup',
   ro_trickster_shield:
@@ -3570,7 +3588,7 @@ const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
   rg_hunter_stand:
     'Increase skirmish-field damage by 12% and radius by 8%, and reduce recharge by 8%; retain ally speed and enemy slow',
   bb_totem_bear:
-    'Extend control resistance by 8% (cap 8s), improve mitigation, and reduce recharge by 8%',
+    'Extend control resistance and frontal blocks by 8% (cap 8s), improve mitigation, and reduce recharge by 8%; retain counters on blocks',
   bb_totem_mend:
     'Increase self-healing by 12%, extend control resistance by 8% (cap 8s), and reduce recharge by 8%; retain cleanse',
   pa_devotion_aura:

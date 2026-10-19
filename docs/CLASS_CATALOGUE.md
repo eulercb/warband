@@ -35,7 +35,7 @@ A direct hit on a slowed, rooted or stunned foe readies your next melee counter 
 | Stable ID           | Ability          | Resolved unupgraded behavior                                                                                                                                                               |
 | ------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | kn_battle_trip      | Trip Attack      | 32 dmg · 70u reach · 90° arc · 1.1s stun · 8s cooldown                                                                                                                                     |
-| kn_battle_menacing  | Menacing Roar    | +30% dmg · for 6s · 12s cooldown                                                                                                                                                           |
+| kn_battle_menacing  | Menacing Roar    | challenge foes within 180u, attacks 20% weaker for 4s; next connecting melee cast readies a +30% counter · +30% dmg · for 6s · 12s cooldown                                                |
 | kn_battle_precision | Precision Volley | 3× 18 dmg · 6s cooldown                                                                                                                                                                    |
 | kn_battle_rally     | Rally            | Heal 45 · effective heal plants 180u recovery grove, 6/tick for 3s; one per caster · guard 5s; first damaging nonlethal hit readies next melee hit +30% for 4s · 280u range · 14s cooldown |
 
@@ -81,7 +81,7 @@ A spirit wolf follows you. Your connecting direct hits command a 16-damage bite 
 
 ### Evoker
 
-A direct hit against a slowed, rooted or stunned foe removes 2s from each running special cooldown. Once per 6s; damage-zone ticks do not trigger it.
+A positive direct hit on a slowed/rooted/stunned foe, or one that applies slow/stun, removes 4s from running nonbasic cooldowns: Fireball, Frost Nova, Blink and subclass skills. It also prepares your next nonbasic damaging spell for +25% damage and half wind-up within 6s. Once per 6s; basics can trigger but never spend preparation or receive refunds. Zone ticks cannot trigger it.
 
 | Stable ID           | Ability        | Resolved unupgraded behavior                                                                                                                  |
 | ------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -149,19 +149,19 @@ Spending Momentum readies your next basic cast for 4s: +10% damage per stack spe
 | --------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | bb_berserker_frenzy   | Frenzy          | blood rage 6s — pay 2% max HP/s (cannot kill you); heal 20% of effective direct damage · melee hits build up to 3 momentum during 6s; marked finishers gain +10% dmg per stack (at most 1 stack per 0.4s) · +40% dmg · +20% move · for 6s · 12s cooldown |
 | bb_berserker_reckless | Reckless Cleave | 48 dmg · spend momentum for +10% dmg and +8u cone reach / +10u burst radius per stack · 90u reach · 120° arc · 6s cooldown                                                                                                                               |
-| bb_berserker_slam     | Ground Slam     | 40 dmg · spend momentum for +10% dmg and +8u cone reach / +10u burst radius per stack · 150u radius · 8s cooldown                                                                                                                                        |
+| bb_berserker_slam     | Ground Slam     | 40 dmg · spend momentum for +10% dmg and +8u cone reach / +10u burst radius per stack · 150u radius · spending Momentum leaves a 3s slowing fissure, 4 damage per stack every 0.5s; ground only · 8s cooldown                                            |
 | bb_berserker_chain    | Chain Pull      | 28 dmg · spend momentum for +10% dmg and +8u cone reach / +10u burst radius per stack · 220u reach · 52° arc · pull in 200u · 7s cooldown                                                                                                                |
 
 ### Totem Warrior
 
 Spending Momentum grants you and living allies within 180u 8 + 4 absorption per stack spent (up to 20), lasting 4s. Once per 6s; shared cap and strongest-cast rules apply. Rage and Whirlwind work with every subclass choice.
 
-| Stable ID      | Ability     | Resolved unupgraded behavior                                                                                                                                                                                     |
-| -------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| bb_totem_bear  | Bear Spirit | steadfast 6s — release roots and prevent new roots, stuns, pushes and pulls; slows still apply · 40% less dmg taken · for 6s · 12s cooldown                                                                      |
-| bb_totem_wolf  | Wolf Spirit | wolf hunt 5s — walk 120u per momentum stack instead of melee hits; up to 3 stacks, at most 1 per 0.4s · +30% dmg · +30% move · for 5s · 12s cooldown                                                             |
-| bb_totem_quake | Earth Totem | 26 dmg · spend momentum for +10% dmg and +8u cone reach / +10u burst radius per stack · 160u radius · slow to 50% for 2s · 9s cooldown                                                                           |
-| bb_totem_mend  | Spirit Mend | heal 80 self · steadfast 2s — release roots and prevent new roots, stuns, pushes and pulls; slows still apply · cleanse movement/control effects from the recipient, even at full health · for 5s · 10s cooldown |
+| Stable ID      | Ability     | Resolved unupgraded behavior                                                                                                                                                                                                                                                                                                                  |
+| -------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| bb_totem_bear  | Bear Spirit | block 2 frontal damage hits in a 120° arc for 6s; aim to face attacks; ground hazards and control bypass it · steadfast 6s — release roots and prevent new roots, stuns, pushes and pulls; slows still apply · each successful frontal block readies a +30% melee counter; counters do not stack · 20% less dmg taken · for 6s · 12s cooldown |
+| bb_totem_wolf  | Wolf Spirit | wolf hunt 5s — walk 120u per momentum stack instead of melee hits; up to 3 stacks, at most 1 per 0.4s · +30% dmg · +30% move · for 5s · 12s cooldown                                                                                                                                                                                          |
+| bb_totem_quake | Earth Totem | 7/tick dmg · spend momentum for +10% dmg and +8u cone reach / +10u burst radius per stack · 160u radius · slow to 50% for 1s · lasts 4s · 9s cooldown                                                                                                                                                                                         |
+| bb_totem_mend  | Spirit Mend | heal 80 self · steadfast 2s — release roots and prevent new roots, stuns, pushes and pulls; slows still apply · cleanse movement/control effects from the recipient, even at full health · for 5s · 10s cooldown                                                                                                                              |
 
 ## rogue
 
@@ -176,12 +176,12 @@ Spending Momentum grants you and living allies within 180u 8 + 4 absorption per 
 
 Prepared precision strikes gain +0.2× critical damage and deal 15% more damage to enemies at or below 35% health. No extra guaranteed crits.
 
-| Stable ID          | Ability      | Resolved unupgraded behavior                                                                                                                              |
-| ------------------ | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ro_assassin_strike | Death Strike | 60 dmg · 58u reach · 60° arc · +20% crit · +0.4× crit dmg · consumes prepared crit · 7s cooldown                                                          |
-| ro_assassin_throw  | Deadly Throw | 38 dmg · +35% crit · +0.6× crit dmg · 6s cooldown                                                                                                         |
-| ro_assassin_poison | Coated Blade | 12/tick dmg · 105u radius · lasts 4s · 9s cooldown                                                                                                        |
-| ro_assassin_smoke  | Smoke Bomb   | allies in the field gain 25% speed · 120u radius · slow to 65% for 1s · +40% enemy wind-up · prepare next precision crit for 4s · lasts 4s · 12s cooldown |
+| Stable ID          | Ability      | Resolved unupgraded behavior                                                                                                                                                                             |
+| ------------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ro_assassin_strike | Death Strike | 60 dmg · 58u reach · 60° arc · +20% crit · +0.4× crit dmg · consumes prepared crit · 7s cooldown                                                                                                         |
+| ro_assassin_throw  | Deadly Throw | 38 dmg · +35% crit · +0.6× crit dmg · 6s cooldown                                                                                                                                                        |
+| ro_assassin_poison | Coated Blade | coat next positive direct hit within 6s, poison 24 dmg/s for 4s; prepared precision +50% poison; while precision is held, basics preserve coating; no stacks from the same caster · for 5s · 9s cooldown |
+| ro_assassin_smoke  | Smoke Bomb   | allies in the field gain 25% speed · 120u radius · slow to 65% for 1s · +40% enemy wind-up · prepare next precision crit for 4s · lasts 4s · 12s cooldown                                                |
 
 ### Arcane Trickster
 
@@ -251,7 +251,7 @@ Your friendly ground zones grant allies 20% movement speed and make enemy wind-u
 
 | Stable ID      | Ability        | Resolved unupgraded behavior                                                             |
 | -------------- | -------------- | ---------------------------------------------------------------------------------------- |
-| dr_land_spike  | Erupting Earth | 38 dmg · 160u radius · 8s cooldown                                                       |
+| dr_land_spike  | Erupting Earth | 38 dmg · 160u blast · +25% dmg vs slowed/rooted/stunned foes · 8s cooldown               |
 | dr_land_wall   | Wall of Thorns | 13/tick dmg · 4/tick heal · 130u radius · slow to 50% for 1.2s · lasts 4s · 10s cooldown |
 | dr_land_wind   | Gust           | 24 dmg · 150u radius · slow to 50% for 2s · knock back 90u · 8s cooldown                 |
 | dr_land_spring | Healing Spring | 13/tick heal · 150u radius · lasts 5s · 12s cooldown                                     |

@@ -341,8 +341,8 @@ describe('Mind Blast curse ownership and Mage cadence', () => {
       p.cooldowns.basic = 1;
       applyBuff(boss, makeBuff('moveSpeed', 0.6, 3, 'test'));
       damageBoss(w, p, boss, 10, { direct: true });
-      expect(p.cooldowns.a1).toBe(Math.max(0, 14 * haste - 2));
-      expect(p.cooldowns.a2).toBe(Math.max(0, 20 * haste - 2));
+      expect(p.cooldowns.a1).toBe(Math.max(0, 14 * haste - 4));
+      expect(p.cooldowns.a2).toBe(Math.max(0, 20 * haste - 4));
       expect(p.cooldowns.basic).toBe(1);
       const snapshot = { ...p.cooldowns };
       damageBoss(w, p, boss, 10, { direct: true });

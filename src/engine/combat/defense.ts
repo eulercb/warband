@@ -12,6 +12,20 @@ export function blockFromFront(p: Player, origin: Vec2 | undefined, damage: numb
   const aim = Math.hypot(p.aim.x, p.aim.y);
   if (distance < 1e-6 || aim < 1e-6 || delta.x * p.aim.x + delta.y * p.aim.y < distance * aim * 0.5)
     return false;
+  if (guard.blockCounter) {
+    const counter = p.buffs.find((b) => b.kind === 'counter' && b.remaining > 0);
+    if (!counter)
+      p.buffs.push({
+        kind: 'counter',
+        mult: guard.blockCounter,
+        remaining: 4,
+        source: 'martialCounter',
+      });
+    else {
+      counter.mult = Math.max(counter.mult, guard.blockCounter);
+      counter.remaining = Math.max(counter.remaining, 4);
+    }
+  }
   guard.mult--;
   if (guard.mult <= 0) p.buffs.splice(p.buffs.indexOf(guard), 1);
   return true;
@@ -40,9 +54,20 @@ export function mirrorDamage(p: Player, origin: Vec2 | undefined, damage: number
 }
 
 /** One shared frontal guard; a weaker cast cannot erase or add to stronger blocks. */
-export function grantFrontGuard(p: Player, charges: number, duration: number): void {
+export function grantFrontGuard(
+  p: Player,
+  charges: number,
+  duration: number,
+  counter?: number,
+): void {
   const old = p.buffs.find((b) => b.kind === 'frontGuard' && b.remaining > 0 && b.mult > 0);
   if (old && (old.mult > charges || (old.mult === charges && old.remaining >= duration))) return;
   p.buffs = p.buffs.filter((b) => b.kind !== 'frontGuard');
-  p.buffs.push({ kind: 'frontGuard', mult: charges, remaining: duration, source: 'frontGuard' });
+  p.buffs.push({
+    kind: 'frontGuard',
+    mult: charges,
+    remaining: duration,
+    source: 'frontGuard',
+    blockCounter: counter,
+  });
 }

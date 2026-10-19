@@ -1,3 +1,4 @@
+import { armRetouchEffects } from './skillRetouches';
 import { onMoonAbility } from './moonForm';
 import { dimensionDoor } from './dimensionDoor';
 import { isSteadfast } from './defense';
@@ -14,7 +15,12 @@ import {
   onParryHit,
 } from './martial';
 import { beginSupportCast, nearbySupportAllies, healSupportAlly } from './support';
-import { consumeSpellSurge, prepareSpellSurge, controlledSpellMultiplier } from './spellCombos';
+import {
+  consumeSpellSurge,
+  consumeEvocation,
+  prepareSpellSurge,
+  controlledSpellMultiplier,
+} from './spellCombos';
 import { onSubclassAbility } from './subclassPassives';
 import type {
   Player,
@@ -359,8 +365,12 @@ export function resolvePlayerAbility(
 ): void {
   const original = reserved ?? abilityForSlot(p, slot);
   const ab =
-    original && (reserved ? original : consumeMartialFinishers(p, consumeSpellSurge(p, original)));
+    original &&
+    (reserved
+      ? original
+      : consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original))));
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
+  armRetouchEffects(world, p, ab);
   onSubclassAbility(p, ab);
   onMoonAbility(world, p, ab);
   if (ab.closeBurst) {

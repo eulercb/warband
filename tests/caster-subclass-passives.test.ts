@@ -110,10 +110,10 @@ describe('Mage cadence and binding wards', () => {
       p.cooldowns = { basic: 2, a1: 5, a2: 0.4, a3: 0, sub1: 8, sub2: 2 };
       damageBoss(w, p, boss, 10, { direct: true });
       damageBoss(w, p, boss, 10, { direct: true });
-      expect(p.cooldowns).toEqual({ basic: 2, a1: 3, a2: 0, a3: 0, sub1: 6, sub2: 0 });
+      expect(p.cooldowns).toEqual({ basic: 2, a1: 1, a2: 0, a3: 0, sub1: 4, sub2: 0 });
       tickSubclassPassives(p, 6);
       damageBoss(w, p, boss, 10, { direct: true });
-      expect(p.cooldowns.a1).toBe(1);
+      expect(p.cooldowns.a1).toBe(0);
       expect(w.events.some((e) => e.t === 'support' && e.kind === 'empower')).toBe(true);
     },
   );
@@ -161,11 +161,13 @@ describe('Mage cadence and binding wards', () => {
     expect(absorptionAmount(p.buffs)).toBe(20);
     expect(w.events.some((e) => e.t === 'support' && e.kind === 'absorb')).toBe(true);
   });
-  it('Evoker preserves its trigger when every special is ready', () => {
+  it('Evoker readies a follow-up even when every nonbasic is ready', () => {
     const { w, p, boss } = setup('mg_evoker');
     controlled(boss);
     damageBoss(w, p, boss, 10, { direct: true });
-    expect(p.subclassPassiveCooldowns?.evoker_arcane_cadence).toBeUndefined();
+    expect(p.subclassPassiveCooldowns?.evoker_arcane_cadence).toBe(6);
+    expect(p.buffs.some((b) => b.kind === 'evocation')).toBe(true);
+    tickSubclassPassives(p, 6);
     p.cooldowns.a1 = 2;
     damageBoss(w, p, boss, 10, { direct: true });
     expect(p.cooldowns.a1).toBe(0);
@@ -186,7 +188,7 @@ describe('Mage cadence and binding wards', () => {
     w.adds.push(add);
     p.cooldowns.a2 = 5;
     damageAdd(w, p, add, 10, { direct: true });
-    expect(p.cooldowns.a2).toBe(3);
+    expect(p.cooldowns.a2).toBe(1);
     tickSubclassPassives(p, 6);
     controlled(boss);
     resolvePlayerAbility(w, p, 'basic', ZERO);
@@ -195,7 +197,7 @@ describe('Mage cadence and binding wards', () => {
     (
       w as unknown as { resolvePlayerProjectile: (shot: typeof proj) => void }
     ).resolvePlayerProjectile(proj);
-    expect(p.cooldowns.a2).toBe(1);
+    expect(p.cooldowns.a2).toBe(0);
   });
 });
 
