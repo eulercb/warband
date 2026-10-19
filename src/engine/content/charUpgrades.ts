@@ -2870,6 +2870,12 @@ function amplify(ab: PlayerAbilityDef, mag: number, size: number): void {
   scaleField(ab, 'zoneTickDamage', mag);
   scaleField(ab, 'zoneTickHeal', mag);
   scaleField(ab, 'healOnUse', mag);
+  if (ab.closeBurst)
+    ab.closeBurst = {
+      ...ab.closeBurst,
+      damage: Math.round(ab.closeBurst.damage * (1 + mag)),
+      radius: Math.round(ab.closeBurst.radius * (1 + size)),
+    };
   if (ab.mirrorImages)
     ab.mirrorImages = {
       ...ab.mirrorImages,

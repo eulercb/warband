@@ -148,6 +148,16 @@ export type CorruptionKind =
  *  - moveSpeed:   multiplies movement speed
  *  - stun / invuln: `mult` unused; presence for the duration is what matters
  */
+/** Prepared close-range burst; copied skills remain useful without Moon Aspect. */
+export interface CloseBurst {
+  damage: number;
+  radius: number;
+  range: number;
+  duration: number;
+  slowMult: number;
+  slowDuration: number;
+}
+
 export type BuffKind =
   | 'damageDealt'
   | 'damageTaken'
@@ -204,6 +214,7 @@ export type BuffKind =
   | 'spellblade' // one empowered melee hit from Arcane Trickster
   | 'precision' // one prepared critical strike; mult unused
   | 'curse' // owner-only vulnerability; source = curse:<owner>[:<style>:<zone>], mult = factor
+  | 'brambleReady' // next positive nearby direct hit or Moon claw releases a burst
   | 'rebuke'; // one counterburst; mult = damage, payload host-only
 
 export interface Buff {
@@ -214,7 +225,8 @@ export interface Buff {
   source: string;
   /** Host-only extension already spent from this Flow preparation. */
   flowExtended?: number;
-  retaliation?: { radius: number; lifesteal: number };
+  retaliation?: { radius: number; lifesteal: number; curseBonus?: number };
+  closeBurst?: CloseBurst;
 }
 
 /**
@@ -644,6 +656,7 @@ export interface Projectile {
   critChanceBonus?: number;
   critMultBonus?: number;
   controlDamageBonus?: number;
+  cursePayoff?: number;
   /** Host-only piercing budget and distinct bodies already hit. */
   pierceLeft?: number;
   hitIds?: EntityId[];

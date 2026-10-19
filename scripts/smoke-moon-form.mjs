@@ -132,7 +132,9 @@ try {
       } else assert.equal(result.form, undefined);
       if (mode === 'claw') {
         assert.equal(result.bossHp, 9986);
-        assert.equal(result.hp, result.maxHp - 16);
+        assert.ok(
+          Math.abs(result.hp - (result.maxHp - 20 + Math.max(4, result.maxHp * 0.03))) < 1e-8,
+        );
         assert.equal(result.projectiles, 1);
       }
       if (mode === 'rest') assert.equal(result.rest, 6);

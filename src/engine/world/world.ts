@@ -1085,6 +1085,7 @@ export class World {
 
     this.tickTimers(dt);
     maintainMoonForms(this);
+    this.maintainCloseBursts();
     this.applyInputs(dt, inputs);
     this.stepGlides(dt); // item 2: advance in-progress dash/leap glides host-side
     this.stepShoves(dt); // item 2: advance in-progress knockback/pull slides host-side
@@ -1122,6 +1123,7 @@ export class World {
     updatePaladinAuras(this, 0, 0);
     updateCompanions(this, 0);
     maintainMoonForms(this);
+    this.maintainCloseBursts();
     this.checkEndConditions();
 
     this.tick++;
@@ -1689,6 +1691,7 @@ export class World {
       consumesPrecision?: boolean;
       kind?: string;
       controlDamageBonus?: number;
+      cursePayoff?: number;
       flowExtendOnHit?: number;
     },
   ): HitMods {
@@ -1700,6 +1703,7 @@ export class World {
     const crit = this.critRng.next() < chance;
     return {
       direct: true,
+      cursePayoff: bonus?.cursePayoff,
       ...(bonus?.flowExtendOnHit ? { flowExtend: bonus.flowExtendOnHit } : {}),
       crit,
       mult: crit
@@ -1727,6 +1731,7 @@ export class World {
       consumesPrecision?: boolean;
       kind?: string;
       controlDamageBonus?: number;
+      cursePayoff?: number;
       flowExtendOnHit?: number;
     },
   ): HitMods {
@@ -1746,6 +1751,59 @@ export class World {
     };
   }
 
+  private maintainCloseBursts(): void {
+    for (const p of this.players)
+      p.buffs = p.buffs.filter(
+        (b) =>
+          b.kind !== 'brambleReady' ||
+          (p.state === 'alive' &&
+            p.hp > 0 &&
+            this.scene === null &&
+            b.source === `closeBurst:${p.classId}`),
+      );
+  }
+
+  /** Consume before resolving the splash: supplemental damage never recursively releases charges. */
+  onPlayerDirectHit(
+    source: Player,
+    target: { pos: Vec2; radius: number },
+    effective: number,
+  ): void {
+    if (this.scene !== null || source.state !== 'alive' || source.hp <= 0 || effective <= 0) return;
+    const charge = source.buffs.find(
+      (b) => b.kind === 'brambleReady' && b.remaining > 0 && b.closeBurst,
+    );
+    const burst = charge?.closeBurst;
+    if (charge && charge.source !== `closeBurst:${source.classId}`) {
+      source.buffs.splice(source.buffs.indexOf(charge), 1);
+      return;
+    }
+    if (!charge || !burst || dist(source.pos, target.pos) > burst.range + target.radius) return;
+    source.buffs.splice(source.buffs.indexOf(charge), 1);
+    this.events.push({
+      t: 'skillArea',
+      sourceId: source.id,
+      side: 'player',
+      color: 0x89c96a,
+      area: {
+        kind: 'circle',
+        origin: { ...source.pos },
+        angle: 0,
+        range: 0,
+        radius: burst.radius,
+        halfAngle: 0,
+      },
+    });
+    for (const foe of [...this.aliveBosses(), ...this.adds.filter((a) => a.hp > 0)]) {
+      if (dist(source.pos, foe.pos) > burst.radius + foe.radius) continue;
+      const before = foe.hp;
+      if (this.bosses.includes(foe as Boss)) damageBoss(this, source, foe as Boss, burst.damage);
+      else damageAdd(this, source, foe as Add, burst.damage);
+      if (foe.hp < before)
+        applyBuff(foe, makeBuff('moveSpeed', burst.slowMult, burst.slowDuration, 'brambleSlow'));
+    }
+  }
+
   /** Consume a counterburst before resolving damage, so it cannot recurse. */
   onPlayerDamaged(target: Player): void {
     const ward = target.buffs.find((b) => b.kind === 'rebuke' && b.remaining > 0 && b.retaliation);
@@ -1753,12 +1811,24 @@ export class World {
     target.buffs.splice(target.buffs.indexOf(ward), 1);
     let dealt = 0;
     for (const boss of this.aliveBosses()) {
-      if (dist(target.pos, boss.pos) <= ward.retaliation.radius + boss.radius)
+      if (dist(target.pos, boss.pos) <= ward.retaliation.radius + boss.radius) {
+        if (ward.retaliation.curseBonus)
+          applyBuff(
+            boss,
+            makeBuff('curse', 1 + ward.retaliation.curseBonus, 4, `curse:${target.id}:searing`),
+          );
         dealt += damageBoss(this, target, boss, ward.mult);
+      }
     }
     for (const add of this.adds) {
-      if (add.hp > 0 && dist(target.pos, add.pos) <= ward.retaliation.radius + add.radius)
+      if (add.hp > 0 && dist(target.pos, add.pos) <= ward.retaliation.radius + add.radius) {
+        if (ward.retaliation.curseBonus)
+          applyBuff(
+            add,
+            makeBuff('curse', 1 + ward.retaliation.curseBonus, 4, `curse:${target.id}:searing`),
+          );
         dealt += damageAdd(this, target, add, ward.mult);
+      }
     }
     if (dealt > 0 && ward.retaliation.lifesteal > 0)
       healPlayer(this, target, target, dealt * ward.retaliation.lifesteal);

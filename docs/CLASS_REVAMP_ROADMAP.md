@@ -1,24 +1,24 @@
 # Class identity and subclass roadmap
 
-Current delivery: **whole-class coherence audit and retouch proposal**.
+Current delivery: **coherence retouch A — Moon / Warlock / Mage**.
 
-**Progress:** Moon Aspect is merged and live-tested. The first identity round is
-complete at **24/24 subclass passives**. The [full audit](CLASS_COHERENCE_AUDIT.md)
-and [resolved catalogue](CLASS_CATALOGUE.md) now cover 12 classes, 48 base slots,
-96 subclass choices and all 24 passives. Coverage is not a numerical balance tier
-list or proof every kit is equally satisfying.
+The first identity round is complete at **24/24 subclass passives**, and the
+[whole-class audit](CLASS_COHERENCE_AUDIT.md) is merged. This patch delivers the
+[first retouch batch](COHERENCE_BATCH_A.md): scalable Moon mending and a Roar
+follow-through, Fiend's visible reserve and cursed retaliation, Mind Blast's
+curse payoff, and Mage's bounded control-passive improvements. The [resolved
+catalogue](CLASS_CATALOGUE.md) reflects current behavior.
 
-**Next, subject to approval of the concrete audit proposal:** three larger retouch
-batches: A (scaling/Moon/Warlock/Mage), B (Knight/Barbarian/Rogue/Druid active
-roles), C (support alternatives/cadence, preserving successful later kits).
-Split B only if the placed-totem prototype needs substantial engine work. This
-audit changes no gameplay; it precedes implementation and broad upgrade redesign.
+**Next after live verification:** B (Knight / Barbarian / Rogue / Druid active
+roles), then C (support alternatives and remaining cadence). Split B only if the
+placed-totem prototype requires substantial engine work. Added passives or riders
+still do not exempt plain defensive/recovery actives from the review.
 
-After those retouches, roughly four to six upgrade design/implementation PRs:
-**7–9 more PRs after this audit**, with a possible extra split. Art direction is
-separate. These are provisional scope estimates, not time/subscription-quota
-predictions. Earlier status tables preserve history and are superseded here.
-See [milestone review gates](CLASS_MILESTONE_REVIEW.md).
+Then roughly four to six upgrade design/implementation PRs: **6–8 more PRs after
+this batch**, with a possible split. Art direction remains separate. These are
+provisional scope estimates; earlier status tables preserve history and are
+superseded here. Follow the [milestone review gates](CLASS_MILESTONE_REVIEW.md)
+and [public research guidelines](RESEARCH_GUIDELINES.md).
 
 ## Goals and boundaries
 
@@ -168,7 +168,7 @@ expanding. Targeted tests during development; the full required CI checks before
 PR review. Use a suitable coding model for routine content work; reserve stronger
 reasoning for shared combat state, deterministic simulation and networking.
 Avoid parallelizing the entire roster or running exhaustive simulations at this
-stage. Quota consumption cannot be predicted reliably.
+stage.
 
 ## Compatibility contract
 
@@ -353,7 +353,7 @@ remaining passive or the balance work discovered during playtests. Avoid treatin
 
 After this absorption batch, **about seven further PRs remain** (2 defensive/balance
 PRs, 3 passive batches, companion, form), with scope adjusted if playtests justify
-combining or splitting related work. It is a scope estimate, not a quota or calendar estimate.
+combining or splitting related work. It is a scope estimate, not a calendar estimate.
 Integration/balance checks belong in every batch; a final tuning patch may still
 be warranted. Recommend increasing _related content_ per PR (the current four-class
 batch and future six-passive batches), while keeping new shared systems independently
@@ -502,7 +502,7 @@ After this extra feedback patch, approximately eight reviewable PRs remain at th
 current scope: three defensive/balance passes (absorption, auras, remaining defense
 and recovery reworks), three batches of non-companion/form defining passives,
 then Beast Master's companion and Moon Druid's form. This is a scope estimate,
-not a quota/time promise. Six related passives per batch is a reasonable increase;
+not a delivery-date promise. Six related passives per batch is a reasonable increase;
 keep absorption, moving auras and companion AI separate because each creates new
 state, replication and stacking risks. Fiend tuning and the Abjurer/Sorcerer
 redundant protection feedback remain on that defensive/balance list.
@@ -638,8 +638,7 @@ feedback. Continue grouping related skill tuning with each six-passive batch;
 keep companion AI and transformation state in separate PRs. Approximately **six
 planned PRs** remain after this batch (broad identity/balance pass, three passive
 batches, companion, form). The full defensive/recovery audit may warrant two
-cohesive passes, which would make seven; this is provisional scope, not a time or
-quota estimate. Bear Spirit and the complete mitigation-only inventory remain
+cohesive passes, which would make seven; this is provisional scope, not a delivery-date estimate. Bear Spirit and the complete mitigation-only inventory remain
 part of that audit, alongside plain-heal reworks and Fiend tuning.
 
 ## Readability batch: actual recipients and recognizable effects
@@ -726,7 +725,7 @@ After this patch, **six skill/passive/system PRs** remain at the current groupin
 balance pass B, three passive batches, companion and form. The upgrade workstream
 adds an estimated **four to six PRs** (audit/design, pilot and two to four followup
 batches), bringing the provisional total to **ten to twelve**. This is revised
-scope, not slower completion of the old scope or a time/quota commitment. Begin upgrade inventory/research alongside the remaining balance/passive work.
+scope, not a delivery-date commitment. Begin upgrade inventory/research alongside the remaining balance/passive work.
 Finalize the pilot once its chosen classes have stable contracts, rather than
 waiting for the whole catalogue; companion/form-specific upgrade design follows
 those prototypes. Revisit the

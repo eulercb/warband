@@ -363,6 +363,16 @@ export function resolvePlayerAbility(
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
   onSubclassAbility(p, ab);
   onMoonAbility(world, p, ab);
+  if (ab.closeBurst) {
+    const charge = makeBuff(
+      'brambleReady',
+      ab.closeBurst.damage,
+      ab.closeBurst.duration,
+      `closeBurst:${p.classId}`,
+    );
+    charge.closeBurst = { ...ab.closeBurst };
+    applyBuff(p, charge);
+  }
   const aimAngle = angleOf(p.aim);
   const color = CLASS_COLORS[p.classId] ?? 0xffffff;
 
@@ -448,6 +458,7 @@ export function resolvePlayerAbility(
           freeze: ab.freeze,
           critChanceBonus: ab.critChanceBonus, // item 13 — a deadly/aimed shot
           controlDamageBonus: ab.controlDamageBonus,
+          cursePayoff: ab.cursePayoff,
           pierce: ab.pierce,
           critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
@@ -881,6 +892,7 @@ function resolveComposedAbility(
           castSlowDuration: ab.castSlowDuration,
           critChanceBonus: ab.critChanceBonus, // item 13
           controlDamageBonus: ab.controlDamageBonus,
+          cursePayoff: ab.cursePayoff,
           pierce: ab.pierce,
           critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
@@ -971,7 +983,11 @@ function resolveComposedAbility(
 /** One-use retaliation. Payload lives in host buffs; peers receive its ordinary badge. */
 function armRebuke(p: Player, ab: PlayerAbilityDef): void {
   const buff = makeBuff('rebuke', ab.damage * 0.4, ab.rebukeDuration!, 'hellishRebuke');
-  buff.retaliation = { radius: ab.radius ?? 150, lifesteal: ab.lifestealFrac ?? 0 };
+  buff.retaliation = {
+    radius: ab.radius ?? 150,
+    lifesteal: ab.lifestealFrac ?? 0,
+    curseBonus: ab.rebukeCurseBonus,
+  };
   applyBuff(p, buff);
 }
 
@@ -1053,6 +1069,7 @@ interface SpawnProjOpts {
   critChanceBonus?: number;
   critMultBonus?: number;
   controlDamageBonus?: number;
+  cursePayoff?: number;
   pierce?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
@@ -1087,6 +1104,7 @@ function spawnPlayerProjectile(
     castSlowDuration: o.castSlowDuration,
     critChanceBonus: o.critChanceBonus, // item 13
     controlDamageBonus: o.controlDamageBonus,
+    cursePayoff: o.cursePayoff,
     // Do not repeat an explosive/zone payload on several bodies.
     pierceLeft: o.pierce && o.impactRadius <= 0 && !o.onImpact ? o.pierce : undefined,
     hitIds: o.pierce && o.impactRadius <= 0 && !o.onImpact ? [] : undefined,

@@ -130,22 +130,36 @@ export function subclassDamageMultiplier(p: Player, target: Target, hit?: Passiv
   }
 }
 
-/** Returns attributed healing to apply through combat.healPlayer, after effective damage. */
-export function subclassHitHealing(p: Player, target: Target, effective: number): number {
-  const id = p.subclassPassiveId;
+/** Personal curse damage sustains Fiend and builds a visible, nonstacking reserve. */
+export function onSubclassCursedHit(
+  sink: EventSink,
+  p: Player,
+  target: Target,
+  effective: number,
+): void {
+  const id = 'fiend_soul_ember';
   if (
-    id !== 'fiend_soul_ember' ||
+    p.subclassPassiveId !== id ||
     effective <= 0 ||
     p.state !== 'alive' ||
     p.hp <= 0 ||
-    p.hp >= p.maxHp ||
     !personallyCursed(p.id, target) ||
     !offCooldown(p, id)
   )
-    return 0;
+    return;
+  const healed = healPlayer(sink, p, p, p.maxHp * 0.05);
+  const shield = grantAbsorption(p, Math.max(15, p.maxHp * 0.12), 6);
+  if (healed <= 0 && shield <= 0) return;
   spendCooldown(p, id);
-  putBuff(p, { kind: 'damageTaken', mult: 0.9, remaining: 3, source: PREFIX + id });
-  return p.maxHp * 0.05;
+  if (shield > 0)
+    sink.events.push({
+      t: 'support',
+      sourceId: p.id,
+      targetId: p.id,
+      from: { ...p.pos },
+      pos: { ...p.pos },
+      kind: 'absorb',
+    });
 }
 
 /** Positive direct hits only: neither zone ticks nor invulnerable hits spend a gate. */
@@ -205,12 +219,12 @@ export function onSubclassDirectHit(
     for (const slot of ['a1', 'a2', 'a3', 'sub1', 'sub2'] as const) {
       const remaining = p.cooldowns[slot];
       if (remaining == null || remaining <= 0) continue;
-      p.cooldowns[slot] = Math.max(0, remaining - 1);
+      p.cooldowns[slot] = Math.max(0, remaining - 2);
       reduced = true;
     }
     if (!reduced) return;
   } else {
-    if (grantAbsorption(p, 20, 5) <= 0) return;
+    if (grantAbsorption(p, Math.max(20, p.maxHp * 0.1), 5) <= 0) return;
   }
   spendCooldown(p, id);
   sink.events.push({

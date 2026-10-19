@@ -8,7 +8,7 @@ import type { AbsorptionGrant } from '../combat/absorption';
  */
 import { flowPayoff } from './martialRules';
 import { bardSongText } from './bardText';
-import type { ClassId, AbilitySlot, ExtSlot, ZoneKind } from '../core/types';
+import type { ClassId, AbilitySlot, ExtSlot, ZoneKind, CloseBurst } from '../core/types';
 import { PLAYER_RADIUS, CLASS_COLORS, ATTACK_CD_SCALE } from '../core/constants';
 import { procVariant, classVariant } from './procgen';
 import { describeComposed, forgeVariant, synthesizeClass, type Donor } from './forge';
@@ -190,6 +190,11 @@ export interface PlayerAbilityDef {
   consumesPrecision?: boolean;
   /** A damaging burst also arms one counterburst (40% damage) for this window. */
   rebukeDuration?: number;
+  /** Counterburst applies a personal searing curse before its damage. */
+  rebukeCurseBonus?: number;
+  closeBurst?: CloseBurst;
+  /** A positive direct hit on a personally cursed foe weakens it for this duration. */
+  cursePayoff?: number;
   /** This zone marks enemies: only its owner deals this much extra damage. */
   curseBonus?: number;
   curseStyle?: CurseStyle;
@@ -1253,6 +1258,20 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   if (def.rebukeDuration)
     parts.push(
       `counterburst once for ${n(def.damage * dmgMul * 0.4)} dmg if hurt within ${s(def.rebukeDuration)}`,
+    );
+  if (def.rebukeCurseBonus)
+    parts.push(
+      `counterburst applies a searing curse +${n(def.rebukeCurseBonus * 100)}% owner dmg for 4s`,
+    );
+  if (def.closeBurst) {
+    const b = def.closeBurst;
+    parts.push(
+      `next positive direct hit within ${n(b.range)}u or bear claw within ${s(b.duration)} releases a bramble burst for ${n(b.damage * dmgMul)} dmg in ${n(b.radius)}u around you; slows to ${n(b.slowMult * 100)}% for ${s(b.slowDuration)}; misses/ticks preserve readiness`,
+    );
+  }
+  if (def.cursePayoff)
+    parts.push(
+      `on a positive hit against your cursed foe, 15% weaker attacks and 40% slower wind-ups for ${s(def.cursePayoff)}; no hard interrupt`,
     );
   if (def.curseBonus) parts.push(curseDescription(def.curseBonus, def.curseStyle));
 

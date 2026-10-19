@@ -57,7 +57,7 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'druid',
     name: 'Moon Aspect',
     icon: '🐻',
-    desc: 'Casting a special enters bear form for 6s, once per 12s, even at full health. Gain 20% movement speed; basic casts also swipe a 95u aimed claw for 14 damage. Thornlash and all spells remain usable. Claws or nearby positive direct hits heal you for 4, once per 1s; zones cannot mend. Claws share one cast across multishot, cannot crit or trigger direct-hit riders. All four Moon choices and base specials can activate it; downing, class changes and noncombat rooms end it.',
+    desc: 'Casting a special enters bear form for 6s, once per 12s, even at full health. Gain 20% movement speed; basic casts also swipe a 95u aimed claw for 14 damage. Thornlash and all spells remain usable. Claws or nearby positive direct hits heal you for 3% max HP (minimum 4), once per 1s; zones cannot mend. Claws share one cast across multishot, cannot crit or trigger direct-hit riders. All four Moon choices and base specials can activate it; downing, class changes and noncombat rooms end it.',
   },
   dr_land: {
     id: 'land_paths',
@@ -113,14 +113,14 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'mage',
     name: 'Arcane Cadence',
     icon: '⚡',
-    desc: 'A direct hit against a slowed, rooted or stunned foe removes 1s from each running special cooldown. Once per 6s; damage-zone ticks do not trigger it.',
+    desc: 'A direct hit against a slowed, rooted or stunned foe removes 2s from each running special cooldown. Once per 6s; damage-zone ticks do not trigger it.',
   },
   mg_abjurer: {
     id: 'abjurer_binding_ward',
     classId: 'mage',
     name: 'Binding Ward',
     icon: '🔷',
-    desc: 'A direct hit against a slowed, rooted or stunned foe grants you 20 absorption for 5s. Once per 6s; shared barrier cap and strongest-cast rules apply.',
+    desc: 'A direct hit against a slowed, rooted or stunned foe grants you 10% max-HP absorption (minimum 20) for 5s. Once per 6s; shared barrier cap and strongest-cast rules apply.',
   },
   so_draconic: {
     id: 'draconic_surge_ascent',
@@ -169,7 +169,7 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'warlock',
     name: 'Soul Ember',
     icon: '🔥',
-    desc: 'While injured, damaging an enemy bearing your curse heals 5% max health and grants 10% damage reduction for 3s. Once per 6s; full health does not spend the trigger.',
+    desc: 'Damaging an enemy bearing your curse heals 5% max health and grants 12% max-HP absorption (minimum 15) for 6s. Works at full health; once per 6s. Shared barrier cap and strongest-pool rules apply; a full-health failed shield preserves the trigger.',
   },
   wa_great_old_one: {
     id: 'old_one_dread_insight',

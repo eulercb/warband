@@ -840,8 +840,18 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'dr_moon_roar',
           'Primal Roar',
           '🦁',
-          '+30% damage, +20% speed for 5s',
-          buff('Primal Roar', 12, { buffDamageMult: 1.3, buffMoveMult: 1.2 }),
+          '+30% damage for 5s; prepare a slowing bramble burst on your next close hit',
+          buff('Primal Roar', 12, {
+            buffDamageMult: 1.3,
+            closeBurst: {
+              damage: 24,
+              radius: 125,
+              range: 130,
+              duration: 6,
+              slowMult: 0.65,
+              slowDuration: 2,
+            },
+          }),
         ),
         sk(
           'dr_moon_regen',
@@ -1210,7 +1220,11 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'Fiendish Rebuke',
           '💥',
           'A 150u hell-burst for 36; arm one 40%-damage counterburst for 3s',
-          nova('Fiendish Rebuke', 8, 36, 150, { lifestealFrac: 0.2, rebukeDuration: 3 }),
+          nova('Fiendish Rebuke', 8, 36, 150, {
+            lifestealFrac: 0.2,
+            rebukeDuration: 3,
+            rebukeCurseBonus: 0.15,
+          }),
         ),
         sk(
           'wa_fiend_resilience',
@@ -1235,7 +1249,13 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
       name: 'The Great Old One',
       blurb: 'Whispers from beyond the stars.',
       skills: [
-        sk('wa_goo_blast', 'Mind Blast', '🧠', 'A psychic bolt for 42', proj('Mind Blast', 5, 42)),
+        sk(
+          'wa_goo_blast',
+          'Mind Blast',
+          '🧠',
+          'A psychic bolt for 42; personally cursed foes attack weaker and wind up slower',
+          proj('Mind Blast', 5, 42, { cursePayoff: 3 }),
+        ),
         sk(
           'wa_goo_tentacle',
           'Tentacle of the Deep',

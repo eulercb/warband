@@ -269,21 +269,20 @@ describe.each([false, true])('Warlock contracts, composed=%s', (composed) => {
   });
 });
 
-it('reserves Soul Ember at full health, then heals a wounded caster from a searing mark', () => {
+it('builds Soul Ember at full health, preserves failed grants, and heals on its next eligible proc', () => {
   const { w, p } = setup();
   p.subclassPassiveId = 'fiend_soul_ember';
   mark(p, w.boss!);
   damageBoss(w, p, w.boss!, 10);
-  expect(p.subclassPassiveCooldowns?.fiend_soul_ember).toBeUndefined();
-  expect(p.buffs).toHaveLength(0);
+  expect(p.subclassPassiveCooldowns?.fiend_soul_ember).toBe(6);
+  expect(absorptionAmount(p.buffs)).toBeCloseTo(15.6);
+  tickSubclassPassives(p, 6);
+  damageBoss(w, p, w.boss!, 10);
+  expect(p.subclassPassiveCooldowns?.fiend_soul_ember).toBe(0);
   p.hp = 80;
   damageBoss(w, p, w.boss!, 10);
   expect(p.hp).toBe(86.5);
   expect(p.subclassPassiveCooldowns?.fiend_soul_ember).toBe(6);
-  tickSubclassPassives(p, 6);
-  p.hp = p.maxHp;
-  damageBoss(w, p, w.boss!, 10);
-  expect(p.subclassPassiveCooldowns?.fiend_soul_ember).toBe(0);
 });
 
 it.each(ids)(

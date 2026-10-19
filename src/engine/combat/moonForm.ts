@@ -25,7 +25,7 @@ function spend(p: Player, key: string, seconds: number): void {
 }
 function mend(sink: EventSink, p: Player, effective: number): void {
   if (!inMoonForm(p) || effective <= 0 || p.hp >= p.maxHp || !ready(p, 'moon_mend')) return;
-  healPlayer(sink, p, p, 4);
+  healPlayer(sink, p, p, Math.max(4, p.maxHp * 0.03));
   spend(p, 'moon_mend', 1);
   sink.events.push({
     t: 'support',
@@ -113,6 +113,8 @@ export function onMoonAbility(world: World, p: Player, ab: PlayerAbilityDef): vo
   }
   // One mend attempt for the entire swipe. Supplemental claws do not crit or trigger direct-hit riders.
   mend(world, p, dealt);
+  // Claws are supplemental, but explicitly qualify for the prepared close burst.
+  world.onPlayerDirectHit(p, { pos: p.pos, radius: 0 }, dealt);
 }
 export function maintainMoonForms(world: World): void {
   for (const p of world.players) {

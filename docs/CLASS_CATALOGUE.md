@@ -81,7 +81,7 @@ A spirit wolf follows you. Your connecting direct hits command a 16-damage bite 
 
 ### Evoker
 
-A direct hit against a slowed, rooted or stunned foe removes 1s from each running special cooldown. Once per 6s; damage-zone ticks do not trigger it.
+A direct hit against a slowed, rooted or stunned foe removes 2s from each running special cooldown. Once per 6s; damage-zone ticks do not trigger it.
 
 | Stable ID           | Ability        | Resolved unupgraded behavior                                                                                                                  |
 | ------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -92,7 +92,7 @@ A direct hit against a slowed, rooted or stunned foe removes 1s from each runnin
 
 ### Abjurer
 
-A direct hit against a slowed, rooted or stunned foe grants you 20 absorption for 5s. Once per 6s; shared barrier cap and strongest-cast rules apply.
+A direct hit against a slowed, rooted or stunned foe grants you 10% max-HP absorption (minimum 20) for 5s. Once per 6s; shared barrier cap and strongest-cast rules apply.
 
 | Stable ID           | Ability        | Resolved unupgraded behavior                                                                                                                                                      |
 | ------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -236,14 +236,14 @@ Your first connecting melee hit during each aura slows its victim by 25% for 2s 
 
 ### Circle of the Moon
 
-Casting a special enters bear form for 6s, once per 12s, even at full health. Gain 20% movement speed; basic casts also swipe a 95u aimed claw for 14 damage. Thornlash and all spells remain usable. Claws or nearby positive direct hits heal you for 4, once per 1s; zones cannot mend. Claws share one cast across multishot, cannot crit or trigger direct-hit riders. All four Moon choices and base specials can activate it; downing, class changes and noncombat rooms end it.
+Casting a special enters bear form for 6s, once per 12s, even at full health. Gain 20% movement speed; basic casts also swipe a 95u aimed claw for 14 damage. Thornlash and all spells remain usable. Claws or nearby positive direct hits heal you for 3% max HP (minimum 4), once per 1s; zones cannot mend. Claws share one cast across multishot, cannot crit or trigger direct-hit riders. All four Moon choices and base specials can activate it; downing, class changes and noncombat rooms end it.
 
-| Stable ID      | Ability        | Resolved unupgraded behavior                                                                     |
-| -------------- | -------------- | ------------------------------------------------------------------------------------------------ |
-| dr_moon_maul   | Dire Maul      | 46 dmg · 80u reach · 90° arc · 15% lifesteal · 6s cooldown                                       |
-| dr_moon_pounce | Feral Pounce   | 30 landing dmg · 100u radius · 250u dash · 0.3s i-frames · 6s cooldown                           |
-| dr_moon_roar   | Primal Roar    | +30% dmg · +20% move · for 5s · 12s cooldown                                                     |
-| dr_moon_regen  | Frenzied Regen | Heal 80 · effective heal plants 95u recovery grove, 4/tick for 3s; one per caster · 10s cooldown |
+| Stable ID      | Ability        | Resolved unupgraded behavior                                                                                                                                                                                |
+| -------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| dr_moon_maul   | Dire Maul      | 46 dmg · 80u reach · 90° arc · 15% lifesteal · 6s cooldown                                                                                                                                                  |
+| dr_moon_pounce | Feral Pounce   | 30 landing dmg · 100u radius · 250u dash · 0.3s i-frames · 6s cooldown                                                                                                                                      |
+| dr_moon_roar   | Primal Roar    | next positive direct hit within 130u or bear claw within 6s releases a bramble burst for 24 dmg in 125u around you; slows to 65% for 2s; misses/ticks preserve readiness · +30% dmg · for 5s · 12s cooldown |
+| dr_moon_regen  | Frenzied Regen | Heal 80 · effective heal plants 95u recovery grove, 4/tick for 3s; one per caster · 10s cooldown                                                                                                            |
 
 ### Circle of the Land
 
@@ -360,13 +360,13 @@ Three basic casts within 8s prepare Spell Surge for 8s, empowering your next hea
 
 ### The Fiend
 
-While injured, damaging an enemy bearing your curse heals 5% max health and grants 10% damage reduction for 3s. Once per 6s; full health does not spend the trigger.
+Damaging an enemy bearing your curse heals 5% max health and grants 12% max-HP absorption (minimum 15) for 6s. Works at full health; once per 6s. Shared barrier cap and strongest-pool rules apply; a full-health failed shield preserves the trigger.
 
 | Stable ID           | Ability         | Resolved unupgraded behavior                                                                                                                                                                                                                 |
 | ------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | wa_fiend_hurl       | Hurl Flame      | 56 dmg · 0.5s wind-up · 15% lifesteal · 6.5s cooldown                                                                                                                                                                                        |
 | wa_fiend_pit        | Fire Pit        | 13/tick dmg · 120u radius · searing curse +15% owner dmg (strongest personal mark only); 4s minimum linger · lasts 4s · 9s cooldown                                                                                                          |
-| wa_fiend_rebuke     | Fiendish Rebuke | 36 dmg · 150u radius · counterburst once for 14 dmg if hurt within 3s · 20% lifesteal · 8s cooldown                                                                                                                                          |
+| wa_fiend_rebuke     | Fiendish Rebuke | 36 dmg · 150u radius · counterburst once for 14 dmg if hurt within 3s · counterburst applies a searing curse +15% owner dmg for 4s · 20% lifesteal · 8s cooldown                                                                             |
 | wa_fiend_resilience | Dark Resilience | 30 absorption for 6s to yourself; siphon hits up to 2 nearby personally cursed enemies for 20 dmg within 300u; +20 protection per successful hit; marks are not consumed; shared cap 50% max HP, strongest cast wins · for 5s · 12s cooldown |
 
 ### The Great Old One
@@ -375,7 +375,7 @@ Deal 8% more damage to enemies bearing your curse while they are slowed, rooted,
 
 | Stable ID       | Ability              | Resolved unupgraded behavior                                                                                                                                                                |
 | --------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| wa_goo_blast    | Mind Blast           | 42 dmg · 5s cooldown                                                                                                                                                                        |
+| wa_goo_blast    | Mind Blast           | 42 dmg · on a positive hit against your cursed foe, 15% weaker attacks and 40% slower wind-ups for 3s; no hard interrupt · 5s cooldown                                                      |
 | wa_goo_tentacle | Tentacle of the Deep | 30 dmg · 150u radius · slow to 40% for 2s · 8s cooldown                                                                                                                                     |
 | wa_goo_whispers | Dissonant Whispers   | 11/tick dmg · 115u radius · dread curse +15% owner dmg (strongest personal mark only); 2s minimum linger; enemy attacks deal 20% less damage, strongest dread only · lasts 4s · 9s cooldown |
 | wa_goo_flee     | Entropic Ward        | heal 18 · 260u blink · 0.3s i-frames · 6s cooldown                                                                                                                                          |
