@@ -425,6 +425,7 @@ describe('upgrade, Forge and difficulty-index continuity', () => {
         for (const eff of def.components!.effects)
           if (['warCry', 'venomCoating', 'momentumFissure'].includes(eff.kind)) seen.add(eff.kind);
         expect(Number.isFinite(def.cooldown)).toBe(true);
+        if (def.momentumFissure) expect(def.spendsMomentum).toBe(true);
       }
     expect(seen).toEqual(new Set(['warCry', 'venomCoating', 'momentumFissure']));
   });

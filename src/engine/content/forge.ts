@@ -516,6 +516,7 @@ export function recompose(
         break;
       case 'momentumFissure':
         def.momentumFissure = e.damage;
+        def.spendsMomentum = true; // A generated fissure must carry its own spending route.
         break;
       case 'closeBurst':
         def.closeBurst = { ...e.burst };
