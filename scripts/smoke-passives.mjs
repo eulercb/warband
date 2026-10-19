@@ -137,7 +137,9 @@ try {
             badge
               ? page.locator('.hud-selfhp').getByTitle(badge).waitFor()
               : page.waitForFunction((name) => {
-                  const tile = document.querySelector(`.hud-ability[aria-label^="${name}"]`);
+                  const tile = Array.from(document.querySelectorAll('.hud-ability')).find((tile) =>
+                    tile.querySelector('.hud-ability-name')?.textContent?.endsWith(name),
+                  );
                   return tile && !tile.classList.contains('ready');
                 }, name),
           );
