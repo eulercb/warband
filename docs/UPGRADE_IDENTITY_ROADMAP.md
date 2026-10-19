@@ -1,10 +1,11 @@
 # Upgrade identity: audit and staged redesign
 
-## Prerequisite: completed class-coherence review
+## Prerequisite: approved class-coherence retouches
 
-After Moon Aspect completes the first 24/24 passive round, perform the full
-[class milestone review](CLASS_MILESTONE_REVIEW.md) and its agreed kit retouches
-**before** this upgrade redesign. Do not design large upgrade trees against class
+Moon Aspect is merged; the [catalogue audit and concrete retouch proposal](CLASS_COHERENCE_AUDIT.md) are complete. Approve and implement the selected retouches before broad upgrade redesign. The audit covers scaling and compatibility risks, not every upgrade replay combination.
+
+The [milestone review gates](CLASS_MILESTONE_REVIEW.md) still apply to these
+retouches. Do not design large upgrade trees against class
 behavior already scheduled for revision. Keep an inventory of upgrade compatibility
 issues during that review and fix breakage immediately; broad branching redesign
 waits for the stronger baseline. This applies to base skills, subclass skills,

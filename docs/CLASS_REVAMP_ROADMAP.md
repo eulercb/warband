@@ -1,22 +1,24 @@
 # Class identity and subclass roadmap
 
-Current delivery: **Moon Druid's bear form and the final defining passive**.
+Current delivery: **whole-class coherence audit and retouch proposal**.
 
-**Progress:** 23/24 subclass passives merged; this PR adds Moon Aspect, completing
-**24/24** and the first full class/subclass identity round. This is implementation
-coverage, not proof every kit is equally strong, intuitive or satisfying.
+**Progress:** Moon Aspect is merged and live-tested. The first identity round is
+complete at **24/24 subclass passives**. The [full audit](CLASS_COHERENCE_AUDIT.md)
+and [resolved catalogue](CLASS_CATALOGUE.md) now cover 12 classes, 48 base slots,
+96 subclass choices and all 24 passives. Coverage is not a numerical balance tier
+list or proof every kit is equally satisfying.
 
-**Next: cross-class coherence review before upgrade redesign.** Audit the entire
-base/subclass/passive catalogue, compare early and late work, and propose focused
-retouches. Then apply the agreed retouches before broad upgrade/grand/graft work.
-See [Milestone assessment and review gates](CLASS_MILESTONE_REVIEW.md).
+**Next, subject to approval of the concrete audit proposal:** three larger retouch
+batches: A (scaling/Moon/Warlock/Mage), B (Knight/Barbarian/Rogue/Druid active
+roles), C (support alternatives/cadence, preserving successful later kits).
+Split B only if the placed-totem prototype needs substantial engine work. This
+audit changes no gameplay; it precedes implementation and broad upgrade redesign.
 
-Provisional remaining scope: one audit/design pass, perhaps two to four retouch
-batches, then the four to six upgrade batches: roughly **7–11 further PRs** if the
-audit supports that retouch scope. This replaces the earlier 5–7 estimate; the
-review explicitly adds work to reduce later redesign churn. Art direction and a
-broader visual overhaul are separate future work, without a firm patch estimate.
-Earlier status tables preserve history and are superseded by this header.
+After those retouches, roughly four to six upgrade design/implementation PRs:
+**7–9 more PRs after this audit**, with a possible extra split. Art direction is
+separate. These are provisional scope estimates, not time/subscription-quota
+predictions. Earlier status tables preserve history and are superseded here.
+See [milestone review gates](CLASS_MILESTONE_REVIEW.md).
 
 ## Goals and boundaries
 
