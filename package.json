@@ -32,7 +32,8 @@
     "smoke:caster-defense": "node scripts/smoke-caster-defense.mjs",
     "smoke:enemy-debuffs": "node scripts/smoke-enemy-debuffs.mjs",
     "smoke:defensive-identity": "node scripts/smoke-defensive-identity.mjs",
-    "smoke:defense-recovery": "node scripts/smoke-defense-recovery.mjs"
+    "smoke:defense-recovery": "node scripts/smoke-defense-recovery.mjs",
+    "smoke:coherence": "node scripts/smoke-coherence.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

@@ -1,7 +1,7 @@
 import { onMoonDirectHit } from './moonForm';
 import { commandCompanion } from './companions';
 import { blockFromFront, isSteadfast, mirrorDamage } from './defense';
-import { curseOwner } from '../core/curses';
+import { curseOwner, personallyCursed } from '../core/curses';
 import { absorbDamage } from './absorption';
 /**
  * Warband — damage / heal application, buff helpers and threat contribution.
@@ -23,7 +23,7 @@ import type {
 } from '../core/types';
 import {
   subclassDamageMultiplier,
-  subclassHitHealing,
+  onSubclassCursedHit,
   onSubclassDirectHit,
 } from './subclassPassives';
 import { getClass } from '../content/classes';
@@ -44,6 +44,11 @@ import {
 export interface EventSink {
   events: GameEvent[];
   onPlayerDamaged?: (target: Player) => void;
+  onPlayerDirectHit?: (
+    source: Player,
+    target: { pos: Vec2; radius: number },
+    effective: number,
+  ) => void;
 }
 
 /**
@@ -60,6 +65,7 @@ export interface HitMods {
   melee?: boolean;
   direct?: boolean;
   flowExtend?: number;
+  cursePayoff?: number;
 }
 
 /**
@@ -219,6 +225,7 @@ export function applyBuff(entity: { buffs: Buff[] }, buff: Buff, controlAdjusted
     existing.mult = buff.mult;
     existing.remaining = buff.remaining;
     existing.retaliation = buff.retaliation;
+    existing.closeBurst = buff.closeBurst;
   } else {
     entity.buffs.push({ ...buff });
   }
@@ -401,9 +408,19 @@ export function damageBoss(
   onMoonDirectHit(sink, source, boss, effective, mods?.direct);
   commandCompanion(source, boss, 'boss', effective, mods?.direct);
   onSubclassDirectHit(sink, source, boss, effective, mods?.direct, mods?.melee, counter);
-  const passiveHeal = subclassHitHealing(source, boss, effective);
-  if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);
+  onSubclassCursedHit(sink, source, boss, effective);
+  if (mods?.direct && effective > 0) {
+    applyCursePayoff(source, boss, mods.cursePayoff);
+    sink.onPlayerDirectHit?.(source, boss, effective);
+  }
   return outgoing;
+}
+
+/** One equivalent weakness family: several casters cannot multiply enemy damage down. */
+function applyCursePayoff(source: Player, target: Boss | Add, duration?: number): void {
+  if (!duration || target.hp <= 0 || !personallyCursed(source.id, target)) return;
+  applyBuff(target, makeBuff('damageDealt', 0.85, duration, `curseWeakness:${source.id}:mind`));
+  applyBuff(target, makeBuff('castSlow', 1.4, duration, 'mindBlastWindup'));
 }
 
 /** Personal curses never amplify another player's hits or multiply together. */
@@ -456,8 +473,11 @@ export function damageAdd(
   onMoonDirectHit(sink, source, add, effective, mods?.direct);
   commandCompanion(source, add, 'add', effective, mods?.direct);
   onSubclassDirectHit(sink, source, add, effective, mods?.direct, mods?.melee, counter);
-  const passiveHeal = subclassHitHealing(source, add, effective);
-  if (passiveHeal > 0) healPlayer(sink, source, source, passiveHeal);
+  onSubclassCursedHit(sink, source, add, effective);
+  if (mods?.direct && effective > 0) {
+    applyCursePayoff(source, add, mods.cursePayoff);
+    sink.onPlayerDirectHit?.(source, add, effective);
+  }
   return outgoing;
 }
 

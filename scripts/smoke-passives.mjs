@@ -11,6 +11,7 @@ const cases = [
   ['ranger', "Nature's Bond", 'Pack Bond'],
   ['druid', 'Wall of Thorns', 'Living Paths'],
   ['druid', 'Frenzied Regen', 'Moon Aspect'],
+  ['druid', 'Primal Roar', 'Moon Aspect'],
   ['knight', 'Riposte', 'Victorious Reprise'],
   ['knight', 'Trip Attack', 'Tactical Opening'],
   ['cleric', 'Warding Flare', 'Refulgence'],
@@ -26,6 +27,7 @@ const cases = [
   ['rogue', 'Smoke Bomb', "Death's Opening"],
   ['rogue', 'Shield Spell', 'Spellblade'],
   ['warlock', 'Dark Resilience', 'Soul Ember'],
+  ['warlock', 'Fiendish Rebuke', 'Soul Ember'],
   ['warlock', 'Mind Blast', 'Dread Insight'],
 ];
 const selected = process.env.SMOKE_PASSIVE_NAMES?.split(',');
@@ -35,7 +37,11 @@ if (selected)
       cases.some(([, , passive]) => passive === name),
       `Unknown passive: ${name}`,
     );
-const tests = cases.filter(([, , passive]) => !selected || selected.includes(passive));
+const skills = process.env.SMOKE_PASSIVE_SKILLS?.split(',');
+const tests = cases.filter(
+  ([, skill, passive]) =>
+    (!selected || selected.includes(passive)) && (!skills || skills.includes(skill)),
+);
 assert.ok(tests.length, 'No passive cases selected');
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || chromium.executablePath(),
@@ -79,12 +85,19 @@ try {
       await icon.waitFor();
       assert.equal(await icon.count(), 1);
       assert.ok((await icon.getAttribute('title')).includes(passive));
-      if (['Spell Weave', 'Flowguard', 'Shadow Rhythm', 'Moon Aspect'].includes(passive)) {
+      if (
+        ['Spell Weave', 'Flowguard', 'Shadow Rhythm', 'Moon Aspect'].includes(passive) ||
+        skill === 'Fiendish Rebuke'
+      ) {
         if (mobile) await page.locator('.wb-touch-btn-basic').waitFor();
         const touch = mobile ? await context.newCDPSession(page) : null;
         const hold = async (slot, key, until) => {
           if (mobile) {
-            const box = await page.locator(`.wb-touch-btn-${slot}`).boundingBox();
+            const control =
+              slot === 'sub1'
+                ? page.locator('.wb-touch-btn-sub').last()
+                : page.locator(`.wb-touch-btn-${slot}`);
+            const box = await control.boundingBox();
             assert.ok(box);
             await touch.send('Input.dispatchTouchEvent', {
               type: 'touchStart',
@@ -122,7 +135,14 @@ try {
           await hold('a1', 'KeyQ', () => surge.waitFor({ state: 'hidden' }));
         } else if (passive === 'Moon Aspect') {
           const form = page.locator('.hud-selfhp').getByTitle(/Moon bear:/);
-          await hold('a2', 'KeyE', () => form.waitFor());
+          if (skill === 'Primal Roar') {
+            await hold('sub1', 'KeyZ', () =>
+              page
+                .locator('.hud-selfhp')
+                .getByTitle(/Bramble ready:/)
+                .waitFor(),
+            );
+          } else await hold('a2', 'KeyE', () => form.waitFor());
           await hold('basic', 'Space', () =>
             page.waitForFunction(() => {
               const tile = document.querySelector('.hud-ability[aria-label^="Thornlash"]');
@@ -130,6 +150,13 @@ try {
             }),
           );
           assert.ok(await form.isVisible());
+        } else if (skill === 'Fiendish Rebuke') {
+          await hold('sub1', 'KeyZ', () =>
+            page
+              .locator('.hud-selfhp')
+              .getByTitle(/Counterburst ready/)
+              .waitFor(),
+          );
         } else {
           const flow = page.locator('.hud-selfhp').getByTitle(/Flow: next marked/);
           await hold('a2', 'KeyE', () => flow.waitFor());

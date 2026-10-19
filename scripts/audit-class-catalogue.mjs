@@ -102,7 +102,7 @@ try {
         }
         const clawDamage = 10000 - boss.hp,
           mend = p.hp - 1;
-        if (clawDamage !== 84 * damageMult || mend !== 24)
+        if (clawDamage !== 84 * damageMult || Math.abs(mend - 6 * Math.max(4, maxHp * 0.03)) > 1e-8)
           throw new Error('Moon audit probe changed');
         probes.push({ maxHp, damageMult, clawDamage, mend });
       }

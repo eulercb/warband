@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { absorptionAmount } from '../src/engine/combat/absorption';
 import { World } from '../src/engine/world/world';
 import { resolvePlayerAbility } from '../src/engine/combat/abilities';
 import {
@@ -206,13 +207,14 @@ describe('Fiend: Soul Ember', () => {
     damageBoss(w, p, w.boss!, 100);
     expect(p.hp).toBeCloseTo(86.5);
     damagePlayer(w, p, 10);
-    expect(p.hp).toBeCloseTo(77.5);
+    expect(p.hp).toBeCloseTo(86.5);
+    expect(absorptionAmount(p.buffs)).toBeCloseTo(5.6);
     tickBuffs(p, 3.1);
     damagePlayer(w, p, 10);
-    expect(p.hp).toBeCloseTo(67.5);
+    expect(p.hp).toBeCloseTo(82.1);
     tickSubclassPassives(p, 6);
     damageBoss(w, p, w.boss!, 100);
-    expect(p.hp).toBeCloseTo(74);
+    expect(p.hp).toBeCloseTo(88.6);
   });
   it("does not proc on another owner's curse, zero damage, invulnerability or a dead caster", () => {
     const w = world('warlock', ['wa_fiend_rebuke']);
@@ -245,7 +247,7 @@ describe('Fiend: Soul Ember', () => {
     expect(p.stats.healingDone).toBe(1);
     tickSubclassPassives(p, 6);
     damageAdd(w, p, a, 10);
-    expect(p.buffs.filter((b) => b.source === 'subclass:fiend_soul_ember')).toHaveLength(1);
+    expect(p.buffs.filter((b) => b.kind === 'absorption')).toHaveLength(1);
     tickSubclassPassives(p, 6);
     p.hp = 80;
     resolvePlayerAbility(w, p, 'a1', ZERO);

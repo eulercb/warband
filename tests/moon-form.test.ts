@@ -187,7 +187,7 @@ describe('bear basics: one aimed supplemental swipe, normal Thornlash retained',
       resolvePlayerAbility(w, p, 'basic', ZERO);
       expect(w.projectiles).toHaveLength(3);
       expect(boss.hp).toBe(9986);
-      expect(p.hp).toBe(p.maxHp - 16);
+      expect(p.hp).toBeCloseTo(p.maxHp - 15.8);
       expect(JSON.stringify(p.abilities!.basic)).toBe(original);
       expect(w.events.filter((e) => e.t === 'skillArea' && e.area.kind === 'cone')).toHaveLength(1);
       expect(
@@ -266,13 +266,13 @@ describe('bounded natural mending and subclass interactions', () => {
     onMoonDirectHit(w, p, boss, 0, true);
     expect(p.subclassPassiveCooldowns?.moon_mend).toBeUndefined();
     resolvePlayerAbility(w, p, 'basic', ZERO);
-    expect(p.hp).toBe(p.maxHp - 16);
+    expect(p.hp).toBeCloseTo(p.maxHp - 15.8);
     damageBoss(w, p, boss, 1, { direct: true });
-    expect(p.hp).toBe(p.maxHp - 16);
+    expect(p.hp).toBeCloseTo(p.maxHp - 15.8);
     tickSubclassPassives(p, 1);
     damageAdd(w, p, w.adds[0], 1, { direct: true });
-    expect(p.hp).toBe(p.maxHp - 12);
-    expect(p.stats.healingDone).toBe(8);
+    expect(p.hp).toBeCloseTo(p.maxHp - 11.6);
+    expect(p.stats.healingDone).toBeCloseTo(8.4);
   });
   it('nearby direct hits mend; far hits and ground-zone ticks do not', () => {
     const { w, p, boss } = setup();
@@ -285,7 +285,7 @@ describe('bounded natural mending and subclass interactions', () => {
     damageBoss(w, p, boss, 10);
     expect(p.hp).toBe(p.maxHp - 20);
     damageBoss(w, p, boss, 10, { direct: true });
-    expect(p.hp).toBe(p.maxHp - 16);
+    expect(p.hp).toBeCloseTo(p.maxHp - 15.8);
   });
   for (const choice of [0, 1])
     it.each([false, true])(
@@ -303,7 +303,7 @@ describe('bounded natural mending and subclass interactions', () => {
         expect(p.subclassPassiveCooldowns?.moon_mend).toBe(1);
       },
     );
-  it('Regeneration retains its healing/grove and Roar retains its own buffs without removing form', () => {
+  it('Regeneration retains its healing/grove and Roar prepares brambles without removing form', () => {
     const { w, p } = setup(3);
     p.hp = 50;
     resolvePlayerAbility(w, p, 'sub1', ZERO);
@@ -313,7 +313,8 @@ describe('bounded natural mending and subclass interactions', () => {
     const r = setup(2);
     resolvePlayerAbility(r.w, r.p, 'sub1', ZERO);
     expect(buffMult(r.p, 'damageDealt')).toBe(1.3);
-    expect(buffMult(r.p, 'moveSpeed')).toBeCloseTo(1.44);
+    expect(buffMult(r.p, 'moveSpeed')).toBeCloseTo(1.2);
+    expect(r.p.buffs.some((b) => b.kind === 'brambleReady')).toBe(true);
   });
 });
 

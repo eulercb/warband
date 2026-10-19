@@ -53,7 +53,7 @@ behavior unless a deliberate, documented migration is necessary.
    their system prototypes; avoid designing against an imaginary pet/form API.
 
 Treat this as roughly **four to six additional PRs**, including design and pilot,
-not a fixed deadline or quota estimate. The scope may shrink if the audit finds
+not a fixed deadline. The scope may shrink if the audit finds
 that existing numeric choices already serve clear roles. Continue including
 necessary upgrade compatibility with each current skill rework; do not postpone
 broken interactions until this future workstream.

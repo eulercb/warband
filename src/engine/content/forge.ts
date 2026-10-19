@@ -127,7 +127,9 @@ export type EffectComponent =
   | { kind: 'prepareSurge'; duration: number }
   | { kind: 'surgeStrike' }
   | { kind: 'prepareCrit'; duration: number }
-  | { kind: 'rebuke'; duration: number }
+  | { kind: 'rebuke'; duration: number; curseBonus?: number }
+  | { kind: 'closeBurst'; burst: NonNullable<PlayerAbilityDef['closeBurst']> }
+  | { kind: 'cursePayoff'; duration: number }
   | {
       kind: 'buff';
       target: BuffTarget;
@@ -286,7 +288,14 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.prepareSurge) effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
     if (def.consumesSurge) effects.push({ kind: 'surgeStrike' });
     if (def.prepareCrit) effects.push({ kind: 'prepareCrit', duration: def.prepareCrit });
-    if (def.rebukeDuration) effects.push({ kind: 'rebuke', duration: def.rebukeDuration });
+    if (def.rebukeDuration)
+      effects.push({
+        kind: 'rebuke',
+        duration: def.rebukeDuration,
+        ...(def.rebukeCurseBonus ? { curseBonus: def.rebukeCurseBonus } : {}),
+      });
+    if (def.closeBurst) effects.push({ kind: 'closeBurst', burst: { ...def.closeBurst } });
+    if (def.cursePayoff) effects.push({ kind: 'cursePayoff', duration: def.cursePayoff });
     if (def.lifestealFrac) effects.push({ kind: 'lifesteal', frac: def.lifestealFrac });
     if (def.healOnUse) effects.push({ kind: 'healOnUse', amount: def.healOnUse });
     // Buffs — one component PER axis, so resistance is separable from +damage.
@@ -487,6 +496,13 @@ export function recompose(
         break;
       case 'rebuke':
         def.rebukeDuration = e.duration;
+        def.rebukeCurseBonus = e.curseBonus;
+        break;
+      case 'closeBurst':
+        def.closeBurst = { ...e.burst };
+        break;
+      case 'cursePayoff':
+        def.cursePayoff = e.duration;
         break;
       case 'crit': // item 13 — a crit lean
         if (e.prepared) def.consumesPrecision = true;
@@ -624,7 +640,11 @@ function effectValue(e: EffectComponent, fan: number): number {
     case 'prepareCrit':
       return e.duration * 5;
     case 'rebuke':
-      return e.duration * 4;
+      return e.duration * 4 + (e.curseBonus ?? 0) * 40;
+    case 'closeBurst':
+      return e.burst.damage * 1.2 + e.burst.slowDuration * 3;
+    case 'cursePayoff':
+      return e.duration * 6;
     case 'flight':
       return e.duration * 10; // a defensive/mobility window (ignore ground hazards)
     case 'shove':
@@ -813,7 +833,11 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
     case 'prepareCrit':
       return `prepare next precision crit for ${s(e.duration)}`;
     case 'rebuke':
-      return `one 40%-damage counterburst if hurt within ${s(e.duration)}`;
+      return `one 40%-damage counterburst if hurt within ${s(e.duration)}${e.curseBonus ? `; applies searing curse +${pct(e.curseBonus * 100)} owner dmg for 4s` : ''}`;
+    case 'closeBurst':
+      return `next positive direct hit within ${n(e.burst.range)}u or bear claw within ${s(e.burst.duration)} releases a bramble burst for ${n(e.burst.damage)} dmg in ${n(e.burst.radius)}u around you; slow to ${pct(e.burst.slowMult * 100)} for ${s(e.burst.slowDuration)}`;
+    case 'cursePayoff':
+      return `positive hit on your cursed foe, attacks 15% weaker, wind-ups 40% slower for ${s(e.duration)}; no hard interrupt`;
     case 'flight':
       return `fly ${s(e.duration)}`;
     case 'shove':
@@ -1137,6 +1161,10 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'blink' || kind === 'selfBuff' || kind === 'groundZone';
     case 'prepareCrit':
       return kind === 'blink' || kind === 'selfBuff' || kind === 'groundZone';
+    case 'closeBurst':
+      return kind === 'selfBuff';
+    case 'cursePayoff':
+      return DIRECT_STRIKE.has(kind);
     case 'rebuke':
       return kind === 'pbaoe';
     case 'flight':
@@ -1664,6 +1692,9 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, bonus: e.bonus * f };
     case 'surgeStrike':
       return e;
+    case 'closeBurst':
+      return { ...e, burst: { ...e.burst, damage: e.burst.damage * f } };
+    case 'cursePayoff':
     case 'prepareSurge':
     case 'prepareCrit':
     case 'rebuke':
@@ -1794,6 +1825,9 @@ function addBoonComponents(
         'recovery',
         'allyWard',
         'bardSong',
+        'closeBurst',
+        'cursePayoff',
+        'rebuke',
       ].includes(effect.kind) &&
       effectFitsDelivery(def.kind, effect) &&
       !has((e) => e.kind === effect.kind)
@@ -1975,7 +2009,13 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
     case 'prepareCrit':
       return def.prepareCrit != null ? { ...e, duration: def.prepareCrit } : e;
     case 'rebuke':
-      return def.rebukeDuration != null ? { ...e, duration: def.rebukeDuration } : e;
+      return def.rebukeDuration != null
+        ? { ...e, duration: def.rebukeDuration, curseBonus: def.rebukeCurseBonus }
+        : e;
+    case 'closeBurst':
+      return def.closeBurst ? { ...e, burst: { ...def.closeBurst } } : e;
+    case 'cursePayoff':
+      return def.cursePayoff != null ? { ...e, duration: def.cursePayoff } : e;
     case 'flight':
       return def.grantsFlight != null ? { ...e, duration: def.grantsFlight } : e;
     case 'shove': {
@@ -2135,8 +2175,27 @@ function capEffect(e: EffectComponent): EffectComponent {
       return { ...e, duration: clamp(round1(e.duration), 2, 12) };
     case 'surgeStrike':
       return e;
-    case 'prepareCrit':
+    case 'closeBurst':
+      return {
+        ...e,
+        burst: {
+          ...e.burst,
+          damage: clamp(Math.round(e.burst.damage), 8, 60),
+          radius: clamp(round5(e.burst.radius), 80, 200),
+          range: clamp(round5(e.burst.range), 80, 180),
+          duration: clamp(round1(e.burst.duration), 2, 8),
+          slowMult: clamp(round2(e.burst.slowMult), 0.5, 0.85),
+          slowDuration: clamp(round1(e.burst.slowDuration), 1, 3),
+        },
+      };
     case 'rebuke':
+      return {
+        ...e,
+        duration: clamp(round1(e.duration), 1, 5),
+        ...(e.curseBonus ? { curseBonus: clamp(round2(e.curseBonus), 0.05, 0.2) } : {}),
+      };
+    case 'cursePayoff':
+    case 'prepareCrit':
       return { ...e, duration: clamp(round1(e.duration), 1, 5) };
     case 'flight':
       return { ...e, duration: clamp(round1(e.duration), 2, 8) };

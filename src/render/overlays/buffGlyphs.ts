@@ -118,7 +118,7 @@ function describe(
         color: 0xd8c7ff,
         good: true,
         label:
-          'Moon bear: +20% movement; basics add a 14-damage aimed claw at 95u; close direct hits/claws mend 4 HP once per 1s; all spells retained',
+          'Moon bear: +20% movement; basics add a 14-damage aimed claw at 95u; close direct hits/claws mend 3% max HP (minimum 4) once per 1s; all spells retained',
       };
     case 'packBond':
       return {
@@ -208,6 +208,14 @@ function describe(
         color: 0xb488e0,
         good: false,
         label: 'Hexed: caster deals extra damage',
+      };
+    case 'brambleReady':
+      return {
+        glyph: '🌵',
+        color: 0x89c96a,
+        good: true,
+        label:
+          'Bramble ready: next positive nearby direct hit or bear claw releases a slowing burst around you; misses and zone ticks preserve it',
       };
     case 'rebuke':
       return { glyph: '🔥', color: 0xff9a3d, good: true, label: 'Counterburst ready' };

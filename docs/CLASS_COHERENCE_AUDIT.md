@@ -1,6 +1,10 @@
 # Whole-class coherence audit and retouch proposal
 
-Reviewed against `ef8de74` (merged Moon Aspect), 2026-10-19. **This delivery is
+Reviewed against `ef8de74` (merged Moon Aspect), 2026-10-19.
+
+Implementation follow-up: [Batch A](COHERENCE_BATCH_A.md) delivers the first
+approved retouches and updated scaling probes. The findings and numbers below
+record the pre-retouch baseline. **This delivery is
 an audit and implementation proposal, not a gameplay balance patch.** No combat,
 reward, difficulty or rendering behavior changes here. Proposed numbers below
 are starting points for validation, not measurements of an optimal build.
@@ -468,9 +472,8 @@ large enough to separate: **three retouch PRs**, each covering related problems,
 with permission to split B if required. Then approximately **four to six upgrade
 PRs**, starting with design and a two-class pilot against the revised baseline.
 That leaves roughly **7–9 implementation/design PRs after this audit**, plus
-separate future art direction. These are scope estimates, not time/quota promises.
-I cannot see remaining subscription quota or convert repository size into its
-five-hour accounting. Reusing the generated inventory, focused regression suites
+separate future art direction. These are provisional scope estimates.
+Reusing the generated inventory, focused regression suites
 and existing systems is more economical than repeating whole-catalogue research
 or building speculative mechanics in every patch.
 
