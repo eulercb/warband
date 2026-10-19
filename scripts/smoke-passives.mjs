@@ -37,7 +37,11 @@ if (selected)
       cases.some(([, , passive]) => passive === name),
       `Unknown passive: ${name}`,
     );
-const tests = cases.filter(([, , passive]) => !selected || selected.includes(passive));
+const skills = process.env.SMOKE_PASSIVE_SKILLS?.split(',');
+const tests = cases.filter(
+  ([, skill, passive]) =>
+    (!selected || selected.includes(passive)) && (!skills || skills.includes(skill)),
+);
 assert.ok(tests.length, 'No passive cases selected');
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || chromium.executablePath(),
@@ -89,7 +93,11 @@ try {
         const touch = mobile ? await context.newCDPSession(page) : null;
         const hold = async (slot, key, until) => {
           if (mobile) {
-            const box = await page.locator(`.wb-touch-btn-${slot}`).boundingBox();
+            const control =
+              slot === 'sub1'
+                ? page.locator('.wb-touch-btn-sub').last()
+                : page.locator(`.wb-touch-btn-${slot}`);
+            const box = await control.boundingBox();
             assert.ok(box);
             await touch.send('Input.dispatchTouchEvent', {
               type: 'touchStart',
