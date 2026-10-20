@@ -177,7 +177,7 @@ describe.each([false, true])('defensive identities, composed=%s', (composed) => 
     expect(buffMult(p, 'moveSpeed')).toBe(0.5);
     applyImpulse(w, p, { x: -1, y: 0 }, 100);
     expect(p.shove).toBeNull();
-    expect(damagePlayer(w, p, 10)).toBeCloseTo(6);
+    expect(damagePlayer(w, p, 10)).toBeCloseTo(8);
     tickBuffs(p, 6.1);
     applyBuff(p, makeBuff('root', 0, 3, 'root'));
     expect(p.buffs.some((b) => b.kind === 'root')).toBe(true);

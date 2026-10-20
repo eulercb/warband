@@ -209,6 +209,36 @@ function describe(
         good: false,
         label: 'Hexed: caster deals extra damage',
       };
+    case 'evocation':
+      return {
+        glyph: '⚡',
+        color: 0xb49aff,
+        good: true,
+        label:
+          'Evocation ready: next nonbasic damaging spell gains 25% damage and half wind-up; basics and utility preserve it',
+      };
+    case 'challengeReady':
+      return {
+        glyph: '📣',
+        color: 0xd4b16b,
+        good: true,
+        label: 'Challenge ready: next connecting melee cast readies a +30% counter',
+      };
+    case 'venomReady':
+      return {
+        glyph: '🧪',
+        color: 0x85c75a,
+        good: true,
+        label:
+          'Blade coated: next positive direct hit poisons one foe; held precision waits for a prepared strike, which gains 50% poison damage',
+      };
+    case 'venom':
+      return {
+        glyph: '🧪',
+        color: 0x85c75a,
+        good: false,
+        label: 'Poisoned: damage every second; poison follows this enemy',
+      };
     case 'brambleReady':
       return {
         glyph: '🌵',

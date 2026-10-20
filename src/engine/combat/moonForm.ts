@@ -114,7 +114,7 @@ export function onMoonAbility(world: World, p: Player, ab: PlayerAbilityDef): vo
   // One mend attempt for the entire swipe. Supplemental claws do not crit or trigger direct-hit riders.
   mend(world, p, dealt);
   // Claws are supplemental, but explicitly qualify for the prepared close burst.
-  world.onPlayerDirectHit(p, { pos: p.pos, radius: 0 }, dealt);
+  world.releaseCloseBurst(p, { pos: p.pos, radius: 0 }, dealt);
 }
 export function maintainMoonForms(world: World): void {
   for (const p of world.players) {

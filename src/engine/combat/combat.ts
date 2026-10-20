@@ -46,8 +46,9 @@ export interface EventSink {
   onPlayerDamaged?: (target: Player) => void;
   onPlayerDirectHit?: (
     source: Player,
-    target: { pos: Vec2; radius: number },
+    target: Boss | Add,
     effective: number,
+    prepared?: boolean,
   ) => void;
 }
 
@@ -66,6 +67,7 @@ export interface HitMods {
   direct?: boolean;
   flowExtend?: number;
   cursePayoff?: number;
+  controlOnHit?: 'slow' | 'stun';
 }
 
 /**
@@ -97,7 +99,10 @@ export function buffMult(entity: { buffs: Buff[] }, kind: BuffKind): number {
   let dread = 1;
   for (const b of entity.buffs) {
     if (b.kind !== kind) continue;
-    if (kind === 'damageDealt' && b.source.startsWith('curseWeakness:')) {
+    if (
+      kind === 'damageDealt' &&
+      (b.source.startsWith('curseWeakness:') || b.source.startsWith('weakness:'))
+    ) {
       if (b.remaining > 0) dread = Math.min(dread, b.mult);
     } else m *= b.mult;
   }
@@ -226,6 +231,9 @@ export function applyBuff(entity: { buffs: Buff[] }, buff: Buff, controlAdjusted
     existing.remaining = buff.remaining;
     existing.retaliation = buff.retaliation;
     existing.closeBurst = buff.closeBurst;
+    existing.blockCounter = buff.blockCounter;
+    existing.coating = buff.coating;
+    existing.venom = buff.venom;
   } else {
     entity.buffs.push({ ...buff });
   }
@@ -407,11 +415,20 @@ export function damageBoss(
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
   onMoonDirectHit(sink, source, boss, effective, mods?.direct);
   commandCompanion(source, boss, 'boss', effective, mods?.direct);
-  onSubclassDirectHit(sink, source, boss, effective, mods?.direct, mods?.melee, counter);
+  onSubclassDirectHit(
+    sink,
+    source,
+    boss,
+    effective,
+    mods?.direct,
+    mods?.melee,
+    counter,
+    mods?.controlOnHit === 'slow' || (mods?.controlOnHit === 'stun' && !isSteadfast(boss)),
+  );
   onSubclassCursedHit(sink, source, boss, effective);
   if (mods?.direct && effective > 0) {
     applyCursePayoff(source, boss, mods.cursePayoff);
-    sink.onPlayerDirectHit?.(source, boss, effective);
+    sink.onPlayerDirectHit?.(source, boss, effective, mods?.prepared);
   }
   return outgoing;
 }
@@ -472,11 +489,20 @@ export function damageAdd(
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
   onMoonDirectHit(sink, source, add, effective, mods?.direct);
   commandCompanion(source, add, 'add', effective, mods?.direct);
-  onSubclassDirectHit(sink, source, add, effective, mods?.direct, mods?.melee, counter);
+  onSubclassDirectHit(
+    sink,
+    source,
+    add,
+    effective,
+    mods?.direct,
+    mods?.melee,
+    counter,
+    mods?.controlOnHit === 'slow' || (mods?.controlOnHit === 'stun' && !isSteadfast(add)),
+  );
   onSubclassCursedHit(sink, source, add, effective);
   if (mods?.direct && effective > 0) {
     applyCursePayoff(source, add, mods.cursePayoff);
-    sink.onPlayerDirectHit?.(source, add, effective);
+    sink.onPlayerDirectHit?.(source, add, effective, mods?.prepared);
   }
   return outgoing;
 }

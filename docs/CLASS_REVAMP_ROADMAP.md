@@ -1,24 +1,23 @@
 # Class identity and subclass roadmap
 
-Current delivery: **coherence retouch A — Moon / Warlock / Mage**.
+Current delivery: **coherence retouch B — active roles and Evoker follow-through**.
 
-The first identity round is complete at **24/24 subclass passives**, and the
-[whole-class audit](CLASS_COHERENCE_AUDIT.md) is merged. This patch delivers the
-[first retouch batch](COHERENCE_BATCH_A.md): scalable Moon mending and a Roar
-follow-through, Fiend's visible reserve and cursed retaliation, Mind Blast's
-curse payoff, and Mage's bounded control-passive improvements. The [resolved
-catalogue](CLASS_CATALOGUE.md) reflects current behavior.
+The first 24/24 passive round and [whole-class audit](CLASS_COHERENCE_AUDIT.md)
+are complete. [Batch A](COHERENCE_BATCH_A.md) is merged and live-tested.
+[Batch B](COHERENCE_BATCH_B.md) delivers Knight, Barbarian, Rogue and Druid active
+roles, plus the requested Evoker follow-up and instant-cooldown refund correction.
+The [resolved catalogue](CLASS_CATALOGUE.md) reflects current behavior.
 
-**Next after live verification:** B (Knight / Barbarian / Rogue / Druid active
-roles), then C (support alternatives and remaining cadence). Split B only if the
-placed-totem prototype requires substantial engine work. Added passives or riders
-still do not exempt plain defensive/recovery actives from the review.
+**Next after live verification: C**, the last planned retouch batch: support
+alternatives, scaling/caps and remaining cadence. Added riders still do not exempt
+plain defensive/recovery actives from evaluation. Preserve successful late kits
+unless testing identifies a practical outlier.
 
-Then roughly four to six upgrade design/implementation PRs: **6–8 more PRs after
-this batch**, with a possible split. Art direction remains separate. These are
-provisional scope estimates; earlier status tables preserve history and are
-superseded here. Follow the [milestone review gates](CLASS_MILESTONE_REVIEW.md)
-and [public research guidelines](RESEARCH_GUIDELINES.md).
+Then roughly four to six upgrade design/implementation PRs: **5–7 more PRs after
+this batch**. Art direction is separate. These are provisional scope estimates;
+earlier status tables preserve history and are superseded here. Follow the
+[milestone review gates](CLASS_MILESTONE_REVIEW.md) and
+[public research guidelines](RESEARCH_GUIDELINES.md).
 
 ## Goals and boundaries
 

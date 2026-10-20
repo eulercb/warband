@@ -8,6 +8,20 @@ export function controlledSpellMultiplier(target: Boss | Add, bonus: number | un
   return bonus && target.buffs.some(isBurstControl) ? 1 + bonus : 1;
 }
 
+/** Evoker's held payoff is reserved at cast start; basics, zones and utility cannot waste it. */
+export function consumeEvocation(p: Player, ab: PlayerAbilityDef): PlayerAbilityDef {
+  if (
+    ab.slot === 'basic' ||
+    ab.damage <= 0 ||
+    !['projectile', 'pbaoe', 'meleeCone'].includes(ab.kind)
+  )
+    return ab;
+  const charge = p.buffs.find((b) => b.kind === 'evocation' && b.remaining > 0);
+  if (!charge || p.subclassPassiveId !== 'evoker_arcane_cadence') return ab;
+  p.buffs.splice(p.buffs.indexOf(charge), 1);
+  return { ...ab, damage: ab.damage * 1.25, castTime: (ab.castTime ?? 0) * 0.5 };
+}
+
 /** Reserve the one-use surge at cast start; the resolved spell carries its boost. */
 export function consumeSpellSurge(p: Player, ab: PlayerAbilityDef): PlayerAbilityDef {
   if (!ab.consumesSurge) return ab;

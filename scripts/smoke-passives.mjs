@@ -30,6 +30,21 @@ const cases = [
   ['warlock', 'Fiendish Rebuke', 'Soul Ember'],
   ['warlock', 'Mind Blast', 'Dread Insight'],
 ];
+cases.push(
+  ['knight', 'Menacing Roar', 'Tactical Opening'],
+  ['barbarian', 'Ground Slam', 'Rampage'],
+  ['barbarian', 'Earth Totem', 'Spirit Shelter'],
+  ['rogue', 'Coated Blade', "Death's Opening"],
+  ['druid', 'Erupting Earth', 'Living Paths'],
+);
+const activeCases = new Map([
+  ['Menacing Roar', /Challenge ready:/],
+  ['Bear Spirit', /Frontal guard:/],
+  ['Coated Blade', /Blade coated:/],
+  ['Ground Slam', null],
+  ['Earth Totem', null],
+  ['Erupting Earth', null],
+]);
 const selected = process.env.SMOKE_PASSIVE_NAMES?.split(',');
 if (selected)
   for (const name of selected)
@@ -87,7 +102,9 @@ try {
       assert.ok((await icon.getAttribute('title')).includes(passive));
       if (
         ['Spell Weave', 'Flowguard', 'Shadow Rhythm', 'Moon Aspect'].includes(passive) ||
-        skill === 'Fiendish Rebuke'
+        skill === 'Fiendish Rebuke' ||
+        activeCases.has(skill) ||
+        passive === 'Arcane Cadence'
       ) {
         if (mobile) await page.locator('.wb-touch-btn-basic').waitFor();
         const touch = mobile ? await context.newCDPSession(page) : null;
@@ -112,7 +129,23 @@ try {
             else await page.keyboard.up(key);
           }
         };
-        if (passive === 'Spell Weave') {
+        if (activeCases.has(skill) || passive === 'Arcane Cadence') {
+          const badge = activeCases.get(skill);
+          const slot = passive === 'Arcane Cadence' ? 'a2' : 'sub1';
+          const name = passive === 'Arcane Cadence' ? 'Frost Nova' : skill;
+          await hold(slot, slot === 'a2' ? 'KeyE' : 'KeyZ', () =>
+            badge
+              ? page.locator('.hud-selfhp').getByTitle(badge).waitFor()
+              : page.waitForFunction((name) => {
+                  const tile = Array.from(document.querySelectorAll('.hud-ability')).find((tile) =>
+                    tile.querySelector('.hud-ability-name')?.textContent?.endsWith(name),
+                  );
+                  return tile && !tile.classList.contains('ready');
+                }, name),
+          );
+          if (passive === 'Arcane Cadence')
+            assert.ok((await icon.getAttribute('title')).includes('Fireball, Frost Nova, Blink'));
+        } else if (passive === 'Spell Weave') {
           const surge = page
             .locator('.hud-selfhp')
             .getByTitle(/Spell surge: next heavy spell empowered/);
@@ -181,7 +214,7 @@ try {
       assert.ok((await description.textContent()).length > 70);
       if (process.env.SHOT_DIR)
         await page.screenshot({
-          path: `${process.env.SHOT_DIR}/passive-${passive.replace(/[^a-z0-9]/gi, '-')}-${mobile ? 'touch' : 'desktop'}.png`,
+          path: `${process.env.SHOT_DIR}/passive-${`${passive}-${skill}`.replace(/[^a-z0-9]/gi, '-')}-${mobile ? 'touch' : 'desktop'}.png`,
         });
       assert.deepEqual(errors, []);
       console.log(

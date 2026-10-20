@@ -66,7 +66,13 @@ export function martialHitMultiplier(p: Player, melee: boolean | undefined): num
 }
 /** Parry is armed after the entire cone, never chained across its victims. */
 export function onParryHit(p: Player, ab: PlayerAbilityDef, dealt: number): void {
-  if (!ab.parryOnHit || dealt <= 0 || p.state !== 'alive' || p.hp <= 0) return;
+  if (dealt <= 0 || p.state !== 'alive' || p.hp <= 0) return;
+  const challenge = ab.kind === 'meleeCone' && ready(p, 'challengeReady');
+  if (challenge && !ready(p, 'counter')) {
+    p.buffs.splice(p.buffs.indexOf(challenge), 1);
+    put(p, { kind: 'counter', mult: 1.3, remaining: 4, source: 'martialCounter' });
+  }
+  if (!ab.parryOnHit) return;
   put(p, { kind: 'counter', mult: 1.3, remaining: 4, source: 'martialCounter' });
   put(p, { kind: 'damageTaken', mult: 0.6, remaining: ab.parryOnHit, source: 'parryDef' });
 }
@@ -135,11 +141,29 @@ export function consumeMartialFinishers(p: Player, ab: PlayerAbilityDef): Player
       ...out,
       momentumUsed: momentum.mult,
       damage: out.damage * (1 + momentum.mult * 0.1),
+      ...(out.zoneTickDamage != null
+        ? { zoneTickDamage: out.zoneTickDamage * (1 + momentum.mult * 0.1) }
+        : {}),
       ...(out.kind === 'meleeCone'
         ? { range: (out.range ?? 70) + momentum.mult * 8 }
         : { radius: (out.radius ?? 130) + momentum.mult * 10 }),
     };
   }
+  if (out.momentumUsed && out.components && out.kind === 'groundZone')
+    out = {
+      ...out,
+      components: {
+        ...out.components,
+        effects: out.components.effects.map((e) =>
+          e.kind === 'zone'
+            ? {
+                ...e,
+                zone: { ...e.zone, radius: out.radius!, tickDamage: out.zoneTickDamage ?? 0 },
+              }
+            : e,
+        ),
+      },
+    };
   const flow = ab.consumesFlow && ready(p, 'flow');
   if (flow) {
     p.buffs.splice(p.buffs.indexOf(flow), 1);

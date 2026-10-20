@@ -231,8 +231,12 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'kn_battle_menacing',
           'Menacing Roar',
           '📣',
-          '+30% damage for 6s',
-          buff('Menacing Roar', 12, { buffDamageMult: 1.3, buffDuration: 6 }),
+          '+30% damage for 6s; challenge nearby foes and ready a counter after your next melee connection',
+          buff('Menacing Roar', 12, {
+            buffDamageMult: 1.3,
+            buffDuration: 6,
+            warCry: { radius: 180, duration: 4 },
+          }),
         ),
         sk(
           'kn_battle_precision',
@@ -565,8 +569,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'bb_berserker_slam',
           'Ground Slam',
           '💥',
-          'A 150u shock for 40; spends Rage momentum',
-          nova('Ground Slam', 8, 40, 150, { spendsMomentum: true }),
+          'A 150u shock for 40; spending Momentum leaves a slowing fissure',
+          nova('Ground Slam', 8, 40, 150, { spendsMomentum: true, momentumFissure: 4 }),
         ),
         sk(
           // item 11 — Rage Leap was a near-duplicate of the Barbarian's base Leap
@@ -591,8 +595,13 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'bb_totem_bear',
           'Bear Spirit',
           '🐻',
-          'For 6s resist roots, stuns, pushes and pulls, and take 40% less damage; slows still apply',
-          buff('Bear Spirit', 12, { buffDefMult: 0.6, buffDuration: 6, steadfastDuration: 6 }),
+          'For 6s resist hard control, take 20% less damage, and block two frontal hits; each block readies a counter',
+          buff('Bear Spirit', 12, {
+            buffDefMult: 0.8,
+            buffDuration: 6,
+            steadfastDuration: 6,
+            frontGuard: { charges: 2, duration: 6, counter: 1.3 },
+          }),
         ),
         sk(
           'bb_totem_wolf',
@@ -605,8 +614,17 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'bb_totem_quake',
           'Earth Totem',
           '🌍',
-          'A 160u snare-burst for 26',
-          nova('Earth Totem', 9, 26, 160, { slowMult: 0.5, slowDuration: 2, spendsMomentum: true }),
+          'Place a 160u earth field for 4s; slows and pulses damage, improved by Momentum',
+          zone('Earth Totem', 9, {
+            range: 380,
+            radius: 160,
+            zoneDuration: 4,
+            zoneTickDamage: 6.5,
+            slowMult: 0.5,
+            slowDuration: 1,
+            spendsMomentum: true,
+            zoneKind: 'entangle',
+          }),
         ),
         sk(
           'bb_totem_mend',
@@ -662,7 +680,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'Coated Blade',
           '☠️',
           'A poison cloud, 12/tick',
-          zone('Coated Blade', 9, { radius: 105, zoneTickDamage: 12, zoneKind: 'poison' }),
+          buff('Coated Blade', 9, { venomCoating: { damage: 24, duration: 4, window: 6 } }),
         ),
         sk(
           'ro_assassin_smoke',
@@ -875,8 +893,13 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'dr_land_spike',
           'Erupting Earth',
           '🌋',
-          'A 160u quake for 38',
-          nova('Erupting Earth', 8, 38, 160),
+          'Launch an aimed eruption for 38 in 160u; +25% against controlled foes',
+          proj('Erupting Earth', 8, 38, {
+            projSpeed: 720,
+            impactRadius: 160,
+            maxRange: 460,
+            controlDamageBonus: 0.25,
+          }),
         ),
         sk(
           'dr_land_wall',

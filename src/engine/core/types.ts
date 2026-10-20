@@ -214,6 +214,10 @@ export type BuffKind =
   | 'spellblade' // one empowered melee hit from Arcane Trickster
   | 'precision' // one prepared critical strike; mult unused
   | 'curse' // owner-only vulnerability; source = curse:<owner>[:<style>:<zone>], mult = factor
+  | 'evocation' // next nonbasic damaging spell gets damage and cast-speed payoff
+  | 'challengeReady' // next successful melee cast readies a counter
+  | 'venomReady' // prepared single-target poison
+  | 'venom' // target-bound poison; owner and tick state remain host-only
   | 'brambleReady' // next positive nearby direct hit or Moon claw releases a burst
   | 'rebuke'; // one counterburst; mult = damage, payload host-only
 
@@ -227,6 +231,9 @@ export interface Buff {
   flowExtended?: number;
   retaliation?: { radius: number; lifesteal: number; curseBonus?: number };
   closeBurst?: CloseBurst;
+  blockCounter?: number;
+  coating?: { damage: number; duration: number };
+  venom?: { ownerId: number; accum: number; ticks: number };
 }
 
 /**
@@ -657,6 +664,7 @@ export interface Projectile {
   critMultBonus?: number;
   controlDamageBonus?: number;
   cursePayoff?: number;
+  controlOnHit?: 'slow' | 'stun';
   /** Host-only piercing budget and distinct bodies already hit. */
   pierceLeft?: number;
   hitIds?: EntityId[];

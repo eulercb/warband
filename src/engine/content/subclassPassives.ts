@@ -113,7 +113,7 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'mage',
     name: 'Arcane Cadence',
     icon: '⚡',
-    desc: 'A direct hit against a slowed, rooted or stunned foe removes 2s from each running special cooldown. Once per 6s; damage-zone ticks do not trigger it.',
+    desc: 'A positive direct hit on a slowed/rooted/stunned foe, or one that applies slow/stun, removes 4s from running nonbasic cooldowns: Fireball, Frost Nova, Blink and subclass skills. It also prepares your next nonbasic damaging spell for +25% damage and half wind-up within 6s. Once per 6s; basics can trigger but never spend preparation or receive refunds. Zone ticks cannot trigger it.',
   },
   mg_abjurer: {
     id: 'abjurer_binding_ward',

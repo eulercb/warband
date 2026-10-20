@@ -171,6 +171,7 @@ export function onSubclassDirectHit(
   direct?: boolean,
   melee?: boolean,
   counter?: boolean,
+  controlOnHit = false,
 ): void {
   const id = p.subclassPassiveId;
   if (!direct || effective <= 0 || p.state !== 'alive' || p.hp <= 0) return;
@@ -210,7 +211,7 @@ export function onSubclassDirectHit(
   }
   if (
     (id !== 'evoker_arcane_cadence' && id !== 'abjurer_binding_ward') ||
-    !target.buffs.some(isBurstControl) ||
+    !(target.buffs.some(isBurstControl) || (id === 'evoker_arcane_cadence' && controlOnHit)) ||
     !offCooldown(p, id)
   )
     return;
@@ -219,10 +220,13 @@ export function onSubclassDirectHit(
     for (const slot of ['a1', 'a2', 'a3', 'sub1', 'sub2'] as const) {
       const remaining = p.cooldowns[slot];
       if (remaining == null || remaining <= 0) continue;
-      p.cooldowns[slot] = Math.max(0, remaining - 2);
+      p.cooldowns[slot] = Math.max(0, remaining - 4);
       reduced = true;
     }
-    if (!reduced) return;
+    const held = p.buffs.some((b) => b.kind === 'evocation' && b.remaining > 0);
+    if (!reduced && held) return;
+    if (!held)
+      putBuff(p, { kind: 'evocation', mult: 1.25, remaining: 6, source: PREFIX + 'evocation' });
   } else {
     if (grantAbsorption(p, Math.max(20, p.maxHp * 0.1), 5) <= 0) return;
   }

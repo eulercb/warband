@@ -4,6 +4,10 @@ Implements the first approved batch from the [whole-class audit](CLASS_COHERENCE
 The audit remains a historical assessment of `ef8de74`; the generated
 [class catalogue](CLASS_CATALOGUE.md) reflects this patch's current behavior.
 
+Historical follow-up: [Batch B](COHERENCE_BATCH_B.md) further improves Evoker and
+fixes first-control-hit and instant-cooldown ordering. Values below describe
+Batch A as delivered.
+
 ## Delivered behavior and choices
 
 | System               | Before                                                  | This patch                                                                                                                                                                                                |

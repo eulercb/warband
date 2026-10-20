@@ -18,7 +18,22 @@ try {
       isMobile: viewport.width < 900,
       hasTouch: viewport.width < 900,
     });
-    for (const mode of ['ready', 'bramble', 'fiend', 'counter', 'mind', 'ward', 'cadence']) {
+    for (const mode of process.env.SMOKE_COHERENCE_MODES?.split(',') || [
+      'ready',
+      'bramble',
+      'fiend',
+      'counter',
+      'mind',
+      'ward',
+      'cadence',
+      'challenge',
+      'bear',
+      'fissure',
+      'totem',
+      'poison',
+      'eruption',
+      'evokerNova',
+    ]) {
       const page = await context.newPage();
       currentPage = page;
       const errors = [];
@@ -56,6 +71,13 @@ try {
           mind: ['warlock', 'wa_goo_blast'],
           ward: ['mage', 'mg_abjurer_ward'],
           cadence: ['mage', 'mg_evoker_lightning'],
+          challenge: ['knight', 'kn_battle_menacing'],
+          bear: ['barbarian', 'bb_totem_bear'],
+          fissure: ['barbarian', 'bb_berserker_slam'],
+          totem: ['barbarian', 'bb_totem_quake'],
+          poison: ['rogue', 'ro_assassin_poison'],
+          eruption: ['druid', 'dr_land_spike'],
+          evokerNova: ['mage', 'mg_evoker_lightning'],
         };
         window.coherence = {
           mode(name) {
@@ -76,7 +98,47 @@ try {
             boss.pos = { x: 800, y: 630 };
             boss.hp = boss.maxHp = 10000;
             boss.buffs = [];
-            if (name === 'ready' || name === 'bramble') {
+            if (
+              [
+                'challenge',
+                'bear',
+                'fissure',
+                'totem',
+                'poison',
+                'eruption',
+                'evokerNova',
+              ].includes(name)
+            ) {
+              if (name === 'fissure') {
+                applyBuff(owner, makeBuff('rageRhythm', 0, 6, 'rageRhythm'));
+                applyBuff(owner, makeBuff('momentum', 3, 6, 'martialMomentum'));
+              }
+              if (name === 'totem') owner.aim.y = -0.2;
+              if (name === 'evokerNova') {
+                world.step(
+                  0,
+                  new Map([
+                    [
+                      owner.peerId,
+                      {
+                        seq: 1,
+                        move: { x: 0, y: 0 },
+                        aim: owner.aim,
+                        buttons: { basic: false, a1: false, a2: true, a3: false },
+                      },
+                    ],
+                  ]),
+                );
+              } else resolvePlayerAbility(world, owner, 'sub1', { x: 0, y: 0 });
+              if (name === 'challenge') resolvePlayerAbility(world, owner, 'basic', { x: 0, y: 0 });
+              if (name === 'bear') damagePlayer(world, owner, 100, boss.pos);
+              if (name === 'poison') damageBoss(world, owner, boss, 1, { direct: true });
+              if (name === 'eruption') {
+                const shot = world.projectiles[0];
+                shot.pos = { ...boss.pos };
+                world.resolvePlayerProjectile(shot);
+              }
+            } else if (name === 'ready' || name === 'bramble') {
               resolvePlayerAbility(world, owner, 'sub1', { x: 0, y: 0 });
               if (name === 'bramble') resolvePlayerAbility(world, owner, 'basic', { x: 0, y: 0 });
             } else if (name === 'fiend') {
@@ -103,6 +165,13 @@ try {
           probe() {
             return {
               frame,
+              counterReady: owner.buffs.some((b) => b.kind === 'counter'),
+              blocks: owner.buffs.find((b) => b.kind === 'frontGuard')?.mult,
+              zones: world.groundZones.length,
+              zoneTick: world.groundZones[0]?.damagePerTick,
+              venom: boss.buffs.some((b) => b.kind === 'venom'),
+              evoc: owner.buffs.some((b) => b.kind === 'evocation'),
+              bossHp: boss.hp,
               form: world.serialize().players[0].form,
               hp: owner.hp,
               maxHp: owner.maxHp,
@@ -130,6 +199,26 @@ try {
       const frame = 0;
       await page.waitForFunction((frame) => window.coherence.probe().frame > frame + 2, frame);
       const p = await page.evaluate(() => window.coherence.probe());
+      if (mode === 'challenge') assert.equal(p.counterReady, true);
+      if (mode === 'bear') {
+        assert.equal(p.counterReady, true);
+        assert.equal(p.blocks, 1);
+        assert.equal(p.hp, p.maxHp);
+      }
+      if (mode === 'fissure') {
+        assert.equal(p.zones, 1);
+        assert.equal(p.zoneTick, 12);
+      }
+      if (mode === 'totem') {
+        assert.equal(p.zones, 1);
+        assert.equal(p.zoneTick, 6.5);
+      }
+      if (mode === 'poison') assert.equal(p.venom, true);
+      if (mode === 'eruption') assert.equal(p.bossHp, 9962);
+      if (mode === 'evokerNova') {
+        assert.equal(p.evoc, true);
+        assert.equal(p.a2, 16);
+      }
       if (mode === 'ready') {
         assert.equal(p.ready, true);
         assert.equal(p.form, 'moonBear');
@@ -149,8 +238,8 @@ try {
       }
       if (mode === 'ward') assert.equal(p.absorption, 40);
       if (mode === 'cadence') {
-        assert.equal(p.a1, 12);
-        assert.equal(p.a2, 18);
+        assert.equal(p.a1, 10);
+        assert.equal(p.a2, 16);
       }
       assert.ok(p.instructions > 0);
       assert.deepEqual(errors, []);

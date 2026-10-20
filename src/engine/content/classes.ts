@@ -139,7 +139,7 @@ export interface PlayerAbilityDef {
   /** Guarded real damage readies one +30% connecting melee counter for 4s. */
   guardWindow?: number;
   mirrorImages?: { count: number; duration: number };
-  frontGuard?: { charges: number; duration: number };
+  frontGuard?: { charges: number; duration: number; counter?: number };
   steadfastDuration?: number;
   cleanseOnHeal?: boolean;
   /** A connecting cone readies a counter AFTER the entire strike and a short parry. */
@@ -193,6 +193,12 @@ export interface PlayerAbilityDef {
   /** Counterburst applies a personal searing curse before its damage. */
   rebukeCurseBonus?: number;
   closeBurst?: CloseBurst;
+  /** Radius and duration of a weakening challenge; next connecting melee readies a counter. */
+  warCry?: { radius: number; duration: number };
+  /** Single-target poison prepared for the next appropriate positive direct hit. */
+  venomCoating?: { damage: number; duration: number; window: number };
+  /** Per-stack tick damage of a short ground fissure after spending Momentum. */
+  momentumFissure?: number;
   /** A positive direct hit on a personally cursed foe weakens it for this duration. */
   cursePayoff?: number;
   /** This zone marks enemies: only its owner deals this much extra damage. */
@@ -1259,6 +1265,20 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
     parts.push(
       `counterburst once for ${n(def.damage * dmgMul * 0.4)} dmg if hurt within ${s(def.rebukeDuration)}`,
     );
+  if (def.warCry)
+    parts.push(
+      `challenge foes within ${n(def.warCry.radius)}u, attacks 20% weaker for ${s(def.warCry.duration)}; next connecting melee cast readies a +30% counter`,
+    );
+  if (def.venomCoating)
+    parts.push(
+      `coat next positive direct hit within ${s(def.venomCoating.window)}, poison ${n(def.venomCoating.damage * dmgMul)} dmg/s for ${s(def.venomCoating.duration)}; prepared precision +50% poison; while precision is held, basics preserve coating; no stacks from the same caster`,
+    );
+  if (def.momentumFissure)
+    parts.push(
+      `spending Momentum leaves a 3s slowing fissure, ${n(def.momentumFissure * dmgMul)} damage per stack every 0.5s; ground only`,
+    );
+  if (def.frontGuard?.counter)
+    parts.push('each successful frontal block readies a +30% melee counter; counters do not stack');
   if (def.rebukeCurseBonus)
     parts.push(
       `counterburst applies a searing curse +${n(def.rebukeCurseBonus * 100)}% owner dmg for 4s`,

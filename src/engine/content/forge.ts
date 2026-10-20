@@ -109,7 +109,7 @@ export type EffectComponent =
   | { kind: 'flowExtend'; seconds: number }
   | { kind: 'guard'; duration: number }
   | { kind: 'mirrorImages'; count: number; duration: number }
-  | { kind: 'frontGuard'; charges: number; duration: number }
+  | { kind: 'frontGuard'; charges: number; duration: number; counter?: number }
   | { kind: 'steadfast'; duration: number }
   | { kind: 'cleanse' }
   | { kind: 'momentum'; duration: number }
@@ -130,6 +130,9 @@ export type EffectComponent =
   | { kind: 'rebuke'; duration: number; curseBonus?: number }
   | { kind: 'closeBurst'; burst: NonNullable<PlayerAbilityDef['closeBurst']> }
   | { kind: 'cursePayoff'; duration: number }
+  | { kind: 'warCry'; cry: NonNullable<PlayerAbilityDef['warCry']> }
+  | { kind: 'venomCoating'; coating: NonNullable<PlayerAbilityDef['venomCoating']> }
+  | { kind: 'momentumFissure'; damage: number }
   | {
       kind: 'buff';
       target: BuffTarget;
@@ -294,6 +297,9 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
         duration: def.rebukeDuration,
         ...(def.rebukeCurseBonus ? { curseBonus: def.rebukeCurseBonus } : {}),
       });
+    if (def.warCry) effects.push({ kind: 'warCry', cry: { ...def.warCry } });
+    if (def.venomCoating) effects.push({ kind: 'venomCoating', coating: { ...def.venomCoating } });
+    if (def.momentumFissure) effects.push({ kind: 'momentumFissure', damage: def.momentumFissure });
     if (def.closeBurst) effects.push({ kind: 'closeBurst', burst: { ...def.closeBurst } });
     if (def.cursePayoff) effects.push({ kind: 'cursePayoff', duration: def.cursePayoff });
     if (def.lifestealFrac) effects.push({ kind: 'lifesteal', frac: def.lifestealFrac });
@@ -438,7 +444,11 @@ export function recompose(
         def.mirrorImages = { count: e.count, duration: e.duration };
         break;
       case 'frontGuard':
-        def.frontGuard = { charges: e.charges, duration: e.duration };
+        def.frontGuard = {
+          charges: e.charges,
+          duration: e.duration,
+          ...(e.counter ? { counter: e.counter } : {}),
+        };
         break;
       case 'steadfast':
         def.steadfastDuration = e.duration;
@@ -497,6 +507,16 @@ export function recompose(
       case 'rebuke':
         def.rebukeDuration = e.duration;
         def.rebukeCurseBonus = e.curseBonus;
+        break;
+      case 'warCry':
+        def.warCry = { ...e.cry };
+        break;
+      case 'venomCoating':
+        def.venomCoating = { ...e.coating };
+        break;
+      case 'momentumFissure':
+        def.momentumFissure = e.damage;
+        def.spendsMomentum = true; // A generated fissure must carry its own spending route.
         break;
       case 'closeBurst':
         def.closeBurst = { ...e.burst };
@@ -598,7 +618,7 @@ function effectValue(e: EffectComponent, fan: number): number {
     case 'mirrorImages':
       return e.count * 15 + e.duration * 2;
     case 'frontGuard':
-      return e.charges * 20 + e.duration * 2;
+      return e.charges * 20 + e.duration * 2 + (e.counter ? 8 : 0);
     case 'steadfast':
       return e.duration * 6;
     case 'cleanse':
@@ -641,6 +661,12 @@ function effectValue(e: EffectComponent, fan: number): number {
       return e.duration * 5;
     case 'rebuke':
       return e.duration * 4 + (e.curseBonus ?? 0) * 40;
+    case 'warCry':
+      return e.cry.duration * 6;
+    case 'venomCoating':
+      return e.coating.damage * e.coating.duration * 0.5;
+    case 'momentumFissure':
+      return e.damage * 6;
     case 'closeBurst':
       return e.burst.damage * 1.2 + e.burst.slowDuration * 3;
     case 'cursePayoff':
@@ -795,7 +821,7 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
     case 'mirrorImages':
       return `${n(e.count)} mirror images for ${s(e.duration)}; each reduces one direct hit by 60%, then breaks; ground damage bypasses`;
     case 'frontGuard':
-      return `block ${n(e.charges)} frontal damage hits for ${s(e.duration)}; aim within 120°; hazards and control bypass`;
+      return `block ${n(e.charges)} frontal damage hits for ${s(e.duration)}; aim within 120°; hazards and control bypass${e.counter ? '; each block readies a +30% melee counter, no stacking' : ''}`;
     case 'steadfast':
       return `resist roots, stuns and forced movement for ${s(e.duration)} (slows still apply)`;
     case 'cleanse':
@@ -834,6 +860,12 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return `prepare next precision crit for ${s(e.duration)}`;
     case 'rebuke':
       return `one 40%-damage counterburst if hurt within ${s(e.duration)}${e.curseBonus ? `; applies searing curse +${pct(e.curseBonus * 100)} owner dmg for 4s` : ''}`;
+    case 'warCry':
+      return `challenge ${n(e.cry.radius)}u for ${s(e.cry.duration)}, foe attacks 20% weaker; next connecting melee readies a +30% counter`;
+    case 'venomCoating':
+      return `coat next direct hit within ${s(e.coating.window)}, poison ${n(e.coating.damage)} dmg/s for ${s(e.coating.duration)}; prepared precision +50%; held precision waits for a prepared hit`;
+    case 'momentumFissure':
+      return `spending Momentum leaves a 3s ground fissure, ${n(e.damage)} dmg/stack every 0.5s, slow to 65%`;
     case 'closeBurst':
       return `next positive direct hit within ${n(e.burst.range)}u or bear claw within ${s(e.burst.duration)} releases a bramble burst for ${n(e.burst.damage)} dmg in ${n(e.burst.radius)}u around you; slow to ${pct(e.burst.slowMult * 100)} for ${s(e.burst.slowDuration)}`;
     case 'cursePayoff':
@@ -1161,8 +1193,12 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'blink' || kind === 'selfBuff' || kind === 'groundZone';
     case 'prepareCrit':
       return kind === 'blink' || kind === 'selfBuff' || kind === 'groundZone';
+    case 'warCry':
+    case 'venomCoating':
     case 'closeBurst':
       return kind === 'selfBuff';
+    case 'momentumFissure':
+      return kind === 'pbaoe';
     case 'cursePayoff':
       return DIRECT_STRIKE.has(kind);
     case 'rebuke':
@@ -1692,6 +1728,12 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, bonus: e.bonus * f };
     case 'surgeStrike':
       return e;
+    case 'warCry':
+      return { ...e, cry: { ...e.cry, duration: e.cry.duration * f } };
+    case 'venomCoating':
+      return { ...e, coating: { ...e.coating, damage: e.coating.damage * f } };
+    case 'momentumFissure':
+      return { ...e, damage: e.damage * f };
     case 'closeBurst':
       return { ...e, burst: { ...e.burst, damage: e.burst.damage * f } };
     case 'cursePayoff':
@@ -1826,6 +1868,9 @@ function addBoonComponents(
         'allyWard',
         'bardSong',
         'closeBurst',
+        'warCry',
+        'venomCoating',
+        'momentumFissure',
         'cursePayoff',
         'rebuke',
       ].includes(effect.kind) &&
@@ -2012,6 +2057,12 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.rebukeDuration != null
         ? { ...e, duration: def.rebukeDuration, curseBonus: def.rebukeCurseBonus }
         : e;
+    case 'warCry':
+      return def.warCry ? { ...e, cry: { ...def.warCry } } : e;
+    case 'venomCoating':
+      return def.venomCoating ? { ...e, coating: { ...def.venomCoating } } : e;
+    case 'momentumFissure':
+      return def.momentumFissure != null ? { ...e, damage: def.momentumFissure } : e;
     case 'closeBurst':
       return def.closeBurst ? { ...e, burst: { ...def.closeBurst } } : e;
     case 'cursePayoff':
@@ -2175,6 +2226,25 @@ function capEffect(e: EffectComponent): EffectComponent {
       return { ...e, duration: clamp(round1(e.duration), 2, 12) };
     case 'surgeStrike':
       return e;
+    case 'warCry':
+      return {
+        ...e,
+        cry: {
+          radius: clamp(round5(e.cry.radius), 100, 260),
+          duration: clamp(round1(e.cry.duration), 2, 6),
+        },
+      };
+    case 'venomCoating':
+      return {
+        ...e,
+        coating: {
+          damage: clamp(Math.round(e.coating.damage), 8, 50),
+          duration: clamp(round1(e.coating.duration), 2, 6),
+          window: clamp(round1(e.coating.window), 3, 8),
+        },
+      };
+    case 'momentumFissure':
+      return { ...e, damage: clamp(round1(e.damage), 2, 8) };
     case 'closeBurst':
       return {
         ...e,

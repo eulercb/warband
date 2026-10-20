@@ -125,7 +125,10 @@ function abilityRates(ab: PlayerAbilityDef, cdMult: number, castMult: number): K
       ? 0
       : creditedDamage * Math.max(1, ab.projCount ?? 1) +
         credit(ab.zoneTickDamage ?? 0, ab.balanceZoneDamageScale) * zoneCommit +
-        (ab.landingDamage ?? 0);
+        (ab.landingDamage ?? 0) +
+        (ab.venomCoating
+          ? ab.venomCoating.damage * ab.venomCoating.duration * BALANCE_ZONE_COMMIT
+          : 0);
   // A damage buff (Rage, Inspiration) uplifts the rest of the kit while it's up.
   const uptime = clamp((ab.buffDuration ?? 0) / cycle, 0, 1);
   const offenseBuff = Math.max(0, (ab.buffDamageMult ?? 1) - 1) * uptime;
