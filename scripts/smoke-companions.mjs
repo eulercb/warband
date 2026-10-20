@@ -125,7 +125,8 @@ try {
         assert.ok(view.instructions > baseline.instructions);
         assert.equal(view.pet.attacking, mode === 'attack');
         assert.equal(view.pet.bondReady, mode === 'bond-ready' || mode === 'attack');
-        assert.equal(view.barrier, mode === 'protected' ? 12 : 0);
+        // The fixed Knight recipient has 240 max HP: its 8% ward is 19.2.
+        assert.equal(view.barrier, mode === 'protected' ? 19.2 : 0);
         assert.equal(view.hp, mode === 'attack' ? 9999 : mode === 'protected' ? 9983 : 10000);
         assert.deepEqual(Object.keys(view.pet).sort(), ['attacking', 'bondReady', 'facing', 'pos']);
       }
