@@ -22,7 +22,7 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'barbarian',
     name: 'Spirit Shelter',
     icon: '🐻',
-    desc: 'Spending Momentum grants you and living allies within 180u 8 + 4 absorption per stack spent (up to 20), lasting 4s. Once per 6s; shared cap and strongest-cast rules apply. Rage and Whirlwind work with every subclass choice.',
+    desc: 'Spending Momentum grants you and living allies within 180u the greater of 8 + 4 per stack or 4% + 2% recipient max HP per stack (up to 20 or 10% max HP) as absorption, lasting 4s. Once per 6s; shared cap and strongest-cast rules apply. Rage and Whirlwind work with every subclass choice.',
   },
   mo_openhand: {
     id: 'openhand_flowguard',
@@ -43,7 +43,7 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'ranger',
     name: 'Pack Bond',
     icon: '🐺',
-    desc: 'A spirit wolf follows you. Your connecting direct hits command a 16-damage bite within 600u, once per 2.5s; +25% bite damage against slowed, rooted or stunned foes. Effective dedicated healing prepares your next successful bite to grant the healed ally 12 absorption for 4s, if within 420u; preparation lasts 6s. The spirit crosses cover, reaches flyers, cannot tank or block movement, and rests while you are downed or outside combat. Basics work with every subclass choice.',
+    desc: 'A spirit wolf follows you. Your connecting direct hits command a 16-damage bite within 600u, once per 2.5s; +25% bite damage against slowed, rooted or stunned foes. Effective dedicated healing prepares your next successful bite to grant the healed ally 8% recipient max-HP absorption (minimum 12) for 4s, if within 420u; preparation lasts 6s. The spirit crosses cover, reaches flyers, cannot tank or block movement, and rests while you are downed or outside combat. Basics work with every subclass choice.',
   },
   rg_hunter: {
     id: 'hunter_quarry',
@@ -92,7 +92,7 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'cleric',
     name: 'Abundance',
     icon: '🌱',
-    desc: 'Dedicated heals convert 50% of unused healing into added absorption, up to 25 per trigger for 6s. Works at full health. Once per 6s; shared 50%-max-HP barrier cap applies; no healing score or rescue from overheal.',
+    desc: 'Dedicated heals convert 50% of unused healing into added absorption, up to the greater of 25 or 12% recipient max HP per trigger for 6s. Works at full health. Once per 6s; shared 50%-max-HP barrier cap applies; no healing score or rescue from overheal.',
   },
   pa_devotion: {
     id: 'devotion_anchor',
@@ -148,7 +148,7 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'bard',
     name: 'Echoed Refrain',
     icon: '🎶',
-    desc: 'Completing a chorus readies an echo for 8s. Your next effective dedicated heal echoes 50% of its healing (up to 35) to the most injured other ally within 420u, or the original recipient if no other ally is injured. Once per 8s; echoes do not prepare verses or trigger rescue.',
+    desc: 'Completing a chorus readies an echo for 8s. Your next effective dedicated heal echoes 50% of its healing (up to the greater of 35 or 12% recipient max HP) to the most injured other ally within 420u, or the original recipient if no other ally is injured. Once per 8s; echoes do not prepare verses or trigger rescue.',
   },
   ro_assassin: {
     id: 'assassin_opening',

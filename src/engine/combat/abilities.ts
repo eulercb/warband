@@ -14,7 +14,12 @@ import {
   consumeMartialFinishers,
   onParryHit,
 } from './martial';
-import { beginSupportCast, nearbySupportAllies, healSupportAlly } from './support';
+import {
+  beginSupportCast,
+  nearbySupportAllies,
+  healSupportAlly,
+  guardCrossedAlly,
+} from './support';
 import {
   consumeSpellSurge,
   consumeEvocation,
@@ -241,6 +246,7 @@ export function stepPlayerGlide(world: World, p: Player, dt: number): void {
     ended = true; // ran into cover — end the dash here
   }
   p.pos = clampToArena(world, next, p.radius);
+  if (!g.supportedAlly) g.supportedAlly = guardCrossedAlly(world, p, g.ab, from, p.pos);
   g.remaining -= step;
   if (ended || g.remaining <= 1e-6) {
     applyDashLanding(world, p, g.ab);

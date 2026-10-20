@@ -33,6 +33,10 @@ try {
       'poison',
       'eruption',
       'evokerNova',
+      'relay',
+      'rescue',
+      'wind',
+      'thorns',
     ]) {
       const page = await context.newPage();
       currentPage = page;
@@ -51,7 +55,8 @@ try {
         const { Renderer } = await import('/src/render/pipeline/renderer.ts');
         const { ARENA_W, ARENA_H } = await import('/src/engine/core/constants.ts');
         const { World } = await import('/src/engine/world/world.ts');
-        const { resolvePlayerAbility } = await import('/src/engine/combat/abilities.ts');
+        const { resolvePlayerAbility, stepPlayerGlide } =
+          await import('/src/engine/combat/abilities.ts');
         const { applyBuff, makeBuff, damageBoss, damagePlayer } =
           await import('/src/engine/combat/combat.ts');
         const { absorptionAmount } = await import('/src/engine/combat/absorption.ts');
@@ -78,6 +83,10 @@ try {
           poison: ['rogue', 'ro_assassin_poison'],
           eruption: ['druid', 'dr_land_spike'],
           evokerNova: ['mage', 'mg_evoker_lightning'],
+          relay: ['cleric', 'cl_life_mend'],
+          rescue: ['cleric', 'cl_light_flash'],
+          wind: ['monk', 'mo_openhand_wind'],
+          thorns: ['ranger', 'rg_hunter_hail'],
         };
         window.coherence = {
           mode(name) {
@@ -85,7 +94,12 @@ try {
             world = new World({
               monsterId: 'lich',
               seed: 31,
-              players: [{ peerId: 'a', name: classId, classId, subSkills: [skill] }],
+              players: [
+                { peerId: 'a', name: classId, classId, subSkills: [skill] },
+                ...(['relay', 'rescue', 'wind'].includes(name)
+                  ? [{ peerId: 'b', name: 'Ally', classId: 'knight' }]
+                  : []),
+              ],
             });
             world.scene = null;
             world.obstacles = [];
@@ -98,7 +112,21 @@ try {
             boss.pos = { x: 800, y: 630 };
             boss.hp = boss.maxHp = 10000;
             boss.buffs = [];
-            if (
+            if (['relay', 'rescue', 'wind', 'thorns'].includes(name)) {
+              const ally = world.players[1];
+              if (ally) {
+                ally.pos = { x: 800, y: 600 };
+                ally.hp = ally.maxHp = owner.hp = owner.maxHp = 200;
+              }
+              if (name === 'relay') {
+                owner.hp = 80;
+                ally.hp = 100;
+              }
+              if (name === 'rescue') ally.hp = 20;
+              if (name === 'wind') applyBuff(ally, makeBuff('root', 0, 3, 'fixture'));
+              resolvePlayerAbility(world, owner, 'sub1', { x: 0, y: 0 });
+              if (name === 'wind') stepPlayerGlide(world, owner, 0.12);
+            } else if (
               [
                 'challenge',
                 'bear',
@@ -165,6 +193,12 @@ try {
           probe() {
             return {
               frame,
+              allyHp: world.players[1]?.hp,
+              allyRescue: world.players[1]?.buffs.some((b) => b.kind === 'rescueStrike'),
+              allyGuard: world.players[1]?.buffs.find((b) => b.kind === 'frontGuard')?.mult,
+              allyRoot: world.players[1]?.buffs.some((b) => b.kind === 'root'),
+              thornsSlow: boss.buffs.some((b) => b.kind === 'moveSpeed' && b.mult === 0.65),
+              pushed: !!boss.shove,
               counterReady: owner.buffs.some((b) => b.kind === 'counter'),
               blocks: owner.buffs.find((b) => b.kind === 'frontGuard')?.mult,
               zones: world.groundZones.length,
@@ -199,6 +233,23 @@ try {
       const frame = 0;
       await page.waitForFunction((frame) => window.coherence.probe().frame > frame + 2, frame);
       const p = await page.evaluate(() => window.coherence.probe());
+      if (mode === 'relay') {
+        assert.equal(p.hp, 180);
+        assert.equal(p.allyHp, 135);
+      }
+      if (mode === 'rescue') {
+        assert.equal(p.allyRescue, true);
+        assert.equal(p.allyHp, 130.5);
+      }
+      if (mode === 'wind') {
+        assert.equal(p.allyGuard, 1);
+        assert.equal(p.allyRoot, false);
+      }
+      if (mode === 'thorns') {
+        assert.equal(p.bossHp, 9966);
+        assert.equal(p.thornsSlow, true);
+        assert.equal(p.pushed, true);
+      }
       if (mode === 'challenge') assert.equal(p.counterReady, true);
       if (mode === 'bear') {
         assert.equal(p.counterReady, true);

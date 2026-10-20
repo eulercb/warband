@@ -126,7 +126,7 @@ function describe(
         color: 0xffdc79,
         good: true,
         label:
-          'Pack Bond: next successful spirit bite grants the healed ally 12 absorption for 4s, within 420u',
+          'Pack Bond: next successful spirit bite grants the healed ally 8% max-HP absorption (minimum 12) for 4s, within 420u',
       };
     case 'rampage':
       return {
@@ -179,6 +179,13 @@ function describe(
         good: true,
         label: `Spell Weave: ${mult}/3 basic casts; three prepare Surge; build only without Surge and when its 8s trigger cooldown is ready`,
       };
+    case 'rescueStrike':
+      return {
+        glyph: '✨',
+        color: 0xffe588,
+        good: true,
+        label: `Rescue follow-through: next direct hit +${Math.round((mult - 1) * 100)}% damage; ticks cannot spend it`,
+      };
     case 'radiantCharge':
       return {
         glyph: '☀️',
@@ -191,7 +198,8 @@ function describe(
         glyph: '🎶',
         color: 0x66ff88,
         good: true,
-        label: 'Echoed Refrain: next effective dedicated heal echoes 50%, up to 35 HP',
+        label:
+          'Echoed Refrain: next effective dedicated heal echoes 50%, up to max(35, 12% recipient max HP)',
       };
     case 'spellblade':
       return {

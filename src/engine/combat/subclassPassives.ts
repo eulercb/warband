@@ -301,7 +301,14 @@ export function onSubclassHeal(
   const target = other ?? recipient;
   if (target.hp >= target.maxHp) return;
   p.buffs.splice(p.buffs.indexOf(ready), 1);
-  if (healPlayer(world, p, target, Math.min(35, effective * ready.mult)) > 0)
+  if (
+    healPlayer(
+      world,
+      p,
+      target,
+      Math.min(Math.max(35, target.maxHp * 0.12), effective * ready.mult),
+    ) > 0
+  )
     world.events.push({
       t: 'support',
       sourceId: p.id,
@@ -338,7 +345,11 @@ export function onSubclassOverheal(world: World, p: Player, target: Player, unus
     !offCooldown(p, id)
   )
     return;
-  if (grantAbsorption(target, Math.min(25, unused * 0.5), 6, 'heal') <= 0) return;
+  if (
+    grantAbsorption(target, Math.min(Math.max(25, target.maxHp * 0.12), unused * 0.5), 6, 'heal') <=
+    0
+  )
+    return;
   spendCooldown(p, id);
   world.events.push({
     t: 'support',
@@ -386,7 +397,17 @@ export function onSubclassFinisher(world: World, p: Player, ab: PlayerAbilityDef
     let gained = false;
     for (const ally of world.players) {
       if (ally.state !== 'alive' || ally.hp <= 0 || dist(p.pos, ally.pos) > 180) continue;
-      if (grantAbsorption(ally, 8 + 4 * Math.min(3, ab.momentumUsed), 4) <= 0) continue;
+      if (
+        grantAbsorption(
+          ally,
+          Math.max(
+            8 + 4 * Math.min(3, ab.momentumUsed),
+            ally.maxHp * (0.04 + 0.02 * Math.min(3, ab.momentumUsed)),
+          ),
+          4,
+        ) <= 0
+      )
+        continue;
       gained = true;
       world.events.push({
         t: 'support',

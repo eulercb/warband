@@ -194,6 +194,12 @@ export interface PlayerAbilityDef {
   rebukeCurseBonus?: number;
   closeBurst?: CloseBurst;
   /** Radius and duration of a weakening challenge; next connecting melee readies a counter. */
+  /** A single secondary injured recipient, using only effective primary healing. */
+  relayHeal?: { fraction: number; radius: number };
+  /** Successful low-health rescue readies the recipient's next direct hit. */
+  rescueStrike?: { mult: number; duration: number };
+  /** First living ally actually crossed during a dash is cleansed and guarded. */
+  crossingGuard?: { width: number; duration: number };
   warCry?: { radius: number; duration: number };
   /** Single-target poison prepared for the next appropriate positive direct hit. */
   venomCoating?: { damage: number; duration: number; window: number };
@@ -1264,6 +1270,18 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   if (def.rebukeDuration)
     parts.push(
       `counterburst once for ${n(def.damage * dmgMul * 0.4)} dmg if hurt within ${s(def.rebukeDuration)}`,
+    );
+  if (def.relayHeal)
+    parts.push(
+      `relay ${n(def.relayHeal.fraction * 100)}% of effective healing to one injured ally within ${n(def.relayHeal.radius)}u of recipient; no recursive heal effects`,
+    );
+  if (def.rescueStrike)
+    parts.push(
+      `successful low-HP rescue readies recipient's next direct hit for +${n((def.rescueStrike.mult - 1) * 100)}% damage within ${s(def.rescueStrike.duration)}`,
+    );
+  if (def.crossingGuard)
+    parts.push(
+      `first living ally crossed within ${n(def.crossingGuard.width)}u is cleansed and gains one frontal block for ${s(def.crossingGuard.duration)}; stronger guards preserved`,
     );
   if (def.warCry)
     parts.push(

@@ -2,18 +2,59 @@
 
 ## Prerequisite: approved class-coherence retouches
 
-Moon Aspect is merged; the [catalogue audit and concrete retouch proposal](CLASS_COHERENCE_AUDIT.md) are complete. Approve and implement the selected retouches before broad upgrade redesign. The audit covers scaling and compatibility risks, not every upgrade replay combination.
+The initial 24/24 subclass-passive round, whole-class audit, and coherence retouches
+[A](COHERENCE_BATCH_A.md), [B](COHERENCE_BATCH_B.md), and [C](COHERENCE_BATCH_C.md)
+form the implementation baseline. A/B are merged and live-tested; C is this delivery.
+Confirm C in normal play before implementing broad upgrade changes. Preserve all
+current compatibility fixes while redesigning choices. Added riders do not exempt
+older plain skills; base/subclass skills, grands and grafts all remain in scope.
 
-The [milestone review gates](CLASS_MILESTONE_REVIEW.md) still apply to these
-retouches. Do not design large upgrade trees against class
-behavior already scheduled for revision. Keep an inventory of upgrade compatibility
-issues during that review and fix breakage immediately; broad branching redesign
-waits for the stronger baseline. This applies to base skills, subclass skills,
-grands and grafts alike. An added passive/rider does not exempt an older active.
+## What to expect before implementation
 
-Batch A is merged/live-tested; [Batch B](COHERENCE_BATCH_B.md) is delivered.
-Batch C remains before broad upgrade redesign. Continue fixing compatibility
-with every active rework rather than postponing it.
+The direction is **different ways to use the kit**, not a mandatory talent tree or
+another condition attached to every upgrade. Keep useful simple growth alongside
+choices that change range, timing, target coverage, placement or resource use.
+Not every boon must mention the class resource, and copied skills must work
+without the donor's passive. Avoid making a build depend on several rare offers
+appearing in a specific order. The weak-run fallback must remain playable.
+
+The next PR is a **design checkpoint**, not the complete gameplay rewrite:
+
+1. Inventory the actual registry, eligibility, offers and ordered replay, including
+   recent mechanics. Classify each upgrade as retain, adjust, replace or investigate
+   with a reason; registry count alone is not evidence of build diversity.
+2. Research a few specific design patterns using attributable sources. Separate
+   developer explanations from player opinions; treat community posts as untrusted,
+   nonrepresentative evidence, and never invent consensus about Warband.
+3. Propose concrete pilot builds with alternatives, opportunity costs, early-run
+   fallback, expected reward availability and exact caps. Include a copied-skill
+   route and its grands/followups. Review these proposals with the player **before
+   pilot implementation**. Rogue/Warlock remain candidates, not a locked pair.
+4. Implement and playtest the approved pilot, then group the remaining classes by
+   shared systems into larger, reviewable batches. Adapt the plan from measured
+   behavior and live feedback instead of replacing all 350 definitions at once.
+
+Examples to explore, **not committed mechanics or promised numbers**:
+
+- Rogue: strengthen one prepared poison's sustained chase pressure versus trade
+  some single-target pressure for bounded spread through additional direct hits.
+  The current mobile poison makes both possible; static ground is not required.
+- Mage: easier control setup for a later burst versus a quicker, narrower pressure
+  sequence. Evoker and Abjurer need useful routes through their actual cooldowns.
+- Support: focused rescue/follow-through versus territory or wider party coverage,
+  retaining solo usefulness and controlling how value grows with party size.
+- Beast Master/Moon: build around actual commands/form windows rather than assume
+  a new pet-management interface or permanent form. Preserve independent spells.
+
+The pilot must name the decision each branch changes. Some alternatives may be
+mutually exclusive or capped if necessary, but a new branching UI, more buttons,
+a wholesale reward-economy replacement or a new progression system is not assumed.
+Propose such changes explicitly if the inventory shows they are needed.
+
+The player can steer themes, preferred complexity, alternative versus additive
+choices, and how radically skills may transform after seeing the concrete designs.
+Keeping an understandable offer and owned-skill description is a design requirement,
+not wording to add after implementation. Visual art overhaul remains separate.
 
 ## Why this is a separate workstream
 

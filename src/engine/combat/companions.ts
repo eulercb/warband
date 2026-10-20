@@ -62,7 +62,7 @@ function protect(world: World, p: Player, pet: SpiritCompanion): void {
   if (pet.wardTargetId == null) return;
   const ally = world.players.find((a) => a.id === pet.wardTargetId);
   if (!ally || ally.state !== 'alive' || ally.hp <= 0 || dist(p.pos, ally.pos) > 420) return;
-  if (grantAbsorption(ally, 12, 4) <= 0) return;
+  if (grantAbsorption(ally, Math.max(12, ally.maxHp * 0.08), 4) <= 0) return;
   p.buffs = p.buffs.filter((b) => b.source !== WARD_SOURCE);
   delete pet.wardTargetId;
   world.events.push({
