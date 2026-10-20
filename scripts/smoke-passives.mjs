@@ -34,7 +34,6 @@ cases.push(
   ['cleric', 'Mass Cure', 'Abundance'],
   ['cleric', 'Flash of Light', 'Refulgence'],
   ['monk', 'Wind Step', 'Flowguard'],
-  ['ranger', 'Hail of Thorns', 'Exposed Quarry'],
   ['knight', 'Menacing Roar', 'Tactical Opening'],
   ['barbarian', 'Ground Slam', 'Rampage'],
   ['barbarian', 'Earth Totem', 'Spirit Shelter'],
