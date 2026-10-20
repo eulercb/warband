@@ -8,7 +8,11 @@ import {
   makeBuff,
   tickBuffs,
 } from '../src/engine/combat/combat';
-import { healSupportAlly } from '../src/engine/combat/support';
+import {
+  healSupportAlly,
+  guardCrossedAlly,
+  rescueStrikeMultiplier,
+} from '../src/engine/combat/support';
 import { absorptionAmount } from '../src/engine/combat/absorption';
 import {
   onSubclassFinisher,
@@ -294,7 +298,7 @@ describe('growth and compatibility', () => {
       p.hp = 20;
       cast(w, p);
       if (mode === 'down') p.state = 'downed';
-      if (mode === 'room') w.scene = 'lobby';
+      if (mode === 'room') w.scene = 'reward';
       if (mode === 'class') p.classId = 'knight';
       (w as unknown as { maintainCloseBursts: () => void }).maintainCloseBursts();
       expect(p.buffs.some((b) => b.kind === 'rescueStrike')).toBe(false);
@@ -320,7 +324,7 @@ describe('growth and compatibility', () => {
   });
   it.each(ids)('%s keeps native/composed, Honed and subclass-grand payloads', (id) => {
     const raw = getSubSkill(id)!.ability;
-    const comp = decompose({ ...raw, slot: 'sub1' });
+    const comp = decompose(raw);
     const copy = recompose(comp, { ...raw, slot: 'sub1' });
     for (const k of [
       'relayHeal',
@@ -355,17 +359,85 @@ describe('growth and compatibility', () => {
     expect(refreshed.pierce).toBe(raw.pierce);
     expect(describeAbility(refreshed)).not.toContain('NaN');
   });
+  it('repeat rescues refresh one preparation without weakening a stronger readiness or stacking hits', () => {
+    const { w, p, ally, boss } = setup('cl_light_flash');
+    ally.hp = 20;
+    cast(w, p);
+    const charge = ally.buffs.find((b) => b.kind === 'rescueStrike')!;
+    charge.mult = 1.3;
+    charge.remaining = 2;
+    ally.hp = 20;
+    cast(w, p);
+    expect(ally.buffs.filter((b) => b.kind === 'rescueStrike')).toHaveLength(1);
+    expect(charge.mult).toBe(1.3);
+    expect(charge.remaining).toBe(6);
+    expect(damageBoss(w, ally, boss, 10, { direct: true })).toBe(13);
+    expect(damageBoss(w, ally, boss, 10, { direct: true })).toBe(10);
+  });
+  it('one large Wind Step tick chooses the nearest ally and breaks equal-distance ties by ID', () => {
+    for (const tie of [false, true]) {
+      const { w, p, ally } = setup('mo_openhand_wind', false, 4);
+      ally.pos = { x: 680, y: 400 };
+      w.players[2].pos = { x: tie ? 680 : 740, y: 400 };
+      w.players[3].pos = { x: 780, y: 400 };
+      w.players.reverse();
+      cast(w, p);
+      stepPlayerGlide(w, p, 1);
+      expect(ally.buffs.some((b) => b.kind === 'frontGuard')).toBe(true);
+      expect(
+        w.players
+          .filter((a) => a !== ally)
+          .some((a) => a.buffs.some((b) => b.kind === 'frontGuard')),
+      ).toBe(false);
+    }
+  });
+  it.each(['relayHeal', 'rescueStrike', 'crossingGuard'] as const)(
+    'Forge refresh preserves an existing %s payload when a replay step lacks its flat field',
+    (key) => {
+      const id =
+        key === 'relayHeal'
+          ? 'cl_life_mend'
+          : key === 'rescueStrike'
+            ? 'cl_light_flash'
+            : 'mo_openhand_wind';
+      const { p } = setup(id, true);
+      const ab = p.subAbilities!.sub1!;
+      const before = structuredClone(ab[key]);
+      delete ab[key];
+      const refreshed = recompose(refreshComponents(ab), ab);
+      expect(refreshed[key]).toEqual(before);
+    },
+  );
+  it('invalid caster states and zero movement cannot grant crossing support or consume rescue readiness', () => {
+    const { w, p, ally } = setup('mo_openhand_wind');
+    const ab = p.subAbilities!.sub1!;
+    for (const invalid of ['down', 'hp', 'room', 'stationary']) {
+      p.state = invalid === 'down' ? 'downed' : 'alive';
+      p.hp = invalid === 'hp' ? 0 : p.maxHp;
+      w.scene = invalid === 'room' ? 'reward' : null;
+      expect(guardCrossedAlly(w, p, ab, p.pos, invalid === 'stationary' ? p.pos : ally.pos)).toBe(
+        false,
+      );
+    }
+    p.buffs = [makeBuff('rescueStrike', 1.2, 6, `rescueStrike:${p.classId}`)];
+    p.state = 'downed';
+    expect(rescueStrikeMultiplier(p, true)).toBe(1);
+    p.state = 'alive';
+    p.hp = 0;
+    expect(rescueStrikeMultiplier(p, true)).toBe(1);
+    expect(p.buffs).toHaveLength(1);
+  });
   it('seeded Forge generation stays finite and routes support effects only to supported deliveries', () => {
+    const seen = new Set<string>();
     for (let seed = 1; seed <= 35; seed++) {
-      setForgeSeed(seed);
       for (const id of ids) {
         const base = { ...getSubSkill(id)!.ability, slot: 'sub1' as const };
         const generated = synthesizeAbility(
           seed,
           `coherence-c:${id}`,
           'a1',
-          [0, 1].map(() => ({
-            name: base.name,
+          [0, 1].map((i) => ({
+            name: `${base.name} donor ${i}`,
             classId: subclassOfSkill(id)!.classId,
             className: 'Donor',
             slot: 'a1',
@@ -373,10 +445,14 @@ describe('growth and compatibility', () => {
           })),
         ).def;
         expect(Number.isFinite(generated.damage)).toBe(true);
+        for (const effect of generated.components!.effects)
+          if (['relayHeal', 'rescueStrike', 'crossingGuard'].includes(effect.kind))
+            seen.add(effect.kind);
         if (generated.relayHeal || generated.rescueStrike) expect(generated.kind).toBe('heal');
         if (generated.crossingGuard) expect(generated.kind).toBe('dash');
       }
     }
+    expect(seen).toEqual(new Set(['relayHeal', 'rescueStrike', 'crossingGuard']));
   });
   it('new support riders retain baseline difficulty credit', () => {
     for (const id of ['cl_life_mend', 'cl_light_flash', 'mo_openhand_wind']) {
