@@ -119,6 +119,9 @@ export type EffectComponent =
   | { kind: 'pierce'; count: number }
   | { kind: 'paladinAura'; aura: NonNullable<PlayerAbilityDef['paladinAura']> }
   | { kind: 'absorption'; grant: AbsorptionGrant }
+  | { kind: 'relayHeal'; relay: NonNullable<PlayerAbilityDef['relayHeal']> }
+  | { kind: 'rescueStrike'; strike: NonNullable<PlayerAbilityDef['rescueStrike']> }
+  | { kind: 'crossingGuard'; guard: NonNullable<PlayerAbilityDef['crossingGuard']> }
   | { kind: 'rescueHeal'; bonus: number }
   | { kind: 'recovery'; grove: NonNullable<PlayerAbilityDef['recoveryZone']> }
   | { kind: 'allyWard'; ward: { range: number; mult: number; duration: number } }
@@ -340,6 +343,9 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.pierce) effects.push({ kind: 'pierce', count: def.pierce });
   if (def.paladinAura) effects.push({ kind: 'paladinAura', aura: { ...def.paladinAura } });
   if (def.absorption) effects.push({ kind: 'absorption', grant: { ...def.absorption } });
+  if (def.relayHeal) effects.push({ kind: 'relayHeal', relay: { ...def.relayHeal } });
+  if (def.rescueStrike) effects.push({ kind: 'rescueStrike', strike: { ...def.rescueStrike } });
+  if (def.crossingGuard) effects.push({ kind: 'crossingGuard', guard: { ...def.crossingGuard } });
   if (def.rescueHealBonus) effects.push({ kind: 'rescueHeal', bonus: def.rescueHealBonus });
   if (def.recoveryZone) effects.push({ kind: 'recovery', grove: { ...def.recoveryZone } });
   if (def.allyWard) effects.push({ kind: 'allyWard', ward: { ...def.allyWard } });
@@ -479,6 +485,15 @@ export function recompose(
         break;
       case 'absorption':
         def.absorption = { ...e.grant };
+        break;
+      case 'relayHeal':
+        def.relayHeal = { ...e.relay };
+        break;
+      case 'rescueStrike':
+        def.rescueStrike = { ...e.strike };
+        break;
+      case 'crossingGuard':
+        def.crossingGuard = { ...e.guard };
         break;
       case 'rescueHeal':
         def.rescueHealBonus = e.bonus;
@@ -661,6 +676,12 @@ function effectValue(e: EffectComponent, fan: number): number {
       return e.duration * 5;
     case 'rebuke':
       return e.duration * 4 + (e.curseBonus ?? 0) * 40;
+    case 'relayHeal':
+      return e.relay.fraction * 60;
+    case 'rescueStrike':
+      return (e.strike.mult - 1) * 50;
+    case 'crossingGuard':
+      return e.guard.duration * 5;
     case 'warCry':
       return e.cry.duration * 6;
     case 'venomCoating':
@@ -860,6 +881,12 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return `prepare next precision crit for ${s(e.duration)}`;
     case 'rebuke':
       return `one 40%-damage counterburst if hurt within ${s(e.duration)}${e.curseBonus ? `; applies searing curse +${pct(e.curseBonus * 100)} owner dmg for 4s` : ''}`;
+    case 'relayHeal':
+      return `relay ${pct(e.relay.fraction * 100)}% of effective healing to one injured ally within ${n(e.relay.radius)}u of recipient; no recursive heal effects`;
+    case 'rescueStrike':
+      return `successful low-HP rescue readies recipient's next direct hit for +${pct((e.strike.mult - 1) * 100)}% damage within ${s(e.strike.duration)}`;
+    case 'crossingGuard':
+      return `first living ally crossed within ${n(e.guard.width)}u is cleansed and gains one frontal block for ${s(e.guard.duration)}; stronger guards preserved`;
     case 'warCry':
       return `challenge ${n(e.cry.radius)}u for ${s(e.cry.duration)}, foe attacks 20% weaker; next connecting melee readies a +30% counter`;
     case 'venomCoating':
@@ -1178,6 +1205,11 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
         kind === 'meleeCone' ||
         kind === 'pbaoe'
       );
+    case 'relayHeal':
+    case 'rescueStrike':
+      return kind === 'heal';
+    case 'crossingGuard':
+      return kind === 'dash';
     case 'allyWard':
       return kind === 'selfBuff';
     case 'bardSong':
@@ -1728,6 +1760,12 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, bonus: e.bonus * f };
     case 'surgeStrike':
       return e;
+    case 'relayHeal':
+      return { ...e, relay: { ...e.relay, fraction: e.relay.fraction * f } };
+    case 'rescueStrike':
+      return { ...e, strike: { ...e.strike, mult: 1 + (e.strike.mult - 1) * f } };
+    case 'crossingGuard':
+      return { ...e, guard: { ...e.guard, duration: e.guard.duration * f } };
     case 'warCry':
       return { ...e, cry: { ...e.cry, duration: e.cry.duration * f } };
     case 'venomCoating':
@@ -1868,6 +1906,9 @@ function addBoonComponents(
         'allyWard',
         'bardSong',
         'closeBurst',
+        'relayHeal',
+        'rescueStrike',
+        'crossingGuard',
         'warCry',
         'venomCoating',
         'momentumFissure',
@@ -2057,6 +2098,12 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.rebukeDuration != null
         ? { ...e, duration: def.rebukeDuration, curseBonus: def.rebukeCurseBonus }
         : e;
+    case 'relayHeal':
+      return def.relayHeal ? { ...e, relay: { ...def.relayHeal } } : e;
+    case 'rescueStrike':
+      return def.rescueStrike ? { ...e, strike: { ...def.rescueStrike } } : e;
+    case 'crossingGuard':
+      return def.crossingGuard ? { ...e, guard: { ...def.crossingGuard } } : e;
     case 'warCry':
       return def.warCry ? { ...e, cry: { ...def.warCry } } : e;
     case 'venomCoating':
@@ -2226,6 +2273,30 @@ function capEffect(e: EffectComponent): EffectComponent {
       return { ...e, duration: clamp(round1(e.duration), 2, 12) };
     case 'surgeStrike':
       return e;
+    case 'relayHeal':
+      return {
+        ...e,
+        relay: {
+          fraction: clamp(round2(e.relay.fraction), 0.15, 0.5),
+          radius: clamp(round5(e.relay.radius), 100, 260),
+        },
+      };
+    case 'rescueStrike':
+      return {
+        ...e,
+        strike: {
+          mult: clamp(round2(e.strike.mult), 1.1, 1.35),
+          duration: clamp(round1(e.strike.duration), 3, 8),
+        },
+      };
+    case 'crossingGuard':
+      return {
+        ...e,
+        guard: {
+          width: clamp(round5(e.guard.width), 25, 65),
+          duration: clamp(round1(e.guard.duration), 2, 6),
+        },
+      };
     case 'warCry':
       return {
         ...e,

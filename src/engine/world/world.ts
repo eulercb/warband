@@ -1779,7 +1779,9 @@ export class World {
     for (const p of this.players)
       p.buffs = p.buffs.filter(
         (b) =>
-          !['brambleReady', 'challengeReady', 'venomReady', 'evocation'].includes(b.kind) ||
+          !['brambleReady', 'challengeReady', 'venomReady', 'evocation', 'rescueStrike'].includes(
+            b.kind,
+          ) ||
           (p.state === 'alive' &&
             p.hp > 0 &&
             this.scene === null &&

@@ -2865,6 +2865,19 @@ function scaleField(ab: PlayerAbilityDef, k: keyof PlayerAbilityDef, frac: numbe
  * i-frames, so even a magnitude-less mobility skill transforms measurably.
  */
 function amplify(ab: PlayerAbilityDef, mag: number, size: number): void {
+  if (ab.relayHeal)
+    ab.relayHeal = { ...ab.relayHeal, radius: Math.round(ab.relayHeal.radius * (1 + size)) };
+  if (ab.rescueStrike)
+    ab.rescueStrike = {
+      ...ab.rescueStrike,
+      duration: Math.min(8, ab.rescueStrike.duration * (1 + size)),
+    };
+  if (ab.crossingGuard)
+    ab.crossingGuard = {
+      ...ab.crossingGuard,
+      width: Math.round(ab.crossingGuard.width * (1 + size)),
+      duration: Math.min(6, ab.crossingGuard.duration * (1 + size)),
+    };
   if (ab.venomCoating)
     ab.venomCoating = {
       ...ab.venomCoating,
@@ -3559,6 +3572,16 @@ function subSkillTune(ab: PlayerAbilityDef): void {
 }
 
 const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
+  cl_life_mend:
+    'Increase primary healing by 12%, heal reach and relay radius by 8%, and reduce recharge by 8%; relay remains 35% of effective primary healing to one other ally',
+  cl_light_flash:
+    'Increase healing by 12%, reach and rescue readiness duration by 8% (cap 8s), and reduce recharge by 8%; retain the +20% direct-hit follow-through on rescue',
+  mo_openhand_wind:
+    'Increase healing by 12%, dash reach, crossing width and guard duration by 8% (guard cap 6s), and reduce recharge by 8%; retain Flow and one crossed ally',
+  rg_hunter_hail:
+    'Increase damage by 12% and burst radius by 8%, and reduce recharge by 8%; retain slowing disengagement and knockback',
+  rg_hunter_mark:
+    'Increase damage by 12% and reduce recharge by 8%; retain two additional pierces and Exposed Quarry',
   kn_battle_menacing:
     'Improve the personal damage buff, increase challenge radius by 8%, and reduce recharge by 8%; retain weakening and counter preparation',
   bb_berserker_slam:

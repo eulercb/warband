@@ -1,3 +1,4 @@
+import { rescueStrikeMultiplier } from './support';
 import { onMoonDirectHit } from './moonForm';
 import { commandCompanion } from './companions';
 import { blockFromFront, isSteadfast, mirrorDamage } from './defense';
@@ -388,7 +389,9 @@ export function damageBoss(
   const counter = mods?.melee && source.buffs.some((b) => b.kind === 'counter' && b.remaining > 0);
   if (outgoing > 0 && boss.hp > 0) {
     outgoing *=
-      subclassDamageMultiplier(source, boss, mods) * martialHitMultiplier(source, mods?.melee);
+      subclassDamageMultiplier(source, boss, mods) *
+      martialHitMultiplier(source, mods?.melee) *
+      rescueStrikeMultiplier(source, mods?.direct);
   }
   const before = boss.hp;
   boss.hp -= outgoing;
@@ -469,7 +472,9 @@ export function damageAdd(
   const counter = mods?.melee && source.buffs.some((b) => b.kind === 'counter' && b.remaining > 0);
   if (outgoing > 0 && add.hp > 0) {
     outgoing *=
-      subclassDamageMultiplier(source, add, mods) * martialHitMultiplier(source, mods?.melee);
+      subclassDamageMultiplier(source, add, mods) *
+      martialHitMultiplier(source, mods?.melee) *
+      rescueStrikeMultiplier(source, mods?.direct);
   }
   const before = add.hp;
   add.hp -= outgoing;

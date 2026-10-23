@@ -266,7 +266,7 @@ describe('Nature’s Bond protects its actual healed recipient', () => {
         true,
       );
       bite(w);
-      expect(absorptionAmount(ally.buffs)).toBe(12);
+      expect(absorptionAmount(ally.buffs)).toBeCloseTo(Math.max(12, ally.maxHp * 0.08));
       expect(p.spiritCompanion?.wardTargetId).toBeUndefined();
       expect(p.buffs.some((b) => b.kind === 'packBond')).toBe(false);
       expect(

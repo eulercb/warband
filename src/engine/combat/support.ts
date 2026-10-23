@@ -12,10 +12,10 @@ import { supportCue, buffCues } from './visualCues';
 import { armPaladinAura } from './paladinAuras';
 import { grantAbsorption } from './absorption';
 /** Authored support interactions travel with copied skills, not the active class. */
-import type { Player } from '../core/types';
+import type { Player, Vec2 } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
 import type { World } from '../world/world';
-import { dist } from '../core/torus';
+import { dist, pointInSegment, sub } from '../core/torus';
 import { applyBuff, makeBuff, healPlayer, damageBoss, damageAdd } from './combat';
 import { spawnZone } from './abilities';
 
@@ -143,8 +143,8 @@ export function healSupportAlly(
   ab: PlayerAbilityDef,
 ): number {
   if (ab.cleanseOnHeal) cleanseMovement(target);
-  const rescue = !!ab.rescueHealBonus && target.hp <= target.maxHp * 0.35;
-  const requested = amount * (rescue ? 1 + ab.rescueHealBonus! : 1);
+  const rescue = target.hp <= target.maxHp * 0.35;
+  const requested = amount * (rescue ? 1 + (ab.rescueHealBonus ?? 0) : 1);
   const effective = healPlayer(world, p, target, requested);
   onSubclassOverheal(world, p, target, Math.max(0, requested - effective));
   if (effective <= 0) return 0;
@@ -182,6 +182,43 @@ export function healSupportAlly(
     const rescueBubble = rescue ? Math.min(effective * 0.75, target.maxHp * 0.3) : 0;
     grantAbsorption(target, ordinary + rescueBubble, 6, 'heal');
   }
+  if (rescue && ab.rescueStrike && p.state === 'alive' && p.hp > 0 && world.scene === null) {
+    const strike = ab.rescueStrike;
+    const old = target.buffs.find((b) => b.kind === 'rescueStrike' && b.remaining > 0);
+    if (!old)
+      applyBuff(
+        target,
+        makeBuff('rescueStrike', strike.mult, strike.duration, `rescueStrike:${target.classId}`),
+      );
+    else {
+      old.mult = Math.max(old.mult, strike.mult);
+      old.remaining = Math.max(old.remaining, strike.duration);
+    }
+    supportCue(world, p, target, 'empower');
+  }
+  if (ab.relayHeal && p.state === 'alive' && p.hp > 0 && world.scene === null) {
+    const relay = ab.relayHeal;
+    const other = world.players
+      .filter(
+        (a) =>
+          a !== target &&
+          a.state === 'alive' &&
+          a.hp > 0 &&
+          a.hp < a.maxHp &&
+          dist(target.pos, a.pos) <= relay.radius,
+      )
+      .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.id - b.id)[0];
+    // Plain attributed healing: no rescue, overflow, verses, pet ward or another relay.
+    if (other && healPlayer(world, p, other, effective * relay.fraction) > 0)
+      world.events.push({
+        t: 'support',
+        sourceId: p.id,
+        targetId: other.id,
+        from: { ...target.pos },
+        pos: { ...other.pos },
+        kind: 'heal',
+      });
+  }
   onSubclassHeal(world, p, target, effective);
   if (ab.bardSong === 'harmony') applyBuff(p, makeBuff('harmony', 0, 8, 'bardHarmony'));
   if (ab.recoveryZone) {
@@ -202,4 +239,61 @@ export function healSupportAlly(
     });
   }
   return effective;
+}
+
+/** Called on actual travelled segments, so cover cannot grant protection through walls. */
+export function guardCrossedAlly(
+  world: World,
+  p: Player,
+  ab: PlayerAbilityDef,
+  from: Vec2,
+  to: Vec2,
+): boolean {
+  if (
+    !ab.crossingGuard ||
+    p.state !== 'alive' ||
+    p.hp <= 0 ||
+    world.scene !== null ||
+    dist(from, to) < 1e-6
+  )
+    return false;
+  const guard = ab.crossingGuard;
+  const path = sub(to, from);
+  const lengthSq = path.x * path.x + path.y * path.y;
+  const unobstructed = (a: Player) => {
+    const d = sub(a.pos, from);
+    const t = Math.max(0, Math.min(1, (d.x * path.x + d.y * path.y) / lengthSq));
+    const closest = { x: from.x + path.x * t, y: from.y + path.y * t };
+    return !world.obstacles.some((o) => pointInSegment(o.pos, closest, a.pos, o.radius));
+  };
+  const ally = world.players
+    .filter(
+      (a) =>
+        a !== p &&
+        a.state === 'alive' &&
+        a.hp > 0 &&
+        pointInSegment(a.pos, from, to, guard.width, a.radius) &&
+        unobstructed(a),
+    )
+    .sort((a, b) => dist(from, a.pos) - dist(from, b.pos) || a.id - b.id)[0];
+  if (!ally) return false;
+  cleanseMovement(ally);
+  grantFrontGuard(ally, 1, guard.duration);
+  supportCue(world, p, ally, 'protect');
+  return true;
+}
+
+/** A copied rescue needs no donor passive; zero/immune hits and damage ticks preserve it. */
+export function rescueStrikeMultiplier(p: Player, direct?: boolean): number {
+  const ready =
+    direct &&
+    p.state === 'alive' &&
+    p.hp > 0 &&
+    p.buffs.find(
+      (b) =>
+        b.kind === 'rescueStrike' && b.remaining > 0 && b.source === `rescueStrike:${p.classId}`,
+    );
+  if (!ready) return 1;
+  p.buffs.splice(p.buffs.indexOf(ready), 1);
+  return ready.mult;
 }

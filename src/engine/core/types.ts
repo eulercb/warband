@@ -209,6 +209,7 @@ export type BuffKind =
   | 'packBond' // next successful spirit bite shields the dedicated heal recipient
   | 'rampage' // Berserker: next basic cast; mult = Momentum spent
   | 'wildWeave' // mult is basic-cast progress toward a Surge
+  | 'rescueStrike' // next connecting direct hit, granted by a successful rescue
   | 'radiantCharge' // Light: next direct hit empowered and slows wind-ups
   | 'refrainEcho' // one dedicated heal echo
   | 'spellblade' // one empowered melee hit from Arcane Trickster
@@ -457,6 +458,7 @@ export interface Player {
     leap: boolean;
     /** The mover's ability def, so the landing slam (landingDamage) fires on touchdown. */
     ab: import('../content/classes').PlayerAbilityDef;
+    supportedAlly?: boolean;
   } | null;
 
   /** Host-side edge-detection of the previous button state for this player. */

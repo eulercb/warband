@@ -31,6 +31,9 @@ const cases = [
   ['warlock', 'Mind Blast', 'Dread Insight'],
 ];
 cases.push(
+  ['cleric', 'Mass Cure', 'Abundance'],
+  ['cleric', 'Flash of Light', 'Refulgence'],
+  ['monk', 'Wind Step', 'Flowguard'],
   ['knight', 'Menacing Roar', 'Tactical Opening'],
   ['barbarian', 'Ground Slam', 'Rampage'],
   ['barbarian', 'Earth Totem', 'Spirit Shelter'],
@@ -38,6 +41,10 @@ cases.push(
   ['druid', 'Erupting Earth', 'Living Paths'],
 );
 const activeCases = new Map([
+  ['Mass Cure', null],
+  ['Flash of Light', null],
+  ['Wind Step', null],
+  ['Hail of Thorns', null],
   ['Menacing Roar', /Challenge ready:/],
   ['Bear Spirit', /Frontal guard:/],
   ['Coated Blade', /Blade coated:/],

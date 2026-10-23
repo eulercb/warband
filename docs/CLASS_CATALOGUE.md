@@ -54,14 +54,14 @@ Connecting direct hits expose foes for 3s: they take 10% more damage from the pa
 
 | Stable ID        | Ability        | Resolved unupgraded behavior                                                                                               |
 | ---------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| rg_hunter_hail   | Hail of Thorns | 34 dmg · 130u radius · 8s cooldown                                                                                         |
-| rg_hunter_mark   | Hunter's Mark  | 48 dmg · pierce 2 additional enemies (direct shots only; blasts/zones use one impact) · 6s cooldown                        |
+| rg_hunter_hail   | Hail of Thorns | 34 dmg · 130u radius · slow to 65% for 2s · knock back 90u · 8s cooldown                                                   |
+| rg_hunter_mark   | Quarry Shot    | 48 dmg · pierce 2 additional enemies (direct shots only; blasts/zones use one impact) · 6s cooldown                        |
 | rg_hunter_stand  | Stand as One   | 6/tick dmg · allies in the field gain 20% speed · 170u radius · slow to 60% for 1s · lasts 4s · hits flyers · 14s cooldown |
 | rg_hunter_volley | Volley         | 5× 16 dmg · pierce 1 additional enemy (direct shots only; blasts/zones use one impact) · 7s cooldown                       |
 
 ### Beast Master
 
-A spirit wolf follows you. Your connecting direct hits command a 16-damage bite within 600u, once per 2.5s; +25% bite damage against slowed, rooted or stunned foes. Effective dedicated healing prepares your next successful bite to grant the healed ally 12 absorption for 4s, if within 420u; preparation lasts 6s. The spirit crosses cover, reaches flyers, cannot tank or block movement, and rests while you are downed or outside combat. Basics work with every subclass choice.
+A spirit wolf follows you. Your connecting direct hits command a 16-damage bite within 600u, once per 2.5s; +25% bite damage against slowed, rooted or stunned foes. Effective dedicated healing prepares your next successful bite to grant the healed ally 8% recipient max-HP absorption (minimum 12) for 4s, if within 420u; preparation lasts 6s. The spirit crosses cover, reaches flyers, cannot tank or block movement, and rests while you are downed or outside combat. Basics work with every subclass choice.
 
 | Stable ID       | Ability       | Resolved unupgraded behavior                                                                                                                                            |
 | --------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -114,23 +114,23 @@ A direct hit against a slowed, rooted or stunned foe grants you 10% max-HP absor
 
 Effective dedicated healing or a successful direct barrier grant readies your next direct hit for +25% damage and 30% slower enemy wind-ups for 3s. Readiness lasts 6s; once per 6s. Basics can spend it; damage zones cannot.
 
-| Stable ID        | Ability        | Resolved unupgraded behavior                                                                                                                                                                  |
-| ---------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| cl_light_flare   | Radiance       | 36 dmg · 150u radius · 8s cooldown                                                                                                                                                            |
-| cl_light_beam    | Guiding Bolt   | 60 dmg · 0.55s wind-up · 8s cooldown                                                                                                                                                          |
-| cl_light_flash   | Flash of Light | Heal 85 · +30% heal at ≤35% HP; effective heals add a 6s bubble — 25% healed HP (cap 15% max HP), plus 75% on rescue (extra cap 30% max HP); shared cap 50% max HP · 400u range · 5s cooldown |
-| cl_light_warding | Warding Flare  | 70 absorption for 7s to lowest-health ally; shared cap 50% max HP, strongest cast wins · for 7s · 12s cooldown                                                                                |
+| Stable ID        | Ability        | Resolved unupgraded behavior                                                                                                                                                                                                                                                           |
+| ---------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| cl_light_flare   | Radiance       | 36 dmg · 150u radius · 8s cooldown                                                                                                                                                                                                                                                     |
+| cl_light_beam    | Guiding Bolt   | 60 dmg · 0.55s wind-up · 8s cooldown                                                                                                                                                                                                                                                   |
+| cl_light_flash   | Flash of Light | Heal 85 · +30% heal at ≤35% HP; effective heals add a 6s bubble — 25% healed HP (cap 15% max HP), plus 75% on rescue (extra cap 30% max HP); shared cap 50% max HP · successful low-HP rescue readies recipient's next direct hit for +20% damage within 6s · 400u range · 5s cooldown |
+| cl_light_warding | Warding Flare  | 70 absorption for 7s to lowest-health ally; shared cap 50% max HP, strongest cast wins · for 7s · 12s cooldown                                                                                                                                                                         |
 
 ### Life
 
-Dedicated heals convert 50% of unused healing into added absorption, up to 25 per trigger for 6s. Works at full health. Once per 6s; shared 50%-max-HP barrier cap applies; no healing score or rescue from overheal.
+Dedicated heals convert 50% of unused healing into added absorption, up to the greater of 25 or 12% recipient max HP per trigger for 6s. Works at full health. Once per 6s; shared 50%-max-HP barrier cap applies; no healing score or rescue from overheal.
 
-| Stable ID        | Ability       | Resolved unupgraded behavior                                                                                                                                                                   |
-| ---------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| cl_life_bloom    | Blessed Bloom | unused healing builds a 6s bubble, capped at 30% max HP across all zones · 18/tick heal · 150u radius · lasts 5s · 12s cooldown                                                                |
-| cl_life_mend     | Mass Cure     | Heal 100 · +30% heal at ≤35% HP; effective heals add a 6s bubble — 25% healed HP (cap 15% max HP), plus 75% on rescue (extra cap 30% max HP); shared cap 50% max HP · 400u range · 5s cooldown |
-| cl_life_preserve | Preserve Life | 55 absorption for 8s to nearby allies; shared cap 50% max HP, strongest cast wins · for 8s · 14s cooldown                                                                                      |
-| cl_life_smite    | Reproach      | 30 dmg · 70u reach · 90° arc · 0.7s stun · 6s cooldown                                                                                                                                         |
+| Stable ID        | Ability       | Resolved unupgraded behavior                                                                                                                                                                                                                                                                            |
+| ---------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| cl_life_bloom    | Blessed Bloom | unused healing builds a 6s bubble, capped at 30% max HP across all zones · 18/tick heal · 150u radius · lasts 5s · 12s cooldown                                                                                                                                                                         |
+| cl_life_mend     | Mass Cure     | Heal 100 · +30% heal at ≤35% HP; effective heals add a 6s bubble — 25% healed HP (cap 15% max HP), plus 75% on rescue (extra cap 30% max HP); shared cap 50% max HP · relay 35% of effective healing to one injured ally within 180u of recipient; no recursive heal effects · 400u range · 5s cooldown |
+| cl_life_preserve | Preserve Life | 55 absorption for 8s to nearby allies; shared cap 50% max HP, strongest cast wins · for 8s · 14s cooldown                                                                                                                                                                                               |
+| cl_life_smite    | Reproach      | 30 dmg · 70u reach · 90° arc · 0.7s stun · 6s cooldown                                                                                                                                                                                                                                                  |
 
 ## barbarian
 
@@ -154,7 +154,7 @@ Spending Momentum readies your next basic cast for 4s: +10% damage per stack spe
 
 ### Totem Warrior
 
-Spending Momentum grants you and living allies within 180u 8 + 4 absorption per stack spent (up to 20), lasting 4s. Once per 6s; shared cap and strongest-cast rules apply. Rage and Whirlwind work with every subclass choice.
+Spending Momentum grants you and living allies within 180u the greater of 8 + 4 per stack or 4% + 2% recipient max HP per stack (up to 20 or 10% max HP) as absorption, lasting 4s. Once per 6s; shared cap and strongest-cast rules apply. Rage and Whirlwind work with every subclass choice.
 
 | Stable ID      | Ability     | Resolved unupgraded behavior                                                                                                                                                                                                                                                                                                                  |
 | -------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -278,7 +278,7 @@ Completing a Harmony + Discord chorus gives nearby living allies, including you,
 
 ### College of Whispers
 
-Completing a chorus readies an echo for 8s. Your next effective dedicated heal echoes 50% of its healing (up to 35) to the most injured other ally within 420u, or the original recipient if no other ally is injured. Once per 8s; echoes do not prepare verses or trigger rescue.
+Completing a chorus readies an echo for 8s. Your next effective dedicated heal echoes 50% of its healing (up to the greater of 35 or 12% recipient max HP) to the most injured other ally within 420u, or the original recipient if no other ally is injured. Once per 8s; echoes do not prepare verses or trigger rescue.
 
 | Stable ID          | Ability            | Resolved unupgraded behavior                                                                                                                                                         |
 | ------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -300,12 +300,12 @@ Completing a chorus readies an echo for 8s. Your next effective dedicated heal e
 
 Spending Flow grants one frontal damage block for 3s. Aim toward the attack; ground and rear damage bypass it. Stronger existing guards are preserved; charges do not stack. Step of the Wind and Quivering Palm provide the base-kit route.
 
-| Stable ID          | Ability           | Resolved unupgraded behavior                                                                                                                |
-| ------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| mo_openhand_flurry | Flurry Barrage    | 40 dmg · spend Flow for no wind-up and +30u cone reach · 64u reach · 90° arc · 4s cooldown                                                  |
-| mo_openhand_wave   | Wave Palm         | 34 dmg · spend Flow for no wind-up and +35u burst radius · 150u radius · 0.5s stun · 7s cooldown                                            |
-| mo_openhand_wind   | Wind Step         | heal 22 · successful movement readies Flow for 4s; next marked special is instant with more reach · 280u dash · 0.3s i-frames · 5s cooldown |
-| mo_openhand_ki     | Wholeness of Body | heal 80 self · centering yourself readies Flow for 4s; next marked special is instant with more reach · for 5s · 10s cooldown               |
+| Stable ID          | Ability           | Resolved unupgraded behavior                                                                                                                                                                                                                                 |
+| ------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| mo_openhand_flurry | Flurry Barrage    | 40 dmg · spend Flow for no wind-up and +30u cone reach · 64u reach · 90° arc · 4s cooldown                                                                                                                                                                   |
+| mo_openhand_wave   | Wave Palm         | 34 dmg · spend Flow for no wind-up and +35u burst radius · 150u radius · 0.5s stun · 7s cooldown                                                                                                                                                             |
+| mo_openhand_wind   | Wind Step         | heal 22 · successful movement readies Flow for 4s; next marked special is instant with more reach · 280u dash · first living ally crossed within 40u is cleansed and gains one frontal block for 3s; stronger guards preserved · 0.3s i-frames · 5s cooldown |
+| mo_openhand_ki     | Wholeness of Body | heal 80 self · centering yourself readies Flow for 4s; next marked special is instant with more reach · for 5s · 10s cooldown                                                                                                                                |
 
 ### Way of Shadow
 

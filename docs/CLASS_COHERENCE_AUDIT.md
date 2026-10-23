@@ -2,7 +2,9 @@
 
 Reviewed against `ef8de74` (merged Moon Aspect), 2026-10-19.
 
-Implementation follow-up: [Batch A](COHERENCE_BATCH_A.md) delivers the first
+Implementation follow-up: [A](COHERENCE_BATCH_A.md), [B](COHERENCE_BATCH_B.md), and
+[C](COHERENCE_BATCH_C.md) deliver the approved three-batch sequence; their current
+contracts supersede proposal numbers below. [Batch A](COHERENCE_BATCH_A.md) delivered the first
 approved retouches and updated scaling probes. The findings and numbers below
 record the pre-retouch baseline. **This delivery is
 an audit and implementation proposal, not a gameplay balance patch.** No combat,

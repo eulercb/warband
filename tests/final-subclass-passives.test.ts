@@ -84,7 +84,7 @@ describe('final passive cohort: every individual choice works with base kit', ()
           resolvePlayerAbility(w, p, 'a3', ZERO);
           if (id === 'bb_berserker')
             expect(p.buffs.find((b) => b.kind === 'rampage')?.mult).toBe(3);
-          else expect(absorptionAmount(p.buffs)).toBe(20);
+          else expect(absorptionAmount(p.buffs)).toBeCloseTo(Math.max(20, p.maxHp * 0.1));
           break;
         case 'mo_openhand':
         case 'mo_shadow':
@@ -150,7 +150,7 @@ describe('Barbarian follow-through and shelter', () => {
         momentum(w, 2);
         resolvePlayerAbility(w, p, 'sub1', ZERO);
         if (id === 'bb_berserker') expect(p.buffs.find((b) => b.kind === 'rampage')?.mult).toBe(2);
-        else expect(absorptionAmount(p.buffs)).toBe(16);
+        else expect(absorptionAmount(p.buffs)).toBeCloseTo(Math.max(16, p.maxHp * 0.08));
       }
   });
   it('Shelter respects range, living allies, stronger barriers and its gate', () => {
@@ -170,14 +170,14 @@ describe('Barbarian follow-through and shelter', () => {
     expect(absorptionAmount(ally.buffs)).toBe(0);
     ally.state = 'alive';
     onSubclassFinisher(w, p, ab);
-    expect(absorptionAmount(ally.buffs)).toBe(20);
+    expect(absorptionAmount(ally.buffs)).toBeCloseTo(Math.max(20, ally.maxHp * 0.1));
     expect(absorptionAmount(p.buffs)).toBe(40);
     ally.buffs = [];
     onSubclassFinisher(w, p, ab);
     expect(absorptionAmount(ally.buffs)).toBe(0);
     tickSubclassPassives(p, 6);
     onSubclassFinisher(w, p, { ...ab, momentumUsed: 1 });
-    expect(absorptionAmount(ally.buffs)).toBe(12);
+    expect(absorptionAmount(ally.buffs)).toBeCloseTo(Math.max(12, ally.maxHp * 0.06));
     tickBuffs(ally, 4);
     expect(absorptionAmount(ally.buffs)).toBe(0);
   });
