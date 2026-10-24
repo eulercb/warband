@@ -442,7 +442,12 @@ export function damageBoss(
 function applyCursePayoff(source: Player, target: Boss | Add, duration?: number): void {
   if (!duration || target.hp <= 0 || !personallyCursed(source.id, target)) return;
   applyBuff(target, makeBuff('damageDealt', 0.85, duration, `curseWeakness:${source.id}:mind`));
-  applyBuff(target, makeBuff('castSlow', 1.4, duration, 'mindBlastWindup'));
+  // Equivalent allied hits refresh one wind-up effect without shortening a longer Honed window.
+  const windup = target.buffs.find((b) => b.source === 'mindBlastWindup' && b.remaining > 0);
+  applyBuff(
+    target,
+    makeBuff('castSlow', 1.4, Math.max(duration, windup?.remaining ?? 0), 'mindBlastWindup'),
+  );
 }
 
 /** Personal curses never amplify another player's hits or multiply together. */

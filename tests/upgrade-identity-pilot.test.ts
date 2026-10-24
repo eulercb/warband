@@ -566,6 +566,17 @@ describe('repeat picks, composition and copied skills', () => {
     ab.venomCoating = { ...component.coating };
     expect(heroPowerRatio(p)).toBe(power);
   });
+  it('an allied shorter Mind Blast cannot erase the longer Honed hindrance window', () => {
+    const { w, p, boss } = setup('warlock');
+    const ally = { ...p, id: 999, buffs: [], stats: { ...p.stats } };
+    w.players.push(ally);
+    applyBuff(boss, makeBuff('curse', 1.15, 6, `curse:${p.id}:hex`));
+    applyBuff(boss, makeBuff('curse', 1.15, 6, `curse:${ally.id}:hex`));
+    damageBoss(w, p, boss, 1, { direct: true, cursePayoff: 5 });
+    damageBoss(w, ally, boss, 1, { direct: true, cursePayoff: 3 });
+    expect(boss.buffs.filter((b) => b.source === 'mindBlastWindup')).toHaveLength(1);
+    expect(boss.buffs.find((b) => b.source === 'mindBlastWindup')!.remaining).toBe(5);
+  });
   it('a stale graftup cannot tune a native slot after reclaim', () => {
     const table = previewAbilityTable('knight', ['hy_hexbrand', 'restore:a3', 'graftup:a3:wa_hex']);
     expect(table.a3).toEqual(previewAbilityTable('knight', []).a3);

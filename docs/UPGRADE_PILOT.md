@@ -25,7 +25,8 @@ are preserved. No adaptive difficulty controller or coefficient changes are incl
   60% ground / 40% following poison with a two-second linger. This supersedes the
   common boon's allocation, whichever is picked first. Ground and poison are
   one damage budget, not two full effects. Only three recipients get the poison
-  share; extra foes receive the ground share. The full-ground skill grand stays.
+  share; extra foes receive the ground share. The ground-focused skill grand stays; if Deadly Poison is also owned, it keeps
+  that common boon’s 80/20 allocation rather than Grand Venom’s 60/40 split.
 - **Deepening Hex:** +6 tick magnitude, +1.5s duration and +12 radius per pick;
   +1 percentage point curse amplification remains. Slow, hindrance and curse linger
   two seconds at first pick, increasing by .5s to a four-second cap. Benchmarks
@@ -37,7 +38,8 @@ are preserved. No adaptive difficulty controller or coefficient changes are incl
   recursion. The burst flashes its actual center/radius.
 - **Honed Mind Blast:** retains numeric Honed growth and extends the personally
   cursed-target weakness/hindrance by one second per pick, up to five seconds.
-  Equivalent weakness does not multiply and no new hard interrupt is added.
+  Equivalent weakness does not multiply; an allied shorter Mind Blast cannot shorten
+  a longer active hindrance window. No new hard interrupt is added.
 - **Word of Ruin:** exchanges Hex's grand +65 radius for up to three seconds
   following its first effectively damaged foe, nearest field center then ID.
   Afterwards it anchors. Death, disappearance or flight ends following at the
@@ -139,8 +141,8 @@ unconditional damage. No claim of equal class balance is made.
   existing production input/mobile smoke remains separate.
 - Regenerate/check catalogue evidence with `node scripts/audit-upgrade-catalogue.mjs --check`.
 
-Local validation: **3,891 tests passed across 143 files**; full coverage met the
-unchanged 98% branch gate (98.01% achieved). Production build, lint, formatting and inventory replay
+Local validation: **3,892 tests passed across 143 files**; full coverage met the
+unchanged 98% branch gate (98.02% achieved). Production build, lint, formatting and inventory replay
 passed. Twelve engine/renderer browser fixtures passed, plus the selected production
 UI/input checks on desktop and 320px mobile. GitHub CI rechecks the final commit,
 including the new browser fixture and reproducible inventory gate. The caster-defense
