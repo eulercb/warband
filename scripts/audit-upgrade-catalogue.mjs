@@ -2,7 +2,10 @@
 import { createServer } from 'vite';
 import { format } from 'prettier';
 import { readFileSync, writeFileSync } from 'node:fs';
-const server = await createServer({ server: { middlewareMode: true } });
+const server = await createServer({
+  logLevel: 'silent',
+  server: { middlewareMode: true, hmr: false },
+});
 try {
   const { World } = await server.ssrLoadModule('/src/engine/world/world.ts');
   const { CLASS_IDS } = await server.ssrLoadModule('/src/engine/content/classes.ts');
@@ -309,7 +312,7 @@ try {
     throw new Error('Registry changed; review audit scope/counts.');
   const evidence = {
     schema: 1,
-    baseline: '3d6fef7 (merged coherence C)',
+    baseline: '45706e1 plus upgrade identity pilot (see UPGRADE_PILOT.md)',
     seed: 31,
     counts,
     genericCount: generic.length,

@@ -1,4 +1,9 @@
-import { applyCoating, tickVenoms } from '../combat/skillRetouches';
+import {
+  applyCoating,
+  tickVenoms,
+  updateUpgradeZone,
+  onUpgradeZoneDamage,
+} from '../combat/skillRetouches';
 import { maintainMoonForms, inMoonForm } from '../combat/moonForm';
 import { updateCompanions, PACK_BOND } from '../combat/companions';
 import { curseDuration, DREAD_DAMAGE_MULT } from '../core/curses';
@@ -1150,6 +1155,7 @@ export class World {
       if (p.regenPerSec > 0 && p.state === 'alive' && p.hp > 0) {
         p.hp = Math.min(p.maxHp, p.hp + p.regenPerSec * dt);
       }
+      p.upgradeRefundRemaining = Math.max(0, (p.upgradeRefundRemaining ?? 0) - dt);
       p.cooldowns.basic = Math.max(0, p.cooldowns.basic - dt);
       p.cooldowns.a1 = Math.max(0, p.cooldowns.a1 - dt);
       p.cooldowns.a2 = Math.max(0, p.cooldowns.a2 - dt);
@@ -1557,7 +1563,12 @@ export class World {
             owner,
             proj.damage * controlledSpellMultiplier(b, proj.controlDamageBonus),
             b,
-            owner ? this.critRoll(owner, proj) : undefined,
+            owner
+              ? this.critRoll(
+                  owner,
+                  hasBuff(b, 'invuln') ? { ...proj, consumesPrecision: false } : proj,
+                )
+              : undefined,
           );
           dealt += proj.damage;
           this.applyProjRiders(b, proj);
@@ -1600,7 +1611,12 @@ export class World {
         owner,
         proj.damage * controlledSpellMultiplier(hitBoss, proj.controlDamageBonus),
         hitBoss,
-        owner ? this.critRoll(owner, proj) : undefined,
+        owner
+          ? this.critRoll(
+              owner,
+              hasBuff(hitBoss, 'invuln') ? { ...proj, consumesPrecision: false } : proj,
+            )
+          : undefined,
       );
       dealt += proj.damage;
       this.applyProjRiders(hitBoss, proj);
@@ -1652,6 +1668,8 @@ export class World {
       side: 'player',
       ownerId: proj.ownerId,
       damagePerTick: oi.tickDamage ?? 0,
+      zonePoison: oi.zonePoison,
+      zoneFollow: oi.zoneFollow,
       healPerTick: oi.tickHeal ?? 0,
       overflowShield: oi.overflowShield,
       slowMult: oi.slowMult,
@@ -1705,6 +1723,8 @@ export class World {
       freeze?: number;
       controlOnHit?: 'slow' | 'stun';
       flowExtendOnHit?: number;
+      preparedRefund?: number;
+      refundCast?: { spent: boolean };
     },
   ): HitMods {
     const ready =
@@ -1715,6 +1735,9 @@ export class World {
     const crit = this.critRng.next() < chance;
     return {
       direct: true,
+      ...(bonus?.preparedRefund && bonus.refundCast
+        ? { refund: { seconds: bonus.preparedRefund, cast: bonus.refundCast } }
+        : {}),
       cursePayoff: bonus?.cursePayoff,
       controlOnHit:
         bonus?.controlOnHit ??
@@ -1757,6 +1780,8 @@ export class World {
       freeze?: number;
       controlOnHit?: 'slow' | 'stun';
       flowExtendOnHit?: number;
+      preparedRefund?: number;
+      refundCast?: { spent: boolean };
     },
   ): HitMods {
     const hit = this.critRoll(
@@ -1797,7 +1822,30 @@ export class World {
     target: Boss | Add,
     effective: number,
     prepared?: boolean,
+    refund?: HitMods['refund'],
   ): void {
+    if (
+      this.scene === null &&
+      source.state === 'alive' &&
+      source.hp > 0 &&
+      effective > 0 &&
+      prepared &&
+      refund &&
+      !refund.cast.spent &&
+      (source.upgradeRefundRemaining ?? 0) <= 0 &&
+      source.cooldowns.a2 > 0 &&
+      abilityForSlot(source, 'a2')?.kind === 'blink' &&
+      abilityForSlot(source, 'a2')?.prepareCrit
+    ) {
+      source.cooldowns.a2 = Math.max(0, source.cooldowns.a2 - refund.seconds);
+      source.upgradeRefundRemaining = 4;
+      refund.cast.spent = true;
+    }
+    if (
+      effective > 0 &&
+      source.buffs.some((b) => b.kind === 'rebuke' && b.remaining > 0 && b.retaliation?.direct)
+    )
+      this.releaseRebuke(source, target.pos);
     if (effective > 0) applyCoating(this, source, target, prepared);
     this.releaseCloseBurst(source, target, effective);
   }
@@ -1844,12 +1892,31 @@ export class World {
 
   /** Consume a counterburst before resolving damage, so it cannot recurse. */
   onPlayerDamaged(target: Player): void {
+    this.releaseRebuke(target, target.pos);
+  }
+
+  private releaseRebuke(target: Player, center: Vec2): void {
+    if (this.scene !== null || target.state !== 'alive' || target.hp <= 0) return;
     const ward = target.buffs.find((b) => b.kind === 'rebuke' && b.remaining > 0 && b.retaliation);
     if (!ward?.retaliation) return;
     target.buffs.splice(target.buffs.indexOf(ward), 1);
+    this.events.push({
+      t: 'skillArea',
+      sourceId: target.id,
+      side: 'player',
+      color: 0xb666e8,
+      area: {
+        kind: 'circle',
+        origin: { ...center },
+        radius: ward.retaliation.radius,
+        range: 0,
+        angle: 0,
+        halfAngle: 0,
+      },
+    });
     let dealt = 0;
     for (const boss of this.aliveBosses()) {
-      if (dist(target.pos, boss.pos) <= ward.retaliation.radius + boss.radius) {
+      if (dist(center, boss.pos) <= ward.retaliation.radius + boss.radius) {
         if (ward.retaliation.curseBonus)
           applyBuff(
             boss,
@@ -1859,7 +1926,7 @@ export class World {
       }
     }
     for (const add of this.adds) {
-      if (add.hp > 0 && dist(target.pos, add.pos) <= ward.retaliation.radius + add.radius) {
+      if (add.hp > 0 && dist(center, add.pos) <= ward.retaliation.radius + add.radius) {
         if (ward.retaliation.curseBonus)
           applyBuff(
             add,
@@ -1932,6 +1999,7 @@ export class World {
         }
         z.armRemaining = 0; // armed this tick — fall through to a normal live tick
       }
+      updateUpgradeZone(this, z, dt);
       z.remaining -= dt;
       z.tickAccum += dt;
       while (z.tickAccum >= ZONE_TICK_INTERVAL) {
@@ -1939,6 +2007,7 @@ export class World {
         this.applyZoneTick(z);
       }
       if (z.remaining > 0) keep.push(z);
+      else updateUpgradeZone(this, z, 0);
     }
     this.groundZones = keep;
   }
@@ -1986,7 +2055,11 @@ export class World {
         // Arrows, Otiluke Bind) still catches it; direct attacks always connect.
         if (this.bossFlying(b) && !zoneReachesAir(z)) continue;
         if (owner && z.curseBonus) this.applyZoneCurse(b, owner, z);
-        if (z.damagePerTick > 0) this.applyProjDamageBoss(owner, z.damagePerTick, b);
+        if (z.damagePerTick > 0) {
+          const before = b.hp;
+          this.applyProjDamageBoss(owner, z.damagePerTick * (1 - (z.zonePoison?.share ?? 0)), b);
+          onUpgradeZoneDamage(this, z, owner, b, Math.max(0, before - b.hp));
+        }
         if (slows) applyBuff(b, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
         if (z.roots) applyBuff(b, makeBuff('root', 0, rootDur, 'zoneRoot'));
         if (castSlows) applyBuff(b, makeBuff('castSlow', z.castSlow!, castSlowDur, 'zoneCastSlow'));
@@ -1996,8 +2069,11 @@ export class World {
         if (dist(z.pos, a.pos) <= z.radius + a.radius) {
           if (owner && z.curseBonus) this.applyZoneCurse(a, owner, z);
           if (z.damagePerTick > 0) {
-            if (owner) damageAdd(this, owner, a, z.damagePerTick);
+            const before = a.hp;
+            if (owner)
+              damageAdd(this, owner, a, z.damagePerTick * (1 - (z.zonePoison?.share ?? 0)));
             else a.hp -= z.damagePerTick;
+            onUpgradeZoneDamage(this, z, owner, a, Math.max(0, before - a.hp));
           }
           if (slows) applyBuff(a, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
           if (z.roots) applyBuff(a, makeBuff('root', 0, rootDur, 'zoneRoot'));
@@ -2006,6 +2082,7 @@ export class World {
         }
       }
     }
+    if (z.followId != null) z.followAcquired = true;
     if (z.healPerTick > 0) {
       for (const p of this.players) {
         if (p.state !== 'alive') continue;

@@ -375,7 +375,7 @@ describe('new payload compatibility, visibility and difficulty credit', () => {
         expect(copied.closeBurst!.radius).toBe(135);
       }
       if (id === 'wa_fiend_rebuke') expect(copied.rebukeCurseBonus).toBe(0.15);
-      if (id === 'wa_goo_blast') expect(copied.cursePayoff).toBe(3);
+      if (id === 'wa_goo_blast') expect(copied.cursePayoff).toBe(4);
       expect(getSubSkill(id)!.ability).toEqual(original);
       expect(describeAbility(copied)).toMatch(/burst|cursed foe/);
       expect(describeComposed(decompose(copied), copied.cooldown)).toMatch(/burst|cursed foe/);

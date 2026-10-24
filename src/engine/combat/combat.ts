@@ -50,6 +50,7 @@ export interface EventSink {
     target: Boss | Add,
     effective: number,
     prepared?: boolean,
+    refund?: HitMods['refund'],
   ) => void;
 }
 
@@ -64,6 +65,7 @@ export interface HitMods {
   crit?: boolean;
   backstab?: boolean;
   prepared?: boolean;
+  refund?: { seconds: number; cast: { spent: boolean } };
   melee?: boolean;
   direct?: boolean;
   flowExtend?: number;
@@ -431,7 +433,7 @@ export function damageBoss(
   onSubclassCursedHit(sink, source, boss, effective);
   if (mods?.direct && effective > 0) {
     applyCursePayoff(source, boss, mods.cursePayoff);
-    sink.onPlayerDirectHit?.(source, boss, effective, mods?.prepared);
+    sink.onPlayerDirectHit?.(source, boss, effective, mods?.prepared, mods?.refund);
   }
   return outgoing;
 }
@@ -440,7 +442,12 @@ export function damageBoss(
 function applyCursePayoff(source: Player, target: Boss | Add, duration?: number): void {
   if (!duration || target.hp <= 0 || !personallyCursed(source.id, target)) return;
   applyBuff(target, makeBuff('damageDealt', 0.85, duration, `curseWeakness:${source.id}:mind`));
-  applyBuff(target, makeBuff('castSlow', 1.4, duration, 'mindBlastWindup'));
+  // Equivalent allied hits refresh one wind-up effect without shortening a longer Honed window.
+  const windup = target.buffs.find((b) => b.source === 'mindBlastWindup' && b.remaining > 0);
+  applyBuff(
+    target,
+    makeBuff('castSlow', 1.4, Math.max(duration, windup?.remaining ?? 0), 'mindBlastWindup'),
+  );
 }
 
 /** Personal curses never amplify another player's hits or multiply together. */
@@ -507,7 +514,7 @@ export function damageAdd(
   onSubclassCursedHit(sink, source, add, effective);
   if (mods?.direct && effective > 0) {
     applyCursePayoff(source, add, mods.cursePayoff);
-    sink.onPlayerDirectHit?.(source, add, effective, mods?.prepared);
+    sink.onPlayerDirectHit?.(source, add, effective, mods?.prepared, mods?.refund);
   }
   return outgoing;
 }

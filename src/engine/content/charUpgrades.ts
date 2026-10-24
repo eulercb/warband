@@ -377,7 +377,7 @@ const CLERIC: CharUpgradeDef[] = [
     'cl_greaterheal',
     'Greater Heal',
     '💚',
-    'Heal restores 88 HP (+28) from 450u (+50); critical rescue bonus grows by 5 percentage points',
+    'Heal restores 103 HP (+28) from 450u (+50); critical rescue bonus grows by 5 percentage points',
     ({ abilities: a }) => {
       addN(a.a1, 'damage', 28);
       addN(a.a1, 'range', 50);
@@ -501,11 +501,12 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_assassin',
     'Assassinate',
     '🗡️',
-    'Backstab gains 24 damage, returns 22% sooner, and gains +0.1× critical damage',
+    'Backstab gains +24 damage, 22% faster recharge and +0.1× critical damage per pick; a prepared positive hit refunds 1s of running Shadowstep, once per cast and 4s',
     ({ abilities: a }) => {
       addN(a.a1, 'damage', 24);
       addN(a.a1, 'critMultBonus', 0.1);
       mul(a.a1, 'cooldown', 0.78);
+      a.a1.preparedRefund = 1;
     },
   ),
   u(
@@ -513,8 +514,9 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_poison',
     'Deadly Poison',
     '☠️',
-    'Poison Vial ticks for 18 (+7), lasts 5.5s (+1.5), and spreads to 123u (+18)',
+    'Vial gains +7 tick magnitude, +1.5s and +18u; trade 20% ground damage for 2s poison on effective exit, up to 3 foes; strongest owner poison wins',
     ({ abilities: a }) => {
+      a.a3.zonePoison ??= { share: 0.2, onExit: true };
       addN(a.a3, 'zoneTickDamage', 7);
       addN(a.a3, 'zoneDuration', 1.5);
       addN(a.a3, 'radius', 18);
@@ -900,12 +902,13 @@ const WARLOCK: CharUpgradeDef[] = [
     'wa_hex',
     'Deepening Hex',
     '🕸️',
-    'Hex gains 6/tick damage, 1.5s duration, 18u radius, and +1% owner curse damage',
+    'Hex gains +6/tick magnitude, +1.5s, +12u and +1% owner curse damage; slow, hindrance and curse linger 2s at first pick, +0.5s thereafter up to 4s',
     ({ abilities: a }) => {
       addN(a.a1, 'zoneTickDamage', 6);
       addN(a.a1, 'curseBonus', 0.01);
       addN(a.a1, 'zoneDuration', 1.5);
-      addN(a.a1, 'radius', 18);
+      addN(a.a1, 'radius', 12);
+      a.a1.slowDuration = Math.min(4, Math.max(1.5, a.a1.slowDuration ?? 0) + 0.5);
     },
   ),
   u(
@@ -913,10 +916,11 @@ const WARLOCK: CharUpgradeDef[] = [
     'wa_rebuke',
     'Searing Rebuke',
     '🔥',
-    'Hellish Rebuke widens to 165u (+25) and hits for 42 (+12)',
+    'Rebuke gains +25u and +12 damage; its one 3s retort also releases at the next positive direct hit, basics included; incoming damage can consume it first',
     ({ abilities: a }) => {
       addN(a.a2, 'radius', 25);
       addN(a.a2, 'damage', 12);
+      a.a2.rebukeDirect = true;
     },
   ),
   u(
@@ -1340,8 +1344,9 @@ const GRAND: CharUpgradeDef[] = [
     'ro_grand_venom',
     'Grand Venom',
     '☠️',
-    'Poison Vial becomes a creeping plague — +22/tick, +65 radius, +4s, slows to 50%',
+    'Vial gains +22 tick magnitude, +65u, +4s and 50% slow; split 60% ground / 40% following poison, up to 3 foes, lingering 2s; strongest owner poison wins',
     ({ abilities: a }) => {
+      a.a3.zonePoison = { share: 0.4, onExit: false };
       addN(a.a3, 'zoneTickDamage', 22);
       addN(a.a3, 'radius', 65);
       addN(a.a3, 'zoneDuration', 4);
@@ -1495,10 +1500,10 @@ const GRAND: CharUpgradeDef[] = [
     'wa_grand_ruin',
     'Word of Ruin',
     '💀',
-    'Hex becomes a vast, lingering curse (+22/tick, +65 radius, +4s); Hellish Rebuke erupts (+40 dmg, +30 radius)',
+    'Hex gains +22/tick and +4s, follows its first damaged foe for up to 3s then anchors; Rebuke gains +40 damage and +30u',
     ({ abilities: a }) => {
       addN(a.a1, 'zoneTickDamage', 22);
-      addN(a.a1, 'radius', 65);
+      a.a1.zoneFollow = 3;
       addN(a.a1, 'zoneDuration', 4);
       addN(a.a2, 'damage', 40);
       addN(a.a2, 'radius', 30);
@@ -3230,7 +3235,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'ro_assassin_g_a',
     'Death Incarnate',
     '💀',
-    'Your Assassin skills devastate for 55% more over a wider area and drink 30% as health',
+    'Assassin skills gain 55% magnitude and wider reach; direct strikes drink 30% as health, poison does not leech',
     (ab) => {
       amplify(ab, 0.55, 0.3);
       lifeRider(ab, 0.3);
@@ -3589,7 +3594,7 @@ const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
   bb_totem_quake:
     'Increase field damage by 12% (rounded), radius by 8%, and reduce recharge by 8%; retain Momentum and enemy slow',
   ro_assassin_poison:
-    'Increase poison damage by 12% (rounded) and reduce recharge by 8%; retain the precision bonus and single-owner stacking rule',
+    'First pick extends target poison to 5s; second to 6s. Later picks gain +12% poison magnitude and 4% faster recharge; preparation and strongest-owner rule remain',
   dr_land_spike:
     'Increase damage by 12% and blast radius by 8%, and reduce recharge by 8%; retain the controlled-target bonus',
 
@@ -3620,6 +3625,8 @@ const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
     'Increase base barrier, siphon damage and per-hit protection by 12%, siphon reach by 8%, and reduce recharge by 8%',
   wa_fiend_pit:
     'Increase burning-zone damage by 12% and radius by 8%, and reduce recharge by 8%; retain the 4s searing mark',
+  wa_goo_blast:
+    'Increase damage by 12% and reach by 8%, recharge 8% faster; personally cursed-target weakness and hindrance gain 1s per pick, capped at 5s',
   wa_goo_whispers:
     'Increase dread-zone damage by 12% and radius by 8%, and reduce recharge by 8%; weakening stays 20%',
 };
@@ -3639,7 +3646,22 @@ function us(subSkillId: string, classId: ClassId, name: string, icon: string): C
       if (!subAbilities) return;
       for (const slot of SUB_SLOTS) {
         const ab = subAbilities[slot];
-        if (ab) subSkillTune(ab);
+        if (!ab) continue;
+        if (subSkillId === 'ro_assassin_poison' && ab.venomCoating) {
+          ab.venomCoating = { ...ab.venomCoating }; // cloned bindings must not mutate authored content
+          // First pick trades per-cycle burst for duration; subsequent picks retain rounded growth.
+          const picks = (ab.venomHonedStacks ?? 0) + 1;
+          ab.venomHonedStacks = picks;
+          ab.venomCoating.duration = Math.min(6, ab.venomCoating.duration + 1);
+          if (picks > 1) {
+            ab.venomCoating.damage = Math.round(ab.venomCoating.damage * 1.12);
+            ab.cooldown *= 0.96;
+          }
+        } else {
+          subSkillTune(ab);
+          if (subSkillId === 'wa_goo_blast' && ab.cursePayoff)
+            ab.cursePayoff = Math.min(5, ab.cursePayoff + 1);
+        }
       }
     },
   };
@@ -4069,7 +4091,10 @@ function replayCharUpgrades(player: Player, ids: readonly string[]): Record<Abil
     const graftup = parseGraftup(id);
     if (graftup) {
       const boon = CHAR_UPGRADES[graftup.boonId]; // parseGraftup guarantees it exists
-      const target = registry.get(occupant[graftup.slot])!;
+      const key = occupant[graftup.slot];
+      // An invalid/stale synthetic pick must not tune a reclaimed native skill.
+      if (key === graftup.slot || !CHAR_UPGRADES[key]?.graftSource) continue;
+      const target = registry.get(key)!;
       // Point every proxy slot at the graft def so the (single-slot) source boon
       // lands on it regardless of which slot it natively targets.
       boon.apply({ player, abilities: { basic: target, a1: target, a2: target, a3: target } });

@@ -39,7 +39,7 @@
 import { BLOOD_LEECH } from './martialRules';
 import type { Player, BossTier } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
-import { getClass } from './classes';
+import { getClass, resolvedCoating } from './classes';
 import { previewAbilityTable } from './charUpgrades';
 import {
   BOSS_HEAL_SCALE_MIN,
@@ -99,6 +99,7 @@ const credit = (value: number, scale: number | undefined) =>
 /** Rate contribution of a single ability, at the hero's cd/cast multipliers. */
 function abilityRates(ab: PlayerAbilityDef, cdMult: number, castMult: number): KitRates {
   const cycle = Math.max(ab.cooldown * cdMult + (ab.castTime ?? 0) * castMult, BALANCE_MIN_CYCLE_S);
+  const coating = resolvedCoating(ab);
   const creditedDamage = credit(ab.damage, ab.balanceDamageScale);
   const creditedZoneHeal = credit(ab.zoneTickHeal ?? 0, ab.balanceZoneHealScale);
   const zoneTicks = (ab.zoneDuration ?? 0) / ZONE_TICK_INTERVAL;
@@ -124,11 +125,15 @@ function abilityRates(ab: PlayerAbilityDef, cdMult: number, castMult: number): K
     ab.kind === 'heal'
       ? 0
       : creditedDamage * Math.max(1, ab.projCount ?? 1) +
-        credit(ab.zoneTickDamage ?? 0, ab.balanceZoneDamageScale) * zoneCommit +
+        // Allocation is one field budget. Only bounded lingering opportunity is additional.
+        credit(ab.zoneTickDamage ?? 0, ab.balanceZoneDamageScale) *
+          (zoneCommit +
+            (ab.zonePoison ? ab.zonePoison.share * 2 * BALANCE_ZONE_COMMIT : 0) +
+            (ab.zoneFollow ? Math.min(3, ab.zoneFollow) * 0.4 * BALANCE_ZONE_COMMIT : 0)) +
+        // More reliable access to the existing retort, not another independent charge.
+        (ab.rebukeDirect ? creditedDamage * 0.4 * 0.6 : 0) +
         (ab.landingDamage ?? 0) +
-        (ab.venomCoating
-          ? ab.venomCoating.damage * ab.venomCoating.duration * BALANCE_ZONE_COMMIT
-          : 0);
+        (coating ? coating.damage * coating.duration * BALANCE_ZONE_COMMIT : 0);
   // A damage buff (Rage, Inspiration) uplifts the rest of the kit while it's up.
   const uptime = clamp((ab.buffDuration ?? 0) / cycle, 0, 1);
   const offenseBuff = Math.max(0, (ab.buffDamageMult ?? 1) - 1) * uptime;

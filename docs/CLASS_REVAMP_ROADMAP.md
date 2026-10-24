@@ -1,6 +1,10 @@
 # Class identity and subclass roadmap
 
-Current delivery: **upgrade inventory and design checkpoint**.
+Current delivery: **Rogue/Warlock upgrade identity pilot**, live verification pending.
+
+See [the pilot delivery](UPGRADE_PILOT.md) for final mechanics, benchmark limits and
+playtest instructions. The design checkpoint is approved; the eight paths are
+implemented. After live feedback, two to four grouped rollout PRs remain.
 
 The 24/24 passive round, [whole-class audit](CLASS_COHERENCE_AUDIT.md), and coherence
 retouches [A](COHERENCE_BATCH_A.md), [B](COHERENCE_BATCH_B.md), and
@@ -8,13 +12,13 @@ retouches [A](COHERENCE_BATCH_A.md), [B](COHERENCE_BATCH_B.md), and
 class-coherence sequence, without establishing equal numerical balance.
 
 The [upgrade design checkpoint](UPGRADE_DESIGN_CHECKPOINT.md) now inventories the
-registry, reward availability and replay, and proposes eight Rogue/Warlock upgrade
-paths for player review. **No gameplay changes are included in this delivery.**
+registry, reward availability and replay, and proposed eight Rogue/Warlock upgrade
+paths, now approved and implemented. The checkpoint itself contains no gameplay changes; the pilot now implements them.
 The [generated inventory](UPGRADE_INVENTORY.md) and [research notes](UPGRADE_RESEARCH.md)
 separate measured current behavior from proposed mechanics.
 
-After review, allow roughly **three to five implementation PRs**: one two-class
-pilot and two to four grouped rollouts, adjusted from playtests. Base/subclass
+The two-class pilot is this delivery. Allow **two to four grouped rollouts**
+after playtesting. Base/subclass
 boons, grands, grafts and generation remain in scope. Adding a passive or rider
 never exempts a plain active from review. Art direction is separate. Earlier status
 tables preserve history and are superseded here. Follow the

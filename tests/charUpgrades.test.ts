@@ -2078,7 +2078,8 @@ describe('grand improvements apply real, measurable transformations (item 22)', 
     const rebuke = CLASSES.warlock.abilities.a2;
     const a = apply('warlock', ['wa_grand_ruin']).abilities!;
     expect(a.a1.zoneTickDamage).toBe((hex.zoneTickDamage ?? 0) + 22);
-    expect(a.a1.radius).toBe((hex.radius ?? 0) + 65);
+    expect(a.a1.radius).toBe(hex.radius);
+    expect(a.a1.zoneFollow).toBe(3);
     expect(a.a2.damage).toBe((rebuke.damage ?? 0) + 40);
   });
 });

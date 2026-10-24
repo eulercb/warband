@@ -1,13 +1,17 @@
 # Upgrade identity: audit and staged redesign
 
+Current delivery: [Rogue/Warlock pilot](UPGRADE_PILOT.md), approved after the design
+checkpoint. Gameplay is implemented; merge/live verification is pending. Two to
+four grouped rollout PRs remain after feedback.
+
 ## Prerequisite: approved class-coherence retouches
 
 The initial 24/24 subclass-passive round, whole-class audit, and coherence retouches
 [A](COHERENCE_BATCH_A.md), [B](COHERENCE_BATCH_B.md), and [C](COHERENCE_BATCH_C.md)
-form the implementation baseline. A/B/C are merged and live-tested. The current delivery is the
+form the implementation baseline. A/B/C are merged and live-tested. The approved planning baseline is the
 [design checkpoint](UPGRADE_DESIGN_CHECKPOINT.md), with a generated inventory and
-concrete eight-path Rogue/Warlock pilot proposal. Gameplay implementation awaits
-player review. Preserve all
+concrete eight-path Rogue/Warlock pilot proposal. The owner approved implementation; final tuning and measured limits are recorded
+in the pilot delivery. Preserve all
 current compatibility fixes while redesigning choices. Added riders do not exempt
 older plain skills; base/subclass skills, grands and grafts all remain in scope.
 
@@ -20,7 +24,7 @@ Not every boon must mention the class resource, and copied skills must work
 without the donor's passive. Avoid making a build depend on several rare offers
 appearing in a specific order. The weak-run fallback must remain playable.
 
-This PR is the **design checkpoint**, not the complete gameplay rewrite:
+The preceding PR completed the **design checkpoint**. Its sequence was:
 
 1. Inventory the actual registry, eligibility, offers and ordered replay, including
    recent mechanics. Classify each upgrade as retain, adjust, replace or investigate
@@ -31,7 +35,7 @@ This PR is the **design checkpoint**, not the complete gameplay rewrite:
 3. Propose concrete pilot builds with alternatives, opportunity costs, early-run
    fallback, expected reward availability and exact caps. Include a copied-skill
    route and its grands/followups. Review these proposals with the player **before
-   pilot implementation**. Rogue/Warlock are the recommended pilot, pending player review.
+   pilot implementation**. The owner approved Rogue/Warlock; the pilot is this delivery.
 4. Implement and playtest the approved pilot, then group the remaining classes by
    shared systems into larger, reviewable batches. Adapt the plan from measured
    behavior and live feedback instead of replacing all 350 definitions at once.
@@ -66,9 +70,9 @@ These categories overlap; they must not be summed. This is the current authored
 registry, not a count of generated Forge content or distinct viable builds.
 
 The shared `subSkillTune` routine applies +12% magnitude, +8% footprint and -8%
-cooldown. The current audit finds 71 of 96 Honed offers still use the same
+cooldown. The checkpoint found 71 of 96 Honed offers still use the same
 "strikes harder, reaches wider and recharges faster" description; 25 already have
-role-specific text. The repetition reflects an actual shared mechanic,
+role-specific text; the pilot makes Mind Blast the 26th exception. The repetition reflects an actual shared mechanic,
 not merely weak wording. Numeric growth remains useful, but this layer currently
 misses many opportunities to change decisions or connect newer class interactions.
 
@@ -89,7 +93,7 @@ behavior unless a deliberate, documented migration is necessary.
    repeated offers, redundant choices and upgrade paths that lose new mechanics.
    Trace grands and graft followups separately; a source-skill improvement must
    not depend on owning a passive/resource that the recipient cannot access.
-2. **Two-class pilot with related base/subclass paths.** Rogue/Warlock are plausible
+2. **Two-class pilot with related base/subclass paths.** Rogue/Warlock are the approved first
    candidates after Fiend tuning because their defining passives already exist;
    choose the pair after the audit, not before researching its branches. Propose concrete build
    examples and compare alternatives before committing to a catalogue rewrite.
