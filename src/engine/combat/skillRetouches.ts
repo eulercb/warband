@@ -112,3 +112,104 @@ export function tickVenoms(world: World, dt: number): void {
     }
   }
 }
+
+/** Host-only field poison shares Coated Blade's owner pool and preserves ticking phase. */
+export function applyFieldPoison(
+  world: World,
+  owner: Player,
+  target: Boss | Add,
+  damage: number,
+): void {
+  if (
+    damage <= 0 ||
+    target.hp <= 0 ||
+    owner.hp <= 0 ||
+    owner.state !== 'alive' ||
+    world.scene !== null
+  )
+    return;
+  const source = `venom:${owner.id}`;
+  const old = target.buffs.find((b) => b.source === source && b.remaining > 0);
+  if (old && (old.mult > damage || (old.mult === damage && !old.venom?.field))) return;
+  const recipients = [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0)].filter((t) =>
+    t.buffs.some((b) => b.remaining > 0 && b.source === source && b.venom?.field),
+  );
+  if (!old?.venom?.field && recipients.length >= 3) return;
+  if (old?.venom?.field && old.mult === damage) {
+    old.remaining = Math.max(old.remaining, 2);
+    old.venom.ticks = 0;
+    return;
+  }
+  const poison = makeBuff('venom', damage, 2, source);
+  poison.venom = { ownerId: owner.id, accum: old?.venom?.accum ?? 0, ticks: 0, field: true };
+  applyBuff(target, poison);
+}
+
+/** Current actor list excludes bosses' decorative hazards, which are zones rather than actors. */
+export function updateUpgradeZone(
+  world: World,
+  z: import('../core/types').GroundZone,
+  dt: number,
+): void {
+  if (z.side !== 'player') return;
+  const owner = world.players.find((p) => p.id === z.ownerId);
+  if (!owner || owner.state !== 'alive' || owner.hp <= 0 || world.scene !== null) {
+    z.poisonContacts?.clear();
+    z.zoneFollow = 0;
+    return;
+  }
+  const foes = [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0)];
+  if (z.followAcquired && (z.zoneFollow ?? 0) > 0) {
+    const target = foes.find((t) => t.id === z.followId);
+    if (target && (!world.bosses.includes(target as Boss) || !world.bossFlying(target as Boss))) {
+      z.pos = { ...target.pos };
+      z.zoneFollow = Math.max(0, z.zoneFollow! - dt);
+    } else z.zoneFollow = 0;
+  }
+  if (z.zonePoison?.onExit && z.poisonContacts) {
+    for (const [id, magnitude] of z.poisonContacts) {
+      const target = foes.find((t) => t.id === id);
+      if (!target) {
+        z.poisonContacts.delete(id);
+        continue;
+      }
+      if (
+        z.remaining > 0 &&
+        dist(z.pos, target.pos) <= z.radius + target.radius &&
+        (!world.bosses.includes(target as Boss) || !world.bossFlying(target as Boss))
+      )
+        continue;
+      z.poisonContacts.delete(id);
+      if ((target.venomExitGates?.get(owner.id) ?? -Infinity) > world.elapsed) continue;
+      target.venomExitGates ??= new Map();
+      target.venomExitGates.set(owner.id, world.elapsed + 2);
+      applyFieldPoison(world, owner, target, magnitude);
+    }
+  }
+}
+
+/** Called only after effective field damage, so immunity/misses cannot seed poison or follow. */
+export function onUpgradeZoneDamage(
+  world: World,
+  z: import('../core/types').GroundZone,
+  owner: Player | null,
+  target: Boss | Add,
+  effective: number,
+): void {
+  if (!owner || effective <= 0 || target.hp <= 0) return;
+  if (z.zoneFollow && !z.followAcquired) {
+    const current = [...world.aliveBosses(), ...world.adds].find((t) => t.id === z.followId);
+    if (
+      !current ||
+      dist(z.pos, target.pos) < dist(z.pos, current.pos) ||
+      (dist(z.pos, target.pos) === dist(z.pos, current.pos) && target.id < current.id)
+    )
+      z.followId = target.id;
+  }
+  if (!z.zonePoison) return;
+  if (z.zonePoison.onExit) {
+    z.poisonContacts ??= new Map();
+    // A tail deals one post-allocation half-second field tick per second for 2s.
+    z.poisonContacts.set(target.id, z.damagePerTick * (1 - z.zonePoison.share));
+  } else applyFieldPoison(world, owner, target, z.damagePerTick * z.zonePoison.share * 2);
+}

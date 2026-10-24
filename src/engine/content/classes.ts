@@ -189,6 +189,13 @@ export interface PlayerAbilityDef {
   /** Only marked melee skills consume preparation; basics leave it available. */
   consumesPrecision?: boolean;
   /** A damaging burst also arms one counterburst (40% damage) for this window. */
+  /** Authored upgrade mechanics; allocation leaves the original magnitude intact. */
+  zonePoison?: { share: number; onExit: boolean };
+  zoneFollow?: number;
+  preparedRefund?: number;
+  /** Runtime cast identity, never authored or serialized. */
+  refundCast?: { spent: boolean };
+  rebukeDirect?: boolean;
   rebukeDuration?: number;
   /** Counterburst applies a personal searing curse before its damage. */
   rebukeCurseBonus?: number;
@@ -202,6 +209,7 @@ export interface PlayerAbilityDef {
   crossingGuard?: { width: number; duration: number };
   warCry?: { radius: number; duration: number };
   /** Single-target poison prepared for the next appropriate positive direct hit. */
+  venomHonedStacks?: number;
   venomCoating?: { damage: number; duration: number; window: number };
   /** Per-stack tick damage of a short ground fissure after spending Momentum. */
   momentumFissure?: number;
@@ -1267,9 +1275,19 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
     );
   if (def.prepareCrit) parts.push(`prepare next precision crit for ${s(def.prepareCrit)}`);
   if (def.consumesPrecision) parts.push('consumes prepared crit');
+  if (def.preparedRefund)
+    parts.push(
+      `prepared positive hit refunds ${s(def.preparedRefund)} of running precision-blink cooldown, once per cast and 4s`,
+    );
+  if (def.zonePoison)
+    parts.push(
+      `${n(def.zonePoison.share * 100)}% field damage allocated to strongest-owner poison, 2s ${def.zonePoison.onExit ? 'on effective exit' : 'linger'}, up to 3 foes`,
+    );
+  if (def.zoneFollow)
+    parts.push(`follows first damaged foe up to ${s(def.zoneFollow)}, then anchors`);
   if (def.rebukeDuration)
     parts.push(
-      `counterburst once for ${n(def.damage * dmgMul * 0.4)} dmg if hurt within ${s(def.rebukeDuration)}`,
+      `counterburst once for ${n(def.damage * dmgMul * 0.4)} dmg ${def.rebukeDirect ? 'on next positive direct hit or if hurt' : 'if hurt'} within ${s(def.rebukeDuration)}`,
     );
   if (def.relayHeal)
     parts.push(

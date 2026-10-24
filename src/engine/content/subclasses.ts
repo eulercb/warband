@@ -687,7 +687,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'ro_assassin_poison',
           'Coated Blade',
           '☠️',
-          'A poison cloud, 12/tick',
+          'Coat your next connecting direct hit: target poison 24/s for 4s; prepared precision adds 50%; strongest owner poison wins',
           buff('Coated Blade', 9, { venomCoating: { damage: 24, duration: 4, window: 6 } }),
         ),
         sk(

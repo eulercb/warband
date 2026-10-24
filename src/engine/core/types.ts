@@ -230,11 +230,11 @@ export interface Buff {
   source: string;
   /** Host-only extension already spent from this Flow preparation. */
   flowExtended?: number;
-  retaliation?: { radius: number; lifesteal: number; curseBonus?: number };
+  retaliation?: { radius: number; lifesteal: number; curseBonus?: number; direct?: boolean };
   closeBurst?: CloseBurst;
   blockCounter?: number;
   coating?: { damage: number; duration: number };
-  venom?: { ownerId: number; accum: number; ticks: number };
+  venom?: { ownerId: number; accum: number; ticks: number; field?: boolean };
 }
 
 /**
@@ -357,6 +357,7 @@ export interface Player {
   reviveProgress: number; // 0..REVIVE_TIME, accumulated hold from allies
   reviverId: EntityId | null;
 
+  upgradeRefundRemaining?: number;
   cooldowns: Cooldowns;
   castTimer: number; // > 0 while rooted mid-cast (e.g. Fireball)
   castTimerMax: number; // the cast's full duration (castTime × castMult); drives the cast bar
@@ -481,6 +482,7 @@ export interface BossAction {
 }
 
 export interface Boss {
+  venomExitGates?: Map<number, number>;
   id: EntityId;
   monsterId: MonsterId;
 
@@ -563,6 +565,7 @@ export interface Boss {
 }
 
 export interface Add {
+  venomExitGates?: Map<number, number>;
   id: EntityId;
   pos: Vec2;
   hp: number;
@@ -618,6 +621,8 @@ export interface ZoneAllyBuff {
  * stays byte-identical when Forge is off.
  */
 export interface ProjectileImpact {
+  zonePoison?: { share: number; onExit: boolean };
+  zoneFollow?: number;
   kind: ZoneKind;
   radius: number;
   duration: number;
@@ -666,6 +671,9 @@ export interface Projectile {
   critMultBonus?: number;
   controlDamageBonus?: number;
   cursePayoff?: number;
+  consumesPrecision?: boolean;
+  preparedRefund?: number;
+  refundCast?: { spent: boolean };
   controlOnHit?: 'slow' | 'stun';
   /** Host-only piercing budget and distinct bodies already hit. */
   pierceLeft?: number;
@@ -962,6 +970,12 @@ export interface PendingStrike {
 }
 
 export interface GroundZone {
+  zonePoison?: { share: number; onExit: boolean };
+  zoneFollow?: number;
+  followId?: number;
+  followAcquired?: boolean;
+  /** Effective contact only; bounded by current enemies, released on exit/expiry. */
+  poisonContacts?: Map<number, number>;
   id: EntityId;
   kind: ZoneKind;
   pos: Vec2;

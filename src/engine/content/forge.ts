@@ -130,7 +130,8 @@ export type EffectComponent =
   | { kind: 'prepareSurge'; duration: number }
   | { kind: 'surgeStrike' }
   | { kind: 'prepareCrit'; duration: number }
-  | { kind: 'rebuke'; duration: number; curseBonus?: number }
+  | { kind: 'rebuke'; duration: number; curseBonus?: number; direct?: boolean }
+  | { kind: 'preparedRefund'; seconds: number }
   | { kind: 'closeBurst'; burst: NonNullable<PlayerAbilityDef['closeBurst']> }
   | { kind: 'cursePayoff'; duration: number }
   | { kind: 'warCry'; cry: NonNullable<PlayerAbilityDef['warCry']> }
@@ -156,6 +157,8 @@ export type BuffTarget = 'self' | 'allies';
  * a zone becomes the buff the zone refreshes on allies standing inside it.
  */
 export interface ZoneSpec {
+  zonePoison?: { share: number; onExit: boolean };
+  zoneFollow?: number;
   zoneKind: ZoneKind;
   duration: number;
   radius: number;
@@ -231,6 +234,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
       duration: def.zoneDuration ?? 4,
       radius: def.radius ?? 130,
     };
+    zone.zonePoison = def.zonePoison;
+    zone.zoneFollow = def.zoneFollow;
     if (def.zoneTickDamage) zone.tickDamage = def.zoneTickDamage;
     if (def.balanceZoneDamageScale != null) zone.balanceDamageScale = def.balanceZoneDamageScale;
     if (def.zoneTickHeal) zone.tickHeal = def.zoneTickHeal;
@@ -293,11 +298,13 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
       effects.push({ kind: 'controlDamage', bonus: def.controlDamageBonus });
     if (def.prepareSurge) effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
     if (def.consumesSurge) effects.push({ kind: 'surgeStrike' });
+    if (def.preparedRefund) effects.push({ kind: 'preparedRefund', seconds: def.preparedRefund });
     if (def.prepareCrit) effects.push({ kind: 'prepareCrit', duration: def.prepareCrit });
     if (def.rebukeDuration)
       effects.push({
         kind: 'rebuke',
         duration: def.rebukeDuration,
+        direct: def.rebukeDirect,
         ...(def.rebukeCurseBonus ? { curseBonus: def.rebukeCurseBonus } : {}),
       });
     if (def.warCry) effects.push({ kind: 'warCry', cry: { ...def.warCry } });
@@ -519,7 +526,11 @@ export function recompose(
       case 'prepareCrit':
         def.prepareCrit = e.duration;
         break;
+      case 'preparedRefund':
+        def.preparedRefund = e.seconds;
+        break;
       case 'rebuke':
+        def.rebukeDirect = e.direct;
         def.rebukeDuration = e.duration;
         def.rebukeCurseBonus = e.curseBonus;
         break;
@@ -557,6 +568,8 @@ export function recompose(
         if (e.zone.allyBuff?.defMult) def.zoneAllyDefMult = e.zone.allyBuff.defMult;
         if (e.zone.curseBonus) def.curseBonus = e.zone.curseBonus;
         if (e.zone.curseStyle) def.curseStyle = e.zone.curseStyle;
+        def.zonePoison = e.zone.zonePoison;
+        def.zoneFollow = e.zone.zoneFollow;
         if (e.zone.tickDamage) def.zoneTickDamage = e.zone.tickDamage;
         if (e.zone.balanceDamageScale != null)
           def.balanceZoneDamageScale = e.zone.balanceDamageScale;
@@ -674,8 +687,10 @@ function effectValue(e: EffectComponent, fan: number): number {
       return 0; // Requires a separately priced preparation effect.
     case 'prepareCrit':
       return e.duration * 5;
+    case 'preparedRefund':
+      return e.seconds * 8; // conditional, one usable second per 4s at most
     case 'rebuke':
-      return e.duration * 4 + (e.curseBonus ?? 0) * 40;
+      return (e.direct ? 6 : 4) * e.duration + (e.curseBonus ?? 0) * 40;
     case 'relayHeal':
       return e.relay.fraction * 60;
     case 'rescueStrike':
@@ -729,6 +744,8 @@ function buffValue(e: Extract<EffectComponent, { kind: 'buff' }>): number {
 function zoneValue(z: ZoneSpec): number {
   const ticks = (z.duration / 0.5) * 0.6;
   let v = ((z.tickDamage ?? 0) + (z.tickHeal ?? 0)) * ticks;
+  if (z.zonePoison) v += (z.tickDamage ?? 0) * z.zonePoison.share * 2;
+  if (z.zoneFollow) v += Math.min(3, z.zoneFollow) * ((z.tickDamage ?? 0) * 0.2 + 2);
   if (z.slowMult != null) v += (1 - z.slowMult) * z.duration * 10;
   if (z.overflowShield) v += (z.tickHeal ?? 0) * ticks * 0.4;
   if (z.curseBonus) v += z.curseBonus * z.duration * 30;
@@ -879,8 +896,10 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return 'surge +20% dmg, half wind-up';
     case 'prepareCrit':
       return `prepare next precision crit for ${s(e.duration)}`;
+    case 'preparedRefund':
+      return `prepared positive strike refunds ${s(e.seconds)} of running precision-blink cooldown, once per cast and 4s`;
     case 'rebuke':
-      return `one 40%-damage counterburst if hurt within ${s(e.duration)}${e.curseBonus ? `; applies searing curse +${pct(e.curseBonus * 100)} owner dmg for 4s` : ''}`;
+      return `one 40%-damage counterburst ${e.direct ? 'on next positive direct hit or if hurt' : 'if hurt'} within ${s(e.duration)}${e.curseBonus ? `; applies searing curse +${pct(e.curseBonus * 100)} owner dmg for 4s` : ''}`;
     case 'relayHeal':
       return `relay ${pct(e.relay.fraction * 100)}% of effective healing to one injured ally within ${n(e.relay.radius)}u of recipient; no recursive heal effects`;
     case 'rescueStrike':
@@ -928,6 +947,11 @@ function buffPhrase(e: Extract<EffectComponent, { kind: 'buff' }>): string {
 
 function zonePhrase(z: ZoneSpec): string {
   const bits: string[] = [];
+  if (z.zonePoison)
+    bits.push(
+      `${pct(z.zonePoison.share * 100)}% allocated to strongest-owner poison, 2s ${z.zonePoison.onExit ? 'on effective exit' : 'linger'}, up to 3 foes`,
+    );
+  if (z.zoneFollow) bits.push(`follow first damaged foe up to ${s(z.zoneFollow)}, then anchor`);
   if (z.tickDamage) bits.push(`${n(z.tickDamage)}/tick dmg`);
   if (z.overflowShield)
     bits.push('unused healing builds a 6s bubble, capped at 30% max HP across all zones');
@@ -1231,6 +1255,8 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'selfBuff';
     case 'momentumFissure':
       return kind === 'pbaoe';
+    case 'preparedRefund':
+      return DIRECT_STRIKE.has(kind);
     case 'cursePayoff':
       return DIRECT_STRIKE.has(kind);
     case 'rebuke':
@@ -1768,6 +1794,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, guard: { ...e.guard, duration: e.guard.duration * f } };
     case 'warCry':
       return { ...e, cry: { ...e.cry, duration: e.cry.duration * f } };
+    case 'preparedRefund':
+      return e; // gate and refund are authored, not multiplied into cooldown loops
     case 'venomCoating':
       return { ...e, coating: { ...e.coating, damage: e.coating.damage * f } };
     case 'momentumFissure':
@@ -1914,6 +1942,7 @@ function addBoonComponents(
         'momentumFissure',
         'cursePayoff',
         'rebuke',
+        'preparedRefund',
       ].includes(effect.kind) &&
       effectFitsDelivery(def.kind, effect) &&
       !has((e) => e.kind === effect.kind)
@@ -2094,9 +2123,16 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return e;
     case 'prepareCrit':
       return def.prepareCrit != null ? { ...e, duration: def.prepareCrit } : e;
+    case 'preparedRefund':
+      return def.preparedRefund ? { ...e, seconds: def.preparedRefund } : e;
     case 'rebuke':
       return def.rebukeDuration != null
-        ? { ...e, duration: def.rebukeDuration, curseBonus: def.rebukeCurseBonus }
+        ? {
+            ...e,
+            duration: def.rebukeDuration,
+            curseBonus: def.rebukeCurseBonus,
+            direct: def.rebukeDirect,
+          }
         : e;
     case 'relayHeal':
       return def.relayHeal ? { ...e, relay: { ...def.relayHeal } } : e;
@@ -2137,6 +2173,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
     case 'zone': {
       // Patch the zone's scalars from the flat fields; preserve its ally-buff + kind.
       const z: ZoneSpec = { ...e.zone };
+      if (def.zonePoison) z.zonePoison = { ...def.zonePoison };
+      if (def.zoneFollow) z.zoneFollow = def.zoneFollow;
       if (def.zoneTickDamage != null) z.tickDamage = def.zoneTickDamage;
       if (def.balanceZoneDamageScale != null) z.balanceDamageScale = def.balanceZoneDamageScale;
       if (def.zoneAllyMoveMult != null && z.allyBuff)
@@ -2329,6 +2367,8 @@ function capEffect(e: EffectComponent): EffectComponent {
           slowDuration: clamp(round1(e.burst.slowDuration), 1, 3),
         },
       };
+    case 'preparedRefund':
+      return { ...e, seconds: clamp(round1(e.seconds), 0.1, 1) };
     case 'rebuke':
       return {
         ...e,
@@ -2365,6 +2405,9 @@ function capZone(z: ZoneSpec): ZoneSpec {
     radius: clamp(round5(z.radius), 60, 200),
     duration: clamp(round1(z.duration), 2, 8),
   };
+  if (out.zonePoison)
+    out.zonePoison = { ...out.zonePoison, share: clamp(out.zonePoison.share, 0.2, 0.4) };
+  if (out.zoneFollow) out.zoneFollow = clamp(out.zoneFollow, 0, 3);
   if (out.tickDamage != null) out.tickDamage = Math.max(1, Math.round(out.tickDamage));
   if (out.tickHeal != null) out.tickHeal = Math.max(1, Math.round(out.tickHeal));
   if (out.slowMult != null) out.slowMult = clamp(round05(out.slowMult), 0.2, 0.95);

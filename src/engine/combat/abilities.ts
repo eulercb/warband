@@ -370,11 +370,12 @@ export function resolvePlayerAbility(
   reserved?: PlayerAbilityDef,
 ): void {
   const original = reserved ?? abilityForSlot(p, slot);
-  const ab =
+  const resolved =
     original &&
     (reserved
       ? original
       : consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original))));
+  const ab = resolved?.preparedRefund ? { ...resolved, refundCast: { spent: false } } : resolved;
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
   armRetouchEffects(world, p, ab);
   onSubclassAbility(p, ab);
@@ -475,6 +476,9 @@ export function resolvePlayerAbility(
           critChanceBonus: ab.critChanceBonus, // item 13 — a deadly/aimed shot
           controlDamageBonus: ab.controlDamageBonus,
           cursePayoff: ab.cursePayoff,
+          consumesPrecision: ab.consumesPrecision,
+          preparedRefund: ab.preparedRefund,
+          refundCast: ab.refundCast,
           pierce: ab.pierce,
           critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
@@ -691,6 +695,8 @@ function zoneToImpact(z: ZoneSpec): ProjectileImpact {
     radius: z.radius,
     duration: z.duration,
     tickDamage: z.tickDamage,
+    zonePoison: z.zonePoison,
+    zoneFollow: z.zoneFollow,
     tickHeal: z.tickHeal,
     overflowShield: z.overflowShield,
     slowMult: z.slowMult,
@@ -718,6 +724,8 @@ function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number):
     side: 'player',
     ownerId: p.id,
     damagePerTick: z.tickDamage ?? 0,
+    zonePoison: z.zonePoison,
+    zoneFollow: z.zoneFollow,
     healPerTick: z.tickHeal ?? 0,
     overflowShield: z.overflowShield,
     slowMult: z.slowMult,
@@ -909,6 +917,9 @@ function resolveComposedAbility(
           critChanceBonus: ab.critChanceBonus, // item 13
           controlDamageBonus: ab.controlDamageBonus,
           cursePayoff: ab.cursePayoff,
+          consumesPrecision: ab.consumesPrecision,
+          preparedRefund: ab.preparedRefund,
+          refundCast: ab.refundCast,
           pierce: ab.pierce,
           critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
@@ -1003,6 +1014,7 @@ function armRebuke(p: Player, ab: PlayerAbilityDef): void {
     radius: ab.radius ?? 150,
     lifesteal: ab.lifestealFrac ?? 0,
     curseBonus: ab.rebukeCurseBonus,
+    direct: ab.rebukeDirect,
   };
   applyBuff(p, buff);
 }
@@ -1036,6 +1048,8 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     side: 'player',
     ownerId: p.id,
     damagePerTick: dmgPerTick,
+    zonePoison: ab.zonePoison,
+    zoneFollow: ab.zoneFollow,
     healPerTick,
     overflowShield: ab.overflowShield,
     slowMult,
@@ -1086,6 +1100,9 @@ interface SpawnProjOpts {
   critMultBonus?: number;
   controlDamageBonus?: number;
   cursePayoff?: number;
+  consumesPrecision?: boolean;
+  preparedRefund?: number;
+  refundCast?: { spent: boolean };
   pierce?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
@@ -1121,6 +1138,9 @@ function spawnPlayerProjectile(
     critChanceBonus: o.critChanceBonus, // item 13
     controlDamageBonus: o.controlDamageBonus,
     cursePayoff: o.cursePayoff,
+    consumesPrecision: o.consumesPrecision,
+    preparedRefund: o.preparedRefund,
+    refundCast: o.refundCast,
     // Do not repeat an explosive/zone payload on several bodies.
     pierceLeft: o.pierce && o.impactRadius <= 0 && !o.onImpact ? o.pierce : undefined,
     hitIds: o.pierce && o.impactRadius <= 0 && !o.onImpact ? [] : undefined,
@@ -1159,6 +1179,8 @@ function emitSkillArea(
 }
 
 export interface SpawnZoneOpts {
+  zonePoison?: PlayerAbilityDef['zonePoison'];
+  zoneFollow?: number;
   kind: GroundZone['kind'];
   pos: Vec2;
   radius: number;
@@ -1208,6 +1230,8 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     side: o.side,
     ownerId: o.ownerId,
     damagePerTick: o.damagePerTick,
+    zonePoison: o.side === 'player' ? o.zonePoison : undefined,
+    zoneFollow: o.side === 'player' ? o.zoneFollow : undefined,
     healPerTick: o.healPerTick,
     overflowShield: o.overflowShield,
     slowMult: o.slowMult ?? 1,

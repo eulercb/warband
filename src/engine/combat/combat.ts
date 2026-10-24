@@ -50,6 +50,7 @@ export interface EventSink {
     target: Boss | Add,
     effective: number,
     prepared?: boolean,
+    refund?: HitMods['refund'],
   ) => void;
 }
 
@@ -64,6 +65,7 @@ export interface HitMods {
   crit?: boolean;
   backstab?: boolean;
   prepared?: boolean;
+  refund?: { seconds: number; cast: { spent: boolean } };
   melee?: boolean;
   direct?: boolean;
   flowExtend?: number;
@@ -431,7 +433,7 @@ export function damageBoss(
   onSubclassCursedHit(sink, source, boss, effective);
   if (mods?.direct && effective > 0) {
     applyCursePayoff(source, boss, mods.cursePayoff);
-    sink.onPlayerDirectHit?.(source, boss, effective, mods?.prepared);
+    sink.onPlayerDirectHit?.(source, boss, effective, mods?.prepared, mods?.refund);
   }
   return outgoing;
 }
@@ -507,7 +509,7 @@ export function damageAdd(
   onSubclassCursedHit(sink, source, add, effective);
   if (mods?.direct && effective > 0) {
     applyCursePayoff(source, add, mods.cursePayoff);
-    sink.onPlayerDirectHit?.(source, add, effective, mods?.prepared);
+    sink.onPlayerDirectHit?.(source, add, effective, mods?.prepared, mods?.refund);
   }
   return outgoing;
 }

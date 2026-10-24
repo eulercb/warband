@@ -1,9 +1,11 @@
 # Upgrade redesign: audit and pilot proposal
 
-**Design checkpoint; no gameplay or offer behavior changes in this PR.**
+**Historical design checkpoint (PR #130).** The approved pilot is now implemented
+in [the pilot delivery](UPGRADE_PILOT.md), which records final tuning changes and
+the correction to Hexbrand eligibility. Tables below preserve the starting proposal.
 Coherence A/B/C are merged and live-tested. The owner reports improved variety.
 This proposal uses that stronger baseline, not an assumption that all classes
-are numerically equal. Implementation waits for review of the pilot below.
+are numerically equal. The owner approved the pilot after merging this checkpoint.
 
 ## Recommendation
 

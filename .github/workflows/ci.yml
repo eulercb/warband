@@ -48,6 +48,9 @@ jobs:
       - name: Typecheck (tsc --noEmit)
         run: npm run typecheck
 
+      - name: Upgrade inventory replay
+        run: node scripts/audit-upgrade-catalogue.mjs --check
+
       - name: Test + coverage (Vitest)
         # Runs the unit suite and enforces the coverage thresholds configured in
         # vite.config.ts; fails the build if coverage regresses below them.
@@ -138,6 +141,7 @@ jobs:
           node scripts/run-smoke.mjs smoke:companions
           node scripts/run-smoke.mjs smoke:moon-form
           node scripts/run-smoke.mjs smoke:coherence
+          node scripts/run-smoke.mjs smoke:upgrade-pilot
 
       - name: Upload smoke screenshots
         if: always()

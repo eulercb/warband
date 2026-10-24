@@ -457,7 +457,7 @@ describe('additional poison and control boundaries', () => {
     damageBoss(w, p, boss, 1, { direct: true });
     expect(p.buffs.some((b) => b.kind === 'venomReady')).toBe(false);
     expect(boss.buffs.find((b) => b.kind === 'venom')!.remaining).toBe(4);
-    applySubSkillUpgrades(p, ['subup_ro_assassin_poison']);
+    applySubSkillUpgrades(p, ['subup_ro_assassin_poison', 'subup_ro_assassin_poison']);
     cast(w, p);
     damageBoss(w, p, boss, 1, { direct: true });
     expect(boss.buffs.filter((b) => b.kind === 'venom')).toHaveLength(1);
