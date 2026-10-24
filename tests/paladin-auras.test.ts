@@ -203,7 +203,7 @@ function oldCleric(ab: PlayerAbilityDef): PlayerAbilityDef {
   const out = structuredClone(ab);
   const oldDamage: Record<string, number> = {
     Smite: 12,
-    Heal: 60,
+    Heal: 80, // legacy credit 60/3s translated to the new 4s cadence
     'Flash of Light': 70,
     'Mass Cure': 80,
   };

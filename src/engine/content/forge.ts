@@ -897,7 +897,7 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
     case 'prepareCrit':
       return `prepare next precision crit for ${s(e.duration)}`;
     case 'preparedRefund':
-      return `prepared positive strike refunds ${s(e.seconds)} of running precision-blink cooldown, once per cast and 4s`;
+      return `prepared positive strike refunds ${s(e.seconds)} of running precision-blink cooldown; protected recovery gives 15% movement for 2s instead, once per cast and 4s`;
     case 'rebuke':
       return `one 40%-damage counterburst ${e.direct ? 'on next positive direct hit or if hurt' : 'if hurt'} within ${s(e.duration)}${e.curseBonus ? `; applies searing curse +${pct(e.curseBonus * 100)} owner dmg for 4s` : ''}`;
     case 'relayHeal':

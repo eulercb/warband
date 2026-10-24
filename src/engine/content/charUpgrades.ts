@@ -1,3 +1,4 @@
+import { boundedAbility, ordinaryRecharge } from './abilityLimits';
 import { scaleAbsorption } from '../combat/absorption';
 /**
  * Warband — character (class-specific) upgrades earned between bosses. PURE TS.
@@ -155,7 +156,36 @@ function u(
   desc: string,
   apply: (ctx: CharUpgradeCtx) => void,
 ): CharUpgradeDef {
-  return { id, classId, name, icon, desc, apply };
+  return {
+    id,
+    classId,
+    name,
+    icon,
+    desc: /cooldown|recharge|resets|returns.*sooner/i.test(desc)
+      ? `${desc}. Recharge gains share limits; special skills recover for at least 4s`
+      : desc,
+    apply: (ctx) => {
+      const abilities = new Set(Object.values(ctx.abilities));
+      const before = new Map([...abilities].map((ab) => [ab, ab.cooldown]));
+      const playerCd = ctx.player.cooldownMult;
+      apply(ctx);
+      if (ctx.player.cooldownMult < playerCd) {
+        ctx.player.ordinaryCooldownBase ??= playerCd;
+        ctx.player.cooldownMult = Math.max(
+          ctx.player.cooldownMult,
+          ctx.player.ordinaryCooldownBase * 0.8,
+        );
+      }
+      for (const ab of abilities) {
+        const old = before.get(ab)!;
+        if (ab.cooldown < old) {
+          const factor = ab.cooldown / old;
+          ab.cooldown = old;
+          ordinaryRecharge(ab, factor);
+        }
+      }
+    },
+  };
 }
 
 /**
@@ -173,7 +203,7 @@ function graft(
   // Run-aware source: a graft copies the RUN'S rolled version of the foreign
   // skill (a Knight who learns this run's Fireball gets this run's Fireball).
   const src = getClass(from).abilities[fromSlot];
-  const copy: PlayerAbilityDef = { ...src, slot };
+  const copy: PlayerAbilityDef = { ...src, slot, rechargeBase: src.cooldown };
   if (tweak) tweak(copy);
   abilities[slot] = copy;
 }
@@ -228,11 +258,11 @@ const KNIGHT: CharUpgradeDef[] = [
     'kn_bastion',
     'Bastion',
     '⚔️',
-    'Taunt now shields you (−30% damage taken while active) and returns 20% sooner (9.6s)',
+    'Taunt shields you for 30% less damage, adds 0.6s duration per pick and gains up to 20% total ordinary recharge reduction',
     ({ abilities: a }) => {
       mul(a.a1, 'cooldown', 0.8);
       setMin(a.a1, 'buffDefMult', 0.7);
-      addN(a.a1, 'buffDuration', 0);
+      addN(a.a1, 'buffDuration', 0.6);
     },
   ),
   u(
@@ -301,7 +331,7 @@ const RANGER: CharUpgradeDef[] = [
     'rg_fleet',
     'Fleet-footed',
     '🥾',
-    'Roll travels 270u (+50), dodges for 0.45s (+0.15), and refreshes 30% faster (3.5s)',
+    'Roll travels 270u (+50), dodges for 0.45s (+0.15), while retaining deliberate recharge',
     ({ abilities: a }) => {
       mul(a.a3, 'cooldown', 0.7);
       addN(a.a3, 'range', 50);
@@ -328,7 +358,7 @@ const MAGE: CharUpgradeDef[] = [
     'mg_quickcast',
     'Quickened Casting',
     '⚡',
-    'Fireball charges in 0.42s (−40%) and recharges 15% faster (~6s)',
+    'Fireball charges in 0.42s (−40%) and retains its deliberate recharge (~6s)',
     ({ abilities: a }) => {
       mul(a.a1, 'castTime', 0.6);
       mul(a.a1, 'cooldown', 0.85);
@@ -362,7 +392,7 @@ const MAGE: CharUpgradeDef[] = [
     'mg_blink',
     'Flicker',
     '🌀',
-    'Blink jumps 320u (+70), returns 30% faster (4.2s), and phases you for 0.45s',
+    'Blink jumps 320u (+70), retains deliberate recharge and phases you for 0.45s',
     ({ abilities: a }) => {
       addN(a.a3, 'range', 70);
       mul(a.a3, 'cooldown', 0.7);
@@ -377,9 +407,9 @@ const CLERIC: CharUpgradeDef[] = [
     'cl_greaterheal',
     'Greater Heal',
     '💚',
-    'Heal restores 103 HP (+28) from 450u (+50); critical rescue bonus grows by 5 percentage points',
+    'Heal restores 138 HP (+38) from 450u (+50); critical rescue bonus grows by 5 percentage points',
     ({ abilities: a }) => {
-      addN(a.a1, 'damage', 28);
+      addN(a.a1, 'damage', 38);
       addN(a.a1, 'range', 50);
       if (a.a1.rescueHealBonus) a.a1.rescueHealBonus += 0.05;
     },
@@ -501,7 +531,7 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_assassin',
     'Assassinate',
     '🗡️',
-    'Backstab gains +24 damage, 22% faster recharge and +0.1× critical damage per pick; a prepared positive hit refunds 1s of running Shadowstep, once per cast and 4s',
+    'Backstab gains +24 damage, up to 20% total ordinary recharge reduction and +0.1× critical damage per pick; a prepared positive hit refunds 1s of running Shadowstep; if recovery protects it, gain 15% movement for 2s instead, once per cast and 4s',
     ({ abilities: a }) => {
       addN(a.a1, 'damage', 24);
       addN(a.a1, 'critMultBonus', 0.1);
@@ -527,7 +557,7 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_vanish',
     'Vanish',
     '💨',
-    'Shadowstep resets 30% faster, phases longer, heals 22, and extends preparation by 0.4s',
+    'Shadowstep phases longer, heals 22 and extends preparation by 0.4s; its deliberate recharge is retained',
     ({ abilities: a }) => {
       mul(a.a2, 'cooldown', 0.7);
       addN(a.a2, 'iframes', 0.2);
@@ -600,7 +630,7 @@ const PALADIN: CharUpgradeDef[] = [
     'pa_mercy',
     'Merciful Hands',
     '💛',
-    'Lay on Hands restores 122 HP (+32) and recharges 15% faster (~5s)',
+    'Lay on Hands restores 122 HP (+32) and retains its deliberate recharge',
     ({ abilities: a }) => {
       addN(a.a2, 'damage', 32);
       mul(a.a2, 'cooldown', 0.85);
@@ -623,7 +653,7 @@ const PALADIN: CharUpgradeDef[] = [
     'pa_zeal',
     'Zeal',
     '⚡',
-    '+8% move speed and −10% ability cooldowns',
+    '+8% move speed per pick and up to 20% total class-wide cooldown reduction',
     ({ player: p }) => {
       p.moveSpeed *= 1.08;
       p.cooldownMult *= 0.9;
@@ -649,7 +679,7 @@ const DRUID: CharUpgradeDef[] = [
     'dr_regrowth',
     'Wild Growth',
     '💚',
-    'Regrowth heals 81 HP (+26) from 430u (+50), recharges 15% faster; recovery grove heals 1 more per tick',
+    'Regrowth heals 81 HP (+26) from 430u (+50), retains its deliberate recharge; recovery grove heals 1 more per tick',
     ({ abilities: a }) => {
       addN(a.a2, 'damage', 26);
       addN(a.a2, 'range', 50);
@@ -726,7 +756,7 @@ const BARD: CharUpgradeDef[] = [
     'ba_song',
     'Song of Rest',
     '🎶',
-    'Healing Word restores 74 HP (+24) and recharges 15% faster',
+    'Healing Word restores 74 HP (+24) and retains its deliberate recharge',
     ({ abilities: a }) => {
       addN(a.a2, 'damage', 24);
       mul(a.a2, 'cooldown', 0.85);
@@ -786,7 +816,7 @@ const MONK: CharUpgradeDef[] = [
     'mo_wind',
     'Wind Walker',
     '🍃',
-    'Step of the Wind travels 300u (+50), heals 38 (+20), refreshes 25% faster; Flow lasts 0.5s longer',
+    'Step of the Wind travels 300u (+50), heals 38 (+20), retains deliberate recharge; Flow lasts 0.5s longer',
     ({ abilities: a }) => {
       mul(a.a2, 'cooldown', 0.75);
       addN(a.a2, 'range', 50);
@@ -865,7 +895,7 @@ const SORCERER: CharUpgradeDef[] = [
     'so_leap',
     'Distant Leap',
     '🌀',
-    'Arcane Phase blinks 330u (+70), returns 30% faster, and phases you for 0.45s',
+    'Arcane Phase blinks 330u (+70), retains deliberate recharge, and phases you for 0.45s',
     ({ abilities: a }) => {
       addN(a.a3, 'range', 70);
       mul(a.a3, 'cooldown', 0.7);
@@ -877,7 +907,7 @@ const SORCERER: CharUpgradeDef[] = [
     'so_font',
     'Font of Magic',
     '🔮',
-    '+8% move speed and −10% ability cooldowns',
+    '+8% move speed per pick and up to 20% total class-wide cooldown reduction',
     ({ player: p }) => {
       p.moveSpeed *= 1.08;
       p.cooldownMult *= 0.9;
@@ -1011,11 +1041,11 @@ const HYBRID: CharUpgradeDef[] = [
       'hy_fieldmedic',
       'Field Medic',
       '🩹',
-      'Graft a field-dressed Heal: restore 45 HP to a hurt ally within 400u (5s cooldown; weaker than a Cleric’s)',
+      'Graft a field-dressed Heal: restore 56 HP to a hurt ally within 400u (5s cooldown; weaker than a Cleric’s)',
       ({ abilities: a }) => {
         graft(a, 'a2', 'cleric', 'a1', (ab) => {
-          ab.damage = Math.round(ab.damage * 0.75);
-          ab.cooldown = ab.cooldown + 2;
+          ab.damage = Math.round(ab.damage * 0.5625);
+          ab.cooldown = ab.cooldown + 1;
           ab.name = 'Field Dressing';
         });
       },
@@ -3573,62 +3603,64 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
 /** Modest, kind-adaptive tune for a per-stack sub-skill boon (stacks compound). */
 function subSkillTune(ab: PlayerAbilityDef): void {
   amplify(ab, 0.12, 0.08); // +12% magnitude, +8% footprint
-  mul(ab, 'cooldown', 0.92); // -8% cooldown
+  ordinaryRecharge(ab, 0.92); // -8% cooldown
 }
 
 const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
   cl_life_mend:
-    'Increase primary healing by 12%, heal reach and relay radius by 8%, and reduce recharge by 8%; relay remains 35% of effective primary healing to one other ally',
+    'Increase primary healing by 12%, heal reach and relay radius by 8%, and improve recharge within its shared budget; relay remains 35% of effective primary healing to one other ally',
   cl_light_flash:
-    'Increase healing by 12%, reach and rescue readiness duration by 8% (cap 8s), and reduce recharge by 8%; retain the +20% direct-hit follow-through on rescue',
+    'Increase healing by 12%, reach and rescue readiness duration by 8% (cap 8s), and improve recharge within its shared budget; retain the +20% direct-hit follow-through on rescue',
   mo_openhand_wind:
-    'Increase healing by 12%, dash reach, crossing width and guard duration by 8% (guard cap 6s), and reduce recharge by 8%; retain Flow and one crossed ally',
+    'Increase healing by 12%, dash reach, crossing width and guard duration by 8% (guard cap 6s), and improve recharge within its shared budget; retain Flow and one crossed ally',
   rg_hunter_hail:
-    'Increase damage by 12% and burst radius by 8%, and reduce recharge by 8%; retain slowing disengagement and knockback',
+    'Increase damage by 12% and burst radius by 8%, and improve recharge within its shared budget; retain slowing disengagement and knockback',
   rg_hunter_mark:
-    'Increase damage by 12% and reduce recharge by 8%; retain two additional pierces and Exposed Quarry',
+    'Increase damage by 12% and improve recharge within its shared budget; retain two additional pierces and Exposed Quarry',
   kn_battle_menacing:
-    'Improve the personal damage buff, increase challenge radius by 8%, and reduce recharge by 8%; retain weakening and counter preparation',
+    'Improve the personal damage buff, increase challenge radius by 8%, and improve recharge within its shared budget; retain weakening and counter preparation',
   bb_berserker_slam:
-    'Increase burst and fissure damage by 12%, burst radius by 8%, and reduce recharge by 8%; fissures still require Momentum',
+    'Increase burst and fissure damage by 12%, burst radius by 8%, and improve recharge within its shared budget; fissures still require Momentum',
   bb_totem_quake:
-    'Increase field damage by 12% (rounded), radius by 8%, and reduce recharge by 8%; retain Momentum and enemy slow',
+    'Increase field damage by 12% (rounded), radius by 8%, and improve recharge within its shared budget; retain Momentum and enemy slow',
   ro_assassin_poison:
-    'First pick extends target poison to 5s; second to 6s. Later picks gain +12% poison magnitude and 4% faster recharge; preparation and strongest-owner rule remain',
+    'First pick extends target poison to 5s; second to 6s. Later picks gain +12% poison magnitude and bounded recharge improvement; preparation and strongest-owner rule remain',
   dr_land_spike:
-    'Increase damage by 12% and blast radius by 8%, and reduce recharge by 8%; retain the controlled-target bonus',
+    'Increase damage by 12% and blast radius by 8%, and improve recharge within its shared budget; retain the controlled-target bonus',
 
   ro_assassin_smoke:
-    'Increase smoke radius by 8% and reduce recharge by 8%; retain hindrance, allied haste and precision setup',
+    'Increase smoke radius by 8% and improve recharge within its shared budget; retain hindrance, allied haste and precision setup',
   ro_trickster_shield:
-    'Extend the frontal block by 8% (cap 8s) and reduce recharge by 8%; retain precision setup',
+    'Extend the frontal block by 8% (cap 8s) and improve recharge within its shared budget; retain precision setup',
   ba_valor_bolster:
-    'Improve rally movement, extend self control resistance by 8% (cap 8s), and reduce recharge by 8%; retain cleanse and chorus',
+    'Improve rally movement, extend self control resistance by 8% (cap 8s), and improve recharge within its shared budget; retain cleanse and chorus',
   rg_beast_bond:
-    'Increase healing by 12%, improve recipient haste, and reduce recharge by 8%; retain cleanse',
-  mg_abjurer_mend: 'Increase healing and barrier by 12%, reach by 8%, and reduce recharge by 8%',
-  mo_openhand_ki: 'Increase self-healing by 12% and reduce recharge by 8%; retain Flow preparation',
+    'Increase healing by 12%, improve recipient haste, and improve recharge within its shared budget; retain cleanse',
+  mg_abjurer_mend:
+    'Increase healing and barrier by 12%, reach by 8%, and improve recharge within its shared budget',
+  mo_openhand_ki:
+    'Increase self-healing by 12% and improve recharge within its shared budget; retain Flow preparation',
 
   kn_champion_rally:
-    'Increase self-healing by 12%, sprint speed by 4.8 percentage points, and reduce recharge by 8%',
+    'Increase self-healing by 12%, sprint speed by 4.8 percentage points, and improve recharge within its shared budget',
   kn_battle_rally:
-    'Increase healing and recovery ticks by 12%, grove radius by 8%, and reduce recharge by 8%; retain counter preparation',
+    'Increase healing and recovery ticks by 12%, grove radius by 8%, and improve recharge within its shared budget; retain counter preparation',
   rg_hunter_stand:
-    'Increase skirmish-field damage by 12% and radius by 8%, and reduce recharge by 8%; retain ally speed and enemy slow',
+    'Increase skirmish-field damage by 12% and radius by 8%, and improve recharge within its shared budget; retain ally speed and enemy slow',
   bb_totem_bear:
-    'Extend control resistance and frontal blocks by 8% (cap 8s), improve mitigation, and reduce recharge by 8%; retain counters on blocks',
+    'Extend control resistance and frontal blocks by 8% (cap 8s), improve mitigation, and improve recharge within its shared budget; retain counters on blocks',
   bb_totem_mend:
-    'Increase self-healing by 12%, extend control resistance by 8% (cap 8s), and reduce recharge by 8%; retain cleanse',
+    'Increase self-healing by 12%, extend control resistance by 8% (cap 8s), and improve recharge within its shared budget; retain cleanse',
   pa_devotion_aura:
-    'Increase barrier by 12% and barrier/aura reach by 8%, and reduce recharge by 8%; retain the shared protection aura',
+    'Increase barrier by 12% and barrier/aura reach by 8%, and improve recharge within its shared budget; retain the shared protection aura',
   wa_fiend_resilience:
-    'Increase base barrier, siphon damage and per-hit protection by 12%, siphon reach by 8%, and reduce recharge by 8%',
+    'Increase base barrier, siphon damage and per-hit protection by 12%, siphon reach by 8%, and improve recharge within its shared budget',
   wa_fiend_pit:
-    'Increase burning-zone damage by 12% and radius by 8%, and reduce recharge by 8%; retain the 4s searing mark',
+    'Increase burning-zone damage by 12% and radius by 8%, and improve recharge within its shared budget; retain the 4s searing mark',
   wa_goo_blast:
-    'Increase damage by 12% and reach by 8%, recharge 8% faster; personally cursed-target weakness and hindrance gain 1s per pick, capped at 5s',
+    'Increase damage by 12% and reach by 8%, recharge improves within its shared budget; personally cursed-target weakness and hindrance gain 1s per pick, capped at 5s',
   wa_goo_whispers:
-    'Increase dread-zone damage by 12% and radius by 8%, and reduce recharge by 8%; weakening stays 20%',
+    'Increase dread-zone damage by 12% and radius by 8%, and improve recharge within its shared budget; weakening stays 20%',
 };
 
 /** First-pick reference for simple Honed boons; live offer previews still resolve owned/rolled skills. */
@@ -3688,7 +3720,7 @@ function us(subSkillId: string, classId: ClassId, name: string, icon: string): C
           ab.venomCoating.duration = Math.min(6, ab.venomCoating.duration + 1);
           if (picks > 1) {
             ab.venomCoating.damage = Math.round(ab.venomCoating.damage * 1.12);
-            ab.cooldown *= 0.96;
+            ordinaryRecharge(ab, 0.96);
           }
         } else {
           subSkillTune(ab);
@@ -4321,6 +4353,7 @@ export function previewAbilityTable(
   // Match the sim: the same global attack slow-down the World applies at spawn, so
   // the cooldowns the HUD previews agree with the ones the sim actually commits.
   slowAttackCooldowns(abilities);
+  for (const slot of SLOTS) abilities[slot] = boundedAbility(abilities[slot]);
   return abilities;
 }
 
@@ -4343,7 +4376,11 @@ export function previewSubAbility(
   // Shallow clone (numeric fields only; see cloneAbilities). Sub-abilities carry no
   // slot; tag it sub1 so it's a full PlayerAbilityDef for the tune ctx (slot is
   // ignored by describeAbility and the tunes alike).
-  const ability: PlayerAbilityDef = { ...sk.ability, slot: 'sub1' };
+  const ability: PlayerAbilityDef = {
+    ...sk.ability,
+    slot: 'sub1',
+    rechargeBase: sk.ability.cooldown,
+  };
   const stub = stubPlayer(owner.classId);
   const abilities = stub.abilities as Record<AbilitySlot, PlayerAbilityDef>;
   let tuned = false;
@@ -4362,7 +4399,7 @@ export function previewSubAbility(
   // Forge run: flow the boons' tweaks into the fused sub-skill's components (item: forge
   // upgrade synthesis), so the preview reads the true empowered numbers.
   if (tuned && ability.components) ability.components = refreshComponents(ability);
-  return ability;
+  return boundedAbility(ability);
 }
 
 /**
@@ -4864,6 +4901,8 @@ function describeSubOfferPreview(
   def: CharUpgradeDef,
   ownedChar: readonly string[],
   subSkills: readonly string[],
+  beforeMods?: { cooldownMult: number; castMult: number; damageMult: number },
+  afterMods?: { cooldownMult: number; castMult: number; damageMult: number },
 ): string | null {
   let targetIds: string[];
   if (def.subSkillId) targetIds = [def.subSkillId];
@@ -4875,8 +4914,8 @@ function describeSubOfferPreview(
     const before = previewSubAbility(sid, ownedChar);
     const after = previewSubAbility(sid, [...ownedChar, def.id]);
     if (!before || !after) continue;
-    const beforeLine = describeAbility(before);
-    const afterLine = describeAbility(after);
+    const beforeLine = describeAbility(before, beforeMods);
+    const afterLine = describeAbility(after, afterMods);
     clauses.push(
       beforeLine === afterLine
         ? `${after.name}: ${afterLine}`
@@ -4893,8 +4932,15 @@ export function describeCharOffer(
   /** The hero's equipped sub-skill ids — lets a SUBCLASS-grand offer preview the
    *  actual skills it will retune (item 5). Empty for callers that don't track subs. */
   subSkills: readonly string[] = [],
+  genericUpgrades: readonly UpgradeId[] = [],
 ): CharOfferView | null {
   const current = previewAbilityTable(classId, [...ownedChar]);
+  const beforeMods = genericUpgrades.length
+    ? previewPlayerStats(classId, [...genericUpgrades], [...ownedChar])
+    : undefined;
+  const afterMods = genericUpgrades.length
+    ? previewPlayerStats(classId, [...genericUpgrades], [...ownedChar, id])
+    : undefined;
   const restoreSlot = parseRestore(id);
   if (restoreSlot) {
     const nativeName = getClass(classId).abilities[restoreSlot].name;
@@ -4913,7 +4959,7 @@ export function describeCharOffer(
     return {
       id,
       label: `${boon.icon} ${boon.name}`,
-      desc: `${boon.desc}. Upgrades your grafted ${skillName}.`,
+      desc: `${boon.desc}. Upgrades your grafted ${skillName}. Now → ${describeAbility(previewAbilityTable(classId, [...ownedChar, id])[graftup.slot], afterMods)}`,
     };
   }
   const def = getCharUpgrade(id); // Forge run → the boon re-presented for its fused skill
@@ -4928,7 +4974,7 @@ export function describeCharOffer(
   if (!def.replaces) {
     const after = previewAbilityTable(classId, [...ownedChar, id]);
     const slotPreview = SLOTS.filter((s) => JSON.stringify(current[s]) !== JSON.stringify(after[s]))
-      .map((s) => `${after[s].name}: ${describeAbility(after[s])}`)
+      .map((s) => `${after[s].name}: ${describeAbility(after[s], afterMods)}`)
       .join(' · ');
     // A player-stat boon (Thick Hide, War Priest, Second Wind…) touches no slot, so
     // also resolve its stat readout (item 6) — cards show the resulting values, not
@@ -4940,7 +4986,7 @@ export function describeCharOffer(
   // item 5 — subclass upgrades (Honed skills + subclass grands) tune sub-abilities,
   // invisible to the base-slot preview above. Resolve the affected sub-ability(ies)
   // so the card shows the concrete before→after, matching base-class card quality.
-  const subPreview = describeSubOfferPreview(def, ownedChar, subSkills);
+  const subPreview = describeSubOfferPreview(def, ownedChar, subSkills, beforeMods, afterMods);
   // Strip a trailing period first (Honed-skill prose ends in one) so the join reads
   // as a single sentence break, not "…).. Now →".
   if (subPreview) desc = `${desc.replace(/\.\s*$/, '')}. ${subPreview}`;

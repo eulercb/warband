@@ -39,6 +39,7 @@ export default function SpecialReward() {
   const mySubSkills = useStore((s) => s.mySubSkills);
   const myExtraClasses = useStore((s) => s.myExtraClasses);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  const myUpgrades = useStore((s) => s.myUpgrades);
   const runSeed = useStore((s) => s.activeRunSeed);
 
   const [pendingSub, setPendingSub] = useState<SubclassDef | null>(null);
@@ -217,7 +218,7 @@ export default function SpecialReward() {
           // resulting values ("Now → …"), not just hand-authored prose. item 5:
           // passing the equipped sub-skills lets a SUBCLASS grand now preview the
           // concrete before→after of the sub-abilities it retunes, too.
-          const view = describeCharOffer(forClass, myCharUpgrades, g.id, mySubSkills);
+          const view = describeCharOffer(forClass, myCharUpgrades, g.id, mySubSkills, myUpgrades);
           return (
             <button
               key={g.id}

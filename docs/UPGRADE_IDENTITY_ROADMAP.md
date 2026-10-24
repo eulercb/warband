@@ -2,12 +2,14 @@
 
 Current direction supersedes the previous pilot rollout estimate: see
 [upgrade foundations and grand selections](UPGRADE_FOUNDATIONS_AND_GRANDS.md).
-The pilot is merged/live-tested. This delivery corrects additive ordinary boons,
-Honed text and test-loadout access. Recharge foundations are next, before further
-class cohorts. Grand selection is a reviewed proposal, not yet implemented.
-The owner confirmed four equipped grands per class, only the active class applying.
-Allow roughly six to eight further implementation PRs under the expanded scope.
-Earlier sequences below are historical; the linked plan is authoritative.
+The pilot and correction pack are merged/live-tested. Current delivery is
+[deliberate recharge and bounded reach](CADENCE_AND_RANGE.md), including generic
+Haste in the 4s floor. Next is the approved per-class grand bank/2/1/1 framework
+and earlier reward flow, then Rogue/Warlock retouches and remaining class cohorts.
+Grand limits and reward timing are not implemented in this foundation patch.
+Allow roughly six to eight further implementation PRs under the expanded scope;
+revise cohort sizes after verifying the framework. Earlier sequences/tables below
+remain historical; the linked current plan is authoritative.
 
 ## Prerequisite: approved class-coherence retouches
 

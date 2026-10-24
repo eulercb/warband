@@ -357,6 +357,8 @@ export interface Player {
   reviveProgress: number; // 0..REVIVE_TIME, accumulated hold from allies
   reviverId: EntityId | null;
 
+  ordinaryCooldownBase?: number;
+  rechargeLocks?: Partial<Record<ClassId, Partial<Record<ExtSlot, number>>>>;
   upgradeRefundRemaining?: number;
   cooldowns: Cooldowns;
   castTimer: number; // > 0 while rooted mid-cast (e.g. Fireball)

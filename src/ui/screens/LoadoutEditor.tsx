@@ -335,6 +335,8 @@ export function LoadoutEditor() {
                               localClass,
                               lo.charUpgrades.filter((id) => id !== h.id),
                               h.id,
+                              lo.subSkills,
+                              lo.upgrades,
                             )!.desc
                       }
                     >
@@ -362,7 +364,13 @@ export function LoadoutEditor() {
               <span className="wb-field-label">Grafted-skill boons — click to rank up</span>
               <div className="wb-pad-scheme-row">
                 {graftFollowups.map((id) => {
-                  const view = describeCharOffer(localClass, lo.charUpgrades, id)!;
+                  const view = describeCharOffer(
+                    localClass,
+                    lo.charUpgrades,
+                    id,
+                    lo.subSkills,
+                    lo.upgrades,
+                  )!;
                   const n = countOf(id, lo.charUpgrades);
                   return (
                     <button

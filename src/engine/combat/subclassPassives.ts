@@ -1,3 +1,4 @@
+import { refundRecharge } from '../content/abilityLimits';
 import { prepareCompanionWard } from './companions';
 import { cleanseMovement, grantFrontGuard } from './defense';
 import { grantAbsorption } from './absorption';
@@ -220,8 +221,7 @@ export function onSubclassDirectHit(
     for (const slot of ['a1', 'a2', 'a3', 'sub1', 'sub2'] as const) {
       const remaining = p.cooldowns[slot];
       if (remaining == null || remaining <= 0) continue;
-      p.cooldowns[slot] = Math.max(0, remaining - 4);
-      reduced = true;
+      reduced = refundRecharge(p, slot, 4) > 0 || reduced;
     }
     const held = p.buffs.some((b) => b.kind === 'evocation' && b.remaining > 0);
     if (!reduced && held) return;
@@ -430,10 +430,22 @@ export function onSubclassFinisher(world: World, p: Player, ab: PlayerAbilityDef
       if (!skill || (skill.kind !== 'dash' && skill.kind !== 'blink')) continue;
       const remaining = p.cooldowns[slot] ?? 0;
       if (remaining <= 0) continue;
-      p.cooldowns[slot] = Math.max(0, remaining - 2);
-      reduced = true;
+      reduced = refundRecharge(p, slot, 2) > 0 || reduced;
     }
-    if (reduced) {
+    const protectedMobility = Object.entries(p.rechargeLocks?.[p.classId] ?? {}).some(
+      ([slot, remaining]) => {
+        const skill =
+          slot === 'sub1' || slot === 'sub2'
+            ? p.subAbilities?.[slot]
+            : p.abilities?.[slot as 'a1' | 'a2' | 'a3'];
+        return remaining > 0 && (skill?.kind === 'dash' || skill?.kind === 'blink');
+      },
+    );
+    if (!reduced && protectedMobility) {
+      p.buffs = p.buffs.filter((b) => b.kind !== 'root' && !(b.kind === 'moveSpeed' && b.mult < 1));
+      putBuff(p, { kind: 'steadfast', mult: 1, remaining: 1, source: PREFIX + 'shadowRhythm' });
+    }
+    if (reduced || protectedMobility) {
       spendCooldown(p, id, 4);
       world.events.push({
         t: 'support',

@@ -311,7 +311,7 @@ export function ResultScreen() {
               {charOffers.map((id) => {
                 // describeCharOffer resolves real boons, `restore:` reclaims and
                 // `graftup:` grafted-skill upgrades alike (items 15 & 17).
-                const view = describeCharOffer(localClass, myCharUpgrades, id);
+                const view = describeCharOffer(localClass, myCharUpgrades, id, [], myUpgrades);
                 if (!view) return null;
                 const isPicked = pickedChar === id;
                 const dimmed = pickedChar && !isPicked;

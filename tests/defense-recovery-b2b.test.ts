@@ -332,8 +332,10 @@ it('Honed/grands and Forge retain the new effects, finite image caps, and unchan
     const { p } = setup(subclassOfSkill(id)!.classId);
     const ab = bind(p, id, true);
     const oldCd = ab.cooldown;
+    const oldDescription = describeAbility(ab);
     applySubSkillUpgrades(p, [`subup_${id}`]);
-    expect(p.subAbilities!.sub1!.cooldown).toBeLessThan(oldCd);
+    expect(p.subAbilities!.sub1!.cooldown).toBeLessThanOrEqual(oldCd);
+    expect(describeAbility(p.subAbilities!.sub1!)).not.toBe(oldDescription);
     expect(p.subAbilities!.sub1!.components).toEqual(refreshComponents(p.subAbilities!.sub1!));
     for (let seed = 1; seed <= 8; seed++) {
       const d = synthesizeAbility(seed, id, 'a3', [
