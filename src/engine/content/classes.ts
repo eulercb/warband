@@ -232,6 +232,13 @@ export interface PlayerAbilityDef {
   components?: import('./forge').AbilityComponents;
 }
 
+/** Component caps are authoritative for composed coatings, just as for direct strike payloads. */
+export function resolvedCoating(def: PlayerAbilityDef): PlayerAbilityDef['venomCoating'] {
+  if (!def.components) return def.venomCoating;
+  const effect = def.components.effects.find((e) => e.kind === 'venomCoating');
+  return effect?.kind === 'venomCoating' ? effect.coating : undefined;
+}
+
 export interface ClassDef {
   id: ClassId;
   name: string;

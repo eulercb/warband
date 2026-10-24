@@ -1,7 +1,7 @@
 /** Shared, bounded active-skill payloads. Copied skills do not require donor passives. */
 import type { World } from '../world/world';
 import type { Player, Boss, Add } from '../core/types';
-import type { PlayerAbilityDef } from '../content/classes';
+import { resolvedCoating, type PlayerAbilityDef } from '../content/classes';
 import { dist } from '../core/torus';
 import { applyBuff, damageBoss, damageAdd, makeBuff } from './combat';
 import { spawnZone } from './abilities';
@@ -32,14 +32,10 @@ export function armRetouchEffects(world: World, p: Player, ab: PlayerAbilityDef)
       },
     });
   }
-  if (ab.venomCoating) {
-    const buff = makeBuff(
-      'venomReady',
-      ab.venomCoating.damage,
-      ab.venomCoating.window,
-      `venomReady:${p.classId}`,
-    );
-    buff.coating = { damage: ab.venomCoating.damage, duration: ab.venomCoating.duration };
+  const coating = resolvedCoating(ab);
+  if (coating) {
+    const buff = makeBuff('venomReady', coating.damage, coating.window, `venomReady:${p.classId}`);
+    buff.coating = { damage: coating.damage, duration: coating.duration };
     applyBuff(p, buff);
   }
   if (ab.momentumFissure && ab.momentumUsed)

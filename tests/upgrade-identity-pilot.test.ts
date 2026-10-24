@@ -22,6 +22,7 @@ import {
   setForgeSeed,
 } from '../src/engine/content/forge';
 import { setProceduralSeed } from '../src/engine/content/procgen';
+import { heroPowerRatio } from '../src/engine/content/balance';
 import { describeAbility } from '../src/engine/content/classes';
 import type { Add, ClassId, GroundZone } from '../src/engine/core/types';
 const ZERO = { x: 0, y: 0 };
@@ -544,6 +545,26 @@ describe('repeat picks, composition and copied skills', () => {
     expect(cast.spent).toBe(false);
     expect(p.cooldowns.a2).toBe(5);
     expect(p.buffs.some((b) => b.kind === 'rebuke')).toBe(true);
+  });
+  it('grand plus Honed composed coating uses its advertised capped payload in combat and power', () => {
+    const { w, p, boss } = setup(
+      'rogue',
+      ['ro_assassin_g_a', ...Array<string>(5).fill('subup_ro_assassin_poison')],
+      ['ro_assassin_poison'],
+    );
+    const ab = p.subAbilities!.sub1!;
+    ab.components = refreshComponents(recompose(decompose(ab), ab));
+    const component = ab.components.effects.find((e) => e.kind === 'venomCoating');
+    expect(component?.kind).toBe('venomCoating');
+    if (component?.kind !== 'venomCoating') throw new Error('Missing coating');
+    expect(component.coating.damage).toBe(50);
+    resolvePlayerAbility(w, p, 'sub1', ZERO);
+    damageBoss(w, p, boss, 1, { direct: true });
+    expect(boss.buffs.find((b) => b.kind === 'venom')!.mult).toBe(component.coating.damage);
+    expect(describeAbility(ab)).toContain('poison 50 dmg/s');
+    const power = heroPowerRatio(p);
+    ab.venomCoating = { ...component.coating };
+    expect(heroPowerRatio(p)).toBe(power);
   });
   it('a stale graftup cannot tune a native slot after reclaim', () => {
     const table = previewAbilityTable('knight', ['hy_hexbrand', 'restore:a3', 'graftup:a3:wa_hex']);

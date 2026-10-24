@@ -65,6 +65,8 @@ Native class grands do not leak onto foreign occupants.
 
 Honed poison copies its nested authored payload before mutation. Repeat-world,
 repeat-player and Forge fixtures guard against shared-content contamination.
+For a composed coating, combat and power valuation use its capped component payload,
+matching the displayed description even after combined grand/Honed growth.
 The canonical Coated Blade blurb now describes target poison, Assassin's grand
 promises leech only on direct strikes, and Greater Heal's stale 88 HP says 103 HP.
 Resolved descriptions state allocation, recipient limits, preparation and lingering.
@@ -137,8 +139,8 @@ unconditional damage. No claim of equal class balance is made.
   existing production input/mobile smoke remains separate.
 - Regenerate/check catalogue evidence with `node scripts/audit-upgrade-catalogue.mjs --check`.
 
-Local validation: **3,890 tests passed across 143 files**; full coverage met the
-unchanged 98% branch gate. Production build, lint, formatting and inventory replay
+Local validation: **3,891 tests passed across 143 files**; full coverage met the
+unchanged 98% branch gate (98.01% achieved). Production build, lint, formatting and inventory replay
 passed. Twelve engine/renderer browser fixtures passed, plus the selected production
 UI/input checks on desktop and 320px mobile. GitHub CI rechecks the final commit,
 including the new browser fixture and reproducible inventory gate.
