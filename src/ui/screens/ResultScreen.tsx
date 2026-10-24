@@ -1,3 +1,5 @@
+import { grandHistory } from '../../engine/content/grandSelections';
+import GrandPanel from '../game/GrandManager';
 /**
  * Warband — post-fight results + terminal upgrade phases.
  *
@@ -113,6 +115,7 @@ export function ResultScreen() {
   const localClass = useStore((s) => s.activeDraftedClass ?? s.localClass);
   const myUpgrades = useStore((s) => s.myUpgrades);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  const grandState = useStore((s) => s.myGrandLoadout);
   // Subscribed (not just read via getState) so the CHAR offer re-rolls the moment a
   // class or sub-skill is acquired on THIS screen via SpecialReward (item 8).
   const myExtraClasses = useStore((s) => s.myExtraClasses);
@@ -265,6 +268,7 @@ export function ResultScreen() {
         ) : null}
 
         {showUpgrades ? <SpecialReward /> : null}
+        <GrandPanel />
 
         {showUpgrades ? <EphemeralShop /> : null}
 
@@ -311,7 +315,13 @@ export function ResultScreen() {
               {charOffers.map((id) => {
                 // describeCharOffer resolves real boons, `restore:` reclaims and
                 // `graftup:` grafted-skill upgrades alike (items 15 & 17).
-                const view = describeCharOffer(localClass, myCharUpgrades, id, [], myUpgrades);
+                const view = describeCharOffer(
+                  localClass,
+                  grandHistory(localClass, myCharUpgrades, grandState, mySubSkills),
+                  id,
+                  mySubSkills,
+                  myUpgrades,
+                );
                 if (!view) return null;
                 const isPicked = pickedChar === id;
                 const dimmed = pickedChar && !isPicked;

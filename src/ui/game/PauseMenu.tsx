@@ -1,3 +1,5 @@
+import { previewGrandStats } from '../../engine/content/grandStats';
+import { useSelectedCharUpgrades } from '../state/useSelectedCharUpgrades';
 import { BARD_VERSE_GUIDE } from '../../engine/content/bardText';
 /**
  * Warband — in-fight pause menu overlay. Shown to EVERY player while the shared
@@ -32,19 +34,33 @@ import TerrainLegend from './TerrainLegend';
  * The ACTIVE class's kit is shown separately by <OwnedSkills>, so nothing is lost.
  */
 export function CharacterSheet() {
+  const allSubs = useStore((s) => s.mySubSkills);
   const classId = useHudStore((s) => s.classId);
   const classes = useHudStore((s) => s.classes);
   const hp = useHudStore((s) => s.hp);
   const maxHp = useHudStore((s) => s.maxHp);
   const myUpgrades = useStore((s) => s.myUpgrades);
-  const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  const grandState = useStore((s) => s.myGrandLoadout);
+  const myCharUpgrades = useSelectedCharUpgrades(classId);
   // Spawn/identity class: first owned class for a multiclass hero (buildMulticlass
   // seeds `classes` as [spawnClass, ...extras]), else the active class (single-class
   // heroes never swap, so active === identity there).
   const identityClass = classes[0] ?? classId;
   const stats = useMemo(
-    () => (identityClass ? previewPlayerStats(identityClass, myUpgrades, myCharUpgrades) : null),
-    [identityClass, myUpgrades, myCharUpgrades],
+    () =>
+      identityClass
+        ? grandState && classId
+          ? previewGrandStats(
+              identityClass,
+              classId,
+              myUpgrades,
+              myCharUpgrades,
+              grandState,
+              allSubs,
+            )
+          : previewPlayerStats(identityClass, myUpgrades, myCharUpgrades)
+        : null,
+    [identityClass, classId, allSubs, grandState, myUpgrades, myCharUpgrades],
   );
   if (!identityClass || !stats) return null;
   // Run-aware base (getClass): the move delta shows what the BOONS added, not the roll.
@@ -95,7 +111,8 @@ export function OwnedSkills() {
   const subSkills = useHudStore((s) => s.subSkills);
   const source = useHudStore((s) => s.inputSource);
   const myUpgrades = useStore((s) => s.myUpgrades);
-  const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  const grandState = useStore((s) => s.myGrandLoadout);
+  const myCharUpgrades = useSelectedCharUpgrades(classId);
   // Spawn/identity class (first owned; buildMulticlass seeds `classes` as [spawn, …extras]).
   // The active class picks which kit is shown; the identity class is what the sim gated the
   // hero's boons on at spawn, so fold the mults off it (matches CharacterSheet above).
@@ -105,9 +122,9 @@ export function OwnedSkills() {
   const rows = useMemo(
     () =>
       classId && identityClass
-        ? ownedSkillRows(classId, identityClass, myUpgrades, myCharUpgrades, subSkills)
+        ? ownedSkillRows(classId, identityClass, myUpgrades, myCharUpgrades, subSkills, grandState)
         : [],
-    [classId, identityClass, myUpgrades, myCharUpgrades, subSkills],
+    [classId, identityClass, myUpgrades, myCharUpgrades, subSkills, grandState],
   );
   const passive = activeSubclassPassive(classId, subSkills);
   if (!classId || rows.length === 0) return null;

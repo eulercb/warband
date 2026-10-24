@@ -1,3 +1,4 @@
+import type { GrandRequest } from '../../engine/content/grandSelections';
 /**
  * Warband — session control: creates Host/Client, wires their callbacks into
  * the Zustand store, and exposes simple imperative actions the React screens
@@ -169,6 +170,7 @@ export async function hostGame(): Promise<void> {
       return {
         upgrades: lo.upgrades,
         charUpgrades: lo.charUpgrades,
+        grandLoadout: lo.grandLoadout,
         subSkills: lo.subSkills,
         extraClasses: lo.extraClasses,
       };
@@ -178,6 +180,7 @@ export async function hostGame(): Promise<void> {
     classId: st.localClass,
     onLobby: (msg) =>
       useStore.getState().setLobby(msg.players, msg.monsterId, msg.phase, msg.gauntlet),
+    onGrandState: (state, credit) => useStore.getState().setGrandState(state, credit),
     onStart: (info) => {
       const s = useStore.getState();
       s.setResult(null);
@@ -323,6 +326,7 @@ export async function joinGame(code: string): Promise<void> {
       resetPauseState(s);
       s.setPhase('menu');
     },
+    onGrandState: (state, credit) => useStore.getState().setGrandState(state, credit),
     onPeers: (n) => {
       const s = useStore.getState();
       s.setPeerCount(n);
@@ -468,6 +472,10 @@ export function chooseCharUpgrade(id: string): void {
   const s = useStore.getState();
   s.session?.chooseCharUpgrade(id);
   s.addMyCharUpgrade(id);
+}
+
+export function chooseGrand(request: GrandRequest): void {
+  useStore.getState().session?.chooseGrand(request);
 }
 
 /** Submit this player's run-clear subclass-skill pick (item 13; records + relays). */

@@ -1,3 +1,4 @@
+import type { GrandLoadout, GrandRequest } from '../engine/content/grandSelections';
 /**
  * Warband — networking protocol. All messages are JSON-serializable and sent
  * over Trystero namespaced actions. Star topology, host-authoritative.
@@ -69,6 +70,7 @@ export interface LobbyMsg {
 }
 
 export interface StartMsg {
+  grandLoadouts?: Record<string, GrandLoadout>;
   seed: number;
   playerCount: number;
   monsterId: MonsterId;
@@ -126,6 +128,9 @@ export interface UpgradeMsg {
  * (its subclass id + skill id) or an additional multiclass class.
  */
 export interface SpecialMsg {
+  grand?: GrandRequest;
+  grandState?: GrandLoadout;
+  grandCredit?: boolean;
   subclassId?: string;
   subSkillId?: string;
   extraClass?: ClassId;
@@ -188,6 +193,8 @@ export interface NetSession {
   chooseUpgrade(upgradeId: UpgradeId): void;
   /** Submit a between-boss character (class) upgrade pick. */
   chooseCharUpgrade(upgradeId: string): void;
+  /** Host-validated earned-bank transaction; available only between fights. */
+  chooseGrand(request: GrandRequest): void;
   /** Submit a run-clear subclass-skill pick (item 13). */
   chooseSubSkill(subclassId: string, skillId: string): void;
   /** Submit a run-clear extra-class (multiclass) pick (item 14). */

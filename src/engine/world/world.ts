@@ -1,3 +1,5 @@
+import { buildGrandStats, activateGrandStats } from '../content/grandStats';
+import { grandHistory, type GrandLoadout } from '../content/grandSelections';
 import {
   boundedAbility,
   effectiveRecharge,
@@ -168,6 +170,8 @@ import type { PlayerAbilityDef } from '../content/classes';
 import { applyUpgrades } from '../content/upgrades';
 import type { UpgradeId } from '../content/upgrades';
 import {
+  CHAR_UPGRADES,
+  previewPlayerStats,
   applyCharUpgrades,
   applySubclassGrands,
   applySubSkillUpgrades,
@@ -312,6 +316,7 @@ export interface WorldPlayerInit {
   upgrades?: UpgradeId[];
   /** Persistent character (class) upgrades this hero has earned this run. */
   charUpgrades?: string[];
+  grandLoadout?: GrandLoadout;
   /** Chosen subclass-skill ids bound to sub1/sub2 (item 13; up to two). */
   subSkills?: string[];
   /** Additional classes this hero can swap to (item 14). `classId` stays primary. */
@@ -799,10 +804,27 @@ export class World {
       // before the player is considered "at full health"). Generic first, then
       // the class-specific character upgrades that retune the ability table.
       applyUpgrades(player, pi.upgrades);
-      applyCharUpgrades(player, pi.charUpgrades);
+      player.grandLoadout = pi.grandLoadout;
+      const liveHistory = grandHistory(
+        pi.classId,
+        pi.charUpgrades ?? [],
+        pi.grandLoadout,
+        pi.subSkills,
+      );
+      const ordinary = liveHistory.filter((id) => !CHAR_UPGRADES[id]?.grand);
+      const neutralGrandStats = pi.grandLoadout
+        ? previewPlayerStats(pi.classId, pi.upgrades ?? [], ordinary)
+        : undefined;
+      applyCharUpgrades(player, liveHistory);
       // Stash the picked char upgrades so subclass grands (item 17) among them can be
       // re-applied to the bound sub-abilities on every rebind (here + on a class swap).
-      player.charUpgradeIds = pi.charUpgrades ?? [];
+      player.earnedCharUpgradeIds = pi.charUpgrades ?? [];
+      player.charUpgradeIds = grandHistory(
+        pi.classId,
+        pi.charUpgrades ?? [],
+        pi.grandLoadout,
+        pi.subSkills,
+      );
       // Global attack slow-down last, so character cooldown-reduction upgrades
       // still shave a proportional slice off the (doubled) base.
       if (player.abilities) {
@@ -819,6 +841,15 @@ export class World {
       // bursts fold into the stat multipliers; potions/self-revives become
       // in-fight resources. All gone next fight (a fresh World is built each boss).
       this.applyEphemeral(player, pi.ephemeral);
+      if (pi.grandLoadout && neutralGrandStats)
+        player.classGrandStats = buildGrandStats(
+          neutralGrandStats,
+          [pi.classId, ...(pi.extraClasses ?? [])],
+          pi.charUpgrades ?? [],
+          pi.grandLoadout,
+          pi.subSkills ?? [],
+          (stub) => this.applyEphemeral(stub, pi.ephemeral),
+        );
       player.hp = player.maxHp;
       this.players.push(player);
     });
@@ -853,7 +884,15 @@ export class World {
     });
     // Re-apply any owned SUBCLASS grands (item 17) to the freshly-bound sub-abilities
     // — the sub skills are rebuilt from scratch each rebind, so this stays idempotent.
-    applySubclassGrands(p, p.charUpgradeIds);
+    applySubclassGrands(
+      p,
+      grandHistory(
+        p.classId,
+        p.earnedCharUpgradeIds ?? p.charUpgradeIds ?? [],
+        p.grandLoadout,
+        p.subSkillIds,
+      ),
+    );
     // …then any owned per-sub-skill upgrades (item 6), keyed to the exact bound skill.
     applySubSkillUpgrades(p, p.charUpgradeIds);
     for (const slot of ['sub1', 'sub2'] as const)
@@ -875,7 +914,10 @@ export class World {
     p.classCooldowns = { [pi.classId]: zero() };
     p.swapCd = 0;
     for (const cid of extra) {
-      p.classTables[cid] = previewAbilityTable(cid, pi.charUpgrades ?? []);
+      p.classTables[cid] = previewAbilityTable(
+        cid,
+        grandHistory(cid, pi.charUpgrades ?? [], pi.grandLoadout, pi.subSkills),
+      );
       p.classCooldowns[cid] = zero();
     }
   }
@@ -1405,7 +1447,15 @@ export class World {
       sub2: p.cooldowns.sub2,
     };
     p.classId = classId;
+    if (p.grandLoadout)
+      p.charUpgradeIds = grandHistory(
+        classId,
+        p.earnedCharUpgradeIds ?? [],
+        p.grandLoadout,
+        p.subSkillIds,
+      );
     p.abilities = table;
+    activateGrandStats(p, p.classGrandStats?.[classId]);
     const cds = p.classCooldowns[classId] ?? { basic: 0, a1: 0, a2: 0, a3: 0 };
     p.cooldowns = {
       basic: cds.basic,

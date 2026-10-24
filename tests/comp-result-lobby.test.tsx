@@ -206,8 +206,8 @@ describe('<ResultScreen>', () => {
     // Roster names + classes.
     expect(screen.getByText('Alice')).toBeTruthy();
     expect(screen.getByText('Bob')).toBeTruthy();
-    expect(screen.getByText('Knight')).toBeTruthy();
-    expect(screen.getByText('Cleric')).toBeTruthy();
+    expect(screen.getByRole('cell', { name: 'Knight' })).toBeTruthy();
+    expect(screen.getByRole('cell', { name: 'Cleric' })).toBeTruthy();
     // Rounded damage / healing numbers.
     expect(screen.getByText('300')).toBeTruthy();
     expect(screen.getByText('210')).toBeTruthy();
@@ -238,6 +238,7 @@ describe('<ResultScreen>', () => {
     render(<ResultScreen />);
 
     expect(screen.getByText('DEFEAT')).toBeTruthy();
+    expect(screen.getByText('★ Grand selections', { exact: true })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(vi.mocked(retryFight)).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: 'Return to Lobby' }));
@@ -608,7 +609,7 @@ describe('<Lobby>', () => {
     // Grafts (wild cross-class picks) and Grand improvements stay reachable end-to-end
     // (the latter surfaced via offerableGrands).
     expect(body!.querySelector('.wb-btn-graft')).toBeTruthy();
-    expect(body!.querySelector('.wb-btn-grand')).toBeTruthy();
+    expect(body!.querySelector('[aria-label="Grand selections"]')).toBeTruthy();
   });
 
   it('docks the test-loadout panel above the roster/class grid and the action bar so it is not buried', () => {

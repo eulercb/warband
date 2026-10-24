@@ -15,6 +15,7 @@ vi.mock('../src/ui/state/session', () => ({
   chooseSubSkill: vi.fn(),
   chooseExtraClass: vi.fn(),
   chooseCharUpgrade: vi.fn(),
+  chooseGrand: vi.fn(),
   playUiSound: vi.fn(),
 }));
 
@@ -27,6 +28,7 @@ vi.mock('../src/engine/content/subclasses', async (importOriginal) => {
   return { ...actual, specialRewardStep: vi.fn(actual.specialRewardStep) };
 });
 
+import GrandPanel from '../src/ui/game/GrandManager';
 import SpecialReward from '../src/ui/screens/SpecialReward';
 import EphemeralShop from '../src/ui/screens/EphemeralShop';
 import { useStore } from '../src/ui/state/store';
@@ -35,10 +37,10 @@ import {
   chooseSubSkill,
   chooseExtraClass,
   chooseCharUpgrade,
+  chooseGrand,
   playUiSound,
 } from '../src/ui/state/session';
 import { subclassesFor, specialRewardStep } from '../src/engine/content/subclasses';
-import { offerableGrands } from '../src/engine/content/charUpgrades';
 import { EPHEMERAL, REROLL_CAP } from '../src/engine/content/ephemeral';
 
 const initial: AppState = { ...useStore.getState() };
@@ -98,32 +100,27 @@ describe('SpecialReward — tiered run-clear pick', () => {
     }
   });
 
-  it('tier 2: surfaces skill + subclass grands once a subclass is committed (items 17/19)', () => {
-    const sub = subclassesFor('knight')[0]; // Champion
-    // A committed subclass + an already-owned grand: the owned grand feeds the
-    // progression counter for the seeded draw (item 4) and gates itself out at cap.
-    useStore.setState({
-      mySubclassId: sub.id,
-      mySubSkills: [sub.skills[0].id, sub.skills[1].id],
-      myCharUpgrades: ['kn_grand_immovable'],
-    });
+  it('keeps class expansion independent from grand selection', () => {
+    const sub = subclassesFor('knight')[0];
+    useStore.setState({ mySubSkills: [sub.skills[0].id, sub.skills[1].id] });
     render(<SpecialReward />);
-    // Base-skill grands + the Champion subclass grands are now offerable, so at least
-    // one grand card renders; clicking it relays a character upgrade.
-    const grands = screen.getAllByText(/^★ /);
-    expect(grands.length).toBeGreaterThan(0);
-    fireEvent.click(grands[0]);
-    expect(chooseCharUpgrade).toHaveBeenCalled();
+    expect(screen.getByRole('group', { name: 'Add another class' })).toBeTruthy();
+    expect(screen.queryAllByText(/^★ /)).toHaveLength(0);
+    expect(chooseCharUpgrade).not.toHaveBeenCalled();
   });
 
-  it('grand cards render the resolved "Now →" preview, not just prose (item 6)', () => {
-    const sub = subclassesFor('knight')[0];
-    useStore.setState({ mySubclassId: sub.id, mySubSkills: [sub.skills[0].id, sub.skills[1].id] });
-    render(<SpecialReward />);
-    const grandDescs = screen.getAllByText(/^GRAND — /);
-    expect(grandDescs.length).toBeGreaterThan(0);
-    // At least one grand (a class capstone / base-skill grand) shows resolved values.
-    expect(grandDescs.some((el) => el.textContent?.includes('Now →'))).toBe(true);
+  it('offers grands independently before subclass progression finishes, with a resolved preview', () => {
+    useStore.setState({ grandCredit: true, myGrandLoadout: undefined });
+    render(<GrandPanel open />);
+    fireEvent.change(screen.getByLabelText('New grand'), { target: { value: 'kn_gk_basic_a' } });
+    expect(screen.getByText(/Now →/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock grand' }));
+    expect(chooseGrand).toHaveBeenCalledWith({
+      classId: 'knight',
+      id: 'kn_gk_basic_a',
+      action: 'earn',
+    });
+    expect(chooseSubSkill).not.toHaveBeenCalled();
   });
 
   it('ignores an unrecognised sub skill and falls back to offering a subclass', () => {
@@ -169,33 +166,15 @@ describe('SpecialReward — tiered run-clear pick', () => {
     expect(screen.getByText(/pick a second skill \(Mage\)/)).toBeTruthy();
   });
 
-  it('classOrGrand shows the whole grand pool when it fits within the four shown (item 4)', () => {
-    // Knight complete → classOrGrand. Owning all ten knight base+class grands leaves
-    // only the two Champion subclass grands offerable — a pool of 2 (≤ GRAND_SHOWN),
-    // so the seeded draw surfaces every one (shuffle + slice keeps all). The lone
-    // non-grand boon (kn_bulwark) drives the owned-grand reducer's `… ? n + 1 : n` else.
-    const mySubSkills = ['kn_champion_slam', 'kn_champion_charge'];
-    const myCharUpgrades = [
-      'kn_grand_immovable',
-      'kn_grand_wrath',
-      'kn_gk_basic_a',
-      'kn_gk_basic_b',
-      'kn_gk_a1_a',
-      'kn_gk_a1_b',
-      'kn_gk_a2_a',
-      'kn_gk_a2_b',
-      'kn_gk_a3_a',
-      'kn_gk_a3_b',
-      'kn_bulwark',
-    ];
-    useStore.setState({ mySubSkills, myCharUpgrades });
+  it('allows keeping the current classes regardless of grand ownership', () => {
+    useStore.setState({
+      mySubSkills: ['kn_champion_slam', 'kn_champion_charge'],
+      myCharUpgrades: ['kn_grand_immovable'],
+    });
     render(<SpecialReward />);
-
-    const expected = offerableGrands('knight', myCharUpgrades, mySubSkills);
-    expect(expected.length).toBeGreaterThan(0);
-    expect(expected.length).toBeLessThanOrEqual(4); // precondition: no rotation window
-    // Every offerable grand renders (a ★ card) — the count matches the pool exactly.
-    expect(screen.getAllByText(/^★ /).length).toBe(expected.length);
+    fireEvent.click(screen.getByRole('button', { name: 'Keep current classes' }));
+    expect(screen.getByRole('status').textContent).toContain('Class expansion skipped');
+    expect(chooseExtraClass).not.toHaveBeenCalled();
   });
 
   it('classOrGrand offers a SEEDED random draw of classes — deterministic per seed, varies by seed/clear (item 4)', () => {
@@ -206,7 +185,12 @@ describe('SpecialReward — tiered run-clear pick', () => {
       myExtraClasses: [],
     };
     const drawClasses = (seed: number, charUpgrades: string[] = []): (string | null)[] => {
-      useStore.setState({ ...complete, myCharUpgrades: charUpgrades, activeRunSeed: seed });
+      useStore.setState({
+        ...complete,
+        myCharUpgrades: charUpgrades,
+        cycle: charUpgrades.length,
+        activeRunSeed: seed,
+      });
       render(<SpecialReward />);
       const names = screen.getAllByText(/^\+ /).map((n) => n.textContent);
       cleanup();

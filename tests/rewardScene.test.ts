@@ -594,3 +594,30 @@ describe('RewardScene: focus dwell readout', () => {
     expect(sawDwell).toBe(true);
   });
 });
+
+it('grand board requires a stationary, frozen-aware dwell, re-arms on exit and consumes no boon', () => {
+  const scene = new RewardScene('Hero', 'knight', offers(), 0, {}, [], true);
+  const raw = scene as unknown as { world: { players: { pos: Vec2 }[] } };
+  const view = scene.frame(100);
+  const board = view.loot!.find((l) => l.label === '★ Grand selections')!;
+  expect(board).toBeTruthy();
+  scene.setInput(inp({ move: { x: 0.4, y: 0 } }));
+  raw.world.players[0].pos = { ...board.pos };
+  for (const now of [10, 20, 30]) scene.frame(100 + now);
+  expect(scene.takeGrandBoardOpen()).toBe(false);
+  scene.setInput(inp());
+  raw.world.players[0].pos = { ...board.pos };
+  for (const now of [200, 400, 600]) scene.frame(now, true);
+  expect(scene.takeGrandBoardOpen()).toBe(false);
+  for (const now of [800, 1000, 1200]) scene.frame(now);
+  expect(scene.takeGrandBoardOpen()).toBe(true);
+  expect(scene.takeGrandBoardOpen()).toBe(false);
+  scene.frame(1400);
+  expect(scene.takeGrandBoardOpen()).toBe(false);
+  expect(scene.takeClaims()).toEqual([]);
+  raw.world.players[0].pos = { x: 800, y: 780 };
+  scene.frame(1600);
+  raw.world.players[0].pos = { ...board.pos };
+  for (const now of [1800, 2000, 2200]) scene.frame(now);
+  expect(scene.takeGrandBoardOpen()).toBe(true);
+});

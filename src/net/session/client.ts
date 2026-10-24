@@ -1,3 +1,4 @@
+import type { GrandLoadout, GrandRequest } from '../../engine/content/grandSelections';
 /**
  * Warband — the Client session.
  *
@@ -70,6 +71,7 @@ export interface ClientOpts {
    * peer count — Trystero forms a full mesh, so a plain peer tally would also
    * count other clients, which is not what "connected to the host" means.
    */
+  onGrandState?: (state: GrandLoadout, credit: boolean) => void;
   onPeers?: (count: number) => void;
   onError?: (err: string) => void;
   /**
@@ -166,6 +168,10 @@ export class Client implements NetSession {
     this.pauseReqAction = this.action(ACTIONS.pauseReq);
     this.upgradeAction = this.action(ACTIONS.upgrade);
     this.specialAction = this.action(ACTIONS.special);
+    this.specialAction.onMessage = (msg, ctx) => {
+      if (ctx.peerId === this.hostPeerId && msg.grandState?.version === 1)
+        this.opts.onGrandState?.(msg.grandState, !!msg.grandCredit);
+    };
     this.swapAction = this.action(ACTIONS.swap);
     this.nextReadyAction = this.action(ACTIONS.nextReady);
     this.nextReadyStateAction = this.action(ACTIONS.nextReadyState);
@@ -186,6 +192,8 @@ export class Client implements NetSession {
       this.interpolator.reset();
       this.resetPrediction();
       this.opts.onStart(msg);
+      const grands = msg.grandLoadouts?.[selfId];
+      if (grands) this.opts.onGrandState?.(grands, false);
     };
     this.snapshotAction.onMessage = (snap, ctx) => {
       this.markHostReached(ctx.peerId);
@@ -333,6 +341,10 @@ export class Client implements NetSession {
   }
 
   /** NetSession: relay this player's between-boss character upgrade pick. */
+  chooseGrand(request: GrandRequest): void {
+    this.specialAction.send({ grand: request });
+  }
+
   chooseCharUpgrade(upgradeId: string): void {
     this.upgradeAction.send({ char: upgradeId });
   }

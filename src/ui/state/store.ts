@@ -1,3 +1,4 @@
+import { normalizeGrandLoadout, type GrandLoadout } from '../../engine/content/grandSelections';
 /**
  * Warband — Zustand app/UI store. Holds app phase, room + lobby state, local
  * selections and result. The networking layer writes lobby/result data here;
@@ -25,6 +26,7 @@ import { setShakeEnabled } from '../../render/pipeline/camera';
 export interface SfLoadout {
   upgrades: UpgradeId[];
   charUpgrades: string[];
+  grandLoadout?: GrandLoadout;
   subSkills: string[];
   extraClasses: ClassId[];
 }
@@ -204,6 +206,9 @@ export interface AppState {
   myUpgrades: UpgradeId[];
   /** Character (class) upgrades this local hero has picked so far this run. */
   myCharUpgrades: string[];
+  myGrandLoadout?: GrandLoadout;
+  grandCredit: boolean;
+  setGrandState: (state: GrandLoadout, credit: boolean) => void;
   /** The subclass this hero committed to (item 13), or null. */
   mySubclassId: string | null;
   /** Subclass skill ids bound to sub1/sub2 (up to two, same subclass). */
@@ -346,6 +351,8 @@ export const useStore = create<AppState>((set, get) => ({
   cycle: 0,
   myUpgrades: [],
   myCharUpgrades: [],
+  myGrandLoadout: undefined,
+  grandCredit: false,
   mySubclassId: null,
   mySubSkills: [],
   myExtraClasses: [],
@@ -414,11 +421,14 @@ export const useStore = create<AppState>((set, get) => ({
   setRun: (run) => set({ run }),
   setCycle: (cycle) => set({ cycle }),
   addMyUpgrade: (id) => set({ myUpgrades: [...get().myUpgrades, id] }),
+  setGrandState: (state, credit) => set({ myGrandLoadout: state, grandCredit: credit }),
   addMyCharUpgrade: (id) => set({ myCharUpgrades: [...get().myCharUpgrades, id] }),
   clearMyUpgrades: () =>
     set({
       myUpgrades: [],
       myCharUpgrades: [],
+      myGrandLoadout: undefined,
+      grandCredit: false,
       mySubclassId: null,
       mySubSkills: [],
       myExtraClasses: [],
@@ -446,6 +456,11 @@ export const useStore = create<AppState>((set, get) => ({
     set({
       myUpgrades: [...loadout.upgrades],
       myCharUpgrades: [...loadout.charUpgrades],
+      myGrandLoadout: normalizeGrandLoadout(loadout.grandLoadout, {
+        classes: [get().localClass, ...loadout.extraClasses],
+        history: loadout.charUpgrades,
+        subSkills: loadout.subSkills,
+      }),
       mySubSkills: [...loadout.subSkills],
       myExtraClasses: [...loadout.extraClasses],
     }),
@@ -543,6 +558,8 @@ export const useStore = create<AppState>((set, get) => ({
       cycle: 0,
       myUpgrades: [],
       myCharUpgrades: [],
+      myGrandLoadout: undefined,
+      grandCredit: false,
       mySubclassId: null,
       mySubSkills: [],
       myExtraClasses: [],

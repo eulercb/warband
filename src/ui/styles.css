@@ -3145,3 +3145,29 @@ body {
 .wb-camp-root.wb-guided-mobile .wb-intro {
   display: none;
 }
+
+/* Grand bank stays inside the existing scrolling reward/editor panels on phones. */
+.wb-grand-panel {
+  min-width: 0;
+  margin-block: 0.75rem;
+}
+.wb-grand-panel summary {
+  cursor: pointer;
+  padding: 0.65rem;
+  color: var(--gold, #f2cc70);
+}
+.wb-grand-panel select,
+.wb-special-reward select {
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.5rem;
+  font: inherit;
+}
+.wb-grand-panel .wb-upgrade-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.wb-special-reward .wb-btn {
+  max-width: 100%;
+  white-space: normal;
+}

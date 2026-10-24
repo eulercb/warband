@@ -41,6 +41,7 @@ function makeSpies(): Record<string, ReturnType<typeof vi.fn>> {
     'requestPause',
     'chooseUpgrade',
     'chooseCharUpgrade',
+    'chooseGrand',
     'chooseSubSkill',
     'chooseExtraClass',
     'setNextReady',
@@ -829,4 +830,19 @@ describe('misc helpers', () => {
       vi.unstubAllGlobals();
     }
   });
+});
+
+it('mirrors authoritative grand banks for host and client, and delegates selection without optimistic ownership', async () => {
+  await session.hostGame();
+  const state = { version: 1 as const, classes: {} };
+  hosts[0].opts.onGrandState(state, true);
+  expect(st().grandCredit).toBe(true);
+  expect(st().myGrandLoadout).toEqual(state);
+  session.chooseGrand({ classId: 'knight', id: 'kn_gk_basic_a', action: 'earn' });
+  expect(hosts[0].spies.chooseGrand).toHaveBeenCalled();
+  expect(st().myCharUpgrades).toEqual([]);
+  session.leaveToMenu();
+  await session.joinGame('ABC234');
+  clients[0].opts.onGrandState(state, false);
+  expect(st().grandCredit).toBe(false);
 });

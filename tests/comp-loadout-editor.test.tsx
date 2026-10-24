@@ -113,14 +113,16 @@ describe('<LoadoutEditor> selections write the loadout', () => {
     expect(l.extraClasses).toEqual([]);
   });
 
-  it('toggles a grand improvement into the loadout', () => {
-    const { container } = render(<LoadoutEditor />);
-    const grands = container.querySelectorAll<HTMLButtonElement>('.wb-btn-grand');
-    expect(grands.length).toBeGreaterThan(0);
-    fireEvent.click(grands[0]);
-    expect(lo().charUpgrades.some((id) => id.length > 0)).toBe(true);
-    // Every id it added is a real grand.
-    expect(lo().charUpgrades.length).toBe(1);
+  it('keeps earned grands separate from normal boons and allows free unequipping', () => {
+    render(<LoadoutEditor />);
+    fireEvent.change(screen.getByLabelText('New grand'), { target: { value: 'kn_gk_basic_a' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock grand' }));
+    expect(lo().charUpgrades).toEqual([]);
+    expect(lo().grandLoadout!.classes.knight!.bank).toEqual(['kn_gk_basic_a']);
+    expect(lo().grandLoadout!.classes.knight!.equipped).toEqual(['kn_gk_basic_a']);
+    fireEvent.click(screen.getByRole('button', { name: /Unequip/ }));
+    expect(lo().grandLoadout!.classes.knight!.equipped).toEqual([]);
+    expect(lo().grandLoadout!.classes.knight!.bank).toEqual(['kn_gk_basic_a']);
   });
 
   it('surfaces per-sub-skill boons only once that skill is equipped', () => {
@@ -137,19 +139,19 @@ describe('<LoadoutEditor> selections write the loadout', () => {
 });
 
 describe('<LoadoutEditor> grafts (wild picks) + graft grands', () => {
-  it('selecting a graft unlocks its graft grand, and dropping the graft removes it', () => {
+  it('banks a graft grand through reclaiming without applying it to the native skill', () => {
     render(<LoadoutEditor />);
-    // No graft grand is offered until the graft is actually held.
-    expect(screen.queryByRole('button', { name: /Living Cataclysm/ })).toBeNull();
+    expect(screen.queryByRole('option', { name: /Living Cataclysm/ })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Pyromancer's Pact/ }));
-    expect(lo().charUpgrades).toContain('hy_pyromancer');
-    // Its graft grand now appears (offerableGrands surfaces it) and can be taken.
-    fireEvent.click(screen.getByRole('button', { name: /Living Cataclysm/ }));
-    expect(lo().charUpgrades).toContain('hy_pyromancer_g_a');
-    // Dropping the graft strips its welded grand too — no dangling no-op grand.
+    fireEvent.change(screen.getByLabelText('New grand'), {
+      target: { value: 'hy_pyromancer_g_a' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock grand' }));
+    expect(lo().grandLoadout!.classes.knight!.bank).toContain('hy_pyromancer_g_a');
     fireEvent.click(screen.getByRole('button', { name: /Pyromancer's Pact/ }));
     expect(lo().charUpgrades).not.toContain('hy_pyromancer');
-    expect(lo().charUpgrades).not.toContain('hy_pyromancer_g_a');
+    expect(lo().grandLoadout!.classes.knight!.bank).toContain('hy_pyromancer_g_a');
+    expect(screen.getByText(/Requires its matching equipped skill/)).toBeTruthy();
   });
 
   it('keeps graft followup ranks through rerenders and removes them with their graft', () => {

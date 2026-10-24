@@ -1,6 +1,8 @@
 # Deliberate recharge and bounded ability reach
 
-Delivery after merged/live-tested PR #132. This is the recharge/range foundation,
+Delivery after merged/live-tested PR #132. PR #133 is now merged/live-tested; the
+owner reports that the limits feel good. Reassess these bounds after the upgrade
+and grand content cohorts replace excess numerical growth. This is the recharge/range foundation,
 not the grand selection migration. Existing grand ownership and reward eligibility
 remain until the next framework stage.
 

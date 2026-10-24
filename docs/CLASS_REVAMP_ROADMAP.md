@@ -1,15 +1,14 @@
 # Class identity and subclass roadmap
 
-Current direction supersedes the previous pilot rollout estimate: see
-[upgrade foundations and grand selections](UPGRADE_FOUNDATIONS_AND_GRANDS.md).
-The pilot and correction pack are merged/live-tested. Current delivery is
-[deliberate recharge and bounded reach](CADENCE_AND_RANGE.md), including generic
-Haste in the 4s floor. Next is the approved per-class grand bank/2/1/1 framework
-and earlier reward flow, then Rogue/Warlock retouches and remaining class cohorts.
-Grand limits and reward timing are not implemented in this foundation patch.
-Allow roughly six to eight further implementation PRs under the expanded scope;
-revise cohort sizes after verifying the framework. Earlier sequences/tables below
-remain historical; the linked current plan is authoritative.
+Current delivery: [grand selection framework and earlier rewards](GRAND_SELECTIONS.md).
+Recharge/range foundations (PR #133) are merged and live-tested; the owner reports
+that their limits feel good. Reassess them after content reworks replace excess
+cooldown/range/area/duration growth. The per-class bank and 2/1/1 capacity are now
+implemented with existing content and an explicit legacy bridge; individual
+subclass-skill grand content is still pending. Next: Rogue/Warlock pilot retouches,
+then remaining cohorts and a whole-system review. Roughly five to seven content
+and review PRs remain, adjusting cohort size to reviewability. Earlier sequences
+and tables below are historical; the linked delivery describes current behavior.
 
 ## Goals and boundaries
 

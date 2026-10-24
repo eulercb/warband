@@ -178,6 +178,15 @@ export class RewardScene {
   private shopArmedId: number | null = null;
   private pendingBuys: ShopOffer[] = [];
 
+  private grandBoardDwell = 0;
+  private grandBoardArmed = false;
+  private grandBoardPending = false;
+  private readonly grandBoardPos = { x: ARENA_W / 2 + 250, y: 730 };
+  takeGrandBoardOpen(): boolean {
+    const pending = this.grandBoardPending;
+    this.grandBoardPending = false;
+    return pending;
+  }
   private nextId = 1;
 
   constructor(
@@ -193,6 +202,7 @@ export class RewardScene {
     loadout: { subSkills?: string[]; extraClasses?: ClassId[] } = {},
     /** item 2: the ephemeral-shop perks to lay out as buyable stalls (may be empty). */
     shop: ShopOffer[] = [],
+    private readonly grandBoard = false,
   ) {
     this.world = new World({
       monsterId: 'dummy', // required by World init; no boss spawns in reward mode
@@ -264,6 +274,22 @@ export class RewardScene {
     // playground's totems), so they stay smooth regardless of how many sim
     // steps a frame ran. While an overlay is up, both are held frozen.
     const step = frozen ? 0 : Math.max(0, dt);
+    if (this.grandBoard) {
+      const near = this.heroDist(this.grandBoardPos) < RELIC_PICKUP_RADIUS;
+      const moving = Math.hypot(this.input.move.x, this.input.move.y) > 0.35;
+      if (!near) {
+        this.grandBoardArmed = false;
+        this.grandBoardDwell = 0;
+      } else if (moving) {
+        this.grandBoardDwell = 0;
+      } else if (!this.grandBoardArmed) {
+        this.grandBoardDwell += step;
+        if (this.grandBoardDwell >= CLAIM_DWELL_S) {
+          this.grandBoardArmed = true;
+          this.grandBoardPending = true;
+        }
+      }
+    }
     this.updateDwell(step);
     this.updateVortexDwell(step);
     this.updateShopDwell(step); // item 2
@@ -275,6 +301,18 @@ export class RewardScene {
       ...this.relics.map((r) => this.lootView(r)),
       ...this.shopItems.map((s) => this.shopView(s)), // item 2
     ];
+    if (this.grandBoard)
+      state.loot.push({
+        id: -100,
+        kind: 'shop',
+        pos: this.grandBoardPos,
+        radius: RELIC_RADIUS,
+        pickupRadius: RELIC_PICKUP_RADIUS,
+        claimed: false,
+        locked: false,
+        active: this.heroDist(this.grandBoardPos) <= RELIC_READ_RADIUS,
+        label: '★ Grand selections',
+      });
     state.vortex = this.vortexView();
     return state;
   }

@@ -1,3 +1,5 @@
+import { grandHistory } from '../../engine/content/grandSelections';
+import GrandPanel from './GrandManager';
 /**
  * Warband — the walkable REWARD ROOM (diegetic between-boss upgrade phase).
  *
@@ -183,7 +185,10 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   // pick — so the between-boss boons offered are the drafted class's correct ones.
   const localClass = useStore((s) => s.activeDraftedClass ?? s.localClass);
   const myUpgrades = useStore((s) => s.myUpgrades);
+  const [grandBoardOpen, setGrandBoardOpen] = useState(false);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  const grandState = useStore((s) => s.myGrandLoadout);
+  const subSkills = useStore((s) => s.mySubSkills);
   const readyReady = useStore((s) => s.nextReadyReady);
   const readyTotal = useStore((s) => s.nextReadyTotal);
   const myCoins = useStore((s) => s.myCoins);
@@ -283,6 +288,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
       myScore,
       { subSkills: st.mySubSkills, extraClasses: st.myExtraClasses },
       buildShopOffers(st.activeHardcore), // item 2: walkable coin stalls
+      true, // Walk-up grand management uses the same host transaction as the list.
     );
     sceneRef.current = scene;
 
@@ -357,6 +363,10 @@ export default function RewardRoom({ result }: { result: FightResult }) {
         );
 
         const state = scene.frame(now, uiOpen);
+        if (scene.takeGrandBoardOpen()) {
+          setGrandBoardOpen(true);
+          setShowList(true);
+        }
         const localId = state.localPlayerId;
         const lp = localId != null ? state.players.find((p) => p.id === localId) : null;
         const localScreen = lp
@@ -463,7 +473,17 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   };
 
   const generic = offers.generic;
-  const chars = offers.char;
+  const activeHistory = useMemo(
+    () => grandHistory(localClass, myCharUpgrades, grandState, subSkills),
+    [localClass, myCharUpgrades, grandState, subSkills],
+  );
+  const chars = useMemo(
+    () =>
+      offers.char.map(
+        (o) => describeCharOffer(localClass, activeHistory, o.id, subSkills, myUpgrades) ?? o,
+      ),
+    [offers.char, localClass, activeHistory, subSkills, myUpgrades],
+  );
 
   return (
     <div
@@ -556,7 +576,11 @@ export default function RewardRoom({ result }: { result: FightResult }) {
               : ''}
             {focus.offer.label}
           </div>
-          <div className="wb-reward-inspect-desc">{focus.offer.desc}</div>
+          <div className="wb-reward-inspect-desc">
+            {focus.kind === 'char'
+              ? (chars.find((o) => o.id === focus.offer.id)?.desc ?? focus.offer.desc)
+              : focus.offer.desc}
+          </div>
           {focus.claimed ? (
             <div className="wb-reward-inspect-tag claimed">Claimed ✓</div>
           ) : focus.locked ? (
@@ -625,6 +649,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
       {showList ? (
         <div className="wb-overlay" role="dialog" aria-label="Between-boss upgrades">
           <div className="wb-panel wb-reward-list" ref={listRef}>
+            <GrandPanel open={grandBoardOpen} />
             <h2 className="wb-title-sm">Claim your boons</h2>
             {mobile && result.runSeed != null ? (
               <p>Seed: {result.runSeed.toString(36).toUpperCase()}</p>

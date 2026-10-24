@@ -4096,7 +4096,7 @@ function parseGraftup(id: string): { slot: AbilitySlot; boonId: string } | null 
 /** A throwaway hero stub with a fresh cloned ability table (preview / occupancy).
  *  Resolves the class through `getClass`, so every preview (HUD, reward cards,
  *  balance estimator, multiclass tables) follows the active run's rolled kit. */
-function stubPlayer(classId: ClassId): Player {
+export function stubPlayer(classId: ClassId): Player {
   const cls = getClass(classId);
   return {
     classId,
@@ -4280,11 +4280,20 @@ export function applySubclassGrands(player: Player, ids: readonly string[] | und
   });
   for (const id of ids) {
     const def = CHAR_UPGRADES[id];
-    if (!def?.subclassId || !upgradeAllowedFor(def, player.classId)) continue;
+    const subclassId =
+      def?.subclassId ??
+      (def?.grand && def.subSkillId ? subclassOfSkill(def.subSkillId)?.id : undefined);
+    if (!def?.grand || !subclassId || !upgradeAllowedFor(def, player.classId)) continue;
     // Hand the grand only the sub-abilities that belong to its subclass.
     const targeted: Partial<Record<SubSlot, PlayerAbilityDef>> = {};
     for (const slot of SUB_SLOTS) {
-      if (subs[slot] && slotSubclass[slot] === def.subclassId) targeted[slot] = subs[slot];
+      const boundId = active[slot === 'sub1' ? 0 : 1];
+      if (
+        subs[slot] &&
+        slotSubclass[slot] === subclassId &&
+        (!def.subSkillId || def.subSkillId === boundId)
+      )
+        targeted[slot] = subs[slot];
     }
     if (targeted.sub1 || targeted.sub2) {
       def.apply({
@@ -4319,7 +4328,7 @@ export function applySubSkillUpgrades(player: Player, ids: readonly string[] | u
   });
   for (const id of ids) {
     const def = CHAR_UPGRADES[id];
-    if (!def?.subSkillId || !upgradeAllowedFor(def, player.classId)) continue;
+    if (!def?.subSkillId || def.grand || !upgradeAllowedFor(def, player.classId)) continue;
     // Hand the boon only the sub-ability whose skill id it hones.
     const targeted: Partial<Record<SubSlot, PlayerAbilityDef>> = {};
     for (const slot of SUB_SLOTS) {
@@ -4390,8 +4399,9 @@ export function previewSubAbility(
     // A "Honed X" boon tunes exactly this skill; a subclass grand tunes every skill
     // of its subclass. Both mutate the ability handed in through the sub1 slot.
     const hits =
-      (def.subSkillId != null && def.subSkillId === subSkillId) ||
-      (def.subclassId != null && def.subclassId === owner.id);
+      def.subSkillId != null
+        ? def.subSkillId === subSkillId
+        : def.subclassId != null && def.subclassId === owner.id;
     if (!hits) continue;
     def.apply({ player: stub, abilities, subAbilities: { sub1: ability } });
     tuned = true;
@@ -4649,7 +4659,10 @@ const BOON_SLOTS: Record<string, AbilitySlot[]> = (() => {
 })();
 
 /** Which SkillKey sits in each slot after a hero's owned upgrades are replayed. */
-function occupancyAfter(classId: ClassId, owned: readonly string[]): Record<AbilitySlot, SkillKey> {
+export function occupancyAfter(
+  classId: ClassId,
+  owned: readonly string[],
+): Record<AbilitySlot, SkillKey> {
   return replayCharUpgrades(stubPlayer(classId), owned);
 }
 
