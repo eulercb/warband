@@ -143,7 +143,10 @@ Local validation: **3,891 tests passed across 143 files**; full coverage met the
 unchanged 98% branch gate (98.01% achieved). Production build, lint, formatting and inventory replay
 passed. Twelve engine/renderer browser fixtures passed, plus the selected production
 UI/input checks on desktop and 320px mobile. GitHub CI rechecks the final commit,
-including the new browser fixture and reproducible inventory gate.
+including the new browser fixture and reproducible inventory gate. The caster-defense
+smoke samples transient absorption amount/cap atomically: combat can consume a
+bubble between separate DOM reads. Its positive/cap assertions remain intact;
+the six Warlock desktop/mobile cases pass locally.
 
 For live testing, try Vial alone before combining with Coated Blade; compare the
 full-ground grand with following poison; use prepared Backstab while Shadowstep is

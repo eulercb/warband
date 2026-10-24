@@ -118,10 +118,18 @@ try {
       );
       const self = page.locator('.hud-selfhp');
       if (test.bubble) {
-        const meter = self.getByRole('meter', { name: 'Absorption' });
-        await meter.waitFor();
-        const amount = Number(await meter.getAttribute('aria-valuenow'));
-        assert.ok(amount > 0 && amount <= Number(await meter.getAttribute('aria-valuemax')));
+        // Combat can consume a bubble between locator reads. Capture one positive
+        // frame atomically so disappearance after observation cannot race getAttribute.
+        const observed = await page.waitForFunction(() => {
+          const meter = document.querySelector(
+            '.hud-selfhp [role="meter"][aria-label="Absorption"]',
+          );
+          if (!meter) return null;
+          const amount = Number(meter.getAttribute('aria-valuenow'));
+          return amount > 0 ? { amount, max: Number(meter.getAttribute('aria-valuemax')) } : null;
+        });
+        const { amount, max } = await observed.jsonValue();
+        assert.ok(amount > 0 && amount <= max);
       } else if (test.badge) await self.getByTitle(test.badge).waitFor();
       // Let the normal ranged-zone arming animation finish for the review capture.
       if (test.zone) await page.waitForTimeout(700);
