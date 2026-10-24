@@ -34,7 +34,8 @@
     "smoke:defensive-identity": "node scripts/smoke-defensive-identity.mjs",
     "smoke:defense-recovery": "node scripts/smoke-defense-recovery.mjs",
     "smoke:coherence": "node scripts/smoke-coherence.mjs",
-    "smoke:upgrade-pilot": "node scripts/smoke-upgrade-pilot.mjs"
+    "smoke:upgrade-pilot": "node scripts/smoke-upgrade-pilot.mjs",
+    "smoke:upgrade-foundations": "node scripts/smoke-upgrade-foundations.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

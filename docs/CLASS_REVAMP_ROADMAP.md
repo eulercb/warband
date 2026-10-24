@@ -1,29 +1,13 @@
 # Class identity and subclass roadmap
 
-Current delivery: **Rogue/Warlock upgrade identity pilot**, live verification pending.
-
-See [the pilot delivery](UPGRADE_PILOT.md) for final mechanics, benchmark limits and
-playtest instructions. The design checkpoint is approved; the eight paths are
-implemented. After live feedback, two to four grouped rollout PRs remain.
-
-The 24/24 passive round, [whole-class audit](CLASS_COHERENCE_AUDIT.md), and coherence
-retouches [A](COHERENCE_BATCH_A.md), [B](COHERENCE_BATCH_B.md), and
-[C](COHERENCE_BATCH_C.md) are merged and live-tested. This completes the approved
-class-coherence sequence, without establishing equal numerical balance.
-
-The [upgrade design checkpoint](UPGRADE_DESIGN_CHECKPOINT.md) now inventories the
-registry, reward availability and replay, and proposed eight Rogue/Warlock upgrade
-paths, now approved and implemented. The checkpoint itself contains no gameplay changes; the pilot now implements them.
-The [generated inventory](UPGRADE_INVENTORY.md) and [research notes](UPGRADE_RESEARCH.md)
-separate measured current behavior from proposed mechanics.
-
-The two-class pilot is this delivery. Allow **two to four grouped rollouts**
-after playtesting. Base/subclass
-boons, grands, grafts and generation remain in scope. Adding a passive or rider
-never exempts a plain active from review. Art direction is separate. Earlier status
-tables preserve history and are superseded here. Follow the
-[milestone review gates](CLASS_MILESTONE_REVIEW.md) and
-[public research guidelines](RESEARCH_GUIDELINES.md).
+Current direction supersedes the previous pilot rollout estimate: see
+[upgrade foundations and grand selections](UPGRADE_FOUNDATIONS_AND_GRANDS.md).
+The pilot is merged/live-tested. This delivery corrects additive ordinary boons,
+Honed text and test-loadout access. Recharge foundations are next, before further
+class cohorts. Grand selection is a reviewed proposal, not yet implemented.
+The owner confirmed four equipped grands per class, only the active class applying.
+Allow roughly six to eight further implementation PRs under the expanded scope.
+Earlier status tables remain historical; the linked plan is authoritative.
 
 ## Goals and boundaries
 
