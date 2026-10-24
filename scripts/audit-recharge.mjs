@@ -98,7 +98,9 @@ try {
     if (previous && previous.seconds !== row.seconds)
       throw new Error(`Context-dependent base recharge: ${key}`);
     if (!previous) {
-      const { subclass, chosenSkill, ...base } = row;
+      const base = { ...row };
+      delete base.subclass;
+      delete base.chosenSkill;
       unique.set(key, row.slot === 'sub1' ? row : base);
     }
   }
