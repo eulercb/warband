@@ -123,7 +123,7 @@ function rollOffers(
     char: chr
       // item 5: pass the equipped sub-skills so a subclass-grand card can preview the
       // concrete before→after of the actual skills it retunes.
-      .map((id) => describeCharOffer(classId, ownedChar, id, subSkills))
+      .map((id) => describeCharOffer(classId, ownedChar, id, subSkills, ownedGen))
       .filter((o): o is CharOfferView => o !== null),
   };
 }

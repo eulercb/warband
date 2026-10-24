@@ -60,11 +60,11 @@ describe('Cleric rescue', () => {
     const [p, ally] = w.players;
     ally.hp = ally.maxHp * 0.35;
     resolvePlayerAbility(w, p, 'a1', ZERO);
-    expect(ally.hp).toBeCloseTo(84 + 97.5);
-    expect(p.stats.healingDone).toBe(97.5);
+    expect(ally.hp).toBeCloseTo(84 + 130);
+    expect(p.stats.healingDone).toBe(130);
     expect(p.threat).toBeGreaterThan(0);
     expect(buffMult(ally, 'damageTaken')).toBe(1);
-    expect(ally.buffs.find((b) => b.kind === 'absorption')?.mult).toBe(96.375);
+    expect(ally.buffs.find((b) => b.kind === 'absorption')?.mult).toBe(104.5);
     const hp = ally.hp;
     damagePlayer(w, ally, 40);
     expect(ally.hp).toBeCloseTo(hp);
@@ -76,8 +76,8 @@ describe('Cleric rescue', () => {
     const [p, ally] = w.players;
     ally.hp = 85;
     resolvePlayerAbility(w, p, 'a1', ZERO);
-    expect(ally.hp).toBe(160);
-    expect(ally.buffs.find((b) => b.kind === 'absorption')?.mult).toBe(18.75);
+    expect(ally.hp).toBe(185);
+    expect(ally.buffs.find((b) => b.kind === 'absorption')?.mult).toBe(25);
     ally.buffs = [];
     ally.hp = ally.maxHp;
     ally.state = 'downed';
@@ -85,7 +85,7 @@ describe('Cleric rescue', () => {
     expect(ally.buffs).toEqual([]);
     ally.state = 'alive';
     resolvePlayerAbility(w, p, 'a1', ZERO);
-    expect(p.stats.healingDone).toBe(75);
+    expect(p.stats.healingDone).toBe(100);
     expect(p.buffs).toEqual([]);
   });
   it('rescues solo, caps healing at missing HP, and keeps one capped absorption pool', () => {
@@ -351,7 +351,7 @@ it.each(['cleric', 'paladin', 'druid', 'bard'] as const)(
     }
     if (classId === 'cleric') {
       resolvePlayerAbility(w, p, 'a1', ZERO);
-      expect(ally.hp).toBe(117.5);
+      expect(ally.hp).toBe(150);
     }
     if (classId === 'paladin') {
       resolvePlayerAbility(w, p, 'a3', ZERO);

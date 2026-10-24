@@ -78,7 +78,7 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a direct heal: heal amount + who it can reach', () => {
     // Cleric Heal — heal magnitude + range.
     expect(describeAbility(CLASSES.cleric.abilities.a1)).toBe(
-      'Heal 75 · +30% heal at ≤35% HP; effective heals add a 6s bubble — 25% healed HP (cap 15% max HP), plus 75% on rescue (extra cap 30% max HP); shared cap 50% max HP · 400u range · 3s cooldown',
+      'Heal 100 · +30% heal at ≤35% HP; effective heals add a 6s bubble — 25% healed HP (cap 15% max HP), plus 75% on rescue (extra cap 30% max HP); shared cap 50% max HP · 400u range · 4s cooldown',
     );
   });
 
@@ -221,7 +221,7 @@ describe('describeAbility (slot-less subclass skills + edge shapes)', () => {
       damage: 10,
       range: 50,
     };
-    expect(describeAbility(def)).toBe('10 dmg · 50u reach · 1s cooldown');
+    expect(describeAbility(def)).toBe('10 dmg · 50u reach · 4s cooldown');
   });
 });
 
@@ -237,7 +237,7 @@ describe('describeAbility (generic mods fold + cooldown floor, item 2)', () => {
   it('scales damage / cooldown / wind-up by the passed multipliers', () => {
     const def: Omit<PlayerAbilityDef, 'slot'> = { ...jab, cooldown: 4, castTime: 1 };
     expect(describeAbility(def, { damageMult: 1.5, cooldownMult: 0.5, castMult: 0.5 })).toBe(
-      '15 dmg · 50u reach · 0.5s wind-up · 2s cooldown',
+      '15 dmg · 50u reach · 0.5s wind-up · 4s cooldown',
     );
   });
 
@@ -248,7 +248,7 @@ describe('describeAbility (generic mods fold + cooldown floor, item 2)', () => {
       '10 dmg · 50u reach · 0.3s cooldown',
     );
     // With no floor (every non-basic slot, and every pre-item-2 caller) the raw value shows.
-    expect(describeAbility(jab, { cooldownMult: 0.1 })).toBe('10 dmg · 50u reach · 0.04s cooldown');
+    expect(describeAbility(jab, { cooldownMult: 0.1 })).toBe('10 dmg · 50u reach · 4s cooldown');
     // A floor below the (already larger) cooldown is inert — no clamp, unchanged line.
     expect(describeAbility(jab, { cooldownFloor: 0.3 })).toBe('10 dmg · 50u reach · 0.4s cooldown');
   });

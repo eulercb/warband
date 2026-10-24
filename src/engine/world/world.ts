@@ -1,4 +1,11 @@
 import {
+  boundedAbility,
+  effectiveRecharge,
+  rechargeFloor,
+  refundRecharge,
+  persistentDuration,
+} from '../content/abilityLimits';
+import {
   applyCoating,
   tickVenoms,
   updateUpgradeZone,
@@ -77,7 +84,6 @@ import {
   PACK_EARLY_DMG_EASE,
   TWIN_DMG_FRAC,
   BOSS_HP_SCALE,
-  BASIC_CD_FLOOR,
   BOSS_REGEN_MAX_FRAC,
   BOSS_INVULN_WINDOW_S,
   HARDCORE_REVIVES_PER_FIGHT,
@@ -799,7 +805,11 @@ export class World {
       player.charUpgradeIds = pi.charUpgrades ?? [];
       // Global attack slow-down last, so character cooldown-reduction upgrades
       // still shave a proportional slice off the (doubled) base.
-      if (player.abilities) slowAttackCooldowns(player.abilities);
+      if (player.abilities) {
+        slowAttackCooldowns(player.abilities);
+        for (const slot of ['basic', 'a1', 'a2', 'a3'] as const)
+          player.abilities[slot] = boundedAbility(player.abilities[slot]);
+      }
       // Subclass skills (item 13) — bind up to two to the sub1/sub2 slots.
       this.bindSubSkills(player, pi.subSkills);
       // Multiclass (item 14) — build a resolved kit for each owned class so a swap
@@ -839,13 +849,15 @@ export class World {
       const skill = getSubSkill(id);
       if (!skill) return;
       const slot: SubSlot = i === 0 ? 'sub1' : 'sub2';
-      p.subAbilities![slot] = { ...skill.ability, slot };
+      p.subAbilities![slot] = { ...skill.ability, slot, rechargeBase: skill.ability.cooldown };
     });
     // Re-apply any owned SUBCLASS grands (item 17) to the freshly-bound sub-abilities
     // — the sub skills are rebuilt from scratch each rebind, so this stays idempotent.
     applySubclassGrands(p, p.charUpgradeIds);
     // …then any owned per-sub-skill upgrades (item 6), keyed to the exact bound skill.
     applySubSkillUpgrades(p, p.charUpgradeIds);
+    for (const slot of ['sub1', 'sub2'] as const)
+      if (p.subAbilities[slot]) p.subAbilities[slot] = boundedAbility(p.subAbilities[slot]);
   }
 
   /**
@@ -1155,6 +1167,9 @@ export class World {
       if (p.regenPerSec > 0 && p.state === 'alive' && p.hp > 0) {
         p.hp = Math.min(p.maxHp, p.hp + p.regenPerSec * dt);
       }
+      for (const locks of Object.values(p.rechargeLocks ?? {}))
+        for (const slot of Object.keys(locks) as ExtSlot[])
+          locks[slot] = Math.max(0, (locks[slot] ?? 0) - dt);
       p.upgradeRefundRemaining = Math.max(0, (p.upgradeRefundRemaining ?? 0) - dt);
       p.cooldowns.basic = Math.max(0, p.cooldowns.basic - dt);
       p.cooldowns.a1 = Math.max(0, p.cooldowns.a1 - dt);
@@ -1181,6 +1196,16 @@ export class World {
           p.castTimerMax = 0; // cast finished; the bar clears
           if (p.state === 'alive' && !hasBuff(p, 'stun')) {
             resolvePlayerAbility(this, p, slot, { x: 0, y: 0 }, reserved);
+            if (reserved && persistentDuration(reserved) > 0) {
+              const recovery = rechargeFloor({ ...reserved, castTime: 0 }, slot, p.castMult);
+              p.cooldowns[slot] = Math.max(p.cooldowns[slot] ?? 0, recovery);
+              p.rechargeLocks ??= {};
+              p.rechargeLocks[p.classId] ??= {};
+              p.rechargeLocks[p.classId]![slot] = Math.max(
+                p.rechargeLocks[p.classId]![slot] ?? 0,
+                recovery,
+              );
+            }
           }
         }
       }
@@ -1301,12 +1326,10 @@ export class World {
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
 
     const ab = consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original)));
-    // Basics are the fire-rate spam vector: ×0.5 basic grands (Thousand Cuts /
-    // Hundred Hands) plus stacking Haste compound with no natural bound, so floor
-    // the basic slot's effective cooldown (#71). Other slots keep their raw value —
-    // their reductions are bounded by their base cooldown and the swap-cast gate.
-    const rawCd = ab.cooldown * p.cooldownMult;
-    const nextCd = slot === 'basic' ? Math.max(BASIC_CD_FLOOR, rawCd) : rawCd;
+    const nextCd = effectiveRecharge(ab, p.cooldownMult, p.castMult, slot);
+    p.rechargeLocks ??= {};
+    p.rechargeLocks[p.classId] ??= {};
+    p.rechargeLocks[p.classId]![slot] = rechargeFloor(ab, slot, p.castMult);
     if (ab.castTime && ab.castTime > 0) {
       p.castTimer = ab.castTime * p.castMult;
       p.castTimerMax = p.castTimer; // full duration, so the render's cast bar is accurate under Focus
@@ -1837,9 +1860,13 @@ export class World {
       abilityForSlot(source, 'a2')?.kind === 'blink' &&
       abilityForSlot(source, 'a2')?.prepareCrit
     ) {
-      source.cooldowns.a2 = Math.max(0, source.cooldowns.a2 - refund.seconds);
-      source.upgradeRefundRemaining = 4;
-      refund.cast.spent = true;
+      const refunded = refundRecharge(source, 'a2', refund.seconds);
+      const protectedWindow = (source.rechargeLocks?.[source.classId]?.a2 ?? 0) > 0;
+      if (refunded > 0 || protectedWindow) {
+        if (refunded <= 0) applyBuff(source, makeBuff('moveSpeed', 1.15, 2, 'assassinateFootwork'));
+        source.upgradeRefundRemaining = 4;
+        refund.cast.spent = true;
+      }
     }
     if (
       effective > 0 &&

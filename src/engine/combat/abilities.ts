@@ -1,3 +1,4 @@
+import { boundedAbility } from '../content/abilityLimits';
 import { armRetouchEffects } from './skillRetouches';
 import { onMoonAbility } from './moonForm';
 import { dimensionDoor } from './dimensionDoor';
@@ -375,7 +376,8 @@ export function resolvePlayerAbility(
     (reserved
       ? original
       : consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original))));
-  const ab = resolved?.preparedRefund ? { ...resolved, refundCast: { spent: false } } : resolved;
+  const limited = resolved && boundedAbility(resolved, world.arena);
+  const ab = limited?.preparedRefund ? { ...limited, refundCast: { spent: false } } : limited;
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
   armRetouchEffects(world, p, ab);
   onSubclassAbility(p, ab);
@@ -712,6 +714,7 @@ function zoneToImpact(z: ZoneSpec): ProjectileImpact {
 
 /** Spawn a synthesized ability's ground zone (centered heal zones / ground-cast). */
 function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number): void {
+  range = Math.min(range, Math.min(world.arena.w, world.arena.h) * 0.4);
   const centered = z.zoneKind === 'sanctuary' || z.zoneKind === 'consecration';
   const pos = centered
     ? { ...p.pos }

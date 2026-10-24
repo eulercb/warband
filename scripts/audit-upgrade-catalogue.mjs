@@ -46,10 +46,16 @@ try {
       seed: 31,
       players: [{ peerId: 'audit', name: 'Audit', classId, subSkills, charUpgrades, upgrades }],
     }).players[0];
+  const clean = (value) =>
+    JSON.parse(
+      JSON.stringify(value, (key, v) =>
+        ['rechargeBase', 'ordinaryRecharge'].includes(key) ? undefined : v,
+      ),
+    );
   const snapshot = (p) => ({
     stats: Object.fromEntries(stats.map((k) => [k, p[k]])),
-    abilities: p.abilities,
-    subAbilities: p.subAbilities ?? {},
+    abilities: clean(p.abilities),
+    subAbilities: clean(p.subAbilities ?? {}),
   });
   const diff = (a, b, path = '') => {
     if (JSON.stringify(a) === JSON.stringify(b)) return [];
@@ -312,7 +318,7 @@ try {
     throw new Error('Registry changed; review audit scope/counts.');
   const evidence = {
     schema: 1,
-    baseline: '3da6a2c plus upgrade foundation corrections (see UPGRADE_FOUNDATIONS_AND_GRANDS.md)',
+    baseline: '018b71c plus deliberate cadence/range pass (see CADENCE_AND_RANGE.md)',
     seed: 31,
     counts,
     genericCount: generic.length,

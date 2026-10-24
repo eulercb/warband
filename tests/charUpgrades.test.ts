@@ -329,12 +329,12 @@ describe('knight upgrades', () => {
     const a = apply('knight', ['kn_bastion']).abilities!;
     expect(a.a1.cooldown).toBeCloseTo(9.6, 5); // 12 * 0.8
     expect(a.a1.buffDefMult!).toBeCloseTo(0.7, 5); // was undefined -> set
-    expect(a.a1.buffDuration).toBe(4); // +0
+    expect(a.a1.buffDuration).toBe(4.6); // additive duration keeps capped repeat picks useful
   });
   it('kn_bastion twice keeps the shield floor (setMin Math.min branch)', () => {
     const a = apply('knight', ['kn_bastion', 'kn_bastion']).abilities!;
     expect(a.a1.buffDefMult!).toBeCloseTo(0.7, 5); // min(0.7, 0.7)
-    expect(a.a1.cooldown).toBeCloseTo(12 * 0.8 * 0.8, 5); // 7.68
+    expect(a.a1.cooldown).toBeCloseTo(12 * 0.8, 5); // 7.68
   });
   it('kn_secondwind grants regen scaled off max HP (player-only)', () => {
     const p = apply('knight', ['kn_secondwind']);
@@ -369,7 +369,7 @@ describe('ranger upgrades', () => {
   });
   it('rg_fleet upgrades the Roll', () => {
     const a = apply('ranger', ['rg_fleet']).abilities!;
-    expect(a.a3.cooldown).toBeCloseTo(3.5, 5); // 5 * 0.7
+    expect(a.a3.cooldown).toBeCloseTo(5, 5); // short mobility retains deliberate cooldown
     expect(a.a3.range).toBe(270);
     expect(a.a3.iframes!).toBeCloseTo(0.45, 5);
   });
@@ -400,7 +400,7 @@ describe('mage upgrades', () => {
   it('mg_blink upgrades Blink', () => {
     const a = apply('mage', ['mg_blink']).abilities!;
     expect(a.a3.range).toBe(320);
-    expect(a.a3.cooldown).toBeCloseTo(4.2, 5); // 6 * 0.7
+    expect(a.a3.cooldown).toBeCloseTo(6, 5); // short mobility retains deliberate cooldown
     expect(a.a3.iframes!).toBeCloseTo(0.45, 5); // base 0.2 (item 56) -> +0.25
   });
 });
@@ -408,7 +408,7 @@ describe('mage upgrades', () => {
 describe('cleric upgrades', () => {
   it('cl_greaterheal boosts Heal', () => {
     const a = apply('cleric', ['cl_greaterheal']).abilities!;
-    expect(a.a1.damage).toBe(103);
+    expect(a.a1.damage).toBe(138);
     expect(a.a1.range).toBe(450);
   });
   it('cl_blessing empowers Blessing', () => {
@@ -473,7 +473,7 @@ describe('rogue upgrades', () => {
   it('ro_assassin sharpens Backstab', () => {
     const a = apply('rogue', ['ro_assassin']).abilities!;
     expect(a.a1.damage).toBe(74); // item 13: Backstab base 50 (crit-leaning) + 24
-    expect(a.a1.cooldown).toBeCloseTo(3.9, 5); // 5 * 0.78
+    expect(a.a1.cooldown).toBeCloseTo(4, 5); // shared ordinary reduction budget
   });
   it('ro_poison spreads Poison Vial', () => {
     const a = apply('rogue', ['ro_poison']).abilities!;
@@ -483,7 +483,7 @@ describe('rogue upgrades', () => {
   });
   it('ro_vanish upgrades Shadowstep', () => {
     const a = apply('rogue', ['ro_vanish']).abilities!;
-    expect(a.a2.cooldown).toBeCloseTo(4.2, 5); // 6 * 0.7
+    expect(a.a2.cooldown).toBeCloseTo(6, 5); // short mobility retains deliberate cooldown
     expect(a.a2.iframes!).toBeCloseTo(0.5, 5); // 0.3 + 0.2
     expect(a.a2.healOnUse!).toBeCloseTo(22, 5); // was undefined -> +22
   });
@@ -524,7 +524,7 @@ describe('paladin upgrades', () => {
   it('pa_mercy boosts Lay on Hands', () => {
     const a = apply('paladin', ['pa_mercy']).abilities!;
     expect(a.a2.damage).toBe(122);
-    expect(a.a2.cooldown).toBeCloseTo(5.1, 5); // 6 * 0.85
+    expect(a.a2.cooldown).toBeCloseTo(6, 5); // short heal retains deliberate cooldown
   });
   it('pa_radiant upgrades Holy Strike', () => {
     const a = apply('paladin', ['pa_radiant']).abilities!;
@@ -550,7 +550,7 @@ describe('druid upgrades', () => {
     const a = apply('druid', ['dr_regrowth']).abilities!;
     expect(a.a2.damage).toBe(81);
     expect(a.a2.range).toBe(430);
-    expect(a.a2.cooldown).toBeCloseTo(3.4, 5); // 4 * 0.85
+    expect(a.a2.cooldown).toBeCloseTo(4, 5); // no ordinary CDR on short heals
   });
   it('dr_gale widens Cyclone', () => {
     const a = apply('druid', ['dr_gale']).abilities!;
@@ -617,7 +617,7 @@ describe('hybrid grafts replace a slot with a foreign ability', () => {
     expect(a.a2.cooldown).toBe(5); // 3 + 2
     expect(a.a2.range).toBe(400);
     // Source Heal stays pristine (tweak mutated the copy only).
-    expect(CLASSES.cleric.abilities.a1.damage).toBe(75);
+    expect(CLASSES.cleric.abilities.a1.damage).toBe(100);
     expect(CLASSES.cleric.abilities.a1.name).toBe('Heal');
   });
 
@@ -779,7 +779,9 @@ describe('graft grands transform the grafted skill, and only with the graft held
     const reclaimed = apply('knight', ['hy_pyromancer', 'hy_pyromancer_g_a', 'restore:a2'])
       .abilities!.a2;
     expect(reclaimed.name).toBe('Shield Wall'); // native back
-    expect(JSON.stringify(reclaimed)).toBe(JSON.stringify(CLASSES.knight.abilities.a2)); // pristine
+    expect(JSON.stringify({ ...reclaimed, rechargeBase: undefined })).toBe(
+      JSON.stringify(CLASSES.knight.abilities.a2),
+    ); // pristine
     // Re-graft: the stashed Fireball returns with the grand still baked in.
     const regrafted = apply('knight', [
       'hy_pyromancer',
@@ -1230,7 +1232,7 @@ describe('effect fallbacks for absent optional fields', () => {
     const a = table({ a1: ab('a1', 'projectile', 70) }); // cooldown 1, but no castTime
     CHAR_UPGRADES.mg_quickcast.apply({ player: stub, abilities: a });
     expect(a.a1.castTime).toBe(0); // (undefined ?? 0) * 0.6
-    expect(a.a1.cooldown).toBeCloseTo(0.85, 5); // 1 * 0.85
+    expect(a.a1.cooldown).toBeCloseTo(1, 5); // a short skill cannot buy additional ordinary CDR
   });
 
   // Grand-capstone tunes read optional buff/snare fields the real kits fill in, so
@@ -1790,15 +1792,15 @@ describe('projectile range grands extend range instead of collapsing it (item 3)
   // cap to X — a "+range" boon that made the shot far SHORTER (the Frostlance bug). The
   // range grands must now lengthen the shot; the lances that never promised range leave
   // the cap untouched at its default.
-  it('Deadeye / Railshot / Judgment raise maxRange above the default cap', () => {
+  it('Deadeye / Railshot / Judgment extend range within the arena travel limit', () => {
     expect(previewAbilityTable('ranger', ['rg_grand_deadeye']).basic.maxRange).toBe(
-      PROJECTILE_MAX_RANGE + 220,
+      Math.min(900, PROJECTILE_MAX_RANGE + 220),
     );
     expect(previewAbilityTable('ranger', ['rg_gk_basic_b']).basic.maxRange).toBe(
-      PROJECTILE_MAX_RANGE + 260,
+      Math.min(900, PROJECTILE_MAX_RANGE + 260),
     );
     expect(previewAbilityTable('cleric', ['cl_gk_basic_b']).basic.maxRange).toBe(
-      PROJECTILE_MAX_RANGE + 200,
+      Math.min(900, PROJECTILE_MAX_RANGE + 200),
     );
   });
 

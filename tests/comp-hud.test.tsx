@@ -444,7 +444,7 @@ describe('<HUD>', () => {
       });
       const { container } = render(<HUD />);
       const nums = container.querySelectorAll('.hud-cd-num');
-      expect(nums).toHaveLength(1); // only basic (real cooldown) shows a number
+      expect(nums).toHaveLength(2); // a malformed zero-CD special still respects the shared floor
       expect(nums[0].textContent).toBe('3.0');
     } finally {
       spy.mockImplementation(original!);

@@ -35,7 +35,8 @@
     "smoke:defense-recovery": "node scripts/smoke-defense-recovery.mjs",
     "smoke:coherence": "node scripts/smoke-coherence.mjs",
     "smoke:upgrade-pilot": "node scripts/smoke-upgrade-pilot.mjs",
-    "smoke:upgrade-foundations": "node scripts/smoke-upgrade-foundations.mjs"
+    "smoke:upgrade-foundations": "node scripts/smoke-upgrade-foundations.mjs",
+    "smoke:cadence-range": "node scripts/smoke-cadence-range.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

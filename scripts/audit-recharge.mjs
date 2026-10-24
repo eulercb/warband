@@ -1,6 +1,6 @@
-/** Current no-generic-Haste special cooldowns. All-grands profile is legal today, not a proposed future loadout. */
+/** Current canonical cadence/geometry, with/without Haste. All current grands are a legal legacy stress profile. */
 import { createServer } from 'vite';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 import { format } from 'prettier';
 const server = await createServer({
   logLevel: 'silent',
@@ -13,63 +13,83 @@ try {
     '/src/engine/content/charUpgrades.ts',
   );
   const { subclassesFor } = await server.ssrLoadModule('/src/engine/content/subclasses.ts');
+  const { effectiveRecharge, persistentDuration, rechargeFloor } = await server.ssrLoadModule(
+    '/src/engine/content/abilityLimits.ts',
+  );
   const rows = [];
   for (const classId of CLASS_IDS)
     for (const sub of subclassesFor(classId))
-      for (const skill of sub.skills) {
+      for (const skill of sub.skills)
         for (const rank of [0, 1, 3, 5])
-          for (const grands of [false, true]) {
-            const picks = CHAR_UPGRADES_BY_CLASS[classId].flatMap((d) => Array(rank).fill(d.id));
-            picks.push(...Array(rank).fill(`subup_${skill.id}`));
-            if (grands)
-              picks.push(
-                ...Object.values(CHAR_UPGRADES)
-                  .filter(
-                    (d) =>
-                      d.classId === classId &&
-                      d.grand &&
-                      !d.graftId &&
-                      (!d.subclassId || d.subclassId === sub.id),
-                  )
-                  .map((d) => d.id),
-              );
-            const world = new World({
-              monsterId: 'lich',
-              seed: 31,
-              players: [
-                {
-                  peerId: 'audit',
-                  name: 'Audit',
+          for (const grands of [false, true])
+            for (const haste of [0, 5]) {
+              const picks = CHAR_UPGRADES_BY_CLASS[classId].flatMap((d) => Array(rank).fill(d.id));
+              picks.push(...Array(rank).fill(`subup_${skill.id}`));
+              if (grands)
+                picks.push(
+                  ...Object.values(CHAR_UPGRADES)
+                    .filter(
+                      (d) =>
+                        d.classId === classId &&
+                        d.grand &&
+                        !d.graftId &&
+                        (!d.subclassId || d.subclassId === sub.id),
+                    )
+                    .map((d) => d.id),
+                );
+              const p = new World({
+                monsterId: 'lich',
+                seed: 31,
+                players: [
+                  {
+                    peerId: 'audit',
+                    name: 'Audit',
+                    classId,
+                    charUpgrades: picks,
+                    subSkills: [skill.id],
+                    upgrades: Array(haste).fill('haste'),
+                  },
+                ],
+              }).players[0];
+              for (const slot of ['a1', 'a2', 'a3', 'sub1']) {
+                const ab = slot === 'sub1' ? p.subAbilities.sub1 : p.abilities[slot];
+                const seconds = effectiveRecharge(ab, p.cooldownMult, p.castMult);
+                const duration = persistentDuration(ab);
+                if (
+                  !Number.isFinite(seconds) ||
+                  seconds < 4 ||
+                  (duration > 0 && seconds < duration + 2)
+                )
+                  throw new Error(`Cadence violation ${classId}/${slot}`);
+                if ((ab.kind === 'dash' || ab.kind === 'blink') && ab.range > 420)
+                  throw new Error('Travel violation');
+                if (ab.kind === 'groundZone' && ab.range > 400)
+                  throw new Error('Placement violation');
+                const n = (x) => Math.round(x * 1000) / 1000;
+                rows.push({
                   classId,
-                  charUpgrades: picks,
-                  subSkills: [skill.id],
-                },
-              ],
-            });
-            const p = world.players[0];
-            for (const slot of ['a1', 'a2', 'a3', 'sub1']) {
-              const ab = slot === 'sub1' ? p.subAbilities.sub1 : p.abilities[slot];
-              const seconds = ab.cooldown * p.cooldownMult;
-              if (!Number.isFinite(seconds) || seconds <= 0)
-                throw new Error(`Invalid cooldown: ${classId}/${slot}`);
-              rows.push({
-                classId,
-                subclass: sub.id,
-                chosenSkill: skill.id,
-                rank,
-                allCurrentGrands: grands,
-                slot,
-                name: ab.name,
-                seconds: Math.round(seconds * 1000) / 1000,
-              });
+                  subclass: sub.id,
+                  chosenSkill: skill.id,
+                  rank,
+                  hasteRanks: haste,
+                  allCurrentGrands: grands,
+                  slot,
+                  name: ab.name,
+                  seconds: n(seconds),
+                  rawSeconds: n(ab.cooldown * p.cooldownMult),
+                  persistentSeconds: n(duration),
+                  recoveryFloor: n(rechargeFloor(ab, slot, p.castMult)),
+                  range: ab.range ?? null,
+                  radius: ab.radius ?? null,
+                });
+              }
             }
-          }
-      }
   const unique = new Map();
   for (const row of rows) {
     const key = JSON.stringify([
       row.classId,
       row.rank,
+      row.hasteRanks,
       row.allCurrentGrands,
       row.slot,
       row.slot === 'sub1' ? row.chosenSkill : null,
@@ -77,36 +97,32 @@ try {
     const previous = unique.get(key);
     if (previous && previous.seconds !== row.seconds)
       throw new Error(`Context-dependent base recharge: ${key}`);
-    if (!previous)
-      unique.set(
-        key,
-        row.slot === 'sub1'
-          ? row
-          : {
-              classId: row.classId,
-              rank: row.rank,
-              allCurrentGrands: row.allCurrentGrands,
-              slot: row.slot,
-              name: row.name,
-              seconds: row.seconds,
-            },
-      );
+    if (!previous) {
+      const base = { ...row };
+      delete base.subclass;
+      delete base.chosenSkill;
+      unique.set(key, row.slot === 'sub1' ? row : base);
+    }
   }
   const result = {
-    baseline: '3da6a2c + upgrade foundation corrections',
-    genericHaste: false,
-    note: 'Canonical single-class profiles; all current native grands coexist today. No refund/charge/Forge simulation. Cast windup is separate from cooldown.',
+    baseline: '018b71c plus deliberate cadence/range pass',
+    note: 'Canonical single-class profiles with 0/5 Haste, 0/1/3/5 ordinary ranks and with/without all current native grands. Effective cooldown includes protected recovery. Raw reductions are not usable cooldowns. No live input/refund/Forge simulation.',
     observations: rows.length,
     rows: [...unique.values()],
   };
-  writeFileSync(
-    'docs/RECHARGE_AUDIT.json',
-    await format(JSON.stringify(result), { parser: 'json', printWidth: 100 }),
+  const output = await format(JSON.stringify(result), { parser: 'json', printWidth: 100 });
+  if (process.argv.includes('--check')) {
+    if (readFileSync('docs/RECHARGE_AUDIT.json', 'utf8') !== output)
+      throw new Error('Stale recharge audit');
+  } else writeFileSync('docs/RECHARGE_AUDIT.json', output);
+  console.log(
+    JSON.stringify({
+      observations: rows.length,
+      profiles: unique.size,
+      minimumSeconds: Math.min(...rows.map((r) => r.seconds)),
+      maximumSeconds: Math.max(...rows.map((r) => r.seconds)),
+    }),
   );
-  const worst = rows
-    .filter((r) => r.rank === 5 && r.allCurrentGrands)
-    .sort((a, b) => a.seconds - b.seconds);
-  console.log(JSON.stringify({ rows: rows.length, shortest: worst.slice(0, 12) }, null, 2));
 } finally {
   await server.close();
 }

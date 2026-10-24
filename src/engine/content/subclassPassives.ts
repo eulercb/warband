@@ -36,7 +36,7 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'monk',
     name: 'Shadow Rhythm',
     icon: '🌑',
-    desc: 'Spending Flow removes 2s from running dash and blink special cooldowns in your active kit. Once per 4s; ready movement skills do not spend the trigger. Step of the Wind and Quivering Palm work with every subclass choice.',
+    desc: 'Spending Flow removes 2s from running dash and blink special cooldowns in your active kit. If recovery locks prevent a refund, instead clear movement hindrances and resist control for 1s. Once per 4s; ready movement skills do not spend the trigger. Step of the Wind and Quivering Palm work with every subclass choice.',
   },
   rg_beastmaster: {
     id: 'beast_pack_bond',

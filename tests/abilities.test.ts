@@ -403,7 +403,7 @@ describe('player groundZone', () => {
     expect(z.healPerTick).toBe(0);
     expect(z.radius).toBe(120);
     expect(z.duration).toBe(3);
-    expect(z.pos.x).toBeCloseTo(900, 4); // 400 + aim(1,0)*500
+    expect(z.pos.x).toBeCloseTo(800, 4); // placement cap: 400 + aim(1,0)*400
     expect(z.pos.y).toBeCloseTo(500, 4);
   });
 
@@ -444,7 +444,7 @@ describe('player groundZone', () => {
     const z = w.groundZones[0];
     expect(z.kind).toBe('poison');
     expect(z.damagePerTick).toBe(11);
-    expect(z.pos.x).toBeCloseTo(720, 4); // 300 + 420
+    expect(z.pos.x).toBeCloseTo(700, 4); // placement cap: 300 + 400
   });
 
   it('infers sanctuary (centered) when zoneKind is omitted but it heals', () => {
@@ -1130,7 +1130,7 @@ describe('player heal', () => {
     const p = w.players[0];
     p.hp = p.maxHp - 100;
     resolvePlayerAbility(w, p, 'a1', ZERO); // Heal 75
-    expect(p.hp).toBeCloseTo(p.maxHp - 25, 5);
+    expect(p.hp).toBeCloseTo(p.maxHp, 5);
     expect(w.events.some((e) => e.t === 'heal' && e.targetId === p.id)).toBe(true);
   });
 
@@ -1148,7 +1148,7 @@ describe('player heal', () => {
     const knight = w.players[1];
     knight.hp = knight.maxHp - 80;
     resolvePlayerAbility(w, cleric, 'a1', ZERO);
-    expect(knight.hp).toBeCloseTo(knight.maxHp - 5, 5); // healed +75
+    expect(knight.hp).toBeCloseTo(knight.maxHp, 5); // 100-point deliberate heal, capped by missing health
   });
 
   it('is a safe no-op when there is no valid ally to heal', () => {

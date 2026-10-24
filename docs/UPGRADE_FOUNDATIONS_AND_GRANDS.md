@@ -1,9 +1,9 @@
 # Upgrade foundations and grand selections
 
-The owner merged/live-tested PR #131 and revised the design direction. This document
-supersedes the pilot's ordinary-boon tradeoff policy. Grand selection below is a
-proposal for review, not an implemented limit. Current delivery is the small
-correction pack; the next class cohort is paused until recharge foundations are fixed.
+The owner merged/live-tested PR #132 and approved the grand architecture below.
+Current delivery implements [recharge and range foundations](CADENCE_AND_RANGE.md).
+Grand selection, reward pacing and new grand content remain the next stages, not
+implemented limits in this patch.
 
 ## Ordinary upgrades versus grands
 
@@ -14,7 +14,7 @@ output for mobile output, large geometry changes and competing build identities
 belong to grands. Revisit existing ordinary tradeoffs across the catalogue, not
 only named examples. Retain useful work such as Searing Rebuke's proactive trigger.
 
-This patch:
+The merged PR #132 correction pack:
 
 - Deadly Poison keeps 100% ground output and adds its bounded 2s exit poison,
   one field tick per second. Grand Venom keeps its deliberate 60/40 transformation;
@@ -31,66 +31,30 @@ This patch:
   Replacing picks visibly name the displaced skill. Existing eligibility and one
   replacement per slot remain. No new graft is invented.
 
-No cooldown values, generic Haste, reward progression, grand limits or grand bank
-are changed in this correction. The old pilot benchmark is historical; do not
+That correction did not change cooldown values, generic Haste, reward progression,
+grand limits or the grand bank. The old pilot benchmark is historical; do not
 claim its ordinary Vial damage figures describe this additive revision. The
 regenerated inventory records current deltas.
 
-## Recharge: priority next, across the entire catalogue
+## Recharge and range: implemented foundation
 
-[3,072 current special-slot observations](RECHARGE_AUDIT.json) reproduce via
-`node scripts/audit-recharge.mjs`. These cover every class and individual subclass
-skill at rank 0/1/3/5, with/without all currently compatible native grands, and
-**no generic Haste**. The data deduplicates repeated base-slot observations into 1,056 distinct slot
-profiles after asserting equal values across those contexts. This is
-not 3,072 unique abilities or simulated encounters. Canonical skills only; casts,
-refunds and Forge need the implementation pass's separate checks.
+See [the delivery policy and test evidence](CADENCE_AND_RANGE.md). The owner
+explicitly revised the original proposal: **generic Haste counts toward the final
+4s special floor**. Persistent effects normally have a 2s recovery gap, with
+consumable/stance exceptions documented there. Ordinary recharge uses a shared
+native-reference budget; refunds cannot bypass the final protected window.
 
-A legal current Rogue combination takes Shadowstep from 6s to about **0.124s**.
-Only basics have an engine floor (0.3s); specials use their raw reduced cooldown.
-Vanish alone at five ranks gives Shadowstep about 1.008s before any grand.
-Five generic Honed picks alone multiply cooldown by .92^5 ≈ .659. Vanish compounds
-.7 five times, then several grands can compound again. Global class cooldown
-boons and active refunds add further opportunity. This is a structural issue,
-not just a bad first pick. Autofire can reduce physical mashing but does not
-restore deliberate decisions; it is not the fix.
+The generated [current recharge audit](RECHARGE_AUDIT.json) includes generic Haste:
+6,144 observations / 2,112 deduplicated profiles. The previous no-Haste audit and
+sub-second Shadowstep example were pre-fix evidence, not current gameplay values.
 
-Recommended starting targets for the dedicated recharge patch, **not universal
-runtime clamps**:
-
-| Native special recharge | Ordinary upgrade direction                                                                  | Grand review                                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Up to 6s                | Prefer magnitude, utility, reach, safety or capped follow-through; normally no repeated CDR | Preserve an intentional action window; avoid sub-4s specials by default                         |
-| Over 6s to 12s          | Around 20% total ordinary reduction at most, not 20% on every pick                          | Trade major CDR for a clearly defined alternative; baseline target at least 6s before the grand |
-| Over 12s                | Around 30% total ordinary reduction at most                                                 | Larger tempo changes may be useful, but normally keep at least 4s and an actual recovery window |
-
-These are review bands. Pick per-skill targets after measuring mechanics, uptime,
-resolved cooldown and cast time. Immunity, blocks, healing, movement and control
-need different recovery budgets; do not let duration growth quietly produce
-permanent protection. Rage/form stance uptime may legitimately differ from damage
-immunity. Basics retain their separate continuous-attack role and current floor.
-
-Implement reductions **before the untouched generic Haste contribution**. A blanket
-final cooldown clamp would silently nerf Haste and ignore borrowed/rolled baselines.
-Track each native/graft/subclass skill's reference and class-upgrade contribution
-through ordered replay; cap combined ordinary/grand reductions and bounded refunds
-rather than clamp the whole hero's final multiplier. Review class-wide recharge
-boons too. Existing useful refunds can remain only when they cannot recreate the
-spam problem. Replace excess CDR with fitting additive value, not one universal
-extra-damage rider. Update custom Honed descriptions when their tuning changes.
-
-Before delivery: table every affected skill at 0/1/3/5, each grand, combined class
-boons and actual generic Haste separately; test native/graft/Forge, input repetition,
-protection uptime and cast/refund gates. Show before/after examples and measured
-output/control, not only cooldown numbers. Adaptive difficulty coefficients remain.
-
-## Proposed grand catalogue and four active slots
+## Approved grand catalogue and four active slots
 
 **Owner decision confirmed:** four equipped grands **per class**, only the active
 class's selection applies. Earned choices and saved selections remain available
 for other owned classes; switching class does not destroy them.
 
-Recommended active categories:
+Owner-approved active categories (implementation pending):
 
 | Category                | Equipped per class | Identity                                               |
 | ----------------------- | -----------------: | ------------------------------------------------------ |
@@ -219,3 +183,35 @@ from live feel: passing tests cannot prove deliberate timing or fun.
 whole-class grands; make graft grands share base-slot capacity; free bank swaps
 between fights, new alternatives at gauntlets; agree how earlier grand access and
 committed effects across class swaps should work. Four-per-class is already decided.
+
+## Next implementation sequence and pacing
+
+1. **Grand framework and earlier rewards:** separate banked ownership from active
+   2/1/1 selections; migrate legacy history, validate on the host, support menus,
+   walkable pads, bots and test editor. Only active class selections apply. Include
+   basic attacks and grafts in the two base-skill slots. Fold whole-class grands
+   into authored skill/identity choices, preserving useful ideas and migration.
+2. **Pilot retouch:** revisit Rogue/Warlock against those rules and the new cadence.
+   Do not treat the merged pilots as exempt from the wider review.
+3. **Remaining class cohorts:** redesign ordinary upgrades and grands on this stable
+   framework, grouped by shared systems; then do a cross-class balance/readability
+   check. Estimate roughly six to eight implementation PRs from this foundation,
+   adjusting cohort size after the framework is verified rather than promising a
+   fixed count.
+
+The owner approved earlier grand offers and delegated pacing. Proposed framework
+implementation: one grand opportunity at each 5-boss clear, alongside—not replacing—
+existing subclass progression. A focused class can fill four slots by clear 20.
+Allocate each opportunity among owned classes, not four free unlocks for every class.
+Bank earned choices and allow free valid swaps between fights. Verify run reward
+frequency, eligibility and fallback before finalizing these thresholds; this patch
+does not change reward generation.
+
+New grands may introduce class-specific mechanics when they produce a visible,
+reliable payoff with the real equipped kit. Examples worth prototyping include a
+short-lived mobile curse relay and a basic-fed spell charge; these are directions,
+not authored promises. Prefer mechanics usable against a lone boss, with explicit
+ownership, bounded procs, no recursive triggering and understandable mobile input.
+Avoid requiring two rare grands or unavailable delivery types to start working.
+Each design review should prove a solo early-run fallback, an alternative build,
+interaction with base/subclass skills, and a clear tradeoff before implementation.

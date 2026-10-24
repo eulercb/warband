@@ -59,9 +59,7 @@ export function ownedSkillRows(
     cooldownMult: stats.cooldownMult,
     castMult: stats.castMult,
   };
-  // The sim floors ONLY the basic slot's cooldown (world tick, at BASIC_CD_FLOOR); fold
-  // that same floor into the basic line so a heavily-Haste-stacked basic never prints
-  // below the cooldown the sim actually delivers.
+  // The shared formatter applies special cadence automatically; retain the explicit basic floor.
   const basicMods: DescribeMods = { ...mods, cooldownFloor: BASIC_CD_FLOOR };
   const rows: OwnedSkillRow[] = BASE_SLOTS.map((slot) => ({
     key: slot,
@@ -82,7 +80,7 @@ export function ownedSkillRows(
       key: id,
       slot: i === 0 ? 'sub1' : 'sub2',
       name: `${sk.icon} ${sk.name}`,
-      line: describeAbility(ability, mods),
+      line: describeAbility({ ...ability, slot: i === 0 ? 'sub1' : 'sub2' }, mods),
     });
   });
   return rows;

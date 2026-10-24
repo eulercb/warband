@@ -1,3 +1,4 @@
+import { effectiveRecharge } from '../../engine/content/abilityLimits';
 import { absorptionAmount, ABSORPTION_CAP } from '../../engine/combat/absorption';
 /**
  * Warband — HUD overlay (React). Reads the throttled hudStore updated by the
@@ -10,7 +11,11 @@ import { useStore } from '../state/store';
 import { isTouchCapable } from '../../input/touch';
 import { requestPause, playUiSound } from '../state/session';
 import VolumeControl from './VolumeControl';
-import { previewAbilityTable, previewSubAbility } from '../../engine/content/charUpgrades';
+import {
+  previewAbilityTable,
+  previewSubAbility,
+  previewPlayerStats,
+} from '../../engine/content/charUpgrades';
 import {
   getSubSkill,
   subclassOfSkill,
@@ -138,6 +143,7 @@ function AbilityIcon({
   def,
   displayName,
   source,
+  mods,
 }: {
   slot: keyof typeof SLOT_ACTION;
   /** The (upgrade-resolved) ability this button casts; drives the effect tooltip. */
@@ -145,18 +151,19 @@ function AbilityIcon({
   /** Overrides the shown label (subclass skills prefix an icon); defaults to def.name. */
   displayName?: string;
   source: InputSource;
+  mods: { cooldownMult: number; castMult: number; damageMult: number };
 }) {
   const remaining = useHudStore((s) => s.cooldowns[slot] ?? 0);
   // Subscribe to bindings so the label updates live when the player rebinds.
   useBindings((s) => s.bindings);
-  const total = def.cooldown;
+  const total = effectiveRecharge(def, mods.cooldownMult, mods.castMult, slot);
   const frac = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
   const ready = frac <= 0.001;
   const label = slotLabel(slot, source);
   const name = displayName ?? def.name;
   // Concrete effect numbers on hover/focus (item 19), reflecting the hero's
   // current upgraded values since `def` comes from the resolved ability table.
-  const tip = `${name} — ${describeAbility(def)}`;
+  const tip = `${name} — ${describeAbility({ ...def, slot }, mods)}`;
   return (
     <div className={`hud-ability${ready ? ' ready' : ''}`} title={tip} aria-label={tip}>
       <div
@@ -221,6 +228,12 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
   const run = useStore((s) => s.run);
   const cycle = useStore((s) => s.cycle);
   const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  const myUpgrades = useStore((s) => s.myUpgrades);
+  const identity = useStore((s) => s.localClass);
+  const mods = useMemo(
+    () => previewPlayerStats(identity, myUpgrades, myCharUpgrades),
+    [identity, myUpgrades, myCharUpgrades],
+  );
   const source = hud.inputSource;
   // Touch has no Esc / Options button, so the overlay needs its own pause control
   // (item: mobile overlay can't pause). The HUD stays mounted while paused, so a
@@ -370,7 +383,13 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
         {hud.classId && abilityTable && (
           <div className="hud-abilities">
             {SLOT_ORDER.map((slot) => (
-              <AbilityIcon key={slot} slot={slot} def={abilityTable[slot]} source={source} />
+              <AbilityIcon
+                key={slot}
+                slot={slot}
+                def={abilityTable[slot]}
+                source={source}
+                mods={mods}
+              />
             ))}
             {/* Subclass skills (item 13) — bound to sub1/sub2. Only shown while the
                 hero wields the class the skill belongs to (item 14): a multiclass
@@ -391,6 +410,7 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
                   def={def}
                   displayName={`${sk.icon} ${sk.name}`}
                   source={source}
+                  mods={mods}
                 />
               );
             })}

@@ -36,6 +36,7 @@
  * stuns/slows, knockbacks and ordinary ability lifesteal. Blood rage sustain is
  * modelled conservatively because it applies across the direct-hit kit.
  */
+import { boundedAbility, effectiveRecharge } from './abilityLimits';
 import { BLOOD_LEECH } from './martialRules';
 import type { Player, BossTier } from '../core/types';
 import type { PlayerAbilityDef } from './classes';
@@ -98,7 +99,8 @@ const credit = (value: number, scale: number | undefined) =>
 
 /** Rate contribution of a single ability, at the hero's cd/cast multipliers. */
 function abilityRates(ab: PlayerAbilityDef, cdMult: number, castMult: number): KitRates {
-  const cycle = Math.max(ab.cooldown * cdMult + (ab.castTime ?? 0) * castMult, BALANCE_MIN_CYCLE_S);
+  ab = boundedAbility(ab);
+  const cycle = Math.max(effectiveRecharge(ab, cdMult, castMult), BALANCE_MIN_CYCLE_S);
   const coating = resolvedCoating(ab);
   const creditedDamage = credit(ab.damage, ab.balanceDamageScale);
   const creditedZoneHeal = credit(ab.zoneTickHeal ?? 0, ab.balanceZoneHealScale);
@@ -152,10 +154,7 @@ function kitRates(
   let bloodUptime = 0;
   let directDps = 0;
   for (const ab of abilities) {
-    const cycle = Math.max(
-      ab.cooldown * cdMult + (ab.castTime ?? 0) * castMult,
-      BALANCE_MIN_CYCLE_S,
-    );
+    const cycle = Math.max(effectiveRecharge(ab, cdMult, castMult), BALANCE_MIN_CYCLE_S);
     bloodUptime = Math.max(bloodUptime, clamp((ab.bloodRage ?? 0) / cycle, 0, 1));
     if (ab.kind !== 'heal')
       directDps +=

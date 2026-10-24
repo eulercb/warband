@@ -172,7 +172,7 @@ describe('applyCharUpgrades: guards & routing', () => {
     // kn_bastion twice exercises setMin (unset → set, then Math.min).
     const bastion = apply('knight', ['kn_bastion', 'kn_bastion']).abilities!;
     expect(bastion.a1.buffDefMult!).toBeCloseTo(0.7, 5);
-    expect(bastion.a1.cooldown).toBeCloseTo(12 * 0.8 * 0.8, 5);
+    expect(bastion.a1.cooldown).toBeCloseTo(12 * 0.8, 5);
     // A whole-kit style lands on the (grafted) current occupant.
     const styled = apply('knight', ['hy_pyromancer', 'hy_vampiric']).abilities!;
     expect(styled.a2.name).toBe('Fireball');
@@ -268,7 +268,7 @@ describe('effect fallbacks for absent optional fields', () => {
     const a = table({ a1: ab('a1', 'projectile', 70) });
     CHAR_UPGRADES.mg_quickcast.apply({ player: stub, abilities: a });
     expect(a.a1.castTime).toBe(0);
-    expect(a.a1.cooldown).toBeCloseTo(0.85, 5);
+    expect(a.a1.cooldown).toBeCloseTo(1, 5);
   });
 });
 

@@ -1,3 +1,4 @@
+import { boundedAbility, effectiveRecharge } from './abilityLimits';
 import { curseDescription, type CurseStyle } from '../core/curses';
 import { absorptionDescription } from '../combat/absorption';
 import { auraText } from './paladinText';
@@ -34,6 +35,8 @@ export interface PlayerAbilityDef {
   flowUsed?: boolean;
   name: string;
   kind: AbilityKind;
+  rechargeBase?: number;
+  ordinaryRecharge?: number;
   cooldown: number; // s
   damage: number; // damage or heal magnitude (0 if none)
 
@@ -455,8 +458,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         name: 'Heal',
         rescueHealBonus: 0.3,
         kind: 'heal',
-        cooldown: 3,
-        damage: 75, // heal amount
+        cooldown: 4,
+        damage: 100, // heal amount
         balanceDamageScale: 60 / 75,
         range: 400,
       },
@@ -1068,10 +1071,10 @@ export function cloneAbilities(
   src: Record<AbilitySlot, PlayerAbilityDef>,
 ): Record<AbilitySlot, PlayerAbilityDef> {
   return {
-    basic: { ...src.basic },
-    a1: { ...src.a1 },
-    a2: { ...src.a2 },
-    a3: { ...src.a3 },
+    basic: { ...src.basic, rechargeBase: src.basic.cooldown },
+    a1: { ...src.a1, rechargeBase: src.a1.cooldown },
+    a2: { ...src.a2, rechargeBase: src.a2.cooldown },
+    a3: { ...src.a3, rechargeBase: src.a3.cooldown },
   };
 }
 
@@ -1087,11 +1090,8 @@ export interface DescribeMods {
   /** Cast-time multiplier (Focus) — scales the cast time. */
   castMult?: number;
   /**
-   * Absolute cooldown floor (seconds) the sim clamps this slot to at use-time. The
-   * world tick floors ONLY the basic slot at `BASIC_CD_FLOOR`, so a caller describing
-   * a basic passes it here to keep the shown cooldown from printing below what the sim
-   * actually delivers once Haste stacks past the floor. Absent ⇒ no floor (every other
-   * slot, and every existing caller), so the line stays byte-for-byte unchanged.
+   * Optional additional floor. The shared cadence policy already includes Haste,
+   * persistent recovery and the special minimum. Legacy basic callers may pass 0.3.
    */
   cooldownFloor?: number;
 }
@@ -1107,11 +1107,15 @@ export interface DescribeMods {
  * grafts/boons, e.g. from `previewAbilityTable`) reflects their current numbers.
  * Pass `mods` to also fold in the hero's generic damage/cooldown/cast multipliers
  * (which the sim applies at use-time), so the line shows the true effective values.
- * `slot` is ignored, so a subclass skill's ability (which carries no slot)
+ * `slot` distinguishes continuous basic attacks from deliberate specials; a subclass ability with no slot
  * describes fine too. Rounds like the reward cards: magnitudes to whole units,
  * seconds to one decimal, ratios to whole percents.
  */
-export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: DescribeMods): string {
+export function describeAbility(
+  input: Omit<PlayerAbilityDef, 'slot'> & { slot?: ExtSlot },
+  mods?: DescribeMods,
+): string {
+  const def = boundedAbility(input);
   // The hero's GENERIC multipliers (Mighty/Haste/Focus and any boon that tugs
   // player.damageMult / cooldownMult / castMult) are applied by the SIM at use-time,
   // on top of the class-upgraded def — so fold them into the displayed numbers here so
@@ -1123,10 +1127,16 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   const dmgMul = mods?.damageMult ?? 1;
   const cdMul = mods?.cooldownMult ?? 1;
   const castMul = mods?.castMult ?? 1;
-  // The sim floors this slot's cooldown at use-time (only the basic slot today, at
-  // `BASIC_CD_FLOOR`); fold that same clamp in so the shown cooldown never prints below
-  // what the sim actually delivers once Haste stacks past the floor. 0 ⇒ no floor.
-  const effCooldown = Math.max(mods?.cooldownFloor ?? 0, def.cooldown * cdMul);
+  // Apply the same final Haste/Focus-aware cadence policy used by the host.
+  const effCooldown = Math.max(
+    mods?.cooldownFloor ?? 0,
+    effectiveRecharge(
+      def,
+      cdMul,
+      castMul,
+      def.slot ?? (mods?.cooldownFloor === 0.3 ? 'basic' : undefined),
+    ),
+  );
   // Chaos Forge — a synthesized ability regenerates its card text from its
   // recombined component list (there is no author to write copy for a fused
   // skill). Canonical/variance content carries no components and keeps the
@@ -1284,7 +1294,7 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
   if (def.consumesPrecision) parts.push('consumes prepared crit');
   if (def.preparedRefund)
     parts.push(
-      `prepared positive hit refunds ${s(def.preparedRefund)} of running precision-blink cooldown, once per cast and 4s`,
+      `prepared positive hit refunds ${s(def.preparedRefund)} of running precision-blink cooldown; protected recovery gives 15% movement for 2s instead, once per cast and 4s`,
     );
   if (def.zonePoison)
     parts.push(

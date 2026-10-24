@@ -541,7 +541,7 @@ describe('repeat picks, composition and copied skills', () => {
     expect(p.cooldowns.a2).toBe(6);
     boss.pos = { x: p.pos.x + 40, y: p.pos.y };
     w.step(0, new Map([[p.peerId, command('a1', 2)]]));
-    expect(p.cooldowns.a1).toBeCloseTo(7.8);
+    expect(p.cooldowns.a1).toBeCloseTo(8);
     expect(p.cooldowns.a2).toBe(5);
     expect(p.upgradeRefundRemaining).toBe(4);
   });
