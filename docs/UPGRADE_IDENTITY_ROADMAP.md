@@ -4,8 +4,10 @@
 
 The initial 24/24 subclass-passive round, whole-class audit, and coherence retouches
 [A](COHERENCE_BATCH_A.md), [B](COHERENCE_BATCH_B.md), and [C](COHERENCE_BATCH_C.md)
-form the implementation baseline. A/B are merged and live-tested; C is this delivery.
-Confirm C in normal play before implementing broad upgrade changes. Preserve all
+form the implementation baseline. A/B/C are merged and live-tested. The current delivery is the
+[design checkpoint](UPGRADE_DESIGN_CHECKPOINT.md), with a generated inventory and
+concrete eight-path Rogue/Warlock pilot proposal. Gameplay implementation awaits
+player review. Preserve all
 current compatibility fixes while redesigning choices. Added riders do not exempt
 older plain skills; base/subclass skills, grands and grafts all remain in scope.
 
@@ -18,7 +20,7 @@ Not every boon must mention the class resource, and copied skills must work
 without the donor's passive. Avoid making a build depend on several rare offers
 appearing in a specific order. The weak-run fallback must remain playable.
 
-The next PR is a **design checkpoint**, not the complete gameplay rewrite:
+This PR is the **design checkpoint**, not the complete gameplay rewrite:
 
 1. Inventory the actual registry, eligibility, offers and ordered replay, including
    recent mechanics. Classify each upgrade as retain, adjust, replace or investigate
@@ -29,7 +31,7 @@ The next PR is a **design checkpoint**, not the complete gameplay rewrite:
 3. Propose concrete pilot builds with alternatives, opportunity costs, early-run
    fallback, expected reward availability and exact caps. Include a copied-skill
    route and its grands/followups. Review these proposals with the player **before
-   pilot implementation**. Rogue/Warlock remain candidates, not a locked pair.
+   pilot implementation**. Rogue/Warlock are the recommended pilot, pending player review.
 4. Implement and playtest the approved pilot, then group the remaining classes by
    shared systems into larger, reviewable batches. Adapt the plan from measured
    behavior and live feedback instead of replacing all 350 definitions at once.
@@ -64,8 +66,9 @@ These categories overlap; they must not be summed. This is the current authored
 registry, not a count of generated Forge content or distinct viable builds.
 
 The shared `subSkillTune` routine applies +12% magnitude, +8% footprint and -8%
-cooldown. Every Honed offer uses the same "strikes harder, reaches wider and
-recharges faster" description. The repetition reflects an actual shared mechanic,
+cooldown. The current audit finds 71 of 96 Honed offers still use the same
+"strikes harder, reaches wider and recharges faster" description; 25 already have
+role-specific text. The repetition reflects an actual shared mechanic,
 not merely weak wording. Numeric growth remains useful, but this layer currently
 misses many opportunities to change decisions or connect newer class interactions.
 

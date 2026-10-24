@@ -1,25 +1,23 @@
 # Class identity and subclass roadmap
 
-Current delivery: **coherence retouch C — support alternatives and growth**.
+Current delivery: **upgrade inventory and design checkpoint**.
 
-The 24/24 passive round and [whole-class audit](CLASS_COHERENCE_AUDIT.md) are
-complete. [A](COHERENCE_BATCH_A.md) and [B](COHERENCE_BATCH_B.md) are merged and
-live-tested. [C](COHERENCE_BATCH_C.md) completes the approved retouch sequence:
-Cleric heal roles, Monk traversal support, Hunter disengagement/naming and
-recipient-based support caps. Paladin/Sorcerer and Whispers' echo routing are
-preserved with explicit review rationale. The [resolved catalogue](CLASS_CATALOGUE.md)
-reflects current behavior. This milestone does not establish equal numerical balance.
+The 24/24 passive round, [whole-class audit](CLASS_COHERENCE_AUDIT.md), and coherence
+retouches [A](COHERENCE_BATCH_A.md), [B](COHERENCE_BATCH_B.md), and
+[C](COHERENCE_BATCH_C.md) are merged and live-tested. This completes the approved
+class-coherence sequence, without establishing equal numerical balance.
 
-**Next after live verification: upgrade audit and design checkpoint.** No broad
-upgrade redesign is implemented in C. The [upgrade direction](UPGRADE_IDENTITY_ROADMAP.md)
-starts with real reward/replay inventory and concrete build proposals, then a
-two-class pilot reviewed with the player before wider rollout. Base/subclass
-boons, grands, grafts and generation all remain in scope; adding a passive never
-exempts a plain active from review.
+The [upgrade design checkpoint](UPGRADE_DESIGN_CHECKPOINT.md) now inventories the
+registry, reward availability and replay, and proposes eight Rogue/Warlock upgrade
+paths for player review. **No gameplay changes are included in this delivery.**
+The [generated inventory](UPGRADE_INVENTORY.md) and [research notes](UPGRADE_RESEARCH.md)
+separate measured current behavior from proposed mechanics.
 
-Allow roughly **four to six further PRs**, including design and pilot, subject to
-audit findings and playtests. Art direction is separate. Earlier status tables
-preserve history and are superseded here. Follow the
+After review, allow roughly **three to five implementation PRs**: one two-class
+pilot and two to four grouped rollouts, adjusted from playtests. Base/subclass
+boons, grands, grafts and generation remain in scope. Adding a passive or rider
+never exempts a plain active from review. Art direction is separate. Earlier status
+tables preserve history and are superseded here. Follow the
 [milestone review gates](CLASS_MILESTONE_REVIEW.md) and
 [public research guidelines](RESEARCH_GUIDELINES.md).
 
