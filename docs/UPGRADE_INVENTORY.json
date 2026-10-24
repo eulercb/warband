@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline": "45706e1 plus upgrade identity pilot (see UPGRADE_PILOT.md)",
+  "baseline": "3da6a2c plus upgrade foundation corrections (see UPGRADE_FOUNDATIONS_AND_GRANDS.md)",
   "seed": 31,
   "counts": {
     "class-boon": 60,
@@ -1506,7 +1506,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Vial gains +7 tick magnitude, +1.5s and +18u; trade 20% ground damage for 2s poison on effective exit, up to 3 foes; strongest owner poison wins",
+      "description": "Vial gains +7 tick magnitude, +1.5s and +18u; keep full ground damage and add 2s poison on effective exit, up to 3 foes; strongest owner poison wins",
       "disposition": "adjust",
       "rationale": "Review live field changes and wording; prefer a useful timing, coverage or resource decision.",
       "pilotPriority": true,
@@ -1521,7 +1521,7 @@
             {
               "path": "abilities.a3.zonePoison",
               "before": null,
-              "after": { "share": 0.2, "onExit": true }
+              "after": { "share": 0, "onExit": true }
             },
             { "path": "abilities.a3.zoneTickDamage", "before": 11, "after": 18 }
           ],
@@ -1531,7 +1531,7 @@
             {
               "path": "abilities.a3.zonePoison",
               "before": null,
-              "after": { "share": 0.2, "onExit": true }
+              "after": { "share": 0, "onExit": true }
             },
             { "path": "abilities.a3.zoneTickDamage", "before": 11, "after": 46 }
           ]
@@ -16476,9 +16476,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Earthshaker — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Earthshaker — first rank: direct damage 40 → 45; area radius 150 → 162; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -16511,9 +16511,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Bull Rush — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Bull Rush — first rank: area radius 110 → 119; travel distance 250 → 270; phasing duration 0.3 → 0.45s; recharge 7 → 6.44s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -16585,9 +16585,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Riposte — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Riposte — first rank: direct damage 46 → 52; reach 80 → 86; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -16620,9 +16620,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Trip Attack — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Trip Attack — first rank: direct damage 32 → 36; reach 70 → 76; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -16690,9 +16690,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Precision Volley — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Precision Volley — first rank: direct damage 18 → 20; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -16863,9 +16863,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Volley — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Volley — first rank: direct damage 16 → 18; recharge 7 → 6.44s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -16896,9 +16896,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Pounce — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Pounce — first rank: area radius 100 → 108; travel distance 250 → 270; phasing duration 0.3 → 0.45s; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -16935,9 +16935,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Snare — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Snare — first rank: zone damage per tick 6 → 7; area radius 120 → 130; recharge 10 → 9.2s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17005,9 +17005,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Savage Bite — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Savage Bite — first rank: direct damage 44 → 49; reach 64 → 69; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17040,9 +17040,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Lightning Bolt — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Lightning Bolt — first rank: direct damage 40 → 45; recharge 5 → 4.6s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17073,9 +17073,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Cone of Cold — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Cone of Cold — first rank: direct damage 30 → 34; reach 210 → 227; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17108,9 +17108,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Sculpted Blast — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Sculpted Blast — first rank: direct damage 58 → 65; area radius 170 → 184; recharge 11 → 10.12s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17143,9 +17143,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Arcane Shield — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Arcane Shield — first rank: direct damage 28 → 31; reach 180 → 194; recharge 12 → 11.04s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17180,9 +17180,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Arcane Ward — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Arcane Ward — first rank: direct damage 24 → 27; area radius 150 → 162; recharge 12 → 11.04s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17217,9 +17217,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Otiluke Bind — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Otiluke Bind — first rank: zone damage per tick 8 → 9; area radius 120 → 130; recharge 10 → 9.2s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17252,9 +17252,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Dimension Door — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Dimension Door — first rank: area radius 220 → 238; travel distance 300 → 324; phasing duration 0.25 → 0.4s; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17326,9 +17326,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Radiance — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Radiance — first rank: direct damage 36 → 40; area radius 150 → 162; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17361,9 +17361,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Guiding Bolt — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Guiding Bolt — first rank: direct damage 60 → 67; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17429,9 +17429,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Warding Flare — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Warding Flare — first rank: reach 420 → 454; recharge 12 → 11.04s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17466,9 +17466,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Blessed Bloom — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Blessed Bloom — first rank: zone healing per tick 18 → 20; area radius 150 → 162; recharge 12 → 11.04s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17536,9 +17536,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Preserve Life — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Preserve Life — first rank: reach 260 → 281; recharge 14 → 12.88s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17573,9 +17573,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Reproach — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Reproach — first rank: direct damage 30 → 34; reach 70 → 76; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17608,9 +17608,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Frenzy — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Frenzy — first rank: recharge 12 → 11.04s; damage multiplier 1.4 → 1.47; movement multiplier 1.2 → 1.25. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17643,9 +17643,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Reckless Cleave — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Reckless Cleave — first rank: direct damage 48 → 54; reach 90 → 97; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17719,9 +17719,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Chain Pull — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Chain Pull — first rank: direct damage 28 → 31; reach 220 → 238; recharge 7 → 6.44s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17791,9 +17791,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Wolf Spirit — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Wolf Spirit — first rank: recharge 12 → 11.04s; damage multiplier 1.3 → 1.37; movement multiplier 1.3 → 1.35. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17900,9 +17900,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Death Strike — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Death Strike — first rank: direct damage 60 → 67; reach 58 → 63; recharge 7 → 6.44s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -17935,9 +17935,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Deadly Throw — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Deadly Throw — first rank: direct damage 38 → 43; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18036,9 +18036,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Mage Hand Bolt — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Mage Hand Bolt — first rank: direct damage 34 → 38; recharge 5 → 4.6s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18069,9 +18069,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Ensnaring Strike — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Ensnaring Strike — first rank: zone damage per tick 8 → 9; area radius 120 → 130; recharge 10 → 9.2s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18104,9 +18104,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Misty Step — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Misty Step — first rank: self-healing 20 → 22; travel distance 260 → 281; phasing duration 0.3 → 0.45s; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18178,9 +18178,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Divine Smite — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Divine Smite — first rank: direct damage 52 → 58; reach 70 → 76; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18213,9 +18213,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Sacred Weapon — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Sacred Weapon — first rank: recharge 12 → 11.04s; damage multiplier 1.3 → 1.37. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18248,9 +18248,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Bless — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Bless — first rank: healing 75 → 84; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18320,9 +18320,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Hunter's Vow — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Hunter's Vow — first rank: recharge 12 → 11.04s; damage multiplier 1.35 → 1.42; movement multiplier 1.15 → 1.2. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18357,9 +18357,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Vow of Enmity — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Vow of Enmity — first rank: direct damage 28 → 31; area radius 150 → 162; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18392,9 +18392,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Avenging Charge — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Avenging Charge — first rank: area radius 110 → 119; travel distance 250 → 270; phasing duration 0.3 → 0.45s; recharge 7 → 6.44s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18431,9 +18431,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Wrathful Smite — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Wrathful Smite — first rank: direct damage 40 → 45; reach 70 → 76; recharge 7 → 6.44s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18466,9 +18466,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Dire Maul — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Dire Maul — first rank: direct damage 46 → 52; reach 80 → 86; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18501,9 +18501,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Feral Pounce — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Feral Pounce — first rank: area radius 100 → 108; travel distance 250 → 270; phasing duration 0.3 → 0.45s; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18540,9 +18540,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Primal Roar — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Primal Roar — first rank: recharge 12 → 11.04s; damage multiplier 1.3 → 1.37. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18577,9 +18577,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Frenzied Regen — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Frenzied Regen — first rank: healing 80 → 90; recharge 10 → 9.2s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18647,9 +18647,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Wall of Thorns — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Wall of Thorns — first rank: zone damage per tick 13 → 15; area radius 130 → 140; recharge 10 → 9.2s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18682,9 +18682,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Gust — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Gust — first rank: direct damage 24 → 27; area radius 150 → 162; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18717,9 +18717,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Healing Spring — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Healing Spring — first rank: zone healing per tick 13 → 15; area radius 150 → 162; recharge 12 → 11.04s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18752,9 +18752,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Blade Flourish — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Blade Flourish — first rank: direct damage 42 → 47; reach 78 → 84; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18787,9 +18787,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Battle Hymn — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Battle Hymn — first rank: recharge 12 → 11.04s; damage multiplier 1.3 → 1.37. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18859,9 +18859,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Shatter — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Shatter — first rank: direct damage 36 → 40; area radius 150 → 162; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18894,9 +18894,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Words of Terror — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Words of Terror — first rank: zone damage per tick 10 → 11; area radius 120 → 130; recharge 10 → 9.2s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18929,9 +18929,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Psychic Blade — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Psychic Blade — first rank: direct damage 50 → 56; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18962,9 +18962,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Mantle of Whispers — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Mantle of Whispers — first rank: travel distance 260 → 281; phasing duration 0.3 → 0.45s; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -18997,9 +18997,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Healing Refrain — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Healing Refrain — first rank: healing 65 → 73; recharge 5 → 4.6s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19030,9 +19030,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Flurry Barrage — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Flurry Barrage — first rank: direct damage 40 → 45; reach 64 → 69; recharge 4 → 3.68s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19065,9 +19065,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Wave Palm — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Wave Palm — first rank: direct damage 34 → 38; area radius 150 → 162; recharge 7 → 6.44s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19178,9 +19178,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Shadow Dart — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Shadow Dart — first rank: direct damage 38 → 43; recharge 5 → 4.6s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19211,9 +19211,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Shadow Step — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Shadow Step — first rank: travel distance 300 → 324; phasing duration 0.35 → 0.5s; recharge 5 → 4.6s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19246,9 +19246,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Cloud of Shadow — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Cloud of Shadow — first rank: zone damage per tick 11 → 12; area radius 110 → 119; recharge 9 → 8.28s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19281,9 +19281,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Shadow Strike — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Shadow Strike — first rank: direct damage 60 → 67; reach 60 → 65; recharge 7 → 6.44s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19316,9 +19316,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Dragon Breath — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Dragon Breath — first rank: direct damage 42 → 47; reach 240 → 259; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19351,9 +19351,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Dragon Wings — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Dragon Wings — first rank: recharge 12 → 11.04s; movement multiplier 1.4 → 1.45. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19384,9 +19384,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Chromatic Bolt — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Chromatic Bolt — first rank: direct damage 60 → 67; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19417,9 +19417,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Draconic Scales — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Draconic Scales — first rank: direct damage 22 → 25; area radius 145 → 157; recharge 14 → 12.88s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19454,9 +19454,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Chaos Surge — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Chaos Surge — first rank: direct damage 12 → 13; recharge 7 → 6.44s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19487,9 +19487,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Tides of Chaos — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Tides of Chaos — first rank: direct damage 40 → 45; area radius 170 → 184; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19522,9 +19522,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Bend Luck — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Bend Luck — first rank: travel distance 280 → 302; phasing duration 0.3 → 0.45s; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19557,9 +19557,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Wild Ward — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Wild Ward — first rank: zone healing per tick 10 → 11; area radius 125 → 135; recharge 12 → 11.04s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19592,9 +19592,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Hurl Flame — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Hurl Flame — first rank: direct damage 56 → 63; recharge 6.5 → 5.98s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19660,9 +19660,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Fiendish Rebuke — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Fiendish Rebuke — first rank: direct damage 36 → 40; area radius 150 → 162; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19783,9 +19783,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Tentacle of the Deep — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Tentacle of the Deep — first rank: direct damage 30 → 34; area radius 150 → 162; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {
@@ -19853,9 +19853,9 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hone Entropic Ward — it strikes harder, reaches wider and recharges faster (stacks to 5).",
-      "disposition": "adjust",
-      "rationale": "Replace generic offer promise with skill-specific tuning; candidate for a role-changing rider.",
+      "description": "Entropic Ward — first rank: self-healing 18 → 20; travel distance 260 → 281; phasing duration 0.3 → 0.45s; recharge 6 → 5.52s. Retains its existing effects (stacks to 5).",
+      "disposition": "retain",
+      "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
       "contexts": [
         {

@@ -29,6 +29,9 @@ import {
   charUpgradeMaxStacks,
   offerableGrands,
   upgradeAllowedFor,
+  reofferCandidates,
+  describeCharOffer,
+  previewAbilityTable,
 } from '../../engine/content/charUpgrades';
 import { UPGRADE_IDS, getUpgrade, upgradeMaxStacks } from '../../engine/content/upgrades';
 import type { UpgradeId } from '../../engine/content/upgrades';
@@ -61,7 +64,18 @@ export function LoadoutEditor() {
   // extra class (switching class mustn't leave a Mage boon smearing a Knight's kit).
   useEffect(() => {
     const valid = new Set<ClassId>([localClass, ...lo.extraClasses]);
+    const basePicks = lo.charUpgrades.filter(
+      (id) =>
+        CHAR_UPGRADES[id] &&
+        (CHAR_UPGRADES[id].classId === 'any'
+          ? upgradeAllowedFor(CHAR_UPGRADES[id], localClass)
+          : valid.has(CHAR_UPGRADES[id].classId)),
+    );
+    const graftFollowups = new Set(
+      reofferCandidates(localClass, basePicks).filter((id) => id.startsWith('graftup:')),
+    );
     const char = lo.charUpgrades.filter((id) => {
+      if (id.startsWith('graftup:')) return graftFollowups.has(id);
       const def = CHAR_UPGRADES[id];
       if (!def) return false;
       // Class-specific boons: only the active class or an owned extra class may hold them.
@@ -131,7 +145,12 @@ export function LoadoutEditor() {
     const has = lo.charUpgrades.includes(id);
     set({
       charUpgrades: has
-        ? lo.charUpgrades.filter((x) => x !== id && CHAR_UPGRADES[x]?.graftId !== id)
+        ? lo.charUpgrades.filter(
+            (x) =>
+              x !== id &&
+              CHAR_UPGRADES[x]?.graftId !== id &&
+              !x.startsWith(`graftup:${CHAR_UPGRADES[id].replaces!}:`),
+          )
         : [...lo.charUpgrades, id],
     });
   };
@@ -166,6 +185,10 @@ export function LoadoutEditor() {
   // Grafts (skill-replacing "wild picks") the primary class may adopt — gated by each
   // graft's own exclude list. Picking one unlocks its graft grand in the list above.
   const eligibleGrafts = HYBRID_UPGRADES.filter((h) => upgradeAllowedFor(h, localClass));
+  const graftFollowups = reofferCandidates(
+    localClass,
+    lo.charUpgrades.filter((id) => !id.startsWith('graftup:')),
+  ).filter((id) => id.startsWith('graftup:'));
   const totalPicks =
     lo.upgrades.length + lo.charUpgrades.length + lo.subSkills.length + lo.extraClasses.length;
 
@@ -302,22 +325,67 @@ export function LoadoutEditor() {
                       type="button"
                       key={h.id}
                       className={`wb-btn wb-btn-chip wb-btn-graft${on ? ' selected' : ''}`}
-                      onClick={() => toggleGraft(h.id)}
+                      onClick={() => (h.replaces ? toggleGraft(h.id) : cycleChar(h.id))}
                       aria-pressed={on}
                       disabled={slotTaken}
                       title={
                         slotTaken
                           ? `${h.desc} — that ability slot already holds another graft`
-                          : h.desc
+                          : describeCharOffer(
+                              localClass,
+                              lo.charUpgrades.filter((id) => id !== h.id),
+                              h.id,
+                            )!.desc
                       }
                     >
                       {h.icon} {h.name}
+                      {charUpgradeMaxStacks(h.id) > 1 && on
+                        ? ` ×${countOf(h.id, lo.charUpgrades)}`
+                        : ''}
+                      {h.replaces
+                        ? ` — replaces ${
+                            previewAbilityTable(
+                              localClass,
+                              lo.charUpgrades.filter((id) => id !== h.id),
+                            )[h.replaces].name
+                          }`
+                        : ''}
                     </button>
                   );
                 })}
               </div>
             </>
           ) : null}
+
+          {graftFollowups.length > 0 && (
+            <>
+              <span className="wb-field-label">Grafted-skill boons — click to rank up</span>
+              <div className="wb-pad-scheme-row">
+                {graftFollowups.map((id) => {
+                  const view = describeCharOffer(localClass, lo.charUpgrades, id)!;
+                  const n = countOf(id, lo.charUpgrades);
+                  return (
+                    <button
+                      type="button"
+                      key={id}
+                      className={`wb-btn wb-btn-chip${n ? ' selected' : ''}`}
+                      onClick={() => cycleChar(id)}
+                      aria-pressed={n > 0}
+                      title={view.desc}
+                    >
+                      {view.label}
+                      {n ? ` ×${n}` : ''} —{' '}
+                      {
+                        previewAbilityTable(localClass, lo.charUpgrades)[
+                          id.split(':')[1] as 'a1' | 'a2' | 'a3'
+                        ].name
+                      }
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
           {grandList.length > 0 ? (
             <>

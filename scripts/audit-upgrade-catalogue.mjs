@@ -312,7 +312,7 @@ try {
     throw new Error('Registry changed; review audit scope/counts.');
   const evidence = {
     schema: 1,
-    baseline: '45706e1 plus upgrade identity pilot (see UPGRADE_PILOT.md)',
+    baseline: '3da6a2c plus upgrade foundation corrections (see UPGRADE_FOUNDATIONS_AND_GRANDS.md)',
     seed: 31,
     counts,
     genericCount: generic.length,

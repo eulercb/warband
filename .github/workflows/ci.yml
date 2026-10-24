@@ -142,6 +142,7 @@ jobs:
           node scripts/run-smoke.mjs smoke:moon-form
           node scripts/run-smoke.mjs smoke:coherence
           node scripts/run-smoke.mjs smoke:upgrade-pilot
+          node scripts/run-smoke.mjs smoke:upgrade-foundations
 
       - name: Upload smoke screenshots
         if: always()

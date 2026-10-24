@@ -6,7 +6,7 @@
  * `playUiSound` is mocked; the store is real so we assert on the resulting loadout.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 
 vi.mock('../src/ui/state/session', () => ({ playUiSound: vi.fn() }));
 
@@ -152,6 +152,47 @@ describe('<LoadoutEditor> grafts (wild picks) + graft grands', () => {
     expect(lo().charUpgrades).not.toContain('hy_pyromancer_g_a');
   });
 
+  it('keeps graft followup ranks through rerenders and removes them with their graft', () => {
+    render(<LoadoutEditor />);
+    fireEvent.click(screen.getByRole('button', { name: /Warlock’s Hex/ }));
+    const followup = () => screen.getByRole('button', { name: /Deepening Hex.*Hex/ });
+    for (let n = 1; n <= 5; n++) {
+      fireEvent.click(followup());
+      expect(lo().charUpgrades.filter((id) => id === 'graftup:a3:wa_hex')).toHaveLength(n);
+    }
+    fireEvent.click(followup());
+    expect(lo().charUpgrades).not.toContain('graftup:a3:wa_hex');
+    fireEvent.click(followup());
+    fireEvent.click(screen.getByRole('button', { name: /Warlock’s Hex/ }));
+    expect(lo().charUpgrades).not.toContain('graftup:a3:wa_hex');
+  });
+  it('cycles non-replacing styles to their actual cap and names the displaced skill', () => {
+    render(<LoadoutEditor />);
+    expect(screen.getByRole('button', { name: /Pyromancer.*replaces Shield Wall/ })).toBeTruthy();
+    for (let n = 1; n <= 3; n++) {
+      fireEvent.click(screen.getByRole('button', { name: /Vampiric Style/ }));
+      expect(lo().charUpgrades.filter((id) => id === 'hy_vampiric')).toHaveLength(n);
+    }
+    fireEvent.click(screen.getByRole('button', { name: /Vampiric Style/ }));
+    expect(lo().charUpgrades).not.toContain('hy_vampiric');
+  });
+  it('prunes orphan graft ranks and removes ranks when class eligibility changes', () => {
+    setup({ sfLoadout: { ...EMPTY_SF_LOADOUT, charUpgrades: ['graftup:a3:wa_hex'] } });
+    const first = render(<LoadoutEditor />);
+    expect(lo().charUpgrades).toEqual([]);
+    first.unmount();
+    setup({
+      sfLoadout: {
+        ...EMPTY_SF_LOADOUT,
+        charUpgrades: ['hy_hexbrand', ...Array<string>(5).fill('graftup:a3:wa_hex')],
+      },
+    });
+    render(<LoadoutEditor />);
+    expect(lo().charUpgrades.filter((id) => id === 'graftup:a3:wa_hex')).toHaveLength(5);
+    act(() => useStore.setState({ localClass: 'warlock' }));
+    expect(lo().charUpgrades).not.toContain('hy_hexbrand');
+    expect(lo().charUpgrades).not.toContain('graftup:a3:wa_hex');
+  });
   it('enforces one graft per ability slot', () => {
     render(<LoadoutEditor />);
     // Pyromancer's Pact and Field Medic both replace the a2 slot.

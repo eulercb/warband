@@ -1,5 +1,11 @@
 # Upgrade identity pilot: Rogue and Warlock
 
+Historical pilot delivery. The owner merged/live-tested it and revised the ordinary
+boon direction; [the foundation correction](UPGRADE_FOUNDATIONS_AND_GRANDS.md)
+restores full Vial field damage plus additive exit poison. Benchmark data below is
+historical, not a measurement of that revision. Recharge and grand-selection
+roadmaps are superseded by the new plan.
+
 Current delivery: eight approved upgrade paths implemented; live verification pending.
 The [design checkpoint](UPGRADE_DESIGN_CHECKPOINT.md) remains the historical proposal.
 Stable IDs, ownership caps, controls, offer counts, reward progression and graft eligibility
