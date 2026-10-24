@@ -514,9 +514,9 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_poison',
     'Deadly Poison',
     '☠️',
-    'Vial gains +7 tick magnitude, +1.5s and +18u; trade 20% ground damage for 2s poison on effective exit, up to 3 foes; strongest owner poison wins',
+    'Vial gains +7 tick magnitude, +1.5s and +18u; keep full ground damage and add 2s poison on effective exit, up to 3 foes; strongest owner poison wins',
     ({ abilities: a }) => {
-      a.a3.zonePoison ??= { share: 0.2, onExit: true };
+      a.a3.zonePoison ??= { share: 0, onExit: true };
       addN(a.a3, 'zoneTickDamage', 7);
       addN(a.a3, 'zoneDuration', 1.5);
       addN(a.a3, 'radius', 18);
@@ -3631,6 +3631,39 @@ const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
     'Increase dread-zone damage by 12% and radius by 8%, and reduce recharge by 8%; weakening stays 20%',
 };
 
+/** First-pick reference for simple Honed boons; live offer previews still resolve owned/rolled skills. */
+function simpleHonedText(subSkillId: string): string {
+  const skill = getSubSkill(subSkillId)!;
+  const before = skill.ability;
+  const after = structuredClone(before) as PlayerAbilityDef;
+  subSkillTune(after);
+  const labels: Record<string, string> = {
+    damage: before.kind === 'heal' ? 'healing' : 'direct damage',
+    zoneTickDamage: 'zone damage per tick',
+    zoneTickHeal: 'zone healing per tick',
+    healOnUse: 'self-healing',
+    radius: 'area radius',
+    impactRadius: 'explosion radius',
+    range: before.kind === 'dash' || before.kind === 'blink' ? 'travel distance' : 'reach',
+    iframes: 'phasing duration',
+    cooldown: 'recharge',
+    buffDamageMult: 'damage multiplier',
+    buffMoveMult: 'movement multiplier',
+    buffDefMult: 'damage-taken multiplier',
+  };
+  const number = (n: number) => String(Math.round(n * 100) / 100);
+  const changes = Object.entries(labels).flatMap(([key, label]) => {
+    const a = before[key as keyof typeof before],
+      b = after[key as keyof typeof after];
+    return typeof a === 'number' && typeof b === 'number' && a !== b
+      ? [
+          `${label} ${number(a)} → ${number(b)}${key === 'cooldown' || key === 'iframes' ? 's' : ''}`,
+        ]
+      : [];
+  });
+  return `${skill.name} — first rank: ${changes.join('; ')}. Retains its existing effects`;
+}
+
 /** Per-subclass-skill upgrade builder — tied to one sub skill id (non-grand, cap 5). */
 function us(subSkillId: string, classId: ClassId, name: string, icon: string): CharUpgradeDef {
   return {
@@ -3641,7 +3674,7 @@ function us(subSkillId: string, classId: ClassId, name: string, icon: string): C
     icon,
     desc: SUB_SKILL_TUNE_TEXT[subSkillId]
       ? `${SUB_SKILL_TUNE_TEXT[subSkillId]} (stacks to ${MAX_SKILL_STACKS}).`
-      : `Hone ${name} — it strikes harder, reaches wider and recharges faster (stacks to ${MAX_SKILL_STACKS}).`,
+      : `${simpleHonedText(subSkillId)} (stacks to ${MAX_SKILL_STACKS}).`,
     apply: ({ subAbilities }) => {
       if (!subAbilities) return;
       for (const slot of SUB_SLOTS) {
@@ -4771,7 +4804,9 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
     return {
       ...base,
       name: blend(fused.name),
-      desc: swapDescName(base.desc, canonSubSkillName(base.subSkillId), fused.name),
+      desc: SUB_SKILL_TUNE_TEXT[base.subSkillId]
+        ? `${fused.name}: ${swapDescName(base.desc, canonSubSkillName(base.subSkillId), fused.name)}`
+        : `${simpleHonedText(base.subSkillId)} (stacks to ${MAX_SKILL_STACKS}).`,
     };
   }
 

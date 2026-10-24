@@ -128,7 +128,9 @@ function abilityRates(ab: PlayerAbilityDef, cdMult: number, castMult: number): K
         // Allocation is one field budget. Only bounded lingering opportunity is additional.
         credit(ab.zoneTickDamage ?? 0, ab.balanceZoneDamageScale) *
           (zoneCommit +
-            (ab.zonePoison ? ab.zonePoison.share * 2 * BALANCE_ZONE_COMMIT : 0) +
+            (ab.zonePoison
+              ? (ab.zonePoison.onExit ? 1 : ab.zonePoison.share) * 2 * BALANCE_ZONE_COMMIT
+              : 0) +
             (ab.zoneFollow ? Math.min(3, ab.zoneFollow) * 0.4 * BALANCE_ZONE_COMMIT : 0)) +
         // More reliable access to the existing retort, not another independent charge.
         (ab.rebukeDirect ? creditedDamage * 0.4 * 0.6 : 0) +

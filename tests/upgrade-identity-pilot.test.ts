@@ -116,19 +116,35 @@ describe('Assassinate prepared-hit tempo', () => {
 });
 
 describe('Vial allocation and following poison', () => {
-  it('common boon trades stationary output for effective exit damage without a second owner pool', () => {
+  it('composed ordinary Vial retains full ground output after Forge caps and adds an exit tail', () => {
+    const { w, p, boss } = setup('rogue', ['ro_poison']);
+    const ab = p.abilities!.a3;
+    ab.components = refreshComponents(recompose(decompose(ab), ab));
+    p.abilities!.a3 = recompose(ab.components, ab);
+    expect(p.abilities!.a3.zonePoison).toEqual({ share: 0, onExit: true });
+    expect(describeAbility(p.abilities!.a3)).toContain('full ground damage plus 2s');
+    const z = castZone(w, 'a3');
+    zoneTick(w, z);
+    expect(boss.maxHp - boss.hp).toBe(18);
+    boss.pos.x += 500;
+    updateUpgradeZone(w, z, 0);
+    const before = boss.hp;
+    tickVenoms(w, 2);
+    expect(before - boss.hp).toBe(36);
+  });
+  it('common boon keeps stationary output and adds effective exit damage without a second owner pool', () => {
     const { w, p, boss } = setup('rogue', ['ro_poison']);
     const z = castZone(w, 'a3');
     zoneTick(w, z);
-    expect(boss.maxHp - boss.hp).toBeCloseTo(14.4);
+    expect(boss.maxHp - boss.hp).toBeCloseTo(18);
     expect(boss.buffs.some((b) => b.kind === 'venom')).toBe(false);
     boss.pos.x += 500;
     updateUpgradeZone(w, z, 0);
-    expect(boss.buffs.find((b) => b.kind === 'venom')!.mult).toBeCloseTo(14.4);
+    expect(boss.buffs.find((b) => b.kind === 'venom')!.mult).toBeCloseTo(18);
     const before = boss.hp;
     tickVenoms(w, 2);
-    expect(before - boss.hp).toBeCloseTo(28.8);
-    expect(p.stats.damageDealt).toBeCloseTo(43.2);
+    expect(before - boss.hp).toBeCloseTo(36);
+    expect(p.stats.damageDealt).toBeCloseTo(54);
   });
   it('expiry emits the tail even when the final tick seeds new contact', () => {
     const { w, boss } = setup('rogue', ['ro_poison']);

@@ -1288,7 +1288,9 @@ export function describeAbility(def: Omit<PlayerAbilityDef, 'slot'>, mods?: Desc
     );
   if (def.zonePoison)
     parts.push(
-      `${n(def.zonePoison.share * 100)}% field damage allocated to strongest-owner poison, 2s ${def.zonePoison.onExit ? 'on effective exit' : 'linger'}, up to 3 foes`,
+      def.zonePoison.onExit
+        ? 'full ground damage plus 2s strongest-owner poison on effective exit (one field tick per second), up to 3 foes'
+        : `${n(def.zonePoison.share * 100)}% field damage allocated to strongest-owner poison, 2s linger, up to 3 foes`,
     );
   if (def.zoneFollow)
     parts.push(`follows first damaged foe up to ${s(def.zoneFollow)}, then anchors`);

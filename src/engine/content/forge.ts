@@ -744,7 +744,7 @@ function buffValue(e: Extract<EffectComponent, { kind: 'buff' }>): number {
 function zoneValue(z: ZoneSpec): number {
   const ticks = (z.duration / 0.5) * 0.6;
   let v = ((z.tickDamage ?? 0) + (z.tickHeal ?? 0)) * ticks;
-  if (z.zonePoison) v += (z.tickDamage ?? 0) * z.zonePoison.share * 2;
+  if (z.zonePoison) v += (z.tickDamage ?? 0) * (z.zonePoison.onExit ? 1 : z.zonePoison.share) * 2;
   if (z.zoneFollow) v += Math.min(3, z.zoneFollow) * ((z.tickDamage ?? 0) * 0.2 + 2);
   if (z.slowMult != null) v += (1 - z.slowMult) * z.duration * 10;
   if (z.overflowShield) v += (z.tickHeal ?? 0) * ticks * 0.4;
@@ -949,7 +949,9 @@ function zonePhrase(z: ZoneSpec): string {
   const bits: string[] = [];
   if (z.zonePoison)
     bits.push(
-      `${pct(z.zonePoison.share * 100)}% allocated to strongest-owner poison, 2s ${z.zonePoison.onExit ? 'on effective exit' : 'linger'}, up to 3 foes`,
+      z.zonePoison.onExit
+        ? 'full ground damage plus 2s strongest-owner poison on effective exit (one field tick per second), up to 3 foes'
+        : `${pct(z.zonePoison.share * 100)}% allocated to strongest-owner poison, 2s linger, up to 3 foes`,
     );
   if (z.zoneFollow) bits.push(`follow first damaged foe up to ${s(z.zoneFollow)}, then anchor`);
   if (z.tickDamage) bits.push(`${n(z.tickDamage)}/tick dmg`);
@@ -2406,7 +2408,10 @@ function capZone(z: ZoneSpec): ZoneSpec {
     duration: clamp(round1(z.duration), 2, 8),
   };
   if (out.zonePoison)
-    out.zonePoison = { ...out.zonePoison, share: clamp(out.zonePoison.share, 0.2, 0.4) };
+    out.zonePoison = {
+      ...out.zonePoison,
+      share: clamp(out.zonePoison.share, out.zonePoison.onExit ? 0 : 0.2, 0.4),
+    };
   if (out.zoneFollow) out.zoneFollow = clamp(out.zoneFollow, 0, 3);
   if (out.tickDamage != null) out.tickDamage = Math.max(1, Math.round(out.tickDamage));
   if (out.tickHeal != null) out.tickHeal = Math.max(1, Math.round(out.tickHeal));
