@@ -1,12 +1,13 @@
+import { describeGrandTransition } from './grandPreview';
+import type { UpgradeId } from '../../engine/content/upgrades';
 import { memo, useState } from 'react';
 import { CLASSES } from '../../engine/content/classes';
-import { CHAR_UPGRADES, describeCharOffer } from '../../engine/content/charUpgrades';
+import { CHAR_UPGRADES } from '../../engine/content/charUpgrades';
 import {
   changeGrand,
   grandCategory,
   grandEligible,
   grandEarnable,
-  grandHistory,
   normalizeGrandLoadout,
   type GrandContext,
   type GrandLoadout,
@@ -20,11 +21,13 @@ export function GrandManager({
   value,
   credit,
   onChange,
+  generic = [],
 }: {
   context: GrandContext;
   value?: GrandLoadout;
   credit: boolean;
   onChange: (request: GrandRequest) => void;
+  generic?: readonly UpgradeId[];
 }) {
   const [chosenClass, setClass] = useState(context.classes[0]);
   const [offer, setOffer] = useState('');
@@ -36,7 +39,10 @@ export function GrandManager({
     (d) => grandEarnable(d.id, classId, context) && !selected.bank.includes(d.id),
   );
   const pick = available.find((d) => d.id === offer);
-  const activeHistory = grandHistory(classId, context.history, state, context.subSkills);
+  const unlockState = pick
+    ? changeGrand(state, context, { classId, id: pick.id, action: 'earn' }, true)
+    : null;
+  const unlockEquips = pick && unlockState?.classes[classId]?.equipped.includes(pick.id);
   return (
     <section aria-label="Grand selections" className="wb-special-reward">
       <p>
@@ -110,8 +116,9 @@ export function GrandManager({
           </button>
           {pick ? (
             <p>
-              {describeCharOffer(classId, activeHistory, pick.id, context.subSkills)?.desc ??
-                pick.desc}
+              {unlockEquips
+                ? `${pick.desc} · ${describeGrandTransition(classId, context, state, unlockState!, generic)}`
+                : `${pick.desc}. Unlocking this keeps your current build unchanged; select an outgoing grand before equipping it.`}
             </p>
           ) : null}
           <button
@@ -147,7 +154,8 @@ export function GrandManager({
             action: 'equip',
             ...(replace ? { replace } : {}),
           };
-          const canEquip = changeGrand(state, context, request) != null;
+          const proposed = changeGrand(state, context, request);
+          const canEquip = proposed != null;
           const candidates = selected.equipped.filter(
             (out) =>
               changeGrand(state, context, { classId, id, action: 'equip', replace: out }) != null,
@@ -207,6 +215,12 @@ export function GrandManager({
                       Next outgoing grand for {d.name}
                     </button>
                   ) : null}
+                  {replace && proposed ? (
+                    <p aria-label={`Replacement preview for ${d.name}`}>
+                      After replacing {CHAR_UPGRADES[replace].name}:{' '}
+                      {describeGrandTransition(classId, context, state, proposed, generic)}
+                    </p>
+                  ) : null}
                   {replace && candidates.includes(replace) ? (
                     <p>
                       Remove {CHAR_UPGRADES[replace].name}; equip {d.name}.
@@ -234,6 +248,7 @@ function GrandPanel({ open = false }: { open?: boolean } = {}) {
   const primary = useStore((s) => s.activeDraftedClass ?? s.localClass);
   const extra = useStore((s) => s.myExtraClasses);
   const history = useStore((s) => s.myCharUpgrades);
+  const generic = useStore((s) => s.myUpgrades);
   const subSkills = useStore((s) => s.mySubSkills);
   const value = useStore((s) => s.myGrandLoadout);
   const credit = useStore((s) => s.grandCredit);
@@ -244,6 +259,7 @@ function GrandPanel({ open = false }: { open?: boolean } = {}) {
         context={{ classes: [primary, ...extra], history, subSkills }}
         value={value}
         credit={credit}
+        generic={generic}
         onChange={(request) => chooseGrand(request)}
       />
     </details>

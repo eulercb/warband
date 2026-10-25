@@ -411,6 +411,7 @@ export function LoadoutEditor() {
             context={grandContext}
             value={lo.grandLoadout}
             credit={true}
+            generic={lo.upgrades}
             onChange={(request) => {
               const next = changeGrand(
                 normalizeGrandLoadout(lo.grandLoadout, grandContext),

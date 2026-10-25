@@ -49,7 +49,9 @@ describe('earned bank and explicit replacements', () => {
     render(<Harness />);
     unlock('kn_gk_basic_a');
     unlock('kn_gk_a1_a');
-    unlock('kn_gk_a2_a');
+    fireEvent.change(screen.getByLabelText('New grand'), { target: { value: 'kn_gk_a2_a' } });
+    expect(screen.getByText(/Unlocking this keeps your current build unchanged/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock grand' }));
     expect(screen.getByRole('status').textContent).toContain('2/4 equipped · 3 earned');
     const name = CHAR_UPGRADES.kn_gk_a2_a.name;
     expect(screen.getByRole<HTMLButtonElement>('button', { name: `Equip ${name}` }).disabled).toBe(
@@ -62,6 +64,7 @@ describe('earned bank and explicit replacements', () => {
     );
     fireEvent.click(outgoing);
     expect(screen.getByText(new RegExp(`Remove ${CHAR_UPGRADES.kn_gk_a1_a.name}`))).toBeTruthy();
+    expect(screen.getByLabelText(`Replacement preview for ${name}`).textContent).toContain('Now →');
     fireEvent.click(screen.getByRole('button', { name: `Equip ${name}` }));
     fireEvent.click(screen.getByRole('button', { name: `Unequip ${name}` }));
     fireEvent.click(screen.getByRole('button', { name: `Equip ${CHAR_UPGRADES.kn_gk_a1_a.name}` }));
