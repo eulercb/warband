@@ -1,14 +1,15 @@
 {
   "schema": 1,
-  "baseline": "018b71c plus deliberate cadence/range pass (see CADENCE_AND_RANGE.md)",
+  "baseline": "62c89e6 plus Rogue/Warlock authored grand pilot (see PILOT_GRANDS.md)",
   "seed": 31,
   "counts": {
     "class-boon": 60,
     "graft": 7,
     "style": 5,
-    "class-grand": 24,
-    "skill-grand": 96,
+    "class-grand": 22,
+    "skill-grand": 86,
     "subclass-grand": 48,
+    "subclass-skill-grand": 16,
     "graft-grand": 14,
     "honed": 96
   },
@@ -6325,43 +6326,6 @@
       ]
     },
     {
-      "id": "ro_grand_shadow",
-      "name": "Shadow Master",
-      "category": "class-grand",
-      "classId": "rogue",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": null,
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Shadowstep resets almost instantly (−65% cd); Backstab strikes for the kill — +35 damage, +20% crit chance, +0.5× crit damage",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "rogue",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.5 },
-            { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.8 },
-            { "path": "abilities.a1.damage", "before": 50, "after": 85 },
-            { "path": "abilities.a2.cooldown", "before": 6, "after": 2.0999999999999996 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.5 },
-            { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.8 },
-            { "path": "abilities.a1.damage", "before": 50, "after": 85 },
-            { "path": "abilities.a2.cooldown", "before": 6, "after": 2.0999999999999996 }
-          ]
-        }
-      ]
-    },
-    {
       "id": "ro_grand_venom",
       "name": "Grand Venom",
       "category": "class-grand",
@@ -6783,7 +6747,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Eldritch Blast forks into 2 soul-draining bolts (+18 dmg, +35% lifesteal)",
+      "description": "Eldritch Blast forks into two 18-damage bolts with +12% lifesteal",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -6793,53 +6757,14 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.basic.damage", "before": 22, "after": 40 },
-            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.5 },
+            { "path": "abilities.basic.damage", "before": 22, "after": 18 },
+            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.27 },
             { "path": "abilities.basic.projCount", "before": 1, "after": 2 }
           ],
           "atCap": [
-            { "path": "abilities.basic.damage", "before": 22, "after": 40 },
-            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.5 },
+            { "path": "abilities.basic.damage", "before": 22, "after": 18 },
+            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.27 },
             { "path": "abilities.basic.projCount", "before": 1, "after": 2 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "wa_grand_ruin",
-      "name": "Word of Ruin",
-      "category": "class-grand",
-      "classId": "warlock",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": null,
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Hex gains +22/tick and +4s, follows its first damaged foe for up to 3s then anchors; Rebuke gains +40 damage and +30u",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": true,
-      "contexts": [
-        {
-          "classId": "warlock",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 9 },
-            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
-            { "path": "abilities.a1.zoneTickDamage", "before": 12, "after": 34 },
-            { "path": "abilities.a2.damage", "before": 30, "after": 70 },
-            { "path": "abilities.a2.radius", "before": 140, "after": 170 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 9 },
-            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
-            { "path": "abilities.a1.zoneTickDamage", "before": 12, "after": 34 },
-            { "path": "abilities.a2.damage", "before": 30, "after": 70 },
-            { "path": "abilities.a2.radius", "before": 140, "after": 170 }
           ]
         }
       ]
@@ -8251,41 +8176,6 @@
       ]
     },
     {
-      "id": "ro_gk_basic_a",
-      "name": "Thousand Cuts",
-      "category": "skill-grand",
-      "classId": "rogue",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "basic",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Slash strikes twice as fast (−50% cd) for +6 and drinks 15% as health",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "rogue",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.basic.cooldown", "before": 0.84, "after": 0.42 },
-            { "path": "abilities.basic.damage", "before": 18, "after": 24 },
-            { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.15 }
-          ],
-          "atCap": [
-            { "path": "abilities.basic.cooldown", "before": 0.84, "after": 0.42 },
-            { "path": "abilities.basic.damage", "before": 18, "after": 24 },
-            { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.15 }
-          ]
-        }
-      ]
-    },
-    {
       "id": "ro_gk_basic_b",
       "name": "Whirling Blades",
       "category": "skill-grand",
@@ -8298,7 +8188,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Slash sweeps a full 360° circle: +8 damage, +25u reach",
+      "description": "Slash sweeps a full 360° circle: +3 damage, +25u reach",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8308,12 +8198,12 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.basic.damage", "before": 18, "after": 26 },
+            { "path": "abilities.basic.damage", "before": 18, "after": 21 },
             { "path": "abilities.basic.halfAngleDeg", "before": 42, "after": 180 },
             { "path": "abilities.basic.range", "before": 62, "after": 87 }
           ],
           "atCap": [
-            { "path": "abilities.basic.damage", "before": 18, "after": 26 },
+            { "path": "abilities.basic.damage", "before": 18, "after": 21 },
             { "path": "abilities.basic.halfAngleDeg", "before": 42, "after": 180 },
             { "path": "abilities.basic.range", "before": 62, "after": 87 }
           ]
@@ -8333,7 +8223,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Backstab annihilates for +70 and heals you 25% of the damage dealt",
+      "description": "Backstab gains +45 damage, +15% crit chance and heals you 15% of damage dealt",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8343,82 +8233,14 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.damage", "before": 50, "after": 120 },
-            { "path": "abilities.a1.lifestealFrac", "before": null, "after": 0.25 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.44999999999999996 },
+            { "path": "abilities.a1.damage", "before": 50, "after": 95 },
+            { "path": "abilities.a1.lifestealFrac", "before": null, "after": 0.15 }
           ],
           "atCap": [
-            { "path": "abilities.a1.damage", "before": 50, "after": 120 },
-            { "path": "abilities.a1.lifestealFrac", "before": null, "after": 0.25 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "ro_gk_a1_b",
-      "name": "Deathblow",
-      "category": "skill-grand",
-      "classId": "rogue",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a1",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Backstab hits for +40, dazes 0.8s, and returns 45% sooner",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "rogue",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a1.cooldown", "before": 10, "after": 5.5 },
-            { "path": "abilities.a1.damage", "before": 50, "after": 90 },
-            { "path": "abilities.a1.stun", "before": null, "after": 0.8 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.cooldown", "before": 10, "after": 5.5 },
-            { "path": "abilities.a1.damage", "before": 50, "after": 90 },
-            { "path": "abilities.a1.stun", "before": null, "after": 0.8 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "ro_gk_a2_a",
-      "name": "Nightstalker",
-      "category": "skill-grand",
-      "classId": "rogue",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a2",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Shadowstep resets almost at once (−65% cd), phases +0.4s, and heals 25",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "rogue",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a2.cooldown", "before": 6, "after": 2.0999999999999996 },
-            { "path": "abilities.a2.healOnUse", "before": null, "after": 25 },
-            { "path": "abilities.a2.iframes", "before": 0.3, "after": 0.7 }
-          ],
-          "atCap": [
-            { "path": "abilities.a2.cooldown", "before": 6, "after": 2.0999999999999996 },
-            { "path": "abilities.a2.healOnUse", "before": null, "after": 25 },
-            { "path": "abilities.a2.iframes", "before": 0.3, "after": 0.7 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.44999999999999996 },
+            { "path": "abilities.a1.damage", "before": 50, "after": 95 },
+            { "path": "abilities.a1.lifestealFrac", "before": null, "after": 0.15 }
           ]
         }
       ]
@@ -8436,7 +8258,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Shadowstep leaps +160u, phases +0.5s, and mends +40",
+      "description": "Shadowstep leaps +80u, phases +0.25s, heals 25 and holds precision 1s longer",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8446,86 +8268,16 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.healOnUse", "before": null, "after": 40 },
-            { "path": "abilities.a2.iframes", "before": 0.3, "after": 0.8 },
-            { "path": "abilities.a2.range", "before": 240, "after": 400 }
+            { "path": "abilities.a2.healOnUse", "before": null, "after": 25 },
+            { "path": "abilities.a2.iframes", "before": 0.3, "after": 0.55 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            { "path": "abilities.a2.range", "before": 240, "after": 320 }
           ],
           "atCap": [
-            { "path": "abilities.a2.healOnUse", "before": null, "after": 40 },
-            { "path": "abilities.a2.iframes", "before": 0.3, "after": 0.8 },
-            { "path": "abilities.a2.range", "before": 240, "after": 400 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "ro_gk_a3_a",
-      "name": "Plaguebringer",
-      "category": "skill-grand",
-      "classId": "rogue",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a3",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Poison Vial festers for +22/tick across +65u for +4s",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": true,
-      "contexts": [
-        {
-          "classId": "rogue",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a3.radius", "before": 105, "after": 170 },
-            { "path": "abilities.a3.zoneDuration", "before": 4, "after": 8 },
-            { "path": "abilities.a3.zoneTickDamage", "before": 11, "after": 33 }
-          ],
-          "atCap": [
-            { "path": "abilities.a3.radius", "before": 105, "after": 170 },
-            { "path": "abilities.a3.zoneDuration", "before": 4, "after": 8 },
-            { "path": "abilities.a3.zoneTickDamage", "before": 11, "after": 33 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "ro_gk_a3_b",
-      "name": "Crippling Toxin",
-      "category": "skill-grand",
-      "classId": "rogue",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a3",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Poison Vial slows foes to 40%, ticks +10, and spreads +40u",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "rogue",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a3.radius", "before": 105, "after": 145 },
-            { "path": "abilities.a3.slowDuration", "before": 1.2, "after": 1.5 },
-            { "path": "abilities.a3.slowMult", "before": 0.8, "after": 0.4 },
-            { "path": "abilities.a3.zoneTickDamage", "before": 11, "after": 21 }
-          ],
-          "atCap": [
-            { "path": "abilities.a3.radius", "before": 105, "after": 145 },
-            { "path": "abilities.a3.slowDuration", "before": 1.2, "after": 1.5 },
-            { "path": "abilities.a3.slowMult", "before": 0.8, "after": 0.4 },
-            { "path": "abilities.a3.zoneTickDamage", "before": 11, "after": 21 }
+            { "path": "abilities.a2.healOnUse", "before": null, "after": 25 },
+            { "path": "abilities.a2.iframes", "before": 0.3, "after": 0.55 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            { "path": "abilities.a2.range", "before": 240, "after": 320 }
           ]
         }
       ]
@@ -9941,78 +9693,6 @@
       ]
     },
     {
-      "id": "wa_gk_basic_a",
-      "name": "Eldritch Barrage",
-      "category": "skill-grand",
-      "classId": "warlock",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "basic",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Eldritch Blast forks into 3 soul-bolts (+8 each), draining 30% total",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "warlock",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.basic.damage", "before": 22, "after": 30 },
-            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.3 },
-            { "path": "abilities.basic.projCount", "before": 1, "after": 3 },
-            { "path": "abilities.basic.spreadDeg", "before": null, "after": 14 }
-          ],
-          "atCap": [
-            { "path": "abilities.basic.damage", "before": 22, "after": 30 },
-            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.3 },
-            { "path": "abilities.basic.projCount", "before": 1, "after": 3 },
-            { "path": "abilities.basic.spreadDeg", "before": null, "after": 14 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "wa_gk_basic_b",
-      "name": "Soul Ruin",
-      "category": "skill-grand",
-      "classId": "warlock",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "basic",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Eldritch Blast hits for +24, +300 speed, and drinks 40% as health",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "warlock",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.basic.damage", "before": 22, "after": 46 },
-            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.4 },
-            { "path": "abilities.basic.projSpeed", "before": 660, "after": 960 }
-          ],
-          "atCap": [
-            { "path": "abilities.basic.damage", "before": 22, "after": 46 },
-            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.4 },
-            { "path": "abilities.basic.projSpeed", "before": 660, "after": 960 }
-          ]
-        }
-      ]
-    },
-    {
       "id": "wa_gk_a1_a",
       "name": "Word of Ruin",
       "category": "skill-grand",
@@ -10025,7 +9705,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hex festers for +22/tick across +65u for +4s",
+      "description": "Hex festers for +22/tick across +65u for +4s and follows its first damaged foe for 3s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": true,
@@ -10037,49 +9717,14 @@
           "once": [
             { "path": "abilities.a1.radius", "before": 120, "after": 185 },
             { "path": "abilities.a1.zoneDuration", "before": 5, "after": 9 },
+            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
             { "path": "abilities.a1.zoneTickDamage", "before": 12, "after": 34 }
           ],
           "atCap": [
             { "path": "abilities.a1.radius", "before": 120, "after": 185 },
             { "path": "abilities.a1.zoneDuration", "before": 5, "after": 9 },
+            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
             { "path": "abilities.a1.zoneTickDamage", "before": 12, "after": 34 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "wa_gk_a1_b",
-      "name": "Crippling Curse",
-      "category": "skill-grand",
-      "classId": "warlock",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a1",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Hex locks foes to 35% speed and festers +12/tick over +55u",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "warlock",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a1.radius", "before": 120, "after": 175 },
-            { "path": "abilities.a1.slowDuration", "before": 1, "after": 1.5 },
-            { "path": "abilities.a1.slowMult", "before": 0.7, "after": 0.35 },
-            { "path": "abilities.a1.zoneTickDamage", "before": 12, "after": 24 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.radius", "before": 120, "after": 175 },
-            { "path": "abilities.a1.slowDuration", "before": 1, "after": 1.5 },
-            { "path": "abilities.a1.slowMult", "before": 0.7, "after": 0.35 },
-            { "path": "abilities.a1.zoneTickDamage", "before": 12, "after": 24 }
           ]
         }
       ]
@@ -10097,7 +9742,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hellish Rebuke erupts for +40 across +55u, drinking 35% total",
+      "description": "Hellish Rebuke hits +25 across +30u, then counters on your next direct hit or when hurt, applying a searing curse",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -10107,86 +9752,16 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.damage", "before": 30, "after": 70 },
-            { "path": "abilities.a2.lifestealFrac", "before": 0.2, "after": 0.35 },
-            { "path": "abilities.a2.radius", "before": 140, "after": 195 }
+            { "path": "abilities.a2.damage", "before": 30, "after": 55 },
+            { "path": "abilities.a2.radius", "before": 140, "after": 170 },
+            { "path": "abilities.a2.rebukeCurseBonus", "before": null, "after": 0.15 },
+            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "abilities.a2.damage", "before": 30, "after": 70 },
-            { "path": "abilities.a2.lifestealFrac", "before": 0.2, "after": 0.35 },
-            { "path": "abilities.a2.radius", "before": 140, "after": 195 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "wa_gk_a2_b",
-      "name": "Searing Retort",
-      "category": "skill-grand",
-      "classId": "warlock",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a2",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Hellish Rebuke hits +18, freezes 0.7s, widens +20u, and recharges 40% faster",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "warlock",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a2.cooldown", "before": 18, "after": 10.799999999999999 },
-            { "path": "abilities.a2.damage", "before": 30, "after": 48 },
-            { "path": "abilities.a2.freeze", "before": null, "after": 0.7 },
-            { "path": "abilities.a2.radius", "before": 140, "after": 160 }
-          ],
-          "atCap": [
-            { "path": "abilities.a2.cooldown", "before": 18, "after": 10.799999999999999 },
-            { "path": "abilities.a2.damage", "before": 30, "after": 48 },
-            { "path": "abilities.a2.freeze", "before": null, "after": 0.7 },
-            { "path": "abilities.a2.radius", "before": 140, "after": 160 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "wa_gk_a3_a",
-      "name": "Fiendish Ascension",
-      "category": "skill-grand",
-      "classId": "warlock",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a3",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Dark One's Blessing swells to +50% damage, +25% move, and lasts 5s longer",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "warlock",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a3.buffDamageMult", "before": 1.3, "after": 1.8 },
-            { "path": "abilities.a3.buffDuration", "before": 6, "after": 11 },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 }
-          ],
-          "atCap": [
-            { "path": "abilities.a3.buffDamageMult", "before": 1.3, "after": 1.8 },
-            { "path": "abilities.a3.buffDuration", "before": 6, "after": 11 },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 }
+            { "path": "abilities.a2.damage", "before": 30, "after": 55 },
+            { "path": "abilities.a2.radius", "before": 140, "after": 170 },
+            { "path": "abilities.a2.rebukeCurseBonus", "before": null, "after": 0.15 },
+            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true }
           ]
         }
       ]
@@ -10204,7 +9779,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Dark One's Blessing is nearly always up (−45% cd), +30% damage, 30% mitigation, lasts +2s",
+      "description": "Dark One's Blessing recovers 25% faster, grants +25% damage and 20% mitigation, lasts +1s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -10214,16 +9789,16 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.buffDamageMult", "before": 1.3, "after": 1.6 },
-            { "path": "abilities.a3.buffDefMult", "before": null, "after": 0.7 },
-            { "path": "abilities.a3.buffDuration", "before": 6, "after": 8 },
-            { "path": "abilities.a3.cooldown", "before": 14, "after": 7.700000000000001 }
+            { "path": "abilities.a3.buffDamageMult", "before": 1.3, "after": 1.55 },
+            { "path": "abilities.a3.buffDefMult", "before": null, "after": 0.8 },
+            { "path": "abilities.a3.buffDuration", "before": 6, "after": 7 },
+            { "path": "abilities.a3.cooldown", "before": 14, "after": 10.5 }
           ],
           "atCap": [
-            { "path": "abilities.a3.buffDamageMult", "before": 1.3, "after": 1.6 },
-            { "path": "abilities.a3.buffDefMult", "before": null, "after": 0.7 },
-            { "path": "abilities.a3.buffDuration", "before": 6, "after": 8 },
-            { "path": "abilities.a3.cooldown", "before": 14, "after": 7.700000000000001 }
+            { "path": "abilities.a3.buffDamageMult", "before": 1.3, "after": 1.55 },
+            { "path": "abilities.a3.buffDefMult", "before": null, "after": 0.8 },
+            { "path": "abilities.a3.buffDuration", "before": 6, "after": 7 },
+            { "path": "abilities.a3.cooldown", "before": 14, "after": 10.5 }
           ]
         }
       ]
@@ -11921,7 +11496,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Assassin skills gain 55% magnitude and wider reach; direct strikes drink 30% as health, poison does not leech",
+      "description": "Prepared cuts and throws land harder and refund 1s of a running Shadowstep; preparation lasts 2s longer",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": true,
@@ -11931,14 +11506,28 @@
           "subSkills": ["ro_assassin_strike"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 93 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.3 },
-            { "path": "subAbilities.sub1.range", "before": 58, "after": 75 }
+            { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
+            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
+            {
+              "path": "subAbilities.sub1.critMultBonus",
+              "before": 0.4,
+              "after": 0.6000000000000001
+            },
+            { "path": "subAbilities.sub1.preparedRefund", "before": null, "after": 1 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 93 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.3 },
-            { "path": "subAbilities.sub1.range", "before": 58, "after": 75 }
+            { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
+            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
+            {
+              "path": "subAbilities.sub1.critMultBonus",
+              "before": 0.4,
+              "after": 0.6000000000000001
+            },
+            { "path": "subAbilities.sub1.preparedRefund", "before": null, "after": 1 }
           ]
         },
         {
@@ -11946,27 +11535,61 @@
           "subSkills": ["ro_assassin_throw"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 38, "after": 59 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.3 }
+            { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
+            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
+            { "path": "subAbilities.sub1.consumesPrecision", "before": null, "after": true },
+            { "path": "subAbilities.sub1.critMultBonus", "before": 0.6, "after": 0.8 },
+            { "path": "subAbilities.sub1.preparedRefund", "before": null, "after": 1 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 38, "after": 59 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.3 }
+            { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
+            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
+            { "path": "subAbilities.sub1.consumesPrecision", "before": null, "after": true },
+            { "path": "subAbilities.sub1.critMultBonus", "before": 0.6, "after": 0.8 },
+            { "path": "subAbilities.sub1.preparedRefund", "before": null, "after": 1 }
           ]
         },
         {
           "classId": "rogue",
           "subSkills": ["ro_assassin_poison"],
           "prefix": [],
-          "once": [{ "path": "subAbilities.sub1.venomCoating.damage", "before": 24, "after": 37 }],
-          "atCap": [{ "path": "subAbilities.sub1.venomCoating.damage", "before": 24, "after": 37 }]
+          "once": [
+            { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
+            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
+            { "path": "subAbilities.sub1.prepareCrit", "before": null, "after": 4 }
+          ],
+          "atCap": [
+            { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
+            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
+            { "path": "subAbilities.sub1.prepareCrit", "before": null, "after": 4 }
+          ]
         },
         {
           "classId": "rogue",
           "subSkills": ["ro_assassin_smoke"],
           "prefix": [],
-          "once": [{ "path": "subAbilities.sub1.radius", "before": 120, "after": 156 }],
-          "atCap": [{ "path": "subAbilities.sub1.radius", "before": 120, "after": 156 }]
+          "once": [
+            { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
+            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
+            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 6 }
+          ],
+          "atCap": [
+            { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
+            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
+            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 6 }
+          ]
         }
       ]
     },
@@ -11983,7 +11606,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Assassin skills recharge 40% faster, hit 30% harder, and daze on strike",
+      "description": "Shadowstep coats your next direct hit with 12/s poison for 4s; Assassin preparation and coatings last longer",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": true,
@@ -11993,16 +11616,24 @@
           "subSkills": ["ro_assassin_strike"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 4.2 },
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 78 },
-            { "path": "subAbilities.sub1.range", "before": 58, "after": 67 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.6 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            {
+              "path": "abilities.a2.venomCoating",
+              "before": null,
+              "after": { "damage": 12, "duration": 4, "window": 6 }
+            },
+            { "path": "subAbilities.sub1.critChanceBonus", "before": 0.2, "after": 0.28 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 4.2 },
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 78 },
-            { "path": "subAbilities.sub1.range", "before": 58, "after": 67 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.6 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            {
+              "path": "abilities.a2.venomCoating",
+              "before": null,
+              "after": { "damage": 12, "duration": 4, "window": 6 }
+            },
+            { "path": "subAbilities.sub1.critChanceBonus", "before": 0.2, "after": 0.28 }
           ]
         },
         {
@@ -12010,14 +11641,24 @@
           "subSkills": ["ro_assassin_throw"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.damage", "before": 38, "after": 49 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.6 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            {
+              "path": "abilities.a2.venomCoating",
+              "before": null,
+              "after": { "damage": 12, "duration": 4, "window": 6 }
+            },
+            { "path": "subAbilities.sub1.critChanceBonus", "before": 0.35, "after": 0.43 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.damage", "before": 38, "after": 49 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.6 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            {
+              "path": "abilities.a2.venomCoating",
+              "before": null,
+              "after": { "damage": 12, "duration": 4, "window": 6 }
+            },
+            { "path": "subAbilities.sub1.critChanceBonus", "before": 0.35, "after": 0.43 }
           ]
         },
         {
@@ -12025,12 +11666,24 @@
           "subSkills": ["ro_assassin_poison"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 9, "after": 5.3999999999999995 },
-            { "path": "subAbilities.sub1.venomCoating.damage", "before": 24, "after": 31 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            {
+              "path": "abilities.a2.venomCoating",
+              "before": null,
+              "after": { "damage": 12, "duration": 4, "window": 6 }
+            },
+            { "path": "subAbilities.sub1.venomCoating.duration", "before": 4, "after": 6 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 9, "after": 5.3999999999999995 },
-            { "path": "subAbilities.sub1.venomCoating.damage", "before": 24, "after": 31 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            {
+              "path": "abilities.a2.venomCoating",
+              "before": null,
+              "after": { "damage": 12, "duration": 4, "window": 6 }
+            },
+            { "path": "subAbilities.sub1.venomCoating.duration", "before": 4, "after": 6 }
           ]
         },
         {
@@ -12038,12 +11691,24 @@
           "subSkills": ["ro_assassin_smoke"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 7.199999999999999 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 138 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            {
+              "path": "abilities.a2.venomCoating",
+              "before": null,
+              "after": { "damage": 12, "duration": 4, "window": 6 }
+            },
+            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 5 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 7.199999999999999 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 138 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            {
+              "path": "abilities.a2.venomCoating",
+              "before": null,
+              "after": { "damage": 12, "duration": 4, "window": 6 }
+            },
+            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 5 }
           ]
         }
       ]
@@ -12061,7 +11726,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Trickster skills hit 50% harder over a wider area and ensnare foes to 40%",
+      "description": "Spellblade empowers any positive direct hit and slows its target; prepared base strikes and Trickster spells reach farther",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -12071,16 +11736,20 @@
           "subSkills": ["ro_trickster_bolt"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 34, "after": 51 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.5 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.4 }
+            { "path": "abilities.a1.range", "before": 58, "after": 68 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            { "path": "abilities.basic.range", "before": 62, "after": 72 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.65 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 34, "after": 51 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.5 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.4 }
+            { "path": "abilities.a1.range", "before": 58, "after": 68 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            { "path": "abilities.basic.range", "before": 62, "after": 72 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.65 }
           ]
         },
         {
@@ -12088,12 +11757,16 @@
           "subSkills": ["ro_trickster_snare"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 156 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 12 }
+            { "path": "abilities.a1.range", "before": 58, "after": 68 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            { "path": "abilities.basic.range", "before": 62, "after": 72 },
+            { "path": "subAbilities.sub1.radius", "before": 120, "after": 135 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 156 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 12 }
+            { "path": "abilities.a1.range", "before": 58, "after": 68 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            { "path": "abilities.basic.range", "before": 62, "after": 72 },
+            { "path": "subAbilities.sub1.radius", "before": 120, "after": 135 }
           ]
         },
         {
@@ -12101,22 +11774,34 @@
           "subSkills": ["ro_trickster_step"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.healOnUse", "before": 20, "after": 30 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 260, "after": 338 }
+            { "path": "abilities.a1.range", "before": 58, "after": 68 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            { "path": "abilities.basic.range", "before": 62, "after": 72 },
+            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 5 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.healOnUse", "before": 20, "after": 30 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 260, "after": 338 }
+            { "path": "abilities.a1.range", "before": 58, "after": 68 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            { "path": "abilities.basic.range", "before": 62, "after": 72 },
+            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 5 }
           ]
         },
         {
           "classId": "rogue",
           "subSkills": ["ro_trickster_shield"],
           "prefix": [],
-          "once": [{ "path": "subAbilities.sub1.frontGuard.duration", "before": 4, "after": 5.2 }],
-          "atCap": [{ "path": "subAbilities.sub1.frontGuard.duration", "before": 4, "after": 5.2 }]
+          "once": [
+            { "path": "abilities.a1.range", "before": 58, "after": 68 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            { "path": "abilities.basic.range", "before": 62, "after": 72 },
+            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 5 }
+          ],
+          "atCap": [
+            { "path": "abilities.a1.range", "before": 58, "after": 68 },
+            { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
+            { "path": "abilities.basic.range", "before": 62, "after": 72 },
+            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 5 }
+          ]
         }
       ]
     },
@@ -12133,7 +11818,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Trickster skills recharge 45% faster and grow 30%",
+      "description": "A spent Spellblade grants one frontal block and refunds 1s of running Shadowstep; Shadowstep and Trickster utilities recover sooner",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -12143,12 +11828,16 @@
           "subSkills": ["ro_trickster_bolt"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 5, "after": 2.75 },
-            { "path": "subAbilities.sub1.damage", "before": 34, "after": 44 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
+            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
+            { "path": "subAbilities.sub1.critChanceBonus", "before": null, "after": 0.08 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 5, "after": 2.75 },
-            { "path": "subAbilities.sub1.damage", "before": 34, "after": 44 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
+            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
+            { "path": "subAbilities.sub1.critChanceBonus", "before": null, "after": 0.08 }
           ]
         },
         {
@@ -12156,14 +11845,16 @@
           "subSkills": ["ro_trickster_snare"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 5.5 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 138 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 10 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
+            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.15 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 5.5 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 138 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 10 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
+            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.15 }
           ]
         },
         {
@@ -12171,16 +11862,16 @@
           "subSkills": ["ro_trickster_step"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.3000000000000003 },
-            { "path": "subAbilities.sub1.healOnUse", "before": 20, "after": 26 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 260, "after": 299 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
+            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
+            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 5.1 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.3000000000000003 },
-            { "path": "subAbilities.sub1.healOnUse", "before": 20, "after": 26 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 260, "after": 299 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
+            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
+            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 5.1 }
           ]
         },
         {
@@ -12188,12 +11879,16 @@
           "subSkills": ["ro_trickster_shield"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 6.6000000000000005 },
-            { "path": "subAbilities.sub1.frontGuard.duration", "before": 4, "after": 4.6 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
+            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 10.2 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 6.6000000000000005 },
-            { "path": "subAbilities.sub1.frontGuard.duration", "before": 4, "after": 4.6 }
+            { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
+            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
+            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 10.2 }
           ]
         }
       ]
@@ -13827,7 +13522,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Fiend damage and barrier amounts grow 55%; areas and siphon reach grow 30%; direct strikes leech 25%",
+      "description": "Hex follows its first damaged foe for 3s; Rebuke can counter on your next direct hit; Blessing grants movement",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -13837,12 +13532,16 @@
           "subSkills": ["wa_fiend_hurl"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 56, "after": 87 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.15, "after": 0.4 }
+            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
+            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 56, "after": 87 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.15, "after": 0.4 }
+            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
+            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.25 }
           ]
         },
         {
@@ -13850,12 +13549,16 @@
           "subSkills": ["wa_fiend_pit"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 156 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 13, "after": 20 }
+            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
+            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
+            { "path": "subAbilities.sub1.zoneFollow", "before": null, "after": 3 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 156 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 13, "after": 20 }
+            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
+            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
+            { "path": "subAbilities.sub1.zoneFollow", "before": null, "after": 3 }
           ]
         },
         {
@@ -13863,14 +13566,16 @@
           "subSkills": ["wa_fiend_rebuke"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 36, "after": 56 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.2, "after": 0.45 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 195 }
+            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
+            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
+            { "path": "subAbilities.sub1.rebukeDirect", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 36, "after": 56 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.2, "after": 0.45 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 195 }
+            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
+            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
+            { "path": "subAbilities.sub1.rebukeDirect", "before": null, "after": true }
           ]
         },
         {
@@ -13878,12 +13583,16 @@
           "subSkills": ["wa_fiend_resilience"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 30, "after": 47 },
-            { "path": "subAbilities.sub1.absorption.curseSiphon.amount", "before": 20, "after": 31 }
+            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
+            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
+            { "path": "subAbilities.sub1.absorption.amount", "before": 30, "after": 42 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 30, "after": 47 },
-            { "path": "subAbilities.sub1.absorption.curseSiphon.amount", "before": 20, "after": 31 }
+            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
+            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
+            { "path": "subAbilities.sub1.absorption.amount", "before": 30, "after": 42 }
           ]
         }
       ]
@@ -13901,7 +13610,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Fiend skills recharge 40% faster; damage and barrier amounts grow 30%, areas and siphon reach 15%; direct strikes leech 20%",
+      "description": "Blessing also grants 20 protection for 6s; direct spells drain health and Resilience siphons more from one cursed foe",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -13911,14 +13620,24 @@
           "subSkills": ["wa_fiend_hurl"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6.5, "after": 3.9 },
-            { "path": "subAbilities.sub1.damage", "before": 56, "after": 73 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.15, "after": 0.35 }
+            { "path": "abilities.a2.lifestealFrac", "before": 0.2, "after": 0.30000000000000004 },
+            {
+              "path": "abilities.a3.absorption",
+              "before": null,
+              "after": { "amount": 20, "balanceAmount": 0, "duration": 6, "target": "self" }
+            },
+            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.25 },
+            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.15, "after": 0.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6.5, "after": 3.9 },
-            { "path": "subAbilities.sub1.damage", "before": 56, "after": 73 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.15, "after": 0.35 }
+            { "path": "abilities.a2.lifestealFrac", "before": 0.2, "after": 0.30000000000000004 },
+            {
+              "path": "abilities.a3.absorption",
+              "before": null,
+              "after": { "amount": 20, "balanceAmount": 0, "duration": 6, "target": "self" }
+            },
+            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.25 },
+            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.15, "after": 0.25 }
           ]
         },
         {
@@ -13926,14 +13645,24 @@
           "subSkills": ["wa_fiend_pit"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 9, "after": 5.3999999999999995 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 138 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 13, "after": 17 }
+            { "path": "abilities.a2.lifestealFrac", "before": 0.2, "after": 0.30000000000000004 },
+            {
+              "path": "abilities.a3.absorption",
+              "before": null,
+              "after": { "amount": 20, "balanceAmount": 0, "duration": 6, "target": "self" }
+            },
+            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.25 },
+            { "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.9 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 9, "after": 5.3999999999999995 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 138 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 13, "after": 17 }
+            { "path": "abilities.a2.lifestealFrac", "before": 0.2, "after": 0.30000000000000004 },
+            {
+              "path": "abilities.a3.absorption",
+              "before": null,
+              "after": { "amount": 20, "balanceAmount": 0, "duration": 6, "target": "self" }
+            },
+            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.25 },
+            { "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.9 }
           ]
         },
         {
@@ -13941,16 +13670,32 @@
           "subSkills": ["wa_fiend_rebuke"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.8 },
-            { "path": "subAbilities.sub1.damage", "before": 36, "after": 47 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.2, "after": 0.4 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 173 }
+            { "path": "abilities.a2.lifestealFrac", "before": 0.2, "after": 0.30000000000000004 },
+            {
+              "path": "abilities.a3.absorption",
+              "before": null,
+              "after": { "amount": 20, "balanceAmount": 0, "duration": 6, "target": "self" }
+            },
+            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.25 },
+            {
+              "path": "subAbilities.sub1.lifestealFrac",
+              "before": 0.2,
+              "after": 0.30000000000000004
+            }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.8 },
-            { "path": "subAbilities.sub1.damage", "before": 36, "after": 47 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.2, "after": 0.4 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 173 }
+            { "path": "abilities.a2.lifestealFrac", "before": 0.2, "after": 0.30000000000000004 },
+            {
+              "path": "abilities.a3.absorption",
+              "before": null,
+              "after": { "amount": 20, "balanceAmount": 0, "duration": 6, "target": "self" }
+            },
+            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.25 },
+            {
+              "path": "subAbilities.sub1.lifestealFrac",
+              "before": 0.2,
+              "after": 0.30000000000000004
+            }
           ]
         },
         {
@@ -13958,22 +13703,24 @@
           "subSkills": ["wa_fiend_resilience"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 30, "after": 39 },
+            { "path": "abilities.a2.lifestealFrac", "before": 0.2, "after": 0.30000000000000004 },
             {
-              "path": "subAbilities.sub1.absorption.curseSiphon.amount",
-              "before": 20,
-              "after": 26
+              "path": "abilities.a3.absorption",
+              "before": null,
+              "after": { "amount": 20, "balanceAmount": 0, "duration": 6, "target": "self" }
             },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 7.199999999999999 }
+            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.25 },
+            { "path": "subAbilities.sub1.absorption.curseSiphon.amount", "before": 20, "after": 30 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 30, "after": 39 },
+            { "path": "abilities.a2.lifestealFrac", "before": 0.2, "after": 0.30000000000000004 },
             {
-              "path": "subAbilities.sub1.absorption.curseSiphon.amount",
-              "before": 20,
-              "after": 26
+              "path": "abilities.a3.absorption",
+              "before": null,
+              "after": { "amount": 20, "balanceAmount": 0, "duration": 6, "target": "self" }
             },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 7.199999999999999 }
+            { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.25 },
+            { "path": "subAbilities.sub1.absorption.curseSiphon.amount", "before": 20, "after": 30 }
           ]
         }
       ]
@@ -13991,7 +13738,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Great Old One skills hit 50% harder over a wider area and madden foes to 35%",
+      "description": "Your direct spells weaken personally cursed foes; Hex and Dissonant Whispers linger 2s longer",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": true,
@@ -14001,16 +13748,18 @@
           "subSkills": ["wa_goo_blast"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 42, "after": 63 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.5 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.35 }
+            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
+            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
+            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 42, "after": 63 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.5 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.35 }
+            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
+            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
+            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
           ]
         },
         {
@@ -14018,16 +13767,16 @@
           "subSkills": ["wa_goo_tentacle"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 30, "after": 45 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 195 },
-            { "path": "subAbilities.sub1.slowMult", "before": 0.4, "after": 0.35 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.5 }
+            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
+            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
+            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.cursePayoff", "before": null, "after": 3 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 30, "after": 45 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 195 },
-            { "path": "subAbilities.sub1.slowMult", "before": 0.4, "after": 0.35 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.5 }
+            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
+            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
+            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.cursePayoff", "before": null, "after": 3 }
           ]
         },
         {
@@ -14035,16 +13784,16 @@
           "subSkills": ["wa_goo_whispers"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.radius", "before": 115, "after": 150 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.35 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 11, "after": 17 }
+            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
+            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
+            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 6 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.radius", "before": 115, "after": 150 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.35 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 11, "after": 17 }
+            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
+            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
+            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 6 }
           ]
         },
         {
@@ -14052,14 +13801,16 @@
           "subSkills": ["wa_goo_flee"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.healOnUse", "before": 18, "after": 27 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 260, "after": 338 }
+            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
+            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
+            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.healOnUse", "before": 18, "after": 30 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.healOnUse", "before": 18, "after": 27 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 260, "after": 338 }
+            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
+            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
+            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.healOnUse", "before": 18, "after": 30 }
           ]
         }
       ]
@@ -14077,7 +13828,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Great Old One skills recharge 45% faster and grow 30%",
+      "description": "Blessing prepares an 8s spell surge; Rebuke or direct Great Old One spells consume it for a stronger, quicker cast",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": true,
@@ -14087,12 +13838,14 @@
           "subSkills": ["wa_goo_blast"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 5, "after": 2.75 },
-            { "path": "subAbilities.sub1.damage", "before": 42, "after": 55 }
+            { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
+            { "path": "subAbilities.sub1.consumesSurge", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 5, "after": 2.75 },
-            { "path": "subAbilities.sub1.damage", "before": 42, "after": 55 }
+            { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
+            { "path": "subAbilities.sub1.consumesSurge", "before": null, "after": true }
           ]
         },
         {
@@ -14100,14 +13853,14 @@
           "subSkills": ["wa_goo_tentacle"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 30, "after": 39 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 173 }
+            { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
+            { "path": "subAbilities.sub1.consumesSurge", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 30, "after": 39 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 173 }
+            { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
+            { "path": "subAbilities.sub1.consumesSurge", "before": null, "after": true }
           ]
         },
         {
@@ -14115,14 +13868,14 @@
           "subSkills": ["wa_goo_whispers"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 9, "after": 4.95 },
-            { "path": "subAbilities.sub1.radius", "before": 115, "after": 132 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 11, "after": 14 }
+            { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
+            { "path": "subAbilities.sub1.prepareSurge", "before": null, "after": 8 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 9, "after": 4.95 },
-            { "path": "subAbilities.sub1.radius", "before": 115, "after": 132 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 11, "after": 14 }
+            { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
+            { "path": "subAbilities.sub1.prepareSurge", "before": null, "after": 8 }
           ]
         },
         {
@@ -14130,16 +13883,576 @@
           "subSkills": ["wa_goo_flee"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.3000000000000003 },
-            { "path": "subAbilities.sub1.healOnUse", "before": 18, "after": 23 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 260, "after": 299 }
+            { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
+            { "path": "subAbilities.sub1.prepareSurge", "before": null, "after": 8 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.3000000000000003 },
-            { "path": "subAbilities.sub1.healOnUse", "before": 18, "after": 23 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 260, "after": 299 }
+            { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
+            { "path": "subAbilities.sub1.prepareSurge", "before": null, "after": 8 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ro_assassin_strike_g",
+      "name": "Perfect Opening",
+      "category": "subclass-skill-grand",
+      "classId": "rogue",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "ro_assassin_strike",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Death Strike gains +15% crit chance; a prepared positive hit refunds 1s of running Shadowstep",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "rogue",
+          "subSkills": ["ro_assassin_strike"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.critChanceBonus", "before": 0.2, "after": 0.35 },
+            { "path": "subAbilities.sub1.preparedRefund", "before": null, "after": 1 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.critChanceBonus", "before": 0.2, "after": 0.35 },
+            { "path": "subAbilities.sub1.preparedRefund", "before": null, "after": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ro_assassin_throw_g",
+      "name": "Seeking Blade",
+      "category": "subclass-skill-grand",
+      "classId": "rogue",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "ro_assassin_throw",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Deadly Throw pierces and consumes preparation for a guaranteed crit",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "rogue",
+          "subSkills": ["ro_assassin_throw"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.consumesPrecision", "before": null, "after": true },
+            { "path": "subAbilities.sub1.pierce", "before": null, "after": 1 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.consumesPrecision", "before": null, "after": true },
+            { "path": "subAbilities.sub1.pierce", "before": null, "after": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ro_assassin_poison_g",
+      "name": "Lasting Venom",
+      "category": "subclass-skill-grand",
+      "classId": "rogue",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "ro_assassin_poison",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Coated Blade prepares precision for 4s; its poison deals 20% more per second and lasts 1s longer, up to 6s",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "rogue",
+          "subSkills": ["ro_assassin_poison"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.prepareCrit", "before": null, "after": 4 },
+            { "path": "subAbilities.sub1.venomCoating.damage", "before": 24, "after": 29 },
+            { "path": "subAbilities.sub1.venomCoating.duration", "before": 4, "after": 5 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.prepareCrit", "before": null, "after": 4 },
+            { "path": "subAbilities.sub1.venomCoating.damage", "before": 24, "after": 29 },
+            { "path": "subAbilities.sub1.venomCoating.duration", "before": 4, "after": 5 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ro_assassin_smoke_g",
+      "name": "Cover of Night",
+      "category": "subclass-skill-grand",
+      "classId": "rogue",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "ro_assassin_smoke",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Smoke Bomb grants allies 40% movement inside and prepares a precision crit for 6s",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "rogue",
+          "subSkills": ["ro_assassin_smoke"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 6 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": 1.25, "after": 1.4 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 6 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": 1.25, "after": 1.4 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ro_trickster_bolt_g",
+      "name": "Threading Bolt",
+      "category": "subclass-skill-grand",
+      "classId": "rogue",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "ro_trickster_bolt",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Mage Hand Bolt pierces one foe and slows struck foes to 60% for 2s",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "rogue",
+          "subSkills": ["ro_trickster_bolt"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.pierce", "before": null, "after": 1 },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.6 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.pierce", "before": null, "after": 1 },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.6 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ro_trickster_snare_g",
+      "name": "Living Snare",
+      "category": "subclass-skill-grand",
+      "classId": "rogue",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "ro_trickster_snare",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Ensnaring Strike becomes a self-centered escape web, 35u wider; allies inside move 20% faster",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "rogue",
+          "subSkills": ["ro_trickster_snare"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.radius", "before": 120, "after": 155 },
+            { "path": "subAbilities.sub1.range", "before": 400, "after": 0 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.radius", "before": 120, "after": 155 },
+            { "path": "subAbilities.sub1.range", "before": 400, "after": 0 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ro_trickster_step_g",
+      "name": "Veiled Step",
+      "category": "subclass-skill-grand",
+      "classId": "rogue",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "ro_trickster_step",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Misty Step coats your next direct hit with 12/s poison for 4s while preparing precision",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "rogue",
+          "subSkills": ["ro_trickster_step"],
+          "prefix": [],
+          "once": [
+            {
+              "path": "subAbilities.sub1.venomCoating",
+              "before": null,
+              "after": { "damage": 12, "duration": 4, "window": 6 }
+            }
+          ],
+          "atCap": [
+            {
+              "path": "subAbilities.sub1.venomCoating",
+              "before": null,
+              "after": { "damage": 12, "duration": 4, "window": 6 }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ro_trickster_shield_g",
+      "name": "Double Deception",
+      "category": "subclass-skill-grand",
+      "classId": "rogue",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "ro_trickster_shield",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Shield Spell blocks two frontal hits for 4s and prepares precision for 6s",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "rogue",
+          "subSkills": ["ro_trickster_shield"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.frontGuard.charges", "before": 1, "after": 2 },
+            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 6 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.frontGuard.charges", "before": 1, "after": 2 },
+            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 6 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wa_fiend_hurl_g",
+      "name": "Hellfire Meteor",
+      "category": "subclass-skill-grand",
+      "classId": "warlock",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "wa_fiend_hurl",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Hurl Flame bursts in a 65u radius on impact",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "warlock",
+          "subSkills": ["wa_fiend_hurl"],
+          "prefix": [],
+          "once": [{ "path": "subAbilities.sub1.impactRadius", "before": null, "after": 65 }],
+          "atCap": [{ "path": "subAbilities.sub1.impactRadius", "before": null, "after": 65 }]
+        }
+      ]
+    },
+    {
+      "id": "wa_fiend_pit_g",
+      "name": "Devouring Pit",
+      "category": "subclass-skill-grand",
+      "classId": "warlock",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "wa_fiend_pit",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Fire Pit grants allies inside 20% damage mitigation and deepens its searing curse to +20% owner damage",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "warlock",
+          "subSkills": ["wa_fiend_pit"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.curseBonus", "before": 0.15, "after": 0.2 },
+            { "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.curseBonus", "before": 0.15, "after": 0.2 },
+            { "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wa_fiend_rebuke_g",
+      "name": "Fiendish Retort",
+      "category": "subclass-skill-grand",
+      "classId": "warlock",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "wa_fiend_rebuke",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Fiendish Rebuke can counter on your next positive direct hit and applies a +20% searing curse",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "warlock",
+          "subSkills": ["wa_fiend_rebuke"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.rebukeCurseBonus", "before": 0.15, "after": 0.2 },
+            { "path": "subAbilities.sub1.rebukeDirect", "before": null, "after": true }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.rebukeCurseBonus", "before": 0.15, "after": 0.2 },
+            { "path": "subAbilities.sub1.rebukeDirect", "before": null, "after": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wa_fiend_resilience_g",
+      "name": "Soul Bastion",
+      "category": "subclass-skill-grand",
+      "classId": "warlock",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "wa_fiend_resilience",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Dark Resilience blocks one frontal hit for 4s, gains 15 initial protection and siphons +10 from one cursed foe",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "warlock",
+          "subSkills": ["wa_fiend_resilience"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.absorption.amount", "before": 30, "after": 45 },
+            {
+              "path": "subAbilities.sub1.absorption.curseSiphon.amount",
+              "before": 20,
+              "after": 30
+            },
+            {
+              "path": "subAbilities.sub1.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.absorption.amount", "before": 30, "after": 45 },
+            {
+              "path": "subAbilities.sub1.absorption.curseSiphon.amount",
+              "before": 20,
+              "after": 30
+            },
+            {
+              "path": "subAbilities.sub1.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wa_goo_blast_g",
+      "name": "Rending Thought",
+      "category": "subclass-skill-grand",
+      "classId": "warlock",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "wa_goo_blast",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Mind Blast pierces one foe and weakens personally cursed foes for 4s",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "warlock",
+          "subSkills": ["wa_goo_blast"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.cursePayoff", "before": 3, "after": 4 },
+            { "path": "subAbilities.sub1.pierce", "before": null, "after": 1 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.cursePayoff", "before": 3, "after": 4 },
+            { "path": "subAbilities.sub1.pierce", "before": null, "after": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wa_goo_tentacle_g",
+      "name": "Dread Reach",
+      "category": "subclass-skill-grand",
+      "classId": "warlock",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "wa_goo_tentacle",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Tentacle of the Deep slows to 30% for 3s and lengthens enemy wind-ups by 40%",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "warlock",
+          "subSkills": ["wa_goo_tentacle"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.4 },
+            { "path": "subAbilities.sub1.slowDuration", "before": 2, "after": 3 },
+            { "path": "subAbilities.sub1.slowMult", "before": 0.4, "after": 0.3 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.4 },
+            { "path": "subAbilities.sub1.slowDuration", "before": 2, "after": 3 },
+            { "path": "subAbilities.sub1.slowMult", "before": 0.4, "after": 0.3 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wa_goo_whispers_g",
+      "name": "Whispers That Follow",
+      "category": "subclass-skill-grand",
+      "classId": "warlock",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "wa_goo_whispers",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Dissonant Whispers follows its first damaged foe for 3s and lasts 2s longer",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "warlock",
+          "subSkills": ["wa_goo_whispers"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 6 },
+            { "path": "subAbilities.sub1.zoneFollow", "before": null, "after": 3 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 6 },
+            { "path": "subAbilities.sub1.zoneFollow", "before": null, "after": 3 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wa_goo_flee_g",
+      "name": "Prophetic Ward",
+      "category": "subclass-skill-grand",
+      "classId": "warlock",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "wa_goo_flee",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Entropic Ward blocks one frontal hit for 4s and heals 15 more on use",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "warlock",
+          "subSkills": ["wa_goo_flee"],
+          "prefix": [],
+          "once": [
+            {
+              "path": "subAbilities.sub1.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            },
+            { "path": "subAbilities.sub1.healOnUse", "before": 18, "after": 33 }
+          ],
+          "atCap": [
+            {
+              "path": "subAbilities.sub1.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            },
+            { "path": "subAbilities.sub1.healOnUse", "before": 18, "after": 33 }
           ]
         }
       ]

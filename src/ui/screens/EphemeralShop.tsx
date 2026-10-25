@@ -51,6 +51,7 @@ export default function EphemeralShop() {
   // item: reroll — the reroll stall is an ACTION (re-draw the offers), capped per stop.
   const rerollOffers = useStore((s) => s.rerollOffers);
   const rerollCount = useStore((s) => s.rerollCount);
+  const claimsDone = useStore((s) => !!s.rewardPickedGeneric && !!s.rewardPickedChar);
 
   // Passive perks (speed/damage/defence) are one-and-done for a fight; potions and
   // revives stack. Hardcore-only perks stay hidden outside a hardcore run.
@@ -81,7 +82,8 @@ export default function EphemeralShop() {
           // A single-shot passive can't be double-bought; the reroll caps at REROLL_CAP;
           // stackables always can.
           const single = def.kind === 'passive';
-          const maxed = id === 'reroll' ? rerollCount >= REROLL_CAP : single && have > 0;
+          const maxed =
+            id === 'reroll' ? rerollCount >= REROLL_CAP || claimsDone : single && have > 0;
           const afford = coins >= def.cost;
           const disabled = maxed || !afford;
           return (

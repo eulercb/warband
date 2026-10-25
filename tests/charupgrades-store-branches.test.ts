@@ -141,9 +141,9 @@ describe('charUpgrades: catalog shape', () => {
     expect(CLASS_IDS.length).toBe(12);
     for (const c of CLASS_IDS) expect(CHAR_UPGRADES_BY_CLASS[c]).toHaveLength(5);
     for (const d of HYBRID_UPGRADES) expect(d.classId).toBe('any');
-    // Two grand improvements per class, each capped at one stack.
+    // Pilot whole-class entries folded into their single-skill base choices.
     for (const c of CLASS_IDS) {
-      expect(GRAND_BY_CLASS[c]).toHaveLength(2);
+      expect(GRAND_BY_CLASS[c]).toHaveLength(c === 'rogue' || c === 'warlock' ? 1 : 2);
       for (const d of GRAND_BY_CLASS[c]) expect(d.maxStacks).toBe(1);
     }
     expect(HYBRID_OFFER_CHANCE).toBeCloseTo(0.45, 5);

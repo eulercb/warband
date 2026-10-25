@@ -1141,6 +1141,8 @@ export class Host implements NetSession {
    * host only owns the coin spend — keeping the ledger consistent for the next roster.
    */
   private recordReroll(peerId: string): void {
+    // A reroll changes unresolved offers; it never buys another claim.
+    if (this.roundPickedGeneric.has(peerId) && this.roundPickedChar.has(peerId)) return;
     const cost = getEphemeral('reroll').cost;
     const used = this.rerollsByPeer.get(peerId) ?? 0;
     if (used >= REROLL_CAP) return; // capped for this stop

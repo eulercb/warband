@@ -148,6 +148,7 @@ jobs:
           node scripts/run-smoke.mjs smoke:upgrade-foundations
           node scripts/run-smoke.mjs smoke:cadence-range
           node scripts/run-smoke.mjs smoke:grand-selections
+          node scripts/run-smoke.mjs smoke:pilot-grands
 
       - name: Upload smoke screenshots
         if: always()

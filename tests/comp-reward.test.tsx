@@ -8,7 +8,7 @@
  * vortex-descent logic itself is covered by tests/rewardScene.test.ts.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within, act } from '@testing-library/react';
 
 // Session actions the room relays through — every one RewardRoom imports.
 vi.mock('../src/ui/state/session', () => ({
@@ -49,6 +49,7 @@ vi.mock('../src/input/input', () => ({
 }));
 
 import RewardRoom from '../src/ui/game/RewardRoom';
+import { Renderer } from '../src/render/pipeline/renderer';
 import { useStore } from '../src/ui/state/store';
 import { useHudStore } from '../src/ui/state/hudStore';
 import type { FightResult, ResultPlayerStat } from '../src/engine/core/types';
@@ -88,6 +89,8 @@ beforeEach(() => {
   useStore.setState({
     localClass: 'knight',
     localName: 'Alice',
+    rewardPickedGeneric: null,
+    rewardPickedChar: null,
     myUpgrades: [],
     myCharUpgrades: [],
     nextReadyReady: 0,
@@ -238,4 +241,58 @@ it('offers a first-visit mobile guide that can be dismissed, replayed, and remem
   cleanup();
   render(<RewardRoom result={makeResult()} />);
   expect(screen.queryByRole('region', { name: 'Reward room guide' })).toBeNull();
+});
+
+it.each(['generic', 'char'])(
+  'preserves the %s claim and scene when rerolling the other offers',
+  (kind) => {
+    const create = vi.spyOn(Renderer, 'create');
+    useStore.setState({ rerollCount: 0, myCoins: 10 });
+    const { container } = render(<RewardRoom result={makeResult({ rewardSeed: 12345 })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'List view' }));
+    const selected =
+      kind === 'generic' ? '.wb-upgrade-card:not(.wb-upgrade-char)' : '.wb-upgrade-char';
+    const other =
+      kind === 'generic' ? '.wb-upgrade-char' : '.wb-upgrade-card:not(.wb-upgrade-char)';
+    const before = Array.from(container.querySelectorAll(selected), (card) => card.textContent);
+    const otherBefore = Array.from(container.querySelectorAll(other), (card) => card.textContent);
+    fireEvent.click(container.querySelector(selected)!);
+    fireEvent.click(screen.getByRole('button', { name: 'Descend to next boss' }));
+    act(() => {
+      useStore.getState().rerollOffers();
+    });
+    const after = Array.from(container.querySelectorAll(selected));
+    expect(after.map((card) => card.textContent?.replace('✓', ''))).toEqual(before);
+    expect(after.every((card) => (card as HTMLButtonElement).disabled)).toBe(true);
+    expect(after[0].getAttribute('aria-pressed')).toBe('true');
+    expect(Array.from(container.querySelectorAll(other), (card) => card.textContent)).not.toEqual(
+      otherBefore,
+    );
+    expect(create).toHaveBeenCalledTimes(1);
+    // Scene closures keep the ready toggle synchronized across the reroll.
+    fireEvent.click(screen.getByRole('button', { name: /Ready ✓ — waiting/ }));
+    expect(vi.mocked(setNextReady).mock.lastCall).toEqual([false]);
+    fireEvent.click(after[1]);
+    expect(kind === 'generic' ? chooseUpgrade : chooseCharUpgrade).toHaveBeenCalledTimes(1);
+  },
+);
+
+it('restores committed choices on a same-stop remount and cannot create phantom ownership', () => {
+  useStore.setState({
+    rerollCount: 1,
+    rewardPickedGeneric: 'swift',
+    rewardPickedChar: 'hy_vampiric',
+    myUpgrades: ['swift'],
+    myCharUpgrades: ['hy_vampiric'],
+  });
+  const { container } = render(<RewardRoom result={makeResult({ rewardSeed: 12345 })} />);
+  fireEvent.click(screen.getByRole('button', { name: 'List view' }));
+  const cards = Array.from(container.querySelectorAll('.wb-upgrade-card'));
+  expect(cards).toHaveLength(2);
+  expect(cards.every((card) => (card as HTMLButtonElement).disabled)).toBe(true);
+  expect(cards.every((card) => card.getAttribute('aria-pressed') === 'true')).toBe(true);
+  for (const card of cards) fireEvent.click(card);
+  expect(chooseUpgrade).not.toHaveBeenCalled();
+  expect(chooseCharUpgrade).not.toHaveBeenCalled();
+  expect(useStore.getState().myCharUpgrades).toEqual(['hy_vampiric']);
 });

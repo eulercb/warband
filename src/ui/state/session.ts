@@ -463,6 +463,8 @@ export function requestPause(paused: boolean): void {
 /** Submit this player's between-boss generic upgrade pick (records + relays). */
 export function chooseUpgrade(id: UpgradeId): void {
   const s = useStore.getState();
+  if (s.rewardPickedGeneric) return;
+  useStore.setState({ rewardPickedGeneric: id });
   s.session?.chooseUpgrade(id);
   s.addMyUpgrade(id);
 }
@@ -470,6 +472,8 @@ export function chooseUpgrade(id: UpgradeId): void {
 /** Submit this player's between-boss character (class) upgrade pick. */
 export function chooseCharUpgrade(id: string): void {
   const s = useStore.getState();
+  if (s.rewardPickedChar) return;
+  useStore.setState({ rewardPickedChar: id });
   s.session?.chooseCharUpgrade(id);
   s.addMyCharUpgrade(id);
 }

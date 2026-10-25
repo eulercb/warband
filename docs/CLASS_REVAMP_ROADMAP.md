@@ -1,5 +1,9 @@
 # Class identity and subclass roadmap
 
+Upgrade content milestone: [authored Rogue/Warlock grands](PILOT_GRANDS.md).
+Next is the martial upgrade/grand cohort; the remaining cohorts and final review
+are listed in that delivery. Current cadence/range limits remain through the redesign.
+
 Current delivery: [grand selection framework and earlier rewards](GRAND_SELECTIONS.md).
 Recharge/range foundations (PR #133) are merged and live-tested; the owner reports
 that their limits feel good. Reassess them after content reworks replace excess

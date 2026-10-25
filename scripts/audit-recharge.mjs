@@ -9,7 +9,7 @@ const server = await createServer({
 try {
   const { World } = await server.ssrLoadModule('/src/engine/world/world.ts');
   const { CLASS_IDS } = await server.ssrLoadModule('/src/engine/content/classes.ts');
-  const { CHAR_UPGRADES, CHAR_UPGRADES_BY_CLASS } = await server.ssrLoadModule(
+  const { CHAR_UPGRADES, CHAR_UPGRADES_BY_CLASS, canonicalGrandId } = await server.ssrLoadModule(
     '/src/engine/content/charUpgrades.ts',
   );
   const { subclassesFor } = await server.ssrLoadModule('/src/engine/content/subclasses.ts');
@@ -30,6 +30,7 @@ try {
                   ...Object.values(CHAR_UPGRADES)
                     .filter(
                       (d) =>
+                        canonicalGrandId(d.id) === d.id &&
                         d.classId === classId &&
                         d.grand &&
                         !d.graftId &&
@@ -88,6 +89,7 @@ try {
   for (const row of rows) {
     const key = JSON.stringify([
       row.classId,
+      ['rogue', 'warlock'].includes(row.classId) ? row.subclass : null,
       row.rank,
       row.hasteRanks,
       row.allCurrentGrands,
@@ -99,13 +101,13 @@ try {
       throw new Error(`Context-dependent base recharge: ${key}`);
     if (!previous) {
       const base = { ...row };
-      delete base.subclass;
+      if (!['rogue', 'warlock'].includes(row.classId)) delete base.subclass;
       delete base.chosenSkill;
       unique.set(key, row.slot === 'sub1' ? row : base);
     }
   }
   const result = {
-    baseline: '018b71c plus deliberate cadence/range pass',
+    baseline: '62c89e6 plus Rogue/Warlock grand content redesign',
     note: 'Canonical single-class profiles with 0/5 Haste, 0/1/3/5 ordinary ranks and with/without all current native grands. Effective cooldown includes protected recovery. Raw reductions are not usable cooldowns. No live input/refund/Forge simulation.',
     observations: rows.length,
     rows: [...unique.values()],

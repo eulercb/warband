@@ -1,5 +1,11 @@
 # Grand selection framework and earlier rewards
 
+Current content delivery: [Rogue/Warlock authored four-grand builds](PILOT_GRANDS.md).
+Those two classes now have individual skill grands and whole-kit identities; other
+classes retain the transitional catalogue described below. Next is the martial
+cohort (Knight/Barbarian/Monk), followed by the remaining class cohorts and review.
+Earlier counts and missing-fourth-slot statements below describe PR #134.
+
 Follows merged/live-tested PR #133. The owner reports that the cooldown, reach,
 area and duration limits feel good; keep them through the content redesign and
 reassess after the new upgrades/grands have replaced excess numerical growth.

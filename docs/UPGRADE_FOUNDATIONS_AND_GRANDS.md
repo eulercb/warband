@@ -1,5 +1,11 @@
 # Upgrade foundations and grand selections
 
+Current content delivery: [Rogue/Warlock authored four-grand builds](PILOT_GRANDS.md).
+Those two classes now have individual skill grands and whole-kit identities; other
+classes retain the transitional catalogue described below. Next is the martial
+cohort (Knight/Barbarian/Monk), followed by the remaining class cohorts and review.
+Earlier counts and missing-fourth-slot statements below describe PR #134.
+
 The owner merged/live-tested PR #133 and reports that cadence/range limits feel good.
 Current delivery is [grand selections and earlier rewards](GRAND_SELECTIONS.md):
 versioned per-class banks, 2/1/1 selection capacity, host validation, free between-fight

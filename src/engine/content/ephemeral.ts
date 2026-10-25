@@ -98,7 +98,7 @@ export const EPHEMERAL: Record<EphemeralId, EphemeralDef> = {
     id: 'reroll',
     name: "Gambler's Coin",
     icon: '🎲',
-    desc: `Re-randomize your current upgrade offers — biased to differ (up to ${REROLL_CAP}/stop)`,
+    desc: `Re-randomize unclaimed upgrade offers only; completed picks stay locked — biased to differ (up to ${REROLL_CAP}/stop)`,
     cost: 2, // the cheapest stall — a small, repeatable nudge toward the build you want
     kind: 'meta', // a between-boss ACTION, not a next-fight perk (like retry); no stock
   },

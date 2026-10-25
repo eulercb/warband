@@ -134,6 +134,8 @@ function resetStore(): void {
     resumeCountdown: null,
     run: null,
     cycle: 0,
+    rewardPickedGeneric: null,
+    rewardPickedChar: null,
     myUpgrades: [],
     myCharUpgrades: [],
     mySubclassId: null,

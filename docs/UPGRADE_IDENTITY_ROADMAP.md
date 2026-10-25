@@ -1,5 +1,11 @@
 # Upgrade identity: audit and staged redesign
 
+Current content delivery: [Rogue/Warlock authored four-grand builds](PILOT_GRANDS.md).
+Those two classes now have individual skill grands and whole-kit identities; other
+classes retain the transitional catalogue described below. Next is the martial
+cohort (Knight/Barbarian/Monk), followed by the remaining class cohorts and review.
+Earlier counts and missing-fourth-slot statements below describe PR #134.
+
 Current delivery: [grand selection framework and earlier rewards](GRAND_SELECTIONS.md).
 Recharge/range foundations (PR #133) are merged and live-tested; the owner reports
 that their limits feel good. Reassess them after content reworks replace excess
