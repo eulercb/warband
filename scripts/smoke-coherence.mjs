@@ -22,7 +22,7 @@ try {
       'ready',
       'bramble',
       'fiend',
-      'counter',
+      'claim',
       'mind',
       'ward',
       'cadence',
@@ -72,7 +72,7 @@ try {
           ready: ['druid', 'dr_moon_roar'],
           bramble: ['druid', 'dr_moon_roar'],
           fiend: ['warlock', 'wa_fiend_hurl'],
-          counter: ['warlock', 'wa_fiend_rebuke'],
+          claim: ['warlock', 'wa_fiend_rebuke'],
           mind: ['warlock', 'wa_goo_blast'],
           ward: ['mage', 'mg_abjurer_ward'],
           cadence: ['mage', 'mg_evoker_lightning'],
@@ -172,9 +172,9 @@ try {
             } else if (name === 'fiend') {
               applyBuff(boss, makeBuff('curse', 1.15, 6, `curse:${owner.id}:searing`));
               damageBoss(world, owner, boss, 10);
-            } else if (name === 'counter') {
+            } else if (name === 'claim') {
+              applyBuff(boss, makeBuff('curse', 1.15, 6, `curse:${owner.id}:hex`));
               resolvePlayerAbility(world, owner, 'sub1', { x: 0, y: 0 });
-              damagePlayer(world, owner, 1);
             } else if (name === 'mind') {
               applyBuff(boss, makeBuff('curse', 1.15, 6, `curse:${owner.id}:hex`));
               resolvePlayerAbility(world, owner, 'sub1', { x: 0, y: 0 });
@@ -200,6 +200,7 @@ try {
               thornsSlow: boss.buffs.some((b) => b.kind === 'moveSpeed' && b.mult === 0.65),
               pushed: !!boss.shove,
               counterReady: owner.buffs.some((b) => b.kind === 'counter'),
+              retortReady: owner.buffs.some((b) => b.kind === 'rebuke'),
               blocks: owner.buffs.find((b) => b.kind === 'frontGuard')?.mult,
               zones: world.groundZones.length,
               zoneTick: world.groundZones[0]?.damagePerTick,
@@ -278,9 +279,13 @@ try {
         assert.equal(p.ready, false);
         assert.equal(p.slowed, true);
       }
-      if (mode === 'fiend' || mode === 'counter') {
+      if (mode === 'fiend' || mode === 'claim') {
         assert.ok(p.absorption > 15);
         assert.equal(p.cursed, true);
+      }
+      if (mode === 'claim') {
+        assert.ok(p.bossHp < 10000);
+        assert.equal(p.retortReady, false);
       }
       if (mode === 'fiend') assert.equal(p.hp, p.maxHp);
       if (mode === 'mind') {
