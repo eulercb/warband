@@ -409,6 +409,10 @@ export interface Player {
    * serialized (host-only bookkeeping; the base kit is resolved into `abilities`).
    */
   charUpgradeIds?: string[];
+  /** Full ordinary/legacy history, retained while charUpgradeIds follows the active selection. */
+  earnedCharUpgradeIds?: string[];
+  grandLoadout?: import('../content/grandSelections').GrandLoadout;
+  classGrandStats?: Partial<Record<ClassId, import('../content/charUpgrades').PreviewedStats>>;
 
   // --- Multiclass (item 14). All absent for a single-class hero. ---
   /** Every class this hero can swap between (index 0 = primary); `classId` is the ACTIVE one. */

@@ -1,3 +1,5 @@
+import { previewGrandStats } from '../../engine/content/grandStats';
+import type { GrandLoadout } from '../../engine/content/grandSelections';
 /**
  * item 6 — pure resolver for the pause menu's owned-skill review. Kept out of the
  * component file so PauseMenu.tsx only exports React components (react-refresh clean).
@@ -45,6 +47,7 @@ export function ownedSkillRows(
   upgrades: string[],
   charUpgrades: string[],
   subSkills: string[],
+  grandLoadout?: GrandLoadout,
 ): OwnedSkillRow[] {
   const table = previewAbilityTable(activeClass, charUpgrades);
   // The class/hybrid upgrades + grafts are already baked into `table` (they mutate the
@@ -53,7 +56,9 @@ export function ownedSkillRows(
   // into every line here — the same generic-then-class resolution the spawn does, off the
   // IDENTITY class so a multiclass hero's spawn-fixed boons survive a kit swap — so a
   // skill reads its REAL effective damage / cooldown / cast at a glance.
-  const stats = previewPlayerStats(identityClass, upgrades, charUpgrades);
+  const stats = grandLoadout
+    ? previewGrandStats(identityClass, activeClass, upgrades, charUpgrades, grandLoadout, subSkills)
+    : previewPlayerStats(identityClass, upgrades, charUpgrades);
   const mods: DescribeMods = {
     damageMult: stats.damageMult,
     cooldownMult: stats.cooldownMult,

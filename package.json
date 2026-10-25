@@ -36,7 +36,8 @@
     "smoke:coherence": "node scripts/smoke-coherence.mjs",
     "smoke:upgrade-pilot": "node scripts/smoke-upgrade-pilot.mjs",
     "smoke:upgrade-foundations": "node scripts/smoke-upgrade-foundations.mjs",
-    "smoke:cadence-range": "node scripts/smoke-cadence-range.mjs"
+    "smoke:cadence-range": "node scripts/smoke-cadence-range.mjs",
+    "smoke:grand-selections": "node scripts/smoke-grand-selections.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

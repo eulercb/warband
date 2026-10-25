@@ -14,7 +14,7 @@ vi.mock('../src/ui/state/session', () => ({
 }));
 vi.mock('../src/input/useGamepadMenu', () => ({ useGamepadMenu: vi.fn() }));
 import HUD from '../src/ui/game/HUD';
-import { OwnedSkills } from '../src/ui/game/PauseMenu';
+import { OwnedSkills, CharacterSheet } from '../src/ui/game/PauseMenu';
 import SpecialReward from '../src/ui/screens/SpecialReward';
 import { LoadoutEditor } from '../src/ui/screens/LoadoutEditor';
 import { useStore, EMPTY_SF_LOADOUT } from '../src/ui/state/store';
@@ -101,4 +101,65 @@ it.each([
   expect(screen.getByLabelText(`Subclass passive: ${sub.passive!.name}`).textContent).toContain(
     sub.passive!.desc,
   );
+});
+
+it('HUD and pause previews match the host after activating another class’s grand stat overlay', async () => {
+  const { World } = await import('../src/engine/world/world');
+  const { normalizeGrandLoadout } = await import('../src/engine/content/grandSelections');
+  const { describeAbility } = await import('../src/engine/content/classes');
+  const history = ['kn_grand_immovable', 'mg_grand_archmage'];
+  const state = normalizeGrandLoadout(undefined, {
+    classes: ['knight', 'mage'],
+    history,
+    subSkills: [],
+  });
+  const w = new World({
+    seed: 31,
+    monsterId: 'lich',
+    players: [
+      {
+        peerId: 'a',
+        name: 'A',
+        classId: 'knight',
+        extraClasses: ['mage'],
+        charUpgrades: history,
+        grandLoadout: state,
+        upgrades: ['haste'],
+      },
+    ],
+  });
+  const p = w.players[0];
+  w.setActiveClass(p, 'mage');
+  useStore.setState({
+    localClass: 'knight',
+    myCharUpgrades: history,
+    myGrandLoadout: state,
+    myUpgrades: ['haste'],
+    mySubSkills: [],
+  });
+  useHudStore.setState({
+    classId: 'mage',
+    classes: ['knight', 'mage'],
+    subSkills: [],
+    hp: p.hp,
+    maxHp: p.maxHp,
+  });
+  const { container } = render(
+    <>
+      <HUD />
+      <CharacterSheet />
+      <OwnedSkills />
+    </>,
+  );
+  const expected = describeAbility(p.abilities!.a1, {
+    damageMult: p.damageMult,
+    cooldownMult: p.cooldownMult,
+    castMult: p.castMult,
+  });
+  const fireball = [...container.querySelectorAll('.hud-ability')].find(
+    (tile) => tile.querySelector('.hud-ability-name')?.textContent === 'Fireball',
+  )!;
+  expect(fireball.getAttribute('title')).toContain(expected);
+  expect(screen.getByRole('listitem', { name: `Fireball: ${expected}` })).toBeTruthy();
+  expect(container.querySelector('.wb-pause-stat-grid')?.textContent).toContain('+30%');
 });

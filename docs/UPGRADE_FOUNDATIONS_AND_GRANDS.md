@@ -1,9 +1,12 @@
 # Upgrade foundations and grand selections
 
-The owner merged/live-tested PR #132 and approved the grand architecture below.
-Current delivery implements [recharge and range foundations](CADENCE_AND_RANGE.md).
-Grand selection, reward pacing and new grand content remain the next stages, not
-implemented limits in this patch.
+The owner merged/live-tested PR #133 and reports that cadence/range limits feel good.
+Current delivery is [grand selections and earlier rewards](GRAND_SELECTIONS.md):
+versioned per-class banks, 2/1/1 selection capacity, host validation, free between-fight
+changes, earlier unlocks and a transitional legacy bridge. The fourth bucket's new
+individual-skill content is not authored yet. That delivery document is authoritative
+for current behavior; catalogue/count/design sections below describe the final target.
+Next is Rogue/Warlock content retouching, not another selection-framework patch.
 
 ## Ordinary upgrades versus grands
 
@@ -54,7 +57,7 @@ sub-second Shadowstep example were pre-fix evidence, not current gameplay values
 class's selection applies. Earned choices and saved selections remain available
 for other owned classes; switching class does not destroy them.
 
-Owner-approved active categories (implementation pending):
+Owner-approved active categories (capacity implemented; content migration ongoing):
 
 | Category                | Equipped per class | Identity                                               |
 | ----------------------- | -----------------: | ------------------------------------------------------ |
@@ -152,7 +155,7 @@ growth against the new four-grand ceiling: ordinary upgrades still progress, but
 unlocking another alternative is not another simultaneous power increase. Do not
 leave boss growth assuming the former accumulation model.
 
-## Rollout and review gates
+## Original rollout and review gates (historical sequence)
 
 1. **This correction:** additive ordinary Vial, meaningful Honed wording, complete
    graft/style test-loadout controls, current catalogue/recharge evidence.
@@ -184,7 +187,7 @@ whole-class grands; make graft grands share base-slot capacity; free bank swaps
 between fights, new alternatives at gauntlets; agree how earlier grand access and
 committed effects across class swaps should work. Four-per-class is already decided.
 
-## Next implementation sequence and pacing
+## Approved implementation sequence and pacing
 
 1. **Grand framework and earlier rewards:** separate banked ownership from active
    2/1/1 selections; migrate legacy history, validate on the host, support menus,

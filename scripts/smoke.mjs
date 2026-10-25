@@ -166,10 +166,13 @@ await step('single-boss lobby exposes a usable test-loadout panel', async () => 
   await toggle.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   await toggle.click();
   await page.locator('.wb-sf-loadout-body').waitFor({ timeout: 10000 });
-  const grand = page.locator('.wb-sf-loadout-body .wb-btn-grand').first();
-  await grand.waitFor({ timeout: 10000 });
+  const grandSelect = page.getByLabel('New grand');
+  await grandSelect.scrollIntoViewIfNeeded();
+  const option = await grandSelect.locator('option').nth(1).getAttribute('value');
+  await grandSelect.selectOption(option);
+  const grand = page.getByRole('button', { name: 'Unlock grand', exact: true });
   await grand.evaluate((el) => el.scrollIntoView({ block: 'center' }));
-  await grand.click(); // no force: throws if the sticky action bar intercepts the hit
+  await grand.click(); // no force: validates sticky-bar reachability.
   const picks = await page.evaluate(() => {
     const t = document.querySelector('.wb-sf-loadout-toggle .wb-gauntlet-title');
     const m = t && t.textContent ? t.textContent.match(/\((\d+)\)/) : null;

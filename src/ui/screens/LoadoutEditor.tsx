@@ -1,3 +1,9 @@
+import { GrandManager } from '../game/GrandManager';
+import {
+  changeGrand,
+  normalizeGrandLoadout,
+  grandHistory,
+} from '../../engine/content/grandSelections';
 /**
  * Warband — Single-fight TEST LOADOUT editor (item: lobby loadout).
  *
@@ -27,7 +33,6 @@ import {
   SUB_SKILL_UPGRADES,
   HYBRID_UPGRADES,
   charUpgradeMaxStacks,
-  offerableGrands,
   upgradeAllowedFor,
   reofferCandidates,
   describeCharOffer,
@@ -102,6 +107,12 @@ export function LoadoutEditor() {
 
   if (!isHost || gauntlet) return null;
 
+  const grandContext = {
+    classes: [localClass, ...lo.extraClasses],
+    history: lo.charUpgrades,
+    subSkills: lo.subSkills,
+  };
+  const activeHistory = grandHistory(localClass, lo.charUpgrades, lo.grandLoadout, lo.subSkills);
   const set = (patch: Partial<SfLoadout>): void => setSfLoadout({ ...lo, ...patch });
 
   // Ability slots already occupied by a selected graft — one graft per slot (the
@@ -129,11 +140,6 @@ export function LoadoutEditor() {
     const cap = upgradeMaxStacks(id);
     const next = (countOf(id, lo.upgrades) + 1) % (cap + 1);
     set({ upgrades: withCount(id, next, lo.upgrades) as UpgradeId[] });
-  };
-  const toggleChar = (id: string): void => {
-    playUiSound('uiClick');
-    const has = lo.charUpgrades.includes(id);
-    set({ charUpgrades: has ? lo.charUpgrades.filter((x) => x !== id) : [...lo.charUpgrades, id] });
   };
   // Grafts (skill-replacing hybrids) are toggled (maxStacks 1). Selecting one unlocks its
   // graft grand in the Grand improvements list below (offerableGrands surfaces it once the
@@ -168,16 +174,15 @@ export function LoadoutEditor() {
   };
   const reset = (): void => {
     playUiSound('uiClick');
-    set({ upgrades: [], charUpgrades: [], subSkills: [], extraClasses: [] });
+    set({
+      upgrades: [],
+      charUpgrades: [],
+      subSkills: [],
+      extraClasses: [],
+      grandLoadout: undefined,
+    });
   };
 
-  const grands = offerableGrands(localClass, lo.charUpgrades, lo.subSkills);
-  const takenGrands = lo.charUpgrades
-    .filter((id) => CHAR_UPGRADES[id]?.grand)
-    .map((id) => CHAR_UPGRADES[id]);
-  const grandList = [...takenGrands, ...grands].filter(
-    (d, i, arr) => arr.findIndex((x) => x.id === d.id) === i,
-  );
   // Honed boons only enter the pool for the sub-skills the hero has actually equipped.
   const subUpgrades = SUB_SKILL_UPGRADES.filter(
     (u) => u.subSkillId != null && lo.subSkills.includes(u.subSkillId),
@@ -190,7 +195,11 @@ export function LoadoutEditor() {
     lo.charUpgrades.filter((id) => !id.startsWith('graftup:')),
   ).filter((id) => id.startsWith('graftup:'));
   const totalPicks =
-    lo.upgrades.length + lo.charUpgrades.length + lo.subSkills.length + lo.extraClasses.length;
+    lo.upgrades.length +
+    lo.charUpgrades.length +
+    lo.subSkills.length +
+    lo.extraClasses.length +
+    Object.values(lo.grandLoadout?.classes ?? {}).reduce((n, c) => n + (c?.bank.length ?? 0), 0);
 
   return (
     <div className="wb-field wb-sf-loadout" role="group" aria-label="Test loadout">
@@ -333,7 +342,7 @@ export function LoadoutEditor() {
                           ? `${h.desc} — that ability slot already holds another graft`
                           : describeCharOffer(
                               localClass,
-                              lo.charUpgrades.filter((id) => id !== h.id),
+                              activeHistory.filter((id) => id !== h.id),
                               h.id,
                               lo.subSkills,
                               lo.upgrades,
@@ -348,7 +357,7 @@ export function LoadoutEditor() {
                         ? ` — replaces ${
                             previewAbilityTable(
                               localClass,
-                              lo.charUpgrades.filter((id) => id !== h.id),
+                              activeHistory.filter((id) => id !== h.id),
                             )[h.replaces].name
                           }`
                         : ''}
@@ -366,7 +375,7 @@ export function LoadoutEditor() {
                 {graftFollowups.map((id) => {
                   const view = describeCharOffer(
                     localClass,
-                    lo.charUpgrades,
+                    activeHistory,
                     id,
                     lo.subSkills,
                     lo.upgrades,
@@ -384,7 +393,7 @@ export function LoadoutEditor() {
                       {view.label}
                       {n ? ` ×${n}` : ''} —{' '}
                       {
-                        previewAbilityTable(localClass, lo.charUpgrades)[
+                        previewAbilityTable(localClass, activeHistory)[
                           id.split(':')[1] as 'a1' | 'a2' | 'a3'
                         ].name
                       }
@@ -395,28 +404,24 @@ export function LoadoutEditor() {
             </>
           )}
 
-          {grandList.length > 0 ? (
-            <>
-              <span className="wb-field-label">Grand improvements</span>
-              <div className="wb-pad-scheme-row">
-                {grandList.map((g) => {
-                  const on = lo.charUpgrades.includes(g.id);
-                  return (
-                    <button
-                      type="button"
-                      key={g.id}
-                      className={`wb-btn wb-btn-chip wb-btn-grand${on ? ' selected' : ''}`}
-                      onClick={() => toggleChar(g.id)}
-                      aria-pressed={on}
-                      title={g.desc}
-                    >
-                      {g.icon} {g.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          ) : null}
+          <span className="wb-field-label">
+            Grand improvements — earned bank and equipped selections
+          </span>
+          <GrandManager
+            context={grandContext}
+            value={lo.grandLoadout}
+            credit={true}
+            generic={lo.upgrades}
+            onChange={(request) => {
+              const next = changeGrand(
+                normalizeGrandLoadout(lo.grandLoadout, grandContext),
+                grandContext,
+                request,
+                true,
+              );
+              if (next) set({ grandLoadout: next });
+            }}
+          />
 
           {subUpgrades.length > 0 ? (
             <>

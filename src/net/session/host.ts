@@ -1,3 +1,9 @@
+import {
+  changeGrand,
+  normalizeGrandLoadout,
+  type GrandLoadout,
+  type GrandRequest,
+} from '../../engine/content/grandSelections';
 /**
  * Warband — the Host session.
  *
@@ -56,7 +62,11 @@ import { recordEncounter } from '../../engine/content/balance';
 import { Rng, mixSeed } from '../../engine/core/math';
 import { isUpgradeId, upgradeMaxStacks } from '../../engine/content/upgrades';
 import type { UpgradeId } from '../../engine/content/upgrades';
-import { isCharUpgradeId, charUpgradeAtMax } from '../../engine/content/charUpgrades';
+import {
+  CHAR_UPGRADES,
+  isCharUpgradeId,
+  charUpgradeAtMax,
+} from '../../engine/content/charUpgrades';
 import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
 import { CLASS_IDS } from '../../engine/content/classes';
 import { getEphemeral, isEphemeralId, REROLL_CAP } from '../../engine/content/ephemeral';
@@ -140,6 +150,7 @@ export interface HostOpts {
     | {
         upgrades?: UpgradeId[];
         charUpgrades?: string[];
+        grandLoadout?: GrandLoadout;
         subSkills?: string[];
         extraClasses?: ClassId[];
       }
@@ -170,6 +181,7 @@ export interface HostOpts {
   /** Mirror shared pause state into the host UI (paused, who paused, countdown). */
   onPause?: (paused: boolean, info: { byName?: string; countdown: number | null }) => void;
   /** Called with the current count of connected peers whenever it changes. */
+  onGrandState?: (state: GrandLoadout, credit: boolean) => void;
   onPeers?: (count: number) => void;
   onError?: (err: string) => void;
   /**
@@ -246,6 +258,8 @@ export class Host implements NetSession {
   /** Accumulated between-boss generic upgrade picks per peerId (host + clients). */
   private readonly upgrades = new Map<string, UpgradeId[]>();
   /** Accumulated between-boss character (class) upgrade picks per peerId. */
+  private readonly grandLoadouts = new Map<string, GrandLoadout>();
+  private readonly grandCredits = new Set<string>();
   private readonly charUpgrades = new Map<string, string[]>();
   /** Chosen subclass id per peer (item 13). */
   private readonly subclassByPeer = new Map<string, string>();
@@ -600,6 +614,8 @@ export class Host implements NetSession {
     this.runIndex = 0;
     this.upgrades.clear(); // fresh run — nobody carries upgrades into boss 1
     this.charUpgrades.clear();
+    this.grandLoadouts.clear();
+    this.grandCredits.clear();
     this.subclassByPeer.clear();
     this.subSkillsByPeer.clear();
     this.extraClassesByPeer.clear();
@@ -616,6 +632,7 @@ export class Host implements NetSession {
     const lo = this.opts.loadout?.();
     if (lo) {
       if (lo.upgrades?.length) this.upgrades.set(selfId, [...lo.upgrades]);
+      if (lo.grandLoadout) this.grandLoadouts.set(selfId, lo.grandLoadout);
       if (lo.charUpgrades?.length) this.charUpgrades.set(selfId, [...lo.charUpgrades]);
       if (lo.subSkills?.length) this.subSkillsByPeer.set(selfId, [...lo.subSkills]);
       if (lo.extraClasses?.length) this.extraClassesByPeer.set(selfId, [...lo.extraClasses]);
@@ -789,8 +806,12 @@ export class Host implements NetSession {
       run: `${this.runIndex + 1}/${this.runOrder.length}`,
       cycle: this.cycle,
     });
+    startMsg.grandLoadouts = Object.fromEntries(
+      roster.map((p) => [p.peerId, this.grandState(p.peerId)]),
+    );
     this.startAction.send(startMsg);
 
+    this.grandCredits.clear();
     this.phase = 'inFight';
     this.broadcastLobby();
     this.opts.onStart?.({
@@ -804,6 +825,7 @@ export class Host implements NetSession {
       draftedClass: draftClass(selfId, this.hostClass),
       chaosForge: this.chaosForge,
     });
+    this.sendGrandState(selfId);
     this.startLoop();
   }
 
@@ -815,6 +837,7 @@ export class Host implements NetSession {
       classId,
       upgrades: this.upgrades.get(peerId),
       charUpgrades: this.charUpgrades.get(peerId),
+      grandLoadout: this.grandState(peerId),
       subSkills: this.subSkillsByPeer.get(peerId),
       extraClasses: this.extraClassesByPeer.get(peerId),
       ephemeral: this.ephemeralByPeer.get(peerId),
@@ -923,6 +946,47 @@ export class Host implements NetSession {
     this.recordUpgrade(selfId, { char: upgradeId });
   }
 
+  chooseGrand(request: GrandRequest): void {
+    this.recordGrand(selfId, request);
+  }
+
+  private grandContext(peerId: string) {
+    return {
+      classes: [
+        this.randomKits ? draftedClassFor(this.masterSeed, peerId) : this.classForPeer(peerId),
+        ...(this.extraClassesByPeer.get(peerId) ?? []),
+      ],
+      history: this.charUpgrades.get(peerId) ?? [],
+      subSkills: this.subSkillsByPeer.get(peerId) ?? [],
+    };
+  }
+  private grandState(peerId: string): GrandLoadout {
+    const state = normalizeGrandLoadout(this.grandLoadouts.get(peerId), this.grandContext(peerId));
+    this.grandLoadouts.set(peerId, state);
+    return state;
+  }
+  private sendGrandState(peerId: string): void {
+    const state = this.grandState(peerId),
+      credit = this.grandCredits.has(peerId);
+    if (peerId === selfId) this.opts.onGrandState?.(state, credit);
+    else if (!this.bots.some((b) => b.peerId === peerId))
+      this.specialAction.send({ grandState: state, grandCredit: credit }, { target: peerId });
+  }
+  private recordGrand(peerId: string, request: GrandRequest): void {
+    if (this.phase === 'inFight') return;
+    const next = changeGrand(
+      this.grandState(peerId),
+      this.grandContext(peerId),
+      request,
+      this.grandCredits.has(peerId),
+    );
+    if (next) {
+      this.grandLoadouts.set(peerId, next);
+      if (request.action === 'earn') this.grandCredits.delete(peerId);
+    }
+    this.sendGrandState(peerId);
+  }
+
   /** NetSession: record the host's own run-clear subclass-skill pick (item 13). */
   chooseSubSkill(subclassId: string, skillId: string): void {
     this.recordSpecial(selfId, { subclassId, subSkillId: skillId });
@@ -971,7 +1035,11 @@ export class Host implements NetSession {
         netLog('host', `upgrade "${msg.generic}" for ${peerId.slice(0, 6)}`, { total: arr.length });
       }
     }
-    if (isCharUpgradeId(msg.char) && !this.roundPickedChar.has(peerId)) {
+    if (
+      isCharUpgradeId(msg.char) &&
+      !CHAR_UPGRADES[msg.char]?.grand &&
+      !this.roundPickedChar.has(peerId)
+    ) {
       const arr = this.charUpgrades.get(peerId) ?? [];
       // Occupancy-aware cap (item 8): a GRAFT reclaimed off its slot is still in this
       // append-only list yet NOT "at max", so the host re-accepts it — matching the
@@ -1020,6 +1088,7 @@ export class Host implements NetSession {
    * or an additional multiclass class (a real class the hero doesn't already field).
    */
   private recordSpecial(peerId: string, msg: SpecialMsg): void {
+    if (msg.grand) this.recordGrand(peerId, msg.grand);
     if (msg.subSkillId && msg.subclassId) {
       const skill = getSubSkill(msg.subSkillId);
       const sub = subclassOfSkill(msg.subSkillId);
@@ -1059,6 +1128,7 @@ export class Host implements NetSession {
         netLog('host', `extra class "${msg.extraClass}" for ${peerId.slice(0, 6)}`);
       }
     }
+    if (msg.subSkillId || msg.extraClass) this.sendGrandState(peerId);
     if (msg.buyEphemeral) this.recordEphemeral(peerId, msg.buyEphemeral);
     if (msg.rerollOffers) this.recordReroll(peerId);
   }
@@ -1118,6 +1188,7 @@ export class Host implements NetSession {
 
   /** The primary class of a peer (host, a connected client, or a bot). */
   private classForPeer(peerId: string): ClassId {
+    if (this.randomKits) return draftedClassFor(this.masterSeed, peerId);
     if (peerId === selfId) return this.hostClass;
     return (
       this.lobby.get(peerId)?.classId ??
@@ -1191,6 +1262,8 @@ export class Host implements NetSession {
     this.balancePace = 1;
     this.upgrades.clear();
     this.charUpgrades.clear();
+    this.grandLoadouts.clear();
+    this.grandCredits.clear();
     this.subclassByPeer.clear();
     this.subSkillsByPeer.clear();
     this.extraClassesByPeer.clear();
@@ -1375,6 +1448,33 @@ export class Host implements NetSession {
       next: result.nextMonsterId ?? 'none',
       cycle: this.cycle,
     });
+    if (victory && this.gauntlet && this.runIndex === this.runOrder.length - 1) {
+      for (const p of world.players) this.grandCredits.add(p.peerId);
+      for (const b of this.bots) {
+        const context = this.grandContext(b.peerId),
+          state = this.grandState(b.peerId);
+        const candidates = Object.values(CHAR_UPGRADES)
+          .map((d) =>
+            changeGrand(
+              state,
+              context,
+              { classId: context.classes[0], id: d.id, action: 'earn' },
+              true,
+            ),
+          )
+          .filter((next): next is GrandLoadout => next != null);
+        const before = state.classes[context.classes[0]]?.equipped.length ?? 0;
+        const next =
+          candidates.find(
+            (candidate) => (candidate.classes[context.classes[0]]?.equipped.length ?? 0) > before,
+          ) ?? candidates[0];
+        if (next) {
+          this.grandLoadouts.set(b.peerId, next);
+          this.grandCredits.delete(b.peerId);
+        }
+      }
+    }
+    for (const p of world.players) this.sendGrandState(p.peerId);
     this.resultAction.send({ result });
     this.opts.onResult(result);
 

@@ -1,3 +1,5 @@
+import { previewGrandStats } from '../../engine/content/grandStats';
+import { useSelectedCharUpgrades } from '../state/useSelectedCharUpgrades';
 import { effectiveRecharge } from '../../engine/content/abilityLimits';
 import { absorptionAmount, ABSORPTION_CAP } from '../../engine/combat/absorption';
 /**
@@ -227,12 +229,24 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
   const hud = useHudStore();
   const run = useStore((s) => s.run);
   const cycle = useStore((s) => s.cycle);
-  const myCharUpgrades = useStore((s) => s.myCharUpgrades);
+  const myCharUpgrades = useSelectedCharUpgrades(hud.classId);
   const myUpgrades = useStore((s) => s.myUpgrades);
-  const identity = useStore((s) => s.localClass);
+  const grandState = useStore((s) => s.myGrandLoadout);
+  const ownedSubSkills = useStore((s) => s.mySubSkills);
+  const identity = useStore((s) => s.activeDraftedClass ?? s.localClass);
   const mods = useMemo(
-    () => previewPlayerStats(identity, myUpgrades, myCharUpgrades),
-    [identity, myUpgrades, myCharUpgrades],
+    () =>
+      grandState && hud.classId
+        ? previewGrandStats(
+            identity,
+            hud.classId,
+            myUpgrades,
+            myCharUpgrades,
+            grandState,
+            ownedSubSkills,
+          )
+        : previewPlayerStats(identity, myUpgrades, myCharUpgrades),
+    [identity, hud.classId, ownedSubSkills, grandState, myUpgrades, myCharUpgrades],
   );
   const source = hud.inputSource;
   // Touch has no Esc / Options button, so the overlay needs its own pause control
