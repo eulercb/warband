@@ -2703,12 +2703,13 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'wa_gk_a2_a',
     'Infernal Cataclysm',
     '🔥',
-    'Hellish Rebuke hits +25 across +30u, then counters on your next direct hit or when hurt, applying a searing curse',
+    'Hellish Rebuke hits +25 across +30u; a successful retort phases you for 0.6s and applies a searing curse',
     (ab) => {
       addN(ab, 'damage', 25);
       addN(ab, 'radius', 30);
-      ab.rebukeDirect = true;
       ab.rebukeCurseBonus = Math.max(ab.rebukeCurseBonus ?? 0, 0.15);
+      ab.rebukeInvuln = 0.6;
+      if (ab.kind === 'pbaoe') ab.rebukeDuration = Math.max(ab.rebukeDuration ?? 0, 3);
     },
   ),
   gk(
@@ -3148,17 +3149,15 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'ro_assassin_g_a',
     'Death Incarnate',
     '💀',
-    'Prepared cuts and throws land harder and refund 1s of a running Shadowstep; preparation lasts 2s longer',
+    'Prepared attacks execute wounded foes harder and preparation lasts 2s longer',
     (a) => {
       addN(a.basic, 'critChanceBonus', 0.08);
       addN(a.a1, 'critMultBonus', 0.25);
-      a.a1.preparedRefund = Math.max(a.a1.preparedRefund ?? 0, 1);
       addN(a.a2, 'prepareCrit', 2);
     },
     (ab) => {
       if (isStrike(ab)) {
         ab.consumesPrecision = true;
-        ab.preparedRefund = Math.max(ab.preparedRefund ?? 0, 1);
         addN(ab, 'critMultBonus', 0.2);
       }
       if (ab.prepareCrit) addN(ab, 'prepareCrit', 2);
@@ -3211,10 +3210,8 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'ro_trickster_g_b',
     'Sleight of Time',
     '⏳',
-    'A spent Spellblade grants one frontal block and refunds 1s of running Shadowstep; Shadowstep and Trickster utilities recover sooner',
+    'A spent Spellblade grants a frontal block and 25% movement for 2s; Trickster utilities recover sooner',
     (a) => {
-      mul(a.a2, 'cooldown', 0.85);
-      addN(a.a2, 'healOnUse', 12);
       addN(a.a1, 'critChanceBonus', 0.08);
     },
     (ab) => {
@@ -3466,15 +3463,11 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'wa_fiend_g_a',
     'Hellfire Ascendant',
     '🔥',
-    'Hex follows its first damaged foe for 3s; Rebuke can counter on your next direct hit; Blessing grants movement',
+    'Every third positive direct hit on your cursed foe ignites 25 hellfire, once per 4s; a forged kit without a curse skill primes a neutral personal mark on its first hit; Blessing grants movement',
     (a) => {
-      a.a1.zoneFollow = 3;
-      a.a2.rebukeDirect = true;
       a.a3.buffMoveMult = Math.max(a.a3.buffMoveMult ?? 1, 1.2);
     },
     (ab) => {
-      if (ab.kind === 'groundZone' && (ab.zoneTickDamage ?? 0) > 0) ab.zoneFollow = 3;
-      if (ab.rebukeDuration) ab.rebukeDirect = true;
       if (ab.kind === 'projectile') ab.castSlow = Math.max(ab.castSlow ?? 1, 1.25);
       if (ab.absorption) ab.absorption = { ...ab.absorption, amount: ab.absorption.amount + 12 };
     },
@@ -3571,10 +3564,10 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'ro_assassin_strike',
     'Perfect Opening',
     '🗡️',
-    'Death Strike gains +15% crit chance; a prepared positive hit refunds 1s of running Shadowstep',
+    'Death Strike gains +15% crit chance; a prepared positive hit marks its foe for your next direct hit within 4s to deal +25%',
     (ab) => {
       addN(ab, 'critChanceBonus', 0.15);
-      ab.preparedRefund = 1;
+      ab.markOnPreparedHit = 0.25;
     },
   ),
   gsk(
@@ -3635,11 +3628,11 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
   ),
   gsk(
     'ro_trickster_step',
-    'Veiled Step',
+    'Echoing Cut',
     '🌫️',
-    'Misty Step coats your next direct hit with 12/s poison for 4s while preparing precision',
+    'Mirror Cut echoes 35% of its positive primary damage as arcane damage to the same foe',
     (ab) => {
-      ab.venomCoating = { damage: 12, duration: 4, window: 6 };
+      ab.echoFraction = 0.35;
     },
   ),
   gsk(
@@ -3673,12 +3666,12 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
   ),
   gsk(
     'wa_fiend_rebuke',
-    'Fiendish Retort',
+    'Infernal Ward',
     '💥',
-    'Fiendish Rebuke can counter on your next positive direct hit and applies a +20% searing curse',
+    'Infernal Claim bursts across 110u and stores 25% of effective primary damage as protection for 4s, up to 25',
     (ab) => {
-      ab.rebukeDirect = true;
-      ab.rebukeCurseBonus = Math.max(ab.rebukeCurseBonus ?? 0, 0.2);
+      ab.radius = Math.max(ab.radius ?? 0, 110);
+      ab.claimWard = 0.25;
     },
   ),
   gsk(

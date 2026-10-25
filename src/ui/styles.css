@@ -3171,3 +3171,73 @@ body {
   max-width: 100%;
   white-space: normal;
 }
+
+.wb-grand-manager {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+.wb-grand-manager > p,
+.wb-grand-manager p {
+  margin-block: 0.45rem;
+}
+.wb-grand-manager label {
+  display: block;
+  min-width: 0;
+}
+.wb-grand-manager select {
+  width: 100%;
+  box-sizing: border-box;
+}
+.wb-grand-manager summary {
+  cursor: pointer;
+  padding: 0.55rem;
+  overflow-wrap: anywhere;
+}
+.wb-grand-manager .wb-btn {
+  margin: 0.25rem 0.25rem 0.25rem 0;
+}
+.wb-grand-help,
+.wb-grand-bank,
+.wb-grand-unlock {
+  margin-block: 0.55rem;
+  border: 1px solid #ffffff24;
+  border-radius: 6px;
+}
+.wb-grand-unlock,
+.wb-grand-bank-rows,
+.wb-grand-row-detail,
+.wb-grand-help p {
+  padding: 0.5rem;
+}
+.wb-grand-equipped {
+  display: grid;
+  gap: 0.5rem;
+  margin-block: 0.7rem;
+}
+.wb-grand-slot-group {
+  min-width: 0;
+  padding: 0.5rem;
+  background: #ffffff08;
+  border-radius: 6px;
+}
+.wb-grand-slot-group > strong {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--gold, #f2cc70);
+}
+.wb-grand-empty,
+.wb-grand-hint {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+.wb-grand-row {
+  min-width: 0;
+  border-bottom: 1px solid #ffffff16;
+}
+@media (min-width: 700px) {
+  .wb-grand-equipped {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+}

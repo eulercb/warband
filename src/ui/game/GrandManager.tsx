@@ -31,6 +31,9 @@ export function GrandManager({
 }) {
   const [chosenClass, setClass] = useState(context.classes[0]);
   const [offer, setOffer] = useState('');
+  const [offerDetails, setOfferDetails] = useState(false);
+  const [bankOpen, setBankOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [replacements, setReplacements] = useState<Record<string, string>>({});
   const classId = context.classes.includes(chosenClass) ? chosenClass : context.classes[0];
   const state = normalizeGrandLoadout(value, context);
@@ -47,11 +50,7 @@ export function GrandManager({
     : null;
   const unlockEquips = pick && unlockState?.classes[classId]?.equipped.includes(pick.id);
   return (
-    <section aria-label="Grand selections" className="wb-special-reward">
-      <p>
-        Four slots per class: two starting skills (including basic attack or grafts), one subclass
-        skill, one subclass identity. Only the active class's selection applies.
-      </p>
+    <section aria-label="Grand selections" className="wb-special-reward wb-grand-manager">
       <label>
         Class{' '}
         <select
@@ -59,6 +58,7 @@ export function GrandManager({
           onChange={(e) => {
             setClass(e.target.value as typeof classId);
             setOffer('');
+            setOfferDetails(false);
           }}
         >
           {context.classes.map((id) => (
@@ -82,17 +82,28 @@ export function GrandManager({
         {selected.equipped.length}/4 equipped · {selected.bank.length} earned. Swaps are free
         between fights.
       </p>
-      <p>
-        Kit and subclass identities share one slot.
-        {classId !== 'rogue' &&
-          classId !== 'warlock' &&
-          ' Individual subclass-skill grands are not available for this class yet.'}
-      </p>
+      <details className="wb-grand-help">
+        <summary tabIndex={0}>Slot rules &amp; earning grands</summary>
+        <p>
+          Each class has two starting-skill slots, one subclass-skill slot, and one identity slot.
+          Kit and subclass identities share the identity slot. Only the active class applies.
+        </p>
+        <p>
+          One unlock per five-boss clear, alongside subclass progression. Full slots keep new
+          options banked until you choose a replacement. Unused unlocks expire at the next fight.
+        </p>
+      </details>
       {credit ? (
-        <div>
+        <div className="wb-grand-unlock">
           <label>
             New grand{' '}
-            <select value={pick?.id ?? ''} onChange={(e) => setOffer(e.target.value)}>
+            <select
+              value={pick?.id ?? ''}
+              onChange={(e) => {
+                setOffer(e.target.value);
+                setOfferDetails(false);
+              }}
+            >
               <option value="">Choose a new alternative to unlock…</option>
               {available.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -111,142 +122,200 @@ export function GrandManager({
             type="button"
             className="wb-btn wb-btn-ghost"
             disabled={!available.length}
-            onClick={() =>
+            onClick={() => {
               setOffer(
                 available[(available.findIndex((d) => d.id === offer) + 1) % available.length].id,
-              )
-            }
+              );
+              setOfferDetails(false);
+            }}
           >
             Next grand option
           </button>
           {pick ? (
-            <p>
-              {unlockEquips
-                ? `${pick.desc} · ${describeGrandTransition(classId, context, state, unlockState!, generic)}`
-                : `${pick.desc}. Unlocking this keeps your current build unchanged; select an outgoing grand before equipping it.`}
-            </p>
+            <>
+              <p className="wb-grand-hint">
+                {unlockEquips
+                  ? 'Unlocks and equips in a free slot.'
+                  : 'Unlocks to bank. Current selections stay equipped.'}
+              </p>
+              <details
+                key={pick.id}
+                onToggle={(event) => setOfferDetails(event.currentTarget.open)}
+              >
+                <summary tabIndex={0}>Selected grand details &amp; preview</summary>
+                {offerDetails ? (
+                  <p>
+                    {pick.desc} ·{' '}
+                    {unlockEquips
+                      ? describeGrandTransition(classId, context, state, unlockState!, generic)
+                      : 'Unlocking this keeps your current build unchanged; select an outgoing grand before equipping it.'}
+                  </p>
+                ) : null}
+              </details>
+            </>
           ) : null}
           <button
             type="button"
             className="wb-btn"
             disabled={!pick}
-            onClick={() => {
-              if (pick) onChange({ classId, id: pick.id, action: 'earn' });
-            }}
+            onClick={pick ? () => onChange({ classId, id: pick.id, action: 'earn' }) : undefined}
           >
             Unlock grand
           </button>
-          <p>
-            One unlock per five-boss clear, alongside subclass progression. If its slots are
-            occupied, the new option stays banked until you choose a replacement. Unused unlocks
-            expire when the next fight begins.
-          </p>
           {!available.length ? (
             <p>No eligible new grand yet. You can proceed without choosing one.</p>
           ) : null}
         </div>
       ) : null}
-      <div className="wb-special-cards">
-        {selected.bank.map((id) => {
-          const d = CHAR_UPGRADES[id],
-            equipped = selected.equipped.includes(id);
-          const eligible = grandEligible(id, classId, context);
-          const direct = changeGrand(state, context, { classId, id, action: 'equip' });
-          const replace = replacements[id];
-          const request: GrandRequest = {
-            classId,
-            id,
-            action: 'equip',
-            ...(replace ? { replace } : {}),
-          };
-          const proposed = changeGrand(state, context, request);
-          const canEquip = proposed != null;
-          const candidates = selected.equipped.filter(
-            (out) =>
-              changeGrand(state, context, { classId, id, action: 'equip', replace: out }) != null,
+      <div className="wb-grand-equipped" aria-label="Equipped grand slots">
+        {(['base', 'skill', 'identity'] as const).map((category) => {
+          const ids = selected.equipped.filter(
+            (id) => (grandCategory(id) === 'legacy' ? 'identity' : grandCategory(id)) === category,
           );
+          const capacity = category === 'base' ? 2 : 1;
           return (
-            <div key={id} className="wb-upgrade-card">
+            <div className="wb-grand-slot-group" key={category}>
               <strong>
-                {d.icon} {d.name} · {equipped ? 'Equipped' : 'Banked'}
+                {category === 'base'
+                  ? 'Starting skills'
+                  : category === 'skill'
+                    ? 'Subclass skill'
+                    : 'Identity'}{' '}
+                · {ids.length}/{capacity}
               </strong>
-              <p>{d.desc}</p>
-              {!eligible ? (
-                <p>
-                  {grandCategory(id) === 'legacy'
-                    ? 'Legacy whole-class option: retained for the content migration; currently inactive.'
-                    : 'Requires its matching equipped skill/subclass. Your earned option is retained.'}
-                </p>
-              ) : equipped ? (
-                <button
-                  type="button"
-                  className="wb-btn wb-btn-ghost"
-                  onClick={() => onChange({ classId, id, action: 'unequip' })}
-                >
-                  Unequip {d.name}
-                </button>
-              ) : (
-                <>
-                  {!direct ? (
-                    <label>
-                      Replace{' '}
-                      <select
-                        aria-label={`Replace grand for ${d.name}`}
-                        value={replace ?? ''}
-                        onChange={(e) => setReplacements({ ...replacements, [id]: e.target.value })}
-                      >
-                        <option value="">Choose outgoing grand…</option>
-                        {candidates.map((out) => (
-                          <option key={out} value={out}>
-                            {CHAR_UPGRADES[out].name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  ) : null}
-                  {!direct && candidates.length ? (
-                    <button
-                      type="button"
-                      className="wb-btn wb-btn-ghost"
-                      onClick={() =>
-                        setReplacements({
-                          ...replacements,
-                          [id]: candidates[
-                            (candidates.indexOf(replace ?? '') + 1) % candidates.length
-                          ],
-                        })
-                      }
-                    >
-                      Next outgoing grand for {d.name}
-                    </button>
-                  ) : null}
-                  {replace && proposed ? (
-                    <p aria-label={`Replacement preview for ${d.name}`}>
-                      After replacing {CHAR_UPGRADES[replace].name}:{' '}
-                      {describeGrandTransition(classId, context, state, proposed, generic)}
-                    </p>
-                  ) : null}
-                  {replace && candidates.includes(replace) ? (
-                    <p>
-                      Remove {CHAR_UPGRADES[replace].name}; equip {d.name}.
-                    </p>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="wb-btn"
-                    disabled={!canEquip}
-                    onClick={() => onChange(request)}
-                  >
-                    Equip {d.name}
-                  </button>
-                </>
-              )}
+              {ids.map((id) => renderGrand(id))}
+              {ids.length < capacity ? (
+                <span className="wb-grand-empty">{capacity - ids.length} empty</span>
+              ) : null}
             </div>
           );
         })}
       </div>
+      <details
+        className="wb-grand-bank"
+        onToggle={(event) => setBankOpen(event.currentTarget.open)}
+      >
+        <summary tabIndex={0}>
+          Earned bank · {selected.bank.length} earned ·{' '}
+          {selected.bank.length - selected.equipped.length} banked
+        </summary>
+        {bankOpen ? (
+          <div className="wb-grand-bank-rows">
+            {selected.bank
+              .filter((id) => !selected.equipped.includes(id))
+              .map((id) => renderGrand(id))}
+            {selected.bank.length === selected.equipped.length ? (
+              <p>No unequipped grands. Earned selections stay available after swapping.</p>
+            ) : null}
+          </div>
+        ) : null}
+      </details>
     </section>
   );
+
+  function renderGrand(id: string) {
+    const d = CHAR_UPGRADES[id],
+      equipped = selected.equipped.includes(id);
+    const eligible = grandEligible(id, classId, context);
+    const direct = changeGrand(state, context, { classId, id, action: 'equip' });
+    const replace = replacements[id];
+    const request: GrandRequest = {
+      classId,
+      id,
+      action: 'equip',
+      ...(replace ? { replace } : {}),
+    };
+    const proposed = changeGrand(state, context, request);
+    const canEquip = proposed != null;
+    const candidates = selected.equipped.filter(
+      (out) => changeGrand(state, context, { classId, id, action: 'equip', replace: out }) != null,
+    );
+    return (
+      <details
+        key={id}
+        className="wb-grand-row"
+        onToggle={(event) => {
+          const open = event.currentTarget.open;
+          setExpanded((current) => (current[id] === open ? current : { ...current, [id]: open }));
+        }}
+      >
+        <summary tabIndex={0}>
+          {d.icon} {d.name} · {equipped ? 'Equipped' : 'Banked'}
+        </summary>
+        {expanded[id] ? (
+          <div className="wb-grand-row-detail">
+            <p>{d.desc}</p>
+            {!eligible ? (
+              <p>Requires its matching equipped skill/subclass. Your earned option is retained.</p>
+            ) : equipped ? (
+              <button
+                type="button"
+                className="wb-btn wb-btn-ghost"
+                onClick={() => onChange({ classId, id, action: 'unequip' })}
+              >
+                Unequip {d.name}
+              </button>
+            ) : (
+              <>
+                {!direct ? (
+                  <label>
+                    Replace{' '}
+                    <select
+                      aria-label={`Replace grand for ${d.name}`}
+                      value={replace ?? ''}
+                      onChange={(e) => setReplacements({ ...replacements, [id]: e.target.value })}
+                    >
+                      <option value="">Choose outgoing grand…</option>
+                      {candidates.map((out) => (
+                        <option key={out} value={out}>
+                          {CHAR_UPGRADES[out].name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                {!direct && candidates.length ? (
+                  <button
+                    type="button"
+                    className="wb-btn wb-btn-ghost"
+                    onClick={() =>
+                      setReplacements({
+                        ...replacements,
+                        [id]: candidates[
+                          (candidates.indexOf(replace ?? '') + 1) % candidates.length
+                        ],
+                      })
+                    }
+                  >
+                    Next outgoing grand for {d.name}
+                  </button>
+                ) : null}
+                {replace && proposed ? (
+                  <p aria-label={`Replacement preview for ${d.name}`}>
+                    After replacing {CHAR_UPGRADES[replace].name}:{' '}
+                    {describeGrandTransition(classId, context, state, proposed, generic)}
+                  </p>
+                ) : null}
+                {replace && candidates.includes(replace) ? (
+                  <p>
+                    Remove {CHAR_UPGRADES[replace].name}; equip {d.name}.
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  className="wb-btn"
+                  disabled={!canEquip}
+                  onClick={() => onChange(request)}
+                >
+                  Equip {d.name}
+                </button>
+              </>
+            )}
+          </div>
+        ) : null}
+      </details>
+    );
+  }
 }
 
 function GrandPanel({ open = false }: { open?: boolean } = {}) {

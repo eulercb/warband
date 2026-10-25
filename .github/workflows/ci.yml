@@ -149,6 +149,7 @@ jobs:
           node scripts/run-smoke.mjs smoke:cadence-range
           node scripts/run-smoke.mjs smoke:grand-selections
           node scripts/run-smoke.mjs smoke:pilot-grands
+          node scripts/run-smoke.mjs smoke:pilot-coherence
 
       - name: Upload smoke screenshots
         if: always()

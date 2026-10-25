@@ -48,6 +48,8 @@ import type { BossAbilityDef } from '../content/monsters';
 import type { PlayerAbilityDef } from '../content/classes';
 import type { AbilityComponents, EffectComponent, ZoneSpec, BuffTarget } from '../content/forge';
 import { getClass } from '../content/classes';
+import { personallyCursed } from '../core/curses';
+import { grantAbsorption } from './absorption';
 import {
   add as vadd,
   scale as vscale,
@@ -377,8 +379,18 @@ export function resolvePlayerAbility(
       ? original
       : consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original))));
   const limited = resolved && boundedAbility(resolved, world.arena);
-  const ab = limited?.preparedRefund ? { ...limited, refundCast: { spent: false } } : limited;
+  const ab = limited && {
+    ...limited,
+    ...(limited.preparedRefund ? { refundCast: { spent: false } } : {}),
+    ...(limited.precisionOnHit ||
+    limited.preparedInvulnOnHit ||
+    limited.echoFraction ||
+    limited.markOnPreparedHit
+      ? { pilotCast: { spent: false } }
+      : {}),
+  };
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
+  if (ab.infernalClaim && !findInfernalClaimTarget(world, p, ab)) return;
   armRetouchEffects(world, p, ab);
   onSubclassAbility(p, ab);
   onMoonAbility(world, p, ab);
@@ -481,6 +493,15 @@ export function resolvePlayerAbility(
           consumesPrecision: ab.consumesPrecision,
           preparedRefund: ab.preparedRefund,
           refundCast: ab.refundCast,
+          precisionOnHit: ab.precisionOnHit,
+          preparedInvulnOnHit: ab.preparedInvulnOnHit,
+          echoFraction: ab.echoFraction,
+          markOnPreparedHit: ab.markOnPreparedHit,
+          pilotCast: ab.pilotCast,
+          mark:
+            ab.markOnPreparedHit && ab.pilotCast
+              ? { bonus: ab.markOnPreparedHit, cast: ab.pilotCast }
+              : undefined,
           pierce: ab.pierce,
           critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
@@ -496,6 +517,10 @@ export function resolvePlayerAbility(
     }
 
     case 'pbaoe': {
+      if (ab.infernalClaim) {
+        resolveInfernalClaim(world, p, ab);
+        break;
+      }
       const radius = ab.radius ?? 150;
       emitSkillArea(world, p.id, color, {
         kind: 'circle',
@@ -656,6 +681,62 @@ export function resolvePlayerAbility(
       break;
     }
   }
+}
+
+/** Resolve the closest aimed living foe carrying this player's own curse. */
+export function findInfernalClaimTarget(
+  world: World,
+  p: Player,
+  ab: PlayerAbilityDef,
+): Boss | Add | null {
+  const aim = normalize(p.aim);
+  const range = boundedAbility(ab, world.arena).range ?? 460;
+  const candidates = [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0)]
+    .filter((target) => {
+      if (
+        (!ab.forgeClaimFallback && !personallyCursed(p.id, target)) ||
+        dist(p.pos, target.pos) > range
+      )
+        return false;
+      const delta = sub(target.pos, p.pos);
+      return delta.x * aim.x + delta.y * aim.y > 0;
+    })
+    .sort((a, b) => {
+      const da = sub(a.pos, p.pos),
+        db = sub(b.pos, p.pos);
+      const angleA = Math.atan2(Math.abs(da.x * aim.y - da.y * aim.x), da.x * aim.x + da.y * aim.y);
+      const angleB = Math.atan2(Math.abs(db.x * aim.y - db.y * aim.x), db.x * aim.x + db.y * aim.y);
+      return angleA - angleB || dist(p.pos, a.pos) - dist(p.pos, b.pos) || a.id - b.id;
+    });
+  return candidates[0] ?? null;
+}
+
+function resolveInfernalClaim(world: World, p: Player, ab: PlayerAbilityDef): void {
+  const primary = findInfernalClaimTarget(world, p, ab);
+  if (!primary) return;
+  if (ab.forgeClaimFallback && !personallyCursed(p.id, primary))
+    applyBuff(primary, makeBuff('curse', 1.15, 4, `curse:${p.id}:searing`));
+  const center = { ...primary.pos },
+    radius = ab.radius ?? 70;
+  emitSkillArea(world, p.id, CLASS_COLORS[p.classId] ?? 0xffffff, {
+    kind: 'circle',
+    origin: center,
+    angle: 0,
+    range: 0,
+    radius,
+    halfAngle: 0,
+  });
+  let primaryEffective = 0;
+  for (const foe of [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0)]) {
+    if (dist(center, foe.pos) > radius + foe.radius) continue;
+    const before = foe.hp;
+    if (world.bosses.includes(foe as Boss))
+      damageBoss(world, p, foe as Boss, ab.damage, world.critRoll(p, ab));
+    else damageAdd(world, p, foe as Add, ab.damage, world.critRoll(p, ab));
+    if (foe.id === primary.id) primaryEffective = Math.max(0, before - Math.max(foe.hp, 0));
+  }
+  if (ab.claimWard && primaryEffective > 0)
+    grantAbsorption(p, Math.min(25, primaryEffective * ab.claimWard), 4);
 }
 
 // ---------------------------------------------------------------------------
@@ -849,6 +930,10 @@ function resolveComposedAbility(
     }
 
     case 'pbaoe': {
+      if (ab.infernalClaim) {
+        resolveInfernalClaim(world, p, ab);
+        break;
+      }
       const radius = ab.radius ?? 150;
       emitSkillArea(world, p.id, color, {
         kind: 'circle',
@@ -923,6 +1008,15 @@ function resolveComposedAbility(
           consumesPrecision: ab.consumesPrecision,
           preparedRefund: ab.preparedRefund,
           refundCast: ab.refundCast,
+          precisionOnHit: ab.precisionOnHit,
+          preparedInvulnOnHit: ab.preparedInvulnOnHit,
+          echoFraction: ab.echoFraction,
+          markOnPreparedHit: ab.markOnPreparedHit,
+          pilotCast: ab.pilotCast,
+          mark:
+            ab.markOnPreparedHit && ab.pilotCast
+              ? { bonus: ab.markOnPreparedHit, cast: ab.pilotCast }
+              : undefined,
           pierce: ab.pierce,
           critMultBonus: ab.critMultBonus,
           lifesteal: ab.lifestealFrac,
@@ -1018,6 +1112,7 @@ function armRebuke(p: Player, ab: PlayerAbilityDef): void {
     lifesteal: ab.lifestealFrac ?? 0,
     curseBonus: ab.rebukeCurseBonus,
     direct: ab.rebukeDirect,
+    invuln: ab.rebukeInvuln,
   };
   applyBuff(p, buff);
 }
@@ -1106,6 +1201,12 @@ interface SpawnProjOpts {
   consumesPrecision?: boolean;
   preparedRefund?: number;
   refundCast?: { spent: boolean };
+  precisionOnHit?: number;
+  preparedInvulnOnHit?: number;
+  echoFraction?: number;
+  markOnPreparedHit?: number;
+  pilotCast?: { spent: boolean };
+  mark?: { bonus: number; cast: { spent: boolean } };
   pierce?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
   lifesteal?: number;
@@ -1144,6 +1245,12 @@ function spawnPlayerProjectile(
     consumesPrecision: o.consumesPrecision,
     preparedRefund: o.preparedRefund,
     refundCast: o.refundCast,
+    precisionOnHit: o.precisionOnHit,
+    preparedInvulnOnHit: o.preparedInvulnOnHit,
+    echoFraction: o.echoFraction,
+    markOnPreparedHit: o.markOnPreparedHit,
+    pilotCast: o.pilotCast,
+    mark: o.mark,
     // Do not repeat an explosive/zone payload on several bodies.
     pierceLeft: o.pierce && o.impactRadius <= 0 && !o.onImpact ? o.pierce : undefined,
     hitIds: o.pierce && o.impactRadius <= 0 && !o.onImpact ? [] : undefined,

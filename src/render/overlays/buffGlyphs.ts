@@ -201,6 +201,20 @@ function describe(
         label:
           'Echoed Refrain: next effective dedicated heal echoes 50%, up to max(35, 12% recipient max HP)',
       };
+    case 'grandOpening':
+      return {
+        glyph: '🎯',
+        color: 0xffb168,
+        good: false,
+        label: 'Exposed: marking Rogue’s next direct hit deals 25% more',
+      };
+    case 'grandCadence':
+      return {
+        glyph: '🔥',
+        color: 0xf68042,
+        good: true,
+        label: `Hellfire cadence: ${Math.round(mult)}/3 cursed direct hits`,
+      };
     case 'spellblade':
       return {
         glyph: '⚔️',

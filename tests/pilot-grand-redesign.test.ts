@@ -107,9 +107,13 @@ describe('Rogue and Warlock authored grands', () => {
           for (const identity of [a, b]) {
             const changed = hero(classId, [identity.id], [first]).p;
             expect(changed.abilities, `${identity.id}/${first}`).not.toEqual(baseline.abilities);
-            expect(changed.subAbilities!.sub1, `${identity.id}/${first}`).not.toEqual(
-              baseline.subAbilities!.sub1,
-            );
+            if (
+              identity.id !== 'wa_fiend_g_a' ||
+              (first !== 'wa_fiend_pit' && first !== 'wa_fiend_rebuke')
+            )
+              expect(changed.subAbilities!.sub1, `${identity.id}/${first}`).not.toEqual(
+                baseline.subAbilities!.sub1,
+              );
           }
         }
       }
@@ -208,7 +212,8 @@ describe('Rogue and Warlock authored grands', () => {
       subclassDamageMultiplier(sleight.p, sleight.w.boss!, { direct: true, melee: true }),
     ).toBe(1.2);
     expect(sleight.p.buffs.some((b) => b.kind === 'frontGuard')).toBe(true);
-    expect(sleight.p.cooldowns.a2).toBe(4);
+    expect(sleight.p.cooldowns.a2).toBe(5);
+    expect(sleight.p.buffs.find((b) => b.source === 'sleightSpellblade')?.mult).toBe(1.25);
     sleight.p.buffs.push({ kind: 'spellblade', mult: 1.2, remaining: 5, source: 'test' });
     sleight.p.rechargeLocks = { rogue: { a2: 5 } };
     sleight.p.cooldowns.a2 = 5;

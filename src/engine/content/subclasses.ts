@@ -720,8 +720,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'ro_trickster_bolt',
           'Mage Hand Bolt',
           '✨',
-          'A quick arcane dart for 34',
-          proj('Mage Hand Bolt', 5, 34),
+          'An arcane dart for 34; a positive hit prepares a precision crit for 4s',
+          proj('Mage Hand Bolt', 5, 34, { precisionOnHit: 4 }),
         ),
         sk(
           'ro_trickster_snare',
@@ -738,10 +738,15 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
         ),
         sk(
           'ro_trickster_step',
-          'Misty Step',
+          'Mirror Cut',
           '🌫️',
-          'Blink 270u, heal 20, and prepare your next precision crit for 4s',
-          blink('Misty Step', 6, { iframes: 0.3, healOnUse: 20, prepareCrit: 4 }),
+          'A precise 85u cut for 48; spend preparation on a positive hit to phase for 0.35s',
+          melee('Mirror Cut', 7, 48, {
+            range: 85,
+            halfAngleDeg: 35,
+            consumesPrecision: true,
+            preparedInvulnOnHit: 0.35,
+          }),
         ),
         sk(
           'ro_trickster_shield',
@@ -1010,6 +1015,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'A fear-zone to 25% speed',
           zone('Words of Terror', 10, {
             bardSong: 'discord',
+            airborne: true,
             slowMult: 0.25,
             slowDuration: 1.5,
             zoneTickDamage: 10,
@@ -1247,19 +1253,19 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
             radius: 120,
             zoneTickDamage: 13,
             zoneKind: 'poison',
+            airborne: false,
             curseBonus: 0.15,
             curseStyle: 'searing',
           }),
         ),
         sk(
           'wa_fiend_rebuke',
-          'Fiendish Rebuke',
+          'Infernal Claim',
           '💥',
-          'A 150u hell-burst for 36; arm one 40%-damage counterburst for 3s',
-          nova('Fiendish Rebuke', 8, 36, 150, {
-            lifestealFrac: 0.2,
-            rebukeDuration: 3,
-            rebukeCurseBonus: 0.15,
+          'Detonate an aimed, personally cursed foe for 70 damage in a 70u burst',
+          nova('Infernal Claim', 9, 70, 70, {
+            range: 460,
+            infernalClaim: true,
           }),
         ),
         sk(
@@ -1305,6 +1311,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           '🌀',
           'A dread curse, 11/tick; enemy attacks deal 20% less damage and your hits deal 15% more',
           zone('Dissonant Whispers', 9, {
+            airborne: true,
             curseBonus: 0.15,
             curseStyle: 'dread',
             radius: 115,

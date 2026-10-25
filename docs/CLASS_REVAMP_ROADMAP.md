@@ -1,5 +1,9 @@
 # Class identity and subclass roadmap
 
+Current follow-up: [pilot coherence and compact grand selection](PILOT_COHERENCE_FOLLOWUP.md).
+The next class cohort is paused until this correction is live-tested. Apply the
+[combined-build design review gate](UPGRADE_REVIEW_GATE.md) to all remaining cohorts.
+
 Upgrade content milestone: [authored Rogue/Warlock grands](PILOT_GRANDS.md).
 Next is the martial upgrade/grand cohort; the remaining cohorts and final review
 are listed in that delivery. Current cadence/range limits remain through the redesign.

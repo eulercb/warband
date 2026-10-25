@@ -283,7 +283,7 @@ describe('bounded following Hex', () => {
     expect(z.pos).toEqual(last);
     expect(z.zoneFollow).toBe(0);
   });
-  it('time expires after three seconds; an immune or airborne boss is never acquired', () => {
+  it('time expires after three seconds; immunity blocks acquisition but airborne Hex follows', () => {
     const { w, boss } = setup('warlock', ['wa_grand_ruin']);
     const z = castZone(w, 'a1');
     applyBuff(boss, makeBuff('invuln', 1, 2, 'test'));
@@ -292,7 +292,7 @@ describe('bounded following Hex', () => {
     boss.buffs = [];
     applyBuff(boss, makeBuff('flight', 1, 2, 'test'));
     zoneTick(w, z);
-    expect(z.followId).toBeUndefined();
+    expect(z.followId).toBe(boss.id);
     boss.buffs = [];
     zoneTick(w, z);
     for (let i = 0; i < 3; i++) {
@@ -378,13 +378,18 @@ describe('zone ownership and contact boundaries', () => {
     zoneTick(w, z);
     expect(z.followId).toBe(a.id);
   });
-  it('airborne follow target anchors immediately at the last ground position', () => {
+  it('airborne Hex follows a flying target; ground-only follow anchors', () => {
     const { w, boss } = setup('warlock', ['wa_grand_ruin']);
     const z = castZone(w, 'a1');
     zoneTick(w, z);
-    const last = { ...z.pos };
     boss.pos.x += 20;
     applyBuff(boss, makeBuff('flight', 1, 2, 'fixture'));
+    updateUpgradeZone(w, z, 0.1);
+    expect(z.pos).toEqual(boss.pos);
+    expect(z.zoneFollow).toBeGreaterThan(0);
+    z.airborne = false;
+    const last = { ...z.pos };
+    boss.pos.x += 20;
     updateUpgradeZone(w, z, 0.1);
     expect(z.pos).toEqual(last);
     expect(z.zoneFollow).toBe(0);

@@ -20,6 +20,7 @@ import { buffView } from '../core/buffView';
 import { zoneSupportKinds } from '../combat/visualCues';
 import { updatePaladinAuras } from '../combat/paladinAuras';
 import { grantAbsorption, maintainAbsorption, OVERFLOW_SECONDS } from '../combat/absorption';
+import { onGrandDirectHit } from '../combat/grandCoherence';
 /**
  * Warband — authoritative world state + fixed-timestep `step`. PURE TS.
  * Only the host runs a World; clients render interpolated snapshots.
@@ -220,6 +221,7 @@ import {
   applyStun,
   makeBuff,
   damageBoss,
+  damageEcho,
   damageAdd,
   damagePlayer,
   healPlayer,
@@ -235,6 +237,7 @@ import {
 import { decayThreat, nthThreatTarget } from '../combat/threat';
 import {
   resolvePlayerAbility,
+  findInfernalClaimTarget,
   resolveBossAbility,
   beamTick,
   spawnZone,
@@ -1366,6 +1369,11 @@ export class World {
     if ((p.cooldowns[slot] ?? 0) > 0) return;
     if (hasBuff(p, 'silence') && slot !== 'basic') return; // silenced: only the basic works
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
+    if (
+      original.infernalClaim &&
+      !findInfernalClaimTarget(this, p, boundedAbility(original, this.arena))
+    )
+      return;
 
     const ab = consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original)));
     const nextCd = effectiveRecharge(ab, p.cooldownMult, p.castMult, slot);
@@ -1798,6 +1806,12 @@ export class World {
       flowExtendOnHit?: number;
       preparedRefund?: number;
       refundCast?: { spent: boolean };
+      precisionOnHit?: number;
+      preparedInvulnOnHit?: number;
+      echoFraction?: number;
+      markOnPreparedHit?: number;
+      pilotCast?: { spent: boolean };
+      mark?: { bonus: number; cast: { spent: boolean } };
     },
   ): HitMods {
     const ready =
@@ -1811,6 +1825,18 @@ export class World {
       ...(bonus?.preparedRefund && bonus.refundCast
         ? { refund: { seconds: bonus.preparedRefund, cast: bonus.refundCast } }
         : {}),
+      ...(bonus?.pilotCast
+        ? {
+            pilot: {
+              precision: bonus.precisionOnHit,
+              phase: bonus.preparedInvulnOnHit,
+              echo: bonus.echoFraction,
+              mark: bonus.markOnPreparedHit,
+              cast: bonus.pilotCast,
+            },
+          }
+        : {}),
+      ...(bonus?.mark ? { mark: bonus.mark } : {}),
       cursePayoff: bonus?.cursePayoff,
       controlOnHit:
         bonus?.controlOnHit ??
@@ -1855,6 +1881,12 @@ export class World {
       flowExtendOnHit?: number;
       preparedRefund?: number;
       refundCast?: { spent: boolean };
+      precisionOnHit?: number;
+      preparedInvulnOnHit?: number;
+      echoFraction?: number;
+      markOnPreparedHit?: number;
+      pilotCast?: { spent: boolean };
+      mark?: { bonus: number; cast: { spent: boolean } };
     },
   ): HitMods {
     const hit = this.critRoll(
@@ -1896,6 +1928,7 @@ export class World {
     effective: number,
     prepared?: boolean,
     refund?: HitMods['refund'],
+    pilot?: HitMods['pilot'],
   ): void {
     if (
       this.scene === null &&
@@ -1923,6 +1956,25 @@ export class World {
       source.buffs.some((b) => b.kind === 'rebuke' && b.remaining > 0 && b.retaliation?.direct)
     )
       this.releaseRebuke(source, target.pos);
+    onGrandDirectHit(
+      this,
+      source,
+      target,
+      effective,
+      prepared,
+      pilot?.mark && pilot.cast ? { bonus: pilot.mark, cast: pilot.cast } : undefined,
+    );
+    if (pilot && !pilot.cast.utilitySpent && effective > 0) {
+      if (pilot.precision)
+        applyBuff(source, makeBuff('precision', 1, pilot.precision, 'mageHandBolt'));
+      if (prepared && pilot.phase)
+        applyBuff(source, makeBuff('invuln', 0, pilot.phase, 'mirrorCut'));
+      pilot.cast.utilitySpent = true;
+    }
+    if (prepared && pilot?.echo && !pilot.cast.echoSpent && effective > 0) {
+      pilot.cast.echoSpent = true;
+      damageEcho(this, source, target, effective * pilot.echo);
+    }
     if (effective > 0) applyCoating(this, source, target, prepared);
     this.releaseCloseBurst(source, target, effective);
   }
@@ -2014,6 +2066,8 @@ export class World {
     }
     if (dealt > 0 && ward.retaliation.lifesteal > 0)
       healPlayer(this, target, target, dealt * ward.retaliation.lifesteal);
+    if (dealt > 0 && ward.retaliation.invuln)
+      applyBuff(target, makeBuff('invuln', 0, ward.retaliation.invuln, 'infernalCataclysm'));
   }
 
   private applyProjDamageBoss(
@@ -2143,6 +2197,7 @@ export class World {
       }
       for (const a of this.adds) {
         if (a.hp <= 0) continue;
+        if (isFlying(a) && !zoneReachesAir(z)) continue;
         if (dist(z.pos, a.pos) <= z.radius + a.radius) {
           if (owner && z.curseBonus) this.applyZoneCurse(a, owner, z);
           if (z.damagePerTick > 0) {

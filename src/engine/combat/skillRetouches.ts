@@ -3,7 +3,7 @@ import type { World } from '../world/world';
 import type { Player, Boss, Add } from '../core/types';
 import { resolvedCoating, type PlayerAbilityDef } from '../content/classes';
 import { dist } from '../core/torus';
-import { applyBuff, damageBoss, damageAdd, makeBuff } from './combat';
+import { applyBuff, damageBoss, damageAdd, isFlying, makeBuff, zoneReachesAir } from './combat';
 import { spawnZone } from './abilities';
 
 export function armRetouchEffects(world: World, p: Player, ab: PlayerAbilityDef): void {
@@ -155,9 +155,12 @@ export function updateUpgradeZone(
     return;
   }
   const foes = [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0)];
+  const reachable = (target: Boss | Add): boolean =>
+    zoneReachesAir(z) ||
+    (world.bosses.includes(target as Boss) ? !world.bossFlying(target as Boss) : !isFlying(target));
   if (z.followAcquired && (z.zoneFollow ?? 0) > 0) {
     const target = foes.find((t) => t.id === z.followId);
-    if (target && (!world.bosses.includes(target as Boss) || !world.bossFlying(target as Boss))) {
+    if (target && reachable(target)) {
       z.pos = { ...target.pos };
       z.zoneFollow = Math.max(0, z.zoneFollow! - dt);
     } else z.zoneFollow = 0;
@@ -172,7 +175,7 @@ export function updateUpgradeZone(
       if (
         z.remaining > 0 &&
         dist(z.pos, target.pos) <= z.radius + target.radius &&
-        (!world.bosses.includes(target as Boss) || !world.bossFlying(target as Boss))
+        reachable(target)
       )
         continue;
       z.poisonContacts.delete(id);

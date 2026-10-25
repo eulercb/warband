@@ -1,5 +1,9 @@
 # Rogue and Warlock: authored four-grand builds
 
+Current follow-up: [pilot coherence and compact grand selection](PILOT_COHERENCE_FOLLOWUP.md).
+The next class cohort is paused until this correction is live-tested. Apply the
+[combined-build design review gate](UPGRADE_REVIEW_GATE.md) to all remaining cohorts.
+
 Follows merged/live-tested grand-selection framework PR #134. This is the first
 content cohort, not completion of the twelve-class redesign. Rogue and Warlock now
 each have four starting-skill grands, eight individual subclass-skill grands, and
