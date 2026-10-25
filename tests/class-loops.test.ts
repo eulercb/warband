@@ -136,7 +136,7 @@ describe('Warlock personal curses', () => {
     expect(damageAdd(w, p, a, 100)).toBeCloseTo(115);
     expect(damageAdd(w, w.players[1], a, 100)).toBeCloseTo(120);
   });
-  it('ground Hex respects flight and the armed travel delay', () => {
+  it('airborne Hex reaches flight after its armed travel delay', () => {
     const w = world('warlock');
     const b = w.boss!;
     resolvePlayerAbility(w, w.players[0], 'a1', ZERO);
@@ -145,9 +145,6 @@ describe('Warlock personal curses', () => {
     expect(b.buffs.some((v) => v.kind === 'curse')).toBe(false);
     z.pos = { ...b.pos };
     applyBuff(b, makeBuff('flight', 0, 4, 'test'));
-    tickZone(w, z);
-    expect(b.buffs.some((v) => v.kind === 'curse')).toBe(false);
-    z.airborne = true;
     tickZone(w, z);
     expect(b.buffs.some((v) => v.kind === 'curse')).toBe(true);
   });

@@ -72,6 +72,10 @@ export function buffGlow(kind: BuffKind, mult: number): BuffGlow | null {
     case 'discord':
     case 'spellSurge':
       return { color: 0xc06cff, good: true };
+    case 'grandCadence':
+      return { color: 0xf68042, good: true };
+    case 'grandOpening':
+      return { color: 0xffb168, good: false };
     case 'spellblade':
       return { color: 0xb488e0, good: true };
     case 'precision':

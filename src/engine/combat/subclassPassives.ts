@@ -106,7 +106,12 @@ export function subclassDamageMultiplier(p: Player, target: Target, hit?: Passiv
       return 1.25;
     }
     case 'assassin_opening':
-      return hit?.prepared && target.hp <= target.maxHp * 0.35 ? 1.15 : 1;
+      return hit?.prepared &&
+        target.hp <= target.maxHp * (p.charUpgradeIds?.includes('ro_assassin_g_a') ? 0.5 : 0.35)
+        ? p.charUpgradeIds?.includes('ro_assassin_g_a')
+          ? 1.3
+          : 1.15
+        : 1;
     case 'trickster_spellblade': {
       const cunning = p.charUpgradeIds?.includes('ro_trickster_g_a');
       const sleight = p.charUpgradeIds?.includes('ro_trickster_g_b');
@@ -126,7 +131,7 @@ export function subclassDamageMultiplier(p: Player, target: Target, hit?: Passiv
       }
       if (sleight) {
         grantFrontGuard(p, 1, 3);
-        if ((p.cooldowns.a2 ?? 0) > 0) refundRecharge(p, 'a2', 1);
+        putBuff(p, { kind: 'moveSpeed', mult: 1.25, remaining: 2, source: 'sleightSpellblade' });
       }
       return ready.mult;
     }

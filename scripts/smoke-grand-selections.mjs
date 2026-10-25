@@ -122,6 +122,8 @@ try {
       async () =>
         (await import('/src/engine/content/charUpgrades.ts')).CHAR_UPGRADES.kn_gk_a2_a.name,
     );
+    await click(page.getByText(/^Earned bank ·/));
+    await click(page.getByText(`${targetName} · Banked`, { exact: false }));
     assert.equal(
       await page.getByRole('button', { name: `Equip ${targetName}`, exact: true }).isDisabled(),
       true,

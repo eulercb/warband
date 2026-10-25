@@ -245,36 +245,40 @@ describe('Fiend reserve and curse counterburst', () => {
     expect(p.subclassPassiveCooldowns?.fiend_soul_ember).toBe(6);
   });
   it.each([false, true])(
-    'Fiendish counterburst curses nearby combatants once (composed=%s)',
+    'Infernal Claim detonates its own cursed target and splashes once (composed=%s)',
     (composed) => {
       const { w, p, boss, other } = setup('wa_fiend_rebuke');
       const a = add(w);
       const far = add(w, 1000);
+      mark(p, boss);
       arm(w, p, composed);
-      const before = boss.hp;
-      damagePlayer(w, p, 1);
+      expect(boss.hp).toBeLessThan(10000 - 70);
+      expect(a.hp).toBeLessThan(1000);
+      expect(far.hp).toBe(1000);
       expect(personallyCursed(p.id, boss)).toBe(true);
-      expect(personallyCursed(p.id, a)).toBe(true);
+      expect(personallyCursed(p.id, a)).toBe(false);
       expect(personallyCursed(other.id, boss)).toBe(false);
-      expect(personallyCursed(p.id, far)).toBe(false);
-      expect(before - boss.hp).toBeCloseTo(36 * 0.4 * 1.15);
-      expect(boss.buffs.find((b) => b.kind === 'curse')!.remaining).toBe(4);
-      expect(p.buffs.some((b) => b.kind === 'rebuke')).toBe(false);
-      expect(absorptionAmount(p.buffs)).toBeCloseTo(15.6);
+      expect(w.events.some((e) => e.t === 'skillArea' && e.area.origin.x === boss.pos.x)).toBe(
+        true,
+      );
       const once = boss.hp;
       damagePlayer(w, p, 1);
+      expect(p.buffs.some((b) => b.kind === 'rebuke')).toBe(false);
       expect(boss.hp).toBe(once);
     },
   );
-  it('base Rebuke remains uncursed and the new copied counterburst needs no Fiend passive', () => {
+  it('base Rebuke remains uncursed; copied Claim works without a Fiend passive', () => {
     const { w, p, boss } = setup('wa_fiend_rebuke');
     setSubclassPassive(p, undefined);
     resolvePlayerAbility(w, p, 'a2', ZERO);
     damagePlayer(w, p, 1);
     expect(personallyCursed(p.id, boss)).toBe(false);
+    const before = boss.hp;
     arm(w, p);
-    damagePlayer(w, p, 1);
-    expect(personallyCursed(p.id, boss)).toBe(true);
+    expect(boss.hp).toBe(before); // no owner curse, no substitute self burst
+    mark(p, boss);
+    arm(w, p);
+    expect(boss.hp).toBeLessThan(before);
     expect(absorptionAmount(p.buffs)).toBe(0);
   });
 });
@@ -361,7 +365,7 @@ describe('new payload compatibility, visibility and difficulty credit', () => {
       const ab = p.subAbilities!.sub1!;
       const plain = { ...ab };
       delete plain.closeBurst;
-      delete plain.rebukeCurseBonus;
+      delete plain.infernalClaim;
       delete plain.cursePayoff;
       p.subAbilities!.sub1 = plain;
       expect(heroPowerRatio(p)).toBe(before);
@@ -374,7 +378,11 @@ describe('new payload compatibility, visibility and difficulty credit', () => {
         expect(copied.closeBurst!.damage).toBe(27);
         expect(copied.closeBurst!.radius).toBe(135);
       }
-      if (id === 'wa_fiend_rebuke') expect(copied.rebukeCurseBonus).toBe(0.15);
+      if (id === 'wa_fiend_rebuke') {
+        expect(copied.infernalClaim).toBe(true);
+        expect(copied.damage).toBeGreaterThan(original.damage);
+        expect(copied.range).toBeLessThanOrEqual(400);
+      }
       if (id === 'wa_goo_blast') expect(copied.cursePayoff).toBe(4);
       expect(getSubSkill(id)!.ability).toEqual(original);
       expect(describeAbility(copied)).toMatch(/burst|cursed foe/);
@@ -401,12 +409,25 @@ describe('new payload compatibility, visibility and difficulty credit', () => {
           if (
             e.kind === 'closeBurst' ||
             e.kind === 'cursePayoff' ||
-            (e.kind === 'rebuke' && e.curseBonus)
+            (e.kind === 'skillContract' && e.contract.infernalClaim)
           )
             seen.add(e.kind);
         expect(Number.isFinite(generated.cooldown)).toBe(true);
       }
-    expect(seen).toEqual(new Set(['closeBurst', 'cursePayoff', 'rebuke']));
+    expect(seen).toEqual(new Set(['closeBurst', 'cursePayoff', 'skillContract']));
+    const claim = getSubSkill('wa_fiend_rebuke')!.ability;
+    const priced = synthesizeAbility(31, 'claim-cap', 'a2', [
+      {
+        name: claim.name,
+        classId: 'warlock',
+        className: 'Warlock',
+        slot: 'a2',
+        def: { ...claim, claimWard: 2 },
+      },
+    ]).def;
+    expect(priced.infernalClaim).toBe(true);
+    expect(priced.claimWard).toBeLessThanOrEqual(0.25);
+    expect(componentValue(priced.components!)).toBeGreaterThan(0);
   });
   it('replicates the bramble badge without its host payload', () => {
     const { w, p } = setup();

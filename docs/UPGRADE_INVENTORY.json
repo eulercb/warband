@@ -355,6 +355,7 @@
             { "path": "a3.zoneTickDamage", "before": 12, "after": 18 }
           ],
           "reclaimChanges": [
+            "a3.airborne",
             "a3.castSlow",
             "a3.cooldown",
             "a3.curseBonus",
@@ -381,6 +382,7 @@
             { "path": "a3.zoneTickDamage", "before": 12, "after": 22 }
           ],
           "reclaimChanges": [
+            "a3.airborne",
             "a3.castSlow",
             "a3.cooldown",
             "a3.curseBonus",
@@ -408,6 +410,7 @@
             { "path": "a3.zoneDuration", "before": 5, "after": 9 }
           ],
           "reclaimChanges": [
+            "a3.airborne",
             "a3.castSlow",
             "a3.cooldown",
             "a3.curseBonus",
@@ -3711,6 +3714,7 @@
           "subSkills": [],
           "prefix": [],
           "once": [
+            { "path": "abilities.a1.airborne", "before": true, "after": null },
             { "path": "abilities.a1.buffDamageMult", "before": null, "after": 1.35 },
             { "path": "abilities.a1.buffDuration", "before": null, "after": 6 },
             { "path": "abilities.a1.buffMoveMult", "before": null, "after": 1.2 },
@@ -3729,6 +3733,7 @@
             { "path": "abilities.a1.zoneTickDamage", "before": 12, "after": null }
           ],
           "atCap": [
+            { "path": "abilities.a1.airborne", "before": true, "after": null },
             { "path": "abilities.a1.buffDamageMult", "before": null, "after": 1.35 },
             { "path": "abilities.a1.buffDuration", "before": null, "after": 6 },
             { "path": "abilities.a1.buffMoveMult", "before": null, "after": 1.2 },
@@ -4050,6 +4055,7 @@
           "subSkills": [],
           "prefix": [],
           "once": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.cooldown", "before": 16, "after": 11 },
             { "path": "abilities.a3.curseBonus", "before": null, "after": 0.15 },
@@ -4067,6 +4073,7 @@
             { "path": "abilities.a3.zoneTickDamage", "before": null, "after": 12 }
           ],
           "atCap": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.cooldown", "before": 16, "after": 11 },
             { "path": "abilities.a3.curseBonus", "before": null, "after": 0.15 },
@@ -4089,6 +4096,7 @@
           "subSkills": [],
           "prefix": [],
           "once": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.cooldown", "before": 6, "after": 11 },
             { "path": "abilities.a3.curseBonus", "before": null, "after": 0.15 },
@@ -4104,6 +4112,7 @@
             { "path": "abilities.a3.zoneTickDamage", "before": null, "after": 12 }
           ],
           "atCap": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.cooldown", "before": 6, "after": 11 },
             { "path": "abilities.a3.curseBonus", "before": null, "after": 0.15 },
@@ -4124,6 +4133,7 @@
           "subSkills": [],
           "prefix": [],
           "once": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.buffDamageMult", "before": 1.25, "after": null },
             { "path": "abilities.a3.buffDefMult", "before": 0.8, "after": null },
             { "path": "abilities.a3.buffDuration", "before": 6, "after": null },
@@ -4140,6 +4150,7 @@
             { "path": "abilities.a3.zoneTickDamage", "before": null, "after": 12 }
           ],
           "atCap": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.buffDamageMult", "before": 1.25, "after": null },
             { "path": "abilities.a3.buffDefMult", "before": 0.8, "after": null },
             { "path": "abilities.a3.buffDuration", "before": 6, "after": null },
@@ -4161,6 +4172,7 @@
           "subSkills": [],
           "prefix": [],
           "once": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.castTime", "before": 0.4, "after": null },
             { "path": "abilities.a3.cooldown", "before": 18, "after": 11 },
@@ -4178,6 +4190,7 @@
             { "path": "abilities.a3.zoneTickDamage", "before": null, "after": 12 }
           ],
           "atCap": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.castTime", "before": 0.4, "after": null },
             { "path": "abilities.a3.cooldown", "before": 18, "after": 11 },
@@ -4200,6 +4213,7 @@
           "subSkills": [],
           "prefix": [],
           "once": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": 1.25, "after": 1.4 },
             { "path": "abilities.a3.cooldown", "before": 10, "after": 11 },
             { "path": "abilities.a3.curseBonus", "before": null, "after": 0.15 },
@@ -4211,6 +4225,7 @@
             { "path": "abilities.a3.zoneTickDamage", "before": 11, "after": 12 }
           ],
           "atCap": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": 1.25, "after": 1.4 },
             { "path": "abilities.a3.cooldown", "before": 10, "after": 11 },
             { "path": "abilities.a3.curseBonus", "before": null, "after": 0.15 },
@@ -4227,6 +4242,7 @@
           "subSkills": [],
           "prefix": [],
           "once": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.cooldown", "before": 16, "after": 11 },
             { "path": "abilities.a3.curseBonus", "before": null, "after": 0.15 },
@@ -4247,6 +4263,7 @@
             { "path": "abilities.a3.zoneTickDamage", "before": null, "after": 12 }
           ],
           "atCap": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.cooldown", "before": 16, "after": 11 },
             { "path": "abilities.a3.curseBonus", "before": null, "after": 0.15 },
@@ -4272,6 +4289,7 @@
           "subSkills": [],
           "prefix": [],
           "once": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.bardSong", "before": "discord", "after": null },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.cooldown", "before": 20, "after": 11 },
@@ -4288,6 +4306,7 @@
             { "path": "abilities.a3.zoneTickDamage", "before": null, "after": 12 }
           ],
           "atCap": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.bardSong", "before": "discord", "after": null },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.cooldown", "before": 20, "after": 11 },
@@ -4309,6 +4328,7 @@
           "subSkills": [],
           "prefix": [],
           "once": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.castTime", "before": 0.4, "after": null },
             { "path": "abilities.a3.consumesFlow", "before": true, "after": null },
@@ -4326,6 +4346,7 @@
             { "path": "abilities.a3.zoneTickDamage", "before": null, "after": 12 }
           ],
           "atCap": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.castTime", "before": 0.4, "after": null },
             { "path": "abilities.a3.consumesFlow", "before": true, "after": null },
@@ -4348,6 +4369,7 @@
           "subSkills": [],
           "prefix": [],
           "once": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.cooldown", "before": 6, "after": 11 },
             { "path": "abilities.a3.curseBonus", "before": null, "after": 0.15 },
@@ -4364,6 +4386,7 @@
             { "path": "abilities.a3.zoneTickDamage", "before": null, "after": 12 }
           ],
           "atCap": [
+            { "path": "abilities.a3.airborne", "before": null, "after": true },
             { "path": "abilities.a3.castSlow", "before": null, "after": 1.4 },
             { "path": "abilities.a3.cooldown", "before": 6, "after": 11 },
             { "path": "abilities.a3.curseBonus", "before": null, "after": 0.15 },
@@ -4905,6 +4928,7 @@
           "subSkills": [],
           "prefix": [],
           "once": [
+            { "path": "abilities.a1.airborne", "before": true, "after": null },
             { "path": "abilities.a1.bardSong", "before": null, "after": "chorus" },
             { "path": "abilities.a1.buffDamageMult", "before": null, "after": 1.2 },
             { "path": "abilities.a1.buffDefMult", "before": null, "after": 0.85 },
@@ -4923,6 +4947,7 @@
             { "path": "abilities.a1.zoneTickDamage", "before": 12, "after": null }
           ],
           "atCap": [
+            { "path": "abilities.a1.airborne", "before": true, "after": null },
             { "path": "abilities.a1.bardSong", "before": null, "after": "chorus" },
             { "path": "abilities.a1.buffDamageMult", "before": null, "after": 1.2 },
             { "path": "abilities.a1.buffDefMult", "before": null, "after": 0.85 },
@@ -9742,7 +9767,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hellish Rebuke hits +25 across +30u, then counters on your next direct hit or when hurt, applying a searing curse",
+      "description": "Hellish Rebuke hits +25 across +30u; a successful retort phases you for 0.6s and applies a searing curse",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -9755,13 +9780,13 @@
             { "path": "abilities.a2.damage", "before": 30, "after": 55 },
             { "path": "abilities.a2.radius", "before": 140, "after": 170 },
             { "path": "abilities.a2.rebukeCurseBonus", "before": null, "after": 0.15 },
-            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true }
+            { "path": "abilities.a2.rebukeInvuln", "before": null, "after": 0.6 }
           ],
           "atCap": [
             { "path": "abilities.a2.damage", "before": 30, "after": 55 },
             { "path": "abilities.a2.radius", "before": 140, "after": 170 },
             { "path": "abilities.a2.rebukeCurseBonus", "before": null, "after": 0.15 },
-            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true }
+            { "path": "abilities.a2.rebukeInvuln", "before": null, "after": 0.6 }
           ]
         }
       ]
@@ -11496,7 +11521,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Prepared cuts and throws land harder and refund 1s of a running Shadowstep; preparation lasts 2s longer",
+      "description": "Prepared attacks execute wounded foes harder and preparation lasts 2s longer",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": true,
@@ -11507,27 +11532,23 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
-            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             {
               "path": "subAbilities.sub1.critMultBonus",
               "before": 0.4,
               "after": 0.6000000000000001
-            },
-            { "path": "subAbilities.sub1.preparedRefund", "before": null, "after": 1 }
+            }
           ],
           "atCap": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
-            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             {
               "path": "subAbilities.sub1.critMultBonus",
               "before": 0.4,
               "after": 0.6000000000000001
-            },
-            { "path": "subAbilities.sub1.preparedRefund", "before": null, "after": 1 }
+            }
           ]
         },
         {
@@ -11536,21 +11557,17 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
-            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             { "path": "subAbilities.sub1.consumesPrecision", "before": null, "after": true },
-            { "path": "subAbilities.sub1.critMultBonus", "before": 0.6, "after": 0.8 },
-            { "path": "subAbilities.sub1.preparedRefund", "before": null, "after": 1 }
+            { "path": "subAbilities.sub1.critMultBonus", "before": 0.6, "after": 0.8 }
           ],
           "atCap": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
-            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             { "path": "subAbilities.sub1.consumesPrecision", "before": null, "after": true },
-            { "path": "subAbilities.sub1.critMultBonus", "before": 0.6, "after": 0.8 },
-            { "path": "subAbilities.sub1.preparedRefund", "before": null, "after": 1 }
+            { "path": "subAbilities.sub1.critMultBonus", "before": 0.6, "after": 0.8 }
           ]
         },
         {
@@ -11559,14 +11576,12 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
-            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             { "path": "subAbilities.sub1.prepareCrit", "before": null, "after": 4 }
           ],
           "atCap": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
-            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             { "path": "subAbilities.sub1.prepareCrit", "before": null, "after": 4 }
@@ -11578,14 +11593,12 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
-            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 6 }
           ],
           "atCap": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
-            { "path": "abilities.a1.preparedRefund", "before": null, "after": 1 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 6 }
@@ -11777,13 +11790,17 @@
             { "path": "abilities.a1.range", "before": 58, "after": 68 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
             { "path": "abilities.basic.range", "before": 62, "after": 72 },
-            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 5 }
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.65 }
           ],
           "atCap": [
             { "path": "abilities.a1.range", "before": 58, "after": 68 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 5 },
             { "path": "abilities.basic.range", "before": 62, "after": 72 },
-            { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 5 }
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.65 }
           ]
         },
         {
@@ -11818,7 +11835,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "A spent Spellblade grants one frontal block and refunds 1s of running Shadowstep; Shadowstep and Trickster utilities recover sooner",
+      "description": "A spent Spellblade grants a frontal block and 25% movement for 2s; Trickster utilities recover sooner",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -11829,14 +11846,10 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
-            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
-            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
             { "path": "subAbilities.sub1.critChanceBonus", "before": null, "after": 0.08 }
           ],
           "atCap": [
             { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
-            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
-            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
             { "path": "subAbilities.sub1.critChanceBonus", "before": null, "after": 0.08 }
           ]
         },
@@ -11846,14 +11859,10 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
-            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
-            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
             { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.15 }
           ],
           "atCap": [
             { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
-            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
-            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
             { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.15 }
           ]
         },
@@ -11863,15 +11872,11 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
-            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
-            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 5.1 }
+            { "path": "subAbilities.sub1.critChanceBonus", "before": null, "after": 0.08 }
           ],
           "atCap": [
             { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
-            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
-            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 5.1 }
+            { "path": "subAbilities.sub1.critChanceBonus", "before": null, "after": 0.08 }
           ]
         },
         {
@@ -11880,14 +11885,10 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
-            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
-            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
             { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 10.2 }
           ],
           "atCap": [
             { "path": "abilities.a1.critChanceBonus", "before": 0.3, "after": 0.38 },
-            { "path": "abilities.a2.cooldown", "before": 6, "after": 5.1 },
-            { "path": "abilities.a2.healOnUse", "before": null, "after": 12 },
             { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 10.2 }
           ]
         }
@@ -13522,7 +13523,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Hex follows its first damaged foe for 3s; Rebuke can counter on your next direct hit; Blessing grants movement",
+      "description": "Every third positive direct hit on your cursed foe ignites 25 hellfire, once per 4s; a forged kit without a curse skill primes a neutral personal mark on its first hit; Blessing grants movement",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -13532,14 +13533,10 @@
           "subSkills": ["wa_fiend_hurl"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
-            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
             { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.25 }
           ],
           "atCap": [
-            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
-            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
             { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.25 }
           ]
@@ -13548,49 +13545,25 @@
           "classId": "warlock",
           "subSkills": ["wa_fiend_pit"],
           "prefix": [],
-          "once": [
-            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
-            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "subAbilities.sub1.zoneFollow", "before": null, "after": 3 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
-            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "subAbilities.sub1.zoneFollow", "before": null, "after": 3 }
-          ]
+          "once": [{ "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 }],
+          "atCap": [{ "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 }]
         },
         {
           "classId": "warlock",
           "subSkills": ["wa_fiend_rebuke"],
           "prefix": [],
-          "once": [
-            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
-            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "subAbilities.sub1.rebukeDirect", "before": null, "after": true }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
-            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "subAbilities.sub1.rebukeDirect", "before": null, "after": true }
-          ]
+          "once": [{ "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 }],
+          "atCap": [{ "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 }]
         },
         {
           "classId": "warlock",
           "subSkills": ["wa_fiend_resilience"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
-            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
             { "path": "subAbilities.sub1.absorption.amount", "before": 30, "after": 42 }
           ],
           "atCap": [
-            { "path": "abilities.a1.zoneFollow", "before": null, "after": 3 },
-            { "path": "abilities.a2.rebukeDirect", "before": null, "after": true },
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
             { "path": "subAbilities.sub1.absorption.amount", "before": 30, "after": 42 }
           ]
@@ -13677,11 +13650,7 @@
               "after": { "amount": 20, "balanceAmount": 0, "duration": 6, "target": "self" }
             },
             { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.25 },
-            {
-              "path": "subAbilities.sub1.lifestealFrac",
-              "before": 0.2,
-              "after": 0.30000000000000004
-            }
+            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.1 }
           ],
           "atCap": [
             { "path": "abilities.a2.lifestealFrac", "before": 0.2, "after": 0.30000000000000004 },
@@ -13691,11 +13660,7 @@
               "after": { "amount": 20, "balanceAmount": 0, "duration": 6, "target": "self" }
             },
             { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.25 },
-            {
-              "path": "subAbilities.sub1.lifestealFrac",
-              "before": 0.2,
-              "after": 0.30000000000000004
-            }
+            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.1 }
           ]
         },
         {
@@ -13908,7 +13873,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Death Strike gains +15% crit chance; a prepared positive hit refunds 1s of running Shadowstep",
+      "description": "Death Strike gains +15% crit chance; a prepared positive hit marks its foe for your next direct hit within 4s to deal +25%",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -13919,11 +13884,11 @@
           "prefix": [],
           "once": [
             { "path": "subAbilities.sub1.critChanceBonus", "before": 0.2, "after": 0.35 },
-            { "path": "subAbilities.sub1.preparedRefund", "before": null, "after": 1 }
+            { "path": "subAbilities.sub1.markOnPreparedHit", "before": null, "after": 0.25 }
           ],
           "atCap": [
             { "path": "subAbilities.sub1.critChanceBonus", "before": 0.2, "after": 0.35 },
-            { "path": "subAbilities.sub1.preparedRefund", "before": null, "after": 1 }
+            { "path": "subAbilities.sub1.markOnPreparedHit", "before": null, "after": 0.25 }
           ]
         }
       ]
@@ -14101,7 +14066,7 @@
     },
     {
       "id": "ro_trickster_step_g",
-      "name": "Veiled Step",
+      "name": "Echoing Cut",
       "category": "subclass-skill-grand",
       "classId": "rogue",
       "exclude": [],
@@ -14112,7 +14077,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Misty Step coats your next direct hit with 12/s poison for 4s while preparing precision",
+      "description": "Mirror Cut echoes 35% of its positive primary damage as arcane damage to the same foe",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -14121,20 +14086,8 @@
           "classId": "rogue",
           "subSkills": ["ro_trickster_step"],
           "prefix": [],
-          "once": [
-            {
-              "path": "subAbilities.sub1.venomCoating",
-              "before": null,
-              "after": { "damage": 12, "duration": 4, "window": 6 }
-            }
-          ],
-          "atCap": [
-            {
-              "path": "subAbilities.sub1.venomCoating",
-              "before": null,
-              "after": { "damage": 12, "duration": 4, "window": 6 }
-            }
-          ]
+          "once": [{ "path": "subAbilities.sub1.echoFraction", "before": null, "after": 0.35 }],
+          "atCap": [{ "path": "subAbilities.sub1.echoFraction", "before": null, "after": 0.35 }]
         }
       ]
     },
@@ -14233,7 +14186,7 @@
     },
     {
       "id": "wa_fiend_rebuke_g",
-      "name": "Fiendish Retort",
+      "name": "Infernal Ward",
       "category": "subclass-skill-grand",
       "classId": "warlock",
       "exclude": [],
@@ -14244,7 +14197,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Fiendish Rebuke can counter on your next positive direct hit and applies a +20% searing curse",
+      "description": "Infernal Claim bursts across 110u and stores 25% of effective primary damage as protection for 4s, up to 25",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -14254,12 +14207,12 @@
           "subSkills": ["wa_fiend_rebuke"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.rebukeCurseBonus", "before": 0.15, "after": 0.2 },
-            { "path": "subAbilities.sub1.rebukeDirect", "before": null, "after": true }
+            { "path": "subAbilities.sub1.claimWard", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.radius", "before": 70, "after": 110 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.rebukeCurseBonus", "before": 0.15, "after": 0.2 },
-            { "path": "subAbilities.sub1.rebukeDirect", "before": null, "after": true }
+            { "path": "subAbilities.sub1.claimWard", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.radius", "before": 70, "after": 110 }
           ]
         }
       ]
@@ -18309,7 +18262,7 @@
     },
     {
       "id": "subup_ro_trickster_step",
-      "name": "Honed Misty Step",
+      "name": "Honed Mirror Cut",
       "category": "honed",
       "classId": "rogue",
       "exclude": [],
@@ -18320,7 +18273,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Misty Step — first rank: self-healing 20 → 22; travel distance 260 → 281; phasing duration 0.3 → 0.45s. Retains its existing effects (stacks to 5).",
+      "description": "Mirror Cut — first rank: direct damage 48 → 54; reach 85 → 92; recharge 7 → 6.44s. Retains its existing effects (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -18330,14 +18283,14 @@
           "subSkills": ["ro_trickster_step"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.healOnUse", "before": 20, "after": 22 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 260, "after": 281 }
+            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 6.44 },
+            { "path": "subAbilities.sub1.damage", "before": 48, "after": 54 },
+            { "path": "subAbilities.sub1.range", "before": 85, "after": 92 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.healOnUse", "before": 20, "after": 35 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 1.05 },
-            { "path": "subAbilities.sub1.range", "before": 260, "after": 381 }
+            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 5.6000000000000005 },
+            { "path": "subAbilities.sub1.damage", "before": 48, "after": 84 },
+            { "path": "subAbilities.sub1.range", "before": 85, "after": 125 }
           ]
         }
       ]
@@ -19823,7 +19776,7 @@
     },
     {
       "id": "subup_wa_fiend_rebuke",
-      "name": "Honed Fiendish Rebuke",
+      "name": "Honed Infernal Claim",
       "category": "honed",
       "classId": "warlock",
       "exclude": [],
@@ -19834,7 +19787,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Fiendish Rebuke — first rank: direct damage 36 → 40; area radius 150 → 162; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "description": "Infernal Claim — first rank: direct damage 70 → 78; area radius 70 → 76; recharge 9 → 8.28s. Retains its existing effects (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -19844,14 +19797,14 @@
           "subSkills": ["wa_fiend_rebuke"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.36 },
-            { "path": "subAbilities.sub1.damage", "before": 36, "after": 40 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 162 }
+            { "path": "subAbilities.sub1.cooldown", "before": 9, "after": 8.280000000000001 },
+            { "path": "subAbilities.sub1.damage", "before": 70, "after": 78 },
+            { "path": "subAbilities.sub1.radius", "before": 70, "after": 76 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.4 },
-            { "path": "subAbilities.sub1.damage", "before": 36, "after": 63 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 220 }
+            { "path": "subAbilities.sub1.cooldown", "before": 9, "after": 7.200000000000001 },
+            { "path": "subAbilities.sub1.damage", "before": 70, "after": 122 },
+            { "path": "subAbilities.sub1.radius", "before": 70, "after": 104 }
           ]
         }
       ]

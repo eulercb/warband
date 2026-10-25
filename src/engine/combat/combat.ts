@@ -1,5 +1,6 @@
 import { rescueStrikeMultiplier } from './support';
 import { onMoonDirectHit } from './moonForm';
+import { grandDirectMultiplier } from './grandCoherence';
 import { commandCompanion } from './companions';
 import { blockFromFront, isSteadfast, mirrorDamage } from './defense';
 import { curseOwner, personallyCursed } from '../core/curses';
@@ -51,6 +52,7 @@ export interface EventSink {
     effective: number,
     prepared?: boolean,
     refund?: HitMods['refund'],
+    pilot?: HitMods['pilot'],
   ) => void;
 }
 
@@ -66,6 +68,14 @@ export interface HitMods {
   backstab?: boolean;
   prepared?: boolean;
   refund?: { seconds: number; cast: { spent: boolean } };
+  pilot?: {
+    precision?: number;
+    phase?: number;
+    echo?: number;
+    mark?: number;
+    cast: { spent: boolean; utilitySpent?: boolean; echoSpent?: boolean };
+  };
+  mark?: { bonus: number; cast: { spent: boolean } };
   melee?: boolean;
   direct?: boolean;
   flowExtend?: number;
@@ -394,6 +404,7 @@ export function damageBoss(
       subclassDamageMultiplier(source, boss, mods) *
       martialHitMultiplier(source, mods?.melee) *
       rescueStrikeMultiplier(source, mods?.direct);
+    outgoing *= grandDirectMultiplier(source, boss, mods);
   }
   const before = boss.hp;
   boss.hp -= outgoing;
@@ -433,7 +444,7 @@ export function damageBoss(
   onSubclassCursedHit(sink, source, boss, effective);
   if (mods?.direct && effective > 0) {
     applyCursePayoff(source, boss, mods.cursePayoff);
-    sink.onPlayerDirectHit?.(source, boss, effective, mods?.prepared, mods?.refund);
+    sink.onPlayerDirectHit?.(source, boss, effective, mods?.prepared, mods?.refund, mods?.pilot);
   }
   return outgoing;
 }
@@ -482,6 +493,7 @@ export function damageAdd(
       subclassDamageMultiplier(source, add, mods) *
       martialHitMultiplier(source, mods?.melee) *
       rescueStrikeMultiplier(source, mods?.direct);
+    outgoing *= grandDirectMultiplier(source, add, mods);
   }
   const before = add.hp;
   add.hp -= outgoing;
@@ -514,9 +526,33 @@ export function damageAdd(
   onSubclassCursedHit(sink, source, add, effective);
   if (mods?.direct && effective > 0) {
     applyCursePayoff(source, add, mods.cursePayoff);
-    sink.onPlayerDirectHit?.(source, add, effective, mods?.prepared, mods?.refund);
+    sink.onPlayerDirectHit?.(source, add, effective, mods?.prepared, mods?.refund, mods?.pilot);
   }
   return outgoing;
+}
+
+/** Echoes a fraction of an already effective hit without applying outgoing multipliers twice. */
+export function damageEcho(
+  sink: EventSink,
+  source: Player,
+  target: Boss | Add,
+  amount: number,
+): number {
+  if (amount <= 0 || target.hp <= 0 || hasBuff(target, 'invuln')) return 0;
+  const effective = Math.min(target.hp, amount);
+  target.hp -= effective;
+  source.stats.damageDealt += effective;
+  if ('recentDamageTaken' in target)
+    target.recentDamageTaken = (target.recentDamageTaken ?? 0) + effective;
+  addDamageThreat(source, effective);
+  sink.events.push({
+    t: 'hit',
+    pos: { ...target.pos },
+    amount: effective,
+    targetId: target.id,
+    side: 'boss',
+  });
+  return effective;
 }
 
 /**

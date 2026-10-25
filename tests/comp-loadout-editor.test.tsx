@@ -24,6 +24,12 @@ function setup(over: Record<string, unknown> = {}): void {
   });
 }
 
+function openDisclosure(text: string | RegExp) {
+  const details = screen.getByText(text).closest('details')!;
+  details.open = true;
+  fireEvent(details, new Event('toggle'));
+}
+
 const lo = () => useStore.getState().sfLoadout;
 
 beforeEach(() => {
@@ -115,11 +121,13 @@ describe('<LoadoutEditor> selections write the loadout', () => {
 
   it('keeps earned grands separate from normal boons and allows free unequipping', () => {
     render(<LoadoutEditor />);
+    openDisclosure('Grand improvements — earned bank and equipped selections');
     fireEvent.change(screen.getByLabelText('New grand'), { target: { value: 'kn_gk_basic_a' } });
     fireEvent.click(screen.getByRole('button', { name: 'Unlock grand' }));
     expect(lo().charUpgrades).toEqual([]);
     expect(lo().grandLoadout!.classes.knight!.bank).toEqual(['kn_gk_basic_a']);
     expect(lo().grandLoadout!.classes.knight!.equipped).toEqual(['kn_gk_basic_a']);
+    openDisclosure(/ · Equipped$/);
     fireEvent.click(screen.getByRole('button', { name: /Unequip/ }));
     expect(lo().grandLoadout!.classes.knight!.equipped).toEqual([]);
     expect(lo().grandLoadout!.classes.knight!.bank).toEqual(['kn_gk_basic_a']);
@@ -143,6 +151,7 @@ describe('<LoadoutEditor> grafts (wild picks) + graft grands', () => {
     render(<LoadoutEditor />);
     expect(screen.queryByRole('option', { name: /Living Cataclysm/ })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Pyromancer's Pact/ }));
+    openDisclosure('Grand improvements — earned bank and equipped selections');
     fireEvent.change(screen.getByLabelText('New grand'), {
       target: { value: 'hy_pyromancer_g_a' },
     });
@@ -151,6 +160,8 @@ describe('<LoadoutEditor> grafts (wild picks) + graft grands', () => {
     fireEvent.click(screen.getByRole('button', { name: /Pyromancer's Pact/ }));
     expect(lo().charUpgrades).not.toContain('hy_pyromancer');
     expect(lo().grandLoadout!.classes.knight!.bank).toContain('hy_pyromancer_g_a');
+    openDisclosure(/^Earned bank/);
+    openDisclosure(/Living Cataclysm · Banked/);
     expect(screen.getByText(/Requires its matching equipped skill/)).toBeTruthy();
   });
 
@@ -250,4 +261,27 @@ describe('<LoadoutEditor> prunes class-invalid picks on class change', () => {
     render(<LoadoutEditor />);
     expect(lo().charUpgrades).toContain('mg_freeze');
   });
+});
+
+it('starts grand editor collapsed and preserves its bank and disclosure through basic edits', () => {
+  const { container, unmount } = render(<LoadoutEditor />);
+  const details = container.querySelector<HTMLDetailsElement>('.wb-grand-editor')!;
+  expect(details.open).toBe(false);
+  openDisclosure('Grand improvements — earned bank and equipped selections');
+  fireEvent.change(screen.getByLabelText('New grand'), { target: { value: 'kn_gk_basic_a' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock grand' }));
+  expect(details.open).toBe(true);
+  details.open = false;
+  fireEvent(details, new Event('toggle'));
+  act(() => useStore.setState({ sfLoadout: { ...lo(), upgrades: ['haste'] } }));
+  expect(details.open).toBe(false);
+  expect(lo().grandLoadout!.classes.knight!.bank).toEqual(['kn_gk_basic_a']);
+  openDisclosure('Grand improvements — earned bank and equipped selections');
+  expect(screen.getByRole('status').textContent).toContain('1/4 equipped · 1 earned');
+  unmount();
+  const remounted = render(<LoadoutEditor />);
+  expect(remounted.container.querySelector<HTMLDetailsElement>('.wb-grand-editor')!.open).toBe(
+    false,
+  );
+  expect(lo().grandLoadout!.classes.knight!.bank).toEqual(['kn_gk_basic_a']);
 });

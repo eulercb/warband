@@ -166,6 +166,10 @@ await step('single-boss lobby exposes a usable test-loadout panel', async () => 
   await toggle.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   await toggle.click();
   await page.locator('.wb-sf-loadout-body').waitFor({ timeout: 10000 });
+  const grandPanel = page.locator('.wb-grand-editor');
+  if (await grandPanel.evaluate((el) => el.open))
+    throw new Error('grand editor should start collapsed');
+  await grandPanel.locator('summary').first().click();
   const grandSelect = page.getByLabel('New grand');
   await grandSelect.scrollIntoViewIfNeeded();
   const option = await grandSelect.locator('option').nth(1).getAttribute('value');

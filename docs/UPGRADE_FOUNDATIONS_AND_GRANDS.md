@@ -1,5 +1,9 @@
 # Upgrade foundations and grand selections
 
+Current follow-up: [pilot coherence and compact grand selection](PILOT_COHERENCE_FOLLOWUP.md).
+The next class cohort is paused until this correction is live-tested. Apply the
+[combined-build design review gate](UPGRADE_REVIEW_GATE.md) to all remaining cohorts.
+
 Current content delivery: [Rogue/Warlock authored four-grand builds](PILOT_GRANDS.md).
 Those two classes now have individual skill grands and whole-kit identities; other
 classes retain the transitional catalogue described below. Next is the martial

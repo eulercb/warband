@@ -83,6 +83,7 @@ export interface Delivery {
  * damage buff bundled into the same authored `buffAlly`.
  */
 export type EffectComponent =
+  | { kind: 'skillContract'; contract: SkillContract }
   | { kind: 'damage'; amount: number; balanceScale?: number }
   | { kind: 'heal'; amount: number; balanceScale?: number }
   | { kind: 'healOnUse'; amount: number }
@@ -186,6 +187,36 @@ export interface AbilityComponents {
   effects: EffectComponent[];
 }
 
+type SkillContract = Partial<
+  Pick<
+    PlayerAbilityDef,
+    | 'precisionOnHit'
+    | 'preparedInvulnOnHit'
+    | 'echoFraction'
+    | 'markOnPreparedHit'
+    | 'infernalClaim'
+    | 'forgeClaimFallback'
+    | 'claimWard'
+    | 'rebukeInvuln'
+  >
+>;
+const contractKeys = [
+  'precisionOnHit',
+  'preparedInvulnOnHit',
+  'echoFraction',
+  'markOnPreparedHit',
+  'infernalClaim',
+  'forgeClaimFallback',
+  'claimWard',
+  'rebukeInvuln',
+] as const;
+function skillContract(def: SkillContract): SkillContract {
+  const contract: SkillContract = {};
+  for (const key of contractKeys)
+    if (def[key] != null) Object.assign(contract, { [key]: def[key] });
+  return contract;
+}
+
 /** Deliveries whose damage effect lands as a DIRECT strike (not a zone tick). */
 const DIRECT_STRIKE = new Set<DeliveryKind>(['meleeCone', 'projectile', 'pbaoe']);
 
@@ -255,7 +286,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
         moveMult: def.zoneAllyMoveMult,
         duration: 0.75,
       };
-    if (def.airborne) zone.airborne = true; // item 8
+    if (def.airborne != null) zone.airborne = def.airborne; // item 8
     effects.push({ kind: 'zone', zone });
   } else {
     // Direct-strike payload: damage, then on-hit riders.
@@ -300,10 +331,10 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.consumesSurge) effects.push({ kind: 'surgeStrike' });
     if (def.preparedRefund) effects.push({ kind: 'preparedRefund', seconds: def.preparedRefund });
     if (def.prepareCrit) effects.push({ kind: 'prepareCrit', duration: def.prepareCrit });
-    if (def.rebukeDuration)
+    if (def.rebukeDuration || def.rebukeInvuln)
       effects.push({
         kind: 'rebuke',
-        duration: def.rebukeDuration,
+        duration: def.rebukeDuration ?? 3,
         direct: def.rebukeDirect,
         ...(def.rebukeCurseBonus ? { curseBonus: def.rebukeCurseBonus } : {}),
       });
@@ -357,6 +388,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.recoveryZone) effects.push({ kind: 'recovery', grove: { ...def.recoveryZone } });
   if (def.allyWard) effects.push({ kind: 'allyWard', ward: { ...def.allyWard } });
   if (def.bardSong) effects.push({ kind: 'bardSong', part: def.bardSong });
+  const contract = skillContract(def);
+  if (Object.keys(contract).length) effects.push({ kind: 'skillContract', contract });
   return { delivery, effects };
 }
 
@@ -402,6 +435,9 @@ export function recompose(
 
   for (const e of comp.effects) {
     switch (e.kind) {
+      case 'skillContract':
+        Object.assign(def, e.contract);
+        break;
       case 'damage':
         // `heal`-delivery damage is a heal; every other strike is `damage`.
         def.damage = e.amount;
@@ -583,7 +619,7 @@ export function recompose(
         }
         if (e.zone.roots) def.roots = true;
         if (e.zone.castSlow != null) def.castSlow = e.zone.castSlow; // item 9
-        if (e.zone.airborne) def.airborne = true; // item 8
+        if (e.zone.airborne != null) def.airborne = e.zone.airborne; // item 8
         break;
     }
   }
@@ -618,6 +654,18 @@ export function componentValue(comp: AbilityComponents): number {
 /** Output weight of a single effect (see componentValue). */
 function effectValue(e: EffectComponent, fan: number): number {
   switch (e.kind) {
+    case 'skillContract': {
+      const c = e.contract;
+      return (
+        (c.precisionOnHit ?? 0) * 4 +
+        (c.preparedInvulnOnHit ?? 0) * 24 +
+        (c.echoFraction ?? 0) * 60 +
+        (c.markOnPreparedHit ?? 0) * 50 +
+        (c.infernalClaim ? 15 : 0) +
+        (c.claimWard ?? 0) * 60 +
+        (c.rebukeInvuln ?? 0) * 20
+      );
+    }
     case 'damage':
       return e.amount * fan;
     case 'landingDamage':
@@ -830,6 +878,29 @@ function deliveryPhrase(d: Delivery): string {
 /** A short clause for one effect, or '' when it carries no player-facing number. */
 function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
   switch (e.kind) {
+    case 'skillContract': {
+      const c = e.contract,
+        bits: string[] = [];
+      if (c.precisionOnHit) bits.push(`positive hit prepares precision for ${s(c.precisionOnHit)}`);
+      if (c.preparedInvulnOnHit)
+        bits.push(`prepared hit phases you for ${s(c.preparedInvulnOnHit)}`);
+      if (c.echoFraction)
+        bits.push(`first prepared hit echoes ${pct(c.echoFraction * 100)} effective damage`);
+      if (c.markOnPreparedHit)
+        bits.push(
+          `prepared hit marks foe for +${pct(c.markOnPreparedHit * 100)} on next direct hit`,
+        );
+      if (c.infernalClaim)
+        bits.push(
+          c.forgeClaimFallback
+            ? 'brand an aimed foe with your searing curse, then detonate'
+            : 'detonate an aimed personally cursed foe',
+        );
+      if (c.claimWard)
+        bits.push(`store ${pct(c.claimWard * 100)} primary damage as protection, up to 25`);
+      if (c.rebukeInvuln) bits.push(`successful retort phases you for ${s(c.rebukeInvuln)}`);
+      return bits.join(', ');
+    }
     case 'damage':
       return `${n(e.amount)} dmg`;
     case 'heal':
@@ -1176,6 +1247,10 @@ const ANCHOR_MAX_SHARE = 0.85; // …and capped at 85% when riders ride along, s
 /** Can effect `e` be delivered by delivery `kind`? Keeps fusions coherent. */
 function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
   switch (e.kind) {
+    case 'skillContract':
+      return e.contract.infernalClaim || e.contract.claimWard || e.contract.rebukeInvuln
+        ? kind === 'pbaoe'
+        : DIRECT_STRIKE.has(kind);
     case 'damage':
       return DIRECT_STRIKE.has(kind);
     case 'landingDamage':
@@ -1386,6 +1461,24 @@ export function synthesizeAbility(
     usedSources.add(pick.donor.name);
     if (isHardCC(pick.effect)) hardCC += 1;
   }
+  // An authored strike contract belongs to its selected primary damage. Carry it
+  // with that donor even though the fresh-source secondary picker excludes it.
+  const primaryDonor = chosen.find((c) => c.effect.kind === 'damage')?.donor;
+  if (primaryDonor && !chosen.some((c) => c.effect.kind === 'skillContract')) {
+    const contract = decompose(primaryDonor.def).effects.find((e) => e.kind === 'skillContract');
+    if (contract && effectFitsDelivery(delivery.kind, contract) && slotAllowsEffect(slot, contract))
+      chosen.push({ effect: contract, donor: primaryDonor });
+  }
+
+  // Successful-retort riders require an actual armed retort. Keep the dependency
+  // with its contract and price both, even when fresh-source selection omitted it.
+  for (const entry of chosen.filter(
+    (c) => c.effect.kind === 'skillContract' && c.effect.contract.rebukeInvuln,
+  )) {
+    if (!chosen.some((c) => c.effect.kind === 'rebuke'))
+      for (const effect of decompose(entry.donor.def).effects.filter((e) => e.kind === 'rebuke'))
+        chosen.push({ effect, donor: entry.donor });
+  }
 
   // 5. A single-shot vehicle reads cleaner when it carries a zone (the flagship).
   if (delivery.kind === 'projectile' && chosen.some((c) => c.effect.kind === 'zone')) {
@@ -1424,6 +1517,11 @@ export function synthesizeAbility(
   const name = forgeName(donorNames, (k) => rng.int(0, k - 1));
 
   const def = recompose(comp, { slot, name, cooldown });
+  if (def.infernalClaim) {
+    def.forgeClaimFallback = true;
+    const contract = comp.effects.find((e) => e.kind === 'skillContract');
+    if (contract?.kind === 'skillContract') contract.contract.forgeClaimFallback = true;
+  }
   return {
     def,
     donorClasses: [deliveryDonor.classId, ...chosen.map((c) => c.donor.classId)],
@@ -1738,6 +1836,21 @@ function dropCheapestRigid(effects: EffectComponent[]): EffectComponent[] {
  */
 function scaleEffect(e: EffectComponent, f: number): EffectComponent {
   switch (e.kind) {
+    case 'skillContract': {
+      const c = e.contract;
+      return {
+        kind: 'skillContract',
+        contract: {
+          ...c,
+          ...(c.precisionOnHit ? { precisionOnHit: c.precisionOnHit * f } : {}),
+          ...(c.preparedInvulnOnHit ? { preparedInvulnOnHit: c.preparedInvulnOnHit * f } : {}),
+          ...(c.echoFraction ? { echoFraction: c.echoFraction * f } : {}),
+          ...(c.markOnPreparedHit ? { markOnPreparedHit: c.markOnPreparedHit * f } : {}),
+          ...(c.claimWard ? { claimWard: c.claimWard * f } : {}),
+          ...(c.rebukeInvuln ? { rebukeInvuln: c.rebukeInvuln * f } : {}),
+        },
+      };
+    }
     case 'damage':
     case 'landingDamage':
     case 'heal':
@@ -1945,6 +2058,7 @@ function addBoonComponents(
         'cursePayoff',
         'rebuke',
         'preparedRefund',
+        'skillContract',
       ].includes(effect.kind) &&
       effectFitsDelivery(def.kind, effect) &&
       !has((e) => e.kind === effect.kind)
@@ -2052,6 +2166,8 @@ function addBoonComponents(
  */
 function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): EffectComponent {
   switch (e.kind) {
+    case 'skillContract':
+      return { kind: 'skillContract', contract: { ...e.contract, ...skillContract(def) } };
     case 'damage':
     case 'heal':
       // Both direct-strike damage and heal-delivery healing mirror the flat `damage` field.
@@ -2203,6 +2319,25 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
 
 function capEffect(e: EffectComponent): EffectComponent {
   switch (e.kind) {
+    case 'skillContract': {
+      const c = e.contract;
+      return {
+        kind: 'skillContract',
+        contract: {
+          ...c,
+          ...(c.precisionOnHit ? { precisionOnHit: clamp(round1(c.precisionOnHit), 1, 5) } : {}),
+          ...(c.preparedInvulnOnHit
+            ? { preparedInvulnOnHit: clamp(round2(c.preparedInvulnOnHit), 0.1, 0.6) }
+            : {}),
+          ...(c.echoFraction ? { echoFraction: clamp(round2(c.echoFraction), 0.05, 0.4) } : {}),
+          ...(c.markOnPreparedHit
+            ? { markOnPreparedHit: clamp(round2(c.markOnPreparedHit), 0.05, 0.25) }
+            : {}),
+          ...(c.claimWard ? { claimWard: clamp(round2(c.claimWard), 0.05, 0.25) } : {}),
+          ...(c.rebukeInvuln ? { rebukeInvuln: clamp(round2(c.rebukeInvuln), 0.1, 0.6) } : {}),
+        },
+      };
+    }
     case 'damage':
     case 'landingDamage':
     case 'heal':

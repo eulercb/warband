@@ -404,24 +404,24 @@ export function LoadoutEditor() {
             </>
           )}
 
-          <span className="wb-field-label">
-            Grand improvements — earned bank and equipped selections
-          </span>
-          <GrandManager
-            context={grandContext}
-            value={lo.grandLoadout}
-            credit={true}
-            generic={lo.upgrades}
-            onChange={(request) => {
-              const next = changeGrand(
-                normalizeGrandLoadout(lo.grandLoadout, grandContext),
-                grandContext,
-                request,
-                true,
-              );
-              if (next) set({ grandLoadout: next });
-            }}
-          />
+          <details className="wb-grand-panel wb-grand-editor">
+            <summary tabIndex={0}>Grand improvements — earned bank and equipped selections</summary>
+            <GrandManager
+              context={grandContext}
+              value={lo.grandLoadout}
+              credit={true}
+              generic={lo.upgrades}
+              onChange={(request) => {
+                const next = changeGrand(
+                  normalizeGrandLoadout(lo.grandLoadout, grandContext),
+                  grandContext,
+                  request,
+                  true,
+                );
+                if (next) set({ grandLoadout: next });
+              }}
+            />
+          </details>
 
           {subUpgrades.length > 0 ? (
             <>

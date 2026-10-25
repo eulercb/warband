@@ -87,7 +87,7 @@ export function boundedAbility<T extends Omit<PlayerAbilityDef, 'slot'>>(
   const reach =
     a.kind === 'blink' || a.kind === 'dash'
       ? short * 0.42
-      : a.kind === 'groundZone'
+      : a.kind === 'groundZone' || a.infernalClaim
         ? short * 0.4
         : a.kind === 'meleeCone'
           ? short * 0.2
@@ -99,7 +99,8 @@ export function boundedAbility<T extends Omit<PlayerAbilityDef, 'slot'>>(
     (a.absorption != null && a.absorption.target !== 'self')
       ? 0.32
       : 0.24);
-  if (out.range != null && reach != null) out.range = Math.min(out.range, reach);
+  if (a.infernalClaim) out.range = Math.min(out.range ?? 460, short * 0.4);
+  else if (out.range != null && reach != null) out.range = Math.min(out.range, reach);
   if (out.radius != null) out.radius = Math.min(out.radius, area);
   if (out.maxRange != null) out.maxRange = Math.min(out.maxRange, short * 0.9);
   if (out.impactRadius != null) out.impactRadius = Math.min(out.impactRadius, short * 0.24);

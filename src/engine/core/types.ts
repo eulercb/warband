@@ -212,6 +212,8 @@ export type BuffKind =
   | 'rescueStrike' // next connecting direct hit, granted by a successful rescue
   | 'radiantCharge' // Light: next direct hit empowered and slows wind-ups
   | 'refrainEcho' // one dedicated heal echo
+  | 'grandOpening' // owner-only next direct-hit vulnerability; host cast token prevents self-consumption
+  | 'grandCadence' // Fiend identity direct-hit progress (mult = count)
   | 'spellblade' // one empowered melee hit from Arcane Trickster
   | 'precision' // one prepared critical strike; mult unused
   | 'curse' // owner-only vulnerability; source = curse:<owner>[:<style>:<zone>], mult = factor
@@ -230,7 +232,15 @@ export interface Buff {
   source: string;
   /** Host-only extension already spent from this Flow preparation. */
   flowExtended?: number;
-  retaliation?: { radius: number; lifesteal: number; curseBonus?: number; direct?: boolean };
+  /** Host-only originating cast token for one-hit grand exposure. */
+  openingCast?: { spent: boolean };
+  retaliation?: {
+    radius: number;
+    lifesteal: number;
+    curseBonus?: number;
+    direct?: boolean;
+    invuln?: number;
+  };
   closeBurst?: CloseBurst;
   blockCounter?: number;
   coating?: { damage: number; duration: number };
@@ -678,6 +688,12 @@ export interface Projectile {
   controlDamageBonus?: number;
   cursePayoff?: number;
   consumesPrecision?: boolean;
+  precisionOnHit?: number;
+  preparedInvulnOnHit?: number;
+  echoFraction?: number;
+  markOnPreparedHit?: number;
+  pilotCast?: { spent: boolean; utilitySpent?: boolean; echoSpent?: boolean };
+  mark?: { bonus: number; cast: { spent: boolean } };
   preparedRefund?: number;
   refundCast?: { spent: boolean };
   controlOnHit?: 'slow' | 'stun';

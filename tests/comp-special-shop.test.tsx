@@ -113,6 +113,9 @@ describe('SpecialReward — tiered run-clear pick', () => {
     useStore.setState({ grandCredit: true, myGrandLoadout: undefined });
     render(<GrandPanel open />);
     fireEvent.change(screen.getByLabelText('New grand'), { target: { value: 'kn_gk_basic_a' } });
+    const details = screen.getByText('Selected grand details & preview').closest('details')!;
+    details.open = true;
+    fireEvent(details, new Event('toggle'));
     expect(screen.getByText(/Now →/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Unlock grand' }));
     expect(chooseGrand).toHaveBeenCalledWith({

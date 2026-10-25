@@ -95,6 +95,8 @@ try {
       await page.getByRole('status').filter({ hasText: '4/4 equipped' }).waitFor();
       await unlock(setup.alternate);
       await page.getByRole('status').filter({ hasText: '4/4 equipped · 5 earned' }).waitFor();
+      await click(page.getByText(/^Earned bank ·/));
+      await click(page.getByText(`${setup.alternateName} · Banked`, { exact: false }));
       await page
         .getByLabel(`Replace grand for ${setup.alternateName}`, { exact: true })
         .selectOption(setup.ids[3]);

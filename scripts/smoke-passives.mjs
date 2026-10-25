@@ -27,7 +27,7 @@ const cases = [
   ['rogue', 'Smoke Bomb', "Death's Opening"],
   ['rogue', 'Shield Spell', 'Spellblade'],
   ['warlock', 'Dark Resilience', 'Soul Ember'],
-  ['warlock', 'Fiendish Rebuke', 'Soul Ember'],
+  ['warlock', 'Infernal Claim', 'Soul Ember'],
   ['warlock', 'Mind Blast', 'Dread Insight'],
 ];
 cases.push(
@@ -109,7 +109,7 @@ try {
       assert.ok((await icon.getAttribute('title')).includes(passive));
       if (
         ['Spell Weave', 'Flowguard', 'Shadow Rhythm', 'Moon Aspect'].includes(passive) ||
-        skill === 'Fiendish Rebuke' ||
+        skill === 'Infernal Claim' ||
         activeCases.has(skill) ||
         passive === 'Arcane Cadence'
       ) {
@@ -190,12 +190,27 @@ try {
             }),
           );
           assert.ok(await form.isVisible());
-        } else if (skill === 'Fiendish Rebuke') {
-          await hold('sub1', 'KeyZ', () =>
+        } else if (skill === 'Infernal Claim') {
+          // Claim now pays off an owned curse rather than arming a counterburst.
+          if (!mobile) await page.mouse.move(640, 200);
+          await hold('a1', 'KeyQ', () =>
             page
               .locator('.hud-selfhp')
-              .getByTitle(/Counterburst ready/)
+              .getByTitle(/Absorption:/)
               .waitFor(),
+          );
+          await hold('sub1', 'KeyZ', () =>
+            page.waitForFunction(() => {
+              const tile = document.querySelector('.hud-ability[aria-label*="Infernal Claim —"]');
+              return tile && !tile.classList.contains('ready');
+            }),
+          );
+          assert.equal(
+            await page
+              .locator('.hud-selfhp')
+              .getByTitle(/Counterburst ready/)
+              .count(),
+            0,
           );
         } else {
           const flow = page.locator('.hud-selfhp').getByTitle(/Flow: next marked/);

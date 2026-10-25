@@ -191,6 +191,22 @@ export interface PlayerAbilityDef {
   prepareCrit?: number;
   /** Only marked melee skills consume preparation; basics leave it available. */
   consumesPrecision?: boolean;
+  /** Prepare precision only after this ability deals positive direct damage. */
+  precisionOnHit?: number;
+  /** A prepared positive strike briefly phases the caster. */
+  preparedInvulnOnHit?: number;
+  /** Secondary, nonrecursive damage as a fraction of an effective primary hit. */
+  echoFraction?: number;
+  /** Prepared hit marks its target for the owner's next direct hit. */
+  markOnPreparedHit?: number;
+  /** One shared token for every body struck by a cast, including pierced shots. */
+  pilotCast?: { spent: boolean; utilitySpent?: boolean; echoSpent?: boolean };
+  /** A remote burst centered on a living personally cursed foe. */
+  infernalClaim?: boolean;
+  /** Forged Claim can brand an aimed foe because the random kit may lack Hex. */
+  forgeClaimFallback?: boolean;
+  /** Fraction of an Infernal Claim primary hit stored as temporary protection. */
+  claimWard?: number;
   /** A damaging burst also arms one counterburst (40% damage) for this window. */
   /** Authored upgrade mechanics; allocation leaves the original magnitude intact. */
   zonePoison?: { share: number; onExit: boolean };
@@ -202,6 +218,8 @@ export interface PlayerAbilityDef {
   rebukeDuration?: number;
   /** Counterburst applies a personal searing curse before its damage. */
   rebukeCurseBonus?: number;
+  /** Successful counterburst briefly phases the caster. */
+  rebukeInvuln?: number;
   closeBurst?: CloseBurst;
   /** Radius and duration of a weakening challenge; next connecting melee readies a counter. */
   /** A single secondary injured recipient, using only effective primary healing. */
@@ -945,6 +963,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
         name: 'Hex',
         curseBonus: 0.15,
         kind: 'groundZone',
+        airborne: true,
         cooldown: 11,
         damage: 0,
         range: 460,
@@ -1291,6 +1310,21 @@ export function describeAbility(
         : 'surge +20% dmg, half wind-up',
     );
   if (def.prepareCrit) parts.push(`prepare next precision crit for ${s(def.prepareCrit)}`);
+  if (def.precisionOnHit)
+    parts.push(`positive hit prepares precision for ${s(def.precisionOnHit)}`);
+  if (def.preparedInvulnOnHit)
+    parts.push(`prepared positive hit phases you for ${s(def.preparedInvulnOnHit)}`);
+  if (def.echoFraction)
+    parts.push(`first prepared positive hit echoes ${n(def.echoFraction * 100)}% effective damage`);
+  if (def.markOnPreparedHit)
+    parts.push(
+      `prepared positive hit marks foe for next direct hit +${n(def.markOnPreparedHit * 100)}% within 4s`,
+    );
+  if (def.infernalClaim)
+    parts.push(`detonate one personally cursed aimed foe within ${n(def.range ?? 460)}u`);
+  if (def.claimWard)
+    parts.push(`store ${n(def.claimWard * 100)}% of primary damage as protection for 4s, up to 25`);
+  if (def.rebukeInvuln) parts.push(`successful retort phases you for ${s(def.rebukeInvuln)}`);
   if (def.consumesPrecision) parts.push('consumes prepared crit');
   if (def.preparedRefund)
     parts.push(
