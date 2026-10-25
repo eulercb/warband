@@ -47,6 +47,9 @@ Test ordinary ranks and Haste alongside grands, banked versus equipped selection
 class swaps, native/graft reclaim and first-skill bindings. Tests of isolated
 registry objects do not replace an actual World cast or real selection UI.
 
+When renaming a skill while keeping its ID, search both names and the ID in UI
+selectors and production browser scripts as well as engine tests.
+
 Record rejected overlaps and remaining uncertainties in the delivery note. Passing
 checks prove specific contracts, not fun or equal class balance. Owner live testing
 is the next review gate. Audit broader related skills rather than limiting the
