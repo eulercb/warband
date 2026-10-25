@@ -20,6 +20,9 @@ import {
   HYBRID_UPGRADES,
   HYBRID_OFFER_CHANCE,
   GRAND_BY_CLASS,
+  PILOT_SUB_SKILL_GRANDS,
+  PILOT_GRAND_ALIASES,
+  canonicalGrandId,
   SKILL_GRANDS,
   SUBCLASS_GRANDS,
   GRAFT_GRANDS,
@@ -136,9 +139,10 @@ describe('character-upgrade catalog', () => {
 
   it('flat lookup covers every class + hybrid + all grand kinds with unique ids', () => {
     const classGrand = Object.values(GRAND_BY_CLASS).flat();
-    expect(classGrand).toHaveLength(12 * 2); // 2 class capstones per class (item 22)
-    expect(SKILL_GRANDS).toHaveLength(12 * 4 * 2); // 2 per base skill: 12 × (basic/a1/a2/a3) × 2 = 96
+    expect(classGrand).toHaveLength(22); // Rogue/Warlock whole-class aliases folded into base skills
+    expect(SKILL_GRANDS).toHaveLength(86);
     expect(SUBCLASS_GRANDS).toHaveLength(12 * 2 * 2); // 2 per subclass: 24 subclasses × 2 = 48
+    expect(PILOT_SUB_SKILL_GRANDS).toHaveLength(16);
     expect(GRAFT_GRANDS).toHaveLength(7 * 2); // 2 per skill-replacing graft: 7 grafts × 2 = 14 (item 18/66)
     const all = [
       ...Object.values(CHAR_UPGRADES_BY_CLASS).flat(),
@@ -146,17 +150,24 @@ describe('character-upgrade catalog', () => {
       ...classGrand,
       ...SKILL_GRANDS,
       ...SUBCLASS_GRANDS,
+      ...PILOT_SUB_SKILL_GRANDS,
       ...GRAFT_GRANDS,
       ...SUB_SKILL_UPGRADES, // item 6: one per subclass skill (24 subclasses × 4 = 96)
     ];
-    expect(all).toHaveLength(12 * 5 + 12 + 24 + 96 + 48 + 14 + 96); // 350 (item 66: +3 grafts, +6 graft-grands)
+    expect(all).toHaveLength(354);
     expect(SUB_SKILL_UPGRADES).toHaveLength(96);
     const ids = all.map((d) => d.id);
     expect(new Set(ids).size).toBe(ids.length); // no duplicates
-    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(350);
+    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(354 + Object.keys(PILOT_GRAND_ALIASES).length);
     for (const id of ids) expect(CHAR_UPGRADES[id].id).toBe(id);
     // Every grand improvement (class, skill, subclass, graft) is uniquely capped at one stack.
-    for (const d of [...classGrand, ...SKILL_GRANDS, ...SUBCLASS_GRANDS, ...GRAFT_GRANDS]) {
+    for (const d of [
+      ...classGrand,
+      ...SKILL_GRANDS,
+      ...SUBCLASS_GRANDS,
+      ...PILOT_SUB_SKILL_GRANDS,
+      ...GRAFT_GRANDS,
+    ]) {
       expect(d.grand).toBe(true);
       expect(d.maxStacks).toBe(1);
     }
@@ -172,8 +183,9 @@ describe('character-upgrade catalog', () => {
       const key = `${d.classId}:${d.skillSlot}`;
       bySlot.set(key, (bySlot.get(key) ?? 0) + 1);
     }
-    expect(bySlot.size).toBe(48); // every class × slot represented
-    for (const [, n] of bySlot) expect(n).toBe(2); // exactly two per skill
+    expect(bySlot.size).toBe(46); // Rogue Vial and Warlock basic retain legacy IDs
+    for (const [key, n] of bySlot)
+      expect(n).toBe(key.startsWith('rogue:') || key.startsWith('warlock:') ? 1 : 2);
   });
 
   it('tags every subclass grand with its subclass + parent class (item 17)', () => {
@@ -497,13 +509,12 @@ describe('rogue upgrades', () => {
     expect(a.basic.lifestealFrac!).toBeCloseTo(0.12, 5);
     expect(a.a1.lifestealFrac!).toBeCloseTo(0.12, 5);
   });
-  it('ro_grand_shadow modernizes Shadow Master into a crit capstone (item 13)', () => {
+  it('ro_grand_shadow migrates to Assassinate without double replay', () => {
     const a = apply('rogue', ['ro_grand_shadow']).abilities!;
-    expect(a.a2.cooldown).toBeCloseTo(6 * 0.35, 5); // Shadowstep → 2.1s
-    // Backstab gains flat AND a crit lean stacking on its base +30% / +0.3×.
-    expect(a.a1.damage).toBe(85); // 50 + 35
-    expect(a.a1.critChanceBonus!).toBeCloseTo(0.5, 5); // 0.3 base + 0.2
-    expect(a.a1.critMultBonus!).toBeCloseTo(0.8, 5); // 0.3 base + 0.5
+    expect(a.a1.damage).toBe(95);
+    expect(a.a2.cooldown).toBe(6);
+    expect(canonicalGrandId('ro_grand_shadow')).toBe('ro_gk_a1_a');
+    expect(apply('rogue', ['ro_grand_shadow', 'ro_gk_a1_a']).abilities!.a1.damage).toBe(95);
   });
 });
 
@@ -1250,10 +1261,11 @@ describe('effect fallbacks for absent optional fields', () => {
     expect(a.a2.buffMoveMult).toBeCloseTo(1.3, 5);
   });
 
-  it('wa_gk_a1_b defaults a duration-less Hex (slowDuration ?? 0)', () => {
+  it('wa_gk_a1_b legacy alias resolves to the authored Hex grand', () => {
     const a = table({ a1: ab('a1', 'groundZone', 0) }); // no slowDuration
     CHAR_UPGRADES.wa_gk_a1_b.apply({ player: stub, abilities: a });
-    expect(a.a1.slowDuration).toBeCloseTo(1.5, 5); // max(undefined ?? 0, 1.5)
+    expect(a.a1.zoneTickDamage).toBe(22);
+    expect(a.a1.zoneFollow).toBe(3);
   });
 
   it('amplify() seeds iframes on an iframe-less dash sub-skill (iframes ?? 0)', () => {
@@ -2039,8 +2051,8 @@ describe('charUpgradeBadge', () => {
 describe('grand improvements apply real, measurable transformations (item 22)', () => {
   const grands = Object.values(GRAND_BY_CLASS).flat();
 
-  it('there are two grand capstones per class', () => {
-    expect(grands).toHaveLength(24);
+  it('folds Rogue and Warlock whole-class entries into canonical base choices', () => {
+    expect(grands).toHaveLength(22);
   });
 
   for (const def of grands) {
@@ -2075,14 +2087,13 @@ describe('grand improvements apply real, measurable transformations (item 22)', 
     expect(p.damageMult).toBeCloseTo(1.3, 5);
   });
 
-  it('wa_grand_ruin deepens the warlock Hex and Hellish Rebuke', () => {
+  it('wa_grand_ruin resolves to the single Hex grand', () => {
     const hex = CLASSES.warlock.abilities.a1;
-    const rebuke = CLASSES.warlock.abilities.a2;
     const a = apply('warlock', ['wa_grand_ruin']).abilities!;
     expect(a.a1.zoneTickDamage).toBe((hex.zoneTickDamage ?? 0) + 22);
-    expect(a.a1.radius).toBe(hex.radius);
+    expect(a.a1.radius).toBe((hex.radius ?? 0) + 65);
     expect(a.a1.zoneFollow).toBe(3);
-    expect(a.a2.damage).toBe((rebuke.damage ?? 0) + 40);
+    expect(a.a2.damage).toBe(CLASSES.warlock.abilities.a2.damage);
   });
 });
 

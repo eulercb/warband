@@ -1,7 +1,7 @@
 /** Versioned earned bank and per-class selections. Never mutate normal upgrade history. */
 import type { AbilitySlot, ClassId } from '../core/types';
 import { CLASS_IDS } from './classes';
-import { CHAR_UPGRADES, occupancyAfter, upgradeAllowedFor } from './charUpgrades';
+import { CHAR_UPGRADES, canonicalGrandId, occupancyAfter, upgradeAllowedFor } from './charUpgrades';
 import { subclassOfSkill } from './subclasses';
 export interface GrandSelection {
   bank: string[];
@@ -73,6 +73,7 @@ export function grandEligible(id: string, classId: ClassId, ctx: GrandContext): 
 }
 export function grandEarnable(id: string, classId: ClassId, ctx: GrandContext): boolean {
   return (
+    canonicalGrandId(id) === id &&
     grandEligible(id, classId, ctx) &&
     (grandCategory(id) !== 'legacy' ||
       ctx.subSkills.some((sid) => subclassOfSkill(sid)?.classId === classId))
@@ -95,19 +96,21 @@ export function normalizeGrandLoadout(
   const result = emptyGrandLoadout();
   for (const classId of CLASS_IDS.filter((c) => ctx.classes.includes(c))) {
     const saved = value?.version === 1 ? value.classes?.[classId] : undefined;
-    const legacy = ctx.history.filter(
-      (id) => CHAR_UPGRADES[id]?.grand && upgradeAllowedFor(CHAR_UPGRADES[id], classId),
-    );
+    const legacy = ctx.history
+      .filter((id) => CHAR_UPGRADES[id]?.grand && upgradeAllowedFor(CHAR_UPGRADES[id], classId))
+      .map(canonicalGrandId);
     const bank = [
       ...new Set([
         ...(Array.isArray(saved?.bank)
-          ? saved.bank.filter((id): id is string => typeof id === 'string')
+          ? saved.bank.filter((id): id is string => typeof id === 'string').map(canonicalGrandId)
           : []),
         ...legacy,
       ]),
     ].filter((id) => CHAR_UPGRADES[id]?.grand && upgradeAllowedFor(CHAR_UPGRADES[id], classId));
     const equipped: string[] = [];
-    for (const id of Array.isArray(saved?.equipped) ? saved.equipped : value ? [] : bank)
+    for (const id of (Array.isArray(saved?.equipped) ? saved.equipped : value ? [] : bank)
+      .filter((id): id is string => typeof id === 'string')
+      .map(canonicalGrandId))
       if (bank.includes(id) && grandEligible(id, classId, ctx) && fits(equipped, id))
         equipped.push(id);
     result.classes[classId] = { bank, equipped };
@@ -122,7 +125,9 @@ export function changeGrand(
   canEarn = false,
 ): GrandLoadout | null {
   const state = normalizeGrandLoadout(value, ctx);
-  const { classId, id, action, replace } = request;
+  const { classId, action } = request;
+  const id = canonicalGrandId(request.id);
+  const replace = request.replace && canonicalGrandId(request.replace);
   if (!ctx.classes.includes(classId)) return null;
   const selected = state.classes[classId];
   if (!selected || !grandEligible(id, classId, ctx)) return null;
@@ -157,7 +162,17 @@ export function grandHistory(
   state: GrandLoadout | undefined,
   subSkills: readonly string[] = [],
 ): string[] {
-  if (!state) return [...history]; // Legacy content fixtures; session/loadout boundaries migrate explicitly.
+  if (!state) {
+    const seen = new Set<string>();
+    return history.flatMap((id) => {
+      const canonical = canonicalGrandId(id);
+      if (CHAR_UPGRADES[id]?.grand) {
+        if (seen.has(canonical)) return [];
+        seen.add(canonical);
+      }
+      return [canonical];
+    });
+  }
   const ctx = { classes: Object.keys(state.classes) as ClassId[], history, subSkills };
   const selected = normalizeGrandLoadout(state, ctx).classes[classId]?.equipped ?? [];
   return [...history.filter((id) => !CHAR_UPGRADES[id]?.grand), ...selected];

@@ -577,3 +577,47 @@ describe('<ResultScreen> branch coverage', () => {
     expect(screen.getByText('No combatants recorded.')).toBeTruthy();
   });
 });
+
+it.each(['generic', 'char'])(
+  'rerolling the endless bank preserves its committed %s pick',
+  (kind) => {
+    useStore.setState({
+      result: makeResult({ endlessAvailable: true, rewardSeed: 12345 }),
+      rerollCount: 0,
+    });
+    const { container } = render(<ResultScreen />);
+    const cards = kind === 'generic' ? genCards : charCards;
+    const others = kind === 'generic' ? charCards : genCards;
+    const before = Array.from(cards(container), (card) => card.textContent);
+    const otherBefore = Array.from(others(container), (card) => card.textContent);
+    fireEvent.click(cards(container)[0]);
+    act(() => {
+      useStore.setState({ rerollCount: 1 });
+    });
+    const after = Array.from(cards(container));
+    expect(after.map((card) => card.textContent?.replace('✓', ''))).toEqual(before);
+    expect(after.every((card) => card.disabled)).toBe(true);
+    expect(after[0].getAttribute('aria-pressed')).toBe('true');
+    expect(Array.from(others(container), (card) => card.textContent)).not.toEqual(otherBefore);
+    fireEvent.click(after[1]);
+    expect(kind === 'generic' ? chooseUpgrade : chooseCharUpgrade).toHaveBeenCalledTimes(1);
+  },
+);
+
+it('shows the committed cards after remounting a terminal reward stop', () => {
+  useStore.setState({
+    result: makeResult({ endlessAvailable: true, rewardSeed: 12345 }),
+    rewardPickedGeneric: 'swift',
+    rewardPickedChar: 'hy_vampiric',
+    myUpgrades: ['swift'],
+    myCharUpgrades: ['hy_vampiric'],
+    rerollCount: 1,
+  });
+  const { container } = render(<ResultScreen />);
+  expect(genCards(container)).toHaveLength(1);
+  expect(charCards(container)).toHaveLength(1);
+  expect(genCards(container)[0].getAttribute('aria-pressed')).toBe('true');
+  expect(charCards(container)[0].getAttribute('aria-pressed')).toBe('true');
+  expect(genCards(container)[0].textContent).toContain('Swift');
+  expect(charCards(container)[0].textContent).toContain('Vampiric');
+});

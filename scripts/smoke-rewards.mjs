@@ -66,6 +66,8 @@ try {
         mySubSkills: ['kn_champion_slam', 'kn_champion_charge'],
         myEphemeral: { potions: 2 },
         rerollCount: 0,
+        rewardPickedGeneric: null,
+        rewardPickedChar: null,
         nextReadyTotal: 1,
         result: {
           outcome: 'victory',
@@ -194,20 +196,6 @@ try {
     await page.getByRole('button', { name: 'Done', exact: true }).tap();
     assert.equal(await page.locator('.wb-reward-inspect').count(), 1);
     if (viewport.width === 390) {
-      const reroll = await page.evaluate(() =>
-        window.rewardProbe.loot.find((l) => l.kind === 'shop' && l.label.includes('🎲')),
-      );
-      const generation = await page.evaluate(() => window.rewardProbe.generation);
-      await moveTo(reroll.pos, 8, true);
-      await page.waitForFunction(() => window.rewardState().rerollCount > 0);
-
-      // Reroll rebuilds the existing scene/renderer; wait for its new first frame.
-      await page.waitForFunction(
-        (previous) =>
-          window.rewardProbe.generation > previous &&
-          document.querySelector('.wb-touch-stick-left'),
-        generation,
-      );
       for (const kind of ['generic', 'char']) {
         console.log(`reward ${viewport.width}: walking to ${kind}`);
         const offer = await page.evaluate((kind) => {
@@ -233,6 +221,40 @@ try {
           (kind) => window.rewardProbe.loot.some((l) => l.kind === kind && l.claimed),
           kind,
         );
+        if (kind === 'generic') {
+          const before = await page.evaluate(() => ({
+            picked: window.rewardState().rewardPickedGeneric,
+            count: window.rewardState().myUpgrades.length,
+          }));
+          const reroll = await page.evaluate(() =>
+            window.rewardProbe.loot.find((l) => l.kind === 'shop' && l.label.includes('🎲')),
+          );
+          const generation = await page.evaluate(() => window.rewardProbe.generation);
+          await moveTo(reroll.pos, 8, true);
+          await page.waitForFunction(() => window.rewardState().rerollCount > 0);
+
+          // Reroll preserves the scene/renderer and the hero; wait for refreshed offers.
+          await page.waitForFunction(
+            (previous) =>
+              window.rewardProbe.generation === previous &&
+              document.querySelector('.wb-touch-stick-left'),
+            generation,
+          );
+          assert.equal(
+            await page.evaluate(() => window.rewardState().rewardPickedGeneric),
+            before.picked,
+          );
+          assert.equal(
+            await page.evaluate(() => window.rewardState().myUpgrades.length),
+            before.count,
+          );
+          assert.equal(
+            await page.evaluate(
+              () => window.rewardProbe.loot.filter((l) => l.kind === 'generic' && l.claimed).length,
+            ),
+            1,
+          );
+        }
       }
       await page.getByRole('button', { name: 'List view', exact: true }).tap();
       await page.getByRole('dialog', { name: 'Between-boss upgrades' }).waitFor();

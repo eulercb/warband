@@ -108,9 +108,26 @@ export function subclassDamageMultiplier(p: Player, target: Target, hit?: Passiv
     case 'assassin_opening':
       return hit?.prepared && target.hp <= target.maxHp * 0.35 ? 1.15 : 1;
     case 'trickster_spellblade': {
-      const ready = hit?.melee && p.buffs.find((b) => b.kind === 'spellblade' && b.remaining > 0);
+      const cunning = p.charUpgradeIds?.includes('ro_trickster_g_a');
+      const sleight = p.charUpgradeIds?.includes('ro_trickster_g_b');
+      const ready =
+        (hit?.melee || (cunning && hit?.direct)) &&
+        p.buffs.find((b) => b.kind === 'spellblade' && b.remaining > 0);
       if (!ready) return 1;
       p.buffs.splice(p.buffs.indexOf(ready), 1);
+      if (cunning) {
+        putBuff(target, {
+          kind: 'moveSpeed',
+          mult: 0.65,
+          remaining: 2,
+          source: 'cunningSpellblade',
+        });
+        putBuff(target, { kind: 'castSlow', mult: 1.3, remaining: 2, source: 'cunningSpellblade' });
+      }
+      if (sleight) {
+        grantFrontGuard(p, 1, 3);
+        if ((p.cooldowns.a2 ?? 0) > 0) refundRecharge(p, 'a2', 1);
+      }
       return ready.mult;
     }
     case 'old_one_dread_insight':

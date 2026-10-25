@@ -226,6 +226,9 @@ export interface AppState {
   /** item: reroll — how many times this hero has re-randomized their offers at the
    * CURRENT between-boss stop (reset each result). Feeds the offer RNG salt + the cap. */
   rerollCount: number;
+  /** Claims belong to this reward stop, independently of offer rerolls. */
+  rewardPickedGeneric: UpgradeId | null;
+  rewardPickedChar: string | null;
   /** Between-boss readiness tally from the host (upgrade screen). */
   nextReadyReady: number;
   nextReadyTotal: number;
@@ -361,6 +364,8 @@ export const useStore = create<AppState>((set, get) => ({
   myCoins: 0,
   myEphemeral: {},
   rerollCount: 0,
+  rewardPickedGeneric: null,
+  rewardPickedChar: null,
   nextReadyReady: 0,
   nextReadyTotal: 0,
 
@@ -435,6 +440,8 @@ export const useStore = create<AppState>((set, get) => ({
       myCoins: 0,
       myEphemeral: {},
       rerollCount: 0,
+      rewardPickedGeneric: null,
+      rewardPickedChar: null,
     }),
   addMySubSkill: (subclassId, skillId) =>
     // No longer capped at 2 (item 15): a multiclass hero accrues a full 2-skill
@@ -493,11 +500,12 @@ export const useStore = create<AppState>((set, get) => ({
     return true;
   },
   rerollOffers: () => {
-    const { myCoins, rerollCount, session } = get();
+    const { myCoins, rerollCount, session, rewardPickedGeneric, rewardPickedChar } = get();
     const cost = getEphemeral('reroll').cost;
     // Cap + affordability gate the SAME way the host does (recordReroll), so the
     // optimistic bump below never disagrees with the authoritative coin ledger.
-    if (rerollCount >= REROLL_CAP || myCoins < cost) return false;
+    if ((rewardPickedGeneric && rewardPickedChar) || rerollCount >= REROLL_CAP || myCoins < cost)
+      return false;
     // Optimistically spend + bump the salt so the offers re-draw at once (the host
     // confirms the coin spend independently); mirrors the optimistic buyEphemeral path.
     set({ myCoins: myCoins - cost, rerollCount: rerollCount + 1 });
@@ -507,7 +515,8 @@ export const useStore = create<AppState>((set, get) => ({
   resetEphemeralStock: () => set({ myEphemeral: {} }),
   setNextReadyState: (ready, total) => set({ nextReadyReady: ready, nextReadyTotal: total }),
   // A new result opens a fresh between-boss stop → the reroll allowance resets (item: reroll).
-  setResult: (result) => set({ result, rerollCount: 0 }),
+  setResult: (result) =>
+    set({ result, rerollCount: 0, rewardPickedGeneric: null, rewardPickedChar: null }),
   toggleMute: () => set({ muted: !get().muted }),
   setVolume: (volume) => {
     const v = Math.max(0, Math.min(1, volume));
@@ -567,6 +576,8 @@ export const useStore = create<AppState>((set, get) => ({
       myCoins: 0,
       myEphemeral: {},
       rerollCount: 0,
+      rewardPickedGeneric: null,
+      rewardPickedChar: null,
       nextReadyReady: 0,
       nextReadyTotal: 0,
       result: null,

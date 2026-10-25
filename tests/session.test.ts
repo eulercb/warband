@@ -32,6 +32,7 @@ function makeSpies(): Record<string, ReturnType<typeof vi.fn>> {
     'requestPause',
     'chooseUpgrade',
     'chooseCharUpgrade',
+    'rerollOffers',
     'swapClass',
     'setNextReady',
     'continueEndless',
@@ -118,6 +119,8 @@ function resetStore(): void {
     resumeCountdown: null,
     run: null,
     cycle: 0,
+    rewardPickedGeneric: null,
+    rewardPickedChar: null,
     myUpgrades: [],
     myCharUpgrades: [],
     nextReadyReady: 0,
@@ -416,4 +419,22 @@ describe('session misc helpers', () => {
     expect(st().session).toBeNull();
     expect(st().roomCode).toBeNull();
   });
+});
+
+it('keeps one claim per category across rerolls, and resets claims on a new result', async () => {
+  await session.hostGame();
+  useStore.setState({ myCoins: 10 });
+  session.chooseCharUpgrade('hy_vampiric');
+  expect(st().rerollOffers()).toBe(true);
+  session.chooseCharUpgrade('kn_bulwark');
+  expect(st().myCharUpgrades).toEqual(['hy_vampiric']);
+  expect(hosts[0].spies.chooseCharUpgrade).toHaveBeenCalledTimes(1);
+  session.chooseUpgrade('swift');
+  session.chooseUpgrade('swift');
+  expect(st().myUpgrades).toEqual(['swift']);
+  expect(st().rerollOffers()).toBe(false);
+  expect(st().myCoins).toBe(8);
+  st().setResult(null);
+  session.chooseCharUpgrade('kn_bulwark');
+  expect(st().myCharUpgrades).toEqual(['hy_vampiric', 'kn_bulwark']);
 });

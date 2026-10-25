@@ -896,3 +896,21 @@ describe('persisted preference loading (fresh module init)', () => {
     }
   });
 });
+
+it('never spends for rerolls once both stop claims are consumed', () => {
+  const relay = vi.fn();
+  useStore.setState({
+    session: { ...makeSession(), rerollOffers: relay },
+    myCoins: 10,
+    rewardPickedGeneric: 'swift',
+    rewardPickedChar: 'hy_vampiric',
+  });
+  expect(useStore.getState().rerollOffers()).toBe(false);
+  expect(useStore.getState().myCoins).toBe(10);
+  expect(useStore.getState().rerollCount).toBe(0);
+  expect(relay).not.toHaveBeenCalled();
+  useStore.getState().setResult(result);
+  expect(useStore.getState().rewardPickedGeneric).toBeNull();
+  expect(useStore.getState().rewardPickedChar).toBeNull();
+  expect(useStore.getState().rerollOffers()).toBe(true);
+});

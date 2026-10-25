@@ -621,3 +621,38 @@ it('grand board requires a stationary, frozen-aware dwell, re-arms on exit and c
   for (const now of [1800, 2000, 2200]) scene.frame(now);
   expect(scene.takeGrandBoardOpen()).toBe(true);
 });
+
+describe('RewardScene: rerolls preserve reward ownership', () => {
+  it.each(['generic', 'char'] as const)(
+    'rerolls only the unresolved category after a %s pick',
+    (kind) => {
+      const scene = new RewardScene('Aria', 'knight', offers());
+      let now = 1000;
+      const initial = scene.frame(now);
+      const target = initial.loot!.find((l) => l.kind === kind)!;
+      now = walkOnto(scene, target.pos, now);
+      expect(scene.takeClaims()).toHaveLength(1);
+      const before = scene.frame(now);
+      const replacement: RewardOffers = {
+        generic: [{ id: 'new-g', label: 'New generic', desc: 'new' }],
+        char: [{ id: 'new-c', label: 'New class', desc: 'new' }],
+      };
+      scene.rerollOffers(replacement);
+      const after = scene.frame(now);
+      expect(heroPos(after)).toEqual(heroPos(before));
+      expect(after.loot!.filter((l) => l.kind === kind)).toEqual(
+        before.loot!.filter((l) => l.kind === kind),
+      );
+      const other = kind === 'generic' ? 'char' : 'generic';
+      expect(scene.offersFor(other)).toEqual(replacement[other]);
+      // Returning to any relic in the claimed category cannot grant another pick.
+      for (const relic of after.loot!.filter((l) => l.kind === kind)) {
+        now = walkOnto(scene, relic.pos, now);
+      }
+      expect(scene.takeClaims()).toEqual([]);
+      const remaining = scene.frame(now).loot!.find((l) => l.kind === other)!;
+      walkOnto(scene, remaining.pos, now);
+      expect(scene.takeClaims()).toEqual([{ kind: other, offer: replacement[other][0] }]);
+    },
+  );
+});

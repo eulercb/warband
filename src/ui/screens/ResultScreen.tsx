@@ -137,14 +137,26 @@ export function ResultScreen() {
   // result lands, and reset the picks.
   const [genOffers, setGenOffers] = useState<UpgradeId[]>([]);
   const [charOffers, setCharOffers] = useState<string[]>([]);
-  const [pickedGen, setPickedGen] = useState<UpgradeId | null>(null);
-  const [pickedChar, setPickedChar] = useState<string | null>(null);
+  const [pickedGen, setPickedGen] = useState<UpgradeId | null>(
+    () => useStore.getState().rewardPickedGeneric,
+  );
+  const [pickedChar, setPickedChar] = useState<string | null>(
+    () => useStore.getState().rewardPickedChar,
+  );
 
   /* eslint-disable react-hooks/set-state-in-effect -- intentional derived-random reset keyed on a new result */
-  // Generic offers + pick reset: only on a NEW result. Kept separate from the char
+  useEffect(() => {
+    const st = useStore.getState();
+    setPickedGen(st.rewardPickedGeneric);
+    setPickedChar(st.rewardPickedChar);
+    if (st.rewardPickedGeneric) setGenOffers([st.rewardPickedGeneric]);
+    if (st.rewardPickedChar) setCharOffers([st.rewardPickedChar]);
+  }, [result]);
+
+  // Generic offers reroll only while unclaimed. Kept separate from the char
   // roll so acquiring a class mid-screen never disturbs a banked generic pick.
   useEffect(() => {
-    if (!showUpgrades) return;
+    if (!showUpgrades || pickedGen) return;
     const st = useStore.getState();
     // item: reroll — re-draw (biased to differ) whenever the hero buys a reroll here.
     setGenOffers(
@@ -155,9 +167,7 @@ export function ResultScreen() {
         st.myUpgrades,
       ),
     );
-    setPickedGen(null);
-    setPickedChar(null);
-  }, [showUpgrades, localClass, result, rerollCount]);
+  }, [showUpgrades, localClass, result, rerollCount, pickedGen]);
 
   // Character offers span EVERY owned class (weighted toward the primary) and RE-ROLL
   // whenever a class or sub-skill is acquired here via SpecialReward (item 8) — so the
@@ -183,13 +193,13 @@ export function ResultScreen() {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const onPickGen = (id: UpgradeId): void => {
-    if (pickedGen) return;
+    if (pickedGen || useStore.getState().rewardPickedGeneric) return;
     playUiSound('uiConfirm');
     setPickedGen(id);
     chooseUpgrade(id);
   };
   const onPickChar = (id: string): void => {
-    if (pickedChar) return;
+    if (pickedChar || useStore.getState().rewardPickedChar) return;
     playUiSound('uiConfirm');
     setPickedChar(id);
     chooseCharUpgrade(id);

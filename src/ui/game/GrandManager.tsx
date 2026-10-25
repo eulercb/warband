@@ -2,7 +2,7 @@ import { describeGrandTransition } from './grandPreview';
 import type { UpgradeId } from '../../engine/content/upgrades';
 import { memo, useState } from 'react';
 import { CLASSES } from '../../engine/content/classes';
-import { CHAR_UPGRADES } from '../../engine/content/charUpgrades';
+import { CHAR_UPGRADES, canonicalGrandId } from '../../engine/content/charUpgrades';
 import {
   changeGrand,
   grandCategory,
@@ -36,7 +36,10 @@ export function GrandManager({
   const state = normalizeGrandLoadout(value, context);
   const selected = state.classes[classId]!;
   const available = Object.values(CHAR_UPGRADES).filter(
-    (d) => grandEarnable(d.id, classId, context) && !selected.bank.includes(d.id),
+    (d) =>
+      canonicalGrandId(d.id) === d.id &&
+      grandEarnable(d.id, classId, context) &&
+      !selected.bank.includes(d.id),
   );
   const pick = available.find((d) => d.id === offer);
   const unlockState = pick
@@ -80,8 +83,10 @@ export function GrandManager({
         between fights.
       </p>
       <p>
-        Kit and subclass identities share one slot. Individual subclass-skill grands are not
-        available in this version.
+        Kit and subclass identities share one slot.
+        {classId !== 'rogue' &&
+          classId !== 'warlock' &&
+          ' Individual subclass-skill grands are not available for this class yet.'}
       </p>
       {credit ? (
         <div>

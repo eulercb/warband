@@ -1220,6 +1220,24 @@ function g(
   return { id, classId, name, icon, desc, apply, grand: true, maxStacks: 1 };
 }
 
+/** Retired pilot IDs remain readable in old histories, but resolve to one authored grand. */
+export const PILOT_GRAND_ALIASES: Readonly<Record<string, string>> = {
+  ro_grand_shadow: 'ro_gk_a1_a',
+  ro_gk_basic_a: 'ro_gk_basic_b',
+  ro_gk_a1_b: 'ro_gk_a1_a',
+  ro_gk_a2_a: 'ro_gk_a2_b',
+  ro_gk_a3_a: 'ro_grand_venom',
+  ro_gk_a3_b: 'ro_grand_venom',
+  wa_grand_ruin: 'wa_gk_a1_a',
+  wa_gk_basic_a: 'wa_grand_pact',
+  wa_gk_basic_b: 'wa_grand_pact',
+  wa_gk_a1_b: 'wa_gk_a1_a',
+  wa_gk_a2_b: 'wa_gk_a2_a',
+  wa_gk_a3_a: 'wa_gk_a3_b',
+};
+export const canonicalGrandId = (id: string): string =>
+  Object.hasOwn(PILOT_GRAND_ALIASES, id) ? PILOT_GRAND_ALIASES[id] : id;
+
 const GRAND: CharUpgradeDef[] = [
   g(
     'knight',
@@ -1350,23 +1368,6 @@ const GRAND: CharUpgradeDef[] = [
       addN(a.basic, 'lifestealFrac', 0.4);
       addN(a.a3, 'damage', 30);
       addN(a.a3, 'radius', 45);
-    },
-  ),
-  g(
-    'rogue',
-    'ro_grand_shadow',
-    'Shadow Master',
-    '🌑',
-    // item 13 — the Rogue's crit capstone, modernized off the newer crit mechanic:
-    // rather than a flat +60 nuke, Backstab now strikes for the KILL — a big crit
-    // lean stacking on its base +30% (→ 50% crit chance for +0.8× crit damage), so
-    // the grand reads as an assassin's finisher, not a damage number bump.
-    'Shadowstep resets almost instantly (−65% cd); Backstab strikes for the kill — +35 damage, +20% crit chance, +0.5× crit damage',
-    ({ abilities: a }) => {
-      mul(a.a2, 'cooldown', 0.35);
-      addN(a.a1, 'damage', 35);
-      addN(a.a1, 'critChanceBonus', 0.2);
-      addN(a.a1, 'critMultBonus', 0.5);
     },
   ),
   g(
@@ -1518,32 +1519,18 @@ const GRAND: CharUpgradeDef[] = [
     'wa_grand_pact',
     'Pact of the Fiend',
     '😈',
-    'Eldritch Blast forks into 2 soul-draining bolts (+18 dmg, +35% lifesteal)',
+    'Eldritch Blast forks into two 18-damage bolts with +12% lifesteal',
     ({ abilities: a }) => {
-      addN(a.basic, 'damage', 18);
+      addN(a.basic, 'damage', -4);
       addN(a.basic, 'projCount', 1);
-      addN(a.basic, 'lifestealFrac', 0.35);
-    },
-  ),
-  g(
-    'warlock',
-    'wa_grand_ruin',
-    'Word of Ruin',
-    '💀',
-    'Hex gains +22/tick and +4s, follows its first damaged foe for up to 3s then anchors; Rebuke gains +40 damage and +30u',
-    ({ abilities: a }) => {
-      addN(a.a1, 'zoneTickDamage', 22);
-      a.a1.zoneFollow = 3;
-      addN(a.a1, 'zoneDuration', 4);
-      addN(a.a2, 'damage', 40);
-      addN(a.a2, 'radius', 30);
+      addN(a.basic, 'lifestealFrac', 0.12);
     },
   ),
 ];
 
 // ---------------------------------------------------------------------------
-// BASE-SKILL grands (item 17) — two radical capstones for each of the 48 base
-// skills (12 classes × basic/a1/a2/a3). Each is a build-defining twist on that
+// BASE-SKILL grands (item 17) — authored capstones for native base
+// skills. Rogue and Warlock each have one per skill; other classes await their cohort. Each is a build-defining twist on that
 // SPECIFIC skill (a 360° cleave, an instant Fireball, a freezing nova), not a
 // formulaic +X%. Keyed by the slot they touch via the `gk` builder, so the
 // offer roll can hide a slot whose native skill has been grafted over (item 19).
@@ -2118,26 +2105,13 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
   gk(
     'rogue',
     'basic',
-    'ro_gk_basic_a',
-    'Thousand Cuts',
-    '⚡',
-    'Slash strikes twice as fast (−50% cd) for +6 and drinks 15% as health',
-    (ab) => {
-      mul(ab, 'cooldown', 0.5);
-      addN(ab, 'damage', 6);
-      addN(ab, 'lifestealFrac', 0.15);
-    },
-  ),
-  gk(
-    'rogue',
-    'basic',
     'ro_gk_basic_b',
     'Whirling Blades',
     '🌀',
-    'Slash sweeps a full 360° circle: +8 damage, +25u reach',
+    'Slash sweeps a full 360° circle: +3 damage, +25u reach',
     (ab) => {
       ab.halfAngleDeg = 180;
-      addN(ab, 'damage', 8);
+      addN(ab, 'damage', 3);
       addN(ab, 'range', 25);
     },
   ),
@@ -2147,36 +2121,11 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'ro_gk_a1_a',
     'Assassinate',
     '🗡️',
-    'Backstab annihilates for +70 and heals you 25% of the damage dealt',
+    'Backstab gains +45 damage, +15% crit chance and heals you 15% of damage dealt',
     (ab) => {
-      addN(ab, 'damage', 70);
-      addN(ab, 'lifestealFrac', 0.25);
-    },
-  ),
-  gk(
-    'rogue',
-    'a1',
-    'ro_gk_a1_b',
-    'Deathblow',
-    '💀',
-    'Backstab hits for +40, dazes 0.8s, and returns 45% sooner',
-    (ab) => {
-      addN(ab, 'damage', 40);
-      addN(ab, 'stun', 0.8);
-      mul(ab, 'cooldown', 0.55);
-    },
-  ),
-  gk(
-    'rogue',
-    'a2',
-    'ro_gk_a2_a',
-    'Nightstalker',
-    '🌑',
-    'Shadowstep resets almost at once (−65% cd), phases +0.4s, and heals 25',
-    (ab) => {
-      mul(ab, 'cooldown', 0.35);
-      addN(ab, 'iframes', 0.4);
-      addN(ab, 'healOnUse', 25);
+      addN(ab, 'damage', 45);
+      addN(ab, 'critChanceBonus', 0.15);
+      addN(ab, 'lifestealFrac', 0.15);
     },
   ),
   gk(
@@ -2185,41 +2134,14 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'ro_gk_a2_b',
     'Death from Shadow',
     '🥷',
-    'Shadowstep leaps +160u, phases +0.5s, and mends +40',
+    'Shadowstep leaps +80u, phases +0.25s, heals 25 and holds precision 1s longer',
     (ab) => {
-      addN(ab, 'range', 160);
-      addN(ab, 'iframes', 0.5);
-      addN(ab, 'healOnUse', 40);
+      addN(ab, 'range', 80);
+      addN(ab, 'iframes', 0.25);
+      addN(ab, 'healOnUse', 25);
+      addN(ab, 'prepareCrit', 1);
     },
   ),
-  gk(
-    'rogue',
-    'a3',
-    'ro_gk_a3_a',
-    'Plaguebringer',
-    '☠️',
-    'Poison Vial festers for +22/tick across +65u for +4s',
-    (ab) => {
-      addN(ab, 'zoneTickDamage', 22);
-      addN(ab, 'radius', 65);
-      addN(ab, 'zoneDuration', 4);
-    },
-  ),
-  gk(
-    'rogue',
-    'a3',
-    'ro_gk_a3_b',
-    'Crippling Toxin',
-    '🕸️',
-    'Poison Vial slows foes to 40%, ticks +10, and spreads +40u',
-    (ab) => {
-      setMin(ab, 'slowMult', 0.4);
-      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.5);
-      addN(ab, 'zoneTickDamage', 10);
-      addN(ab, 'radius', 40);
-    },
-  ),
-
   // --- Paladin --------------------------------------------------------------
   gk(
     'paladin',
@@ -2763,56 +2685,16 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
   // --- Warlock --------------------------------------------------------------
   gk(
     'warlock',
-    'basic',
-    'wa_gk_basic_a',
-    'Eldritch Barrage',
-    '💥',
-    'Eldritch Blast forks into 3 soul-bolts (+8 each), draining 30% total',
-    (ab) => {
-      addN(ab, 'projCount', 2);
-      ab.spreadDeg = Math.max(ab.spreadDeg ?? 0, 14);
-      addN(ab, 'damage', 8);
-      addN(ab, 'lifestealFrac', 0.15);
-    },
-  ),
-  gk(
-    'warlock',
-    'basic',
-    'wa_gk_basic_b',
-    'Soul Ruin',
-    '💀',
-    'Eldritch Blast hits for +24, +300 speed, and drinks 40% as health',
-    (ab) => {
-      addN(ab, 'damage', 24);
-      addN(ab, 'projSpeed', 300);
-      addN(ab, 'lifestealFrac', 0.25);
-    },
-  ),
-  gk(
-    'warlock',
     'a1',
     'wa_gk_a1_a',
     'Word of Ruin',
     '☠️',
-    'Hex festers for +22/tick across +65u for +4s',
+    'Hex festers for +22/tick across +65u for +4s and follows its first damaged foe for 3s',
     (ab) => {
       addN(ab, 'zoneTickDamage', 22);
       addN(ab, 'radius', 65);
       addN(ab, 'zoneDuration', 4);
-    },
-  ),
-  gk(
-    'warlock',
-    'a1',
-    'wa_gk_a1_b',
-    'Crippling Curse',
-    '🕸️',
-    'Hex locks foes to 35% speed and festers +12/tick over +55u',
-    (ab) => {
-      setMin(ab, 'slowMult', 0.35);
-      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.5);
-      addN(ab, 'zoneTickDamage', 12);
-      addN(ab, 'radius', 55);
+      ab.zoneFollow = 3;
     },
   ),
   gk(
@@ -2821,38 +2703,12 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'wa_gk_a2_a',
     'Infernal Cataclysm',
     '🔥',
-    'Hellish Rebuke erupts for +40 across +55u, drinking 35% total',
+    'Hellish Rebuke hits +25 across +30u, then counters on your next direct hit or when hurt, applying a searing curse',
     (ab) => {
-      addN(ab, 'damage', 40);
-      addN(ab, 'radius', 55);
-      addN(ab, 'lifestealFrac', 0.15);
-    },
-  ),
-  gk(
-    'warlock',
-    'a2',
-    'wa_gk_a2_b',
-    'Searing Retort',
-    '💥',
-    'Hellish Rebuke hits +18, freezes 0.7s, widens +20u, and recharges 40% faster',
-    (ab) => {
-      addN(ab, 'damage', 18);
-      addN(ab, 'freeze', 0.7);
-      addN(ab, 'radius', 20);
-      mul(ab, 'cooldown', 0.6);
-    },
-  ),
-  gk(
-    'warlock',
-    'a3',
-    'wa_gk_a3_a',
-    'Fiendish Ascension',
-    '😈',
-    "Dark One's Blessing swells to +50% damage, +25% move, and lasts 5s longer",
-    (ab) => {
-      addN(ab, 'buffDamageMult', 0.5);
-      ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.25);
-      addN(ab, 'buffDuration', 5);
+      addN(ab, 'damage', 25);
+      addN(ab, 'radius', 30);
+      ab.rebukeDirect = true;
+      ab.rebukeCurseBonus = Math.max(ab.rebukeCurseBonus ?? 0, 0.15);
     },
   ),
   gk(
@@ -2861,12 +2717,12 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'wa_gk_a3_b',
     'Eternal Pact',
     '🕯️',
-    "Dark One's Blessing is nearly always up (−45% cd), +30% damage, 30% mitigation, lasts +2s",
+    "Dark One's Blessing recovers 25% faster, grants +25% damage and 20% mitigation, lasts +1s",
     (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      addN(ab, 'buffDamageMult', 0.3);
-      setMin(ab, 'buffDefMult', 0.7);
-      addN(ab, 'buffDuration', 2);
+      mul(ab, 'cooldown', 0.75);
+      addN(ab, 'buffDamageMult', 0.25);
+      setMin(ab, 'buffDefMult', 0.8);
+      addN(ab, 'buffDuration', 1);
     },
   ),
 ];
@@ -3020,6 +2876,33 @@ function gs(
         const ab = subAbilities[slot];
         if (ab) tune(ab);
       }
+    },
+  };
+}
+
+/** Pilot identities tune native base skills during replay and bound subclass skills on rebind. */
+function pilotIdentity(
+  subclassId: string,
+  id: string,
+  name: string,
+  icon: string,
+  desc: string,
+  tuneBase: (abilities: Record<AbilitySlot, PlayerAbilityDef>) => void,
+  tuneSub: (ab: PlayerAbilityDef) => void,
+): CharUpgradeDef {
+  return {
+    id,
+    classId: getSubclass(subclassId)!.classId,
+    subclassId,
+    name,
+    icon,
+    desc,
+    grand: true,
+    maxStacks: 1,
+    apply: ({ abilities, subAbilities }) => {
+      if (subAbilities) {
+        for (const slot of SUB_SLOTS) if (subAbilities[slot]) tuneSub(subAbilities[slot]);
+      } else tuneBase(abilities);
     },
   };
 }
@@ -3259,51 +3142,86 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     },
   ),
 
-  // Rogue
-  gs(
+  // Rogue — both identities retune the starting loop and remain useful with either bound skill.
+  pilotIdentity(
     'ro_assassin',
     'ro_assassin_g_a',
     'Death Incarnate',
     '💀',
-    'Assassin skills gain 55% magnitude and wider reach; direct strikes drink 30% as health, poison does not leech',
+    'Prepared cuts and throws land harder and refund 1s of a running Shadowstep; preparation lasts 2s longer',
+    (a) => {
+      addN(a.basic, 'critChanceBonus', 0.08);
+      addN(a.a1, 'critMultBonus', 0.25);
+      a.a1.preparedRefund = Math.max(a.a1.preparedRefund ?? 0, 1);
+      addN(a.a2, 'prepareCrit', 2);
+    },
     (ab) => {
-      amplify(ab, 0.55, 0.3);
-      lifeRider(ab, 0.3);
+      if (isStrike(ab)) {
+        ab.consumesPrecision = true;
+        ab.preparedRefund = Math.max(ab.preparedRefund ?? 0, 1);
+        addN(ab, 'critMultBonus', 0.2);
+      }
+      if (ab.prepareCrit) addN(ab, 'prepareCrit', 2);
+      if (ab.venomCoating) ab.prepareCrit = Math.max(ab.prepareCrit ?? 0, 4);
     },
   ),
-  gs(
+  pilotIdentity(
     'ro_assassin',
     'ro_assassin_g_b',
     'One with Shadow',
     '🌑',
-    'Your Assassin skills recharge 40% faster, hit 30% harder, and daze on strike',
+    'Shadowstep coats your next direct hit with 12/s poison for 4s; Assassin preparation and coatings last longer',
+    (a) => {
+      a.a2.venomCoating = { damage: 12, duration: 4, window: 6 };
+      addN(a.a2, 'prepareCrit', 1);
+      addN(a.a1, 'critChanceBonus', 0.08);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.6);
-      amplify(ab, 0.3, 0.15);
-      ctrlRider(ab, 0.6);
+      if (ab.venomCoating)
+        ab.venomCoating = {
+          ...ab.venomCoating,
+          duration: Math.min(6, ab.venomCoating.duration + 2),
+        };
+      if (ab.prepareCrit) addN(ab, 'prepareCrit', 1);
+      if (isStrike(ab)) addN(ab, 'critChanceBonus', 0.08);
     },
   ),
-  gs(
+  pilotIdentity(
     'ro_trickster',
     'ro_trickster_g_a',
     "Archmage's Cunning",
     '✨',
-    'Your Trickster skills hit 50% harder over a wider area and ensnare foes to 40%',
+    'Spellblade empowers any positive direct hit and slows its target; prepared base strikes and Trickster spells reach farther',
+    (a) => {
+      addN(a.basic, 'range', 10);
+      addN(a.a1, 'range', 10);
+      addN(a.a2, 'prepareCrit', 1);
+    },
     (ab) => {
-      amplify(ab, 0.5, 0.3);
-      slowRider(ab, 0.4, 1.5);
-      ctrlRider(ab, 0.5);
+      if (isStrike(ab)) {
+        slowRider(ab, 0.65, 2);
+        ab.castSlow = Math.max(ab.castSlow ?? 1, 1.3);
+      } else if (ab.kind === 'groundZone') addN(ab, 'radius', 15);
+      else if (ab.kind === 'blink' || ab.kind === 'selfBuff')
+        ab.prepareCrit = Math.max(ab.prepareCrit ?? 0, 5);
     },
   ),
-  gs(
+  pilotIdentity(
     'ro_trickster',
     'ro_trickster_g_b',
     'Sleight of Time',
     '⏳',
-    'Your Trickster skills recharge 45% faster and grow 30%',
+    'A spent Spellblade grants one frontal block and refunds 1s of running Shadowstep; Shadowstep and Trickster utilities recover sooner',
+    (a) => {
+      mul(a.a2, 'cooldown', 0.85);
+      addN(a.a2, 'healOnUse', 12);
+      addN(a.a1, 'critChanceBonus', 0.08);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      amplify(ab, 0.3, 0.15);
+      if (ab.kind === 'blink' || ab.kind === 'selfBuff') mul(ab, 'cooldown', 0.85);
+      else if (isStrike(ab)) addN(ab, 'critChanceBonus', 0.08);
+      else if (ab.kind === 'groundZone')
+        ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.15);
     },
   ),
 
@@ -3542,51 +3460,283 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     },
   ),
 
-  // Warlock
-  gs(
+  // Warlock — every identity has a base-kit payoff before a second subclass skill.
+  pilotIdentity(
     'wa_fiend',
     'wa_fiend_g_a',
     'Hellfire Ascendant',
     '🔥',
-    'Fiend damage and barrier amounts grow 55%; areas and siphon reach grow 30%; direct strikes leech 25%',
+    'Hex follows its first damaged foe for 3s; Rebuke can counter on your next direct hit; Blessing grants movement',
+    (a) => {
+      a.a1.zoneFollow = 3;
+      a.a2.rebukeDirect = true;
+      a.a3.buffMoveMult = Math.max(a.a3.buffMoveMult ?? 1, 1.2);
+    },
     (ab) => {
-      amplify(ab, 0.55, 0.3);
-      lifeRider(ab, 0.25);
+      if (ab.kind === 'groundZone' && (ab.zoneTickDamage ?? 0) > 0) ab.zoneFollow = 3;
+      if (ab.rebukeDuration) ab.rebukeDirect = true;
+      if (ab.kind === 'projectile') ab.castSlow = Math.max(ab.castSlow ?? 1, 1.25);
+      if (ab.absorption) ab.absorption = { ...ab.absorption, amount: ab.absorption.amount + 12 };
     },
   ),
-  gs(
+  pilotIdentity(
     'wa_fiend',
     'wa_fiend_g_b',
     'Infernal Pact',
     '😈',
-    'Fiend skills recharge 40% faster; damage and barrier amounts grow 30%, areas and siphon reach 15%; direct strikes leech 20%',
+    'Blessing also grants 20 protection for 6s; direct spells drain health and Resilience siphons more from one cursed foe',
+    (a) => {
+      a.a3.absorption = { amount: 20, balanceAmount: 0, duration: 6, target: 'self' };
+      addN(a.basic, 'lifestealFrac', 0.1);
+      addN(a.a2, 'lifestealFrac', 0.1);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.6);
-      amplify(ab, 0.3, 0.15);
-      lifeRider(ab, 0.2);
+      lifeRider(ab, 0.1);
+      if (ab.kind === 'groundZone') ab.zoneAllyDefMult = Math.min(ab.zoneAllyDefMult ?? 1, 0.9);
+      if (ab.absorption?.curseSiphon)
+        ab.absorption = {
+          ...ab.absorption,
+          curseSiphon: {
+            ...ab.absorption.curseSiphon,
+            amount: ab.absorption.curseSiphon.amount + 10,
+          },
+        };
     },
   ),
-  gs(
+  pilotIdentity(
     'wa_great_old_one',
     'wa_great_old_one_g_a',
     'Elder Mind',
     '🐙',
-    'Your Great Old One skills hit 50% harder over a wider area and madden foes to 35%',
+    'Your direct spells weaken personally cursed foes; Hex and Dissonant Whispers linger 2s longer',
+    (a) => {
+      a.basic.cursePayoff = Math.max(a.basic.cursePayoff ?? 0, 3);
+      a.a2.cursePayoff = Math.max(a.a2.cursePayoff ?? 0, 3);
+      addN(a.a1, 'zoneDuration', 2);
+    },
     (ab) => {
-      amplify(ab, 0.5, 0.3);
-      slowRider(ab, 0.35, 1.5);
-      ctrlRider(ab, 0.5);
+      if (isStrike(ab)) {
+        ab.cursePayoff = Math.max(ab.cursePayoff ?? 0, 3);
+        slowRider(ab, 0.75, 2);
+      }
+      if (ab.kind === 'groundZone') addN(ab, 'zoneDuration', 2);
+      if (ab.kind === 'blink') addN(ab, 'healOnUse', 12);
     },
   ),
-  gs(
+  pilotIdentity(
     'wa_great_old_one',
     'wa_great_old_one_g_b',
     'Whispered Doom',
     '🔮',
-    'Your Great Old One skills recharge 45% faster and grow 30%',
+    'Blessing prepares an 8s spell surge; Rebuke or direct Great Old One spells consume it for a stronger, quicker cast',
+    (a) => {
+      a.a3.prepareSurge = Math.max(a.a3.prepareSurge ?? 0, 8);
+      a.a2.consumesSurge = true;
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      amplify(ab, 0.3, 0.15);
+      if (ab.kind === 'blink' || ab.kind === 'selfBuff')
+        ab.prepareSurge = Math.max(ab.prepareSurge ?? 0, 8);
+      else if (ab.kind === 'groundZone') ab.prepareSurge = Math.max(ab.prepareSurge ?? 0, 8);
+      else if (isStrike(ab)) ab.consumesSurge = true;
+    },
+  ),
+];
+
+// One authored grand per individual subclass skill; only the equipped recipient is tuned.
+function gsk(
+  subSkillId: string,
+  name: string,
+  icon: string,
+  desc: string,
+  tune: (ab: PlayerAbilityDef) => void,
+): CharUpgradeDef {
+  return {
+    id: `${subSkillId}_g`,
+    classId: subclassOfSkill(subSkillId)!.classId,
+    subSkillId,
+    name,
+    icon,
+    desc,
+    grand: true,
+    maxStacks: 1,
+    apply: ({ subAbilities }) => {
+      if (!subAbilities) return;
+      for (const slot of SUB_SLOTS) if (subAbilities[slot]) tune(subAbilities[slot]);
+    },
+  };
+}
+
+export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
+  gsk(
+    'ro_assassin_strike',
+    'Perfect Opening',
+    '🗡️',
+    'Death Strike gains +15% crit chance; a prepared positive hit refunds 1s of running Shadowstep',
+    (ab) => {
+      addN(ab, 'critChanceBonus', 0.15);
+      ab.preparedRefund = 1;
+    },
+  ),
+  gsk(
+    'ro_assassin_throw',
+    'Seeking Blade',
+    '🔪',
+    'Deadly Throw pierces and consumes preparation for a guaranteed crit',
+    (ab) => {
+      ab.pierce = Math.max(ab.pierce ?? 0, 1);
+      ab.consumesPrecision = true;
+    },
+  ),
+  gsk(
+    'ro_assassin_poison',
+    'Lasting Venom',
+    '☠️',
+    'Coated Blade prepares precision for 4s; its poison deals 20% more per second and lasts 1s longer, up to 6s',
+    (ab) => {
+      if (ab.venomCoating)
+        ab.venomCoating = {
+          ...ab.venomCoating,
+          damage: Math.round(ab.venomCoating.damage * 1.2),
+          duration: Math.min(6, ab.venomCoating.duration + 1),
+        };
+      ab.prepareCrit = Math.max(ab.prepareCrit ?? 0, 4);
+    },
+  ),
+  gsk(
+    'ro_assassin_smoke',
+    'Cover of Night',
+    '💨',
+    'Smoke Bomb grants allies 40% movement inside and prepares a precision crit for 6s',
+    (ab) => {
+      ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.4);
+      ab.prepareCrit = Math.max(ab.prepareCrit ?? 0, 6);
+    },
+  ),
+  gsk(
+    'ro_trickster_bolt',
+    'Threading Bolt',
+    '✨',
+    'Mage Hand Bolt pierces one foe and slows struck foes to 60% for 2s',
+    (ab) => {
+      ab.pierce = Math.max(ab.pierce ?? 0, 1);
+      slowRider(ab, 0.6, 2);
+    },
+  ),
+  gsk(
+    'ro_trickster_snare',
+    'Living Snare',
+    '🕸️',
+    'Ensnaring Strike becomes a self-centered escape web, 35u wider; allies inside move 20% faster',
+    (ab) => {
+      ab.range = 0;
+      addN(ab, 'radius', 35);
+      ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.2);
+    },
+  ),
+  gsk(
+    'ro_trickster_step',
+    'Veiled Step',
+    '🌫️',
+    'Misty Step coats your next direct hit with 12/s poison for 4s while preparing precision',
+    (ab) => {
+      ab.venomCoating = { damage: 12, duration: 4, window: 6 };
+    },
+  ),
+  gsk(
+    'ro_trickster_shield',
+    'Double Deception',
+    '🛡️',
+    'Shield Spell blocks two frontal hits for 4s and prepares precision for 6s',
+    (ab) => {
+      if (ab.frontGuard) ab.frontGuard = { ...ab.frontGuard, charges: 2 };
+      ab.prepareCrit = Math.max(ab.prepareCrit ?? 0, 6);
+    },
+  ),
+  gsk(
+    'wa_fiend_hurl',
+    'Hellfire Meteor',
+    '🔥',
+    'Hurl Flame bursts in a 65u radius on impact',
+    (ab) => {
+      ab.impactRadius = Math.max(ab.impactRadius ?? 0, 65);
+    },
+  ),
+  gsk(
+    'wa_fiend_pit',
+    'Devouring Pit',
+    '🕳️',
+    'Fire Pit grants allies inside 20% damage mitigation and deepens its searing curse to +20% owner damage',
+    (ab) => {
+      ab.zoneAllyDefMult = Math.min(ab.zoneAllyDefMult ?? 1, 0.8);
+      ab.curseBonus = Math.max(ab.curseBonus ?? 0, 0.2);
+    },
+  ),
+  gsk(
+    'wa_fiend_rebuke',
+    'Fiendish Retort',
+    '💥',
+    'Fiendish Rebuke can counter on your next positive direct hit and applies a +20% searing curse',
+    (ab) => {
+      ab.rebukeDirect = true;
+      ab.rebukeCurseBonus = Math.max(ab.rebukeCurseBonus ?? 0, 0.2);
+    },
+  ),
+  gsk(
+    'wa_fiend_resilience',
+    'Soul Bastion',
+    '🛡️',
+    'Dark Resilience blocks one frontal hit for 4s, gains 15 initial protection and siphons +10 from one cursed foe',
+    (ab) => {
+      ab.frontGuard = { charges: 1, duration: 4 };
+      if (ab.absorption)
+        ab.absorption = {
+          ...ab.absorption,
+          amount: ab.absorption.amount + 15,
+          curseSiphon: ab.absorption.curseSiphon && {
+            ...ab.absorption.curseSiphon,
+            amount: ab.absorption.curseSiphon.amount + 10,
+          },
+        };
+    },
+  ),
+  gsk(
+    'wa_goo_blast',
+    'Rending Thought',
+    '🧠',
+    'Mind Blast pierces one foe and weakens personally cursed foes for 4s',
+    (ab) => {
+      ab.pierce = Math.max(ab.pierce ?? 0, 1);
+      ab.cursePayoff = Math.max(ab.cursePayoff ?? 0, 4);
+    },
+  ),
+  gsk(
+    'wa_goo_tentacle',
+    'Dread Reach',
+    '🐙',
+    'Tentacle of the Deep slows to 30% for 3s and lengthens enemy wind-ups by 40%',
+    (ab) => {
+      slowRider(ab, 0.3, 3);
+      ab.castSlow = Math.max(ab.castSlow ?? 1, 1.4);
+    },
+  ),
+  gsk(
+    'wa_goo_whispers',
+    'Whispers That Follow',
+    '🌀',
+    'Dissonant Whispers follows its first damaged foe for 3s and lasts 2s longer',
+    (ab) => {
+      ab.zoneFollow = 3;
+      addN(ab, 'zoneDuration', 2);
+    },
+  ),
+  gsk(
+    'wa_goo_flee',
+    'Prophetic Ward',
+    '🔮',
+    'Entropic Ward blocks one frontal hit for 4s and heals 15 more on use',
+    (ab) => {
+      ab.frontGuard = { charges: 1, duration: 4 };
+      addN(ab, 'healOnUse', 15);
     },
   ),
 ];
@@ -3992,6 +4142,7 @@ const GRAND_ALL_BY_CLASS: Record<ClassId, CharUpgradeDef[]> = [
   ...GRAND,
   ...SKILL_GRANDS,
   ...SUBCLASS_GRANDS,
+  ...PILOT_SUB_SKILL_GRANDS,
 ].reduce(
   (acc, d) => {
     (acc[d.classId as ClassId] ??= []).push(d);
@@ -4008,10 +4159,15 @@ export const CHAR_UPGRADES: Record<string, CharUpgradeDef> = Object.fromEntries(
     ...GRAND,
     ...SKILL_GRANDS,
     ...SUBCLASS_GRANDS,
+    ...PILOT_SUB_SKILL_GRANDS,
     ...GRAFT_GRANDS,
     ...SUB_SKILL_UPGRADES, // item 6: resolvable by id, but NOT in the always-on class pool
   ].map((d) => [d.id, d]),
 );
+for (const [alias, canonical] of Object.entries(PILOT_GRAND_ALIASES)) {
+  const target = CHAR_UPGRADES[canonical];
+  if (target) CHAR_UPGRADES[alias] = { ...target, id: alias };
+}
 
 /**
  * How many GRAND capstones a hero holds (item 5 progression gate). Counts real
@@ -4021,9 +4177,8 @@ export const CHAR_UPGRADES: Record<string, CharUpgradeDef> = Object.fromEntries(
  */
 export function grandCount(charUpgradeIds: readonly string[] | undefined): number {
   if (!charUpgradeIds) return 0;
-  let n = 0;
-  for (const id of charUpgradeIds) if (CHAR_UPGRADES[id]?.grand) n++;
-  return n;
+  return new Set(charUpgradeIds.filter((id) => CHAR_UPGRADES[id]?.grand).map(canonicalGrandId))
+    .size;
 }
 
 // ---------------------------------------------------------------------------
@@ -4145,7 +4300,13 @@ function replayCharUpgrades(player: Player, ids: readonly string[]): Record<Abil
     a3: registry.get(occupant.a3)!,
   });
 
-  for (const id of ids) {
+  const seenGrands = new Set<string>();
+  for (const rawId of ids) {
+    const id = canonicalGrandId(rawId);
+    if (CHAR_UPGRADES[id]?.grand) {
+      if (seenGrands.has(id)) continue;
+      seenGrands.add(id);
+    }
     // Reclaim a displaced native skill, its stashed boons intact (item 15).
     const restoreSlot = parseRestore(id);
     if (restoreSlot) {
@@ -4278,7 +4439,11 @@ export function applySubclassGrands(player: Player, ids: readonly string[] | und
     const scId = subclassOfSkill(sid)?.id;
     if (scId) slotSubclass[i === 0 ? 'sub1' : 'sub2'] = scId;
   });
-  for (const id of ids) {
+  const seen = new Set<string>();
+  for (const rawId of ids) {
+    const id = canonicalGrandId(rawId);
+    if (seen.has(id)) continue;
+    seen.add(id);
     const def = CHAR_UPGRADES[id];
     const subclassId =
       def?.subclassId ??
@@ -4393,9 +4558,15 @@ export function previewSubAbility(
   const stub = stubPlayer(owner.classId);
   const abilities = stub.abilities as Record<AbilitySlot, PlayerAbilityDef>;
   let tuned = false;
-  for (const boonId of ownedChar) {
+  const seenGrands = new Set<string>();
+  for (const rawId of ownedChar) {
+    const boonId = canonicalGrandId(rawId);
     const def = CHAR_UPGRADES[boonId];
     if (!def) continue;
+    if (def.grand) {
+      if (seenGrands.has(boonId)) continue;
+      seenGrands.add(boonId);
+    }
     // A "Honed X" boon tunes exactly this skill; a subclass grand tunes every skill
     // of its subclass. Both mutate the ability handed in through the sub1 slot.
     const hits =
@@ -4735,7 +4906,8 @@ export function offerableGrands(
   );
   const out: CharUpgradeDef[] = [];
   for (const d of GRAND_ALL_BY_CLASS[classId] ?? []) {
-    if (charUpgradeAtMax(d.id, ownedChar)) continue;
+    if (ownedChar.some((id) => canonicalGrandId(id) === d.id)) continue;
+    if (d.subSkillId && !ownedSubSkills.includes(d.subSkillId)) continue;
     // A base-skill grand whose native slot has been grafted over is dead (item 19).
     if (d.skillSlot && occupant[d.skillSlot] !== d.skillSlot) continue;
     // A subclass grand only surfaces once the hero holds a skill of that subclass.
@@ -4854,9 +5026,10 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
     return {
       ...base,
       name: blend(fused.name),
-      desc: SUB_SKILL_TUNE_TEXT[base.subSkillId]
-        ? `${fused.name}: ${swapDescName(base.desc, canonSubSkillName(base.subSkillId), fused.name)}`
-        : `${simpleHonedText(base.subSkillId)} (stacks to ${MAX_SKILL_STACKS}).`,
+      desc:
+        base.grand || SUB_SKILL_TUNE_TEXT[base.subSkillId]
+          ? `${fused.name}: ${swapDescName(base.desc, canonSubSkillName(base.subSkillId), fused.name)}`
+          : `${simpleHonedText(base.subSkillId)} (stacks to ${MAX_SKILL_STACKS}).`,
     };
   }
 

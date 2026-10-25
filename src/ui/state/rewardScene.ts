@@ -346,6 +346,24 @@ export class RewardScene {
     this.placeSet(offers.char, 'char', ARENA_W * 0.66);
   }
 
+  offersFor(kind: LootKind): RewardOffer[] {
+    return this.relics.filter((r) => r.kind === kind).map((r) => r.offer);
+  }
+
+  /** Replace only unresolved categories, preserving claims, position and readiness. */
+  rerollOffers(offers: RewardOffers): void {
+    for (const kind of ['generic', 'char'] as const) {
+      if (this.relics.some((r) => r.kind === kind && r.claimed)) continue;
+      for (let i = this.relics.length - 1; i >= 0; i--) {
+        if (this.relics[i].kind === kind) this.relics.splice(i, 1);
+      }
+      this.placeSet(offers[kind], kind, ARENA_W * (kind === 'generic' ? 0.34 : 0.66));
+    }
+    // A newly drawn relic must receive a full, intentional claim dwell.
+    this.dwellId = null;
+    this.dwellS = 0;
+  }
+
   private placeSet(set: RewardOffer[], kind: LootKind, centerX: number): void {
     const n = set.length;
     if (n === 0) return;

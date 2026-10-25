@@ -369,7 +369,7 @@ describe('Evoker learns from applying control and has a visible burst follow-up'
 
 describe('upgrade, Forge and difficulty-index continuity', () => {
   it.each(ids)('%s keeps copied/native mechanics and upgraded payloads', (id) => {
-    const { p } = setup(id, true);
+    const { w, p, boss } = setup(id, true);
     const canonical = structuredClone(getSubSkill(id)!.ability);
     applySubSkillUpgrades(p, [`subup_${id}`]);
     applySubclassGrands(p, [`${subclassOfSkill(id)!.id}_g_a`]);
@@ -379,7 +379,16 @@ describe('upgrade, Forge and difficulty-index continuity', () => {
     if (id === 'kn_battle_menacing') expect(ab.warCry!.radius).toBeGreaterThan(180);
     if (id === 'bb_totem_bear') expect(ab.frontGuard!.counter).toBe(1.3);
     if (id === 'bb_berserker_slam') expect(ab.momentumFissure).toBeGreaterThan(4);
-    if (id === 'ro_assassin_poison') expect(ab.venomCoating!.damage).toBeGreaterThan(24);
+    if (id === 'ro_assassin_poison') {
+      // Death Incarnate now makes Coated Blade a precision provider, so one cast
+      // supplies its own 50%-stronger poison without relying on Shadowstep.
+      expect(ab.prepareCrit).toBeGreaterThanOrEqual(4);
+      cast(w, p);
+      expect(p.buffs.some((b) => b.kind === 'precision')).toBe(true);
+      expect(p.buffs.some((b) => b.kind === 'venomReady')).toBe(true);
+      damageBoss(w, p, boss, 1, { direct: true, prepared: true });
+      expect(boss.buffs.find((b) => b.kind === 'venom')?.mult).toBe(ab.venomCoating!.damage * 1.5);
+    }
     expect(getSubSkill(id)!.ability).toEqual(canonical);
   });
   it('native Earth Totem and Coated Blade retain their previous baseline offense credit', () => {

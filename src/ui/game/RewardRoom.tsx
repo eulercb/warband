@@ -41,6 +41,7 @@ import { pushHud } from '../state/hudBridge';
 import {
   RewardScene,
   type RewardOffers,
+  type RewardOffer,
   type RelicFocus,
   type ShopFocus,
   type ShopOffer,
@@ -144,12 +145,12 @@ function buildShopOffers(hardcore: boolean): ShopOffer[] {
 
 /** Which shop ids can't be bought again — single-buy passives already owned (item 2),
  *  and the reroll once its per-stop cap is spent (item: reroll). */
-function soldOutIds(stock: EphemeralStock, rerollCount: number): string[] {
+function soldOutIds(stock: EphemeralStock, rerollCount: number, claimsDone = false): string[] {
   const out: string[] = [];
   if (stock.speed) out.push('speed');
   if (stock.damage) out.push('damage');
   if (stock.defense) out.push('defense');
-  if (rerollCount >= REROLL_CAP) out.push('reroll');
+  if (rerollCount >= REROLL_CAP || claimsDone) out.push('reroll');
   return out;
 }
 
@@ -199,19 +200,34 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   // floor — only maxed-out boons carried IN from prior bosses are filtered.
   // item: reroll — the offers re-draw whenever the hero buys a reroll (rerollCount bumps).
   const rerollCount = useStore((s) => s.rerollCount);
-  const offers = useMemo(
-    () =>
-      rollOffers(
+  const offers = useMemo(() => {
+    const st = useStore.getState();
+    const drawn = rollOffers(
+      localClass,
+      st.myUpgrades,
+      st.myCharUpgrades,
+      st.myExtraClasses,
+      st.mySubSkills,
+      result.rewardSeed,
+      rerollCount,
+    );
+    // A remount in the same stop still displays and locks the committed choices.
+    if (st.rewardPickedGeneric) {
+      const u = getUpgrade(st.rewardPickedGeneric);
+      drawn.generic = [{ id: st.rewardPickedGeneric, label: `${u.icon} ${u.name}`, desc: u.desc }];
+    }
+    if (st.rewardPickedChar) {
+      const offer = describeCharOffer(
         localClass,
-        useStore.getState().myUpgrades,
-        useStore.getState().myCharUpgrades,
-        useStore.getState().myExtraClasses,
-        useStore.getState().mySubSkills,
-        result.rewardSeed,
-        rerollCount,
-      ),
-    [localClass, result.rewardSeed, rerollCount],
-  );
+        st.myCharUpgrades,
+        st.rewardPickedChar,
+        st.mySubSkills,
+        st.myUpgrades,
+      );
+      if (offer) drawn.char = [offer];
+    }
+    return drawn;
+  }, [localClass, result.rewardSeed, rerollCount]);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<RewardScene | null>(null);
@@ -220,8 +236,14 @@ export default function RewardRoom({ result }: { result: FightResult }) {
   // the fallback work when the render loop never starts, e.g. no WebGL).
   const toggleListReadyRef = useRef<(() => void) | null>(null);
 
-  const [pickedGen, setPickedGen] = useState<string | null>(null);
-  const [pickedChar, setPickedChar] = useState<string | null>(null);
+  const [claimedGenOffers, setClaimedGenOffers] = useState<RewardOffer[] | null>(null);
+  const [claimedCharOffers, setClaimedCharOffers] = useState<RewardOffer[] | null>(null);
+  const [pickedGen, setPickedGen] = useState<string | null>(
+    () => useStore.getState().rewardPickedGeneric,
+  );
+  const [pickedChar, setPickedChar] = useState<string | null>(
+    () => useStore.getState().rewardPickedChar,
+  );
   const [ready, setReady] = useState(false);
   const [showList, setShowList] = useState(false);
   const [focus, setFocus] = useState<RelicFocus | null>(null);
@@ -290,6 +312,8 @@ export default function RewardRoom({ result }: { result: FightResult }) {
       buildShopOffers(st.activeHardcore), // item 2: walkable coin stalls
       true, // Walk-up grand management uses the same host transaction as the list.
     );
+    if (pickedGen) scene.markClaimed('generic', pickedGen);
+    if (pickedChar) scene.markClaimed('char', pickedChar);
     sceneRef.current = scene;
 
     let renderer: Renderer | null = null;
@@ -359,7 +383,11 @@ export default function RewardRoom({ result }: { result: FightResult }) {
         const shopState = useStore.getState();
         scene.setShopState(
           shopState.myCoins,
-          soldOutIds(shopState.myEphemeral, shopState.rerollCount),
+          soldOutIds(
+            shopState.myEphemeral,
+            shopState.rerollCount,
+            !!shopState.rewardPickedGeneric && !!shopState.rewardPickedChar,
+          ),
         );
 
         const state = scene.frame(now, uiOpen);
@@ -395,9 +423,13 @@ export default function RewardRoom({ result }: { result: FightResult }) {
         // Relic claims → relay + reflect in the local pick state.
         for (const c of scene.takeClaims()) {
           if (c.kind === 'generic') {
+            if (useStore.getState().rewardPickedGeneric) continue;
+            setClaimedGenOffers(scene.offersFor('generic'));
             setPickedGen(c.offer.id);
             chooseUpgrade(c.offer.id as UpgradeId);
           } else {
+            if (useStore.getState().rewardPickedChar) continue;
+            setClaimedCharOffers(scene.offersFor('char'));
             setPickedChar(c.offer.id);
             chooseCharUpgrade(c.offer.id);
           }
@@ -448,18 +480,24 @@ export default function RewardRoom({ result }: { result: FightResult }) {
     // Mount-once by design (mirrors MainMenu): the scene reads its config from the
     // store + offers and owns its own loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    sceneRef.current?.rerollOffers(offers);
   }, [offers]);
 
   const onPickGen = (id: string): void => {
-    if (pickedGen) return;
+    if (pickedGen || useStore.getState().rewardPickedGeneric) return;
     playUiSound('uiConfirm');
+    setClaimedGenOffers(offers.generic);
     setPickedGen(id);
     chooseUpgrade(id as UpgradeId);
     sceneRef.current?.markClaimed('generic', id);
   };
   const onPickChar = (id: string): void => {
-    if (pickedChar) return;
+    if (pickedChar || useStore.getState().rewardPickedChar) return;
     playUiSound('uiConfirm');
+    setClaimedCharOffers(offers.char);
     setPickedChar(id);
     chooseCharUpgrade(id);
     sceneRef.current?.markClaimed('char', id);
@@ -472,17 +510,18 @@ export default function RewardRoom({ result }: { result: FightResult }) {
     toggleListReadyRef.current?.();
   };
 
-  const generic = offers.generic;
+  const generic = claimedGenOffers ?? offers.generic;
+  const charOffers = claimedCharOffers ?? offers.char;
   const activeHistory = useMemo(
     () => grandHistory(localClass, myCharUpgrades, grandState, subSkills),
     [localClass, myCharUpgrades, grandState, subSkills],
   );
   const chars = useMemo(
     () =>
-      offers.char.map(
+      charOffers.map(
         (o) => describeCharOffer(localClass, activeHistory, o.id, subSkills, myUpgrades) ?? o,
       ),
-    [offers.char, localClass, activeHistory, subSkills, myUpgrades],
+    [charOffers, localClass, activeHistory, subSkills, myUpgrades],
   );
 
   return (

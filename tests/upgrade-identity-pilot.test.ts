@@ -565,7 +565,7 @@ describe('repeat picks, composition and copied skills', () => {
   it('grand plus Honed composed coating uses its advertised capped payload in combat and power', () => {
     const { w, p, boss } = setup(
       'rogue',
-      ['ro_assassin_g_a', ...Array<string>(5).fill('subup_ro_assassin_poison')],
+      ['ro_assassin_poison_g', ...Array<string>(5).fill('subup_ro_assassin_poison')],
       ['ro_assassin_poison'],
     );
     const ab = p.subAbilities!.sub1!;
@@ -573,11 +573,11 @@ describe('repeat picks, composition and copied skills', () => {
     const component = ab.components.effects.find((e) => e.kind === 'venomCoating');
     expect(component?.kind).toBe('venomCoating');
     if (component?.kind !== 'venomCoating') throw new Error('Missing coating');
-    expect(component.coating.damage).toBe(50);
+    expect(component.coating.damage).toBe(45);
     resolvePlayerAbility(w, p, 'sub1', ZERO);
-    damageBoss(w, p, boss, 1, { direct: true });
-    expect(boss.buffs.find((b) => b.kind === 'venom')!.mult).toBe(component.coating.damage);
-    expect(describeAbility(ab)).toContain('poison 50 dmg/s');
+    damageBoss(w, p, boss, 1, { direct: true, prepared: true });
+    expect(boss.buffs.find((b) => b.kind === 'venom')!.mult).toBe(component.coating.damage * 1.5);
+    expect(describeAbility(ab)).toContain('poison 45 dmg/s');
     const power = heroPowerRatio(p);
     ab.venomCoating = { ...component.coating };
     expect(heroPowerRatio(p)).toBe(power);
