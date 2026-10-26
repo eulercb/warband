@@ -1,0 +1,45 @@
+name: CI completion
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Completed PR CI run to summarize (optional integration check)'
+        required: true
+        type: string
+
+# This privileged event must never check out the triggering PR or run its code.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-completion-${{ github.event.workflow_run.id || inputs.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+      checks: read
+      pull-requests: write
+    steps:
+      - name: Read trusted automation from the default branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Summarize completed CI and retry one confirmed timeout
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url');
+            const file = pathToFileURL(`${process.env.GITHUB_WORKSPACE}/scripts/ci-completion.mjs`);
+            const { completeCI } = await import(file.href);
+            const result = await completeCI({ github, context, core });
+            core.info(`CI completion result: ${result}`);
