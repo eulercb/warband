@@ -74,6 +74,7 @@ export class Renderer {
   private readonly zonesLayer = new Graphics();
   private readonly telegraphLayer = new Graphics();
   private readonly aimLayer = new Graphics();
+  private readonly claimLayer = new Graphics();
   private readonly entitiesLayer = new Graphics();
   private readonly overlayLayer = new Graphics();
   private readonly projectilesLayer = new Graphics();
@@ -129,6 +130,7 @@ export class Renderer {
       this.particles.container,
       this.fxTextLayer,
       this.enemyStatusLayer, // readable above damage numbers and particles
+      this.claimLayer, // actionable local target, never buried under bodies or damage numbers
       this.labelLayer,
       this.balloons.container, // ability speech balloons, above everything
     );
@@ -538,6 +540,8 @@ export class Renderer {
   private drawAimPreview(state: RenderState): void {
     const g = this.aimLayer;
     g.clear();
+    const claim = this.claimLayer;
+    claim.clear();
     const localId = state.localPlayerId;
     if (localId == null) return;
     const p = state.players.find((pl) => pl.id === localId);
@@ -555,17 +559,23 @@ export class Renderer {
       const target = boss ?? state.adds.find((a) => a.id === id);
       if (!target || target.hp <= 0) continue;
       const pos = this.camera.worldToScreen(target.pos);
-      const radius =
-        ((boss ? getMonster(boss.monsterId).radius : ADD_RADIUS) + 9) * this.camera.scale;
-      g.circle(pos.x, pos.y, radius).stroke({ width: 2, color: 0xd59bff, alpha: 0.85 });
+      const radius = Math.max(
+        24,
+        ((boss ? getMonster(boss.monsterId).radius : ADD_RADIUS) + 13) * this.camera.scale,
+      );
+      // A dark backing plus white/violet edges stays readable on bright zones.
+      claim.circle(pos.x, pos.y, radius).stroke({ width: 7, color: 0x140821, alpha: 0.95 });
+      claim.circle(pos.x, pos.y, radius).stroke({ width: 4, color: 0xea9cff, alpha: 1 });
+      claim.circle(pos.x, pos.y, radius + 4).stroke({ width: 1.5, color: 0xffffff, alpha: 1 });
       // Four short notches distinguish the target from ordinary ground circles.
       for (let i = 0; i < 4; i++) {
         const angle = (i * Math.PI) / 2;
         const dx = Math.cos(angle),
           dy = Math.sin(angle);
-        g.moveTo(pos.x + dx * (radius - 4), pos.y + dy * (radius - 4))
-          .lineTo(pos.x + dx * (radius + 4), pos.y + dy * (radius + 4))
-          .stroke({ width: 2, color: 0xd59bff, alpha: 0.85 });
+        claim
+          .moveTo(pos.x + dx * (radius - 7), pos.y + dy * (radius - 7))
+          .lineTo(pos.x + dx * (radius + 8), pos.y + dy * (radius + 8))
+          .stroke({ width: 4, color: 0xffffff, alpha: 1 });
       }
     }
 

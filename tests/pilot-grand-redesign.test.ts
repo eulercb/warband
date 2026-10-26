@@ -3,7 +3,7 @@ import { World } from '../src/engine/world/world';
 import { resolvePlayerAbility } from '../src/engine/combat/abilities';
 import { damageBoss } from '../src/engine/combat/combat';
 import { subclassDamageMultiplier } from '../src/engine/combat/subclassPassives';
-import { setForgeSeed } from '../src/engine/content/forge';
+import { decompose, recompose, setForgeSeed } from '../src/engine/content/forge';
 import { effectiveRecharge } from '../src/engine/content/abilityLimits';
 import { getSubclass, subclassOfSkill } from '../src/engine/content/subclasses';
 import {
@@ -45,6 +45,22 @@ function hero(classId: ClassId, charUpgrades: string[], subSkills: string[] = []
 afterEach(() => setForgeSeed(null));
 
 describe('Rogue and Warlock authored grands', () => {
+  it.each([false, true])(
+    'forked Eldritch Blast has distinct symmetric trajectories, composed=%s',
+    (composed) => {
+      const { w, p } = hero('warlock', ['wa_grand_pact']);
+      const ab = p.abilities!.basic;
+      if (composed) p.abilities!.basic = recompose(decompose(ab), ab);
+      resolvePlayerAbility(w, p, 'basic', ZERO);
+      expect(w.projectiles).toHaveLength(2);
+      const angles = w.projectiles.map((shot) => Math.atan2(shot.vel.y, shot.vel.x));
+      expect(angles[0]).toBeCloseTo(-Math.PI / 30);
+      expect(angles[1]).toBeCloseTo(Math.PI / 30);
+      expect(w.projectiles.every((shot) => shot.damage === 18)).toBe(true);
+      expect(p.abilities!.basic.lifestealFrac).toBeCloseTo(0.27); // 15% base + 12% grand
+    },
+  );
+
   it.each(['rogue', 'warlock'] as const)(
     '%s has exactly four base, four identity and eight individual choices',
     (classId) => {

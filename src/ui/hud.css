@@ -225,7 +225,7 @@
   position: relative;
   margin-top: 3px;
   color: #e1b6ff;
-  font-size: 8px;
+  font-size: 10px;
   line-height: 1;
   font-weight: 700;
 }
@@ -1005,4 +1005,33 @@
 
 .hud-absorption ~ .hud-healthbar-num {
   z-index: 2;
+}
+
+/* Claim availability must survive phone scale and bright combat effects. */
+.hud-claim-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 9px;
+  max-width: min(220px, 55vw);
+  border: 1px solid #9e8eb0;
+  border-radius: 7px;
+  background: #17101f;
+  color: #eee5f7;
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+}
+.hud-claim-prompt.ready {
+  border: 2px solid #f2bdff;
+  background: #472255;
+  color: #fff;
+}
+.hud-ability.claim-ready,
+.wb-touch-btn[data-claim-ready] {
+  border: 3px solid #f2bdff;
+  background: #57256b;
+  box-shadow:
+    0 0 0 2px #17101f,
+    0 0 14px #d47bf0;
 }

@@ -356,11 +356,13 @@ describe('<TouchControls> ability cooldowns', () => {
     fireEvent.pointerDown(button, { pointerId: 1 });
     act(() => useHudStore.getState().set({ infernalClaimTargets: { sub1: 99 } }));
     expect(button.textContent).toContain('Target ready');
+    expect(button.hasAttribute('data-claim-ready')).toBe(true);
     expect(button.classList.contains('held')).toBe(true);
     act(() =>
       useHudStore.getState().set({ cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0, sub1: 2 } }),
     );
     expect(button.querySelector('.wb-touch-claim-status')).toBeNull();
+    expect(button.hasAttribute('data-claim-ready')).toBe(false);
     expect(button.querySelector('.wb-touch-cd-num')?.textContent).toBe('2.0');
     act(() =>
       useHudStore.getState().set({ state: 'dead', cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 } }),

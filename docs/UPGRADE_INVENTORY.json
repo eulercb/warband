@@ -6772,7 +6772,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Eldritch Blast forks into two 18-damage bolts with +12% lifesteal",
+      "description": "Eldritch Blast forks into two 18-damage bolts in a 12° fan with +12% lifesteal",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -6784,12 +6784,14 @@
           "once": [
             { "path": "abilities.basic.damage", "before": 22, "after": 18 },
             { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.27 },
-            { "path": "abilities.basic.projCount", "before": 1, "after": 2 }
+            { "path": "abilities.basic.projCount", "before": 1, "after": 2 },
+            { "path": "abilities.basic.spreadDeg", "before": null, "after": 12 }
           ],
           "atCap": [
             { "path": "abilities.basic.damage", "before": 22, "after": 18 },
             { "path": "abilities.basic.lifestealFrac", "before": 0.15, "after": 0.27 },
-            { "path": "abilities.basic.projCount", "before": 1, "after": 2 }
+            { "path": "abilities.basic.projCount", "before": 1, "after": 2 },
+            { "path": "abilities.basic.spreadDeg", "before": null, "after": 12 }
           ]
         }
       ]

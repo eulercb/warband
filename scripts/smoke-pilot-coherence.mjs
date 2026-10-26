@@ -135,11 +135,14 @@ try {
             });
             if (claimReadyState) {
               renderer.render({ ...claimReadyState, localPlayerId: p.id, arena: w.arena });
-              contracts.readyMarkerDraws = renderer.aimLayer.context.instructions.length;
+              contracts.readyMarkerDraws = renderer.claimLayer.context.instructions.length;
+              contracts.markerAboveEffects =
+                renderer.root.getChildIndex(renderer.claimLayer) >
+                renderer.root.getChildIndex(renderer.enemyStatusLayer);
             }
             renderer.render({ ...w.serialize(), localPlayerId: p.id, arena: w.arena });
             if (claimReadyState)
-              contracts.coolingMarkerDraws = renderer.aimLayer.context.instructions.length;
+              contracts.coolingMarkerDraws = renderer.claimLayer.context.instructions.length;
             if (claimReadyState)
               renderer.render({ ...claimReadyState, localPlayerId: p.id, arena: w.arena });
             await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -161,6 +164,11 @@ try {
           assert.equal(result.ward, true);
           assert.equal(result.remoteCue, true);
           assert.ok(result.readyMarkerDraws > 0, 'Eligible Claim target has a visible marker');
+          assert.equal(
+            result.markerAboveEffects,
+            true,
+            'Target marker renders above combat effects',
+          );
           assert.equal(result.coolingMarkerDraws, 0, 'Claim marker clears during recharge');
         }
         assert.deepEqual(errors, []);
