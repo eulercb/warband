@@ -156,16 +156,25 @@ function AbilityIcon({
   mods: { cooldownMult: number; castMult: number; damageMult: number };
 }) {
   const remaining = useHudStore((s) => s.cooldowns[slot] ?? 0);
+  const claimTarget = useHudStore((s) => s.infernalClaimTargets[slot]);
+  const alive = useHudStore((s) => s.state === 'alive');
   // Subscribe to bindings so the label updates live when the player rebinds.
   useBindings((s) => s.bindings);
   const total = effectiveRecharge(def, mods.cooldownMult, mods.castMult, slot);
   const frac = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
-  const ready = frac <= 0.001;
+  const cooling = frac > 0.001;
+  const claimStatus =
+    !alive || claimTarget === undefined
+      ? null
+      : claimTarget === null
+        ? 'Need target'
+        : 'Target ready';
+  const ready = !cooling && (claimTarget === undefined || (alive && claimTarget !== null));
   const label = slotLabel(slot, source);
   const name = displayName ?? def.name;
   // Concrete effect numbers on hover/focus (item 19), reflecting the hero's
   // current upgraded values since `def` comes from the resolved ability table.
-  const tip = `${name} — ${describeAbility({ ...def, slot }, mods)}`;
+  const tip = `${name} — ${describeAbility({ ...def, slot }, mods)}${claimStatus ? ` · ${claimStatus}` : ''}`;
   return (
     <div className={`hud-ability${ready ? ' ready' : ''}`} title={tip} aria-label={tip}>
       <div
@@ -176,8 +185,13 @@ function AbilityIcon({
         {label}
       </div>
       <div className="hud-ability-name">{name}</div>
+      {!cooling && claimStatus && (
+        <div className={`hud-claim-status${claimTarget === null ? ' blocked' : ''}`}>
+          {claimStatus}
+        </div>
+      )}
       <div className="hud-cd" style={{ height: `${frac * 100}%` }} />
-      {!ready && <div className="hud-cd-num">{remaining.toFixed(1)}</div>}
+      {cooling && <div className="hud-cd-num">{remaining.toFixed(1)}</div>}
     </div>
   );
 }

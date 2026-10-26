@@ -343,6 +343,31 @@ describe('<TouchControls> ability buttons', () => {
 // ---------------------------------------------------------------------------
 
 describe('<TouchControls> ability cooldowns', () => {
+  it('shows the authoritative Claim target cue while preserving a held button and cooldown precedence', () => {
+    useHudStore.getState().set({
+      classId: 'warlock',
+      subSkills: ['wa_fiend_rebuke'],
+      infernalClaimTargets: { sub1: null },
+    });
+    const { container } = render(<TouchControls />);
+    const button = container.querySelector('.wb-touch-btn-sub')!;
+    expect(button.textContent).toContain('Need target');
+    expect(button.getAttribute('title')).toMatch(/personally cursed aimed foe within \d+u/);
+    fireEvent.pointerDown(button, { pointerId: 1 });
+    act(() => useHudStore.getState().set({ infernalClaimTargets: { sub1: 99 } }));
+    expect(button.textContent).toContain('Target ready');
+    expect(button.classList.contains('held')).toBe(true);
+    act(() =>
+      useHudStore.getState().set({ cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0, sub1: 2 } }),
+    );
+    expect(button.querySelector('.wb-touch-claim-status')).toBeNull();
+    expect(button.querySelector('.wb-touch-cd-num')?.textContent).toBe('2.0');
+    act(() =>
+      useHudStore.getState().set({ state: 'dead', cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 } }),
+    );
+    expect(button.querySelector('.wb-touch-claim-status')).toBeNull();
+  });
+
   it('badges the remaining seconds and dims the label while a skill is cooling', () => {
     useHudStore.getState().set({
       classId: 'knight',

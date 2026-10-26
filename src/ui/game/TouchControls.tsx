@@ -26,6 +26,7 @@ import { previewAbilityTable, previewSubAbility } from '../../engine/content/cha
 import { getSubSkill, subclassOfSkill } from '../../engine/content/subclasses';
 import { AIM_DEAD_ZONE } from '../../engine/core/constants';
 import type { AbilitySlot, ButtonState, Cooldowns } from '../../engine/core/types';
+import { describeAbility, type PlayerAbilityDef } from '../../engine/content/classes';
 
 /** Radius (px) of a virtual stick's active area; the knob clamps to this. */
 const STICK_R = 56;
@@ -133,15 +134,19 @@ function TouchButton({
   kind,
   cdSlot,
   total = 0,
+  ability,
 }: {
   slot: keyof ButtonState;
   label: string;
   kind: string;
   cdSlot?: keyof Cooldowns;
   total?: number;
+  ability?: Omit<PlayerAbilityDef, 'slot'>;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
   const remaining = useHudStore((s) => (cdSlot ? (s.cooldowns[cdSlot] ?? 0) : 0));
+  const claimTarget = useHudStore((s) => (cdSlot ? s.infernalClaimTargets[cdSlot] : undefined));
+  const alive = useHudStore((s) => s.state === 'alive');
   const frac = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
   const cooling = frac > 0.001;
   useEffect(() => {
@@ -175,6 +180,7 @@ function TouchButton({
       ref={ref}
       type="button"
       className={`wb-touch-btn wb-touch-btn-${kind}`}
+      title={claimTarget !== undefined && ability ? describeAbility(ability) : undefined}
       aria-hidden="true"
     >
       {cdSlot != null ? (
@@ -187,6 +193,11 @@ function TouchButton({
         />
       ) : null}
       <span className={`wb-touch-btn-label${cooling ? ' cooling' : ''}`}>{label}</span>
+      {alive && !cooling && claimTarget !== undefined && (
+        <span className={`wb-touch-claim-status${claimTarget === null ? ' blocked' : ''}`}>
+          {claimTarget === null ? 'Need target' : 'Target ready'}
+        </span>
+      )}
       {cooling ? (
         <span className="wb-touch-cd-num" aria-hidden="true">
           {remaining.toFixed(1)}
@@ -332,6 +343,7 @@ export default function TouchControls({ navigationOnly = false }: { navigationOn
                 kind="sub"
                 cdSlot="sub2"
                 total={subCd(subSkills[1])}
+                ability={previewSubAbility(subSkills[1], myCharUpgrades) ?? undefined}
               />
             ) : null}
             {subVisible(subSkills[0]) ? (
@@ -341,6 +353,7 @@ export default function TouchControls({ navigationOnly = false }: { navigationOn
                 kind="sub"
                 cdSlot="sub1"
                 total={subCd(subSkills[0])}
+                ability={previewSubAbility(subSkills[0], myCharUpgrades) ?? undefined}
               />
             ) : null}
             <TouchButton
@@ -349,6 +362,7 @@ export default function TouchControls({ navigationOnly = false }: { navigationOn
               kind="a3"
               cdSlot="a3"
               total={abilities.a3?.cooldown}
+              ability={abilities.a3}
             />
             <TouchButton
               slot="a2"
@@ -356,6 +370,7 @@ export default function TouchControls({ navigationOnly = false }: { navigationOn
               kind="a2"
               cdSlot="a2"
               total={abilities.a2?.cooldown}
+              ability={abilities.a2}
             />
             <TouchButton
               slot="a1"
@@ -363,6 +378,7 @@ export default function TouchControls({ navigationOnly = false }: { navigationOn
               kind="a1"
               cdSlot="a1"
               total={abilities.a1?.cooldown}
+              ability={abilities.a1}
             />
             <TouchButton
               slot="basic"
@@ -370,6 +386,7 @@ export default function TouchControls({ navigationOnly = false }: { navigationOn
               kind="basic"
               cdSlot="basic"
               total={abilities.basic?.cooldown}
+              ability={abilities.basic}
             />
           </div>
           <div className="wb-touch-side">

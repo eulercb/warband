@@ -74,6 +74,34 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('<HUD>', () => {
+  it('shows Claim target readiness without a false ready border or zero cooldown when blocked', () => {
+    useHudStore.getState().set({
+      active: true,
+      classId: 'warlock',
+      subSkills: ['wa_fiend_rebuke'],
+      infernalClaimTargets: { sub1: null },
+    });
+    const { container } = render(<HUD />);
+    const tile = container.querySelector('.hud-ability[aria-label*="Infernal Claim —"]')!;
+    expect(tile.textContent).toContain('Need target');
+    expect(tile.classList.contains('ready')).toBe(false);
+    expect(tile.querySelector('.hud-cd-num')).toBeNull();
+    expect(tile.getAttribute('title')).toMatch(/personally cursed aimed foe within \d+u/);
+    act(() => useHudStore.getState().set({ infernalClaimTargets: { sub1: 99 } }));
+    expect(tile.textContent).toContain('Target ready');
+    expect(tile.classList.contains('ready')).toBe(true);
+    act(() =>
+      useHudStore.getState().set({ cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0, sub1: 2 } }),
+    );
+    expect(tile.querySelector('.hud-claim-status')).toBeNull();
+    expect(tile.querySelector('.hud-cd-num')?.textContent).toBe('2.0');
+    act(() =>
+      useHudStore.getState().set({ state: 'downed', cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 } }),
+    );
+    expect(tile.querySelector('.hud-claim-status')).toBeNull();
+    expect(tile.classList.contains('ready')).toBe(false);
+  });
+
   it('renders the local hero health, score and ability buttons', () => {
     useHudStore.getState().set({
       active: true,

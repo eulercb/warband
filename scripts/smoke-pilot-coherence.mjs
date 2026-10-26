@@ -71,6 +71,7 @@ try {
               for (const ab of [...Object.values(p.abilities), ...Object.values(p.subAbilities)])
                 Object.assign(ab, recompose(decompose(ab), ab));
             let contracts;
+            let claimReadyState;
             if (classId === 'rogue') {
               resolvePlayerAbility(w, p, 'sub1', { x: 0, y: 0 });
               for (let i = 0; i < 20; i++) w.updateProjectiles(1 / 60);
@@ -89,6 +90,7 @@ try {
             } else {
               w.tryUseAbility(p, 'sub2', { x: 0, y: 0 });
               const targetlessCd = p.cooldowns.sub2 ?? 0;
+              assertClaimState(null);
               applyBuff(boss, makeBuff('flight', 1, 20, 'fixture'));
               resolvePlayerAbility(w, p, 'a1', { x: 0, y: 0 });
               const hex = w.groundZones.at(-1);
@@ -108,7 +110,9 @@ try {
               p.buffs = [];
               w.events = [];
               const beforeClaim = boss.hp;
-              resolvePlayerAbility(w, p, 'sub2', { x: 0, y: 0 });
+              assertClaimState(boss.id);
+              claimReadyState = w.serialize();
+              w.tryUseAbility(p, 'sub2', { x: 0, y: 0 });
               contracts = {
                 targetlessCd,
                 followed,
@@ -120,11 +124,24 @@ try {
                 ),
               };
             }
+            function assertClaimState(expected) {
+              const actual = w.serialize().players[0].infernalClaimTargets?.sub2;
+              if (actual !== expected)
+                throw new Error(`Claim eligibility: ${actual} !== ${expected}`);
+            }
             const renderer = await Renderer.create(document.querySelector('#fixture'), {
               w: ARENA_W,
               h: ARENA_H,
             });
+            if (claimReadyState) {
+              renderer.render({ ...claimReadyState, localPlayerId: p.id, arena: w.arena });
+              contracts.readyMarkerDraws = renderer.aimLayer.context.instructions.length;
+            }
             renderer.render({ ...w.serialize(), localPlayerId: p.id, arena: w.arena });
+            if (claimReadyState)
+              contracts.coolingMarkerDraws = renderer.aimLayer.context.instructions.length;
+            if (claimReadyState)
+              renderer.render({ ...claimReadyState, localPlayerId: p.id, arena: w.arena });
             await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
             return { ...contracts, draws: renderer.overlayLayer.context.instructions.length };
           },
@@ -143,6 +160,8 @@ try {
           assert.ok(result.claimDamage > 0);
           assert.equal(result.ward, true);
           assert.equal(result.remoteCue, true);
+          assert.ok(result.readyMarkerDraws > 0, 'Eligible Claim target has a visible marker');
+          assert.equal(result.coolingMarkerDraws, 0, 'Claim marker clears during recharge');
         }
         assert.deepEqual(errors, []);
         if (process.env.SHOT_DIR)
