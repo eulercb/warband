@@ -220,6 +220,19 @@
 .hud-ability.ready {
   border-color: rgba(242, 193, 78, 0.7);
 }
+.hud-claim-status,
+.wb-touch-claim-status {
+  position: relative;
+  margin-top: 3px;
+  color: #e1b6ff;
+  font-size: 8px;
+  line-height: 1;
+  font-weight: 700;
+}
+.hud-claim-status.blocked,
+.wb-touch-claim-status.blocked {
+  color: #bfc2ce;
+}
 .hud-ability-key {
   font-size: 11px;
   font-weight: 800;

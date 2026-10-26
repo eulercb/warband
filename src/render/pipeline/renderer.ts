@@ -532,10 +532,8 @@ export class Renderer {
   }
 
   /**
-   * Subtle, local-only preview of the local player's MELEE basic attack area: a
-   * faint cone showing where a cleave lands. Ranged classes get no preview — the
-   * old "reticle line" from the hero to the pointer read as a rendering bug (and
-   * followed you around the menu playground), so it was removed.
+   * Local-only targeting: a faint melee cone and one ring per ready Claim target.
+   * Claim IDs come from the same authoritative query that gates the cast.
    */
   private drawAimPreview(state: RenderState): void {
     const g = this.aimLayer;
@@ -544,6 +542,32 @@ export class Renderer {
     if (localId == null) return;
     const p = state.players.find((pl) => pl.id === localId);
     if (!p || p.state !== 'alive') return;
+
+    const claimIds = new Set(
+      Object.entries(p.infernalClaimTargets ?? {})
+        .filter(
+          ([slot, id]) => id != null && (p.cooldowns[slot as keyof typeof p.cooldowns] ?? 0) <= 0,
+        )
+        .map(([, id]) => id),
+    );
+    for (const id of claimIds) {
+      const boss = state.bosses.find((b) => b.id === id);
+      const target = boss ?? state.adds.find((a) => a.id === id);
+      if (!target || target.hp <= 0) continue;
+      const pos = this.camera.worldToScreen(target.pos);
+      const radius =
+        ((boss ? getMonster(boss.monsterId).radius : ADD_RADIUS) + 9) * this.camera.scale;
+      g.circle(pos.x, pos.y, radius).stroke({ width: 2, color: 0xd59bff, alpha: 0.85 });
+      // Four short notches distinguish the target from ordinary ground circles.
+      for (let i = 0; i < 4; i++) {
+        const angle = (i * Math.PI) / 2;
+        const dx = Math.cos(angle),
+          dy = Math.sin(angle);
+        g.moveTo(pos.x + dx * (radius - 4), pos.y + dy * (radius - 4))
+          .lineTo(pos.x + dx * (radius + 4), pos.y + dy * (radius + 4))
+          .stroke({ width: 2, color: 0xd59bff, alpha: 0.85 });
+      }
+    }
 
     const ab = getClass(p.classId).abilities.basic;
     if (ab.kind !== 'meleeCone') return;

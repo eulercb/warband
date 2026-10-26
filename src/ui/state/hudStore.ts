@@ -11,6 +11,7 @@ import type {
   TerrainKind,
   BuffView,
   AffixId,
+  PlayerView,
 } from '../../engine/core/types';
 import type { InputSource } from '../../input/input';
 
@@ -61,6 +62,7 @@ export interface HudState {
   state: PlayerState;
   /** Remaining cooldown seconds per slot (0 = ready; sub1/sub2 present when bound). */
   cooldowns: Cooldowns;
+  infernalClaimTargets: NonNullable<PlayerView['infernalClaimTargets']>;
   /** Bound subclass-skill ids (drives the sub1/sub2 HUD buttons). */
   subSkills: string[];
   /** Owned classes for a multiclass hero (drives the swap indicator). */
@@ -105,6 +107,7 @@ const INITIAL: Omit<HudState, 'set' | 'resetHud'> = {
   maxHp: 1,
   state: 'alive',
   cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 },
+  infernalClaimTargets: {},
   subSkills: [],
   classes: [],
   potions: 0,

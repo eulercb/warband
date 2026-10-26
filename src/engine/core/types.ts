@@ -1256,6 +1256,9 @@ export interface PlayerView {
   state: PlayerState;
   cooldowns: Cooldowns;
   buffs: BuffView[];
+  /** Authoritative Claim target by active slot; null means no eligible aimed foe.
+   * Absent slots do not carry Infernal Claim. Shared by host/peer HUD and renderer. */
+  infernalClaimTargets?: Partial<Record<ExtSlot, EntityId | null>>;
   downedTimer: number;
   reviveProgress: number;
   castSlot: ExtSlot | null;

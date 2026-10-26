@@ -3540,6 +3540,12 @@ export class World {
   }
 
   private playerView(p: Player): PlayerView {
+    const infernalClaimTargets: NonNullable<PlayerView['infernalClaimTargets']> = {};
+    for (const slot of [...SLOTS, ...SUB_SLOTS]) {
+      const ab = abilityForSlot(p, slot);
+      if (ab?.infernalClaim)
+        infernalClaimTargets[slot] = findInfernalClaimTarget(this, p, ab)?.id ?? null;
+    }
     // item 2 — a knockback/pull now advances the authoritative `pos` over a few ticks
     // (world.stepShoves), so the slide replicates through the snapshot pipeline like
     // any other movement; no separate render offset is needed here.
@@ -3579,6 +3585,7 @@ export class World {
       moveSpeed: p.moveSpeed,
       state: p.state,
       cooldowns: { ...p.cooldowns },
+      ...(Object.keys(infernalClaimTargets).length ? { infernalClaimTargets } : {}),
       buffs: p.buffs.map(buffView),
       downedTimer: p.downedTimer,
       reviveProgress: p.reviveProgress,

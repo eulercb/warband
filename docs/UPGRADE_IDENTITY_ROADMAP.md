@@ -1,7 +1,8 @@
 # Upgrade identity: audit and staged redesign
 
-Current follow-up: [pilot coherence and compact grand selection](PILOT_COHERENCE_FOLLOWUP.md).
-The next class cohort is paused until this correction is live-tested. Apply the
+Current follow-up: [Infernal Claim targeting feedback](INFERNAL_CLAIM_READABILITY.md).
+The owner merged and live-tested [pilot coherence and compact grand selection](PILOT_COHERENCE_FOLLOWUP.md).
+The next content cohort is Knight/Barbarian/Monk. Apply the
 [combined-build design review gate](UPGRADE_REVIEW_GATE.md) to all remaining cohorts.
 
 Current content delivery: [Rogue/Warlock authored four-grand builds](PILOT_GRANDS.md).
