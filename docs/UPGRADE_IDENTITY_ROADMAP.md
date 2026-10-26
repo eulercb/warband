@@ -1,6 +1,6 @@
 # Upgrade identity: audit and staged redesign
 
-Current follow-up: [Infernal Claim targeting feedback](INFERNAL_CLAIM_READABILITY.md).
+Current follow-up: [Claim and Eldritch Blast visibility corrections](CLAIM_AND_FORK_VISIBILITY.md).
 The owner merged and live-tested [pilot coherence and compact grand selection](PILOT_COHERENCE_FOLLOWUP.md).
 The next content cohort is Knight/Barbarian/Monk. Apply the
 [combined-build design review gate](UPGRADE_REVIEW_GATE.md) to all remaining cohorts.

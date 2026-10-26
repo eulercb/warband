@@ -1519,10 +1519,11 @@ const GRAND: CharUpgradeDef[] = [
     'wa_grand_pact',
     'Pact of the Fiend',
     '😈',
-    'Eldritch Blast forks into two 18-damage bolts with +12% lifesteal',
+    'Eldritch Blast forks into two 18-damage bolts in a 12° fan with +12% lifesteal',
     ({ abilities: a }) => {
       addN(a.basic, 'damage', -4);
       addN(a.basic, 'projCount', 1);
+      a.basic.spreadDeg = Math.max(a.basic.spreadDeg ?? 0, 12);
       addN(a.basic, 'lifestealFrac', 0.12);
     },
   ),

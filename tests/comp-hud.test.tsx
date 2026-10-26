@@ -84,17 +84,26 @@ describe('<HUD>', () => {
     const { container } = render(<HUD />);
     const tile = container.querySelector('.hud-ability[aria-label*="Infernal Claim —"]')!;
     expect(tile.textContent).toContain('Need target');
+    expect(container.querySelector('.hud-claim-prompt')?.textContent).toContain(
+      'Check aim, range & curse',
+    );
     expect(tile.classList.contains('ready')).toBe(false);
     expect(tile.querySelector('.hud-cd-num')).toBeNull();
     expect(tile.getAttribute('title')).toMatch(/personally cursed aimed foe within \d+u/);
     act(() => useHudStore.getState().set({ infernalClaimTargets: { sub1: 99 } }));
     expect(tile.textContent).toContain('Target ready');
     expect(tile.classList.contains('ready')).toBe(true);
+    expect(tile.classList.contains('claim-ready')).toBe(true);
+    expect(container.querySelector('.hud-claim-prompt.ready')?.textContent).toContain(
+      'Infernal Claim READY',
+    );
     act(() =>
       useHudStore.getState().set({ cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0, sub1: 2 } }),
     );
     expect(tile.querySelector('.hud-claim-status')).toBeNull();
     expect(tile.querySelector('.hud-cd-num')?.textContent).toBe('2.0');
+    expect(container.querySelector('.hud-claim-prompt')).toBeNull();
+    expect(tile.classList.contains('claim-ready')).toBe(false);
     act(() =>
       useHudStore.getState().set({ state: 'downed', cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 } }),
     );

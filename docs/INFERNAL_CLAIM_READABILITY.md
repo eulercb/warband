@@ -1,5 +1,9 @@
 # Infernal Claim targeting feedback
 
+The owner found this first visual treatment insufficient in live play. See the
+[visibility correction](CLAIM_AND_FORK_VISIBILITY.md) for the stronger presentation
+and render-layer fix; the target-query/network contracts below still apply.
+
 Infernal Claim previously looked recharged even when it had no eligible target.
 The skill now exposes its actual selected target through the authoritative player
 snapshot, so host and joining-player displays use the same eligibility as casting.

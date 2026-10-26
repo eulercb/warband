@@ -180,6 +180,7 @@ function TouchButton({
       ref={ref}
       type="button"
       className={`wb-touch-btn wb-touch-btn-${kind}`}
+      data-claim-ready={alive && !cooling && claimTarget != null ? true : undefined}
       title={claimTarget !== undefined && ability ? describeAbility(ability) : undefined}
       aria-hidden="true"
     >

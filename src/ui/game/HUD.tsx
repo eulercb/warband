@@ -176,7 +176,11 @@ function AbilityIcon({
   // current upgraded values since `def` comes from the resolved ability table.
   const tip = `${name} — ${describeAbility({ ...def, slot }, mods)}${claimStatus ? ` · ${claimStatus}` : ''}`;
   return (
-    <div className={`hud-ability${ready ? ' ready' : ''}`} title={tip} aria-label={tip}>
+    <div
+      className={`hud-ability${ready ? ' ready' : ''}${claimStatus === 'Target ready' && !cooling ? ' claim-ready' : ''}`}
+      title={tip}
+      aria-label={tip}
+    >
       <div
         className={`hud-ability-key${source === 'gamepad' ? ' pad' : ''}${
           label.length > 5 ? ' long' : ''
@@ -286,6 +290,11 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
     ? `L-stick move · R-stick aim · ${padLabelFor('basic')} basic · ${abilityGlyphs} abilities · ${padLabelFor('revive')} revive · ${padIndexToLabel(9)} menu`
     : 'WASD move · Mouse aim · LMB basic · Q/E/R abilities · F revive · Esc menu';
 
+  const claimSlots = Object.entries(hud.infernalClaimTargets).filter(
+    ([slot]) => (hud.cooldowns[slot as keyof typeof hud.cooldowns] ?? 0) <= 0,
+  );
+  const claimReady = claimSlots.some(([, target]) => target != null);
+
   return (
     <div className="hud-root">
       {/* Touch pause button — the mobile overlay's only way into the pause menu. */}
@@ -378,6 +387,12 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
 
       {/* Local health + abilities */}
       <div className="hud-bottom">
+        {hud.state === 'alive' && claimSlots.length > 0 && (
+          <div className={`hud-claim-prompt${claimReady ? ' ready' : ''}`}>
+            <strong>{claimReady ? 'Infernal Claim READY' : 'Infernal Claim: no target'}</strong>
+            <span>{claimReady ? 'Cast at the marked foe' : 'Check aim, range & curse'}</span>
+          </div>
+        )}
         <div className={`hud-selfhp cls-${hud.classId ?? 'knight'}`}>
           <div className="hud-self-row">
             <BuffChips buffs={hud.buffs} />
