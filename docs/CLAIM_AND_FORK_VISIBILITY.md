@@ -1,5 +1,9 @@
 # Claim and Eldritch Blast visibility corrections
 
+The owner found the target ring insufficient in live play. Its replacement is
+documented in [Claim's opportunity marker](CLAIM_OPPORTUNITY_MARKER.md); the button
+feedback and Eldritch Blast correction below remain in effect.
+
 The owner could not perceive Infernal Claim's first readiness cue in live play.
 The eligibility data was present, but its thin ring sat below actors and combat
 effects, and the button text was only 8px. The earlier browser assertion checked
