@@ -1,6 +1,6 @@
 # Upgrade identity: audit and staged redesign
 
-Current follow-up: [Claim and Eldritch Blast visibility corrections](CLAIM_AND_FORK_VISIBILITY.md).
+Current follow-up: [Claim's distinct opportunity marker](CLAIM_OPPORTUNITY_MARKER.md).
 The owner merged and live-tested [pilot coherence and compact grand selection](PILOT_COHERENCE_FOLLOWUP.md).
 The next content cohort is Knight/Barbarian/Monk. Apply the
 [combined-build design review gate](UPGRADE_REVIEW_GATE.md) to all remaining cohorts.

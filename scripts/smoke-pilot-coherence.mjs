@@ -136,6 +136,12 @@ try {
             if (claimReadyState) {
               renderer.render({ ...claimReadyState, localPlayerId: p.id, arena: w.arena });
               contracts.readyMarkerDraws = renderer.claimLayer.context.instructions.length;
+              contracts.opaqueOpportunityBadges = renderer.claimLayer.context.instructions.filter(
+                (i) =>
+                  i.action === 'fill' &&
+                  i.data.style.color === 0xffd66b &&
+                  i.data.style.alpha === 1,
+              ).length;
               contracts.markerAboveEffects =
                 renderer.root.getChildIndex(renderer.claimLayer) >
                 renderer.root.getChildIndex(renderer.enemyStatusLayer);
@@ -164,6 +170,11 @@ try {
           assert.equal(result.ward, true);
           assert.equal(result.remoteCue, true);
           assert.ok(result.readyMarkerDraws > 0, 'Eligible Claim target has a visible marker');
+          assert.equal(
+            result.opaqueOpportunityBadges,
+            1,
+            'One solid badge marks the actionable target',
+          );
           assert.equal(
             result.markerAboveEffects,
             true,

@@ -2,6 +2,7 @@ import { drawMoonBear } from './moonFormVisuals';
 import { drawCompanion } from './companionVisuals';
 import { drawTauntState } from './defenseVisuals';
 import { ADD_RADIUS } from '../../engine/core/constants';
+import { drawOpportunityMarker } from '../overlays/opportunityMarker';
 import { drawEnemyDebuffs } from './enemyDebuffs';
 /**
  * Warband — PixiJS v8 renderer.
@@ -534,7 +535,7 @@ export class Renderer {
   }
 
   /**
-   * Local-only targeting: a faint melee cone and one ring per ready Claim target.
+   * Local-only targeting: a faint melee cone and one opportunity badge per Claim target.
    * Claim IDs come from the same authoritative query that gates the cast.
    */
   private drawAimPreview(state: RenderState): void {
@@ -559,24 +560,14 @@ export class Renderer {
       const target = boss ?? state.adds.find((a) => a.id === id);
       if (!target || target.hp <= 0) continue;
       const pos = this.camera.worldToScreen(target.pos);
-      const radius = Math.max(
-        24,
-        ((boss ? getMonster(boss.monsterId).radius : ADD_RADIUS) + 13) * this.camera.scale,
+      drawOpportunityMarker(
+        claim,
+        {
+          ...pos,
+          radius: (boss ? getMonster(boss.monsterId).radius : ADD_RADIUS) * this.camera.scale,
+        },
+        { w: this.app.screen.width, h: this.app.screen.height },
       );
-      // A dark backing plus white/violet edges stays readable on bright zones.
-      claim.circle(pos.x, pos.y, radius).stroke({ width: 7, color: 0x140821, alpha: 0.95 });
-      claim.circle(pos.x, pos.y, radius).stroke({ width: 4, color: 0xea9cff, alpha: 1 });
-      claim.circle(pos.x, pos.y, radius + 4).stroke({ width: 1.5, color: 0xffffff, alpha: 1 });
-      // Four short notches distinguish the target from ordinary ground circles.
-      for (let i = 0; i < 4; i++) {
-        const angle = (i * Math.PI) / 2;
-        const dx = Math.cos(angle),
-          dy = Math.sin(angle);
-        claim
-          .moveTo(pos.x + dx * (radius - 7), pos.y + dy * (radius - 7))
-          .lineTo(pos.x + dx * (radius + 8), pos.y + dy * (radius + 8))
-          .stroke({ width: 4, color: 0xffffff, alpha: 1 });
-      }
     }
 
     const ab = getClass(p.classId).abilities.basic;
