@@ -7,7 +7,11 @@ const browser = await chromium.launch({
 });
 try {
   for (const width of [1280, 320]) {
-    for (const subclassId of ['ro_assassin', 'ro_trickster', 'wa_fiend', 'wa_great_old_one']) {
+    const subclasses =
+      process.env.SMOKE_GRAND_COHORT === 'martial'
+        ? ['kn_champion', 'kn_battlemaster', 'bb_berserker', 'bb_totem', 'mo_openhand', 'mo_shadow']
+        : ['ro_assassin', 'ro_trickster', 'wa_fiend', 'wa_great_old_one'];
+    for (const subclassId of subclasses) {
       const page = await browser.newPage({
         viewport: { width, height: width === 320 ? 568 : 800 },
         isMobile: width === 320,
@@ -18,7 +22,7 @@ try {
       await page.route('**/__pilot-grands', (route) =>
         route.fulfill({
           contentType: 'text/html',
-          body: '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:12px;box-sizing:border-box}#root{max-width:900px;margin:auto}</style><div id="root"></div>',
+          body: '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{height:auto!important;overflow:visible!important}body{margin:0;padding:12px;box-sizing:border-box}#root{max-width:900px;margin:auto}</style><div id="root"></div>',
         }),
       );
       await page.goto(`${process.env.SMOKE_DEV_URL || 'http://127.0.0.1:5173'}/__pilot-grands`);
@@ -67,8 +71,20 @@ try {
         return {
           classId,
           ids: [
-            classId === 'rogue' ? 'ro_gk_basic_b' : 'wa_grand_pact',
-            classId === 'rogue' ? 'ro_gk_a1_a' : 'wa_gk_a1_a',
+            {
+              rogue: 'ro_gk_basic_b',
+              warlock: 'wa_grand_pact',
+              knight: 'kn_gk_basic_a',
+              barbarian: 'bb_gk_basic_b',
+              monk: 'mo_gk_basic_b',
+            }[classId],
+            {
+              rogue: 'ro_gk_a1_a',
+              warlock: 'wa_gk_a1_a',
+              knight: 'kn_gk_a1_a',
+              barbarian: 'bb_gk_a1_a',
+              monk: 'mo_gk_a1_a',
+            }[classId],
             `${context.subSkills[0]}_g`,
             `${subclassId}_g_a`,
           ],
@@ -148,6 +164,7 @@ try {
       if (process.env.SHOT_DIR)
         await page.screenshot({
           path: `${process.env.SHOT_DIR}/grands-${subclassId}-${width}.png`,
+          fullPage: true,
         });
       console.log(
         `PASS ${width}px ${subclassId}: four slots, identity bank/replacement, actual kit and Haste bounds`,

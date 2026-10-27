@@ -195,6 +195,13 @@ function applyDashLanding(world: World, p: Player, ab: PlayerAbilityDef): void {
   }
 }
 
+/** Native mobility uses the same authored self-speed payload as composed buffs. */
+function mobilitySpeed(world: World, p: Player, ab: PlayerAbilityDef): void {
+  if (!ab.buffMoveMult) return;
+  applyBuff(p, makeBuff('moveSpeed', ab.buffMoveMult, ab.buffDuration ?? 4, 'mobilityMove'));
+  supportCue(world, p, p, 'haste');
+}
+
 /**
  * Begin a dash-nature GLIDE (item 2): the escape effects that fire ON USE — i-frames
  * (extended to cover the whole slide so the hero is never exposed mid-dash) and the
@@ -219,6 +226,8 @@ function startGlide(
     applyBuff(p, makeBuff('invuln', 0, dur, 'dash'));
   }
   if (fireHeal && ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
+  if (fireHeal) mobilitySpeed(world, p, ab);
+  if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
   prepareMartialFlow(p, ab);
   world.events.push({ t: 'dodge', id: p.id, pos: { ...p.pos } });
   p.glide = { dir: d, remaining: range, leap: ab.leap === true, ab };
@@ -590,6 +599,7 @@ export function resolvePlayerAbility(
       prepareSpellSurge(p, ab);
       prepareMartialFlow(p, ab);
       if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
+      mobilitySpeed(world, p, ab);
       world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
       break;
     }

@@ -143,8 +143,10 @@ describe('charUpgrades: catalog shape', () => {
     for (const d of HYBRID_UPGRADES) expect(d.classId).toBe('any');
     // Pilot whole-class entries folded into their single-skill base choices.
     for (const c of CLASS_IDS) {
-      expect(GRAND_BY_CLASS[c]).toHaveLength(c === 'rogue' || c === 'warlock' ? 1 : 2);
-      for (const d of GRAND_BY_CLASS[c]) expect(d.maxStacks).toBe(1);
+      expect(GRAND_BY_CLASS[c] ?? []).toHaveLength(
+        ['knight', 'barbarian', 'monk'].includes(c) ? 0 : c === 'rogue' || c === 'warlock' ? 1 : 2,
+      );
+      for (const d of GRAND_BY_CLASS[c] ?? []) expect(d.maxStacks).toBe(1);
     }
     expect(HYBRID_OFFER_CHANCE).toBeCloseTo(0.45, 5);
     expect(REOFFER_CHANCE).toBeCloseTo(0.5, 5);

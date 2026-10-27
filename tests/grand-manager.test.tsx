@@ -130,7 +130,10 @@ it('labels an authored individual-skill option separately from identity grands',
   };
   try {
     render(<Harness />);
-    expect(screen.getByRole('option', { name: /Subclass skill/ })).toBeTruthy();
+    expect(
+      screen.getByRole<HTMLOptionElement>('option', { name: 'Unbroken Champion (Subclass skill)' })
+        .value,
+    ).toBe('testGrand');
     unlock('testGrand');
     expect(screen.getByRole('status').textContent).toContain('1/4 equipped');
   } finally {

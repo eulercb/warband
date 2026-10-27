@@ -72,23 +72,26 @@ describe('versioned grand selection and ownership', () => {
     expect(normalizeGrandLoadout(state, reclaimed).classes.knight!.bank).toContain(graftGrand.id);
     const restored = { ...reclaimed, history: [...reclaimed.history, 'hy_pyromancer'] };
     expect(grandEligible(graftGrand.id, 'knight', restored)).toBe(true);
-    const twoVariants = earned(['kn_gk_basic_a', 'kn_gk_basic_b']);
-    expect(twoVariants.classes.knight!.equipped).toEqual(['kn_gk_basic_a']);
+    const twoVariants = normalizeGrandLoadout(undefined, {
+      ...context,
+      history: ['mg_gk_basic_a', 'mg_gk_basic_b'],
+    });
+    expect(twoVariants.classes.mage!.equipped).toEqual(['mg_gk_basic_a']);
     expect(
       changeGrand(twoVariants, context, {
-        classId: 'knight',
-        id: 'kn_gk_basic_b',
+        classId: 'mage',
+        id: 'mg_gk_basic_b',
         action: 'unequip',
       }),
     ).toBeNull();
     expect(
       changeGrand(twoVariants, context, {
-        classId: 'knight',
-        id: 'kn_gk_basic_b',
+        classId: 'mage',
+        id: 'mg_gk_basic_b',
         action: 'equip',
-        replace: 'kn_gk_basic_a',
-      })!.classes.knight!.equipped,
-    ).toEqual(['kn_gk_basic_b']);
+        replace: 'mg_gk_basic_a',
+      })!.classes.mage!.equipped,
+    ).toEqual(['mg_gk_basic_b']);
   });
   it('reserves independent individual-skill and identity buckets, with the correct bound recipient', () => {
     const identity = CHAR_UPGRADES.kn_champion_g_a;
@@ -141,34 +144,36 @@ describe('versioned grand selection and ownership', () => {
   it('migrates accumulated legacy power into bounded selections without deleting earned options', () => {
     const ctx = {
       ...context,
+      subSkills: ['mg_evoker_lightning'],
       history: [
-        'kn_grand_immovable',
-        'kn_grand_wrath',
-        ...base,
-        'kn_gk_a2_a',
-        'kn_champion_g_a',
-        'kn_bulwark',
+        'mg_grand_archmage',
+        'mg_grand_cataclysm',
+        'mg_gk_basic_a',
+        'mg_gk_a1_a',
+        'mg_gk_a2_a',
+        'mg_evoker_g_a',
+        'mg_freeze',
         'ghost',
       ],
     };
     const state = normalizeGrandLoadout(undefined, ctx);
-    expect(state.classes.knight!.equipped).toHaveLength(3);
-    expect(state.classes.knight!.bank).toHaveLength(6);
-    expect(state.classes.knight!.equipped).toContain('kn_grand_immovable');
+    expect(state.classes.mage!.equipped).toHaveLength(3);
+    expect(state.classes.mage!.bank).toHaveLength(6);
+    expect(state.classes.mage!.equipped).toContain('mg_grand_archmage');
     expect(
       changeGrand(state, ctx, {
-        classId: 'knight',
-        id: 'kn_champion_g_a',
+        classId: 'mage',
+        id: 'mg_evoker_g_a',
         action: 'equip',
-        replace: 'kn_grand_immovable',
+        replace: 'mg_grand_archmage',
       }),
     ).not.toBeNull();
     expect(normalizeGrandLoadout(state, ctx)).toEqual(state);
-    expect(grandHistory('knight', ctx.history, state, ctx.subSkills)).toContain('kn_bulwark');
-    expect(grandHistory('mage', ctx.history, state, ctx.subSkills)).not.toContain(
-      'kn_grand_immovable',
+    expect(grandHistory('mage', ctx.history, state, ctx.subSkills)).toContain('mg_freeze');
+    expect(grandHistory('knight', ctx.history, state, ctx.subSkills)).not.toContain(
+      'mg_grand_archmage',
     );
-    expect(grandHistory('knight', ctx.history, undefined)).toEqual(ctx.history);
+    expect(grandHistory('mage', ctx.history, undefined)).toEqual(ctx.history);
   });
   it('rejects duplicates, unearned swaps, forged classes and malformed requests atomically', () => {
     const state = earned();
@@ -192,7 +197,7 @@ describe('versioned grand selection and ownership', () => {
       changeGrand(
         state,
         { ...context, subSkills: [] },
-        { classId: 'knight', id: 'kn_grand_immovable', action: 'earn' },
+        { classId: 'knight', id: 'kn_champion_g_a', action: 'earn' },
         true,
       ),
     ).toBeNull();
@@ -233,8 +238,8 @@ describe('production active-class effects', () => {
   });
   it('changes legacy stat overlays with class and preserves health across closed swap cycles', () => {
     const ctx: GrandContext = {
-      classes: ['knight', 'mage'],
-      history: ['kn_grand_immovable', 'mg_grand_archmage'],
+      classes: ['paladin', 'mage'],
+      history: ['pa_grand_aegis', 'mg_grand_archmage'],
       subSkills: [],
     };
     const state = normalizeGrandLoadout(undefined, ctx);
@@ -245,7 +250,7 @@ describe('production active-class effects', () => {
         {
           peerId: 'a',
           name: 'A',
-          classId: 'knight',
+          classId: 'paladin',
           extraClasses: ['mage'],
           charUpgrades: [...ctx.history],
           grandLoadout: state,
@@ -256,15 +261,15 @@ describe('production active-class effects', () => {
     const p = w.players[0];
     p.hp = p.maxHp * 0.4;
     const initial = { hp: p.hp, maxHp: p.maxHp, damage: p.damageMult, cast: p.castMult };
-    expect(p.damageTakenMult).toBeCloseTo(0.6);
+    expect(p.damageTakenMult).toBeCloseTo(0.8);
     for (let i = 0; i < 10; i++) {
       w.setActiveClass(p, 'mage');
       expect(p.damageTakenMult).toBe(1);
       expect(p.damageMult).toBeCloseTo(1.3);
       expect(p.castMult).toBeCloseTo(0.4);
       expect(p.hp / p.maxHp).toBeCloseTo(0.4);
-      expect(p.charUpgradeIds).not.toContain('kn_grand_immovable');
-      w.setActiveClass(p, 'knight');
+      expect(p.charUpgradeIds).not.toContain('pa_grand_aegis');
+      w.setActiveClass(p, 'paladin');
     }
     expect(p.hp).toBeCloseTo(initial.hp);
     expect(p.maxHp).toBe(initial.maxHp);
@@ -307,7 +312,17 @@ it.each(CLASS_IDS)(
 );
 
 it('uses the identity health for HP-based grand regeneration when another class is activated', () => {
-  const history = ['kn_grand_immovable'];
+  // No authored martial identity grants passive regeneration now; retain this
+  // stat-overlay contract with an explicit HP-based grand effect.
+  CHAR_UPGRADES.testGrand = {
+    ...CHAR_UPGRADES.pa_grand_aegis,
+    classId: 'knight',
+    id: 'testGrand',
+    apply: ({ player }) => {
+      player.regenPerSec += player.maxHp * 0.02;
+    },
+  };
+  const history = ['testGrand'];
   const state = normalizeGrandLoadout(undefined, {
     classes: ['mage', 'knight'],
     history,

@@ -1,4 +1,4 @@
-/** Current canonical cadence/geometry, with/without Haste. All current grands are a legal legacy stress profile. */
+/** Current canonical cadence/geometry, with/without Haste. All current grands are earned, then legal slots are normalized. */
 import { createServer } from 'vite';
 import { writeFileSync, readFileSync } from 'node:fs';
 import { format } from 'prettier';
@@ -89,7 +89,9 @@ try {
   for (const row of rows) {
     const key = JSON.stringify([
       row.classId,
-      ['rogue', 'warlock'].includes(row.classId) ? row.subclass : null,
+      ['rogue', 'warlock', 'knight', 'barbarian', 'monk'].includes(row.classId)
+        ? row.subclass
+        : null,
       row.rank,
       row.hasteRanks,
       row.allCurrentGrands,
@@ -101,14 +103,15 @@ try {
       throw new Error(`Context-dependent base recharge: ${key}`);
     if (!previous) {
       const base = { ...row };
-      if (!['rogue', 'warlock'].includes(row.classId)) delete base.subclass;
+      if (!['rogue', 'warlock', 'knight', 'barbarian', 'monk'].includes(row.classId))
+        delete base.subclass;
       delete base.chosenSkill;
       unique.set(key, row.slot === 'sub1' ? row : base);
     }
   }
   const result = {
-    baseline: '62c89e6 plus Rogue/Warlock grand content redesign',
-    note: 'Canonical single-class profiles with 0/5 Haste, 0/1/3/5 ordinary ranks and with/without all current native grands. Effective cooldown includes protected recovery. Raw reductions are not usable cooldowns. No live input/refund/Forge simulation.',
+    baseline: 'a43d7d6 plus martial grand content redesign',
+    note: 'Canonical single-class profiles with 0/5 Haste, 0/1/3/5 ordinary ranks and with/without earning all current native grands (equipped effects obey legal slots). Effective cooldown includes protected recovery. Raw reductions are not usable cooldowns. No live input/refund/Forge simulation.',
     observations: rows.length,
     rows: [...unique.values()],
   };
