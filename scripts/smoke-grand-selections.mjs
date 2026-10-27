@@ -140,6 +140,7 @@ try {
         selected: state.myGrandLoadout.classes.knight.equipped,
         bank: state.myGrandLoadout.classes.knight.bank,
         guard: p.abilities.a2.frontGuard.charges,
+        ward: p.abilities.a2.allyWard,
         skills: p.subSkillIds,
         overflow: document.documentElement.scrollWidth > innerWidth + 1,
       };
@@ -148,7 +149,8 @@ try {
     });
     assert.deepEqual(final.selected, ['kn_gk_basic_a', 'kn_gk_a2_a']);
     assert.equal(final.bank.length, 3);
-    assert.ok(final.guard > 2);
+    assert.equal(final.guard, 2);
+    assert.deepEqual(final.ward, { range: 180, mult: 0.8, duration: 4 });
     assert.ok(final.skills.includes('kn_champion_slam'));
     assert.equal(final.overflow, false);
     assert.deepEqual(errors, []);
