@@ -48,6 +48,9 @@ jobs:
       - name: Typecheck (tsc --noEmit)
         run: npm run typecheck
 
+      - name: CI completion automation contracts
+        run: node scripts/ci-completion.test.mjs
+
       - name: Upgrade inventory replay
         run: node scripts/audit-upgrade-catalogue.mjs --check
 
@@ -163,7 +166,7 @@ jobs:
   passive-smoke:
     name: Subclass passives (${{ matrix.cohort }})
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -186,6 +189,7 @@ jobs:
       - run: npx playwright-core install --with-deps chromium
       - run: npm run build
       - name: Passive keyboard and touch loadouts
+        timeout-minutes: 12
         env:
           SMOKE_PASSIVE_NAMES: ${{ matrix.names }}
         run: |
@@ -212,7 +216,7 @@ jobs:
   martial-smoke:
     name: Martial classes (desktop and touch)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -228,6 +232,7 @@ jobs:
       - name: Build
         run: npm run build
       - name: Martial keyboard and touch casting
+        timeout-minutes: 15
         run: |
           export SHOT_DIR="$RUNNER_TEMP/martial-shots"
           mkdir -p "$SHOT_DIR"
@@ -252,7 +257,7 @@ jobs:
   caster-defense-smoke:
     name: Caster defense (desktop and touch)
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -268,6 +273,7 @@ jobs:
       - name: Build
         run: npm run build
       - name: Caster defense keyboard and touch casting
+        timeout-minutes: 12
         run: |
           export SHOT_DIR="$RUNNER_TEMP/caster-shots"
           mkdir -p "$SHOT_DIR"
@@ -294,7 +300,7 @@ jobs:
       matrix:
         cohort: [first, remaining]
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -310,6 +316,7 @@ jobs:
       - name: Build
         run: npm run build
       - name: Defensive identity keyboard and touch casting
+        timeout-minutes: 12
         run: |
           export SHOT_DIR="$RUNNER_TEMP/defense-shots"
           mkdir -p "$SHOT_DIR"
