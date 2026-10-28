@@ -483,16 +483,18 @@ it('real projectile and add attack paths supply direction while ground pools byp
 });
 
 it.each(['kn_gk_a2_a', 'kn_gk_a2_b', 'pa_gk_a3_a', 'pa_gk_a3_b'])(
-  'skill grand %s improves the new effect without resurrecting percentage defense',
+  'skill grand %s retains native protection and adds its authored defense',
   (id) => {
     const { p } = setup(id.startsWith('kn') ? 'knight' : 'paladin');
     applyCharUpgrades(p, [id]);
     const ab = p.abilities![id.startsWith('kn') ? 'a2' : 'a3'];
-    expect(ab.buffDefMult).toBeUndefined();
     if (id.startsWith('kn')) {
-      expect(ab.frontGuard!.charges).toBeGreaterThan(2);
-      expect(ab.frontGuard!.duration).toBeGreaterThan(4);
+      expect(ab.frontGuard!.charges).toBe(2);
+      expect(ab.frontGuard!.duration).toBe(4);
+      expect(ab.allyWard).toEqual({ range: 180, mult: 0.8, duration: 4 });
+      expect(ab.buffDefMult).toBe(0.8);
     } else {
+      expect(ab.buffDefMult).toBeUndefined();
       expect(ab.iframes).toBeGreaterThan(1.25);
       expect(ab.iframes).toBeLessThanOrEqual(2);
       expect(ab.paladinAura!.duration).toBeGreaterThan(5);

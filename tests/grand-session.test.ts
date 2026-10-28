@@ -118,7 +118,7 @@ it('allows an earned alternative after a defeat and carries the replacement into
   host = new Host({
     code: 'TESTAA',
     name: 'A',
-    classId: 'knight',
+    classId: 'mage',
     monsterId: 'lich',
     onLobby: vi.fn(),
     onResult: vi.fn(),
@@ -127,7 +127,7 @@ it('allows an earned alternative after a defeat and carries the replacement into
       grandLoadout: {
         version: 1,
         classes: {
-          knight: { bank: ['kn_gk_basic_a', 'kn_gk_basic_b'], equipped: ['kn_gk_basic_a'] },
+          mage: { bank: ['mg_gk_basic_a', 'mg_gk_basic_b'], equipped: ['mg_gk_basic_a'] },
         },
       },
     }),
@@ -135,14 +135,14 @@ it('allows an earned alternative after a defeat and carries the replacement into
   host.startFight();
   host.endRun('defeat');
   host.chooseGrand({
-    classId: 'knight',
-    id: 'kn_gk_basic_b',
+    classId: 'mage',
+    id: 'mg_gk_basic_b',
     action: 'equip',
-    replace: 'kn_gk_basic_a',
+    replace: 'mg_gk_basic_a',
   });
-  expect(states.mock.lastCall![0].classes.knight!.equipped).toEqual(['kn_gk_basic_b']);
+  expect(states.mock.lastCall![0].classes.mage!.equipped).toEqual(['mg_gk_basic_b']);
   host.retryFight();
-  expect(states.mock.lastCall![0].classes.knight!.equipped).toEqual(['kn_gk_basic_b']);
+  expect(states.mock.lastCall![0].classes.mage!.equipped).toEqual(['mg_gk_basic_b']);
   expect(states.mock.lastCall![1]).toBe(false);
 });
 

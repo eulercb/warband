@@ -1,8 +1,11 @@
 # Rogue and Warlock: authored four-grand builds
 
-Current follow-up: [pilot coherence and compact grand selection](PILOT_COHERENCE_FOLLOWUP.md).
-The next class cohort is paused until this correction is live-tested. Apply the
-[combined-build design review gate](UPGRADE_REVIEW_GATE.md) to all remaining cohorts.
+Current delivery: [Knight/Barbarian/Monk authored builds](MARTIAL_GRANDS.md).
+Rogue/Warlock and [their coherence follow-up](PILOT_COHERENCE_FOLLOWUP.md) are
+merged/live-tested. The owner also accepted the Claim opportunity marker.
+Mechanics below describe the initial pilot; the coherence follow-up records its
+later revisions. Apply the [combined-build review gate](UPGRADE_REVIEW_GATE.md)
+to remaining cohorts.
 
 Follows merged/live-tested grand-selection framework PR #134. This is the first
 content cohort, not completion of the twelve-class redesign. Rogue and Warlock now

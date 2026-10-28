@@ -187,7 +187,9 @@ describe('describeAbility (slot-less subclass skills + edge shapes)', () => {
   it('accepts a subclass skill ability (which carries no slot)', () => {
     const earthshaker = getSubSkill('kn_champion_slam');
     expect(earthshaker).toBeTruthy();
-    expect(describeAbility(earthshaker!.ability)).toBe('40 dmg · 150u radius · 8s cooldown');
+    expect(describeAbility(earthshaker!.ability)).toBe(
+      '40 dmg · 180u reach · 60° arc · knock back 110u · 8s cooldown',
+    );
   });
 
   it('a slow without a duration omits the "for Ns" tail', () => {

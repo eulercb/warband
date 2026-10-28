@@ -186,8 +186,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'kn_champion_slam',
           'Earthshaker',
           '💥',
-          'Slam a 150u ring for 40 damage',
-          nova('Earthshaker', 8, 40, 150),
+          'Aim a 180u shockwave for 40 damage, pushing struck foes back 110u',
+          cone('Earthshaker', 8, 40, 180, 30, { knockback: 110 }),
         ),
         sk(
           'kn_champion_charge',
@@ -1064,8 +1064,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'mo_openhand_wave',
           'Wave Palm',
           '🌊',
-          'A 150u palm-wave for 34',
-          nova('Wave Palm', 7, 34, 150, { stun: 0.5, consumesFlow: true }),
+          'Aim a 220u palm-wave for 34, pushing foes back 100u; Flow extends its reach',
+          cone('Wave Palm', 7, 34, 220, 25, { knockback: 100, consumesFlow: true }),
         ),
         sk(
           'mo_openhand_wind',

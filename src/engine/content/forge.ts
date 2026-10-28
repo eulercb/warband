@@ -1274,10 +1274,11 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'guard':
       return kind === 'selfBuff' || kind === 'heal' || kind === 'taunt';
     case 'cleanse':
-    case 'steadfast':
       return kind === 'selfBuff' || kind === 'heal';
+    case 'steadfast':
+      return ['selfBuff', 'heal', 'dash', 'blink', 'taunt'].includes(kind);
     case 'frontGuard':
-      return kind === 'selfBuff' || kind === 'taunt';
+      return ['selfBuff', 'taunt', 'dash', 'blink'].includes(kind);
     case 'mirrorImages':
     case 'bloodRage':
     case 'wolfHunt':
@@ -1304,7 +1305,10 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
         kind === 'buffAlly' ||
         kind === 'heal' ||
         kind === 'meleeCone' ||
-        kind === 'pbaoe'
+        kind === 'pbaoe' ||
+        kind === 'dash' ||
+        kind === 'blink' ||
+        kind === 'taunt'
       );
     case 'relayHeal':
     case 'rescueStrike':
@@ -1325,8 +1329,9 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'prepareSurge':
       return kind === 'blink' || kind === 'selfBuff' || kind === 'groundZone';
     case 'prepareCrit':
-      return kind === 'blink' || kind === 'selfBuff' || kind === 'groundZone';
+      return ['dash', 'blink', 'selfBuff', 'groundZone'].includes(kind);
     case 'warCry':
+      return kind === 'selfBuff' || kind === 'taunt';
     case 'venomCoating':
     case 'closeBurst':
       return kind === 'selfBuff';

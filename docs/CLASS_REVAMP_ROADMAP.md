@@ -1,22 +1,14 @@
 # Class identity and subclass roadmap
 
-Current follow-up: [pilot coherence and compact grand selection](PILOT_COHERENCE_FOLLOWUP.md).
-The next class cohort is paused until this correction is live-tested. Apply the
-[combined-build design review gate](UPGRADE_REVIEW_GATE.md) to all remaining cohorts.
+Current upgrade delivery: [Knight/Barbarian/Monk authored builds](MARTIAL_GRANDS.md).
+The owner accepted the Claim opportunity marker and authorized this cohort.
+Five classes now have authored upgrade/grand content; Ranger/Druid,
+Mage/Sorcerer and Cleric/Paladin/Bard remain, followed by whole-system review.
+Use the [combined-build review gate](UPGRADE_REVIEW_GATE.md) and retain the
+live-tested shared recharge/geometry limits during the redesign.
 
-Upgrade content milestone: [authored Rogue/Warlock grands](PILOT_GRANDS.md).
-Next is the martial upgrade/grand cohort; the remaining cohorts and final review
-are listed in that delivery. Current cadence/range limits remain through the redesign.
-
-Current delivery: [grand selection framework and earlier rewards](GRAND_SELECTIONS.md).
-Recharge/range foundations (PR #133) are merged and live-tested; the owner reports
-that their limits feel good. Reassess them after content reworks replace excess
-cooldown/range/area/duration growth. The per-class bank and 2/1/1 capacity are now
-implemented with existing content and an explicit legacy bridge; individual
-subclass-skill grand content is still pending. Next: Rogue/Warlock pilot retouches,
-then remaining cohorts and a whole-system review. Roughly five to seven content
-and review PRs remain, adjusting cohort size to reviewability. Earlier sequences
-and tables below are historical; the linked delivery describes current behavior.
+The original class/passive stages below are historical. Current upgrade work and
+milestones are tracked in [the upgrade roadmap](UPGRADE_IDENTITY_ROADMAP.md).
 
 ## Goals and boundaries
 

@@ -1,25 +1,17 @@
 # Upgrade identity: audit and staged redesign
 
-Current follow-up: [Claim's distinct opportunity marker](CLAIM_OPPORTUNITY_MARKER.md).
-The owner merged and live-tested [pilot coherence and compact grand selection](PILOT_COHERENCE_FOLLOWUP.md).
-The next content cohort is Knight/Barbarian/Monk. Apply the
-[combined-build design review gate](UPGRADE_REVIEW_GATE.md) to all remaining cohorts.
+Current delivery: [Knight/Barbarian/Monk authored upgrades and grands](MARTIAL_GRANDS.md).
+The owner accepted the Claim opportunity marker and authorized this cohort.
+Five of twelve classes now have authored four-grand builds. Next: Ranger/Druid,
+Mage/Sorcerer, Cleric/Paladin/Bard, then a whole-system review. Apply the
+[combined-build review gate](UPGRADE_REVIEW_GATE.md) throughout.
 
-Current content delivery: [Rogue/Warlock authored four-grand builds](PILOT_GRANDS.md).
-Those two classes now have individual skill grands and whole-kit identities; other
-classes retain the transitional catalogue described below. Next is the martial
-cohort (Knight/Barbarian/Monk), followed by the remaining class cohorts and review.
-Earlier counts and missing-fourth-slot statements below describe PR #134.
-
-Current delivery: [grand selection framework and earlier rewards](GRAND_SELECTIONS.md).
-Recharge/range foundations (PR #133) are merged and live-tested; the owner reports
-that their limits feel good. Reassess them after content reworks replace excess
-cooldown/range/area/duration growth. The per-class bank and 2/1/1 capacity are now
-implemented with existing content and an explicit legacy bridge; individual
-subclass-skill grand content is still pending. Next: Rogue/Warlock pilot retouches,
-then remaining cohorts and a whole-system review. Roughly five to seven content
-and review PRs remain, adjusting cohort size to reviewability. Earlier sequences
-and tables below are historical; the linked delivery describes current behavior.
+The merged grand-selection framework retains per-class earned banks and explicit
+between-fight swaps: two starting-skill slots, one bound subclass skill and one
+identity. The live-tested cooldown/range/area/duration foundation remains in place;
+reassess it after content replaces excess growth. Historical audit snapshots and
+proposals below provide context; the linked delivery and generated inventory give
+current behavior/counts.
 
 ## Prerequisite: approved class-coherence retouches
 

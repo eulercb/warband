@@ -507,7 +507,7 @@ describe('<ResultScreen> branch coverage', () => {
 
       const cards = charCards(container);
       expect(cards.length).toBe(1); // the bogus offer contributed no card
-      expect(cards[0].textContent ?? '').toContain('Immovable Object');
+      expect(cards[0].textContent ?? '').toContain('Aegis Eternal');
       // The character-pick heading still renders (we DID map the offers).
       expect(screen.getByText('Choose a Knight upgrade')).toBeTruthy();
     } finally {

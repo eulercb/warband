@@ -469,11 +469,11 @@ const BARBARIAN: CharUpgradeDef[] = [
     'bb_endlessrage',
     'Endless Rage',
     '😤',
-    'Rage empowers to +50% damage and +30% move speed, and returns 15% sooner (~12s)',
+    'Rage gains 15 percentage points of damage, 10 points of movement speed, and bounded 8% recharge improvement',
     ({ abilities: a }) => {
       addN(a.a1, 'buffDamageMult', 0.15);
       addN(a.a1, 'buffMoveMult', 0.1);
-      mul(a.a1, 'cooldown', 0.85);
+      mul(a.a1, 'cooldown', 0.92);
     },
   ),
   u(
@@ -491,11 +491,11 @@ const BARBARIAN: CharUpgradeDef[] = [
     'bb_seismic',
     'Seismic Leap',
     '💥',
-    'Leap slams for 46 landing damage (+24) across 150u (+30), 15% faster',
+    'Leap gains +24 landing damage, +30u blast radius and bounded 8% recharge improvement',
     ({ abilities: a }) => {
       addN(a.a2, 'landingDamage', 24);
       addN(a.a2, 'radius', 30);
-      mul(a.a2, 'cooldown', 0.85);
+      mul(a.a2, 'cooldown', 0.92);
     },
   ),
   u(
@@ -503,7 +503,7 @@ const BARBARIAN: CharUpgradeDef[] = [
     'bb_brutal',
     'Brutal',
     '🪓',
-    'Reckless Swing hits for 32 (+6) reaching 92u; Whirlwind hits for 43 (+9) across 150u',
+    'Reckless Swing gains +6 damage and +10u reach; Whirlwind gains +9 damage and +15u radius',
     ({ abilities: a }) => {
       addN(a.basic, 'damage', 6);
       addN(a.basic, 'range', 10);
@@ -816,9 +816,9 @@ const MONK: CharUpgradeDef[] = [
     'mo_wind',
     'Wind Walker',
     '🍃',
-    'Step of the Wind travels 300u (+50), heals 38 (+20), retains deliberate recharge; Flow lasts 0.5s longer',
+    'Step of the Wind gains +50u travel, +20 healing and 0.5s Flow preparation, with bounded 8% recharge improvement',
     ({ abilities: a }) => {
-      mul(a.a2, 'cooldown', 0.75);
+      mul(a.a2, 'cooldown', 0.92);
       addN(a.a2, 'range', 50);
       addN(a.a2, 'healOnUse', 20);
       if (a.a2.prepareFlow) a.a2.prepareFlow += 0.5;
@@ -829,7 +829,7 @@ const MONK: CharUpgradeDef[] = [
     'mo_palm',
     'Quivering Palm',
     '🌀',
-    'Quivering Palm widens to 155u (+25), hits for 40 (+10), and briefly stuns (0.6s)',
+    'Quivering Palm gains +25u radius, +10 damage and 0.6s stun',
     ({ abilities: a }) => {
       addN(a.a3, 'radius', 25);
       addN(a.a3, 'damage', 10);
@@ -1222,6 +1222,25 @@ function g(
 
 /** Retired pilot IDs remain readable in old histories, but resolve to one authored grand. */
 export const PILOT_GRAND_ALIASES: Readonly<Record<string, string>> = {
+  kn_grand_immovable: 'kn_gk_a2_a',
+  kn_grand_wrath: 'kn_gk_basic_a',
+  kn_gk_basic_b: 'kn_gk_basic_a',
+  kn_gk_a1_b: 'kn_gk_a1_a',
+  kn_gk_a2_b: 'kn_gk_a2_a',
+  kn_gk_a3_a: 'kn_gk_a3_b',
+  bb_grand_unstoppable: 'bb_gk_a1_a',
+  bb_grand_reaver: 'bb_gk_a3_b',
+  bb_gk_basic_a: 'bb_gk_basic_b',
+  bb_gk_a1_b: 'bb_gk_a1_a',
+  bb_gk_a2_a: 'bb_gk_a2_b',
+  bb_gk_a3_a: 'bb_gk_a3_b',
+  mo_grand_ascend: 'mo_gk_a2_a',
+  mo_grand_thousand: 'mo_gk_a3_a',
+  mo_gk_basic_a: 'mo_gk_basic_b',
+  mo_gk_a1_b: 'mo_gk_a1_a',
+  mo_gk_a2_b: 'mo_gk_a2_a',
+  mo_gk_a3_b: 'mo_gk_a3_a',
+
   ro_grand_shadow: 'ro_gk_a1_a',
   ro_gk_basic_a: 'ro_gk_basic_b',
   ro_gk_a1_b: 'ro_gk_a1_a',
@@ -1239,32 +1258,6 @@ export const canonicalGrandId = (id: string): string =>
   Object.hasOwn(PILOT_GRAND_ALIASES, id) ? PILOT_GRAND_ALIASES[id] : id;
 
 const GRAND: CharUpgradeDef[] = [
-  g(
-    'knight',
-    'kn_grand_immovable',
-    'Immovable Object',
-    '🗿',
-    'Become a living fortress: −40% damage taken, +35% max HP, regenerate 2% HP/s',
-    ({ player: p }) => {
-      p.damageTakenMult *= 0.6;
-      p.maxHp = Math.round(p.maxHp * 1.35);
-      p.hp = p.maxHp;
-      p.regenPerSec += p.maxHp * 0.02;
-    },
-  ),
-  g(
-    'knight',
-    'kn_grand_wrath',
-    "Warlord's Wrath",
-    '⚔️',
-    'Cleave becomes a 360° whirlwind that drinks 20% as health (+14 dmg, +20 reach)',
-    ({ abilities: a }) => {
-      a.basic.halfAngleDeg = 180; // full circle
-      addN(a.basic, 'range', 20);
-      addN(a.basic, 'damage', 14);
-      addN(a.basic, 'lifestealFrac', 0.2);
-    },
-  ),
   g(
     'ranger',
     'rg_grand_deadeye',
@@ -1344,32 +1337,7 @@ const GRAND: CharUpgradeDef[] = [
       addN(a.a3, 'buffDuration', 4);
     },
   ),
-  g(
-    'barbarian',
-    'bb_grand_unstoppable',
-    'Unstoppable',
-    '🐗',
-    'Endless fury: +35% max HP; Rage grants +45% dmg, +20% move and lasts 6s longer',
-    ({ player: p, abilities: a }) => {
-      p.maxHp = Math.round(p.maxHp * 1.35);
-      p.hp = p.maxHp;
-      addN(a.a1, 'buffDamageMult', 0.45);
-      addN(a.a1, 'buffMoveMult', 0.2);
-      addN(a.a1, 'buffDuration', 6);
-    },
-  ),
-  g(
-    'barbarian',
-    'bb_grand_reaver',
-    'Blood Reaver',
-    '🩸',
-    'Every swing drinks 40% as health; Whirlwind becomes a bloodbath (+30 dmg, +45 radius)',
-    ({ abilities: a }) => {
-      addN(a.basic, 'lifestealFrac', 0.4);
-      addN(a.a3, 'damage', 30);
-      addN(a.a3, 'radius', 45);
-    },
-  ),
+
   g(
     'rogue',
     'ro_grand_venom',
@@ -1461,36 +1429,7 @@ const GRAND: CharUpgradeDef[] = [
       addN(a.basic, 'damage', 8);
     },
   ),
-  g(
-    'monk',
-    'mo_grand_ascend',
-    'Ascendant',
-    '🕉️',
-    'Transcend the flesh: +30% move speed, +8 Flurry dmg, Step of the Wind resets fast (+iframes, mends +20)',
-    ({ player: p, abilities: a }) => {
-      p.moveSpeed *= 1.3;
-      addN(a.basic, 'damage', 8);
-      mul(a.a2, 'cooldown', 0.5);
-      addN(a.a2, 'iframes', 0.2);
-      addN(a.a2, 'healOnUse', 20);
-    },
-  ),
-  g(
-    'monk',
-    'mo_grand_thousand',
-    'Thousand Palms',
-    '🙌',
-    // item 10 — perfect ki focus halves Quivering Palm's wind-up: the death-touch
-    // lands almost instantly. The Monk's "Focus" fantasy made literal.
-    'Stunning Strike locks foes down (+1.2s stun, +35 dmg); Quivering Palm devastates (+40 dmg, +55 radius) and strikes in half the wind-up',
-    ({ abilities: a }) => {
-      addN(a.a1, 'stun', 1.2);
-      addN(a.a1, 'damage', 35);
-      addN(a.a3, 'damage', 40);
-      addN(a.a3, 'radius', 55);
-      mul(a.a3, 'castTime', 0.5); // item 10 — focused ki snaps the death-touch out
-    },
-  ),
+
   g(
     'sorcerer',
     'so_grand_wild',
@@ -1574,104 +1513,54 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'kn_gk_basic_a',
     'Whirlwind of Steel',
     '🌀',
-    'Cleave sweeps a full 360° circle, reaches +25u, hits for +12, and drinks 20% as health',
+    'Cleave sweeps a full circle with +12 damage and +20u reach',
     (ab) => {
       ab.halfAngleDeg = 180;
-      addN(ab, 'range', 25);
       addN(ab, 'damage', 12);
-      addN(ab, 'lifestealFrac', 0.2);
-    },
-  ),
-  gk(
-    'knight',
-    'basic',
-    'kn_gk_basic_b',
-    'Executioner',
-    '🪓',
-    "Cleave falls like a headsman's axe: +28 damage, +20u reach, and a 0.6s stun",
-    (ab) => {
-      addN(ab, 'damage', 28);
       addN(ab, 'range', 20);
-      addN(ab, 'stun', 0.6);
     },
   ),
+
   gk(
     'knight',
     'a1',
     'kn_gk_a1_a',
-    "Bulwark's Call",
+    'Bulwark’s Call',
     '🛡️',
-    'Taunt wraps you in a lasting 55%-mitigation shield and holds 4s longer',
+    'Taunt adds 30 absorption for 4s and challenges foes for 1s longer',
     (ab) => {
-      setMin(ab, 'buffDefMult', 0.45);
-      addN(ab, 'buffDuration', 4);
+      ab.absorption = { amount: (ab.absorption?.amount ?? 0) + 30, duration: 4, target: 'self' };
+      addN(ab, 'buffDuration', 1);
     },
   ),
-  gk(
-    'knight',
-    'a1',
-    'kn_gk_a1_b',
-    'Vortex of War',
-    '🌀',
-    'Taunt recharges in a heartbeat (−55% cooldown) and still shields you 30%',
-    (ab) => {
-      mul(ab, 'cooldown', 0.45);
-      setMin(ab, 'buffDefMult', 0.7);
-    },
-  ),
+
   gk(
     'knight',
     'a2',
     'kn_gk_a2_a',
     'Aegis Eternal',
     '✨',
-    'Shield Wall blocks four frontal damage hits for 7s; its counter window also lasts 7s',
+    'Shield Wall grants you and other allies within 180u 20% mitigation for 4s; existing frontal blocks remain',
     (ab) => {
-      if (ab.frontGuard) {
-        ab.frontGuard = { charges: 4, duration: Math.max(ab.frontGuard.duration, 7) };
-        ab.guardWindow = Math.max(ab.guardWindow ?? 0, 7);
-      } else mul(ab, 'cooldown', 0.7);
+      ab.allyWard = { range: 180, mult: 0.8, duration: 4 };
+      setMin(ab, 'buffDefMult', 0.8);
+      ab.buffDuration = Math.max(ab.buffDuration ?? 0, 4);
     },
   ),
-  gk(
-    'knight',
-    'a2',
-    'kn_gk_a2_b',
-    'Living Fortress',
-    '🏰',
-    'Shield Wall recharges 40% faster, gains one block (cap 4), and holds its blocks/counter window for 8s',
-    (ab) => {
-      if (ab.frontGuard) {
-        ab.frontGuard = { charges: Math.min(4, ab.frontGuard.charges + 1), duration: 8 };
-        ab.guardWindow = Math.max(ab.guardWindow ?? 0, 8);
-      }
-      mul(ab, 'cooldown', 0.6);
-    },
-  ),
-  gk(
-    'knight',
-    'a3',
-    'kn_gk_a3_a',
-    'Skullcracker',
-    '💫',
-    'Shield Bash concusses for +1.4s stun and +25 damage',
-    (ab) => {
-      addN(ab, 'stun', 1.4);
-      addN(ab, 'damage', 25);
-    },
-  ),
+
   gk(
     'knight',
     'a3',
     'kn_gk_a3_b',
     'Thunderclap',
     '⚡',
-    'Shield Bash erupts into a 90°-wide shock: +20 damage, +30u reach, +0.5s stun',
+    'Shield Bash gathers foes with a 100u pull, an 80° half-arc, +20u reach and +15 damage',
     (ab) => {
-      ab.halfAngleDeg = 90;
-      addN(ab, 'range', 30);
-      addN(ab, 'damage', 20);
-      addN(ab, 'stun', 0.5);
+      ab.halfAngleDeg = 80;
+      ab.pull = 100;
+      delete ab.knockback;
+      addN(ab, 'range', 20);
+      addN(ab, 'damage', 15);
     },
   ),
 
@@ -1995,31 +1884,18 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
   ),
 
   // --- Barbarian ------------------------------------------------------------
-  gk(
-    'barbarian',
-    'basic',
-    'bb_gk_basic_a',
-    'Bloodstorm',
-    '🩸',
-    'Reckless Swing becomes a 360° blood-whirl: +12 damage, +25u, drinks 30% as health',
-    (ab) => {
-      ab.halfAngleDeg = 180;
-      addN(ab, 'range', 25);
-      addN(ab, 'damage', 12);
-      addN(ab, 'lifestealFrac', 0.3);
-    },
-  ),
+
   gk(
     'barbarian',
     'basic',
     'bb_gk_basic_b',
     'Cleaving Fury',
     '🪓',
-    'Reckless Swing hits for +22 across a wider 75° arc, +18u reach',
+    'Reckless Swing widens to a 90° half-arc with +16 damage and +15u reach',
     (ab) => {
-      addN(ab, 'damage', 22);
-      addN(ab, 'halfAngleDeg', 20);
-      addN(ab, 'range', 18);
+      ab.halfAngleDeg = 90;
+      addN(ab, 'damage', 16);
+      addN(ab, 'range', 15);
     },
   ),
   gk(
@@ -2028,77 +1904,40 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'bb_gk_a1_a',
     'Undying Rage',
     '😤',
-    'Rage swells with +55% damage and +40% move, and lasts 5s longer',
+    'Rage drains 2% max HP/s and leeches 20% of effective direct damage for 6s; damage, speed and Momentum windows last 1s longer',
     (ab) => {
-      addN(ab, 'buffDamageMult', 0.55);
-      addN(ab, 'buffMoveMult', 0.4);
-      addN(ab, 'buffDuration', 5);
+      ab.bloodRage = Math.max(ab.bloodRage ?? 0, 6);
+      addN(ab, 'buffDuration', 1);
+      if (ab.momentumWindow) addN(ab, 'momentumWindow', 1);
     },
   ),
-  gk(
-    'barbarian',
-    'a1',
-    'bb_gk_a1_b',
-    'Bloodlust',
-    '🔥',
-    'Rage is nearly always up (−45% cd), adds +35% damage, and lasts +2s',
-    (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      addN(ab, 'buffDamageMult', 0.35);
-      addN(ab, 'buffDuration', 2);
-    },
-  ),
-  gk(
-    'barbarian',
-    'a2',
-    'bb_gk_a2_a',
-    'Seismic Crash',
-    '💥',
-    'Leap slams for +45 landing damage across +50u',
-    (ab) => {
-      addN(ab, 'landingDamage', 45);
-      addN(ab, 'radius', 50);
-    },
-  ),
+
   gk(
     'barbarian',
     'a2',
     'bb_gk_a2_b',
     'Thunderous Leap',
     '⚡',
-    'Leap lands stunning foes for 1s and +25 damage, and recharges 40% faster',
+    'Leap lands for +20 damage and pushes struck foes back at least 120u',
     (ab) => {
-      addN(ab, 'landingDamage', 25);
-      addN(ab, 'stun', 1);
-      mul(ab, 'cooldown', 0.6);
+      addN(ab, 'landingDamage', 20);
+      ab.knockback = Math.max(ab.knockback ?? 0, 120);
+      delete ab.pull;
     },
   ),
-  gk(
-    'barbarian',
-    'a3',
-    'bb_gk_a3_a',
-    'Endless Whirlwind',
-    '🌀',
-    'Whirlwind roars to +55u and +26 damage, drinking 25% as health',
-    (ab) => {
-      addN(ab, 'radius', 55);
-      addN(ab, 'damage', 26);
-      addN(ab, 'lifestealFrac', 0.25);
-    },
-  ),
+
   gk(
     'barbarian',
     'a3',
     'bb_gk_a3_b',
     'Cyclonic Fury',
     '🌪️',
-    'Whirlwind hits +18, slows to 45%, widens +20u, and spins up 40% faster',
+    'Whirlwind pulls foes 110u inward with +18 damage and +20u radius; still spends Momentum',
     (ab) => {
+      ab.pull = 110;
+      delete ab.knockback;
       addN(ab, 'damage', 18);
-      setMin(ab, 'slowMult', 0.45);
-      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.5);
       addN(ab, 'radius', 20);
-      mul(ab, 'cooldown', 0.6);
     },
   ),
 
@@ -2468,30 +2307,18 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
   ),
 
   // --- Monk -----------------------------------------------------------------
-  gk(
-    'monk',
-    'basic',
-    'mo_gk_basic_a',
-    'Hundred Hands',
-    '👊',
-    'Flurry of Blows strikes twice as fast (−50% cd) for +5 and drinks 15% as health',
-    (ab) => {
-      mul(ab, 'cooldown', 0.5);
-      addN(ab, 'damage', 5);
-      addN(ab, 'lifestealFrac', 0.15);
-    },
-  ),
+
   gk(
     'monk',
     'basic',
     'mo_gk_basic_b',
     'Whirling Fists',
     '🌀',
-    'Flurry of Blows sweeps a full 360° circle for +8, +25u reach',
+    'Flurry of Blows sweeps a full circle with +8 damage and +15u reach; connecting hits still extend existing Flow',
     (ab) => {
       ab.halfAngleDeg = 180;
       addN(ab, 'damage', 8);
-      addN(ab, 'range', 25);
+      addN(ab, 'range', 15);
     },
   ),
   gk(
@@ -2500,76 +2327,38 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'mo_gk_a1_a',
     'Paralyzing Blow',
     '💫',
-    'Stunning Strike locks foes for +1.4s and hits for +25',
+    'Stunning Strike gains +18 damage and +35% damage against already controlled foes; its own stun sets up a later hit',
     (ab) => {
-      addN(ab, 'stun', 1.4);
-      addN(ab, 'damage', 25);
-    },
-  ),
-  gk(
-    'monk',
-    'a1',
-    'mo_gk_a1_b',
-    'Palm of Ruin',
-    '👊',
-    'Stunning Strike widens to an 80° arc, hits +18, +15u, +0.5s stun',
-    (ab) => {
-      addN(ab, 'halfAngleDeg', 44);
       addN(ab, 'damage', 18);
-      addN(ab, 'range', 15);
-      addN(ab, 'stun', 0.5);
+      addN(ab, 'controlDamageBonus', 0.35);
     },
   ),
+
   gk(
     'monk',
     'a2',
     'mo_gk_a2_a',
     'Gale Walker',
     '🍃',
-    'Step of the Wind travels +130u, mends +40, and resets 50% faster',
+    'Step of the Wind grants 35% movement for 3s and 2s resistance to hard control; Flow preparation remains',
     (ab) => {
-      addN(ab, 'range', 130);
-      addN(ab, 'healOnUse', 40);
-      mul(ab, 'cooldown', 0.5);
+      ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.35);
+      ab.buffDuration = Math.max(ab.buffDuration ?? 0, 3);
+      ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 2);
     },
   ),
-  gk(
-    'monk',
-    'a2',
-    'mo_gk_a2_b',
-    'Comet Step',
-    '💫',
-    'Step of the Wind slams on landing for 34 across a 130u blast (+70u travel)',
-    (ab) => {
-      ab.landingDamage = (ab.landingDamage ?? 0) + 34;
-      ab.radius = (ab.radius ?? 0) + 130;
-      addN(ab, 'range', 70);
-    },
-  ),
+
   gk(
     'monk',
     'a3',
     'mo_gk_a3_a',
     'Death Touch',
     '💀',
-    'Quivering Palm devastates for +40 across +55u',
+    'Quivering Palm pulls foes 110u inward and gains +20 damage; Flow still makes it instant and wider',
     (ab) => {
-      addN(ab, 'damage', 40);
-      addN(ab, 'radius', 55);
-    },
-  ),
-  gk(
-    'monk',
-    'a3',
-    'mo_gk_a3_b',
-    'Quaking Palm',
-    '💥',
-    'Quivering Palm hits +18, stuns 1s, widens +20u, and recharges 40% faster',
-    (ab) => {
-      addN(ab, 'damage', 18);
-      addN(ab, 'stun', 1);
-      addN(ab, 'radius', 20);
-      mul(ab, 'cooldown', 0.6);
+      ab.pull = 110;
+      delete ab.knockback;
+      addN(ab, 'damage', 20);
     },
   ),
 
@@ -2911,50 +2700,72 @@ function pilotIdentity(
 
 export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
   // Knight
-  gs(
+  pilotIdentity(
     'kn_champion',
     'kn_champion_g_a',
     'Unbroken Champion',
     '⚔️',
-    'Your Champion skills strike 50% harder across a wider field and drink 25% as health',
+    'Taunt and Shield Wall grant 4s hard-control resistance; Champion strikes leech 15%, and Second Wind grants 3s resistance',
+    (a) => {
+      for (const ab of [a.a1, a.a2]) ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 4);
+    },
     (ab) => {
-      amplify(ab, 0.5, 0.3);
-      lifeRider(ab, 0.25);
+      if (isStrike(ab)) lifeRider(ab, 0.15);
+      if (ab.kind === 'selfBuff') ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 3);
     },
   ),
-  gs(
+  pilotIdentity(
     'kn_champion',
     'kn_champion_g_b',
-    "Warlord's Tempo",
+    'Warlord’s Tempo',
     '🥁',
-    'Your Champion skills recharge 40% faster, hit 30% harder, and stun on impact',
+    'Taunt challenges nearby foes and readies a counter after your next melee connection; Shield Wall and Second Wind grant +15% damage for 4s; Champion strikes gain +20% damage against controlled foes',
+    (a) => {
+      a.a1.warCry = { radius: 180, duration: 4 };
+      a.a2.buffDamageMult = Math.max(a.a2.buffDamageMult ?? 1, 1.15);
+      a.a2.buffDuration = Math.max(a.a2.buffDuration ?? 0, 4);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.6);
-      amplify(ab, 0.3, 0.15);
-      ctrlRider(ab, 0.6);
+      if (isStrike(ab)) addN(ab, 'controlDamageBonus', 0.2);
+      if (ab.kind === 'selfBuff') {
+        ab.buffDamageMult = Math.max(ab.buffDamageMult ?? 1, 1.15);
+        ab.buffDuration = Math.max(ab.buffDuration ?? 0, 4);
+      }
     },
   ),
-  gs(
+  pilotIdentity(
     'kn_battlemaster',
     'kn_battlemaster_g_a',
     'Grand Tactician',
     '🎖️',
-    "Your Battlemaster skills hit 50% harder, spread wider, and shatter foes' footing to 45%",
+    'Cleave, Shield Bash and direct Battlemaster strikes gain +25% damage against already controlled foes; Menacing Roar and Rally counter setup lasts 1s longer',
+    (a) => {
+      for (const ab of [a.basic, a.a3]) addN(ab, 'controlDamageBonus', 0.25);
+    },
     (ab) => {
-      amplify(ab, 0.5, 0.3);
-      slowRider(ab, 0.45, 1.5);
+      if (isStrike(ab)) addN(ab, 'controlDamageBonus', 0.25);
+      if (ab.warCry) ab.warCry = { ...ab.warCry, duration: Math.min(8, ab.warCry.duration + 1) };
+      if (ab.guardWindow) addN(ab, 'guardWindow', 1);
     },
   ),
-  gs(
+  pilotIdentity(
     'kn_battlemaster',
     'kn_battlemaster_g_b',
     'Perfect Maneuver',
     '⚙️',
-    'Your Battlemaster skills recharge 40% faster, hit 30% harder, and stun on impact',
+    'Taunt adds 30 absorption for 4s; Shield Bash slows wind-ups by 30% for 3s; Battlemaster direct strikes slow movement to 75% for 2s and utilities share a 15% ward with other allies within 180u',
+    (a) => {
+      a.a1.absorption = {
+        amount: (a.a1.absorption?.amount ?? 0) + 30,
+        duration: 4,
+        target: 'self',
+      };
+      a.a3.castSlow = Math.max(a.a3.castSlow ?? 1, 1.3);
+      a.a3.castSlowDuration = Math.max(a.a3.castSlowDuration ?? 0, 3);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.6);
-      amplify(ab, 0.3, 0.15);
-      ctrlRider(ab, 0.7);
+      if (isStrike(ab)) slowRider(ab, 0.75, 2);
+      else ab.allyWard = { range: 180, mult: 0.85, duration: 4 };
     },
   ),
 
@@ -3098,49 +2909,78 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
   ),
 
   // Barbarian
-  gs(
+  pilotIdentity(
     'bb_berserker',
     'bb_berserker_g_a',
     'Avatar of Fury',
     '😤',
-    'Your Berserker skills hit 55% harder over a wider area and drink 30% as health',
+    'Rage lasts 2s longer and Whirlwind winds up twice as quickly; Frenzy extends its fury and blood-price windows by 2s, while Berserker strikes gain 15% damage and 10% critical chance',
+    (a) => {
+      addN(a.a1, 'momentumWindow', 2);
+      addN(a.a1, 'buffDuration', 2);
+      mul(a.a3, 'castTime', 0.5);
+    },
     (ab) => {
-      amplify(ab, 0.55, 0.3);
-      lifeRider(ab, 0.3);
+      if (isStrike(ab)) {
+        mul(ab, 'damage', 1.15);
+        addN(ab, 'critChanceBonus', 0.1);
+      }
+      if (ab.kind === 'selfBuff') {
+        for (const field of ['buffDuration', 'momentumWindow', 'bloodRage'] as const)
+          if (ab[field]) addN(ab, field, 2);
+      }
     },
   ),
-  gs(
+  pilotIdentity(
     'bb_berserker',
     'bb_berserker_g_b',
     'Blood Frenzy',
     '🩸',
-    'Your Berserker skills recharge 40% faster, hit 30% harder, and leech 20%',
+    'Rage and Frenzy let walking earn Momentum instead of melee hits for 6s; Whirlwind slows foes to 75% for 2s, basics gain +15% damage against controlled foes, and direct Berserker strikes gain +25%',
+    (a) => {
+      a.a1.wolfHunt = Math.max(a.a1.wolfHunt ?? 0, 6);
+      slowRider(a.a3, 0.75, 2);
+      addN(a.basic, 'controlDamageBonus', 0.15);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.6);
-      amplify(ab, 0.3, 0.15);
-      lifeRider(ab, 0.2);
+      if (ab.kind === 'selfBuff') ab.wolfHunt = Math.max(ab.wolfHunt ?? 0, 6);
+      if (isStrike(ab)) addN(ab, 'controlDamageBonus', 0.25);
     },
   ),
-  gs(
+  pilotIdentity(
     'bb_totem',
     'bb_totem_g_a',
     'Great Spirit',
     '🐻',
-    'Your Totem skills swell 50%, deepen their wards, and root foes to 45%',
+    'Rage blocks one frontal hit for 4s and readies a counter on the block; Reckless Swing and Whirlwind leech 10%; Totem guard, hunt, control-resistance and earth-field windows last 1s longer',
+    (a) => {
+      a.a1.frontGuard = { charges: 1, duration: 4, counter: 1.3 };
+      for (const ab of [a.basic, a.a3]) addN(ab, 'lifestealFrac', 0.1);
+    },
     (ab) => {
-      amplify(ab, 0.5, 0.3);
-      slowRider(ab, 0.45, 1.5);
+      if (ab.frontGuard)
+        ab.frontGuard = { ...ab.frontGuard, duration: Math.min(8, ab.frontGuard.duration + 1) };
+      if (ab.wolfHunt) addN(ab, 'wolfHunt', 1);
+      if (ab.steadfastDuration) addN(ab, 'steadfastDuration', 1);
+      if (ab.kind === 'groundZone') addN(ab, 'zoneDuration', 1);
     },
   ),
-  gs(
+  pilotIdentity(
     'bb_totem',
     'bb_totem_g_b',
     'Ancestral Might',
     '🌍',
-    'Your Totem skills recharge 40% faster and grow 35% stronger',
+    'Rage grants 15% self mitigation and shares a 4s ward with other allies within 180u; Totem self utilities share that ward, while Earth Totem lasts 1s longer with a longer slow linger',
+    (a) => {
+      setMin(a.a1, 'buffDefMult', 0.85);
+      a.a1.allyWard = { range: 180, mult: 0.85, duration: 4 };
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.6);
-      amplify(ab, 0.35, 0.15);
+      if (ab.kind === 'selfBuff') ab.allyWard = { range: 180, mult: 0.85, duration: 4 };
+      if (ab.kind === 'groundZone') {
+        addN(ab, 'zoneDuration', 1);
+        addN(ab, 'slowDuration', 1);
+      }
     },
   ),
 
@@ -3365,50 +3205,79 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
   ),
 
   // Monk
-  gs(
+  pilotIdentity(
     'mo_openhand',
     'mo_openhand_g_a',
     'Perfect Harmony',
     '👊',
-    'Your Open Hand skills strike 50% harder over a wider area and stun with each blow',
+    'Step of the Wind and Open Hand Flow utilities prepare Flow 2s longer; basics extend it faster within the same 1s budget; direct specials gain +25% damage against controlled foes',
+    (a) => {
+      addN(a.a2, 'prepareFlow', 2);
+      addN(a.basic, 'flowExtendOnHit', 0.25);
+      for (const ab of [a.a1, a.a3]) addN(ab, 'controlDamageBonus', 0.25);
+    },
     (ab) => {
-      amplify(ab, 0.5, 0.3);
-      ctrlRider(ab, 0.7);
+      if (ab.prepareFlow) addN(ab, 'prepareFlow', 2);
+      if (isStrike(ab)) addN(ab, 'controlDamageBonus', 0.25);
     },
   ),
-  gs(
+  pilotIdentity(
     'mo_openhand',
     'mo_openhand_g_b',
     'Flowing Water',
     '🌊',
-    'Your Open Hand skills recharge 45% faster, hit 30% harder, and mend you',
+    'Step of the Wind heals 15 more and resists hard control for 2s; Quivering Palm leeches 20%; Open Hand direct strikes leech 15%, Wind Step resists control, and Wholeness of Body cleanses',
+    (a) => {
+      a.a2.steadfastDuration = Math.max(a.a2.steadfastDuration ?? 0, 2);
+      addN(a.a2, 'healOnUse', 15);
+      addN(a.a3, 'lifestealFrac', 0.2);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      amplify(ab, 0.3, 0.15);
-      lifeRider(ab, 0.15);
+      if (isStrike(ab)) lifeRider(ab, 0.15);
+      if (ab.kind === 'dash') ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 2);
+      if (ab.kind === 'selfBuff' && ab.healOnUse) ab.cleanseOnHeal = true;
     },
   ),
-  gs(
+  pilotIdentity(
     'mo_shadow',
     'mo_shadow_g_a',
     'Shadow Incarnate',
     '🌑',
-    'Your Shadow skills strike 55% harder from the dark over a wider area and leech 20%',
+    'Step of the Wind and Shadow Step prepare a precision critical for 4s; Stunning Strike, Quivering Palm, Shadow Dart and Shadow Strike can spend it; Cloud of Shadow also prepares precision',
+    (a) => {
+      a.a2.prepareCrit = Math.max(a.a2.prepareCrit ?? 0, 4);
+      a.a1.consumesPrecision = true;
+      a.a3.consumesPrecision = true;
+    },
     (ab) => {
-      amplify(ab, 0.55, 0.3);
-      lifeRider(ab, 0.2);
+      if (isStrike(ab)) ab.consumesPrecision = true;
+      if (ab.kind === 'blink' || ab.kind === 'groundZone')
+        ab.prepareCrit = Math.max(ab.prepareCrit ?? 0, 4);
     },
   ),
-  gs(
+  pilotIdentity(
     'mo_shadow',
     'mo_shadow_g_b',
     'Silent Death',
     '🥷',
-    'Your Shadow skills recharge 40% faster, hit 30% harder, and daze on strike',
+    'Step of the Wind heals 15 more and prepares Flow 0.5s longer; Stunning Strike, Quivering Palm and damaging Shadow skills slow wind-ups by 30%; Shadow Step prepares Flow 0.5s longer and grants 2s hard-control resistance',
+    (a) => {
+      addN(a.a2, 'healOnUse', 15);
+      addN(a.a2, 'prepareFlow', 0.5);
+      for (const ab of [a.a1, a.a3]) {
+        ab.castSlow = Math.max(ab.castSlow ?? 1, 1.3);
+        ab.castSlowDuration = Math.max(ab.castSlowDuration ?? 0, 3);
+      }
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.6);
-      amplify(ab, 0.3, 0.15);
-      ctrlRider(ab, 0.6);
+      if (isStrike(ab) || ab.kind === 'groundZone') {
+        ab.castSlow = Math.max(ab.castSlow ?? 1, 1.3);
+        ab.castSlowDuration = Math.max(ab.castSlowDuration ?? 0, 3);
+      }
+      if (ab.kind === 'blink') {
+        addN(ab, 'prepareFlow', 0.5);
+        ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 2);
+      }
     },
   ),
 
@@ -3561,6 +3430,243 @@ function gsk(
 }
 
 export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
+  gsk(
+    'kn_champion_slam',
+    'Turning Earth',
+    '💥',
+    'Earthshaker draws foes inward with at least a 140u pull instead of pushing them away, and gains +8 damage; Honed force is retained',
+    (ab) => {
+      ab.pull = Math.max(ab.pull ?? 0, (ab.knockback ?? 110) + 30);
+      delete ab.knockback;
+      addN(ab, 'damage', 8);
+    },
+  ),
+  gsk(
+    'kn_champion_charge',
+    'Breakthrough',
+    '🐂',
+    'Bull Rush gains +10 landing damage and one frontal block for 3s; blocking readies a 30% stronger melee counter',
+    (ab) => {
+      addN(ab, 'landingDamage', 10);
+      ab.frontGuard = { charges: 1, duration: 3, counter: 1.3 };
+    },
+  ),
+  gsk(
+    'kn_champion_rally',
+    'Unspent Resolve',
+    '💚',
+    'Second Wind also grants 25 absorption for 4s, even at full health',
+    (ab) => {
+      ab.absorption = { amount: 25, duration: 4, target: 'self' };
+    },
+  ),
+  gsk(
+    'kn_champion_riposte',
+    'Reaching Reprise',
+    '⚔️',
+    'Riposte reaches 25u farther and leeches 20% of its damage; its connecting parry remains',
+    (ab) => {
+      addN(ab, 'range', 25);
+      addN(ab, 'lifestealFrac', 0.2);
+    },
+  ),
+  gsk(
+    'kn_battle_trip',
+    'Exploit Footing',
+    '🔨',
+    'Trip Attack gains +12 damage and +25% damage against already controlled foes',
+    (ab) => {
+      addN(ab, 'damage', 12);
+      addN(ab, 'controlDamageBonus', 0.25);
+    },
+  ),
+  gsk(
+    'kn_battle_menacing',
+    'Guarded Challenge',
+    '📣',
+    'Menacing Roar grants two frontal blocks for 3s; each block readies a 30% stronger melee counter',
+    (ab) => {
+      ab.frontGuard = { charges: 2, duration: 3, counter: 1.3 };
+    },
+  ),
+  gsk(
+    'kn_battle_precision',
+    'Pinning Volley',
+    '🎯',
+    'Precision Volley pierces one extra foe per blade and slows struck foes to 70% for 2s',
+    (ab) => {
+      ab.pierce = Math.max(ab.pierce ?? 0, 1);
+      slowRider(ab, 0.7, 2);
+    },
+  ),
+  gsk(
+    'kn_battle_rally',
+    'Rescue Formation',
+    '🛡️',
+    'Rally cleanses its recipient; an effective rescue at 35% HP or less prepares their next direct hit for +20% damage within 4s',
+    (ab) => {
+      ab.cleanseOnHeal = true;
+      ab.rescueStrike = { mult: 1.2, duration: 4 };
+    },
+  ),
+  gsk(
+    'bb_berserker_frenzy',
+    'Measured Madness',
+    '😤',
+    'Frenzy grants one frontal block for 4s; blocking readies a 30% stronger melee counter',
+    (ab) => {
+      ab.frontGuard = { charges: 1, duration: 4, counter: 1.3 };
+    },
+  ),
+  gsk(
+    'bb_berserker_reckless',
+    'Reaping Arc',
+    '🪓',
+    'Reckless Cleave sweeps a full circle and gains +12 damage; Momentum still adds reach',
+    (ab) => {
+      ab.halfAngleDeg = 180;
+      addN(ab, 'damage', 12);
+    },
+  ),
+  gsk(
+    'bb_berserker_slam',
+    'Lingering Fault',
+    '💥',
+    'Ground Slam slows struck foes to 70% for 2s; each Momentum stack adds 3 more fissure damage per tick',
+    (ab) => {
+      addN(ab, 'momentumFissure', 3);
+      slowRider(ab, 0.7, 2);
+    },
+  ),
+  gsk(
+    'bb_berserker_chain',
+    'Binding Chain',
+    '⛓️',
+    'Chain Pull reaches 60u farther and stuns struck foes for 0.65s',
+    (ab) => {
+      addN(ab, 'range', 60);
+      ab.stun = Math.max(ab.stun ?? 0, 0.65);
+    },
+  ),
+  gsk(
+    'bb_totem_bear',
+    'Bear’s Reserve',
+    '🐻',
+    'Bear Spirit adds 25 absorption for 4s to its existing frontal blocks and control resistance',
+    (ab) => {
+      ab.absorption = { amount: 25, duration: 4, target: 'self' };
+    },
+  ),
+  gsk(
+    'bb_totem_wolf',
+    'Watchful Hunt',
+    '🐺',
+    'Wolf Spirit grants one frontal block for 4s; blocking readies a 30% stronger melee counter while you hunt',
+    (ab) => {
+      ab.frontGuard = { charges: 1, duration: 4, counter: 1.3 };
+    },
+  ),
+  gsk(
+    'bb_totem_quake',
+    'Sheltering Earth',
+    '🌍',
+    'Allies inside Earth Totem gain 20% movement speed and 15% damage mitigation',
+    (ab) => {
+      ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.2);
+      ab.zoneAllyDefMult = Math.min(ab.zoneAllyDefMult ?? 1, 0.85);
+    },
+  ),
+  gsk(
+    'bb_totem_mend',
+    'Spirit Reserve',
+    '💚',
+    'Spirit Mend grants 25 absorption for 4s, including at full health',
+    (ab) => {
+      ab.absorption = { amount: 25, duration: 4, target: 'self' };
+    },
+  ),
+  gsk(
+    'mo_openhand_flurry',
+    'Parting Barrage',
+    '👊',
+    'Flurry Barrage gains +12 damage and +15u reach, and pushes struck foes back 120u',
+    (ab) => {
+      addN(ab, 'damage', 12);
+      addN(ab, 'range', 15);
+      ab.knockback = 120;
+      delete ab.pull;
+    },
+  ),
+  gsk(
+    'mo_openhand_wave',
+    'Returning Tide',
+    '🌊',
+    'Wave Palm pulls struck foes at least 140u inward instead of pushing them away, and gains +10 damage; Honed force is retained',
+    (ab) => {
+      ab.pull = Math.max(ab.pull ?? 0, (ab.knockback ?? 100) + 40);
+      delete ab.knockback;
+      addN(ab, 'damage', 10);
+    },
+  ),
+  gsk(
+    'mo_openhand_wind',
+    'Sheltered Crossing',
+    '🍃',
+    'Wind Step grants you 20 absorption for 4s; its crossed-ally cleanse and guard remain',
+    (ab) => {
+      ab.absorption = { amount: 20, duration: 4, target: 'self' };
+    },
+  ),
+  gsk(
+    'mo_openhand_ki',
+    'Whole in Spirit',
+    '💚',
+    'Wholeness of Body grants 25 absorption for 4s, even at full health; Flow preparation remains',
+    (ab) => {
+      ab.absorption = { amount: 25, duration: 4, target: 'self' };
+    },
+  ),
+  gsk(
+    'mo_shadow_dart',
+    'Splintering Dart',
+    '🌑',
+    'Shadow Dart gains +10 damage and bursts in a 65u impact radius; Flow still adds its stun',
+    (ab) => {
+      addN(ab, 'damage', 10);
+      ab.impactRadius = Math.max(ab.impactRadius ?? 0, 65);
+    },
+  ),
+  gsk(
+    'mo_shadow_step',
+    'Guarded Arrival',
+    '🌫️',
+    'Shadow Step heals 15 on use and blocks one frontal hit for 3s; blocking readies a 30% stronger melee counter',
+    (ab) => {
+      addN(ab, 'healOnUse', 15);
+      ab.frontGuard = { charges: 1, duration: 3, counter: 1.3 };
+    },
+  ),
+  gsk(
+    'mo_shadow_cloud',
+    'Creeping Shadow',
+    '💨',
+    'Cloud of Shadow follows its first damaged foe for 3s and lasts 1s longer; it remains a ground effect',
+    (ab) => {
+      ab.zoneFollow = Math.max(ab.zoneFollow ?? 0, 3);
+      addN(ab, 'zoneDuration', 1);
+    },
+  ),
+  gsk(
+    'mo_shadow_strike',
+    'Unerring Ambush',
+    '🥷',
+    'Shadow Strike gains 25% critical chance and +15u reach; its existing damage leech remains',
+    (ab) => {
+      addN(ab, 'critChanceBonus', 0.25);
+      addN(ab, 'range', 15);
+    },
+  ),
+
   gsk(
     'ro_assassin_strike',
     'Perfect Opening',
@@ -3750,23 +3856,209 @@ function subSkillTune(ab: PlayerAbilityDef): void {
   ordinaryRecharge(ab, 0.92); // -8% cooldown
 }
 
+/** Martial Honed ranks develop the receiving skill’s existing job without duplicating grands. */
+const MARTIAL_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) => void }> = {
+  kn_champion_slam: {
+    desc: 'Increase damage by 12% and push or pull by 10u; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      if (ab.pull) addN(ab, 'pull', 10);
+      else addN(ab, 'knockback', 10);
+    },
+  },
+  kn_champion_charge: {
+    desc: 'Increase landing damage by 12% and charge reach by 12u; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'landingDamage', 1.12);
+      addN(ab, 'range', 12);
+    },
+  },
+  kn_champion_rally: {
+    desc: 'Increase self-healing by 12% and sprint speed by 3 percentage points; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'healOnUse', 1.12);
+      addN(ab, 'buffMoveMult', 0.03);
+    },
+  },
+  kn_champion_riposte: {
+    desc: 'Increase damage by 8% and connecting parry by 0.1s, up to 1.2s; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.08);
+      ab.parryOnHit = Math.min(1.2, ab.parryOnHit! + 0.1);
+    },
+  },
+  kn_battle_trip: {
+    desc: 'Increase damage by 10% and stun by 0.1s, up to 1.6s; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      ab.stun = Math.min(1.6, ab.stun! + 0.1);
+    },
+  },
+  kn_battle_menacing: {
+    desc: 'Improve the damage buff by 4 percentage points and extend challenge reach by 10u and its duration by 0.2s, up to 6s; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      addN(ab, 'buffDamageMult', 0.04);
+      const cry = ab.warCry!;
+      ab.warCry = {
+        ...cry,
+        radius: cry.radius + 10,
+        duration: Math.min(6, cry.duration + 0.2),
+      };
+    },
+  },
+  kn_battle_precision: {
+    desc: 'Increase blade damage by 10% and projectile speed by 8%; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      mul(ab, 'projSpeed', 1.08);
+    },
+  },
+  kn_battle_rally: {
+    desc: 'Increase primary healing and recovery ticks by 12%, and recovery radius by 8u; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      const recovery = ab.recoveryZone!;
+      ab.recoveryZone = {
+        ...recovery,
+        tickHeal: recovery.tickHeal * 1.12,
+        radius: recovery.radius + 8,
+      };
+    },
+  },
+  bb_berserker_frenzy: {
+    desc: 'Improve the damage buff by 3 percentage points and extend its buff, blood-price and Momentum windows by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      addN(ab, 'buffDamageMult', 0.03);
+      for (const field of ['buffDuration', 'bloodRage', 'momentumWindow'] as const)
+        ab[field] = Math.min(8, ab[field]! + 0.25);
+    },
+  },
+  bb_berserker_reckless: {
+    desc: 'Increase damage by 12% and half-arc by 3°, up to 90°; preserve an already wider grand arc; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      if ((ab.halfAngleDeg ?? 45) < 90) ab.halfAngleDeg = Math.min(90, (ab.halfAngleDeg ?? 45) + 3);
+    },
+  },
+  bb_berserker_slam: {
+    desc: 'Increase burst damage by 8% and fissure damage by 1 per spent Momentum stack per tick; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.08);
+      addN(ab, 'momentumFissure', 1);
+    },
+  },
+  bb_berserker_chain: {
+    desc: 'Increase damage by 8% and chain reach by 12u; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.08);
+      addN(ab, 'range', 12);
+    },
+  },
+  bb_totem_bear: {
+    desc: 'Improve damage mitigation by 2% of its current multiplier and extend buff, control resistance and guard by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'buffDefMult', 0.98);
+      for (const field of ['buffDuration', 'steadfastDuration'] as const)
+        ab[field] = Math.min(8, ab[field]! + 0.25);
+      const guard = ab.frontGuard!;
+      ab.frontGuard = { ...guard, duration: Math.min(8, guard.duration + 0.25) };
+    },
+  },
+  bb_totem_wolf: {
+    desc: 'Improve running speed by 3 percentage points and extend walking Momentum by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      addN(ab, 'buffMoveMult', 0.03);
+      ab.wolfHunt = Math.min(8, ab.wolfHunt! + 0.25);
+    },
+  },
+  bb_totem_quake: {
+    desc: 'Increase field damage by 10% and duration by 0.25s, up to 8s; retain its Momentum payoff; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'zoneTickDamage', 1.1);
+      ab.zoneDuration = Math.min(8, ab.zoneDuration! + 0.25);
+    },
+  },
+  bb_totem_mend: {
+    desc: 'Increase self-healing by 12% and control resistance by 0.25s, up to 8s; retain cleanse; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'healOnUse', 1.12);
+      ab.steadfastDuration = Math.min(8, ab.steadfastDuration! + 0.25);
+    },
+  },
+  mo_openhand_flurry: {
+    desc: 'Increase damage by 12% and reach by 4u; retain Flow spending; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      addN(ab, 'range', 4);
+    },
+  },
+  mo_openhand_wave: {
+    desc: 'Increase damage by 10% and push or pull by 10u; retain aimed Flow spending; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      if (ab.pull) addN(ab, 'pull', 10);
+      else addN(ab, 'knockback', 10);
+    },
+  },
+  mo_openhand_wind: {
+    desc: 'Increase self-healing by 12%, crossing width by 4u (cap 65u), crossing guard by 0.2s (cap 6s), and Flow preparation by 0.25s (cap 8s); recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'healOnUse', 1.12);
+      const crossing = ab.crossingGuard!;
+      ab.crossingGuard = {
+        ...crossing,
+        width: Math.min(65, crossing.width + 4),
+        duration: Math.min(6, crossing.duration + 0.2),
+      };
+      ab.prepareFlow = Math.min(8, ab.prepareFlow! + 0.25);
+    },
+  },
+  mo_openhand_ki: {
+    desc: 'Increase self-healing by 12% and Flow preparation by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'healOnUse', 1.12);
+      ab.prepareFlow = Math.min(8, ab.prepareFlow! + 0.25);
+    },
+  },
+  mo_shadow_dart: {
+    desc: 'Increase dart damage by 12% and projectile speed by 8%; retain Flow stun; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      mul(ab, 'projSpeed', 1.08);
+    },
+  },
+  mo_shadow_step: {
+    desc: 'Extend blink reach by 15u and Flow preparation by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      addN(ab, 'range', 15);
+      ab.prepareFlow = Math.min(8, ab.prepareFlow! + 0.25);
+    },
+  },
+  mo_shadow_cloud: {
+    desc: 'Increase poison-field damage by 10% and duration by 0.25s, up to 8s; retain Flow widening and ground targeting; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'zoneTickDamage', 1.1);
+      ab.zoneDuration = Math.min(8, ab.zoneDuration! + 0.25);
+    },
+  },
+  mo_shadow_strike: {
+    desc: 'Increase damage by 12% and leech by 2 percentage points, up to 25%; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      ab.lifestealFrac = Math.min(0.25, ab.lifestealFrac! + 0.02);
+    },
+  },
+};
+
 const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
   cl_life_mend:
     'Increase primary healing by 12%, heal reach and relay radius by 8%, and improve recharge within its shared budget; relay remains 35% of effective primary healing to one other ally',
   cl_light_flash:
     'Increase healing by 12%, reach and rescue readiness duration by 8% (cap 8s), and improve recharge within its shared budget; retain the +20% direct-hit follow-through on rescue',
-  mo_openhand_wind:
-    'Increase healing by 12%, dash reach, crossing width and guard duration by 8% (guard cap 6s), and improve recharge within its shared budget; retain Flow and one crossed ally',
   rg_hunter_hail:
     'Increase damage by 12% and burst radius by 8%, and improve recharge within its shared budget; retain slowing disengagement and knockback',
   rg_hunter_mark:
     'Increase damage by 12% and improve recharge within its shared budget; retain two additional pierces and Exposed Quarry',
-  kn_battle_menacing:
-    'Improve the personal damage buff, increase challenge radius by 8%, and improve recharge within its shared budget; retain weakening and counter preparation',
-  bb_berserker_slam:
-    'Increase burst and fissure damage by 12%, burst radius by 8%, and improve recharge within its shared budget; fissures still require Momentum',
-  bb_totem_quake:
-    'Increase field damage by 12% (rounded), radius by 8%, and improve recharge within its shared budget; retain Momentum and enemy slow',
   ro_assassin_poison:
     'First pick extends target poison to 5s; second to 6s. Later picks gain +12% poison magnitude and bounded recharge improvement; preparation and strongest-owner rule remain',
   dr_land_spike:
@@ -3782,19 +4074,9 @@ const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
     'Increase healing by 12%, improve recipient haste, and improve recharge within its shared budget; retain cleanse',
   mg_abjurer_mend:
     'Increase healing and barrier by 12%, reach by 8%, and improve recharge within its shared budget',
-  mo_openhand_ki:
-    'Increase self-healing by 12% and improve recharge within its shared budget; retain Flow preparation',
 
-  kn_champion_rally:
-    'Increase self-healing by 12%, sprint speed by 4.8 percentage points, and improve recharge within its shared budget',
-  kn_battle_rally:
-    'Increase healing and recovery ticks by 12%, grove radius by 8%, and improve recharge within its shared budget; retain counter preparation',
   rg_hunter_stand:
     'Increase skirmish-field damage by 12% and radius by 8%, and improve recharge within its shared budget; retain ally speed and enemy slow',
-  bb_totem_bear:
-    'Extend control resistance and frontal blocks by 8% (cap 8s), improve mitigation, and improve recharge within its shared budget; retain counters on blocks',
-  bb_totem_mend:
-    'Increase self-healing by 12%, extend control resistance by 8% (cap 8s), and improve recharge within its shared budget; retain cleanse',
   pa_devotion_aura:
     'Increase barrier by 12% and barrier/aura reach by 8%, and improve recharge within its shared budget; retain the shared protection aura',
   wa_fiend_resilience:
@@ -3842,21 +4124,62 @@ function simpleHonedText(subSkillId: string): string {
 
 /** Per-subclass-skill upgrade builder — tied to one sub skill id (non-grand, cap 5). */
 function us(subSkillId: string, classId: ClassId, name: string, icon: string): CharUpgradeDef {
+  // getSubSkill is Forge-resolved; profiles require the authored delivery AND payload shape.
+  const native = subclassOfSkill(subSkillId)!.skills.find((s) => s.id === subSkillId)!.ability;
+  const nativeHooks = (
+    [
+      'healOnUse',
+      'buffMoveMult',
+      'buffDamageMult',
+      'buffDefMult',
+      'buffDuration',
+      'parryOnHit',
+      'stun',
+      'warCry',
+      'recoveryZone',
+      'bloodRage',
+      'momentumWindow',
+      'frontGuard',
+      'steadfastDuration',
+      'wolfHunt',
+      'zoneTickDamage',
+      'zoneDuration',
+      'crossingGuard',
+      'prepareFlow',
+      'projSpeed',
+      'lifestealFrac',
+      'momentumFissure',
+      'landingDamage',
+      'range',
+    ] as const
+  ).filter((field) => native[field] != null);
+  const nativeForce = native.knockback != null || native.pull != null;
   return {
     id: `subup_${subSkillId}`,
     classId,
     subSkillId,
     name: `Honed ${name}`,
     icon,
-    desc: SUB_SKILL_TUNE_TEXT[subSkillId]
-      ? `${SUB_SKILL_TUNE_TEXT[subSkillId]} (stacks to ${MAX_SKILL_STACKS}).`
-      : `${simpleHonedText(subSkillId)} (stacks to ${MAX_SKILL_STACKS}).`,
+    desc: MARTIAL_HONED[subSkillId]
+      ? `${MARTIAL_HONED[subSkillId].desc} (stacks to ${MAX_SKILL_STACKS}).`
+      : SUB_SKILL_TUNE_TEXT[subSkillId]
+        ? `${SUB_SKILL_TUNE_TEXT[subSkillId]} (stacks to ${MAX_SKILL_STACKS}).`
+        : `${simpleHonedText(subSkillId)} (stacks to ${MAX_SKILL_STACKS}).`,
     apply: ({ subAbilities }) => {
       if (!subAbilities) return;
       for (const slot of SUB_SLOTS) {
         const ab = subAbilities[slot];
         if (!ab) continue;
-        if (subSkillId === 'ro_assassin_poison' && ab.venomCoating) {
+        if (MARTIAL_HONED[subSkillId]) {
+          if (
+            ab.kind === native.kind &&
+            nativeHooks.every((field) => ab[field] != null) &&
+            (!nativeForce || ab.knockback != null || ab.pull != null)
+          ) {
+            MARTIAL_HONED[subSkillId].tune(ab);
+            ordinaryRecharge(ab, 0.96);
+          } else subSkillTune(ab);
+        } else if (subSkillId === 'ro_assassin_poison' && ab.venomCoating) {
           ab.venomCoating = { ...ab.venomCoating }; // cloned bindings must not mutate authored content
           // First pick trades per-cycle burst for duration; subsequent picks retain rounded growth.
           const picks = (ab.venomHonedStacks ?? 0) + 1;

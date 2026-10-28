@@ -321,12 +321,13 @@ describe('subclass grands transform bound sub-abilities at spawn + across a swap
       ],
     });
     const p = w.players[0];
-    // Earthshaker (pbaoe dmg 40, r150) → +50% magnitude, +30% area, +25% lifesteal.
-    expect(p.subAbilities?.sub1?.damage).toBe(60);
-    expect(p.subAbilities?.sub1?.radius).toBe(195);
-    expect(p.subAbilities?.sub1?.lifestealFrac).toBeCloseTo(0.25, 5);
+    // Earthshaker retains its cone footprint and gains 15% lifesteal.
+    expect(p.subAbilities?.sub1?.damage).toBe(40);
+    expect(p.subAbilities?.sub1?.lifestealFrac).toBe(0.15);
+    expect(p.subAbilities?.sub1?.range).toBe(180);
     // Riposte (melee dmg 46, range 80) is the second bound Champion skill.
-    expect(p.subAbilities?.sub2?.damage).toBe(69);
+    expect(p.subAbilities?.sub2?.damage).toBe(46);
+    expect(p.subAbilities?.sub2?.lifestealFrac).toBe(0.15);
   });
 
   it('re-applies each class’s subclass grand when the hero swaps class', () => {
@@ -345,9 +346,10 @@ describe('subclass grands transform bound sub-abilities at spawn + across a swap
       ],
     });
     const p = w.players[0];
-    // On knight: the Champion grand transforms Earthshaker (dmg 40 → 60).
+    // On knight: the Champion identity grants Earthshaker lifesteal.
     expect(p.subAbilities?.sub1?.name).toBe('Earthshaker');
-    expect(p.subAbilities?.sub1?.damage).toBe(60);
+    expect(p.subAbilities?.sub1?.damage).toBe(40);
+    expect(p.subAbilities?.sub1?.lifestealFrac).toBe(0.15);
     // Swap to mage: sub1 rebinds to Lightning Bolt and the Evoker grand transforms it
     // (dmg 40 → round(40 * 1.6) = 64, and a projectile gains a freeze rider).
     w.setActiveClass(p, 'mage');
