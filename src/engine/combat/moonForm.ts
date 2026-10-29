@@ -63,9 +63,10 @@ export function onMoonAbility(world: World, p: Player, ab: PlayerAbilityDef): vo
   if (ab.slot !== 'basic') {
     if (!ready(p, MOON_ASPECT)) return;
     p.buffs = p.buffs.filter((b) => !b.source.startsWith(PREFIX));
+    const duration = p.charUpgradeIds?.includes('dr_moon_g_a') ? 8 : 6;
     const buffs: Buff[] = [
-      { kind: 'moonForm', mult: 1, remaining: 6, source: PREFIX + 'shape' },
-      { kind: 'moveSpeed', mult: 1.2, remaining: 6, source: PREFIX + 'stride' },
+      { kind: 'moonForm', mult: 1, remaining: duration, source: PREFIX + 'shape' },
+      { kind: 'moveSpeed', mult: 1.2, remaining: duration, source: PREFIX + 'stride' },
     ];
     p.buffs.push(...buffs);
     spend(p, MOON_ASPECT, 12);
@@ -80,6 +81,7 @@ export function onMoonAbility(world: World, p: Player, ab: PlayerAbilityDef): vo
     return;
   }
   if (!inMoonForm(p)) return;
+  const range = p.charUpgradeIds?.includes('dr_moon_g_b') ? 125 : MOON_CLAW_RANGE;
   const angle = Math.atan2(p.aim.y, p.aim.x),
     half = (Math.PI * 55) / 180;
   world.events.push({
@@ -91,22 +93,20 @@ export function onMoonAbility(world: World, p: Player, ab: PlayerAbilityDef): vo
       kind: 'cone',
       origin: { ...p.pos },
       angle,
-      range: MOON_CLAW_RANGE,
+      range,
       radius: 0,
       halfAngle: half,
     },
   });
   let dealt = 0;
   for (const boss of world.bosses) {
-    if (boss.hp <= 0 || !pointInCone(boss.pos, p.pos, angle, MOON_CLAW_RANGE, half, boss.radius))
-      continue;
+    if (boss.hp <= 0 || !pointInCone(boss.pos, p.pos, angle, range, half, boss.radius)) continue;
     const before = boss.hp;
     damageBoss(world, p, boss, MOON_CLAW_DAMAGE);
     dealt += Math.max(0, before - Math.max(0, boss.hp));
   }
   for (const add of world.adds) {
-    if (add.hp <= 0 || !pointInCone(add.pos, p.pos, angle, MOON_CLAW_RANGE, half, add.radius))
-      continue;
+    if (add.hp <= 0 || !pointInCone(add.pos, p.pos, angle, range, half, add.radius)) continue;
     const before = add.hp;
     damageAdd(world, p, add, MOON_CLAW_DAMAGE);
     dealt += Math.max(0, before - Math.max(0, add.hp));

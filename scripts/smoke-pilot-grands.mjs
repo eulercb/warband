@@ -10,7 +10,9 @@ try {
     const subclasses =
       process.env.SMOKE_GRAND_COHORT === 'martial'
         ? ['kn_champion', 'kn_battlemaster', 'bb_berserker', 'bb_totem', 'mo_openhand', 'mo_shadow']
-        : ['ro_assassin', 'ro_trickster', 'wa_fiend', 'wa_great_old_one'];
+        : process.env.SMOKE_GRAND_COHORT === 'nature'
+          ? ['rg_hunter', 'rg_beastmaster', 'dr_moon', 'dr_land']
+          : ['ro_assassin', 'ro_trickster', 'wa_fiend', 'wa_great_old_one'];
     for (const subclassId of subclasses) {
       const page = await browser.newPage({
         viewport: { width, height: width === 320 ? 568 : 800 },
@@ -77,6 +79,8 @@ try {
               knight: 'kn_gk_basic_a',
               barbarian: 'bb_gk_basic_b',
               monk: 'mo_gk_basic_b',
+              ranger: 'rg_gk_basic_b',
+              druid: 'dr_gk_basic_b',
             }[classId],
             {
               rogue: 'ro_gk_a1_a',
@@ -84,6 +88,8 @@ try {
               knight: 'kn_gk_a1_a',
               barbarian: 'bb_gk_a1_a',
               monk: 'mo_gk_a1_a',
+              ranger: 'rg_gk_a1_b',
+              druid: 'dr_gk_a1_b',
             }[classId],
             `${context.subSkills[0]}_g`,
             `${subclassId}_g_a`,

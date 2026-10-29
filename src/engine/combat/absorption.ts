@@ -3,6 +3,10 @@ import type { BuffView, Player } from '../core/types';
 export const ABSORPTION_CAP = 0.5;
 export const OVERFLOW_CAP = 0.3;
 export const OVERFLOW_SECONDS = 6;
+/** Direct authored barriers track recipient health growth; already proportional rewards do not. */
+export function healthScaledAbsorption(amount: number, maxHp: number, baseMaxHp: number): number {
+  return amount * Math.max(1, maxHp / baseMaxHp);
+}
 export interface AbsorptionGrant {
   amount: number;
   /** Self protection gains a bounded bonus from distinct nearby personally cursed enemies. */
@@ -68,7 +72,7 @@ export function absorbDamage(p: Player, damage: number): number {
 export function absorptionDescription(g: AbsorptionGrant): string {
   const n = (v: number) => Math.round(v * 100) / 100;
   const siphon = g.curseSiphon;
-  return `${n(g.amount)} absorption for ${n(g.duration)}s to ${g.target === 'self' ? 'yourself' : g.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}${siphon && g.target === 'self' ? `; siphon hits up to ${siphon.maxTargets} nearby personally cursed enemies for ${n(siphon.amount)} dmg within ${n(siphon.range)}u; +${n(siphon.amount)} protection per successful hit; marks are not consumed` : ''}; shared cap 50% max HP, strongest cast wins`;
+  return `${n(g.amount)} absorption for ${n(g.duration)}s to ${g.target === 'self' ? 'yourself' : g.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}${siphon && g.target === 'self' ? `; siphon hits up to ${siphon.maxTargets} nearby personally cursed enemies for ${n(siphon.amount)} dmg within ${n(siphon.range)}u; +${n(siphon.amount)} protection per successful hit; marks are not consumed` : ''}; protection scales with recipient max-HP growth above their starting-class baseline; shared cap 50% max HP, strongest cast wins`;
 }
 
 /** Maximum authored grant, used to price composition rather than treating siphons as free. */

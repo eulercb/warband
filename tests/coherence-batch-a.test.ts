@@ -375,8 +375,8 @@ describe('new payload compatibility, visibility and difficulty credit', () => {
       applySubSkillUpgrades(p, [`subup_${id}`]);
       const copied = recompose(refreshComponents(p.subAbilities!.sub1), p.subAbilities!.sub1);
       if (id === 'dr_moon_roar') {
-        expect(copied.closeBurst!.damage).toBe(27);
-        expect(copied.closeBurst!.radius).toBe(135);
+        expect(copied.closeBurst!.damage).toBe(26);
+        expect(copied.closeBurst!.radius).toBe(125);
       }
       if (id === 'wa_fiend_rebuke') {
         expect(copied.infernalClaim).toBe(true);

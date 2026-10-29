@@ -1,8 +1,8 @@
 # Rogue and Warlock: authored four-grand builds
 
-Current delivery: [Knight/Barbarian/Monk authored builds](MARTIAL_GRANDS.md).
+Current delivery: [Ranger/Druid authored builds](NATURE_GRANDS.md).
 Rogue/Warlock and [their coherence follow-up](PILOT_COHERENCE_FOLLOWUP.md) are
-merged/live-tested. The owner also accepted the Claim opportunity marker.
+merged/live-tested, as is the martial cohort. The owner also accepted the Claim opportunity marker.
 Mechanics below describe the initial pilot; the coherence follow-up records its
 later revisions. Apply the [combined-build review gate](UPGRADE_REVIEW_GATE.md)
 to remaining cohorts.

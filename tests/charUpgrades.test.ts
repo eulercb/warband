@@ -139,10 +139,10 @@ describe('character-upgrade catalog', () => {
 
   it('flat lookup covers every class + hybrid + all grand kinds with unique ids', () => {
     const classGrand = Object.values(GRAND_BY_CLASS).flat();
-    expect(classGrand).toHaveLength(16); // Rogue, Warlock and martial whole-class aliases are folded into base skills
-    expect(SKILL_GRANDS).toHaveLength(74);
+    expect(classGrand).toHaveLength(12); // Seven authored classes fold whole-class aliases into base skills
+    expect(SKILL_GRANDS).toHaveLength(66);
     expect(SUBCLASS_GRANDS).toHaveLength(12 * 2 * 2); // 2 per subclass: 24 subclasses × 2 = 48
-    expect(PILOT_SUB_SKILL_GRANDS).toHaveLength(40);
+    expect(PILOT_SUB_SKILL_GRANDS).toHaveLength(56);
     expect(GRAFT_GRANDS).toHaveLength(7 * 2); // 2 per skill-replacing graft: 7 grafts × 2 = 14 (item 18/66)
     const all = [
       ...Object.values(CHAR_UPGRADES_BY_CLASS).flat(),
@@ -154,11 +154,11 @@ describe('character-upgrade catalog', () => {
       ...GRAFT_GRANDS,
       ...SUB_SKILL_UPGRADES, // item 6: one per subclass skill (24 subclasses × 4 = 96)
     ];
-    expect(all).toHaveLength(360);
+    expect(all).toHaveLength(364);
     expect(SUB_SKILL_UPGRADES).toHaveLength(96);
     const ids = all.map((d) => d.id);
     expect(new Set(ids).size).toBe(ids.length); // no duplicates
-    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(360 + Object.keys(PILOT_GRAND_ALIASES).length);
+    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(364 + Object.keys(PILOT_GRAND_ALIASES).length);
     for (const id of ids) expect(CHAR_UPGRADES[id].id).toBe(id);
     // Every grand improvement (class, skill, subclass, graft) is uniquely capped at one stack.
     for (const d of [
@@ -186,7 +186,11 @@ describe('character-upgrade catalog', () => {
     expect(bySlot.size).toBe(46); // Rogue Vial and Warlock basic retain legacy IDs
     for (const [key, n] of bySlot)
       expect(n).toBe(
-        ['rogue', 'warlock', 'knight', 'barbarian', 'monk'].includes(key.split(':')[0]) ? 1 : 2,
+        ['rogue', 'warlock', 'knight', 'barbarian', 'monk', 'ranger', 'druid'].includes(
+          key.split(':')[0],
+        )
+          ? 1
+          : 2,
       );
   });
 
@@ -1272,7 +1276,7 @@ describe('effect fallbacks for absent optional fields', () => {
 
   it('amplify() seeds iframes on an iframe-less dash sub-skill (iframes ?? 0)', () => {
     const dash = ab('a1', 'dash', 0); // dash, no iframes
-    CHAR_UPGRADES.rg_hunter_g_a.apply({
+    CHAR_UPGRADES.mg_evoker_g_a.apply({
       player: stub,
       abilities: table(),
       subAbilities: { sub1: dash },
@@ -1284,12 +1288,12 @@ describe('effect fallbacks for absent optional fields', () => {
     // A pure hazard: no `damage` field at all, only per-tick damage — so `(ab.damage ?? 0)`
     // takes its 0 fallback, the first `> 0` is false, and the OR falls through to the tick.
     const zone = ab('a1', 'groundZone', undefined as unknown as number, { zoneTickDamage: 15 });
-    CHAR_UPGRADES.rg_hunter_g_b.apply({
+    CHAR_UPGRADES.ba_whispers_g_a.apply({
       player: stub,
       abilities: table(),
       subAbilities: { sub1: zone },
     });
-    expect(zone.slowMult).toBeCloseTo(0.5, 5);
+    expect(zone.slowMult).toBeCloseTo(0.35, 5);
   });
 });
 
@@ -2054,8 +2058,8 @@ describe('charUpgradeBadge', () => {
 describe('grand improvements apply real, measurable transformations (item 22)', () => {
   const grands = Object.values(GRAND_BY_CLASS).flat();
 
-  it('folds pilot and martial whole-class entries into canonical base choices', () => {
-    expect(grands).toHaveLength(16);
+  it('folds authored whole-class entries into canonical base choices', () => {
+    expect(grands).toHaveLength(12);
   });
 
   for (const def of grands) {
@@ -2077,11 +2081,13 @@ describe('grand improvements apply real, measurable transformations (item 22)', 
     });
   }
 
-  it('rg_grand_deadeye sharpens the ranger Arrow by exact amounts', () => {
+  it('rg_grand_deadeye migrates to Railshot without applying twice', () => {
     const arrow = CLASSES.ranger.abilities.basic;
     const a = apply('ranger', ['rg_grand_deadeye']).abilities!;
-    expect(a.basic.damage).toBe((arrow.damage ?? 0) + 20);
-    expect(a.basic.projSpeed).toBe((arrow.projSpeed ?? 0) + 250);
+    expect(a.basic.damage).toBe((arrow.damage ?? 0) + 12);
+    expect(a.basic.projSpeed).toBe((arrow.projSpeed ?? 0) + 200);
+    expect(a.basic.pierce).toBe(3);
+    expect(apply('ranger', ['rg_grand_deadeye', 'rg_gk_basic_b']).abilities).toEqual(a);
   });
 
   it('mg_grand_archmage slashes cast time and pumps damage + health', () => {
@@ -2298,13 +2304,13 @@ describe('subclass grands transform the bound sub-abilities (item 17)', () => {
     expect(q.subAbilities!.sub1!.damage).toBe(40); // Earthshaker untouched
   });
 
-  it('is a harmless no-op in the base replay (no sub-abilities present)', () => {
-    const before = JSON.stringify(makePlayer('ranger').abilities);
-    const p = apply('ranger', ['rg_hunter_g_a']); // no subAbilities on this hero
+  it('unconverted identities are a harmless no-op in the base replay', () => {
+    const before = JSON.stringify(makePlayer('mage').abilities);
+    const p = apply('mage', ['mg_evoker_g_a']); // no subAbilities on this hero
     expect(JSON.stringify(p.abilities)).toBe(before);
   });
 
-  it('every subclass grand measurably transforms a bound skill of its subclass', () => {
+  it('every subclass grand measurably transforms the bound skill or starting loop', () => {
     for (const d of SUBCLASS_GRANDS) {
       const sub = SUBCLASSES[d.classId as ClassId].find((s) => s.id === d.subclassId)!;
       const p = makePlayerWithSubs(
@@ -2313,7 +2319,10 @@ describe('subclass grands transform the bound sub-abilities (item 17)', () => {
         [d.id],
       );
       const pristine = JSON.stringify({ ...sub.skills[0].ability, slot: 'sub1' });
-      expect(JSON.stringify(p.subAbilities!.sub1)).not.toBe(pristine);
+      const boundChanged = JSON.stringify(p.subAbilities!.sub1) !== pristine;
+      const baseChanged =
+        JSON.stringify(p.abilities) !== JSON.stringify(makePlayer(d.classId as ClassId).abilities);
+      expect(boundChanged || baseChanged, d.id).toBe(true);
     }
   });
 });

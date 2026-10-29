@@ -45,7 +45,15 @@ function sk(
   desc: string,
   ability: Omit<PlayerAbilityDef, 'slot'>,
 ): SubSkillDef {
-  return { id, name, icon, desc, ability };
+  return {
+    id,
+    name,
+    icon,
+    desc: ability.absorption
+      ? `${desc}. Barrier protection scales with recipient max-HP growth.`
+      : desc,
+    ability,
+  };
 }
 
 // Ability shorthands so 96 skills stay readable.
@@ -935,8 +943,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           // item 11 — the wind now SHOVES: a light knockback (below FORCE_OVERCOME_ROOT,
           // so it can't rip a rooted foe free — that's the Bull Rush's job) that
           // scatters foes off the Druid. Wind that pushes, differentiating the class.
-          'A slowing 150u cyclone for 24 that blows foes back',
-          nova('Gust', 8, 24, 150, { slowMult: 0.5, slowDuration: 2, knockback: 90 }),
+          'Aim a 260u, 30° half-angle wind cone for 24, slowing and pushing struck foes 90u away',
+          cone('Gust', 8, 24, 260, 30, { slowMult: 0.5, slowDuration: 2, knockback: 90 }),
         ),
         sk(
           'dr_land_spring',

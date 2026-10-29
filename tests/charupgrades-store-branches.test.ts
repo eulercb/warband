@@ -144,7 +144,11 @@ describe('charUpgrades: catalog shape', () => {
     // Pilot whole-class entries folded into their single-skill base choices.
     for (const c of CLASS_IDS) {
       expect(GRAND_BY_CLASS[c] ?? []).toHaveLength(
-        ['knight', 'barbarian', 'monk'].includes(c) ? 0 : c === 'rogue' || c === 'warlock' ? 1 : 2,
+        ['knight', 'barbarian', 'monk', 'ranger', 'druid'].includes(c)
+          ? 0
+          : c === 'rogue' || c === 'warlock'
+            ? 1
+            : 2,
       );
       for (const d of GRAND_BY_CLASS[c] ?? []) expect(d.maxStacks).toBe(1);
     }

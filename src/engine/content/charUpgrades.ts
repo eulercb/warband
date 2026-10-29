@@ -1241,6 +1241,19 @@ export const PILOT_GRAND_ALIASES: Readonly<Record<string, string>> = {
   mo_gk_a2_b: 'mo_gk_a2_a',
   mo_gk_a3_b: 'mo_gk_a3_a',
 
+  rg_grand_deadeye: 'rg_gk_basic_b',
+  rg_grand_storm: 'rg_gk_a1_b',
+  rg_gk_basic_a: 'rg_gk_basic_b',
+  rg_gk_a1_a: 'rg_gk_a1_b',
+  rg_gk_a2_a: 'rg_gk_a2_b',
+  rg_gk_a3_a: 'rg_gk_a3_b',
+  dr_grand_wild: 'dr_gk_basic_b',
+  dr_grand_grove: 'dr_gk_a1_b',
+  dr_gk_basic_a: 'dr_gk_basic_b',
+  dr_gk_a1_a: 'dr_gk_a1_b',
+  dr_gk_a2_b: 'dr_gk_a2_a',
+  dr_gk_a3_b: 'dr_gk_a3_a',
+
   ro_grand_shadow: 'ro_gk_a1_a',
   ro_gk_basic_a: 'ro_gk_basic_b',
   ro_gk_a1_b: 'ro_gk_a1_a',
@@ -1258,33 +1271,6 @@ export const canonicalGrandId = (id: string): string =>
   Object.hasOwn(PILOT_GRAND_ALIASES, id) ? PILOT_GRAND_ALIASES[id] : id;
 
 const GRAND: CharUpgradeDef[] = [
-  g(
-    'ranger',
-    'rg_grand_deadeye',
-    'Deadeye',
-    '🎯',
-    'Arrows become lightning bolts: +20 dmg, +250 speed, far longer range',
-    ({ abilities: a }) => {
-      addN(a.basic, 'damage', 20);
-      addN(a.basic, 'projSpeed', 250);
-      addRange(a.basic, 220);
-    },
-  ),
-  g(
-    'ranger',
-    'rg_grand_storm',
-    'Arrow Storm',
-    '🌩️',
-    // item 10 — a master archer draws in a blink: the aimed volley's wind-up is
-    // nearly halved, reinforcing the Ranger's precise-and-fast identity.
-    'Multishot erupts into a storm — 5 extra arrows across a wide 55° fan (+6 each), drawn in half the time',
-    ({ abilities: a }) => {
-      addN(a.a1, 'projCount', 5);
-      addN(a.a1, 'spreadDeg', 25);
-      addN(a.a1, 'damage', 6);
-      mul(a.a1, 'castTime', 0.55); // item 10 — looses the aimed volley far faster
-    },
-  ),
   g(
     'mage',
     'mg_grand_archmage',
@@ -1378,30 +1364,6 @@ const GRAND: CharUpgradeDef[] = [
       addN(a.basic, 'lifestealFrac', 0.25);
       addN(a.basic, 'halfAngleDeg', 20);
       addN(a.a2, 'damage', 60);
-    },
-  ),
-  g(
-    'druid',
-    'dr_grand_wild',
-    'Wild Shape',
-    '🐾',
-    'Thornlash becomes a volley of 3 extra thorns (+6 each); Regrowth booms for +60',
-    ({ abilities: a }) => {
-      addN(a.a2, 'damage', 60);
-      addN(a.basic, 'projCount', 3);
-      addN(a.basic, 'damage', 6);
-    },
-  ),
-  g(
-    'druid',
-    'dr_grand_grove',
-    'Sacred Grove',
-    '🌳',
-    'Entangle becomes a vast thornfield that roots — +22/tick, +65 radius, +5s',
-    ({ abilities: a }) => {
-      addN(a.a1, 'zoneTickDamage', 22);
-      addN(a.a1, 'radius', 65);
-      addN(a.a1, 'zoneDuration', 5);
     },
   ),
   g(
@@ -1568,41 +1530,16 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
   gk(
     'ranger',
     'basic',
-    'rg_gk_basic_a',
-    'Splitshaft',
-    '🏹',
-    'Every Arrow splits into 3 across a 16° fan, each +6 damage',
-    (ab) => {
-      addN(ab, 'projCount', 2);
-      ab.spreadDeg = Math.max(ab.spreadDeg ?? 0, 16);
-      addN(ab, 'damage', 6);
-    },
-  ),
-  gk(
-    'ranger',
-    'basic',
     'rg_gk_basic_b',
     'Railshot',
     '🎯',
-    'Arrow becomes a hypersonic lance: +26 damage, +300 speed, far greater range',
-    (ab) => {
-      addN(ab, 'damage', 26);
-      addN(ab, 'projSpeed', 300);
-      addRange(ab, 260);
-    },
-  ),
-  gk(
-    'ranger',
-    'a1',
-    'rg_gk_a1_a',
-    'Arrowfall',
-    '🌩️',
-    'Multishot becomes a wall of 6 extra arrows across a 20°-wider fan (+5 each)',
-    (ab) => {
-      addN(ab, 'projCount', 6);
-      addN(ab, 'spreadDeg', 20);
-      addN(ab, 'damage', 5);
-    },
+    'Arrow pierces three additional foes, gains +12 damage and +200 speed, and extends its travel cap by 220u',
+    natureGrand('projectile', (ab) => {
+      ab.pierce = Math.max(ab.pierce ?? 0, 3);
+      addN(ab, 'damage', 12);
+      addN(ab, 'projSpeed', 200);
+      addRange(ab, 220);
+    }),
   ),
   gk(
     'ranger',
@@ -1610,52 +1547,25 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'rg_gk_a1_b',
     'Frostvolley',
     '❄️',
-    'Multishot bites deep (+2 arrows, +12 each) and freezes what it strikes for 0.6s',
-    (ab) => {
-      addN(ab, 'projCount', 2);
-      addN(ab, 'damage', 12);
+    'Multishot freezes struck foes for 0.6s and gains +8 damage per arrow; ordinary fan growth remains',
+    natureGrand('projectile', (ab) => {
+      addN(ab, 'damage', 8);
       addN(ab, 'freeze', 0.6);
-    },
-  ),
-  gk(
-    'ranger',
-    'a2',
-    'rg_gk_a2_a',
-    'Meteoric Barrage',
-    '☄️',
-    'Rain of Arrows pours for +16/tick across +50u for +2.5s',
-    (ab) => {
-      addN(ab, 'zoneTickDamage', 16);
-      addN(ab, 'radius', 50);
-      addN(ab, 'zoneDuration', 2.5);
-    },
+    }),
   ),
   gk(
     'ranger',
     'a2',
     'rg_gk_a2_b',
-    'Tar Volley',
-    '🕸️',
-    'Rain of Arrows mires the ground: +8/tick and slows to 40% for +2s',
-    (ab) => {
-      addN(ab, 'zoneTickDamage', 8);
-      setMin(ab, 'slowMult', 0.4);
-      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.5);
-      addN(ab, 'zoneDuration', 2);
-    },
-  ),
-  gk(
-    'ranger',
-    'a3',
-    'rg_gk_a3_a',
-    'Phantom Step',
-    '💨',
-    'Roll flickers +130u with +0.4s i-frames and recharges twice as fast',
-    (ab) => {
-      addN(ab, 'range', 130);
-      addN(ab, 'iframes', 0.4);
-      mul(ab, 'cooldown', 0.5);
-    },
+    'Pursuing Rain',
+    '🌧️',
+    'Rain of Arrows follows its first damaged foe for 3s, then anchors, and deals +8 per tick; overhead arrows still reach flyers',
+    natureGrand('groundZone', (ab) => {
+      if (ab.zoneTickDamage) {
+        ab.zoneFollow = Math.max(ab.zoneFollow ?? 0, 3);
+        addN(ab, 'zoneTickDamage', 8);
+      } else amplify(ab, 0.25, 0.15);
+    }),
   ),
   gk(
     'ranger',
@@ -1663,12 +1573,12 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'rg_gk_a3_b',
     'Detonating Roll',
     '💥',
-    'Roll erupts on landing for 40 across a 130u blast, and travels +80u',
-    (ab) => {
-      ab.landingDamage = (ab.landingDamage ?? 0) + 40;
-      ab.radius = (ab.radius ?? 0) + 130;
-      addN(ab, 'range', 80);
-    },
+    'Roll lands with a 40-damage, 130u blast and travels 50u farther; landing near the quarry trades escape distance for pressure',
+    natureGrand('dash', (ab) => {
+      addN(ab, 'landingDamage', 40);
+      ab.radius = Math.max(ab.radius ?? 0, 130);
+      addN(ab, 'range', 50);
+    }),
   ),
 
   // --- Mage -----------------------------------------------------------------
@@ -2094,43 +2004,14 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
   gk(
     'druid',
     'basic',
-    'dr_gk_basic_a',
-    'Thorn Barrage',
-    '🌵',
-    'Thornlash splits into 4 thorns across a 16° fan (+6 each)',
-    (ab) => {
-      addN(ab, 'projCount', 3);
-      ab.spreadDeg = Math.max(ab.spreadDeg ?? 0, 16);
-      addN(ab, 'damage', 6);
-    },
-  ),
-  gk(
-    'druid',
-    'basic',
     'dr_gk_basic_b',
     'Bramble Spear',
     '🌿',
-    'Thornlash becomes a heavy spear: +22 damage, +250 speed, slows to 55%',
-    (ab) => {
-      addN(ab, 'damage', 22);
-      addN(ab, 'projSpeed', 250);
-      setMin(ab, 'slowMult', 0.55);
-      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.5);
-    },
-  ),
-  gk(
-    'druid',
-    'a1',
-    'dr_gk_a1_a',
-    'Strangleroots',
-    '🌳',
-    'Entangle roots to 15% speed and gnaws +18/tick across +60u for +3s',
-    (ab) => {
-      setMin(ab, 'slowMult', 0.15);
-      addN(ab, 'zoneTickDamage', 18);
-      addN(ab, 'radius', 60);
-      addN(ab, 'zoneDuration', 3);
-    },
+    'Thornlash pierces two additional foes and deals +30% damage against already controlled targets; ordinary splitting adds more spears',
+    natureGrand('projectile', (ab) => {
+      ab.pierce = Math.max(ab.pierce ?? 0, 2);
+      addN(ab, 'controlDamageBonus', 0.3);
+    }),
   ),
   gk(
     'druid',
@@ -2138,12 +2019,11 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'dr_gk_a1_b',
     'Ancient Grove',
     '🍃',
-    'Entangle sprawls +65u and lingers +5s, biting +12/tick',
-    (ab) => {
-      addN(ab, 'radius', 65);
-      addN(ab, 'zoneDuration', 5);
-      addN(ab, 'zoneTickDamage', 12);
-    },
+    'Allies standing inside Entangle take 15% less damage and move 20% faster; its ground roots, damage and healing remain',
+    natureGrand('groundZone', (ab) => {
+      ab.zoneAllyDefMult = Math.min(ab.zoneAllyDefMult ?? 1, 0.85);
+      ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.2);
+    }),
   ),
   gk(
     'druid',
@@ -2151,23 +2031,10 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'dr_gk_a2_a',
     'Wild Bloom',
     '💚',
-    'Regrowth surges for +75 HP at far greater range',
-    (ab) => {
-      addN(ab, 'damage', 75);
-      addN(ab, 'range', 200);
-    },
-  ),
-  gk(
-    'druid',
-    'a2',
-    'dr_gk_a2_b',
-    'Rapid Regrowth',
-    '✨',
-    'Regrowth mends +30 and recharges twice as fast',
-    (ab) => {
-      addN(ab, 'damage', 30);
-      mul(ab, 'cooldown', 0.5);
-    },
+    'Regrowth grants its selected recipient 35 absorption for 4s, even at full health; protection scales with recipient max-HP growth and the recovery grove remains',
+    natureGrand('heal', (ab) => {
+      ab.absorption = { amount: (ab.absorption?.amount ?? 0) + 35, duration: 4, target: 'weakest' };
+    }),
   ),
   gk(
     'druid',
@@ -2175,27 +2042,12 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'dr_gk_a3_a',
     'Tempest',
     '🌪️',
-    'Cyclone widens +60u, hits +24, and rips foes to 30% speed',
-    (ab) => {
-      addN(ab, 'radius', 60);
-      addN(ab, 'damage', 24);
-      setMin(ab, 'slowMult', 0.3);
-      addN(ab, 'slowDuration', 1);
-    },
-  ),
-  gk(
-    'druid',
-    'a3',
-    'dr_gk_a3_b',
-    'Hurricane',
-    '🌀',
-    'Cyclone hits +14, freezes for 0.8s, widens +20u, and recharges 40% faster',
-    (ab) => {
-      addN(ab, 'damage', 14);
-      addN(ab, 'freeze', 0.8);
-      addN(ab, 'radius', 20);
-      mul(ab, 'cooldown', 0.6);
-    },
+    'Cyclone pulls struck foes inward by 130u and gains +12 damage; use it to gather foes into your living territory',
+    natureGrand('pbaoe', (ab) => {
+      ab.pull = Math.max(ab.pull ?? 0, 130);
+      delete ab.knockback;
+      addN(ab, 'damage', 12);
+    }),
   ),
 
   // --- Bard -----------------------------------------------------------------
@@ -2671,6 +2523,24 @@ function gs(
   };
 }
 
+/** Nature recipes require their actual delivery; changed Forge skills get honest generic growth. */
+function natureGrand(
+  kind: PlayerAbilityDef['kind'],
+  tune: (ab: PlayerAbilityDef) => void,
+): (ab: PlayerAbilityDef) => void {
+  return (ab) => {
+    if (ab.kind === kind) tune(ab);
+    else amplify(ab, 0.25, 0.15);
+  };
+}
+
+/** Suppress enemy wind-ups only on deliveries with an actual direct-hit rider. */
+function natureSuppression(ab: PlayerAbilityDef): void {
+  if (!isStrike(ab)) return;
+  ab.castSlow = Math.max(ab.castSlow ?? 1, 1.3);
+  ab.castSlowDuration = Math.max(ab.castSlowDuration ?? 0, 3);
+}
+
 /** Pilot identities tune native base skills during replay and bound subclass skills on rebind. */
 function pilotIdentity(
   subclassId: string,
@@ -2770,50 +2640,74 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
   ),
 
   // Ranger
-  gs(
+  pilotIdentity(
     'rg_hunter',
     'rg_hunter_g_a',
     'Apex Predator',
     '🎯',
-    'Your Hunter skills hit 50% harder over a wider area and pin the quarry (0.7s)',
+    'Arrow, Multishot and direct Hunter strikes deal +25% damage against already controlled foes; Rain of Arrows supplies setup with any first skill',
+    (a) => {
+      for (const ab of [a.basic, a.a1]) {
+        if (isStrike(ab)) addN(ab, 'controlDamageBonus', 0.25);
+        else amplify(ab, 0.2, 0.1);
+      }
+    },
     (ab) => {
-      amplify(ab, 0.5, 0.3);
-      ctrlRider(ab, 0.7);
+      if (isStrike(ab)) addN(ab, 'controlDamageBonus', 0.25);
     },
   ),
-  gs(
+  pilotIdentity(
     'rg_hunter',
     'rg_hunter_g_b',
     'Relentless Hunt',
     '🐾',
-    'Your Hunter skills recharge 40% faster, hit 30% harder, and cripple prey to 50%',
+    'Roll grants +25% movement for 4s and 2s hard-control resistance; direct Hunter strikes slow enemy wind-ups by 30% for 3s, while allied field speed improves by 5 percentage points',
+    (a) => {
+      if (a.a3.kind === 'dash' || a.a3.kind === 'blink') {
+        a.a3.buffMoveMult = Math.max(a.a3.buffMoveMult ?? 1, 1.25);
+        a.a3.buffDuration = Math.max(a.a3.buffDuration ?? 0, 4);
+        a.a3.steadfastDuration = Math.max(a.a3.steadfastDuration ?? 0, 2);
+      } else amplify(a.a3, 0.2, 0.1);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.6);
-      amplify(ab, 0.3, 0.15);
-      slowRider(ab, 0.5, 1.5);
+      natureSuppression(ab);
+      if (ab.kind === 'groundZone' && ab.zoneAllyMoveMult) addN(ab, 'zoneAllyMoveMult', 0.05);
     },
   ),
-  gs(
+  pilotIdentity(
     'rg_beastmaster',
     'rg_beastmaster_g_a',
-    "Alpha's Fury",
+    'Alpha’s Fury',
     '🐺',
-    'Your Beast Master skills maul 50% harder over a wider area and drink 25% as health',
+    'Your spirit wolf commands wind up in 0.15s and deal +50% against controlled quarry instead of +25%, at the same 2.5s command interval; Roll blocks one frontal hit for 3s and direct Beast strikes gain +20% controlled-target damage',
+    (a) => {
+      if (a.a3.kind === 'dash' || a.a3.kind === 'blink')
+        a.a3.frontGuard = { charges: 1, duration: 3 };
+      else amplify(a.a3, 0.2, 0.1);
+    },
     (ab) => {
-      amplify(ab, 0.5, 0.3);
-      lifeRider(ab, 0.25);
+      if (isStrike(ab)) addN(ab, 'controlDamageBonus', 0.2);
     },
   ),
-  gs(
+  pilotIdentity(
     'rg_beastmaster',
     'rg_beastmaster_g_b',
     'Pack Tactics',
     '🐾',
-    'Your Beast Master skills recharge 40% faster, hit 30% harder, and hamstring foes to 50%',
+    'Rain of Arrows gives allies inside 15% mitigation; Roll heals 15; Beast mobility heals 10, dedicated heals gain 15 healing, damaging fields grant +20% allied movement and direct strikes leech 10% more',
+    (a) => {
+      if (a.a2.kind === 'groundZone')
+        a.a2.zoneAllyDefMult = Math.min(a.a2.zoneAllyDefMult ?? 1, 0.85);
+      else amplify(a.a2, 0.2, 0.1);
+      if (a.a3.kind === 'dash' || a.a3.kind === 'blink') addN(a.a3, 'healOnUse', 15);
+      else amplify(a.a3, 0.2, 0.1);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.6);
-      amplify(ab, 0.3, 0.15);
-      slowRider(ab, 0.5, 1.5);
+      if (ab.kind === 'dash' || ab.kind === 'blink') addN(ab, 'healOnUse', 10);
+      else if (ab.kind === 'heal') addN(ab, 'damage', 15);
+      else if (ab.kind === 'groundZone')
+        ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.2);
+      else lifeRider(ab, 0.1);
     },
   ),
 
@@ -3111,49 +3005,73 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
   ),
 
   // Druid
-  gs(
+  pilotIdentity(
     'dr_moon',
     'dr_moon_g_a',
     'Primal Avatar',
     '🐾',
-    'Your Moon skills maul 55% harder over a wider area and drink 25% as health',
+    'Moon form and its stride last 8s instead of 6s, with the same 12s entry interval; Cyclone leeches 15%, direct Moon strikes leech 10% more, and recovery groves gain 20u radius',
+    (a) => {
+      if (isStrike(a.a3)) lifeRider(a.a3, 0.15);
+      else amplify(a.a3, 0.2, 0.1);
+    },
     (ab) => {
-      amplify(ab, 0.55, 0.3);
-      lifeRider(ab, 0.25);
+      lifeRider(ab, 0.1);
+      if (ab.recoveryZone)
+        ab.recoveryZone = { ...ab.recoveryZone, radius: ab.recoveryZone.radius + 20 };
     },
   ),
-  gs(
+  pilotIdentity(
     'dr_moon',
     'dr_moon_g_b',
     'Feral Swiftness',
     '🐆',
-    'Your Moon skills recharge 40% faster, hit 30% harder, and stagger on strike',
+    'Moon claws reach 125u instead of 95u; Cyclone and direct Moon strikes slow enemy wind-ups by 30% for 3s; Moon heals cleanse, mobility heals 10 and prepared bramble bursts reach 30u farther',
+    (a) => {
+      if (isStrike(a.a3)) natureSuppression(a.a3);
+      else amplify(a.a3, 0.2, 0.1);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.6);
-      amplify(ab, 0.3, 0.15);
-      ctrlRider(ab, 0.5);
+      natureSuppression(ab);
+      if (ab.kind === 'heal') ab.cleanseOnHeal = true;
+      if (ab.kind === 'dash' || ab.kind === 'blink') addN(ab, 'healOnUse', 10);
+      if (ab.closeBurst) ab.closeBurst = { ...ab.closeBurst, range: ab.closeBurst.range + 30 };
     },
   ),
-  gs(
+  pilotIdentity(
     'dr_land',
     'dr_land_g_a',
     'Wrath of the Land',
     '🌋',
-    'Your Land skills erupt 55% harder across a vast area and root foes to 40%',
+    'Thornlash gains +25% damage against controlled foes and Cyclone gains +8 damage; direct Land strikes gain +15% controlled-target damage and damaging Land fields gain +3 per tick',
+    (a) => {
+      if (isStrike(a.basic)) addN(a.basic, 'controlDamageBonus', 0.25);
+      else amplify(a.basic, 0.2, 0.1);
+      if (isStrike(a.a3)) addN(a.a3, 'damage', 8);
+      else amplify(a.a3, 0.2, 0.1);
+    },
     (ab) => {
-      amplify(ab, 0.55, 0.35);
-      slowRider(ab, 0.4, 1.5);
+      if (isStrike(ab)) addN(ab, 'controlDamageBonus', 0.15);
+      if (ab.kind === 'groundZone' && ab.zoneTickDamage) addN(ab, 'zoneTickDamage', 3);
     },
   ),
-  gs(
+  pilotIdentity(
     'dr_land',
     'dr_land_g_b',
     'Eternal Season',
     '🍃',
-    'Your Land skills recharge 45% faster and their zones/blasts grow 30%',
+    'Regrowth relays 35% of effective primary healing to one other wounded ally within 180u; Entangle heals +3 per tick; Land fields grant +20% allied movement and healing fields gain +2 per tick, while direct strikes slow foes to 75% for 2s',
+    (a) => {
+      if (a.a2.kind === 'heal') a.a2.relayHeal = { fraction: 0.35, radius: 180 };
+      else amplify(a.a2, 0.2, 0.1);
+      if (a.a1.kind === 'groundZone' && a.a1.zoneTickHeal) addN(a.a1, 'zoneTickHeal', 3);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      amplify(ab, 0.3, 0.15);
+      if (ab.kind === 'groundZone') {
+        ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.2);
+        if (ab.zoneTickHeal) addN(ab, 'zoneTickHeal', 2);
+      } else if (isStrike(ab)) slowRider(ab, 0.75, 2);
+      else if (ab.kind === 'heal') addN(ab, 'damage', 15);
     },
   ),
 
@@ -3668,6 +3586,166 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
   ),
 
   gsk(
+    'rg_hunter_hail',
+    'Driving Hail',
+    '🌿',
+    'Hail of Thorns pushes 180u instead of 90u, enough to overpower roots, and gains +10 damage; Honed push growth remains',
+    natureGrand('pbaoe', (ab) => {
+      ab.knockback = Math.max(ab.knockback ?? 0, 90) + 90;
+      addN(ab, 'damage', 10);
+    }),
+  ),
+  gsk(
+    'rg_hunter_mark',
+    'Shattering Quarry',
+    '🎯',
+    'Quarry Shot bursts across 65u on impact and gains +8 damage; its two extra pierces remain',
+    natureGrand('projectile', (ab) => {
+      ab.impactRadius = Math.max(ab.impactRadius ?? 0, 65);
+      addN(ab, 'damage', 8);
+    }),
+  ),
+  gsk(
+    'rg_hunter_stand',
+    'Sheltering Stand',
+    '🛡️',
+    'Stand as One gives allies inside 20% damage mitigation; its allied movement and slowing arrows remain',
+    natureGrand('groundZone', (ab) => {
+      ab.zoneAllyDefMult = Math.min(ab.zoneAllyDefMult ?? 1, 0.8);
+    }),
+  ),
+  gsk(
+    'rg_hunter_volley',
+    'Concentrated Volley',
+    '🏹',
+    'Volley narrows to a 14° fan and gains +4 damage per arrow, trading wide coverage for focused pressure',
+    natureGrand('projectile', (ab) => {
+      ab.spreadDeg = 14;
+      addN(ab, 'damage', 4);
+    }),
+  ),
+  gsk(
+    'rg_beast_pounce',
+    'Pack Crossing',
+    '🐺',
+    'Pounce cleanses and guards the first living ally actually crossed for 3s along a 45u corridor; its landing attack remains',
+    natureGrand('dash', (ab) => {
+      ab.crossingGuard = { width: 45, duration: 3 };
+    }),
+  ),
+  gsk(
+    'rg_beast_snare',
+    'Clinging Snare',
+    '🪤',
+    'Snare allocates 40% of its tick damage to strongest-owner poison that lingers for 2s, up to three foes; the remaining damage stays in the ground field',
+    natureGrand('groundZone', (ab) => {
+      if (ab.zoneTickDamage) ab.zonePoison = { share: 0.4, onExit: false };
+      else amplify(ab, 0.25, 0.15);
+    }),
+  ),
+  gsk(
+    'rg_beast_bond',
+    'Rescuing Bond',
+    '💚',
+    'Nature’s Bond heals 15 more; an effective rescue from 35% HP or below readies the recipient’s next direct hit for +25% damage within 5s, while the delayed wolf ward remains',
+    natureGrand('heal', (ab) => {
+      addN(ab, 'damage', 15);
+      ab.rescueStrike = { mult: 1.25, duration: 5 };
+    }),
+  ),
+  gsk(
+    'rg_beast_bite',
+    'Defiant Bite',
+    '🦷',
+    'Savage Bite gains +8 damage and a connecting hit grants 0.6s frontal parry; misses grant no parry',
+    natureGrand('meleeCone', (ab) => {
+      addN(ab, 'damage', 8);
+      ab.parryOnHit = Math.max(ab.parryOnHit ?? 0, 0.6);
+    }),
+  ),
+  gsk(
+    'dr_moon_maul',
+    'Encircling Maul',
+    '🐻',
+    'Dire Maul sweeps a full circle and gains +10 damage, letting your close-form window cover threats behind you',
+    natureGrand('meleeCone', (ab) => {
+      ab.halfAngleDeg = 180;
+      addN(ab, 'damage', 10);
+    }),
+  ),
+  gsk(
+    'dr_moon_pounce',
+    'Unstoppable Pounce',
+    '🐆',
+    'Feral Pounce grants 2s hard-control resistance and 20 absorption for 4s, scaling with max-HP growth; its landing remains',
+    natureGrand('dash', (ab) => {
+      ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 2);
+      ab.absorption = { amount: (ab.absorption?.amount ?? 0) + 20, duration: 4, target: 'self' };
+    }),
+  ),
+  gsk(
+    'dr_moon_roar',
+    'Pack Shelter',
+    '🦁',
+    'Primal Roar grants other allies within 180u a 20% damage ward for 4s while you enter your close-form pressure window',
+    natureGrand('selfBuff', (ab) => {
+      ab.allyWard = { range: 180, mult: 0.8, duration: 4 };
+    }),
+  ),
+  gsk(
+    'dr_moon_regen',
+    'Shared Renewal',
+    '💚',
+    'Frenzied Regen heals 25 more and relays 35% of effective primary healing to one other wounded ally within 180u; its self-focused cast and recovery grove remain',
+    natureGrand('heal', (ab) => {
+      addN(ab, 'damage', 25);
+      ab.relayHeal = { fraction: 0.35, radius: 180 };
+    }),
+  ),
+  gsk(
+    'dr_land_spike',
+    'Staggering Eruption',
+    '🌋',
+    'Erupting Earth lengthens enemy wind-ups by 35% for 3s and gains +8 damage, leaving its controlled-target bonus available for follow-through',
+    natureGrand('projectile', (ab) => {
+      ab.castSlow = Math.max(ab.castSlow ?? 1, 1.35);
+      ab.castSlowDuration = Math.max(ab.castSlowDuration ?? 0, 3);
+      addN(ab, 'damage', 8);
+    }),
+  ),
+  gsk(
+    'dr_land_wall',
+    'Wandering Briar',
+    '🌵',
+    'Wall of Thorns follows its first damaged foe for 3s before anchoring, and lasts 1s longer; it remains a physical ground effect',
+    natureGrand('groundZone', (ab) => {
+      if (ab.zoneTickDamage) {
+        ab.zoneFollow = Math.max(ab.zoneFollow ?? 0, 3);
+        addN(ab, 'zoneDuration', 1);
+      } else amplify(ab, 0.25, 0.15);
+    }),
+  ),
+  gsk(
+    'dr_land_wind',
+    'Winter Gale',
+    '🌬️',
+    'The aimed Gust freezes struck foes for 0.6s and gains 25u reach; its pushing wind remains',
+    natureGrand('meleeCone', (ab) => {
+      addN(ab, 'freeze', 0.6);
+      addN(ab, 'range', 25);
+    }),
+  ),
+  gsk(
+    'dr_land_spring',
+    'Sheltering Spring',
+    '💧',
+    'Healing Spring gives allies inside 20% damage mitigation, including at full health; its healing remains',
+    natureGrand('groundZone', (ab) => {
+      ab.zoneAllyDefMult = Math.min(ab.zoneAllyDefMult ?? 1, 0.8);
+    }),
+  ),
+
+  gsk(
     'ro_assassin_strike',
     'Perfect Opening',
     '🗡️',
@@ -3775,7 +3853,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'wa_fiend_rebuke',
     'Infernal Ward',
     '💥',
-    'Infernal Claim bursts across 110u and stores 25% of effective primary damage as protection for 4s, up to 25',
+    'Infernal Claim bursts across 110u and stores 25% of effective primary damage as protection for 4s, up to 25 at base health; ceiling scales with max-HP growth',
     (ab) => {
       ab.radius = Math.max(ab.radius ?? 0, 110);
       ab.claimWard = 0.25;
@@ -4045,7 +4123,129 @@ const MARTIAL_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef)
     desc: 'Increase damage by 12% and leech by 2 percentage points, up to 25%; recharge improves by 4% within the shared ordinary budget',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
-      ab.lifestealFrac = Math.min(0.25, ab.lifestealFrac! + 0.02);
+      ab.lifestealFrac = Math.max(ab.lifestealFrac!, Math.min(0.25, ab.lifestealFrac! + 0.02));
+    },
+  },
+};
+
+/** Nature Honed ranks grow lane, command, form and territory roles without repeating binary grands. */
+const NATURE_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) => void }> = {
+  rg_hunter_hail: {
+    desc: 'Increase burst damage by 10% and outward force by 10u; retain slow; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      addN(ab, 'knockback', 10);
+    },
+  },
+  rg_hunter_mark: {
+    desc: 'Increase quarry-shot damage by 12% and projectile speed by 8%; retain two extra pierces; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      mul(ab, 'projSpeed', 1.08);
+    },
+  },
+  rg_hunter_stand: {
+    desc: 'Increase skirmish-field damage by 10% and allied movement by 2 percentage points; retain enemy slow; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'zoneTickDamage', 1.1);
+      addN(ab, 'zoneAllyMoveMult', 0.02);
+    },
+  },
+  rg_hunter_volley: {
+    desc: 'Increase arrow damage by 12% and projectile speed by 8%; preserve the chosen fan width; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      mul(ab, 'projSpeed', 1.08);
+    },
+  },
+  rg_beast_pounce: {
+    desc: 'Increase landing damage by 12% and leap distance by 10u; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'landingDamage', 1.12);
+      addN(ab, 'range', 10);
+    },
+  },
+  rg_beast_snare: {
+    desc: 'Increase snare damage by 12% and field duration by 0.25s, up to 8s; retain the 25% movement snare; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'zoneTickDamage', 1.12);
+      ab.zoneDuration = Math.min(8, ab.zoneDuration! + 0.25);
+    },
+  },
+  rg_beast_bond: {
+    desc: 'Increase healing by 12% and recipient movement by 2 percentage points; retain cleanse and effective-heal wolf link; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      addN(ab, 'buffMoveMult', 0.02);
+    },
+  },
+  rg_beast_bite: {
+    desc: 'Increase bite damage by 10% and leech by 2 percentage points, up to 40% combined; preserve already higher leech. Five native ranks reach 30%, or 40% with Pack Tactics; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      ab.lifestealFrac = Math.max(ab.lifestealFrac!, Math.min(0.4, ab.lifestealFrac! + 0.02));
+    },
+  },
+  dr_moon_maul: {
+    desc: 'Increase maul damage by 12% and reach by 4u; retain leech and the chosen arc; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      addN(ab, 'range', 4);
+    },
+  },
+  dr_moon_pounce: {
+    desc: 'Increase landing damage by 12% and leap distance by 10u; retain Moon form entry; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'landingDamage', 1.12);
+      addN(ab, 'range', 10);
+    },
+  },
+  dr_moon_roar: {
+    desc: 'Improve the damage buff by 3 percentage points, bramble-burst damage by 2 and its preparation window by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      addN(ab, 'buffDamageMult', 0.03);
+      const burst = ab.closeBurst!;
+      ab.closeBurst = {
+        ...burst,
+        damage: burst.damage + 2,
+        duration: Math.min(8, burst.duration + 0.25),
+      };
+    },
+  },
+  dr_moon_regen: {
+    desc: 'Increase primary healing and recovery-grove ticks by 12%; retain the self-focused cast and form entry; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      ab.recoveryZone = { ...ab.recoveryZone!, tickHeal: ab.recoveryZone!.tickHeal * 1.12 };
+    },
+  },
+  dr_land_spike: {
+    desc: 'Increase eruption damage by 10% and controlled-target bonus by 2 percentage points; preserve aimed blast coverage; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      addN(ab, 'controlDamageBonus', 0.02);
+    },
+  },
+  dr_land_wall: {
+    desc: 'Increase thorn-field damage and healing by 10%, and duration by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'zoneTickDamage', 1.1);
+      mul(ab, 'zoneTickHeal', 1.1);
+      ab.zoneDuration = Math.min(8, ab.zoneDuration! + 0.25);
+    },
+  },
+  dr_land_wind: {
+    desc: 'Increase aimed-wind damage by 10% and push by 10u; preserve the chosen cone and freeze; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      addN(ab, 'knockback', 10);
+    },
+  },
+  dr_land_spring: {
+    desc: 'Increase spring healing by 12% and duration by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'zoneTickHeal', 1.12);
+      ab.zoneDuration = Math.min(8, ab.zoneDuration! + 0.25);
     },
   },
 };
@@ -4055,14 +4255,8 @@ const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
     'Increase primary healing by 12%, heal reach and relay radius by 8%, and improve recharge within its shared budget; relay remains 35% of effective primary healing to one other ally',
   cl_light_flash:
     'Increase healing by 12%, reach and rescue readiness duration by 8% (cap 8s), and improve recharge within its shared budget; retain the +20% direct-hit follow-through on rescue',
-  rg_hunter_hail:
-    'Increase damage by 12% and burst radius by 8%, and improve recharge within its shared budget; retain slowing disengagement and knockback',
-  rg_hunter_mark:
-    'Increase damage by 12% and improve recharge within its shared budget; retain two additional pierces and Exposed Quarry',
   ro_assassin_poison:
     'First pick extends target poison to 5s; second to 6s. Later picks gain +12% poison magnitude and bounded recharge improvement; preparation and strongest-owner rule remain',
-  dr_land_spike:
-    'Increase damage by 12% and blast radius by 8%, and improve recharge within its shared budget; retain the controlled-target bonus',
 
   ro_assassin_smoke:
     'Increase smoke radius by 8% and improve recharge within its shared budget; retain hindrance, allied haste and precision setup',
@@ -4070,13 +4264,9 @@ const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
     'Extend the frontal block by 8% (cap 8s) and improve recharge within its shared budget; retain precision setup',
   ba_valor_bolster:
     'Improve rally movement, extend self control resistance by 8% (cap 8s), and improve recharge within its shared budget; retain cleanse and chorus',
-  rg_beast_bond:
-    'Increase healing by 12%, improve recipient haste, and improve recharge within its shared budget; retain cleanse',
   mg_abjurer_mend:
     'Increase healing and barrier by 12%, reach by 8%, and improve recharge within its shared budget',
 
-  rg_hunter_stand:
-    'Increase skirmish-field damage by 12% and radius by 8%, and improve recharge within its shared budget; retain ally speed and enemy slow',
   pa_devotion_aura:
     'Increase barrier by 12% and barrier/aura reach by 8%, and improve recharge within its shared budget; retain the shared protection aura',
   wa_fiend_resilience:
@@ -4089,41 +4279,10 @@ const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
     'Increase dread-zone damage by 12% and radius by 8%, and improve recharge within its shared budget; weakening stays 20%',
 };
 
-/** First-pick reference for simple Honed boons; live offer previews still resolve owned/rolled skills. */
-function simpleHonedText(subSkillId: string): string {
-  const skill = getSubSkill(subSkillId)!;
-  const before = skill.ability;
-  const after = structuredClone(before) as PlayerAbilityDef;
-  subSkillTune(after);
-  const labels: Record<string, string> = {
-    damage: before.kind === 'heal' ? 'healing' : 'direct damage',
-    zoneTickDamage: 'zone damage per tick',
-    zoneTickHeal: 'zone healing per tick',
-    healOnUse: 'self-healing',
-    radius: 'area radius',
-    impactRadius: 'explosion radius',
-    range: before.kind === 'dash' || before.kind === 'blink' ? 'travel distance' : 'reach',
-    iframes: 'phasing duration',
-    cooldown: 'recharge',
-    buffDamageMult: 'damage multiplier',
-    buffMoveMult: 'movement multiplier',
-    buffDefMult: 'damage-taken multiplier',
-  };
-  const number = (n: number) => String(Math.round(n * 100) / 100);
-  const changes = Object.entries(labels).flatMap(([key, label]) => {
-    const a = before[key as keyof typeof before],
-      b = after[key as keyof typeof after];
-    return typeof a === 'number' && typeof b === 'number' && a !== b
-      ? [
-          `${label} ${number(a)} → ${number(b)}${key === 'cooldown' || key === 'iframes' ? 's' : ''}`,
-        ]
-      : [];
-  });
-  return `${skill.name} — first rank: ${changes.join('; ')}. Retains its existing effects`;
-}
-
-/** Per-subclass-skill upgrade builder — tied to one sub skill id (non-grand, cap 5). */
-function us(subSkillId: string, classId: ClassId, name: string, icon: string): CharUpgradeDef {
+/** Share authored tuning between live replay and Forge offer previews. */
+function applyAuthoredHoned(subSkillId: string, ab: PlayerAbilityDef): boolean {
+  const profile = MARTIAL_HONED[subSkillId] ?? NATURE_HONED[subSkillId];
+  if (!profile) return false;
   // getSubSkill is Forge-resolved; profiles require the authored delivery AND payload shape.
   const native = subclassOfSkill(subSkillId)!.skills.find((s) => s.id === subSkillId)!.ability;
   const nativeHooks = (
@@ -4154,14 +4313,73 @@ function us(subSkillId: string, classId: ClassId, name: string, icon: string): C
     ] as const
   ).filter((field) => native[field] != null);
   const nativeForce = native.knockback != null || native.pull != null;
+  // Nature profiles also depend on these native hooks. A changed same-kind Forge
+  // payload must not acquire a phantom field merely by retaining the original ID.
+  const natureHooks = (
+    ['closeBurst', 'zoneTickHeal', 'zoneAllyMoveMult', 'controlDamageBonus', 'pierce'] as const
+  ).filter((field) => NATURE_HONED[subSkillId] && native[field] != null);
+  if (
+    ab.kind !== native.kind ||
+    !nativeHooks.every((field) => ab[field] != null) ||
+    !natureHooks.every((field) => ab[field] != null) ||
+    (nativeForce && ab.knockback == null && ab.pull == null)
+  )
+    return false;
+  profile.tune(ab);
+  ordinaryRecharge(ab, 0.96);
+  return true;
+}
+
+/** First-pick reference for simple Honed boons; live offer previews still resolve owned/rolled skills. */
+function simpleHonedText(subSkillId: string): string {
+  const skill = getSubSkill(subSkillId)!;
+  const before = skill.ability;
+  const after = structuredClone(before) as PlayerAbilityDef;
+  if (!applyAuthoredHoned(subSkillId, after)) subSkillTune(after);
+  const labels: Record<string, string> = {
+    damage: before.kind === 'heal' ? 'healing' : 'direct damage',
+    zoneTickDamage: 'zone damage per tick',
+    zoneTickHeal: 'zone healing per tick',
+    healOnUse: 'self-healing',
+    radius: 'area radius',
+    impactRadius: 'explosion radius',
+    range: before.kind === 'dash' || before.kind === 'blink' ? 'travel distance' : 'reach',
+    iframes: 'phasing duration',
+    cooldown: 'recharge',
+    buffDamageMult: 'damage multiplier',
+    buffMoveMult: 'movement multiplier',
+    buffDefMult: 'damage-taken multiplier',
+    knockback: 'push distance',
+    pull: 'pull distance',
+    zoneDuration: 'field duration',
+    zoneAllyMoveMult: 'allied field movement multiplier',
+    controlDamageBonus: 'controlled-target damage bonus',
+    lifestealFrac: 'leech fraction',
+  };
+  const number = (n: number) => String(Math.round(n * 100) / 100);
+  const changes = Object.entries(labels).flatMap(([key, label]) => {
+    const a = before[key as keyof typeof before],
+      b = after[key as keyof typeof after];
+    return typeof a === 'number' && typeof b === 'number' && a !== b
+      ? [
+          `${label} ${number(a)} → ${number(b)}${key === 'cooldown' || key === 'iframes' ? 's' : ''}`,
+        ]
+      : [];
+  });
+  return `${skill.name} — first rank: ${changes.join('; ')}. Retains its existing effects`;
+}
+
+/** Per-subclass-skill upgrade builder — tied to one sub skill id (non-grand, cap 5). */
+function us(subSkillId: string, classId: ClassId, name: string, icon: string): CharUpgradeDef {
+  const profile = MARTIAL_HONED[subSkillId] ?? NATURE_HONED[subSkillId];
   return {
     id: `subup_${subSkillId}`,
     classId,
     subSkillId,
     name: `Honed ${name}`,
     icon,
-    desc: MARTIAL_HONED[subSkillId]
-      ? `${MARTIAL_HONED[subSkillId].desc} (stacks to ${MAX_SKILL_STACKS}).`
+    desc: profile
+      ? `${profile.desc} (stacks to ${MAX_SKILL_STACKS}).`
       : SUB_SKILL_TUNE_TEXT[subSkillId]
         ? `${SUB_SKILL_TUNE_TEXT[subSkillId]} (stacks to ${MAX_SKILL_STACKS}).`
         : `${simpleHonedText(subSkillId)} (stacks to ${MAX_SKILL_STACKS}).`,
@@ -4170,15 +4388,8 @@ function us(subSkillId: string, classId: ClassId, name: string, icon: string): C
       for (const slot of SUB_SLOTS) {
         const ab = subAbilities[slot];
         if (!ab) continue;
-        if (MARTIAL_HONED[subSkillId]) {
-          if (
-            ab.kind === native.kind &&
-            nativeHooks.every((field) => ab[field] != null) &&
-            (!nativeForce || ab.knockback != null || ab.pull != null)
-          ) {
-            MARTIAL_HONED[subSkillId].tune(ab);
-            ordinaryRecharge(ab, 0.96);
-          } else subSkillTune(ab);
+        if (profile) {
+          if (!applyAuthoredHoned(subSkillId, ab)) subSkillTune(ab);
         } else if (subSkillId === 'ro_assassin_poison' && ab.venomCoating) {
           ab.venomCoating = { ...ab.venomCoating }; // cloned bindings must not mutate authored content
           // First pick trades per-cycle burst for duration; subsequent picks retain rounded growth.
@@ -5340,11 +5551,22 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
   if (base.subSkillId) {
     const fused = getSubSkill(base.subSkillId);
     if (!fused) return base;
+    const natureRecipe = base.grand && NATURE_HONED[base.subSkillId];
+    const native = natureRecipe
+      ? subclassOfSkill(base.subSkillId)!.skills.find((skill) => skill.id === base.subSkillId)!
+          .ability
+      : undefined;
+    const natureFallback =
+      native &&
+      (fused.ability.kind !== native.kind ||
+        (['rg_beast_snare', 'dr_land_wall'].includes(base.subSkillId) &&
+          !fused.ability.zoneTickDamage));
     return {
       ...base,
       name: blend(fused.name),
-      desc:
-        base.grand || SUB_SKILL_TUNE_TEXT[base.subSkillId]
+      desc: natureFallback
+        ? `Reforged capstone — improves the power and footprint of ${fused.name}`
+        : base.grand || SUB_SKILL_TUNE_TEXT[base.subSkillId]
           ? `${fused.name}: ${swapDescName(base.desc, canonSubSkillName(base.subSkillId), fused.name)}`
           : `${simpleHonedText(base.subSkillId)} (stacks to ${MAX_SKILL_STACKS}).`,
     };

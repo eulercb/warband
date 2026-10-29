@@ -89,7 +89,7 @@ try {
   for (const row of rows) {
     const key = JSON.stringify([
       row.classId,
-      ['rogue', 'warlock', 'knight', 'barbarian', 'monk'].includes(row.classId)
+      ['rogue', 'warlock', 'knight', 'barbarian', 'monk', 'ranger', 'druid'].includes(row.classId)
         ? row.subclass
         : null,
       row.rank,
@@ -103,14 +103,18 @@ try {
       throw new Error(`Context-dependent base recharge: ${key}`);
     if (!previous) {
       const base = { ...row };
-      if (!['rogue', 'warlock', 'knight', 'barbarian', 'monk'].includes(row.classId))
+      if (
+        !['rogue', 'warlock', 'knight', 'barbarian', 'monk', 'ranger', 'druid'].includes(
+          row.classId,
+        )
+      )
         delete base.subclass;
       delete base.chosenSkill;
       unique.set(key, row.slot === 'sub1' ? row : base);
     }
   }
   const result = {
-    baseline: 'a43d7d6 plus martial grand content redesign',
+    baseline: 'd70eceb plus Ranger/Druid grand content redesign',
     note: 'Canonical single-class profiles with 0/5 Haste, 0/1/3/5 ordinary ranks and with/without earning all current native grands (equipped effects obey legal slots). Effective cooldown includes protected recovery. Raw reductions are not usable cooldowns. No live input/refund/Forge simulation.',
     observations: rows.length,
     rows: [...unique.values()],

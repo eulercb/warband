@@ -10,7 +10,8 @@ import { armMartialUtility } from './martial';
 import { personallyCursed } from '../core/curses';
 import { supportCue, buffCues } from './visualCues';
 import { armPaladinAura } from './paladinAuras';
-import { grantAbsorption } from './absorption';
+import { grantAbsorption, healthScaledAbsorption } from './absorption';
+import { getClass } from '../content/classes';
 /** Authored support interactions travel with copied skills, not the active class. */
 import type { Player, Vec2 } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
@@ -93,7 +94,15 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
     });
     const amount = ab.absorption.amount + (siphon ? marked.length * siphon.amount : 0);
     for (const ally of targets) {
-      const gained = grantAbsorption(ally, amount, ab.absorption.duration);
+      const gained = grantAbsorption(
+        ally,
+        healthScaledAbsorption(
+          amount,
+          ally.maxHp,
+          getClass(ally.classes?.[0] ?? ally.classId).maxHp,
+        ),
+        ab.absorption.duration,
+      );
       if (gained <= 0) continue;
       onSubclassProtection(p, gained);
       supportCue(world, p, ally, 'absorb');
