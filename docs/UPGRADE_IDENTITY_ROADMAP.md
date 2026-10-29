@@ -1,10 +1,11 @@
 # Upgrade identity: audit and staged redesign
 
-Current delivery: [Knight/Barbarian/Monk authored upgrades and grands](MARTIAL_GRANDS.md).
-The owner accepted the Claim opportunity marker and authorized this cohort.
-Five of twelve classes now have authored four-grand builds. Next: Ranger/Druid,
-Mage/Sorcerer, Cleric/Paladin/Bard, then a whole-system review. Apply the
-[combined-build review gate](UPGRADE_REVIEW_GATE.md) throughout.
+Current delivery: [Ranger/Druid authored upgrades and grands](NATURE_GRANDS.md).
+The owner merged and live-tested the martial cohort. Seven of twelve classes now
+have authored four-grand builds. Next: Mage/Sorcerer, Cleric/Paladin/Bard, then a
+whole-system review. This cohort also makes fixed direct absorption track
+recipient health growth while preserving shared caps and avoiding double scaling.
+Apply the [combined-build review gate](UPGRADE_REVIEW_GATE.md) throughout.
 
 The merged grand-selection framework retains per-class earned banks and explicit
 between-fight swaps: two starting-skill slots, one bound subclass skill and one

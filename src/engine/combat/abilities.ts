@@ -49,7 +49,7 @@ import type { PlayerAbilityDef } from '../content/classes';
 import type { AbilityComponents, EffectComponent, ZoneSpec, BuffTarget } from '../content/forge';
 import { getClass } from '../content/classes';
 import { personallyCursed } from '../core/curses';
-import { grantAbsorption } from './absorption';
+import { grantAbsorption, healthScaledAbsorption } from './absorption';
 import {
   add as vadd,
   scale as vscale,
@@ -746,7 +746,14 @@ function resolveInfernalClaim(world: World, p: Player, ab: PlayerAbilityDef): vo
     if (foe.id === primary.id) primaryEffective = Math.max(0, before - Math.max(foe.hp, 0));
   }
   if (ab.claimWard && primaryEffective > 0)
-    grantAbsorption(p, Math.min(25, primaryEffective * ab.claimWard), 4);
+    grantAbsorption(
+      p,
+      Math.min(
+        healthScaledAbsorption(25, p.maxHp, getClass(p.classes?.[0] ?? p.classId).maxHp),
+        primaryEffective * ab.claimWard,
+      ),
+      4,
+    );
 }
 
 // ---------------------------------------------------------------------------

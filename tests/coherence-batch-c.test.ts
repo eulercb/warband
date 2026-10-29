@@ -355,7 +355,7 @@ describe('growth and compatibility', () => {
       expect(refreshed.crossingGuard!.width).toBeGreaterThan(raw.crossingGuard.width);
       expect(refreshed.crossingGuard!.duration).toBeGreaterThan(raw.crossingGuard.duration);
     }
-    expect(refreshed.knockback).toBe(raw.knockback);
+    expect(refreshed.knockback).toBe(id === 'rg_hunter_hail' ? raw.knockback! + 10 : raw.knockback);
     expect(refreshed.pierce).toBe(raw.pierce);
     expect(describeAbility(refreshed)).not.toContain('NaN');
   });

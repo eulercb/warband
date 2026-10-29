@@ -1,15 +1,15 @@
 {
   "schema": 1,
-  "baseline": "a43d7d6 plus Knight/Barbarian/Monk authored grands (see MARTIAL_GRANDS.md)",
+  "baseline": "d70eceb plus Ranger/Druid authored grands (see NATURE_GRANDS.md)",
   "seed": 31,
   "counts": {
     "class-boon": 60,
     "graft": 7,
     "style": 5,
-    "class-grand": 16,
-    "skill-grand": 74,
+    "class-grand": 12,
+    "skill-grand": 66,
     "subclass-grand": 48,
-    "subclass-skill-grand": 40,
+    "subclass-skill-grand": 56,
     "graft-grand": 14,
     "honed": 96
   },
@@ -5994,78 +5994,6 @@
       ]
     },
     {
-      "id": "rg_grand_deadeye",
-      "name": "Deadeye",
-      "category": "class-grand",
-      "classId": "ranger",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": null,
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Arrows become lightning bolts: +20 dmg, +250 speed, far longer range",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "ranger",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.basic.damage", "before": 20, "after": 40 },
-            { "path": "abilities.basic.maxRange", "before": null, "after": 900 },
-            { "path": "abilities.basic.projSpeed", "before": 700, "after": 950 }
-          ],
-          "atCap": [
-            { "path": "abilities.basic.damage", "before": 20, "after": 40 },
-            { "path": "abilities.basic.maxRange", "before": null, "after": 900 },
-            { "path": "abilities.basic.projSpeed", "before": 700, "after": 950 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rg_grand_storm",
-      "name": "Arrow Storm",
-      "category": "class-grand",
-      "classId": "ranger",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": null,
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Multishot erupts into a storm — 5 extra arrows across a wide 55° fan (+6 each), drawn in half the time",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "ranger",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a1.castTime", "before": 0.3, "after": 0.165 },
-            { "path": "abilities.a1.damage", "before": 19, "after": 25 },
-            { "path": "abilities.a1.projCount", "before": 3, "after": 8 },
-            { "path": "abilities.a1.spreadDeg", "before": 30, "after": 55 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.castTime", "before": 0.3, "after": 0.165 },
-            { "path": "abilities.a1.damage", "before": 19, "after": 25 },
-            { "path": "abilities.a1.projCount", "before": 3, "after": 8 },
-            { "path": "abilities.a1.spreadDeg", "before": 30, "after": 55 }
-          ]
-        }
-      ]
-    },
-    {
       "id": "mg_grand_archmage",
       "name": "Archmage",
       "category": "class-grand",
@@ -6326,76 +6254,6 @@
             { "path": "abilities.basic.damage", "before": 23, "after": 41 },
             { "path": "abilities.basic.halfAngleDeg", "before": 45, "after": 65 },
             { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.25 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "dr_grand_wild",
-      "name": "Wild Shape",
-      "category": "class-grand",
-      "classId": "druid",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": null,
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Thornlash becomes a volley of 3 extra thorns (+6 each); Regrowth booms for +60",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "druid",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a2.damage", "before": 55, "after": 115 },
-            { "path": "abilities.basic.damage", "before": 17, "after": 23 },
-            { "path": "abilities.basic.projCount", "before": 1, "after": 4 }
-          ],
-          "atCap": [
-            { "path": "abilities.a2.damage", "before": 55, "after": 115 },
-            { "path": "abilities.basic.damage", "before": 17, "after": 23 },
-            { "path": "abilities.basic.projCount", "before": 1, "after": 4 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "dr_grand_grove",
-      "name": "Sacred Grove",
-      "category": "class-grand",
-      "classId": "druid",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": null,
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Entangle becomes a vast thornfield that roots — +22/tick, +65 radius, +5s",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "druid",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a1.radius", "before": 125, "after": 190 },
-            { "path": "abilities.a1.zoneDuration", "before": 4, "after": 9 },
-            { "path": "abilities.a1.zoneTickDamage", "before": 6, "after": 28 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.radius", "before": 125, "after": 190 },
-            { "path": "abilities.a1.zoneDuration", "before": 4, "after": 9 },
-            { "path": "abilities.a1.zoneTickDamage", "before": 6, "after": 28 }
           ]
         }
       ]
@@ -6734,41 +6592,6 @@
       ]
     },
     {
-      "id": "rg_gk_basic_a",
-      "name": "Splitshaft",
-      "category": "skill-grand",
-      "classId": "ranger",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "basic",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Every Arrow splits into 3 across a 16° fan, each +6 damage",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "ranger",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.basic.damage", "before": 20, "after": 26 },
-            { "path": "abilities.basic.projCount", "before": 1, "after": 3 },
-            { "path": "abilities.basic.spreadDeg", "before": null, "after": 16 }
-          ],
-          "atCap": [
-            { "path": "abilities.basic.damage", "before": 20, "after": 26 },
-            { "path": "abilities.basic.projCount", "before": 1, "after": 3 },
-            { "path": "abilities.basic.spreadDeg", "before": null, "after": 16 }
-          ]
-        }
-      ]
-    },
-    {
       "id": "rg_gk_basic_b",
       "name": "Railshot",
       "category": "skill-grand",
@@ -6781,7 +6604,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Arrow becomes a hypersonic lance: +26 damage, +300 speed, far greater range",
+      "description": "Arrow pierces three additional foes, gains +12 damage and +200 speed, and extends its travel cap by 220u",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -6791,49 +6614,16 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.basic.damage", "before": 20, "after": 46 },
+            { "path": "abilities.basic.damage", "before": 20, "after": 32 },
             { "path": "abilities.basic.maxRange", "before": null, "after": 900 },
-            { "path": "abilities.basic.projSpeed", "before": 700, "after": 1000 }
+            { "path": "abilities.basic.pierce", "before": null, "after": 3 },
+            { "path": "abilities.basic.projSpeed", "before": 700, "after": 900 }
           ],
           "atCap": [
-            { "path": "abilities.basic.damage", "before": 20, "after": 46 },
+            { "path": "abilities.basic.damage", "before": 20, "after": 32 },
             { "path": "abilities.basic.maxRange", "before": null, "after": 900 },
-            { "path": "abilities.basic.projSpeed", "before": 700, "after": 1000 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rg_gk_a1_a",
-      "name": "Arrowfall",
-      "category": "skill-grand",
-      "classId": "ranger",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a1",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Multishot becomes a wall of 6 extra arrows across a 20°-wider fan (+5 each)",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "ranger",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a1.damage", "before": 19, "after": 24 },
-            { "path": "abilities.a1.projCount", "before": 3, "after": 9 },
-            { "path": "abilities.a1.spreadDeg", "before": 30, "after": 50 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.damage", "before": 19, "after": 24 },
-            { "path": "abilities.a1.projCount", "before": 3, "after": 9 },
-            { "path": "abilities.a1.spreadDeg", "before": 30, "after": 50 }
+            { "path": "abilities.basic.pierce", "before": null, "after": 3 },
+            { "path": "abilities.basic.projSpeed", "before": 700, "after": 900 }
           ]
         }
       ]
@@ -6851,7 +6641,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Multishot bites deep (+2 arrows, +12 each) and freezes what it strikes for 0.6s",
+      "description": "Multishot freezes struck foes for 0.6s and gains +8 damage per arrow; ordinary fan growth remains",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -6861,56 +6651,19 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.damage", "before": 19, "after": 31 },
-            { "path": "abilities.a1.freeze", "before": null, "after": 0.6 },
-            { "path": "abilities.a1.projCount", "before": 3, "after": 5 }
+            { "path": "abilities.a1.damage", "before": 19, "after": 27 },
+            { "path": "abilities.a1.freeze", "before": null, "after": 0.6 }
           ],
           "atCap": [
-            { "path": "abilities.a1.damage", "before": 19, "after": 31 },
-            { "path": "abilities.a1.freeze", "before": null, "after": 0.6 },
-            { "path": "abilities.a1.projCount", "before": 3, "after": 5 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rg_gk_a2_a",
-      "name": "Meteoric Barrage",
-      "category": "skill-grand",
-      "classId": "ranger",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a2",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Rain of Arrows pours for +16/tick across +50u for +2.5s",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "ranger",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a2.radius", "before": 120, "after": 170 },
-            { "path": "abilities.a2.zoneDuration", "before": 3, "after": 5.5 },
-            { "path": "abilities.a2.zoneTickDamage", "before": 12, "after": 28 }
-          ],
-          "atCap": [
-            { "path": "abilities.a2.radius", "before": 120, "after": 170 },
-            { "path": "abilities.a2.zoneDuration", "before": 3, "after": 5.5 },
-            { "path": "abilities.a2.zoneTickDamage", "before": 12, "after": 28 }
+            { "path": "abilities.a1.damage", "before": 19, "after": 27 },
+            { "path": "abilities.a1.freeze", "before": null, "after": 0.6 }
           ]
         }
       ]
     },
     {
       "id": "rg_gk_a2_b",
-      "name": "Tar Volley",
+      "name": "Pursuing Rain",
       "category": "skill-grand",
       "classId": "ranger",
       "exclude": [],
@@ -6921,7 +6674,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Rain of Arrows mires the ground: +8/tick and slows to 40% for +2s",
+      "description": "Rain of Arrows follows its first damaged foe for 3s, then anchors, and deals +8 per tick; overhead arrows still reach flyers",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -6931,51 +6684,12 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.slowDuration", "before": 0.8, "after": 1.5 },
-            { "path": "abilities.a2.slowMult", "before": 0.75, "after": 0.4 },
-            { "path": "abilities.a2.zoneDuration", "before": 3, "after": 5 },
+            { "path": "abilities.a2.zoneFollow", "before": null, "after": 3 },
             { "path": "abilities.a2.zoneTickDamage", "before": 12, "after": 20 }
           ],
           "atCap": [
-            { "path": "abilities.a2.slowDuration", "before": 0.8, "after": 1.5 },
-            { "path": "abilities.a2.slowMult", "before": 0.75, "after": 0.4 },
-            { "path": "abilities.a2.zoneDuration", "before": 3, "after": 5 },
+            { "path": "abilities.a2.zoneFollow", "before": null, "after": 3 },
             { "path": "abilities.a2.zoneTickDamage", "before": 12, "after": 20 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rg_gk_a3_a",
-      "name": "Phantom Step",
-      "category": "skill-grand",
-      "classId": "ranger",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a3",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Roll flickers +130u with +0.4s i-frames and recharges twice as fast",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "ranger",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a3.cooldown", "before": 5, "after": 2.5 },
-            { "path": "abilities.a3.iframes", "before": 0.3, "after": 0.7 },
-            { "path": "abilities.a3.range", "before": 220, "after": 350 }
-          ],
-          "atCap": [
-            { "path": "abilities.a3.cooldown", "before": 5, "after": 2.5 },
-            { "path": "abilities.a3.iframes", "before": 0.3, "after": 0.7 },
-            { "path": "abilities.a3.range", "before": 220, "after": 350 }
           ]
         }
       ]
@@ -6993,7 +6707,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Roll erupts on landing for 40 across a 130u blast, and travels +80u",
+      "description": "Roll lands with a 40-damage, 130u blast and travels 50u farther; landing near the quarry trades escape distance for pressure",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -7005,12 +6719,12 @@
           "once": [
             { "path": "abilities.a3.landingDamage", "before": null, "after": 40 },
             { "path": "abilities.a3.radius", "before": null, "after": 130 },
-            { "path": "abilities.a3.range", "before": 220, "after": 300 }
+            { "path": "abilities.a3.range", "before": 220, "after": 270 }
           ],
           "atCap": [
             { "path": "abilities.a3.landingDamage", "before": null, "after": 40 },
             { "path": "abilities.a3.radius", "before": null, "after": 130 },
-            { "path": "abilities.a3.range", "before": 220, "after": 300 }
+            { "path": "abilities.a3.range", "before": 220, "after": 270 }
           ]
         }
       ]
@@ -8099,41 +7813,6 @@
       ]
     },
     {
-      "id": "dr_gk_basic_a",
-      "name": "Thorn Barrage",
-      "category": "skill-grand",
-      "classId": "druid",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "basic",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Thornlash splits into 4 thorns across a 16° fan (+6 each)",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "druid",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.basic.damage", "before": 17, "after": 23 },
-            { "path": "abilities.basic.projCount", "before": 1, "after": 4 },
-            { "path": "abilities.basic.spreadDeg", "before": null, "after": 16 }
-          ],
-          "atCap": [
-            { "path": "abilities.basic.damage", "before": 17, "after": 23 },
-            { "path": "abilities.basic.projCount", "before": 1, "after": 4 },
-            { "path": "abilities.basic.spreadDeg", "before": null, "after": 16 }
-          ]
-        }
-      ]
-    },
-    {
       "id": "dr_gk_basic_b",
       "name": "Bramble Spear",
       "category": "skill-grand",
@@ -8146,7 +7825,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Thornlash becomes a heavy spear: +22 damage, +250 speed, slows to 55%",
+      "description": "Thornlash pierces two additional foes and deals +30% damage against already controlled targets; ordinary splitting adds more spears",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8156,53 +7835,12 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.basic.damage", "before": 17, "after": 39 },
-            { "path": "abilities.basic.projSpeed", "before": 640, "after": 890 },
-            { "path": "abilities.basic.slowDuration", "before": null, "after": 1.5 },
-            { "path": "abilities.basic.slowMult", "before": null, "after": 0.55 }
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.3 },
+            { "path": "abilities.basic.pierce", "before": null, "after": 2 }
           ],
           "atCap": [
-            { "path": "abilities.basic.damage", "before": 17, "after": 39 },
-            { "path": "abilities.basic.projSpeed", "before": 640, "after": 890 },
-            { "path": "abilities.basic.slowDuration", "before": null, "after": 1.5 },
-            { "path": "abilities.basic.slowMult", "before": null, "after": 0.55 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "dr_gk_a1_a",
-      "name": "Strangleroots",
-      "category": "skill-grand",
-      "classId": "druid",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a1",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Entangle roots to 15% speed and gnaws +18/tick across +60u for +3s",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "druid",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a1.radius", "before": 125, "after": 185 },
-            { "path": "abilities.a1.slowMult", "before": 0.3, "after": 0.15 },
-            { "path": "abilities.a1.zoneDuration", "before": 4, "after": 7 },
-            { "path": "abilities.a1.zoneTickDamage", "before": 6, "after": 24 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.radius", "before": 125, "after": 185 },
-            { "path": "abilities.a1.slowMult", "before": 0.3, "after": 0.15 },
-            { "path": "abilities.a1.zoneDuration", "before": 4, "after": 7 },
-            { "path": "abilities.a1.zoneTickDamage", "before": 6, "after": 24 }
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.3 },
+            { "path": "abilities.basic.pierce", "before": null, "after": 2 }
           ]
         }
       ]
@@ -8220,7 +7858,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Entangle sprawls +65u and lingers +5s, biting +12/tick",
+      "description": "Allies standing inside Entangle take 15% less damage and move 20% faster; its ground roots, damage and healing remain",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8230,14 +7868,12 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.radius", "before": 125, "after": 190 },
-            { "path": "abilities.a1.zoneDuration", "before": 4, "after": 9 },
-            { "path": "abilities.a1.zoneTickDamage", "before": 6, "after": 18 }
+            { "path": "abilities.a1.zoneAllyDefMult", "before": null, "after": 0.85 },
+            { "path": "abilities.a1.zoneAllyMoveMult", "before": null, "after": 1.2 }
           ],
           "atCap": [
-            { "path": "abilities.a1.radius", "before": 125, "after": 190 },
-            { "path": "abilities.a1.zoneDuration", "before": 4, "after": 9 },
-            { "path": "abilities.a1.zoneTickDamage", "before": 6, "after": 18 }
+            { "path": "abilities.a1.zoneAllyDefMult", "before": null, "after": 0.85 },
+            { "path": "abilities.a1.zoneAllyMoveMult", "before": null, "after": 1.2 }
           ]
         }
       ]
@@ -8255,7 +7891,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Regrowth surges for +75 HP at far greater range",
+      "description": "Regrowth grants its selected recipient 35 absorption for 4s, even at full health; protection scales with recipient max-HP growth and the recovery grove remains",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8265,45 +7901,18 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.damage", "before": 55, "after": 130 },
-            { "path": "abilities.a2.range", "before": 380, "after": 580 }
+            {
+              "path": "abilities.a2.absorption",
+              "before": null,
+              "after": { "amount": 35, "duration": 4, "target": "weakest" }
+            }
           ],
           "atCap": [
-            { "path": "abilities.a2.damage", "before": 55, "after": 130 },
-            { "path": "abilities.a2.range", "before": 380, "after": 580 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "dr_gk_a2_b",
-      "name": "Rapid Regrowth",
-      "category": "skill-grand",
-      "classId": "druid",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a2",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Regrowth mends +30 and recharges twice as fast",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "druid",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a2.cooldown", "before": 4, "after": 2 },
-            { "path": "abilities.a2.damage", "before": 55, "after": 85 }
-          ],
-          "atCap": [
-            { "path": "abilities.a2.cooldown", "before": 4, "after": 2 },
-            { "path": "abilities.a2.damage", "before": 55, "after": 85 }
+            {
+              "path": "abilities.a2.absorption",
+              "before": null,
+              "after": { "amount": 35, "duration": 4, "target": "weakest" }
+            }
           ]
         }
       ]
@@ -8321,7 +7930,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Cyclone widens +60u, hits +24, and rips foes to 30% speed",
+      "description": "Cyclone pulls struck foes inward by 130u and gains +12 damage; use it to gather foes into your living territory",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8331,53 +7940,12 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.damage", "before": 24, "after": 48 },
-            { "path": "abilities.a3.radius", "before": 155, "after": 215 },
-            { "path": "abilities.a3.slowDuration", "before": 2, "after": 3 },
-            { "path": "abilities.a3.slowMult", "before": 0.5, "after": 0.3 }
+            { "path": "abilities.a3.damage", "before": 24, "after": 36 },
+            { "path": "abilities.a3.pull", "before": null, "after": 130 }
           ],
           "atCap": [
-            { "path": "abilities.a3.damage", "before": 24, "after": 48 },
-            { "path": "abilities.a3.radius", "before": 155, "after": 215 },
-            { "path": "abilities.a3.slowDuration", "before": 2, "after": 3 },
-            { "path": "abilities.a3.slowMult", "before": 0.5, "after": 0.3 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "dr_gk_a3_b",
-      "name": "Hurricane",
-      "category": "skill-grand",
-      "classId": "druid",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a3",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Cyclone hits +14, freezes for 0.8s, widens +20u, and recharges 40% faster",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "druid",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a3.cooldown", "before": 18, "after": 10.799999999999999 },
-            { "path": "abilities.a3.damage", "before": 24, "after": 38 },
-            { "path": "abilities.a3.freeze", "before": null, "after": 0.8 },
-            { "path": "abilities.a3.radius", "before": 155, "after": 175 }
-          ],
-          "atCap": [
-            { "path": "abilities.a3.cooldown", "before": 18, "after": 10.799999999999999 },
-            { "path": "abilities.a3.damage", "before": 24, "after": 38 },
-            { "path": "abilities.a3.freeze", "before": null, "after": 0.8 },
-            { "path": "abilities.a3.radius", "before": 155, "after": 175 }
+            { "path": "abilities.a3.damage", "before": 24, "after": 36 },
+            { "path": "abilities.a3.pull", "before": null, "after": 130 }
           ]
         }
       ]
@@ -9626,7 +9194,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Hunter skills hit 50% harder over a wider area and pin the quarry (0.7s)",
+      "description": "Arrow, Multishot and direct Hunter strikes deal +25% damage against already controlled foes; Rain of Arrows supplies setup with any first skill",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -9636,14 +9204,14 @@
           "subSkills": ["rg_hunter_hail"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 34, "after": 51 },
-            { "path": "subAbilities.sub1.radius", "before": 130, "after": 169 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.7 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 34, "after": 51 },
-            { "path": "subAbilities.sub1.radius", "before": 130, "after": 169 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.7 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ]
         },
         {
@@ -9651,12 +9219,14 @@
           "subSkills": ["rg_hunter_mark"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 48, "after": 72 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.7 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 48, "after": 72 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.7 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ]
         },
         {
@@ -9664,12 +9234,12 @@
           "subSkills": ["rg_hunter_stand"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 221 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 9 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 221 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 9 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 }
           ]
         },
         {
@@ -9677,12 +9247,14 @@
           "subSkills": ["rg_hunter_volley"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 16, "after": 24 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.7 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 16, "after": 24 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.7 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ]
         }
       ]
@@ -9700,7 +9272,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Hunter skills recharge 40% faster, hit 30% harder, and cripple prey to 50%",
+      "description": "Roll grants +25% movement for 4s and 2s hard-control resistance; direct Hunter strikes slow enemy wind-ups by 30% for 3s, while allied field speed improves by 5 percentage points",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -9710,16 +9282,18 @@
           "subSkills": ["rg_hunter_hail"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.8 },
-            { "path": "subAbilities.sub1.damage", "before": 34, "after": 44 },
-            { "path": "subAbilities.sub1.radius", "before": 130, "after": 150 },
-            { "path": "subAbilities.sub1.slowMult", "before": 0.65, "after": 0.5 }
+            { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.8 },
-            { "path": "subAbilities.sub1.damage", "before": 34, "after": 44 },
-            { "path": "subAbilities.sub1.radius", "before": 130, "after": 150 },
-            { "path": "subAbilities.sub1.slowMult", "before": 0.65, "after": 0.5 }
+            { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ]
         },
         {
@@ -9727,16 +9301,18 @@
           "subSkills": ["rg_hunter_mark"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.damage", "before": 48, "after": 62 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.5 }
+            { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.damage", "before": 48, "after": 62 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.5 }
+            { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ]
         },
         {
@@ -9744,18 +9320,16 @@
           "subSkills": ["rg_hunter_stand"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 14, "after": 8.4 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 195 },
-            { "path": "subAbilities.sub1.slowDuration", "before": 1, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": 0.6, "after": 0.5 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 8 }
+            { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": 1.2, "after": 1.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 14, "after": 8.4 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 195 },
-            { "path": "subAbilities.sub1.slowDuration", "before": 1, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": 0.6, "after": 0.5 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 8 }
+            { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": 1.2, "after": 1.25 }
           ]
         },
         {
@@ -9763,23 +9337,25 @@
           "subSkills": ["rg_hunter_volley"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 4.2 },
-            { "path": "subAbilities.sub1.damage", "before": 16, "after": 21 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.5 }
+            { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 4.2 },
-            { "path": "subAbilities.sub1.damage", "before": 16, "after": 21 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.5 }
+            { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ]
         }
       ]
     },
     {
       "id": "rg_beastmaster_g_a",
-      "name": "Alpha's Fury",
+      "name": "Alpha’s Fury",
       "category": "subclass-grand",
       "classId": "ranger",
       "exclude": [],
@@ -9790,7 +9366,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Beast Master skills maul 50% harder over a wider area and drink 25% as health",
+      "description": "Your spirit wolf commands wind up in 0.15s and deal +50% against controlled quarry instead of +25%, at the same 2.5s command interval; Roll blocks one frontal hit for 3s and direct Beast strikes gain +20% controlled-target damage",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -9800,16 +9376,18 @@
           "subSkills": ["rg_beast_pounce"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.landingDamage", "before": 26, "after": 39 },
-            { "path": "subAbilities.sub1.radius", "before": 100, "after": 130 },
-            { "path": "subAbilities.sub1.range", "before": 250, "after": 325 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 3 }
+            }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.landingDamage", "before": 26, "after": 39 },
-            { "path": "subAbilities.sub1.radius", "before": 100, "after": 130 },
-            { "path": "subAbilities.sub1.range", "before": 250, "after": 325 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 3 }
+            }
           ]
         },
         {
@@ -9817,12 +9395,18 @@
           "subSkills": ["rg_beast_snare"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 156 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 9 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 3 }
+            }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 156 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 9 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 3 }
+            }
           ]
         },
         {
@@ -9830,12 +9414,18 @@
           "subSkills": ["rg_beast_bond"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.25, "after": 1.45 },
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 90 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 3 }
+            }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.25, "after": 1.45 },
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 90 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 3 }
+            }
           ]
         },
         {
@@ -9843,14 +9433,20 @@
           "subSkills": ["rg_beast_bite"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 44, "after": 66 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.2, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 64, "after": 83 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 3 }
+            },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.2 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 44, "after": 66 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.2, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 64, "after": 83 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 3 }
+            },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.2 }
           ]
         }
       ]
@@ -9868,7 +9464,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Beast Master skills recharge 40% faster, hit 30% harder, and hamstring foes to 50%",
+      "description": "Rain of Arrows gives allies inside 15% mitigation; Roll heals 15; Beast mobility heals 10, dedicated heals gain 15 healing, damaging fields grant +20% allied movement and direct strikes leech 10% more",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -9878,18 +9474,14 @@
           "subSkills": ["rg_beast_pounce"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.landingDamage", "before": 26, "after": 34 },
-            { "path": "subAbilities.sub1.radius", "before": 100, "after": 115 },
-            { "path": "subAbilities.sub1.range", "before": 250, "after": 288 }
+            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.85 },
+            { "path": "abilities.a3.healOnUse", "before": null, "after": 15 },
+            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 10 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.landingDamage", "before": 26, "after": 34 },
-            { "path": "subAbilities.sub1.radius", "before": 100, "after": 115 },
-            { "path": "subAbilities.sub1.range", "before": 250, "after": 288 }
+            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.85 },
+            { "path": "abilities.a3.healOnUse", "before": null, "after": 15 },
+            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 10 }
           ]
         },
         {
@@ -9897,14 +9489,14 @@
           "subSkills": ["rg_beast_snare"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 6 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 138 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 8 }
+            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.85 },
+            { "path": "abilities.a3.healOnUse", "before": null, "after": 15 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 6 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 138 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 8 }
+            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.85 },
+            { "path": "abilities.a3.healOnUse", "before": null, "after": 15 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 }
           ]
         },
         {
@@ -9912,18 +9504,14 @@
           "subSkills": ["rg_beast_bond"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.25, "after": 1.37 },
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 78 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.5 }
+            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.85 },
+            { "path": "abilities.a3.healOnUse", "before": null, "after": 15 },
+            { "path": "subAbilities.sub1.damage", "before": 60, "after": 75 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.25, "after": 1.37 },
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 78 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.5 }
+            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.85 },
+            { "path": "abilities.a3.healOnUse", "before": null, "after": 15 },
+            { "path": "subAbilities.sub1.damage", "before": 60, "after": 75 }
           ]
         },
         {
@@ -9931,18 +9519,22 @@
           "subSkills": ["rg_beast_bite"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.damage", "before": 44, "after": 57 },
-            { "path": "subAbilities.sub1.range", "before": 64, "after": 74 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.5 }
+            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.85 },
+            { "path": "abilities.a3.healOnUse", "before": null, "after": 15 },
+            {
+              "path": "subAbilities.sub1.lifestealFrac",
+              "before": 0.2,
+              "after": 0.30000000000000004
+            }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.damage", "before": 44, "after": 57 },
-            { "path": "subAbilities.sub1.range", "before": 64, "after": 74 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.5 }
+            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.85 },
+            { "path": "abilities.a3.healOnUse", "before": null, "after": 15 },
+            {
+              "path": "subAbilities.sub1.lifestealFrac",
+              "before": 0.2,
+              "after": 0.30000000000000004
+            }
           ]
         }
       ]
@@ -11784,7 +11376,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Moon skills maul 55% harder over a wider area and drink 25% as health",
+      "description": "Moon form and its stride last 8s instead of 6s, with the same 12s entry interval; Cyclone leeches 15%, direct Moon strikes leech 10% more, and recovery groves gain 20u radius",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -11794,61 +11386,39 @@
           "subSkills": ["dr_moon_maul"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 46, "after": 71 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.15, "after": 0.4 },
-            { "path": "subAbilities.sub1.range", "before": 80, "after": 104 }
+            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.15 },
+            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.15, "after": 0.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 46, "after": 71 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.15, "after": 0.4 },
-            { "path": "subAbilities.sub1.range", "before": 80, "after": 104 }
+            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.15 },
+            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.15, "after": 0.25 }
           ]
         },
         {
           "classId": "druid",
           "subSkills": ["dr_moon_pounce"],
           "prefix": [],
-          "once": [
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.landingDamage", "before": 30, "after": 47 },
-            { "path": "subAbilities.sub1.radius", "before": 100, "after": 130 },
-            { "path": "subAbilities.sub1.range", "before": 250, "after": 325 }
-          ],
-          "atCap": [
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.landingDamage", "before": 30, "after": 47 },
-            { "path": "subAbilities.sub1.radius", "before": 100, "after": 130 },
-            { "path": "subAbilities.sub1.range", "before": 250, "after": 325 }
-          ]
+          "once": [{ "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.15 }],
+          "atCap": [{ "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.15 }]
         },
         {
           "classId": "druid",
           "subSkills": ["dr_moon_roar"],
           "prefix": [],
-          "once": [
-            { "path": "subAbilities.sub1.buffDamageMult", "before": 1.3, "after": 1.63 },
-            { "path": "subAbilities.sub1.closeBurst.damage", "before": 24, "after": 37 },
-            { "path": "subAbilities.sub1.closeBurst.radius", "before": 125, "after": 163 }
-          ],
-          "atCap": [
-            { "path": "subAbilities.sub1.buffDamageMult", "before": 1.3, "after": 1.63 },
-            { "path": "subAbilities.sub1.closeBurst.damage", "before": 24, "after": 37 },
-            { "path": "subAbilities.sub1.closeBurst.radius", "before": 125, "after": 163 }
-          ]
+          "once": [{ "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.15 }],
+          "atCap": [{ "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.15 }]
         },
         {
           "classId": "druid",
           "subSkills": ["dr_moon_regen"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 80, "after": 124 },
-            { "path": "subAbilities.sub1.recoveryZone.radius", "before": 95, "after": 124 },
-            { "path": "subAbilities.sub1.recoveryZone.tickHeal", "before": 4, "after": 6 }
+            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.15 },
+            { "path": "subAbilities.sub1.recoveryZone.radius", "before": 95, "after": 115 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 80, "after": 124 },
-            { "path": "subAbilities.sub1.recoveryZone.radius", "before": 95, "after": 124 },
-            { "path": "subAbilities.sub1.recoveryZone.tickHeal", "before": 4, "after": 6 }
+            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.15 },
+            { "path": "subAbilities.sub1.recoveryZone.radius", "before": 95, "after": 115 }
           ]
         }
       ]
@@ -11866,7 +11436,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Moon skills recharge 40% faster, hit 30% harder, and stagger on strike",
+      "description": "Moon claws reach 125u instead of 95u; Cyclone and direct Moon strikes slow enemy wind-ups by 30% for 3s; Moon heals cleanse, mobility heals 10 and prepared bramble bursts reach 30u farther",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -11876,16 +11446,16 @@
           "subSkills": ["dr_moon_maul"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.damage", "before": 46, "after": 60 },
-            { "path": "subAbilities.sub1.range", "before": 80, "after": 92 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.5 }
+            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
+            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.damage", "before": 46, "after": 60 },
-            { "path": "subAbilities.sub1.range", "before": 80, "after": 92 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.5 }
+            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
+            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ]
         },
         {
@@ -11893,18 +11463,14 @@
           "subSkills": ["dr_moon_pounce"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.landingDamage", "before": 30, "after": 39 },
-            { "path": "subAbilities.sub1.radius", "before": 100, "after": 115 },
-            { "path": "subAbilities.sub1.range", "before": 250, "after": 288 }
+            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
+            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 10 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.5999999999999996 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.landingDamage", "before": 30, "after": 39 },
-            { "path": "subAbilities.sub1.radius", "before": 100, "after": 115 },
-            { "path": "subAbilities.sub1.range", "before": 250, "after": 288 }
+            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
+            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 10 }
           ]
         },
         {
@@ -11912,16 +11478,14 @@
           "subSkills": ["dr_moon_roar"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.buffDamageMult", "before": 1.3, "after": 1.48 },
-            { "path": "subAbilities.sub1.closeBurst.damage", "before": 24, "after": 31 },
-            { "path": "subAbilities.sub1.closeBurst.radius", "before": 125, "after": 144 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 7.199999999999999 }
+            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
+            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.closeBurst.range", "before": 130, "after": 160 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.buffDamageMult", "before": 1.3, "after": 1.48 },
-            { "path": "subAbilities.sub1.closeBurst.damage", "before": 24, "after": 31 },
-            { "path": "subAbilities.sub1.closeBurst.radius", "before": 125, "after": 144 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 7.199999999999999 }
+            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
+            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.closeBurst.range", "before": 130, "after": 160 }
           ]
         },
         {
@@ -11929,16 +11493,14 @@
           "subSkills": ["dr_moon_regen"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 6 },
-            { "path": "subAbilities.sub1.damage", "before": 80, "after": 104 },
-            { "path": "subAbilities.sub1.recoveryZone.radius", "before": 95, "after": 109 },
-            { "path": "subAbilities.sub1.recoveryZone.tickHeal", "before": 4, "after": 5 }
+            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
+            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.cleanseOnHeal", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 6 },
-            { "path": "subAbilities.sub1.damage", "before": 80, "after": 104 },
-            { "path": "subAbilities.sub1.recoveryZone.radius", "before": 95, "after": 109 },
-            { "path": "subAbilities.sub1.recoveryZone.tickHeal", "before": 4, "after": 5 }
+            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
+            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.cleanseOnHeal", "before": null, "after": true }
           ]
         }
       ]
@@ -11956,7 +11518,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Land skills erupt 55% harder across a vast area and root foes to 40%",
+      "description": "Thornlash gains +25% damage against controlled foes and Cyclone gains +8 damage; direct Land strikes gain +15% controlled-target damage and damaging Land fields gain +3 per tick",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -11966,16 +11528,14 @@
           "subSkills": ["dr_land_spike"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 38, "after": 59 },
-            { "path": "subAbilities.sub1.impactRadius", "before": 160, "after": 216 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.4 }
+            { "path": "abilities.a3.damage", "before": 24, "after": 32 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": 0.25, "after": 0.4 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 38, "after": 59 },
-            { "path": "subAbilities.sub1.impactRadius", "before": 160, "after": 216 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.4 }
+            { "path": "abilities.a3.damage", "before": 24, "after": 32 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": 0.25, "after": 0.4 }
           ]
         },
         {
@@ -11983,18 +11543,14 @@
           "subSkills": ["dr_land_wall"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.radius", "before": 130, "after": 176 },
-            { "path": "subAbilities.sub1.slowDuration", "before": 1.2, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": 0.5, "after": 0.4 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 13, "after": 20 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 4, "after": 6 }
+            { "path": "abilities.a3.damage", "before": 24, "after": 32 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.zoneTickDamage", "before": 13, "after": 16 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.radius", "before": 130, "after": 176 },
-            { "path": "subAbilities.sub1.slowDuration", "before": 1.2, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": 0.5, "after": 0.4 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 13, "after": 20 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 4, "after": 6 }
+            { "path": "abilities.a3.damage", "before": 24, "after": 32 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.zoneTickDamage", "before": 13, "after": 16 }
           ]
         },
         {
@@ -12002,14 +11558,14 @@
           "subSkills": ["dr_land_wind"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 24, "after": 37 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 203 },
-            { "path": "subAbilities.sub1.slowMult", "before": 0.5, "after": 0.4 }
+            { "path": "abilities.a3.damage", "before": 24, "after": 32 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.15 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 24, "after": 37 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 203 },
-            { "path": "subAbilities.sub1.slowMult", "before": 0.5, "after": 0.4 }
+            { "path": "abilities.a3.damage", "before": 24, "after": 32 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.15 }
           ]
         },
         {
@@ -12017,12 +11573,12 @@
           "subSkills": ["dr_land_spring"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 203 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 13, "after": 20 }
+            { "path": "abilities.a3.damage", "before": 24, "after": 32 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 203 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 13, "after": 20 }
+            { "path": "abilities.a3.damage", "before": 24, "after": 32 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 }
           ]
         }
       ]
@@ -12040,7 +11596,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Land skills recharge 45% faster and their zones/blasts grow 30%",
+      "description": "Regrowth relays 35% of effective primary healing to one other wounded ally within 180u; Entangle heals +3 per tick; Land fields grant +20% allied movement and healing fields gain +2 per tick, while direct strikes slow foes to 75% for 2s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -12050,14 +11606,24 @@
           "subSkills": ["dr_land_spike"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 38, "after": 49 },
-            { "path": "subAbilities.sub1.impactRadius", "before": 160, "after": 184 }
+            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
+            {
+              "path": "abilities.a2.relayHeal",
+              "before": null,
+              "after": { "fraction": 0.35, "radius": 180 }
+            },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 38, "after": 49 },
-            { "path": "subAbilities.sub1.impactRadius", "before": 160, "after": 184 }
+            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
+            {
+              "path": "abilities.a2.relayHeal",
+              "before": null,
+              "after": { "fraction": 0.35, "radius": 180 }
+            },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
           ]
         },
         {
@@ -12065,16 +11631,24 @@
           "subSkills": ["dr_land_wall"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 5.5 },
-            { "path": "subAbilities.sub1.radius", "before": 130, "after": 150 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 13, "after": 17 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 4, "after": 5 }
+            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
+            {
+              "path": "abilities.a2.relayHeal",
+              "before": null,
+              "after": { "fraction": 0.35, "radius": 180 }
+            },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 },
+            { "path": "subAbilities.sub1.zoneTickHeal", "before": 4, "after": 6 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 5.5 },
-            { "path": "subAbilities.sub1.radius", "before": 130, "after": 150 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 13, "after": 17 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 4, "after": 5 }
+            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
+            {
+              "path": "abilities.a2.relayHeal",
+              "before": null,
+              "after": { "fraction": 0.35, "radius": 180 }
+            },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 },
+            { "path": "subAbilities.sub1.zoneTickHeal", "before": 4, "after": 6 }
           ]
         },
         {
@@ -12082,14 +11656,20 @@
           "subSkills": ["dr_land_wind"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 24, "after": 31 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 173 }
+            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
+            {
+              "path": "abilities.a2.relayHeal",
+              "before": null,
+              "after": { "fraction": 0.35, "radius": 180 }
+            }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 24, "after": 31 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 173 }
+            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
+            {
+              "path": "abilities.a2.relayHeal",
+              "before": null,
+              "after": { "fraction": 0.35, "radius": 180 }
+            }
           ]
         },
         {
@@ -12097,14 +11677,24 @@
           "subSkills": ["dr_land_spring"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 6.6000000000000005 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 173 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 13, "after": 17 }
+            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
+            {
+              "path": "abilities.a2.relayHeal",
+              "before": null,
+              "after": { "fraction": 0.35, "radius": 180 }
+            },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 },
+            { "path": "subAbilities.sub1.zoneTickHeal", "before": 13, "after": 15 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 6.6000000000000005 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 173 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 13, "after": 17 }
+            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
+            {
+              "path": "abilities.a2.relayHeal",
+              "before": null,
+              "after": { "fraction": 0.35, "radius": 180 }
+            },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 },
+            { "path": "subAbilities.sub1.zoneTickHeal", "before": 13, "after": 15 }
           ]
         }
       ]
@@ -14332,6 +13922,560 @@
       ]
     },
     {
+      "id": "rg_hunter_hail_g",
+      "name": "Driving Hail",
+      "category": "subclass-skill-grand",
+      "classId": "ranger",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "rg_hunter_hail",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Hail of Thorns pushes 180u instead of 90u, enough to overpower roots, and gains +10 damage; Honed push growth remains",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "ranger",
+          "subSkills": ["rg_hunter_hail"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 34, "after": 44 },
+            { "path": "subAbilities.sub1.knockback", "before": 90, "after": 180 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 34, "after": 44 },
+            { "path": "subAbilities.sub1.knockback", "before": 90, "after": 180 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rg_hunter_mark_g",
+      "name": "Shattering Quarry",
+      "category": "subclass-skill-grand",
+      "classId": "ranger",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "rg_hunter_mark",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Quarry Shot bursts across 65u on impact and gains +8 damage; its two extra pierces remain",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "ranger",
+          "subSkills": ["rg_hunter_mark"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 48, "after": 56 },
+            { "path": "subAbilities.sub1.impactRadius", "before": null, "after": 65 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 48, "after": 56 },
+            { "path": "subAbilities.sub1.impactRadius", "before": null, "after": 65 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rg_hunter_stand_g",
+      "name": "Sheltering Stand",
+      "category": "subclass-skill-grand",
+      "classId": "ranger",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "rg_hunter_stand",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Stand as One gives allies inside 20% damage mitigation; its allied movement and slowing arrows remain",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "ranger",
+          "subSkills": ["rg_hunter_stand"],
+          "prefix": [],
+          "once": [{ "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }],
+          "atCap": [{ "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }]
+        }
+      ]
+    },
+    {
+      "id": "rg_hunter_volley_g",
+      "name": "Concentrated Volley",
+      "category": "subclass-skill-grand",
+      "classId": "ranger",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "rg_hunter_volley",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Volley narrows to a 14° fan and gains +4 damage per arrow, trading wide coverage for focused pressure",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "ranger",
+          "subSkills": ["rg_hunter_volley"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 16, "after": 20 },
+            { "path": "subAbilities.sub1.spreadDeg", "before": 40, "after": 14 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 16, "after": 20 },
+            { "path": "subAbilities.sub1.spreadDeg", "before": 40, "after": 14 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rg_beast_pounce_g",
+      "name": "Pack Crossing",
+      "category": "subclass-skill-grand",
+      "classId": "ranger",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "rg_beast_pounce",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Pounce cleanses and guards the first living ally actually crossed for 3s along a 45u corridor; its landing attack remains",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "ranger",
+          "subSkills": ["rg_beast_pounce"],
+          "prefix": [],
+          "once": [
+            {
+              "path": "subAbilities.sub1.crossingGuard",
+              "before": null,
+              "after": { "width": 45, "duration": 3 }
+            }
+          ],
+          "atCap": [
+            {
+              "path": "subAbilities.sub1.crossingGuard",
+              "before": null,
+              "after": { "width": 45, "duration": 3 }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rg_beast_snare_g",
+      "name": "Clinging Snare",
+      "category": "subclass-skill-grand",
+      "classId": "ranger",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "rg_beast_snare",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Snare allocates 40% of its tick damage to strongest-owner poison that lingers for 2s, up to three foes; the remaining damage stays in the ground field",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "ranger",
+          "subSkills": ["rg_beast_snare"],
+          "prefix": [],
+          "once": [
+            {
+              "path": "subAbilities.sub1.zonePoison",
+              "before": null,
+              "after": { "share": 0.4, "onExit": false }
+            }
+          ],
+          "atCap": [
+            {
+              "path": "subAbilities.sub1.zonePoison",
+              "before": null,
+              "after": { "share": 0.4, "onExit": false }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rg_beast_bond_g",
+      "name": "Rescuing Bond",
+      "category": "subclass-skill-grand",
+      "classId": "ranger",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "rg_beast_bond",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Nature’s Bond heals 15 more; an effective rescue from 35% HP or below readies the recipient’s next direct hit for +25% damage within 5s, while the delayed wolf ward remains",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "ranger",
+          "subSkills": ["rg_beast_bond"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 60, "after": 75 },
+            {
+              "path": "subAbilities.sub1.rescueStrike",
+              "before": null,
+              "after": { "mult": 1.25, "duration": 5 }
+            }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 60, "after": 75 },
+            {
+              "path": "subAbilities.sub1.rescueStrike",
+              "before": null,
+              "after": { "mult": 1.25, "duration": 5 }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rg_beast_bite_g",
+      "name": "Defiant Bite",
+      "category": "subclass-skill-grand",
+      "classId": "ranger",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "rg_beast_bite",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Savage Bite gains +8 damage and a connecting hit grants 0.6s frontal parry; misses grant no parry",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "ranger",
+          "subSkills": ["rg_beast_bite"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 44, "after": 52 },
+            { "path": "subAbilities.sub1.parryOnHit", "before": null, "after": 0.6 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 44, "after": 52 },
+            { "path": "subAbilities.sub1.parryOnHit", "before": null, "after": 0.6 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dr_moon_maul_g",
+      "name": "Encircling Maul",
+      "category": "subclass-skill-grand",
+      "classId": "druid",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "dr_moon_maul",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Dire Maul sweeps a full circle and gains +10 damage, letting your close-form window cover threats behind you",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "druid",
+          "subSkills": ["dr_moon_maul"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 46, "after": 56 },
+            { "path": "subAbilities.sub1.halfAngleDeg", "before": 45, "after": 180 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 46, "after": 56 },
+            { "path": "subAbilities.sub1.halfAngleDeg", "before": 45, "after": 180 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dr_moon_pounce_g",
+      "name": "Unstoppable Pounce",
+      "category": "subclass-skill-grand",
+      "classId": "druid",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "dr_moon_pounce",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Feral Pounce grants 2s hard-control resistance and 20 absorption for 4s, scaling with max-HP growth; its landing remains",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "druid",
+          "subSkills": ["dr_moon_pounce"],
+          "prefix": [],
+          "once": [
+            {
+              "path": "subAbilities.sub1.absorption",
+              "before": null,
+              "after": { "amount": 20, "duration": 4, "target": "self" }
+            },
+            { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 2 }
+          ],
+          "atCap": [
+            {
+              "path": "subAbilities.sub1.absorption",
+              "before": null,
+              "after": { "amount": 20, "duration": 4, "target": "self" }
+            },
+            { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dr_moon_roar_g",
+      "name": "Pack Shelter",
+      "category": "subclass-skill-grand",
+      "classId": "druid",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "dr_moon_roar",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Primal Roar grants other allies within 180u a 20% damage ward for 4s while you enter your close-form pressure window",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "druid",
+          "subSkills": ["dr_moon_roar"],
+          "prefix": [],
+          "once": [
+            {
+              "path": "subAbilities.sub1.allyWard",
+              "before": null,
+              "after": { "range": 180, "mult": 0.8, "duration": 4 }
+            }
+          ],
+          "atCap": [
+            {
+              "path": "subAbilities.sub1.allyWard",
+              "before": null,
+              "after": { "range": 180, "mult": 0.8, "duration": 4 }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dr_moon_regen_g",
+      "name": "Shared Renewal",
+      "category": "subclass-skill-grand",
+      "classId": "druid",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "dr_moon_regen",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Frenzied Regen heals 25 more and relays 35% of effective primary healing to one other wounded ally within 180u; its self-focused cast and recovery grove remain",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "druid",
+          "subSkills": ["dr_moon_regen"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 80, "after": 105 },
+            {
+              "path": "subAbilities.sub1.relayHeal",
+              "before": null,
+              "after": { "fraction": 0.35, "radius": 180 }
+            }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 80, "after": 105 },
+            {
+              "path": "subAbilities.sub1.relayHeal",
+              "before": null,
+              "after": { "fraction": 0.35, "radius": 180 }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dr_land_spike_g",
+      "name": "Staggering Eruption",
+      "category": "subclass-skill-grand",
+      "classId": "druid",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "dr_land_spike",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Erupting Earth lengthens enemy wind-ups by 35% for 3s and gains +8 damage, leaving its controlled-target bonus available for follow-through",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "druid",
+          "subSkills": ["dr_land_spike"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.35 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.damage", "before": 38, "after": 46 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.35 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.damage", "before": 38, "after": 46 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dr_land_wall_g",
+      "name": "Wandering Briar",
+      "category": "subclass-skill-grand",
+      "classId": "druid",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "dr_land_wall",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Wall of Thorns follows its first damaged foe for 3s before anchoring, and lasts 1s longer; it remains a physical ground effect",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "druid",
+          "subSkills": ["dr_land_wall"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 5 },
+            { "path": "subAbilities.sub1.zoneFollow", "before": null, "after": 3 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 5 },
+            { "path": "subAbilities.sub1.zoneFollow", "before": null, "after": 3 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dr_land_wind_g",
+      "name": "Winter Gale",
+      "category": "subclass-skill-grand",
+      "classId": "druid",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "dr_land_wind",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "The aimed Gust freezes struck foes for 0.6s and gains 25u reach; its pushing wind remains",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "druid",
+          "subSkills": ["dr_land_wind"],
+          "prefix": [],
+          "once": [{ "path": "subAbilities.sub1.freeze", "before": null, "after": 0.6 }],
+          "atCap": [{ "path": "subAbilities.sub1.freeze", "before": null, "after": 0.6 }]
+        }
+      ]
+    },
+    {
+      "id": "dr_land_spring_g",
+      "name": "Sheltering Spring",
+      "category": "subclass-skill-grand",
+      "classId": "druid",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "dr_land_spring",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Healing Spring gives allies inside 20% damage mitigation, including at full health; its healing remains",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "druid",
+          "subSkills": ["dr_land_spring"],
+          "prefix": [],
+          "once": [{ "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }],
+          "atCap": [{ "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }]
+        }
+      ]
+    },
+    {
       "id": "ro_assassin_strike_g",
       "name": "Perfect Opening",
       "category": "subclass-skill-grand",
@@ -14668,7 +14812,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Infernal Claim bursts across 110u and stores 25% of effective primary damage as protection for 4s, up to 25",
+      "description": "Infernal Claim bursts across 110u and stores 25% of effective primary damage as protection for 4s, up to 25 at base health; ceiling scales with max-HP growth",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -17470,7 +17614,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Increase damage by 12% and burst radius by 8%, and improve recharge within its shared budget; retain slowing disengagement and knockback (stacks to 5).",
+      "description": "Increase burst damage by 10% and outward force by 10u; retain slow; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -17480,14 +17624,14 @@
           "subSkills": ["rg_hunter_hail"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.36 },
-            { "path": "subAbilities.sub1.damage", "before": 34, "after": 38 },
-            { "path": "subAbilities.sub1.radius", "before": 130, "after": 140 }
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.68 },
+            { "path": "subAbilities.sub1.damage", "before": 34, "after": 37.400000000000006 },
+            { "path": "subAbilities.sub1.knockback", "before": 90, "after": 100 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.4 },
-            { "path": "subAbilities.sub1.damage", "before": 34, "after": 60 },
-            { "path": "subAbilities.sub1.radius", "before": 130, "after": 190 }
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.5229815808 },
+            { "path": "subAbilities.sub1.damage", "before": 34, "after": 54.75734000000002 },
+            { "path": "subAbilities.sub1.knockback", "before": 90, "after": 140 }
           ]
         }
       ]
@@ -17505,7 +17649,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Increase damage by 12% and improve recharge within its shared budget; retain two additional pierces and Exposed Quarry (stacks to 5).",
+      "description": "Increase quarry-shot damage by 12% and projectile speed by 8%; retain two extra pierces; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -17514,8 +17658,14 @@
           "classId": "ranger",
           "subSkills": ["rg_hunter_mark"],
           "prefix": [],
-          "once": [{ "path": "subAbilities.sub1.damage", "before": 48, "after": 54 }],
-          "atCap": [{ "path": "subAbilities.sub1.damage", "before": 48, "after": 84 }]
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 48, "after": 53.760000000000005 },
+            { "path": "subAbilities.sub1.projSpeed", "before": 780, "after": 842.4000000000001 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 48, "after": 84.59240079360005 },
+            { "path": "subAbilities.sub1.projSpeed", "before": 780, "after": 1146.0758999040004 }
+          ]
         }
       ]
     },
@@ -17532,7 +17682,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Increase skirmish-field damage by 12% and radius by 8%, and improve recharge within its shared budget; retain ally speed and enemy slow (stacks to 5).",
+      "description": "Increase skirmish-field damage by 10% and allied movement by 2 percentage points; retain enemy slow; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -17542,14 +17692,14 @@
           "subSkills": ["rg_hunter_stand"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 14, "after": 12.88 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 184 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 7 }
+            { "path": "subAbilities.sub1.cooldown", "before": 14, "after": 13.44 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": 1.2, "after": 1.22 },
+            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 6.6000000000000005 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 14, "after": 9.799999999999999 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 240 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 11 }
+            { "path": "subAbilities.sub1.cooldown", "before": 14, "after": 11.415217766399996 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": 1.2, "after": 1.3 },
+            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 9.663060000000003 }
           ]
         }
       ]
@@ -17567,7 +17717,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Volley — first rank: direct damage 16 → 18; recharge 7 → 6.44s. Retains its existing effects (stacks to 5).",
+      "description": "Increase arrow damage by 12% and projectile speed by 8%; preserve the chosen fan width; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -17577,12 +17727,14 @@
           "subSkills": ["rg_hunter_volley"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 6.44 },
-            { "path": "subAbilities.sub1.damage", "before": 16, "after": 18 }
+            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 6.72 },
+            { "path": "subAbilities.sub1.damage", "before": 16, "after": 17.92 },
+            { "path": "subAbilities.sub1.projSpeed", "before": 640, "after": 691.2 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 5.6000000000000005 },
-            { "path": "subAbilities.sub1.damage", "before": 16, "after": 28 }
+            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 5.707608883199998 },
+            { "path": "subAbilities.sub1.damage", "before": 16, "after": 28.19746693120001 },
+            { "path": "subAbilities.sub1.projSpeed", "before": 640, "after": 940.3699691520003 }
           ]
         }
       ]
@@ -17600,7 +17752,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Pounce — first rank: area radius 100 → 108; travel distance 250 → 270; phasing duration 0.3 → 0.45s. Retains its existing effects (stacks to 5).",
+      "description": "Increase landing damage by 12% and leap distance by 10u; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -17610,16 +17762,16 @@
           "subSkills": ["rg_beast_pounce"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.landingDamage", "before": 26, "after": 29 },
-            { "path": "subAbilities.sub1.radius", "before": 100, "after": 108 },
-            { "path": "subAbilities.sub1.range", "before": 250, "after": 270 }
+            {
+              "path": "subAbilities.sub1.landingDamage",
+              "before": 26,
+              "after": 29.120000000000005
+            },
+            { "path": "subAbilities.sub1.range", "before": 250, "after": 260 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 1.05 },
-            { "path": "subAbilities.sub1.landingDamage", "before": 26, "after": 45 },
-            { "path": "subAbilities.sub1.radius", "before": 100, "after": 147 },
-            { "path": "subAbilities.sub1.range", "before": 250, "after": 367 }
+            { "path": "subAbilities.sub1.landingDamage", "before": 26, "after": 45.82088376320004 },
+            { "path": "subAbilities.sub1.range", "before": 250, "after": 300 }
           ]
         }
       ]
@@ -17637,7 +17789,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Snare — first rank: zone damage per tick 6 → 7; area radius 120 → 130; recharge 10 → 9.2s. Retains its existing effects (stacks to 5).",
+      "description": "Increase snare damage by 12% and field duration by 0.25s, up to 8s; retain the 25% movement snare; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -17647,14 +17799,14 @@
           "subSkills": ["rg_beast_snare"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 9.200000000000001 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 130 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 7 }
+            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 9.6 },
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 4.25 },
+            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 6.720000000000001 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 8.000000000000002 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 176 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 11 }
+            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 8.153726975999998 },
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 5.25 },
+            { "path": "subAbilities.sub1.zoneTickDamage", "before": 6, "after": 10.574050099200006 }
           ]
         }
       ]
@@ -17672,7 +17824,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Increase healing by 12%, improve recipient haste, and improve recharge within its shared budget; retain cleanse (stacks to 5).",
+      "description": "Increase healing by 12% and recipient movement by 2 percentage points; retain cleanse and effective-heal wolf link; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -17682,12 +17834,12 @@
           "subSkills": ["rg_beast_bond"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.25, "after": 1.3 },
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 67 }
+            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.25, "after": 1.27 },
+            { "path": "subAbilities.sub1.damage", "before": 60, "after": 67.2 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.25, "after": 1.5 },
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 105 }
+            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.25, "after": 1.35 },
+            { "path": "subAbilities.sub1.damage", "before": 60, "after": 105.74050099200004 }
           ]
         }
       ]
@@ -17705,7 +17857,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Savage Bite — first rank: direct damage 44 → 49; reach 64 → 69. Retains its existing effects (stacks to 5).",
+      "description": "Increase bite damage by 10% and leech by 2 percentage points, up to 40% combined; preserve already higher leech. Five native ranks reach 30%, or 40% with Pack Tactics; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -17715,12 +17867,16 @@
           "subSkills": ["rg_beast_bite"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 44, "after": 49 },
-            { "path": "subAbilities.sub1.range", "before": 64, "after": 69 }
+            { "path": "subAbilities.sub1.damage", "before": 44, "after": 48.400000000000006 },
+            { "path": "subAbilities.sub1.lifestealFrac", "before": 0.2, "after": 0.22 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 44, "after": 77 },
-            { "path": "subAbilities.sub1.range", "before": 64, "after": 94 }
+            { "path": "subAbilities.sub1.damage", "before": 44, "after": 70.86244000000002 },
+            {
+              "path": "subAbilities.sub1.lifestealFrac",
+              "before": 0.2,
+              "after": 0.30000000000000004
+            }
           ]
         }
       ]
@@ -19128,7 +19284,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Dire Maul — first rank: direct damage 46 → 52; reach 80 → 86. Retains its existing effects (stacks to 5).",
+      "description": "Increase maul damage by 12% and reach by 4u; retain leech and the chosen arc; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -19138,12 +19294,12 @@
           "subSkills": ["dr_moon_maul"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 46, "after": 52 },
-            { "path": "subAbilities.sub1.range", "before": 80, "after": 86 }
+            { "path": "subAbilities.sub1.damage", "before": 46, "after": 51.52 },
+            { "path": "subAbilities.sub1.range", "before": 80, "after": 84 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 46, "after": 82 },
-            { "path": "subAbilities.sub1.range", "before": 80, "after": 117 }
+            { "path": "subAbilities.sub1.damage", "before": 46, "after": 81.06771742720004 },
+            { "path": "subAbilities.sub1.range", "before": 80, "after": 100 }
           ]
         }
       ]
@@ -19161,7 +19317,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Feral Pounce — first rank: area radius 100 → 108; travel distance 250 → 270; phasing duration 0.3 → 0.45s. Retains its existing effects (stacks to 5).",
+      "description": "Increase landing damage by 12% and leap distance by 10u; retain Moon form entry; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -19171,16 +19327,12 @@
           "subSkills": ["dr_moon_pounce"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.landingDamage", "before": 30, "after": 34 },
-            { "path": "subAbilities.sub1.radius", "before": 100, "after": 108 },
-            { "path": "subAbilities.sub1.range", "before": 250, "after": 270 }
+            { "path": "subAbilities.sub1.landingDamage", "before": 30, "after": 33.6 },
+            { "path": "subAbilities.sub1.range", "before": 250, "after": 260 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 1.05 },
-            { "path": "subAbilities.sub1.landingDamage", "before": 30, "after": 54 },
-            { "path": "subAbilities.sub1.radius", "before": 100, "after": 147 },
-            { "path": "subAbilities.sub1.range", "before": 250, "after": 367 }
+            { "path": "subAbilities.sub1.landingDamage", "before": 30, "after": 52.87025049600002 },
+            { "path": "subAbilities.sub1.range", "before": 250, "after": 300 }
           ]
         }
       ]
@@ -19198,7 +19350,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Primal Roar — first rank: recharge 12 → 11.04s; damage multiplier 1.3 → 1.37. Retains its existing effects (stacks to 5).",
+      "description": "Improve the damage buff by 3 percentage points, bramble-burst damage by 2 and its preparation window by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -19208,16 +19360,20 @@
           "subSkills": ["dr_moon_roar"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.buffDamageMult", "before": 1.3, "after": 1.37 },
-            { "path": "subAbilities.sub1.closeBurst.damage", "before": 24, "after": 27 },
-            { "path": "subAbilities.sub1.closeBurst.radius", "before": 125, "after": 135 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 11.040000000000001 }
+            { "path": "subAbilities.sub1.buffDamageMult", "before": 1.3, "after": 1.33 },
+            { "path": "subAbilities.sub1.closeBurst.damage", "before": 24, "after": 26 },
+            { "path": "subAbilities.sub1.closeBurst.duration", "before": 6, "after": 6.25 },
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 11.52 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.buffDamageMult", "before": 1.3, "after": 1.65 },
-            { "path": "subAbilities.sub1.closeBurst.damage", "before": 24, "after": 43 },
-            { "path": "subAbilities.sub1.closeBurst.radius", "before": 125, "after": 185 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 9.600000000000001 }
+            {
+              "path": "subAbilities.sub1.buffDamageMult",
+              "before": 1.3,
+              "after": 1.4500000000000002
+            },
+            { "path": "subAbilities.sub1.closeBurst.damage", "before": 24, "after": 34 },
+            { "path": "subAbilities.sub1.closeBurst.duration", "before": 6, "after": 7.25 },
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 9.784472371199998 }
           ]
         }
       ]
@@ -19235,7 +19391,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Frenzied Regen — first rank: healing 80 → 90; recharge 10 → 9.2s. Retains its existing effects (stacks to 5).",
+      "description": "Increase primary healing and recovery-grove ticks by 12%; retain the self-focused cast and form entry; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -19245,14 +19401,18 @@
           "subSkills": ["dr_moon_regen"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 9.200000000000001 },
-            { "path": "subAbilities.sub1.damage", "before": 80, "after": 90 },
-            { "path": "subAbilities.sub1.recoveryZone.radius", "before": 95, "after": 103 }
+            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 9.6 },
+            { "path": "subAbilities.sub1.damage", "before": 80, "after": 89.60000000000001 },
+            { "path": "subAbilities.sub1.recoveryZone.tickHeal", "before": 4, "after": 4.48 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 8.000000000000002 },
-            { "path": "subAbilities.sub1.damage", "before": 80, "after": 142 },
-            { "path": "subAbilities.sub1.recoveryZone.radius", "before": 95, "after": 140 }
+            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 8.153726975999998 },
+            { "path": "subAbilities.sub1.damage", "before": 80, "after": 140.98733465600006 },
+            {
+              "path": "subAbilities.sub1.recoveryZone.tickHeal",
+              "before": 4,
+              "after": 7.049366732800003
+            }
           ]
         }
       ]
@@ -19270,7 +19430,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Increase damage by 12% and blast radius by 8%, and improve recharge within its shared budget; retain the controlled-target bonus (stacks to 5).",
+      "description": "Increase eruption damage by 10% and controlled-target bonus by 2 percentage points; preserve aimed blast coverage; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -19280,14 +19440,18 @@
           "subSkills": ["dr_land_spike"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.36 },
-            { "path": "subAbilities.sub1.damage", "before": 38, "after": 43 },
-            { "path": "subAbilities.sub1.impactRadius", "before": 160, "after": 173 }
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": 0.25, "after": 0.27 },
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.68 },
+            { "path": "subAbilities.sub1.damage", "before": 38, "after": 41.800000000000004 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.4 },
-            { "path": "subAbilities.sub1.damage", "before": 38, "after": 67 },
-            { "path": "subAbilities.sub1.impactRadius", "before": 160, "after": 235 }
+            {
+              "path": "subAbilities.sub1.controlDamageBonus",
+              "before": 0.25,
+              "after": 0.3500000000000001
+            },
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.5229815808 },
+            { "path": "subAbilities.sub1.damage", "before": 38, "after": 61.19938000000003 }
           ]
         }
       ]
@@ -19305,7 +19469,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Wall of Thorns — first rank: zone damage per tick 13 → 15; area radius 130 → 140; recharge 10 → 9.2s. Retains its existing effects (stacks to 5).",
+      "description": "Increase thorn-field damage and healing by 10%, and duration by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -19315,14 +19479,20 @@
           "subSkills": ["dr_land_wall"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 9.200000000000001 },
-            { "path": "subAbilities.sub1.radius", "before": 130, "after": 140 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 13, "after": 15 }
+            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 9.6 },
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 4.25 },
+            { "path": "subAbilities.sub1.zoneTickDamage", "before": 13, "after": 14.3 },
+            { "path": "subAbilities.sub1.zoneTickHeal", "before": 4, "after": 4.4 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 8.000000000000002 },
-            { "path": "subAbilities.sub1.radius", "before": 130, "after": 190 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 13, "after": 24 }
+            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 8.153726975999998 },
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 5.25 },
+            {
+              "path": "subAbilities.sub1.zoneTickDamage",
+              "before": 13,
+              "after": 20.93663000000001
+            },
+            { "path": "subAbilities.sub1.zoneTickHeal", "before": 4, "after": 6.442040000000003 }
           ]
         }
       ]
@@ -19340,7 +19510,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Gust — first rank: direct damage 24 → 27; area radius 150 → 162; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "description": "Increase aimed-wind damage by 10% and push by 10u; preserve the chosen cone and freeze; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -19350,14 +19520,14 @@
           "subSkills": ["dr_land_wind"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.36 },
-            { "path": "subAbilities.sub1.damage", "before": 24, "after": 27 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 162 }
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.68 },
+            { "path": "subAbilities.sub1.damage", "before": 24, "after": 26.400000000000002 },
+            { "path": "subAbilities.sub1.knockback", "before": 90, "after": 100 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.4 },
-            { "path": "subAbilities.sub1.damage", "before": 24, "after": 43 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 220 }
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.5229815808 },
+            { "path": "subAbilities.sub1.damage", "before": 24, "after": 38.65224000000001 },
+            { "path": "subAbilities.sub1.knockback", "before": 90, "after": 140 }
           ]
         }
       ]
@@ -19375,7 +19545,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Healing Spring — first rank: zone healing per tick 13 → 15; area radius 150 → 162; recharge 12 → 11.04s. Retains its existing effects (stacks to 5).",
+      "description": "Increase spring healing by 12% and duration by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -19385,14 +19555,14 @@
           "subSkills": ["dr_land_spring"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 11.040000000000001 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 162 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 13, "after": 15 }
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 11.52 },
+            { "path": "subAbilities.sub1.zoneDuration", "before": 5, "after": 5.25 },
+            { "path": "subAbilities.sub1.zoneTickHeal", "before": 13, "after": 14.560000000000002 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 9.600000000000001 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 220 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 13, "after": 24 }
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 9.784472371199998 },
+            { "path": "subAbilities.sub1.zoneDuration", "before": 5, "after": 6.25 },
+            { "path": "subAbilities.sub1.zoneTickHeal", "before": 13, "after": 22.91044188160002 }
           ]
         }
       ]

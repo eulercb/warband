@@ -38,7 +38,12 @@ export function commandCompanion(
   )
     return;
   const pet = ensure(p);
-  pet.order = { targetId: target.id, kind, windup: 0.3, remaining: 0.9 };
+  pet.order = {
+    targetId: target.id,
+    kind,
+    windup: p.charUpgradeIds?.includes('rg_beastmaster_g_a') ? 0.15 : 0.3,
+    remaining: 0.9,
+  };
   p.subclassPassiveCooldowns ??= {};
   p.subclassPassiveCooldowns[PACK_BOND] = 2.5;
 }
@@ -105,7 +110,8 @@ export function updateCompanions(world: World, dt: number): void {
         move(pet, target.pos, 1800 * dt);
         if (order.windup <= 0 && dist(pet.pos, target.pos) <= target.radius + 18) {
           delete pet.order; // clear before damage callbacks; this strike cannot command itself
-          const base = 16 * (target.buffs.some(isBurstControl) ? 1.25 : 1);
+          const controlBonus = p.charUpgradeIds?.includes('rg_beastmaster_g_a') ? 1.5 : 1.25;
+          const base = 16 * (target.buffs.some(isBurstControl) ? controlBonus : 1);
           const before = target.hp;
           if (order.kind === 'boss') damageBoss(world, p, target as Boss, base);
           else damageAdd(world, p, target as Add, base);

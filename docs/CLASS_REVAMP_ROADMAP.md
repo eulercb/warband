@@ -1,11 +1,12 @@
 # Class identity and subclass roadmap
 
-Current upgrade delivery: [Knight/Barbarian/Monk authored builds](MARTIAL_GRANDS.md).
-The owner accepted the Claim opportunity marker and authorized this cohort.
-Five classes now have authored upgrade/grand content; Ranger/Druid,
-Mage/Sorcerer and Cleric/Paladin/Bard remain, followed by whole-system review.
-Use the [combined-build review gate](UPGRADE_REVIEW_GATE.md) and retain the
-live-tested shared recharge/geometry limits during the redesign.
+Current upgrade delivery: [Ranger/Druid authored builds](NATURE_GRANDS.md).
+The owner accepted the martial cohort. Seven classes now have authored upgrade/
+grand content; Mage/Sorcerer and Cleric/Paladin/Bard remain, followed by whole-system
+review. Direct absorption now tracks recipient health growth; existing percentage
+and healing-based rewards retain their own formulas. Use the
+[combined-build review gate](UPGRADE_REVIEW_GATE.md) and retain the live-tested
+shared recharge/geometry limits during the redesign.
 
 The original class/passive stages below are historical. Current upgrade work and
 milestones are tracked in [the upgrade roadmap](UPGRADE_IDENTITY_ROADMAP.md).

@@ -253,6 +253,7 @@ jobs:
           node scripts/run-smoke.mjs smoke:absorption
           node scripts/run-smoke.mjs smoke:auras
           node scripts/run-smoke.mjs smoke:martial-grands
+          node scripts/run-smoke.mjs smoke:nature-grands
       - name: Upload martial screenshots
         if: always()
         uses: actions/upload-artifact@v4

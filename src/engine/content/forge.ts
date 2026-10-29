@@ -897,7 +897,9 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
             : 'detonate an aimed personally cursed foe',
         );
       if (c.claimWard)
-        bits.push(`store ${pct(c.claimWard * 100)} primary damage as protection, up to 25`);
+        bits.push(
+          `store ${pct(c.claimWard * 100)} primary damage as protection, up to 25 at base health; ceiling scales with max-HP growth`,
+        );
       if (c.rebukeInvuln) bits.push(`successful retort phases you for ${s(c.rebukeInvuln)}`);
       return bits.join(', ');
     }

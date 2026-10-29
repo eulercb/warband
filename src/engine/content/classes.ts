@@ -1323,7 +1323,9 @@ export function describeAbility(
   if (def.infernalClaim)
     parts.push(`detonate one personally cursed aimed foe within ${n(def.range ?? 460)}u`);
   if (def.claimWard)
-    parts.push(`store ${n(def.claimWard * 100)}% of primary damage as protection for 4s, up to 25`);
+    parts.push(
+      `store ${n(def.claimWard * 100)}% of primary damage as protection for 4s, up to 25 at base health; ceiling scales with max-HP growth`,
+    );
   if (def.rebukeInvuln) parts.push(`successful retort phases you for ${s(def.rebukeInvuln)}`);
   if (def.consumesPrecision) parts.push('consumes prepared crit');
   if (def.preparedRefund)
