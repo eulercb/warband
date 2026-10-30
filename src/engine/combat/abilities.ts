@@ -382,6 +382,13 @@ export function resolvePlayerAbility(
   reserved?: PlayerAbilityDef,
 ): void {
   const original = reserved ?? abilityForSlot(p, slot);
+  if (
+    original &&
+    (original.kind === 'dash' || original.kind === 'blink') &&
+    isRooted(p) &&
+    !original.steadfastDuration
+  )
+    return;
   const resolved =
     original &&
     (reserved
@@ -578,7 +585,6 @@ export function resolvePlayerAbility(
       // (it visibly travels, stops at the first blocking obstacle, and its landing
       // slam fires on touchdown, all in stepPlayerGlide). A root locks it — a rooted
       // hero can't dash away — matching the boss charge and the root contract.
-      if (isRooted(p)) break;
       let dir = moveDir;
       if (dir.x === 0 && dir.y === 0) dir = p.aim;
       startGlide(world, p, ab, dir);
@@ -588,7 +594,6 @@ export function resolvePlayerAbility(
     case 'blink': {
       // item 2: a teleport stays instant and may pass THROUGH movement-blocking cover
       // — but a root still locks it (blink/teleport are on the root contract).
-      if (isRooted(p)) break;
       const dir = normalize(p.aim);
       const from = { ...p.pos };
       const target = vadd(p.pos, vscale(dir, ab.range ?? 250));
@@ -1058,7 +1063,6 @@ function resolveComposedAbility(
       // dash glides and stops at cover, its landing slam firing on touchdown (via the
       // stored ab in stepPlayerGlide). A root locks either. The self-buff + component
       // heal fire on use, exactly as before.
-      if (isRooted(p)) break;
       if (d.kind === 'blink') {
         const dir = normalize(p.aim);
         const from = { ...p.pos };

@@ -127,7 +127,7 @@ it('allows an earned alternative after a defeat and carries the replacement into
       grandLoadout: {
         version: 1,
         classes: {
-          mage: { bank: ['mg_gk_basic_a', 'mg_gk_basic_b'], equipped: ['mg_gk_basic_a'] },
+          mage: { bank: ['mg_gk_basic_a', 'mg_gk_a1_a'], equipped: ['mg_gk_basic_a'] },
         },
       },
     }),
@@ -136,13 +136,13 @@ it('allows an earned alternative after a defeat and carries the replacement into
   host.endRun('defeat');
   host.chooseGrand({
     classId: 'mage',
-    id: 'mg_gk_basic_b',
+    id: 'mg_gk_a1_a',
     action: 'equip',
     replace: 'mg_gk_basic_a',
   });
-  expect(states.mock.lastCall![0].classes.mage!.equipped).toEqual(['mg_gk_basic_b']);
+  expect(states.mock.lastCall![0].classes.mage!.equipped).toEqual(['mg_gk_a1_a']);
   host.retryFight();
-  expect(states.mock.lastCall![0].classes.mage!.equipped).toEqual(['mg_gk_basic_b']);
+  expect(states.mock.lastCall![0].classes.mage!.equipped).toEqual(['mg_gk_a1_a']);
   expect(states.mock.lastCall![1]).toBe(false);
 });
 

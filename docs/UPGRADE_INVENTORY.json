@@ -1,15 +1,15 @@
 {
   "schema": 1,
-  "baseline": "d70eceb plus Ranger/Druid authored grands (see NATURE_GRANDS.md)",
+  "baseline": "5bfff00 plus Mage/Sorcerer authored grands (see CASTER_GRANDS.md)",
   "seed": 31,
   "counts": {
     "class-boon": 60,
     "graft": 7,
     "style": 5,
-    "class-grand": 12,
-    "skill-grand": 66,
+    "class-grand": 8,
+    "skill-grand": 58,
     "subclass-grand": 48,
-    "subclass-skill-grand": 56,
+    "subclass-skill-grand": 72,
     "graft-grand": 14,
     "honed": 96
   },
@@ -5994,74 +5994,6 @@
       ]
     },
     {
-      "id": "mg_grand_archmage",
-      "name": "Archmage",
-      "category": "class-grand",
-      "classId": "mage",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": null,
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Spells snap out instantly: −60% cast time, +30% damage, +15% max HP",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "mage",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "stats.castMult", "before": 1, "after": 0.4 },
-            { "path": "stats.damageMult", "before": 1, "after": 1.3 },
-            { "path": "stats.maxHp", "before": 100, "after": 115 }
-          ],
-          "atCap": [
-            { "path": "stats.castMult", "before": 1, "after": 0.4 },
-            { "path": "stats.damageMult", "before": 1, "after": 1.3 },
-            { "path": "stats.maxHp", "before": 100, "after": 115 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mg_grand_cataclysm",
-      "name": "Cataclysm",
-      "category": "class-grand",
-      "classId": "mage",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": null,
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Fireball becomes an apocalypse — +55 dmg across a colossal blast (+75 radius)",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "mage",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a1.damage", "before": 80, "after": 135 },
-            { "path": "abilities.a1.impactRadius", "before": 110, "after": 185 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.damage", "before": 80, "after": 135 },
-            { "path": "abilities.a1.impactRadius", "before": 110, "after": 185 }
-          ]
-        }
-      ]
-    },
-    {
       "id": "cl_grand_beacon",
       "name": "Beacon of Hope",
       "category": "class-grand",
@@ -6326,74 +6258,6 @@
             { "path": "abilities.basic.damage", "before": 15, "after": 23 },
             { "path": "abilities.basic.projCount", "before": 1, "after": 3 },
             { "path": "abilities.basic.spreadDeg", "before": null, "after": 12 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "so_grand_wild",
-      "name": "Wild Magic Surge",
-      "category": "class-grand",
-      "classId": "sorcerer",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": null,
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Chaos Bolt splits into a fan of 3 extra bolts (+8 each) across a wide spread",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "sorcerer",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.basic.damage", "before": 12, "after": 20 },
-            { "path": "abilities.basic.projCount", "before": 2, "after": 5 },
-            { "path": "abilities.basic.spreadDeg", "before": 10, "after": 22 }
-          ],
-          "atCap": [
-            { "path": "abilities.basic.damage", "before": 12, "after": 20 },
-            { "path": "abilities.basic.projCount", "before": 2, "after": 5 },
-            { "path": "abilities.basic.spreadDeg", "before": 10, "after": 22 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "so_grand_cataclysm",
-      "name": "Meteor Swarm",
-      "category": "class-grand",
-      "classId": "sorcerer",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": null,
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Meteor becomes an extinction event — +65 dmg across a colossal blast (+75 radius)",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "sorcerer",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a1.damage", "before": 78, "after": 143 },
-            { "path": "abilities.a1.impactRadius", "before": 110, "after": 185 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.damage", "before": 78, "after": 143 },
-            { "path": "abilities.a1.impactRadius", "before": 110, "after": 185 }
           ]
         }
       ]
@@ -6742,7 +6606,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Arcane Bolt splits into 3 across a 14° fan (+5 each)",
+      "description": "Arcane Bolt splits into three lanes across a 14° fan and gains +5 damage per bolt",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -6760,41 +6624,6 @@
             { "path": "abilities.basic.damage", "before": 16, "after": 21 },
             { "path": "abilities.basic.projCount", "before": 1, "after": 3 },
             { "path": "abilities.basic.spreadDeg", "before": null, "after": 14 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mg_gk_basic_b",
-      "name": "Frostlance",
-      "category": "skill-grand",
-      "classId": "mage",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "basic",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Arcane Bolt becomes a piercing lance: +18 damage, +350 speed, freezes for 0.4s",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "mage",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.basic.damage", "before": 16, "after": 34 },
-            { "path": "abilities.basic.freeze", "before": null, "after": 0.4 },
-            { "path": "abilities.basic.projSpeed", "before": 620, "after": 970 }
-          ],
-          "atCap": [
-            { "path": "abilities.basic.damage", "before": 16, "after": 34 },
-            { "path": "abilities.basic.freeze", "before": null, "after": 0.4 },
-            { "path": "abilities.basic.projSpeed", "before": 620, "after": 970 }
           ]
         }
       ]
@@ -6812,7 +6641,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Fireball detonates for +55 across a colossal +80u blast",
+      "description": "Fireball gains +35 damage and +30u blast radius; struck foes have 40% longer wind-ups for 3s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -6822,89 +6651,23 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.damage", "before": 80, "after": 135 },
-            { "path": "abilities.a1.impactRadius", "before": 110, "after": 190 }
+            { "path": "abilities.a1.castSlow", "before": null, "after": 1.4 },
+            { "path": "abilities.a1.castSlowDuration", "before": null, "after": 3 },
+            { "path": "abilities.a1.damage", "before": 80, "after": 115 },
+            { "path": "abilities.a1.impactRadius", "before": 110, "after": 140 }
           ],
           "atCap": [
-            { "path": "abilities.a1.damage", "before": 80, "after": 135 },
-            { "path": "abilities.a1.impactRadius", "before": 110, "after": 190 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mg_gk_a1_b",
-      "name": "Chain Ignition",
-      "category": "skill-grand",
-      "classId": "mage",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a1",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Fireball snaps out instantly (−80% cast), recharges twice as fast, +20 damage",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "mage",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a1.castTime", "before": 0.7, "after": 0.13999999999999999 },
-            { "path": "abilities.a1.cooldown", "before": 14, "after": 7 },
-            { "path": "abilities.a1.damage", "before": 80, "after": 100 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.castTime", "before": 0.7, "after": 0.13999999999999999 },
-            { "path": "abilities.a1.cooldown", "before": 14, "after": 7 },
-            { "path": "abilities.a1.damage", "before": 80, "after": 100 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mg_gk_a2_a",
-      "name": "Absolute Zero",
-      "category": "skill-grand",
-      "classId": "mage",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a2",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Frost Nova freezes solid for 1.5s, +20 damage, +40u",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "mage",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a2.damage", "before": 20, "after": 40 },
-            { "path": "abilities.a2.freeze", "before": null, "after": 1.5 },
-            { "path": "abilities.a2.radius", "before": 150, "after": 190 }
-          ],
-          "atCap": [
-            { "path": "abilities.a2.damage", "before": 20, "after": 40 },
-            { "path": "abilities.a2.freeze", "before": null, "after": 1.5 },
-            { "path": "abilities.a2.radius", "before": 150, "after": 190 }
+            { "path": "abilities.a1.castSlow", "before": null, "after": 1.4 },
+            { "path": "abilities.a1.castSlowDuration", "before": null, "after": 3 },
+            { "path": "abilities.a1.damage", "before": 80, "after": 115 },
+            { "path": "abilities.a1.impactRadius", "before": 110, "after": 140 }
           ]
         }
       ]
     },
     {
       "id": "mg_gk_a2_b",
-      "name": "Blizzard",
+      "name": "Polar Vortex",
       "category": "skill-grand",
       "classId": "mage",
       "exclude": [],
@@ -6915,7 +6678,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Frost Nova swells +60u and locks foes to 30% speed for +2s (+12 damage)",
+      "description": "Frost Nova pulls struck foes 140u inward and gains +20 damage; ordinary freeze still stops their actions",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -6925,51 +6688,12 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.damage", "before": 20, "after": 32 },
-            { "path": "abilities.a2.radius", "before": 150, "after": 210 },
-            { "path": "abilities.a2.slowDuration", "before": 3, "after": 5 },
-            { "path": "abilities.a2.slowMult", "before": 0.6, "after": 0.3 }
+            { "path": "abilities.a2.damage", "before": 20, "after": 40 },
+            { "path": "abilities.a2.pull", "before": null, "after": 140 }
           ],
           "atCap": [
-            { "path": "abilities.a2.damage", "before": 20, "after": 32 },
-            { "path": "abilities.a2.radius", "before": 150, "after": 210 },
-            { "path": "abilities.a2.slowDuration", "before": 3, "after": 5 },
-            { "path": "abilities.a2.slowMult", "before": 0.6, "after": 0.3 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "mg_gk_a3_a",
-      "name": "Fold Space",
-      "category": "skill-grand",
-      "classId": "mage",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a3",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Blink leaps +150u, recharges in a blink (−60% cd), and phases you 0.6s",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "mage",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a3.cooldown", "before": 6, "after": 2.4000000000000004 },
-            { "path": "abilities.a3.iframes", "before": 0.2, "after": 0.6000000000000001 },
-            { "path": "abilities.a3.range", "before": 250, "after": 400 }
-          ],
-          "atCap": [
-            { "path": "abilities.a3.cooldown", "before": 6, "after": 2.4000000000000004 },
-            { "path": "abilities.a3.iframes", "before": 0.2, "after": 0.6000000000000001 },
-            { "path": "abilities.a3.range", "before": 250, "after": 400 }
+            { "path": "abilities.a2.damage", "before": 20, "after": 40 },
+            { "path": "abilities.a2.pull", "before": null, "after": 140 }
           ]
         }
       ]
@@ -6987,7 +6711,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Blink knits +60 HP on use, phases you 0.7s, and reaches +80u",
+      "description": "Blink heals you for 45, grants 3s hard-control resistance and reaches 50u farther",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -6997,14 +6721,14 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.healOnUse", "before": null, "after": 60 },
-            { "path": "abilities.a3.iframes", "before": 0.2, "after": 0.7 },
-            { "path": "abilities.a3.range", "before": 250, "after": 330 }
+            { "path": "abilities.a3.healOnUse", "before": null, "after": 45 },
+            { "path": "abilities.a3.range", "before": 250, "after": 300 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 }
           ],
           "atCap": [
-            { "path": "abilities.a3.healOnUse", "before": null, "after": 60 },
-            { "path": "abilities.a3.iframes", "before": 0.2, "after": 0.7 },
-            { "path": "abilities.a3.range", "before": 250, "after": 330 }
+            { "path": "abilities.a3.healOnUse", "before": null, "after": 45 },
+            { "path": "abilities.a3.range", "before": 250, "after": 300 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 }
           ]
         }
       ]
@@ -8371,41 +8095,6 @@
       ]
     },
     {
-      "id": "so_gk_basic_a",
-      "name": "Chaos Storm",
-      "category": "skill-grand",
-      "classId": "sorcerer",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "basic",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Chaos Bolt hurls 5 bolts across a wide fan (+5 each)",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "sorcerer",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.basic.damage", "before": 12, "after": 17 },
-            { "path": "abilities.basic.projCount", "before": 2, "after": 5 },
-            { "path": "abilities.basic.spreadDeg", "before": 10, "after": 28 }
-          ],
-          "atCap": [
-            { "path": "abilities.basic.damage", "before": 12, "after": 17 },
-            { "path": "abilities.basic.projCount", "before": 2, "after": 5 },
-            { "path": "abilities.basic.spreadDeg", "before": 10, "after": 28 }
-          ]
-        }
-      ]
-    },
-    {
       "id": "so_gk_basic_b",
       "name": "Chaos Lance",
       "category": "skill-grand",
@@ -8418,7 +8107,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Chaos Bolt screams out +20 harder and +300 faster, freezing for 0.4s",
+      "description": "Chaos Bolt pierces two additional foes, gains +8 damage per bolt and +250 projectile speed; its fan remains",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8428,14 +8117,14 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.basic.damage", "before": 12, "after": 32 },
-            { "path": "abilities.basic.freeze", "before": null, "after": 0.4 },
-            { "path": "abilities.basic.projSpeed", "before": 640, "after": 940 }
+            { "path": "abilities.basic.damage", "before": 12, "after": 20 },
+            { "path": "abilities.basic.pierce", "before": null, "after": 2 },
+            { "path": "abilities.basic.projSpeed", "before": 640, "after": 890 }
           ],
           "atCap": [
-            { "path": "abilities.basic.damage", "before": 12, "after": 32 },
-            { "path": "abilities.basic.freeze", "before": null, "after": 0.4 },
-            { "path": "abilities.basic.projSpeed", "before": 640, "after": 940 }
+            { "path": "abilities.basic.damage", "before": 12, "after": 20 },
+            { "path": "abilities.basic.pierce", "before": null, "after": 2 },
+            { "path": "abilities.basic.projSpeed", "before": 640, "after": 890 }
           ]
         }
       ]
@@ -8453,7 +8142,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Meteor falls for +65 across a cataclysmic +80u blast",
+      "description": "Meteor gains +30 damage and +40u blast radius and freezes struck foes for 0.8s; surge still shares its twin damage budget",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8463,47 +8152,14 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.damage", "before": 78, "after": 143 },
-            { "path": "abilities.a1.impactRadius", "before": 110, "after": 190 }
+            { "path": "abilities.a1.damage", "before": 78, "after": 108 },
+            { "path": "abilities.a1.freeze", "before": null, "after": 0.8 },
+            { "path": "abilities.a1.impactRadius", "before": 110, "after": 150 }
           ],
           "atCap": [
-            { "path": "abilities.a1.damage", "before": 78, "after": 143 },
-            { "path": "abilities.a1.impactRadius", "before": 110, "after": 190 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "so_gk_a1_b",
-      "name": "Meteor Shower",
-      "category": "skill-grand",
-      "classId": "sorcerer",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a1",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Meteor snaps down instantly (−75% cast), recharges twice as fast, +22 damage",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "sorcerer",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a1.castTime", "before": 0.75, "after": 0.1875 },
-            { "path": "abilities.a1.cooldown", "before": 16, "after": 8 },
-            { "path": "abilities.a1.damage", "before": 78, "after": 100 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.castTime", "before": 0.75, "after": 0.1875 },
-            { "path": "abilities.a1.cooldown", "before": 16, "after": 8 },
-            { "path": "abilities.a1.damage", "before": 78, "after": 100 }
+            { "path": "abilities.a1.damage", "before": 78, "after": 108 },
+            { "path": "abilities.a1.freeze", "before": null, "after": 0.8 },
+            { "path": "abilities.a1.impactRadius", "before": 110, "after": 150 }
           ]
         }
       ]
@@ -8521,7 +8177,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Mirror Image gains five images for 9s and grants +35% movement",
+      "description": "Mirror Image grants 4s hard-control resistance and other living allies within 180u take 20% less damage for 4s; ordinary picks still grow images",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8531,90 +8187,20 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.buffDuration", "before": 5, "after": 9 },
-            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.35 },
-            { "path": "abilities.a2.mirrorImages.count", "before": 3, "after": 5 },
-            { "path": "abilities.a2.mirrorImages.duration", "before": 5, "after": 9 }
+            {
+              "path": "abilities.a2.allyWard",
+              "before": null,
+              "after": { "range": 180, "mult": 0.8, "duration": 4 }
+            },
+            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 }
           ],
           "atCap": [
-            { "path": "abilities.a2.buffDuration", "before": 5, "after": 9 },
-            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.35 },
-            { "path": "abilities.a2.mirrorImages.count", "before": 3, "after": 5 },
-            { "path": "abilities.a2.mirrorImages.duration", "before": 5, "after": 9 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "so_gk_a2_b",
-      "name": "Blurred Form",
-      "category": "skill-grand",
-      "classId": "sorcerer",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a2",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Mirror Image recharges 45% faster, gains one image (cap 5), holds 2s longer (cap 9s), and grants +30% movement",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "sorcerer",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a2.buffDuration", "before": 5, "after": 7 },
-            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.3 },
-            { "path": "abilities.a2.cooldown", "before": 14, "after": 7.700000000000001 },
-            { "path": "abilities.a2.mirrorImages.count", "before": 3, "after": 4 },
-            { "path": "abilities.a2.mirrorImages.duration", "before": 5, "after": 7 }
-          ],
-          "atCap": [
-            { "path": "abilities.a2.buffDuration", "before": 5, "after": 7 },
-            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.3 },
-            { "path": "abilities.a2.cooldown", "before": 14, "after": 7.700000000000001 },
-            { "path": "abilities.a2.mirrorImages.count", "before": 3, "after": 4 },
-            { "path": "abilities.a2.mirrorImages.duration", "before": 5, "after": 7 }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "so_gk_a3_a",
-      "name": "Warp",
-      "category": "skill-grand",
-      "classId": "sorcerer",
-      "exclude": [],
-      "maxStacks": 1,
-      "subSkillId": null,
-      "subclassId": null,
-      "skillSlot": "a3",
-      "graftId": null,
-      "graftSource": null,
-      "replaces": null,
-      "description": "Arcane Phase blinks +150u, phases +0.4s, and recharges 60% faster",
-      "disposition": "adjust",
-      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
-      "pilotPriority": false,
-      "contexts": [
-        {
-          "classId": "sorcerer",
-          "subSkills": [],
-          "prefix": [],
-          "once": [
-            { "path": "abilities.a3.cooldown", "before": 6, "after": 2.4000000000000004 },
-            { "path": "abilities.a3.iframes", "before": 0.2, "after": 0.6000000000000001 },
-            { "path": "abilities.a3.range", "before": 260, "after": 410 }
-          ],
-          "atCap": [
-            { "path": "abilities.a3.cooldown", "before": 6, "after": 2.4000000000000004 },
-            { "path": "abilities.a3.iframes", "before": 0.2, "after": 0.6000000000000001 },
-            { "path": "abilities.a3.range", "before": 260, "after": 410 }
+            {
+              "path": "abilities.a2.allyWard",
+              "before": null,
+              "after": { "range": 180, "mult": 0.8, "duration": 4 }
+            },
+            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 }
           ]
         }
       ]
@@ -8632,7 +8218,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Arcane Phase mends +50 on use, phases +0.5s, and reaches +80u",
+      "description": "Arcane Phase reaches 70u farther and blocks two frontal damage hits for 3s after the crossing",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8642,14 +8228,20 @@
           "subSkills": [],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.healOnUse", "before": null, "after": 50 },
-            { "path": "abilities.a3.iframes", "before": 0.2, "after": 0.7 },
-            { "path": "abilities.a3.range", "before": 260, "after": 340 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 2, "duration": 3 }
+            },
+            { "path": "abilities.a3.range", "before": 260, "after": 330 }
           ],
           "atCap": [
-            { "path": "abilities.a3.healOnUse", "before": null, "after": 50 },
-            { "path": "abilities.a3.iframes", "before": 0.2, "after": 0.7 },
-            { "path": "abilities.a3.range", "before": 260, "after": 340 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 2, "duration": 3 }
+            },
+            { "path": "abilities.a3.range", "before": 260, "after": 330 }
           ]
         }
       ]
@@ -9552,7 +9144,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Evoker skills detonate 60% harder across a vast area, freezing/stunning struck foes",
+      "description": "Arcane Bolt and Fireball gain +25% damage against controlled foes; direct Evoker strikes gain +20%. Frost Nova supplies setup with any first skill",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -9562,12 +9154,14 @@
           "subSkills": ["mg_evoker_lightning"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 40, "after": 64 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.6 }
+            { "path": "abilities.a1.controlDamageBonus", "before": 0.25, "after": 0.5 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": 0.2, "after": 0.4 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 40, "after": 64 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.6 }
+            { "path": "abilities.a1.controlDamageBonus", "before": 0.25, "after": 0.5 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": 0.2, "after": 0.4 }
           ]
         },
         {
@@ -9575,12 +9169,14 @@
           "subSkills": ["mg_evoker_cone"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 30, "after": 48 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.6 }
+            { "path": "abilities.a1.controlDamageBonus", "before": 0.25, "after": 0.5 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.2 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 30, "after": 48 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.6 }
+            { "path": "abilities.a1.controlDamageBonus", "before": 0.25, "after": 0.5 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.2 }
           ]
         },
         {
@@ -9588,14 +9184,14 @@
           "subSkills": ["mg_evoker_sculpt"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 58, "after": 93 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 230 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.6 }
+            { "path": "abilities.a1.controlDamageBonus", "before": 0.25, "after": 0.5 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": 0.25, "after": 0.45 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 58, "after": 93 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 230 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.6 }
+            { "path": "abilities.a1.controlDamageBonus", "before": 0.25, "after": 0.5 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": 0.25, "after": 0.45 }
           ]
         },
         {
@@ -9603,16 +9199,14 @@
           "subSkills": ["mg_evoker_shield"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 35, "after": 56 },
-            { "path": "subAbilities.sub1.damage", "before": 28, "after": 45 },
-            { "path": "subAbilities.sub1.range", "before": 180, "after": 200 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.6 }
+            { "path": "abilities.a1.controlDamageBonus", "before": 0.25, "after": 0.5 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.2 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 35, "after": 56 },
-            { "path": "subAbilities.sub1.damage", "before": 28, "after": 45 },
-            { "path": "subAbilities.sub1.range", "before": 180, "after": 200 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.6 }
+            { "path": "abilities.a1.controlDamageBonus", "before": 0.25, "after": 0.5 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.2 }
           ]
         }
       ]
@@ -9630,7 +9224,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Evoker skills recharge 45% faster and hit 30% harder",
+      "description": "Arcane Bolt slows foes 20% for 2s to start Cadence at range; Frost Nova lengthens their wind-ups by 35% for 3s, and direct Evoker strikes by 30%",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -9640,12 +9234,20 @@
           "subSkills": ["mg_evoker_lightning"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 5, "after": 2.75 },
-            { "path": "subAbilities.sub1.damage", "before": 40, "after": 52 }
+            { "path": "abilities.a2.castSlow", "before": null, "after": 1.35 },
+            { "path": "abilities.a2.castSlowDuration", "before": null, "after": 3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 5, "after": 2.75 },
-            { "path": "subAbilities.sub1.damage", "before": 40, "after": 52 }
+            { "path": "abilities.a2.castSlow", "before": null, "after": 1.35 },
+            { "path": "abilities.a2.castSlowDuration", "before": null, "after": 3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ]
         },
         {
@@ -9653,12 +9255,20 @@
           "subSkills": ["mg_evoker_cone"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 30, "after": 39 }
+            { "path": "abilities.a2.castSlow", "before": null, "after": 1.35 },
+            { "path": "abilities.a2.castSlowDuration", "before": null, "after": 3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 30, "after": 39 }
+            { "path": "abilities.a2.castSlow", "before": null, "after": 1.35 },
+            { "path": "abilities.a2.castSlowDuration", "before": null, "after": 3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ]
         },
         {
@@ -9666,14 +9276,20 @@
           "subSkills": ["mg_evoker_sculpt"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 11, "after": 6.050000000000001 },
-            { "path": "subAbilities.sub1.damage", "before": 58, "after": 75 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 195 }
+            { "path": "abilities.a2.castSlow", "before": null, "after": 1.35 },
+            { "path": "abilities.a2.castSlowDuration", "before": null, "after": 3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 11, "after": 6.050000000000001 },
-            { "path": "subAbilities.sub1.damage", "before": 58, "after": 75 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 195 }
+            { "path": "abilities.a2.castSlow", "before": null, "after": 1.35 },
+            { "path": "abilities.a2.castSlowDuration", "before": null, "after": 3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ]
         },
         {
@@ -9681,16 +9297,20 @@
           "subSkills": ["mg_evoker_shield"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 35, "after": 46 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 6.6000000000000005 },
-            { "path": "subAbilities.sub1.damage", "before": 28, "after": 36 },
-            { "path": "subAbilities.sub1.range", "before": 180, "after": 200 }
+            { "path": "abilities.a2.castSlow", "before": null, "after": 1.35 },
+            { "path": "abilities.a2.castSlowDuration", "before": null, "after": 3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 35, "after": 46 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 6.6000000000000005 },
-            { "path": "subAbilities.sub1.damage", "before": 28, "after": 36 },
-            { "path": "subAbilities.sub1.range", "before": 180, "after": 200 }
+            { "path": "abilities.a2.castSlow", "before": null, "after": 1.35 },
+            { "path": "abilities.a2.castSlowDuration", "before": null, "after": 3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
           ]
         }
       ]
@@ -9708,7 +9328,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Abjurer skills swell 50%, their wards deepen, and their snares lock to 30%",
+      "description": "Blink blocks one frontal damage hit for 4s; Abjurer barriers gain 20% protection and last 1s longer (up to 8s), and Life Transfer cleanses its healed recipient",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -9718,16 +9338,22 @@
           "subSkills": ["mg_abjurer_ward"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 50, "after": 75 },
-            { "path": "subAbilities.sub1.damage", "before": 24, "after": 36 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 195 },
-            { "path": "subAbilities.sub1.slowMult", "before": 0.5, "after": 0.3 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            },
+            { "path": "subAbilities.sub1.absorption.amount", "before": 50, "after": 60 },
+            { "path": "subAbilities.sub1.absorption.duration", "before": 6, "after": 7 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 50, "after": 75 },
-            { "path": "subAbilities.sub1.damage", "before": 24, "after": 36 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 195 },
-            { "path": "subAbilities.sub1.slowMult", "before": 0.5, "after": 0.3 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            },
+            { "path": "subAbilities.sub1.absorption.amount", "before": 50, "after": 60 },
+            { "path": "subAbilities.sub1.absorption.duration", "before": 6, "after": 7 }
           ]
         },
         {
@@ -9735,12 +9361,22 @@
           "subSkills": ["mg_abjurer_bind"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 156 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 12 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            },
+            { "path": "subAbilities.sub1.radius", "before": 120, "after": 132 },
+            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 10 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 156 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 12 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            },
+            { "path": "subAbilities.sub1.radius", "before": 120, "after": 132 },
+            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 10 }
           ]
         },
         {
@@ -9748,14 +9384,24 @@
           "subSkills": ["mg_abjurer_teleport"],
           "prefix": [],
           "once": [
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            },
             { "path": "subAbilities.sub1.iframes", "before": 0.25, "after": 0.4 },
             { "path": "subAbilities.sub1.radius", "before": 220, "after": 240 },
-            { "path": "subAbilities.sub1.range", "before": 300, "after": 390 }
+            { "path": "subAbilities.sub1.range", "before": 300, "after": 330 }
           ],
           "atCap": [
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            },
             { "path": "subAbilities.sub1.iframes", "before": 0.25, "after": 0.4 },
             { "path": "subAbilities.sub1.radius", "before": 220, "after": 240 },
-            { "path": "subAbilities.sub1.range", "before": 300, "after": 390 }
+            { "path": "subAbilities.sub1.range", "before": 300, "after": 330 }
           ]
         },
         {
@@ -9763,25 +9409,31 @@
           "subSkills": ["mg_abjurer_mend"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 20, "after": 30 },
-            { "path": "subAbilities.sub1.damage", "before": 55, "after": 83 },
-            { "path": "subAbilities.sub1.range", "before": 400, "after": 520 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.3 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            },
+            { "path": "subAbilities.sub1.absorption.amount", "before": 20, "after": 24 },
+            { "path": "subAbilities.sub1.absorption.duration", "before": 5, "after": 6 },
+            { "path": "subAbilities.sub1.cleanseOnHeal", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 20, "after": 30 },
-            { "path": "subAbilities.sub1.damage", "before": 55, "after": 83 },
-            { "path": "subAbilities.sub1.range", "before": 400, "after": 520 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 1.5 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.3 }
+            {
+              "path": "abilities.a3.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            },
+            { "path": "subAbilities.sub1.absorption.amount", "before": 20, "after": 24 },
+            { "path": "subAbilities.sub1.absorption.duration", "before": 5, "after": 6 },
+            { "path": "subAbilities.sub1.cleanseOnHeal", "before": null, "after": true }
           ]
         }
       ]
     },
     {
       "id": "mg_abjurer_g_b",
-      "name": "Ceaseless Ward",
+      "name": "Binding Dominion",
       "category": "subclass-grand",
       "classId": "mage",
       "exclude": [],
@@ -9792,7 +9444,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Abjurer skills recharge 45% faster and their wards/blasts grow 30%",
+      "description": "Arcane Bolt gains +25% controlled-target damage; Frost Nova reaches 35u farther and slows 1s longer. Abjurer strikes exploit control, damaging fields suppress wind-ups, Door heals 20, and dedicated heals gain 15",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -9802,16 +9454,16 @@
           "subSkills": ["mg_abjurer_ward"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 50, "after": 65 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 6.6000000000000005 },
-            { "path": "subAbilities.sub1.damage", "before": 24, "after": 31 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 173 }
+            { "path": "abilities.a2.radius", "before": 150, "after": 185 },
+            { "path": "abilities.a2.slowDuration", "before": 3, "after": 4 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": 0.35, "after": 0.55 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 50, "after": 65 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 6.6000000000000005 },
-            { "path": "subAbilities.sub1.damage", "before": 24, "after": 31 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 173 }
+            { "path": "abilities.a2.radius", "before": 150, "after": 185 },
+            { "path": "abilities.a2.slowDuration", "before": 3, "after": 4 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": 0.35, "after": 0.55 }
           ]
         },
         {
@@ -9819,14 +9471,16 @@
           "subSkills": ["mg_abjurer_bind"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 5.5 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 138 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 10 }
+            { "path": "abilities.a2.radius", "before": 150, "after": 185 },
+            { "path": "abilities.a2.slowDuration", "before": 3, "after": 4 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.4 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 5.5 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 138 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 10 }
+            { "path": "abilities.a2.radius", "before": 150, "after": 185 },
+            { "path": "abilities.a2.slowDuration", "before": 3, "after": 4 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.4 }
           ]
         },
         {
@@ -9834,16 +9488,16 @@
           "subSkills": ["mg_abjurer_teleport"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.3000000000000003 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.25, "after": 0.4 },
-            { "path": "subAbilities.sub1.radius", "before": 220, "after": 240 },
-            { "path": "subAbilities.sub1.range", "before": 300, "after": 345 }
+            { "path": "abilities.a2.radius", "before": 150, "after": 185 },
+            { "path": "abilities.a2.slowDuration", "before": 3, "after": 4 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 20 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.3000000000000003 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.25, "after": 0.4 },
-            { "path": "subAbilities.sub1.radius", "before": 220, "after": 240 },
-            { "path": "subAbilities.sub1.range", "before": 300, "after": 345 }
+            { "path": "abilities.a2.radius", "before": 150, "after": 185 },
+            { "path": "abilities.a2.slowDuration", "before": 3, "after": 4 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 20 }
           ]
         },
         {
@@ -9851,16 +9505,16 @@
           "subSkills": ["mg_abjurer_mend"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 20, "after": 26 },
-            { "path": "subAbilities.sub1.cooldown", "before": 5, "after": 2.75 },
-            { "path": "subAbilities.sub1.damage", "before": 55, "after": 72 },
-            { "path": "subAbilities.sub1.range", "before": 400, "after": 460 }
+            { "path": "abilities.a2.radius", "before": 150, "after": 185 },
+            { "path": "abilities.a2.slowDuration", "before": 3, "after": 4 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.damage", "before": 55, "after": 70 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 20, "after": 26 },
-            { "path": "subAbilities.sub1.cooldown", "before": 5, "after": 2.75 },
-            { "path": "subAbilities.sub1.damage", "before": 55, "after": 72 },
-            { "path": "subAbilities.sub1.range", "before": 400, "after": 460 }
+            { "path": "abilities.a2.radius", "before": 150, "after": 185 },
+            { "path": "abilities.a2.slowDuration", "before": 3, "after": 4 },
+            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
+            { "path": "subAbilities.sub1.damage", "before": 55, "after": 70 }
           ]
         }
       ]
@@ -12422,7 +12076,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Draconic skills erupt 55% harder across a vast area, freezing/stunning struck foes",
+      "description": "Spending surge grants 4s flight, or extends existing flight by 2s up to 9s, at the same 6s gate. Mirror Image gains 10 movement percentage points; direct Draconic spells gain 10% damage and Wings gain 10 movement points",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -12432,32 +12086,38 @@
           "subSkills": ["so_draconic_breath"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 42, "after": 65 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.6 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.25 },
+            { "path": "subAbilities.sub1.damage", "before": 42, "after": 46.2 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 42, "after": 65 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.6 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.25 },
+            { "path": "subAbilities.sub1.damage", "before": 42, "after": 46.2 }
           ]
         },
         {
           "classId": "sorcerer",
           "subSkills": ["so_draconic_wing"],
           "prefix": [],
-          "once": [{ "path": "subAbilities.sub1.buffMoveMult", "before": 1.4, "after": 1.62 }],
-          "atCap": [{ "path": "subAbilities.sub1.buffMoveMult", "before": 1.4, "after": 1.62 }]
+          "once": [
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.25 },
+            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.4, "after": 1.5 }
+          ],
+          "atCap": [
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.25 },
+            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.4, "after": 1.5 }
+          ]
         },
         {
           "classId": "sorcerer",
           "subSkills": ["so_draconic_bolt"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 93 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.6 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.25 },
+            { "path": "subAbilities.sub1.damage", "before": 60, "after": 66 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 93 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.6 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.25 },
+            { "path": "subAbilities.sub1.damage", "before": 60, "after": 66 }
           ]
         },
         {
@@ -12465,23 +12125,19 @@
           "subSkills": ["so_draconic_scales"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 55, "after": 85 },
-            { "path": "subAbilities.sub1.damage", "before": 22, "after": 34 },
-            { "path": "subAbilities.sub1.radius", "before": 145, "after": 196 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.6 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.25 },
+            { "path": "subAbilities.sub1.damage", "before": 22, "after": 24.200000000000003 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 55, "after": 85 },
-            { "path": "subAbilities.sub1.damage", "before": 22, "after": 34 },
-            { "path": "subAbilities.sub1.radius", "before": 145, "after": 196 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.6 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.25 },
+            { "path": "subAbilities.sub1.damage", "before": 22, "after": 24.200000000000003 }
           ]
         }
       ]
     },
     {
       "id": "so_draconic_g_b",
-      "name": "Dragon's Cadence",
+      "name": "Wyrm's Pursuit",
       "category": "subclass-grand",
       "classId": "sorcerer",
       "exclude": [],
@@ -12492,7 +12148,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Draconic skills recharge 45% faster and grow 30%",
+      "description": "Chaos Bolt slows foes 20% for 2s, setting up Meteor for +30% controlled-target damage; direct Draconic strikes gain +25%, and Wings grant 3s hard-control resistance",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -12502,12 +12158,16 @@
           "subSkills": ["so_draconic_breath"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 42, "after": 55 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 42, "after": 55 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ]
         },
         {
@@ -12515,12 +12175,16 @@
           "subSkills": ["so_draconic_wing"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.4, "after": 1.52 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 6.6000000000000005 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 3 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.4, "after": 1.52 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 6.6000000000000005 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 3 }
           ]
         },
         {
@@ -12528,12 +12192,16 @@
           "subSkills": ["so_draconic_bolt"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 78 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 78 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ]
         },
         {
@@ -12541,16 +12209,16 @@
           "subSkills": ["so_draconic_scales"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 55, "after": 72 },
-            { "path": "subAbilities.sub1.cooldown", "before": 14, "after": 7.700000000000001 },
-            { "path": "subAbilities.sub1.damage", "before": 22, "after": 29 },
-            { "path": "subAbilities.sub1.radius", "before": 145, "after": 167 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 55, "after": 72 },
-            { "path": "subAbilities.sub1.cooldown", "before": 14, "after": 7.700000000000001 },
-            { "path": "subAbilities.sub1.damage", "before": 22, "after": 29 },
-            { "path": "subAbilities.sub1.radius", "before": 145, "after": 167 }
+            { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.3 },
+            { "path": "abilities.basic.slowDuration", "before": null, "after": 2 },
+            { "path": "abilities.basic.slowMult", "before": null, "after": 0.8 },
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ]
         }
       ]
@@ -12568,7 +12236,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Wild Magic skills surge 60% harder across a chaotic, wide area",
+      "description": "Chaos Bolt can spend surge: add one bolt sharing the same +20% total damage budget. Choose basic delivery or save surge for Meteor. Damaging Wild strikes gain 15% damage; utilities gain power and footprint",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -12577,20 +12245,30 @@
           "classId": "sorcerer",
           "subSkills": ["so_wild_surge"],
           "prefix": [],
-          "once": [{ "path": "subAbilities.sub1.damage", "before": 12, "after": 19 }],
-          "atCap": [{ "path": "subAbilities.sub1.damage", "before": 12, "after": 19 }]
+          "once": [
+            { "path": "abilities.basic.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.basic.surgeTwin", "before": null, "after": true },
+            { "path": "subAbilities.sub1.damage", "before": 12, "after": 13.799999999999999 }
+          ],
+          "atCap": [
+            { "path": "abilities.basic.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.basic.surgeTwin", "before": null, "after": true },
+            { "path": "subAbilities.sub1.damage", "before": 12, "after": 13.799999999999999 }
+          ]
         },
         {
           "classId": "sorcerer",
           "subSkills": ["so_wild_tides"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.damage", "before": 40, "after": 64 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 230 }
+            { "path": "abilities.basic.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.basic.surgeTwin", "before": null, "after": true },
+            { "path": "subAbilities.sub1.damage", "before": 40, "after": 46 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.damage", "before": 40, "after": 64 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 230 }
+            { "path": "abilities.basic.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.basic.surgeTwin", "before": null, "after": true },
+            { "path": "subAbilities.sub1.damage", "before": 40, "after": 46 }
           ]
         },
         {
@@ -12598,12 +12276,16 @@
           "subSkills": ["so_wild_bend"],
           "prefix": [],
           "once": [
+            { "path": "abilities.basic.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.basic.surgeTwin", "before": null, "after": true },
             { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 280, "after": 378 }
+            { "path": "subAbilities.sub1.range", "before": 280, "after": 308 }
           ],
           "atCap": [
+            { "path": "abilities.basic.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.basic.surgeTwin", "before": null, "after": true },
             { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 280, "after": 378 }
+            { "path": "subAbilities.sub1.range", "before": 280, "after": 308 }
           ]
         },
         {
@@ -12611,19 +12293,23 @@
           "subSkills": ["so_wild_font"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.radius", "before": 125, "after": 169 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 10, "after": 16 }
+            { "path": "abilities.basic.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.basic.surgeTwin", "before": null, "after": true },
+            { "path": "subAbilities.sub1.radius", "before": 125, "after": 138 },
+            { "path": "subAbilities.sub1.zoneTickHeal", "before": 10, "after": 12 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.radius", "before": 125, "after": 169 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 10, "after": 16 }
+            { "path": "abilities.basic.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.basic.surgeTwin", "before": null, "after": true },
+            { "path": "subAbilities.sub1.radius", "before": 125, "after": 138 },
+            { "path": "subAbilities.sub1.zoneTickHeal", "before": 10, "after": 12 }
           ]
         }
       ]
     },
     {
       "id": "so_wild_g_b",
-      "name": "Cascading Surge",
+      "name": "Chaos Crossing",
       "category": "subclass-grand",
       "classId": "sorcerer",
       "exclude": [],
@@ -12634,7 +12320,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your Wild Magic skills recharge 45% faster, hit 35% harder, and freeze/stun foes",
+      "description": "Mirror Image gains 15 movement percentage points; Arcane Phase reaches 50u farther and grants 3s hard-control resistance. Bend Luck heals 25, Wild Ward grants allies 25% movement, and Wild strikes slow foes 25% for 2s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -12644,14 +12330,18 @@
           "subSkills": ["so_wild_surge"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 3.8500000000000005 },
-            { "path": "subAbilities.sub1.damage", "before": 12, "after": 16 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.5 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
+            { "path": "abilities.a3.range", "before": 260, "after": 310 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 3.8500000000000005 },
-            { "path": "subAbilities.sub1.damage", "before": 12, "after": 16 },
-            { "path": "subAbilities.sub1.freeze", "before": null, "after": 0.5 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
+            { "path": "abilities.a3.range", "before": 260, "after": 310 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
           ]
         },
         {
@@ -12659,16 +12349,18 @@
           "subSkills": ["so_wild_tides"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 40, "after": 54 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 195 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.5 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
+            { "path": "abilities.a3.range", "before": 260, "after": 310 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 4.4 },
-            { "path": "subAbilities.sub1.damage", "before": 40, "after": 54 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 195 },
-            { "path": "subAbilities.sub1.stun", "before": null, "after": 0.5 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
+            { "path": "abilities.a3.range", "before": 260, "after": 310 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
+            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
           ]
         },
         {
@@ -12676,14 +12368,16 @@
           "subSkills": ["so_wild_bend"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.3000000000000003 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 280, "after": 329 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
+            { "path": "abilities.a3.range", "before": 260, "after": 310 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 6, "after": 3.3000000000000003 },
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 280, "after": 329 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
+            { "path": "abilities.a3.range", "before": 260, "after": 310 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 25 }
           ]
         },
         {
@@ -12691,14 +12385,16 @@
           "subSkills": ["so_wild_font"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 6.6000000000000005 },
-            { "path": "subAbilities.sub1.radius", "before": 125, "after": 144 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 10, "after": 14 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
+            { "path": "abilities.a3.range", "before": 260, "after": 310 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 6.6000000000000005 },
-            { "path": "subAbilities.sub1.radius", "before": 125, "after": 144 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 10, "after": 14 }
+            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
+            { "path": "abilities.a3.range", "before": 260, "after": 310 },
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.25 }
           ]
         }
       ]
@@ -13050,6 +12746,560 @@
             { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
             { "path": "subAbilities.sub1.prepareSurge", "before": null, "after": 8 }
           ]
+        }
+      ]
+    },
+    {
+      "id": "mg_evoker_lightning_g",
+      "name": "Conducting Lance",
+      "category": "subclass-skill-grand",
+      "classId": "mage",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "mg_evoker_lightning",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Lightning Bolt pierces three additional foes and travels 150u/s faster; its controlled-target bonus remains",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "mage",
+          "subSkills": ["mg_evoker_lightning"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.pierce", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.projSpeed", "before": 820, "after": 970 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.pierce", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.projSpeed", "before": 820, "after": 970 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mg_evoker_cone_g",
+      "name": "Crystalline Edge",
+      "category": "subclass-skill-grand",
+      "classId": "mage",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "mg_evoker_cone",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Cone of Cold freezes struck foes for 0.9s and reaches 35u farther; its ordinary movement slow remains",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "mage",
+          "subSkills": ["mg_evoker_cone"],
+          "prefix": [],
+          "once": [{ "path": "subAbilities.sub1.freeze", "before": null, "after": 0.9 }],
+          "atCap": [{ "path": "subAbilities.sub1.freeze", "before": null, "after": 0.9 }]
+        }
+      ]
+    },
+    {
+      "id": "mg_evoker_sculpt_g",
+      "name": "Sculpted Retort",
+      "category": "subclass-skill-grand",
+      "classId": "mage",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "mg_evoker_sculpt",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Sculpted Blast gains +10 damage and arms a 4s retort for 40% of its damage; incoming damage or your next positive direct hit releases it once",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "mage",
+          "subSkills": ["mg_evoker_sculpt"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 58, "after": 68 },
+            { "path": "subAbilities.sub1.rebukeDirect", "before": null, "after": true },
+            { "path": "subAbilities.sub1.rebukeDuration", "before": null, "after": 4 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 58, "after": 68 },
+            { "path": "subAbilities.sub1.rebukeDirect", "before": null, "after": true },
+            { "path": "subAbilities.sub1.rebukeDuration", "before": null, "after": 4 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mg_evoker_shield_g",
+      "name": "Siphoning Shield",
+      "category": "subclass-skill-grand",
+      "classId": "mage",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "mg_evoker_shield",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Arcane Shield gains +12 cone damage and heals you for 35% of its effective damage; the separate barrier and outward push remain",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "mage",
+          "subSkills": ["mg_evoker_shield"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 28, "after": 40 },
+            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.35 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 28, "after": 40 },
+            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.35 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mg_abjurer_ward_g",
+      "name": "Warding Reversal",
+      "category": "subclass-skill-grand",
+      "classId": "mage",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "mg_abjurer_ward",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Arcane Ward pushes struck foes outward at least 160u and gains +10 burst damage; its barrier and movement slow remain",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "mage",
+          "subSkills": ["mg_abjurer_ward"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 24, "after": 34 },
+            { "path": "subAbilities.sub1.knockback", "before": null, "after": 160 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 24, "after": 34 },
+            { "path": "subAbilities.sub1.knockback", "before": null, "after": 160 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mg_abjurer_bind_g",
+      "name": "Sanctum Prison",
+      "category": "subclass-skill-grand",
+      "classId": "mage",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "mg_abjurer_bind",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Allies inside Otiluke Bind take 20% less damage and its radius grows by 20u; its floating root cage still reaches flyers",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "mage",
+          "subSkills": ["mg_abjurer_bind"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.radius", "before": 120, "after": 140 },
+            { "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.radius", "before": 120, "after": 140 },
+            { "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mg_abjurer_teleport_g",
+      "name": "Guarded Door",
+      "category": "subclass-skill-grand",
+      "classId": "mage",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "mg_abjurer_teleport",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Dimension Door reaches 40u farther and blocks one frontal damage hit for 4s; its endpoint exchange and relocation slow are unchanged",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "mage",
+          "subSkills": ["mg_abjurer_teleport"],
+          "prefix": [],
+          "once": [
+            {
+              "path": "subAbilities.sub1.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            },
+            { "path": "subAbilities.sub1.range", "before": 300, "after": 340 }
+          ],
+          "atCap": [
+            {
+              "path": "subAbilities.sub1.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 4 }
+            },
+            { "path": "subAbilities.sub1.range", "before": 300, "after": 340 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mg_abjurer_mend_g",
+      "name": "Rescuing Transfer",
+      "category": "subclass-skill-grand",
+      "classId": "mage",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "mg_abjurer_mend",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Life Transfer heals 15 more; effective healing from 35% HP or below readies the recipient’s next direct hit for +25% damage within 5s; its separate barrier remains",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "mage",
+          "subSkills": ["mg_abjurer_mend"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 55, "after": 70 },
+            {
+              "path": "subAbilities.sub1.rescueStrike",
+              "before": null,
+              "after": { "mult": 1.25, "duration": 5 }
+            }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 55, "after": 70 },
+            {
+              "path": "subAbilities.sub1.rescueStrike",
+              "before": null,
+              "after": { "mult": 1.25, "duration": 5 }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "so_draconic_breath_g",
+      "name": "Driving Breath",
+      "category": "subclass-skill-grand",
+      "classId": "sorcerer",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "so_draconic_breath",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Dragon Breath pushes struck foes at least 150u outward and gains +8 damage; it still consumes surge for its cone",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "sorcerer",
+          "subSkills": ["so_draconic_breath"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 42, "after": 50 },
+            { "path": "subAbilities.sub1.knockback", "before": null, "after": 150 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 42, "after": 50 },
+            { "path": "subAbilities.sub1.knockback", "before": null, "after": 150 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "so_draconic_wing_g",
+      "name": "Sheltering Wings",
+      "category": "subclass-skill-grand",
+      "classId": "sorcerer",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "so_draconic_wing",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Dragon Wings gain 10 movement percentage points and give other living allies within 180u 20% damage mitigation for 4s; flight duration remains separate",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "sorcerer",
+          "subSkills": ["so_draconic_wing"],
+          "prefix": [],
+          "once": [
+            {
+              "path": "subAbilities.sub1.allyWard",
+              "before": null,
+              "after": { "range": 180, "mult": 0.8, "duration": 4 }
+            },
+            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.4, "after": 1.5 }
+          ],
+          "atCap": [
+            {
+              "path": "subAbilities.sub1.allyWard",
+              "before": null,
+              "after": { "range": 180, "mult": 0.8, "duration": 4 }
+            },
+            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.4, "after": 1.5 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "so_draconic_bolt_g",
+      "name": "Chromatic Hindrance",
+      "category": "subclass-skill-grand",
+      "classId": "sorcerer",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "so_draconic_bolt",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Chromatic Bolt gains +12 damage and lengthens struck foes’ wind-ups by 40% for 3s; its shared-budget surge fork remains",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "sorcerer",
+          "subSkills": ["so_draconic_bolt"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.4 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.damage", "before": 60, "after": 72 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.4 },
+            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 },
+            { "path": "subAbilities.sub1.damage", "before": 60, "after": 72 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "so_draconic_scales_g",
+      "name": "Molten Reprisal",
+      "category": "subclass-skill-grand",
+      "classId": "sorcerer",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "so_draconic_scales",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Draconic Scales gains +18 burst damage and arms one 4s retort for 40% of its damage, released by incoming damage or your next positive direct hit; its barrier remains",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "sorcerer",
+          "subSkills": ["so_draconic_scales"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 22, "after": 40 },
+            { "path": "subAbilities.sub1.rebukeDirect", "before": null, "after": true },
+            { "path": "subAbilities.sub1.rebukeDuration", "before": null, "after": 4 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 22, "after": 40 },
+            { "path": "subAbilities.sub1.rebukeDirect", "before": null, "after": true },
+            { "path": "subAbilities.sub1.rebukeDuration", "before": null, "after": 4 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "so_wild_surge_g",
+      "name": "Focused Chaos",
+      "category": "subclass-skill-grand",
+      "classId": "sorcerer",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "so_wild_surge",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Chaos Surge concentrates its six-bolt fan to 14° and gains +150 projectile speed; surge still increases total damage rather than adding six new copies",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "sorcerer",
+          "subSkills": ["so_wild_surge"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.projSpeed", "before": 640, "after": 790 },
+            { "path": "subAbilities.sub1.spreadDeg", "before": 60, "after": 14 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.projSpeed", "before": 640, "after": 790 },
+            { "path": "subAbilities.sub1.spreadDeg", "before": 60, "after": 14 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "so_wild_tides_g",
+      "name": "Gravitic Tides",
+      "category": "subclass-skill-grand",
+      "classId": "sorcerer",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "so_wild_tides",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Tides of Chaos pulls struck foes at least 140u inward and gains +10 damage",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "sorcerer",
+          "subSkills": ["so_wild_tides"],
+          "prefix": [],
+          "once": [
+            { "path": "subAbilities.sub1.damage", "before": 40, "after": 50 },
+            { "path": "subAbilities.sub1.pull", "before": null, "after": 140 }
+          ],
+          "atCap": [
+            { "path": "subAbilities.sub1.damage", "before": 40, "after": 50 },
+            { "path": "subAbilities.sub1.pull", "before": null, "after": 140 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "so_wild_bend_g",
+      "name": "Fortunate Crossing",
+      "category": "subclass-skill-grand",
+      "classId": "sorcerer",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "so_wild_bend",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Bend Luck reaches 40u farther and blocks one frontal damage hit for 3s; it still prepares surge",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "sorcerer",
+          "subSkills": ["so_wild_bend"],
+          "prefix": [],
+          "once": [
+            {
+              "path": "subAbilities.sub1.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 3 }
+            },
+            { "path": "subAbilities.sub1.range", "before": 280, "after": 320 }
+          ],
+          "atCap": [
+            {
+              "path": "subAbilities.sub1.frontGuard",
+              "before": null,
+              "after": { "charges": 1, "duration": 3 }
+            },
+            { "path": "subAbilities.sub1.range", "before": 280, "after": 320 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "so_wild_font_g",
+      "name": "Sheltering Chaos",
+      "category": "subclass-skill-grand",
+      "classId": "sorcerer",
+      "exclude": [],
+      "maxStacks": 1,
+      "subSkillId": "so_wild_font",
+      "subclassId": null,
+      "skillSlot": null,
+      "graftId": null,
+      "graftSource": null,
+      "replaces": null,
+      "description": "Allies inside Wild Ward take 20% less damage, even at full health; its recovery, movement slow and surge preparation remain",
+      "disposition": "adjust",
+      "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
+      "pilotPriority": false,
+      "contexts": [
+        {
+          "classId": "sorcerer",
+          "subSkills": ["so_wild_font"],
+          "prefix": [],
+          "once": [{ "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }],
+          "atCap": [{ "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }]
         }
       ]
     },
@@ -17894,7 +18144,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Lightning Bolt — first rank: direct damage 40 → 45. Retains its existing effects (stacks to 5).",
+      "description": "Increase lightning damage by 10% and controlled-target bonus by 2 percentage points; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -17903,8 +18153,18 @@
           "classId": "mage",
           "subSkills": ["mg_evoker_lightning"],
           "prefix": [],
-          "once": [{ "path": "subAbilities.sub1.damage", "before": 40, "after": 45 }],
-          "atCap": [{ "path": "subAbilities.sub1.damage", "before": 40, "after": 71 }]
+          "once": [
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": 0.2, "after": 0.22 },
+            { "path": "subAbilities.sub1.damage", "before": 40, "after": 44 }
+          ],
+          "atCap": [
+            {
+              "path": "subAbilities.sub1.controlDamageBonus",
+              "before": 0.2,
+              "after": 0.30000000000000004
+            },
+            { "path": "subAbilities.sub1.damage", "before": 40, "after": 64.42040000000001 }
+          ]
         }
       ]
     },
@@ -17921,7 +18181,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Cone of Cold — first rank: direct damage 30 → 34; reach 210 → 227; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "description": "Increase cone damage by 10% and reach by 4u; preserve its arc and movement slow; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -17931,12 +18191,12 @@
           "subSkills": ["mg_evoker_cone"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.36 },
-            { "path": "subAbilities.sub1.damage", "before": 30, "after": 34 }
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.68 },
+            { "path": "subAbilities.sub1.damage", "before": 30, "after": 33 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.4 },
-            { "path": "subAbilities.sub1.damage", "before": 30, "after": 54 }
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.5229815808 },
+            { "path": "subAbilities.sub1.damage", "before": 30, "after": 48.315300000000015 }
           ]
         }
       ]
@@ -17954,7 +18214,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Sculpted Blast — first rank: direct damage 58 → 65; area radius 170 → 184; recharge 11 → 10.12s. Retains its existing effects (stacks to 5).",
+      "description": "Increase blast damage by 12% and controlled-target bonus by 2 percentage points; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -17964,14 +18224,18 @@
           "subSkills": ["mg_evoker_sculpt"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 11, "after": 10.120000000000001 },
-            { "path": "subAbilities.sub1.damage", "before": 58, "after": 65 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 184 }
+            { "path": "subAbilities.sub1.controlDamageBonus", "before": 0.25, "after": 0.27 },
+            { "path": "subAbilities.sub1.cooldown", "before": 11, "after": 10.559999999999999 },
+            { "path": "subAbilities.sub1.damage", "before": 58, "after": 64.96000000000001 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 11, "after": 8.8 },
-            { "path": "subAbilities.sub1.damage", "before": 58, "after": 103 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 240 }
+            {
+              "path": "subAbilities.sub1.controlDamageBonus",
+              "before": 0.25,
+              "after": 0.3500000000000001
+            },
+            { "path": "subAbilities.sub1.cooldown", "before": 11, "after": 8.969099673599997 },
+            { "path": "subAbilities.sub1.damage", "before": 58, "after": 102.21581762560004 }
           ]
         }
       ]
@@ -17989,7 +18253,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Arcane Shield — first rank: direct damage 28 → 31; reach 180 → 194; recharge 12 → 11.04s. Retains its existing effects (stacks to 5).",
+      "description": "Increase peel damage by 10%, barrier protection by 8%, and outward force by 6u; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -17999,16 +18263,16 @@
           "subSkills": ["mg_evoker_shield"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 35, "after": 39 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 11.040000000000001 },
-            { "path": "subAbilities.sub1.damage", "before": 28, "after": 31 },
-            { "path": "subAbilities.sub1.range", "before": 180, "after": 194 }
+            { "path": "subAbilities.sub1.absorption.amount", "before": 35, "after": 38 },
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 11.52 },
+            { "path": "subAbilities.sub1.damage", "before": 28, "after": 30.800000000000004 },
+            { "path": "subAbilities.sub1.knockback", "before": 90, "after": 96 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 35, "after": 62 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 9.600000000000001 },
-            { "path": "subAbilities.sub1.damage", "before": 28, "after": 49 },
-            { "path": "subAbilities.sub1.range", "before": 180, "after": 200 }
+            { "path": "subAbilities.sub1.absorption.amount", "before": 35, "after": 52 },
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 9.784472371199998 },
+            { "path": "subAbilities.sub1.damage", "before": 28, "after": 45.094280000000026 },
+            { "path": "subAbilities.sub1.knockback", "before": 90, "after": 120 }
           ]
         }
       ]
@@ -18026,7 +18290,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Arcane Ward — first rank: direct damage 24 → 27; area radius 150 → 162; recharge 12 → 11.04s. Retains its existing effects (stacks to 5).",
+      "description": "Increase burst damage by 10%, radius by 4u and barrier duration by 0.2s, up to 8s; native Mage barrier amount already reaches the shared health cap; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -18036,16 +18300,20 @@
           "subSkills": ["mg_abjurer_ward"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 50, "after": 56 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 11.040000000000001 },
-            { "path": "subAbilities.sub1.damage", "before": 24, "after": 27 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 162 }
+            { "path": "subAbilities.sub1.absorption.duration", "before": 6, "after": 6.2 },
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 11.52 },
+            { "path": "subAbilities.sub1.damage", "before": 24, "after": 26.400000000000002 },
+            { "path": "subAbilities.sub1.radius", "before": 150, "after": 154 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 50, "after": 90 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 9.600000000000001 },
-            { "path": "subAbilities.sub1.damage", "before": 24, "after": 43 },
-            { "path": "subAbilities.sub1.radius", "before": 150, "after": 220 }
+            {
+              "path": "subAbilities.sub1.absorption.duration",
+              "before": 6,
+              "after": 7.000000000000001
+            },
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 9.784472371199998 },
+            { "path": "subAbilities.sub1.damage", "before": 24, "after": 38.65224000000001 },
+            { "path": "subAbilities.sub1.radius", "before": 150, "after": 170 }
           ]
         }
       ]
@@ -18063,7 +18331,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Otiluke Bind — first rank: zone damage per tick 8 → 9; area radius 120 → 130; recharge 10 → 9.2s. Retains its existing effects (stacks to 5).",
+      "description": "Increase cage damage by 12% and duration by 0.25s, up to 8s; retain true roots and aerial targeting; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -18073,14 +18341,14 @@
           "subSkills": ["mg_abjurer_bind"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 9.200000000000001 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 130 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 9 }
+            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 9.6 },
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 4.25 },
+            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 8.96 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 8.000000000000002 },
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 176 },
-            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 13 }
+            { "path": "subAbilities.sub1.cooldown", "before": 10, "after": 8.153726975999998 },
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 5.25 },
+            { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 14.098733465600006 }
           ]
         }
       ]
@@ -18098,7 +18366,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Dimension Door — first rank: area radius 220 → 238; travel distance 300 → 324; phasing duration 0.25 → 0.4s. Retains its existing effects (stacks to 5).",
+      "description": "Increase Dimension Door travel by 10u and endpoint relocation radius by 4u; preserve its deterministic exchange and disorientation; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -18108,14 +18376,12 @@
           "subSkills": ["mg_abjurer_teleport"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.iframes", "before": 0.25, "after": 0.4 },
-            { "path": "subAbilities.sub1.radius", "before": 220, "after": 238 },
-            { "path": "subAbilities.sub1.range", "before": 300, "after": 324 }
+            { "path": "subAbilities.sub1.radius", "before": 220, "after": 224 },
+            { "path": "subAbilities.sub1.range", "before": 300, "after": 310 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.iframes", "before": 0.25, "after": 1 },
             { "path": "subAbilities.sub1.radius", "before": 220, "after": 240 },
-            { "path": "subAbilities.sub1.range", "before": 300, "after": 420 }
+            { "path": "subAbilities.sub1.range", "before": 300, "after": 350 }
           ]
         }
       ]
@@ -18133,7 +18399,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Increase healing and barrier by 12%, reach by 8%, and improve recharge within its shared budget (stacks to 5).",
+      "description": "Increase primary healing by 12%, barrier protection by 8% and recipient reach by 10u; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -18144,13 +18410,13 @@
           "prefix": [],
           "once": [
             { "path": "subAbilities.sub1.absorption.amount", "before": 20, "after": 22 },
-            { "path": "subAbilities.sub1.damage", "before": 55, "after": 62 },
-            { "path": "subAbilities.sub1.range", "before": 400, "after": 432 }
+            { "path": "subAbilities.sub1.damage", "before": 55, "after": 61.60000000000001 },
+            { "path": "subAbilities.sub1.range", "before": 400, "after": 410 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 20, "after": 35 },
-            { "path": "subAbilities.sub1.damage", "before": 55, "after": 96 },
-            { "path": "subAbilities.sub1.range", "before": 400, "after": 588 }
+            { "path": "subAbilities.sub1.absorption.amount", "before": 20, "after": 30 },
+            { "path": "subAbilities.sub1.damage", "before": 55, "after": 96.92879257600005 },
+            { "path": "subAbilities.sub1.range", "before": 400, "after": 450 }
           ]
         }
       ]
@@ -20138,7 +20404,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Dragon Breath — first rank: direct damage 42 → 47; reach 240 → 259; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "description": "Increase breath damage by 12% and reach by 4u; retain surge consumption and cone targeting; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -20148,12 +20414,12 @@
           "subSkills": ["so_draconic_breath"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.36 },
-            { "path": "subAbilities.sub1.damage", "before": 42, "after": 47 }
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.68 },
+            { "path": "subAbilities.sub1.damage", "before": 42, "after": 47.040000000000006 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.4 },
-            { "path": "subAbilities.sub1.damage", "before": 42, "after": 74 }
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.5229815808 },
+            { "path": "subAbilities.sub1.damage", "before": 42, "after": 74.01835069440003 }
           ]
         }
       ]
@@ -20171,7 +20437,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Dragon Wings — first rank: recharge 12 → 11.04s; movement multiplier 1.4 → 1.45. Retains its existing effects (stacks to 5).",
+      "description": "Increase movement by 3 percentage points and surge preparation by 0.25s, up to 9s; retain actual flight duration; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -20181,12 +20447,14 @@
           "subSkills": ["so_draconic_wing"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.4, "after": 1.45 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 11.040000000000001 }
+            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.4, "after": 1.43 },
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 11.52 },
+            { "path": "subAbilities.sub1.prepareSurge", "before": 8, "after": 8.25 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.4, "after": 1.65 },
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 9.600000000000001 }
+            { "path": "subAbilities.sub1.buffMoveMult", "before": 1.4, "after": 1.55 },
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 9.784472371199998 },
+            { "path": "subAbilities.sub1.prepareSurge", "before": 8, "after": 9 }
           ]
         }
       ]
@@ -20204,7 +20472,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Chromatic Bolt — first rank: direct damage 60 → 67; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "description": "Increase chromatic damage by 12% and projectile speed by 8%; retain surge’s shared-budget fork; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -20214,12 +20482,14 @@
           "subSkills": ["so_draconic_bolt"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.36 },
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 67 }
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.68 },
+            { "path": "subAbilities.sub1.damage", "before": 60, "after": 67.2 },
+            { "path": "subAbilities.sub1.projSpeed", "before": 700, "after": 756 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.4 },
-            { "path": "subAbilities.sub1.damage", "before": 60, "after": 105 }
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.5229815808 },
+            { "path": "subAbilities.sub1.damage", "before": 60, "after": 105.74050099200004 },
+            { "path": "subAbilities.sub1.projSpeed", "before": 700, "after": 1028.5296537600002 }
           ]
         }
       ]
@@ -20237,7 +20507,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Draconic Scales — first rank: direct damage 22 → 25; area radius 145 → 157; recharge 14 → 12.88s. Retains its existing effects (stacks to 5).",
+      "description": "Increase scale-burst damage by 12% and barrier duration by 0.2s, up to 8s; native Sorcerer barrier amount already reaches the shared health cap; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -20247,16 +20517,18 @@
           "subSkills": ["so_draconic_scales"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 55, "after": 62 },
-            { "path": "subAbilities.sub1.cooldown", "before": 14, "after": 12.88 },
-            { "path": "subAbilities.sub1.damage", "before": 22, "after": 25 },
-            { "path": "subAbilities.sub1.radius", "before": 145, "after": 157 }
+            { "path": "subAbilities.sub1.absorption.duration", "before": 6, "after": 6.2 },
+            { "path": "subAbilities.sub1.cooldown", "before": 14, "after": 13.44 },
+            { "path": "subAbilities.sub1.damage", "before": 22, "after": 24.64 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.absorption.amount", "before": 55, "after": 96 },
-            { "path": "subAbilities.sub1.cooldown", "before": 14, "after": 9.799999999999999 },
-            { "path": "subAbilities.sub1.damage", "before": 22, "after": 39 },
-            { "path": "subAbilities.sub1.radius", "before": 145, "after": 215 }
+            {
+              "path": "subAbilities.sub1.absorption.duration",
+              "before": 6,
+              "after": 7.000000000000001
+            },
+            { "path": "subAbilities.sub1.cooldown", "before": 14, "after": 11.415217766399996 },
+            { "path": "subAbilities.sub1.damage", "before": 22, "after": 38.77151703040001 }
           ]
         }
       ]
@@ -20274,7 +20546,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Chaos Surge — first rank: direct damage 12 → 13; recharge 7 → 6.44s. Retains its existing effects (stacks to 5).",
+      "description": "Increase chaotic-bolt damage by 10% and projectile speed by 8%; preserve the chosen fan width; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -20284,12 +20556,14 @@
           "subSkills": ["so_wild_surge"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 6.44 },
-            { "path": "subAbilities.sub1.damage", "before": 12, "after": 13 }
+            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 6.72 },
+            { "path": "subAbilities.sub1.damage", "before": 12, "after": 13.200000000000001 },
+            { "path": "subAbilities.sub1.projSpeed", "before": 640, "after": 691.2 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 5.6000000000000005 },
-            { "path": "subAbilities.sub1.damage", "before": 12, "after": 21 }
+            { "path": "subAbilities.sub1.cooldown", "before": 7, "after": 5.707608883199998 },
+            { "path": "subAbilities.sub1.damage", "before": 12, "after": 19.326120000000007 },
+            { "path": "subAbilities.sub1.projSpeed", "before": 640, "after": 940.3699691520003 }
           ]
         }
       ]
@@ -20307,7 +20581,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Tides of Chaos — first rank: direct damage 40 → 45; area radius 170 → 184; recharge 8 → 7.36s. Retains its existing effects (stacks to 5).",
+      "description": "Increase wild-burst damage by 12% and radius by 4u; retain surge consumption; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -20317,14 +20591,14 @@
           "subSkills": ["so_wild_tides"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.36 },
-            { "path": "subAbilities.sub1.damage", "before": 40, "after": 45 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 184 }
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 7.68 },
+            { "path": "subAbilities.sub1.damage", "before": 40, "after": 44.800000000000004 },
+            { "path": "subAbilities.sub1.radius", "before": 170, "after": 174 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.4 },
-            { "path": "subAbilities.sub1.damage", "before": 40, "after": 71 },
-            { "path": "subAbilities.sub1.radius", "before": 170, "after": 240 }
+            { "path": "subAbilities.sub1.cooldown", "before": 8, "after": 6.5229815808 },
+            { "path": "subAbilities.sub1.damage", "before": 40, "after": 70.49366732800003 },
+            { "path": "subAbilities.sub1.radius", "before": 170, "after": 190 }
           ]
         }
       ]
@@ -20342,7 +20616,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Bend Luck — first rank: travel distance 280 → 302; phasing duration 0.3 → 0.45s. Retains its existing effects (stacks to 5).",
+      "description": "Increase blink travel by 10u and surge preparation by 0.25s, up to 9s; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -20352,12 +20626,12 @@
           "subSkills": ["so_wild_bend"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.45 },
-            { "path": "subAbilities.sub1.range", "before": 280, "after": 302 }
+            { "path": "subAbilities.sub1.prepareSurge", "before": 8, "after": 8.25 },
+            { "path": "subAbilities.sub1.range", "before": 280, "after": 290 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 1.05 },
-            { "path": "subAbilities.sub1.range", "before": 280, "after": 410 }
+            { "path": "subAbilities.sub1.prepareSurge", "before": 8, "after": 9 },
+            { "path": "subAbilities.sub1.range", "before": 280, "after": 330 }
           ]
         }
       ]
@@ -20375,7 +20649,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Wild Ward — first rank: zone healing per tick 10 → 11; area radius 125 → 135; recharge 12 → 11.04s. Retains its existing effects (stacks to 5).",
+      "description": "Increase recovery-field healing by 12% and duration by 0.25s, up to 8s; retain movement slow and surge preparation; recharge improves by 4% within the shared ordinary budget (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -20385,14 +20659,14 @@
           "subSkills": ["so_wild_font"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 11.040000000000001 },
-            { "path": "subAbilities.sub1.radius", "before": 125, "after": 135 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 10, "after": 11 }
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 11.52 },
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 4.25 },
+            { "path": "subAbilities.sub1.zoneTickHeal", "before": 10, "after": 11.200000000000001 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 9.600000000000001 },
-            { "path": "subAbilities.sub1.radius", "before": 125, "after": 185 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 10, "after": 17 }
+            { "path": "subAbilities.sub1.cooldown", "before": 12, "after": 9.784472371199998 },
+            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 5.25 },
+            { "path": "subAbilities.sub1.zoneTickHeal", "before": 10, "after": 17.623416832000007 }
           ]
         }
       ]

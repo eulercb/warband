@@ -41,7 +41,8 @@
     "smoke:pilot-grands": "node scripts/smoke-pilot-grands.mjs",
     "smoke:pilot-coherence": "node scripts/smoke-pilot-coherence.mjs",
     "smoke:martial-grands": "node scripts/smoke-martial-grands.mjs",
-    "smoke:nature-grands": "node scripts/smoke-nature-grands.mjs"
+    "smoke:nature-grands": "node scripts/smoke-nature-grands.mjs",
+    "smoke:caster-grands": "node scripts/smoke-caster-grands.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

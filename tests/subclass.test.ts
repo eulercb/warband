@@ -351,10 +351,11 @@ describe('subclass grands transform bound sub-abilities at spawn + across a swap
     expect(p.subAbilities?.sub1?.damage).toBe(40);
     expect(p.subAbilities?.sub1?.lifestealFrac).toBe(0.15);
     // Swap to mage: sub1 rebinds to Lightning Bolt and the Evoker grand transforms it
-    // (dmg 40 → round(40 * 1.6) = 64, and a projectile gains a freeze rider).
+    // Controlled-target damage grows from20% to40%, without inventing freeze.
     w.setActiveClass(p, 'mage');
     expect(p.subAbilities?.sub1?.name).toBe('Lightning Bolt');
-    expect(p.subAbilities?.sub1?.damage).toBe(64);
-    expect(p.subAbilities?.sub1?.freeze).toBeCloseTo(0.6, 5);
+    expect(p.subAbilities?.sub1?.damage).toBe(40);
+    expect(p.subAbilities?.sub1?.controlDamageBonus).toBeCloseTo(0.4);
+    expect(p.subAbilities?.sub1?.freeze).toBeUndefined();
   });
 });

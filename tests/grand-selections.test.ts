@@ -3,7 +3,11 @@ import { subclassesFor } from '../src/engine/content/subclasses';
 import { heroPowerRatio } from '../src/engine/content/balance';
 import { previewGrandStats } from '../src/engine/content/grandStats';
 import { afterEach, describe, expect, it } from 'vitest';
-import { CHAR_UPGRADES, previewSubAbility } from '../src/engine/content/charUpgrades';
+import {
+  CHAR_UPGRADES,
+  previewSubAbility,
+  canonicalGrandId,
+} from '../src/engine/content/charUpgrades';
 import {
   emptyGrandLoadout,
   normalizeGrandLoadout,
@@ -72,26 +76,25 @@ describe('versioned grand selection and ownership', () => {
     expect(normalizeGrandLoadout(state, reclaimed).classes.knight!.bank).toContain(graftGrand.id);
     const restored = { ...reclaimed, history: [...reclaimed.history, 'hy_pyromancer'] };
     expect(grandEligible(graftGrand.id, 'knight', restored)).toBe(true);
-    const twoVariants = normalizeGrandLoadout(undefined, {
-      ...context,
-      history: ['mg_gk_basic_a', 'mg_gk_basic_b'],
-    });
-    expect(twoVariants.classes.mage!.equipped).toEqual(['mg_gk_basic_a']);
+    const variants = Object.values(CHAR_UPGRADES).filter((d) => d.graftId === 'hy_pyromancer');
+    const variantContext = { ...ctx, history: ['hy_pyromancer', ...variants.map((d) => d.id)] };
+    const twoVariants = normalizeGrandLoadout(undefined, variantContext);
+    expect(twoVariants.classes.knight!.equipped).toEqual([variants[0].id]);
     expect(
-      changeGrand(twoVariants, context, {
-        classId: 'mage',
-        id: 'mg_gk_basic_b',
+      changeGrand(twoVariants, variantContext, {
+        classId: 'knight',
+        id: variants[1].id,
         action: 'unequip',
       }),
     ).toBeNull();
     expect(
-      changeGrand(twoVariants, context, {
-        classId: 'mage',
-        id: 'mg_gk_basic_b',
+      changeGrand(twoVariants, variantContext, {
+        classId: 'knight',
+        id: variants[1].id,
         action: 'equip',
-        replace: 'mg_gk_basic_a',
-      })!.classes.mage!.equipped,
-    ).toEqual(['mg_gk_basic_b']);
+        replace: variants[0].id,
+      })!.classes.knight!.equipped,
+    ).toEqual([variants[1].id]);
   });
   it('reserves independent individual-skill and identity buckets, with the correct bound recipient', () => {
     const identity = CHAR_UPGRADES.kn_champion_g_a;
@@ -158,14 +161,14 @@ describe('versioned grand selection and ownership', () => {
     };
     const state = normalizeGrandLoadout(undefined, ctx);
     expect(state.classes.mage!.equipped).toHaveLength(3);
-    expect(state.classes.mage!.bank).toHaveLength(6);
-    expect(state.classes.mage!.equipped).toContain('mg_grand_archmage');
+    expect(state.classes.mage!.bank).toHaveLength(4);
+    expect(state.classes.mage!.equipped).toContain('mg_gk_basic_a');
     expect(
       changeGrand(state, ctx, {
         classId: 'mage',
-        id: 'mg_evoker_g_a',
+        id: 'mg_gk_a2_b',
         action: 'equip',
-        replace: 'mg_grand_archmage',
+        replace: 'mg_gk_a1_a',
       }),
     ).not.toBeNull();
     expect(normalizeGrandLoadout(state, ctx)).toEqual(state);
@@ -173,7 +176,9 @@ describe('versioned grand selection and ownership', () => {
     expect(grandHistory('knight', ctx.history, state, ctx.subSkills)).not.toContain(
       'mg_grand_archmage',
     );
-    expect(grandHistory('mage', ctx.history, undefined)).toEqual(ctx.history);
+    expect(grandHistory('mage', ctx.history, undefined)).toEqual([
+      ...new Set(ctx.history.map(canonicalGrandId)),
+    ]);
   });
   it('rejects duplicates, unearned swaps, forged classes and malformed requests atomically', () => {
     const state = earned();
@@ -236,7 +241,7 @@ describe('production active-class effects', () => {
     expect(p.abilities!.a2.frontGuard?.charges).toBe(2);
     expect(p.grandLoadout!.classes.knight!.bank).toContain('kn_gk_a2_a');
   });
-  it('changes legacy stat overlays with class and preserves health across closed swap cycles', () => {
+  it('deactivates a legacy stat overlay on an authored class and preserves health through closed swap cycles', () => {
     const ctx: GrandContext = {
       classes: ['paladin', 'mage'],
       history: ['pa_grand_aegis', 'mg_grand_archmage'],
@@ -265,8 +270,8 @@ describe('production active-class effects', () => {
     for (let i = 0; i < 10; i++) {
       w.setActiveClass(p, 'mage');
       expect(p.damageTakenMult).toBe(1);
-      expect(p.damageMult).toBeCloseTo(1.3);
-      expect(p.castMult).toBeCloseTo(0.4);
+      expect(p.damageMult).toBe(1);
+      expect(p.castMult).toBe(1);
       expect(p.hp / p.maxHp).toBeCloseTo(0.4);
       expect(p.charUpgradeIds).not.toContain('pa_grand_aegis');
       w.setActiveClass(p, 'paladin');

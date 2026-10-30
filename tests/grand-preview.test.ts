@@ -14,7 +14,7 @@ it('compares legal replacement snapshots using actual host stats, Haste and both
   const sub = subclassesFor('mage')[0];
   const ctx: GrandContext = {
     classes: ['knight', 'mage'],
-    history: ['kn_grand_immovable', 'mg_grand_archmage'],
+    history: ['kn_grand_immovable', 'mg_gk_basic_a', 'mg_evoker_g_b'],
     subSkills: sub.skills.slice(0, 2).map((s) => s.id),
   };
   const from = normalizeGrandLoadout(undefined, ctx);
@@ -29,7 +29,7 @@ it('compares legal replacement snapshots using actual host stats, Haste and both
     classId: 'mage',
     id: candidate.id,
     action: 'equip',
-    replace: 'mg_grand_archmage',
+    replace: 'mg_evoker_g_b',
   })!;
   const upgrades: UpgradeId[] = Array<UpgradeId>(5).fill('haste');
   const players = [from, to].map((grandLoadout) => {
@@ -56,12 +56,11 @@ it('compares legal replacement snapshots using actual host stats, Haste and both
   const text = describeGrandTransition('mage', ctx, from, to, upgrades);
   for (const p of players) {
     expect(text).toContain(describeAbility(p.abilities!.a1, p));
-    expect(text).toContain(String(p.maxHp));
     expect(text).toContain(describeAbility(p.subAbilities!.sub1!, p));
     expect(text).toContain(describeAbility(p.subAbilities!.sub2!, p));
   }
   expect(text).toContain('Now →');
-  expect(to.classes.mage!.equipped).not.toContain('mg_grand_archmage');
+  expect(to.classes.mage!.equipped).not.toContain('mg_evoker_g_b');
 });
 it('does not invent a numerical gain for an unchanged build', () => {
   const ctx: GrandContext = { classes: ['knight'], history: [], subSkills: ['ghost'] };

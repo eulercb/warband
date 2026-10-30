@@ -12,7 +12,9 @@ try {
         ? ['kn_champion', 'kn_battlemaster', 'bb_berserker', 'bb_totem', 'mo_openhand', 'mo_shadow']
         : process.env.SMOKE_GRAND_COHORT === 'nature'
           ? ['rg_hunter', 'rg_beastmaster', 'dr_moon', 'dr_land']
-          : ['ro_assassin', 'ro_trickster', 'wa_fiend', 'wa_great_old_one'];
+          : process.env.SMOKE_GRAND_COHORT === 'caster'
+            ? ['mg_evoker', 'mg_abjurer', 'so_draconic', 'so_wild']
+            : ['ro_assassin', 'ro_trickster', 'wa_fiend', 'wa_great_old_one'];
     for (const subclassId of subclasses) {
       const page = await browser.newPage({
         viewport: { width, height: width === 320 ? 568 : 800 },
@@ -40,9 +42,10 @@ try {
           .default;
         const { GrandManager } = await import('/src/ui/game/GrandManager.tsx');
         const { getSubclass } = await import('/src/engine/content/subclasses.ts');
-        const { changeGrand, normalizeGrandLoadout } =
+        const { changeGrand, normalizeGrandLoadout, grandSlot } =
           await import('/src/engine/content/grandSelections.ts');
-        const { CHAR_UPGRADES } = await import('/src/engine/content/charUpgrades.ts');
+        const { CHAR_UPGRADES, GRAND_BY_CLASS, SKILL_GRANDS } =
+          await import('/src/engine/content/charUpgrades.ts');
         const sub = getSubclass(subclassId),
           classId = sub.classId;
         const context = {
@@ -73,24 +76,14 @@ try {
         return {
           classId,
           ids: [
-            {
-              rogue: 'ro_gk_basic_b',
-              warlock: 'wa_grand_pact',
-              knight: 'kn_gk_basic_a',
-              barbarian: 'bb_gk_basic_b',
-              monk: 'mo_gk_basic_b',
-              ranger: 'rg_gk_basic_b',
-              druid: 'dr_gk_basic_b',
-            }[classId],
-            {
-              rogue: 'ro_gk_a1_a',
-              warlock: 'wa_gk_a1_a',
-              knight: 'kn_gk_a1_a',
-              barbarian: 'bb_gk_a1_a',
-              monk: 'mo_gk_a1_a',
-              ranger: 'rg_gk_a1_b',
-              druid: 'dr_gk_a1_b',
-            }[classId],
+            [
+              ...(GRAND_BY_CLASS[classId] ?? []),
+              ...SKILL_GRANDS.filter((d) => d.classId === classId),
+            ].find((d) => grandSlot(d.id) === 'basic').id,
+            [
+              ...(GRAND_BY_CLASS[classId] ?? []),
+              ...SKILL_GRANDS.filter((d) => d.classId === classId),
+            ].find((d) => grandSlot(d.id) === 'a1').id,
             `${context.subSkills[0]}_g`,
             `${subclassId}_g_a`,
           ],

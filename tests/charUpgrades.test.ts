@@ -139,10 +139,10 @@ describe('character-upgrade catalog', () => {
 
   it('flat lookup covers every class + hybrid + all grand kinds with unique ids', () => {
     const classGrand = Object.values(GRAND_BY_CLASS).flat();
-    expect(classGrand).toHaveLength(12); // Seven authored classes fold whole-class aliases into base skills
-    expect(SKILL_GRANDS).toHaveLength(66);
+    expect(classGrand).toHaveLength(8); // Nine authored classes fold whole-class aliases into base skills
+    expect(SKILL_GRANDS).toHaveLength(58);
     expect(SUBCLASS_GRANDS).toHaveLength(12 * 2 * 2); // 2 per subclass: 24 subclasses × 2 = 48
-    expect(PILOT_SUB_SKILL_GRANDS).toHaveLength(56);
+    expect(PILOT_SUB_SKILL_GRANDS).toHaveLength(72);
     expect(GRAFT_GRANDS).toHaveLength(7 * 2); // 2 per skill-replacing graft: 7 grafts × 2 = 14 (item 18/66)
     const all = [
       ...Object.values(CHAR_UPGRADES_BY_CLASS).flat(),
@@ -154,11 +154,11 @@ describe('character-upgrade catalog', () => {
       ...GRAFT_GRANDS,
       ...SUB_SKILL_UPGRADES, // item 6: one per subclass skill (24 subclasses × 4 = 96)
     ];
-    expect(all).toHaveLength(364);
+    expect(all).toHaveLength(368);
     expect(SUB_SKILL_UPGRADES).toHaveLength(96);
     const ids = all.map((d) => d.id);
     expect(new Set(ids).size).toBe(ids.length); // no duplicates
-    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(364 + Object.keys(PILOT_GRAND_ALIASES).length);
+    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(368 + Object.keys(PILOT_GRAND_ALIASES).length);
     for (const id of ids) expect(CHAR_UPGRADES[id].id).toBe(id);
     // Every grand improvement (class, skill, subclass, graft) is uniquely capped at one stack.
     for (const d of [
@@ -186,9 +186,17 @@ describe('character-upgrade catalog', () => {
     expect(bySlot.size).toBe(46); // Rogue Vial and Warlock basic retain legacy IDs
     for (const [key, n] of bySlot)
       expect(n).toBe(
-        ['rogue', 'warlock', 'knight', 'barbarian', 'monk', 'ranger', 'druid'].includes(
-          key.split(':')[0],
-        )
+        [
+          'rogue',
+          'warlock',
+          'knight',
+          'barbarian',
+          'monk',
+          'ranger',
+          'druid',
+          'mage',
+          'sorcerer',
+        ].includes(key.split(':')[0])
           ? 1
           : 2,
       );
@@ -1255,16 +1263,22 @@ describe('effect fallbacks for absent optional fields', () => {
   // Grand-capstone tunes read optional buff/snare fields the real kits fill in, so
   // their `?? default` arms only fire against a field-less ability. Apply each grand
   // straight onto a synthetic slot to prove the guard rather than leave it dead.
-  it('so_gk_a2_a defaults a move-buff-less Mirror Image (buffMoveMult ?? 1)', () => {
-    const a = table({ a2: ab('a2', 'selfBuff', 0) }); // no buffMoveMult
+  it('Mirror grand requires actual images and uses generic power growth for an incomplete same-kind payload', () => {
+    const a = table({ a2: ab('a2', 'selfBuff', 0, { buffMoveMult: 1.2, buffDuration: 3 }) });
     CHAR_UPGRADES.so_gk_a2_a.apply({ player: stub, abilities: a });
-    expect(a.a2.buffMoveMult).toBeCloseTo(1.35, 5); // max(undefined ?? 1, 1.35)
+    expect(a.a2.buffMoveMult).toBeGreaterThan(1.2);
+    expect(a.a2.allyWard).toBeUndefined();
+    expect(a.a2.steadfastDuration).toBeUndefined();
   });
 
-  it('so_gk_a2_b defaults a move-buff-less Mirror Image (buffMoveMult ?? 1)', () => {
-    const a = table({ a2: ab('a2', 'selfBuff', 0) });
-    CHAR_UPGRADES.so_gk_a2_b.apply({ player: stub, abilities: a });
-    expect(a.a2.buffMoveMult).toBeCloseTo(1.3, 5);
+  it('retired Mirror grand variants resolve to the same authored protection payload', () => {
+    const a = table({ a2: ab('a2', 'selfBuff', 0, { mirrorImages: { count: 3, duration: 5 } }) });
+    const b = structuredClone(a);
+    CHAR_UPGRADES.so_gk_a2_a.apply({ player: stub, abilities: a });
+    CHAR_UPGRADES.so_gk_a2_b.apply({ player: stub, abilities: b });
+    expect(a.a2).toEqual(b.a2);
+    expect(a.a2.mirrorImages!.count).toBe(3);
+    expect(a.a2.allyWard).toEqual({ range: 180, mult: 0.8, duration: 4 });
   });
 
   it('wa_gk_a1_b legacy alias resolves to the authored Hex grand', () => {
@@ -1276,7 +1290,7 @@ describe('effect fallbacks for absent optional fields', () => {
 
   it('amplify() seeds iframes on an iframe-less dash sub-skill (iframes ?? 0)', () => {
     const dash = ab('a1', 'dash', 0); // dash, no iframes
-    CHAR_UPGRADES.mg_evoker_g_a.apply({
+    CHAR_UPGRADES.ba_valor_g_a.apply({
       player: stub,
       abilities: table(),
       subAbilities: { sub1: dash },
@@ -1822,16 +1836,15 @@ describe('projectile range grands extend range instead of collapsing it (item 3)
     );
   });
 
-  it('Frostlance / Chaos Lance keep the default range cap (never the 200u regression)', () => {
+  it('retired Frostlance and Chaos Lance retain the default travel cap', () => {
     const frost = previewAbilityTable('mage', ['mg_gk_basic_b']).basic;
     const chaos = previewAbilityTable('sorcerer', ['so_gk_basic_b']).basic;
     // maxRange stays unset ⇒ the spawn falls back to PROJECTILE_MAX_RANGE (820), not 200.
     expect(frost.maxRange ?? PROJECTILE_MAX_RANGE).toBe(PROJECTILE_MAX_RANGE);
     expect(chaos.maxRange ?? PROJECTILE_MAX_RANGE).toBe(PROJECTILE_MAX_RANGE);
-    // …while still granting the speed + freeze the description promises.
-    expect(frost.freeze).toBeCloseTo(0.4, 6);
-    expect(frost.projSpeed).toBe(620 + 350);
-    expect(chaos.freeze).toBeCloseTo(0.4, 6);
+    expect(frost.projCount).toBe(3); // Retired Frostlance folds into Arcane Barrage.
+    expect(chaos.pierce).toBeGreaterThan(0);
+    expect(chaos.projSpeed).toBeGreaterThan(CLASSES.sorcerer.abilities.basic.projSpeed!);
   });
 });
 
@@ -1973,7 +1986,7 @@ describe('describeCharOffer', () => {
       'mg_evoker_lightning',
       'mg_evoker_cone',
     ])!;
-    const preview = v.desc.split('Now →')[1];
+    const preview = v.desc.split('Now →').slice(1).join('Now →');
     // Both equipped Evoker skills appear, each with a "(was …)" before→after.
     expect(preview).toContain('Lightning Bolt');
     expect(preview).toContain('Cone of Cold');
@@ -2002,7 +2015,7 @@ describe('describeCharOffer', () => {
             if (!v || !v.desc.includes('Now →')) continue;
             // Every "Name: …" prefix in the preview must be a canonical skill name
             // of this class — never a re-flavoured bank variant.
-            const preview = v.desc.split('Now →')[1];
+            const preview = v.desc.split('Now →').slice(1).join('Now →');
             for (const m of preview.matchAll(/(?:^|·)\s*([^:·]+):/g)) {
               expect(canon.has(m[1].trim())).toBe(true);
             }
@@ -2059,7 +2072,7 @@ describe('grand improvements apply real, measurable transformations (item 22)', 
   const grands = Object.values(GRAND_BY_CLASS).flat();
 
   it('folds authored whole-class entries into canonical base choices', () => {
-    expect(grands).toHaveLength(12);
+    expect(grands).toHaveLength(8);
   });
 
   for (const def of grands) {
@@ -2090,10 +2103,12 @@ describe('grand improvements apply real, measurable transformations (item 22)', 
     expect(apply('ranger', ['rg_grand_deadeye', 'rg_gk_basic_b']).abilities).toEqual(a);
   });
 
-  it('mg_grand_archmage slashes cast time and pumps damage + health', () => {
+  it('mg_grand_archmage folds into the basic grand without obsolete global stat bonuses', () => {
     const p = apply('mage', ['mg_grand_archmage']);
-    expect(p.castMult).toBeCloseTo(0.4, 5); // spells snap out
-    expect(p.damageMult).toBeCloseTo(1.3, 5);
+    expect(p.abilities).toEqual(apply('mage', ['mg_gk_basic_a']).abilities);
+    expect(p.castMult).toBe(1);
+    expect(p.damageMult).toBe(1);
+    expect(p.maxHp).toBe(CLASSES.mage.maxHp);
   });
 
   it('wa_grand_ruin resolves to the single Hex grand', () => {
@@ -2211,14 +2226,17 @@ describe('base-skill grands apply, and touch only their own slot (item 17)', () 
     expect(a.basic.lifestealFrac).toBeUndefined();
   });
 
-  it('mg_gk_a1_a makes Fireball a Supernova; mg_gk_a2_a freezes Frost Nova solid', () => {
+  it('Supernova suppresses and Polar Vortex gathers while preserving ordinary freeze value', () => {
     const nova = apply('mage', ['mg_gk_a1_a']).abilities!;
-    expect(nova.a1.damage).toBe(135); // 80 + 55
-    expect(nova.a1.impactRadius).toBe(190); // 110 + 80
+    expect(nova.a1.damage).toBe(115); // 80 + 35
+    expect(nova.a1.impactRadius).toBe(140); // 110 + 30
+    expect(nova.a1.castSlow).toBe(1.4);
     const zero = apply('mage', ['mg_gk_a2_a']).abilities!;
-    expect(zero.a2.freeze!).toBeCloseTo(1.5, 5);
+    expect(zero.a2.pull).toBe(140);
+    expect(zero.a2.freeze).toBeUndefined();
     expect(zero.a2.damage).toBe(40); // 20 + 20
-    expect(zero.a2.radius).toBe(190); // 150 + 40
+    expect(zero.a2.radius).toBe(150);
+    expect(apply('mage', ['mg_gk_a2_b', 'mg_freeze']).abilities!.a2.freeze).toBeCloseTo(1.1);
   });
 
   it('a taunt grand tunes only the shield + duration levers taunt honours', () => {
@@ -2305,8 +2323,8 @@ describe('subclass grands transform the bound sub-abilities (item 17)', () => {
   });
 
   it('unconverted identities are a harmless no-op in the base replay', () => {
-    const before = JSON.stringify(makePlayer('mage').abilities);
-    const p = apply('mage', ['mg_evoker_g_a']); // no subAbilities on this hero
+    const before = JSON.stringify(makePlayer('cleric').abilities);
+    const p = apply('cleric', ['cl_life_g_a']); // no subAbilities on this hero
     expect(JSON.stringify(p.abilities)).toBe(before);
   });
 

@@ -287,12 +287,19 @@ jobs:
           mkdir -p "$SHOT_DIR"
           npm run preview &
           CASTER_PREVIEW_PID=$!
-          trap 'kill "$CASTER_PREVIEW_PID" 2>/dev/null || true' EXIT
+          npm run dev -- --host 127.0.0.1 --port 5173 --strictPort > "$RUNNER_TEMP/caster-dev.log" 2>&1 &
+          CASTER_DEV_PID=$!
+          trap 'kill "$CASTER_PREVIEW_PID" "$CASTER_DEV_PID" 2>/dev/null || true' EXIT
           for i in $(seq 1 30); do
             curl -sf http://localhost:4173/ >/dev/null && break
             sleep 1
           done
           node scripts/run-smoke.mjs smoke:caster-defense
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:5173/ >/dev/null && break
+            sleep 1
+          done
+          node scripts/run-smoke.mjs smoke:caster-grands
       - name: Upload caster screenshots
         if: always()
         uses: actions/upload-artifact@v4

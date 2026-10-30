@@ -1254,6 +1254,19 @@ export const PILOT_GRAND_ALIASES: Readonly<Record<string, string>> = {
   dr_gk_a2_b: 'dr_gk_a2_a',
   dr_gk_a3_b: 'dr_gk_a3_a',
 
+  mg_grand_archmage: 'mg_gk_basic_a',
+  mg_grand_cataclysm: 'mg_gk_a1_a',
+  mg_gk_basic_b: 'mg_gk_basic_a',
+  mg_gk_a1_b: 'mg_gk_a1_a',
+  mg_gk_a2_a: 'mg_gk_a2_b',
+  mg_gk_a3_a: 'mg_gk_a3_b',
+  so_grand_wild: 'so_gk_basic_b',
+  so_grand_cataclysm: 'so_gk_a1_a',
+  so_gk_basic_a: 'so_gk_basic_b',
+  so_gk_a1_b: 'so_gk_a1_a',
+  so_gk_a2_b: 'so_gk_a2_a',
+  so_gk_a3_a: 'so_gk_a3_b',
+
   ro_grand_shadow: 'ro_gk_a1_a',
   ro_gk_basic_a: 'ro_gk_basic_b',
   ro_gk_a1_b: 'ro_gk_a1_a',
@@ -1271,30 +1284,6 @@ export const canonicalGrandId = (id: string): string =>
   Object.hasOwn(PILOT_GRAND_ALIASES, id) ? PILOT_GRAND_ALIASES[id] : id;
 
 const GRAND: CharUpgradeDef[] = [
-  g(
-    'mage',
-    'mg_grand_archmage',
-    'Archmage',
-    '🧙',
-    'Spells snap out instantly: −60% cast time, +30% damage, +15% max HP',
-    ({ player: p }) => {
-      p.castMult *= 0.4;
-      p.damageMult *= 1.3;
-      p.maxHp = Math.round(p.maxHp * 1.15);
-      p.hp = p.maxHp;
-    },
-  ),
-  g(
-    'mage',
-    'mg_grand_cataclysm',
-    'Cataclysm',
-    '☄️',
-    'Fireball becomes an apocalypse — +55 dmg across a colossal blast (+75 radius)',
-    ({ abilities: a }) => {
-      addN(a.a1, 'impactRadius', 75);
-      addN(a.a1, 'damage', 55);
-    },
-  ),
   g(
     'cleric',
     'cl_grand_beacon',
@@ -1392,29 +1381,6 @@ const GRAND: CharUpgradeDef[] = [
     },
   ),
 
-  g(
-    'sorcerer',
-    'so_grand_wild',
-    'Wild Magic Surge',
-    '🎲',
-    'Chaos Bolt splits into a fan of 3 extra bolts (+8 each) across a wide spread',
-    ({ abilities: a }) => {
-      addN(a.basic, 'projCount', 3);
-      addN(a.basic, 'damage', 8);
-      addN(a.basic, 'spreadDeg', 12);
-    },
-  ),
-  g(
-    'sorcerer',
-    'so_grand_cataclysm',
-    'Meteor Swarm',
-    '💥',
-    'Meteor becomes an extinction event — +65 dmg across a colossal blast (+75 radius)',
-    ({ abilities: a }) => {
-      addN(a.a1, 'impactRadius', 75);
-      addN(a.a1, 'damage', 65);
-    },
-  ),
   g(
     'warlock',
     'wa_grand_pact',
@@ -1588,25 +1554,12 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'mg_gk_basic_a',
     'Arcane Barrage',
     '✨',
-    'Arcane Bolt splits into 3 across a 14° fan (+5 each)',
-    (ab) => {
+    'Arcane Bolt splits into three lanes across a 14° fan and gains +5 damage per bolt',
+    casterGrand('projectile', (ab) => {
       addN(ab, 'projCount', 2);
       ab.spreadDeg = Math.max(ab.spreadDeg ?? 0, 14);
       addN(ab, 'damage', 5);
-    },
-  ),
-  gk(
-    'mage',
-    'basic',
-    'mg_gk_basic_b',
-    'Frostlance',
-    '❄️',
-    'Arcane Bolt becomes a piercing lance: +18 damage, +350 speed, freezes for 0.4s',
-    (ab) => {
-      addN(ab, 'damage', 18);
-      addN(ab, 'projSpeed', 350);
-      addN(ab, 'freeze', 0.4);
-    },
+    }),
   ),
   gk(
     'mage',
@@ -1614,64 +1567,29 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'mg_gk_a1_a',
     'Supernova',
     '🌟',
-    'Fireball detonates for +55 across a colossal +80u blast',
-    (ab) => {
-      addN(ab, 'damage', 55);
-      addN(ab, 'impactRadius', 80);
-    },
-  ),
-  gk(
-    'mage',
-    'a1',
-    'mg_gk_a1_b',
-    'Chain Ignition',
-    '🔥',
-    'Fireball snaps out instantly (−80% cast), recharges twice as fast, +20 damage',
-    (ab) => {
-      mul(ab, 'castTime', 0.2);
-      mul(ab, 'cooldown', 0.5);
-      addN(ab, 'damage', 20);
-    },
-  ),
-  gk(
-    'mage',
-    'a2',
-    'mg_gk_a2_a',
-    'Absolute Zero',
-    '🧊',
-    'Frost Nova freezes solid for 1.5s, +20 damage, +40u',
-    (ab) => {
-      addN(ab, 'freeze', 1.5);
-      addN(ab, 'damage', 20);
-      addN(ab, 'radius', 40);
-    },
+    'Fireball gains +35 damage and +30u blast radius; struck foes have 40% longer wind-ups for 3s',
+    casterGrand(
+      'projectile',
+      (ab) => {
+        addN(ab, 'damage', 35);
+        addN(ab, 'impactRadius', 30);
+        casterSuppression(ab, 1.4);
+      },
+      ['impactRadius'],
+    ),
   ),
   gk(
     'mage',
     'a2',
     'mg_gk_a2_b',
-    'Blizzard',
+    'Polar Vortex',
     '🌨️',
-    'Frost Nova swells +60u and locks foes to 30% speed for +2s (+12 damage)',
-    (ab) => {
-      addN(ab, 'radius', 60);
-      setMin(ab, 'slowMult', 0.3);
-      addN(ab, 'slowDuration', 2);
-      addN(ab, 'damage', 12);
-    },
-  ),
-  gk(
-    'mage',
-    'a3',
-    'mg_gk_a3_a',
-    'Fold Space',
-    '🌀',
-    'Blink leaps +150u, recharges in a blink (−60% cd), and phases you 0.6s',
-    (ab) => {
-      addN(ab, 'range', 150);
-      mul(ab, 'cooldown', 0.4);
-      addN(ab, 'iframes', 0.4);
-    },
+    'Frost Nova pulls struck foes 140u inward and gains +20 damage; ordinary freeze still stops their actions',
+    casterGrand('pbaoe', (ab) => {
+      delete ab.knockback;
+      ab.pull = Math.max(ab.pull ?? 0, 140);
+      addN(ab, 'damage', 20);
+    }),
   ),
   gk(
     'mage',
@@ -1679,12 +1597,12 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'mg_gk_a3_b',
     'Displacement Ward',
     '🛡️',
-    'Blink knits +60 HP on use, phases you 0.7s, and reaches +80u',
-    (ab) => {
-      addN(ab, 'healOnUse', 60);
-      addN(ab, 'iframes', 0.5);
-      addN(ab, 'range', 80);
-    },
+    'Blink heals you for 45, grants 3s hard-control resistance and reaches 50u farther',
+    casterGrand('blink', (ab) => {
+      addN(ab, 'healOnUse', 45);
+      ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 3);
+      addN(ab, 'range', 50);
+    }),
   ),
 
   // --- Cleric ---------------------------------------------------------------
@@ -2218,28 +2136,20 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
   gk(
     'sorcerer',
     'basic',
-    'so_gk_basic_a',
-    'Chaos Storm',
-    '🎲',
-    'Chaos Bolt hurls 5 bolts across a wide fan (+5 each)',
-    (ab) => {
-      addN(ab, 'projCount', 3);
-      addN(ab, 'spreadDeg', 18);
-      addN(ab, 'damage', 5);
-    },
-  ),
-  gk(
-    'sorcerer',
-    'basic',
     'so_gk_basic_b',
     'Chaos Lance',
     '💠',
-    'Chaos Bolt screams out +20 harder and +300 faster, freezing for 0.4s',
-    (ab) => {
-      addN(ab, 'damage', 20);
-      addN(ab, 'projSpeed', 300);
-      addN(ab, 'freeze', 0.4);
-    },
+    'Chaos Bolt pierces two additional foes, gains +8 damage per bolt and +250 projectile speed; its fan remains',
+    casterGrand(
+      'projectile',
+      (ab) => {
+        addN(ab, 'pierce', 2);
+        addN(ab, 'damage', 8);
+        addN(ab, 'projSpeed', 250);
+      },
+      [],
+      true,
+    ),
   ),
   gk(
     'sorcerer',
@@ -2247,24 +2157,16 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'so_gk_a1_a',
     'Extinction',
     '☄️',
-    'Meteor falls for +65 across a cataclysmic +80u blast',
-    (ab) => {
-      addN(ab, 'damage', 65);
-      addN(ab, 'impactRadius', 80);
-    },
-  ),
-  gk(
-    'sorcerer',
-    'a1',
-    'so_gk_a1_b',
-    'Meteor Shower',
-    '💥',
-    'Meteor snaps down instantly (−75% cast), recharges twice as fast, +22 damage',
-    (ab) => {
-      mul(ab, 'castTime', 0.25);
-      mul(ab, 'cooldown', 0.5);
-      addN(ab, 'damage', 22);
-    },
+    'Meteor gains +30 damage and +40u blast radius and freezes struck foes for 0.8s; surge still shares its twin damage budget',
+    casterGrand(
+      'projectile',
+      (ab) => {
+        addN(ab, 'damage', 30);
+        addN(ab, 'impactRadius', 40);
+        addN(ab, 'freeze', 0.8);
+      },
+      ['impactRadius'],
+    ),
   ),
   gk(
     'sorcerer',
@@ -2272,43 +2174,15 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'so_gk_a2_a',
     'Legion of Mirrors',
     '🪞',
-    'Mirror Image gains five images for 9s and grants +35% movement',
-    (ab) => {
-      if (ab.kind === 'selfBuff') ab.mirrorImages = { count: 5, duration: 9 };
-      ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.35);
-      addN(ab, 'buffDuration', 4);
-    },
-  ),
-  gk(
-    'sorcerer',
-    'a2',
-    'so_gk_a2_b',
-    'Blurred Form',
-    '💨',
-    'Mirror Image recharges 45% faster, gains one image (cap 5), holds 2s longer (cap 9s), and grants +30% movement',
-    (ab) => {
-      if (ab.mirrorImages)
-        ab.mirrorImages = {
-          count: Math.min(5, ab.mirrorImages.count + 1),
-          duration: Math.min(9, ab.mirrorImages.duration + 2),
-        };
-      mul(ab, 'cooldown', 0.55);
-      ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.3);
-      addN(ab, 'buffDuration', 2);
-    },
-  ),
-  gk(
-    'sorcerer',
-    'a3',
-    'so_gk_a3_a',
-    'Warp',
-    '🌀',
-    'Arcane Phase blinks +150u, phases +0.4s, and recharges 60% faster',
-    (ab) => {
-      addN(ab, 'range', 150);
-      addN(ab, 'iframes', 0.4);
-      mul(ab, 'cooldown', 0.4);
-    },
+    'Mirror Image grants 4s hard-control resistance and other living allies within 180u take 20% less damage for 4s; ordinary picks still grow images',
+    casterGrand(
+      'selfBuff',
+      (ab) => {
+        ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 4);
+        casterSharedWard(ab);
+      },
+      ['mirrorImages'],
+    ),
   ),
   gk(
     'sorcerer',
@@ -2316,12 +2190,11 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'so_gk_a3_b',
     'Phase Shift',
     '✨',
-    'Arcane Phase mends +50 on use, phases +0.5s, and reaches +80u',
-    (ab) => {
-      addN(ab, 'healOnUse', 50);
-      addN(ab, 'iframes', 0.5);
-      addN(ab, 'range', 80);
-    },
+    'Arcane Phase reaches 70u farther and blocks two frontal damage hits for 3s after the crossing',
+    casterGrand('blink', (ab) => {
+      addN(ab, 'range', 70);
+      casterGuard(ab, 2, 3);
+    }),
   ),
 
   // --- Warlock --------------------------------------------------------------
@@ -2381,7 +2254,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
 // ---------------------------------------------------------------------------
 
 /** True for a hit-landing ability that can carry a lifesteal / stun / freeze rider. */
-function isStrike(ab: PlayerAbilityDef): boolean {
+function isStrike(ab: Pick<PlayerAbilityDef, 'kind'>): boolean {
   return ab.kind === 'meleeCone' || ab.kind === 'pbaoe' || ab.kind === 'projectile';
 }
 
@@ -2531,6 +2404,53 @@ function natureGrand(
   return (ab) => {
     if (ab.kind === kind) tune(ab);
     else amplify(ab, 0.25, 0.15);
+  };
+}
+
+/** One predicate keeps actual caster recipes and Forge offer wording in agreement. */
+function casterPayloadMatches(
+  ab: Omit<PlayerAbilityDef, 'slot'>,
+  kind: PlayerAbilityDef['kind'],
+  hooks: readonly (keyof Omit<PlayerAbilityDef, 'slot'>)[],
+  unbursted: boolean,
+): boolean {
+  return (
+    ab.kind === kind &&
+    hooks.every((field) => ab[field] != null && ab[field] !== false && ab[field] !== 0) &&
+    (!isStrike(ab) || ab.damage > 0) &&
+    (!unbursted || (!ab.impactRadius && !ab.components?.effects.some((e) => e.kind === 'zone')))
+  );
+}
+
+/** Altered Forge payloads receive useful growth instead of unsupported native riders. */
+function casterGrand(
+  kind: PlayerAbilityDef['kind'],
+  tune: (ab: PlayerAbilityDef) => void,
+  hooks: readonly (keyof Omit<PlayerAbilityDef, 'slot'>)[] = [],
+  unbursted = false,
+): (ab: PlayerAbilityDef) => void {
+  return (ab) => {
+    if (casterPayloadMatches(ab, kind, hooks, unbursted)) tune(ab);
+    else amplify(ab, 0.25, 0.15);
+  };
+}
+/** Callers already validate positive direct damage through the recipe predicate or isStrike. */
+function casterSuppression(ab: PlayerAbilityDef, mult = 1.3): void {
+  ab.castSlow = Math.max(ab.castSlow ?? 1, mult);
+  ab.castSlowDuration = Math.max(ab.castSlowDuration ?? 0, 3);
+}
+function casterSharedWard(ab: PlayerAbilityDef): void {
+  ab.allyWard = {
+    range: Math.max(ab.allyWard?.range ?? 0, 180),
+    mult: Math.min(ab.allyWard?.mult ?? 1, 0.8),
+    duration: Math.max(ab.allyWard?.duration ?? 0, 4),
+  };
+}
+function casterGuard(ab: PlayerAbilityDef, charges: number, duration: number): void {
+  ab.frontGuard = {
+    ...ab.frontGuard,
+    charges: Math.max(ab.frontGuard?.charges ?? 0, charges),
+    duration: Math.max(ab.frontGuard?.duration ?? 0, duration),
   };
 }
 
@@ -2711,49 +2631,82 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     },
   ),
 
-  // Mage
-  gs(
+  // Mage — every identity changes a starting-kit route with any first pick.
+  pilotIdentity(
     'mg_evoker',
     'mg_evoker_g_a',
     'Arch-Evoker',
     '🔥',
-    'Your Evoker skills detonate 60% harder across a vast area, freezing/stunning struck foes',
+    'Arcane Bolt and Fireball gain +25% damage against controlled foes; direct Evoker strikes gain +20%. Frost Nova supplies setup with any first skill',
+    (a) => {
+      for (const ab of [a.basic, a.a1]) {
+        if (isStrike(ab) && ab.damage > 0) addN(ab, 'controlDamageBonus', 0.25);
+        else amplify(ab, 0.2, 0.1);
+      }
+    },
     (ab) => {
-      amplify(ab, 0.6, 0.35);
-      ctrlRider(ab, 0.6);
+      if (isStrike(ab) && ab.damage > 0) addN(ab, 'controlDamageBonus', 0.2);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'mg_evoker',
     'mg_evoker_g_b',
     'Overchannel',
     '⚡',
-    'Your Evoker skills recharge 45% faster and hit 30% harder',
+    'Arcane Bolt slows foes 20% for 2s to start Cadence at range; Frost Nova lengthens their wind-ups by 35% for 3s, and direct Evoker strikes by 30%',
+    (a) => {
+      if (isStrike(a.basic) && a.basic.damage > 0) slowRider(a.basic, 0.8, 2);
+      else amplify(a.basic, 0.2, 0.1);
+      if (isStrike(a.a2) && a.a2.damage > 0) casterSuppression(a.a2, 1.35);
+      else amplify(a.a2, 0.2, 0.1);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      amplify(ab, 0.3, 0.15);
+      if (isStrike(ab) && ab.damage > 0) casterSuppression(ab);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'mg_abjurer',
     'mg_abjurer_g_a',
     'Grand Warding',
     '🛡️',
-    'Your Abjurer skills swell 50%, their wards deepen, and their snares lock to 30%',
+    'Blink blocks one frontal damage hit for 4s; Abjurer barriers gain 20% protection and last 1s longer (up to 8s), and Life Transfer cleanses its healed recipient',
+    (a) => casterGrand('blink', (ab) => casterGuard(ab, 1, 4))(a.a3),
     (ab) => {
-      amplify(ab, 0.5, 0.3);
-      slowRider(ab, 0.3, 1.5);
+      if (ab.absorption) {
+        const barrier = scaleAbsorption(ab.absorption, 1.2, 1);
+        barrier.duration = Math.max(barrier.duration, Math.min(8, barrier.duration + 1));
+        ab.absorption = barrier;
+      } else amplify(ab, 0.2, 0.1);
+      if (ab.kind === 'heal') ab.cleanseOnHeal = true;
     },
   ),
-  gs(
+  pilotIdentity(
     'mg_abjurer',
     'mg_abjurer_g_b',
-    'Ceaseless Ward',
-    '♾️',
-    'Your Abjurer skills recharge 45% faster and their wards/blasts grow 30%',
+    'Binding Dominion',
+    '🌀',
+    'Arcane Bolt gains +25% controlled-target damage; Frost Nova reaches 35u farther and slows 1s longer. Abjurer strikes exploit control, damaging fields suppress wind-ups, Door heals 20, and dedicated heals gain 15',
+    (a) => {
+      if (isStrike(a.basic) && a.basic.damage > 0) addN(a.basic, 'controlDamageBonus', 0.25);
+      else amplify(a.basic, 0.2, 0.1);
+      casterGrand(
+        'pbaoe',
+        (ab) => {
+          addN(ab, 'radius', 35);
+          addN(ab, 'slowDuration', 1);
+        },
+        ['slowMult'],
+      )(a.a2);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      amplify(ab, 0.3, 0.15);
+      if (isStrike(ab) && ab.damage > 0) addN(ab, 'controlDamageBonus', 0.2);
+      else if (ab.kind === 'groundZone' && ab.zoneTickDamage)
+        ab.castSlow = Math.max(ab.castSlow ?? 1, 1.4);
+      else if (ab.kind === 'blink') addN(ab, 'healOnUse', 20);
+      else if (ab.kind === 'heal') addN(ab, 'damage', 15);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
 
@@ -3199,49 +3152,80 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     },
   ),
 
-  // Sorcerer
-  gs(
+  // Sorcerer — actual flight, controlled delivery, basic surge spending and mobility.
+  pilotIdentity(
     'so_draconic',
     'so_draconic_g_a',
     'True Dragon',
     '🐉',
-    'Your Draconic skills erupt 55% harder across a vast area, freezing/stunning struck foes',
+    'Spending surge grants 4s flight, or extends existing flight by 2s up to 9s, at the same 6s gate. Mirror Image gains 10 movement percentage points; direct Draconic spells gain 10% damage and Wings gain 10 movement points',
+    (a) => casterGrand('selfBuff', (ab) => addN(ab, 'buffMoveMult', 0.1), ['buffMoveMult'])(a.a2),
     (ab) => {
-      amplify(ab, 0.55, 0.35);
-      ctrlRider(ab, 0.6);
+      if (isStrike(ab) && ab.damage > 0) mul(ab, 'damage', 1.1);
+      else if (ab.kind === 'selfBuff' && ab.grantsFlight && ab.buffMoveMult)
+        addN(ab, 'buffMoveMult', 0.1);
+      else amplify(ab, 0.15, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'so_draconic',
     'so_draconic_g_b',
-    "Dragon's Cadence",
-    '🪽',
-    'Your Draconic skills recharge 45% faster and grow 30%',
+    "Wyrm's Pursuit",
+    '🌈',
+    'Chaos Bolt slows foes 20% for 2s, setting up Meteor for +30% controlled-target damage; direct Draconic strikes gain +25%, and Wings grant 3s hard-control resistance',
+    (a) => {
+      if (isStrike(a.basic) && a.basic.damage > 0) slowRider(a.basic, 0.8, 2);
+      else amplify(a.basic, 0.2, 0.1);
+      if (isStrike(a.a1) && a.a1.damage > 0) addN(a.a1, 'controlDamageBonus', 0.3);
+      else amplify(a.a1, 0.2, 0.1);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      amplify(ab, 0.3, 0.15);
+      if (isStrike(ab) && ab.damage > 0) addN(ab, 'controlDamageBonus', 0.25);
+      else if (ab.kind === 'selfBuff' && ab.grantsFlight)
+        ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 3);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'so_wild',
     'so_wild_g_a',
     'Unbound Chaos',
     '🎲',
-    'Your Wild Magic skills surge 60% harder across a chaotic, wide area',
+    'Chaos Bolt can spend surge: add one bolt sharing the same +20% total damage budget. Choose basic delivery or save surge for Meteor. Damaging Wild strikes gain 15% damage; utilities gain power and footprint',
+    (a) =>
+      casterGrand(
+        'projectile',
+        (ab) => {
+          ab.consumesSurge = true;
+          ab.surgeTwin = true;
+        },
+        [],
+        true,
+      )(a.basic),
     (ab) => {
-      amplify(ab, 0.6, 0.35);
+      if (isStrike(ab) && ab.damage > 0) mul(ab, 'damage', 1.15);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'so_wild',
     'so_wild_g_b',
-    'Cascading Surge',
+    'Chaos Crossing',
     '🌀',
-    'Your Wild Magic skills recharge 45% faster, hit 35% harder, and freeze/stun foes',
+    'Mirror Image gains 15 movement percentage points; Arcane Phase reaches 50u farther and grants 3s hard-control resistance. Bend Luck heals 25, Wild Ward grants allies 25% movement, and Wild strikes slow foes 25% for 2s',
+    (a) => {
+      casterGrand('selfBuff', (ab) => addN(ab, 'buffMoveMult', 0.15), ['buffMoveMult'])(a.a2);
+      casterGrand('blink', (ab) => {
+        addN(ab, 'range', 50);
+        ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 3);
+      })(a.a3);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      amplify(ab, 0.35, 0.15);
-      ctrlRider(ab, 0.5);
+      if (ab.kind === 'blink') addN(ab, 'healOnUse', 25);
+      else if (ab.kind === 'groundZone' && ab.zoneTickHeal)
+        ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.25);
+      else if (isStrike(ab) && ab.damage > 0) slowRider(ab, 0.75, 2);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
 
@@ -3348,6 +3332,232 @@ function gsk(
 }
 
 export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
+  // Mage and Sorcerer — one authored recipe per bound skill.
+  gsk(
+    'mg_evoker_lightning',
+    'Conducting Lance',
+    '⚡',
+    'Lightning Bolt pierces three additional foes and travels 150u/s faster; its controlled-target bonus remains',
+    casterGrand(
+      'projectile',
+      (ab) => {
+        addN(ab, 'pierce', 3);
+        addN(ab, 'projSpeed', 150);
+      },
+      [],
+      true,
+    ),
+  ),
+  gsk(
+    'mg_evoker_cone',
+    'Crystalline Edge',
+    '❄️',
+    'Cone of Cold freezes struck foes for 0.9s and reaches 35u farther; its ordinary movement slow remains',
+    casterGrand('meleeCone', (ab) => {
+      addN(ab, 'freeze', 0.9);
+      addN(ab, 'range', 35);
+    }),
+  ),
+  gsk(
+    'mg_evoker_sculpt',
+    'Sculpted Retort',
+    '💥',
+    'Sculpted Blast gains +10 damage and arms a 4s retort for 40% of its damage; incoming damage or your next positive direct hit releases it once',
+    casterGrand('pbaoe', (ab) => {
+      addN(ab, 'damage', 10);
+      ab.rebukeDuration = Math.max(ab.rebukeDuration ?? 0, 4);
+      ab.rebukeDirect = true;
+    }),
+  ),
+  gsk(
+    'mg_evoker_shield',
+    'Siphoning Shield',
+    '🛡️',
+    'Arcane Shield gains +12 cone damage and heals you for 35% of its effective damage; the separate barrier and outward push remain',
+    casterGrand(
+      'meleeCone',
+      (ab) => {
+        addN(ab, 'damage', 12);
+        addN(ab, 'lifestealFrac', 0.35);
+      },
+      ['absorption', 'knockback'],
+    ),
+  ),
+  gsk(
+    'mg_abjurer_ward',
+    'Warding Reversal',
+    '🔷',
+    'Arcane Ward pushes struck foes outward at least 160u and gains +10 burst damage; its barrier and movement slow remain',
+    casterGrand(
+      'pbaoe',
+      (ab) => {
+        delete ab.pull;
+        ab.knockback = Math.max(ab.knockback ?? 0, 160);
+        addN(ab, 'damage', 10);
+      },
+      ['absorption'],
+    ),
+  ),
+  gsk(
+    'mg_abjurer_bind',
+    'Sanctum Prison',
+    '🌀',
+    'Allies inside Otiluke Bind take 20% less damage and its radius grows by 20u; its floating root cage still reaches flyers',
+    casterGrand(
+      'groundZone',
+      (ab) => {
+        ab.zoneAllyDefMult = Math.min(ab.zoneAllyDefMult ?? 1, 0.8);
+        addN(ab, 'radius', 20);
+      },
+      ['zoneTickDamage', 'roots', 'airborne'],
+    ),
+  ),
+  gsk(
+    'mg_abjurer_teleport',
+    'Guarded Door',
+    '🚪',
+    'Dimension Door reaches 40u farther and blocks one frontal damage hit for 4s; its endpoint exchange and relocation slow are unchanged',
+    casterGrand(
+      'blink',
+      (ab) => {
+        addN(ab, 'range', 40);
+        casterGuard(ab, 1, 4);
+      },
+      ['swap'],
+    ),
+  ),
+  gsk(
+    'mg_abjurer_mend',
+    'Rescuing Transfer',
+    '💚',
+    'Life Transfer heals 15 more; effective healing from 35% HP or below readies the recipient’s next direct hit for +25% damage within 5s; its separate barrier remains',
+    casterGrand(
+      'heal',
+      (ab) => {
+        addN(ab, 'damage', 15);
+        ab.rescueStrike = {
+          mult: Math.max(ab.rescueStrike?.mult ?? 1, 1.25),
+          duration: Math.max(ab.rescueStrike?.duration ?? 0, 5),
+        };
+      },
+      ['absorption'],
+    ),
+  ),
+  gsk(
+    'so_draconic_breath',
+    'Driving Breath',
+    '🐉',
+    'Dragon Breath pushes struck foes at least 150u outward and gains +8 damage; it still consumes surge for its cone',
+    casterGrand(
+      'meleeCone',
+      (ab) => {
+        delete ab.pull;
+        ab.knockback = Math.max(ab.knockback ?? 0, 150);
+        addN(ab, 'damage', 8);
+      },
+      ['consumesSurge'],
+    ),
+  ),
+  gsk(
+    'so_draconic_wing',
+    'Sheltering Wings',
+    '🪽',
+    'Dragon Wings gain 10 movement percentage points and give other living allies within 180u 20% damage mitigation for 4s; flight duration remains separate',
+    casterGrand(
+      'selfBuff',
+      (ab) => {
+        addN(ab, 'buffMoveMult', 0.1);
+        casterSharedWard(ab);
+      },
+      ['grantsFlight', 'buffMoveMult', 'prepareSurge'],
+    ),
+  ),
+  gsk(
+    'so_draconic_bolt',
+    'Chromatic Hindrance',
+    '🌈',
+    'Chromatic Bolt gains +12 damage and lengthens struck foes’ wind-ups by 40% for 3s; its shared-budget surge fork remains',
+    casterGrand(
+      'projectile',
+      (ab) => {
+        addN(ab, 'damage', 12);
+        casterSuppression(ab, 1.4);
+      },
+      ['consumesSurge'],
+    ),
+  ),
+  gsk(
+    'so_draconic_scales',
+    'Molten Reprisal',
+    '🛡️',
+    'Draconic Scales gains +18 burst damage and arms one 4s retort for 40% of its damage, released by incoming damage or your next positive direct hit; its barrier remains',
+    casterGrand(
+      'pbaoe',
+      (ab) => {
+        addN(ab, 'damage', 18);
+        ab.rebukeDuration = Math.max(ab.rebukeDuration ?? 0, 4);
+        ab.rebukeDirect = true;
+      },
+      ['absorption', 'consumesSurge'],
+    ),
+  ),
+  gsk(
+    'so_wild_surge',
+    'Focused Chaos',
+    '🎯',
+    'Chaos Surge concentrates its six-bolt fan to 14° and gains +150 projectile speed; surge still increases total damage rather than adding six new copies',
+    casterGrand(
+      'projectile',
+      (ab) => {
+        ab.spreadDeg = Math.min(ab.spreadDeg ?? 0, 14);
+        addN(ab, 'projSpeed', 150);
+      },
+      ['consumesSurge', 'projCount'],
+      true,
+    ),
+  ),
+  gsk(
+    'so_wild_tides',
+    'Gravitic Tides',
+    '🌀',
+    'Tides of Chaos pulls struck foes at least 140u inward and gains +10 damage',
+    casterGrand(
+      'pbaoe',
+      (ab) => {
+        delete ab.knockback;
+        ab.pull = Math.max(ab.pull ?? 0, 140);
+        addN(ab, 'damage', 10);
+      },
+      ['consumesSurge'],
+    ),
+  ),
+  gsk(
+    'so_wild_bend',
+    'Fortunate Crossing',
+    '🍀',
+    'Bend Luck reaches 40u farther and blocks one frontal damage hit for 3s; it still prepares surge',
+    casterGrand(
+      'blink',
+      (ab) => {
+        addN(ab, 'range', 40);
+        casterGuard(ab, 1, 3);
+      },
+      ['prepareSurge'],
+    ),
+  ),
+  gsk(
+    'so_wild_font',
+    'Sheltering Chaos',
+    '🛡️',
+    'Allies inside Wild Ward take 20% less damage, even at full health; its recovery, movement slow and surge preparation remain',
+    casterGrand(
+      'groundZone',
+      (ab) => {
+        ab.zoneAllyDefMult = Math.min(ab.zoneAllyDefMult ?? 1, 0.8);
+      },
+      ['zoneTickHeal', 'prepareSurge'],
+    ),
+  ),
   gsk(
     'kn_champion_slam',
     'Turning Earth',
@@ -4250,6 +4460,168 @@ const NATURE_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) 
   },
 };
 
+/** Mirror authored grand delivery prerequisites for honest Forge offer text. */
+function casterRecipeMatches(subSkillId: string, ab: Omit<PlayerAbilityDef, 'slot'>): boolean {
+  const native = subclassOfSkill(subSkillId)!.skills.find(
+    (skill) => skill.id === subSkillId,
+  )!.ability;
+  const required: Partial<Record<string, readonly (keyof Omit<PlayerAbilityDef, 'slot'>)[]>> = {
+    mg_evoker_shield: ['absorption', 'knockback'],
+    mg_abjurer_ward: ['absorption'],
+    mg_abjurer_bind: ['zoneTickDamage', 'roots', 'airborne'],
+    mg_abjurer_teleport: ['swap'],
+    mg_abjurer_mend: ['absorption'],
+    so_draconic_breath: ['consumesSurge'],
+    so_draconic_wing: ['grantsFlight', 'buffMoveMult', 'prepareSurge'],
+    so_draconic_bolt: ['consumesSurge'],
+    so_draconic_scales: ['absorption', 'consumesSurge'],
+    so_wild_surge: ['consumesSurge', 'projCount'],
+    so_wild_tides: ['consumesSurge'],
+    so_wild_bend: ['prepareSurge'],
+    so_wild_font: ['zoneTickHeal', 'prepareSurge'],
+  };
+  return casterPayloadMatches(
+    ab,
+    native.kind,
+    required[subSkillId] ?? [],
+    ['mg_evoker_lightning', 'so_wild_surge'].includes(subSkillId),
+  );
+}
+
+/** Caster Honed grows each native role without duplicating its individual grand. */
+const CASTER_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) => void }> = {
+  mg_evoker_lightning: {
+    desc: 'Increase lightning damage by 10% and controlled-target bonus by 2 percentage points; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      addN(ab, 'controlDamageBonus', 0.02);
+    },
+  },
+  mg_evoker_cone: {
+    desc: 'Increase cone damage by 10% and reach by 4u; preserve its arc and movement slow; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      addN(ab, 'range', 4);
+    },
+  },
+  mg_evoker_sculpt: {
+    desc: 'Increase blast damage by 12% and controlled-target bonus by 2 percentage points; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      addN(ab, 'controlDamageBonus', 0.02);
+    },
+  },
+  mg_evoker_shield: {
+    desc: 'Increase peel damage by 10%, barrier protection by 8%, and outward force by 6u; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      const barrier = scaleAbsorption(ab.absorption!, 1.08, 1);
+      barrier.amount = Math.round(barrier.amount);
+      if (barrier.balanceAmount != null) barrier.balanceAmount = Math.round(barrier.balanceAmount);
+      ab.absorption = barrier;
+      if (ab.pull) addN(ab, 'pull', 6);
+      else addN(ab, 'knockback', 6);
+    },
+  },
+  mg_abjurer_ward: {
+    desc: 'Increase burst damage by 10%, radius by 4u and barrier duration by 0.2s, up to 8s; native Mage barrier amount already reaches the shared health cap; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      addN(ab, 'radius', 4);
+      const barrier = ab.absorption!;
+      ab.absorption = {
+        ...barrier,
+        duration: Math.max(barrier.duration, Math.min(8, barrier.duration + 0.2)),
+      };
+    },
+  },
+  mg_abjurer_bind: {
+    desc: 'Increase cage damage by 12% and duration by 0.25s, up to 8s; retain true roots and aerial targeting; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'zoneTickDamage', 1.12);
+      ab.zoneDuration = Math.max(ab.zoneDuration!, Math.min(8, ab.zoneDuration! + 0.25));
+    },
+  },
+  mg_abjurer_teleport: {
+    desc: 'Increase Dimension Door travel by 10u and endpoint relocation radius by 4u; preserve its deterministic exchange and disorientation; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      addN(ab, 'range', 10);
+      addN(ab, 'radius', 4);
+    },
+  },
+  mg_abjurer_mend: {
+    desc: 'Increase primary healing by 12%, barrier protection by 8% and recipient reach by 10u; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      const barrier = scaleAbsorption(ab.absorption!, 1.08, 1);
+      barrier.amount = Math.round(barrier.amount);
+      if (barrier.balanceAmount != null) barrier.balanceAmount = Math.round(barrier.balanceAmount);
+      ab.absorption = barrier;
+      addN(ab, 'range', 10);
+    },
+  },
+  so_draconic_breath: {
+    desc: 'Increase breath damage by 12% and reach by 4u; retain surge consumption and cone targeting; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      addN(ab, 'range', 4);
+    },
+  },
+  so_draconic_wing: {
+    desc: 'Increase movement by 3 percentage points and surge preparation by 0.25s, up to 9s; retain actual flight duration; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      addN(ab, 'buffMoveMult', 0.03);
+      ab.prepareSurge = Math.max(ab.prepareSurge!, Math.min(9, ab.prepareSurge! + 0.25));
+    },
+  },
+  so_draconic_bolt: {
+    desc: 'Increase chromatic damage by 12% and projectile speed by 8%; retain surge’s shared-budget fork; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      mul(ab, 'projSpeed', 1.08);
+    },
+  },
+  so_draconic_scales: {
+    desc: 'Increase scale-burst damage by 12% and barrier duration by 0.2s, up to 8s; native Sorcerer barrier amount already reaches the shared health cap; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      const barrier = ab.absorption!;
+      ab.absorption = {
+        ...barrier,
+        duration: Math.max(barrier.duration, Math.min(8, barrier.duration + 0.2)),
+      };
+    },
+  },
+  so_wild_surge: {
+    desc: 'Increase chaotic-bolt damage by 10% and projectile speed by 8%; preserve the chosen fan width; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      mul(ab, 'projSpeed', 1.08);
+    },
+  },
+  so_wild_tides: {
+    desc: 'Increase wild-burst damage by 12% and radius by 4u; retain surge consumption; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      addN(ab, 'radius', 4);
+    },
+  },
+  so_wild_bend: {
+    desc: 'Increase blink travel by 10u and surge preparation by 0.25s, up to 9s; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      addN(ab, 'range', 10);
+      ab.prepareSurge = Math.max(ab.prepareSurge!, Math.min(9, ab.prepareSurge! + 0.25));
+    },
+  },
+  so_wild_font: {
+    desc: 'Increase recovery-field healing by 12% and duration by 0.25s, up to 8s; retain movement slow and surge preparation; recharge improves by 4% within the shared ordinary budget',
+    tune: (ab) => {
+      mul(ab, 'zoneTickHeal', 1.12);
+      ab.zoneDuration = Math.max(ab.zoneDuration!, Math.min(8, ab.zoneDuration! + 0.25));
+    },
+  },
+};
+
 const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
   cl_life_mend:
     'Increase primary healing by 12%, heal reach and relay radius by 8%, and improve recharge within its shared budget; relay remains 35% of effective primary healing to one other ally',
@@ -4264,9 +4636,6 @@ const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
     'Extend the frontal block by 8% (cap 8s) and improve recharge within its shared budget; retain precision setup',
   ba_valor_bolster:
     'Improve rally movement, extend self control resistance by 8% (cap 8s), and improve recharge within its shared budget; retain cleanse and chorus',
-  mg_abjurer_mend:
-    'Increase healing and barrier by 12%, reach by 8%, and improve recharge within its shared budget',
-
   pa_devotion_aura:
     'Increase barrier by 12% and barrier/aura reach by 8%, and improve recharge within its shared budget; retain the shared protection aura',
   wa_fiend_resilience:
@@ -4281,7 +4650,7 @@ const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
 
 /** Share authored tuning between live replay and Forge offer previews. */
 function applyAuthoredHoned(subSkillId: string, ab: PlayerAbilityDef): boolean {
-  const profile = MARTIAL_HONED[subSkillId] ?? NATURE_HONED[subSkillId];
+  const profile = MARTIAL_HONED[subSkillId] ?? NATURE_HONED[subSkillId] ?? CASTER_HONED[subSkillId];
   if (!profile) return false;
   // getSubSkill is Forge-resolved; profiles require the authored delivery AND payload shape.
   const native = subclassOfSkill(subSkillId)!.skills.find((s) => s.id === subSkillId)!.ability;
@@ -4313,6 +4682,23 @@ function applyAuthoredHoned(subSkillId: string, ab: PlayerAbilityDef): boolean {
     ] as const
   ).filter((field) => native[field] != null);
   const nativeForce = native.knockback != null || native.pull != null;
+  const casterHooks = (
+    [
+      'absorption',
+      'zoneTickHeal',
+      'prepareSurge',
+      'consumesSurge',
+      'surgeTwin',
+      'swap',
+      'grantsFlight',
+      'slowMult',
+      'slowDuration',
+      'controlDamageBonus',
+      'roots',
+      'airborne',
+      'projCount',
+    ] as const
+  ).filter((field) => CASTER_HONED[subSkillId] && native[field] != null);
   // Nature profiles also depend on these native hooks. A changed same-kind Forge
   // payload must not acquire a phantom field merely by retaining the original ID.
   const natureHooks = (
@@ -4322,6 +4708,8 @@ function applyAuthoredHoned(subSkillId: string, ab: PlayerAbilityDef): boolean {
     ab.kind !== native.kind ||
     !nativeHooks.every((field) => ab[field] != null) ||
     !natureHooks.every((field) => ab[field] != null) ||
+    !casterHooks.every((field) => ab[field] != null && ab[field] !== false && ab[field] !== 0) ||
+    (!!CASTER_HONED[subSkillId] && native.damage > 0 && ab.damage <= 0) ||
     (nativeForce && ab.knockback == null && ab.pull == null)
   )
     return false;
@@ -4371,7 +4759,7 @@ function simpleHonedText(subSkillId: string): string {
 
 /** Per-subclass-skill upgrade builder — tied to one sub skill id (non-grand, cap 5). */
 function us(subSkillId: string, classId: ClassId, name: string, icon: string): CharUpgradeDef {
-  const profile = MARTIAL_HONED[subSkillId] ?? NATURE_HONED[subSkillId];
+  const profile = MARTIAL_HONED[subSkillId] ?? NATURE_HONED[subSkillId] ?? CASTER_HONED[subSkillId];
   return {
     id: `subup_${subSkillId}`,
     classId,
@@ -5551,7 +5939,8 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
   if (base.subSkillId) {
     const fused = getSubSkill(base.subSkillId);
     if (!fused) return base;
-    const natureRecipe = base.grand && NATURE_HONED[base.subSkillId];
+    const natureRecipe =
+      base.grand && (NATURE_HONED[base.subSkillId] || CASTER_HONED[base.subSkillId]);
     const native = natureRecipe
       ? subclassOfSkill(base.subSkillId)!.skills.find((skill) => skill.id === base.subSkillId)!
           .ability
@@ -5560,7 +5949,8 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       native &&
       (fused.ability.kind !== native.kind ||
         (['rg_beast_snare', 'dr_land_wall'].includes(base.subSkillId) &&
-          !fused.ability.zoneTickDamage));
+          !fused.ability.zoneTickDamage) ||
+        (!!CASTER_HONED[base.subSkillId] && !casterRecipeMatches(base.subSkillId, fused.ability)));
     return {
       ...base,
       name: blend(fused.name),
