@@ -1,11 +1,10 @@
 # Upgrade identity: audit and staged redesign
 
-Current delivery: [Ranger/Druid authored upgrades and grands](NATURE_GRANDS.md).
-The owner merged and live-tested the martial cohort. Seven of twelve classes now
-have authored four-grand builds. Next: Mage/Sorcerer, Cleric/Paladin/Bard, then a
-whole-system review. This cohort also makes fixed direct absorption track
-recipient health growth while preserving shared caps and avoiding double scaling.
-Apply the [combined-build review gate](UPGRADE_REVIEW_GATE.md) throughout.
+Current delivery: [Mage/Sorcerer authored upgrades and grands](CASTER_GRANDS.md).
+The owner merged and live-tested Ranger/Druid. Nine of twelve classes now have
+authored four-grand builds. Next: Cleric/Paladin/Bard, then the whole-system review
+of balance, acquisition, graft alternatives and compatibility. Apply the
+[combined-build review gate](UPGRADE_REVIEW_GATE.md) throughout.
 
 The merged grand-selection framework retains per-class earned banks and explicit
 between-fight swaps: two starting-skill slots, one bound subclass skill and one

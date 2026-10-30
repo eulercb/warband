@@ -107,9 +107,9 @@ it('HUD and pause previews match the host after activating another class’s gra
   const { World } = await import('../src/engine/world/world');
   const { normalizeGrandLoadout } = await import('../src/engine/content/grandSelections');
   const { describeAbility } = await import('../src/engine/content/classes');
-  const history = ['kn_grand_immovable', 'mg_grand_archmage'];
+  const history = ['kn_grand_immovable', 'pa_grand_aegis'];
   const state = normalizeGrandLoadout(undefined, {
-    classes: ['knight', 'mage'],
+    classes: ['knight', 'paladin'],
     history,
     subSkills: [],
   });
@@ -121,7 +121,7 @@ it('HUD and pause previews match the host after activating another class’s gra
         peerId: 'a',
         name: 'A',
         classId: 'knight',
-        extraClasses: ['mage'],
+        extraClasses: ['paladin'],
         charUpgrades: history,
         grandLoadout: state,
         upgrades: ['haste'],
@@ -129,7 +129,7 @@ it('HUD and pause previews match the host after activating another class’s gra
     ],
   });
   const p = w.players[0];
-  w.setActiveClass(p, 'mage');
+  w.setActiveClass(p, 'paladin');
   useStore.setState({
     localClass: 'knight',
     myCharUpgrades: history,
@@ -138,8 +138,8 @@ it('HUD and pause previews match the host after activating another class’s gra
     mySubSkills: [],
   });
   useHudStore.setState({
-    classId: 'mage',
-    classes: ['knight', 'mage'],
+    classId: 'paladin',
+    classes: ['knight', 'paladin'],
     subSkills: [],
     hp: p.hp,
     maxHp: p.maxHp,
@@ -156,10 +156,12 @@ it('HUD and pause previews match the host after activating another class’s gra
     cooldownMult: p.cooldownMult,
     castMult: p.castMult,
   });
-  const fireball = [...container.querySelectorAll('.hud-ability')].find(
-    (tile) => tile.querySelector('.hud-ability-name')?.textContent === 'Fireball',
+  const tile = [...container.querySelectorAll('.hud-ability')].find(
+    (element) => element.querySelector('.hud-ability-name')?.textContent === p.abilities!.a1.name,
   )!;
-  expect(fireball.getAttribute('title')).toContain(expected);
-  expect(screen.getByRole('listitem', { name: `Fireball: ${expected}` })).toBeTruthy();
-  expect(container.querySelector('.wb-pause-stat-grid')?.textContent).toContain('+30%');
+  expect(tile.getAttribute('title')).toContain(expected);
+  expect(
+    screen.getByRole('listitem', { name: `${p.abilities!.a1.name}: ${expected}` }),
+  ).toBeTruthy();
+  expect(container.querySelector('.wb-pause-stat-grid')?.textContent).toContain('-20%');
 });

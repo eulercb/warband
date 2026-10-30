@@ -1,6 +1,6 @@
 # Rogue and Warlock: authored four-grand builds
 
-Current delivery: [Ranger/Druid authored builds](NATURE_GRANDS.md).
+Current delivery: [Mage/Sorcerer authored builds](CASTER_GRANDS.md).
 Rogue/Warlock and [their coherence follow-up](PILOT_COHERENCE_FOLLOWUP.md) are
 merged/live-tested, as is the martial cohort. The owner also accepted the Claim opportunity marker.
 Mechanics below describe the initial pilot; the coherence follow-up records its

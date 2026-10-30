@@ -1370,6 +1370,12 @@ export class World {
     if (hasBuff(p, 'silence') && slot !== 'basic') return; // silenced: only the basic works
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
     if (
+      (original.kind === 'dash' || original.kind === 'blink') &&
+      isRooted(p) &&
+      !original.steadfastDuration
+    )
+      return;
+    if (
       original.infernalClaim &&
       !findInfernalClaimTarget(this, p, boundedAbility(original, this.arena))
     )

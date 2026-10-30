@@ -115,14 +115,23 @@ it.each(ids)(
     applySubSkillUpgrades(p, [`subup_${id}`]);
     expect(skill.cooldown).toBeLessThan(before.cooldown);
     if (skill.absorption) {
-      expect(skill.absorption.amount).toBeGreaterThan(before.absorption!.amount);
+      if (id === 'mg_abjurer_ward' || id === 'so_draconic_scales') {
+        expect(skill.absorption.duration).toBeGreaterThan(before.absorption!.duration);
+        expect(skill.absorption.amount).toBe(before.absorption!.amount);
+      } else expect(skill.absorption.amount).toBeGreaterThan(before.absorption!.amount);
       expect(skill.absorption.target).toBe('self');
       expect(describeAbility(skill)).toContain('yourself');
     }
-    if (skill.kind === 'meleeCone') expect(skill.range).toBe(Math.round(before.range! * 1.08));
+    if (id === 'mg_evoker_shield') {
+      expect(skill.knockback).toBe(before.knockback! + 6);
+      expect(skill.range).toBe(before.range);
+    }
     const copy = recompose(refreshComponents(recompose(decompose(skill), skill)), skill);
     expect(copy.absorption).toEqual(skill.absorption);
-    expect(copy.prepareSurge).toBe(skill.prepareSurge);
+    // Forge component durations are quantized to tenths of a second.
+    expect(copy.prepareSurge).toBe(
+      skill.prepareSurge == null ? undefined : Math.round(skill.prepareSurge * 10) / 10,
+    );
     expect(copy.consumesSurge).toBe(skill.consumesSurge);
     expect(describeComposed(decompose(copy), copy.cooldown)).toBeTruthy();
     for (let seed = 0; seed < 20; seed++)

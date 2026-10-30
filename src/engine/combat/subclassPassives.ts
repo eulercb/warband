@@ -266,11 +266,13 @@ export function onSubclassDirectHit(
 export function onSubclassSurge(p: Player): void {
   const id = 'draconic_surge_ascent';
   if (p.subclassPassiveId !== id || !offCooldown(p, id)) return;
+  const dragon = p.charUpgradeIds?.includes('so_draconic_g_a');
   const flight = p.buffs
     .filter((b) => b.kind === 'flight' && b.remaining > 0)
     .sort((a, b) => b.remaining - a.remaining)[0];
-  if (flight) flight.remaining = Math.max(flight.remaining, Math.min(9, flight.remaining + 1));
-  else putBuff(p, { kind: 'flight', mult: 0, remaining: 2, source: PREFIX + id });
+  if (flight)
+    flight.remaining = Math.max(flight.remaining, Math.min(9, flight.remaining + (dragon ? 2 : 1)));
+  else putBuff(p, { kind: 'flight', mult: 0, remaining: dragon ? 4 : 2, source: PREFIX + id });
   spendCooldown(p, id);
 }
 
