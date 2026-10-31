@@ -1,5 +1,11 @@
 # Cleric, Paladin and Bard: authored upgrade builds
 
+Mantle follow-up: [Whisper Refrain](WHISPER_REFRAIN.md) supersedes the Mantle
+row and its compatibility notes below. Mantle now spends a chorus on a departure
+afterimage; its grand adds one echo charge instead of healing/resistance. Its
+Honed ranks also improve echo damage. Whispers identity packages are retained
+pending the purpose-based [identity review](IDENTITY_REVIEW_PLAN.md).
+
 This completes the authored catalogue for **12/12 classes**. Each of these three
 classes has four canonical starting-skill grands, eight individual subclass-skill
 grands, four identities and eight authored Honed profiles. The loadout stays four

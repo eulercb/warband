@@ -179,6 +179,8 @@ export interface PlayerAbilityDef {
   balanceZoneDamageScale?: number;
   /** Two timed verses empower a subsequent group rally; basics never contribute. */
   bardSong?: 'harmony' | 'discord' | 'chorus';
+  /** A two-verse blink leaves a stationary, finite direct-cast echo afterimage. */
+  whisperRefrain?: { duration: number; radius: number; fraction: number; charges: number };
   /** Extra damage against currently slowed, rooted or stunned enemies. */
   controlDamageBonus?: number;
   /** Seconds of one-use spell surge granted by a utility ability. */
@@ -1224,7 +1226,7 @@ export function describeAbility(
   }
   if (def.zoneAllyDefMult)
     parts.push(`allies inside take ${n((1 - def.zoneAllyDefMult) * 100)}% less damage`);
-  if (def.bardSong) parts.push(bardSongText(def.bardSong));
+  if (def.bardSong && !def.whisperRefrain) parts.push(bardSongText(def.bardSong));
 
   if (def.parryOnHit)
     parts.push(
@@ -1343,6 +1345,12 @@ export function describeAbility(
       `Fortune ${s(f.duration)} — next damaging direct hit delays enemy wind-ups ${n((f.castSlowMult - 1) * 100)}% and weakens their damage ${n((1 - f.damageMult) * 100)}% for ${s(f.debuffDuration)}${f.markBonus ? `; marks that foe for your next direct hit from a later cast +${n(f.markBonus * 100)}% damage within 5s` : ''}`,
     );
   }
+  if (def.whisperRefrain) {
+    const r = def.whisperRefrain;
+    parts.push(
+      `spend Harmony + Discord to leave an afterimage for ${s(r.duration)}; next ${n(r.charges)} direct casts echo ${n(r.fraction * 100)}% damage against a foe within ${n(r.radius)}u of your departure`,
+    );
+  }
   if (def.prepareCrit) parts.push(`prepare next precision crit for ${s(def.prepareCrit)}`);
   if (def.precisionOnHit)
     parts.push(`positive hit prepares precision for ${s(def.precisionOnHit)}`);
@@ -1388,7 +1396,7 @@ export function describeAbility(
     );
   if (def.crossingGuard)
     parts.push(
-      `first living ally crossed within ${n(def.crossingGuard.width)}u is cleansed and gains one frontal block for ${s(def.crossingGuard.duration)}; stronger guards preserved`,
+      `first living ally crossed within ${n(def.crossingGuard.width)}u is cleansed and gains one frontal block for ${s(def.crossingGuard.duration)}`,
     );
   if (def.warCry)
     parts.push(

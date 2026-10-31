@@ -245,6 +245,7 @@ export function applyBuff(entity: { buffs: Buff[] }, buff: Buff, controlAdjusted
     existing.remaining = buff.remaining;
     existing.retaliation = buff.retaliation;
     existing.closeBurst = buff.closeBurst;
+    existing.whisperRefrainState = buff.whisperRefrainState;
     existing.blockCounter = buff.blockCounter;
     existing.coating = buff.coating;
     existing.venom = buff.venom;

@@ -1,5 +1,6 @@
 import { boundedAbility } from '../content/abilityLimits';
 import { armFortune } from './sorcererLuck';
+import { armWhisperRefrain } from './whisperRefrain';
 import { armRetouchEffects } from './skillRetouches';
 import { onMoonAbility } from './moonForm';
 import { dimensionDoor } from './dimensionDoor';
@@ -399,13 +400,8 @@ export function resolvePlayerAbility(
   const ab = limited && {
     ...limited,
     ...(limited.preparedRefund ? { refundCast: { spent: false } } : {}),
-    ...((limited.damage > 0 && ['projectile', 'pbaoe', 'meleeCone'].includes(limited.kind)) ||
-    limited.precisionOnHit ||
-    limited.preparedInvulnOnHit ||
-    limited.echoFraction ||
-    limited.markOnPreparedHit
-      ? { pilotCast: { spent: false } }
-      : {}),
+    // Every delivery owns a distinct token, including composed landing strikes.
+    pilotCast: { spent: false },
   };
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
   if (ab.infernalClaim && !findInfernalClaimTarget(world, p, ab)) return;
@@ -611,6 +607,7 @@ export function resolvePlayerAbility(
       if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
       mobilitySpeed(world, p, ab);
       world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
+      armWhisperRefrain(world, p, ab, slot, from);
       break;
     }
 
@@ -1079,6 +1076,7 @@ function resolveComposedAbility(
         prepareMartialFlow(p, ab);
         if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
         world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
+        armWhisperRefrain(world, p, ab, ab.slot, from);
       } else {
         let dir = moveDir;
         if (dir.x === 0 && dir.y === 0) dir = p.aim;

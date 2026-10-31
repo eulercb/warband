@@ -138,6 +138,11 @@ export function boundedAbility<T extends Omit<PlayerAbilityDef, 'slot'>>(
       radius: Math.min(out.closeBurst.radius, short * 0.24),
       range: Math.min(out.closeBurst.range, short * 0.2),
     };
+  if (out.whisperRefrain)
+    out.whisperRefrain = {
+      ...out.whisperRefrain,
+      radius: Math.min(out.whisperRefrain.radius, short * 0.24),
+    };
   if (out.components)
     out.components = {
       ...out.components,
@@ -169,11 +174,13 @@ export function boundedAbility<T extends Omit<PlayerAbilityDef, 'slot'>>(
                     ? { ...e, aura: { ...out.paladinAura } }
                     : e.kind === 'warCry' && out.warCry
                       ? { ...e, cry: { ...out.warCry } }
-                      : e.kind === 'closeBurst' && out.closeBurst
-                        ? { ...e, burst: { ...out.closeBurst } }
-                        : e.kind === 'recovery' && out.recoveryZone
-                          ? { ...e, grove: { ...out.recoveryZone } }
-                          : e,
+                      : e.kind === 'whisperRefrain' && out.whisperRefrain
+                        ? { ...e, refrain: { ...out.whisperRefrain } }
+                        : e.kind === 'closeBurst' && out.closeBurst
+                          ? { ...e, burst: { ...out.closeBurst } }
+                          : e.kind === 'recovery' && out.recoveryZone
+                            ? { ...e, grove: { ...out.recoveryZone } }
+                            : e,
       ),
     };
   return out;

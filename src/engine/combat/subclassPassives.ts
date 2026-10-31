@@ -22,6 +22,9 @@ function putBuff(p: { buffs: Buff[] }, buff: Buff): void {
 /** Active effects expire on a class change; proc cooldowns are never reset by swaps. */
 export function setSubclassPassive(p: Player, id: string | undefined): void {
   p.buffs = p.buffs.filter(
+    (b) => b.kind !== 'whisperRefrain' || b.source === `whisperRefrain:${p.classId}`,
+  );
+  p.buffs = p.buffs.filter(
     (b) => b.kind !== 'fortune' || b.source === `subclass:fortune:${p.classId}`,
   );
   if (p.subclassPassiveId === id) return;

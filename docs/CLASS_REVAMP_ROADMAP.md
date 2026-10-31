@@ -1,13 +1,18 @@
 # Class identity and subclass roadmap
 
-Current delivery: [Cleric/Paladin/Bard authored upgrades and grands](SUPPORT_GRANDS.md).
-The owner accepted the Sorcerer/readability follow-up. All **12/12 classes** now
-have authored starting, subclass-skill and identity grands plus role-specific
-Honed profiles. Owner live testing is the acceptance gate for this final cohort.
-Next is the whole-system review of balance, acquisition flow, ordinary upgrades,
-graft alternatives and compatibility, using the complete catalogue rather than
-adding another class cohort. Preserve the shared recharge/geometry limits and
-recipient-health barrier scaling. Use the [combined-build review gate](UPGRADE_REVIEW_GATE.md).
+Next checkpoint: the owner accepted all 12 authored class cohorts. Before broad
+balance, acquisition, ordinary-upgrade and graft tuning, apply the
+[identity-purpose review](IDENTITY_REVIEW_PLAN.md): calibrate Whispers, Evoker
+and Moon, then cover the remaining subclass pairs in four-class cohorts. Judge
+actual decisions and coherent loops, not offense/defense labels or buff counts.
+This delivery implements the bounded Mantle/copy follow-up; it does not silently
+approve a rewrite of all 48 identities. Later changes need concrete review sheets.
+
+Current bounded follow-up: [Whisper Refrain](WHISPER_REFRAIN.md) and description
+editorial checks. All **12/12 classes** have authored starting, subclass-skill
+and identity grands plus role-specific Honed profiles, accepted in owner testing.
+Preserve shared recharge/geometry limits and recipient-health barrier scaling.
+Use the [combined-build review gate](UPGRADE_REVIEW_GATE.md).
 
 The original class/passive stages below are historical. Current upgrade work and
 milestones are tracked in [the upgrade roadmap](UPGRADE_IDENTITY_ROADMAP.md).

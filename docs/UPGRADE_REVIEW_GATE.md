@@ -54,3 +54,25 @@ Record rejected overlaps and remaining uncertainties in the delivery note. Passi
 checks prove specific contracts, not fun or equal class balance. Owner live testing
 is the next review gate. Audit broader related skills rather than limiting the
 review to examples named in feedback; defer ambiguous fantasy choices explicitly.
+
+## Editorial delivery gate
+
+Offers state what changes, its material condition, recipient and trade-off.
+Do not append unchanged-effect reassurance (“still reaches flyers”, “bonus
+remains”), generic shared-budget reminders, or internal tuning vocabulary such
+as “power and footprint”. Use % and actual damage, area, count or duration.
+Keep distinctions such as ground-only targeting, directional blocks, exclusive
+resources and split damage when needed to make the choice accurately.
+
+`tests/description-editorial.test.ts` checks authored upgrades, passives,
+starting skills, subclass skills and generated Forge descriptions against known
+regressions. Extend its narrow patterns when a recurring copy problem is found;
+do not globally strip words at runtime or hide a real mechanic to satisfy it.
+General recharge, geometry, barrier and grand rules belong in the expandable
+Combat & upgrade rules reference. The text check cannot assess meaning: review
+resolved values, changed recipients and collapsed/expanded 320px cards too.
+For every changed label search all tests and scripts before delivery.
+
+Identity review now also uses [the purpose rubric](IDENTITY_REVIEW_PLAN.md).
+Record a distinct action loop for each route and explain why each rider belongs;
+an offensive package and a defensive package alone do not pass this review.

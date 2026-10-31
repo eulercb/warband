@@ -53,7 +53,10 @@ try {
         const context = {
           classes: [classId],
           history: [],
-          subSkills: sub.skills.slice(0, 2).map((s) => s.id),
+          subSkills:
+            subclassId === 'ba_whispers'
+              ? ['ba_whispers_mantle', 'ba_whispers_song']
+              : sub.skills.slice(0, 2).map((s) => s.id),
         };
         window.__pilotContext = context;
         const root = createRoot(document.getElementById('root'));

@@ -43,7 +43,8 @@
     "smoke:martial-grands": "node scripts/smoke-martial-grands.mjs",
     "smoke:nature-grands": "node scripts/smoke-nature-grands.mjs",
     "smoke:caster-grands": "node scripts/smoke-caster-grands.mjs",
-    "smoke:support-grands": "node scripts/smoke-support-grands.mjs"
+    "smoke:support-grands": "node scripts/smoke-support-grands.mjs",
+    "smoke:whisper-refrain": "node scripts/smoke-whisper-refrain.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",
