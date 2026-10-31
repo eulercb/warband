@@ -32,3 +32,10 @@ where appropriate. Never select GPT-6 Sol (Sol 6); avoid GPT-6 Astra because of
 cost. Present a short checkpoint only for unresolved material gameplay choices.
 When the review supports a coherent plan and remaining choices are routine, the
 owner authorizes proceeding to implementation, validation and a reviewable result.
+
+After pushing a fix, stop once local verification is complete and only GitHub
+checks remain. Do not poll/watch CI or hold the conversation open unless the
+owner explicitly requests monitoring. The existing GitHub CI-completion action
+reports whether to merge or return for help. Inspect failed checks when asked.
+Browser smoke cohorts/selectors should use stable IDs and derive display labels
+from the game registry; do not duplicate renamed skill/passive names in CI.

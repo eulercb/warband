@@ -51,6 +51,9 @@ jobs:
       - name: CI completion automation contracts
         run: node scripts/ci-completion.test.mjs
 
+      - name: Passive smoke roster contracts
+        run: node scripts/passive-smoke-cases.test.mjs
+
       - name: Upgrade inventory replay
         run: node scripts/audit-upgrade-catalogue.mjs --check
 
@@ -172,13 +175,9 @@ jobs:
       matrix:
         include:
           - cohort: pilot
-            names: "Death's Opening,Spellblade,Soul Ember,Dread Insight"
           - cohort: casters
-            names: 'Arcane Cadence,Binding Ward,Surge Ascent,Spell Weave,Rallying Chorus,Private Nightmare'
           - cohort: support
-            names: 'Victorious Reprise,Tactical Opening,Refulgence,Abundance,Oath Anchor,Relentless Procession'
           - cohort: final
-            names: 'Rampage,Spirit Shelter,Flowguard,Shadow Rhythm,Exposed Quarry,Living Paths,Pack Bond,Moon Aspect'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -191,7 +190,7 @@ jobs:
       - name: Passive keyboard and touch loadouts
         timeout-minutes: 12
         env:
-          SMOKE_PASSIVE_NAMES: ${{ matrix.names }}
+          SMOKE_PASSIVE_COHORT: ${{ matrix.cohort }}
         run: |
           export SHOT_DIR="$RUNNER_TEMP/passive-shots"
           mkdir -p "$SHOT_DIR"
