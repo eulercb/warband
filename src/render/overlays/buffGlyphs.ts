@@ -177,7 +177,23 @@ function describe(
         glyph: '🌀',
         color: 0xc06cff,
         good: true,
-        label: `Spell Weave: ${mult}/3 basic casts; three prepare Surge; build only without Surge and when its 8s trigger cooldown is ready`,
+        label:
+          'Spell Weave: next positive direct hit returns 2s to your last Surge-preparation utility, or gives 20% movement for 2s during protected recovery',
+      };
+    case 'fortune':
+      return {
+        glyph: '🍀',
+        color: 0x8eff9b,
+        good: true,
+        label:
+          'Fortune: next positive direct hit delays enemy wind-ups and weakens their damage; misses and ticks preserve it',
+      };
+    case 'luckExposure':
+      return {
+        glyph: '🎲',
+        color: 0x8eff9b,
+        good: false,
+        label: `Loaded Fate: the owner’s next direct hit from a different cast deals +${Math.round((mult - 1) * 100)}% damage`,
       };
     case 'rescueStrike':
       return {

@@ -208,7 +208,9 @@ export type BuffKind =
   | 'moonForm' // temporary Moon bear shape; abilities and health remain intact
   | 'packBond' // next successful spirit bite shields the dedicated heal recipient
   | 'rampage' // Berserker: next basic cast; mult = Momentum spent
-  | 'wildWeave' // mult is basic-cast progress toward a Surge
+  | 'wildWeave' // next positive direct hit recycles the recorded preparation utility
+  | 'fortune' // deterministic next-hit luck, payload host-only
+  | 'luckExposure' // owner-only later-cast vulnerability
   | 'rescueStrike' // next connecting direct hit, granted by a successful rescue
   | 'radiantCharge' // Light: next direct hit empowered and slows wind-ups
   | 'refrainEcho' // one dedicated heal echo
@@ -234,6 +236,13 @@ export interface Buff {
   flowExtended?: number;
   /** Host-only originating cast token for one-hit grand exposure. */
   openingCast?: { spent: boolean };
+  weaveSlot?: ExtSlot;
+  fortune?: {
+    castSlowMult: number;
+    damageMult: number;
+    debuffDuration: number;
+    markBonus?: number;
+  };
   retaliation?: {
     radius: number;
     lifesteal: number;

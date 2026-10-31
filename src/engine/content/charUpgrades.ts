@@ -358,7 +358,7 @@ const MAGE: CharUpgradeDef[] = [
     'mg_quickcast',
     'Quickened Casting',
     '⚡',
-    'Fireball charges in 0.42s (−40%) and retains its deliberate recharge (~6s)',
+    'Fireball charges in 0.42s (−40%)',
     ({ abilities: a }) => {
       mul(a.a1, 'castTime', 0.6);
       mul(a.a1, 'cooldown', 0.85);
@@ -392,7 +392,7 @@ const MAGE: CharUpgradeDef[] = [
     'mg_blink',
     'Flicker',
     '🌀',
-    'Blink jumps 320u (+70), retains deliberate recharge and phases you for 0.45s',
+    'Blink jumps 320u (+70) and phases you for 0.45s',
     ({ abilities: a }) => {
       addN(a.a3, 'range', 70);
       mul(a.a3, 'cooldown', 0.7);
@@ -407,7 +407,7 @@ const CLERIC: CharUpgradeDef[] = [
     'cl_greaterheal',
     'Greater Heal',
     '💚',
-    'Heal restores 138 HP (+38) from 450u (+50); critical rescue bonus grows by 5 percentage points',
+    'Heal restores 138 HP (+38) from 450u (+50); critical rescue bonus gains +5%',
     ({ abilities: a }) => {
       addN(a.a1, 'damage', 38);
       addN(a.a1, 'range', 50);
@@ -469,7 +469,7 @@ const BARBARIAN: CharUpgradeDef[] = [
     'bb_endlessrage',
     'Endless Rage',
     '😤',
-    'Rage gains 15 percentage points of damage, 10 points of movement speed, and bounded 8% recharge improvement',
+    'Rage gains +15% damage, +10% movement speed, and 8% faster recharge',
     ({ abilities: a }) => {
       addN(a.a1, 'buffDamageMult', 0.15);
       addN(a.a1, 'buffMoveMult', 0.1);
@@ -491,7 +491,7 @@ const BARBARIAN: CharUpgradeDef[] = [
     'bb_seismic',
     'Seismic Leap',
     '💥',
-    'Leap gains +24 landing damage, +30u blast radius and bounded 8% recharge improvement',
+    'Leap gains +24 landing damage, +30u blast radius and 8% faster recharge',
     ({ abilities: a }) => {
       addN(a.a2, 'landingDamage', 24);
       addN(a.a2, 'radius', 30);
@@ -630,7 +630,7 @@ const PALADIN: CharUpgradeDef[] = [
     'pa_mercy',
     'Merciful Hands',
     '💛',
-    'Lay on Hands restores 122 HP (+32) and retains its deliberate recharge',
+    'Lay on Hands restores 122 HP (+32)',
     ({ abilities: a }) => {
       addN(a.a2, 'damage', 32);
       mul(a.a2, 'cooldown', 0.85);
@@ -679,7 +679,7 @@ const DRUID: CharUpgradeDef[] = [
     'dr_regrowth',
     'Wild Growth',
     '💚',
-    'Regrowth heals 81 HP (+26) from 430u (+50), retains its deliberate recharge; recovery grove heals 1 more per tick',
+    'Regrowth heals 81 HP (+26) from 430u (+50); recovery grove heals 1 more per tick',
     ({ abilities: a }) => {
       addN(a.a2, 'damage', 26);
       addN(a.a2, 'range', 50);
@@ -756,7 +756,7 @@ const BARD: CharUpgradeDef[] = [
     'ba_song',
     'Song of Rest',
     '🎶',
-    'Healing Word restores 74 HP (+24) and retains its deliberate recharge',
+    'Healing Word restores 74 HP (+24)',
     ({ abilities: a }) => {
       addN(a.a2, 'damage', 24);
       mul(a.a2, 'cooldown', 0.85);
@@ -816,7 +816,7 @@ const MONK: CharUpgradeDef[] = [
     'mo_wind',
     'Wind Walker',
     '🍃',
-    'Step of the Wind gains +50u travel, +20 healing and 0.5s Flow preparation, with bounded 8% recharge improvement',
+    'Step of the Wind gains +50u travel, +20 healing and 0.5s Flow preparation, with 8% faster recharge',
     ({ abilities: a }) => {
       mul(a.a2, 'cooldown', 0.92);
       addN(a.a2, 'range', 50);
@@ -895,7 +895,7 @@ const SORCERER: CharUpgradeDef[] = [
     'so_leap',
     'Distant Leap',
     '🌀',
-    'Arcane Phase blinks 330u (+70), retains deliberate recharge, and phases you for 0.45s',
+    'Arcane Phase blinks 330u (+70) and phases you for 0.45s',
     ({ abilities: a }) => {
       addN(a.a3, 'range', 70);
       mul(a.a3, 'cooldown', 0.7);
@@ -1468,7 +1468,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'kn_gk_a2_a',
     'Aegis Eternal',
     '✨',
-    'Shield Wall grants you and other allies within 180u 20% mitigation for 4s; existing frontal blocks remain',
+    'Shield Wall grants you and other allies within 180u 20% mitigation for 4s',
     (ab) => {
       ab.allyWard = { range: 180, mult: 0.8, duration: 4 };
       setMin(ab, 'buffDefMult', 0.8);
@@ -1513,7 +1513,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'rg_gk_a1_b',
     'Frostvolley',
     '❄️',
-    'Multishot freezes struck foes for 0.6s and gains +8 damage per arrow; ordinary fan growth remains',
+    'Multishot freezes struck foes for 0.6s and gains +8 damage per arrow',
     natureGrand('projectile', (ab) => {
       addN(ab, 'damage', 8);
       addN(ab, 'freeze', 0.6);
@@ -1937,7 +1937,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'dr_gk_a1_b',
     'Ancient Grove',
     '🍃',
-    'Allies standing inside Entangle take 15% less damage and move 20% faster; its ground roots, damage and healing remain',
+    'Allies standing inside Entangle take 15% less damage and move 20% faster',
     natureGrand('groundZone', (ab) => {
       ab.zoneAllyDefMult = Math.min(ab.zoneAllyDefMult ?? 1, 0.85);
       ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.2);
@@ -1949,7 +1949,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'dr_gk_a2_a',
     'Wild Bloom',
     '💚',
-    'Regrowth grants its selected recipient 35 absorption for 4s, even at full health; protection scales with recipient max-HP growth and the recovery grove remains',
+    'Regrowth grants its selected recipient 35 absorption for 4s, even at full health; protection scales with recipient max-HP growth',
     natureGrand('heal', (ab) => {
       ab.absorption = { amount: (ab.absorption?.amount ?? 0) + 35, duration: 4, target: 'weakest' };
     }),
@@ -2110,7 +2110,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'mo_gk_a2_a',
     'Gale Walker',
     '🍃',
-    'Step of the Wind grants 35% movement for 3s and 2s resistance to hard control; Flow preparation remains',
+    'Step of the Wind grants 35% movement for 3s and 2s resistance to hard control',
     (ab) => {
       ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.35);
       ab.buffDuration = Math.max(ab.buffDuration ?? 0, 3);
@@ -2139,7 +2139,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'so_gk_basic_b',
     'Chaos Lance',
     '💠',
-    'Chaos Bolt pierces two additional foes, gains +8 damage per bolt and +250 projectile speed; its fan remains',
+    'Chaos Bolt pierces two additional foes, gains +8 damage per bolt and +250 projectile speed',
     casterGrand(
       'projectile',
       (ab) => {
@@ -2157,7 +2157,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'so_gk_a1_a',
     'Extinction',
     '☄️',
-    'Meteor gains +30 damage and +40u blast radius and freezes struck foes for 0.8s; surge still shares its twin damage budget',
+    'Meteor gains +30 damage and +40u blast radius and freezes struck foes for 0.8s',
     casterGrand(
       'projectile',
       (ab) => {
@@ -2272,6 +2272,15 @@ function scaleField(ab: PlayerAbilityDef, k: keyof PlayerAbilityDef, frac: numbe
  * i-frames, so even a magnitude-less mobility skill transforms measurably.
  */
 function amplify(ab: PlayerAbilityDef, mag: number, size: number): void {
+  if (ab.fortune)
+    ab.fortune = {
+      ...ab.fortune,
+      duration: Math.max(ab.fortune.duration, Math.min(8, ab.fortune.duration * (1 + size))),
+      debuffDuration: Math.max(
+        ab.fortune.debuffDuration,
+        Math.min(4, ab.fortune.debuffDuration * (1 + size)),
+      ),
+    };
   if (ab.relayHeal)
     ab.relayHeal = { ...ab.relayHeal, radius: Math.round(ab.relayHeal.radius * (1 + size)) };
   if (ab.rescueStrike)
@@ -2581,7 +2590,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'rg_hunter_g_b',
     'Relentless Hunt',
     '🐾',
-    'Roll grants +25% movement for 4s and 2s hard-control resistance; direct Hunter strikes slow enemy wind-ups by 30% for 3s, while allied field speed improves by 5 percentage points',
+    'Roll grants +25% movement for 4s and 2s hard-control resistance; direct Hunter strikes slow enemy wind-ups by 30% for 3s, while allied field speed gains +5%',
     (a) => {
       if (a.a3.kind === 'dash' || a.a3.kind === 'blink') {
         a.a3.buffMoveMult = Math.max(a.a3.buffMoveMult ?? 1, 1.25);
@@ -3158,7 +3167,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'so_draconic_g_a',
     'True Dragon',
     '🐉',
-    'Spending surge grants 4s flight, or extends existing flight by 2s up to 9s, at the same 6s gate. Mirror Image gains 10 movement percentage points; direct Draconic spells gain 10% damage and Wings gain 10 movement points',
+    'Surge Ascent grants 4s flight and a 4s shield for 15% max HP (minimum 30); existing flight gains 2s, up to 9s. Mirror Image and Wings gain +10% speed; Draconic strikes deal 10% more damage',
     (a) => casterGrand('selfBuff', (ab) => addN(ab, 'buffMoveMult', 0.1), ['buffMoveMult'])(a.a2),
     (ab) => {
       if (isStrike(ab) && ab.damage > 0) mul(ab, 'damage', 1.1);
@@ -3191,7 +3200,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'so_wild_g_a',
     'Unbound Chaos',
     '🎲',
-    'Chaos Bolt can spend surge: add one bolt sharing the same +20% total damage budget. Choose basic delivery or save surge for Meteor. Damaging Wild strikes gain 15% damage; utilities gain power and footprint',
+    'Chaos Bolt can spend Surge for an extra bolt and +20% total damage. Wild strikes deal 15% more damage; Bend Luck weakens enemy damage by 25%; Wild Ward heals 20% more across a 10% wider area',
     (a) =>
       casterGrand(
         'projectile',
@@ -3204,6 +3213,8 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
       )(a.basic),
     (ab) => {
       if (isStrike(ab) && ab.damage > 0) mul(ab, 'damage', 1.15);
+      else if (ab.fortune)
+        ab.fortune = { ...ab.fortune, damageMult: Math.min(ab.fortune.damageMult, 0.75) };
       else amplify(ab, 0.2, 0.1);
     },
   ),
@@ -3212,7 +3223,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'so_wild_g_b',
     'Chaos Crossing',
     '🌀',
-    'Mirror Image gains 15 movement percentage points; Arcane Phase reaches 50u farther and grants 3s hard-control resistance. Bend Luck heals 25, Wild Ward grants allies 25% movement, and Wild strikes slow foes 25% for 2s',
+    'Mirror Image gains +15% movement speed; Arcane Phase reaches 50u farther and grants 3s hard-control resistance. Bend Luck heals 25, Wild Ward grants allies 25% movement, and Wild strikes slow foes 25% for 2s',
     (a) => {
       casterGrand('selfBuff', (ab) => addN(ab, 'buffMoveMult', 0.15), ['buffMoveMult'])(a.a2);
       casterGrand('blink', (ab) => {
@@ -3221,7 +3232,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
       })(a.a3);
     },
     (ab) => {
-      if (ab.kind === 'blink') addN(ab, 'healOnUse', 25);
+      if (ab.kind === 'blink' || ab.fortune) addN(ab, 'healOnUse', 25);
       else if (ab.kind === 'groundZone' && ab.zoneTickHeal)
         ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.25);
       else if (isStrike(ab) && ab.damage > 0) slowRider(ab, 0.75, 2);
@@ -3337,7 +3348,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mg_evoker_lightning',
     'Conducting Lance',
     '⚡',
-    'Lightning Bolt pierces three additional foes and travels 150u/s faster; its controlled-target bonus remains',
+    'Lightning Bolt pierces three additional foes and travels 150u/s faster',
     casterGrand(
       'projectile',
       (ab) => {
@@ -3352,7 +3363,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mg_evoker_cone',
     'Crystalline Edge',
     '❄️',
-    'Cone of Cold freezes struck foes for 0.9s and reaches 35u farther; its ordinary movement slow remains',
+    'Cone of Cold freezes struck foes for 0.9s and reaches 35u farther',
     casterGrand('meleeCone', (ab) => {
       addN(ab, 'freeze', 0.9);
       addN(ab, 'range', 35);
@@ -3373,7 +3384,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mg_evoker_shield',
     'Siphoning Shield',
     '🛡️',
-    'Arcane Shield gains +12 cone damage and heals you for 35% of its effective damage; the separate barrier and outward push remain',
+    'Arcane Shield gains +12 cone damage and heals you for 35% of its effective damage',
     casterGrand(
       'meleeCone',
       (ab) => {
@@ -3387,7 +3398,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mg_abjurer_ward',
     'Warding Reversal',
     '🔷',
-    'Arcane Ward pushes struck foes outward at least 160u and gains +10 burst damage; its barrier and movement slow remain',
+    'Arcane Ward pushes struck foes outward at least 160u and gains +10 burst damage',
     casterGrand(
       'pbaoe',
       (ab) => {
@@ -3430,7 +3441,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mg_abjurer_mend',
     'Rescuing Transfer',
     '💚',
-    'Life Transfer heals 15 more; effective healing from 35% HP or below readies the recipient’s next direct hit for +25% damage within 5s; its separate barrier remains',
+    'Life Transfer heals 15 more; effective healing from 35% HP or below readies the recipient’s next direct hit for +25% damage within 5s',
     casterGrand(
       'heal',
       (ab) => {
@@ -3447,7 +3458,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'so_draconic_breath',
     'Driving Breath',
     '🐉',
-    'Dragon Breath pushes struck foes at least 150u outward and gains +8 damage; it still consumes surge for its cone',
+    'Dragon Breath pushes struck foes at least 150u outward and gains +8 damage',
     casterGrand(
       'meleeCone',
       (ab) => {
@@ -3462,7 +3473,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'so_draconic_wing',
     'Sheltering Wings',
     '🪽',
-    'Dragon Wings gain 10 movement percentage points and give other living allies within 180u 20% damage mitigation for 4s; flight duration remains separate',
+    'Dragon Wings gain +10% movement speed and give other living allies within 180u 20% damage mitigation for 4s',
     casterGrand(
       'selfBuff',
       (ab) => {
@@ -3476,7 +3487,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'so_draconic_bolt',
     'Chromatic Hindrance',
     '🌈',
-    'Chromatic Bolt gains +12 damage and lengthens struck foes’ wind-ups by 40% for 3s; its shared-budget surge fork remains',
+    'Chromatic Bolt gains +12 damage and lengthens struck foes’ wind-ups by 40% for 3s',
     casterGrand(
       'projectile',
       (ab) => {
@@ -3490,7 +3501,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'so_draconic_scales',
     'Molten Reprisal',
     '🛡️',
-    'Draconic Scales gains +18 burst damage and arms one 4s retort for 40% of its damage, released by incoming damage or your next positive direct hit; its barrier remains',
+    'Draconic Scales gains +18 burst damage and arms one 4s retort for 40% of its damage, released by incoming damage or your next positive direct hit',
     casterGrand(
       'pbaoe',
       (ab) => {
@@ -3505,7 +3516,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'so_wild_surge',
     'Focused Chaos',
     '🎯',
-    'Chaos Surge concentrates its six-bolt fan to 14° and gains +150 projectile speed; surge still increases total damage rather than adding six new copies',
+    'Chaos Surge concentrates its six-bolt fan to 14° and gains +150 projectile speed',
     casterGrand(
       'projectile',
       (ab) => {
@@ -3533,23 +3544,22 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
   ),
   gsk(
     'so_wild_bend',
-    'Fortunate Crossing',
+    'Loaded Fate',
     '🍀',
-    'Bend Luck reaches 40u farther and blocks one frontal damage hit for 3s; it still prepares surge',
+    'Bend Luck’s fortunate hit marks its victim for 5s: your next direct hit from a later cast deals 20% more damage',
     casterGrand(
-      'blink',
+      'selfBuff',
       (ab) => {
-        addN(ab, 'range', 40);
-        casterGuard(ab, 1, 3);
+        ab.fortune = { ...ab.fortune!, markBonus: Math.max(ab.fortune!.markBonus ?? 0, 0.2) };
       },
-      ['prepareSurge'],
+      ['prepareSurge', 'fortune'],
     ),
   ),
   gsk(
     'so_wild_font',
     'Sheltering Chaos',
     '🛡️',
-    'Allies inside Wild Ward take 20% less damage, even at full health; its recovery, movement slow and surge preparation remain',
+    'Allies inside Wild Ward take 20% less damage, even at full health',
     casterGrand(
       'groundZone',
       (ab) => {
@@ -3592,7 +3602,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'kn_champion_riposte',
     'Reaching Reprise',
     '⚔️',
-    'Riposte reaches 25u farther and leeches 20% of its damage; its connecting parry remains',
+    'Riposte reaches 25u farther and leeches 20% of its damage',
     (ab) => {
       addN(ab, 'range', 25);
       addN(ab, 'lifestealFrac', 0.2);
@@ -3740,7 +3750,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mo_openhand_wind',
     'Sheltered Crossing',
     '🍃',
-    'Wind Step grants you 20 absorption for 4s; its crossed-ally cleanse and guard remain',
+    'Wind Step grants you 20 absorption for 4s',
     (ab) => {
       ab.absorption = { amount: 20, duration: 4, target: 'self' };
     },
@@ -3749,7 +3759,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mo_openhand_ki',
     'Whole in Spirit',
     '💚',
-    'Wholeness of Body grants 25 absorption for 4s, even at full health; Flow preparation remains',
+    'Wholeness of Body grants 25 absorption for 4s, even at full health',
     (ab) => {
       ab.absorption = { amount: 25, duration: 4, target: 'self' };
     },
@@ -3788,7 +3798,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mo_shadow_strike',
     'Unerring Ambush',
     '🥷',
-    'Shadow Strike gains 25% critical chance and +15u reach; its existing damage leech remains',
+    'Shadow Strike gains 25% critical chance and +15u reach',
     (ab) => {
       addN(ab, 'critChanceBonus', 0.25);
       addN(ab, 'range', 15);
@@ -3799,7 +3809,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'rg_hunter_hail',
     'Driving Hail',
     '🌿',
-    'Hail of Thorns pushes 180u instead of 90u, enough to overpower roots, and gains +10 damage; Honed push growth remains',
+    'Hail of Thorns pushes 180u instead of 90u, enough to overpower roots, and gains +10 damage',
     natureGrand('pbaoe', (ab) => {
       ab.knockback = Math.max(ab.knockback ?? 0, 90) + 90;
       addN(ab, 'damage', 10);
@@ -3809,7 +3819,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'rg_hunter_mark',
     'Shattering Quarry',
     '🎯',
-    'Quarry Shot bursts across 65u on impact and gains +8 damage; its two extra pierces remain',
+    'Quarry Shot bursts across 65u on impact and gains +8 damage',
     natureGrand('projectile', (ab) => {
       ab.impactRadius = Math.max(ab.impactRadius ?? 0, 65);
       addN(ab, 'damage', 8);
@@ -3819,7 +3829,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'rg_hunter_stand',
     'Sheltering Stand',
     '🛡️',
-    'Stand as One gives allies inside 20% damage mitigation; its allied movement and slowing arrows remain',
+    'Stand as One gives allies inside 20% damage mitigation',
     natureGrand('groundZone', (ab) => {
       ab.zoneAllyDefMult = Math.min(ab.zoneAllyDefMult ?? 1, 0.8);
     }),
@@ -3838,7 +3848,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'rg_beast_pounce',
     'Pack Crossing',
     '🐺',
-    'Pounce cleanses and guards the first living ally actually crossed for 3s along a 45u corridor; its landing attack remains',
+    'Pounce cleanses and guards the first living ally actually crossed for 3s along a 45u corridor',
     natureGrand('dash', (ab) => {
       ab.crossingGuard = { width: 45, duration: 3 };
     }),
@@ -3857,7 +3867,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'rg_beast_bond',
     'Rescuing Bond',
     '💚',
-    'Nature’s Bond heals 15 more; an effective rescue from 35% HP or below readies the recipient’s next direct hit for +25% damage within 5s, while the delayed wolf ward remains',
+    'Nature’s Bond heals 15 more; an effective rescue from 35% HP or below readies the recipient’s next direct hit for +25% damage within 5s',
     natureGrand('heal', (ab) => {
       addN(ab, 'damage', 15);
       ab.rescueStrike = { mult: 1.25, duration: 5 };
@@ -3887,7 +3897,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'dr_moon_pounce',
     'Unstoppable Pounce',
     '🐆',
-    'Feral Pounce grants 2s hard-control resistance and 20 absorption for 4s, scaling with max-HP growth; its landing remains',
+    'Feral Pounce grants 2s hard-control resistance and 20 absorption for 4s, scaling with max-HP growth',
     natureGrand('dash', (ab) => {
       ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 2);
       ab.absorption = { amount: (ab.absorption?.amount ?? 0) + 20, duration: 4, target: 'self' };
@@ -3906,7 +3916,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'dr_moon_regen',
     'Shared Renewal',
     '💚',
-    'Frenzied Regen heals 25 more and relays 35% of effective primary healing to one other wounded ally within 180u; its self-focused cast and recovery grove remain',
+    'Frenzied Regen heals 25 more and relays 35% of effective primary healing to one other wounded ally within 180u',
     natureGrand('heal', (ab) => {
       addN(ab, 'damage', 25);
       ab.relayHeal = { fraction: 0.35, radius: 180 };
@@ -3939,7 +3949,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'dr_land_wind',
     'Winter Gale',
     '🌬️',
-    'The aimed Gust freezes struck foes for 0.6s and gains 25u reach; its pushing wind remains',
+    'The aimed Gust freezes struck foes for 0.6s and gains 25u reach',
     natureGrand('meleeCone', (ab) => {
       addN(ab, 'freeze', 0.6);
       addN(ab, 'range', 25);
@@ -3949,7 +3959,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'dr_land_spring',
     'Sheltering Spring',
     '💧',
-    'Healing Spring gives allies inside 20% damage mitigation, including at full health; its healing remains',
+    'Healing Spring gives allies inside 20% damage mitigation, including at full health',
     natureGrand('groundZone', (ab) => {
       ab.zoneAllyDefMult = Math.min(ab.zoneAllyDefMult ?? 1, 0.8);
     }),
@@ -4147,7 +4157,7 @@ function subSkillTune(ab: PlayerAbilityDef): void {
 /** Martial Honed ranks develop the receiving skill’s existing job without duplicating grands. */
 const MARTIAL_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) => void }> = {
   kn_champion_slam: {
-    desc: 'Increase damage by 12% and push or pull by 10u; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase damage by 12% and push or pull by 10u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       if (ab.pull) addN(ab, 'pull', 10);
@@ -4155,35 +4165,35 @@ const MARTIAL_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef)
     },
   },
   kn_champion_charge: {
-    desc: 'Increase landing damage by 12% and charge reach by 12u; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase landing damage by 12% and charge reach by 12u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'landingDamage', 1.12);
       addN(ab, 'range', 12);
     },
   },
   kn_champion_rally: {
-    desc: 'Increase self-healing by 12% and sprint speed by 3 percentage points; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase self-healing by 12% and sprint speed by +3%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'healOnUse', 1.12);
       addN(ab, 'buffMoveMult', 0.03);
     },
   },
   kn_champion_riposte: {
-    desc: 'Increase damage by 8% and connecting parry by 0.1s, up to 1.2s; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase damage by 8% and connecting parry by 0.1s, up to 1.2s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.08);
       ab.parryOnHit = Math.min(1.2, ab.parryOnHit! + 0.1);
     },
   },
   kn_battle_trip: {
-    desc: 'Increase damage by 10% and stun by 0.1s, up to 1.6s; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase damage by 10% and stun by 0.1s, up to 1.6s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.1);
       ab.stun = Math.min(1.6, ab.stun! + 0.1);
     },
   },
   kn_battle_menacing: {
-    desc: 'Improve the damage buff by 4 percentage points and extend challenge reach by 10u and its duration by 0.2s, up to 6s; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Improve the damage buff by +4% and extend challenge reach by 10u and its duration by 0.2s, up to 6s; recharge improves by 4%',
     tune: (ab) => {
       addN(ab, 'buffDamageMult', 0.04);
       const cry = ab.warCry!;
@@ -4195,14 +4205,14 @@ const MARTIAL_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef)
     },
   },
   kn_battle_precision: {
-    desc: 'Increase blade damage by 10% and projectile speed by 8%; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase blade damage by 10% and projectile speed by 8%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.1);
       mul(ab, 'projSpeed', 1.08);
     },
   },
   kn_battle_rally: {
-    desc: 'Increase primary healing and recovery ticks by 12%, and recovery radius by 8u; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase primary healing and recovery ticks by 12%, and recovery radius by 8u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       const recovery = ab.recoveryZone!;
@@ -4214,7 +4224,7 @@ const MARTIAL_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef)
     },
   },
   bb_berserker_frenzy: {
-    desc: 'Improve the damage buff by 3 percentage points and extend its buff, blood-price and Momentum windows by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Improve the damage buff by +3% and extend its buff, blood-price and Momentum windows by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       addN(ab, 'buffDamageMult', 0.03);
       for (const field of ['buffDuration', 'bloodRage', 'momentumWindow'] as const)
@@ -4222,28 +4232,28 @@ const MARTIAL_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef)
     },
   },
   bb_berserker_reckless: {
-    desc: 'Increase damage by 12% and half-arc by 3°, up to 90°; preserve an already wider grand arc; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase damage by 12% and half-arc by 3°, up to 90°; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       if ((ab.halfAngleDeg ?? 45) < 90) ab.halfAngleDeg = Math.min(90, (ab.halfAngleDeg ?? 45) + 3);
     },
   },
   bb_berserker_slam: {
-    desc: 'Increase burst damage by 8% and fissure damage by 1 per spent Momentum stack per tick; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase burst damage by 8% and fissure damage by 1 per spent Momentum stack per tick; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.08);
       addN(ab, 'momentumFissure', 1);
     },
   },
   bb_berserker_chain: {
-    desc: 'Increase damage by 8% and chain reach by 12u; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase damage by 8% and chain reach by 12u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.08);
       addN(ab, 'range', 12);
     },
   },
   bb_totem_bear: {
-    desc: 'Improve damage mitigation by 2% of its current multiplier and extend buff, control resistance and guard by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Take 2% less damage and extend buff, control resistance and guard by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'buffDefMult', 0.98);
       for (const field of ['buffDuration', 'steadfastDuration'] as const)
@@ -4253,35 +4263,35 @@ const MARTIAL_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef)
     },
   },
   bb_totem_wolf: {
-    desc: 'Improve running speed by 3 percentage points and extend walking Momentum by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Improve running speed by +3% and extend walking Momentum by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       addN(ab, 'buffMoveMult', 0.03);
       ab.wolfHunt = Math.min(8, ab.wolfHunt! + 0.25);
     },
   },
   bb_totem_quake: {
-    desc: 'Increase field damage by 10% and duration by 0.25s, up to 8s; retain its Momentum payoff; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase field damage by 10% and duration by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'zoneTickDamage', 1.1);
       ab.zoneDuration = Math.min(8, ab.zoneDuration! + 0.25);
     },
   },
   bb_totem_mend: {
-    desc: 'Increase self-healing by 12% and control resistance by 0.25s, up to 8s; retain cleanse; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase self-healing by 12% and control resistance by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'healOnUse', 1.12);
       ab.steadfastDuration = Math.min(8, ab.steadfastDuration! + 0.25);
     },
   },
   mo_openhand_flurry: {
-    desc: 'Increase damage by 12% and reach by 4u; retain Flow spending; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase damage by 12% and reach by 4u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       addN(ab, 'range', 4);
     },
   },
   mo_openhand_wave: {
-    desc: 'Increase damage by 10% and push or pull by 10u; retain aimed Flow spending; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase damage by 10% and push or pull by 10u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.1);
       if (ab.pull) addN(ab, 'pull', 10);
@@ -4289,7 +4299,7 @@ const MARTIAL_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef)
     },
   },
   mo_openhand_wind: {
-    desc: 'Increase self-healing by 12%, crossing width by 4u (cap 65u), crossing guard by 0.2s (cap 6s), and Flow preparation by 0.25s (cap 8s); recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase self-healing by 12%, crossing width by 4u (cap 65u), crossing guard by 0.2s (cap 6s), and Flow preparation by 0.25s (cap 8s); recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'healOnUse', 1.12);
       const crossing = ab.crossingGuard!;
@@ -4302,35 +4312,35 @@ const MARTIAL_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef)
     },
   },
   mo_openhand_ki: {
-    desc: 'Increase self-healing by 12% and Flow preparation by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase self-healing by 12% and Flow preparation by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'healOnUse', 1.12);
       ab.prepareFlow = Math.min(8, ab.prepareFlow! + 0.25);
     },
   },
   mo_shadow_dart: {
-    desc: 'Increase dart damage by 12% and projectile speed by 8%; retain Flow stun; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase dart damage by 12% and projectile speed by 8%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       mul(ab, 'projSpeed', 1.08);
     },
   },
   mo_shadow_step: {
-    desc: 'Extend blink reach by 15u and Flow preparation by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Extend blink reach by 15u and Flow preparation by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       addN(ab, 'range', 15);
       ab.prepareFlow = Math.min(8, ab.prepareFlow! + 0.25);
     },
   },
   mo_shadow_cloud: {
-    desc: 'Increase poison-field damage by 10% and duration by 0.25s, up to 8s; retain Flow widening and ground targeting; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase poison-field damage by 10% and duration by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'zoneTickDamage', 1.1);
       ab.zoneDuration = Math.min(8, ab.zoneDuration! + 0.25);
     },
   },
   mo_shadow_strike: {
-    desc: 'Increase damage by 12% and leech by 2 percentage points, up to 25%; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase damage by 12% and leech by +2%, up to 25%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       ab.lifestealFrac = Math.max(ab.lifestealFrac!, Math.min(0.25, ab.lifestealFrac! + 0.02));
@@ -4341,77 +4351,77 @@ const MARTIAL_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef)
 /** Nature Honed ranks grow lane, command, form and territory roles without repeating binary grands. */
 const NATURE_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) => void }> = {
   rg_hunter_hail: {
-    desc: 'Increase burst damage by 10% and outward force by 10u; retain slow; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase burst damage by 10% and outward force by 10u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.1);
       addN(ab, 'knockback', 10);
     },
   },
   rg_hunter_mark: {
-    desc: 'Increase quarry-shot damage by 12% and projectile speed by 8%; retain two extra pierces; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase quarry-shot damage by 12% and projectile speed by 8%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       mul(ab, 'projSpeed', 1.08);
     },
   },
   rg_hunter_stand: {
-    desc: 'Increase skirmish-field damage by 10% and allied movement by 2 percentage points; retain enemy slow; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase skirmish-field damage by 10% and allied movement by +2%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'zoneTickDamage', 1.1);
       addN(ab, 'zoneAllyMoveMult', 0.02);
     },
   },
   rg_hunter_volley: {
-    desc: 'Increase arrow damage by 12% and projectile speed by 8%; preserve the chosen fan width; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase arrow damage by 12% and projectile speed by 8%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       mul(ab, 'projSpeed', 1.08);
     },
   },
   rg_beast_pounce: {
-    desc: 'Increase landing damage by 12% and leap distance by 10u; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase landing damage by 12% and leap distance by 10u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'landingDamage', 1.12);
       addN(ab, 'range', 10);
     },
   },
   rg_beast_snare: {
-    desc: 'Increase snare damage by 12% and field duration by 0.25s, up to 8s; retain the 25% movement snare; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase snare damage by 12% and field duration by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'zoneTickDamage', 1.12);
       ab.zoneDuration = Math.min(8, ab.zoneDuration! + 0.25);
     },
   },
   rg_beast_bond: {
-    desc: 'Increase healing by 12% and recipient movement by 2 percentage points; retain cleanse and effective-heal wolf link; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase healing by 12% and recipient movement by +2%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       addN(ab, 'buffMoveMult', 0.02);
     },
   },
   rg_beast_bite: {
-    desc: 'Increase bite damage by 10% and leech by 2 percentage points, up to 40% combined; preserve already higher leech. Five native ranks reach 30%, or 40% with Pack Tactics; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase bite damage by 10% and leech by +2%, up to 40% combined; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.1);
       ab.lifestealFrac = Math.max(ab.lifestealFrac!, Math.min(0.4, ab.lifestealFrac! + 0.02));
     },
   },
   dr_moon_maul: {
-    desc: 'Increase maul damage by 12% and reach by 4u; retain leech and the chosen arc; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase maul damage by 12% and reach by 4u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       addN(ab, 'range', 4);
     },
   },
   dr_moon_pounce: {
-    desc: 'Increase landing damage by 12% and leap distance by 10u; retain Moon form entry; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase landing damage by 12% and leap distance by 10u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'landingDamage', 1.12);
       addN(ab, 'range', 10);
     },
   },
   dr_moon_roar: {
-    desc: 'Improve the damage buff by 3 percentage points, bramble-burst damage by 2 and its preparation window by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Improve the damage buff by +3%, bramble-burst damage by 2 and its preparation window by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       addN(ab, 'buffDamageMult', 0.03);
       const burst = ab.closeBurst!;
@@ -4423,21 +4433,21 @@ const NATURE_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) 
     },
   },
   dr_moon_regen: {
-    desc: 'Increase primary healing and recovery-grove ticks by 12%; retain the self-focused cast and form entry; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase primary healing and recovery-grove ticks by 12%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       ab.recoveryZone = { ...ab.recoveryZone!, tickHeal: ab.recoveryZone!.tickHeal * 1.12 };
     },
   },
   dr_land_spike: {
-    desc: 'Increase eruption damage by 10% and controlled-target bonus by 2 percentage points; preserve aimed blast coverage; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase eruption damage by 10% and controlled-target bonus by +2%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.1);
       addN(ab, 'controlDamageBonus', 0.02);
     },
   },
   dr_land_wall: {
-    desc: 'Increase thorn-field damage and healing by 10%, and duration by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase thorn-field damage and healing by 10%, and duration by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'zoneTickDamage', 1.1);
       mul(ab, 'zoneTickHeal', 1.1);
@@ -4445,14 +4455,14 @@ const NATURE_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) 
     },
   },
   dr_land_wind: {
-    desc: 'Increase aimed-wind damage by 10% and push by 10u; preserve the chosen cone and freeze; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase aimed-wind damage by 10% and push by 10u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.1);
       addN(ab, 'knockback', 10);
     },
   },
   dr_land_spring: {
-    desc: 'Increase spring healing by 12% and duration by 0.25s, up to 8s; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase spring healing by 12% and duration by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'zoneTickHeal', 1.12);
       ab.zoneDuration = Math.min(8, ab.zoneDuration! + 0.25);
@@ -4477,7 +4487,7 @@ function casterRecipeMatches(subSkillId: string, ab: Omit<PlayerAbilityDef, 'slo
     so_draconic_scales: ['absorption', 'consumesSurge'],
     so_wild_surge: ['consumesSurge', 'projCount'],
     so_wild_tides: ['consumesSurge'],
-    so_wild_bend: ['prepareSurge'],
+    so_wild_bend: ['prepareSurge', 'fortune'],
     so_wild_font: ['zoneTickHeal', 'prepareSurge'],
   };
   return casterPayloadMatches(
@@ -4491,28 +4501,28 @@ function casterRecipeMatches(subSkillId: string, ab: Omit<PlayerAbilityDef, 'slo
 /** Caster Honed grows each native role without duplicating its individual grand. */
 const CASTER_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) => void }> = {
   mg_evoker_lightning: {
-    desc: 'Increase lightning damage by 10% and controlled-target bonus by 2 percentage points; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase lightning damage by 10% and controlled-target bonus by +2%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.1);
       addN(ab, 'controlDamageBonus', 0.02);
     },
   },
   mg_evoker_cone: {
-    desc: 'Increase cone damage by 10% and reach by 4u; preserve its arc and movement slow; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase cone damage by 10% and reach by 4u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.1);
       addN(ab, 'range', 4);
     },
   },
   mg_evoker_sculpt: {
-    desc: 'Increase blast damage by 12% and controlled-target bonus by 2 percentage points; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase blast damage by 12% and controlled-target bonus by +2%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       addN(ab, 'controlDamageBonus', 0.02);
     },
   },
   mg_evoker_shield: {
-    desc: 'Increase peel damage by 10%, barrier protection by 8%, and outward force by 6u; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase peel damage by 10%, barrier protection by 8%, and outward force by 6u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.1);
       const barrier = scaleAbsorption(ab.absorption!, 1.08, 1);
@@ -4524,7 +4534,7 @@ const CASTER_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) 
     },
   },
   mg_abjurer_ward: {
-    desc: 'Increase burst damage by 10%, radius by 4u and barrier duration by 0.2s, up to 8s; native Mage barrier amount already reaches the shared health cap; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase burst damage by 10%, radius by 4u and barrier duration by 0.2s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.1);
       addN(ab, 'radius', 4);
@@ -4536,21 +4546,21 @@ const CASTER_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) 
     },
   },
   mg_abjurer_bind: {
-    desc: 'Increase cage damage by 12% and duration by 0.25s, up to 8s; retain true roots and aerial targeting; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase cage damage by 12% and duration by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'zoneTickDamage', 1.12);
       ab.zoneDuration = Math.max(ab.zoneDuration!, Math.min(8, ab.zoneDuration! + 0.25));
     },
   },
   mg_abjurer_teleport: {
-    desc: 'Increase Dimension Door travel by 10u and endpoint relocation radius by 4u; preserve its deterministic exchange and disorientation; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase Dimension Door travel by 10u and endpoint relocation radius by 4u; recharge improves by 4%',
     tune: (ab) => {
       addN(ab, 'range', 10);
       addN(ab, 'radius', 4);
     },
   },
   mg_abjurer_mend: {
-    desc: 'Increase primary healing by 12%, barrier protection by 8% and recipient reach by 10u; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase primary healing by 12%, barrier protection by 8% and recipient reach by 10u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       const barrier = scaleAbsorption(ab.absorption!, 1.08, 1);
@@ -4561,28 +4571,28 @@ const CASTER_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) 
     },
   },
   so_draconic_breath: {
-    desc: 'Increase breath damage by 12% and reach by 4u; retain surge consumption and cone targeting; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase breath damage by 12% and widen its arc by 2° per side (cap 75°); recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
-      addN(ab, 'range', 4);
+      ab.halfAngleDeg = Math.max(ab.halfAngleDeg ?? 42, Math.min(75, (ab.halfAngleDeg ?? 42) + 2));
     },
   },
   so_draconic_wing: {
-    desc: 'Increase movement by 3 percentage points and surge preparation by 0.25s, up to 9s; retain actual flight duration; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase movement by +3% and surge preparation by 0.25s, up to 9s; recharge improves by 4%',
     tune: (ab) => {
       addN(ab, 'buffMoveMult', 0.03);
       ab.prepareSurge = Math.max(ab.prepareSurge!, Math.min(9, ab.prepareSurge! + 0.25));
     },
   },
   so_draconic_bolt: {
-    desc: 'Increase chromatic damage by 12% and projectile speed by 8%; retain surge’s shared-budget fork; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase chromatic damage by 12% and projectile speed by 8%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       mul(ab, 'projSpeed', 1.08);
     },
   },
   so_draconic_scales: {
-    desc: 'Increase scale-burst damage by 12% and barrier duration by 0.2s, up to 8s; native Sorcerer barrier amount already reaches the shared health cap; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase scale-burst damage by 12% and barrier duration by 0.2s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       const barrier = ab.absorption!;
@@ -4593,28 +4603,35 @@ const CASTER_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) 
     },
   },
   so_wild_surge: {
-    desc: 'Increase chaotic-bolt damage by 10% and projectile speed by 8%; preserve the chosen fan width; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase chaotic-bolt damage by 10% and projectile speed by 8%; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.1);
       mul(ab, 'projSpeed', 1.08);
     },
   },
   so_wild_tides: {
-    desc: 'Increase wild-burst damage by 12% and radius by 4u; retain surge consumption; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase wild-burst damage by 12% and radius by 4u; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.12);
       addN(ab, 'radius', 4);
     },
   },
   so_wild_bend: {
-    desc: 'Increase blink travel by 10u and surge preparation by 0.25s, up to 9s; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Fortune lasts 0.25s longer (cap 8s), its debuffs last 0.15s longer (cap 4s), and Surge readiness lasts 0.25s longer (cap 9s); recharge improves by 4%',
     tune: (ab) => {
-      addN(ab, 'range', 10);
+      ab.fortune = {
+        ...ab.fortune!,
+        duration: Math.max(ab.fortune!.duration, Math.min(8, ab.fortune!.duration + 0.25)),
+        debuffDuration: Math.max(
+          ab.fortune!.debuffDuration,
+          Math.min(4, ab.fortune!.debuffDuration + 0.15),
+        ),
+      };
       ab.prepareSurge = Math.max(ab.prepareSurge!, Math.min(9, ab.prepareSurge! + 0.25));
     },
   },
   so_wild_font: {
-    desc: 'Increase recovery-field healing by 12% and duration by 0.25s, up to 8s; retain movement slow and surge preparation; recharge improves by 4% within the shared ordinary budget',
+    desc: 'Increase recovery-field healing by 12% and duration by 0.25s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'zoneTickHeal', 1.12);
       ab.zoneDuration = Math.max(ab.zoneDuration!, Math.min(8, ab.zoneDuration! + 0.25));
@@ -4624,28 +4641,23 @@ const CASTER_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) 
 
 const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
   cl_life_mend:
-    'Increase primary healing by 12%, heal reach and relay radius by 8%, and improve recharge within its shared budget; relay remains 35% of effective primary healing to one other ally',
+    'Increase primary healing by 12%, heal reach and relay radius by 8%, and improve recharge',
   cl_light_flash:
-    'Increase healing by 12%, reach and rescue readiness duration by 8% (cap 8s), and improve recharge within its shared budget; retain the +20% direct-hit follow-through on rescue',
+    'Increase healing by 12%, reach and rescue readiness duration by 8% (cap 8s), and improve recharge',
   ro_assassin_poison:
-    'First pick extends target poison to 5s; second to 6s. Later picks gain +12% poison magnitude and bounded recharge improvement; preparation and strongest-owner rule remain',
+    'First pick extends target poison to 5s; second to 6s. Later picks gain +12% poison damage and faster recharge',
 
-  ro_assassin_smoke:
-    'Increase smoke radius by 8% and improve recharge within its shared budget; retain hindrance, allied haste and precision setup',
-  ro_trickster_shield:
-    'Extend the frontal block by 8% (cap 8s) and improve recharge within its shared budget; retain precision setup',
+  ro_assassin_smoke: 'Increase smoke radius by 8% and improve recharge',
+  ro_trickster_shield: 'Extend the frontal block by 8% (cap 8s) and improve recharge',
   ba_valor_bolster:
-    'Improve rally movement, extend self control resistance by 8% (cap 8s), and improve recharge within its shared budget; retain cleanse and chorus',
-  pa_devotion_aura:
-    'Increase barrier by 12% and barrier/aura reach by 8%, and improve recharge within its shared budget; retain the shared protection aura',
+    'Improve rally movement, extend self control resistance by 8% (cap 8s), and improve recharge',
+  pa_devotion_aura: 'Increase barrier by 12% and barrier/aura reach by 8%, and improve recharge',
   wa_fiend_resilience:
-    'Increase base barrier, siphon damage and per-hit protection by 12%, siphon reach by 8%, and improve recharge within its shared budget',
-  wa_fiend_pit:
-    'Increase burning-zone damage by 12% and radius by 8%, and improve recharge within its shared budget; retain the 4s searing mark',
+    'Increase base barrier, siphon damage and per-hit protection by 12%, siphon reach by 8%, and improve recharge',
+  wa_fiend_pit: 'Increase burning-zone damage by 12% and radius by 8%, and improve recharge',
   wa_goo_blast:
-    'Increase damage by 12% and reach by 8%, recharge improves within its shared budget; personally cursed-target weakness and hindrance gain 1s per pick, capped at 5s',
-  wa_goo_whispers:
-    'Increase dread-zone damage by 12% and radius by 8%, and improve recharge within its shared budget; weakening stays 20%',
+    'Increase damage by 12% and reach by 8%, recharge improves; personally cursed-target weakness and hindrance gain 1s per pick, capped at 5s',
+  wa_goo_whispers: 'Increase dread-zone damage by 12% and radius by 8%, and improve recharge',
 };
 
 /** Share authored tuning between live replay and Forge offer previews. */
@@ -4689,6 +4701,7 @@ function applyAuthoredHoned(subSkillId: string, ab: PlayerAbilityDef): boolean {
       'prepareSurge',
       'consumesSurge',
       'surgeTwin',
+      'fortune',
       'swap',
       'grantsFlight',
       'slowMult',
@@ -4743,6 +4756,7 @@ function simpleHonedText(subSkillId: string): string {
     zoneAllyMoveMult: 'allied field movement multiplier',
     controlDamageBonus: 'controlled-target damage bonus',
     lifestealFrac: 'leech fraction',
+    prepareSurge: 'Surge readiness',
   };
   const number = (n: number) => String(Math.round(n * 100) / 100);
   const changes = Object.entries(labels).flatMap(([key, label]) => {
@@ -4754,7 +4768,25 @@ function simpleHonedText(subSkillId: string): string {
         ]
       : [];
   });
-  return `${skill.name} — first rank: ${changes.join('; ')}. Retains its existing effects`;
+  if (
+    before.frontGuard &&
+    after.frontGuard &&
+    before.frontGuard.duration !== after.frontGuard.duration
+  )
+    changes.push(
+      `block window ${number(before.frontGuard.duration)} → ${number(after.frontGuard.duration)}s`,
+    );
+  if (before.fortune && after.fortune) {
+    for (const [key, label] of [
+      ['duration', 'Fortune readiness'],
+      ['debuffDuration', 'Fortune debuff duration'],
+    ] as const) {
+      const a = before.fortune[key],
+        b = after.fortune[key];
+      if (a !== b) changes.push(`${label} ${number(a)} → ${number(b)}s`);
+    }
+  }
+  return `${skill.name} — first rank: ${changes.join('; ')}`;
 }
 
 /** Per-subclass-skill upgrade builder — tied to one sub skill id (non-grand, cap 5). */
@@ -5955,7 +5987,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       ...base,
       name: blend(fused.name),
       desc: natureFallback
-        ? `Reforged capstone — improves the power and footprint of ${fused.name}`
+        ? `Reforged capstone — ${fused.name}: +25% damage/healing and +15% area/reach where present; stronger buffs`
         : base.grand || SUB_SKILL_TUNE_TEXT[base.subSkillId]
           ? `${fused.name}: ${swapDescName(base.desc, canonSubSkillName(base.subSkillId), fused.name)}`
           : `${simpleHonedText(base.subSkillId)} (stacks to ${MAX_SKILL_STACKS}).`,

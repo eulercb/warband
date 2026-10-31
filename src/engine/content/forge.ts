@@ -129,7 +129,8 @@ export type EffectComponent =
   | { kind: 'bardSong'; part: 'harmony' | 'discord' | 'chorus' }
   | { kind: 'controlDamage'; bonus: number }
   | { kind: 'prepareSurge'; duration: number }
-  | { kind: 'surgeStrike' }
+  | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
+  | { kind: 'fortune'; fortune: NonNullable<PlayerAbilityDef['fortune']> }
   | { kind: 'prepareCrit'; duration: number }
   | { kind: 'rebuke'; duration: number; curseBonus?: number; direct?: boolean }
   | { kind: 'preparedRefund'; seconds: number }
@@ -328,7 +329,11 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.controlDamageBonus)
       effects.push({ kind: 'controlDamage', bonus: def.controlDamageBonus });
     if (def.prepareSurge) effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
-    if (def.consumesSurge) effects.push({ kind: 'surgeStrike' });
+    if (def.consumesSurge)
+      effects.push({
+        kind: 'surgeStrike',
+        ...(def.surgeRider ? { rider: { ...def.surgeRider } } : {}),
+      });
     if (def.preparedRefund) effects.push({ kind: 'preparedRefund', seconds: def.preparedRefund });
     if (def.prepareCrit) effects.push({ kind: 'prepareCrit', duration: def.prepareCrit });
     if (def.rebukeDuration || def.rebukeInvuln)
@@ -367,6 +372,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.flowExtendOnHit) effects.push({ kind: 'flowExtend', seconds: def.flowExtendOnHit });
   if (kind === 'groundZone' && def.prepareSurge)
     effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
+  if (def.fortune) effects.push({ kind: 'fortune', fortune: { ...def.fortune } });
   if (def.mirrorImages) effects.push({ kind: 'mirrorImages', ...def.mirrorImages });
   if (kind === 'groundZone' && def.prepareCrit)
     effects.push({ kind: 'prepareCrit', duration: def.prepareCrit });
@@ -556,8 +562,12 @@ export function recompose(
       case 'prepareSurge':
         def.prepareSurge = e.duration;
         break;
+      case 'fortune':
+        def.fortune = { ...e.fortune };
+        break;
       case 'surgeStrike':
         def.consumesSurge = true;
+        if (e.rider) def.surgeRider = { ...e.rider };
         break;
       case 'prepareCrit':
         def.prepareCrit = e.duration;
@@ -731,8 +741,24 @@ function effectValue(e: EffectComponent, fan: number): number {
       return e.bonus * 40;
     case 'prepareSurge':
       return e.duration * 3;
-    case 'surgeStrike':
-      return 0; // Requires a separately priced preparation effect.
+    case 'fortune':
+      return (
+        e.fortune.duration *
+          ((e.fortune.castSlowMult - 1) * 4 +
+            (1 - e.fortune.damageMult) * 10 +
+            (e.fortune.markBonus ?? 0) * 8) +
+        e.fortune.debuffDuration * 2
+      );
+    case 'surgeStrike': {
+      const r = e.rider;
+      return r
+        ? (r.halfAngleDeg ?? 0) * 0.1 +
+            (r.radius ?? 0) * 0.12 +
+            (r.pierce ?? 0) * 12 +
+            (r.spreadDeg == null ? 0 : Math.max(0, 60 - r.spreadDeg) * 0.2) +
+            Math.max(0, (r.castSlow ?? 1) - 1) * (r.castSlowDuration ?? 3) * 12
+        : 0;
+    }
     case 'prepareCrit':
       return e.duration * 5;
     case 'preparedRefund':
@@ -834,7 +860,11 @@ export function describeComposed(comp: AbilityComponents, cooldown: number): str
   if (d.kind === 'selfBuff' && d.iframes) parts.push(`${s(d.iframes)} damage immunity`);
 
   // Every effect yields a non-empty clause, so no gap-filtering is needed.
-  for (const e of comp.effects) parts.push(effectPhrase(e, d.kind));
+  for (const e of comp.effects) {
+    const effect = fittedSurgePiercing(comp, e);
+    parts.push(effectPhrase(effect, d.kind));
+    if (e.kind === 'surgeStrike' && (d.castTime ?? 0) > 0) parts.push('surge halves wind-up');
+  }
   if (
     comp.delivery.surgeTwin &&
     comp.delivery.kind === 'projectile' &&
@@ -965,8 +995,10 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return `+${pct(e.bonus * 100)} dmg vs slowed/rooted/stunned foes`;
     case 'prepareSurge':
       return `prepare spell surge for ${s(e.duration)}`;
+    case 'fortune':
+      return `Fortune ${s(e.fortune.duration)} — next direct hit delays wind-ups ${n((e.fortune.castSlowMult - 1) * 100)}%, weakens damage ${n((1 - e.fortune.damageMult) * 100)}% for ${s(e.fortune.debuffDuration)}${e.fortune.markBonus ? `; next hit from a later cast +${n(e.fortune.markBonus * 100)}% damage` : ''}`;
     case 'surgeStrike':
-      return 'surge +20% dmg, half wind-up';
+      return `surge +20% dmg${(e.rider?.halfAngleDeg ?? 0) > 0 ? `, +${n(e.rider!.halfAngleDeg!)}° each side` : ''}${(e.rider?.radius ?? 0) > 0 ? `, +${n(e.rider!.radius!)}u burst radius` : ''}${e.rider?.pierce ? `, pierce ${n(e.rider.pierce)}` : ''}${e.rider?.spreadDeg != null ? `, fan at most ${n(e.rider.spreadDeg)}°` : ''}${e.rider?.castSlow ? `, wind-ups +${n((e.rider.castSlow - 1) * 100)}%` : ''}`;
     case 'prepareCrit':
       return `prepare next precision crit for ${s(e.duration)}`;
     case 'preparedRefund':
@@ -1325,9 +1357,15 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
         : e.part === 'chorus'
           ? kind === 'selfBuff' || kind === 'buffAlly'
           : DIRECT_STRIKE.has(kind) || kind === 'groundZone';
-    case 'controlDamage':
     case 'surgeStrike':
+      if (e.rider?.halfAngleDeg) return kind === 'meleeCone';
+      if (e.rider?.radius) return kind === 'pbaoe';
+      if (e.rider?.pierce || e.rider?.spreadDeg != null) return kind === 'projectile';
       return DIRECT_STRIKE.has(kind);
+    case 'controlDamage':
+      return DIRECT_STRIKE.has(kind);
+    case 'fortune':
+      return kind === 'selfBuff' || kind === 'blink' || kind === 'groundZone';
     case 'prepareSurge':
       return kind === 'blink' || kind === 'selfBuff' || kind === 'groundZone';
     case 'prepareCrit':
@@ -1399,6 +1437,7 @@ function primaryWant(kind: DeliveryKind): (e: EffectComponent) => boolean {
         e.kind === 'frontGuard' ||
         e.kind === 'mirrorImages' ||
         e.kind === 'absorption' ||
+        e.kind === 'fortune' ||
         e.kind === 'healOnUse';
     case 'dash':
     case 'blink':
@@ -1500,6 +1539,7 @@ export function synthesizeAbility(
   effects = mergeBuffs(effects); // item 5 — one buff per target; honest pricing
   effects = ensureOutputAnchor(delivery, effects, donors, slot); // item 6 — a real hit/heal
   const assembled: AbilityComponents = { delivery, effects };
+  assembled.effects = assembled.effects.map((e) => fittedSurgePiercing(assembled, e));
 
   // 7. Price to the slot budget at the slot's canonical pace, then cap + quantize.
   //    Jitter the pace per-fusion (seeded) so a run's kit reads with hand-tuned
@@ -1906,8 +1946,32 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return e;
     case 'controlDamage':
       return { ...e, bonus: e.bonus * f };
-    case 'surgeStrike':
-      return e;
+    case 'fortune':
+      return {
+        ...e,
+        fortune: {
+          ...e.fortune,
+          duration: e.fortune.duration * f,
+          debuffDuration: e.fortune.debuffDuration * f,
+        },
+      };
+    case 'surgeStrike': {
+      const r = e.rider;
+      return r
+        ? {
+            ...e,
+            rider: {
+              ...(r.halfAngleDeg ? { halfAngleDeg: r.halfAngleDeg * f } : {}),
+              ...(r.radius ? { radius: r.radius * f } : {}),
+              ...(r.pierce ? { pierce: r.pierce * f } : {}),
+              ...(r.spreadDeg != null ? { spreadDeg: 60 - (60 - r.spreadDeg) * f } : {}),
+              ...(r.castSlow
+                ? { castSlow: 1 + (r.castSlow - 1) * f, castSlowDuration: r.castSlowDuration }
+                : {}),
+            },
+          }
+        : e;
+    }
     case 'relayHeal':
       return { ...e, relay: { ...e.relay, fraction: e.relay.fraction * f } };
     case 'rescueStrike':
@@ -1964,7 +2028,20 @@ function capComponents(comp: AbilityComponents): AbilityComponents {
   const delivery = { ...comp.delivery };
   if (delivery.kind === 'selfBuff' && delivery.iframes != null)
     delivery.iframes = clamp(round05(delivery.iframes), 0.25, 2);
-  return { delivery, effects: comp.effects.map(capEffect) };
+  return { delivery, effects: comp.effects.map((e) => capEffect(fittedSurgePiercing(comp, e))) };
+}
+
+/** A detonation cannot repeat on pierced bodies; remove its unavailable rider before pricing/copy. */
+function fittedSurgePiercing(comp: AbilityComponents, e: EffectComponent): EffectComponent {
+  if (
+    e.kind !== 'surgeStrike' ||
+    !e.rider?.pierce ||
+    (!(comp.delivery.impactRadius ?? 0) && !comp.effects.some((x) => x.kind === 'zone'))
+  )
+    return e;
+  const rider = { ...e.rider };
+  delete rider.pierce;
+  return { ...e, rider };
 }
 
 /**
@@ -2042,6 +2119,7 @@ function addBoonComponents(
         'frontGuard',
         'mirrorImages',
         'prepareCrit',
+        'fortune',
         'steadfast',
         'cleanse',
         'momentum',
@@ -2077,7 +2155,10 @@ function addBoonComponents(
     if (def.controlDamageBonus != null && !has((e) => e.kind === 'controlDamage'))
       out.push({ kind: 'controlDamage', bonus: sane(def.controlDamageBonus, 0, 0.4, 0.2) });
     if (def.consumesSurge && !has((e) => e.kind === 'surgeStrike'))
-      out.push({ kind: 'surgeStrike' });
+      out.push({
+        kind: 'surgeStrike',
+        ...(def.surgeRider ? { rider: { ...def.surgeRider } } : {}),
+      });
   }
   if (
     (def.kind === 'blink' || def.kind === 'selfBuff') &&
@@ -2244,8 +2325,10 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.controlDamageBonus != null ? { ...e, bonus: def.controlDamageBonus } : e;
     case 'prepareSurge':
       return def.prepareSurge != null ? { ...e, duration: def.prepareSurge } : e;
+    case 'fortune':
+      return def.fortune ? { ...e, fortune: { ...def.fortune } } : e;
     case 'surgeStrike':
-      return e;
+      return def.surgeRider ? { ...e, rider: { ...def.surgeRider } } : e;
     case 'prepareCrit':
       return def.prepareCrit != null ? { ...e, duration: def.prepareCrit } : e;
     case 'preparedRefund':
@@ -2453,8 +2536,39 @@ function capEffect(e: EffectComponent): EffectComponent {
       return { ...e, bonus: clamp(round2(e.bonus), 0, 0.4) };
     case 'prepareSurge':
       return { ...e, duration: clamp(round1(e.duration), 2, 12) };
-    case 'surgeStrike':
-      return e;
+    case 'fortune':
+      return {
+        ...e,
+        fortune: {
+          duration: clamp(round1(e.fortune.duration), 1, 8),
+          castSlowMult: clamp(round2(e.fortune.castSlowMult), 1.05, 1.6),
+          damageMult: clamp(round2(e.fortune.damageMult), 0.7, 0.95),
+          debuffDuration: clamp(round1(e.fortune.debuffDuration), 1, 4),
+          ...(e.fortune.markBonus
+            ? { markBonus: clamp(round2(e.fortune.markBonus), 0.05, 0.25) }
+            : {}),
+        },
+      };
+    case 'surgeStrike': {
+      const r = e.rider;
+      return r
+        ? {
+            ...e,
+            rider: {
+              ...(r.halfAngleDeg ? { halfAngleDeg: clamp(round1(r.halfAngleDeg), 0, 30) } : {}),
+              ...(r.radius ? { radius: clamp(round5(r.radius), 0, 70) } : {}),
+              ...(r.pierce ? { pierce: clamp(Math.round(r.pierce), 0, 2) } : {}),
+              ...(r.spreadDeg != null ? { spreadDeg: clamp(round1(r.spreadDeg), 10, 60) } : {}),
+              ...(r.castSlow
+                ? {
+                    castSlow: clamp(round2(r.castSlow), 1, 1.4),
+                    castSlowDuration: clamp(round1(r.castSlowDuration ?? 3), 1, 4),
+                  }
+                : {}),
+            },
+          }
+        : e;
+    }
     case 'relayHeal':
       return {
         ...e,

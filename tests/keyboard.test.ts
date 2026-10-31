@@ -9,6 +9,7 @@
  * zeros, so `mouseScreen` ends up equal to the event's clientX/clientY.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import { KeyboardMouse } from '../src/input/keyboard';
 import { useBindings } from '../src/input/bindings';
 import type { Vec2 } from '../src/engine/core/types';
@@ -53,6 +54,7 @@ beforeEach(() => {
 afterEach(() => {
   kb.dispose();
   target.remove();
+  document.body.replaceChildren();
 });
 
 describe('KeyboardMouse: construction', () => {
@@ -217,6 +219,80 @@ describe('KeyboardMouse: code vs key handling & edge cases', () => {
     expect(bound.defaultPrevented).toBe(true);
     const unbound = key('keydown', 'KeyM');
     expect(unbound.defaultPrevented).toBe(false);
+  });
+});
+
+describe('KeyboardMouse: editable fields', () => {
+  it('lets a player type a name containing movement and ability letters', async () => {
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    await userEvent.setup().type(input, 'Wade Q Sparks', { skipClick: true });
+    expect(input.value).toBe('Wade Q Sparks');
+    expect(kb.sample(ORIGIN).move).toEqual({ x: 0, y: 0 });
+    expect(Object.values(kb.sample(ORIGIN).buttons).every((down) => !down)).toBe(true);
+    expect(kb.lastActivityMs).toBe(0);
+  });
+
+  it.each(['input', 'textarea', 'select', 'contenteditable', 'nested editor'])(
+    'leaves letters, spaces and arrows to %s',
+    (kind) => {
+      const field = document.createElement(
+        kind === 'contenteditable' || kind === 'nested editor' ? 'div' : kind,
+      );
+      let eventTarget = field;
+      if (kind === 'contenteditable' || kind === 'nested editor') {
+        field.setAttribute('contenteditable', kind === 'contenteditable' ? '' : 'plaintext-only');
+        if (kind === 'nested editor') {
+          eventTarget = document.createElement('span');
+          field.appendChild(eventTarget);
+        }
+      }
+      document.body.appendChild(field);
+      for (const code of ['KeyW', 'KeyA', 'KeyD', 'KeyS', 'KeyQ', 'Space', 'ArrowLeft']) {
+        const event = new KeyboardEvent('keydown', { code, bubbles: true, cancelable: true });
+        eventTarget.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(false);
+      }
+      expect(kb.sample(ORIGIN).move).toEqual({ x: 0, y: 0 });
+      expect(Object.values(kb.sample(ORIGIN).buttons).every((down) => !down)).toBe(true);
+      expect(kb.lastActivityMs).toBe(0);
+    },
+  );
+
+  it('clears held movement and attacks immediately on field focus and resumes after blur', () => {
+    key('keydown', 'KeyW');
+    key('keydown', 'KeyQ');
+    mouseDown();
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    expect(kb.sample(ORIGIN).move).toEqual({ x: 0, y: 0 });
+    expect(Object.values(kb.sample(ORIGIN).buttons).every((down) => !down)).toBe(true);
+    // Even events dispatched at window must respect the currently focused editor.
+    expect(key('keydown', 'KeyW').defaultPrevented).toBe(false);
+    key('keyup', 'KeyW');
+    input.blur();
+    expect(kb.sample(ORIGIN).move).toEqual({ x: 0, y: 0 });
+    expect(key('keydown', 'KeyD').defaultPrevented).toBe(true);
+    expect(kb.sample(ORIGIN).move).toEqual({ x: 1, y: 0 });
+  });
+
+  it('preserves bindings in explicitly noneditable content and ordinary controls', () => {
+    const editor = document.createElement('div');
+    editor.setAttribute('contenteditable', 'true');
+    const child = document.createElement('button');
+    child.setAttribute('contenteditable', 'false');
+    editor.appendChild(child);
+    document.body.appendChild(editor);
+    const event = new KeyboardEvent('keydown', {
+      code: 'KeyW',
+      bubbles: true,
+      cancelable: true,
+    });
+    child.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(kb.sample(ORIGIN).move).toEqual({ x: 0, y: -1 });
   });
 });
 

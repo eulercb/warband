@@ -1381,7 +1381,10 @@ export class World {
     )
       return;
 
-    const ab = consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original)));
+    const ab = consumeMartialFinishers(
+      p,
+      consumeSpellSurge(p, consumeEvocation(p, original), this),
+    );
     const nextCd = effectiveRecharge(ab, p.cooldownMult, p.castMult, slot);
     p.rechargeLocks ??= {};
     p.rechargeLocks[p.classId] ??= {};

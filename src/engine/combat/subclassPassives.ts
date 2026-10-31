@@ -21,6 +21,9 @@ function putBuff(p: { buffs: Buff[] }, buff: Buff): void {
 
 /** Active effects expire on a class change; proc cooldowns are never reset by swaps. */
 export function setSubclassPassive(p: Player, id: string | undefined): void {
+  p.buffs = p.buffs.filter(
+    (b) => b.kind !== 'fortune' || b.source === `subclass:fortune:${p.classId}`,
+  );
   if (p.subclassPassiveId === id) return;
   p.buffs = p.buffs.filter((b) => !b.source.startsWith(PREFIX));
   delete p.spiritCompanion;
@@ -44,27 +47,22 @@ function spendCooldown(p: Player, id: string, seconds = 6): void {
 export function onSubclassAbility(p: Player, ab: PlayerAbilityDef): void {
   if (
     p.subclassPassiveId === 'wild_spell_weave' &&
-    ab.slot === 'basic' &&
+    ab.slot !== 'basic' &&
+    ab.prepareSurge &&
     !(
       (ab.kind === 'blink' || ab.kind === 'dash') &&
+      !ab.steadfastDuration &&
       p.buffs.some((b) => b.kind === 'root' && b.remaining > 0)
     ) &&
-    offCooldown(p, 'wild_spell_weave') &&
-    !p.buffs.some((b) => b.kind === 'spellSurge' && b.remaining > 0)
+    offCooldown(p, 'wild_spell_weave')
   ) {
-    const last = p.buffs.find((b) => b.kind === 'wildWeave' && b.remaining > 0);
-    const count = (last?.mult ?? 0) + 1;
-    if (count >= 3) {
-      p.buffs = p.buffs.filter((b) => b.kind !== 'wildWeave');
-      putBuff(p, {
-        kind: 'spellSurge',
-        mult: 1.2,
-        remaining: 8,
-        source: PREFIX + 'wild_spell_weave',
-      });
-      spendCooldown(p, 'wild_spell_weave', 8);
-    } else
-      putBuff(p, { kind: 'wildWeave', mult: count, remaining: 8, source: PREFIX + 'wildMemory' });
+    putBuff(p, {
+      kind: 'wildWeave',
+      mult: 2,
+      remaining: 6,
+      source: PREFIX + 'wildMemory',
+      weaveSlot: ab.slot,
+    });
   }
 
   const passive = getSubclassPassive(p.subclassPassiveId);
@@ -198,6 +196,23 @@ export function onSubclassDirectHit(
 ): void {
   const id = p.subclassPassiveId;
   if (!direct || effective <= 0 || p.state !== 'alive' || p.hp <= 0) return;
+  if (id === 'wild_spell_weave' && offCooldown(p, id)) {
+    const weave = p.buffs.find((b) => b.kind === 'wildWeave' && b.remaining > 0);
+    if (!weave?.weaveSlot) return;
+    if (refundRecharge(p, weave.weaveSlot, 2) <= 0)
+      putBuff(p, { kind: 'moveSpeed', mult: 1.2, remaining: 2, source: PREFIX + 'weaveSpeed' });
+    p.buffs.splice(p.buffs.indexOf(weave), 1);
+    spendCooldown(p, id);
+    sink.events.push({
+      t: 'support',
+      sourceId: p.id,
+      targetId: p.id,
+      from: { ...p.pos },
+      pos: { ...p.pos },
+      kind: 'haste',
+    });
+    return;
+  }
   if (id === 'hunter_quarry') {
     putBuff(target, { kind: 'damageTaken', mult: 1.1, remaining: 3, source: 'hunterQuarry' });
     return;
@@ -263,7 +278,7 @@ export function onSubclassDirectHit(
   });
 }
 
-export function onSubclassSurge(p: Player): void {
+export function onSubclassSurge(p: Player, sink?: EventSink): void {
   const id = 'draconic_surge_ascent';
   if (p.subclassPassiveId !== id || !offCooldown(p, id)) return;
   const dragon = p.charUpgradeIds?.includes('so_draconic_g_a');
@@ -273,6 +288,31 @@ export function onSubclassSurge(p: Player): void {
   if (flight)
     flight.remaining = Math.max(flight.remaining, Math.min(9, flight.remaining + (dragon ? 2 : 1)));
   else putBuff(p, { kind: 'flight', mult: 0, remaining: dragon ? 4 : 2, source: PREFIX + id });
+  putBuff(p, { kind: 'moveSpeed', mult: 1.2, remaining: 3, source: PREFIX + 'ascentSpeed' });
+  const shield = grantAbsorption(
+    p,
+    Math.max(dragon ? 30 : 20, p.maxHp * (dragon ? 0.15 : 0.1)),
+    dragon ? 4 : 3,
+  );
+  if (sink) {
+    sink.events.push({
+      t: 'support',
+      sourceId: p.id,
+      targetId: p.id,
+      from: { ...p.pos },
+      pos: { ...p.pos },
+      kind: 'haste',
+    });
+    if (shield > 0)
+      sink.events.push({
+        t: 'support',
+        sourceId: p.id,
+        targetId: p.id,
+        from: { ...p.pos },
+        pos: { ...p.pos },
+        kind: 'absorb',
+      });
+  }
   spendCooldown(p, id);
 }
 

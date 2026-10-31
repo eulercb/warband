@@ -1,4 +1,5 @@
 import { rescueStrikeMultiplier } from './support';
+import { luckExposureMultiplier, onFortunateHit } from './sorcererLuck';
 import { onMoonDirectHit } from './moonForm';
 import { grandDirectMultiplier } from './grandCoherence';
 import { commandCompanion } from './companions';
@@ -247,6 +248,9 @@ export function applyBuff(entity: { buffs: Buff[] }, buff: Buff, controlAdjusted
     existing.blockCounter = buff.blockCounter;
     existing.coating = buff.coating;
     existing.venom = buff.venom;
+    existing.fortune = buff.fortune;
+    existing.openingCast = buff.openingCast;
+    existing.weaveSlot = buff.weaveSlot;
   } else {
     entity.buffs.push({ ...buff });
   }
@@ -405,6 +409,7 @@ export function damageBoss(
       martialHitMultiplier(source, mods?.melee) *
       rescueStrikeMultiplier(source, mods?.direct);
     outgoing *= grandDirectMultiplier(source, boss, mods);
+    outgoing *= luckExposureMultiplier(source, boss, mods);
   }
   const before = boss.hp;
   boss.hp -= outgoing;
@@ -442,6 +447,7 @@ export function damageBoss(
     mods?.controlOnHit === 'slow' || (mods?.controlOnHit === 'stun' && !isSteadfast(boss)),
   );
   onSubclassCursedHit(sink, source, boss, effective);
+  onFortunateHit(sink, source, boss, effective, mods);
   if (mods?.direct && effective > 0) {
     applyCursePayoff(source, boss, mods.cursePayoff);
     sink.onPlayerDirectHit?.(source, boss, effective, mods?.prepared, mods?.refund, mods?.pilot);
@@ -494,6 +500,7 @@ export function damageAdd(
       martialHitMultiplier(source, mods?.melee) *
       rescueStrikeMultiplier(source, mods?.direct);
     outgoing *= grandDirectMultiplier(source, add, mods);
+    outgoing *= luckExposureMultiplier(source, add, mods);
   }
   const before = add.hp;
   add.hp -= outgoing;
@@ -524,6 +531,7 @@ export function damageAdd(
     mods?.controlOnHit === 'slow' || (mods?.controlOnHit === 'stun' && !isSteadfast(add)),
   );
   onSubclassCursedHit(sink, source, add, effective);
+  onFortunateHit(sink, source, add, effective, mods);
   if (mods?.direct && effective > 0) {
     applyCursePayoff(source, add, mods.cursePayoff);
     sink.onPlayerDirectHit?.(source, add, effective, mods?.prepared, mods?.refund, mods?.pilot);

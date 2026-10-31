@@ -1149,8 +1149,11 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'so_draconic_breath',
           'Dragon Breath',
           '🐉',
-          'A 240u breath cone for 42; consumes spell surge', // item 3: a cone, not a circle
-          cone('Dragon Breath', 8, 42, 240, 42, { consumesSurge: true }),
+          'A 240u breath cone for 42; Surge sweeps 20° wider on each side and delays enemy wind-ups 30% for 3s',
+          cone('Dragon Breath', 8, 42, 240, 42, {
+            consumesSurge: true,
+            surgeRider: { halfAngleDeg: 20, castSlow: 1.3, castSlowDuration: 3 },
+          }),
         ),
         sk(
           'so_draconic_wing',
@@ -1201,22 +1204,33 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'so_wild_surge',
           'Chaos Surge',
           '🎲',
-          'Six chaotic bolts, 12 each; consumes spell surge',
-          proj('Chaos Surge', 7, 12, { consumesSurge: true, projCount: 6, spreadDeg: 60 }),
+          'Six chaotic bolts, 12 each; Surge focuses the fan to 28° and each bolt pierces one extra foe',
+          proj('Chaos Surge', 7, 12, {
+            consumesSurge: true,
+            projCount: 6,
+            spreadDeg: 60,
+            surgeRider: { pierce: 1, spreadDeg: 28 },
+          }),
         ),
         sk(
           'so_wild_tides',
           'Tides of Chaos',
           '🌀',
-          'A 170u wild burst for 40; consumes spell surge',
-          nova('Tides of Chaos', 8, 40, 170, { consumesSurge: true }),
+          'A 170u wild burst for 40; Surge widens it by 50u and delays enemy wind-ups 30% for 3s',
+          nova('Tides of Chaos', 8, 40, 170, {
+            consumesSurge: true,
+            surgeRider: { radius: 50, castSlow: 1.3, castSlowDuration: 3 },
+          }),
         ),
         sk(
           'so_wild_bend',
           'Bend Luck',
           '🍀',
-          'Blink 280u with i-frames and prepare spell surge for 8s',
-          blink('Bend Luck', 6, { range: 280, iframes: 0.3, prepareSurge: 8 }),
+          'Prepare Surge for 8s and Fortune for 6s: your next connecting direct hit delays wind-ups 40% and weakens enemy damage 15% for 3s',
+          buff('Bend Luck', 10, {
+            prepareSurge: 8,
+            fortune: { duration: 6, castSlowMult: 1.4, damageMult: 0.85, debuffDuration: 3 },
+          }),
         ),
         sk(
           'so_wild_font',

@@ -3241,3 +3241,19 @@ body {
     grid-template-columns: 2fr 1fr 1fr;
   }
 }
+
+/* Shared rules stay collapsed until requested; readable in both reward and controls panels. */
+.wb-mechanics-reference {
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 12px 0;
+}
+.wb-mechanics-reference summary {
+  color: var(--gold);
+  cursor: pointer;
+  font-weight: 600;
+}
+.wb-mechanics-reference p {
+  margin: 0.75em 0;
+}

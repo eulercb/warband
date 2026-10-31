@@ -187,6 +187,23 @@ export interface PlayerAbilityDef {
   consumesSurge?: boolean;
   /** Surge adds one projectile, sharing its enhanced damage budget. */
   surgeTwin?: boolean;
+  /** Bounded delivery/control changes reserved only when this cast spends Surge. */
+  surgeRider?: {
+    halfAngleDeg?: number;
+    radius?: number;
+    pierce?: number;
+    spreadDeg?: number;
+    castSlow?: number;
+    castSlowDuration?: number;
+  };
+  /** Deterministic luck: next positive direct hit hinders the victim's next actions. */
+  fortune?: {
+    duration: number;
+    castSlowMult: number;
+    damageMult: number;
+    debuffDuration: number;
+    markBonus?: number;
+  };
   /** Prepare one guaranteed critical precision strike for this many seconds. */
   prepareCrit?: number;
   /** Only marked melee skills consume preparation; basics leave it available. */
@@ -1191,7 +1208,7 @@ export function describeAbility(
 
   if (def.rescueHealBonus)
     parts.push(
-      `+${n(def.rescueHealBonus * 100)}% heal at ≤35% HP; effective heals add a 6s bubble — 25% healed HP (cap 15% max HP), plus 75% on rescue (extra cap 30% max HP); shared cap 50% max HP`,
+      `+${n(def.rescueHealBonus * 100)}% heal at ≤35% HP; effective heals add a 6s bubble — 25% healed HP (cap 15% max HP), plus 75% on rescue (extra cap 30% max HP)`,
     );
   if (def.recoveryZone) {
     const g = def.recoveryZone;
@@ -1303,12 +1320,29 @@ export function describeAbility(
   if (def.controlDamageBonus)
     parts.push(`+${n(def.controlDamageBonus * 100)}% dmg vs slowed/rooted/stunned foes`);
   if (def.prepareSurge) parts.push(`prepare spell surge for ${s(def.prepareSurge)}`);
-  if (def.consumesSurge)
+  if (def.consumesSurge) {
+    const riders = def.surgeRider;
+    const text = [def.surgeTwin ? 'surge +1 projectile sharing +20% total dmg' : 'surge +20% dmg'];
+    if ((def.castTime ?? 0) > 0) text.push('half wind-up');
+    if (riders?.halfAngleDeg && def.kind === 'meleeCone')
+      text.push(`+${n(riders.halfAngleDeg)}° each side`);
+    if (riders?.radius && def.kind === 'pbaoe') text.push(`+${n(riders.radius)}u radius`);
+    if (riders?.pierce && def.kind === 'projectile')
+      text.push(`pierce ${n(riders.pierce)} extra foe`);
+    if (riders?.spreadDeg != null && def.kind === 'projectile')
+      text.push(`fan at most ${n(riders.spreadDeg)}°`);
+    if (riders?.castSlow)
+      text.push(
+        `enemy wind-ups +${n((riders.castSlow - 1) * 100)}% for ${s(riders.castSlowDuration ?? 3)}`,
+      );
+    parts.push(text.join(', '));
+  }
+  if (def.fortune) {
+    const f = def.fortune;
     parts.push(
-      def.surgeTwin
-        ? 'surge +1 projectile sharing +20% total dmg, half wind-up'
-        : 'surge +20% dmg, half wind-up',
+      `Fortune ${s(f.duration)} — next damaging direct hit delays enemy wind-ups ${n((f.castSlowMult - 1) * 100)}% and weakens their damage ${n((1 - f.damageMult) * 100)}% for ${s(f.debuffDuration)}${f.markBonus ? `; marks that foe for your next direct hit from a later cast +${n(f.markBonus * 100)}% damage within 5s` : ''}`,
     );
+  }
   if (def.prepareCrit) parts.push(`prepare next precision crit for ${s(def.prepareCrit)}`);
   if (def.precisionOnHit)
     parts.push(`positive hit prepares precision for ${s(def.precisionOnHit)}`);

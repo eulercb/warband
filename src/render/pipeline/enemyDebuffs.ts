@@ -43,14 +43,14 @@ export function enemyDebuffs(buffs: readonly BuffView[], localId: number | null)
         case 'weak':
           return b.kind === 'damageDealt' && b.mult < 1;
         case 'vulnerable':
-          return b.kind === 'damageTaken' && b.mult > 1;
+          return (b.kind === 'damageTaken' || b.kind === 'luckExposure') && b.mult > 1;
         default:
           return b.kind === kind;
       }
     });
     if (!matching.length) continue;
     const personal =
-      kind === 'curse' || kind === 'venom'
+      kind === 'curse' || kind === 'venom' || kind === 'vulnerable'
         ? matching.filter((b) => localId !== null && b.ownerId === localId)
         : [];
     result.push({

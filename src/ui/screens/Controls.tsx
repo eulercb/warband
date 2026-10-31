@@ -4,6 +4,7 @@
  * input/bindings.ts). Reachable from the main menu and the in-fight pause menu.
  */
 import { useEffect, useRef, useState } from 'react';
+import MechanicsReference from '../game/MechanicsReference';
 import { closeControls, playUiSound } from '../state/session';
 import { useStore } from '../state/store';
 import { useGamepadMenu } from '../../input/useGamepadMenu';
@@ -231,6 +232,7 @@ export default function Controls() {
 
         {tab === 'options' ? (
           <section className="wb-controls-options" aria-label="Options">
+            <MechanicsReference />
             <button
               type="button"
               className={`wb-gauntlet-toggle${autofire ? ' on' : ''}`}

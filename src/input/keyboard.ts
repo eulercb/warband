@@ -22,6 +22,14 @@ function isBoundCode(code: string): boolean {
   return false;
 }
 
+/** Editing fields own their keyboard input, including inherited contenteditable. */
+function isEditable(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  if (target.closest('input, textarea, select')) return true;
+  const editor = target.closest('[contenteditable]');
+  return editor !== null && editor.getAttribute('contenteditable')?.toLowerCase() !== 'false';
+}
+
 export class KeyboardMouse {
   /** Latest mouse position in CSS px relative to the target element. */
   mouseScreen: Vec2 = { x: 0, y: 0 };
@@ -37,6 +45,7 @@ export class KeyboardMouse {
   // Bound handlers are retained so dispose() removes exactly what it added.
   private readonly onKeyDown: (e: KeyboardEvent) => void;
   private readonly onKeyUp: (e: KeyboardEvent) => void;
+  private readonly onFocusIn: (e: FocusEvent) => void;
   private readonly onMouseMove: (e: MouseEvent) => void;
   private readonly onMouseDown: (e: MouseEvent) => void;
   private readonly onMouseUp: (e: MouseEvent) => void;
@@ -46,6 +55,11 @@ export class KeyboardMouse {
     this.target = target;
 
     this.onKeyDown = (e) => {
+      if (isEditable(e.target) || isEditable(document.activeElement)) {
+        this.held.clear();
+        this.mouseLeftDown = false;
+        return;
+      }
       if (!isBoundCode(e.code)) return;
       this.held.add(e.code);
       this.lastActivityMs = performance.now();
@@ -56,6 +70,13 @@ export class KeyboardMouse {
       if (this.held.delete(e.code)) {
         this.lastActivityMs = performance.now();
       }
+    };
+
+    this.onFocusIn = (e) => {
+      if (!isEditable(e.target)) return;
+      // A field may receive focus while a movement/attack key is still held.
+      this.held.clear();
+      this.mouseLeftDown = false;
     };
 
     this.onMouseMove = (e) => {
@@ -83,6 +104,7 @@ export class KeyboardMouse {
     // Key events on `window` so they fire without the target holding focus.
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
+    window.addEventListener('focusin', this.onFocusIn);
     // Mouse-up on `window` so a release outside the target still clears state.
     window.addEventListener('mouseup', this.onMouseUp);
     target.addEventListener('mousemove', this.onMouseMove);
@@ -146,6 +168,7 @@ export class KeyboardMouse {
   dispose(): void {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
+    window.removeEventListener('focusin', this.onFocusIn);
     window.removeEventListener('mouseup', this.onMouseUp);
     this.target.removeEventListener('mousemove', this.onMouseMove);
     this.target.removeEventListener('mousedown', this.onMouseDown);

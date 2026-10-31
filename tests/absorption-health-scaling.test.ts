@@ -93,8 +93,8 @@ describe.each([false, true])('direct absorption health growth, composed=%s', (co
     expect(absorptionAmount(p.buffs)).toBe(100); // (30 base +20 siphon) x2 HP growth.
     expect(10000 - boss.hp).toBe(20);
     expect(ab.absorption!.curseSiphon!.amount).toBe(20);
-    expect(describeAbility(ab)).toContain('recipient max-HP growth');
-    expect(describeComposed(decompose(ab), ab.cooldown)).toContain('recipient max-HP growth');
+    expect(describeAbility(ab)).toContain('30 absorption');
+    expect(describeComposed(decompose(ab), ab.cooldown)).toContain('30 absorption');
   });
 
   it('raises the damage-earned Claim ceiling without multiplying the earned amount', () => {
