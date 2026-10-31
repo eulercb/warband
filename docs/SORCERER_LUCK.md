@@ -149,3 +149,9 @@ shield rules moved into the reference. They now verify the displayed absorption
 value; the actual health-scaling, damage and recipient checks remain. Coverage
 review added behavioral edge checks and found/fixed the missing-radius copied
 burst shrinking on Surge. No gate, timeout or gameplay assertion was relaxed.
+
+CI follow-up: the support browser smoke still expected the removed shared-cap
+sentence in Heal's tooltip. It now checks Heal's healing/rescue bubble fractions
+and individual ceilings, then opens the optional rules reference through pause
+and verifies the 50%-of-max-health shared cap there. This preserves the coverage
+of the rule in its new location without restoring repeated tooltip text.

@@ -47,7 +47,7 @@ try {
           name: 'Heal',
           slot: 'a1',
           key: 'KeyQ',
-          text: /effective heals add a 6s bubble.*25% healed HP.*75% on rescue.*shared cap 50% max HP/,
+          text: /effective heals add a 6s bubble.*25% healed HP.*cap 15% max HP.*75% on rescue.*extra cap 30% max HP/,
         },
         paladin: { name: 'Divine Shield', slot: 'a3', key: 'KeyR', text: /bulwark aura/ },
         druid: {
@@ -108,6 +108,18 @@ try {
       }
       if (classId === 'druid')
         assert.match(await page.locator('.wb-pause-skills').textContent(), /recovery grove/);
+      if (classId === 'cleric') {
+        // Shared shield rules moved out of every tooltip into the optional reference.
+        await click(button('Controls'));
+        await click(page.getByRole('tab', { name: 'Options', exact: true }));
+        const reference = page.locator('.wb-mechanics-reference');
+        await click(reference.locator('summary'));
+        assert.equal(await reference.getAttribute('open'), '');
+        assert.match(
+          await reference.textContent(),
+          /cap of 50% of the recipient’s maximum\s+health/,
+        );
+      }
       assert.deepEqual(errors, []);
       console.log(
         `PASS ${mobile ? 'mobile 320×568' : 'desktop'} ${classId}: support descriptions, real casting, pause${classId === 'bard' ? ', verse HUD' : ''}`,
