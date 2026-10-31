@@ -1411,7 +1411,7 @@ export function describeAbility(
   if (def.closeBurst) {
     const b = def.closeBurst;
     parts.push(
-      `next positive direct hit within ${n(b.range)}u or bear claw within ${s(b.duration)} releases a bramble burst for ${n(b.damage * dmgMul)} dmg in ${n(b.radius)}u around you; slows to ${n(b.slowMult * 100)}% for ${s(b.slowDuration)}; misses/ticks preserve readiness`,
+      `for ${s(b.duration)}, your next damaging direct hit within ${n(b.range)}u releases a close burst for ${n(b.damage * dmgMul)} dmg in ${n(b.radius)}u around you; slows to ${n(b.slowMult * 100)}% for ${s(b.slowDuration)}; misses/ticks preserve readiness`,
     );
   }
   if (def.cursePayoff)

@@ -300,6 +300,7 @@ jobs:
             sleep 1
           done
           node scripts/run-smoke.mjs smoke:caster-grands
+          node scripts/run-smoke.mjs smoke:support-grands
       - name: Upload caster screenshots
         if: always()
         uses: actions/upload-artifact@v4

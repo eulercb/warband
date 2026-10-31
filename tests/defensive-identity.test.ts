@@ -495,9 +495,10 @@ it.each(['kn_gk_a2_a', 'kn_gk_a2_b', 'pa_gk_a3_a', 'pa_gk_a3_b'])(
       expect(ab.buffDefMult).toBe(0.8);
     } else {
       expect(ab.buffDefMult).toBeUndefined();
-      expect(ab.iframes).toBeGreaterThan(1.25);
-      expect(ab.iframes).toBeLessThanOrEqual(2);
-      expect(ab.paladinAura!.duration).toBeGreaterThan(5);
+      expect(ab.iframes).toBe(1.25);
+      expect(ab.paladinAura!.duration).toBe(5);
+      expect(ab.frontGuard).toEqual({ charges: 2, duration: 4 });
+      expect(ab.steadfastDuration).toBe(3);
     }
   },
 );
