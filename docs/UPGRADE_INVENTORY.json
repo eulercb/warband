@@ -13139,7 +13139,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Words of Terror follows its first damaged foe for up to 6s and gains +15u radius; it still reaches flyers",
+      "description": "Words of Terror follows its first damaged foe for up to 6s and gains +15u radius",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -13194,7 +13194,7 @@
     },
     {
       "id": "ba_whispers_mantle_g",
-      "name": "Unbound Mantle",
+      "name": "Lingering Performance",
       "category": "subclass-skill-grand",
       "classId": "bard",
       "exclude": [],
@@ -13205,7 +13205,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Mantle of Whispers heals you 25 and adds 3s hard-control resistance",
+      "description": "Mantle’s chorus afterimage echoes one additional direct cast (4 total)",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -13214,14 +13214,8 @@
           "classId": "bard",
           "subSkills": ["ba_whispers_mantle"],
           "prefix": [],
-          "once": [
-            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 25 },
-            { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 3 }
-          ],
-          "atCap": [
-            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 25 },
-            { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 3 }
-          ]
+          "once": [{ "path": "subAbilities.sub1.whisperRefrain.charges", "before": 3, "after": 4 }],
+          "atCap": [{ "path": "subAbilities.sub1.whisperRefrain.charges", "before": 3, "after": 4 }]
         }
       ]
     },
@@ -13440,7 +13434,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Allies inside Otiluke Bind take 20% less damage and its radius grows by 20u; its floating root cage still reaches flyers",
+      "description": "Allies inside Otiluke Bind take 20% less damage and its radius grows by 20u",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -14621,7 +14615,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Cloud of Shadow follows its first damaged foe for 3s and lasts 1s longer; it remains a ground effect",
+      "description": "Cloud of Shadow follows its first damaged foe for 3s and lasts 1s longer",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -15154,7 +15148,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Wall of Thorns follows its first damaged foe for 3s before anchoring, and lasts 1s longer; it remains a physical ground effect",
+      "description": "Wall of Thorns follows its first damaged foe for 3s before anchoring, and lasts 1s longer",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -20619,7 +20613,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Increase Mantle travel by 8u and phasing by 0.02s, up to 0.6s; recharge improves by 4% (stacks to 5).",
+      "description": "Increase Mantle echo damage by 2%, up to 45%, travel by 8u and phasing by 0.02s, up to 0.6s; recharge improves by 4% (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -20630,11 +20624,13 @@
           "prefix": [],
           "once": [
             { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.32 },
-            { "path": "subAbilities.sub1.range", "before": 260, "after": 268 }
+            { "path": "subAbilities.sub1.range", "before": 260, "after": 268 },
+            { "path": "subAbilities.sub1.whisperRefrain.fraction", "before": 0.35, "after": 0.37 }
           ],
           "atCap": [
             { "path": "subAbilities.sub1.iframes", "before": 0.3, "after": 0.4000000000000001 },
-            { "path": "subAbilities.sub1.range", "before": 260, "after": 300 }
+            { "path": "subAbilities.sub1.range", "before": 260, "after": 300 },
+            { "path": "subAbilities.sub1.whisperRefrain.fraction", "before": 0.35, "after": 0.45 }
           ]
         }
       ]

@@ -130,12 +130,20 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
   if (ab.bardSong === 'discord') {
     applyBuff(p, makeBuff('discord', 0, 8, 'bardDiscord'));
   }
+  // A departure chorus commits only after its blink actually relocates.
+  if (ab.kind === 'blink' && ab.whisperRefrain) return false;
+  return spendSupportChorus(world, p, ab);
+}
+
+export function spendSupportChorus(world: World, p: Player, ab: PlayerAbilityDef): boolean {
   if (ab.bardSong !== 'chorus') return false;
   const ready = (kind: 'harmony' | 'discord') =>
     p.buffs.some((b) => b.kind === kind && b.remaining > 0);
   if (!ready('harmony') || !ready('discord')) return false;
   p.buffs = p.buffs.filter((b) => b.kind !== 'harmony' && b.kind !== 'discord');
   onSubclassChorus(world, p, ab.range ?? 420);
+  // This chorus spends its verses on a departure afterimage, not a group rally.
+  if (ab.kind === 'blink' && ab.whisperRefrain) return true;
   for (const ally of nearbySupportAllies(world, p, ab.range ?? 420)) {
     if (ab.cleanseOnHeal) cleanseMovement(ally);
     applyBuff(ally, makeBuff('moveSpeed', 1.15, ab.buffDuration ?? 6, 'chorusMove'));

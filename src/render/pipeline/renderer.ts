@@ -1,4 +1,5 @@
 import { drawMoonBear } from './moonFormVisuals';
+import { drawWhisperAfterimage } from './whisperVisuals';
 import { drawCompanion } from './companionVisuals';
 import { drawTauntState } from './defenseVisuals';
 import { ADD_RADIUS } from '../../engine/core/constants';
@@ -658,6 +659,17 @@ export class Renderer {
       }
     }
     for (const p of state.players) {
+      if (p.state === 'alive')
+        for (const b of p.buffs)
+          if (b.whisperRefrain)
+            drawWhisperAfterimage(
+              g,
+              b,
+              this.camera.worldToScreen(b.whisperRefrain.anchor),
+              scale,
+              p.id === state.localPlayerId,
+              timeSec,
+            );
       if (p.form === 'moonBear' && p.state === 'alive')
         drawMoonBear(g, p, this.camera.worldToScreen(p.pos), scale, timeSec);
       if (p.state === 'alive' && p.spiritCompanion)

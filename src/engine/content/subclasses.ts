@@ -1041,8 +1041,12 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'ba_whispers_mantle',
           'Mantle of Whispers',
           '🌫️',
-          'Blink 260u with i-frames',
-          blink('Mantle of Whispers', 6, { iframes: 0.3 }),
+          'Blink 260u; two verses leave an afterimage that echoes your next three direct casts near your departure',
+          blink('Mantle of Whispers', 6, {
+            iframes: 0.3,
+            bardSong: 'chorus',
+            whisperRefrain: { duration: 6, radius: 180, fraction: 0.35, charges: 3 },
+          }),
         ),
         sk(
           'ba_whispers_song',

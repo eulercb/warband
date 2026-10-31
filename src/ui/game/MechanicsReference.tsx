@@ -15,8 +15,9 @@ export default function MechanicsReference() {
       <p>
         Movement distance and area size are capped to fit the arena. Absorption takes damage before
         health, grows with maximum health, and shares a cap of 50% of the recipient’s maximum
-        health. Repeated shields do not all add together. Flight avoids ground hazards; direct
-        attacks can still hit flyers.
+        health. Repeated shields do not all add together. Frontal guard charges do not stack; a
+        weaker guard does not replace a stronger one. Flight avoids ground hazards; direct attacks
+        can still hit flyers.
       </p>
       <p>
         Each class equips four grands: two for starting skills (including the basic attack and

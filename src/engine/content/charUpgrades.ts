@@ -2276,7 +2276,7 @@ const SUPPORT_RECIPES: Record<
   ba_valor_shatter: { kind: 'pbaoe', hooks: ['bardSong'] },
   ba_whispers_words: { kind: 'groundZone', hooks: ['zoneTickDamage', 'bardSong', 'airborne'] },
   ba_whispers_wound: { kind: 'projectile', hooks: ['bardSong'], unbursted: true },
-  ba_whispers_mantle: { kind: 'blink', hooks: [] },
+  ba_whispers_mantle: { kind: 'blink', hooks: ['whisperRefrain'] },
   ba_whispers_song: { kind: 'heal', hooks: ['bardSong'] },
 };
 function supportRecipeMatches(subSkillId: string, ab: Omit<PlayerAbilityDef, 'slot'>): boolean {
@@ -3564,7 +3564,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'ba_whispers_words',
     'Pursuing Dread',
     '😱',
-    'Words of Terror follows its first damaged foe for up to 6s and gains +15u radius; it still reaches flyers',
+    'Words of Terror follows its first damaged foe for up to 6s and gains +15u radius',
     supportGrand('ba_whispers_words', (ab) => {
       ab.zoneFollow = Math.max(ab.zoneFollow ?? 0, 6);
       addN(ab, 'radius', 15);
@@ -3582,12 +3582,11 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
   ),
   gsk(
     'ba_whispers_mantle',
-    'Unbound Mantle',
+    'Lingering Performance',
     '🌫️',
-    'Mantle of Whispers heals you 25 and adds 3s hard-control resistance',
+    'Mantle’s chorus afterimage echoes one additional direct cast (4 total)',
     supportGrand('ba_whispers_mantle', (ab) => {
-      addN(ab, 'healOnUse', 25);
-      ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 3);
+      if (ab.whisperRefrain) ab.whisperRefrain = { ...ab.whisperRefrain, charges: 4 };
     }),
   ),
   gsk(
@@ -3673,7 +3672,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mg_abjurer_bind',
     'Sanctum Prison',
     '🌀',
-    'Allies inside Otiluke Bind take 20% less damage and its radius grows by 20u; its floating root cage still reaches flyers',
+    'Allies inside Otiluke Bind take 20% less damage and its radius grows by 20u',
     casterGrand(
       'groundZone',
       (ab) => {
@@ -4048,7 +4047,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mo_shadow_cloud',
     'Creeping Shadow',
     '💨',
-    'Cloud of Shadow follows its first damaged foe for 3s and lasts 1s longer; it remains a ground effect',
+    'Cloud of Shadow follows its first damaged foe for 3s and lasts 1s longer',
     (ab) => {
       ab.zoneFollow = Math.max(ab.zoneFollow ?? 0, 3);
       addN(ab, 'zoneDuration', 1);
@@ -4197,7 +4196,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'dr_land_wall',
     'Wandering Briar',
     '🌵',
-    'Wall of Thorns follows its first damaged foe for 3s before anchoring, and lasts 1s longer; it remains a physical ground effect',
+    'Wall of Thorns follows its first damaged foe for 3s before anchoring, and lasts 1s longer',
     natureGrand('groundZone', (ab) => {
       if (ab.zoneTickDamage) {
         ab.zoneFollow = Math.max(ab.zoneFollow ?? 0, 3);
@@ -5093,10 +5092,15 @@ const SUPPORT_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef)
     },
   },
   ba_whispers_mantle: {
-    desc: 'Increase Mantle travel by 8u and phasing by 0.02s, up to 0.6s; recharge improves by 4%',
+    desc: 'Increase Mantle echo damage by 2%, up to 45%, travel by 8u and phasing by 0.02s, up to 0.6s; recharge improves by 4%',
     tune: (ab) => {
       addN(ab, 'range', 8);
       ab.iframes = Math.max(ab.iframes!, Math.min(0.6, ab.iframes! + 0.02));
+      if (ab.whisperRefrain)
+        ab.whisperRefrain = {
+          ...ab.whisperRefrain,
+          fraction: Math.min(0.45, ab.whisperRefrain.fraction + 0.02),
+        };
     },
   },
   ba_whispers_song: {

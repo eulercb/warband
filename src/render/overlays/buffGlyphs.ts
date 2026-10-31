@@ -27,6 +27,13 @@ function describe(
   mult: number,
 ): { glyph: string; color: number; good: boolean; label: string } | null {
   switch (kind) {
+    case 'whisperRefrain':
+      return {
+        glyph: '◈',
+        color: 0xc6a8ff,
+        good: true,
+        label: `Afterimage: ${Math.round(mult)} direct-cast echoes near your departure`,
+      };
     case 'auraBulwark':
       return {
         glyph: '🏰',

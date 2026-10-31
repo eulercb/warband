@@ -214,6 +214,7 @@ export type BuffKind =
   | 'rescueStrike' // next connecting direct hit, granted by a successful rescue
   | 'radiantCharge' // Light: next direct hit empowered and slows wind-ups
   | 'refrainEcho' // one dedicated heal echo
+  | 'whisperRefrain' // stationary departure afterimage; mult = remaining direct casts
   | 'grandOpening' // owner-only next direct-hit vulnerability; host cast token prevents self-consumption
   | 'grandCadence' // Fiend identity direct-hit progress (mult = count)
   | 'spellblade' // one empowered melee hit from Arcane Trickster
@@ -251,6 +252,14 @@ export interface Buff {
     invuln?: number;
   };
   closeBurst?: CloseBurst;
+  whisperRefrainState?: {
+    anchor: Vec2;
+    radius: number;
+    fraction: number;
+    slot: ExtSlot;
+    /** Host-only identity tokens: late interleaved projectiles cannot spend twice. */
+    usedCasts: { spent: boolean }[];
+  };
   blockCounter?: number;
   coating?: { damage: number; duration: number };
   venom?: { ownerId: number; accum: number; ticks: number; field?: boolean };
@@ -295,6 +304,7 @@ export interface StunDr {
  * vulnerability, and pick the matching glow color per effect (§ visual-cues).
  */
 export interface BuffView {
+  whisperRefrain?: { anchor: Vec2; radius: number; charges: number };
   visual?: 'divineShield';
   /** Optional public curse owner; old snapshots omit it. */
   ownerId?: EntityId;

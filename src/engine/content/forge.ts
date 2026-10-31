@@ -131,6 +131,7 @@ export type EffectComponent =
   | { kind: 'prepareSurge'; duration: number }
   | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
   | { kind: 'fortune'; fortune: NonNullable<PlayerAbilityDef['fortune']> }
+  | { kind: 'whisperRefrain'; refrain: NonNullable<PlayerAbilityDef['whisperRefrain']> }
   | { kind: 'prepareCrit'; duration: number }
   | { kind: 'rebuke'; duration: number; curseBonus?: number; direct?: boolean }
   | { kind: 'preparedRefund'; seconds: number }
@@ -373,6 +374,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (kind === 'groundZone' && def.prepareSurge)
     effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
   if (def.fortune) effects.push({ kind: 'fortune', fortune: { ...def.fortune } });
+  if (def.whisperRefrain && def.kind === 'blink')
+    effects.push({ kind: 'whisperRefrain', refrain: { ...def.whisperRefrain } });
   if (def.mirrorImages) effects.push({ kind: 'mirrorImages', ...def.mirrorImages });
   if (kind === 'groundZone' && def.prepareCrit)
     effects.push({ kind: 'prepareCrit', duration: def.prepareCrit });
@@ -393,7 +396,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.rescueHealBonus) effects.push({ kind: 'rescueHeal', bonus: def.rescueHealBonus });
   if (def.recoveryZone) effects.push({ kind: 'recovery', grove: { ...def.recoveryZone } });
   if (def.allyWard) effects.push({ kind: 'allyWard', ward: { ...def.allyWard } });
-  if (def.bardSong) effects.push({ kind: 'bardSong', part: def.bardSong });
+  if (def.bardSong && !def.whisperRefrain) effects.push({ kind: 'bardSong', part: def.bardSong });
   const contract = skillContract(def);
   if (Object.keys(contract).length) effects.push({ kind: 'skillContract', contract });
   return { delivery, effects };
@@ -565,6 +568,9 @@ export function recompose(
       case 'fortune':
         def.fortune = { ...e.fortune };
         break;
+      case 'whisperRefrain':
+        if (d.kind === 'blink') def.whisperRefrain = { ...e.refrain };
+        break;
       case 'surgeStrike':
         def.consumesSurge = true;
         if (e.rider) def.surgeRider = { ...e.rider };
@@ -633,6 +639,8 @@ export function recompose(
         break;
     }
   }
+  // The priced afterimage includes its chorus capability; random selection cannot orphan it.
+  if (def.whisperRefrain) def.bardSong = 'chorus';
   return def;
 }
 
@@ -737,6 +745,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return (1 - e.ward.mult) * e.ward.duration * 24;
     case 'bardSong':
       return e.part === 'chorus' ? 15 : 8;
+    case 'whisperRefrain':
+      return 15 + e.refrain.charges * e.refrain.fraction * 40;
     case 'controlDamage':
       return e.bonus * 40;
     case 'prepareSurge':
@@ -991,6 +1001,8 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return `other allies within ${n(e.ward.range)}u take ${pct((1 - e.ward.mult) * 100)} less damage for ${s(e.ward.duration)}`;
     case 'bardSong':
       return bardSongText(e.part);
+    case 'whisperRefrain':
+      return `spend Harmony + Discord: departure afterimage ${s(e.refrain.duration)}, next ${n(e.refrain.charges)} direct casts echo ${n(e.refrain.fraction * 100)}% damage near it (${n(e.refrain.radius)}u)`;
     case 'controlDamage':
       return `+${pct(e.bonus * 100)} dmg vs slowed/rooted/stunned foes`;
     case 'prepareSurge':
@@ -1010,7 +1022,7 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
     case 'rescueStrike':
       return `successful low-HP rescue readies recipient's next direct hit for +${pct((e.strike.mult - 1) * 100)}% damage within ${s(e.strike.duration)}`;
     case 'crossingGuard':
-      return `first living ally crossed within ${n(e.guard.width)}u is cleansed and gains one frontal block for ${s(e.guard.duration)}; stronger guards preserved`;
+      return `first living ally crossed within ${n(e.guard.width)}u is cleansed and gains one frontal block for ${s(e.guard.duration)}`;
     case 'warCry':
       return `challenge ${n(e.cry.radius)}u for ${s(e.cry.duration)}, foe attacks 20% weaker; next connecting melee readies a +30% counter`;
     case 'venomCoating':
@@ -1366,6 +1378,8 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return DIRECT_STRIKE.has(kind);
     case 'fortune':
       return kind === 'selfBuff' || kind === 'blink' || kind === 'groundZone';
+    case 'whisperRefrain':
+      return kind === 'blink';
     case 'prepareSurge':
       return kind === 'blink' || kind === 'selfBuff' || kind === 'groundZone';
     case 'prepareCrit':
@@ -1439,8 +1453,9 @@ function primaryWant(kind: DeliveryKind): (e: EffectComponent) => boolean {
         e.kind === 'absorption' ||
         e.kind === 'fortune' ||
         e.kind === 'healOnUse';
-    case 'dash':
     case 'blink':
+      return (e) => e.kind === 'whisperRefrain' || e.kind === 'healOnUse' || e.kind === 'buff';
+    case 'dash':
       return (e) => e.kind === 'landingDamage' || e.kind === 'healOnUse' || e.kind === 'buff';
     case 'taunt':
       return (e) => e.kind === 'buff';
@@ -1944,6 +1959,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, ward: { ...e.ward, duration: e.ward.duration * f } };
     case 'bardSong':
       return e;
+    case 'whisperRefrain':
+      return { ...e, refrain: { ...e.refrain, fraction: e.refrain.fraction * f } };
     case 'controlDamage':
       return { ...e, bonus: e.bonus * f };
     case 'fortune':
@@ -2028,7 +2045,12 @@ function capComponents(comp: AbilityComponents): AbilityComponents {
   const delivery = { ...comp.delivery };
   if (delivery.kind === 'selfBuff' && delivery.iframes != null)
     delivery.iframes = clamp(round05(delivery.iframes), 0.25, 2);
-  return { delivery, effects: comp.effects.map((e) => capEffect(fittedSurgePiercing(comp, e))) };
+  return {
+    delivery,
+    effects: comp.effects
+      .filter((e) => e.kind !== 'whisperRefrain' || delivery.kind === 'blink')
+      .map((e) => capEffect(fittedSurgePiercing(comp, e))),
+  };
 }
 
 /** A detonation cannot repeat on pierced bodies; remove its unavailable rider before pricing/copy. */
@@ -2120,6 +2142,7 @@ function addBoonComponents(
         'mirrorImages',
         'prepareCrit',
         'fortune',
+        'whisperRefrain',
         'steadfast',
         'cleanse',
         'momentum',
@@ -2327,6 +2350,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.prepareSurge != null ? { ...e, duration: def.prepareSurge } : e;
     case 'fortune':
       return def.fortune ? { ...e, fortune: { ...def.fortune } } : e;
+    case 'whisperRefrain':
+      return def.whisperRefrain ? { ...e, refrain: { ...def.whisperRefrain } } : e;
     case 'surgeStrike':
       return def.surgeRider ? { ...e, rider: { ...def.surgeRider } } : e;
     case 'prepareCrit':
@@ -2532,6 +2557,16 @@ function capEffect(e: EffectComponent): EffectComponent {
       };
     case 'bardSong':
       return e;
+    case 'whisperRefrain':
+      return {
+        ...e,
+        refrain: {
+          duration: clamp(round1(e.refrain.duration), 1, 8),
+          radius: clamp(round5(e.refrain.radius), 80, 220),
+          fraction: clamp(round2(e.refrain.fraction), 0.05, 0.45),
+          charges: clamp(Math.round(e.refrain.charges), 1, 4),
+        },
+      };
     case 'controlDamage':
       return { ...e, bonus: clamp(round2(e.bonus), 0, 0.4) };
     case 'prepareSurge':

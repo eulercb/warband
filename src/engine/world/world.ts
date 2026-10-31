@@ -1,4 +1,5 @@
 import { buildGrandStats, activateGrandStats } from '../content/grandStats';
+import { onWhisperRefrainHit, ownsWhisperRefrain } from '../combat/whisperRefrain';
 import { grandHistory, type GrandLoadout } from '../content/grandSelections';
 import {
   boundedAbility,
@@ -1918,15 +1919,23 @@ export class World {
     for (const p of this.players)
       p.buffs = p.buffs.filter(
         (b) =>
-          !['brambleReady', 'challengeReady', 'venomReady', 'evocation', 'rescueStrike'].includes(
-            b.kind,
-          ) ||
+          ![
+            'brambleReady',
+            'challengeReady',
+            'venomReady',
+            'evocation',
+            'rescueStrike',
+            'whisperRefrain',
+          ].includes(b.kind) ||
           (p.state === 'alive' &&
             p.hp > 0 &&
             this.scene === null &&
-            (b.kind === 'evocation'
-              ? p.subclassPassiveId === 'evoker_arcane_cadence'
-              : b.source === `${b.kind === 'brambleReady' ? 'closeBurst' : b.kind}:${p.classId}`)),
+            (b.kind === 'whisperRefrain'
+              ? ownsWhisperRefrain(p, b)
+              : b.kind === 'evocation'
+                ? p.subclassPassiveId === 'evoker_arcane_cadence'
+                : b.source ===
+                  `${b.kind === 'brambleReady' ? 'closeBurst' : b.kind}:${p.classId}`)),
       );
   }
 
@@ -1939,6 +1948,7 @@ export class World {
     refund?: HitMods['refund'],
     pilot?: HitMods['pilot'],
   ): void {
+    onWhisperRefrainHit(this, source, target, effective, pilot);
     if (
       this.scene === null &&
       source.state === 'alive' &&
