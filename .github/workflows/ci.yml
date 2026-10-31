@@ -301,6 +301,7 @@ jobs:
           done
           node scripts/run-smoke.mjs smoke:caster-grands
           node scripts/run-smoke.mjs smoke:support-grands
+          node scripts/run-smoke.mjs smoke:whispers
           node scripts/run-smoke.mjs smoke:whisper-refrain
       - name: Upload caster screenshots
         if: always()

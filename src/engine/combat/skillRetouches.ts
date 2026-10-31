@@ -13,7 +13,7 @@ export function armRetouchEffects(world: World, p: Player, ab: PlayerAbilityDef)
       p,
       makeBuff('challengeReady', 1.3, ab.warCry.duration, `challengeReady:${p.classId}`),
     );
-    for (const foe of [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0)]) {
+    for (const foe of [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0 && !a.charm)]) {
       if (dist(p.pos, foe.pos) <= ab.warCry.radius + foe.radius)
         applyBuff(foe, makeBuff('damageDealt', 0.8, ab.warCry.duration, 'weakness:challenge'));
     }
@@ -87,7 +87,10 @@ export function applyCoating(
 /** Tick before ordinary buff decay so the final second is delivered, including large time steps. */
 export function tickVenoms(world: World, dt: number): void {
   if (dt <= 0 || world.scene !== null) return;
-  for (const target of [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0)]) {
+  for (const target of [
+    ...world.aliveBosses(),
+    ...world.adds.filter((a) => a.hp > 0 && !a.charm),
+  ]) {
     for (const buff of target.buffs.filter(
       (b) => b.kind === 'venom' && b.remaining > 0 && b.venom,
     )) {
@@ -127,9 +130,10 @@ export function applyFieldPoison(
   const source = `venom:${owner.id}`;
   const old = target.buffs.find((b) => b.source === source && b.remaining > 0);
   if (old && (old.mult > damage || (old.mult === damage && !old.venom?.field))) return;
-  const recipients = [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0)].filter((t) =>
-    t.buffs.some((b) => b.remaining > 0 && b.source === source && b.venom?.field),
-  );
+  const recipients = [
+    ...world.aliveBosses(),
+    ...world.adds.filter((a) => a.hp > 0 && !a.charm),
+  ].filter((t) => t.buffs.some((b) => b.remaining > 0 && b.source === source && b.venom?.field));
   if (!old?.venom?.field && recipients.length >= 3) return;
   if (old?.venom?.field && old.mult === damage) {
     old.remaining = Math.max(old.remaining, 2);
@@ -154,7 +158,7 @@ export function updateUpgradeZone(
     z.zoneFollow = 0;
     return;
   }
-  const foes = [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0)];
+  const foes = [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0 && !a.charm)];
   const reachable = (target: Boss | Add): boolean =>
     zoneReachesAir(z) ||
     (world.bosses.includes(target as Boss) ? !world.bossFlying(target as Boss) : !isFlying(target));

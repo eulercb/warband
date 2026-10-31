@@ -213,8 +213,12 @@ export type BuffKind =
   | 'luckExposure' // owner-only later-cast vulnerability
   | 'rescueStrike' // next connecting direct hit, granted by a successful rescue
   | 'radiantCharge' // Light: next direct hit empowered and slows wind-ups
-  | 'refrainEcho' // one dedicated heal echo
-  | 'whisperRefrain' // stationary departure afterimage; mult = remaining direct casts
+  | 'refrainEcho' // legacy snapshots only
+  | 'secretReady'
+  | 'secretMark'
+  | 'nightmare'
+  | 'beguiling'
+  | 'whisperRefrain' // accepted stationary departure afterimage
   | 'grandOpening' // owner-only next direct-hit vulnerability; host cast token prevents self-consumption
   | 'grandCadence' // Fiend identity direct-hit progress (mult = count)
   | 'spellblade' // one empowered melee hit from Arcane Trickster
@@ -356,7 +360,38 @@ export interface SpiritCompanionView {
   bondReady: boolean;
 }
 
+export interface WhisperCast {
+  ownerClass: ClassId;
+  spent: boolean;
+  payloadSpent?: boolean;
+  targetId?: EntityId;
+  source: Vec2;
+  discord: boolean;
+  apparition?: { mode: 'charm'; duration: number };
+}
+export interface EnemyPerception {
+  ownerClass: ClassId;
+  ownerId: EntityId;
+  requiresPassive?: boolean;
+  mode: 'fear' | 'lure';
+  pos: Vec2;
+  remaining: number;
+  pending: number;
+  active: boolean;
+  travel: number;
+  radius: number;
+}
+export interface ApparitionView {
+  enemyId: EntityId;
+  ownerId: EntityId;
+  mode: 'fear' | 'lure';
+  pos: Vec2;
+  remaining: number;
+  pending: boolean;
+}
 export interface Player {
+  whisperSecret?: { targetId: EntityId; remaining: number };
+  whisperRecovery?: number;
   spiritCompanion?: SpiritCompanion;
   id: EntityId;
   peerId: string; // network identity ('' allowed but host uses its own selfId)
@@ -506,6 +541,7 @@ export interface Player {
 export type BossActionKind = 'idle' | 'windup' | 'channel' | 'recover';
 
 export interface BossAction {
+  illusionPos?: Vec2;
   kind: BossActionKind;
   abilityId: string | null;
   remaining: number; // seconds left in current phase
@@ -517,6 +553,8 @@ export interface BossAction {
 }
 
 export interface Boss {
+  perception?: EnemyPerception;
+  perceptionRecovery?: number;
   venomExitGates?: Map<number, number>;
   id: EntityId;
   monsterId: MonsterId;
@@ -600,6 +638,9 @@ export interface Boss {
 }
 
 export interface Add {
+  perception?: EnemyPerception;
+  perceptionRecovery?: number;
+  charm?: { ownerId: EntityId; ownerClass: ClassId; remaining: number };
   venomExitGates?: Map<number, number>;
   id: EntityId;
   pos: Vec2;
@@ -678,6 +719,7 @@ export interface ProjectileImpact {
 }
 
 export interface Projectile {
+  whisperCast?: WhisperCast;
   id: EntityId;
   kind: ProjectileKind;
   pos: Vec2;
@@ -1011,6 +1053,7 @@ export interface PendingStrike {
 }
 
 export interface GroundZone {
+  whisperCast?: WhisperCast;
   zonePoison?: { share: number; onExit: boolean };
   zoneFollow?: number;
   followId?: number;
@@ -1371,6 +1414,7 @@ export interface Snapshot {
   adds: AddView[];
   projectiles: ProjectileView[];
   groundZones: ZoneView[];
+  apparitions?: ApparitionView[];
   /** Static per-run terrain hazards (never move; carried verbatim). */
   terrain: TerrainView[];
   /** Static per-run cover obstacles that block ranged attacks. */
@@ -1398,6 +1442,7 @@ export interface RenderState {
   adds: AddView[];
   projectiles: ProjectileView[];
   groundZones: ZoneView[];
+  apparitions?: ApparitionView[];
   terrain: TerrainView[];
   obstacles: ObstacleView[];
   /** World-level corruption telegraphs (see Snapshot.telegraphs). */

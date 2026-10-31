@@ -101,6 +101,7 @@ export function updateCompanions(world: World, dt: number): void {
       if (
         !target ||
         target.hp <= 0 ||
+        ('charm' in target && !!target.charm) ||
         order.remaining <= 0 ||
         dist(p.pos, target.pos) > COMPANION_RANGE
       )

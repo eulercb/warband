@@ -44,6 +44,7 @@
     "smoke:nature-grands": "node scripts/smoke-nature-grands.mjs",
     "smoke:caster-grands": "node scripts/smoke-caster-grands.mjs",
     "smoke:support-grands": "node scripts/smoke-support-grands.mjs",
+    "smoke:whispers": "node scripts/smoke-whispers.mjs",
     "smoke:whisper-refrain": "node scripts/smoke-whisper-refrain.mjs"
   },
   "dependencies": {

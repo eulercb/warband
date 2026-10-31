@@ -146,9 +146,9 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
   ba_whispers: {
     id: 'whispers_echoed_refrain',
     classId: 'bard',
-    name: 'Echoed Refrain',
+    name: 'Private Nightmare',
     icon: '🎶',
-    desc: 'Completing a chorus readies an echo for 8s. Your next effective dedicated heal echoes 50% of its healing (up to the greater of 35 or 12% recipient max HP) to the most injured other ally within 420u, or the original recipient if no other ally is injured. Once per 8s; echoes do not prepare verses or trigger rescue.',
+    desc: 'Direct hits learn one foe’s secret for 8s. A later Discord hit, Harmony heal, blink or Discord field places a nightmare that makes the foe retreat after its current attack. Place it at your cast, healed ally, departure or field. Basics preserve secrets; full-health heals work. Recovery: 8s.',
   },
   ro_assassin: {
     id: 'assassin_opening',

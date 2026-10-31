@@ -24,7 +24,7 @@ const cases = [
   ['sorcerer', 'Chaos Surge', 'Spell Weave'],
   ['sorcerer', 'Bend Luck', 'Spell Weave'],
   ['bard', 'Bolster', 'Rallying Chorus'],
-  ['bard', 'Healing Refrain', 'Echoed Refrain'],
+  ['bard', 'Healing Refrain', 'Private Nightmare'],
   ['rogue', 'Smoke Bomb', "Death's Opening"],
   ['rogue', 'Shield Spell', 'Spellblade'],
   ['warlock', 'Dark Resilience', 'Soul Ember'],

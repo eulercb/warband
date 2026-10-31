@@ -146,6 +146,7 @@ export class SnapshotInterpolator {
       adds,
       projectiles,
       groundZones,
+      apparitions: carry.apparitions?.map((a) => ({ ...a, pos: { ...a.pos } })),
       terrain,
       obstacles,
       telegraphs,

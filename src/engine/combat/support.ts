@@ -1,3 +1,4 @@
+import { spendSecret } from './whispers';
 import {
   onSubclassFinisher,
   onSubclassChorus,
@@ -159,6 +160,8 @@ export function healSupportAlly(
   amount: number,
   ab: PlayerAbilityDef,
 ): number {
+  if (ab.bardSong === 'harmony' && ab.whisperCast)
+    spendSecret(world, p, ab.whisperCast, target.pos);
   if (ab.cleanseOnHeal) cleanseMovement(target);
   const rescue = target.hp <= target.maxHp * 0.35;
   const requested = amount * (rescue ? 1 + (ab.rescueHealBonus ?? 0) : 1);

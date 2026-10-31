@@ -216,6 +216,38 @@ function describe(
         good: true,
         label: 'Refulgence: next direct hit +25% damage and 30% slower enemy wind-ups for 3s',
       };
+    case 'secretReady':
+      return {
+        glyph: '👁️',
+        color: 0xd8b4ff,
+        good: true,
+        label:
+          'Secret learned: a Discord special, Harmony heal or blink places your apparition; basics preserve it',
+      };
+    case 'secretMark':
+      return {
+        glyph: '👁️',
+        color: 0xd8b4ff,
+        good: false,
+        label: 'Secret known to a Whispers Bard',
+      };
+    case 'nightmare':
+      return {
+        glyph: mult === 2 ? '🎭' : '😱',
+        color: 0xd8b4ff,
+        good: false,
+        label:
+          mult === 2
+            ? 'False quarry: next targeted attack can be deceived'
+            : 'Private Nightmare: retreat after committed attack',
+      };
+    case 'beguiling':
+      return {
+        glyph: '🎭',
+        color: 0x99ffcc,
+        good: false,
+        label: 'Charmed: briefly fighting former allies',
+      };
     case 'refrainEcho':
       return {
         glyph: '🎶',

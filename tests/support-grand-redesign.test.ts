@@ -353,15 +353,7 @@ it('a same-kind Forge ward missing its barrier gets honest generic growth rather
   expect(ab.absorption).toBeUndefined();
 });
 
-it.each([
-  'cl_light_g_a',
-  'cl_light_g_b',
-  'pa_vengeance_g_a',
-  'pa_vengeance_g_b',
-  'ba_valor_g_a',
-  'ba_whispers_g_a',
-  'ba_whispers_g_b',
-])(
+it.each(['cl_light_g_a', 'cl_light_g_b', 'pa_vengeance_g_a', 'pa_vengeance_g_b', 'ba_valor_g_a'])(
   '%s gives a real healing-projectile Forge basic useful growth instead of phantom attack riders',
   (id) => {
     const identity = getCharUpgrade(id)!;

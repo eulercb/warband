@@ -30,6 +30,14 @@ export default function MechanicsReference() {
         duplicate. Some spells list an additional Surge effect.
       </p>
       <p>
+        Whispers spends one learned secret on a fixed apparition. Normal fear retreats for up to
+        1.4s/160u; field fear tries for up to 3s/300u. Slows, roots and cover matter. Taunt or an
+        immobile target can reject fear without spending the secret. Committed attacks finish first.
+        False quarries redirect the next targeted attack, not an attack already winding up; allies
+        standing beside the double can still be hit. Words’ conversion affects one add, never a
+        boss.
+      </p>
+      <p>
         Moon claws can also release a prepared close burst, even though they do not trigger other
         direct-hit rewards.
       </p>
