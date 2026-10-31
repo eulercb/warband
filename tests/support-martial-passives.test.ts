@@ -144,20 +144,26 @@ describe('loadout feasibility: every choice has a base-kit route', () => {
       };
       w.step(0.05, new Map([['a', cmd]]));
     };
+    p.cooldowns.a2 = 12;
+    resolvePlayerAbility(w, p, 'a2', ZERO);
     if (autofire) for (let i = 0; i < 60; i++) step(true);
     else {
       for (let i = 0; i < 60; i++) step(true);
-      expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(1);
+      expect(p.buffs.some((b) => b.kind === 'wildWeave')).toBe(false);
       for (let press = 0; press < 2; press++) {
         for (let i = 0; i < 20; i++) step(false);
         step(true);
       }
     }
     expect(p.buffs.filter((b) => b.kind === 'spellSurge')).toHaveLength(1);
+    expect(p.subclassPassiveCooldowns!.wild_spell_weave).toBeGreaterThan(0);
   });
   it.each([0, 1, 2, 3])('Wild choice %i needs no special skill combination', (choice) => {
     const { w, p } = setup('so_wild', choice);
-    for (let i = 0; i < 3; i++) resolvePlayerAbility(w, p, 'basic', ZERO);
+    p.cooldowns.a2 = 12;
+    resolvePlayerAbility(w, p, 'a2', ZERO);
+    damageBoss(w, p, w.boss!, 10, { direct: true });
+    expect(p.cooldowns.a2).toBe(10);
     expect(p.buffs.filter((b) => b.kind === 'spellSurge')).toHaveLength(1);
   });
 });

@@ -10,11 +10,7 @@ import {
   makeBuff,
   tickBuffs,
 } from '../src/engine/combat/combat';
-import {
-  setSubclassPassive,
-  tickSubclassPassives,
-  onSubclassAbility,
-} from '../src/engine/combat/subclassPassives';
+import { setSubclassPassive, tickSubclassPassives } from '../src/engine/combat/subclassPassives';
 import { consumeSpellSurge, prepareSpellSurge } from '../src/engine/combat/spellCombos';
 import { healSupportAlly } from '../src/engine/combat/support';
 import { absorptionAmount, grantAbsorption } from '../src/engine/combat/absorption';
@@ -246,53 +242,50 @@ describe('Sorcerer identity', () => {
     consumeSpellSurge(p, p.abilities!.a1);
     expect(p.buffs.find((b) => b.kind === 'flight')!.remaining).toBe(12);
   });
-  it('Wild builds one step per basic cast, not per projectile, without special setup', () => {
-    const { w, p } = setup('so_wild');
-    resolvePlayerAbility(w, p, 'basic', ZERO);
-    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(1);
-    expect(buffBadges(p.buffs, 20).some((b) => b.label.includes('1/3 basic casts'))).toBe(true);
-    onSubclassAbility(p, p.abilities!.a1);
-    applyBuff(p, makeBuff('root', 0, 2, 'testRoot'));
-    onSubclassAbility(p, { ...p.abilities!.basic, kind: 'dash' });
-    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(1);
-    resolvePlayerAbility(w, p, 'basic', ZERO);
-    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(2);
-    resolvePlayerAbility(w, p, 'basic', ZERO);
-    expect(w.projectiles).toHaveLength(6);
-    expect(p.buffs.filter((b) => b.kind === 'spellSurge')).toHaveLength(1);
-    expect(p.buffs.some((b) => b.kind === 'wildWeave')).toBe(false);
-    expect(p.subclassPassiveCooldowns!.wild_spell_weave).toBe(8);
-    const boosted = consumeSpellSurge(p, p.abilities!.a1);
-    expect(boosted.damage * (boosted.projCount ?? 1)).toBeCloseTo(
-      p.abilities!.a1.damage * (p.abilities!.a1.projCount ?? 1) * 1.2,
-    );
-    resolvePlayerAbility(w, p, 'basic', ZERO);
-    expect(p.buffs.some((b) => b.kind === 'wildWeave')).toBe(false);
+  it('Wild weaves preparation into a connecting hit and recycles that utility only once', () => {
+    const { w, p, boss } = setup('so_wild');
+    p.cooldowns.a2 = 12;
+    p.cooldowns.a3 = 9;
+    resolvePlayerAbility(w, p, 'a2', ZERO);
+    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.weaveSlot).toBe('a2');
+    expect(buffBadges(p.buffs, 20).some((b) => b.label.includes('returns 2s'))).toBe(true);
+    damageBoss(w, p, boss, 10); // ticks cannot spend the weave
+    damageBoss(w, p, boss, 0, { direct: true });
+    expect(p.cooldowns.a2).toBe(12);
+    applyBuff(boss, makeBuff('invuln', 0, 2, 'test'));
+    damageBoss(w, p, boss, 10, { direct: true });
+    expect(p.cooldowns.a2).toBe(12);
+    boss.buffs = [];
+    damageBoss(w, p, boss, 10, { direct: true });
+    expect(p.cooldowns.a2).toBe(10);
+    expect(p.cooldowns.a3).toBe(9);
+    expect(p.subclassPassiveCooldowns!.wild_spell_weave).toBe(6);
+    damageBoss(w, p, boss, 10, { direct: true });
+    expect(p.cooldowns.a2).toBe(10);
+    expect(w.events.some((e) => e.t === 'support' && e.kind === 'haste')).toBe(true);
   });
-  it('Wild pauses for held Surge and its cooldown, expires unfinished progress and works with a forged basic', () => {
-    const { w, p } = setup('so_wild');
-    p.abilities!.basic = recompose(decompose(p.abilities!.basic), {
-      slot: 'basic',
-      name: 'Forged basic',
-      cooldown: 0.5,
+  it('Wild preserves protected recovery, expires unfinished weaves and works with a forged utility', () => {
+    const { w, p, boss } = setup('so_wild');
+    p.abilities!.a2 = recompose(decompose(p.abilities!.a2), {
+      slot: 'a2',
+      name: 'Forged preparation',
+      cooldown: 12,
     });
+    p.cooldowns.a2 = 8;
+    p.rechargeLocks = { sorcerer: { a2: 8 } };
+    resolvePlayerAbility(w, p, 'a2', ZERO);
+    damageBoss(w, p, boss, 10, { direct: true });
+    expect(p.cooldowns.a2).toBe(8);
+    expect(p.buffs.some((b) => b.source === 'subclass:weaveSpeed' && b.mult === 1.2)).toBe(true);
+    expect(p.buffs.some((b) => b.kind === 'wildWeave')).toBe(false);
+    tickSubclassPassives(p, 6);
+    resolvePlayerAbility(w, p, 'a2', ZERO);
+    tickBuffs(p, 6);
+    damageBoss(w, p, boss, 10, { direct: true });
+    expect(p.subclassPassiveCooldowns!.wild_spell_weave).toBe(0);
+    expect(p.cooldowns.a2).toBe(8);
     resolvePlayerAbility(w, p, 'basic', ZERO);
-    prepareSpellSurge(p, { ...p.abilities!.a1, prepareSurge: 10 });
-    resolvePlayerAbility(w, p, 'basic', ZERO);
-    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(1);
-    expect(p.subclassPassiveCooldowns?.wild_spell_weave).toBeUndefined();
-    consumeSpellSurge(p, p.abilities!.a1);
-    tickBuffs(p, 9);
-    resolvePlayerAbility(w, p, 'basic', ZERO);
-    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(1);
-    resolvePlayerAbility(w, p, 'basic', ZERO);
-    resolvePlayerAbility(w, p, 'basic', ZERO);
-    prepareSpellSurge(p, { ...p.abilities!.a1, prepareSurge: 10 });
-    expect(p.buffs.filter((b) => b.kind === 'spellSurge')).toHaveLength(1);
-    consumeSpellSurge(p, p.abilities!.a1);
-    tickSubclassPassives(p, 8);
-    resolvePlayerAbility(w, p, 'basic', ZERO);
-    expect(p.buffs.find((b) => b.kind === 'wildWeave')!.mult).toBe(1);
+    expect(p.buffs.some((b) => b.kind === 'wildWeave')).toBe(false);
   });
 });
 

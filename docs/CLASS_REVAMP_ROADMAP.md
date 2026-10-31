@@ -1,11 +1,12 @@
 # Class identity and subclass roadmap
 
-Current upgrade delivery: [Mage/Sorcerer authored builds](CASTER_GRANDS.md).
-The owner accepted Ranger/Druid. Nine classes now have authored upgrade/grand
-content; Cleric/Paladin/Bard remain, followed by the whole-system review. Caster
-identities use real starting-kit setup and spending routes. Use the
-[combined-build review gate](UPGRADE_REVIEW_GATE.md) and retain the live-tested
-shared recharge/geometry limits and recipient-health barrier scaling.
+Current delivery: [Sorcerer luck and description readability](SORCERER_LUCK.md),
+a feedback follow-up to the accepted [Mage/Sorcerer builds](CASTER_GRANDS.md).
+Nine classes have authored upgrade/grand content; Cleric/Paladin/Bard remain,
+followed by the whole-system review. Shared recharge/geometry limits and
+recipient-health barrier scaling remain in force. Use the
+[combined-build review gate](UPGRADE_REVIEW_GATE.md), including actual first-pick
+utility at protected recovery floors and clear player-facing descriptions.
 
 The original class/passive stages below are historical. Current upgrade work and
 milestones are tracked in [the upgrade roadmap](UPGRADE_IDENTITY_ROADMAP.md).

@@ -321,7 +321,7 @@ try {
     throw new Error('Registry changed; review audit scope/counts.');
   const evidence = {
     schema: 1,
-    baseline: '5bfff00 plus Mage/Sorcerer authored grands (see CASTER_GRANDS.md)',
+    baseline: 'cfd224a plus Sorcerer luck/readability (see SORCERER_LUCK.md)',
     seed: 31,
     counts,
     genericCount: generic.length,

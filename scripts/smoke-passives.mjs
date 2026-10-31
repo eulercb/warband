@@ -22,6 +22,7 @@ const cases = [
   ['mage', 'Arcane Ward', 'Binding Ward'],
   ['sorcerer', 'Dragon Wings', 'Surge Ascent'],
   ['sorcerer', 'Chaos Surge', 'Spell Weave'],
+  ['sorcerer', 'Bend Luck', 'Spell Weave'],
   ['bard', 'Bolster', 'Rallying Chorus'],
   ['bard', 'Healing Refrain', 'Echoed Refrain'],
   ['rogue', 'Smoke Bomb', "Death's Opening"],
@@ -108,7 +109,9 @@ try {
       assert.equal(await icon.count(), 1);
       assert.ok((await icon.getAttribute('title')).includes(passive));
       if (
-        ['Spell Weave', 'Flowguard', 'Shadow Rhythm', 'Moon Aspect'].includes(passive) ||
+        ['Spell Weave', 'Surge Ascent', 'Flowguard', 'Shadow Rhythm', 'Moon Aspect'].includes(
+          passive,
+        ) ||
         skill === 'Infernal Claim' ||
         activeCases.has(skill) ||
         passive === 'Arcane Cadence'
@@ -156,23 +159,30 @@ try {
           const surge = page
             .locator('.hud-selfhp')
             .getByTitle(/Spell surge: next heavy spell empowered/);
-          for (let count = 1; count <= 3; count++) {
-            await hold('basic', 'Space', () =>
-              count === 3
-                ? surge.waitFor()
-                : page
-                    .locator('.hud-selfhp')
-                    .getByTitle(new RegExp(`Spell Weave: ${count}/3 basic casts`))
-                    .waitFor(),
-            );
-            if (count < 3)
-              await page.waitForFunction(() =>
-                document
-                  .querySelector('.hud-ability[aria-label^="Chaos Bolt"]')
-                  ?.classList.contains('ready'),
-              );
-          }
+          const weave = page
+            .locator('.hud-selfhp')
+            .getByTitle(/Spell Weave: next positive direct hit/);
+          if (skill === 'Bend Luck') {
+            await hold('sub1', 'KeyZ', () => weave.waitFor());
+            await page
+              .locator('.hud-selfhp')
+              .getByTitle(/^Fortune:/)
+              .waitFor();
+          } else await hold('a2', 'KeyE', () => weave.waitFor());
+          await surge.waitFor();
           await hold('a1', 'KeyQ', () => surge.waitFor({ state: 'hidden' }));
+        } else if (passive === 'Surge Ascent') {
+          const surge = page
+            .locator('.hud-selfhp')
+            .getByTitle(/Spell surge: next heavy spell empowered/);
+          await hold('sub1', 'KeyZ', () => surge.waitFor());
+          await page
+            .locator('.hud-selfhp')
+            .getByTitle(/^Airborne/)
+            .waitFor();
+          const shield = page.locator('.hud-selfhp').getByTitle(/^Absorption:/);
+          await hold('a1', 'KeyQ', () => shield.waitFor());
+          await surge.waitFor({ state: 'hidden' });
         } else if (passive === 'Moon Aspect') {
           const form = page.locator('.hud-selfhp').getByTitle(/Moon bear:/);
           if (skill === 'Primal Roar') {

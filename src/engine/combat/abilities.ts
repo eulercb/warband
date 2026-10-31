@@ -1,4 +1,5 @@
 import { boundedAbility } from '../content/abilityLimits';
+import { armFortune } from './sorcererLuck';
 import { armRetouchEffects } from './skillRetouches';
 import { onMoonAbility } from './moonForm';
 import { dimensionDoor } from './dimensionDoor';
@@ -393,12 +394,13 @@ export function resolvePlayerAbility(
     original &&
     (reserved
       ? original
-      : consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original))));
+      : consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original), world)));
   const limited = resolved && boundedAbility(resolved, world.arena);
   const ab = limited && {
     ...limited,
     ...(limited.preparedRefund ? { refundCast: { spent: false } } : {}),
-    ...(limited.precisionOnHit ||
+    ...((limited.damage > 0 && ['projectile', 'pbaoe', 'meleeCone'].includes(limited.kind)) ||
+    limited.precisionOnHit ||
     limited.preparedInvulnOnHit ||
     limited.echoFraction ||
     limited.markOnPreparedHit
@@ -408,6 +410,7 @@ export function resolvePlayerAbility(
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
   if (ab.infernalClaim && !findInfernalClaimTarget(world, p, ab)) return;
   armRetouchEffects(world, p, ab);
+  armFortune(world, p, ab);
   onSubclassAbility(p, ab);
   onMoonAbility(world, p, ab);
   if (ab.closeBurst) {
@@ -503,6 +506,8 @@ export function resolvePlayerAbility(
           slowMult: ab.slowMult,
           slowDuration: ab.slowDuration,
           freeze: ab.freeze,
+          castSlow: ab.castSlow,
+          castSlowDuration: ab.castSlowDuration,
           critChanceBonus: ab.critChanceBonus, // item 13 — a deadly/aimed shot
           controlDamageBonus: ab.controlDamageBonus,
           cursePayoff: ab.cursePayoff,

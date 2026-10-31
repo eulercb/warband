@@ -1,5 +1,6 @@
 import { grandHistory } from '../../engine/content/grandSelections';
 import GrandPanel from './GrandManager';
+import MechanicsReference from './MechanicsReference';
 /**
  * Warband — the walkable REWARD ROOM (diegetic between-boss upgrade phase).
  *
@@ -690,6 +691,7 @@ export default function RewardRoom({ result }: { result: FightResult }) {
           <div className="wb-panel wb-reward-list" ref={listRef}>
             <GrandPanel open={grandBoardOpen} />
             <h2 className="wb-title-sm">Claim your boons</h2>
+            <MechanicsReference />
             {mobile && result.runSeed != null ? (
               <p>Seed: {result.runSeed.toString(36).toUpperCase()}</p>
             ) : null}

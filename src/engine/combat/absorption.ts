@@ -72,7 +72,7 @@ export function absorbDamage(p: Player, damage: number): number {
 export function absorptionDescription(g: AbsorptionGrant): string {
   const n = (v: number) => Math.round(v * 100) / 100;
   const siphon = g.curseSiphon;
-  return `${n(g.amount)} absorption for ${n(g.duration)}s to ${g.target === 'self' ? 'yourself' : g.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}${siphon && g.target === 'self' ? `; siphon hits up to ${siphon.maxTargets} nearby personally cursed enemies for ${n(siphon.amount)} dmg within ${n(siphon.range)}u; +${n(siphon.amount)} protection per successful hit; marks are not consumed` : ''}; protection scales with recipient max-HP growth above their starting-class baseline; shared cap 50% max HP, strongest cast wins`;
+  return `${n(g.amount)} absorption for ${n(g.duration)}s to ${g.target === 'self' ? 'yourself' : g.target === 'nearby' ? 'nearby allies' : 'lowest-health ally'}${siphon && g.target === 'self' ? `; siphon hits up to ${siphon.maxTargets} nearby personally cursed enemies for ${n(siphon.amount)} dmg within ${n(siphon.range)}u; +${n(siphon.amount)} protection per successful hit` : ''}`;
 }
 
 /** Maximum authored grant, used to price composition rather than treating siphons as free. */

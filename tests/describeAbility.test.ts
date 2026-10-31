@@ -78,7 +78,7 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a direct heal: heal amount + who it can reach', () => {
     // Cleric Heal — heal magnitude + range.
     expect(describeAbility(CLASSES.cleric.abilities.a1)).toBe(
-      'Heal 100 · +30% heal at ≤35% HP; effective heals add a 6s bubble — 25% healed HP (cap 15% max HP), plus 75% on rescue (extra cap 30% max HP); shared cap 50% max HP · 400u range · 4s cooldown',
+      'Heal 100 · +30% heal at ≤35% HP; effective heals add a 6s bubble — 25% healed HP (cap 15% max HP), plus 75% on rescue (extra cap 30% max HP) · 400u range · 4s cooldown',
     );
   });
 

@@ -1,10 +1,12 @@
 # Upgrade identity: audit and staged redesign
 
-Current delivery: [Mage/Sorcerer authored upgrades and grands](CASTER_GRANDS.md).
-The owner merged and live-tested Ranger/Druid. Nine of twelve classes now have
-authored four-grand builds. Next: Cleric/Paladin/Bard, then the whole-system review
-of balance, acquisition, graft alternatives and compatibility. Apply the
-[combined-build review gate](UPGRADE_REVIEW_GATE.md) throughout.
+Current delivery: [Sorcerer luck and description readability](SORCERER_LUCK.md).
+The owner merged and live-tested Mage/Sorcerer. This feedback pass replaces the
+redundant Bend Luck teleport, improves both Sorcerer passives and instant Surge
+spells, and removes repeated implementation notes from skill/grand/upgrade cards.
+Nine of twelve classes have authored four-grand builds. The next content cohort
+remains Cleric/Paladin/Bard, then a whole-system review of balance, acquisition,
+graft alternatives and compatibility. Apply the [combined-build review gate](UPGRADE_REVIEW_GATE.md).
 
 The merged grand-selection framework retains per-class earned banks and explicit
 between-fight swaps: two starting-skill slots, one bound subclass skill and one

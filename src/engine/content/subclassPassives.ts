@@ -127,14 +127,14 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'sorcerer',
     name: 'Surge Ascent',
     icon: '🪽',
-    desc: 'Spending Spell Surge lifts you into flight for 2s, avoiding ground hazards while direct attacks still hit. While already flying, extend your longest flight by 1s instead (up to 9s remaining, never shortening longer flight). Once per 6s.',
+    desc: 'Spending Surge grants 2s flight, +20% speed and a shield for 10% max HP (minimum 20) for 3s. While flying, extend flight by 1s, up to 9s. Once per 6s.',
   },
   so_wild: {
     id: 'wild_spell_weave',
     classId: 'sorcerer',
     name: 'Spell Weave',
     icon: '🌀',
-    desc: 'Three basic casts within 8s prepare Spell Surge for 8s, empowering your next heavy spell. Once per 8s; basics cannot build progress while Surge is held or the trigger is cooling down. No special delivery combination is required; native preparation does not spend the trigger.',
+    desc: 'Preparing Surge readies a weave for 6s. Your next damaging direct hit refunds 2s to that utility’s cooldown; at its recovery limit, gain +20% speed for 2s instead. Once per 6s.',
   },
   ba_valor: {
     id: 'valor_rallying_chorus',

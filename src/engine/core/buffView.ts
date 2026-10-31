@@ -6,6 +6,10 @@ export function buffView(b: Buff): BuffView {
   if (b.kind === 'invuln' && b.source === 'divineGuard') view.visual = 'divineShield';
   const owner = b.kind === 'curse' ? curseOwner(b.source) : undefined;
   if (b.kind === 'venom' && b.venom) view.ownerId = b.venom.ownerId;
+  if (b.kind === 'luckExposure') {
+    const luckOwner = /^fortune:[^:]+:(\d+)$/.exec(b.source);
+    if (luckOwner) view.ownerId = Number(luckOwner[1]);
+  }
   if (owner !== undefined) view.ownerId = owner;
   return view;
 }

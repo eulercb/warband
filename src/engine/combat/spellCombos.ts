@@ -1,3 +1,4 @@
+import type { EventSink } from './combat';
 import { onSubclassSurge } from './subclassPassives';
 import { isBurstControl } from '../core/control';
 /** Shared authored spell interactions; copied skills retain their own behavior. */
@@ -23,12 +24,16 @@ export function consumeEvocation(p: Player, ab: PlayerAbilityDef): PlayerAbility
 }
 
 /** Reserve the one-use surge at cast start; the resolved spell carries its boost. */
-export function consumeSpellSurge(p: Player, ab: PlayerAbilityDef): PlayerAbilityDef {
+export function consumeSpellSurge(
+  p: Player,
+  ab: PlayerAbilityDef,
+  sink?: EventSink,
+): PlayerAbilityDef {
   if (!ab.consumesSurge) return ab;
   const index = p.buffs.findIndex((b) => b.kind === 'spellSurge' && b.remaining > 0);
   if (index < 0) return ab;
   p.buffs.splice(index, 1);
-  onSubclassSurge(p);
+  onSubclassSurge(p, sink);
   const count = Math.max(1, ab.projCount ?? 1);
   // Zone-payload fusions keep their original delivery: extra shots must not duplicate zones.
   const twin =
@@ -37,9 +42,40 @@ export function consumeSpellSurge(p: Player, ab: PlayerAbilityDef): PlayerAbilit
     !ab.components?.effects.some((e) => e.kind === 'zone');
   return {
     ...ab,
+    ...(ab.surgeRider?.halfAngleDeg && ab.kind === 'meleeCone'
+      ? {
+          halfAngleDeg: Math.max(
+            ab.halfAngleDeg ?? 45,
+            Math.min(80, (ab.halfAngleDeg ?? 45) + ab.surgeRider.halfAngleDeg),
+          ),
+        }
+      : {}),
+    ...(ab.surgeRider?.radius && ab.kind === 'pbaoe'
+      ? { radius: (ab.radius ?? 150) + ab.surgeRider.radius }
+      : {}),
+    ...(ab.surgeRider?.castSlow
+      ? {
+          castSlow: Math.max(ab.castSlow ?? 1, ab.surgeRider.castSlow),
+          castSlowDuration: Math.max(ab.castSlowDuration ?? 0, ab.surgeRider.castSlowDuration ?? 3),
+        }
+      : {}),
+    ...(ab.surgeRider?.pierce &&
+    ab.kind === 'projectile' &&
+    !ab.impactRadius &&
+    !ab.components?.effects.some((e) => e.kind === 'zone')
+      ? { pierce: (ab.pierce ?? 0) + ab.surgeRider.pierce }
+      : {}),
+    ...(ab.surgeRider?.spreadDeg != null && ab.kind === 'projectile'
+      ? { spreadDeg: Math.min(ab.spreadDeg ?? 0, ab.surgeRider.spreadDeg) }
+      : {}),
     damage: ab.damage * 1.2 * (twin ? count / (count + 1) : 1),
     castTime: (ab.castTime ?? 0) * 0.5,
-    ...(twin ? { projCount: count + 1, spreadDeg: Math.max(4, ab.spreadDeg ?? 0) } : {}),
+    ...(twin
+      ? {
+          projCount: count + 1,
+          spreadDeg: Math.max(4, Math.min(ab.spreadDeg ?? 0, ab.surgeRider?.spreadDeg ?? Infinity)),
+        }
+      : {}),
   };
 }
 
