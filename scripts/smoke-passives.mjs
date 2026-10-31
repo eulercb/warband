@@ -189,7 +189,7 @@ try {
             await hold('sub1', 'KeyZ', () =>
               page
                 .locator('.hud-selfhp')
-                .getByTitle(/Bramble ready:/)
+                .getByTitle(/^Burst ready:/)
                 .waitFor(),
             );
           } else await hold('a2', 'KeyE', () => form.waitFor());

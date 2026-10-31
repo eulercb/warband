@@ -139,10 +139,10 @@ describe('character-upgrade catalog', () => {
 
   it('flat lookup covers every class + hybrid + all grand kinds with unique ids', () => {
     const classGrand = Object.values(GRAND_BY_CLASS).flat();
-    expect(classGrand).toHaveLength(8); // Nine authored classes fold whole-class aliases into base skills
-    expect(SKILL_GRANDS).toHaveLength(58);
+    expect(classGrand).toHaveLength(2); // All authored classes fold whole-class aliases into base skills
+    expect(SKILL_GRANDS).toHaveLength(46);
     expect(SUBCLASS_GRANDS).toHaveLength(12 * 2 * 2); // 2 per subclass: 24 subclasses × 2 = 48
-    expect(PILOT_SUB_SKILL_GRANDS).toHaveLength(72);
+    expect(PILOT_SUB_SKILL_GRANDS).toHaveLength(96);
     expect(GRAFT_GRANDS).toHaveLength(7 * 2); // 2 per skill-replacing graft: 7 grafts × 2 = 14 (item 18/66)
     const all = [
       ...Object.values(CHAR_UPGRADES_BY_CLASS).flat(),
@@ -154,11 +154,11 @@ describe('character-upgrade catalog', () => {
       ...GRAFT_GRANDS,
       ...SUB_SKILL_UPGRADES, // item 6: one per subclass skill (24 subclasses × 4 = 96)
     ];
-    expect(all).toHaveLength(368);
+    expect(all).toHaveLength(374);
     expect(SUB_SKILL_UPGRADES).toHaveLength(96);
     const ids = all.map((d) => d.id);
     expect(new Set(ids).size).toBe(ids.length); // no duplicates
-    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(368 + Object.keys(PILOT_GRAND_ALIASES).length);
+    expect(Object.keys(CHAR_UPGRADES)).toHaveLength(374 + Object.keys(PILOT_GRAND_ALIASES).length);
     for (const id of ids) expect(CHAR_UPGRADES[id].id).toBe(id);
     // Every grand improvement (class, skill, subclass, graft) is uniquely capped at one stack.
     for (const d of [
@@ -184,22 +184,7 @@ describe('character-upgrade catalog', () => {
       bySlot.set(key, (bySlot.get(key) ?? 0) + 1);
     }
     expect(bySlot.size).toBe(46); // Rogue Vial and Warlock basic retain legacy IDs
-    for (const [key, n] of bySlot)
-      expect(n).toBe(
-        [
-          'rogue',
-          'warlock',
-          'knight',
-          'barbarian',
-          'monk',
-          'ranger',
-          'druid',
-          'mage',
-          'sorcerer',
-        ].includes(key.split(':')[0])
-          ? 1
-          : 2,
-      );
+    for (const n of bySlot.values()) expect(n).toBe(1); // One authored grand per starting skill across every class.
   });
 
   it('tags every subclass grand with its subclass + parent class (item 17)', () => {
@@ -1189,9 +1174,10 @@ describe('grand improvements — never in the between-boss pool (item 20)', () =
 
   it('a grand improvement applies its transformation and is capped at one stack', () => {
     const p = makePlayer('paladin');
-    const before = p.damageTakenMult;
+    const before = structuredClone(p.abilities!.a3);
     applyCharUpgrades(p, ['pa_grand_aegis']);
-    expect(p.damageTakenMult).toBeLessThan(before); // −20% damage taken
+    expect(p.abilities!.a3).not.toEqual(before);
+    expect(p.damageTakenMult).toBe(1); // Retired global defense is folded into the skill.
     expect(CHAR_UPGRADES.pa_grand_aegis.maxStacks).toBe(1);
   });
 });
@@ -1290,7 +1276,7 @@ describe('effect fallbacks for absent optional fields', () => {
 
   it('amplify() seeds iframes on an iframe-less dash sub-skill (iframes ?? 0)', () => {
     const dash = ab('a1', 'dash', 0); // dash, no iframes
-    CHAR_UPGRADES.ba_valor_g_a.apply({
+    CHAR_UPGRADES.so_draconic_g_b.apply({
       player: stub,
       abilities: table(),
       subAbilities: { sub1: dash },
@@ -1298,7 +1284,7 @@ describe('effect fallbacks for absent optional fields', () => {
     expect(dash.iframes).toBeCloseTo(0.15, 5); // round(((undefined ?? 0) + 0.15) * 100) / 100
   });
 
-  it('slowRider() chills a damage-less hazard via its tick damage (damage ?? 0 → OR second operand)', () => {
+  it('Whispers identity suppresses a copied hazard through its tick payload', () => {
     // A pure hazard: no `damage` field at all, only per-tick damage — so `(ab.damage ?? 0)`
     // takes its 0 fallback, the first `> 0` is false, and the OR falls through to the tick.
     const zone = ab('a1', 'groundZone', undefined as unknown as number, { zoneTickDamage: 15 });
@@ -1307,7 +1293,7 @@ describe('effect fallbacks for absent optional fields', () => {
       abilities: table(),
       subAbilities: { sub1: zone },
     });
-    expect(zone.slowMult).toBeCloseTo(0.35, 5);
+    expect(zone.castSlow).toBe(1.3);
   });
 });
 
@@ -1824,16 +1810,15 @@ describe('projectile range grands extend range instead of collapsing it (item 3)
   // cap to X — a "+range" boon that made the shot far SHORTER (the Frostlance bug). The
   // range grands must now lengthen the shot; the lances that never promised range leave
   // the cap untouched at its default.
-  it('Deadeye / Railshot / Judgment extend range within the arena travel limit', () => {
+  it('Deadeye / Railshot extend range while Judgment keeps default travel', () => {
     expect(previewAbilityTable('ranger', ['rg_grand_deadeye']).basic.maxRange).toBe(
       Math.min(900, PROJECTILE_MAX_RANGE + 220),
     );
     expect(previewAbilityTable('ranger', ['rg_gk_basic_b']).basic.maxRange).toBe(
       Math.min(900, PROJECTILE_MAX_RANGE + 260),
     );
-    expect(previewAbilityTable('cleric', ['cl_gk_basic_b']).basic.maxRange).toBe(
-      Math.min(900, PROJECTILE_MAX_RANGE + 200),
-    );
+    expect(previewAbilityTable('cleric', ['cl_gk_basic_b']).basic.maxRange).toBeUndefined();
+    expect(previewAbilityTable('cleric', ['cl_gk_basic_b']).basic.pierce).toBe(1);
   });
 
   it('retired Frostlance and Chaos Lance retain the default travel cap', () => {
@@ -2072,7 +2057,7 @@ describe('grand improvements apply real, measurable transformations (item 22)', 
   const grands = Object.values(GRAND_BY_CLASS).flat();
 
   it('folds authored whole-class entries into canonical base choices', () => {
-    expect(grands).toHaveLength(8);
+    expect(grands).toHaveLength(2);
   });
 
   for (const def of grands) {
@@ -2160,11 +2145,11 @@ describe('previewPlayerStats', () => {
   });
 
   it('applies class character boons for the ACTIVE class only', () => {
-    // A paladin grand that cuts damage-taken should move the stat; a mismatched
-    // (ranger) id is skipped, exactly as the live sim does.
-    const s = previewPlayerStats('paladin', [], ['pa_grand_aegis', 'rg_grand_deadeye']);
-    expect(s.damageTakenMult).toBeCloseTo(0.8, 5);
-    expect(s.maxHp).toBe(Math.round(CLASSES.paladin.maxHp * 1.2));
+    // Ordinary class stats remain identity-bound; folded grands modify skills only.
+    const s = previewPlayerStats('paladin', [], ['pa_zeal', 'rg_grand_deadeye']);
+    expect(s.moveSpeed).toBeCloseTo(CLASSES.paladin.moveSpeed * 1.08);
+    expect(s.cooldownMult).toBeCloseTo(0.9);
+    expect(s.maxHp).toBe(CLASSES.paladin.maxHp);
   });
 });
 
@@ -2322,10 +2307,11 @@ describe('subclass grands transform the bound sub-abilities (item 17)', () => {
     expect(q.subAbilities!.sub1!.damage).toBe(40); // Earthshaker untouched
   });
 
-  it('unconverted identities are a harmless no-op in the base replay', () => {
+  it('Life identity improves the starting loop even before binding a subclass skill', () => {
     const before = JSON.stringify(makePlayer('cleric').abilities);
     const p = apply('cleric', ['cl_life_g_a']); // no subAbilities on this hero
-    expect(JSON.stringify(p.abilities)).toBe(before);
+    expect(JSON.stringify(p.abilities)).not.toBe(before);
+    expect(p.abilities!.a1.recoveryZone).toBeDefined();
   });
 
   it('every subclass grand measurably transforms the bound skill or starting loop', () => {

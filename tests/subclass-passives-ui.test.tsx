@@ -103,7 +103,7 @@ it.each([
   );
 });
 
-it('HUD and pause previews match the host after activating another class’s grand stat overlay', async () => {
+it('HUD and pause previews match the host after activating another class’s authored grand', async () => {
   const { World } = await import('../src/engine/world/world');
   const { normalizeGrandLoadout } = await import('../src/engine/content/grandSelections');
   const { describeAbility } = await import('../src/engine/content/classes');
@@ -163,5 +163,6 @@ it('HUD and pause previews match the host after activating another class’s gra
   expect(
     screen.getByRole('listitem', { name: `${p.abilities!.a1.name}: ${expected}` }),
   ).toBeTruthy();
-  expect(container.querySelector('.wb-pause-stat-grid')?.textContent).toContain('-20%');
+  expect(p.damageTakenMult).toBe(1);
+  expect(container.querySelector('.wb-pause-stat-grid')?.textContent).toContain('-10%');
 });

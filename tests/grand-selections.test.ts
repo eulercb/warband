@@ -241,7 +241,7 @@ describe('production active-class effects', () => {
     expect(p.abilities!.a2.frontGuard?.charges).toBe(2);
     expect(p.grandLoadout!.classes.knight!.bank).toContain('kn_gk_a2_a');
   });
-  it('deactivates a legacy stat overlay on an authored class and preserves health through closed swap cycles', () => {
+  it('folds legacy grand stats into active skills and preserves health through closed swap cycles', () => {
     const ctx: GrandContext = {
       classes: ['paladin', 'mage'],
       history: ['pa_grand_aegis', 'mg_grand_archmage'],
@@ -266,7 +266,7 @@ describe('production active-class effects', () => {
     const p = w.players[0];
     p.hp = p.maxHp * 0.4;
     const initial = { hp: p.hp, maxHp: p.maxHp, damage: p.damageMult, cast: p.castMult };
-    expect(p.damageTakenMult).toBeCloseTo(0.8);
+    expect(p.damageTakenMult).toBe(1);
     for (let i = 0; i < 10; i++) {
       w.setActiveClass(p, 'mage');
       expect(p.damageTakenMult).toBe(1);

@@ -12,9 +12,11 @@ try {
         ? ['kn_champion', 'kn_battlemaster', 'bb_berserker', 'bb_totem', 'mo_openhand', 'mo_shadow']
         : process.env.SMOKE_GRAND_COHORT === 'nature'
           ? ['rg_hunter', 'rg_beastmaster', 'dr_moon', 'dr_land']
-          : process.env.SMOKE_GRAND_COHORT === 'caster'
-            ? ['mg_evoker', 'mg_abjurer', 'so_draconic', 'so_wild']
-            : ['ro_assassin', 'ro_trickster', 'wa_fiend', 'wa_great_old_one'];
+          : process.env.SMOKE_GRAND_COHORT === 'support'
+            ? ['cl_light', 'cl_life', 'pa_devotion', 'pa_vengeance', 'ba_valor', 'ba_whispers']
+            : process.env.SMOKE_GRAND_COHORT === 'caster'
+              ? ['mg_evoker', 'mg_abjurer', 'so_draconic', 'so_wild']
+              : ['ro_assassin', 'ro_trickster', 'wa_fiend', 'wa_great_old_one'];
     for (const subclassId of subclasses) {
       const page = await browser.newPage({
         viewport: { width, height: width === 320 ? 568 : 800 },

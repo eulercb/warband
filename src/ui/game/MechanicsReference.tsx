@@ -28,6 +28,10 @@ export default function MechanicsReference() {
         wind-up. Extra Surge projectiles share that damage rather than each dealing a full
         duplicate. Some spells list an additional Surge effect.
       </p>
+      <p>
+        Moon claws can also release a prepared close burst, even though they do not trigger other
+        direct-hit rewards.
+      </p>
     </details>
   );
 }
