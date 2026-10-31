@@ -174,7 +174,7 @@ jobs:
           - cohort: pilot
             names: "Death's Opening,Spellblade,Soul Ember,Dread Insight"
           - cohort: casters
-            names: 'Arcane Cadence,Binding Ward,Surge Ascent,Spell Weave,Rallying Chorus,Echoed Refrain'
+            names: 'Arcane Cadence,Binding Ward,Surge Ascent,Spell Weave,Rallying Chorus,Private Nightmare'
           - cohort: support
             names: 'Victorious Reprise,Tactical Opening,Refulgence,Abundance,Oath Anchor,Relentless Procession'
           - cohort: final
