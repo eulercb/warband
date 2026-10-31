@@ -348,7 +348,7 @@ describe('growth and compatibility', () => {
       expect(refreshed.relayHeal!.radius).toBeGreaterThan(raw.relayHeal.radius);
     }
     if (raw.rescueStrike) {
-      expect(refreshed.rescueStrike!.mult).toBe(1.2);
+      expect(refreshed.rescueStrike!.mult).toBe(1.3);
       expect(refreshed.rescueStrike!.duration).toBeGreaterThan(raw.rescueStrike.duration);
     }
     if (raw.crossingGuard) {

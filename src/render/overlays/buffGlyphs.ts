@@ -279,11 +279,11 @@ function describe(
       };
     case 'brambleReady':
       return {
-        glyph: '🌵',
+        glyph: '✦',
         color: 0x89c96a,
         good: true,
         label:
-          'Bramble ready: next positive nearby direct hit or bear claw releases a slowing burst around you; misses and zone ticks preserve it',
+          'Burst ready: your next damaging nearby direct hit releases a slowing burst around you',
       };
     case 'rebuke':
       return { glyph: '🔥', color: 0xff9a3d, good: true, label: 'Counterburst ready' };

@@ -161,9 +161,7 @@ function u(
     classId,
     name,
     icon,
-    desc: /cooldown|recharge|resets|returns.*sooner/i.test(desc)
-      ? `${desc}. Recharge gains share limits; special skills recover for at least 4s`
-      : desc,
+    desc,
     apply: (ctx) => {
       const abilities = new Set(Object.values(ctx.abilities));
       const before = new Map([...abilities].map((ab) => [ab, ab.cooldown]));
@@ -1222,6 +1220,25 @@ function g(
 
 /** Retired pilot IDs remain readable in old histories, but resolve to one authored grand. */
 export const PILOT_GRAND_ALIASES: Readonly<Record<string, string>> = {
+  cl_grand_beacon: 'cl_gk_a1_a',
+  cl_grand_avatar: 'cl_gk_a3_b',
+  cl_gk_basic_a: 'cl_gk_basic_b',
+  cl_gk_a1_b: 'cl_gk_a1_a',
+  cl_gk_a2_a: 'cl_gk_a2_b',
+  cl_gk_a3_a: 'cl_gk_a3_b',
+  pa_grand_aegis: 'pa_gk_a3_a',
+  pa_grand_dawn: 'pa_gk_basic_a',
+  pa_gk_basic_b: 'pa_gk_basic_a',
+  pa_gk_a1_a: 'pa_gk_a1_b',
+  pa_gk_a2_b: 'pa_gk_a2_a',
+  pa_gk_a3_b: 'pa_gk_a3_a',
+  ba_grand_symphony: 'ba_gk_a1_b',
+  ba_grand_ballad: 'ba_gk_basic_b',
+  ba_gk_basic_a: 'ba_gk_basic_b',
+  ba_gk_a1_a: 'ba_gk_a1_b',
+  ba_gk_a2_b: 'ba_gk_a2_a',
+  ba_gk_a3_b: 'ba_gk_a3_a',
+
   kn_grand_immovable: 'kn_gk_a2_a',
   kn_grand_wrath: 'kn_gk_basic_a',
   kn_gk_basic_b: 'kn_gk_basic_a',
@@ -1285,35 +1302,6 @@ export const canonicalGrandId = (id: string): string =>
 
 const GRAND: CharUpgradeDef[] = [
   g(
-    'cleric',
-    'cl_grand_beacon',
-    'Beacon of Hope',
-    '🕯️',
-    'Heal pours for +70 at long range; Sanctuary becomes a vast font (+22/tick, +70 radius, +4s)',
-    ({ abilities: a }) => {
-      addN(a.a1, 'damage', 70);
-      addN(a.a1, 'range', 120);
-      addN(a.a2, 'zoneTickHeal', 22);
-      addN(a.a2, 'radius', 70);
-      addN(a.a2, 'zoneDuration', 4);
-    },
-  ),
-  g(
-    'cleric',
-    'cl_grand_avatar',
-    'Avatar of Faith',
-    '👼',
-    'Ascend: +25% max HP; Blessing girds the band with +40% dmg AND 30% mitigation, 4s longer',
-    ({ player: p, abilities: a }) => {
-      p.maxHp = Math.round(p.maxHp * 1.25);
-      p.hp = p.maxHp;
-      addN(a.a3, 'buffDamageMult', 0.4);
-      setMin(a.a3, 'buffDefMult', 0.7);
-      addN(a.a3, 'buffDuration', 4);
-    },
-  ),
-
-  g(
     'rogue',
     'ro_grand_venom',
     'Grand Venom',
@@ -1326,58 +1314,6 @@ const GRAND: CharUpgradeDef[] = [
       addN(a.a3, 'zoneDuration', 4);
       setMin(a.a3, 'slowMult', 0.5);
       a.a3.slowDuration = Math.max(a.a3.slowDuration ?? 0, 1.5);
-    },
-  ),
-  g(
-    'paladin',
-    'pa_grand_aegis',
-    'Eternal Aegis',
-    '🛡️',
-    'An unbreakable guardian: Divine Shield gives 2s immunity, −20% dmg taken always, +20% max HP',
-    ({ player: p, abilities: a }) => {
-      if (a.a3.kind === 'selfBuff') a.a3.iframes = 2;
-      else mul(a.a3, 'cooldown', 0.85); // Forged non-self delivery retains a useful skill payoff.
-      p.damageTakenMult *= 0.8;
-      p.maxHp = Math.round(p.maxHp * 1.2);
-      p.hp = p.maxHp;
-    },
-  ),
-  g(
-    'paladin',
-    'pa_grand_dawn',
-    'Dawnbringer',
-    '🌅',
-    'Holy Strike smites in a radiant arc healing 25% (+18 dmg, wider); Lay on Hands overflows (+60)',
-    ({ abilities: a }) => {
-      addN(a.basic, 'damage', 18);
-      addN(a.basic, 'lifestealFrac', 0.25);
-      addN(a.basic, 'halfAngleDeg', 20);
-      addN(a.a2, 'damage', 60);
-    },
-  ),
-  g(
-    'bard',
-    'ba_grand_symphony',
-    'Grand Symphony',
-    '🎼',
-    'Inspiration girds the band with +45% dmg AND 25% mitigation, lasting 6s longer',
-    ({ abilities: a }) => {
-      addN(a.a1, 'buffDamageMult', 0.45);
-      setMin(a.a1, 'buffDefMult', 0.75);
-      addN(a.a1, 'buffDuration', 6);
-    },
-  ),
-  g(
-    'bard',
-    'ba_grand_ballad',
-    'Ballad of Heroes',
-    '🎻',
-    'Healing Word pours for +70; Vicious Mockery scatters into 3 mocking bolts (+8 each)',
-    ({ abilities: a }) => {
-      addN(a.a2, 'damage', 70);
-      addN(a.basic, 'projCount', 2);
-      addN(a.basic, 'spreadDeg', 12);
-      addN(a.basic, 'damage', 8);
     },
   ),
 
@@ -1398,7 +1334,7 @@ const GRAND: CharUpgradeDef[] = [
 
 // ---------------------------------------------------------------------------
 // BASE-SKILL grands (item 17) — authored capstones for native base
-// skills. Rogue and Warlock each have one per skill; other classes await their cohort. Each is a build-defining twist on that
+// skills. Every class has one per skill. Each is a build-defining twist on that
 // SPECIFIC skill (a 360° cleave, an instant Fireball, a freezing nova), not a
 // formulaic +X%. Keyed by the slot they touch via the `gk` builder, so the
 // offer roll can hide a slot whose native skill has been grafted over (item 19).
@@ -1609,29 +1545,20 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
   gk(
     'cleric',
     'basic',
-    'cl_gk_basic_a',
-    'Wrath of the Heavens',
-    '🌟',
-    'Smite splits into 3 holy bolts (+8 each) and dazes struck foes for 0.6s',
-    (ab) => {
-      addN(ab, 'projCount', 2);
-      ab.spreadDeg = Math.max(ab.spreadDeg ?? 0, 12);
-      addN(ab, 'damage', 8);
-      addN(ab, 'freeze', 0.6);
-    },
-  ),
-  gk(
-    'cleric',
-    'basic',
     'cl_gk_basic_b',
     'Judgment',
     '☀️',
-    'Smite becomes a searing lance: +24 damage, +300 speed, far greater range',
-    (ab) => {
-      addN(ab, 'damage', 24);
-      addN(ab, 'projSpeed', 300);
-      addRange(ab, 200);
-    },
+    'Smite gains +18 damage, +250 speed and pierces one foe',
+    casterGrand(
+      'projectile',
+      (ab) => {
+        addN(ab, 'damage', 18);
+        addN(ab, 'projSpeed', 250);
+        addN(ab, 'pierce', 1);
+      },
+      [],
+      true,
+    ),
   ),
   gk(
     'cleric',
@@ -1639,36 +1566,16 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'cl_gk_a1_a',
     'Miracle',
     '💚',
-    'Heal pours for +80 HP across almost the whole arena (+250u)',
-    (ab) => {
-      addN(ab, 'damage', 80);
-      addN(ab, 'range', 250);
-    },
-  ),
-  gk(
-    'cleric',
-    'a1',
-    'cl_gk_a1_b',
-    'Rapid Mending',
-    '✨',
-    'Heal recharges almost instantly (−60% cd) and mends +25',
-    (ab) => {
-      mul(ab, 'cooldown', 0.4);
-      addN(ab, 'damage', 25);
-    },
-  ),
-  gk(
-    'cleric',
-    'a2',
-    'cl_gk_a2_a',
-    'Hallowed Ground',
-    '⛪',
-    'Sanctuary mends +22/tick across +70u for +4s',
-    (ab) => {
-      addN(ab, 'zoneTickHeal', 22);
-      addN(ab, 'radius', 70);
-      addN(ab, 'zoneDuration', 4);
-    },
+    'Heal cleanses movement ailments and restores +45 HP from +100u',
+    casterGrand(
+      'heal',
+      (ab) => {
+        ab.cleanseOnHeal = true;
+        addN(ab, 'damage', 45);
+        addN(ab, 'range', 100);
+      },
+      ['rescueHealBonus'],
+    ),
   ),
   gk(
     'cleric',
@@ -1676,26 +1583,17 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'cl_gk_a2_b',
     'Consecrated Bastion',
     '🛡️',
-    'Sanctuary also scorches enemies 16/tick, slows them to 50%, and mends +8',
-    (ab) => {
-      addN(ab, 'zoneTickDamage', 16);
-      setMin(ab, 'slowMult', 0.5);
-      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1);
-      addN(ab, 'zoneTickHeal', 8);
-    },
-  ),
-  gk(
-    'cleric',
-    'a3',
-    'cl_gk_a3_a',
-    'Divine Favor',
-    '🙏',
-    'Blessing girds an ally with +45% damage AND 40% mitigation, lasting 4s longer',
-    (ab) => {
-      addN(ab, 'buffDamageMult', 0.45);
-      setMin(ab, 'buffDefMult', 0.6);
-      addN(ab, 'buffDuration', 4);
-    },
+    'Sanctuary damages grounded enemies for 12/tick, slows them 35%, and heals +6/tick',
+    casterGrand(
+      'groundZone',
+      (ab) => {
+        addN(ab, 'zoneTickDamage', 12);
+        setMin(ab, 'slowMult', 0.65);
+        ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1);
+        addN(ab, 'zoneTickHeal', 6);
+      },
+      ['zoneTickHeal'],
+    ),
   ),
   gk(
     'cleric',
@@ -1703,12 +1601,15 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'cl_gk_a3_b',
     'Zealotry',
     '⚡',
-    'Blessing also grants +25% move speed, +15% damage, and returns twice as fast',
-    (ab) => {
-      ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.25);
-      mul(ab, 'cooldown', 0.5);
-      addN(ab, 'buffDamageMult', 0.15);
-    },
+    'Blessing lifts its recipient into flight for 3s and grants +15% damage',
+    casterGrand(
+      'buffAlly',
+      (ab) => {
+        ab.grantsFlight = Math.max(ab.grantsFlight ?? 0, 3);
+        addN(ab, 'buffDamageMult', 0.15);
+      },
+      ['buffDamageMult'],
+    ),
   ),
 
   // --- Barbarian ------------------------------------------------------------
@@ -1815,79 +1716,45 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'paladin',
     'basic',
     'pa_gk_basic_a',
-    'Radiant Arc',
+    'Radiant Riposte',
     '🌟',
-    'Holy Strike sweeps a wide 90° arc for +16, +15u, healing 20% of the damage',
-    (ab) => {
-      addN(ab, 'halfAngleDeg', 45);
-      addN(ab, 'damage', 16);
-      addN(ab, 'range', 15);
-      addN(ab, 'lifestealFrac', 0.2);
-    },
-  ),
-  gk(
-    'paladin',
-    'basic',
-    'pa_gk_basic_b',
-    'Hammer of Justice',
-    '🔨',
-    'Holy Strike smites for +22 and stuns for 0.8s',
-    (ab) => {
-      addN(ab, 'damage', 22);
-      addN(ab, 'stun', 0.8);
-    },
-  ),
-  gk(
-    'paladin',
-    'a1',
-    'pa_gk_a1_a',
-    'Hallowed Sanctuary',
-    '⛪',
-    'Consecration scorches +14 and mends +14 per tick across +60u, lasting +3s',
-    (ab) => {
-      addN(ab, 'zoneTickDamage', 14);
-      addN(ab, 'zoneTickHeal', 14);
-      addN(ab, 'radius', 60);
-      addN(ab, 'zoneDuration', 3);
-    },
+    'A connecting Holy Strike readies a +30% melee counter and a 0.35s parry; +12 damage',
+    casterGrand('meleeCone', (ab) => {
+      ab.parryOnHit = Math.max(ab.parryOnHit ?? 0, 0.35);
+      addN(ab, 'damage', 12);
+    }),
   ),
   gk(
     'paladin',
     'a1',
     'pa_gk_a1_b',
-    'Searing Ground',
+    'Pilgrim Ground',
     '🔥',
-    'Consecration burns +18/tick, holds foes to 50% speed, and widens +30u',
-    (ab) => {
-      addN(ab, 'zoneTickDamage', 18);
-      setMin(ab, 'slowMult', 0.5);
-      ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1);
-      addN(ab, 'radius', 30);
-    },
+    'Consecration follows its first damaged ground foe for up to 6s and burns +4/tick',
+    casterGrand(
+      'groundZone',
+      (ab) => {
+        ab.zoneFollow = Math.max(ab.zoneFollow ?? 0, 6);
+        addN(ab, 'zoneTickDamage', 4);
+      },
+      ['zoneTickDamage', 'zoneTickHeal'],
+    ),
   ),
   gk(
     'paladin',
     'a2',
     'pa_gk_a2_a',
-    'Miraculous Mending',
-    '💛',
-    'Lay on Hands overflows for +90 HP at far greater range',
-    (ab) => {
-      addN(ab, 'damage', 90);
-      addN(ab, 'range', 200);
-    },
-  ),
-  gk(
-    'paladin',
-    'a2',
-    'pa_gk_a2_b',
     'Blessed Hands',
-    '✨',
-    'Lay on Hands recharges more than twice as fast (−55% cd) and mends +30',
-    (ab) => {
-      mul(ab, 'cooldown', 0.45);
-      addN(ab, 'damage', 30);
-    },
+    '💛',
+    'Lay on Hands restores +35 HP; a low-health rescue readies the recipient’s next direct hit for +25% damage within 6s',
+    casterGrand(
+      'heal',
+      (ab) => {
+        addN(ab, 'damage', 35);
+        ab.rescueStrike = { mult: Math.max(ab.rescueStrike?.mult ?? 1, 1.25), duration: 6 };
+      },
+      ['paladinAura'],
+    ),
   ),
   gk(
     'paladin',
@@ -1895,27 +1762,15 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'pa_gk_a3_a',
     'Unbreakable',
     '🛡️',
-    'Divine Shield gives 2s damage immunity; its Bulwark aura holds 3s longer (cap 8s)',
-    (ab) => {
-      if (ab.kind === 'selfBuff') ab.iframes = 2;
-      else mul(ab, 'cooldown', 0.7);
-      if (ab.paladinAura)
-        ab.paladinAura = { ...ab.paladinAura, duration: Math.min(8, ab.paladinAura.duration + 3) };
-    },
-  ),
-  gk(
-    'paladin',
-    'a3',
-    'pa_gk_a3_b',
-    'Bastion of Light',
-    '🌅',
-    'Divine Shield recharges 45% faster, gives 1.75s immunity (2s cap), and extends Bulwark by 1s (cap 8s)',
-    (ab) => {
-      if (ab.kind === 'selfBuff') ab.iframes = Math.min(2, Math.max(ab.iframes ?? 0, 1.75));
-      if (ab.paladinAura)
-        ab.paladinAura = { ...ab.paladinAura, duration: Math.min(8, ab.paladinAura.duration + 1) };
-      mul(ab, 'cooldown', 0.55);
-    },
+    'Divine Shield adds two frontal blocks for 4s and 3s hard-control resistance',
+    casterGrand(
+      'selfBuff',
+      (ab) => {
+        casterGuard(ab, 2, 4);
+        ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 3);
+      },
+      ['iframes', 'paladinAura'],
+    ),
   ),
 
   // --- Druid ----------------------------------------------------------------
@@ -1972,56 +1827,32 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
   gk(
     'bard',
     'basic',
-    'ba_gk_basic_a',
-    'Cacophony',
-    '🎭',
-    'Vicious Mockery scatters 3 bolts (+7 each) and chills to 50%',
-    (ab) => {
-      addN(ab, 'projCount', 2);
-      ab.spreadDeg = Math.max(ab.spreadDeg ?? 0, 14);
-      addN(ab, 'damage', 7);
-      setMin(ab, 'slowMult', 0.5);
-      addN(ab, 'slowDuration', 1);
-    },
-  ),
-  gk(
-    'bard',
-    'basic',
     'ba_gk_basic_b',
     'Soul-Rending Insult',
     '💔',
-    'Vicious Mockery cuts for +18, +200 speed, and freezes for 0.5s',
-    (ab) => {
-      addN(ab, 'damage', 18);
-      addN(ab, 'projSpeed', 200);
-      addN(ab, 'freeze', 0.5);
-    },
-  ),
-  gk(
-    'bard',
-    'a1',
-    'ba_gk_a1_a',
-    'Anthem of Legends',
-    '🎺',
-    'Inspiration girds an ally with +45% damage AND 35% mitigation, lasting +4s',
-    (ab) => {
-      addN(ab, 'buffDamageMult', 0.45);
-      setMin(ab, 'buffDefMult', 0.65);
-      addN(ab, 'buffDuration', 4);
-    },
+    'Vicious Mockery pierces two foes and gains +10 damage and +180 speed',
+    casterGrand(
+      'projectile',
+      (ab) => {
+        addN(ab, 'pierce', 2);
+        addN(ab, 'damage', 10);
+        addN(ab, 'projSpeed', 180);
+      },
+      [],
+      true,
+    ),
   ),
   gk(
     'bard',
     'a1',
     'ba_gk_a1_b',
-    'Marching Cadence',
+    'Sheltering Cadence',
     '🥁',
-    'Inspiration also grants +30% move, +15% damage, and returns twice as fast',
-    (ab) => {
-      ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.3);
-      mul(ab, 'cooldown', 0.5);
-      addN(ab, 'buffDamageMult', 0.15);
-    },
+    'Inspiration grants the lowest-health ally 45 absorption for 4s',
+    casterGrand('buffAlly', (ab) => supportBarrier(ab, 45, 4, 'weakest'), [
+      'bardSong',
+      'buffDamageMult',
+    ]),
   ),
   gk(
     'bard',
@@ -2029,23 +1860,15 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'ba_gk_a2_a',
     'Song of Rebirth',
     '🎶',
-    'Healing Word pours for +75 HP across the whole arena',
-    (ab) => {
-      addN(ab, 'damage', 75);
-      addN(ab, 'range', 200);
-    },
-  ),
-  gk(
-    'bard',
-    'a2',
-    'ba_gk_a2_b',
-    'Rapid Refrain',
-    '✨',
-    'Healing Word mends +28 and recharges twice as fast',
-    (ab) => {
-      addN(ab, 'damage', 28);
-      mul(ab, 'cooldown', 0.5);
-    },
+    'Effective Healing Word leaves a 90u recovery grove for 3s, healing 5/tick; +20 healing',
+    casterGrand(
+      'heal',
+      (ab) => {
+        addN(ab, 'damage', 20);
+        ab.recoveryZone = { radius: 90, duration: 3, tickHeal: 5 };
+      },
+      ['bardSong'],
+    ),
   ),
   gk(
     'bard',
@@ -2053,27 +1876,16 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'ba_gk_a3_a',
     'Thunderous Crescendo',
     '⚡',
-    'Dissonant Whispers swells +60u, hits +18, and rips foes to 30% speed',
-    (ab) => {
-      addN(ab, 'radius', 60);
-      addN(ab, 'damage', 18);
-      setMin(ab, 'slowMult', 0.3);
-      addN(ab, 'slowDuration', 1);
-    },
-  ),
-  gk(
-    'bard',
-    'a3',
-    'ba_gk_a3_b',
-    'Maddening Dirge',
-    '🎻',
-    'Dissonant Whispers hits +12, freezes 0.7s, widens +20u, and recharges 40% faster',
-    (ab) => {
-      addN(ab, 'damage', 12);
-      addN(ab, 'freeze', 0.7);
-      addN(ab, 'radius', 20);
-      mul(ab, 'cooldown', 0.6);
-    },
+    'Dissonant Whispers pulls foes 140u inward and deals +10 damage',
+    casterGrand(
+      'pbaoe',
+      (ab) => {
+        ab.pull = Math.max(ab.pull ?? 0, 140);
+        ab.knockback = undefined;
+        addN(ab, 'damage', 10);
+      },
+      ['bardSong'],
+    ),
   ),
 
   // --- Monk -----------------------------------------------------------------
@@ -2360,49 +2172,12 @@ function amplify(ab: PlayerAbilityDef, mag: number, size: number): void {
 function lifeRider(ab: PlayerAbilityDef, frac: number): void {
   if (isStrike(ab) && ab.damage > 0) addN(ab, 'lifestealFrac', frac);
 }
-/** Control rider — a stun on a melee/pbaoe strike, a freeze on a projectile (the
- *  only riders the sim applies for each; projectiles never stun). */
-function ctrlRider(ab: PlayerAbilityDef, secs: number): void {
-  if (ab.kind === 'meleeCone' || ab.kind === 'pbaoe') addN(ab, 'stun', secs);
-  else if (ab.kind === 'projectile') addN(ab, 'freeze', secs);
-}
 /** Slow rider — chills whatever the skill can slow (a struck foe, or a hazard zone). */
 function slowRider(ab: PlayerAbilityDef, mult: number, dur: number): void {
   if ((ab.damage ?? 0) > 0 || (ab.zoneTickDamage ?? 0) > 0) {
     setMin(ab, 'slowMult', mult);
     ab.slowDuration = Math.max(ab.slowDuration ?? 0, dur);
   }
-}
-
-/** Subclass-grand builder — a grand tied to a subclass (forces grand + maxStacks
- *  1). Its `apply` tunes each bound sub-ability of that subclass (ctx.subAbilities,
- *  filled only by applySubclassGrands); a harmless no-op anywhere else. */
-function gs(
-  subclassId: string,
-  id: string,
-  name: string,
-  icon: string,
-  desc: string,
-  tune: (ab: PlayerAbilityDef) => void,
-): CharUpgradeDef {
-  const classId = getSubclass(subclassId)!.classId;
-  return {
-    id,
-    classId,
-    subclassId,
-    name,
-    icon,
-    desc,
-    grand: true,
-    maxStacks: 1,
-    apply: ({ subAbilities }) => {
-      if (!subAbilities) return;
-      for (const slot of SUB_SLOTS) {
-        const ab = subAbilities[slot];
-        if (ab) tune(ab);
-      }
-    },
-  };
 }
 
 /** Nature recipes require their actual delivery; changed Forge skills get honest generic growth. */
@@ -2468,6 +2243,92 @@ function natureSuppression(ab: PlayerAbilityDef): void {
   if (!isStrike(ab)) return;
   ab.castSlow = Math.max(ab.castSlow ?? 1, 1.3);
   ab.castSlowDuration = Math.max(ab.castSlowDuration ?? 0, 3);
+}
+
+/** Native support hooks are shared by authored recipes and Forge offer wording. */
+const SUPPORT_RECIPES: Record<
+  string,
+  {
+    kind: PlayerAbilityDef['kind'];
+    hooks: readonly (keyof Omit<PlayerAbilityDef, 'slot'>)[];
+    unbursted?: boolean;
+  }
+> = {
+  cl_light_flare: { kind: 'pbaoe', hooks: [] },
+  cl_light_beam: { kind: 'projectile', hooks: [], unbursted: true },
+  cl_light_flash: { kind: 'heal', hooks: ['rescueStrike', 'rescueHealBonus'] },
+  cl_light_warding: { kind: 'selfBuff', hooks: ['absorption'] },
+  cl_life_bloom: { kind: 'groundZone', hooks: ['zoneTickHeal'] },
+  cl_life_mend: { kind: 'heal', hooks: ['relayHeal', 'rescueHealBonus'] },
+  cl_life_preserve: { kind: 'selfBuff', hooks: ['absorption'] },
+  cl_life_smite: { kind: 'meleeCone', hooks: ['stun'] },
+  pa_devotion_smite: { kind: 'meleeCone', hooks: ['lifestealFrac'] },
+  pa_devotion_sanctuary: { kind: 'selfBuff', hooks: ['paladinAura', 'buffDamageMult'] },
+  pa_devotion_bless: { kind: 'heal', hooks: ['paladinAura'] },
+  pa_devotion_aura: { kind: 'selfBuff', hooks: ['paladinAura', 'absorption'] },
+  pa_vengeance_hunt: { kind: 'selfBuff', hooks: ['paladinAura', 'buffDamageMult', 'buffMoveMult'] },
+  pa_vengeance_shackle: { kind: 'pbaoe', hooks: ['slowMult'] },
+  pa_vengeance_charge: { kind: 'dash', hooks: ['landingDamage', 'range'] },
+  pa_vengeance_smite: { kind: 'meleeCone', hooks: ['stun'] },
+  ba_valor_blade: { kind: 'meleeCone', hooks: ['bardSong'] },
+  ba_valor_inspire: { kind: 'selfBuff', hooks: ['bardSong', 'buffDamageMult'] },
+  ba_valor_bolster: { kind: 'selfBuff', hooks: ['bardSong', 'cleanseOnHeal', 'steadfastDuration'] },
+  ba_valor_shatter: { kind: 'pbaoe', hooks: ['bardSong'] },
+  ba_whispers_words: { kind: 'groundZone', hooks: ['zoneTickDamage', 'bardSong', 'airborne'] },
+  ba_whispers_wound: { kind: 'projectile', hooks: ['bardSong'], unbursted: true },
+  ba_whispers_mantle: { kind: 'blink', hooks: [] },
+  ba_whispers_song: { kind: 'heal', hooks: ['bardSong'] },
+};
+function supportRecipeMatches(subSkillId: string, ab: Omit<PlayerAbilityDef, 'slot'>): boolean {
+  const recipe = SUPPORT_RECIPES[subSkillId];
+  return casterPayloadMatches(ab, recipe.kind, recipe.hooks, recipe.unbursted ?? false);
+}
+function supportGrand(
+  subSkillId: string,
+  tune: (ab: PlayerAbilityDef) => void,
+): (ab: PlayerAbilityDef) => void {
+  return (ab) => {
+    if (supportRecipeMatches(subSkillId, ab)) tune(ab);
+    else amplify(ab, 0.25, 0.15);
+  };
+}
+
+/** Support riders retain their recipient rules when copied or composed. */
+function supportBarrier(
+  ab: PlayerAbilityDef,
+  amount: number,
+  duration: number,
+  target: NonNullable<PlayerAbilityDef['absorption']>['target'],
+): void {
+  ab.absorption = {
+    ...ab.absorption,
+    amount: Math.max(ab.absorption?.amount ?? 0, amount),
+    duration: Math.max(ab.absorption?.duration ?? 0, duration),
+    target: ab.absorption?.target ?? target,
+  };
+}
+function supportRescue(ab: PlayerAbilityDef, mult: number, duration: number): void {
+  ab.rescueStrike = {
+    mult: Math.max(ab.rescueStrike?.mult ?? 1, mult),
+    duration: Math.max(ab.rescueStrike?.duration ?? 0, duration),
+  };
+}
+function supportHealBoon(
+  ab: PlayerAbilityDef,
+  field: 'buffMoveMult' | 'buffDefMult' | 'buffDamageMult',
+  value: number,
+  duration: number,
+): void {
+  if (field === 'buffDefMult') setMin(ab, field, value);
+  else ab[field] = Math.max(ab[field] ?? 1, value);
+  ab.buffDuration = Math.max(ab.buffDuration ?? 0, duration);
+}
+function supportSharedWard(ab: PlayerAbilityDef): void {
+  ab.allyWard = {
+    range: Math.max(ab.allyWard?.range ?? 0, 180),
+    mult: Math.min(ab.allyWard?.mult ?? 1, 0.85),
+    duration: Math.max(ab.allyWard?.duration ?? 0, 4),
+  };
 }
 
 /** Pilot identities tune native base skills during replay and bound subclass skills on rebind. */
@@ -2720,47 +2581,96 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
   ),
 
   // Cleric
-  gs(
+  pilotIdentity(
     'cl_light',
     'cl_light_g_a',
     'Dawnbreaker',
     '☀️',
-    'Your Light skills blaze 55% brighter over a wider area, dazing/freezing foes',
+    'Smite slows foes 25% for 2s; Sanctuary grants 20% allied movement. Direct Light strikes gain +25% controlled-target damage; Light rescues ready +30% damage and wards grant you 20% movement',
+    (a) => {
+      if (isStrike(a.basic) && a.basic.damage > 0) slowRider(a.basic, 0.75, 2);
+      else amplify(a.basic, 0.2, 0.1);
+      if (a.a2.kind === 'groundZone' && a.a2.zoneTickHeal)
+        a.a2.zoneAllyMoveMult = Math.max(a.a2.zoneAllyMoveMult ?? 1, 1.2);
+      else amplify(a.a2, 0.2, 0.1);
+    },
     (ab) => {
-      amplify(ab, 0.55, 0.3);
-      ctrlRider(ab, 0.6);
+      if (isStrike(ab) && ab.damage > 0) addN(ab, 'controlDamageBonus', 0.25);
+      else if (ab.kind === 'heal' && ab.rescueStrike)
+        ab.rescueStrike = { ...ab.rescueStrike, mult: Math.max(ab.rescueStrike.mult, 1.3) };
+      else if (ab.kind === 'selfBuff' && ab.absorption)
+        ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.2);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'cl_light',
     'cl_light_g_b',
     'Endless Radiance',
     '🌟',
-    'Your Light skills recharge 45% faster and burn 30% brighter',
+    'Blessing adds 35 absorption for 4s to the lowest-health ally; Smite delays wind-ups 30% for 3s. Direct Light strikes leech 20%, heals cleanse, and wards give you 3s hard-control resistance',
+    (a) => {
+      casterGrand('buffAlly', (ab) => supportBarrier(ab, 35, 4, 'weakest'), ['buffDamageMult'])(
+        a.a3,
+      );
+      if (isStrike(a.basic) && a.basic.damage > 0) casterSuppression(a.basic);
+      else amplify(a.basic, 0.2, 0.1);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      amplify(ab, 0.3, 0.15);
+      if (isStrike(ab) && ab.damage > 0) lifeRider(ab, 0.2);
+      else if (ab.kind === 'heal') ab.cleanseOnHeal = true;
+      else if (ab.kind === 'selfBuff' && ab.absorption)
+        ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 3);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'cl_life',
     'cl_life_g_a',
     'Font of Life',
     '💚',
-    'Your Life skills heal and shield 60% more across a wider field',
+    'Effective Heal leaves a 90u grove for 3s, healing 4/tick; Sanctuary grants 20% mitigation. Life heals grant 20% movement for 3s, fields grant 20% mitigation, wards heal you 20, and direct strikes leech 15%',
+    (a) => {
+      casterGrand(
+        'heal',
+        (ab) => {
+          ab.recoveryZone = { radius: 90, duration: 3, tickHeal: 4 };
+        },
+        ['rescueHealBonus'],
+      )(a.a1);
+      if (a.a2.kind === 'groundZone' && a.a2.zoneTickHeal)
+        a.a2.zoneAllyDefMult = Math.min(a.a2.zoneAllyDefMult ?? 1, 0.8);
+      else amplify(a.a2, 0.2, 0.1);
+    },
     (ab) => {
-      amplify(ab, 0.6, 0.3);
+      if (ab.kind === 'heal') supportHealBoon(ab, 'buffMoveMult', 1.2, 3);
+      else if (ab.kind === 'groundZone' && ab.zoneTickHeal)
+        ab.zoneAllyDefMult = Math.min(ab.zoneAllyDefMult ?? 1, 0.8);
+      else if (ab.kind === 'selfBuff' && ab.absorption) addN(ab, 'healOnUse', 20);
+      else if (isStrike(ab) && ab.damage > 0) lifeRider(ab, 0.15);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'cl_life',
     'cl_life_g_b',
     'Ceaseless Mending',
     '✨',
-    'Your Life skills recharge 45% faster and mend 35% more',
+    'Heal and Life heals ready a low-health recipient’s next direct hit for +25% damage within 6s; Sanctuary and Life fields grant 25% allied movement. Life wards lift you for 3s; direct strikes delay wind-ups 30% for 3s',
+    (a) => {
+      casterGrand('heal', (ab) => supportRescue(ab, 1.25, 6), ['rescueHealBonus'])(a.a1);
+      if (a.a2.kind === 'groundZone' && a.a2.zoneTickHeal)
+        a.a2.zoneAllyMoveMult = Math.max(a.a2.zoneAllyMoveMult ?? 1, 1.25);
+      else amplify(a.a2, 0.2, 0.1);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      amplify(ab, 0.35, 0.15);
+      if (ab.kind === 'heal') supportRescue(ab, 1.25, 6);
+      else if (ab.kind === 'groundZone' && ab.zoneTickHeal)
+        ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.25);
+      else if (ab.kind === 'selfBuff' && ab.absorption)
+        ab.grantsFlight = Math.max(ab.grantsFlight ?? 0, 3);
+      else if (isStrike(ab) && ab.damage > 0) casterSuppression(ab);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
 
@@ -2920,49 +2830,109 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
   ),
 
   // Paladin
-  gs(
+  pilotIdentity(
     'pa_devotion',
     'pa_devotion_g_a',
-    'Avatar of Devotion',
+    'Covenant of Steel',
     '🌟',
-    'Your Devotion skills strike 50% harder over a wider area and heal 20% of the damage',
+    'Divine Shield blocks one frontal hit for 4s, readying a +30% melee counter; Consecration grants 20% allied movement. Devotion strikes leech +15%, utilities ready the same counter, and effective Bless grants 20% mitigation for 3s',
+    (a) => {
+      casterGrand(
+        'selfBuff',
+        (ab) => {
+          casterGuard(ab, 1, 4);
+          ab.frontGuard = {
+            ...ab.frontGuard!,
+            counter: Math.max(ab.frontGuard?.counter ?? 1, 1.3),
+          };
+        },
+        ['iframes', 'paladinAura'],
+      )(a.a3);
+      if (a.a1.kind === 'groundZone' && a.a1.zoneTickHeal)
+        a.a1.zoneAllyMoveMult = Math.max(a.a1.zoneAllyMoveMult ?? 1, 1.2);
+      else amplify(a.a1, 0.2, 0.1);
+    },
     (ab) => {
-      amplify(ab, 0.5, 0.3);
-      lifeRider(ab, 0.2);
+      if (isStrike(ab) && ab.damage > 0) lifeRider(ab, 0.15);
+      else if (ab.kind === 'selfBuff') ab.guardWindow = Math.max(ab.guardWindow ?? 0, 4);
+      else if (ab.kind === 'heal') supportHealBoon(ab, 'buffDefMult', 0.8, 3);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'pa_devotion',
     'pa_devotion_g_b',
     'Unyielding Faith',
     '🛡️',
-    'Your Devotion skills recharge 40% faster and their blessings/blows grow 30%',
+    'Divine Shield weakens foes within 180u by 20% for 4s and readies a counter after your next melee connection; effective Lay on Hands grants 20% movement for 3s. Devotion strikes delay wind-ups 30%, utilities ward other allies 15% within 180u for 4s, and Bless cleanses',
+    (a) => {
+      casterGrand(
+        'selfBuff',
+        (ab) => {
+          ab.warCry = { radius: 180, duration: 4 };
+        },
+        ['iframes', 'paladinAura'],
+      )(a.a3);
+      casterGrand('heal', (ab) => supportHealBoon(ab, 'buffMoveMult', 1.2, 3), ['paladinAura'])(
+        a.a2,
+      );
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.6);
-      amplify(ab, 0.3, 0.15);
+      if (isStrike(ab) && ab.damage > 0) casterSuppression(ab);
+      else if (ab.kind === 'selfBuff') supportSharedWard(ab);
+      else if (ab.kind === 'heal') ab.cleanseOnHeal = true;
+      else amplify(ab, 0.2, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'pa_vengeance',
     'pa_vengeance_g_a',
     'Avenging Wrath',
     '🔥',
-    'Your Vengeance skills hit 55% harder over a wider area and stun the wicked',
+    'Consecration slows foes 30%; Holy Strike and direct Vengeance strikes gain +25% damage against controlled foes. Hunter’s Vow adds 3s hard-control resistance; Charge delays enemy wind-ups 30% for 3s',
+    (a) => {
+      casterGrand(
+        'groundZone',
+        (ab) => {
+          setMin(ab, 'slowMult', 0.7);
+          ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1);
+        },
+        ['zoneTickDamage'],
+      )(a.a1);
+      if (isStrike(a.basic) && a.basic.damage > 0) addN(a.basic, 'controlDamageBonus', 0.25);
+      else amplify(a.basic, 0.2, 0.1);
+    },
     (ab) => {
-      amplify(ab, 0.55, 0.3);
-      ctrlRider(ab, 0.7);
+      if (isStrike(ab) && ab.damage > 0) addN(ab, 'controlDamageBonus', 0.25);
+      else if (ab.kind === 'selfBuff')
+        ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 3);
+      else if (ab.kind === 'dash' && ab.landingDamage) casterSuppression(ab);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'pa_vengeance',
     'pa_vengeance_g_b',
     'Relentless Vengeance',
     '⚡',
-    'Your Vengeance skills recharge 40% faster, hit 30% harder, and leech 20%',
+    'Divine Shield grants 25% movement for 3s; Holy Strike leeches 15%. Direct Vengeance strikes leech 20%, Charge grants 20% movement for 3s, and Hunter’s Vow heals you 25',
+    (a) => {
+      casterGrand(
+        'selfBuff',
+        (ab) => {
+          ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.25);
+          ab.buffDuration = Math.max(ab.buffDuration ?? 0, 3);
+        },
+        ['iframes', 'paladinAura'],
+      )(a.a3);
+      if (isStrike(a.basic) && a.basic.damage > 0) lifeRider(a.basic, 0.15);
+      else amplify(a.basic, 0.2, 0.1);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.6);
-      amplify(ab, 0.3, 0.15);
-      lifeRider(ab, 0.2);
+      if (isStrike(ab) && ab.damage > 0) lifeRider(ab, 0.2);
+      else if (ab.kind === 'dash' && ab.landingDamage) supportHealBoon(ab, 'buffMoveMult', 1.2, 3);
+      else if (ab.kind === 'selfBuff') addN(ab, 'healOnUse', 25);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
 
@@ -3038,49 +3008,85 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
   ),
 
   // Bard
-  gs(
+  pilotIdentity(
     'ba_valor',
     'ba_valor_g_a',
-    "Hero's Ballad",
+    'Hero’s Ballad',
     '🎺',
-    'Your Valor skills hit 50% harder over a wider area, empower the band far more, and leech 15% of the damage dealt as health',
+    'Vicious Mockery and direct Valor strikes gain +25% damage against controlled foes; Dissonant Whispers leeches 20%. Valor utilities ready a +30% melee counter after guarded damage within 4s',
+    (a) => {
+      if (isStrike(a.basic) && a.basic.damage > 0) addN(a.basic, 'controlDamageBonus', 0.25);
+      else amplify(a.basic, 0.2, 0.1);
+      if (isStrike(a.a3) && a.a3.damage > 0) lifeRider(a.a3, 0.2);
+      else amplify(a.a3, 0.2, 0.1);
+    },
     (ab) => {
-      amplify(ab, 0.5, 0.3);
-      lifeRider(ab, 0.15);
+      if (isStrike(ab) && ab.damage > 0) addN(ab, 'controlDamageBonus', 0.25);
+      else if (ab.kind === 'selfBuff') ab.guardWindow = Math.max(ab.guardWindow ?? 0, 4);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'ba_valor',
     'ba_valor_g_b',
     'Battle Rhapsody',
     '🥁',
-    'Your Valor skills recharge 45% faster and grow 30%',
+    'Dissonant Whispers delays wind-ups 30% for 3s; effective Healing Word grants 20% movement for 3s. Direct Valor strikes leech 20%; utilities ward other allies 15% within 180u for 4s',
+    (a) => {
+      if (isStrike(a.a3) && a.a3.damage > 0) casterSuppression(a.a3);
+      else amplify(a.a3, 0.2, 0.1);
+      casterGrand('heal', (ab) => supportHealBoon(ab, 'buffMoveMult', 1.2, 3), ['bardSong'])(a.a2);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      amplify(ab, 0.3, 0.15);
+      if (isStrike(ab) && ab.damage > 0) lifeRider(ab, 0.2);
+      else if (ab.kind === 'selfBuff') supportSharedWard(ab);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'ba_whispers',
     'ba_whispers_g_a',
     'Voice of Madness',
     '😱',
-    'Your Whispers skills hit 50% harder over a wider area and terrify foes to 35%',
+    'Dissonant Whispers freezes for 0.6s; Mockery gains +25% controlled-target damage. Direct Whispers strikes gain +30% controlled damage, Words delays wind-ups 30%, Mantle grants 30 absorption for 4s, and Refrain grants 20% movement for 3s',
+    (a) => {
+      casterGrand('pbaoe', (ab) => addN(ab, 'freeze', 0.6), ['bardSong'])(a.a3);
+      if (isStrike(a.basic) && a.basic.damage > 0) addN(a.basic, 'controlDamageBonus', 0.25);
+      else amplify(a.basic, 0.2, 0.1);
+    },
     (ab) => {
-      amplify(ab, 0.5, 0.3);
-      slowRider(ab, 0.35, 1.5);
-      ctrlRider(ab, 0.5);
+      if (isStrike(ab) && ab.damage > 0) addN(ab, 'controlDamageBonus', 0.3);
+      else if (ab.kind === 'groundZone' && ab.zoneTickDamage)
+        ab.castSlow = Math.max(ab.castSlow ?? 1, 1.3);
+      else if (ab.kind === 'blink') supportBarrier(ab, 30, 4, 'self');
+      else if (ab.kind === 'heal') supportHealBoon(ab, 'buffMoveMult', 1.2, 3);
+      else amplify(ab, 0.2, 0.1);
     },
   ),
-  gs(
+  pilotIdentity(
     'ba_whispers',
     'ba_whispers_g_b',
     'Unheard Dirge',
     '🌫️',
-    'Your Whispers skills recharge 45% faster and grow 30%',
+    'Mockery delays wind-ups 30% for 3s; Inspiration grants 20% movement. Direct Whispers strikes leech 20%, Words grants 20% allied movement, Mantle blocks one frontal hit for 4s, and Refrain cleanses',
+    (a) => {
+      if (isStrike(a.basic) && a.basic.damage > 0) casterSuppression(a.basic);
+      else amplify(a.basic, 0.2, 0.1);
+      casterGrand(
+        'buffAlly',
+        (ab) => {
+          ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.2);
+        },
+        ['bardSong', 'buffDamageMult'],
+      )(a.a1);
+    },
     (ab) => {
-      mul(ab, 'cooldown', 0.55);
-      amplify(ab, 0.3, 0.15);
+      if (isStrike(ab) && ab.damage > 0) lifeRider(ab, 0.2);
+      else if (ab.kind === 'groundZone' && ab.zoneTickDamage)
+        ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.2);
+      else if (ab.kind === 'blink') casterGuard(ab, 1, 4);
+      else if (ab.kind === 'heal') ab.cleanseOnHeal = true;
+      else amplify(ab, 0.2, 0.1);
     },
   ),
 
@@ -3343,6 +3349,260 @@ function gsk(
 }
 
 export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
+  // Cleric, Paladin and Bard — one authored recipe per bound skill.
+  gsk(
+    'cl_light_flare',
+    'Dawning Reversal',
+    '🌟',
+    'Radiance pushes struck foes 150u outward and deals +8 damage',
+    supportGrand('cl_light_flare', (ab) => {
+      ab.knockback = Math.max(ab.knockback ?? 0, 150);
+      ab.pull = undefined;
+      addN(ab, 'damage', 8);
+    }),
+  ),
+  gsk(
+    'cl_light_beam',
+    'Guiding Lance',
+    '☀️',
+    'Guiding Bolt pierces two foes and gains +180 speed',
+    supportGrand('cl_light_beam', (ab) => {
+      addN(ab, 'pierce', 2);
+      addN(ab, 'projSpeed', 180);
+    }),
+  ),
+  gsk(
+    'cl_light_flash',
+    'Afterglow',
+    '✨',
+    'Effective Flash of Light leaves a 90u recovery grove for 3s, healing 5/tick; +15 healing',
+    supportGrand('cl_light_flash', (ab) => {
+      ab.recoveryZone = { radius: 90, duration: 3, tickHeal: 5 };
+      addN(ab, 'damage', 15);
+    }),
+  ),
+  gsk(
+    'cl_light_warding',
+    'Flareguard',
+    '🛡️',
+    'Warding Flare also gives you one frontal block for 4s',
+    supportGrand('cl_light_warding', (ab) => {
+      casterGuard(ab, 1, 4);
+    }),
+  ),
+  gsk(
+    'cl_life_bloom',
+    'Pilgrim Bloom',
+    '🌸',
+    'Blessed Bloom damages grounded foes for 6/tick and follows its first damaged foe for up to 6s',
+    supportGrand('cl_life_bloom', (ab) => {
+      addN(ab, 'zoneTickDamage', 6);
+      ab.zoneFollow = Math.max(ab.zoneFollow ?? 0, 6);
+    }),
+  ),
+  gsk(
+    'cl_life_mend',
+    'Unburdening Cure',
+    '💚',
+    'Mass Cure cleanses movement ailments from its primary recipient and restores +20 HP',
+    supportGrand('cl_life_mend', (ab) => {
+      ab.cleanseOnHeal = true;
+      addN(ab, 'damage', 20);
+    }),
+  ),
+  gsk(
+    'cl_life_preserve',
+    'Life’s Vigil',
+    '🕊️',
+    'Preserve Life gives you two frontal blocks for 4s',
+    supportGrand('cl_life_preserve', (ab) => {
+      casterGuard(ab, 2, 4);
+    }),
+  ),
+  gsk(
+    'cl_life_smite',
+    'Reproving Blow',
+    '🔨',
+    'Reproach pushes struck foes 140u outward and gains +10 damage',
+    supportGrand('cl_life_smite', (ab) => {
+      ab.knockback = Math.max(ab.knockback ?? 0, 140);
+      ab.pull = undefined;
+      addN(ab, 'damage', 10);
+    }),
+  ),
+  gsk(
+    'pa_devotion_smite',
+    'Magnetic Oath',
+    '🌟',
+    'Divine Smite pulls struck foes 120u inward and gains +8 damage',
+    supportGrand('pa_devotion_smite', (ab) => {
+      ab.pull = Math.max(ab.pull ?? 0, 120);
+      ab.knockback = undefined;
+      addN(ab, 'damage', 8);
+    }),
+  ),
+  gsk(
+    'pa_devotion_sanctuary',
+    'Guarded Weapon',
+    '⚔️',
+    'Sacred Weapon blocks one frontal hit for 4s',
+    supportGrand('pa_devotion_sanctuary', (ab) => {
+      casterGuard(ab, 1, 4);
+    }),
+  ),
+  gsk(
+    'pa_devotion_bless',
+    'Blessed Reprisal',
+    '🙏',
+    'Effective Bless grants its recipient +25% damage for 4s and restores +15 HP',
+    supportGrand('pa_devotion_bless', (ab) => {
+      supportHealBoon(ab, 'buffDamageMult', 1.25, 4);
+      addN(ab, 'damage', 15);
+    }),
+  ),
+  gsk(
+    'pa_devotion_aura',
+    'Unbroken Circle',
+    '🛡️',
+    'Aura of Protection cleanses you and adds 4s hard-control resistance',
+    supportGrand('pa_devotion_aura', (ab) => {
+      ab.cleanseOnHeal = true;
+      ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 4);
+    }),
+  ),
+  gsk(
+    'pa_vengeance_hunt',
+    'Unflinching Hunt',
+    '🎯',
+    'Hunter’s Vow blocks one frontal hit for 4s',
+    supportGrand('pa_vengeance_hunt', (ab) => {
+      casterGuard(ab, 1, 4);
+    }),
+  ),
+  gsk(
+    'pa_vengeance_shackle',
+    'Gather the Guilty',
+    '⛓️',
+    'Vow of Enmity pulls struck foes 140u inward and gains +10 damage',
+    supportGrand('pa_vengeance_shackle', (ab) => {
+      ab.pull = Math.max(ab.pull ?? 0, 140);
+      ab.knockback = undefined;
+      addN(ab, 'damage', 10);
+    }),
+  ),
+  gsk(
+    'pa_vengeance_charge',
+    'Guardian Crossing',
+    '💨',
+    'Avenging Charge heals you 25, travels +40u, and cleanses and guards the first ally actually crossed for 3s',
+    supportGrand('pa_vengeance_charge', (ab) => {
+      addN(ab, 'healOnUse', 25);
+      addN(ab, 'range', 40);
+      ab.crossingGuard = { width: 36, duration: 3 };
+    }),
+  ),
+  gsk(
+    'pa_vengeance_smite',
+    'Exiling Judgment',
+    '🔥',
+    'Wrathful Smite pushes struck foes 150u outward and reaches +20u',
+    supportGrand('pa_vengeance_smite', (ab) => {
+      ab.knockback = Math.max(ab.knockback ?? 0, 150);
+      ab.pull = undefined;
+      addN(ab, 'range', 20);
+    }),
+  ),
+  gsk(
+    'ba_valor_blade',
+    'Sweeping Flourish',
+    '🗡️',
+    'Blade Flourish pushes struck foes 120u outward and deals +10 damage',
+    supportGrand('ba_valor_blade', (ab) => {
+      ab.knockback = Math.max(ab.knockback ?? 0, 120);
+      ab.pull = undefined;
+      addN(ab, 'damage', 10);
+    }),
+  ),
+  gsk(
+    'ba_valor_inspire',
+    'Steadfast Hymn',
+    '🎺',
+    'Battle Hymn cleanses you and adds 4s hard-control resistance',
+    supportGrand('ba_valor_inspire', (ab) => {
+      ab.cleanseOnHeal = true;
+      ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 4);
+    }),
+  ),
+  gsk(
+    'ba_valor_bolster',
+    'Resounding Courage',
+    '🛡️',
+    'Bolster readies a 24-damage, 90u burst for 5s; land a direct hit within 100u to release it, slowing foes 25% for 2s',
+    supportGrand('ba_valor_bolster', (ab) => {
+      ab.closeBurst = {
+        damage: 24,
+        radius: 90,
+        range: 100,
+        duration: 5,
+        slowMult: 0.75,
+        slowDuration: 2,
+      };
+    }),
+  ),
+  gsk(
+    'ba_valor_shatter',
+    'Shattering Retort',
+    '💥',
+    'Shatter gains +10 damage and arms a 4s retort for 40% of its damage, released by incoming damage or your next positive direct hit',
+    supportGrand('ba_valor_shatter', (ab) => {
+      addN(ab, 'damage', 10);
+      ab.rebukeDuration = Math.max(ab.rebukeDuration ?? 0, 4);
+      ab.rebukeDirect = true;
+    }),
+  ),
+  gsk(
+    'ba_whispers_words',
+    'Pursuing Dread',
+    '😱',
+    'Words of Terror follows its first damaged foe for up to 6s and gains +15u radius; it still reaches flyers',
+    supportGrand('ba_whispers_words', (ab) => {
+      ab.zoneFollow = Math.max(ab.zoneFollow ?? 0, 6);
+      addN(ab, 'radius', 15);
+    }),
+  ),
+  gsk(
+    'ba_whispers_wound',
+    'Shattering Secret',
+    '🔪',
+    'Psychic Blade bursts across 60u on impact and deals +8 damage',
+    supportGrand('ba_whispers_wound', (ab) => {
+      ab.impactRadius = Math.max(ab.impactRadius ?? 0, 60);
+      addN(ab, 'damage', 8);
+    }),
+  ),
+  gsk(
+    'ba_whispers_mantle',
+    'Unbound Mantle',
+    '🌫️',
+    'Mantle of Whispers heals you 25 and adds 3s hard-control resistance',
+    supportGrand('ba_whispers_mantle', (ab) => {
+      addN(ab, 'healOnUse', 25);
+      ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 3);
+    }),
+  ),
+  gsk(
+    'ba_whispers_song',
+    'Shared Refrain',
+    '🎶',
+    'Healing Refrain restores +15 HP and relays 40% of effective primary healing to one other injured ally within 180u',
+    supportGrand('ba_whispers_song', (ab) => {
+      addN(ab, 'damage', 15);
+      ab.relayHeal = {
+        fraction: Math.max(ab.relayHeal?.fraction ?? 0, 0.4),
+        radius: Math.max(ab.relayHeal?.radius ?? 0, 180),
+      };
+    }),
+  ),
   // Mage and Sorcerer — one authored recipe per bound skill.
   gsk(
     'mg_evoker_lightning',
@@ -4660,9 +4920,201 @@ const SUB_SKILL_TUNE_TEXT: Record<string, string> = {
   wa_goo_whispers: 'Increase dread-zone damage by 12% and radius by 8%, and improve recharge',
 };
 
+/** Support Honed develops healing, facing, verse and pursuit roles without re-selling flags. */
+function supportAuraHoned(ab: PlayerAbilityDef, duration: number): void {
+  const aura = ab.paladinAura!;
+  ab.paladinAura = {
+    ...aura,
+    duration: Math.max(aura.duration, Math.min(8, aura.duration + duration)),
+  };
+}
+const SUPPORT_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef) => void }> = {
+  cl_light_flare: {
+    desc: 'Increase Radiance damage by 10% and radius by 4u; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      addN(ab, 'radius', 4);
+    },
+  },
+  cl_light_beam: {
+    desc: 'Increase Guiding Bolt damage by 12% and shorten its wind-up by 5%; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      mul(ab, 'castTime', 0.95);
+    },
+  },
+  cl_light_flash: {
+    desc: 'Increase Flash healing by 8% and rescue readiness by 0.25s, up to 8s; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.08);
+      ab.rescueStrike = {
+        ...ab.rescueStrike!,
+        duration: Math.max(
+          ab.rescueStrike!.duration,
+          Math.min(8, ab.rescueStrike!.duration + 0.25),
+        ),
+      };
+    },
+  },
+  cl_light_warding: {
+    desc: 'Increase Warding Flare reach by 8u and barrier duration by 0.15s, up to 8s; recharge improves by 4%',
+    tune: (ab) => {
+      addN(ab, 'range', 8);
+      ab.absorption = {
+        ...ab.absorption!,
+        duration: Math.max(ab.absorption!.duration, Math.min(8, ab.absorption!.duration + 0.15)),
+      };
+    },
+  },
+  cl_life_bloom: {
+    desc: 'Increase Bloom healing by 8% and duration by 0.25s, up to 8s; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'zoneTickHeal', 1.08);
+      ab.zoneDuration = Math.max(ab.zoneDuration!, Math.min(8, ab.zoneDuration! + 0.25));
+    },
+  },
+  cl_life_mend: {
+    desc: 'Increase Mass Cure healing by 8% and relay reach by 6u; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.08);
+      ab.relayHeal = { ...ab.relayHeal!, radius: ab.relayHeal!.radius + 6 };
+    },
+  },
+  cl_life_preserve: {
+    desc: 'Increase Preserve Life barrier by 6% and reach by 5u; recharge improves by 4%',
+    tune: (ab) => {
+      ab.absorption = scaleAbsorption(ab.absorption!, 1.06);
+      addN(ab, 'range', 5);
+    },
+  },
+  cl_life_smite: {
+    desc: 'Increase Reproach damage by 10% and reach by 3u; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      addN(ab, 'range', 3);
+    },
+  },
+  pa_devotion_smite: {
+    desc: 'Increase Divine Smite damage by 10% and leech by +2%, up to 30%; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      ab.lifestealFrac = Math.max(ab.lifestealFrac!, Math.min(0.3, ab.lifestealFrac! + 0.02));
+    },
+  },
+  pa_devotion_sanctuary: {
+    desc: 'Increase Sacred Weapon damage bonus by +3% and Pursuit duration by 0.2s, up to 8s; recharge improves by 4%',
+    tune: (ab) => {
+      addN(ab, 'buffDamageMult', 0.03);
+      supportAuraHoned(ab, 0.2);
+    },
+  },
+  pa_devotion_bless: {
+    desc: 'Increase Bless healing by 8% and Renewal duration by 0.2s, up to 8s; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.08);
+      supportAuraHoned(ab, 0.2);
+    },
+  },
+  pa_devotion_aura: {
+    desc: 'Increase Aura of Protection barrier by 6% and Bulwark duration by 0.2s, up to 8s; recharge improves by 4%',
+    tune: (ab) => {
+      ab.absorption = scaleAbsorption(ab.absorption!, 1.06);
+      supportAuraHoned(ab, 0.2);
+    },
+  },
+  pa_vengeance_hunt: {
+    desc: 'Increase Vow damage bonus by +3% and Pursuit duration by 0.2s, up to 8s; recharge improves by 4%',
+    tune: (ab) => {
+      addN(ab, 'buffDamageMult', 0.03);
+      supportAuraHoned(ab, 0.2);
+    },
+  },
+  pa_vengeance_shackle: {
+    desc: 'Increase Enmity damage by 10% and slow duration by 0.15s, up to 4s; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      ab.slowDuration = Math.max(ab.slowDuration!, Math.min(4, ab.slowDuration! + 0.15));
+    },
+  },
+  pa_vengeance_charge: {
+    desc: 'Increase Charge landing damage by 10% and travel by 6u; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'landingDamage', 1.1);
+      addN(ab, 'range', 6);
+    },
+  },
+  pa_vengeance_smite: {
+    desc: 'Increase Wrathful Smite damage by 10% and reach by 3u; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      addN(ab, 'range', 3);
+    },
+  },
+  ba_valor_blade: {
+    desc: 'Increase Flourish damage by 10% and reach by 3u; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.1);
+      addN(ab, 'range', 3);
+    },
+  },
+  ba_valor_inspire: {
+    desc: 'Increase Hymn damage bonus by +3% and duration by 0.2s, up to 8s; recharge improves by 4%',
+    tune: (ab) => {
+      addN(ab, 'buffDamageMult', 0.03);
+      ab.buffDuration = Math.max(ab.buffDuration!, Math.min(8, ab.buffDuration! + 0.2));
+    },
+  },
+  ba_valor_bolster: {
+    desc: 'Increase Bolster movement bonus by +2% and rally duration by 0.2s, up to 8s; recharge improves by 4%',
+    tune: (ab) => {
+      addN(ab, 'buffMoveMult', 0.02);
+      ab.buffDuration = Math.max(ab.buffDuration!, Math.min(8, ab.buffDuration! + 0.2));
+    },
+  },
+  ba_valor_shatter: {
+    desc: 'Increase Shatter damage by 12% and radius by 3u; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      addN(ab, 'radius', 3);
+    },
+  },
+  ba_whispers_words: {
+    desc: 'Increase Words damage by 10% and duration by 0.25s, up to 8s; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'zoneTickDamage', 1.1);
+      ab.zoneDuration = Math.max(ab.zoneDuration!, Math.min(8, ab.zoneDuration! + 0.25));
+    },
+  },
+  ba_whispers_wound: {
+    desc: 'Increase Psychic Blade damage by 12% and speed by 20u/s; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.12);
+      addN(ab, 'projSpeed', 20);
+    },
+  },
+  ba_whispers_mantle: {
+    desc: 'Increase Mantle travel by 8u and phasing by 0.02s, up to 0.6s; recharge improves by 4%',
+    tune: (ab) => {
+      addN(ab, 'range', 8);
+      ab.iframes = Math.max(ab.iframes!, Math.min(0.6, ab.iframes! + 0.02));
+    },
+  },
+  ba_whispers_song: {
+    desc: 'Increase Refrain healing by 8% and reach by 8u; recharge improves by 4%',
+    tune: (ab) => {
+      mul(ab, 'damage', 1.08);
+      addN(ab, 'range', 8);
+    },
+  },
+};
+
 /** Share authored tuning between live replay and Forge offer previews. */
 function applyAuthoredHoned(subSkillId: string, ab: PlayerAbilityDef): boolean {
-  const profile = MARTIAL_HONED[subSkillId] ?? NATURE_HONED[subSkillId] ?? CASTER_HONED[subSkillId];
+  const profile =
+    MARTIAL_HONED[subSkillId] ??
+    NATURE_HONED[subSkillId] ??
+    CASTER_HONED[subSkillId] ??
+    SUPPORT_HONED[subSkillId];
   if (!profile) return false;
   // getSubSkill is Forge-resolved; profiles require the authored delivery AND payload shape.
   const native = subclassOfSkill(subSkillId)!.skills.find((s) => s.id === subSkillId)!.ability;
@@ -4693,6 +5145,25 @@ function applyAuthoredHoned(subSkillId: string, ab: PlayerAbilityDef): boolean {
       'range',
     ] as const
   ).filter((field) => native[field] != null);
+  const supportHooks = (
+    [
+      'absorption',
+      'rescueHealBonus',
+      'rescueStrike',
+      'relayHeal',
+      'zoneTickHeal',
+      'paladinAura',
+      'bardSong',
+      'cleanseOnHeal',
+      'steadfastDuration',
+      'iframes',
+      'slowMult',
+      'slowDuration',
+      'airborne',
+      'overflowShield',
+      'castTime',
+    ] as const
+  ).filter((field) => SUPPORT_HONED[subSkillId] && native[field] != null);
   const nativeForce = native.knockback != null || native.pull != null;
   const casterHooks = (
     [
@@ -4721,6 +5192,8 @@ function applyAuthoredHoned(subSkillId: string, ab: PlayerAbilityDef): boolean {
     ab.kind !== native.kind ||
     !nativeHooks.every((field) => ab[field] != null) ||
     !natureHooks.every((field) => ab[field] != null) ||
+    !supportHooks.every((field) => ab[field] != null && ab[field] !== false && ab[field] !== 0) ||
+    (!!SUPPORT_HONED[subSkillId] && native.damage > 0 && ab.damage <= 0) ||
     !casterHooks.every((field) => ab[field] != null && ab[field] !== false && ab[field] !== 0) ||
     (!!CASTER_HONED[subSkillId] && native.damage > 0 && ab.damage <= 0) ||
     (nativeForce && ab.knockback == null && ab.pull == null)
@@ -4791,7 +5264,11 @@ function simpleHonedText(subSkillId: string): string {
 
 /** Per-subclass-skill upgrade builder — tied to one sub skill id (non-grand, cap 5). */
 function us(subSkillId: string, classId: ClassId, name: string, icon: string): CharUpgradeDef {
-  const profile = MARTIAL_HONED[subSkillId] ?? NATURE_HONED[subSkillId] ?? CASTER_HONED[subSkillId];
+  const profile =
+    MARTIAL_HONED[subSkillId] ??
+    NATURE_HONED[subSkillId] ??
+    CASTER_HONED[subSkillId] ??
+    SUPPORT_HONED[subSkillId];
   return {
     id: `subup_${subSkillId}`,
     classId,
@@ -5972,7 +6449,10 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
     const fused = getSubSkill(base.subSkillId);
     if (!fused) return base;
     const natureRecipe =
-      base.grand && (NATURE_HONED[base.subSkillId] || CASTER_HONED[base.subSkillId]);
+      base.grand &&
+      (NATURE_HONED[base.subSkillId] ||
+        CASTER_HONED[base.subSkillId] ||
+        SUPPORT_HONED[base.subSkillId]);
     const native = natureRecipe
       ? subclassOfSkill(base.subSkillId)!.skills.find((skill) => skill.id === base.subSkillId)!
           .ability
@@ -5982,15 +6462,23 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       (fused.ability.kind !== native.kind ||
         (['rg_beast_snare', 'dr_land_wall'].includes(base.subSkillId) &&
           !fused.ability.zoneTickDamage) ||
-        (!!CASTER_HONED[base.subSkillId] && !casterRecipeMatches(base.subSkillId, fused.ability)));
+        (!!CASTER_HONED[base.subSkillId] && !casterRecipeMatches(base.subSkillId, fused.ability)) ||
+        (!!SUPPORT_HONED[base.subSkillId] &&
+          !supportRecipeMatches(base.subSkillId, fused.ability)));
+    const supportHonedFallback =
+      !base.grand &&
+      SUPPORT_HONED[base.subSkillId] &&
+      !applyAuthoredHoned(base.subSkillId, structuredClone(fused.ability) as PlayerAbilityDef);
     return {
       ...base,
       name: blend(fused.name),
-      desc: natureFallback
-        ? `Reforged capstone — ${fused.name}: +25% damage/healing and +15% area/reach where present; stronger buffs`
-        : base.grand || SUB_SKILL_TUNE_TEXT[base.subSkillId]
-          ? `${fused.name}: ${swapDescName(base.desc, canonSubSkillName(base.subSkillId), fused.name)}`
-          : `${simpleHonedText(base.subSkillId)} (stacks to ${MAX_SKILL_STACKS}).`,
+      desc: supportHonedFallback
+        ? `${simpleHonedText(base.subSkillId)} (stacks to ${MAX_SKILL_STACKS}).`
+        : natureFallback
+          ? `Reforged capstone — ${fused.name}: +25% damage/healing and +15% area/reach where present; stronger buffs`
+          : base.grand || SUB_SKILL_TUNE_TEXT[base.subSkillId] || SUPPORT_HONED[base.subSkillId]
+            ? `${fused.name}: ${swapDescName(base.desc, canonSubSkillName(base.subSkillId), fused.name)}`
+            : `${simpleHonedText(base.subSkillId)} (stacks to ${MAX_SKILL_STACKS}).`,
     };
   }
 

@@ -254,7 +254,8 @@ describe('Cleric bubbles', () => {
   it('keeps copied skill upgrades functional without mutating the source skill', () => {
     const original = sub('cl_light_warding');
     const upgraded = previewSubAbility('cl_light_warding', ['subup_cl_light_warding'])!;
-    expect(upgraded.absorption!.amount).toBeGreaterThan(original.absorption!.amount);
+    expect(upgraded.absorption!.amount).toBe(original.absorption!.amount);
+    expect(upgraded.absorption!.duration).toBeGreaterThan(original.absorption!.duration);
     expect(upgraded.range).toBeGreaterThan(original.range!);
     expect(sub('cl_light_warding')).toEqual(original);
     expect(abilityCapability(original)).toBe('allyBuff');

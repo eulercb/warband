@@ -1018,7 +1018,7 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
     case 'momentumFissure':
       return `spending Momentum leaves a 3s ground fissure, ${n(e.damage)} dmg/stack every 0.5s, slow to 65%`;
     case 'closeBurst':
-      return `next positive direct hit within ${n(e.burst.range)}u or bear claw within ${s(e.burst.duration)} releases a bramble burst for ${n(e.burst.damage)} dmg in ${n(e.burst.radius)}u around you; slow to ${pct(e.burst.slowMult * 100)} for ${s(e.burst.slowDuration)}`;
+      return `for ${s(e.burst.duration)}, your next damaging direct hit within ${n(e.burst.range)}u releases a close burst for ${n(e.burst.damage)} dmg in ${n(e.burst.radius)}u around you; slow to ${pct(e.burst.slowMult * 100)} for ${s(e.burst.slowDuration)}`;
     case 'cursePayoff':
       return `positive hit on your cursed foe, attacks 15% weaker, wind-ups 40% slower for ${s(e.duration)}; no hard interrupt`;
     case 'flight':

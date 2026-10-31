@@ -1,12 +1,13 @@
 # Class identity and subclass roadmap
 
-Current delivery: [Sorcerer luck and description readability](SORCERER_LUCK.md),
-a feedback follow-up to the accepted [Mage/Sorcerer builds](CASTER_GRANDS.md).
-Nine classes have authored upgrade/grand content; Cleric/Paladin/Bard remain,
-followed by the whole-system review. Shared recharge/geometry limits and
-recipient-health barrier scaling remain in force. Use the
-[combined-build review gate](UPGRADE_REVIEW_GATE.md), including actual first-pick
-utility at protected recovery floors and clear player-facing descriptions.
+Current delivery: [Cleric/Paladin/Bard authored upgrades and grands](SUPPORT_GRANDS.md).
+The owner accepted the Sorcerer/readability follow-up. All **12/12 classes** now
+have authored starting, subclass-skill and identity grands plus role-specific
+Honed profiles. Owner live testing is the acceptance gate for this final cohort.
+Next is the whole-system review of balance, acquisition flow, ordinary upgrades,
+graft alternatives and compatibility, using the complete catalogue rather than
+adding another class cohort. Preserve the shared recharge/geometry limits and
+recipient-health barrier scaling. Use the [combined-build review gate](UPGRADE_REVIEW_GATE.md).
 
 The original class/passive stages below are historical. Current upgrade work and
 milestones are tracked in [the upgrade roadmap](UPGRADE_IDENTITY_ROADMAP.md).

@@ -433,7 +433,7 @@ describe('new payload compatibility, visibility and difficulty credit', () => {
     const { w, p } = setup();
     arm(w, p);
     const charge = p.buffs.find((b) => b.kind === 'brambleReady')!;
-    expect(buffBadges([buffView(charge)]).some((b) => b.label.startsWith('Bramble ready:'))).toBe(
+    expect(buffBadges([buffView(charge)]).some((b) => b.label.startsWith('Burst ready:'))).toBe(
       true,
     );
     expect(buffView(charge)).not.toHaveProperty('closeBurst');
