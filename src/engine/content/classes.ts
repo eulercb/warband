@@ -198,7 +198,12 @@ export interface PlayerAbilityDef {
   /** Surge adds one projectile, sharing its enhanced damage budget. */
   surgeTwin?: boolean;
   /** Bounded delivery/control changes reserved only when this cast spends Surge. */
+  /** Standalone copied interruption; no Surge boost or cast-speed bonus. */
+  thoughtBreak?: boolean;
+  /** Resolved-only shared reservation, never copied as authored content. */
+  thoughtBreakCast?: import('../core/types').ThoughtBreakCast;
   surgeRider?: {
+    interrupt?: true;
     halfAngleDeg?: number;
     radius?: number;
     pierce?: number;
@@ -281,6 +286,12 @@ export interface PlayerAbilityDef {
 }
 
 /** Component caps are authoritative for composed coatings, just as for direct strike payloads. */
+export function resolvedThoughtBreak(def: PlayerAbilityDef): boolean {
+  return def.components
+    ? def.components.effects.some((e) => e.kind === 'thoughtBreak')
+    : !!def.thoughtBreak;
+}
+
 export function resolvedCoating(def: PlayerAbilityDef): PlayerAbilityDef['venomCoating'] {
   if (!def.components) return def.venomCoating;
   const effect = def.components.effects.find((e) => e.kind === 'venomCoating');
@@ -1329,6 +1340,10 @@ export function describeAbility(
 
   if (def.controlDamageBonus)
     parts.push(`+${n(def.controlDamageBonus * 100)}% dmg vs slowed/rooted/stunned foes`);
+  if (def.thoughtBreak)
+    parts.push(
+      'one positive direct boss hit can break its wind-up or channel; 8s shared target recovery; no Surge required',
+    );
   if (def.prepareSurge) parts.push(`prepare spell surge for ${s(def.prepareSurge)}`);
   if (def.consumesSurge) {
     const riders = def.surgeRider;
@@ -1341,6 +1356,10 @@ export function describeAbility(
       text.push(`pierce ${n(riders.pierce)} extra foe`);
     if (riders?.spreadDeg != null && def.kind === 'projectile')
       text.push(`fan at most ${n(riders.spreadDeg)}°`);
+    if (riders?.interrupt)
+      text.push(
+        'one positive direct boss hit can break its wind-up or channel; 8s shared target recovery',
+      );
     if (riders?.castSlow)
       text.push(
         `enemy wind-ups +${n((riders.castSlow - 1) * 100)}% for ${s(riders.castSlowDuration ?? 3)}`,

@@ -2,13 +2,23 @@ import type { Graphics } from 'pixi.js';
 import type { BuffView, Vec2 } from '../../engine/core/types';
 import { isBurstControl } from '../../engine/core/control';
 export type EnemyDebuffKind =
-  'stun' | 'root' | 'slow' | 'castSlow' | 'silence' | 'curse' | 'weak' | 'vulnerable' | 'venom';
+  | 'thoughtBreakRecovery'
+  | 'stun'
+  | 'root'
+  | 'slow'
+  | 'castSlow'
+  | 'silence'
+  | 'curse'
+  | 'weak'
+  | 'vulnerable'
+  | 'venom';
 export interface EnemyDebuff {
   kind: EnemyDebuffKind;
   remaining: number;
   own: boolean;
 }
 export const ENEMY_DEBUFF_COLORS: Record<EnemyDebuffKind, number> = {
+  thoughtBreakRecovery: 0xa7bacd,
   stun: 0xffe274,
   root: 0x98e6ba,
   slow: 0x8de4ff,
@@ -33,6 +43,7 @@ export function enemyDebuffs(buffs: readonly BuffView[], localId: number | null)
     'weak',
     'vulnerable',
     'venom',
+    'thoughtBreakRecovery',
   ] as const) {
     const matching = active.filter((b) => {
       switch (kind) {
@@ -73,7 +84,13 @@ export function drawEnemyDebuffSymbol(
   r: number,
   color: number,
 ): void {
-  if (kind === 'slow') {
+  if (kind === 'thoughtBreakRecovery') {
+    g.circle(x, y, r)
+      .moveTo(x - r, y + r)
+      .lineTo(x + r, y - r)
+      .moveTo(x, y - r)
+      .lineTo(x, y);
+  } else if (kind === 'slow') {
     g.moveTo(x - r, y - r * 0.6)
       .lineTo(x, y + r * 0.6)
       .lineTo(x + r, y - r * 0.6)

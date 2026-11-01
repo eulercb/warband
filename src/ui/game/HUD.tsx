@@ -171,7 +171,16 @@ function AbilityIcon({
       ? `Return ${reprise.returnRemaining.toFixed(1)}s${reprise.blocked ? ` · ${reprise.blocked}` : ''}`
       : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
     : null;
-  const actionStatus = reprise?.armed ? repriseStatus : (apertureStatus ?? repriseStatus);
+  const breakPrepared = useHudStore(
+    (s) =>
+      s.state === 'alive' &&
+      !!def?.surgeRider?.interrupt &&
+      !!def?.consumesSurge &&
+      s.buffs.some((b) => b.kind === 'spellSurge' && b.remaining > 0),
+  );
+  const actionStatus = reprise?.armed
+    ? repriseStatus
+    : (apertureStatus ?? repriseStatus ?? (breakPrepared ? 'Thought Break prepared' : null));
   const claimTarget = useHudStore((s) => s.infernalClaimTargets[slot]);
   const alive = useHudStore((s) => s.state === 'alive');
   // Subscribe to bindings so the label updates live when the player rebinds.
