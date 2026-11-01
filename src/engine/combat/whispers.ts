@@ -1,3 +1,4 @@
+import { walkAroundBulwarks } from './apertureMovement';
 /** Host-owned perception: real retreat, false targets and bounded add allegiance. */
 import type { Add, ApparitionView, Boss, Player, Vec2, WhisperCast } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
@@ -256,7 +257,7 @@ function walk(w: World, e: Enemy, toward: Vec2, dt: number, away: boolean): numb
   if (Math.hypot(d.x, d.y) < 0.01) angle = ((e.id % 8) * Math.PI) / 4;
   const length = Math.min(e.moveSpeed * buffMult(e, 'moveSpeed') * dt, 12);
   for (const turn of [0, Math.PI / 4, -Math.PI / 4, Math.PI / 2, -Math.PI / 2]) {
-    const pos = {
+    let pos = {
       x: e.pos.x + Math.cos(angle + turn) * length,
       y: e.pos.y + Math.sin(angle + turn) * length,
     };
@@ -267,6 +268,7 @@ function walk(w: World, e: Enemy, toward: Vec2, dt: number, away: boolean): numb
       pos.y > w.arena.h - e.radius
     )
       continue;
+    pos = walkAroundBulwarks(w, e, pos, dt);
     if (away && dist(pos, toward) <= dist(e.pos, toward) + 0.001) continue;
     if (w.obstacles.some((o) => dist(pos, o.pos) < e.radius + o.radius)) continue;
     if (w.bosses.some((b) => b !== e && b.hp > 0 && dist(pos, b.pos) < e.radius + b.radius))

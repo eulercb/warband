@@ -161,7 +161,7 @@ function AbilityIcon({
   );
   const ember = !!aperture?.emberReady;
   const apertureStatus = aperture
-    ? `Conduit ${aperture.remaining.toFixed(1)}s${aperture.blocked ? ` · ${aperture.blocked}` : ''}`
+    ? `${aperture.conduitReady === false ? 'No clear portal lane' : 'Conduit'} ${aperture.remaining.toFixed(1)}s${aperture.blocked ? ` · ${aperture.blocked}` : ''}`
     : null;
   const reprise = useHudStore((s) =>
     s.shadowReprise?.slot === slot ? s.shadowReprise : undefined,

@@ -391,6 +391,8 @@ export interface ApparitionView {
 }
 export interface Player {
   infernalAperture?: {
+    conduitReady?: boolean;
+    bulwark?: { pos: Vec2; radius: number };
     entry: Vec2;
     exit: Vec2;
     direction: Vec2;
@@ -1342,6 +1344,8 @@ export interface Telegraph {
 
 export interface PlayerView {
   infernalAperture?: {
+    conduitReady?: boolean;
+    bulwark?: { pos: Vec2; radius: number };
     entry: Vec2;
     exit: Vec2;
     direction: Vec2;

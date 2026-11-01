@@ -17,14 +17,15 @@ name the next development task beyond playtesting.
 
 ## Current delivery
 
-[Fiend Infernal Aperture delivery](FIEND_INFERNAL_APERTURE.md).
-Fiend A now establishes a deliberate projectile conduit with real range/transit
-and one fresh-press aimed ember. Infernal Claim keeps its distinct cursed-target
-detonation. Pact remains supporting sustain. This is implemented and validated,
-awaiting owner live acceptance; Great Old One remains open.
+[Aperture placement and cover follow-up](APERTURE_COVER_FOLLOWUP.md).
+PR #150 is merged and live-tested. The owner liked the aperture idea but found
+near-obstacle placement unreliable and open arenas lacking a useful safe firing
+position. This follow-up repairs nearby mouths and adds temporary cover with
+real enemy detours. It awaits owner retesting; Fiend is not yet marked accepted.
+Great Old One remains the next identity task, separately from this terrain change.
 
 Seven of 24 subclasses have been reviewed in this pass: five are accepted or
-retained (including Assassin), Fiend is implemented awaiting live feedback, one
+retained (including Assassin), Fiend is being refined after live feedback, one
 remains open, and 17 await review. Review, implementation and acceptance are
 separate states.
 

@@ -545,6 +545,9 @@ export class Renderer {
           this.camera.worldToScreen(p.infernalAperture.exit),
           this.camera.scale,
           p.id === state.localPlayerId,
+          p.infernalAperture.bulwark
+            ? this.camera.worldToScreen(p.infernalAperture.bulwark.pos)
+            : undefined,
         );
       if (p.shadowReprise)
         drawShadowAnchor(

@@ -1,3 +1,4 @@
+import { walkAroundBulwarks, clipBulwarkStep } from '../combat/apertureMovement';
 import {
   onWhisperHit,
   tickWhispers,
@@ -21,6 +22,8 @@ import {
   tryApertureEmber,
   stepApertureProjectile,
   apertureView,
+  apertureBulwarks,
+  dissolveOverlappedBulwarks,
 } from '../combat/infernalAperture';
 import { onWhisperRefrainHit, ownsWhisperRefrain } from '../combat/whisperRefrain';
 import { grandHistory, type GrandLoadout } from '../content/grandSelections';
@@ -1187,6 +1190,7 @@ export class World {
     this.checkDownedTransitions();
     this.auraClock = updatePaladinAuras(this, dt, this.auraClock);
     this.updateRevive(dt, inputs);
+    dissolveOverlappedBulwarks(this);
     this.updateProjectiles(dt);
     this.updateZones(dt);
     updateCompanions(this, dt);
@@ -1205,7 +1209,9 @@ export class World {
     this.stepDeadline(dt);
     decayThreat(this.players, dt);
     this.tauntTimer = Math.max(0, this.tauntTimer - dt);
+    dissolveOverlappedBulwarks(this);
     this.separateAndClamp();
+    dissolveOverlappedBulwarks(this);
     for (const [p, walk] of this.huntWalks) {
       if (p.glide || p.shove || this.events.some((e) => e.t === 'blink' && e.id === p.id)) continue;
       const intended = Math.hypot(walk.move.x, walk.move.y);
@@ -1651,7 +1657,7 @@ export class World {
 
   /** True if this projectile's step crossed any cover obstacle (blocks ranged). */
   private projectileHitsObstacle(prev: Vec2, proj: Projectile): boolean {
-    for (const o of this.obstacles) {
+    for (const o of [...this.obstacles, ...apertureBulwarks(this)]) {
       if (pointInSegment(o.pos, prev, proj.pos, o.radius, proj.hitRadius)) return true;
     }
     return false;
@@ -3131,7 +3137,7 @@ export class World {
       // kiter: keep within casting range but don't crowd the target
       if (d > 420) {
         const dir = normalize(sub(target.pos, boss.pos));
-        boss.pos = vadd(boss.pos, vscale(dir, speed * dt));
+        boss.pos = walkAroundBulwarks(this, boss, vadd(boss.pos, vscale(dir, speed * dt)), dt);
         boss.facing = angleOf(dir);
       } else {
         boss.facing = angleOf(sub(target.pos, boss.pos));
@@ -3141,7 +3147,7 @@ export class World {
 
     if (d > def.meleeRange * 0.85) {
       const dir = normalize(sub(target.pos, boss.pos));
-      boss.pos = vadd(boss.pos, vscale(dir, speed * dt));
+      boss.pos = walkAroundBulwarks(this, boss, vadd(boss.pos, vscale(dir, speed * dt)), dt);
       boss.facing = angleOf(dir);
     } else {
       boss.facing = angleOf(sub(target.pos, boss.pos));
@@ -3365,7 +3371,7 @@ export class World {
           if (!a.shove) {
             const dir = normalize(sub(target.pos, a.pos));
             const speed = a.moveSpeed * buffMult(a, 'moveSpeed');
-            a.pos = vadd(a.pos, vscale(dir, speed * dt));
+            a.pos = walkAroundBulwarks(this, a, vadd(a.pos, vscale(dir, speed * dt)), dt);
           }
         } else if (a.attackCd <= 0) {
           damagePlayer(this, target, ADD_DAMAGE * buffMult(a, 'damageDealt'), a.pos);
@@ -3649,8 +3655,15 @@ export class World {
         return { ...base, kind: 'circle', radius: ab.radius ?? 110 };
       case 'pbaoe':
         return { ...base, kind: 'circle', radius: ab.radius ?? 160, target: { ...boss.pos } };
-      case 'line':
-        return { ...base, kind: 'line', width: ab.width ?? 45 };
+      case 'line': {
+        const clipped = clipBulwarkStep(this, boss, base.target);
+        return {
+          ...base,
+          ...(clipped.stopped ? { target: clipped.pos, range: dist(boss.pos, clipped.pos) } : {}),
+          kind: 'line',
+          width: ab.width ?? 45,
+        };
+      }
       case 'beam':
         return { ...base, kind: 'line', width: ab.width ?? 24, range: ab.range ?? 500 };
       case 'summon':

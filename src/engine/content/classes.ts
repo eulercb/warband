@@ -1356,7 +1356,7 @@ export function describeAbility(
   if (def.infernalAperture) {
     const a = def.infernalAperture;
     parts.push(
-      `fixed firing conduit ${a.duration}s, entrance ${a.reach / 4}u / exit ${a.reach}u along aim; aim shots through entrance, press again for one ${a.emberDamage}-damage ember`,
+      `fixed firing conduit ${a.duration}s, entrance ${a.reach / 4}u / exit ${a.reach}u along aim; nearby mouths adjust around cover; creates 96u-wide temporary cover when space permits, blocking shots and hostile approach; aim through entrance, press again for one ${a.emberDamage}-damage ember`,
     );
   }
   if (def.shadowReprise) {
