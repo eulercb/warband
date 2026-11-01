@@ -30,6 +30,16 @@ export default function MechanicsReference() {
         duplicate. Some spells list an additional Surge effect.
       </p>
       <p>
+        Shadow Reprise leaves a departure anchor for up to 6s. A later prepared direct hit
+        (including a killing hit) unlocks up to 2s to return. Release and press the owning skill
+        again; holding or autofire cannot return you. You must stay within the outbound blink's
+        range. Roots, silence, stun, casting and forced movement block returning. The original
+        cooldown keeps running; returning grants no cast effects or immunity. Forge's portable
+        version accepts any later direct hit and can anchor a nonblink skill at its cast position.
+        Its card lists the resulting duration and range. An owning cast's own delayed hits cannot
+        unlock its return. Changing class or replacing the skill discards the anchor.
+      </p>
+      <p>
         Whispers spends one learned secret on a fixed apparition. Normal fear retreats for up to
         1.4s/160u; field fear tries for up to 3s/300u. Slows, roots and cover matter. Taunt or an
         immobile target can reject fear without spending the secret. Committed attacks finish first.

@@ -2754,13 +2754,19 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
   pilotIdentity(
     'ro_assassin',
     'ro_assassin_g_a',
-    'Death Incarnate',
+    'Shadow Reprise',
     '💀',
-    'Prepared attacks execute wounded foes harder and preparation lasts 2s longer',
+    'Shadowstep leaves a 6s departure anchor. A later prepared direct hit unlocks a 2s return: press Shadowstep again. Prepared executions grow stronger',
     (a) => {
       addN(a.basic, 'critChanceBonus', 0.08);
       addN(a.a1, 'critMultBonus', 0.25);
       addN(a.a2, 'prepareCrit', 2);
+      a.a2.shadowReprise = {
+        lifetime: 6,
+        returnWindow: 2,
+        range: a.a2.range ?? 250,
+        prepared: !a.a2.components,
+      };
     },
     (ab) => {
       if (isStrike(ab)) {
@@ -6474,7 +6480,10 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
     return {
       ...base,
       name: blend(fused.name),
-      desc: swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
+      desc:
+        base.id === 'ro_assassin_g_a'
+          ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
+          : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
     };
   }
 

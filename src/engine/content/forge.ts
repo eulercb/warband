@@ -133,6 +133,7 @@ export type EffectComponent =
   | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
   | { kind: 'fortune'; fortune: NonNullable<PlayerAbilityDef['fortune']> }
   | { kind: 'whisperRefrain'; refrain: NonNullable<PlayerAbilityDef['whisperRefrain']> }
+  | { kind: 'shadowReprise'; reprise: NonNullable<PlayerAbilityDef['shadowReprise']> }
   | { kind: 'prepareCrit'; duration: number }
   | { kind: 'rebuke'; duration: number; curseBonus?: number; direct?: boolean }
   | { kind: 'preparedRefund'; seconds: number }
@@ -376,6 +377,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
   if (def.apparition) effects.push({ kind: 'apparition', effect: { ...def.apparition } });
   if (def.fortune) effects.push({ kind: 'fortune', fortune: { ...def.fortune } });
+  if (def.shadowReprise) effects.push({ kind: 'shadowReprise', reprise: { ...def.shadowReprise } });
   if (def.whisperRefrain && def.kind === 'blink')
     effects.push({ kind: 'whisperRefrain', refrain: { ...def.whisperRefrain } });
   if (def.mirrorImages) effects.push({ kind: 'mirrorImages', ...def.mirrorImages });
@@ -573,6 +575,9 @@ export function recompose(
       case 'fortune':
         def.fortune = { ...e.fortune };
         break;
+      case 'shadowReprise':
+        def.shadowReprise = { ...e.reprise };
+        break;
       case 'whisperRefrain':
         if (d.kind === 'blink') def.whisperRefrain = { ...e.refrain };
         break;
@@ -752,6 +757,10 @@ function effectValue(e: EffectComponent, fan: number): number {
       return (1 - e.ward.mult) * e.ward.duration * 24;
     case 'bardSong':
       return e.part === 'chorus' ? 15 : 8;
+    case 'shadowReprise':
+      return (
+        ((((e.reprise.prepared ? 30 : 40) * e.reprise.lifetime) / 6) * e.reprise.returnWindow) / 2
+      );
     case 'whisperRefrain':
       return 15 + e.refrain.charges * e.refrain.fraction * 40;
     case 'controlDamage':
@@ -1010,6 +1019,8 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return `other allies within ${n(e.ward.range)}u take ${pct((1 - e.ward.mult) * 100)} less damage for ${s(e.ward.duration)}`;
     case 'bardSong':
       return bardSongText(e.part);
+    case 'shadowReprise':
+      return `departure anchor ${s(e.reprise.lifetime)}, later ${e.reprise.prepared ? 'prepared ' : ''}direct hit unlocks ${s(e.reprise.returnWindow)} return; press this skill again within ${delivery === 'blink' ? 'blink range' : `${n(e.reprise.range)}u`}`;
     case 'whisperRefrain':
       return `spend Harmony + Discord: departure afterimage ${s(e.refrain.duration)}, next ${n(e.refrain.charges)} direct casts echo ${n(e.refrain.fraction * 100)}% damage near it (${n(e.refrain.radius)}u)`;
     case 'controlDamage':
@@ -1389,6 +1400,8 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return DIRECT_STRIKE.has(kind);
     case 'fortune':
       return kind === 'selfBuff' || kind === 'blink' || kind === 'groundZone';
+    case 'shadowReprise':
+      return true; // slotAllowsEffect excludes basic attacks
     case 'whisperRefrain':
       return kind === 'blink';
     case 'prepareSurge':
@@ -1559,7 +1572,12 @@ export function synthesizeAbility(
   }
 
   // 6. Assemble + recombine (fold ally buffs into a zone / retarget orphans).
-  let effects = chosen.map((c) => c.effect);
+  // Portable reprise uses a later direct hit; it never invents precision on copied basics.
+  let effects = chosen.map((c) =>
+    c.effect.kind === 'shadowReprise'
+      ? { ...c.effect, reprise: { ...c.effect.reprise, prepared: false } }
+      : c.effect,
+  );
   effects = foldAllyBuffsIntoZone(effects);
   effects = retargetOrphanAllyBuffs(delivery, effects);
   effects = mergeBuffs(effects); // item 5 — one buff per target; honest pricing
@@ -1972,6 +1990,15 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, ward: { ...e.ward, duration: e.ward.duration * f } };
     case 'bardSong':
       return e;
+    case 'shadowReprise':
+      return {
+        ...e,
+        reprise: {
+          ...e.reprise,
+          lifetime: e.reprise.lifetime * Math.sqrt(f),
+          returnWindow: e.reprise.returnWindow * Math.sqrt(f),
+        },
+      };
     case 'whisperRefrain':
       return { ...e, refrain: { ...e.refrain, fraction: e.refrain.fraction * f } };
     case 'controlDamage':
@@ -2156,6 +2183,7 @@ function addBoonComponents(
         'prepareCrit',
         'fortune',
         'whisperRefrain',
+        'shadowReprise',
         'steadfast',
         'cleanse',
         'momentum',
@@ -2366,6 +2394,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.prepareSurge != null ? { ...e, duration: def.prepareSurge } : e;
     case 'fortune':
       return def.fortune ? { ...e, fortune: { ...def.fortune } } : e;
+    case 'shadowReprise':
+      return def.shadowReprise ? { ...e, reprise: { ...def.shadowReprise } } : e;
     case 'whisperRefrain':
       return def.whisperRefrain ? { ...e, refrain: { ...def.whisperRefrain } } : e;
     case 'surgeStrike':
@@ -2575,6 +2605,16 @@ function capEffect(e: EffectComponent): EffectComponent {
       };
     case 'bardSong':
       return e;
+    case 'shadowReprise':
+      return {
+        ...e,
+        reprise: {
+          lifetime: clamp(round1(e.reprise.lifetime), 1, 6),
+          returnWindow: clamp(round1(e.reprise.returnWindow), 0.5, 2),
+          range: clamp(round5(e.reprise.range), 100, 260),
+          prepared: e.reprise.prepared,
+        },
+      };
     case 'whisperRefrain':
       return {
         ...e,

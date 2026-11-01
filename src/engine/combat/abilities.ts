@@ -1,6 +1,7 @@
 import { whisperCast, spendSecret, hostileAdd } from './whispers';
 import { boundedAbility } from '../content/abilityLimits';
 import { armFortune } from './sorcererLuck';
+import { recordShadowReprise } from './shadowReprise';
 import { armWhisperRefrain } from './whisperRefrain';
 import { armRetouchEffects } from './skillRetouches';
 import { onMoonAbility } from './moonForm';
@@ -439,9 +440,11 @@ export function resolvePlayerAbility(
   // ally-buff zone on impact). Canonical/variance/Chaos-Draft content never has
   // `.components`, so it takes the untouched switch below — byte-for-byte
   // identical when Forge is off. See docs/CHAOS_FORGE.md.
+  const departure = { ...p.pos };
   const chorus = beginSupportCast(world, p, ab);
   if (ab.components) {
     resolveComposedAbility(world, p, ab, moveDir, ab.components, chorus);
+    recordShadowReprise(world, p, ab, slot, departure);
     return;
   }
 
@@ -703,6 +706,7 @@ export function resolvePlayerAbility(
       break;
     }
   }
+  recordShadowReprise(world, p, ab, slot, departure);
 }
 
 /** Resolve the closest aimed living foe carrying this player's own curse. */

@@ -186,6 +186,7 @@ export interface PlayerAbilityDef {
   /** Host-only token shared by all hits/ticks of a cast. */
   whisperCast?: import('../core/types').WhisperCast;
   /** A two-verse blink leaves a stationary, finite direct-cast echo afterimage. */
+  shadowReprise?: { lifetime: number; returnWindow: number; range: number; prepared: boolean };
   whisperRefrain?: { duration: number; radius: number; fraction: number; charges: number };
   /** Extra damage against currently slowed, rooted or stunned enemies. */
   controlDamageBonus?: number;
@@ -1349,6 +1350,12 @@ export function describeAbility(
     const f = def.fortune;
     parts.push(
       `Fortune ${s(f.duration)} — next damaging direct hit delays enemy wind-ups ${n((f.castSlowMult - 1) * 100)}% and weakens their damage ${n((1 - f.damageMult) * 100)}% for ${s(f.debuffDuration)}${f.markBonus ? `; marks that foe for your next direct hit from a later cast +${n(f.markBonus * 100)}% damage within 5s` : ''}`,
+    );
+  }
+  if (def.shadowReprise) {
+    const r = def.shadowReprise;
+    parts.push(
+      `departure anchor ${r.lifetime}s, later ${r.prepared ? 'prepared ' : ''}direct hit unlocks ${r.returnWindow}s return; press this skill again within ${def.kind === 'blink' ? (def.range ?? r.range) : r.range}u`,
     );
   }
   if (def.whisperRefrain) {

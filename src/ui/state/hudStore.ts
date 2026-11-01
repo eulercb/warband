@@ -62,6 +62,7 @@ export interface HudState {
   state: PlayerState;
   /** Remaining cooldown seconds per slot (0 = ready; sub1/sub2 present when bound). */
   cooldowns: Cooldowns;
+  shadowReprise?: PlayerView['shadowReprise'];
   infernalClaimTargets: NonNullable<PlayerView['infernalClaimTargets']>;
   /** Bound subclass-skill ids (drives the sub1/sub2 HUD buttons). */
   subSkills: string[];
@@ -108,6 +109,7 @@ const INITIAL: Omit<HudState, 'set' | 'resetHud'> = {
   state: 'alive',
   cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 },
   infernalClaimTargets: {},
+  shadowReprise: undefined,
   subSkills: [],
   classes: [],
   potions: 0,

@@ -156,6 +156,14 @@ function AbilityIcon({
   mods: { cooldownMult: number; castMult: number; damageMult: number };
 }) {
   const remaining = useHudStore((s) => s.cooldowns[slot] ?? 0);
+  const reprise = useHudStore((s) =>
+    s.shadowReprise?.slot === slot ? s.shadowReprise : undefined,
+  );
+  const repriseStatus = reprise
+    ? reprise.armed
+      ? `Return ${reprise.returnRemaining.toFixed(1)}s${reprise.blocked ? ` · ${reprise.blocked}` : ''}`
+      : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
+    : null;
   const claimTarget = useHudStore((s) => s.infernalClaimTargets[slot]);
   const alive = useHudStore((s) => s.state === 'alive');
   // Subscribe to bindings so the label updates live when the player rebinds.
@@ -169,9 +177,11 @@ function AbilityIcon({
       : claimTarget === null
         ? 'Need target'
         : 'Target ready';
-  const ready = !cooling && (claimTarget === undefined || (alive && claimTarget !== null));
+  const ready =
+    (reprise?.armed && !reprise.blocked) ||
+    (!cooling && (claimTarget === undefined || (alive && claimTarget !== null)));
   const label = slotLabel(slot, source);
-  const name = displayName ?? def.name;
+  const name = reprise?.armed ? 'Return' : (displayName ?? def.name);
   // Concrete effect numbers on hover/focus (item 19), reflecting the hero's
   // current upgraded values since `def` comes from the resolved ability table.
   const tip = `${name} — ${describeAbility({ ...def, slot }, mods)}${claimStatus ? ` · ${claimStatus}` : ''}`;
@@ -189,6 +199,7 @@ function AbilityIcon({
         {label}
       </div>
       <div className="hud-ability-name">{name}</div>
+      {repriseStatus && <div className="hud-claim-status">{repriseStatus}</div>}
       {!cooling && claimStatus && (
         <div className={`hud-claim-status${claimTarget === null ? ' blocked' : ''}`}>
           {claimStatus}

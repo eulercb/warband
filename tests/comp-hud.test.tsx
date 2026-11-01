@@ -74,6 +74,46 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('<HUD>', () => {
+  it('shows earned Return with its window while retaining the original cooldown and blocked reason', () => {
+    const reprise = {
+      slot: 'a2' as const,
+      anchor: { x: 0, y: 0 },
+      remaining: 5,
+      returnRemaining: 0,
+      prepared: true,
+      armed: false,
+      blocked: null,
+    };
+    useHudStore.getState().set({
+      active: true,
+      classId: 'rogue',
+      cooldowns: { basic: 0, a1: 0, a2: 8, a3: 0 },
+      shadowReprise: reprise,
+    });
+    const { container } = render(<HUD />);
+    const tile = container.querySelector('.hud-ability[aria-label*="Shadowstep —"]')!;
+    expect(tile.textContent).toContain('Need prepared hit');
+    act(() =>
+      useHudStore
+        .getState()
+        .set({ shadowReprise: { ...reprise, armed: true, returnRemaining: 1.5 } }),
+    );
+    expect(tile.querySelector('.hud-ability-name')?.textContent).toBe('Return');
+    expect(tile.textContent).toContain('Return 1.5s');
+    expect(tile.querySelector('.hud-cd-num')?.textContent).toBe('8.0');
+    expect(tile.classList.contains('ready')).toBe(true);
+    act(() =>
+      useHudStore.getState().set({
+        shadowReprise: { ...reprise, armed: true, returnRemaining: 1.4, blocked: 'Rooted' },
+      }),
+    );
+    expect(tile.textContent).toContain('Rooted');
+    expect(tile.classList.contains('ready')).toBe(false);
+    act(() => useHudStore.getState().set({ shadowReprise: { ...reprise, prepared: false } }));
+    expect(tile.textContent).toContain('Need hit');
+    act(() => useHudStore.getState().resetHud());
+    expect(useHudStore.getState().shadowReprise).toBeUndefined();
+  });
   it('shows Claim target readiness without a false ready border or zero cooldown when blocked', () => {
     useHudStore.getState().set({
       active: true,

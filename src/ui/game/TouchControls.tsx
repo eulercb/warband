@@ -145,6 +145,14 @@ function TouchButton({
 }) {
   const ref = useRef<HTMLButtonElement>(null);
   const remaining = useHudStore((s) => (cdSlot ? (s.cooldowns[cdSlot] ?? 0) : 0));
+  const reprise = useHudStore((s) =>
+    s.shadowReprise?.slot === cdSlot ? s.shadowReprise : undefined,
+  );
+  const repriseStatus = reprise
+    ? reprise.armed
+      ? `Return ${reprise.returnRemaining.toFixed(1)}s${reprise.blocked ? ` · ${reprise.blocked}` : ''}`
+      : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
+    : null;
   const claimTarget = useHudStore((s) => (cdSlot ? s.infernalClaimTargets[cdSlot] : undefined));
   const alive = useHudStore((s) => s.state === 'alive');
   const frac = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
@@ -180,7 +188,11 @@ function TouchButton({
       ref={ref}
       type="button"
       className={`wb-touch-btn wb-touch-btn-${kind}`}
-      data-claim-ready={alive && !cooling && claimTarget != null ? true : undefined}
+      data-claim-ready={
+        (reprise?.armed && !reprise.blocked) || (alive && !cooling && claimTarget != null)
+          ? true
+          : undefined
+      }
       title={claimTarget !== undefined && ability ? describeAbility(ability) : undefined}
       aria-hidden="true"
     >
@@ -193,7 +205,10 @@ function TouchButton({
           }}
         />
       ) : null}
-      <span className={`wb-touch-btn-label${cooling ? ' cooling' : ''}`}>{label}</span>
+      <span className={`wb-touch-btn-label${cooling ? ' cooling' : ''}`}>
+        {reprise?.armed ? 'Return' : label}
+      </span>
+      {repriseStatus && <span className="wb-touch-claim-status">{repriseStatus}</span>}
       {alive && !cooling && claimTarget !== undefined && (
         <span className={`wb-touch-claim-status${claimTarget === null ? ' blocked' : ''}`}>
           {claimTarget === null ? 'Need target' : 'Target ready'}
