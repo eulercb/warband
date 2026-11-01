@@ -1,5 +1,13 @@
 # Identity review before whole-system tuning
 
+Current execution status is tracked in [Development status](DEVELOPMENT_STATUS.md).
+Calibration is complete: Moon/Evoker retained and Whispers reworked/accepted in
+owner live testing. The [Rogue/Warlock review](ROGUE_WARLOCK_IDENTITY_REVIEW.md)
+retains Trickster, repairs prepared coating, and leaves three identity pairs open.
+Historical Whispers examples below describe the problem that prompted calibration,
+not its current implementation. Authorized mature proposals proceed through the
+bounded Sol high workflow; unresolved material gameplay choices need a checkpoint.
+
 The owner accepted PR145 and requested a stronger purpose for the 48 authored
 identity grands. The next whole-system review starts with playstyle identity,
 before broad numerical balance, graft alternatives or acquisition/economy work.

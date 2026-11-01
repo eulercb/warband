@@ -1,12 +1,19 @@
 # Upgrade identity: audit and staged redesign
 
+**Current status and development sequence:** [Development status](DEVELOPMENT_STATUS.md).
+Whispers (#147) is merged and accepted in live testing. The current delivery is
+the [Rogue/Warlock review and coating repair](ROGUE_WARLOCK_IDENTITY_REVIEW.md).
+Next development is the focused Assassin/Fiend behavioral proposal, then bounded
+implementation and Great Old One follow-through before the remaining cohorts.
+The older milestone notes below explain how this baseline was reached.
+
 Completed authored cohort: [Cleric/Paladin/Bard upgrades and grands](SUPPORT_GRANDS.md).
 The owner accepted the Sorcerer/readability follow-up. All **12/12 classes** now
 have authored starting, subclass-skill and identity grands plus role-specific
 Honed profiles. The owner reports that the merged final cohort felt okay in live
 testing (2026-10-31); this accepts that delivery without claiming equal balance.
 
-Current delivery is [Whispers perception](WHISPERS_DELIVERY.md). The owner
+Accepted calibration delivery: [Whispers perception](WHISPERS_DELIVERY.md). The owner
 accepted retaining Moon and Evoker for now and approved developing the Whispers
 fear/secret direction, including useful support and possible Mantle interactions.
 The owner rejected the first proposal's damage/mitigation payoffs while retaining

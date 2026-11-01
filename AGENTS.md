@@ -39,3 +39,9 @@ owner explicitly requests monitoring. The existing GitHub CI-completion action
 reports whether to merge or return for help. Inspect failed checks when asked.
 Browser smoke cohorts/selectors should use stable IDs and derive display labels
 from the game registry; do not duplicate renamed skill/passive names in CI.
+
+At each delivery, name the next development step after live playtesting and the
+following roadmap stages. Record accepted player feedback and distinguish review
+completed, mechanics implemented and identities accepted; do not count unresolved
+identity findings as finished merely because tests pass.
+Keep `docs/DEVELOPMENT_STATUS.md` current as the concise entry point to that sequence.
