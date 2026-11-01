@@ -220,7 +220,7 @@ export type BuffKind =
   | 'beguiling'
   | 'whisperRefrain' // accepted stationary departure afterimage
   | 'grandOpening' // owner-only next direct-hit vulnerability; host cast token prevents self-consumption
-  | 'grandCadence' // Fiend identity direct-hit progress (mult = count)
+  | 'grandCadence' // legacy snapshot compatibility; no current producer
   | 'spellblade' // one empowered melee hit from Arcane Trickster
   | 'precision' // one prepared critical strike; mult unused
   | 'curse' // owner-only vulnerability; source = curse:<owner>[:<style>:<zone>], mult = factor
@@ -390,6 +390,20 @@ export interface ApparitionView {
   pending: boolean;
 }
 export interface Player {
+  infernalAperture?: {
+    entry: Vec2;
+    exit: Vec2;
+    direction: Vec2;
+    remaining: number;
+    radius: number;
+    emberDamage: number;
+    emberReady: boolean;
+    createdTick: number;
+    slot: ExtSlot;
+    classId: ClassId;
+    source: import('../content/classes').PlayerAbilityDef;
+    setupCast: NonNullable<import('../content/classes').PlayerAbilityDef['pilotCast']>;
+  };
   /** Host-only: exact equipped source and cast provenance never enter snapshots. */
   shadowReprise?: {
     anchor: Vec2;
@@ -733,6 +747,18 @@ export interface ProjectileImpact {
 }
 
 export interface Projectile {
+  /** Host-only conduit state; projectiles in transit are omitted from snapshots. */
+  apertureTransit?: {
+    remaining: number;
+    exit: Vec2;
+    velocity: Vec2;
+    classId: ClassId;
+    slot: ExtSlot;
+    source: import('../content/classes').PlayerAbilityDef;
+  };
+  apertureUsed?: boolean;
+  /** Authored fan offset, kept when a conduit changes the central firing direction. */
+  spreadOffset?: number;
   whisperCast?: WhisperCast;
   id: EntityId;
   kind: ProjectileKind;
@@ -1315,6 +1341,16 @@ export interface Telegraph {
 // ---------------------------------------------------------------------------
 
 export interface PlayerView {
+  infernalAperture?: {
+    entry: Vec2;
+    exit: Vec2;
+    direction: Vec2;
+    remaining: number;
+    radius: number;
+    emberReady: boolean;
+    slot: ExtSlot;
+    blocked: string | null;
+  };
   shadowReprise?: {
     anchor: Vec2;
     slot: ExtSlot;

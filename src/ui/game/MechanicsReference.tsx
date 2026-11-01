@@ -30,6 +30,17 @@ export default function MechanicsReference() {
         duplicate. Some spells list an additional Surge effect.
       </p>
       <p>
+        Infernal Aperture fixes an entrance and exit along your setup aim. Only your shots crossing
+        the entrance forward with enough clearance route; the exit keeps setup aim plus authored
+        spread. Conduit travel costs the original shot's range and takes distance ÷ speed in time.
+        Cover and enemies before entry and after exit still intercept; the intervening space is
+        bypassed. Both endpoints need clear space. One fresh press of the owning skill fires an
+        ember from your current position toward current aim, without refreshing buffs or cooldown.
+        Holding/autofire cannot fire it. An earned Shadow Reprise return takes priority on a shared
+        Forge slot. Gate expiry stops new entry; admitted shots finish transit. Downing, death,
+        changing class or replacing the owning skill cancels pending transit.
+      </p>
+      <p>
         Shadow Reprise leaves a departure anchor for up to 6s. A later prepared direct hit
         (including a killing hit) unlocks up to 2s to return. Release and press the owning skill
         again; holding or autofire cannot return you. You must stay within the outbound blink's

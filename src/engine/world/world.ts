@@ -16,6 +16,12 @@ import {
   tryShadowReturn,
   shadowRepriseView,
 } from '../combat/shadowReprise';
+import {
+  tickInfernalApertures,
+  tryApertureEmber,
+  stepApertureProjectile,
+  apertureView,
+} from '../combat/infernalAperture';
 import { onWhisperRefrainHit, ownsWhisperRefrain } from '../combat/whisperRefrain';
 import { grandHistory, type GrandLoadout } from '../content/grandSelections';
 import {
@@ -1173,6 +1179,7 @@ export class World {
     maintainMoonForms(this);
     tickWhispers(this, dt);
     tickShadowReprise(this, dt);
+    tickInfernalApertures(this, dt);
     this.maintainCloseBursts();
     this.applyInputs(dt, inputs);
     this.stepGlides(dt); // item 2: advance in-progress dash/leap glides host-side
@@ -1386,6 +1393,7 @@ export class World {
   private tryUseAbility(p: Player, slot: ExtSlot, moveDir: Vec2, fresh = false): void {
     const original = abilityForSlot(p, slot);
     if (!original) return; // sub slot with no bound skill
+    if (tryApertureEmber(this, p, slot, fresh)) return;
     if (tryShadowReturn(this, p, slot, fresh)) return;
     if ((p.cooldowns[slot] ?? 0) > 0) return;
     if (hasBuff(p, 'silence') && slot !== 'basic') return; // silenced: only the basic works
@@ -1484,6 +1492,10 @@ export class World {
       sub1: p.cooldowns.sub1,
       sub2: p.cooldowns.sub2,
     };
+    delete p.infernalAperture;
+    this.projectiles = this.projectiles.filter(
+      (shot) => shot.ownerId !== p.id || !shot.apertureTransit,
+    );
     p.classId = classId;
     if (p.grandLoadout)
       p.charUpgradeIds = grandHistory(
@@ -1605,6 +1617,13 @@ export class World {
   private updateProjectiles(dt: number): void {
     const keep: Projectile[] = [];
     for (const proj of this.projectiles) {
+      const routed = stepApertureProjectile(this, proj, dt, (shot) =>
+        this.resolvePlayerProjectile(shot),
+      );
+      if (routed !== null) {
+        if (routed) keep.push(proj);
+        continue;
+      }
       const prev = { x: proj.pos.x, y: proj.pos.y };
       const step = vscale(proj.vel, dt);
       proj.pos = vadd(proj.pos, step);
@@ -3691,6 +3710,7 @@ export class World {
       cooldowns: { ...p.cooldowns },
       ...(Object.keys(infernalClaimTargets).length ? { infernalClaimTargets } : {}),
       shadowReprise: shadowRepriseView(this, p),
+      infernalAperture: apertureView(this, p),
       buffs: p.buffs.map(buffView),
       downedTimer: p.downedTimer,
       reviveProgress: p.reviveProgress,
@@ -3757,14 +3777,16 @@ export class World {
         maxHp: a.maxHp,
         buffs: a.buffs.map(buffView),
       })),
-      projectiles: this.projectiles.map((p) => ({
-        id: p.id,
-        kind: p.kind,
-        side: p.side,
-        pos: { ...p.pos },
-        vel: { ...p.vel },
-        color: p.color,
-      })),
+      projectiles: this.projectiles
+        .filter((p) => !p.apertureTransit)
+        .map((p) => ({
+          id: p.id,
+          kind: p.kind,
+          side: p.side,
+          pos: { ...p.pos },
+          vel: { ...p.vel },
+          color: p.color,
+        })),
       apparitions: apparitionViews(this),
       groundZones: this.groundZones.map((z) => ({
         supportKinds: zoneSupportKinds(z),

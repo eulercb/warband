@@ -113,7 +113,9 @@ describe('pilot ability coherence', () => {
     expect(p.buffs.some((b) => b.source === 'infernalCataclysm')).toBe(true); // base grand
     damageBoss(w, p, boss, 1, { direct: true });
     damageBoss(w, p, boss, 1, { direct: true });
-    expect(p.subclassPassiveCooldowns?.['grand:wa_fiend_g_a']).toBe(4); // identity
+    expect(p.buffs.some((b) => b.kind === 'grandCadence')).toBe(false); // retired identity counter
+    resolvePlayerAbility(w, p, 'a3', ZERO);
+    expect(p.infernalAperture).toBeDefined();
   });
 
   it.each([false, true])(
@@ -242,45 +244,6 @@ describe('pilot ability coherence', () => {
     expect(p.cooldowns.a2).toBeGreaterThanOrEqual(4);
     expect(boss.hp).toBeLessThan(boss.maxHp);
     expect(boss.buffs.some((b) => b.source === `curse:${p.id}:searing`)).toBe(true);
-  });
-
-  it('forged Fiend kits without a curse source seed a neutral mark before cadence', () => {
-    for (const first of ['wa_fiend_hurl', 'wa_fiend_rebuke', 'wa_fiend_resilience']) {
-      let found = false;
-      for (let seed = 0; seed < 40 && !found; seed++) {
-        setForgeSeed(seed);
-        const { w, p, boss } = setup('warlock', ['wa_fiend_g_a'], first);
-        const kit = [...Object.values(p.abilities!), ...Object.values(p.subAbilities ?? {})].filter(
-          (ab) => ab != null,
-        );
-        const hasProducer = kit.some(
-          (ab) =>
-            ((ab.kind === 'groundZone' || ab.kind === 'projectile') && (ab.curseBonus ?? 0) > 0) ||
-            (ab.rebukeCurseBonus ?? 0) > 0 ||
-            (ab.infernalClaim && ab.forgeClaimFallback),
-        );
-        if (!Object.values(p.abilities!).some((ab) => ab.components) || hasProducer) continue;
-        found = true;
-        damageBoss(w, p, boss, 1, { direct: true });
-        expect(boss.buffs.find((b) => b.source === `curse:${p.id}:searing`)?.mult, first).toBe(1);
-        expect(
-          p.buffs.some((b) => b.kind === 'grandCadence'),
-          first,
-        ).toBe(false);
-        for (let i = 0; i < 3; i++) damageBoss(w, p, boss, 1, { direct: true });
-        expect(p.subclassPassiveCooldowns?.['grand:wa_fiend_g_a'], first).toBe(4);
-      }
-      expect(found, `no source-free forged kit found for ${first}`).toBe(true);
-    }
-    setForgeSeed(7);
-    const pit = setup('warlock', ['wa_fiend_g_a'], 'wa_fiend_pit');
-    setForgeSeed(null);
-    pit.p.subAbilities!.sub1 = {
-      ...getSubclass('wa_fiend')!.skills.find((s) => s.id === 'wa_fiend_pit')!.ability,
-      slot: 'sub1',
-    };
-    damageBoss(pit.w, pit.p, pit.boss, 1, { direct: true });
-    expect(pit.boss.buffs.some((b) => b.source === `curse:${pit.p.id}:searing`)).toBe(false);
   });
 
   it('Hex reaches native, copied and composed flying targets while Fire Pit stays ground-bound', () => {

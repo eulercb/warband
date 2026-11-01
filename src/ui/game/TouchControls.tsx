@@ -145,6 +145,13 @@ function TouchButton({
 }) {
   const ref = useRef<HTMLButtonElement>(null);
   const remaining = useHudStore((s) => (cdSlot ? (s.cooldowns[cdSlot] ?? 0) : 0));
+  const aperture = useHudStore((s) =>
+    s.infernalAperture?.slot === cdSlot ? s.infernalAperture : undefined,
+  );
+  const ember = !!aperture?.emberReady;
+  const apertureStatus = aperture
+    ? `Conduit ${aperture.remaining.toFixed(1)}s${aperture.blocked ? ` · ${aperture.blocked}` : ''}`
+    : null;
   const reprise = useHudStore((s) =>
     s.shadowReprise?.slot === cdSlot ? s.shadowReprise : undefined,
   );
@@ -153,6 +160,7 @@ function TouchButton({
       ? `Return ${reprise.returnRemaining.toFixed(1)}s${reprise.blocked ? ` · ${reprise.blocked}` : ''}`
       : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
     : null;
+  const actionStatus = reprise?.armed ? repriseStatus : (apertureStatus ?? repriseStatus);
   const claimTarget = useHudStore((s) => (cdSlot ? s.infernalClaimTargets[cdSlot] : undefined));
   const alive = useHudStore((s) => s.state === 'alive');
   const frac = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
@@ -189,7 +197,8 @@ function TouchButton({
       type="button"
       className={`wb-touch-btn wb-touch-btn-${kind}`}
       data-claim-ready={
-        (reprise?.armed && !reprise.blocked) || (alive && !cooling && claimTarget != null)
+        (reprise?.armed ? !reprise.blocked : ember && !aperture?.blocked) ||
+        (alive && !cooling && claimTarget != null)
           ? true
           : undefined
       }
@@ -206,9 +215,9 @@ function TouchButton({
         />
       ) : null}
       <span className={`wb-touch-btn-label${cooling ? ' cooling' : ''}`}>
-        {reprise?.armed ? 'Return' : label}
+        {reprise?.armed ? 'Return' : ember ? 'Ember' : label}
       </span>
-      {repriseStatus && <span className="wb-touch-claim-status">{repriseStatus}</span>}
+      {actionStatus && <span className="wb-touch-claim-status">{actionStatus}</span>}
       {alive && !cooling && claimTarget !== undefined && (
         <span className={`wb-touch-claim-status${claimTarget === null ? ' blocked' : ''}`}>
           {claimTarget === null ? 'Need target' : 'Target ready'}

@@ -12098,7 +12098,7 @@
     },
     {
       "id": "wa_fiend_g_a",
-      "name": "Hellfire Ascendant",
+      "name": "Infernal Aperture",
       "category": "subclass-grand",
       "classId": "warlock",
       "exclude": [],
@@ -12109,7 +12109,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Every third positive direct hit on your cursed foe ignites 25 hellfire, once per 4s; a forged kit without a curse skill primes a neutral personal mark on its first hit; Blessing grants movement",
+      "description": "Blessing opens a fixed 6s firing conduit, 80u entrance to 320u exit along your aim. Aim shots through its entrance; press Blessing again for one 22-damage ember",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -12120,26 +12120,62 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.25 }
+            {
+              "path": "abilities.a3.infernalAperture",
+              "before": null,
+              "after": { "duration": 6, "reach": 320, "radius": 24, "emberDamage": 22 }
+            }
           ],
           "atCap": [
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.25 }
+            {
+              "path": "abilities.a3.infernalAperture",
+              "before": null,
+              "after": { "duration": 6, "reach": 320, "radius": 24, "emberDamage": 22 }
+            }
           ]
         },
         {
           "classId": "warlock",
           "subSkills": ["wa_fiend_pit"],
           "prefix": [],
-          "once": [{ "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 }],
-          "atCap": [{ "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 }]
+          "once": [
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
+            {
+              "path": "abilities.a3.infernalAperture",
+              "before": null,
+              "after": { "duration": 6, "reach": 320, "radius": 24, "emberDamage": 22 }
+            }
+          ],
+          "atCap": [
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
+            {
+              "path": "abilities.a3.infernalAperture",
+              "before": null,
+              "after": { "duration": 6, "reach": 320, "radius": 24, "emberDamage": 22 }
+            }
+          ]
         },
         {
           "classId": "warlock",
           "subSkills": ["wa_fiend_rebuke"],
           "prefix": [],
-          "once": [{ "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 }],
-          "atCap": [{ "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 }]
+          "once": [
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
+            {
+              "path": "abilities.a3.infernalAperture",
+              "before": null,
+              "after": { "duration": 6, "reach": 320, "radius": 24, "emberDamage": 22 }
+            }
+          ],
+          "atCap": [
+            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
+            {
+              "path": "abilities.a3.infernalAperture",
+              "before": null,
+              "after": { "duration": 6, "reach": 320, "radius": 24, "emberDamage": 22 }
+            }
+          ]
         },
         {
           "classId": "warlock",
@@ -12147,11 +12183,19 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "subAbilities.sub1.absorption.amount", "before": 30, "after": 42 }
+            {
+              "path": "abilities.a3.infernalAperture",
+              "before": null,
+              "after": { "duration": 6, "reach": 320, "radius": 24, "emberDamage": 22 }
+            }
           ],
           "atCap": [
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "subAbilities.sub1.absorption.amount", "before": 30, "after": 42 }
+            {
+              "path": "abilities.a3.infernalAperture",
+              "before": null,
+              "after": { "duration": 6, "reach": 320, "radius": 24, "emberDamage": 22 }
+            }
           ]
         }
       ]

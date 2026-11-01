@@ -303,6 +303,7 @@ jobs:
           node scripts/run-smoke.mjs smoke:whispers
           node scripts/run-smoke.mjs smoke:whisper-refrain
           node scripts/run-smoke.mjs smoke:shadow-reprise
+          node scripts/run-smoke.mjs smoke:infernal-aperture
       - name: Upload caster screenshots
         if: always()
         uses: actions/upload-artifact@v4

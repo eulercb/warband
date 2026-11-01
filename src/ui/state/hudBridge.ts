@@ -20,6 +20,7 @@ export function pushHud(state: RenderState, source: InputSource): void {
     cooldowns: lp?.cooldowns ?? { basic: 0, a1: 0, a2: 0, a3: 0 },
     infernalClaimTargets: lp?.infernalClaimTargets ?? {},
     shadowReprise: lp?.shadowReprise,
+    infernalAperture: lp?.infernalAperture,
     casting: (lp?.castTimer ?? 0) > 0,
     inputSource: source,
     buffs: lp?.buffs ?? [],

@@ -343,6 +343,57 @@ describe('<TouchControls> ability buttons', () => {
 // ---------------------------------------------------------------------------
 
 describe('<TouchControls> ability cooldowns', () => {
+  it('shows one aperture action, preserves cooldown and gives earned Return priority', () => {
+    const aperture = {
+      entry: { x: 0, y: 0 },
+      exit: { x: 100, y: 0 },
+      direction: { x: 1, y: 0 },
+      remaining: 6,
+      radius: 24,
+      emberReady: true,
+      slot: 'a3' as const,
+      blocked: null,
+    };
+    useStore.setState({ localClass: 'warlock', myCharUpgrades: ['wa_fiend_g_a'] });
+    useHudStore.getState().set({
+      active: true,
+      classId: 'warlock',
+      infernalAperture: aperture,
+      cooldowns: { basic: 0, a1: 0, a2: 0, a3: 14 },
+    });
+    const { container } = render(<TouchControls />);
+    const button = container.querySelector('.wb-touch-btn-a3')!;
+    expect(button.textContent).toContain('Ember');
+    expect(button.textContent).toContain('Conduit 6.0s');
+    expect(button.textContent).toContain('14.0');
+    act(() =>
+      useHudStore.getState().set({ infernalAperture: { ...aperture, blocked: 'Silenced' } }),
+    );
+    expect(button.textContent).toContain('Silenced');
+    act(() =>
+      useHudStore.getState().set({
+        shadowReprise: {
+          slot: 'a3',
+          anchor: { x: 0, y: 0 },
+          remaining: 4,
+          returnRemaining: 1,
+          prepared: false,
+          armed: true,
+          blocked: null,
+        },
+      }),
+    );
+    expect(button.textContent).toContain('Return 1.0s');
+    expect(button.textContent).not.toContain('Ember');
+    expect(button.textContent).not.toContain('Conduit');
+    act(() =>
+      useHudStore
+        .getState()
+        .set({ shadowReprise: undefined, infernalAperture: { ...aperture, emberReady: false } }),
+    );
+    expect(button.textContent).not.toContain('Ember');
+  });
+
   it('updates reprise readiness on the same held button and retains cooldown seconds', () => {
     const reprise = {
       slot: 'a2' as const,

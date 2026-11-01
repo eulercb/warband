@@ -1,3 +1,4 @@
+import { drawInfernalAperture } from './apertureVisuals';
 import { drawShadowAnchor } from './shadowVisuals';
 import { drawApparition, drawBorrowedAlly } from './perceptionVisuals';
 import { drawMoonBear } from './moonFormVisuals';
@@ -536,6 +537,15 @@ export class Renderer {
     const g = this.apparitionLayer;
     g.clear();
     for (const p of state.players) {
+      if (p.infernalAperture)
+        drawInfernalAperture(
+          g,
+          p.infernalAperture,
+          this.camera.worldToScreen(p.infernalAperture.entry),
+          this.camera.worldToScreen(p.infernalAperture.exit),
+          this.camera.scale,
+          p.id === state.localPlayerId,
+        );
       if (p.shadowReprise)
         drawShadowAnchor(
           g,
