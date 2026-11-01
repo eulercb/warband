@@ -1,3 +1,4 @@
+import { drawShadowAnchor } from './shadowVisuals';
 import { drawApparition, drawBorrowedAlly } from './perceptionVisuals';
 import { drawMoonBear } from './moonFormVisuals';
 import { drawWhisperAfterimage } from './whisperVisuals';
@@ -534,6 +535,17 @@ export class Renderer {
   private drawApparitions(state: RenderState): void {
     const g = this.apparitionLayer;
     g.clear();
+    for (const p of state.players) {
+      if (p.shadowReprise)
+        drawShadowAnchor(
+          g,
+          p.shadowReprise,
+          this.camera.worldToScreen(p.shadowReprise.anchor),
+          this.camera.scale,
+          p.id === state.localPlayerId,
+          this.camera.worldToScreen(p.pos),
+        );
+    }
     for (const add of state.adds)
       if (add.buffs.some((b) => b.kind === 'beguiling' && b.remaining > 0))
         drawBorrowedAlly(g, this.camera.worldToScreen(add.pos), this.camera.scale);

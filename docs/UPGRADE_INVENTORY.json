@@ -9794,7 +9794,7 @@
     },
     {
       "id": "ro_assassin_g_a",
-      "name": "Death Incarnate",
+      "name": "Shadow Reprise",
       "category": "subclass-grand",
       "classId": "rogue",
       "exclude": [],
@@ -9805,7 +9805,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Prepared attacks execute wounded foes harder and preparation lasts 2s longer",
+      "description": "Shadowstep leaves a 6s departure anchor. A later prepared direct hit unlocks a 2s return: press Shadowstep again. Prepared executions grow stronger",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": true,
@@ -9817,6 +9817,11 @@
           "once": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            {
+              "path": "abilities.a2.shadowReprise",
+              "before": null,
+              "after": { "lifetime": 6, "returnWindow": 2, "range": 240, "prepared": true }
+            },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             {
               "path": "subAbilities.sub1.critMultBonus",
@@ -9827,6 +9832,11 @@
           "atCap": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            {
+              "path": "abilities.a2.shadowReprise",
+              "before": null,
+              "after": { "lifetime": 6, "returnWindow": 2, "range": 240, "prepared": true }
+            },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             {
               "path": "subAbilities.sub1.critMultBonus",
@@ -9842,6 +9852,11 @@
           "once": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            {
+              "path": "abilities.a2.shadowReprise",
+              "before": null,
+              "after": { "lifetime": 6, "returnWindow": 2, "range": 240, "prepared": true }
+            },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             { "path": "subAbilities.sub1.consumesPrecision", "before": null, "after": true },
             { "path": "subAbilities.sub1.critMultBonus", "before": 0.6, "after": 0.8 }
@@ -9849,6 +9864,11 @@
           "atCap": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            {
+              "path": "abilities.a2.shadowReprise",
+              "before": null,
+              "after": { "lifetime": 6, "returnWindow": 2, "range": 240, "prepared": true }
+            },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             { "path": "subAbilities.sub1.consumesPrecision", "before": null, "after": true },
             { "path": "subAbilities.sub1.critMultBonus", "before": 0.6, "after": 0.8 }
@@ -9861,12 +9881,22 @@
           "once": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            {
+              "path": "abilities.a2.shadowReprise",
+              "before": null,
+              "after": { "lifetime": 6, "returnWindow": 2, "range": 240, "prepared": true }
+            },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             { "path": "subAbilities.sub1.prepareCrit", "before": null, "after": 4 }
           ],
           "atCap": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            {
+              "path": "abilities.a2.shadowReprise",
+              "before": null,
+              "after": { "lifetime": 6, "returnWindow": 2, "range": 240, "prepared": true }
+            },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             { "path": "subAbilities.sub1.prepareCrit", "before": null, "after": 4 }
           ]
@@ -9878,12 +9908,22 @@
           "once": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            {
+              "path": "abilities.a2.shadowReprise",
+              "before": null,
+              "after": { "lifetime": 6, "returnWindow": 2, "range": 240, "prepared": true }
+            },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 6 }
           ],
           "atCap": [
             { "path": "abilities.a1.critMultBonus", "before": 0.3, "after": 0.55 },
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": 6 },
+            {
+              "path": "abilities.a2.shadowReprise",
+              "before": null,
+              "after": { "lifetime": 6, "returnWindow": 2, "range": 240, "prepared": true }
+            },
             { "path": "abilities.basic.critChanceBonus", "before": 0.12, "after": 0.2 },
             { "path": "subAbilities.sub1.prepareCrit", "before": 4, "after": 6 }
           ]

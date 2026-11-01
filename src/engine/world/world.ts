@@ -10,6 +10,12 @@ import {
   apparitionViews,
 } from '../combat/whispers';
 import { buildGrandStats, activateGrandStats } from '../content/grandStats';
+import {
+  tickShadowReprise,
+  onShadowRepriseHit,
+  tryShadowReturn,
+  shadowRepriseView,
+} from '../combat/shadowReprise';
 import { onWhisperRefrainHit, ownsWhisperRefrain } from '../combat/whisperRefrain';
 import { grandHistory, type GrandLoadout } from '../content/grandSelections';
 import {
@@ -1166,6 +1172,7 @@ export class World {
     this.tickTimers(dt);
     maintainMoonForms(this);
     tickWhispers(this, dt);
+    tickShadowReprise(this, dt);
     this.maintainCloseBursts();
     this.applyInputs(dt, inputs);
     this.stepGlides(dt); // item 2: advance in-progress dash/leap glides host-side
@@ -1328,7 +1335,7 @@ export class World {
             // (tryUseAbility still gates on cooldown, so it fires at cadence).
             const held = cmd.buttons[slot];
             const fired = cmd.autofire ? held : held && !p.prevButtons[slot];
-            if (fired) this.tryUseAbility(p, slot, moveDir);
+            if (fired) this.tryUseAbility(p, slot, moveDir, !p.prevButtons[slot]);
           }
           // Subclass skills (item 13) — same edge / autofire rules, but only while
           // wielding the class the skill belongs to (item 14: a multiclass hero's
@@ -1338,7 +1345,7 @@ export class World {
             if (!subSlotForActiveClass(p, slot)) continue;
             const held = cmd.buttons[slot] ?? false;
             const fired = cmd.autofire ? held : held && !(p.prevButtons[slot] ?? false);
-            if (fired) this.tryUseAbility(p, slot, moveDir);
+            if (fired) this.tryUseAbility(p, slot, moveDir, !p.prevButtons[slot]);
           }
           // Multiclass swap (item 14) is no longer driven off the raw button here:
           // the client owns the tap-vs-hold gesture (a quick tap cycles, a hold
@@ -1376,9 +1383,10 @@ export class World {
     for (const a of this.adds) stepShove(this, a, dt);
   }
 
-  private tryUseAbility(p: Player, slot: ExtSlot, moveDir: Vec2): void {
+  private tryUseAbility(p: Player, slot: ExtSlot, moveDir: Vec2, fresh = false): void {
     const original = abilityForSlot(p, slot);
     if (!original) return; // sub slot with no bound skill
+    if (tryShadowReturn(this, p, slot, fresh)) return;
     if ((p.cooldowns[slot] ?? 0) > 0) return;
     if (hasBuff(p, 'silence') && slot !== 'basic') return; // silenced: only the basic works
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
@@ -1965,6 +1973,7 @@ export class World {
     refund?: HitMods['refund'],
     pilot?: HitMods['pilot'],
   ): void {
+    onShadowRepriseHit(this, source, effective, prepared, pilot);
     onWhisperRefrainHit(this, source, target, effective, pilot);
     if (
       this.scene === null &&
@@ -3681,6 +3690,7 @@ export class World {
       state: p.state,
       cooldowns: { ...p.cooldowns },
       ...(Object.keys(infernalClaimTargets).length ? { infernalClaimTargets } : {}),
+      shadowReprise: shadowRepriseView(this, p),
       buffs: p.buffs.map(buffView),
       downedTimer: p.downedTimer,
       reviveProgress: p.reviveProgress,

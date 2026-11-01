@@ -14,28 +14,30 @@ name the next development task beyond playtesting.
 
 ## Current delivery
 
-[Rogue/Warlock review and coating repair](ROGUE_WARLOCK_IDENTITY_REVIEW.md).
-Trickster is retained. Assassin, Fiend and Great Old One have working accepted
-skills, but their identity pairs retain open purpose/overlap findings. Coated
-Blade → Shadowstep no longer downgrades stronger prepared poison or refreshes
-its readiness through a weaker cast.
+[Assassin Shadow Reprise delivery](ASSASSIN_SHADOW_REPRISE.md).
+PR #148's [Rogue/Warlock review and coating repair](ROGUE_WARLOCK_IDENTITY_REVIEW.md)
+is merged. Assassin's execution identity now earns an optional departure return
+through a later prepared hit; One with Shadow preserves the repaired poison route.
+Implementation and automated validation do not count as owner live acceptance.
+Fiend and Great Old One remain open; Trickster remains retained.
 
 Seven of 24 subclasses have been reviewed in this pass: four are accepted or
-retained, three remain open, and 17 await review. Review completion, implementation
-and owner acceptance are separate states.
+retained, Assassin is implemented awaiting live feedback, two remain open, and
+17 await review. Review completion, implementation and owner acceptance are
+separate states.
 
 ## Next development work, in order
 
-| Stage                        | Concrete work                                                                                                                                                  |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Focused Assassin/Fiend behavioral proposal: different preparation/spending/positioning choices, preserving accepted precision, poison, Claim and curse routes. |
-| Following                    | Implement mature bounded changes, validate and live-test; resolve Great Old One's duplicate suppression and native Surge role.                                 |
-| Martial identities           | Knight, Barbarian and Monk: six subclass pairs.                                                                                                                |
-| Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                                            |
-| Remaining caster identities  | Abjurer, Draconic and Wild Magic; Evoker stays retained.                                                                                                       |
-| Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                                           |
-| Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                                  |
-| Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                 |
+| Stage                        | Concrete work                                                                                                                                        |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Next                         | Fiend deliberate aperture proposal/prototype: resolve aiming, real range/travel, obstacles and hit provenance, preserving Claim and personal curses. |
+| Following                    | Implement a mature Fiend plan after review, then resolve Great Old One's duplicate suppression and native Surge role.                                |
+| Martial identities           | Knight, Barbarian and Monk: six subclass pairs.                                                                                                      |
+| Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                                  |
+| Remaining caster identities  | Abjurer, Draconic and Wild Magic; Evoker stays retained.                                                                                             |
+| Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                                 |
+| Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                        |
+| Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.       |
 
 Use one bounded Sol 6.1 high design review where substantial planning is needed.
 Proceed with a mature authorized plan; surface unresolved material gameplay

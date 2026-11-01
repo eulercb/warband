@@ -343,6 +343,47 @@ describe('<TouchControls> ability buttons', () => {
 // ---------------------------------------------------------------------------
 
 describe('<TouchControls> ability cooldowns', () => {
+  it('updates reprise readiness on the same held button and retains cooldown seconds', () => {
+    const reprise = {
+      slot: 'a2' as const,
+      anchor: { x: 0, y: 0 },
+      remaining: 5,
+      returnRemaining: 0,
+      prepared: true,
+      armed: false,
+      blocked: null,
+    };
+    useHudStore.getState().set({
+      classId: 'rogue',
+      cooldowns: { basic: 0, a1: 0, a2: 8, a3: 0 },
+      shadowReprise: reprise,
+    });
+    const { container } = render(<TouchControls />);
+    const button = Array.from(container.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Need prepared hit'),
+    )!;
+    fireEvent.pointerDown(button, { pointerId: 1 });
+    act(() =>
+      useHudStore
+        .getState()
+        .set({ shadowReprise: { ...reprise, armed: true, returnRemaining: 1.5 } }),
+    );
+    expect(button.textContent).toContain('Return 1.5s');
+    expect(button.classList.contains('held')).toBe(true);
+    expect(button.querySelector('.wb-touch-cd-num')?.textContent).toBe('8.0');
+    expect(button.hasAttribute('data-claim-ready')).toBe(true);
+    act(() =>
+      useHudStore.getState().set({
+        shadowReprise: { ...reprise, armed: true, returnRemaining: 1.4, blocked: 'Silenced' },
+      }),
+    );
+    expect(button.textContent).toContain('Silenced');
+    expect(button.hasAttribute('data-claim-ready')).toBe(false);
+    act(() => useHudStore.getState().set({ shadowReprise: { ...reprise, prepared: false } }));
+    expect(button.textContent).toContain('Need hit');
+    fireEvent.pointerUp(button, { pointerId: 1 });
+    expect(setTouchButtonMock).toHaveBeenLastCalledWith('a2', false);
+  });
   it('shows the authoritative Claim target cue while preserving a held button and cooldown precedence', () => {
     useHudStore.getState().set({
       classId: 'warlock',

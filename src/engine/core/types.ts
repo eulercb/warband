@@ -390,6 +390,20 @@ export interface ApparitionView {
   pending: boolean;
 }
 export interface Player {
+  /** Host-only: exact equipped source and cast provenance never enter snapshots. */
+  shadowReprise?: {
+    anchor: Vec2;
+    classId: ClassId;
+    slot: ExtSlot;
+    source: import('../content/classes').PlayerAbilityDef;
+    cast: NonNullable<import('../content/classes').PlayerAbilityDef['pilotCast']>;
+    remaining: number;
+    window: number;
+    returnRemaining: number;
+    range: number;
+    prepared: boolean;
+    armedTick?: number;
+  };
   whisperSecret?: { targetId: EntityId; remaining: number };
   whisperRecovery?: number;
   spiritCompanion?: SpiritCompanion;
@@ -1301,6 +1315,15 @@ export interface Telegraph {
 // ---------------------------------------------------------------------------
 
 export interface PlayerView {
+  shadowReprise?: {
+    anchor: Vec2;
+    slot: ExtSlot;
+    remaining: number;
+    returnRemaining: number;
+    prepared: boolean;
+    armed: boolean;
+    blocked: string | null;
+  };
   form?: 'moonBear';
   spiritCompanion?: SpiritCompanionView;
   id: EntityId;
