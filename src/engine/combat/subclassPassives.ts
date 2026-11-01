@@ -28,6 +28,8 @@ export function setSubclassPassive(p: Player, id: string | undefined): void {
     (b) => b.kind !== 'fortune' || b.source === `subclass:fortune:${p.classId}`,
   );
   if (p.subclassPassiveId === id) return;
+  p.whisperSecret = undefined;
+  p.buffs = p.buffs.filter((b) => b.kind !== 'secretReady' && b.kind !== 'refrainEcho');
   p.buffs = p.buffs.filter((b) => !b.source.startsWith(PREFIX));
   delete p.spiritCompanion;
   p.subclassPassiveId = id;
@@ -322,13 +324,8 @@ export function onSubclassSurge(p: Player, sink?: EventSink): void {
 /** Called only after a real two-verse chorus, never ordinary Inspiration spam. */
 export function onSubclassChorus(world: World, p: Player, range: number): void {
   const id = p.subclassPassiveId;
-  if ((id !== 'valor_rallying_chorus' && id !== 'whispers_echoed_refrain') || !offCooldown(p, id))
-    return;
+  if (id !== 'valor_rallying_chorus' || !offCooldown(p, id)) return;
   spendCooldown(p, id, 8);
-  if (id === 'whispers_echoed_refrain') {
-    putBuff(p, { kind: 'refrainEcho', mult: 0.5, remaining: 8, source: PREFIX + id });
-    return;
-  }
   for (const ally of world.players) {
     if (ally.state !== 'alive' || ally.hp <= 0 || dist(p.pos, ally.pos) > range) continue;
     if (ally.buffs.some((b) => b.kind === 'frontGuard' && b.remaining > 0 && b.mult > 0)) continue;
@@ -345,45 +342,13 @@ export function onSubclassChorus(world: World, p: Player, range: number): void {
 }
 
 export function onSubclassHeal(
-  world: World,
+  _world: World,
   p: Player,
   recipient: Player,
   effective: number,
 ): void {
   prepareCompanionWard(p, recipient, effective);
   onSubclassProtection(p, effective);
-  if (p.subclassPassiveId !== 'whispers_echoed_refrain' || effective <= 0) return;
-  const ready = p.buffs.find((b) => b.kind === 'refrainEcho' && b.remaining > 0);
-  if (!ready) return;
-  const other = world.players
-    .filter(
-      (a) =>
-        a !== recipient &&
-        a.state === 'alive' &&
-        a.hp > 0 &&
-        a.hp < a.maxHp &&
-        dist(p.pos, a.pos) <= 420,
-    )
-    .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.id - b.id)[0];
-  const target = other ?? recipient;
-  if (target.hp >= target.maxHp) return;
-  p.buffs.splice(p.buffs.indexOf(ready), 1);
-  if (
-    healPlayer(
-      world,
-      p,
-      target,
-      Math.min(Math.max(35, target.maxHp * 0.12), effective * ready.mult),
-    ) > 0
-  )
-    world.events.push({
-      t: 'support',
-      sourceId: p.id,
-      targetId: target.id,
-      from: { ...p.pos },
-      pos: { ...target.pos },
-      kind: 'heal',
-    });
 }
 
 /** Only an effective heal or a real direct shield gain may ready Light's follow-through. */

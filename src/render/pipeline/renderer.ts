@@ -1,3 +1,4 @@
+import { drawApparition, drawBorrowedAlly } from './perceptionVisuals';
 import { drawMoonBear } from './moonFormVisuals';
 import { drawWhisperAfterimage } from './whisperVisuals';
 import { drawCompanion } from './companionVisuals';
@@ -79,6 +80,7 @@ export class Renderer {
   private readonly claimLayer = new Graphics();
   private readonly entitiesLayer = new Graphics();
   private readonly overlayLayer = new Graphics();
+  private readonly apparitionLayer = new Graphics();
   private readonly projectilesLayer = new Graphics();
   private readonly fxLayer = new Graphics();
   private readonly enemyStatusLayer = new Graphics();
@@ -132,6 +134,7 @@ export class Renderer {
       this.particles.container,
       this.fxTextLayer,
       this.enemyStatusLayer, // readable above damage numbers and particles
+      this.apparitionLayer, // fear/decoy anchors stay readable above combat effects
       this.claimLayer, // actionable local target, never buried under bodies or damage numbers
       this.labelLayer,
       this.balloons.container, // ability speech balloons, above everything
@@ -211,6 +214,7 @@ export class Renderer {
     this.drawTerrain(state, now);
     this.drawObstacles(state, now);
     this.drawZones(state);
+    this.drawApparitions(state);
     this.drawTelegraph(state);
     this.drawAimPreview(state);
     this.drawEntities(state, now); // geometry for flag-off, non-rig actors
@@ -523,6 +527,24 @@ export class Renderer {
     for (const st of stations) {
       this.drawTiled(st.pos, st.triggerRadius, (s) =>
         drawStation(g, st, s, this.camera.scale, timeSec),
+      );
+    }
+  }
+
+  private drawApparitions(state: RenderState): void {
+    const g = this.apparitionLayer;
+    g.clear();
+    for (const add of state.adds)
+      if (add.buffs.some((b) => b.kind === 'beguiling' && b.remaining > 0))
+        drawBorrowedAlly(g, this.camera.worldToScreen(add.pos), this.camera.scale);
+    for (const a of state.apparitions ?? []) {
+      const enemy = [...state.bosses, ...state.adds].find((e) => e.id === a.enemyId);
+      drawApparition(
+        g,
+        a,
+        this.camera.worldToScreen(a.pos),
+        enemy ? this.camera.worldToScreen(enemy.pos) : undefined,
+        this.camera.scale,
       );
     }
   }

@@ -1284,7 +1284,7 @@ describe('effect fallbacks for absent optional fields', () => {
     expect(dash.iframes).toBeCloseTo(0.15, 5); // round(((undefined ?? 0) + 0.15) * 100) / 100
   });
 
-  it('Whispers identity suppresses a copied hazard through its tick payload', () => {
+  it('Whispers identity configures directed perception without minting a hazard suppression rider', () => {
     // A pure hazard: no `damage` field at all, only per-tick damage — so `(ab.damage ?? 0)`
     // takes its 0 fallback, the first `> 0` is false, and the OR falls through to the tick.
     const zone = ab('a1', 'groundZone', undefined as unknown as number, { zoneTickDamage: 15 });
@@ -1293,7 +1293,8 @@ describe('effect fallbacks for absent optional fields', () => {
       abilities: table(),
       subAbilities: { sub1: zone },
     });
-    expect(zone.castSlow).toBe(1.3);
+    expect(zone.whisperIdentity).toBe('directed');
+    expect(zone.castSlow).toBeUndefined();
   });
 });
 

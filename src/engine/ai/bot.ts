@@ -760,7 +760,7 @@ function pickNearestAdd(world: World, from: Vec2): { pos: Vec2 } | null {
   let best: { pos: Vec2 } | null = null;
   let bestD = Infinity;
   for (const a of world.adds) {
-    if (a.hp <= 0) continue;
+    if (a.hp <= 0 || a.charm) continue;
     const d = dist(from, a.pos);
     if (d < bestD) {
       bestD = d;

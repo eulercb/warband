@@ -1,3 +1,14 @@
+import {
+  onWhisperHit,
+  tickWhispers,
+  stepFear,
+  moveToQuarry,
+  takeQuarry,
+  zoneWhisperHit,
+  stepCharmedAdd,
+  hostileAdd,
+  apparitionViews,
+} from '../combat/whispers';
 import { buildGrandStats, activateGrandStats } from '../content/grandStats';
 import { onWhisperRefrainHit, ownsWhisperRefrain } from '../combat/whisperRefrain';
 import { grandHistory, type GrandLoadout } from '../content/grandSelections';
@@ -1154,6 +1165,7 @@ export class World {
     tickVenoms(this, dt);
     this.tickTimers(dt);
     maintainMoonForms(this);
+    tickWhispers(this, dt);
     this.maintainCloseBursts();
     this.applyInputs(dt, inputs);
     this.stepGlides(dt); // item 2: advance in-progress dash/leap glides host-side
@@ -1632,7 +1644,7 @@ export class World {
     let hitAdd: Add | null = null;
     if (!hitBoss) {
       for (const a of this.adds) {
-        if (a.hp <= 0 || proj.hitIds?.includes(a.id)) continue;
+        if (!hostileAdd(a) || proj.hitIds?.includes(a.id)) continue;
         if (dist(proj.pos, a.pos) <= proj.hitRadius + a.radius) {
           hitAdd = a;
           break;
@@ -1666,7 +1678,7 @@ export class World {
         }
       }
       for (const a of this.adds) {
-        if (a.hp <= 0) continue;
+        if (!hostileAdd(a)) continue;
         if (dist(center, a.pos) <= proj.impactRadius + a.radius) {
           if (owner)
             damageAdd(
@@ -1754,6 +1766,7 @@ export class World {
     if (!oi) return;
     spawnZone(this, {
       kind: oi.kind,
+      whisperCast: proj.whisperCast,
       pos: { ...proj.pos },
       radius: oi.radius,
       side: 'player',
@@ -1777,6 +1790,7 @@ export class World {
 
   /** Apply a hostile projectile's on-hit riders (frost slow, freeze, cast-slow). */
   private applyProjRiders(target: Boss | Add, proj: Projectile): void {
+    if ('charm' in target && target.charm) return;
     if (proj.slowMult != null && proj.slowMult < 1) {
       applyBuff(target, makeBuff('moveSpeed', proj.slowMult, proj.slowDuration ?? 2, 'slow'));
     }
@@ -1821,6 +1835,7 @@ export class World {
       echoFraction?: number;
       markOnPreparedHit?: number;
       pilotCast?: { spent: boolean };
+      whisperCast?: import('../core/types').WhisperCast;
       mark?: { bonus: number; cast: { spent: boolean } };
     },
   ): HitMods {
@@ -1832,6 +1847,7 @@ export class World {
     const crit = this.critRng.next() < chance;
     return {
       direct: true,
+      whisperCast: bonus?.whisperCast,
       ...(bonus?.preparedRefund && bonus.refundCast
         ? { refund: { seconds: bonus.preparedRefund, cast: bonus.refundCast } }
         : {}),
@@ -1896,6 +1912,7 @@ export class World {
       echoFraction?: number;
       markOnPreparedHit?: number;
       pilotCast?: { spent: boolean };
+      whisperCast?: import('../core/types').WhisperCast;
       mark?: { bonus: number; cast: { spent: boolean } };
     },
   ): HitMods {
@@ -2028,7 +2045,7 @@ export class World {
         halfAngle: 0,
       },
     });
-    for (const foe of [...this.aliveBosses(), ...this.adds.filter((a) => a.hp > 0)]) {
+    for (const foe of [...this.aliveBosses(), ...this.adds.filter((a) => a.hp > 0 && !a.charm)]) {
       if (dist(source.pos, foe.pos) > burst.radius + foe.radius) continue;
       const before = foe.hp;
       if (this.bosses.includes(foe as Boss)) damageBoss(this, source, foe as Boss, burst.damage);
@@ -2209,13 +2226,22 @@ export class World {
           const before = b.hp;
           this.applyProjDamageBoss(owner, z.damagePerTick * (1 - (z.zonePoison?.share ?? 0)), b);
           onUpgradeZoneDamage(this, z, owner, b, Math.max(0, before - b.hp));
+          zoneWhisperHit(
+            this,
+            owner,
+            b,
+            Math.max(0, before - b.hp),
+            z.whisperCast,
+            z.pos,
+            z.radius,
+          );
         }
         if (slows) applyBuff(b, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
         if (z.roots) applyBuff(b, makeBuff('root', 0, rootDur, 'zoneRoot'));
         if (castSlows) applyBuff(b, makeBuff('castSlow', z.castSlow!, castSlowDur, 'zoneCastSlow'));
       }
       for (const a of this.adds) {
-        if (a.hp <= 0) continue;
+        if (!hostileAdd(a)) continue;
         if (isFlying(a) && !zoneReachesAir(z)) continue;
         if (dist(z.pos, a.pos) <= z.radius + a.radius) {
           if (owner && z.curseBonus) this.applyZoneCurse(a, owner, z);
@@ -2225,7 +2251,17 @@ export class World {
               damageAdd(this, owner, a, z.damagePerTick * (1 - (z.zonePoison?.share ?? 0)));
             else a.hp -= z.damagePerTick;
             onUpgradeZoneDamage(this, z, owner, a, Math.max(0, before - a.hp));
+            zoneWhisperHit(
+              this,
+              owner,
+              a,
+              Math.max(0, before - a.hp),
+              z.whisperCast,
+              z.pos,
+              z.radius,
+            );
           }
+          if (a.charm) continue;
           if (slows) applyBuff(a, makeBuff('moveSpeed', z.slowMult, z.slowDuration, 'zoneSlow'));
           if (z.roots) applyBuff(a, makeBuff('root', 0, rootDur, 'zoneRoot'));
           if (castSlows)
@@ -2384,6 +2420,15 @@ export class World {
   // Boss
   // -------------------------------------------------------------------------
 
+  onWhisperHit(
+    source: Player,
+    target: Boss | Add,
+    effective: number,
+    cast?: import('../core/types').WhisperCast,
+  ): void {
+    onWhisperHit(this, source, target, effective, cast);
+  }
+
   private updateBosses(dt: number): void {
     this.tickModifierAura(dt);
     // Index among the LIVING bosses, so when one twin falls the survivor slides
@@ -2523,6 +2568,7 @@ export class World {
 
     // Twin bosses split their attention: the second boss hunts the 2nd-highest
     // threat when one exists, so a duo can't simply pile onto the tank.
+    if (stepFear(this, boss, dt)) return;
     const target = nthThreatTarget(this.players, index, this.tauntTargetId, this.tauntTimer);
 
     switch (boss.action.kind) {
@@ -3044,6 +3090,7 @@ export class World {
   }
 
   private bossMove(dt: number, boss: Boss, def: MonsterDef, target: Player | null): void {
+    if (moveToQuarry(this, boss, dt)) return;
     if (!target) return;
     const d = dist(boss.pos, target.pos);
     // item 9: a rooted boss can't walk (it can still turn to face). item 2: nor can a
@@ -3074,6 +3121,7 @@ export class World {
   }
 
   private handleBlink(boss: Boss, def: MonsterDef): void {
+    if (boss.perception && this.tauntTimer <= 0) return;
     // item 9: a rooted boss can't blink OR teleport. Because both a native blink and
     // the Teleporting affix resolve through this one path (blinkConfigFor), gating
     // here disables the affix teleport too.
@@ -3109,10 +3157,13 @@ export class World {
 
   private bossDecide(boss: Boss, def: MonsterDef, target: Player | null): void {
     const hpFrac = boss.hp / boss.maxHp;
-    const distToTarget = target ? dist(boss.pos, target.pos) : Infinity;
-    const anyInMelee = this.players.some(
-      (p) => p.state === 'alive' && dist(p.pos, boss.pos) <= def.meleeRange,
-    );
+    const quarry =
+      this.tauntTimer <= 0 && boss.perception?.mode === 'lure' ? boss.perception.pos : undefined;
+    const perceived = quarry ?? target?.pos;
+    const distToTarget = perceived ? dist(boss.pos, perceived) : Infinity;
+    const anyInMelee =
+      (!!quarry && dist(boss.pos, quarry) <= def.meleeRange) ||
+      this.players.some((p) => p.state === 'alive' && dist(p.pos, boss.pos) <= def.meleeRange);
     const usable = (id: string): boolean => {
       const ab = abilityById(def, id);
       if (!ab) return false;
@@ -3146,7 +3197,9 @@ export class World {
     if (this.bosses.length < 2 && this.pendingStrikes.length === 0) return false;
     if (!WALLING_SHAPES.has(ab.shape)) return false;
     if (boss.phase === 'enraged') return false; // enrage may deliberately wall
-    const center = ab.shape === 'pbaoe' ? boss.pos : (target?.pos ?? boss.pos);
+    const quarry =
+      this.tauntTimer <= 0 && boss.perception?.mode === 'lure' ? boss.perception.pos : undefined;
+    const center = ab.shape === 'pbaoe' ? boss.pos : (quarry ?? target?.pos ?? boss.pos);
     return overlapsActiveTelegraph(
       center,
       boss,
@@ -3169,6 +3222,7 @@ export class World {
     if (ab.targetRandom && alive.length > 0) tgt = this.rng.pick(alive);
 
     const action = boss.action;
+    action.illusionPos = takeQuarry(this, boss, ab.shape);
     action.kind = 'windup';
     action.abilityId = ab.id;
     action.remaining = ab.windup;
@@ -3185,7 +3239,17 @@ export class World {
       boss.facing = action.aimAngle;
     }
 
-    if (ab.shape === 'line' && tgt) {
+    if (action.illusionPos) {
+      action.targetId = null;
+      action.targetPos = { ...action.illusionPos };
+      action.aimAngle = angleOf(sub(action.illusionPos, boss.pos));
+      boss.facing = action.aimAngle;
+    }
+    if (ab.shape === 'line' && action.illusionPos) {
+      const capped = Math.min(dist(boss.pos, action.illusionPos), ab.range ?? 600);
+      action.targetPos = vadd(boss.pos, fromAngle(action.aimAngle, capped));
+    }
+    if (ab.shape === 'line' && tgt && !action.illusionPos) {
       const d = dist(boss.pos, tgt.pos);
       const capped = Math.min(d, ab.range ?? 600);
       action.targetPos = vadd(boss.pos, fromAngle(action.aimAngle, capped));
@@ -3240,6 +3304,18 @@ export class World {
         continue;
       }
 
+      if (stepCharmedAdd(this, a, dt) || stepFear(this, a, dt)) {
+        keep.push(a);
+        continue;
+      }
+      if (moveToQuarry(this, a, dt)) {
+        if (a.perception && dist(a.pos, a.perception.pos) <= a.radius + 35 && a.attackCd <= 0) {
+          a.perception = undefined;
+          a.attackCd = ADD_ATTACK_CD;
+        }
+        keep.push(a);
+        continue;
+      }
       // nearest alive player
       let target: Player | null = null;
       let best = Infinity;
@@ -3679,6 +3755,7 @@ export class World {
         vel: { ...p.vel },
         color: p.color,
       })),
+      apparitions: apparitionViews(this),
       groundZones: this.groundZones.map((z) => ({
         supportKinds: zoneSupportKinds(z),
         side: z.side,

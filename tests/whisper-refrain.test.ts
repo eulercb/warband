@@ -119,7 +119,7 @@ describe('Whispers departure refrain', () => {
         whisperRefrainState: { anchor: origin, radius: 180, fraction: 0.35, usedCasts: [] },
       });
       expect(p.buffs.filter((b) => b.kind === 'harmony' || b.kind === 'discord')).toHaveLength(0);
-      expect(p.buffs.filter((b) => b.kind === 'refrainEcho')).toHaveLength(1);
+      expect(p.buffs.filter((b) => b.kind === 'refrainEcho')).toHaveLength(0);
       expect(p.buffs.some((b) => b.source === 'chorusMove')).toBe(false);
       expect(w.events.filter((e) => e.t === 'blink')).toHaveLength(2);
     },
@@ -141,7 +141,7 @@ describe('Whispers departure refrain', () => {
       verses(w, p);
       use(w, p, skill === 'ba_whispers_mantle' ? 'sub1' : 'a1');
       expect(p.buffs.some((b) => b.kind === 'harmony' || b.kind === 'discord')).toBe(false);
-      expect(p.buffs.some((b) => b.kind === 'refrainEcho')).toBe(true);
+      expect(p.buffs.some((b) => b.kind === 'refrainEcho')).toBe(false);
       expect(w.bosses.filter((b) => b.hp > 0)).toHaveLength(1);
       expect(w.adds).toHaveLength(0);
     },

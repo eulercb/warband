@@ -1,3 +1,4 @@
+import { whisperCast, spendSecret, hostileAdd } from './whispers';
 import { boundedAbility } from '../content/abilityLimits';
 import { armFortune } from './sorcererLuck';
 import { armWhisperRefrain } from './whisperRefrain';
@@ -189,7 +190,7 @@ function applyDashLanding(world: World, p: Player, ab: PlayerAbilityDef): void {
     }
   }
   for (const a of world.adds) {
-    if (a.hp <= 0) continue;
+    if (!hostileAdd(a)) continue;
     if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
       damageAdd(world, p, a, ab.landingDamage, world.critRoll(p, ab));
       applyStrikeRiders(world, p.pos, a, ab);
@@ -326,6 +327,7 @@ function applyStrikeRiders(
   target: Boss | Add,
   ab: PlayerAbilityDef,
 ): void {
+  if ('charm' in target && target.charm) return;
   if (ab.stun) applyStun(world, target, ab.stun, 'stun');
   if (ab.freeze) applyStun(world, target, ab.freeze, 'freeze');
   if (ab.slowMult != null && ab.slowMult < 1) {
@@ -404,6 +406,7 @@ export function resolvePlayerAbility(
     pilotCast: { spent: false },
   };
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
+  ab.whisperCast = whisperCast(world, p, ab);
   if (ab.infernalClaim && !findInfernalClaimTarget(world, p, ab)) return;
   armRetouchEffects(world, p, ab);
   armFortune(world, p, ab);
@@ -464,7 +467,7 @@ export function resolvePlayerAbility(
         }
       }
       for (const a of world.adds) {
-        if (a.hp <= 0) continue;
+        if (!hostileAdd(a)) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
           dealt += damageAdd(
             world,
@@ -515,6 +518,7 @@ export function resolvePlayerAbility(
           echoFraction: ab.echoFraction,
           markOnPreparedHit: ab.markOnPreparedHit,
           pilotCast: ab.pilotCast,
+          whisperCast: ab.whisperCast,
           mark:
             ab.markOnPreparedHit && ab.pilotCast
               ? { bonus: ab.markOnPreparedHit, cast: ab.pilotCast }
@@ -563,7 +567,7 @@ export function resolvePlayerAbility(
         }
       }
       for (const a of world.adds) {
-        if (a.hp <= 0) continue;
+        if (!hostileAdd(a)) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
           dealt += damageAdd(
             world,
@@ -606,6 +610,7 @@ export function resolvePlayerAbility(
       prepareMartialFlow(p, ab);
       if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
       mobilitySpeed(world, p, ab);
+      spendSecret(world, p, ab.whisperCast, from);
       world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
       armWhisperRefrain(world, p, ab, slot, from);
       break;
@@ -708,7 +713,7 @@ export function findInfernalClaimTarget(
 ): Boss | Add | null {
   const aim = normalize(p.aim);
   const range = boundedAbility(ab, world.arena).range ?? 460;
-  const candidates = [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0)]
+  const candidates = [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0 && !a.charm)]
     .filter((target) => {
       if (
         (!ab.forgeClaimFallback && !personallyCursed(p.id, target)) ||
@@ -744,7 +749,7 @@ function resolveInfernalClaim(world: World, p: Player, ab: PlayerAbilityDef): vo
     halfAngle: 0,
   });
   let primaryEffective = 0;
-  for (const foe of [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0)]) {
+  for (const foe of [...world.aliveBosses(), ...world.adds.filter((a) => a.hp > 0 && !a.charm)]) {
     if (dist(center, foe.pos) > radius + foe.radius) continue;
     const before = foe.hp;
     if (world.bosses.includes(foe as Boss))
@@ -818,7 +823,13 @@ function zoneToImpact(z: ZoneSpec): ProjectileImpact {
 }
 
 /** Spawn a synthesized ability's ground zone (centered heal zones / ground-cast). */
-function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number): void {
+function spawnComposedZone(
+  world: World,
+  p: Player,
+  z: ZoneSpec,
+  range: number,
+  cast?: import('../core/types').WhisperCast,
+): void {
   range = Math.min(range, Math.min(world.arena.w, world.arena.h) * 0.4);
   const centered = z.zoneKind === 'sanctuary' || z.zoneKind === 'consecration';
   const pos = centered
@@ -832,6 +843,7 @@ function spawnComposedZone(world: World, p: Player, z: ZoneSpec, range: number):
     side: 'player',
     ownerId: p.id,
     damagePerTick: z.tickDamage ?? 0,
+    whisperCast: cast,
     zonePoison: z.zonePoison,
     zoneFollow: z.zoneFollow,
     healPerTick: z.tickHeal ?? 0,
@@ -934,7 +946,7 @@ function resolveComposedAbility(
         }
       }
       for (const a of world.adds) {
-        if (a.hp <= 0) continue;
+        if (!hostileAdd(a)) continue;
         if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
           dealt += damageAdd(
             world,
@@ -982,7 +994,7 @@ function resolveComposedAbility(
         }
       }
       for (const a of world.adds) {
-        if (a.hp <= 0) continue;
+        if (!hostileAdd(a)) continue;
         if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
           dealt += damageAdd(
             world,
@@ -1037,6 +1049,7 @@ function resolveComposedAbility(
           echoFraction: ab.echoFraction,
           markOnPreparedHit: ab.markOnPreparedHit,
           pilotCast: ab.pilotCast,
+          whisperCast: ab.whisperCast,
           mark:
             ab.markOnPreparedHit && ab.pilotCast
               ? { bonus: ab.markOnPreparedHit, cast: ab.pilotCast }
@@ -1054,7 +1067,7 @@ function resolveComposedAbility(
     case 'groundZone': {
       prepareSpellSurge(p, ab);
       if (zoneEff && zoneEff.kind === 'zone')
-        spawnComposedZone(world, p, zoneEff.zone, ab.range ?? 500);
+        spawnComposedZone(world, p, zoneEff.zone, ab.range ?? 500, ab.whisperCast);
       buffSelf();
       break;
     }
@@ -1075,6 +1088,7 @@ function resolveComposedAbility(
         prepareSpellSurge(p, ab);
         prepareMartialFlow(p, ab);
         if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
+        spendSecret(world, p, ab.whisperCast!, from);
         world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
         armWhisperRefrain(world, p, ab, ab.slot, from);
       } else {
@@ -1170,6 +1184,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     side: 'player',
     ownerId: p.id,
     damagePerTick: dmgPerTick,
+    whisperCast: ab.whisperCast,
     zonePoison: ab.zonePoison,
     zoneFollow: ab.zoneFollow,
     healPerTick,
@@ -1230,6 +1245,7 @@ interface SpawnProjOpts {
   echoFraction?: number;
   markOnPreparedHit?: number;
   pilotCast?: { spent: boolean };
+  whisperCast?: import('../core/types').WhisperCast;
   mark?: { bonus: number; cast: { spent: boolean } };
   pierce?: number;
   /** Fraction of dealt damage healed back to the owner (Vampiric shots). */
@@ -1274,6 +1290,7 @@ function spawnPlayerProjectile(
     echoFraction: o.echoFraction,
     markOnPreparedHit: o.markOnPreparedHit,
     pilotCast: o.pilotCast,
+    whisperCast: o.whisperCast,
     mark: o.mark,
     // Do not repeat an explosive/zone payload on several bodies.
     pierceLeft: o.pierce && o.impactRadius <= 0 && !o.onImpact ? o.pierce : undefined,
@@ -1313,6 +1330,7 @@ function emitSkillArea(
 }
 
 export interface SpawnZoneOpts {
+  whisperCast?: import('../core/types').WhisperCast;
   zonePoison?: PlayerAbilityDef['zonePoison'];
   zoneFollow?: number;
   kind: GroundZone['kind'];
@@ -1357,6 +1375,7 @@ export interface SpawnZoneOpts {
 export function spawnZone(world: World, o: SpawnZoneOpts): void {
   const zone: GroundZone = {
     id: world.allocId(),
+    whisperCast: o.whisperCast,
     recovery: o.recovery,
     kind: o.kind,
     pos: o.pos,
@@ -1633,9 +1652,11 @@ export function resolveBossAbility(
         action.targetId != null
           ? world.players.find((p) => p.id === action.targetId && p.state === 'alive')
           : null;
-      const aimAt = target
-        ? target.pos
-        : (action.targetPos ?? vadd(boss.pos, fromAngle(action.aimAngle, 100)));
+      const aimAt =
+        action.illusionPos ??
+        (target
+          ? target.pos
+          : (action.targetPos ?? vadd(boss.pos, fromAngle(action.aimAngle, 100))));
       const baseAngle = angleOf(sub(aimAt, boss.pos));
       const speed = ab.projSpeed ?? 420;
       const count = ab.projCount ?? 1;

@@ -14,6 +14,7 @@ import { absorbDamage } from './absorption';
 import { martialHitMultiplier, onMartialHit, onGuardedDamage, bloodHitHealing } from './martial';
 import type {
   Player,
+  WhisperCast,
   Boss,
   Add,
   Buff,
@@ -46,6 +47,12 @@ import {
 /** Minimal structural sink so combat needn't import the World. */
 export interface EventSink {
   events: GameEvent[];
+  onWhisperHit?: (
+    source: Player,
+    target: Boss | Add,
+    effective: number,
+    cast?: WhisperCast,
+  ) => void;
   onPlayerDamaged?: (target: Player) => void;
   onPlayerDirectHit?: (
     source: Player,
@@ -64,6 +71,8 @@ export interface EventSink {
  * styling. All optional; absent = an ordinary hit.
  */
 export interface HitMods {
+  whisperCast?: WhisperCast;
+  borrowed?: boolean;
   mult?: number;
   crit?: boolean;
   backstab?: boolean;
@@ -403,8 +412,9 @@ export function damageBoss(
     source.damageMult *
     buffMult(boss, 'damageTaken') *
     curseMultiplier(source, boss);
+  if (mods?.borrowed) outgoing = baseDamage * buffMult(boss, 'damageTaken');
   const counter = mods?.melee && source.buffs.some((b) => b.kind === 'counter' && b.remaining > 0);
-  if (outgoing > 0 && boss.hp > 0) {
+  if (!mods?.borrowed && outgoing > 0 && boss.hp > 0) {
     outgoing *=
       subclassDamageMultiplier(source, boss, mods) *
       martialHitMultiplier(source, mods?.melee) *
@@ -432,6 +442,8 @@ export function damageBoss(
     crit: mods?.crit,
     backstab: mods?.backstab,
   });
+  if (mods?.borrowed) return outgoing;
+  if (mods?.direct) sink.onWhisperHit?.(source, boss, effective, mods.whisperCast);
   onMartialHit(source, effective, mods?.melee, mods?.flowExtend);
   const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
@@ -487,6 +499,7 @@ export function damageAdd(
   baseDamage: number,
   mods?: HitMods,
 ): number {
+  if (add.charm) return 0;
   let outgoing =
     baseDamage *
     (mods?.mult ?? 1) *
@@ -494,8 +507,9 @@ export function damageAdd(
     source.damageMult *
     buffMult(add, 'damageTaken') *
     curseMultiplier(source, add);
+  if (mods?.borrowed) outgoing = baseDamage * buffMult(add, 'damageTaken');
   const counter = mods?.melee && source.buffs.some((b) => b.kind === 'counter' && b.remaining > 0);
-  if (outgoing > 0 && add.hp > 0) {
+  if (!mods?.borrowed && outgoing > 0 && add.hp > 0) {
     outgoing *=
       subclassDamageMultiplier(source, add, mods) *
       martialHitMultiplier(source, mods?.melee) *
@@ -516,6 +530,8 @@ export function damageAdd(
     crit: mods?.crit,
     backstab: mods?.backstab,
   });
+  if (mods?.borrowed) return outgoing;
+  if (mods?.direct) sink.onWhisperHit?.(source, add, effective, mods.whisperCast);
   onMartialHit(source, effective, mods?.melee, mods?.flowExtend);
   const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
@@ -547,6 +563,7 @@ export function damageEcho(
   target: Boss | Add,
   amount: number,
 ): number {
+  if ('charm' in target && target.charm) return 0;
   if (amount <= 0 || target.hp <= 0 || hasBuff(target, 'invuln')) return 0;
   const effective = Math.min(target.hp, amount);
   target.hp -= effective;

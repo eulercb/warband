@@ -179,6 +179,12 @@ export interface PlayerAbilityDef {
   balanceZoneDamageScale?: number;
   /** Two timed verses empower a subsequent group rally; basics never contribute. */
   bardSong?: 'harmony' | 'discord' | 'chorus';
+  /** Priced perception payload; copies retain the behavior, not subclass secrets. */
+  apparition?: { mode: 'charm'; duration: number };
+  /** Whispers identity tuning, not a donor payload. */
+  whisperIdentity?: 'directed' | 'quarry';
+  /** Host-only token shared by all hits/ticks of a cast. */
+  whisperCast?: import('../core/types').WhisperCast;
   /** A two-verse blink leaves a stationary, finite direct-cast echo afterimage. */
   whisperRefrain?: { duration: number; radius: number; fraction: number; charges: number };
   /** Extra damage against currently slowed, rooted or stunned enemies. */
@@ -1445,6 +1451,10 @@ export function describeAbility(
   if (def.iframes)
     parts.push(`${s(def.iframes)} ${def.kind === 'selfBuff' ? 'damage immunity' : 'i-frames'}`);
   // item 7 — flight granted (soar over ground hazards / zones for the window).
+  if (def.apparition)
+    parts.push(
+      `one damaged add fights its former allies for ${s(def.apparition.duration)}; bosses cannot be converted`,
+    );
   if (def.grantsFlight) parts.push(`fly ${s(def.grantsFlight)}`);
   // item 8 — a zone that reaches flyers reads it out (else it's a ground effect).
   // Display-only default mirrors combat.isAirborneZoneKind (rainOfArrows).

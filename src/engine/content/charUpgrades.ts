@@ -3048,19 +3048,12 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'ba_whispers_g_a',
     'Voice of Madness',
     '😱',
-    'Dissonant Whispers freezes for 0.6s; Mockery gains +25% controlled-target damage. Direct Whispers strikes gain +30% controlled damage, Words delays wind-ups 30%, Mantle grants 30 absorption for 4s, and Refrain grants 20% movement for 3s',
+    'Private Nightmare projects 100u beyond the marked foe in your aim direction: choose which side it retreats toward. Heal, blink and Discord spends use this directed placement. No extra damage or fear duration.',
     (a) => {
-      casterGrand('pbaoe', (ab) => addN(ab, 'freeze', 0.6), ['bardSong'])(a.a3);
-      if (isStrike(a.basic) && a.basic.damage > 0) addN(a.basic, 'controlDamageBonus', 0.25);
-      else amplify(a.basic, 0.2, 0.1);
+      for (const ab of Object.values(a)) ab.whisperIdentity = 'directed';
     },
     (ab) => {
-      if (isStrike(ab) && ab.damage > 0) addN(ab, 'controlDamageBonus', 0.3);
-      else if (ab.kind === 'groundZone' && ab.zoneTickDamage)
-        ab.castSlow = Math.max(ab.castSlow ?? 1, 1.3);
-      else if (ab.kind === 'blink') supportBarrier(ab, 30, 4, 'self');
-      else if (ab.kind === 'heal') supportHealBoon(ab, 'buffMoveMult', 1.2, 3);
-      else amplify(ab, 0.2, 0.1);
+      ab.whisperIdentity = 'directed';
     },
   ),
   pilotIdentity(
@@ -3068,25 +3061,12 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'ba_whispers_g_b',
     'Unheard Dirge',
     '🌫️',
-    'Mockery delays wind-ups 30% for 3s; Inspiration grants 20% movement. Direct Whispers strikes leech 20%, Words grants 20% allied movement, Mantle blocks one frontal hit for 4s, and Refrain cleanses',
+    'Spend secrets on a stationary false quarry instead of fear. The marked foe pursues it and aims its next targeted attack there; normal damage still hits anyone nearby. Decoy lasts 6s; committed attacks never retarget.',
     (a) => {
-      if (isStrike(a.basic) && a.basic.damage > 0) casterSuppression(a.basic);
-      else amplify(a.basic, 0.2, 0.1);
-      casterGrand(
-        'buffAlly',
-        (ab) => {
-          ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.2);
-        },
-        ['bardSong', 'buffDamageMult'],
-      )(a.a1);
+      for (const ab of Object.values(a)) ab.whisperIdentity = 'quarry';
     },
     (ab) => {
-      if (isStrike(ab) && ab.damage > 0) lifeRider(ab, 0.2);
-      else if (ab.kind === 'groundZone' && ab.zoneTickDamage)
-        ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.2);
-      else if (ab.kind === 'blink') casterGuard(ab, 1, 4);
-      else if (ab.kind === 'heal') ab.cleanseOnHeal = true;
-      else amplify(ab, 0.2, 0.1);
+      ab.whisperIdentity = 'quarry';
     },
   ),
 
@@ -3564,10 +3544,11 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'ba_whispers_words',
     'Pursuing Dread',
     '😱',
-    'Words of Terror follows its first damaged foe for up to 6s and gains +15u radius',
+    'Words follows its first damaged foe for up to 6s, gains +15u radius, and charms one damaged add per cast for 4s to fight its former allies. Bosses cannot be converted. A secret apparition stays fixed at its original center',
     supportGrand('ba_whispers_words', (ab) => {
       ab.zoneFollow = Math.max(ab.zoneFollow ?? 0, 6);
       addN(ab, 'radius', 15);
+      ab.apparition = { mode: 'charm', duration: 4 };
     }),
   ),
   gsk(

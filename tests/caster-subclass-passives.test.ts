@@ -12,7 +12,6 @@ import {
 } from '../src/engine/combat/combat';
 import { setSubclassPassive, tickSubclassPassives } from '../src/engine/combat/subclassPassives';
 import { consumeSpellSurge, prepareSpellSurge } from '../src/engine/combat/spellCombos';
-import { healSupportAlly } from '../src/engine/combat/support';
 import { absorptionAmount, grantAbsorption } from '../src/engine/combat/absorption';
 import { buffBadges } from '../src/render/overlays/buffGlyphs';
 import { decompose, recompose, setForgeSeed } from '../src/engine/content/forge';
@@ -50,16 +49,6 @@ function chorus(w: World, p: Player) {
   applyBuff(p, makeBuff('discord', 0, 8, 'bardDiscord'));
   resolvePlayerAbility(w, p, 'a1', ZERO);
 }
-function heal(w: World, p: Player, recipient: Player, amount = 50) {
-  return healSupportAlly(w, p, recipient, amount, {
-    slot: 'a2',
-    name: 'Heal',
-    kind: 'heal',
-    cooldown: 5,
-    damage: amount,
-    bardSong: 'harmony',
-  });
-}
 
 describe('caster passive ownership and authored identity', () => {
   it.each(cohort)('every %s choice unlocks the same passive and survives variance/Forge', (sub) => {
@@ -82,18 +71,18 @@ describe('caster passive ownership and authored identity', () => {
     }
   });
   it('retains proc gates but drops personal readiness on a class change', () => {
-    const { w, p } = setup('ba_whispers');
+    const { w, p } = setup('ba_valor');
     chorus(w, p);
     const id = p.subclassPassiveId!;
     setSubclassPassive(p, undefined);
-    expect(p.buffs.some((b) => b.kind === 'refrainEcho')).toBe(false);
+    expect(p.buffs.some((b) => b.kind === 'frontGuard')).toBe(false);
     expect(p.subclassPassiveCooldowns![id]).toBe(8);
     setSubclassPassive(p, id);
     chorus(w, p);
-    expect(p.buffs.some((b) => b.kind === 'refrainEcho')).toBe(false);
+    expect(p.buffs.some((b) => b.kind === 'frontGuard')).toBe(false);
     tickSubclassPassives(p, 8);
     chorus(w, p);
-    expect(p.buffs.some((b) => b.kind === 'refrainEcho')).toBe(true);
+    expect(p.buffs.some((b) => b.kind === 'frontGuard')).toBe(true);
   });
 });
 
@@ -326,87 +315,5 @@ describe('Bard chorus payoffs', () => {
     ally.hp = 0;
     chorus(w, p);
     expect(ally.buffs.some((b) => b.kind === 'frontGuard')).toBe(false);
-  });
-  it('Whispers echoes effective healing once to another injured ally, capped and attributed', () => {
-    const { w, p, ally } = setup('ba_whispers');
-    p.hp = p.maxHp - 100;
-    ally.hp = ally.maxHp - 80;
-    chorus(w, p);
-    expect(buffBadges(p.buffs, 20).some((b) => b.label.includes('Echoed Refrain'))).toBe(true);
-    const before = ally.hp;
-    heal(w, p, p, 100);
-    expect(ally.hp - before).toBe(35);
-    expect(p.stats.healingDone).toBe(135);
-    expect(p.buffs.some((b) => b.kind === 'refrainEcho')).toBe(false);
-    heal(w, p, ally);
-    expect(p.stats.healingDone).toBe(180);
-  });
-  it('Whispers falls back to solo recipient, uses effective rather than nominal healing, and expires', () => {
-    const { w, p } = setup('ba_whispers', false);
-    p.hp = p.maxHp - 80;
-    chorus(w, p);
-    const hp = p.hp;
-    heal(w, p, p, 40);
-    expect(p.hp - hp).toBe(60);
-    tickSubclassPassives(p, 8);
-    chorus(w, p);
-    tickBuffs(p, 9);
-    const before = p.hp;
-    heal(w, p, p, 10);
-    expect(p.hp - before).toBe(10);
-  });
-  it('Whispers preserves readiness on overheal and excludes distant/dead targets', () => {
-    const { w, p, ally } = setup('ba_whispers');
-    chorus(w, p);
-    heal(w, p, p);
-    expect(p.buffs.some((b) => b.kind === 'refrainEcho')).toBe(true);
-    p.hp -= 5;
-    ally.hp -= 50;
-    ally.pos.x += 1000;
-    heal(w, p, p); // capped recipient: cannot receive an echo; keep readiness
-    expect(p.buffs.some((b) => b.kind === 'refrainEcho')).toBe(true);
-    ally.pos = { ...p.pos };
-    ally.state = 'dead';
-    p.hp -= 30;
-    const before = p.hp;
-    heal(w, p, p, 10);
-    expect(p.hp - before).toBeCloseTo(15);
-  });
-  it('Whispers selects one lowest-health-ratio ally instead of duplicating an echo across a party', () => {
-    const { w, p, ally } = setup('ba_whispers');
-    const other = structuredClone(ally);
-    other.id = w.allocId();
-    other.pos = { ...p.pos };
-    w.players.push(other);
-    p.hp -= 60;
-    ally.hp = ally.maxHp * 0.6;
-    other.hp = other.maxHp * 0.2;
-    chorus(w, p);
-    const before = other.hp;
-    const allyBefore = ally.hp;
-    heal(w, p, p, 40);
-    expect(other.hp - before).toBe(20);
-    expect(ally.hp).toBe(allyBefore);
-    expect(p.buffs.some((b) => b.kind === 'refrainEcho')).toBe(false);
-  });
-  it('works with a composed chorus and composed dedicated healing, without recursive rescue/verses', () => {
-    const { w, p, ally } = setup('ba_whispers');
-    p.abilities!.a1 = recompose(decompose(p.abilities!.a1), {
-      slot: 'a1',
-      name: 'Chorus',
-      cooldown: 5,
-    });
-    p.abilities!.a2 = recompose(decompose(p.abilities!.a2), {
-      slot: 'a2',
-      name: 'Mend',
-      cooldown: 5,
-    });
-    p.hp -= 60;
-    ally.hp -= 60;
-    chorus(w, p);
-    resolvePlayerAbility(w, p, 'a2', ZERO);
-    expect(p.buffs.some((b) => b.kind === 'refrainEcho')).toBe(false);
-    expect(p.buffs.filter((b) => b.kind === 'harmony')).toHaveLength(1);
-    expect(w.events.filter((e) => e.t === 'support' && e.kind === 'heal')).toHaveLength(2);
   });
 });

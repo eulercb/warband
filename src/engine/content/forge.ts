@@ -87,6 +87,7 @@ export type EffectComponent =
   | { kind: 'damage'; amount: number; balanceScale?: number }
   | { kind: 'heal'; amount: number; balanceScale?: number }
   | { kind: 'healOnUse'; amount: number }
+  | { kind: 'apparition'; effect: NonNullable<PlayerAbilityDef['apparition']> }
   | { kind: 'landingDamage'; amount: number }
   | { kind: 'lifesteal'; frac: number }
   | { kind: 'stun'; seconds: number }
@@ -373,6 +374,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.flowExtendOnHit) effects.push({ kind: 'flowExtend', seconds: def.flowExtendOnHit });
   if (kind === 'groundZone' && def.prepareSurge)
     effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
+  if (def.apparition) effects.push({ kind: 'apparition', effect: { ...def.apparition } });
   if (def.fortune) effects.push({ kind: 'fortune', fortune: { ...def.fortune } });
   if (def.whisperRefrain && def.kind === 'blink')
     effects.push({ kind: 'whisperRefrain', refrain: { ...def.whisperRefrain } });
@@ -444,6 +446,9 @@ export function recompose(
 
   for (const e of comp.effects) {
     switch (e.kind) {
+      case 'apparition':
+        def.apparition = { ...e.effect };
+        break;
       case 'skillContract':
         Object.assign(def, e.contract);
         break;
@@ -672,6 +677,8 @@ export function componentValue(comp: AbilityComponents): number {
 /** Output weight of a single effect (see componentValue). */
 function effectValue(e: EffectComponent, fan: number): number {
   switch (e.kind) {
+    case 'apparition':
+      return e.effect.duration * 8;
     case 'skillContract': {
       const c = e.contract;
       return (
@@ -918,6 +925,8 @@ function deliveryPhrase(d: Delivery): string {
 /** A short clause for one effect, or '' when it carries no player-facing number. */
 function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
   switch (e.kind) {
+    case 'apparition':
+      return `one damaged add fights its former allies (bosses resist) for ${s(e.effect.duration)}`;
     case 'skillContract': {
       const c = e.contract,
         bits: string[] = [];
@@ -1293,6 +1302,8 @@ const ANCHOR_MAX_SHARE = 0.85; // …and capped at 85% when riders ride along, s
 /** Can effect `e` be delivered by delivery `kind`? Keeps fusions coherent. */
 function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
   switch (e.kind) {
+    case 'apparition':
+      return DIRECT_STRIKE.has(kind) || kind === 'groundZone';
     case 'skillContract':
       return e.contract.infernalClaim || e.contract.claimWard || e.contract.rebukeInvuln
         ? kind === 'pbaoe'
@@ -1898,6 +1909,8 @@ function dropCheapestRigid(effects: EffectComponent[]): EffectComponent[] {
  */
 function scaleEffect(e: EffectComponent, f: number): EffectComponent {
   switch (e.kind) {
+    case 'apparition':
+      return { ...e, effect: { ...e.effect, duration: e.effect.duration * f } };
     case 'skillContract': {
       const c = e.contract;
       return {
@@ -2160,6 +2173,7 @@ function addBoonComponents(
         'relayHeal',
         'rescueStrike',
         'crossingGuard',
+        'apparition',
         'warCry',
         'venomCoating',
         'momentumFissure',
@@ -2277,6 +2291,8 @@ function addBoonComponents(
  */
 function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): EffectComponent {
   switch (e.kind) {
+    case 'apparition':
+      return def.apparition ? { ...e, effect: { ...def.apparition } } : e;
     case 'skillContract':
       return { kind: 'skillContract', contract: { ...e.contract, ...skillContract(def) } };
     case 'damage':
@@ -2434,6 +2450,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
 
 function capEffect(e: EffectComponent): EffectComponent {
   switch (e.kind) {
+    case 'apparition':
+      return { ...e, effect: { ...e.effect, duration: clamp(round1(e.effect.duration), 1, 4) } };
     case 'skillContract': {
       const c = e.contract;
       return {

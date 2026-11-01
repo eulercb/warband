@@ -3,6 +3,7 @@ import type { Buff, BuffView } from './types';
 /** Expose curse ownership without copying private source labels or proc payloads. */
 export function buffView(b: Buff): BuffView {
   const view: BuffView = { kind: b.kind, remaining: b.remaining, mult: b.mult };
+  if (b.kind === 'secretMark') view.ownerId = b.mult;
   if (b.kind === 'whisperRefrain' && b.whisperRefrainState)
     view.whisperRefrain = {
       anchor: { ...b.whisperRefrainState.anchor },

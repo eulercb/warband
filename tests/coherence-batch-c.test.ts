@@ -279,7 +279,7 @@ describe('growth and compatibility', () => {
     for (let i = 0; i < 60; i++) updateCompanions(w, 1 / 60);
     expect(absorptionAmount(ally.buffs)).toBeCloseTo(Math.max(12, hp * 0.08));
   });
-  it('Refrain retains deliberate next-heal routing, with an HP-aware single-recipient cap and no recursion', () => {
+  it('the replaced Whispers passive no longer adds numerical healing or recursive barriers', () => {
     const { w, p, ally } = setup('cl_life_mend');
     p.subclassPassiveId = 'whispers_echoed_refrain';
     ally.maxHp = 1000;
@@ -287,10 +287,10 @@ describe('growth and compatibility', () => {
     p.hp = p.maxHp - 10;
     onSubclassChorus(w, p, 420);
     onSubclassHeal(w, p, p, 500);
-    expect(ally.hp).toBe(220);
+    expect(ally.hp).toBe(100);
     expect(p.buffs.some((b) => b.kind === 'refrainEcho')).toBe(false);
     expect(absorptionAmount(ally.buffs)).toBe(0);
-    expect(p.stats.healingDone).toBe(120);
+    expect(p.stats.healingDone).toBe(0);
   });
   it('rescue readiness clears on downing, noncombat rooms and a recipient class change', () => {
     for (const mode of ['down', 'room', 'class']) {

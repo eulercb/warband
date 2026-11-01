@@ -1,18 +1,55 @@
 # Upgrade identity: audit and staged redesign
 
-Next checkpoint: the owner accepted all 12 authored class cohorts. Before broad
-balance, acquisition, ordinary-upgrade and graft tuning, apply the
-[identity-purpose review](IDENTITY_REVIEW_PLAN.md): calibrate Whispers, Evoker
-and Moon, then cover the remaining subclass pairs in four-class cohorts. Judge
-actual decisions and coherent loops, not offense/defense labels or buff counts.
-This delivery implements the bounded Mantle/copy follow-up; it does not silently
-approve a rewrite of all 48 identities. Later changes need concrete review sheets.
+Completed authored cohort: [Cleric/Paladin/Bard upgrades and grands](SUPPORT_GRANDS.md).
+The owner accepted the Sorcerer/readability follow-up. All **12/12 classes** now
+have authored starting, subclass-skill and identity grands plus role-specific
+Honed profiles. The owner reports that the merged final cohort felt okay in live
+testing (2026-10-31); this accepts that delivery without claiming equal balance.
 
-Current bounded follow-up: [Whisper Refrain](WHISPER_REFRAIN.md) and description
-editorial checks. All **12/12 classes** have authored starting, subclass-skill
-and identity grands plus role-specific Honed profiles, accepted in owner testing.
-Preserve shared recharge/geometry limits and recipient-health barrier scaling.
-Use the [combined-build review gate](UPGRADE_REVIEW_GATE.md).
+Current delivery is [Whispers perception](WHISPERS_DELIVERY.md). The owner
+accepted retaining Moon and Evoker for now and approved developing the Whispers
+fear/secret direction, including useful support and possible Mantle interactions.
+The owner rejected the first proposal's damage/mitigation payoffs while retaining
+the mark-and-skill-interaction structure. The active
+[fear and perception review](WHISPERS_PERCEPTION_REVIEW.md) compares actual
+retreat, decoy targeting and allegiance changes. The
+[first proposal](WHISPERS_SECRETS_PROPOSAL.md) is historical, not an approved
+implementation specification. Apply the persistent behavioral-identity criterion
+in the review gate to this and later classes.
+Then compare the remaining classes in bounded groups.
+The [calibration review](IDENTITY_CALIBRATION.md) records actual sequences,
+first-pick usefulness, overlapping rewards and retain/rework recommendations.
+Use the bounded Sol high review workflow; proceed when the owner has authorized
+the direction and material design choices are resolved.
+After identity review, continue the whole-system review of balance, acquisition
+flow, ordinary upgrades, graft alternatives and compatibility. Preserve the shared
+recharge/geometry limits and recipient-health barrier scaling. Use the
+[combined-build review gate](UPGRADE_REVIEW_GATE.md).
+
+## Future visual milestone and research references
+
+The owner requested a dedicated visual revamp: more recognizable player and boss
+designs, improved arena presentation, and skill effects distinguished by shape,
+motion, timing and impact as well as color. An arrow and a fireball must be
+recognizable without reading a label. Start with a representative hero/form,
+boss and offense/heal/barrier/control scene on desktop and a small phone; validate
+the visual language before replacing the full catalogue. This extends the
+[existing visual milestone](CLASS_MILESTONE_REVIEW.md), rather than promising an
+art overhaul during identity calibration.
+
+Dota 2 is an owner-suggested reference for distinct mechanics and interactions,
+alongside the existing research candidates. Examine specific, attributable
+examples when developing a proposal; no Dota research or community consensus is
+claimed by adding this reference. Follow [research guidelines](RESEARCH_GUIDELINES.md)
+and develop original kits and assets.
+
+At each delivery, report what was completed, what live testing established,
+remaining uncertainties and the next decision. Revisit the sequence as evidence
+or owner feedback changes it.
+
+The accepted [Mantle departure afterimage](WHISPER_REFRAIN.md) from #146 remains
+in place. The [identity-purpose review](IDENTITY_REVIEW_PLAN.md) supplies the
+shared review frame for later cohorts.
 
 The merged grand-selection framework retains per-class earned banks and explicit
 between-fight swaps: two starting-skill slots, one bound subclass skill and one

@@ -4,6 +4,13 @@ Apply this review to every class cohort before implementation and again against
 the resolved runtime kit before delivery. The Rogue/Warlock follow-up showed why
 functional fields and complete slots alone do not establish build diversity.
 
+For substantial planning/design, use one bounded GPT-6.1 Sol high reviewer by
+default, without asking the owner to repeat the request. No subdelegation or
+parallel model comparisons; skip routine fixes. When the owner has authorized
+the direction and review resolves material choices, proceed through implementation
+and validation. Bring back only unresolved gameplay tradeoffs, not routine
+technical decisions. See `AGENTS.md` for model/quota preferences.
+
 ## Review the receiving skill, not the list of upgrade names
 
 For each changed skill, list its base behavior, ordinary/Honed boons, individual
@@ -18,6 +25,36 @@ a dread curse can have different payoffs; giving Hex the same following flag fro
 both a skill grand and its identity wastes an opportunity. Likewise, changing a
 renamed nova's numbers does not distinguish it from another self-centered nova.
 Compare delivery, preparation, payoff, counterplay and the sequence a player uses.
+
+## Behavioral identity before numerical theming
+
+Owner direction, 2026-10-31: a choice of triggers is not sufficient when every
+payoff repeats damage, mitigation or a renamed slow. Explore what the fantasy
+would actually change in the encounter: fear can make enemies flee or avoid a
+person/place; illusions can misdirect pursuit or attacks; charm can change
+allegiance. These examples invite new mechanics where justified, not a mandate
+to install all of them or make every skill complicated.
+
+For a proposed identity, temporarily remove the names, colors and numeric
+bonuses from the description. Can the reviewer still describe a distinct change
+in movement, targeting, allegiance, geometry, information, timing or use of the
+environment? If not, label it numerical growth and investigate a stronger core
+before claiming an identity redesign. Timing must change a decision, not merely
+lengthen the same wind-up under a new name.
+
+Existing numerical upgrades can support a behavioral core. Evaluate the combined
+kit rather than forcing novelty into each slot. Preserve useful simple skills;
+avoid multiplying riders/resources to disguise overlap. Engine effort is a cost
+to assess, not proof that an idea should collapse into another damage bonus.
+
+Show the behavior against a lone boss without adds and with allies. If the boss
+has shorter control or phase restrictions, retain actual fear/misdirection or
+another explicitly chosen behavior; do not advertise fear while making bosses
+immune and compensating with damage. State when a committed telegraph remains
+locked, how repeated control is bounded, and whether the mechanic helps or
+disrupts teammates. Distinguish a tested limitation from an assumed reason to
+reject a creative option. Use a focused prototype when these questions determine
+whether the idea works.
 
 ## Required review table
 

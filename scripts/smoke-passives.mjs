@@ -2,70 +2,28 @@
 import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright-core';
-const cases = [
-  ['barbarian', 'Chain Pull', 'Rampage'],
-  ['barbarian', 'Bear Spirit', 'Spirit Shelter'],
-  ['monk', 'Flurry Barrage', 'Flowguard'],
-  ['monk', 'Shadow Dart', 'Shadow Rhythm'],
-  ['ranger', 'Hail of Thorns', 'Exposed Quarry'],
-  ['ranger', "Nature's Bond", 'Pack Bond'],
-  ['druid', 'Wall of Thorns', 'Living Paths'],
-  ['druid', 'Frenzied Regen', 'Moon Aspect'],
-  ['druid', 'Primal Roar', 'Moon Aspect'],
-  ['knight', 'Riposte', 'Victorious Reprise'],
-  ['knight', 'Trip Attack', 'Tactical Opening'],
-  ['cleric', 'Warding Flare', 'Refulgence'],
-  ['cleric', 'Preserve Life', 'Abundance'],
-  ['paladin', 'Sacred Weapon', 'Oath Anchor'],
-  ['paladin', 'Wrathful Smite', 'Relentless Procession'],
-  ['mage', 'Lightning Bolt', 'Arcane Cadence'],
-  ['mage', 'Arcane Ward', 'Binding Ward'],
-  ['sorcerer', 'Dragon Wings', 'Surge Ascent'],
-  ['sorcerer', 'Chaos Surge', 'Spell Weave'],
-  ['sorcerer', 'Bend Luck', 'Spell Weave'],
-  ['bard', 'Bolster', 'Rallying Chorus'],
-  ['bard', 'Healing Refrain', 'Echoed Refrain'],
-  ['rogue', 'Smoke Bomb', "Death's Opening"],
-  ['rogue', 'Shield Spell', 'Spellblade'],
-  ['warlock', 'Dark Resilience', 'Soul Ember'],
-  ['warlock', 'Infernal Claim', 'Soul Ember'],
-  ['warlock', 'Mind Blast', 'Dread Insight'],
-];
-cases.push(
-  ['cleric', 'Mass Cure', 'Abundance'],
-  ['cleric', 'Flash of Light', 'Refulgence'],
-  ['monk', 'Wind Step', 'Flowguard'],
-  ['knight', 'Menacing Roar', 'Tactical Opening'],
-  ['barbarian', 'Ground Slam', 'Rampage'],
-  ['barbarian', 'Earth Totem', 'Spirit Shelter'],
-  ['rogue', 'Coated Blade', "Death's Opening"],
-  ['druid', 'Erupting Earth', 'Living Paths'],
-);
+import { loadPassiveRegistry, resolvePassiveSmokeCases } from './passive-smoke-cases.mjs';
+const registry = await loadPassiveRegistry();
 const activeCases = new Map([
-  ['Mass Cure', null],
-  ['Flash of Light', null],
-  ['Wind Step', null],
-  ['Hail of Thorns', null],
-  ['Menacing Roar', /Challenge ready:/],
-  ['Bear Spirit', /Frontal guard:/],
-  ['Coated Blade', /Blade coated:/],
-  ['Ground Slam', null],
-  ['Earth Totem', null],
-  ['Erupting Earth', null],
+  ['cl_life_mend', null],
+  ['cl_light_flash', null],
+  ['mo_openhand_wind', null],
+  ['rg_hunter_hail', null],
+  ['kn_battle_menacing', /Challenge ready:/],
+  ['bb_totem_bear', /Frontal guard:/],
+  ['ro_assassin_poison', /Blade coated:/],
+  ['bb_berserker_slam', null],
+  ['bb_totem_quake', null],
+  ['dr_land_spike', null],
 ]);
-const selected = process.env.SMOKE_PASSIVE_NAMES?.split(',');
-if (selected)
-  for (const name of selected)
-    assert.ok(
-      cases.some(([, , passive]) => passive === name),
-      `Unknown passive: ${name}`,
-    );
-const skills = process.env.SMOKE_PASSIVE_SKILLS?.split(',');
-const tests = cases.filter(
-  ([, skill, passive]) =>
-    (!selected || selected.includes(passive)) && (!skills || skills.includes(skill)),
+assert.ok(
+  !process.env.SMOKE_PASSIVE_NAMES && !process.env.SMOKE_PASSIVE_SKILLS,
+  'Use stable SMOKE_PASSIVE_COHORT / SMOKE_PASSIVE_SKILL_IDS filters, not display names',
 );
-assert.ok(tests.length, 'No passive cases selected');
+const tests = resolvePassiveSmokeCases(registry.subclasses, {
+  cohort: process.env.SMOKE_PASSIVE_COHORT,
+  skillIds: process.env.SMOKE_PASSIVE_SKILL_IDS?.split(','),
+});
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || chromium.executablePath(),
   headless: true,
@@ -73,7 +31,7 @@ const browser = await chromium.launch({
 let currentPage;
 try {
   for (const mobile of [false, true]) {
-    for (const [classId, skill, passive] of tests) {
+    for (const { classId, skillId, skill, passiveId, passive } of tests) {
       const context = await browser.newContext({
         viewport: mobile ? { width: 320, height: 568 } : { width: 1280, height: 800 },
         isMobile: mobile,
@@ -94,7 +52,7 @@ try {
       const button = (name) => page.getByRole('button', { name, exact: true });
       await page.goto(process.env.SMOKE_URL || 'http://localhost:4173/');
       if (mobile) await click(button('Menu'));
-      await click(button('Hero: Knight'));
+      await click(button(`Hero: ${registry.defaultHeroName}`));
       await click(page.locator(`.wb-codex-card[data-cls="${classId}"]`));
       if (mobile) await click(button('Menu'));
       await click(button('Host Game'));
@@ -102,19 +60,23 @@ try {
       await click(button('Create Room'));
       if (mobile) await click(button('Lobby menu'));
       await click(page.locator('.wb-sf-loadout-toggle'));
-      await click(page.getByRole('button', { name: new RegExp(skill) }));
+      await click(page.getByRole('button', { name: skill }));
       await click(button('Start Fight'));
       const icon = page.getByLabel(`Subclass passive: ${passive}`, { exact: true });
       await icon.waitFor();
       assert.equal(await icon.count(), 1);
       assert.ok((await icon.getAttribute('title')).includes(passive));
       if (
-        ['Spell Weave', 'Surge Ascent', 'Flowguard', 'Shadow Rhythm', 'Moon Aspect'].includes(
-          passive,
-        ) ||
-        skill === 'Infernal Claim' ||
-        activeCases.has(skill) ||
-        passive === 'Arcane Cadence'
+        [
+          'wild_spell_weave',
+          'draconic_surge_ascent',
+          'openhand_flowguard',
+          'shadow_rhythm',
+          'moon_aspect',
+        ].includes(passiveId) ||
+        skillId === 'wa_fiend_rebuke' ||
+        activeCases.has(skillId) ||
+        passiveId === 'evoker_arcane_cadence'
       ) {
         if (mobile) await page.locator('.wb-touch-btn-basic').waitFor();
         const touch = mobile ? await context.newCDPSession(page) : null;
@@ -139,10 +101,10 @@ try {
             else await page.keyboard.up(key);
           }
         };
-        if (activeCases.has(skill) || passive === 'Arcane Cadence') {
-          const badge = activeCases.get(skill);
-          const slot = passive === 'Arcane Cadence' ? 'a2' : 'sub1';
-          const name = passive === 'Arcane Cadence' ? 'Frost Nova' : skill;
+        if (activeCases.has(skillId) || passiveId === 'evoker_arcane_cadence') {
+          const badge = activeCases.get(skillId);
+          const slot = passiveId === 'evoker_arcane_cadence' ? 'a2' : 'sub1';
+          const name = passiveId === 'evoker_arcane_cadence' ? registry.cadenceSkillName : skill;
           await hold(slot, slot === 'a2' ? 'KeyE' : 'KeyZ', () =>
             badge
               ? page.locator('.hud-selfhp').getByTitle(badge).waitFor()
@@ -153,16 +115,17 @@ try {
                   return tile && !tile.classList.contains('ready');
                 }, name),
           );
-          if (passive === 'Arcane Cadence')
-            assert.ok((await icon.getAttribute('title')).includes('Fireball, Frost Nova, Blink'));
-        } else if (passive === 'Spell Weave') {
+          if (passiveId === 'evoker_arcane_cadence')
+            for (const name of registry.cadenceRefundNames)
+              assert.ok((await icon.getAttribute('title')).includes(name));
+        } else if (passiveId === 'wild_spell_weave') {
           const surge = page
             .locator('.hud-selfhp')
             .getByTitle(/Spell surge: next heavy spell empowered/);
           const weave = page
             .locator('.hud-selfhp')
             .getByTitle(/Spell Weave: next positive direct hit/);
-          if (skill === 'Bend Luck') {
+          if (skillId === 'so_wild_bend') {
             await hold('sub1', 'KeyZ', () => weave.waitFor());
             await page
               .locator('.hud-selfhp')
@@ -171,7 +134,7 @@ try {
           } else await hold('a2', 'KeyE', () => weave.waitFor());
           await surge.waitFor();
           await hold('a1', 'KeyQ', () => surge.waitFor({ state: 'hidden' }));
-        } else if (passive === 'Surge Ascent') {
+        } else if (passiveId === 'draconic_surge_ascent') {
           const surge = page
             .locator('.hud-selfhp')
             .getByTitle(/Spell surge: next heavy spell empowered/);
@@ -183,9 +146,9 @@ try {
           const shield = page.locator('.hud-selfhp').getByTitle(/^Absorption:/);
           await hold('a1', 'KeyQ', () => shield.waitFor());
           await surge.waitFor({ state: 'hidden' });
-        } else if (passive === 'Moon Aspect') {
+        } else if (passiveId === 'moon_aspect') {
           const form = page.locator('.hud-selfhp').getByTitle(/Moon bear:/);
-          if (skill === 'Primal Roar') {
+          if (skillId === 'dr_moon_roar') {
             await hold('sub1', 'KeyZ', () =>
               page
                 .locator('.hud-selfhp')
@@ -200,7 +163,7 @@ try {
             }),
           );
           assert.ok(await form.isVisible());
-        } else if (skill === 'Infernal Claim') {
+        } else if (skillId === 'wa_fiend_rebuke') {
           // Claim now pays off an owned curse rather than arming a counterburst.
           if (!mobile) await page.mouse.move(640, 200);
           await hold('a1', 'KeyQ', () =>
@@ -228,7 +191,7 @@ try {
           // The dash owns the hero until landing; release, then press after it finishes.
           await page.waitForTimeout(700);
           await hold('a3', 'KeyR', () => flow.waitFor({ state: 'hidden' }));
-          if (passive === 'Flowguard')
+          if (passiveId === 'openhand_flowguard')
             await page
               .locator('.hud-selfhp')
               .getByTitle(/Frontal guard: 1 damage blocks/)

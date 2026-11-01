@@ -11151,7 +11151,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Dissonant Whispers freezes for 0.6s; Mockery gains +25% controlled-target damage. Direct Whispers strikes gain +30% controlled damage, Words delays wind-ups 30%, Mantle grants 30 absorption for 4s, and Refrain grants 20% movement for 3s",
+      "description": "Private Nightmare projects 100u beyond the marked foe in your aim direction: choose which side it retreats toward. Heal, blink and Discord spends use this directed placement. No extra damage or fear duration.",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -11161,14 +11161,18 @@
           "subSkills": ["ba_whispers_words"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.freeze", "before": null, "after": 0.6 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "directed" }
           ],
           "atCap": [
-            { "path": "abilities.a3.freeze", "before": null, "after": 0.6 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "directed" }
           ]
         },
         {
@@ -11176,14 +11180,18 @@
           "subSkills": ["ba_whispers_wound"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.freeze", "before": null, "after": 0.6 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.3 }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "directed" }
           ],
           "atCap": [
-            { "path": "abilities.a3.freeze", "before": null, "after": 0.6 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.3 }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "directed" }
           ]
         },
         {
@@ -11191,22 +11199,18 @@
           "subSkills": ["ba_whispers_mantle"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.freeze", "before": null, "after": 0.6 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            {
-              "path": "subAbilities.sub1.absorption",
-              "before": null,
-              "after": { "amount": 30, "duration": 4, "target": "self" }
-            }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "directed" }
           ],
           "atCap": [
-            { "path": "abilities.a3.freeze", "before": null, "after": 0.6 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            {
-              "path": "subAbilities.sub1.absorption",
-              "before": null,
-              "after": { "amount": 30, "duration": 4, "target": "self" }
-            }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "directed" }
           ]
         },
         {
@@ -11214,16 +11218,18 @@
           "subSkills": ["ba_whispers_song"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.freeze", "before": null, "after": 0.6 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.buffDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.buffMoveMult", "before": null, "after": 1.2 }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "directed" }
           ],
           "atCap": [
-            { "path": "abilities.a3.freeze", "before": null, "after": 0.6 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.buffDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.buffMoveMult", "before": null, "after": 1.2 }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "directed" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "directed" }
           ]
         }
       ]
@@ -11241,7 +11247,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Mockery delays wind-ups 30% for 3s; Inspiration grants 20% movement. Direct Whispers strikes leech 20%, Words grants 20% allied movement, Mantle blocks one frontal hit for 4s, and Refrain cleanses",
+      "description": "Spend secrets on a stationary false quarry instead of fear. The marked foe pursues it and aims its next targeted attack there; normal damage still hits anyone nearby. Decoy lasts 6s; committed attacks never retarget.",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -11251,16 +11257,18 @@
           "subSkills": ["ba_whispers_words"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "quarry" }
           ],
           "atCap": [
-            { "path": "abilities.a1.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "quarry" }
           ]
         },
         {
@@ -11268,16 +11276,18 @@
           "subSkills": ["ba_whispers_wound"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "quarry" }
           ],
           "atCap": [
-            { "path": "abilities.a1.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "quarry" }
           ]
         },
         {
@@ -11285,24 +11295,18 @@
           "subSkills": ["ba_whispers_mantle"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            {
-              "path": "subAbilities.sub1.frontGuard",
-              "before": null,
-              "after": { "charges": 1, "duration": 4 }
-            }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "quarry" }
           ],
           "atCap": [
-            { "path": "abilities.a1.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            {
-              "path": "subAbilities.sub1.frontGuard",
-              "before": null,
-              "after": { "charges": 1, "duration": 4 }
-            }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "quarry" }
           ]
         },
         {
@@ -11310,16 +11314,18 @@
           "subSkills": ["ba_whispers_song"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.cleanseOnHeal", "before": null, "after": true }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "quarry" }
           ],
           "atCap": [
-            { "path": "abilities.a1.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.cleanseOnHeal", "before": null, "after": true }
+            { "path": "abilities.a1.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a2.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.a3.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "abilities.basic.whisperIdentity", "before": null, "after": "quarry" },
+            { "path": "subAbilities.sub1.whisperIdentity", "before": null, "after": "quarry" }
           ]
         }
       ]
@@ -13139,7 +13145,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Words of Terror follows its first damaged foe for up to 6s and gains +15u radius",
+      "description": "Words follows its first damaged foe for up to 6s, gains +15u radius, and charms one damaged add per cast for 4s to fight its former allies. Bosses cannot be converted. A secret apparition stays fixed at its original center",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -13149,10 +13155,20 @@
           "subSkills": ["ba_whispers_words"],
           "prefix": [],
           "once": [
+            {
+              "path": "subAbilities.sub1.apparition",
+              "before": null,
+              "after": { "mode": "charm", "duration": 4 }
+            },
             { "path": "subAbilities.sub1.radius", "before": 120, "after": 135 },
             { "path": "subAbilities.sub1.zoneFollow", "before": null, "after": 6 }
           ],
           "atCap": [
+            {
+              "path": "subAbilities.sub1.apparition",
+              "before": null,
+              "after": { "mode": "charm", "duration": 4 }
+            },
             { "path": "subAbilities.sub1.radius", "before": 120, "after": 135 },
             { "path": "subAbilities.sub1.zoneFollow", "before": null, "after": 6 }
           ]
