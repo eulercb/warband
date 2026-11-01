@@ -130,6 +130,7 @@ export type EffectComponent =
   | { kind: 'bardSong'; part: 'harmony' | 'discord' | 'chorus' }
   | { kind: 'controlDamage'; bonus: number }
   | { kind: 'prepareSurge'; duration: number }
+  | { kind: 'thoughtBreak' }
   | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
   | { kind: 'fortune'; fortune: NonNullable<PlayerAbilityDef['fortune']> }
   | { kind: 'whisperRefrain'; refrain: NonNullable<PlayerAbilityDef['whisperRefrain']> }
@@ -333,6 +334,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.controlDamageBonus)
       effects.push({ kind: 'controlDamage', bonus: def.controlDamageBonus });
     if (def.prepareSurge) effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
+    if (def.thoughtBreak) effects.push({ kind: 'thoughtBreak' });
     if (def.consumesSurge)
       effects.push({
         kind: 'surgeStrike',
@@ -413,6 +415,17 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
 // 3. Recomposition — components → a resolvable PlayerAbilityDef
 // ---------------------------------------------------------------------------
 
+/** A portable interruption is one contract even when two donor paths converge. */
+function uniqueThoughtBreak(effects: EffectComponent[]): EffectComponent[] {
+  let seen = false;
+  return effects.filter((e) => {
+    if (e.kind !== 'thoughtBreak') return true;
+    if (seen) return false;
+    seen = true;
+    return true;
+  });
+}
+
 /**
  * Fold a delivery + effects back into flat `PlayerAbilityDef` fields AND stash
  * the component form on `.components`. The flat fields keep every
@@ -421,12 +434,22 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
  * caller supplies `slot`, `name` and `cooldown` (identity + priced budget).
  *
  * recompose(decompose(def)) reproduces def's resolvable fields (round-trip), so
- * canonical content is unchanged when routed through the component path.
+ * canonical content is unchanged when routed through the component path. Native
+ * Doom's conditional interruption explicitly becomes the standalone copied variant.
  */
 export function recompose(
   comp: AbilityComponents,
   meta: { slot: PlayerAbilityDef['slot']; name: string; cooldown: number },
 ): PlayerAbilityDef {
+  if (comp.effects.some((e) => e.kind === 'surgeStrike' && e.rider?.interrupt))
+    comp = {
+      ...comp,
+      effects: uniqueThoughtBreak(
+        comp.effects.map((e) =>
+          e.kind === 'surgeStrike' && e.rider?.interrupt ? { kind: 'thoughtBreak' } : e,
+        ),
+      ),
+    };
   const d = comp.delivery;
   const def: PlayerAbilityDef = {
     slot: meta.slot,
@@ -586,6 +609,9 @@ export function recompose(
         break;
       case 'whisperRefrain':
         if (d.kind === 'blink') def.whisperRefrain = { ...e.refrain };
+        break;
+      case 'thoughtBreak':
+        def.thoughtBreak = true;
         break;
       case 'surgeStrike':
         def.consumesSurge = true;
@@ -783,6 +809,8 @@ function effectValue(e: EffectComponent, fan: number): number {
             (e.fortune.markBonus ?? 0) * 8) +
         e.fortune.debuffDuration * 2
       );
+    case 'thoughtBreak':
+      return 40; // self-contained, once-per-cast and shared 8s target recovery
     case 'surgeStrike': {
       const r = e.rider;
       return r
@@ -790,7 +818,8 @@ function effectValue(e: EffectComponent, fan: number): number {
             (r.radius ?? 0) * 0.12 +
             (r.pierce ?? 0) * 12 +
             (r.spreadDeg == null ? 0 : Math.max(0, 60 - r.spreadDeg) * 0.2) +
-            Math.max(0, (r.castSlow ?? 1) - 1) * (r.castSlowDuration ?? 3) * 12
+            Math.max(0, (r.castSlow ?? 1) - 1) * (r.castSlowDuration ?? 3) * 12 +
+            (r.interrupt ? 25 : 0)
         : 0;
     }
     case 'prepareCrit':
@@ -1039,8 +1068,10 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return `prepare spell surge for ${s(e.duration)}`;
     case 'fortune':
       return `Fortune ${s(e.fortune.duration)} — next direct hit delays wind-ups ${n((e.fortune.castSlowMult - 1) * 100)}%, weakens damage ${n((1 - e.fortune.damageMult) * 100)}% for ${s(e.fortune.debuffDuration)}${e.fortune.markBonus ? `; next hit from a later cast +${n(e.fortune.markBonus * 100)}% damage` : ''}`;
+    case 'thoughtBreak':
+      return 'one positive direct boss hit can break a wind-up or channel; 8s shared target recovery; no Surge required';
     case 'surgeStrike':
-      return `surge +20% dmg${(e.rider?.halfAngleDeg ?? 0) > 0 ? `, +${n(e.rider!.halfAngleDeg!)}° each side` : ''}${(e.rider?.radius ?? 0) > 0 ? `, +${n(e.rider!.radius!)}u burst radius` : ''}${e.rider?.pierce ? `, pierce ${n(e.rider.pierce)}` : ''}${e.rider?.spreadDeg != null ? `, fan at most ${n(e.rider.spreadDeg)}°` : ''}${e.rider?.castSlow ? `, wind-ups +${n((e.rider.castSlow - 1) * 100)}%` : ''}`;
+      return `surge +20% dmg${(e.rider?.halfAngleDeg ?? 0) > 0 ? `, +${n(e.rider!.halfAngleDeg!)}° each side` : ''}${(e.rider?.radius ?? 0) > 0 ? `, +${n(e.rider!.radius!)}u burst radius` : ''}${e.rider?.pierce ? `, pierce ${n(e.rider.pierce)}` : ''}${e.rider?.spreadDeg != null ? `, fan at most ${n(e.rider.spreadDeg)}°` : ''}${e.rider?.castSlow ? `, wind-ups +${n((e.rider.castSlow - 1) * 100)}%` : ''}${e.rider?.interrupt ? ', one positive direct boss hit can break a wind-up/channel; 8s shared target recovery' : ''}`;
     case 'prepareCrit':
       return `prepare next precision crit for ${s(e.duration)}`;
     case 'preparedRefund':
@@ -1401,6 +1432,8 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
         : e.part === 'chorus'
           ? kind === 'selfBuff' || kind === 'buffAlly'
           : DIRECT_STRIKE.has(kind) || kind === 'groundZone';
+    case 'thoughtBreak':
+      return DIRECT_STRIKE.has(kind);
     case 'surgeStrike':
       if (e.rider?.halfAngleDeg) return kind === 'meleeCone';
       if (e.rider?.radius) return kind === 'pbaoe';
@@ -1586,10 +1619,13 @@ export function synthesizeAbility(
   // 6. Assemble + recombine (fold ally buffs into a zone / retarget orphans).
   // Portable reprise uses a later direct hit; it never invents precision on copied basics.
   let effects = chosen.map((c) =>
-    c.effect.kind === 'shadowReprise'
-      ? { ...c.effect, reprise: { ...c.effect.reprise, prepared: false } }
-      : c.effect,
+    c.effect.kind === 'surgeStrike' && c.effect.rider?.interrupt
+      ? { kind: 'thoughtBreak' as const }
+      : c.effect.kind === 'shadowReprise'
+        ? { ...c.effect, reprise: { ...c.effect.reprise, prepared: false } }
+        : c.effect,
   );
+  effects = uniqueThoughtBreak(effects);
   effects = foldAllyBuffsIntoZone(effects);
   effects = retargetOrphanAllyBuffs(delivery, effects);
   effects = mergeBuffs(effects); // item 5 — one buff per target; honest pricing
@@ -2033,6 +2069,9 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
           debuffDuration: e.fortune.debuffDuration * f,
         },
       };
+    case 'thoughtBreak':
+      // Native conditional riders become this fixed portable effect before pricing.
+      return e;
     case 'surgeStrike': {
       const r = e.rider;
       return r
@@ -2206,6 +2245,7 @@ function addBoonComponents(
         'whisperRefrain',
         'shadowReprise',
         'infernalAperture',
+        'thoughtBreak',
         'steadfast',
         'cleanse',
         'momentum',
@@ -2422,6 +2462,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.shadowReprise ? { ...e, reprise: { ...def.shadowReprise } } : e;
     case 'whisperRefrain':
       return def.whisperRefrain ? { ...e, refrain: { ...def.whisperRefrain } } : e;
+    case 'thoughtBreak':
+      return e;
     case 'surgeStrike':
       return def.surgeRider ? { ...e, rider: { ...def.surgeRider } } : e;
     case 'prepareCrit':
@@ -2676,12 +2718,15 @@ function capEffect(e: EffectComponent): EffectComponent {
             : {}),
         },
       };
+    case 'thoughtBreak':
+      return e;
     case 'surgeStrike': {
       const r = e.rider;
       return r
         ? {
             ...e,
             rider: {
+              ...(r.interrupt ? { interrupt: true as const } : {}),
               ...(r.halfAngleDeg ? { halfAngleDeg: clamp(round1(r.halfAngleDeg), 0, 30) } : {}),
               ...(r.radius ? { radius: clamp(round5(r.radius), 0, 70) } : {}),
               ...(r.pierce ? { pierce: clamp(Math.round(r.pierce), 0, 2) } : {}),

@@ -263,6 +263,13 @@ function describe(
         good: false,
         label: 'Exposed: marking Rogue’s next direct hit deals 25% more',
       };
+    case 'thoughtBreakRecovery':
+      return {
+        glyph: '🧠',
+        color: 0xa7bacd,
+        good: true,
+        label: 'Thought Break recovery: this boss cannot be interrupted again until it expires',
+      };
     case 'grandCadence':
       return {
         glyph: '🔥',

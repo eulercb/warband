@@ -304,6 +304,7 @@ jobs:
           node scripts/run-smoke.mjs smoke:whisper-refrain
           node scripts/run-smoke.mjs smoke:shadow-reprise
           node scripts/run-smoke.mjs smoke:infernal-aperture
+          node scripts/run-smoke.mjs smoke:thought-break
       - name: Upload caster screenshots
         if: always()
         uses: actions/upload-artifact@v4

@@ -1868,6 +1868,7 @@ export class World {
       echoFraction?: number;
       markOnPreparedHit?: number;
       pilotCast?: { spent: boolean };
+      thoughtBreakCast?: import('../core/types').ThoughtBreakCast;
       whisperCast?: import('../core/types').WhisperCast;
       mark?: { bonus: number; cast: { spent: boolean } };
     },
@@ -1880,6 +1881,7 @@ export class World {
     const crit = this.critRng.next() < chance;
     return {
       direct: true,
+      ...(bonus?.thoughtBreakCast ? { thoughtBreak: bonus.thoughtBreakCast } : {}),
       whisperCast: bonus?.whisperCast,
       ...(bonus?.preparedRefund && bonus.refundCast
         ? { refund: { seconds: bonus.preparedRefund, cast: bonus.refundCast } }
@@ -1945,6 +1947,7 @@ export class World {
       echoFraction?: number;
       markOnPreparedHit?: number;
       pilotCast?: { spent: boolean };
+      thoughtBreakCast?: import('../core/types').ThoughtBreakCast;
       whisperCast?: import('../core/types').WhisperCast;
       mark?: { bonus: number; cast: { spent: boolean } };
     },
@@ -1990,6 +1993,46 @@ export class World {
   }
 
   /** Consume before resolving the splash: supplemental damage never recursively releases charges. */
+  /** Cancel a committed action, not a stun that resumes the same telegraph. */
+  onThoughtBreak(
+    source: Player,
+    target: Boss,
+    effective: number,
+    token: import('../core/types').ThoughtBreakCast,
+  ): void {
+    if (
+      this.scene !== null ||
+      source.state !== 'alive' ||
+      source.hp <= 0 ||
+      source.classId !== token.ownerClass ||
+      token.spent ||
+      effective <= 0 ||
+      target.hp <= 0 ||
+      hasBuff(target, 'invuln') ||
+      hasBuff(target, 'thoughtBreakRecovery') ||
+      !['windup', 'channel'].includes(target.action.kind) ||
+      !target.action.abilityId
+    )
+      return;
+    const def = this.defOf(target),
+      ab = abilityById(def, target.action.abilityId);
+    if (!ab) return;
+    token.spent = true;
+    target.cooldowns[ab.id] = Math.max(
+      target.cooldowns[ab.id] ?? 0,
+      this.bossCooldown(target, def, ab.cooldown),
+    );
+    applyBuff(target, makeBuff('thoughtBreakRecovery', 1, 8, 'thoughtBreakRecovery'));
+    this.enterRecover(target);
+    this.events.push({
+      t: 'cast',
+      ability: 'Thought broken',
+      sourceId: target.id,
+      pos: { ...target.pos },
+      side: 'boss',
+    });
+  }
+
   onPlayerDirectHit(
     source: Player,
     target: Boss | Add,

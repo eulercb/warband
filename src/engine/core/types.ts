@@ -203,6 +203,7 @@ export type BuffKind =
   | 'flow' // next marked special is instant and wider/longer
   | 'harmony' // effective healing verse, readied for a Bard chorus
   | 'discord' // disruptive special verse, readied for a Bard chorus
+  | 'thoughtBreakRecovery' // global boss recovery from committed-action cancellation
   | 'spellSurge' // one enhanced special spell
   | 'moonRest' // public remaining recovery before another Moon transformation
   | 'moonForm' // temporary Moon bear shape; abilities and health remain intact
@@ -358,6 +359,11 @@ export interface SpiritCompanionView {
   facing: number;
   attacking: boolean;
   bondReady: boolean;
+}
+
+export interface ThoughtBreakCast {
+  spent: boolean;
+  ownerClass: ClassId;
 }
 
 export interface WhisperCast {
@@ -749,6 +755,7 @@ export interface ProjectileImpact {
 }
 
 export interface Projectile {
+  thoughtBreakCast?: ThoughtBreakCast;
   /** Host-only conduit state; projectiles in transit are omitted from snapshots. */
   apertureTransit?: {
     remaining: number;

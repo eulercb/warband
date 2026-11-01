@@ -74,6 +74,21 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('<HUD>', () => {
+  it('shows Thought Break preparation only on its native consumers and while alive', () => {
+    useStore.setState({ localClass: 'warlock', myCharUpgrades: ['wa_great_old_one_g_b'] });
+    useHudStore.getState().set({
+      active: true,
+      classId: 'warlock',
+      buffs: [{ kind: 'spellSurge', mult: 1.2, remaining: 8 }],
+    });
+    const { container } = render(<HUD />);
+    expect(container.textContent).toContain('Thought Break prepared');
+    act(() => useHudStore.getState().set({ state: 'dead' }));
+    expect(container.textContent).not.toContain('Thought Break prepared');
+    act(() => useHudStore.getState().set({ state: 'alive', buffs: [] }));
+    expect(container.textContent).not.toContain('Thought Break prepared');
+  });
+
   it('shows one aperture action, preserves cooldown and gives earned Return priority', () => {
     const aperture = {
       entry: { x: 0, y: 0 },

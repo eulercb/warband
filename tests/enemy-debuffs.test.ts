@@ -151,7 +151,7 @@ describe('enemy debuff semantics', () => {
   });
 });
 describe('bounded enemy status geometry', () => {
-  it('draws different silhouettes for all harmful categories', () => {
+  it('draws different silhouettes for all public enemy status categories', () => {
     const shapes = Object.keys(ENEMY_DEBUFF_COLORS).map((kind) => {
       const g = new Graphics();
       drawEnemyDebuffSymbol(g, kind as keyof typeof ENEMY_DEBUFF_COLORS, 100, 100, 6, 0xffffff);
@@ -162,7 +162,7 @@ describe('bounded enemy status geometry', () => {
         })),
       );
     });
-    expect(new Set(shapes).size).toBe(9);
+    expect(new Set(shapes).size).toBe(Object.keys(ENEMY_DEBUFF_COLORS).length);
   });
   it('clears after expiry, retains all add badges, clamps at viewport edges and distinguishes ownership', () => {
     const g = new Graphics();
