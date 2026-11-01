@@ -41,6 +41,11 @@ export default function MechanicsReference() {
         Moon claws can also release a prepared close burst, even though they do not trigger other
         direct-hit rewards.
       </p>
+      <p>
+        A prepared poison with at least as much damage per second and duration, and more of either,
+        keeps its original readiness timer when you cast a weaker coating. Equal coatings and
+        short/strong versus long/weak tradeoffs can replace it.
+      </p>
     </details>
   );
 }

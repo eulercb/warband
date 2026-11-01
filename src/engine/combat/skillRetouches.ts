@@ -34,9 +34,23 @@ export function armRetouchEffects(world: World, p: Player, ab: PlayerAbilityDef)
   }
   const coating = resolvedCoating(ab);
   if (coating) {
-    const buff = makeBuff('venomReady', coating.damage, coating.window, `venomReady:${p.classId}`);
-    buff.coating = { damage: coating.damage, duration: coating.duration };
-    applyBuff(p, buff);
+    const source = `venomReady:${p.classId}`;
+    const ready = p.buffs.find(
+      (b) => b.kind === 'venomReady' && b.source === source && b.remaining > 0,
+    );
+    const current = ready?.coating;
+    // A weaker utility must neither downgrade poison nor refresh stronger readiness.
+    // Incomparable short/strong versus long/weak payloads remain deliberate replacements.
+    const dominated =
+      current &&
+      current.damage >= coating.damage &&
+      current.duration >= coating.duration &&
+      (current.damage > coating.damage || current.duration > coating.duration);
+    if (!dominated) {
+      const buff = makeBuff('venomReady', coating.damage, coating.window, source);
+      buff.coating = { damage: coating.damage, duration: coating.duration };
+      applyBuff(p, buff);
+    }
   }
   if (ab.momentumFissure && ab.momentumUsed)
     spawnZone(world, {

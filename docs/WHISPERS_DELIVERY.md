@@ -2,6 +2,10 @@
 
 Rebased onto `acac0ac` (#146), preserving the accepted Mantle afterimage.
 
+Merged as #147 and accepted in owner live testing: the new mechanics felt very
+nice. Next development is the [Rogue/Warlock review](ROGUE_WARLOCK_IDENTITY_REVIEW.md),
+with the subsequent stages maintained in [Development status](DEVELOPMENT_STATUS.md).
+
 The owner authorized implementation after one bounded Sol 6.1 high planning
 review. The same reviewer checked targeting/ownership once; no agent tree or
 model comparison was used. `AGENTS.md` makes this the default for substantial
