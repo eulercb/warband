@@ -45,3 +45,10 @@ following roadmap stages. Record accepted player feedback and distinguish review
 completed, mechanics implemented and identities accepted; do not count unresolved
 identity findings as finished merely because tests pass.
 Keep `docs/DEVELOPMENT_STATUS.md` current as the concise entry point to that sequence.
+
+Keep chat and PR summaries brief, and include direct GitHub links to the fuller
+delivery/review notes and development plan when those documents exist. Use the
+same verified URLs in both places, not plain repository paths. Prefer immutable
+commit permalinks for delivery notes and unmerged plans so links survive branch
+deletion; a living roadmap may link to main once merged. Carry this documentation
+handoff forward without asking the owner to repeat the preference.
