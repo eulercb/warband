@@ -133,6 +133,7 @@ export type EffectComponent =
   | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
   | { kind: 'fortune'; fortune: NonNullable<PlayerAbilityDef['fortune']> }
   | { kind: 'whisperRefrain'; refrain: NonNullable<PlayerAbilityDef['whisperRefrain']> }
+  | { kind: 'infernalAperture'; aperture: NonNullable<PlayerAbilityDef['infernalAperture']> }
   | { kind: 'shadowReprise'; reprise: NonNullable<PlayerAbilityDef['shadowReprise']> }
   | { kind: 'prepareCrit'; duration: number }
   | { kind: 'rebuke'; duration: number; curseBonus?: number; direct?: boolean }
@@ -377,6 +378,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
   if (def.apparition) effects.push({ kind: 'apparition', effect: { ...def.apparition } });
   if (def.fortune) effects.push({ kind: 'fortune', fortune: { ...def.fortune } });
+  if (def.infernalAperture)
+    effects.push({ kind: 'infernalAperture', aperture: { ...def.infernalAperture } });
   if (def.shadowReprise) effects.push({ kind: 'shadowReprise', reprise: { ...def.shadowReprise } });
   if (def.whisperRefrain && def.kind === 'blink')
     effects.push({ kind: 'whisperRefrain', refrain: { ...def.whisperRefrain } });
@@ -575,6 +578,9 @@ export function recompose(
       case 'fortune':
         def.fortune = { ...e.fortune };
         break;
+      case 'infernalAperture':
+        def.infernalAperture = { ...e.aperture };
+        break;
       case 'shadowReprise':
         def.shadowReprise = { ...e.reprise };
         break;
@@ -757,6 +763,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return (1 - e.ward.mult) * e.ward.duration * 24;
     case 'bardSong':
       return e.part === 'chorus' ? 15 : 8;
+    case 'infernalAperture':
+      return (30 * e.aperture.duration) / 6 + e.aperture.emberDamage;
     case 'shadowReprise':
       return (
         ((((e.reprise.prepared ? 30 : 40) * e.reprise.lifetime) / 6) * e.reprise.returnWindow) / 2
@@ -1019,6 +1027,8 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return `other allies within ${n(e.ward.range)}u take ${pct((1 - e.ward.mult) * 100)} less damage for ${s(e.ward.duration)}`;
     case 'bardSong':
       return bardSongText(e.part);
+    case 'infernalAperture':
+      return `fixed firing conduit ${s(e.aperture.duration)}, entrance ${n(e.aperture.reach / 4)}u / exit ${n(e.aperture.reach)}u along aim; aim shots through entrance, press again for one ${n(e.aperture.emberDamage)}-damage ember`;
     case 'shadowReprise':
       return `departure anchor ${s(e.reprise.lifetime)}, later ${e.reprise.prepared ? 'prepared ' : ''}direct hit unlocks ${s(e.reprise.returnWindow)} return; press this skill again within ${delivery === 'blink' ? 'blink range' : `${n(e.reprise.range)}u`}`;
     case 'whisperRefrain':
@@ -1400,6 +1410,8 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return DIRECT_STRIKE.has(kind);
     case 'fortune':
       return kind === 'selfBuff' || kind === 'blink' || kind === 'groundZone';
+    case 'infernalAperture':
+      return true;
     case 'shadowReprise':
       return true; // slotAllowsEffect excludes basic attacks
     case 'whisperRefrain':
@@ -1990,6 +2002,15 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
       return { ...e, ward: { ...e.ward, duration: e.ward.duration * f } };
     case 'bardSong':
       return e;
+    case 'infernalAperture':
+      return {
+        ...e,
+        aperture: {
+          ...e.aperture,
+          duration: e.aperture.duration * f,
+          emberDamage: e.aperture.emberDamage * f,
+        },
+      };
     case 'shadowReprise':
       return {
         ...e,
@@ -2184,6 +2205,7 @@ function addBoonComponents(
         'fortune',
         'whisperRefrain',
         'shadowReprise',
+        'infernalAperture',
         'steadfast',
         'cleanse',
         'momentum',
@@ -2394,6 +2416,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.prepareSurge != null ? { ...e, duration: def.prepareSurge } : e;
     case 'fortune':
       return def.fortune ? { ...e, fortune: { ...def.fortune } } : e;
+    case 'infernalAperture':
+      return def.infernalAperture ? { ...e, aperture: { ...def.infernalAperture } } : e;
     case 'shadowReprise':
       return def.shadowReprise ? { ...e, reprise: { ...def.shadowReprise } } : e;
     case 'whisperRefrain':
@@ -2605,6 +2629,16 @@ function capEffect(e: EffectComponent): EffectComponent {
       };
     case 'bardSong':
       return e;
+    case 'infernalAperture':
+      return {
+        ...e,
+        aperture: {
+          duration: clamp(round1(e.aperture.duration), 1, 6),
+          reach: clamp(round5(e.aperture.reach), 200, 320),
+          radius: clamp(round1(e.aperture.radius), 18, 24),
+          emberDamage: clamp(round1(e.aperture.emberDamage), 1, 22),
+        },
+      };
     case 'shadowReprise':
       return {
         ...e,

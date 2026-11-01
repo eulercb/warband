@@ -1,6 +1,7 @@
 import { whisperCast, spendSecret, hostileAdd } from './whispers';
 import { boundedAbility } from '../content/abilityLimits';
 import { armFortune } from './sorcererLuck';
+import { openInfernalAperture } from './infernalAperture';
 import { recordShadowReprise } from './shadowReprise';
 import { armWhisperRefrain } from './whisperRefrain';
 import { armRetouchEffects } from './skillRetouches';
@@ -445,6 +446,7 @@ export function resolvePlayerAbility(
   if (ab.components) {
     resolveComposedAbility(world, p, ab, moveDir, ab.components, chorus);
     recordShadowReprise(world, p, ab, slot, departure);
+    openInfernalAperture(world, p, ab, slot);
     return;
   }
 
@@ -707,6 +709,7 @@ export function resolvePlayerAbility(
     }
   }
   recordShadowReprise(world, p, ab, slot, departure);
+  openInfernalAperture(world, p, ab, slot);
 }
 
 /** Resolve the closest aimed living foe carrying this player's own curse. */
@@ -1273,6 +1276,7 @@ function spawnPlayerProjectile(
     vel: vscale(dir, o.speed),
     ownerId: p.id,
     side: 'player',
+    spreadOffset: Math.atan2(dir.y, dir.x) - Math.atan2(p.aim.y, p.aim.x),
     damage: o.damage,
     impactRadius: o.impactRadius,
     hitRadius: o.impactRadius > 0 ? 10 : 8,

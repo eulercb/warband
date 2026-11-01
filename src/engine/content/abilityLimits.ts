@@ -26,6 +26,7 @@ export function persistentDuration(a: Omit<PlayerAbilityDef, 'slot'>): number {
   let duration = Math.max(
     a.components ? 0 : (a.zoneDuration ?? 0),
     a.recoveryZone?.duration ?? 0,
+    a.components ? 0 : (a.infernalAperture?.duration ?? 0),
     a.frontGuard?.duration ?? 0,
     a.mirrorImages?.duration ?? 0,
     a.components ? 0 : (a.grantsFlight ?? 0),
@@ -40,6 +41,7 @@ export function persistentDuration(a: Omit<PlayerAbilityDef, 'slot'>): number {
   if (!a.components && (a.buffDamageMult || a.buffDefMult || a.buffMoveMult))
     duration = Math.max(duration, a.buffDuration ?? (a.kind === 'buffAlly' ? 6 : 4));
   for (const e of a.components?.effects ?? []) {
+    if (e.kind === 'infernalAperture') duration = Math.max(duration, e.aperture.duration);
     if (e.kind === 'zone') duration = Math.max(duration, e.zone.duration);
     if (e.kind === 'buff' || e.kind === 'flight') duration = Math.max(duration, e.duration);
   }
@@ -138,6 +140,12 @@ export function boundedAbility<T extends Omit<PlayerAbilityDef, 'slot'>>(
       radius: Math.min(out.closeBurst.radius, short * 0.24),
       range: Math.min(out.closeBurst.range, short * 0.2),
     };
+  if (out.infernalAperture)
+    out.infernalAperture = {
+      ...out.infernalAperture,
+      reach: Math.min(out.infernalAperture.reach, short * 0.4),
+      radius: Math.min(out.infernalAperture.radius, short * 0.04),
+    };
   if (out.whisperRefrain)
     out.whisperRefrain = {
       ...out.whisperRefrain,
@@ -174,13 +182,15 @@ export function boundedAbility<T extends Omit<PlayerAbilityDef, 'slot'>>(
                     ? { ...e, aura: { ...out.paladinAura } }
                     : e.kind === 'warCry' && out.warCry
                       ? { ...e, cry: { ...out.warCry } }
-                      : e.kind === 'whisperRefrain' && out.whisperRefrain
-                        ? { ...e, refrain: { ...out.whisperRefrain } }
-                        : e.kind === 'closeBurst' && out.closeBurst
-                          ? { ...e, burst: { ...out.closeBurst } }
-                          : e.kind === 'recovery' && out.recoveryZone
-                            ? { ...e, grove: { ...out.recoveryZone } }
-                            : e,
+                      : e.kind === 'infernalAperture' && out.infernalAperture
+                        ? { ...e, aperture: { ...out.infernalAperture } }
+                        : e.kind === 'whisperRefrain' && out.whisperRefrain
+                          ? { ...e, refrain: { ...out.whisperRefrain } }
+                          : e.kind === 'closeBurst' && out.closeBurst
+                            ? { ...e, burst: { ...out.closeBurst } }
+                            : e.kind === 'recovery' && out.recoveryZone
+                              ? { ...e, grove: { ...out.recoveryZone } }
+                              : e,
       ),
     };
   return out;

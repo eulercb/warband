@@ -156,6 +156,13 @@ function AbilityIcon({
   mods: { cooldownMult: number; castMult: number; damageMult: number };
 }) {
   const remaining = useHudStore((s) => s.cooldowns[slot] ?? 0);
+  const aperture = useHudStore((s) =>
+    s.infernalAperture?.slot === slot ? s.infernalAperture : undefined,
+  );
+  const ember = !!aperture?.emberReady;
+  const apertureStatus = aperture
+    ? `Conduit ${aperture.remaining.toFixed(1)}s${aperture.blocked ? ` · ${aperture.blocked}` : ''}`
+    : null;
   const reprise = useHudStore((s) =>
     s.shadowReprise?.slot === slot ? s.shadowReprise : undefined,
   );
@@ -164,6 +171,7 @@ function AbilityIcon({
       ? `Return ${reprise.returnRemaining.toFixed(1)}s${reprise.blocked ? ` · ${reprise.blocked}` : ''}`
       : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
     : null;
+  const actionStatus = reprise?.armed ? repriseStatus : (apertureStatus ?? repriseStatus);
   const claimTarget = useHudStore((s) => s.infernalClaimTargets[slot]);
   const alive = useHudStore((s) => s.state === 'alive');
   // Subscribe to bindings so the label updates live when the player rebinds.
@@ -178,10 +186,10 @@ function AbilityIcon({
         ? 'Need target'
         : 'Target ready';
   const ready =
-    (reprise?.armed && !reprise.blocked) ||
+    (reprise?.armed ? !reprise.blocked : ember && !aperture?.blocked) ||
     (!cooling && (claimTarget === undefined || (alive && claimTarget !== null)));
   const label = slotLabel(slot, source);
-  const name = reprise?.armed ? 'Return' : (displayName ?? def.name);
+  const name = reprise?.armed ? 'Return' : ember ? 'Ember' : (displayName ?? def.name);
   // Concrete effect numbers on hover/focus (item 19), reflecting the hero's
   // current upgraded values since `def` comes from the resolved ability table.
   const tip = `${name} — ${describeAbility({ ...def, slot }, mods)}${claimStatus ? ` · ${claimStatus}` : ''}`;
@@ -199,7 +207,7 @@ function AbilityIcon({
         {label}
       </div>
       <div className="hud-ability-name">{name}</div>
-      {repriseStatus && <div className="hud-claim-status">{repriseStatus}</div>}
+      {actionStatus && <div className="hud-claim-status">{actionStatus}</div>}
       {!cooling && claimStatus && (
         <div className={`hud-claim-status${claimTarget === null ? ' blocked' : ''}`}>
           {claimStatus}

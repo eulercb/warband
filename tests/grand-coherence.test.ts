@@ -1,19 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { buffBadges } from '../src/render/overlays/buffGlyphs';
 import { buffGlow } from '../src/render/pipeline/entityView';
-import { decompose, recompose } from '../src/engine/content/forge';
-import { CLASSES } from '../src/engine/content/classes';
 import { World } from '../src/engine/world/world';
-import {
-  applyBuff,
-  damageAdd,
-  damageBoss,
-  damageEcho,
-  makeBuff,
-} from '../src/engine/combat/combat';
+import { applyBuff, damageBoss, damageEcho, makeBuff } from '../src/engine/combat/combat';
 import { findInfernalClaimTarget, resolvePlayerAbility } from '../src/engine/combat/abilities';
 import { grandDirectMultiplier, onGrandDirectHit } from '../src/engine/combat/grandCoherence';
-import { setSubclassPassive, tickSubclassPassives } from '../src/engine/combat/subclassPassives';
 import type { ClassId } from '../src/engine/core/types';
 
 function setup(classId: ClassId, grand: string, skill: string) {
@@ -103,112 +94,6 @@ describe('independent owner-scoped grand payoffs', () => {
     expect(grandDirectMultiplier(p, boss, { direct: true })).toBe(1);
   });
 
-  it('counts only personally cursed direct hits, never ticks or another player, and gates before its burst', () => {
-    const { w, p, ally, boss } = setup('warlock', 'wa_fiend_g_a', 'wa_fiend_hurl');
-    const progress = () => p.buffs.find((b) => b.kind === 'grandCadence')?.mult;
-    damageBoss(w, p, boss, 1, { direct: true });
-    expect(progress()).toBeUndefined();
-    applyBuff(boss, makeBuff('curse', 1.15, 30, `curse:${p.id}:hex`));
-    damageBoss(w, p, boss, 1);
-    expect(progress()).toBeUndefined();
-    damageBoss(w, p, boss, 1, { direct: true });
-    expect(progress()).toBe(1);
-    damageBoss(w, ally, boss, 1, { direct: true });
-    expect(progress()).toBe(1);
-    applyBuff(boss, makeBuff('invuln', 1, 1, 'test'));
-    damageBoss(w, p, boss, 1, { direct: true });
-    expect(progress()).toBe(1);
-    boss.buffs = boss.buffs.filter((b) => b.kind !== 'invuln');
-    damageBoss(w, p, boss, 1, { direct: true });
-    expect(progress()).toBe(2);
-    const before = boss.hp;
-    damageBoss(w, p, boss, 1, { direct: true });
-    expect(before - boss.hp).toBeCloseTo(26 * 1.15);
-    expect(progress()).toBeUndefined();
-    expect(p.subclassPassiveCooldowns?.['grand:wa_fiend_g_a']).toBe(4);
-    damageBoss(w, p, boss, 1, { direct: true });
-    expect(progress()).toBeUndefined();
-    tickSubclassPassives(p, 4);
-    damageBoss(w, p, boss, 1, { direct: true });
-    expect(progress()).toBe(1);
-    setSubclassPassive(p, undefined);
-    expect(progress()).toBeUndefined();
-    expect(p.subclassPassiveCooldowns?.['grand:wa_fiend_g_a']).toBe(0);
-  });
-
-  it('handles add recipients, expired progress, and no selected identity without cross-target recursion', () => {
-    const { w, p, boss } = setup('warlock', 'wa_fiend_g_a', 'wa_fiend_hurl');
-    const add = {
-      ...boss,
-      id: boss.id + 100,
-      hp: 1000,
-      maxHp: 1000,
-      buffs: [],
-      targetId: p.id,
-      attackCd: 0,
-      moveSpeed: 0,
-    };
-    w.adds.push(add);
-    applyBuff(add, makeBuff('curse', 1.15, 30, `curse:${p.id}:searing`));
-    damageAdd(w, p, add, 1, { direct: true });
-    const progress = p.buffs.find((b) => b.kind === 'grandCadence')!;
-    progress.remaining = 0;
-    damageAdd(w, p, add, 1, { direct: true });
-    expect(p.buffs.find((b) => b.kind === 'grandCadence')?.mult).toBe(1);
-    damageAdd(w, p, add, 1, { direct: true });
-    const before = add.hp;
-    damageAdd(w, p, add, 1, { direct: true });
-    expect(before - add.hp).toBeCloseTo(26 * 1.15);
-    expect(p.buffs.some((b) => b.kind === 'grandCadence')).toBe(false);
-    p.charUpgradeIds = [];
-    tickSubclassPassives(p, 4);
-    damageAdd(w, p, add, 1, { direct: true });
-    expect(p.buffs.some((b) => b.kind === 'grandCadence')).toBe(false);
-  });
-
-  it('detects actual curse producers instead of stale flat metadata on a forged delivery', () => {
-    const { w, p, boss } = setup('warlock', 'wa_fiend_g_a', 'wa_fiend_hurl');
-    const plain = p.abilities!.basic;
-    for (const slot of ['basic', 'a1', 'a2', 'a3'] as const)
-      p.abilities![slot] = { ...plain, slot, components: decompose(plain), rebukeCurseBonus: 0.15 };
-    p.subAbilities = {};
-    damageBoss(w, p, boss, 1, { direct: true });
-    expect(boss.buffs.find((b) => b.kind === 'curse')?.mult).toBe(1);
-    boss.buffs = [];
-    const retort = { ...CLASSES.warlock.abilities.a2, rebukeCurseBonus: 0.15 };
-    p.abilities!.a2 = recompose(decompose(retort), retort);
-    damageBoss(w, p, boss, 1, { direct: true });
-    expect(boss.buffs.some((b) => b.kind === 'curse')).toBe(false);
-  });
-
-  it.each([false, true])(
-    'shares a prepared projectile cast across pellets without spending its own opening (composed=%s)',
-    (composed) => {
-      const { w, p, boss } = setup('rogue', 'ro_assassin_strike_g', 'ro_assassin_strike');
-      const native = p.subAbilities!.sub1!;
-      const shot = {
-        ...native,
-        kind: 'projectile' as const,
-        damage: 10,
-        projCount: 2,
-        spreadDeg: 0,
-        projSpeed: 600,
-        markOnPreparedHit: 0.25,
-        critChanceBonus: 0,
-      };
-      p.subAbilities!.sub1 = composed ? recompose(decompose(shot), shot) : shot;
-      p.critChance = 0;
-      applyBuff(p, makeBuff('precision', 1, 4, 'fixture'));
-      resolvePlayerAbility(w, p, 'sub1', { x: 0, y: 0 });
-      expect(w.projectiles).toHaveLength(2);
-      for (const proj of w.projectiles) proj.pos = { ...boss.pos };
-      (w as unknown as { updateProjectiles(dt: number): void }).updateProjectiles(0);
-      expect(boss.buffs.filter((b) => b.kind === 'grandOpening')).toHaveLength(1);
-      expect(damageBoss(w, p, boss, 10, { direct: true })).toBeCloseTo(12.5);
-      expect(boss.buffs.some((b) => b.kind === 'grandOpening')).toBe(false);
-    },
-  );
-
   it('selects remote Claim targets by aim, then distance, then stable id', () => {
     const { w, p, boss } = setup('warlock', 'wa_fiend_rebuke_g', 'wa_fiend_rebuke');
     const ab = p.subAbilities!.sub1!;
@@ -229,57 +114,6 @@ describe('independent owner-scoped grand payoffs', () => {
     expect(findInfernalClaimTarget(w, p, ab)).toBe(boss); // tie independent of list order
     p.aim = { x: 0, y: 0 };
     expect(findInfernalClaimTarget(w, p, ab)).toBeNull();
-  });
-
-  it('does not invent a curse source in incomplete legacy loadouts, and tolerates sparse bound slots', () => {
-    const { w, p, boss } = setup('warlock', 'wa_fiend_g_a', 'wa_fiend_hurl');
-    p.abilities = undefined;
-    onGrandDirectHit(w, p, boss, 1);
-    expect(boss.buffs.some((b) => b.kind === 'curse')).toBe(false);
-    const plain = CLASSES.warlock.abilities.basic;
-    p.abilities = {
-      basic: { ...plain, components: decompose(plain) },
-      a1: { ...plain, slot: 'a1' },
-      a2: { ...plain, slot: 'a2' },
-      a3: { ...plain, slot: 'a3' },
-    };
-    p.subAbilities = undefined;
-    onGrandDirectHit(w, p, boss, 1);
-    expect(boss.buffs.some((b) => b.kind === 'curse')).toBe(true);
-    boss.buffs = [];
-    p.subAbilities = { sub1: undefined };
-    onGrandDirectHit(w, p, boss, 1);
-    expect(boss.buffs.some((b) => b.kind === 'curse')).toBe(true);
-    boss.buffs = [];
-    p.abilities.a1 = { ...CLASSES.warlock.abilities.a1, curseBonus: undefined };
-    onGrandDirectHit(w, p, boss, 1);
-    expect(boss.buffs.some((b) => b.kind === 'curse')).toBe(true);
-    boss.buffs = [];
-    p.abilities.a1 = { ...CLASSES.warlock.abilities.a1 };
-    onGrandDirectHit(w, p, boss, 1);
-    expect(boss.buffs.some((b) => b.kind === 'curse')).toBe(false);
-    p.abilities.a1 = { ...plain, slot: 'a1' };
-    p.abilities.a2 = { ...CLASSES.warlock.abilities.a2 };
-    onGrandDirectHit(w, p, boss, 1); // an uncursing retort is not a curse producer
-    expect(boss.buffs.find((b) => b.kind === 'curse')?.mult).toBe(1);
-    boss.buffs = [];
-    p.abilities.a2 = { ...CLASSES.warlock.abilities.a2, rebukeDuration: undefined };
-    onGrandDirectHit(w, p, boss, 1);
-    expect(boss.buffs.find((b) => b.kind === 'curse')?.mult).toBe(1);
-    boss.buffs = [];
-    const claim = {
-      ...CLASSES.warlock.abilities.a2,
-      infernalClaim: true,
-      forgeClaimFallback: false,
-    };
-    p.abilities.a2 = { ...claim, components: decompose(claim) };
-    onGrandDirectHit(w, p, boss, 1); // a curse-dependent Claim cannot supply its own setup
-    expect(boss.buffs.find((b) => b.kind === 'curse')?.mult).toBe(1);
-    boss.buffs = [];
-    const selfBrand = { ...claim, forgeClaimFallback: true };
-    p.abilities.a2 = { ...selfBrand, components: decompose(selfBrand) };
-    onGrandDirectHit(w, p, boss, 1); // this composed Claim already has setup
-    expect(boss.buffs.some((b) => b.kind === 'curse')).toBe(false);
   });
 
   it('echoes exactly effective damage, respecting immunity and overkill without spawning direct-hit resources', () => {

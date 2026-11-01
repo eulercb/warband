@@ -123,10 +123,7 @@ describe('Rogue and Warlock authored grands', () => {
           for (const identity of [a, b]) {
             const changed = hero(classId, [identity.id], [first]).p;
             expect(changed.abilities, `${identity.id}/${first}`).not.toEqual(baseline.abilities);
-            if (
-              identity.id !== 'wa_fiend_g_a' ||
-              (first !== 'wa_fiend_pit' && first !== 'wa_fiend_rebuke')
-            )
+            if (identity.id !== 'wa_fiend_g_a')
               expect(changed.subAbilities!.sub1, `${identity.id}/${first}`).not.toEqual(
                 baseline.subAbilities!.sub1,
               );

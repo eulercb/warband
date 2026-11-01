@@ -3236,16 +3236,14 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
   pilotIdentity(
     'wa_fiend',
     'wa_fiend_g_a',
-    'Hellfire Ascendant',
+    'Infernal Aperture',
     '🔥',
-    'Every third positive direct hit on your cursed foe ignites 25 hellfire, once per 4s; a forged kit without a curse skill primes a neutral personal mark on its first hit; Blessing grants movement',
+    'Blessing opens a fixed 6s firing conduit, 80u entrance to 320u exit along your aim. Aim shots through its entrance; press Blessing again for one 22-damage ember',
     (a) => {
       a.a3.buffMoveMult = Math.max(a.a3.buffMoveMult ?? 1, 1.2);
+      a.a3.infernalAperture = { duration: 6, reach: 320, radius: 24, emberDamage: 22 };
     },
-    (ab) => {
-      if (ab.kind === 'projectile') ab.castSlow = Math.max(ab.castSlow ?? 1, 1.25);
-      if (ab.absorption) ab.absorption = { ...ab.absorption, amount: ab.absorption.amount + 12 };
-    },
+    () => {},
   ),
   pilotIdentity(
     'wa_fiend',
@@ -6481,9 +6479,11 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       ...base,
       name: blend(fused.name),
       desc:
-        base.id === 'ro_assassin_g_a'
-          ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
-          : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
+        base.id === 'wa_fiend_g_a'
+          ? `${getClass('warlock').abilities.a3.name} opens a fixed firing conduit along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
+          : base.id === 'ro_assassin_g_a'
+            ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
+            : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
     };
   }
 
