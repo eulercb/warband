@@ -1,3 +1,4 @@
+import { clipBulwarkStep } from './apertureMovement';
 import { whisperCast, spendSecret, hostileAdd } from './whispers';
 import { boundedAbility } from '../content/abilityLimits';
 import { armFortune } from './sorcererLuck';
@@ -1503,10 +1504,16 @@ export function stepShove(
   const s = target.shove;
   if (!s) return;
   const t = Math.min(dt, s.remaining);
-  target.pos = clampToArena(world, {
-    x: target.pos.x + s.vx * t,
-    y: target.pos.y + s.vy * t,
-  });
+  const to = { x: target.pos.x + s.vx * t, y: target.pos.y + s.vy * t };
+  const hostile = [...world.aliveBosses(), ...world.adds.filter(hostileAdd)].find(
+    (e) => e === target,
+  );
+  const clipped = hostile && clipBulwarkStep(world, hostile, to);
+  target.pos = clampToArena(world, clipped ? clipped.pos : to);
+  if (clipped?.stopped) {
+    target.shove = null;
+    return;
+  }
   s.remaining -= t;
   if (s.remaining <= 1e-6) target.shove = null;
 }
@@ -1641,6 +1648,7 @@ export function resolveBossAbility(
       // path damage and its relocation end there), while still trampling low rubble.
       const chargeStop = firstObstacleStop(world, from, to, boss.radius, true);
       if (chargeStop) to = chargeStop;
+      to = clipBulwarkStep(world, boss, to).pos;
       const halfWidth = (ab.width ?? 45) + boss.radius * 0.5;
       for (const p of alivePlayers) {
         if (pointInSegment(p.pos, from, to, halfWidth, p.radius)) {

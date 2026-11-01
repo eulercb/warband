@@ -1,5 +1,9 @@
 # Fiend: Infernal Aperture
 
+Current placement and open-arena cover behavior is documented in the
+[follow-up](APERTURE_COVER_FOLLOWUP.md). The initial prototype below is historical;
+its blocked-placement rejection was replaced after owner live testing.
+
 Implemented playable prototype, awaiting owner live testing. Shadow Reprise
 (#149) is merged and accepted: the owner liked the addition and reports Rogue
 working well for now. Further Rogue redesign is deferred unless new evidence

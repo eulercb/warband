@@ -141,6 +141,37 @@ try {
     );
     assert.deepEqual(geom.entry, { x: 580, y: 400 });
     assert.deepEqual(geom.exit, { x: 820, y: 400 });
+    assert.deepEqual(geom.bulwark, { pos: { x: 700, y: 400 }, radius: 48 });
+    const sheltered = await page.evaluate(() => {
+      const f = window.fixture,
+        c = f.p.infernalAperture.bulwark;
+      const from = {
+        x: f.p.pos.x + (c.pos.x - f.p.pos.x) * 3,
+        y: f.p.pos.y + (c.pos.y - f.p.pos.y) * 3,
+      };
+      const dx = f.p.pos.x - from.x,
+        dy = f.p.pos.y - from.y,
+        d = Math.hypot(dx, dy),
+        hp = f.p.hp;
+      f.w.projectiles.push({
+        id: f.w.allocId(),
+        kind: 'shadowBolt',
+        pos: from,
+        vel: { x: (dx / d) * 660, y: (dy / d) * 660 },
+        ownerId: f.w.boss.id,
+        side: 'boss',
+        damage: 30,
+        hitRadius: 8,
+        impactRadius: 0,
+        lifetime: 3,
+        rangeLeft: 820,
+      });
+      f.w.updateProjectiles(d / 660);
+      f.publish();
+      return { hp: f.p.hp, before: hp, remaining: f.w.projectiles.length };
+    });
+    assert.equal(sheltered.hp, sheltered.before);
+    assert.equal(sheltered.remaining, 0);
     const tile = page
       .locator('.hud-ability')
       .filter({ has: page.locator('.hud-ability-name', { hasText: 'Ember' }) });
@@ -198,9 +229,26 @@ try {
     assert.ok(result.damage > 0, JSON.stringify(result));
     assert.equal(result.emberReady, false);
     assert.ok(result.cooldown > 0);
+    const repaired = await page.evaluate(async () => {
+      const f = window.fixture;
+      f.p.pos = { x: 500, y: 400 };
+      f.p.aim = { x: 1, y: 0 };
+      f.p.cooldowns.a3 = 0;
+      f.w.obstacles = [{ id: 999, pos: { x: 820, y: 400 }, radius: 15 }];
+      f.w.tryUseAbility(f.p, 'a3', { x: 0, y: 0 }, true);
+      const exit = { ...f.p.infernalAperture.exit };
+      const { resolvePlayerAbility } = await import('/src/engine/combat/abilities.ts');
+      const hp = f.w.boss.hp;
+      resolvePlayerAbility(f.w, f.p, 'basic', { x: 0, y: 0 });
+      f.w.updateProjectiles(1);
+      f.publish();
+      return { exit, damage: hp - f.w.boss.hp };
+    });
+    assert.equal(repaired.exit.x, 868);
+    assert.ok(repaired.damage > 0, JSON.stringify(repaired));
     assert.deepEqual(errors, []);
     console.log(
-      `PASS ${width}px: intentional aimed entry, finite hidden transit, exit hit, one fresh ember and preserved cooldown`,
+      `PASS ${width}px: open-arena cover absorbs enemy fire, routed shot hits, blocked exit repairs and keeps firing`,
     );
     await page.close();
   }

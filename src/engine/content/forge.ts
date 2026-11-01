@@ -764,7 +764,7 @@ function effectValue(e: EffectComponent, fan: number): number {
     case 'bardSong':
       return e.part === 'chorus' ? 15 : 8;
     case 'infernalAperture':
-      return (30 * e.aperture.duration) / 6 + e.aperture.emberDamage;
+      return (54 * e.aperture.duration) / 6 + e.aperture.emberDamage;
     case 'shadowReprise':
       return (
         ((((e.reprise.prepared ? 30 : 40) * e.reprise.lifetime) / 6) * e.reprise.returnWindow) / 2
@@ -1028,7 +1028,7 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
     case 'bardSong':
       return bardSongText(e.part);
     case 'infernalAperture':
-      return `fixed firing conduit ${s(e.aperture.duration)}, entrance ${n(e.aperture.reach / 4)}u / exit ${n(e.aperture.reach)}u along aim; aim shots through entrance, press again for one ${n(e.aperture.emberDamage)}-damage ember`;
+      return `fixed firing conduit ${s(e.aperture.duration)}, entrance ${n(e.aperture.reach / 4)}u / exit ${n(e.aperture.reach)}u along aim; nearby mouths adjust around cover; creates 96u-wide temporary cover when space permits, blocking shots and hostile approach; aim through entrance, press again for one ${n(e.aperture.emberDamage)}-damage ember`;
     case 'shadowReprise':
       return `departure anchor ${s(e.reprise.lifetime)}, later ${e.reprise.prepared ? 'prepared ' : ''}direct hit unlocks ${s(e.reprise.returnWindow)} return; press this skill again within ${delivery === 'blink' ? 'blink range' : `${n(e.reprise.range)}u`}`;
     case 'whisperRefrain':

@@ -1,3 +1,4 @@
+import { placeAperture, type CoverCircle } from './aperturePlacement';
 /** Fixed firing geometry. Conduits move existing shots, never clone or remotely cast them. */
 import type { ExtSlot, Player, PlayerView, Projectile, Vec2 } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
@@ -46,27 +47,24 @@ export function openInfernalAperture(
   )
     return;
   const reach = Math.min(a.reach, Math.min(w.arena.w, w.arena.h) * 0.4);
-  const entry = wrapPos({ x: p.pos.x + (p.aim.x * reach) / 4, y: p.pos.y + (p.aim.y * reach) / 4 });
-  const exit = wrapPos({ x: p.pos.x + p.aim.x * reach, y: p.pos.y + p.aim.y * reach });
-  if (
-    w.obstacles.some(
-      (o) => dist(o.pos, entry) <= o.radius + a.radius || dist(o.pos, exit) <= o.radius + a.radius,
-    )
-  ) {
-    delete p.infernalAperture;
-    w.events.push({
-      t: 'cast',
-      ability: 'Aperture blocked by cover',
-      sourceId: p.id,
-      pos: { ...p.pos },
-      side: 'player',
-      slot,
-    });
-    return;
-  }
+  const mouths = w.players.flatMap((other) => {
+    if (other === p || !active(w, other) || other.infernalAperture!.conduitReady === false)
+      return [];
+    const gate = other.infernalAperture!;
+    return [
+      { pos: gate.entry, radius: gate.radius },
+      { pos: gate.exit, radius: gate.radius },
+    ];
+  });
+  const placed = placeAperture(w, p, reach, a.radius, apertureBulwarks(w), mouths);
+  if (!placed && active(w, p)) return; // a failed refresh never erases a usable lane
   p.infernalAperture = {
-    entry: wrapPos({ x: p.pos.x + (p.aim.x * reach) / 4, y: p.pos.y + (p.aim.y * reach) / 4 }),
-    exit: wrapPos({ x: p.pos.x + p.aim.x * reach, y: p.pos.y + p.aim.y * reach }),
+    conduitReady: !!placed,
+    bulwark: placed?.bulwark,
+    entry:
+      placed?.entry ??
+      wrapPos({ x: p.pos.x + (p.aim.x * reach) / 4, y: p.pos.y + (p.aim.y * reach) / 4 }),
+    exit: placed?.exit ?? wrapPos({ x: p.pos.x + p.aim.x * reach, y: p.pos.y + p.aim.y * reach }),
     direction: { ...p.aim },
     remaining: Math.min(6, a.duration),
     radius: Math.min(24, a.radius),
@@ -78,6 +76,24 @@ export function openInfernalAperture(
     source,
     setupCast: ab.pilotCast,
   };
+}
+export function apertureBulwarks(w: World): CoverCircle[] {
+  return w.players.flatMap((p) =>
+    active(w, p) && p.infernalAperture?.bulwark
+      ? [{ ...p.infernalAperture.bulwark, ownerId: p.id }]
+      : [],
+  );
+}
+export function dissolveBulwark(w: World, ownerId: number): void {
+  const p = w.players.find((p) => p.id === ownerId);
+  if (p?.infernalAperture) delete p.infernalAperture.bulwark;
+}
+/** Hostile landings/spawns fail open rather than teleporting bodies out of cover. */
+export function dissolveOverlappedBulwarks(w: World): void {
+  const enemies = [...w.aliveBosses(), ...w.adds.filter(hostileAdd)];
+  for (const c of apertureBulwarks(w))
+    if (enemies.some((e) => dist(e.pos, c.pos) < e.radius + c.radius - 1e-5))
+      dissolveBulwark(w, c.ownerId);
 }
 function transitValid(w: World, p: Projectile): boolean {
   const tr = p.apertureTransit!;
@@ -111,6 +127,8 @@ export function apertureView(w: World, p: Player): PlayerView['infernalAperture'
   if (!active(w, p)) return undefined;
   const a = p.infernalAperture!;
   return {
+    conduitReady: a.conduitReady !== false,
+    bulwark: a.bulwark && { pos: { ...a.bulwark.pos }, radius: a.bulwark.radius },
     entry: { ...a.entry },
     exit: { ...a.exit },
     direction: { ...a.direction },
@@ -188,7 +206,7 @@ function entryTime(
   from: Vec2,
   to: Vec2,
 ): number | null {
-  if (p.apertureUsed || p.pilotCast === a.setupCast) return null;
+  if (a.conduitReady === false || p.apertureUsed || p.pilotCast === a.setupCast) return null;
   const c = nearestCopy(a.entry, from),
     v = { x: to.x - from.x, y: to.y - from.y },
     u = a.direction;
@@ -254,7 +272,7 @@ export function stepApertureProjectile(
       at = gate;
       event = 'gate';
     }
-    for (const o of w.obstacles) {
+    for (const o of [...w.obstacles, ...apertureBulwarks(w)]) {
       const t = circleEntry(from, to, o.pos, o.radius + p.hitRadius);
       if (t !== null && t <= at) {
         at = t;

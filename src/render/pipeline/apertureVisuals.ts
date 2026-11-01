@@ -8,9 +8,26 @@ export function drawInfernalAperture(
   exit: Vec2,
   scale: number,
   local: boolean,
+  bulwarkScreen?: Vec2,
 ): void {
+  if (a.conduitReady === false) return;
   const color = a.blocked ? 0xd7a081 : 0xffa85b,
     alpha = (local ? 0.85 : 0.4) * Math.min(1, a.remaining);
+  if (a.bulwark && bulwarkScreen) {
+    const r = a.bulwark.radius * scale,
+      { x, y } = bulwarkScreen;
+    // Honest circular footprint, a low infernal barricade rather than a damage field.
+    g.circle(x, y, r)
+      .fill({ color: 0x342238, alpha: alpha * 0.8 })
+      .stroke({ color, width: 3, alpha });
+    g.circle(x, y, r * 0.82).stroke({ color: 0xf9bf73, width: 1, alpha: alpha * 0.6 });
+    for (let i = 0; i < 8; i++) {
+      const t = (i * Math.PI) / 4;
+      g.moveTo(x + Math.cos(t) * r * 0.8, y + Math.sin(t) * r * 0.8)
+        .lineTo(x + Math.cos(t) * r, y + Math.sin(t) * r)
+        .stroke({ color, width: 3, alpha });
+    }
+  }
   const u = a.direction,
     r = a.radius * scale;
   for (const p of [entry, exit]) {

@@ -12109,7 +12109,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Blessing opens a fixed 6s firing conduit, 80u entrance to 320u exit along your aim. Aim shots through its entrance; press Blessing again for one 22-damage ember",
+      "description": "Blessing opens a fixed 6s firing conduit, 80u entrance to 320u exit along your aim. Mouths adjust near obstacles; creates temporary cover between them when space permits. Aim through its entrance; press Blessing again for one 22-damage ember",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,

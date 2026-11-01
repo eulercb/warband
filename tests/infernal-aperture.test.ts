@@ -172,16 +172,14 @@ describe('Infernal Aperture setup and fresh action', () => {
     use(w, p, 'a3');
     expect(w.projectiles).toHaveLength(1);
   });
-  it('rejects blocked endpoints without moving them or refunding the ordinary cast', () => {
+  it('adjusts a blocked exit beyond nearby cover without refunding the ordinary cast', () => {
     const { w, p } = setup();
     w.obstacles = [{ id: 900, pos: { x: 820, y: 400 }, radius: 15 }];
     use(w, p, 'a3');
-    expect(p.infernalAperture).toBeUndefined();
+    expect(p.infernalAperture?.conduitReady).toBe(true);
+    expect(p.infernalAperture!.exit.x).toBe(868);
     expect(p.cooldowns.a3).toBeGreaterThan(0);
     expect(p.buffs.some((b) => b.kind === 'damageDealt')).toBe(true);
-    expect(w.events.some((e) => e.t === 'cast' && e.ability.includes('blocked by cover'))).toBe(
-      true,
-    );
   });
   it.each(['down', 'hp', 'class', 'source', 'contract', 'room', 'expiry'] as const)(
     'clears unavailable setup on %s',
@@ -206,6 +204,8 @@ describe('Infernal Aperture setup and fresh action', () => {
     const a = w.serialize().players[0].infernalAperture!;
     expect(Object.keys(a).sort()).toEqual([
       'blocked',
+      'bulwark',
+      'conduitReady',
       'direction',
       'emberReady',
       'entry',
