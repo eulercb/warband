@@ -374,6 +374,7 @@ describe('Elder Mind forethought', () => {
       }
     }
     expect(found).toBeDefined();
+    if (!found) throw new Error('No Forethought synthesis output');
     expect(resolvedForethought(found)).toEqual({ requiresCurse: false });
     const basic = synthesizeAbility(5, 'basic', 'basic', [
       { name: 'Mind', classId: 'warlock', className: 'Warlock', slot: 'basic', def: native },

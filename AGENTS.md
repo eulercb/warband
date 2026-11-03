@@ -33,6 +33,9 @@ cost. Present a short checkpoint only for unresolved material gameplay choices.
 When the review supports a coherent plan and remaining choices are routine, the
 owner authorizes proceeding to implementation, validation and a reviewable result.
 
+Run the final TypeScript check after all code and test edits, including lint
+fixes. Passing Vitest or ESLint does not establish TypeScript validity.
+
 After pushing a fix, stop once local verification is complete and only GitHub
 checks remain. Do not poll/watch CI or hold the conversation open unless the
 owner explicitly requests monitoring. The existing GitHub CI-completion action
