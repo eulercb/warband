@@ -589,6 +589,8 @@ export interface BossAction {
 }
 
 export interface Boss {
+  /** Host-only read: one shared intention, never an early target/aim lock. */
+  forethought?: { ownerId: EntityId; ownerClass: ClassId; remaining: number; abilityId?: string };
   perception?: EnemyPerception;
   perceptionRecovery?: number;
   venomExitGates?: Map<number, number>;
@@ -756,6 +758,7 @@ export interface ProjectileImpact {
 
 export interface Projectile {
   thoughtBreakCast?: ThoughtBreakCast;
+  forethoughtHit?: { ownerClass: ClassId; requiresCurse: boolean };
   /** Host-only conduit state; projectiles in transit are omitted from snapshots. */
   apertureTransit?: {
     remaining: number;
@@ -1411,6 +1414,7 @@ export interface PlayerView {
 }
 
 export interface BossView {
+  forethought?: { remaining: number; abilityId?: string };
   taunt?: { targetId: EntityId; remaining: number };
   id: EntityId;
   monsterId: MonsterId;

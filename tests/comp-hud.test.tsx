@@ -307,6 +307,7 @@ describe('<HUD>', () => {
     const boss: HudBoss = {
       id: 1,
       name: 'Dragon',
+      forethought: 'Next: Ground Slam · nearby burst',
       hp: 100,
       maxHp: 300,
       phase: 'enraged',
@@ -322,6 +323,9 @@ describe('<HUD>', () => {
 
     const label = container.querySelector('.hud-bossbar-label');
     expect(label?.textContent).toContain('Frost Dragon');
+    expect(container.querySelector('.hud-forethought')?.textContent).toBe(
+      'Next: Ground Slam · nearby burst',
+    );
     expect(container.querySelector('.hud-bossbar-num')?.textContent).toBe('100 / 300');
     expect(screen.getByText('ENRAGED')).toBeTruthy();
     expect(container.querySelector('.hud-run-tag')?.textContent).toBe('Boss 1/3');

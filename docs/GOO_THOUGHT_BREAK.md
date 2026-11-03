@@ -1,5 +1,9 @@
 # Great Old One: Whispered Doom / Thought Break
 
+Follow-up: #152 is merged and accepted in owner testing. The later
+[Elder Mind / Forethought review](ELDER_MIND_FORETHOUGHT.md) resolves the open
+Elder Mind question recorded in this historical delivery.
+
 Implemented for owner playtesting. Aperture's placement/cover follow-up (#151)
 is merged and accepted: the owner reports Aperture feels good now. This delivery
 repairs Whispered Doom's native Surge purpose and Mind Blast grand's redundant

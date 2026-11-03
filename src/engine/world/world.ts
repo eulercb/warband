@@ -1,3 +1,9 @@
+import {
+  armForethought,
+  tickForethought,
+  forethoughtView,
+  forethoughtLegal,
+} from '../combat/forethought';
 import { walkAroundBulwarks, clipBulwarkStep } from '../combat/apertureMovement';
 import {
   onWhisperHit,
@@ -1869,6 +1875,7 @@ export class World {
       markOnPreparedHit?: number;
       pilotCast?: { spent: boolean };
       thoughtBreakCast?: import('../core/types').ThoughtBreakCast;
+      forethoughtHit?: import('../content/classes').PlayerAbilityDef['forethoughtHit'];
       whisperCast?: import('../core/types').WhisperCast;
       mark?: { bonus: number; cast: { spent: boolean } };
     },
@@ -1881,6 +1888,7 @@ export class World {
     const crit = this.critRng.next() < chance;
     return {
       direct: true,
+      ...(bonus?.forethoughtHit ? { forethought: bonus.forethoughtHit } : {}),
       ...(bonus?.thoughtBreakCast ? { thoughtBreak: bonus.thoughtBreakCast } : {}),
       whisperCast: bonus?.whisperCast,
       ...(bonus?.preparedRefund && bonus.refundCast
@@ -1948,6 +1956,7 @@ export class World {
       markOnPreparedHit?: number;
       pilotCast?: { spent: boolean };
       thoughtBreakCast?: import('../core/types').ThoughtBreakCast;
+      forethoughtHit?: import('../content/classes').PlayerAbilityDef['forethoughtHit'];
       whisperCast?: import('../core/types').WhisperCast;
       mark?: { bonus: number; cast: { spent: boolean } };
     },
@@ -1992,7 +2001,11 @@ export class World {
       );
   }
 
-  /** Consume before resolving the splash: supplemental damage never recursively releases charges. */
+  /** Read through direct-hit provenance without changing the active action. */
+  onForethought(source: Player, target: Boss, hit: NonNullable<HitMods['forethought']>): void {
+    armForethought(this, source, target, hit);
+  }
+
   /** Cancel a committed action, not a stun that resumes the same telegraph. */
   onThoughtBreak(
     source: Player,
@@ -2601,6 +2614,7 @@ export class World {
   }
 
   private updateBoss(dt: number, boss: Boss, index: number): void {
+    tickForethought(this, boss, dt);
     if (boss.hp <= 0) return;
     const def = this.defOf(boss);
 
@@ -2647,6 +2661,13 @@ export class World {
     // threat when one exists, so a duo can't simply pile onto the tank.
     if (stepFear(this, boss, dt)) return;
     const target = nthThreatTarget(this.players, index, this.tauntTargetId, this.tauntTimer);
+    if (
+      target &&
+      boss.forethought &&
+      !boss.forethought.abilityId &&
+      (boss.action.kind === 'idle' || boss.action.kind === 'recover')
+    )
+      boss.forethought.abilityId = this.chooseBossAbility(boss, def, target) ?? undefined;
 
     switch (boss.action.kind) {
       case 'idle': {
@@ -3232,7 +3253,7 @@ export class World {
     this.events.push({ t: 'blink', id: boss.id, from, to });
   }
 
-  private bossDecide(boss: Boss, def: MonsterDef, target: Player | null): void {
+  private chooseBossAbility(boss: Boss, def: MonsterDef, target: Player | null): string | null {
     const hpFrac = boss.hp / boss.maxHp;
     const quarry =
       this.tauntTimer <= 0 && boss.perception?.mode === 'lure' ? boss.perception.pos : undefined;
@@ -3248,7 +3269,7 @@ export class World {
       if (ab.minHpFrac != null && hpFrac > ab.minHpFrac) return false;
       return true;
     };
-    const choice = def.decide({
+    return def.decide({
       boss,
       hpFrac,
       target,
@@ -3257,6 +3278,14 @@ export class World {
       usable,
       rng: this.rng,
     });
+  }
+
+  private bossDecide(boss: Boss, def: MonsterDef, target: Player | null): void {
+    const f = boss.forethought;
+    const predicted = f?.abilityId && abilityById(def, f.abilityId);
+    const valid = predicted && target && forethoughtLegal(this, boss, predicted.id);
+    if (f?.abilityId && !valid) delete boss.forethought;
+    const choice = valid ? predicted.id : this.chooseBossAbility(boss, def, target);
     if (!choice) return;
     const ab = abilityById(def, choice);
     if (!ab) return;
@@ -3265,6 +3294,7 @@ export class World {
     // corruption strike). The boss simply re-decides next cycle. Inert for a lone
     // boss with nothing pending, so single-boss fights are byte-for-byte unchanged.
     if (this.wouldWallUnfairly(boss, ab, target)) return;
+    delete boss.forethought;
     this.startBossAbility(boss, def, ab, target);
   }
 
@@ -3811,6 +3841,7 @@ export class World {
       maxHp: b.maxHp,
       phase: b.phase,
       telegraph: this.buildTelegraph(b),
+      forethought: forethoughtView(this, b),
       buffs: b.buffs.map(buffView),
       action: b.action.kind,
       abilityId: b.action.abilityId,

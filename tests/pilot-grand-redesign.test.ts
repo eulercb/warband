@@ -123,7 +123,13 @@ describe('Rogue and Warlock authored grands', () => {
           for (const identity of [a, b]) {
             const changed = hero(classId, [identity.id], [first]).p;
             expect(changed.abilities, `${identity.id}/${first}`).not.toEqual(baseline.abilities);
-            if (identity.id !== 'wa_fiend_g_a')
+            // A useful utility can act on a whole-kit identity without acquiring a rider.
+            const readUtility =
+              changed.abilities!.basic.forethought &&
+              ['groundZone', 'blink'].includes(baseline.subAbilities!.sub1!.kind);
+            if (readUtility)
+              expect(changed.subAbilities!.sub1).toEqual(baseline.subAbilities!.sub1);
+            else if (identity.id !== 'wa_fiend_g_a')
               expect(changed.subAbilities!.sub1, `${identity.id}/${first}`).not.toEqual(
                 baseline.subAbilities!.sub1,
               );

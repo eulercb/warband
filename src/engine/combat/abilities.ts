@@ -1,3 +1,4 @@
+import { resolvedForethought } from '../content/classes';
 import { clipBulwarkStep } from './apertureMovement';
 import { whisperCast, spendSecret, hostileAdd } from './whispers';
 import { boundedAbility } from '../content/abilityLimits';
@@ -408,6 +409,10 @@ export function resolvePlayerAbility(
     ...(limited.preparedRefund ? { refundCast: { spent: false } } : {}),
     // Every delivery owns a distinct token, including composed landing strikes.
     pilotCast: { spent: false },
+    forethoughtHit: resolvedForethought(limited) && {
+      ownerClass: p.classId,
+      requiresCurse: resolvedForethought(limited)!.requiresCurse,
+    },
     thoughtBreakCast:
       limited.thoughtBreakCast ??
       (resolvedThoughtBreak(limited) ? { spent: false, ownerClass: p.classId } : undefined),
@@ -529,6 +534,7 @@ export function resolvePlayerAbility(
           markOnPreparedHit: ab.markOnPreparedHit,
           pilotCast: ab.pilotCast,
           thoughtBreakCast: ab.thoughtBreakCast,
+          forethoughtHit: ab.forethoughtHit,
           whisperCast: ab.whisperCast,
           mark:
             ab.markOnPreparedHit && ab.pilotCast
@@ -1063,6 +1069,7 @@ function resolveComposedAbility(
           markOnPreparedHit: ab.markOnPreparedHit,
           pilotCast: ab.pilotCast,
           thoughtBreakCast: ab.thoughtBreakCast,
+          forethoughtHit: ab.forethoughtHit,
           whisperCast: ab.whisperCast,
           mark:
             ab.markOnPreparedHit && ab.pilotCast
@@ -1260,6 +1267,7 @@ interface SpawnProjOpts {
   markOnPreparedHit?: number;
   pilotCast?: { spent: boolean };
   thoughtBreakCast?: import('../core/types').ThoughtBreakCast;
+  forethoughtHit?: PlayerAbilityDef['forethoughtHit'];
   whisperCast?: import('../core/types').WhisperCast;
   mark?: { bonus: number; cast: { spent: boolean } };
   pierce?: number;
@@ -1307,6 +1315,7 @@ function spawnPlayerProjectile(
     markOnPreparedHit: o.markOnPreparedHit,
     pilotCast: o.pilotCast,
     thoughtBreakCast: o.thoughtBreakCast,
+    forethoughtHit: o.forethoughtHit,
     whisperCast: o.whisperCast,
     mark: o.mark,
     // Do not repeat an explosive/zone payload on several bodies.

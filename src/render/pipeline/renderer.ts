@@ -1,3 +1,4 @@
+import { forethoughtLabel } from '../../engine/content/forethought';
 import { drawInfernalAperture } from './apertureVisuals';
 import { drawShadowAnchor } from './shadowVisuals';
 import { drawApparition, drawBorrowedAlly } from './perceptionVisuals';
@@ -818,7 +819,8 @@ export class Renderer {
       // item 1 — a constant flyer (def.flying) carries no timed 'flight' buff, so
       // surface its permanent airborne state as a no-countdown 🕊️ on the nameplate.
       const badges = buffLabel(boss.buffs, 4, def.flying === true);
-      t.text = badges ? `${name}\n${badges}` : name;
+      const intent = forethoughtLabel(boss.monsterId, boss.forethought);
+      t.text = [name, badges, intent].filter(Boolean).join('\n');
       const s = this.camera.worldToScreen(boss.pos);
       t.position.set(s.x, s.y - def.radius * scale - 10);
       t.alpha = boss.hp > 0 ? 1 : 0.4; // a felled twin's corpse label fades
