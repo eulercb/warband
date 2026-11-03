@@ -200,6 +200,9 @@ export interface PlayerAbilityDef {
   /** Bounded delivery/control changes reserved only when this cast spends Surge. */
   /** Standalone copied interruption; no Surge boost or cast-speed bonus. */
   thoughtBreak?: boolean;
+  /** Positive direct boss hit reads its next move; native setup needs a personal curse. */
+  forethought?: { requiresCurse: boolean };
+  forethoughtHit?: { ownerClass: ClassId; requiresCurse: boolean };
   /** Resolved-only shared reservation, never copied as authored content. */
   thoughtBreakCast?: import('../core/types').ThoughtBreakCast;
   surgeRider?: {
@@ -285,7 +288,13 @@ export interface PlayerAbilityDef {
   components?: import('./forge').AbilityComponents;
 }
 
-/** Component caps are authoritative for composed coatings, just as for direct strike payloads. */
+/** Component lists are authoritative for copied direct-hit effects. */
+export function resolvedForethought(def: PlayerAbilityDef): PlayerAbilityDef['forethought'] {
+  if (!def.components) return def.forethought;
+  const effect = def.components.effects.find((e) => e.kind === 'forethought');
+  return effect?.kind === 'forethought' ? { requiresCurse: !!effect.requiresCurse } : undefined;
+}
+
 export function resolvedThoughtBreak(def: PlayerAbilityDef): boolean {
   return def.components
     ? def.components.effects.some((e) => e.kind === 'thoughtBreak')
@@ -1390,6 +1399,10 @@ export function describeAbility(
       `spend Harmony + Discord to leave an afterimage for ${s(r.duration)}; next ${n(r.charges)} direct casts echo ${n(r.fraction * 100)}% damage against a foe within ${n(r.radius)}u of your departure`,
     );
   }
+  if (def.forethought)
+    parts.push(
+      `positive direct hit ${def.forethought.requiresCurse ? 'on your cursed boss ' : ''}reads its next move for 8s; target and aim lock at wind-up`,
+    );
   if (def.prepareCrit) parts.push(`prepare next precision crit for ${s(def.prepareCrit)}`);
   if (def.precisionOnHit)
     parts.push(`positive hit prepares precision for ${s(def.precisionOnHit)}`);

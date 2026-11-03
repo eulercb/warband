@@ -256,6 +256,11 @@ function BossBar({
         <AffixChips affixes={boss.affixes} />
         <BuffChips buffs={boss.buffs} flying={boss.flying} />
       </div>
+      {boss.forethought && (
+        <div className="hud-forethought" role="status">
+          {boss.forethought}
+        </div>
+      )}
       <div className="hud-bossbar-track">
         <div
           className={`hud-bossbar-fill${boss.phase === 'enraged' ? ' enraged' : ''}`}

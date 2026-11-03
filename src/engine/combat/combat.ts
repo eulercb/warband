@@ -54,6 +54,11 @@ export interface EventSink {
     cast?: WhisperCast,
   ) => void;
   onPlayerDamaged?: (target: Player) => void;
+  onForethought?: (
+    source: Player,
+    target: Boss,
+    hit: { ownerClass: import('../core/types').ClassId; requiresCurse: boolean },
+  ) => void;
   onThoughtBreak?: (
     source: Player,
     target: Boss,
@@ -78,6 +83,7 @@ export interface EventSink {
  */
 export interface HitMods {
   thoughtBreak?: import('../core/types').ThoughtBreakCast;
+  forethought?: { ownerClass: import('../core/types').ClassId; requiresCurse: boolean };
   whisperCast?: WhisperCast;
   borrowed?: boolean;
   mult?: number;
@@ -470,6 +476,7 @@ export function damageBoss(
   onFortunateHit(sink, source, boss, effective, mods);
   if (mods?.direct && effective > 0) {
     applyCursePayoff(source, boss, mods.cursePayoff);
+    if (mods.forethought) sink.onForethought?.(source, boss, mods.forethought);
     if (mods.thoughtBreak) sink.onThoughtBreak?.(source, boss, effective, mods.thoughtBreak);
     sink.onPlayerDirectHit?.(source, boss, effective, mods?.prepared, mods?.refund, mods?.pilot);
   }

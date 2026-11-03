@@ -40,6 +40,15 @@ export default function MechanicsReference() {
         fallback when the random starting special cannot hit directly.
       </p>
       <p>
+        Elder Mind reads a personally cursed boss after a positive direct hit. The read lasts 8s.
+        Its current attack finishes; during recovery or idle it commits its next available move
+        early and shares the name and delivery with the party. Target and aim lock at the normal
+        wind-up start. Moving after the forecast does not reroll the move. Cooldowns, HP gates and
+        fair telegraph spacing still apply; an invalid or expired read clears. Adds have no
+        forecast. Copied/Forge Forethought works on direct hits without a curse, with a basic
+        fallback when its starting special cannot hit directly.
+      </p>
+      <p>
         Infernal Aperture fixes an entrance and exit along your setup aim. Only your shots crossing
         the entrance forward with enough clearance route; the exit keeps setup aim plus authored
         spread. Conduit travel costs the original shot's range and takes distance ÷ speed in time.

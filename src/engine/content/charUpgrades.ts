@@ -3274,19 +3274,18 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'wa_great_old_one_g_a',
     'Elder Mind',
     '🐙',
-    'Your direct spells weaken personally cursed foes; Hex and Dissonant Whispers linger 2s longer',
+    'Positive direct hits on your cursed boss read and commit its next move for 8s. Plan your position before the wind-up; target and aim lock when it starts',
     (a) => {
-      a.basic.cursePayoff = Math.max(a.basic.cursePayoff ?? 0, 3);
-      a.a2.cursePayoff = Math.max(a.a2.cursePayoff ?? 0, 3);
-      addN(a.a1, 'zoneDuration', 2);
+      if (a.a3.components) {
+        const recipient = isStrike(a.a2) && a.a2.damage > 0 ? a.a2 : a.basic;
+        recipient.forethought = { requiresCurse: false };
+      } else {
+        a.basic.forethought = { requiresCurse: true };
+        a.a2.forethought = { requiresCurse: true };
+      }
     },
     (ab) => {
-      if (isStrike(ab)) {
-        ab.cursePayoff = Math.max(ab.cursePayoff ?? 0, 3);
-        slowRider(ab, 0.75, 2);
-      }
-      if (ab.kind === 'groundZone') addN(ab, 'zoneDuration', 2);
-      if (ab.kind === 'blink') addN(ab, 'healOnUse', 12);
+      if (isStrike(ab) && ab.damage > 0) ab.forethought = { requiresCurse: !ab.components };
     },
   ),
   pilotIdentity(
@@ -6484,13 +6483,15 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       ...base,
       name: blend(fused.name),
       desc:
-        base.id === 'wa_great_old_one_g_b'
-          ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
-          : base.id === 'wa_fiend_g_a'
-            ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
-            : base.id === 'ro_assassin_g_a'
-              ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
-              : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
+        base.id === 'wa_great_old_one_g_a'
+          ? 'Reforged Forethought: positive direct hits read and commit a boss’s next move for 8s, without a curse. If the starting special cannot hit directly, the basic carries the read'
+          : base.id === 'wa_great_old_one_g_b'
+            ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
+            : base.id === 'wa_fiend_g_a'
+              ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
+              : base.id === 'ro_assassin_g_a'
+                ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
+                : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
     };
   }
 

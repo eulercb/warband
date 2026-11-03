@@ -12333,7 +12333,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Your direct spells weaken personally cursed foes; Hex and Dissonant Whispers linger 2s longer",
+      "description": "Positive direct hits on your cursed boss read and commit its next move for 8s. Plan your position before the wind-up; target and aim lock when it starts",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": true,
@@ -12343,18 +12343,38 @@
           "subSkills": ["wa_goo_blast"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
-            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
-            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
+            {
+              "path": "abilities.a2.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            },
+            {
+              "path": "abilities.basic.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            },
+            {
+              "path": "subAbilities.sub1.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            }
           ],
           "atCap": [
-            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
-            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
-            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
+            {
+              "path": "abilities.a2.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            },
+            {
+              "path": "abilities.basic.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            },
+            {
+              "path": "subAbilities.sub1.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            }
           ]
         },
         {
@@ -12362,16 +12382,38 @@
           "subSkills": ["wa_goo_tentacle"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
-            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
-            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.cursePayoff", "before": null, "after": 3 }
+            {
+              "path": "abilities.a2.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            },
+            {
+              "path": "abilities.basic.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            },
+            {
+              "path": "subAbilities.sub1.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            }
           ],
           "atCap": [
-            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
-            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
-            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.cursePayoff", "before": null, "after": 3 }
+            {
+              "path": "abilities.a2.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            },
+            {
+              "path": "abilities.basic.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            },
+            {
+              "path": "subAbilities.sub1.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            }
           ]
         },
         {
@@ -12379,16 +12421,28 @@
           "subSkills": ["wa_goo_whispers"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
-            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
-            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 6 }
+            {
+              "path": "abilities.a2.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            },
+            {
+              "path": "abilities.basic.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            }
           ],
           "atCap": [
-            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
-            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
-            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 6 }
+            {
+              "path": "abilities.a2.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            },
+            {
+              "path": "abilities.basic.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            }
           ]
         },
         {
@@ -12396,16 +12450,28 @@
           "subSkills": ["wa_goo_flee"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
-            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
-            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.healOnUse", "before": 18, "after": 30 }
+            {
+              "path": "abilities.a2.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            },
+            {
+              "path": "abilities.basic.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            }
           ],
           "atCap": [
-            { "path": "abilities.a1.zoneDuration", "before": 5, "after": 7 },
-            { "path": "abilities.a2.cursePayoff", "before": null, "after": 3 },
-            { "path": "abilities.basic.cursePayoff", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.healOnUse", "before": 18, "after": 30 }
+            {
+              "path": "abilities.a2.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            },
+            {
+              "path": "abilities.basic.forethought",
+              "before": null,
+              "after": { "requiresCurse": true }
+            }
           ]
         }
       ]

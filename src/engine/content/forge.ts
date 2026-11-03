@@ -131,6 +131,7 @@ export type EffectComponent =
   | { kind: 'controlDamage'; bonus: number }
   | { kind: 'prepareSurge'; duration: number }
   | { kind: 'thoughtBreak' }
+  | { kind: 'forethought'; requiresCurse?: boolean }
   | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
   | { kind: 'fortune'; fortune: NonNullable<PlayerAbilityDef['fortune']> }
   | { kind: 'whisperRefrain'; refrain: NonNullable<PlayerAbilityDef['whisperRefrain']> }
@@ -335,6 +336,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
       effects.push({ kind: 'controlDamage', bonus: def.controlDamageBonus });
     if (def.prepareSurge) effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
     if (def.thoughtBreak) effects.push({ kind: 'thoughtBreak' });
+    if (def.forethought)
+      effects.push({ kind: 'forethought', requiresCurse: def.forethought.requiresCurse });
     if (def.consumesSurge)
       effects.push({
         kind: 'surgeStrike',
@@ -415,13 +418,13 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
 // 3. Recomposition — components → a resolvable PlayerAbilityDef
 // ---------------------------------------------------------------------------
 
-/** A portable interruption is one contract even when two donor paths converge. */
-function uniqueThoughtBreak(effects: EffectComponent[]): EffectComponent[] {
-  let seen = false;
+/** Portable mental contracts occur once even when donor paths converge. */
+function uniqueMentalContracts(effects: EffectComponent[]): EffectComponent[] {
+  const seen = new Set<string>();
   return effects.filter((e) => {
-    if (e.kind !== 'thoughtBreak') return true;
-    if (seen) return false;
-    seen = true;
+    if (e.kind !== 'thoughtBreak' && e.kind !== 'forethought') return true;
+    if (seen.has(e.kind)) return false;
+    seen.add(e.kind);
     return true;
   });
 }
@@ -435,18 +438,31 @@ function uniqueThoughtBreak(effects: EffectComponent[]): EffectComponent[] {
  *
  * recompose(decompose(def)) reproduces def's resolvable fields (round-trip), so
  * canonical content is unchanged when routed through the component path. Native
- * Doom's conditional interruption explicitly becomes the standalone copied variant.
+ * Conditional Doom/Forethought explicitly become their standalone copied variants.
  */
 export function recompose(
   comp: AbilityComponents,
   meta: { slot: PlayerAbilityDef['slot']; name: string; cooldown: number },
 ): PlayerAbilityDef {
-  if (comp.effects.some((e) => e.kind === 'surgeStrike' && e.rider?.interrupt))
+  if (
+    ['forethought', 'thoughtBreak'].some(
+      (kind) => comp.effects.filter((e) => e.kind === kind).length > 1,
+    ) ||
+    comp.effects.some(
+      (e) =>
+        (e.kind === 'surgeStrike' && e.rider?.interrupt) ||
+        (e.kind === 'forethought' && e.requiresCurse),
+    )
+  )
     comp = {
       ...comp,
-      effects: uniqueThoughtBreak(
+      effects: uniqueMentalContracts(
         comp.effects.map((e) =>
-          e.kind === 'surgeStrike' && e.rider?.interrupt ? { kind: 'thoughtBreak' } : e,
+          e.kind === 'surgeStrike' && e.rider?.interrupt
+            ? { kind: 'thoughtBreak' }
+            : e.kind === 'forethought'
+              ? { kind: 'forethought' }
+              : e,
         ),
       ),
     };
@@ -609,6 +625,9 @@ export function recompose(
         break;
       case 'whisperRefrain':
         if (d.kind === 'blink') def.whisperRefrain = { ...e.refrain };
+        break;
+      case 'forethought':
+        def.forethought = { requiresCurse: !!e.requiresCurse };
         break;
       case 'thoughtBreak':
         def.thoughtBreak = true;
@@ -809,6 +828,8 @@ function effectValue(e: EffectComponent, fan: number): number {
             (e.fortune.markBonus ?? 0) * 8) +
         e.fortune.debuffDuration * 2
       );
+    case 'forethought':
+      return 24; // advance information and early commitment, no damage/control
     case 'thoughtBreak':
       return 40; // self-contained, once-per-cast and shared 8s target recovery
     case 'surgeStrike': {
@@ -1068,6 +1089,8 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return `prepare spell surge for ${s(e.duration)}`;
     case 'fortune':
       return `Fortune ${s(e.fortune.duration)} — next direct hit delays wind-ups ${n((e.fortune.castSlowMult - 1) * 100)}%, weakens damage ${n((1 - e.fortune.damageMult) * 100)}% for ${s(e.fortune.debuffDuration)}${e.fortune.markBonus ? `; next hit from a later cast +${n(e.fortune.markBonus * 100)}% damage` : ''}`;
+    case 'forethought':
+      return `positive direct hit ${e.requiresCurse ? 'on your cursed boss ' : ''}reads and commits its next move for 8s; target and aim lock at wind-up`;
     case 'thoughtBreak':
       return 'one positive direct boss hit can break a wind-up or channel; 8s shared target recovery; no Surge required';
     case 'surgeStrike':
@@ -1432,6 +1455,7 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
         : e.part === 'chorus'
           ? kind === 'selfBuff' || kind === 'buffAlly'
           : DIRECT_STRIKE.has(kind) || kind === 'groundZone';
+    case 'forethought':
     case 'thoughtBreak':
       return DIRECT_STRIKE.has(kind);
     case 'surgeStrike':
@@ -1621,11 +1645,13 @@ export function synthesizeAbility(
   let effects = chosen.map((c) =>
     c.effect.kind === 'surgeStrike' && c.effect.rider?.interrupt
       ? { kind: 'thoughtBreak' as const }
-      : c.effect.kind === 'shadowReprise'
-        ? { ...c.effect, reprise: { ...c.effect.reprise, prepared: false } }
-        : c.effect,
+      : c.effect.kind === 'forethought'
+        ? { kind: 'forethought' as const }
+        : c.effect.kind === 'shadowReprise'
+          ? { ...c.effect, reprise: { ...c.effect.reprise, prepared: false } }
+          : c.effect,
   );
-  effects = uniqueThoughtBreak(effects);
+  effects = uniqueMentalContracts(effects);
   effects = foldAllyBuffsIntoZone(effects);
   effects = retargetOrphanAllyBuffs(delivery, effects);
   effects = mergeBuffs(effects); // item 5 — one buff per target; honest pricing
@@ -2069,6 +2095,7 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
           debuffDuration: e.fortune.debuffDuration * f,
         },
       };
+    case 'forethought':
     case 'thoughtBreak':
       // Native conditional riders become this fixed portable effect before pricing.
       return e;
@@ -2246,6 +2273,7 @@ function addBoonComponents(
         'shadowReprise',
         'infernalAperture',
         'thoughtBreak',
+        'forethought',
         'steadfast',
         'cleanse',
         'momentum',
@@ -2462,6 +2490,10 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.shadowReprise ? { ...e, reprise: { ...def.shadowReprise } } : e;
     case 'whisperRefrain':
       return def.whisperRefrain ? { ...e, refrain: { ...def.whisperRefrain } } : e;
+    case 'forethought':
+      return def.forethought
+        ? { kind: 'forethought', requiresCurse: def.forethought.requiresCurse }
+        : e;
     case 'thoughtBreak':
       return e;
     case 'surgeStrike':
@@ -2718,6 +2750,7 @@ function capEffect(e: EffectComponent): EffectComponent {
             : {}),
         },
       };
+    case 'forethought':
     case 'thoughtBreak':
       return e;
     case 'surgeStrike': {
