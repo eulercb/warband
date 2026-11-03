@@ -15,32 +15,34 @@ name the next development task beyond playtesting.
   return was a nice addition and Rogue is working well for now. Trickster stays
   retained; further Rogue redesign is deferred unless new evidence warrants it.
 
+- Fiend Aperture placement/cover follow-up (#151) merged and accepted in owner
+  live testing: Aperture feels good now. Further changes respond to new evidence;
+  acceptance does not establish equal identity balance.
+
 ## Current delivery
 
-[Aperture placement and cover follow-up](APERTURE_COVER_FOLLOWUP.md).
-PR #150 is merged and live-tested. The owner liked the aperture idea but found
-near-obstacle placement unreliable and open arenas lacking a useful safe firing
-position. This follow-up repairs nearby mouths and adds temporary cover with
-real enemy detours. It awaits owner retesting; Fiend is not yet marked accepted.
-Great Old One remains the next identity task, separately from this terrain change.
+[Great Old One: Whispered Doom / Thought Break](GOO_THOUGHT_BREAK.md).
+Whispered Doom now gives a prepared direct spell a real boss-action cancellation
+role; Mind Blast grand no longer repeats Honed suppression duration. This awaits
+owner playtesting. Elder Mind remains provisional attrition and its purpose is
+still open; the whole GOO pair is not marked complete.
 
-Seven of 24 subclasses have been reviewed in this pass: five are accepted or
-retained (including Assassin), Fiend is being refined after live feedback, one
-remains open, and 17 await review. Review, implementation and acceptance are
-separate states.
+Seven of 24 subclasses have been reviewed: six are accepted or retained, GOO is
+partly implemented with one purpose question remaining, and 17 await review.
+Review, implementation and acceptance are separate states.
 
 ## Next development work, in order
 
-| Stage                        | Concrete work                                                                                                                                  |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Great Old One's duplicate suppression and native Surge role; preserve useful curse/ward behavior while resolving identity purpose.             |
-| Following                    | Implement a mature Great Old One plan after review, then move to the six martial subclass pairs.                                               |
-| Martial identities           | Knight, Barbarian and Monk: six subclass pairs.                                                                                                |
-| Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                            |
-| Remaining caster identities  | Abjurer, Draconic and Wild Magic; Evoker stays retained.                                                                                       |
-| Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                           |
-| Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                  |
-| Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass. |
+| Stage                        | Concrete work                                                                                                                                         |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Next                         | Finish Elder Mind's purpose review against reactive Whispered Doom; preserve useful curse/ward behavior and distinguish support growth from identity. |
+| Following                    | Resolve the remaining GOO question, then review Knight/Barbarian/Monk’s six subclasses.                                                               |
+| Martial identities           | Knight, Barbarian and Monk: six subclasses.                                                                                                           |
+| Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                                   |
+| Remaining caster identities  | Abjurer, Draconic and Wild Magic; Evoker stays retained.                                                                                              |
+| Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                                  |
+| Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                         |
+| Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.        |
 
 Use one bounded Sol 6.1 high design review where substantial planning is needed.
 Proceed with a mature authorized plan; surface unresolved material gameplay

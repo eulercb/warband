@@ -160,7 +160,16 @@ function TouchButton({
       ? `Return ${reprise.returnRemaining.toFixed(1)}s${reprise.blocked ? ` · ${reprise.blocked}` : ''}`
       : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
     : null;
-  const actionStatus = reprise?.armed ? repriseStatus : (apertureStatus ?? repriseStatus);
+  const breakPrepared = useHudStore(
+    (s) =>
+      s.state === 'alive' &&
+      !!ability?.surgeRider?.interrupt &&
+      !!ability?.consumesSurge &&
+      s.buffs.some((b) => b.kind === 'spellSurge' && b.remaining > 0),
+  );
+  const actionStatus = reprise?.armed
+    ? repriseStatus
+    : (apertureStatus ?? repriseStatus ?? (breakPrepared ? 'Break prepared' : null));
   const claimTarget = useHudStore((s) => (cdSlot ? s.infernalClaimTargets[cdSlot] : undefined));
   const alive = useHudStore((s) => s.state === 'alive');
   const frac = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;

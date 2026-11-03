@@ -30,6 +30,16 @@ export default function MechanicsReference() {
         duplicate. Some spells list an additional Surge effect.
       </p>
       <p>
+        Whispered Doom spends a prepared Surge when its special starts. Its first successful direct
+        boss interruption cancels that wind-up or channel into ordinary recovery and starts the
+        interrupted ability's normal cooldown. The boss then resists Thought Break for 8s across the
+        whole party. Damage must connect before the attack resolves; misses spend the prepared cast.
+        Idle bosses, adds, immunity and already-created projectiles or hazards are unaffected.
+        Native basics preserve Surge. A copied/Forge Thought Break needs no Surge and gains no Surge
+        damage or cast-speed bonus; its description identifies the direct carrier, including a basic
+        fallback when the random starting special cannot hit directly.
+      </p>
+      <p>
         Infernal Aperture fixes an entrance and exit along your setup aim. Only your shots crossing
         the entrance forward with enough clearance route; the exit keeps setup aim plus authored
         spread. Conduit travel costs the original shot's range and takes distance ÷ speed in time.

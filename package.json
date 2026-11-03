@@ -47,7 +47,8 @@
     "smoke:whispers": "node scripts/smoke-whispers.mjs",
     "smoke:whisper-refrain": "node scripts/smoke-whisper-refrain.mjs",
     "smoke:shadow-reprise": "node scripts/smoke-shadow-reprise.mjs",
-    "smoke:infernal-aperture": "node scripts/smoke-infernal-aperture.mjs"
+    "smoke:infernal-aperture": "node scripts/smoke-infernal-aperture.mjs",
+    "smoke:thought-break": "node scripts/smoke-thought-break.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

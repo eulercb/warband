@@ -54,6 +54,12 @@ export interface EventSink {
     cast?: WhisperCast,
   ) => void;
   onPlayerDamaged?: (target: Player) => void;
+  onThoughtBreak?: (
+    source: Player,
+    target: Boss,
+    effective: number,
+    token: import('../core/types').ThoughtBreakCast,
+  ) => void;
   onPlayerDirectHit?: (
     source: Player,
     target: Boss | Add,
@@ -71,6 +77,7 @@ export interface EventSink {
  * styling. All optional; absent = an ordinary hit.
  */
 export interface HitMods {
+  thoughtBreak?: import('../core/types').ThoughtBreakCast;
   whisperCast?: WhisperCast;
   borrowed?: boolean;
   mult?: number;
@@ -463,6 +470,7 @@ export function damageBoss(
   onFortunateHit(sink, source, boss, effective, mods);
   if (mods?.direct && effective > 0) {
     applyCursePayoff(source, boss, mods.cursePayoff);
+    if (mods.thoughtBreak) sink.onThoughtBreak?.(source, boss, effective, mods.thoughtBreak);
     sink.onPlayerDirectHit?.(source, boss, effective, mods?.prepared, mods?.refund, mods?.pilot);
   }
   return outgoing;

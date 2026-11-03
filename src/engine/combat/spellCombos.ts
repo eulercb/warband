@@ -42,6 +42,9 @@ export function consumeSpellSurge(
     !ab.components?.effects.some((e) => e.kind === 'zone');
   return {
     ...ab,
+    ...(ab.surgeRider?.interrupt
+      ? { thoughtBreakCast: { spent: false, ownerClass: p.classId } }
+      : {}),
     ...(ab.surgeRider?.halfAngleDeg && ab.kind === 'meleeCone'
       ? {
           halfAngleDeg: Math.max(

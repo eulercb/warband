@@ -3294,16 +3294,28 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'wa_great_old_one_g_b',
     'Whispered Doom',
     '🔮',
-    'Blessing prepares an 8s spell surge; Rebuke or direct Great Old One spells consume it for a stronger, quicker cast',
+    'Prepare an 8s Surge with Blessing, Ward or dread territory. A Surged special can break one boss wind-up or channel; the boss then resists Thought Break for 8s',
     (a) => {
-      a.a3.prepareSurge = Math.max(a.a3.prepareSurge ?? 0, 8);
-      a.a2.consumesSurge = true;
+      if (a.a3.components) {
+        // Random receiving kits need no absent preparation source. If a2 cannot
+        // deliver a direct hit, the priced copied contract belongs to the basic.
+        const recipient = isStrike(a.a2) && a.a2.damage > 0 ? a.a2 : a.basic;
+        recipient.thoughtBreak = true;
+      } else {
+        a.a3.prepareSurge = Math.max(a.a3.prepareSurge ?? 0, 8);
+        a.a2.consumesSurge = true;
+        a.a2.surgeRider = { ...a.a2.surgeRider, interrupt: true };
+      }
     },
     (ab) => {
-      if (ab.kind === 'blink' || ab.kind === 'selfBuff')
+      if (ab.components) {
+        if (isStrike(ab) && ab.damage > 0) ab.thoughtBreak = true;
+      } else if (ab.kind === 'blink' || ab.kind === 'selfBuff' || ab.kind === 'groundZone')
         ab.prepareSurge = Math.max(ab.prepareSurge ?? 0, 8);
-      else if (ab.kind === 'groundZone') ab.prepareSurge = Math.max(ab.prepareSurge ?? 0, 8);
-      else if (isStrike(ab)) ab.consumesSurge = true;
+      else if (isStrike(ab)) {
+        ab.consumesSurge = true;
+        ab.surgeRider = { ...ab.surgeRider, interrupt: true };
+      }
     },
   ),
 ];
@@ -4341,16 +4353,9 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
         };
     },
   ),
-  gsk(
-    'wa_goo_blast',
-    'Rending Thought',
-    '🧠',
-    'Mind Blast pierces one foe and weakens personally cursed foes for 4s',
-    (ab) => {
-      ab.pierce = Math.max(ab.pierce ?? 0, 1);
-      ab.cursePayoff = Math.max(ab.cursePayoff ?? 0, 4);
-    },
-  ),
+  gsk('wa_goo_blast', 'Rending Thought', '🧠', 'Mind Blast pierces one foe', (ab) => {
+    ab.pierce = Math.max(ab.pierce ?? 0, 1);
+  }),
   gsk(
     'wa_goo_tentacle',
     'Dread Reach',
@@ -6479,11 +6484,13 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       ...base,
       name: blend(fused.name),
       desc:
-        base.id === 'wa_fiend_g_a'
-          ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
-          : base.id === 'ro_assassin_g_a'
-            ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
-            : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
+        base.id === 'wa_great_old_one_g_b'
+          ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
+          : base.id === 'wa_fiend_g_a'
+            ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
+            : base.id === 'ro_assassin_g_a'
+              ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
+              : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
     };
   }
 

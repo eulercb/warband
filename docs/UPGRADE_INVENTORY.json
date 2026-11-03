@@ -12423,7 +12423,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Blessing prepares an 8s spell surge; Rebuke or direct Great Old One spells consume it for a stronger, quicker cast",
+      "description": "Prepare an 8s Surge with Blessing, Ward or dread territory. A Surged special can break one boss wind-up or channel; the boss then resists Thought Break for 8s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": true,
@@ -12434,13 +12434,25 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a2.surgeRider", "before": null, "after": { "interrupt": true } },
             { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
-            { "path": "subAbilities.sub1.consumesSurge", "before": null, "after": true }
+            { "path": "subAbilities.sub1.consumesSurge", "before": null, "after": true },
+            {
+              "path": "subAbilities.sub1.surgeRider",
+              "before": null,
+              "after": { "interrupt": true }
+            }
           ],
           "atCap": [
             { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a2.surgeRider", "before": null, "after": { "interrupt": true } },
             { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
-            { "path": "subAbilities.sub1.consumesSurge", "before": null, "after": true }
+            { "path": "subAbilities.sub1.consumesSurge", "before": null, "after": true },
+            {
+              "path": "subAbilities.sub1.surgeRider",
+              "before": null,
+              "after": { "interrupt": true }
+            }
           ]
         },
         {
@@ -12449,13 +12461,25 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a2.surgeRider", "before": null, "after": { "interrupt": true } },
             { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
-            { "path": "subAbilities.sub1.consumesSurge", "before": null, "after": true }
+            { "path": "subAbilities.sub1.consumesSurge", "before": null, "after": true },
+            {
+              "path": "subAbilities.sub1.surgeRider",
+              "before": null,
+              "after": { "interrupt": true }
+            }
           ],
           "atCap": [
             { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a2.surgeRider", "before": null, "after": { "interrupt": true } },
             { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
-            { "path": "subAbilities.sub1.consumesSurge", "before": null, "after": true }
+            { "path": "subAbilities.sub1.consumesSurge", "before": null, "after": true },
+            {
+              "path": "subAbilities.sub1.surgeRider",
+              "before": null,
+              "after": { "interrupt": true }
+            }
           ]
         },
         {
@@ -12464,11 +12488,13 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a2.surgeRider", "before": null, "after": { "interrupt": true } },
             { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
             { "path": "subAbilities.sub1.prepareSurge", "before": null, "after": 8 }
           ],
           "atCap": [
             { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a2.surgeRider", "before": null, "after": { "interrupt": true } },
             { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
             { "path": "subAbilities.sub1.prepareSurge", "before": null, "after": 8 }
           ]
@@ -12479,11 +12505,13 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a2.surgeRider", "before": null, "after": { "interrupt": true } },
             { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
             { "path": "subAbilities.sub1.prepareSurge", "before": null, "after": 8 }
           ],
           "atCap": [
             { "path": "abilities.a2.consumesSurge", "before": null, "after": true },
+            { "path": "abilities.a2.surgeRider", "before": null, "after": { "interrupt": true } },
             { "path": "abilities.a3.prepareSurge", "before": null, "after": 8 },
             { "path": "subAbilities.sub1.prepareSurge", "before": null, "after": 8 }
           ]
@@ -15743,7 +15771,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Mind Blast pierces one foe and weakens personally cursed foes for 4s",
+      "description": "Mind Blast pierces one foe",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -15752,14 +15780,8 @@
           "classId": "warlock",
           "subSkills": ["wa_goo_blast"],
           "prefix": [],
-          "once": [
-            { "path": "subAbilities.sub1.cursePayoff", "before": 3, "after": 4 },
-            { "path": "subAbilities.sub1.pierce", "before": null, "after": 1 }
-          ],
-          "atCap": [
-            { "path": "subAbilities.sub1.cursePayoff", "before": 3, "after": 4 },
-            { "path": "subAbilities.sub1.pierce", "before": null, "after": 1 }
-          ]
+          "once": [{ "path": "subAbilities.sub1.pierce", "before": null, "after": 1 }],
+          "atCap": [{ "path": "subAbilities.sub1.pierce", "before": null, "after": 1 }]
         }
       ]
     },

@@ -2,6 +2,7 @@ import { clipBulwarkStep } from './apertureMovement';
 import { whisperCast, spendSecret, hostileAdd } from './whispers';
 import { boundedAbility } from '../content/abilityLimits';
 import { armFortune } from './sorcererLuck';
+import { resolvedThoughtBreak } from '../content/classes';
 import { openInfernalAperture } from './infernalAperture';
 import { recordShadowReprise } from './shadowReprise';
 import { armWhisperRefrain } from './whisperRefrain';
@@ -407,6 +408,9 @@ export function resolvePlayerAbility(
     ...(limited.preparedRefund ? { refundCast: { spent: false } } : {}),
     // Every delivery owns a distinct token, including composed landing strikes.
     pilotCast: { spent: false },
+    thoughtBreakCast:
+      limited.thoughtBreakCast ??
+      (resolvedThoughtBreak(limited) ? { spent: false, ownerClass: p.classId } : undefined),
   };
   if (!ab) return; // a sub slot with no bound skill — nothing to resolve
   ab.whisperCast = whisperCast(world, p, ab);
@@ -524,6 +528,7 @@ export function resolvePlayerAbility(
           echoFraction: ab.echoFraction,
           markOnPreparedHit: ab.markOnPreparedHit,
           pilotCast: ab.pilotCast,
+          thoughtBreakCast: ab.thoughtBreakCast,
           whisperCast: ab.whisperCast,
           mark:
             ab.markOnPreparedHit && ab.pilotCast
@@ -1057,6 +1062,7 @@ function resolveComposedAbility(
           echoFraction: ab.echoFraction,
           markOnPreparedHit: ab.markOnPreparedHit,
           pilotCast: ab.pilotCast,
+          thoughtBreakCast: ab.thoughtBreakCast,
           whisperCast: ab.whisperCast,
           mark:
             ab.markOnPreparedHit && ab.pilotCast
@@ -1253,6 +1259,7 @@ interface SpawnProjOpts {
   echoFraction?: number;
   markOnPreparedHit?: number;
   pilotCast?: { spent: boolean };
+  thoughtBreakCast?: import('../core/types').ThoughtBreakCast;
   whisperCast?: import('../core/types').WhisperCast;
   mark?: { bonus: number; cast: { spent: boolean } };
   pierce?: number;
@@ -1299,6 +1306,7 @@ function spawnPlayerProjectile(
     echoFraction: o.echoFraction,
     markOnPreparedHit: o.markOnPreparedHit,
     pilotCast: o.pilotCast,
+    thoughtBreakCast: o.thoughtBreakCast,
     whisperCast: o.whisperCast,
     mark: o.mark,
     // Do not repeat an explosive/zone payload on several bodies.
