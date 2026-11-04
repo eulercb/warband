@@ -263,6 +263,13 @@ function describe(
         good: false,
         label: 'Exposed: marking Rogue’s next direct hit deals 25% more',
       };
+    case 'forethoughtRecovery':
+      return {
+        glyph: '◌',
+        color: 0xaa91c0,
+        good: true,
+        label: 'Mind closed: this boss cannot be read until recovery expires',
+      };
     case 'thoughtBreakRecovery':
       return {
         glyph: '🧠',

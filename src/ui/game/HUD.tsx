@@ -262,6 +262,11 @@ function BossBar({
           <span>{boss.foresightHint}</span>
         </div>
       )}
+      {!boss.forethought && (boss.forethoughtRecovery ?? 0) > 0 && (
+        <div className="hud-mind-closed">
+          ◌ Mind closed · {Math.ceil(boss.forethoughtRecovery!)}s
+        </div>
+      )}
       <div className="hud-bossbar-track">
         <div
           className={`hud-bossbar-fill${boss.phase === 'enraged' ? ' enraged' : ''}`}

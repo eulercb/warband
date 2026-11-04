@@ -203,6 +203,7 @@ export type BuffKind =
   | 'flow' // next marked special is instant and wider/longer
   | 'harmony' // effective healing verse, readied for a Bard chorus
   | 'discord' // disruptive special verse, readied for a Bard chorus
+  | 'forethoughtRecovery' // shared quiet interval after a boss read
   | 'thoughtBreakRecovery' // global boss recovery from committed-action cancellation
   | 'spellSurge' // one enhanced special spell
   | 'moonRest' // public remaining recovery before another Moon transformation

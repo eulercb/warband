@@ -1084,3 +1084,10 @@
     left: auto;
   }
 }
+
+.hud-mind-closed {
+  color: #c1abcf;
+  font-size: 11px;
+  margin: 3px 0;
+  text-align: center;
+}
