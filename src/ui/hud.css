@@ -1038,9 +1038,49 @@
 
 /* Intent is information about the next action, separate from live telegraphs. */
 .hud-forethought {
-  color: #c9c0ff;
-  font-size: 11px;
+  color: #f0e4ff;
+  background: #251936f2;
+  border: 2px solid #d3a5ff;
+  border-radius: 6px;
+  padding: 6px 9px;
+  margin: 5px 0;
   text-align: center;
-  padding: 2px 6px;
   overflow-wrap: anywhere;
+  box-shadow: 0 0 12px #ac6bf044;
+}
+.hud-forethought strong {
+  display: block;
+  font-size: 13px;
+  letter-spacing: 0.4px;
+}
+.hud-forethought span {
+  display: block;
+  font-size: 11px;
+  margin-top: 3px;
+  line-height: 1.3;
+}
+
+@media (max-width: 640px) {
+  /* Flow below the actual boss/forecast height, including multi-boss encounters. */
+  .hud-top {
+    position: absolute;
+    top: 14px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .hud-top .hud-bossbars {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    transform: none;
+  }
+  .hud-top .hud-teammates {
+    position: relative;
+    top: auto;
+    left: auto;
+  }
 }

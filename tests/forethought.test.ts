@@ -95,12 +95,9 @@ function decide(w: World, b: Boss, p: Player) {
 }
 
 describe('Elder Mind forethought', () => {
-  it.each(skills)('full-health first pick %s reads through actual Hex and basic', (skill) => {
+  it.each(skills)('full-health first pick %s reads through a basic without a curse', (skill) => {
     const { w, p, b } = setup(skill);
-    b.pos.x = p.pos.x + 460;
-    use(w, p, 'a1');
-    w.step(0.8, new Map());
-    expect(b.buffs.some((x) => x.kind === 'curse')).toBe(true);
+    expect(b.buffs.some((x) => x.kind === 'curse')).toBe(false);
     use(w, p, 'basic');
     impact(w, b);
     update(w, b);
@@ -157,20 +154,21 @@ describe('Elder Mind forethought', () => {
     update(w, b);
     expect(b.forethought?.abilityId).toBeDefined();
   });
-  it('uses late targets and aim, including taunt and random targeting', () => {
+  it('reserves random targeting once and fixes the disclosed aim before the wind-up', () => {
     const { w, p, b } = setup();
-    p.pos = { x: 1100, y: 700 };
+    p.pos = { x: 1100, y: 400 };
     curse(p, b);
+    const pick = vi.spyOn(w.rng, 'pick').mockReturnValue(p);
     hit(w, p, b);
     update(w, b);
     expect(b.forethought!.abilityId).toBe('charge');
-    const ally = w.players[1];
-    ally.pos = { x: 600, y: 700 };
-    vi.spyOn(w.rng, 'pick').mockReturnValue(ally);
-    decide(w, b, ally);
-    expect(b.action.abilityId).toBe('charge');
-    expect(b.action.targetId).toBe(ally.id);
-    expect(b.action.aimAngle).toBeCloseTo(Math.PI / 2);
+    expect(b.forethought!.plan!.targetId).toBe(p.id);
+    p.pos = { x: 600, y: 700 };
+    decide(w, b, w.players[1]);
+    expect(b.action.targetId).toBe(p.id);
+    expect(b.action.aimAngle).toBe(0);
+    expect(pick).toHaveBeenCalledTimes(1);
+    expect(w.serialize().bosses[0].revealed?.abilityId).toBe('charge');
   });
   it('joins one shared plan without rerolling or changing the original owner', () => {
     const { w, p, b } = setup();
@@ -240,7 +238,7 @@ describe('Elder Mind forethought', () => {
     for (const ab of w.defOf(b).abilities) b.cooldowns[ab.id] = 100;
     update(w, b);
     expect(b.forethought?.abilityId).toBeUndefined();
-    expect(forethoughtLabel(b.monsterId, forethoughtView(w, b))).toBe('Reading next move…');
+    expect(forethoughtLabel(b.monsterId, forethoughtView(w, b))).toBe('READING NEXT MOVE…');
     tickForethought(w, b, 8);
     expect(b.forethought).toBeUndefined();
     expect(b.decisionTimer).toBe(1.2);
@@ -310,7 +308,7 @@ describe('Elder Mind forethought', () => {
       'wa_goo_blast_g',
       'subup_wa_goo_blast',
     ]);
-    expect(blast?.forethought).toEqual({ requiresCurse: true });
+    expect(blast?.forethought).toEqual({ requiresCurse: false });
     expect(blast?.pierce).toBe(1);
     expect(blast?.cursePayoff).toBe(4);
   });
@@ -338,7 +336,7 @@ describe('Elder Mind forethought', () => {
   it('copied components are standalone, deduplicated, fixed-price and usable with no curse/passive', () => {
     const native = previewAbilityTable('warlock', [identity]).a2;
     const comp = decompose(native);
-    expect(comp.effects.some((e) => e.kind === 'forethought' && e.requiresCurse)).toBe(true);
+    expect(comp.effects.some((e) => e.kind === 'forethought' && !e.requiresCurse)).toBe(true);
     comp.effects.push({ kind: 'forethought' });
     const copy = recompose(comp, { slot: 'a2', name: 'Read', cooldown: 9 });
     expect(copy.components!.effects.filter((e) => e.kind === 'forethought')).toHaveLength(1);
@@ -346,7 +344,7 @@ describe('Elder Mind forethought', () => {
     expect(
       componentValue({ delivery: { kind: 'pbaoe' }, effects: [{ kind: 'forethought' }] }),
     ).toBe(24);
-    expect(describeAbility(copy)).toContain('reads and commits');
+    expect(describeAbility(copy)).toContain('reveals');
     const { w, p, b } = setup(skills[0], 'troll', []);
     p.abilities!.a2 = copy;
     use(w, p, 'a2');
@@ -404,7 +402,7 @@ describe('Elder Mind forethought', () => {
     ]) {
       expect(previewAbilityTable('warlock', history).a2.forethought).toBeUndefined();
       expect(previewAbilityTable('warlock', [...history, 'restore:a2']).a2.forethought).toEqual({
-        requiresCurse: true,
+        requiresCurse: false,
       });
     }
   });
@@ -445,7 +443,7 @@ describe('Elder Mind forethought', () => {
       action: 'equip',
       replace: doom,
     })!;
-    expect(make().abilities!.basic.forethought).toEqual({ requiresCurse: true });
+    expect(make().abilities!.basic.forethought).toEqual({ requiresCurse: false });
     expect(make().abilities!.a2.surgeRider?.interrupt).toBeUndefined();
   });
   it.each([0, 5])('Haste with %s Honed ranks retains real recovery and direct reading', (rank) => {
@@ -531,7 +529,7 @@ describe('Elder Mind forethought', () => {
     expect(forethoughtLabel('troll', undefined)).toBeUndefined();
     expect(forethoughtLabel('troll', { remaining: 0 })).toBeUndefined();
     expect(forethoughtLabel('troll', { remaining: 2, abilityId: 'groundSlam' })).toBe(
-      'Next: Ground Slam · nearby burst',
+      'FORESEEN: Ground Slam · nearby burst',
     );
   });
 });

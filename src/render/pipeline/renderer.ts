@@ -1,3 +1,4 @@
+import { drawForesight } from './foresightVisuals';
 import { forethoughtLabel } from '../../engine/content/forethought';
 import { drawInfernalAperture } from './apertureVisuals';
 import { drawShadowAnchor } from './shadowVisuals';
@@ -79,6 +80,7 @@ export class Renderer {
   private readonly obstaclesLayer = new Graphics();
   private readonly zonesLayer = new Graphics();
   private readonly telegraphLayer = new Graphics();
+  private readonly foresightLayer = new Graphics();
   private readonly aimLayer = new Graphics();
   private readonly claimLayer = new Graphics();
   private readonly entitiesLayer = new Graphics();
@@ -136,6 +138,7 @@ export class Renderer {
       this.fxLayer,
       this.particles.container,
       this.fxTextLayer,
+      this.foresightLayer, // forecasts remain readable above bodies and particles
       this.enemyStatusLayer, // readable above damage numbers and particles
       this.apparitionLayer, // fear/decoy anchors stay readable above combat effects
       this.claimLayer, // actionable local target, never buried under bodies or damage numbers
@@ -637,7 +640,9 @@ export class Renderer {
   private drawTelegraph(state: RenderState): void {
     const g = this.telegraphLayer;
     g.clear();
+    this.foresightLayer.clear();
     for (const boss of state.bosses) {
+      drawForesight(this.foresightLayer, boss, this.camera);
       if (boss.telegraph) this.fx.drawTelegraph(g, boss.telegraph, this.camera);
     }
     // World-level corruption telegraphs (rain / vents / collapsing ring) that
@@ -819,7 +824,7 @@ export class Renderer {
       // item 1 — a constant flyer (def.flying) carries no timed 'flight' buff, so
       // surface its permanent airborne state as a no-countdown 🕊️ on the nameplate.
       const badges = buffLabel(boss.buffs, 4, def.flying === true);
-      const intent = forethoughtLabel(boss.monsterId, boss.forethought);
+      const intent = forethoughtLabel(boss.monsterId, boss.forethought, boss.revealed);
       t.text = [name, badges, intent].filter(Boolean).join('\n');
       const s = this.camera.worldToScreen(boss.pos);
       t.position.set(s.x, s.y - def.radius * scale - 10);

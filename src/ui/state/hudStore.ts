@@ -30,6 +30,7 @@ export interface HudTeammate {
 /** One boss health bar (twin encounters stack several). */
 export interface HudBoss {
   forethought?: string;
+  foresightHint?: string;
   id: number;
   name: string;
   hp: number;

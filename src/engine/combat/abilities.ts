@@ -143,7 +143,13 @@ const TALL_OBSTACLES: ReadonlySet<string> = new Set(['pillar', 'monolith', 'crys
  * point (hero centre one combined-radius short of the obstacle) so the mover ends
  * flush against cover instead of tunnelling through it.
  */
-function firstObstacleStop(world: World, a: Vec2, b: Vec2, r: number, leap: boolean): Vec2 | null {
+export function firstObstacleStop(
+  world: World,
+  a: Vec2,
+  b: Vec2,
+  r: number,
+  leap: boolean,
+): Vec2 | null {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const len = Math.hypot(dx, dy);
@@ -1690,7 +1696,7 @@ export function resolveBossAbility(
         (target
           ? target.pos
           : (action.targetPos ?? vadd(boss.pos, fromAngle(action.aimAngle, 100))));
-      const baseAngle = angleOf(sub(aimAt, boss.pos));
+      const baseAngle = action.forethought ? action.aimAngle : angleOf(sub(aimAt, boss.pos));
       const speed = ab.projSpeed ?? 420;
       const count = ab.projCount ?? 1;
       const spread = ((ab.spreadDeg ?? 0) * Math.PI) / 180;

@@ -1401,7 +1401,7 @@ export function describeAbility(
   }
   if (def.forethought)
     parts.push(
-      `positive direct hit ${def.forethought.requiresCurse ? 'on your cursed boss ' : ''}reads its next move for 8s; target and aim lock at wind-up`,
+      `positive direct hit ${def.forethought.requiresCurse ? 'on your cursed boss ' : ''}reveals its next move and early aim for 8s; beams track their victim`,
     );
   if (def.prepareCrit) parts.push(`prepare next precision crit for ${s(def.prepareCrit)}`);
   if (def.precisionOnHit)
