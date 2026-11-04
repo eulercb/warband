@@ -21,12 +21,13 @@ export function drawForesight(g: Graphics, boss: BossView, camera: Camera): void
     }
   };
   const ring = (x: number, y: number, r: number) => {
-    for (let i = 0; i < 32; i += 2)
-      g.arc(x, y, Math.max(1, r), (i * Math.PI) / 16, ((i + 1) * Math.PI) / 16).stroke({
-        color: COLOR,
-        width: 3,
-        alpha: 0.95,
-      });
+    const radius = Math.max(1, r);
+    for (let i = 0; i < 32; i += 2) {
+      const start = (i * Math.PI) / 16;
+      g.moveTo(x + Math.cos(start) * radius, y + Math.sin(start) * radius)
+        .arc(x, y, radius, start, ((i + 1) * Math.PI) / 16)
+        .stroke({ color: COLOR, width: 3, alpha: 0.95 });
+    }
   };
   // The eye persists through the real wind-up, including a slowed one.
   const b = point(boss.pos.x, boss.pos.y),
@@ -54,14 +55,18 @@ export function drawForesight(g: Graphics, boss: BossView, camera: Camera): void
     const r = t.range * s;
     for (const a of [t.angle - t.halfAngle, t.angle + t.halfAngle])
       dash(o.x, o.y, o.x + Math.cos(a) * r, o.y + Math.sin(a) * r);
-    for (let i = 0; i < 16; i += 2)
-      g.arc(
-        o.x,
-        o.y,
-        r,
-        t.angle - t.halfAngle + (2 * t.halfAngle * i) / 16,
-        t.angle - t.halfAngle + (2 * t.halfAngle * (i + 1)) / 16,
-      ).stroke({ color: COLOR, width: 3, alpha: 0.95 });
+    for (let i = 0; i < 16; i += 2) {
+      const start = t.angle - t.halfAngle + (2 * t.halfAngle * i) / 16;
+      g.moveTo(o.x + Math.cos(start) * r, o.y + Math.sin(start) * r)
+        .arc(
+          o.x,
+          o.y,
+          r,
+          t.angle - t.halfAngle + (2 * t.halfAngle * i) / 16,
+          t.angle - t.halfAngle + (2 * t.halfAngle * (i + 1)) / 16,
+        )
+        .stroke({ color: COLOR, width: 3, alpha: 0.95 });
+    }
   } else {
     const d = Math.hypot(end.x - o.x, end.y - o.y) || 1,
       nx = ((-(end.y - o.y) / d) * t.width * s) / 2,

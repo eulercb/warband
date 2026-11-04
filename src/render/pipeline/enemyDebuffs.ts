@@ -2,6 +2,7 @@ import type { Graphics } from 'pixi.js';
 import type { BuffView, Vec2 } from '../../engine/core/types';
 import { isBurstControl } from '../../engine/core/control';
 export type EnemyDebuffKind =
+  | 'forethoughtRecovery'
   | 'thoughtBreakRecovery'
   | 'stun'
   | 'root'
@@ -19,6 +20,7 @@ export interface EnemyDebuff {
 }
 export const ENEMY_DEBUFF_COLORS: Record<EnemyDebuffKind, number> = {
   thoughtBreakRecovery: 0xa7bacd,
+  forethoughtRecovery: 0xaa91c0,
   stun: 0xffe274,
   root: 0x98e6ba,
   slow: 0x8de4ff,
@@ -44,6 +46,7 @@ export function enemyDebuffs(buffs: readonly BuffView[], localId: number | null)
     'vulnerable',
     'venom',
     'thoughtBreakRecovery',
+    'forethoughtRecovery',
   ] as const) {
     const matching = active.filter((b) => {
       switch (kind) {
@@ -84,7 +87,15 @@ export function drawEnemyDebuffSymbol(
   r: number,
   color: number,
 ): void {
-  if (kind === 'thoughtBreakRecovery') {
+  if (kind === 'forethoughtRecovery') {
+    g.moveTo(x - r, y - r * 0.3)
+      .lineTo(x, y + r * 0.3)
+      .lineTo(x + r, y - r * 0.3)
+      .moveTo(x - r * 0.6, y + r * 0.2)
+      .lineTo(x - r * 0.8, y + r * 0.8)
+      .moveTo(x + r * 0.6, y + r * 0.2)
+      .lineTo(x + r * 0.8, y + r * 0.8);
+  } else if (kind === 'thoughtBreakRecovery') {
     g.circle(x, y, r)
       .moveTo(x - r, y + r)
       .lineTo(x + r, y - r)

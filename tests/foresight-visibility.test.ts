@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Graphics } from 'pixi.js';
+import { Graphics } from 'pixi.js';
 import { World } from '../src/engine/world/world';
-import { damageBoss } from '../src/engine/combat/combat';
+import { damageBoss, tickBuffs } from '../src/engine/combat/combat';
 import { resolvePlayerAbility, resolveBossAbility, beamTick } from '../src/engine/combat/abilities';
 import { getMonster, MONSTER_IDS, type BossAbilityShape } from '../src/engine/content/monsters';
 import { forethoughtLabel, foresightHint } from '../src/engine/content/forethought';
 import { SnapshotInterpolator } from '../src/render/pipeline/interpolate';
+import { tickForethought } from '../src/engine/combat/forethought';
+import { buffBadges } from '../src/render/overlays/buffGlyphs';
 import { drawForesight } from '../src/render/pipeline/foresightVisuals';
 import type { Boss, MonsterId, BossView } from '../src/engine/core/types';
 import type { Camera } from '../src/render/pipeline/camera';
@@ -184,14 +186,14 @@ describe('visible, truthful boss foresight', () => {
     expect(b.perception).toBeUndefined();
     expect(b.action.illusionPos).toEqual({ x: 300, y: 400 });
   });
-  it('keeps current disclosure when a later hit reads the following move', () => {
+  it('keeps current disclosure without queueing the following move', () => {
     const { w, b } = setup();
     arm(w, b, 'smash');
     commit(w, b);
     arm(w, b);
     const view = w.serialize().bosses[0];
     expect(view.revealed?.abilityId).toBe('smash');
-    expect(view.forethought?.abilityId).toBeUndefined();
+    expect(view.forethought).toBeUndefined();
     expect(forethoughtLabel(b.monsterId, view.forethought, view.revealed)).toContain('REVEALED');
   });
   it('keeps the revealed eye during a cone without drawing another danger countdown', () => {
@@ -263,6 +265,125 @@ describe('visible, truthful boss foresight', () => {
       expect(w.foresightPreview(b, action)).toBeUndefined();
     },
   );
+  it.each(['disintegrate', 'deathRay', 'antimagicEye'])(
+    'Pixi %s arcs start at their own circle, never a previous path or screen corner',
+    (id) => {
+      const { w, b } = setup('beholder');
+      arm(w, b, id);
+      const g = new Graphics(),
+        camera = {
+          scale: 1,
+          worldToScreen: ({ x, y }: { x: number; y: number }) => ({ x: x + 40, y: y + 80 }),
+        } as Camera;
+      drawForesight(g, w.serialize().bosses[0], camera);
+      let arcs = 0;
+      for (const instruction of g.context.instructions) {
+        if (instruction.action !== 'stroke') continue;
+        const path = instruction.data.path.instructions;
+        for (let j = 0; j < path.length; j++) {
+          if (path[j].action !== 'arc') continue;
+          arcs++;
+          expect(path[j - 1].action).toBe('moveTo');
+          const [x, y, r, start] = path[j].data as [number, number, number, number];
+          const [mx, my] = path[j - 1].data as [number, number];
+          expect(mx).toBeCloseTo(x + Math.cos(start) * r);
+          expect(my).toBeCloseTo(y + Math.sin(start) * r);
+        }
+      }
+      expect(arcs).toBeGreaterThan(0);
+      g.destroy();
+    },
+  );
+  it('held hits cannot extend pending lifetime; expiry closes the shared mind', () => {
+    const { w, p, b } = setup();
+    arm(w, b, 'smash');
+    tickForethought(w, b, 3);
+    arm(w, b);
+    expect(b.forethought!.remaining).toBe(5);
+    damageBoss(w, w.players[1], b, 1, {
+      direct: true,
+      forethought: { ownerClass: 'knight', requiresCurse: false },
+    });
+    expect(b.forethought!.remaining).toBe(5);
+    tickForethought(w, b, 5);
+    expect(b.forethought).toBeUndefined();
+    expect(
+      w.serialize().bosses[0].buffs.find((x) => x.kind === 'forethoughtRecovery')?.remaining,
+    ).toBe(8);
+    arm(w, b);
+    expect(b.forethought).toBeUndefined();
+    tickBuffs(b, 7.99);
+    arm(w, b);
+    expect(b.forethought).toBeUndefined();
+    tickBuffs(b, 0.02);
+    arm(w, b);
+    expect(b.forethought).toBeDefined();
+    expect(p.hp).toBe(p.maxHp);
+  });
+  it('starts the full quiet interval after a long revealed channel, not at the first hit', () => {
+    const { w, p, b } = setup('lich');
+    p.hp = p.maxHp = 10000;
+    arm(w, b, 'lifeDrain');
+    commit(w, b);
+    b.action.kind = 'channel';
+    b.action.remaining = 20;
+    b.action.channelAccum = 0;
+    update(w, b, 10);
+    arm(w, b);
+    expect(b.forethought).toBeUndefined();
+    expect(b.buffs.some((x) => x.kind === 'forethoughtRecovery')).toBe(false);
+    b.action.remaining = 0.1;
+    update(w, b, 0.1);
+    const closed = w.serialize().bosses[0].buffs.find((x) => x.kind === 'forethoughtRecovery')!;
+    expect(closed.remaining).toBe(8);
+    expect(buffBadges([closed])[0].label).toContain('Mind closed');
+    arm(w, b);
+    expect(b.forethought).toBeUndefined();
+  });
+  it('interruption ends a revealed attack and starts the same quiet interval', () => {
+    const { w, p, b } = setup();
+    arm(w, b, 'smash');
+    commit(w, b);
+    w.onThoughtBreak(p, b, 1, { spent: false, ownerClass: p.classId });
+    expect(b.action.kind).toBe('recover');
+    expect(b.action.forethought).toBeUndefined();
+    expect(b.buffs.find((x) => x.kind === 'forethoughtRecovery')?.remaining).toBe(8);
+  });
+  it('pending invalidation starts recovery before a fresh hit can replace it', () => {
+    const { w, b } = setup();
+    arm(w, b, 'smash');
+    w.tauntTimer = 2;
+    w.tauntTargetId = w.players[1].id;
+    arm(w, b);
+    expect(b.forethought).toBeUndefined();
+    expect(b.buffs.find((x) => x.kind === 'forethoughtRecovery')?.remaining).toBe(8);
+    arm(w, b);
+    expect(b.forethought).toBeUndefined();
+  });
+  it('recovery is party-wide but does not close an independent boss', () => {
+    const { w, p, b } = setup();
+    arm(w, b, 'smash');
+    commit(w, b);
+    w.onThoughtBreak(p, b, 1, { spent: false, ownerClass: p.classId });
+    damageBoss(w, w.players[1], b, 1, {
+      direct: true,
+      forethought: { ownerClass: 'knight', requiresCurse: false },
+    });
+    expect(b.forethought).toBeUndefined();
+    const other = {
+      ...b,
+      id: 123,
+      buffs: [],
+      action: { ...b.action },
+      cooldowns: { ...b.cooldowns },
+    };
+    w.bosses.push(other);
+    damageBoss(w, p, other, 1, {
+      direct: true,
+      forethought: { ownerClass: p.classId, requiresCurse: false },
+    });
+    expect(other.forethought).toBeDefined();
+  });
   it('no read means no eye or forecast geometry', () => {
     const { w } = setup();
     const ellipse = vi.fn();

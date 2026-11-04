@@ -45,9 +45,11 @@ export default function MechanicsReference() {
         of fixed outlines; boss-centered rings move with the boss. Beams track their marked victim:
         leave their reach. Hazard pools choose positions at release. Ordinary orange telegraphs own
         attack timing; the Revealed eye persists through the wind-up/channel. New taunts, changed
-        illusions, lost victims, owner loss or expiry clear pending reads. Hits during a revealed
-        attack can read the following move. Copied/Forge reads use the same contract, with a basic
-        fallback for a utility starting special.
+        illusions, lost victims, owner loss or expiry clear pending reads. Hits cannot refresh a
+        pending read or queue another during Revealed. When the read ends, Mind closed blocks all
+        readers of that boss for 8s; its countdown shows recovery time. Expired or invalid reads
+        also start recovery. Copied/Forge reads use the same contract, with a basic fallback for a
+        utility starting special.
       </p>
       <p>
         Infernal Aperture fixes an entrance and exit along your setup aim. Only your shots crossing

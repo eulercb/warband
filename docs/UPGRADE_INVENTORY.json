@@ -12333,7 +12333,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Direct hits reveal the boss’s next move for 8s. Violet outlines show its early aim; step out before the attack starts. Beams track their marked victim",
+      "description": "Direct hits reveal the boss’s next move for 8s. Violet outlines show its early aim; step out before the attack starts. Beams track their marked victim; after a read ends, the boss closes its mind to all readers for 8s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": true,

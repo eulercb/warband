@@ -338,6 +338,19 @@ describe('<HUD>', () => {
     const bossBuff = container.querySelector('.hud-bossbar-label .hud-buff');
     expect(bossBuff?.querySelector('.hud-buff-glyph')?.textContent).toBe('💔');
     expect(bossBuff?.querySelector('.hud-buff-secs')?.textContent).toBe('5');
+    act(() =>
+      useHudStore
+        .getState()
+        .set({ bosses: [{ ...boss, forethought: undefined, forethoughtRecovery: 7.1 }] }),
+    );
+    expect(container.querySelector('.hud-mind-closed')?.textContent).toContain('Mind closed · 8s');
+    expect(container.querySelector('.hud-forethought')).toBeNull();
+    act(() =>
+      useHudStore
+        .getState()
+        .set({ bosses: [{ ...boss, forethought: undefined, forethoughtRecovery: 0 }] }),
+    );
+    expect(container.querySelector('.hud-mind-closed')).toBeNull();
   });
 
   it('shows a permanent airborne chip (no countdown) for a constant flyer (item 1)', () => {

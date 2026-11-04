@@ -1090,7 +1090,7 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
     case 'fortune':
       return `Fortune ${s(e.fortune.duration)} — next direct hit delays wind-ups ${n((e.fortune.castSlowMult - 1) * 100)}%, weakens damage ${n((1 - e.fortune.damageMult) * 100)}% for ${s(e.fortune.debuffDuration)}${e.fortune.markBonus ? `; next hit from a later cast +${n(e.fortune.markBonus * 100)}% damage` : ''}`;
     case 'forethought':
-      return `positive direct hit ${e.requiresCurse ? 'on your cursed boss ' : ''}reveals its next move and early aim for 8s; beams track their victim`;
+      return `positive direct hit ${e.requiresCurse ? 'on your cursed boss ' : ''}reveals its next move and early aim for 8s; beams track their victim; after the read ends, 8s shared Mind closed recovery`;
     case 'thoughtBreak':
       return 'one positive direct boss hit can break a wind-up or channel; 8s shared target recovery; no Surge required';
     case 'surgeStrike':

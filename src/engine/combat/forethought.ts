@@ -1,9 +1,15 @@
 /** Shared next intent with reserved aim; current revealed attacks live on BossAction. */
 import type { Boss, BossView, Player } from '../core/types';
 import type { World } from '../world/world';
-import type { HitMods } from './combat';
+import { applyBuff, makeBuff, hasBuff, type HitMods } from './combat';
 import { abilityById } from '../content/monsters';
 import { personallyCursed } from '../core/curses';
+
+export const FORETHOUGHT_RECOVERY = 8;
+export function closeForethought(b: Boss): void {
+  if (b.hp > 0)
+    applyBuff(b, makeBuff('forethoughtRecovery', 1, FORETHOUGHT_RECOVERY, 'forethoughtRecovery'));
+}
 
 export function forethoughtLegal(w: World, b: Boss, id: string): boolean {
   const ab = abilityById(w.defOf(b), id);
@@ -51,9 +57,12 @@ export function armForethought(
     (hit.requiresCurse && !personallyCursed(p.id, b))
   )
     return;
-  // Join an existing plan. Refreshing its lifetime cannot reroll the committed move.
-  if (valid(w, b)) {
-    b.forethought!.remaining = 8;
+  // One shared action, then a real quiet interval; hits cannot queue or extend it.
+  if (b.action.forethought || hasBuff(b, 'forethoughtRecovery')) return;
+  if (b.forethought) {
+    if (valid(w, b)) return;
+    closeForethought(b);
+    delete b.forethought;
     return;
   }
   b.forethought = { ownerId: p.id, ownerClass: p.classId, remaining: 8 };
@@ -62,7 +71,10 @@ export function armForethought(
 export function tickForethought(w: World, b: Boss, dt: number): void {
   if (!b.forethought) return;
   b.forethought.remaining -= dt;
-  if (!valid(w, b)) delete b.forethought;
+  if (!valid(w, b)) {
+    if (w.scene === null) closeForethought(b);
+    delete b.forethought;
+  }
 }
 
 export function forethoughtView(w: World, b: Boss): BossView['forethought'] {

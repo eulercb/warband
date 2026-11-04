@@ -31,6 +31,7 @@ export interface HudTeammate {
 export interface HudBoss {
   forethought?: string;
   foresightHint?: string;
+  forethoughtRecovery?: number;
   id: number;
   name: string;
   hp: number;

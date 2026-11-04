@@ -42,6 +42,9 @@ export function pushHud(state: RenderState, source: InputSource): void {
       affixes: b.affixes ?? [],
       forethought: forethoughtLabel(b.monsterId, b.forethought, b.revealed),
       foresightHint: foresightHint(b.forethought?.preview ?? b.revealed),
+      forethoughtRecovery: b.buffs.find(
+        (buff) => buff.kind === 'forethoughtRecovery' && buff.remaining > 0,
+      )?.remaining,
     })),
     teammates: state.players.map((p) => ({
       id: p.id,

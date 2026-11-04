@@ -1,5 +1,9 @@
 # Elder Mind: visible, actionable foresight
 
+Follow-up: PR154 merged and owner testing accepts visibility/clarity. The
+[arc/cadence correction](FORESIGHT_CADENCE.md) supersedes the continuous refresh
+and next-read queuing described below.
+
 PR153 merged, but **failed owner live acceptance**. The owner saw no useful
 forecast and found the curse prerequisite awkward for close-range skills.
 Whispered Doom remains accepted. This follow-up repairs Elder Mind before the

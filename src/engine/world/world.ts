@@ -1,6 +1,7 @@
 import { firstObstacleStop } from '../combat/abilities';
 import {
   armForethought,
+  closeForethought,
   tickForethought,
   forethoughtView,
   forethoughtLegal,
@@ -3190,6 +3191,7 @@ export class World {
 
   private enterRecover(boss: Boss): void {
     const a = boss.action;
+    if (a.forethought) closeForethought(boss);
     a.forethought = undefined;
     a.kind = 'recover';
     a.abilityId = null;
@@ -3294,7 +3296,10 @@ export class World {
     const f = boss.forethought;
     const predicted = f?.abilityId && abilityById(def, f.abilityId);
     const valid = predicted && target && forethoughtLegal(this, boss, predicted.id);
-    if (f?.abilityId && !valid) delete boss.forethought;
+    if (f?.abilityId && !valid) {
+      closeForethought(boss);
+      delete boss.forethought;
+    }
     const choice = valid ? predicted.id : this.chooseBossAbility(boss, def, target);
     if (!choice) return;
     const ab = abilityById(def, choice);
