@@ -11,7 +11,10 @@ translated into bonus damage, damage reduction or another differently named
 slow. Fear can change approach/avoidance; illusion can change perceived targets;
 charm can change allegiance. These are examples, not a requirement to add all
 three. Simple numerical growth remains useful but is not proof of a new identity.
-Apply this criterion across future class work, not only Whispers. Do not add
+Apply this criterion across future class work, not only Whispers.
+Information mechanics need actionable, salient in-arena cues and clearly distinct
+pending/forecast/active states; a short-lived text label alone is insufficient.
+Check actual targeting semantics before promising a safe area or fixed aim. Do not add
 complexity to every skill or discard functioning simple skills merely for novelty.
 
 Before presenting a redesign, describe what a player or enemy actually does

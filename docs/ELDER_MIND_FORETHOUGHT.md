@@ -1,5 +1,10 @@
 # Elder Mind: Forethought
 
+Superseded by the [visible foresight follow-up](ELDER_MIND_FORESIGHT_FOLLOWUP.md).
+PR153 merged but failed owner live acceptance: the information was not useful
+or visible, and its curse setup was awkward. This note records the original
+implementation; its late-aim/curse rules are historical.
+
 Whispered Doom / Thought Break (#152) is merged and accepted in owner testing:
 it felt nice. This delivery resolves Elder Mind's remaining purpose question
 with an early intention read. Elder Mind is implemented for owner testing; it

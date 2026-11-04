@@ -1,3 +1,4 @@
+import { foresightHint } from '../../engine/content/forethought';
 import { forethoughtLabel } from '../../engine/content/forethought';
 /**
  * Warband — RenderState → hudStore bridge, shared by the in-fight GameView and
@@ -39,7 +40,8 @@ export function pushHud(state: RenderState, source: InputSource): void {
       flying: getMonster(b.monsterId).flying === true, // item 1
       modName: b.modName ?? '',
       affixes: b.affixes ?? [],
-      forethought: forethoughtLabel(b.monsterId, b.forethought),
+      forethought: forethoughtLabel(b.monsterId, b.forethought, b.revealed),
+      foresightHint: foresightHint(b.forethought?.preview ?? b.revealed),
     })),
     teammates: state.players.map((p) => ({
       id: p.id,

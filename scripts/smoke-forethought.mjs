@@ -29,6 +29,8 @@ try {
       window.__vite_plugin_react_preamble_installed__ = true;
       await import('/src/ui/styles.css');
       await import('/src/ui/hud.css');
+      const { Host } = await import('/src/net/session/host.ts');
+      const { SnapshotInterpolator } = await import('/src/render/pipeline/interpolate.ts');
       const { World } = await import('/src/engine/world/world.ts');
       const { Renderer } = await import('/src/render/pipeline/renderer.ts');
       const { pushHud } = await import('/src/ui/state/hudBridge.ts');
@@ -59,10 +61,11 @@ try {
       p.pos = { x: 500, y: 400 };
       p.aim = { x: 1, y: 0 };
       p.critChance = 0;
-      b.pos = { x: 960, y: 400 };
+      b.pos = { x: 620, y: 400 };
+      for (const ab of w.monsterDef.abilities) b.cooldowns[ab.id] = ab.id === 'smash' ? 0 : 100;
       b.hp = b.maxHp = 10000;
       b.moveSpeed = 0;
-      b.decisionTimer = 100;
+      b.decisionTimer = 1.2;
       const renderer = await Renderer.create(document.querySelector('#world'), w.arena);
       useStore.setState({
         localClass: 'warlock',
@@ -70,10 +73,22 @@ try {
         mySubSkills: ['wa_goo_blast'],
         autofire: false,
       });
+      // Exercise actual host render projection and JSON/client interpolation, not an ad-hoc view.
+      const host = Object.create(Host.prototype);
+      Object.assign(host, { world: w, localPlayerId: p.id, drainEvents: () => w.events });
+      const interpolator = new SnapshotInterpolator();
+      let sequence = 0;
       const publish = () => {
-        const s = { ...w.serialize(), localPlayerId: p.id, arena: w.arena };
-        pushHud(s, 'keyboard');
-        renderer.render(s);
+        const local = host.getRenderState(performance.now());
+        const wire = JSON.parse(JSON.stringify({ ...w.serialize(), tick: sequence++ }));
+        interpolator.push(wire);
+        const remote = interpolator.sample(performance.now() + 200, {
+          localPlayerId: p.id,
+          arena: w.arena,
+        });
+        window.renderedForecast = remote?.bosses[0].forethought;
+        pushHud(local, 'keyboard');
+        renderer.render(remote ?? local);
       };
       const step = (buttons) => {
         const input = sampleTouch();
@@ -120,31 +135,10 @@ try {
         await page.evaluate((s) => window.fixture.step({ [s]: false }), slot);
       }
     };
-    // Real Hex from the starting kit. Its aim places it at its authored 460u reach.
-    await press('a1');
-    await page.evaluate(() => {
-      const f = window.fixture;
-      for (let i = 0; i < 18; i++) f.step({});
-      // Freeze only the scenario clock: a current action lets us inspect a pending read.
-      f.b.action.kind = 'recover';
-      f.b.action.remaining = 0.4;
-      f.b.decisionTimer = 1.2;
-    });
-    assert.ok(
-      await page.evaluate(() => window.fixture.b.buffs.some((b) => b.kind === 'curse')),
-      JSON.stringify(
-        await page.evaluate(() => ({
-          p: window.fixture.p.pos,
-          b: window.fixture.b.pos,
-          z: window.fixture.w.groundZones,
-          cd: window.fixture.p.cooldowns,
-        })),
-      ),
-    );
     await press('basic');
     await page.evaluate(() => {
       const f = window.fixture;
-      for (let i = 0; i < 14; i++) f.step({});
+      for (let i = 0; i < 6; i++) f.step({});
     });
     const result = await page.evaluate(() => {
       const f = window.fixture,
@@ -153,16 +147,17 @@ try {
         read: view.forethought,
         action: f.b.action.kind,
         telegraph: view.telegraph,
-        hp: f.p.hp,
-        maxHp: f.p.maxHp,
+        curse: f.b.buffs.some((b) => b.kind === 'curse'),
+        remote: window.renderedForecast,
       };
     });
-    assert.ok(result.read?.abilityId);
+    assert.equal(result.curse, false);
+    assert.ok(result.read?.preview?.shape);
+    assert.deepEqual(result.remote?.preview, result.read.preview);
     assert.equal(result.telegraph, null);
     assert.equal(result.action, 'idle');
-    assert.equal(result.hp, result.maxHp);
     await page.waitForSelector('.hud-forethought');
-    assert.match(await page.locator('.hud-forethought').textContent(), /^Next: /);
+    assert.match(await page.locator('.hud-forethought').textContent(), /FORESEEN: /);
     await page.evaluate(async () => {
       const f = window.fixture;
       const s = { ...f.w.serialize(), events: [], localPlayerId: f.p.id, arena: f.w.arena };
@@ -173,24 +168,38 @@ try {
     });
     if (process.env.SHOT_DIR)
       await page.screenshot({ path: `${process.env.SHOT_DIR}/forethought-${width}.png` });
+    if (width === 320) {
+      const bars = await page.locator('.hud-bossbars').boundingBox();
+      const party = await page.locator('.hud-teammates').boundingBox();
+      assert.ok(party.y >= bars.y + bars.height, 'Forecast must not cover party health');
+    }
     const next = result.read.abilityId;
     const actual = await page.evaluate(() => {
       const f = window.fixture;
-      // Reposition after the forecast; its ID stays committed, its aim does not.
+      // Reposition after the forecast; its ID and aim both stay committed.
       f.p.pos = { x: 600, y: 700 };
       for (let i = 0; i < 40 && f.b.action.kind === 'idle'; i++) f.step({});
       return {
         id: f.b.action.abilityId,
         kind: f.b.action.kind,
         read: f.w.serialize().bosses[0].forethought,
+        revealed: f.w.serialize().bosses[0].revealed,
+        angle: f.b.action.aimAngle,
       };
     });
     assert.equal(actual.id, next);
     assert.equal(actual.kind, 'windup');
     assert.equal(actual.read, undefined);
+    assert.equal(actual.angle, result.read.preview.shape.angle);
+    assert.ok(actual.revealed);
+    await page.waitForFunction(() =>
+      document.querySelector('.hud-forethought')?.textContent.includes('REVEALED'),
+    );
+    if (process.env.SHOT_DIR)
+      await page.screenshot({ path: `${process.env.SHOT_DIR}/forethought-revealed-${width}.png` });
     assert.deepEqual(errors, []);
     console.log(
-      `PASS ${width}px: actual Hex/basic read, public advance forecast, unchanged timing and committed next move`,
+      `PASS ${width}px: curse-free basic, host/client violet geometry, early fixed aim and retained revealed cue`,
     );
     await page.close();
   }

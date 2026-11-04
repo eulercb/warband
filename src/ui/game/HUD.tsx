@@ -258,7 +258,8 @@ function BossBar({
       </div>
       {boss.forethought && (
         <div className="hud-forethought" role="status">
-          {boss.forethought}
+          <strong>◉ {boss.forethought}</strong>
+          <span>{boss.foresightHint}</span>
         </div>
       )}
       <div className="hud-bossbar-track">
@@ -348,53 +349,55 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
       {/* Boss bars (one per boss — twin encounters stack two). The hardcore
           kill-deadline has no bar or clock of its own — it warns via transient
           banners at 30/15/5s (see world.stepDeadline + CorruptionBanner). */}
-      {hud.bosses.length > 0 && (
-        <div className="hud-bossbars">
-          {hud.bosses.map((b, i) => (
-            <BossBar key={b.id} boss={b} run={run} cycle={cycle} first={i === 0} />
+      <div className="hud-top">
+        {hud.bosses.length > 0 && (
+          <div className="hud-bossbars">
+            {hud.bosses.map((b, i) => (
+              <BossBar key={b.id} boss={b} run={run} cycle={cycle} first={i === 0} />
+            ))}
+          </div>
+        )}
+
+        {/* Teammate frames */}
+        <div className="hud-teammates">
+          {hud.teammates.map((t) => (
+            <div
+              key={t.id}
+              className={`hud-teammate cls-${t.classId}${
+                t.state === 'downed' ? ' downed' : t.state === 'dead' ? ' dead' : ''
+              }${t.isLocal ? ' local' : ''}`}
+            >
+              <div className="hud-teammate-top">
+                <span className="hud-teammate-name" title={t.name || 'Hero'}>
+                  {t.name || 'Hero'}
+                  {t.isLocal && <span className="hud-teammate-you"> (you)</span>}
+                </span>
+                <span className="hud-teammate-class">{CLASSES[t.classId].name}</span>
+              </div>
+              <div className="hud-teammate-effects">
+                <BuffChips buffs={t.buffs} />
+              </div>
+              <div className="hud-healthbar hud-teammate-hp">
+                <AbsorptionBar buffs={t.buffs} maxHp={t.maxHp} />
+                <div
+                  className="hud-healthbar-fill"
+                  style={{ width: `${t.state === 'dead' ? 0 : pct(t.hp, t.maxHp)}%` }}
+                />
+                <span className="hud-healthbar-num">
+                  {t.state === 'downed'
+                    ? 'DOWNED'
+                    : t.state === 'dead'
+                      ? 'DEAD'
+                      : `${Math.round(t.hp)} / ${Math.round(t.maxHp)}`}
+                </span>
+              </div>
+            </div>
           ))}
         </div>
-      )}
+      </div>
 
       {/* Transient mid-fight corruption announcement */}
       <CorruptionBanner />
-
-      {/* Teammate frames */}
-      <div className="hud-teammates">
-        {hud.teammates.map((t) => (
-          <div
-            key={t.id}
-            className={`hud-teammate cls-${t.classId}${
-              t.state === 'downed' ? ' downed' : t.state === 'dead' ? ' dead' : ''
-            }${t.isLocal ? ' local' : ''}`}
-          >
-            <div className="hud-teammate-top">
-              <span className="hud-teammate-name" title={t.name || 'Hero'}>
-                {t.name || 'Hero'}
-                {t.isLocal && <span className="hud-teammate-you"> (you)</span>}
-              </span>
-              <span className="hud-teammate-class">{CLASSES[t.classId].name}</span>
-            </div>
-            <div className="hud-teammate-effects">
-              <BuffChips buffs={t.buffs} />
-            </div>
-            <div className="hud-healthbar hud-teammate-hp">
-              <AbsorptionBar buffs={t.buffs} maxHp={t.maxHp} />
-              <div
-                className="hud-healthbar-fill"
-                style={{ width: `${t.state === 'dead' ? 0 : pct(t.hp, t.maxHp)}%` }}
-              />
-              <span className="hud-healthbar-num">
-                {t.state === 'downed'
-                  ? 'DOWNED'
-                  : t.state === 'dead'
-                    ? 'DEAD'
-                    : `${Math.round(t.hp)} / ${Math.round(t.maxHp)}`}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* Downed note */}
       {hud.state === 'downed' && (

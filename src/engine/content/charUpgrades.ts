@@ -3274,18 +3274,18 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'wa_great_old_one_g_a',
     'Elder Mind',
     '🐙',
-    'Positive direct hits on your cursed boss read and commit its next move for 8s. Plan your position before the wind-up; target and aim lock when it starts',
+    'Direct hits reveal the boss’s next move for 8s. Violet outlines show its early aim; step out before the attack starts. Beams track their marked victim',
     (a) => {
       if (a.a3.components) {
         const recipient = isStrike(a.a2) && a.a2.damage > 0 ? a.a2 : a.basic;
         recipient.forethought = { requiresCurse: false };
       } else {
-        a.basic.forethought = { requiresCurse: true };
-        a.a2.forethought = { requiresCurse: true };
+        a.basic.forethought = { requiresCurse: false };
+        a.a2.forethought = { requiresCurse: false };
       }
     },
     (ab) => {
-      if (isStrike(ab) && ab.damage > 0) ab.forethought = { requiresCurse: !ab.components };
+      if (isStrike(ab) && ab.damage > 0) ab.forethought = { requiresCurse: false };
     },
   ),
   pilotIdentity(
@@ -6484,7 +6484,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       name: blend(fused.name),
       desc:
         base.id === 'wa_great_old_one_g_a'
-          ? 'Reforged Forethought: positive direct hits read and commit a boss’s next move for 8s, without a curse. If the starting special cannot hit directly, the basic carries the read'
+          ? 'Reforged Forethought: direct hits reveal the next boss move and its early aim for 8s, without a curse. Beams track their victim. A utility starting special gives the read to your basic'
           : base.id === 'wa_great_old_one_g_b'
             ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
             : base.id === 'wa_fiend_g_a'

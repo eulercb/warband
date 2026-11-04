@@ -25,21 +25,22 @@ name the next development task beyond playtesting.
 
 ## Current delivery
 
-[Elder Mind: Forethought](ELDER_MIND_FORETHOUGHT.md).
-Elder Mind now reads and commits a cursed boss's next move early, while target
-and aim lock at the normal wind-up start. This awaits owner playtesting.
-Whispered Doom is accepted; the Great Old One purpose review is complete, with
-Elder Mind's acceptance and comparative balance still pending.
+[Elder Mind: visible foresight follow-up](ELDER_MIND_FORESIGHT_FOLLOWUP.md).
+PR153 merged but failed owner live acceptance: the forecast was not visible or
+useful, and the curse prerequisite made close-range setup awkward. The follow-up
+removes that prerequisite, adds authoritative arena previews and a prominent
+forecast card, commits early aim, and retains a Revealed cue during the attack.
+This awaits owner playtesting. Whispered Doom remains accepted.
 
 Seven of 24 subclasses have been reviewed: six are accepted or retained, Great
-Old One has one accepted route and one implemented route awaiting testing, and
+Old One has one accepted route and one revised route awaiting live acceptance, and
 17 await review. Review, implementation and acceptance are separate states.
 
 ## Next development work, in order
 
 | Stage                        | Concrete work                                                                                                                                  |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Review Knight, Barbarian and Monk's six subclasses; compare each identity's actual sequence and receiving kit before deciding changes.         |
+| Next                         | Accept or correct Elder Mind's visible foresight; then review Knight, Barbarian and Monk's six subclasses.                                     |
 | Following                    | Implement mature martial findings in bounded batches; retain sound identities and bring back unresolved gameplay choices.                      |
 | Martial identities           | Knight, Barbarian and Monk: six subclasses.                                                                                                    |
 | Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                            |

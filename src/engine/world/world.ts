@@ -1,3 +1,4 @@
+import { firstObstacleStop } from '../combat/abilities';
 import {
   armForethought,
   tickForethought,
@@ -2664,10 +2665,18 @@ export class World {
     if (
       target &&
       boss.forethought &&
-      !boss.forethought.abilityId &&
+      !boss.forethought.plan &&
       (boss.action.kind === 'idle' || boss.action.kind === 'recover')
-    )
-      boss.forethought.abilityId = this.chooseBossAbility(boss, def, target) ?? undefined;
+    ) {
+      const f = boss.forethought;
+      f.abilityId ??= this.chooseBossAbility(boss, def, target) ?? undefined;
+      const raw = f.abilityId && abilityById(def, f.abilityId);
+      if (raw) {
+        f.plan = this.planBossAction(boss, this.affixAbility(boss, raw), target);
+        f.tauntId = this.tauntTimer > 0 ? (this.tauntTargetId ?? undefined) : undefined;
+        f.perception = boss.perception;
+      }
+    }
 
     switch (boss.action.kind) {
       case 'idle': {
@@ -3181,6 +3190,7 @@ export class World {
 
   private enterRecover(boss: Boss): void {
     const a = boss.action;
+    a.forethought = undefined;
     a.kind = 'recover';
     a.abilityId = null;
     a.remaining = BOSS_RECOVER_TIME;
@@ -3293,20 +3303,27 @@ export class World {
     // into an undodgeable wall with another live telegraph (a twin's cast or a
     // corruption strike). The boss simply re-decides next cycle. Inert for a lone
     // boss with nothing pending, so single-boss fights are byte-for-byte unchanged.
-    if (this.wouldWallUnfairly(boss, ab, target)) return;
+    if (this.wouldWallUnfairly(boss, ab, target, valid ? f?.plan : undefined)) return;
+    const plan = valid ? f?.plan : undefined;
     delete boss.forethought;
-    this.startBossAbility(boss, def, ab, target);
+    this.startBossAbility(boss, def, ab, target, plan);
   }
 
   /** True if starting `ab` now would stack an unfair telegraph wall (see grammar.ts). */
-  private wouldWallUnfairly(boss: Boss, ab: BossAbilityDef, target: Player | null): boolean {
+  private wouldWallUnfairly(
+    boss: Boss,
+    ab: BossAbilityDef,
+    target: Player | null,
+    intent?: Boss['action'],
+  ): boolean {
     // Fast path: nothing else can overlap, so a lone boss is never affected.
     if (this.bosses.length < 2 && this.pendingStrikes.length === 0) return false;
     if (!WALLING_SHAPES.has(ab.shape)) return false;
     if (boss.phase === 'enraged') return false; // enrage may deliberately wall
     const quarry =
       this.tauntTimer <= 0 && boss.perception?.mode === 'lure' ? boss.perception.pos : undefined;
-    const center = ab.shape === 'pbaoe' ? boss.pos : (quarry ?? target?.pos ?? boss.pos);
+    const center =
+      ab.shape === 'pbaoe' ? boss.pos : (intent?.targetPos ?? quarry ?? target?.pos ?? boss.pos);
     return overlapsActiveTelegraph(
       center,
       boss,
@@ -3316,41 +3333,38 @@ export class World {
     );
   }
 
-  private startBossAbility(
-    boss: Boss,
-    def: MonsterDef,
-    rawAb: BossAbilityDef,
-    target: Player | null,
-  ): void {
-    // Overcharged swells reach/size; a plain boss gets the same object back.
-    const ab = this.affixAbility(boss, rawAb);
+  private planBossAction(boss: Boss, ab: BossAbilityDef, target: Player | null): Boss['action'] {
     const alive = this.players.filter((p) => p.state === 'alive');
     let tgt = target;
     if (ab.targetRandom && alive.length > 0) tgt = this.rng.pick(alive);
 
-    const action = boss.action;
-    action.illusionPos = takeQuarry(this, boss, ab.shape);
-    action.kind = 'windup';
-    action.abilityId = ab.id;
-    action.remaining = ab.windup;
-    action.total = ab.windup;
-    action.channelAccum = 0;
-    action.targetId = null;
-    action.targetPos = null;
-    action.aimAngle = boss.facing;
+    const action: Boss['action'] = {
+      kind: 'windup',
+      abilityId: ab.id,
+      remaining: ab.windup,
+      total: ab.windup,
+      targetId: null,
+      targetPos: null,
+      aimAngle: boss.facing,
+      channelAccum: 0,
+    };
+    if (
+      this.tauntTimer <= 0 &&
+      ['cone', 'circleAtTarget', 'line', 'projectile', 'beam'].includes(ab.shape) &&
+      boss.perception?.mode === 'lure'
+    )
+      action.illusionPos = { ...boss.perception.pos };
 
     if (tgt) {
       action.targetId = tgt.id;
       action.targetPos = { ...tgt.pos };
       action.aimAngle = angleOf(sub(tgt.pos, boss.pos));
-      boss.facing = action.aimAngle;
     }
 
     if (action.illusionPos) {
       action.targetId = null;
       action.targetPos = { ...action.illusionPos };
       action.aimAngle = angleOf(sub(action.illusionPos, boss.pos));
-      boss.facing = action.aimAngle;
     }
     if (ab.shape === 'line' && action.illusionPos) {
       const capped = Math.min(dist(boss.pos, action.illusionPos), ab.range ?? 600);
@@ -3361,6 +3375,24 @@ export class World {
       const capped = Math.min(d, ab.range ?? 600);
       action.targetPos = vadd(boss.pos, fromAngle(action.aimAngle, capped));
     }
+
+    return action;
+  }
+
+  private startBossAbility(
+    boss: Boss,
+    def: MonsterDef,
+    rawAb: BossAbilityDef,
+    target: Player | null,
+    forecast?: Boss['action'],
+  ): void {
+    const ab = this.affixAbility(boss, rawAb);
+    const action = forecast
+      ? { ...forecast, forethought: true }
+      : this.planBossAction(boss, ab, target);
+    boss.action = action;
+    if (action.illusionPos) takeQuarry(this, boss, ab.shape);
+    if (action.targetPos) boss.facing = action.aimAngle;
 
     if (ab.windup <= 0) {
       // instant: resolve now (+ vampiric / volatile reactions)
@@ -3697,6 +3729,86 @@ export class World {
   // Serialization
   // -------------------------------------------------------------------------
 
+  /** Public spatial disclosure uses effective boss geometry, not a client guess. */
+  foresightPreview(b: Boss, a: Boss['action']): import('../core/types').ForesightView | undefined {
+    const raw = a.abilityId && abilityById(this.defOf(b), a.abilityId);
+    if (!raw || b.hp <= 0) return undefined;
+    const ab = this.affixAbility(b, raw);
+    const base: import('../core/types').ForesightView = {
+      abilityId: ab.id,
+      mode: 'utility',
+      targetId: a.targetId ?? undefined,
+    };
+    const target = a.targetPos ?? b.pos;
+    const shape: Telegraph = {
+      kind: 'circle',
+      origin: { ...b.pos },
+      target: { ...target },
+      angle: a.aimAngle,
+      range: ab.range ?? 0,
+      radius: ab.radius ?? 0,
+      halfAngle: ((ab.halfAngleDeg ?? 30) * Math.PI) / 180,
+      width: ab.width ?? 0,
+      remainingWindup: 1,
+      totalWindup: 1,
+    };
+    switch (ab.shape) {
+      case 'cone':
+        return {
+          ...base,
+          mode: 'fixed',
+          shape: { ...shape, kind: 'cone', range: ab.range ?? 300 },
+        };
+      case 'circleAtTarget':
+        return { ...base, mode: 'fixed', shape: { ...shape, radius: ab.radius ?? 110 } };
+      case 'pbaoe':
+        return {
+          ...base,
+          mode: 'self',
+          shape: { ...shape, target: { ...b.pos }, radius: ab.radius ?? 160 },
+        };
+      case 'line': {
+        let end = firstObstacleStop(this, b.pos, target, b.radius, true) ?? target;
+        end = clipBulwarkStep(this, b, end).pos;
+        return {
+          ...base,
+          mode: 'fixed',
+          shape: {
+            ...shape,
+            kind: 'line',
+            target: { ...end },
+            width: 2 * ((ab.width ?? 45) + b.radius * 0.5),
+          },
+        };
+      }
+      case 'projectile':
+        return {
+          ...base,
+          mode: 'volley',
+          rays: ab.projCount ?? 1,
+          shape: {
+            ...shape,
+            kind: 'cone',
+            range: ab.range ?? 900,
+            halfAngle: ((ab.spreadDeg ?? 0) * Math.PI) / 360,
+          },
+        };
+      case 'beam': {
+        const victim = this.players.find((p) => p.id === a.targetId && p.state === 'alive');
+        return {
+          ...base,
+          mode: 'tracking',
+          range: ab.range ?? 500,
+          shape: { ...shape, target: { ...(victim?.pos ?? target) }, radius: ab.range ?? 500 },
+        };
+      }
+      case 'voidzones':
+        return { ...base, mode: 'hazards' };
+      default:
+        return base;
+    }
+  }
+
   private buildTelegraph(boss: Boss): Telegraph | null {
     if (boss.hp <= 0) return null; // corpses telegraph nothing
     const a = boss.action;
@@ -3707,6 +3819,15 @@ export class World {
     if (!raw) return null;
     // Show the Overcharged-swollen shape, so what the band dodges is what lands.
     const ab = this.affixAbility(boss, raw);
+    if (a.forethought) {
+      const preview = this.foresightPreview(boss, a);
+      if (preview?.shape && (preview.mode === 'fixed' || preview.mode === 'self'))
+        return {
+          ...preview.shape,
+          remainingWindup: Math.max(0, a.remaining),
+          totalWindup: a.total,
+        };
+    }
 
     const base: Telegraph = {
       kind: 'circle',
@@ -3842,6 +3963,12 @@ export class World {
       phase: b.phase,
       telegraph: this.buildTelegraph(b),
       forethought: forethoughtView(this, b),
+      revealed:
+        b.action.forethought &&
+        (b.action.kind === 'windup' || b.action.kind === 'channel') &&
+        b.action.abilityId
+          ? this.foresightPreview(b, b.action)
+          : undefined,
       buffs: b.buffs.map(buffView),
       action: b.action.kind,
       abilityId: b.action.abilityId,

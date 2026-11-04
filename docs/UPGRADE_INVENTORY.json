@@ -12333,7 +12333,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Positive direct hits on your cursed boss read and commit its next move for 8s. Plan your position before the wind-up; target and aim lock when it starts",
+      "description": "Direct hits reveal the boss’s next move for 8s. Violet outlines show its early aim; step out before the attack starts. Beams track their marked victim",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": true,
@@ -12346,34 +12346,34 @@
             {
               "path": "abilities.a2.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             },
             {
               "path": "abilities.basic.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             },
             {
               "path": "subAbilities.sub1.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             }
           ],
           "atCap": [
             {
               "path": "abilities.a2.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             },
             {
               "path": "abilities.basic.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             },
             {
               "path": "subAbilities.sub1.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             }
           ]
         },
@@ -12385,34 +12385,34 @@
             {
               "path": "abilities.a2.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             },
             {
               "path": "abilities.basic.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             },
             {
               "path": "subAbilities.sub1.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             }
           ],
           "atCap": [
             {
               "path": "abilities.a2.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             },
             {
               "path": "abilities.basic.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             },
             {
               "path": "subAbilities.sub1.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             }
           ]
         },
@@ -12424,24 +12424,24 @@
             {
               "path": "abilities.a2.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             },
             {
               "path": "abilities.basic.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             }
           ],
           "atCap": [
             {
               "path": "abilities.a2.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             },
             {
               "path": "abilities.basic.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             }
           ]
         },
@@ -12453,24 +12453,24 @@
             {
               "path": "abilities.a2.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             },
             {
               "path": "abilities.basic.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             }
           ],
           "atCap": [
             {
               "path": "abilities.a2.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             },
             {
               "path": "abilities.basic.forethought",
               "before": null,
-              "after": { "requiresCurse": true }
+              "after": { "requiresCurse": false }
             }
           ]
         }
