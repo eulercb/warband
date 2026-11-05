@@ -20,29 +20,32 @@ name the next development task beyond playtesting.
   acceptance does not establish equal identity balance.
 
 - Whispered Doom / Thought Break (#152) merged and accepted in owner live
-  testing: the reactive interruption felt nice. Elder Mind remains the open
-  Great Old One purpose question.
+  testing: the reactive interruption felt nice.
+- Elder Mind two-move foresight (#156) merged, tested and accepted. Its readable
+  two-action window and shared recovery are the current Great Old One baseline.
 
 ## Current delivery
 
-[Elder Mind: two consecutive reveals](TWO_MOVE_FORESIGHT.md).
-PR155 merged and tested. Owner feedback asks for a second reveal because a fast
-first action can spend the whole opportunity. The follow-up now automatically
-reads move 1/2 then move 2/2, with shared 8s Mind closed recovery after the second.
-This awaits owner live acceptance. The accepted visible geometry, curse-free
-basic access and quiet interval remain the baseline. Whispered Doom is accepted.
+[Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
+[Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
+Knight, Barbarian and Monk's six subclasses have been inspected together.
+Champion A now projects finite guard charges into hostile shot paths; this
+awaits owner live testing. Warlord's proactive counter core and Berserker's
+contact-versus-walking distinction are recommended for retention. Battlemaster,
+Totem's unresolved package and Monk identities remain explicit purpose findings.
 
-Seven of 24 subclasses have been reviewed: six are accepted or retained, Great
-Old One has one accepted route and one revised route awaiting live acceptance, and
-17 await review. Review, implementation and acceptance are separate states.
+Thirteen of 24 subclasses have been inspected: seven earlier subclasses are
+accepted/retained, six martial subclasses now have review findings (one new
+Champion implementation awaiting testing), and 11 await review. Inspection,
+implementation and owner acceptance remain distinct states.
 
 ## Next development work, in order
 
 | Stage                        | Concrete work                                                                                                                                  |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Accept the two-move Elder Mind window; then go directly to Knight, Barbarian and Monk's six-subclass purpose review.                           |
-| Following                    | Implement mature martial findings in bounded batches; retain sound identities and bring back unresolved gameplay choices.                      |
-| Martial identities           | Knight, Barbarian and Monk: six subclasses.                                                                                                    |
+| Next                         | Live-test Champion interception, then resolve Battlemaster's two identity purposes and implement the mature plan.                              |
+| Following                    | Address Totem and Monk findings in bounded deliveries; retain the Berserker distinction and useful simple skills.                              |
+| Martial identities           | Six inspected; Champion A implemented, other findings remain tracked in the martial purpose review.                                            |
 | Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                            |
 | Remaining caster identities  | Abjurer, Draconic and Wild Magic; Evoker stays retained.                                                                                       |
 | Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                           |

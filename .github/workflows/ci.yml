@@ -249,6 +249,7 @@ jobs:
             sleep 1
           done
           node scripts/run-smoke.mjs smoke:martial
+          node scripts/run-smoke.mjs smoke:projected-guard
           node scripts/run-smoke.mjs smoke:absorption
           node scripts/run-smoke.mjs smoke:auras
           node scripts/run-smoke.mjs smoke:martial-grands

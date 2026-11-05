@@ -40,6 +40,15 @@ export default function MechanicsReference() {
         fallback when the random starting special cannot hit directly.
       </p>
       <p>
+        Unbroken Champion projects Taunt and Shield Wall's existing blocks into a 120u-wide shield
+        60u ahead, turning with aim. Hostile shots crossing it spend one block and ready your melee
+        counter, protecting bodies behind it and preventing that shot's contact effects. Bodies or
+        cover reached first still intercept first. Body blocks share the same pool; projected blocks
+        still cost a charge during i-frames. Beams, ground hazards and enemy movement bypass the
+        projection. Downing, class changes and expiry remove it. The visible line and pips show the
+        active guard and remaining blocks; stronger-guard precedence applies.
+      </p>
+      <p>
         Elder Mind opens two consecutive boss reveals from a positive direct hit, without a curse.
         Move 1/2 is followed automatically by 2/2 after the first ends or is interrupted; the second
         uses the boss's actual next decision. Each pending read lasts up to 8s. Hits cannot refresh

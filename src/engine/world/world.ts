@@ -1,3 +1,4 @@
+import { sweepProjectedGuard } from '../combat/projectedGuard';
 import { firstObstacleStop } from '../combat/abilities';
 import {
   armForethought,
@@ -1649,11 +1650,13 @@ export class World {
 
       // Cover obstacles absorb any ranged attack whose path crosses them
       // (segment test avoids fast projectiles tunneling through) — no damage.
-      const consumed = this.projectileHitsObstacle(prev, proj)
+      const consumed = sweepProjectedGuard(this, proj, prev)
         ? true
-        : proj.side === 'player'
-          ? this.resolvePlayerProjectile(proj)
-          : this.resolveBossProjectile(proj);
+        : this.projectileHitsObstacle(prev, proj)
+          ? true
+          : proj.side === 'player'
+            ? this.resolvePlayerProjectile(proj)
+            : this.resolveBossProjectile(proj);
 
       if (!consumed && proj.lifetime > 0 && proj.rangeLeft > 0) {
         // Projectiles wrap around the torus too (rather than flying off-map).
@@ -2223,19 +2226,24 @@ export class World {
     }
   }
 
+  /** A selected hostile body contact retains the existing damage and rider behavior. */
+  resolveHostileContact(proj: Projectile, p: Player): void {
+    const incomingSpeed = Math.hypot(proj.vel.x, proj.vel.y) || 1;
+    damagePlayer(this, p, proj.damage, {
+      x: p.pos.x - (proj.vel.x / incomingSpeed) * 20,
+      y: p.pos.y - (proj.vel.y / incomingSpeed) * 20,
+    });
+    // Frost bosses' bolts chill whoever they strike.
+    if (proj.slowMult != null && proj.slowMult < 1) {
+      applyBuff(p, makeBuff('moveSpeed', proj.slowMult, proj.slowDuration ?? 2, 'bossSlow'));
+    }
+  }
+
   private resolveBossProjectile(proj: Projectile): boolean {
     for (const p of this.players) {
       if (p.state !== 'alive') continue;
       if (dist(proj.pos, p.pos) <= proj.hitRadius + p.radius) {
-        const incomingSpeed = Math.hypot(proj.vel.x, proj.vel.y) || 1;
-        damagePlayer(this, p, proj.damage, {
-          x: p.pos.x - (proj.vel.x / incomingSpeed) * 20,
-          y: p.pos.y - (proj.vel.y / incomingSpeed) * 20,
-        });
-        // Frost bosses' bolts chill whoever they strike.
-        if (proj.slowMult != null && proj.slowMult < 1) {
-          applyBuff(p, makeBuff('moveSpeed', proj.slowMult, proj.slowDuration ?? 2, 'bossSlow'));
-        }
+        this.resolveHostileContact(proj, p);
         return true;
       }
     }
@@ -3931,7 +3939,12 @@ export class World {
       ...(Object.keys(infernalClaimTargets).length ? { infernalClaimTargets } : {}),
       shadowReprise: shadowRepriseView(this, p),
       infernalAperture: apertureView(this, p),
-      buffs: p.buffs.map(buffView),
+      buffs: p.buffs.map((b) => {
+        const view = buffView(b);
+        if (b.projectedGuardClass !== p.classId || p.state !== 'alive' || p.hp <= 0)
+          delete view.projectedGuard;
+        return view;
+      }),
       downedTimer: p.downedTimer,
       reviveProgress: p.reviveProgress,
       castSlot: p.castSlot,

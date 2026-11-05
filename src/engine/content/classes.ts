@@ -142,7 +142,12 @@ export interface PlayerAbilityDef {
   /** Guarded real damage readies one +30% connecting melee counter for 4s. */
   guardWindow?: number;
   mirrorImages?: { count: number; duration: number };
-  frontGuard?: { charges: number; duration: number; counter?: number };
+  frontGuard?: {
+    charges: number;
+    duration: number;
+    counter?: number;
+    projection?: { reach: number; halfWidth: number };
+  };
   steadfastDuration?: number;
   cleanseOnHeal?: boolean;
   /** A connecting cone readies a counter AFTER the entire strike and a short parry. */
@@ -289,6 +294,14 @@ export interface PlayerAbilityDef {
 }
 
 /** Component lists are authoritative for copied direct-hit effects. */
+export function resolvedFrontGuard(def: PlayerAbilityDef): PlayerAbilityDef['frontGuard'] {
+  if (!def.components) return def.frontGuard;
+  const e = def.components.effects.find((e) => e.kind === 'frontGuard');
+  return e?.kind === 'frontGuard'
+    ? { charges: e.charges, duration: e.duration, counter: e.counter, projection: e.projection }
+    : undefined;
+}
+
 export function resolvedForethought(def: PlayerAbilityDef): PlayerAbilityDef['forethought'] {
   if (!def.components) return def.forethought;
   const effect = def.components.effects.find((e) => e.kind === 'forethought');
@@ -1461,6 +1474,10 @@ export function describeAbility(
   if (def.momentumFissure)
     parts.push(
       `spending Momentum leaves a 3s slowing fissure, ${n(def.momentumFissure * dmgMul)} damage per stack every 0.5s; ground only`,
+    );
+  if (def.frontGuard?.projection)
+    parts.push(
+      `project ${n(def.frontGuard.projection.halfWidth * 2)}u shield ${n(def.frontGuard.projection.reach)}u ahead; hostile-shot interception spends a frontal block and readies a +30% melee counter`,
     );
   if (def.frontGuard?.counter)
     parts.push('each successful frontal block readies a +30% melee counter; counters do not stack');

@@ -10,7 +10,7 @@ export function drawDefenseState(
 ): void {
   const guard = p.buffs.find((b) => b.kind === 'frontGuard' && b.remaining > 0 && b.mult > 0);
   const angle = Math.atan2(p.aim.y, p.aim.x);
-  if (guard) {
+  if (guard && !guard.projectedGuard) {
     const radius = r + 8;
     g.moveTo(x + Math.cos(angle - Math.PI / 3) * radius, y + Math.sin(angle - Math.PI / 3) * radius)
       .arc(x, y, radius, angle - Math.PI / 3, angle + Math.PI / 3)
@@ -103,4 +103,39 @@ export function drawTauntState(
     cx + Math.cos(a - 2.4) * 4,
     cy + Math.sin(a - 2.4) * 4,
   ]).fill(color);
+}
+
+/** Draw the same finite shield segment the host intersects, above character bodies. */
+export function drawProjectedShield(g: Graphics, p: PlayerView, center: Vec2, scale: number): void {
+  if (p.state !== 'alive' || p.hp <= 0) return;
+  const guard = p.buffs.find(
+    (b) => b.kind === 'frontGuard' && b.remaining > 0 && b.mult > 0 && b.projectedGuard,
+  );
+  const shape = guard?.projectedGuard;
+  const length = Math.hypot(p.aim.x, p.aim.y);
+  if (!guard || !shape || length < 1e-6) return;
+  const nx = p.aim.x / length,
+    ny = p.aim.y / length;
+  const x = center.x + nx * shape.reach * scale,
+    y = center.y + ny * shape.reach * scale;
+  const tx = -ny * shape.halfWidth * scale,
+    ty = nx * shape.halfWidth * scale;
+  g.poly([
+    x + tx - nx * 3,
+    y + ty - ny * 3,
+    x - tx - nx * 3,
+    y - ty - ny * 3,
+    x - tx + nx * 3,
+    y - ty + ny * 3,
+    x + tx + nx * 3,
+    y + ty + ny * 3,
+  ])
+    .fill({ color: 0x174b69, alpha: 0.8 })
+    .stroke({ color: 0xb9f1ff, width: 3, alpha: 1 });
+  for (let i = 0; i < Math.min(4, Math.ceil(guard.mult)); i++) {
+    const d = (i - (Math.min(4, Math.ceil(guard.mult)) - 1) / 2) * 13;
+    const px = x - ny * d,
+      py = y + nx * d;
+    g.circle(px, py, 3).fill(0xffffff);
+  }
 }

@@ -6,7 +6,7 @@ import { drawApparition, drawBorrowedAlly } from './perceptionVisuals';
 import { drawMoonBear } from './moonFormVisuals';
 import { drawWhisperAfterimage } from './whisperVisuals';
 import { drawCompanion } from './companionVisuals';
-import { drawTauntState } from './defenseVisuals';
+import { drawTauntState, drawProjectedShield } from './defenseVisuals';
 import { ADD_RADIUS } from '../../engine/core/constants';
 import { drawOpportunityMarker } from '../overlays/opportunityMarker';
 import { drawEnemyDebuffs } from './enemyDebuffs';
@@ -230,6 +230,13 @@ export class Renderer {
     this.drawOverlays(state, now); // vector bars/rings for sprite- and rig-driven actors
     this.drawProjectiles(state); // geometry for flag-off projectiles
     this.enemyStatusLayer.clear();
+    for (const player of state.players)
+      drawProjectedShield(
+        this.enemyStatusLayer,
+        player,
+        this.camera.worldToScreen(player.pos),
+        this.camera.scale,
+      );
     for (const boss of state.bosses) {
       if (boss.hp <= 0) continue;
       const pos = this.camera.worldToScreen(boss.pos);
