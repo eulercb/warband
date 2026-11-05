@@ -2,6 +2,7 @@ import { firstObstacleStop } from '../combat/abilities';
 import {
   armForethought,
   closeForethought,
+  finishForethought,
   tickForethought,
   forethoughtView,
   forethoughtLegal,
@@ -2674,6 +2675,11 @@ export class World {
       const raw = f.abilityId && abilityById(def, f.abilityId);
       if (raw) {
         f.plan = this.planBossAction(boss, this.affixAbility(boss, raw), target);
+        f.plan.forethoughtRead = {
+          ownerId: f.ownerId,
+          ownerClass: f.ownerClass,
+          index: f.index,
+        };
         f.tauntId = this.tauntTimer > 0 ? (this.tauntTargetId ?? undefined) : undefined;
         f.perception = boss.perception;
       }
@@ -3191,8 +3197,9 @@ export class World {
 
   private enterRecover(boss: Boss): void {
     const a = boss.action;
-    if (a.forethought) closeForethought(boss);
+    if (a.forethought) finishForethought(this, boss);
     a.forethought = undefined;
+    a.forethoughtRead = undefined;
     a.kind = 'recover';
     a.abilityId = null;
     a.remaining = BOSS_RECOVER_TIME;
@@ -3741,6 +3748,7 @@ export class World {
     const ab = this.affixAbility(b, raw);
     const base: import('../core/types').ForesightView = {
       abilityId: ab.id,
+      index: a.forethoughtRead?.index,
       mode: 'utility',
       targetId: a.targetId ?? undefined,
     };

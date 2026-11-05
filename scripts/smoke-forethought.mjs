@@ -158,7 +158,7 @@ try {
     assert.equal(result.telegraph, null);
     assert.equal(result.action, 'idle');
     await page.waitForSelector('.hud-forethought');
-    assert.match(await page.locator('.hud-forethought').textContent(), /FORESEEN: /);
+    assert.match(await page.locator('.hud-forethought').textContent(), /FORESEEN 1\/2: /);
     await page.evaluate(async () => {
       const f = window.fixture;
       const s = { ...f.w.serialize(), events: [], localPlayerId: f.p.id, arena: f.w.arena };
@@ -194,10 +194,45 @@ try {
     assert.equal(actual.angle, result.read.preview.shape.angle);
     assert.ok(actual.revealed);
     await page.waitForFunction(() =>
-      document.querySelector('.hud-forethought')?.textContent.includes('REVEALED'),
+      document.querySelector('.hud-forethought')?.textContent.includes('REVEALED 1/2'),
     );
     if (process.env.SHOT_DIR)
       await page.screenshot({ path: `${process.env.SHOT_DIR}/forethought-revealed-${width}.png` });
+    const second = await page.evaluate(() => {
+      const f = window.fixture;
+      f.p.pos = { x: 500, y: 400 };
+      // No second hit: the window itself carries its remaining reveal.
+      for (let i = 0; i < 100 && f.b.action.forethought; i++) f.step({ basic: false });
+      return {
+        read: f.b.forethought,
+        closed: f.b.buffs.some((b) => b.kind === 'forethoughtRecovery'),
+      };
+    });
+    assert.equal(second.read?.index, 2);
+    assert.equal(second.closed, false);
+    await page.waitForFunction(() =>
+      document.querySelector('.hud-forethought')?.textContent.includes('2/2'),
+    );
+    const secondPreview = await page.evaluate(() => {
+      const f = window.fixture;
+      for (let i = 0; i < 200 && !f.b.forethought?.plan && !f.b.action.forethought; i++)
+        f.step({ basic: false });
+      return f.w.serialize().bosses[0].forethought;
+    });
+    assert.equal(secondPreview?.index, 2);
+    assert.ok(secondPreview.preview);
+    assert.equal(await page.evaluate(() => window.renderedForecast?.index), 2);
+    if (process.env.SHOT_DIR)
+      await page.screenshot({ path: `${process.env.SHOT_DIR}/forethought-second-${width}.png` });
+    const secondActive = await page.evaluate(() => {
+      const f = window.fixture;
+      for (let i = 0; i < 200 && !f.b.action.forethought; i++) f.step({ basic: false });
+      return f.w.serialize().bosses[0].revealed;
+    });
+    assert.equal(secondActive?.index, 2);
+    await page.waitForFunction(() =>
+      document.querySelector('.hud-forethought')?.textContent.includes('REVEALED 2/2'),
+    );
     const closed = await page.evaluate(() => {
       const f = window.fixture;
       f.p.pos = { x: 500, y: 400 };
@@ -284,7 +319,7 @@ try {
     }
     assert.deepEqual(errors, []);
     console.log(
-      `PASS ${width}px: curse-free basic, host/client violet geometry, early fixed aim, closed-mind cadence and clean Beholder arcs`,
+      `PASS ${width}px: curse-free basic, host/client violet geometry, two numbered reveals without a second hit, then shared recovery; clean Beholder arcs`,
     );
     await page.close();
   }

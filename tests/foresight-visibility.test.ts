@@ -49,6 +49,15 @@ function commit(w: World, b: Boss) {
   b.decisionTimer = 0;
   update(w, b);
 }
+function finish(w: World, b: Boss) {
+  (w as unknown as { enterRecover(b: Boss): void }).enterRecover(b);
+}
+function finishSecond(w: World, b: Boss) {
+  expect(b.forethought?.index).toBe(2);
+  commit(w, b);
+  expect(b.action.forethoughtRead?.index).toBe(2);
+  finish(w, b);
+}
 function arm(w: World, b: Boss, id?: string) {
   const p = w.players[0];
   damageBoss(w, p, b, 1, {
@@ -334,19 +343,23 @@ describe('visible, truthful boss foresight', () => {
     expect(b.buffs.some((x) => x.kind === 'forethoughtRecovery')).toBe(false);
     b.action.remaining = 0.1;
     update(w, b, 0.1);
+    expect(b.buffs.some((x) => x.kind === 'forethoughtRecovery')).toBe(false);
+    finishSecond(w, b);
     const closed = w.serialize().bosses[0].buffs.find((x) => x.kind === 'forethoughtRecovery')!;
     expect(closed.remaining).toBe(8);
     expect(buffBadges([closed])[0].label).toContain('Mind closed');
     arm(w, b);
     expect(b.forethought).toBeUndefined();
   });
-  it('interruption ends a revealed attack and starts the same quiet interval', () => {
+  it('interruption spends the first slot and recovery follows the second', () => {
     const { w, p, b } = setup();
     arm(w, b, 'smash');
     commit(w, b);
     w.onThoughtBreak(p, b, 1, { spent: false, ownerClass: p.classId });
     expect(b.action.kind).toBe('recover');
     expect(b.action.forethought).toBeUndefined();
+    expect(b.buffs.some((x) => x.kind === 'forethoughtRecovery')).toBe(false);
+    finishSecond(w, b);
     expect(b.buffs.find((x) => x.kind === 'forethoughtRecovery')?.remaining).toBe(8);
   });
   it('pending invalidation starts recovery before a fresh hit can replace it', () => {
@@ -365,6 +378,7 @@ describe('visible, truthful boss foresight', () => {
     arm(w, b, 'smash');
     commit(w, b);
     w.onThoughtBreak(p, b, 1, { spent: false, ownerClass: p.classId });
+    finishSecond(w, b);
     damageBoss(w, w.players[1], b, 1, {
       direct: true,
       forethought: { ownerClass: 'knight', requiresCurse: false },
@@ -383,6 +397,114 @@ describe('visible, truthful boss foresight', () => {
       forethought: { ownerClass: p.classId, requiresCurse: false },
     });
     expect(other.forethought).toBeDefined();
+  });
+  it('automatically reveals two actual decisions, with distinct 1/2 and 2/2 wire stages', () => {
+    const { w, b } = setup();
+    arm(w, b, 'smash');
+    let view = w.toRenderState(w.players[0].id).bosses[0];
+    expect(view.forethought?.index).toBe(1);
+    expect(forethoughtLabel(b.monsterId, view.forethought)).toContain('FORESEEN 1/2');
+    commit(w, b);
+    finish(w, b);
+    expect(b.forethought).toMatchObject({ index: 2, remaining: 8 });
+    expect(b.forethought?.abilityId).toBeUndefined();
+    // A later decision sees actual cooldowns, rather than a speculative second queued ID.
+    b.cooldowns.smash = 10;
+    update(w, b);
+    view = w.serialize().bosses[0];
+    expect(view.forethought?.index).toBe(2);
+    expect(view.forethought?.abilityId).not.toBe('smash');
+    const client = new SnapshotInterpolator();
+    client.push(JSON.parse(JSON.stringify(w.serialize())) as ReturnType<World['serialize']>);
+    expect(
+      client.sample(performance.now() + 100, { localPlayerId: w.players[0].id, arena: w.arena })!
+        .bosses[0].forethought?.index,
+    ).toBe(2);
+    commit(w, b);
+    view = w.serialize().bosses[0];
+    expect(view.revealed?.index).toBe(2);
+    expect(forethoughtLabel(b.monsterId, view.forethought, view.revealed)).toContain(
+      'REVEALED 2/2',
+    );
+    finish(w, b);
+    expect(b.forethought).toBeUndefined();
+    expect(b.buffs.find((x) => x.kind === 'forethoughtRecovery')?.remaining).toBe(8);
+  });
+  it('an instant first move advances to read two without a second hit or artificial delay', () => {
+    const { w, b } = setup('lich');
+    arm(w, b, 'shadowBolt');
+    commit(w, b);
+    expect(w.projectiles.length).toBeGreaterThan(0);
+    expect(b.action.kind).toBe('recover');
+    expect(b.forethought).toMatchObject({ index: 2, remaining: 8 });
+    expect(b.action.remaining).toBe(0.4);
+    expect(b.decisionTimer).toBe(1.2);
+    expect(forethoughtLabel(b.monsterId, w.serialize().bosses[0].forethought)).toContain(
+      'READING 2/2',
+    );
+    update(w, b);
+    expect(b.forethought?.plan).toBeDefined();
+  });
+  it('hits from either reader cannot refill or refresh the second pending read', () => {
+    const { w, b } = setup();
+    arm(w, b, 'smash');
+    commit(w, b);
+    finish(w, b);
+    tickForethought(w, b, 3);
+    arm(w, b);
+    damageBoss(w, w.players[1], b, 1, {
+      direct: true,
+      forethought: { ownerClass: 'knight', requiresCurse: false },
+    });
+    expect(b.forethought).toMatchObject({ index: 2, remaining: 5, ownerId: w.players[0].id });
+    tickForethought(w, b, 5);
+    expect(b.forethought).toBeUndefined();
+    expect(b.buffs.find((x) => x.kind === 'forethoughtRecovery')?.remaining).toBe(8);
+  });
+  it.each(['down', 'hp', 'class', 'room', 'boss'] as const)(
+    'owner/room loss during the first reveal cannot fund a second: %s',
+    (reason) => {
+      const { w, p, b } = setup();
+      arm(w, b, 'smash');
+      commit(w, b);
+      if (reason === 'down') p.state = 'downed';
+      if (reason === 'hp') p.hp = 0;
+      if (reason === 'class') p.classId = 'mage';
+      if (reason === 'room') w.scene = {} as typeof w.scene;
+      if (reason === 'boss') b.hp = 0;
+      finish(w, b);
+      expect(b.forethought).toBeUndefined();
+      expect(b.buffs.some((x) => x.kind === 'forethoughtRecovery')).toBe(reason !== 'boss');
+    },
+  );
+  it('the second long channel keeps its cue and starts recovery only after ending', () => {
+    const { w, p, b } = setup('lich');
+    p.hp = p.maxHp = 10000;
+    arm(w, b, 'shadowBolt');
+    commit(w, b);
+    b.forethought!.abilityId = 'lifeDrain';
+    commit(w, b);
+    expect(b.action.forethoughtRead?.index).toBe(2);
+    b.action.kind = 'channel';
+    b.action.remaining = 20;
+    b.action.channelAccum = 0;
+    update(w, b, 10);
+    expect(w.serialize().bosses[0].revealed?.index).toBe(2);
+    expect(b.buffs.some((x) => x.kind === 'forethoughtRecovery')).toBe(false);
+    b.action.remaining = 0.1;
+    update(w, b, 0.1);
+    expect(b.forethought).toBeUndefined();
+    expect(b.buffs.find((x) => x.kind === 'forethoughtRecovery')?.remaining).toBe(8);
+  });
+  it('interrupting the second move closes the window instead of granting a third', () => {
+    const { w, p, b } = setup();
+    arm(w, b, 'smash');
+    commit(w, b);
+    finish(w, b);
+    commit(w, b);
+    w.onThoughtBreak(p, b, 1, { spent: false, ownerClass: p.classId });
+    expect(b.forethought).toBeUndefined();
+    expect(b.buffs.find((x) => x.kind === 'forethoughtRecovery')?.remaining).toBe(8);
   });
   it('no read means no eye or forecast geometry', () => {
     const { w } = setup();

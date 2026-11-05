@@ -578,6 +578,8 @@ export interface Player {
 export type BossActionKind = 'idle' | 'windup' | 'channel' | 'recover';
 
 export interface BossAction {
+  /** Original reader and bounded ordinal, carried until this action ends. */
+  forethoughtRead?: { ownerId: EntityId; ownerClass: ClassId; index: 1 | 2 };
   /** Attack exposed by Forethought; remains visible through wind-up/channel. */
   forethought?: boolean;
   illusionPos?: Vec2;
@@ -594,6 +596,7 @@ export interface BossAction {
 export interface Boss {
   /** Host-only next intention and its reserved targeting. */
   forethought?: {
+    index: 1 | 2;
     ownerId: EntityId;
     ownerClass: ClassId;
     remaining: number;
@@ -1425,6 +1428,7 @@ export interface PlayerView {
 }
 
 export interface ForesightView {
+  index?: 1 | 2;
   abilityId: string;
   mode: 'fixed' | 'tracking' | 'self' | 'hazards' | 'utility' | 'volley';
   rays?: number;
@@ -1435,7 +1439,7 @@ export interface ForesightView {
 
 export interface BossView {
   revealed?: ForesightView;
-  forethought?: { remaining: number; abilityId?: string; preview?: ForesightView };
+  forethought?: { remaining: number; abilityId?: string; preview?: ForesightView; index?: 1 | 2 };
   taunt?: { targetId: EntityId; remaining: number };
   id: EntityId;
   monsterId: MonsterId;
