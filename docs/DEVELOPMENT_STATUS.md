@@ -25,11 +25,12 @@ name the next development task beyond playtesting.
 
 ## Current delivery
 
-[Foresight: clean arcs and bounded reads](FORESIGHT_CADENCE.md).
-PR154 merged; owner testing accepts visibility and clarity. The follow-up fixes
-stray purple arc joins and replaces continuous basic-maintained forecasting
-with one read followed by 8s of shared Mind closed recovery. This cadence and
-rendering correction awaits owner playtesting. Whispered Doom remains accepted.
+[Elder Mind: two consecutive reveals](TWO_MOVE_FORESIGHT.md).
+PR155 merged and tested. Owner feedback asks for a second reveal because a fast
+first action can spend the whole opportunity. The follow-up now automatically
+reads move 1/2 then move 2/2, with shared 8s Mind closed recovery after the second.
+This awaits owner live acceptance. The accepted visible geometry, curse-free
+basic access and quiet interval remain the baseline. Whispered Doom is accepted.
 
 Seven of 24 subclasses have been reviewed: six are accepted or retained, Great
 Old One has one accepted route and one revised route awaiting live acceptance, and
@@ -39,7 +40,7 @@ Old One has one accepted route and one revised route awaiting live acceptance, a
 
 | Stage                        | Concrete work                                                                                                                                  |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Accept or tune Elder Mind's bounded foresight cadence; then review Knight, Barbarian and Monk's six subclasses.                                |
+| Next                         | Accept the two-move Elder Mind window; then go directly to Knight, Barbarian and Monk's six-subclass purpose review.                           |
 | Following                    | Implement mature martial findings in bounded batches; retain sound identities and bring back unresolved gameplay choices.                      |
 | Martial identities           | Knight, Barbarian and Monk: six subclasses.                                                                                                    |
 | Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                            |

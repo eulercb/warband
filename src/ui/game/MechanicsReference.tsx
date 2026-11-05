@@ -40,16 +40,15 @@ export default function MechanicsReference() {
         fallback when the random starting special cannot hit directly.
       </p>
       <p>
-        Elder Mind's positive direct hits read the next boss move for 8s, without a curse. The
-        violet forecast reserves its real target and aim before the normal attack starts. Step out
-        of fixed outlines; boss-centered rings move with the boss. Beams track their marked victim:
-        leave their reach. Hazard pools choose positions at release. Ordinary orange telegraphs own
-        attack timing; the Revealed eye persists through the wind-up/channel. New taunts, changed
-        illusions, lost victims, owner loss or expiry clear pending reads. Hits cannot refresh a
-        pending read or queue another during Revealed. When the read ends, Mind closed blocks all
-        readers of that boss for 8s; its countdown shows recovery time. Expired or invalid reads
-        also start recovery. Copied/Forge reads use the same contract, with a basic fallback for a
-        utility starting special.
+        Elder Mind opens two consecutive boss reveals from a positive direct hit, without a curse.
+        Move 1/2 is followed automatically by 2/2 after the first ends or is interrupted; the second
+        uses the boss's actual next decision. Each pending read lasts up to 8s. Hits cannot refresh
+        or refill the window. After move two ends, Mind closed blocks all readers of that boss for
+        8s. Invalid or expired pending reads also close the window. Loss of the original reader
+        prevents an unstarted second reveal. Violet footprints reserve early aim; boss-centered
+        rings follow the boss, beams track their victim and hazards form at release. Revealed cues
+        last through the actual wind-up/channel. Copied/Forge reads share this contract, with a
+        basic fallback for a utility starting special.
       </p>
       <p>
         Infernal Aperture fixes an entrance and exit along your setup aim. Only your shots crossing

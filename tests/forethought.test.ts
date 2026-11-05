@@ -238,7 +238,7 @@ describe('Elder Mind forethought', () => {
     for (const ab of w.defOf(b).abilities) b.cooldowns[ab.id] = 100;
     update(w, b);
     expect(b.forethought?.abilityId).toBeUndefined();
-    expect(forethoughtLabel(b.monsterId, forethoughtView(w, b))).toBe('READING NEXT MOVE…');
+    expect(forethoughtLabel(b.monsterId, forethoughtView(w, b))).toBe('READING 1/2 NEXT MOVE…');
     tickForethought(w, b, 8);
     expect(b.forethought).toBeUndefined();
     expect(b.decisionTimer).toBe(1.2);

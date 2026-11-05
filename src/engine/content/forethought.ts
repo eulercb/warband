@@ -10,7 +10,9 @@ export function forethoughtLabel(
   if (!next && !revealed) return undefined;
   const id = next?.abilityId ?? revealed?.abilityId;
   const ab = getMonster(monsterId).abilities.find((a) => a.id === id);
-  if (!ab) return 'READING NEXT MOVE…';
+  const index = next?.index ?? revealed?.index;
+  const ordinal = index ? ` ${index}/2` : '';
+  if (!ab) return `READING${ordinal} NEXT MOVE…`;
   const shape: Record<BossAbilityShape, string> = {
     cone: 'cone',
     circleAtTarget: 'aimed area',
@@ -22,7 +24,7 @@ export function forethoughtLabel(
     buffSelf: 'self buff',
     voidzones: 'hazard field',
   };
-  return `${next?.abilityId ? 'FORESEEN' : 'REVEALED'}: ${ab.name} · ${shape[ab.shape]}`;
+  return `${next?.abilityId ? 'FORESEEN' : 'REVEALED'}${ordinal}: ${ab.name} · ${shape[ab.shape]}`;
 }
 
 export function foresightHint(v: ForesightView | undefined): string {

@@ -1,5 +1,9 @@
 # Foresight: clean arcs and bounded reads
 
+Follow-up: PR155 merged and tested. [Two-move foresight](TWO_MOVE_FORESIGHT.md)
+changes the single-action window below to two consecutive reveals before the
+same quiet interval, addressing fast first moves.
+
 PR154 is merged. Owner testing accepts the new visibility: it is clear what
 will happen. Two follow-ups remain: disconnected purple arcs draw unwanted
 joining lines, and basic hits keep foresight effectively continuous. This

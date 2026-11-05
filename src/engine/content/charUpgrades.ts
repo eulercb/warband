@@ -3274,7 +3274,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'wa_great_old_one_g_a',
     'Elder Mind',
     '🐙',
-    'Direct hits reveal the boss’s next move for 8s. Violet outlines show its early aim; step out before the attack starts. Beams track their marked victim; after a read ends, the boss closes its mind to all readers for 8s',
+    'A direct hit reveals two consecutive boss moves, one at a time. Violet outlines show early aim; beams track their victim. After the second move ends: 8s shared Mind closed recovery',
     (a) => {
       if (a.a3.components) {
         const recipient = isStrike(a.a2) && a.a2.damage > 0 ? a.a2 : a.basic;
@@ -6484,7 +6484,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       name: blend(fused.name),
       desc:
         base.id === 'wa_great_old_one_g_a'
-          ? 'Reforged Forethought: direct hits reveal the next boss move and its early aim for 8s, without a curse. Beams track their victim. A utility starting special gives the read to your basic. After a read ends: 8s shared Mind closed recovery'
+          ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
           : base.id === 'wa_great_old_one_g_b'
             ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
             : base.id === 'wa_fiend_g_a'

@@ -11,6 +11,22 @@ export function closeForethought(b: Boss): void {
     applyBuff(b, makeBuff('forethoughtRecovery', 1, FORETHOUGHT_RECOVERY, 'forethoughtRecovery'));
 }
 
+/** Completion and interruption spend one slot; no player input is needed for slot two. */
+export function finishForethought(w: World, b: Boss): void {
+  const read = b.action.forethoughtRead;
+  const owner = read && w.players.find((p) => p.id === read.ownerId);
+  if (
+    read?.index === 1 &&
+    w.scene === null &&
+    b.hp > 0 &&
+    owner?.state === 'alive' &&
+    owner.hp > 0 &&
+    owner.classId === read.ownerClass
+  ) {
+    b.forethought = { ownerId: read.ownerId, ownerClass: read.ownerClass, remaining: 8, index: 2 };
+  } else closeForethought(b);
+}
+
 export function forethoughtLegal(w: World, b: Boss, id: string): boolean {
   const ab = abilityById(w.defOf(b), id);
   return (
@@ -57,7 +73,7 @@ export function armForethought(
     (hit.requiresCurse && !personallyCursed(p.id, b))
   )
     return;
-  // One shared action, then a real quiet interval; hits cannot queue or extend it.
+  // One shared two-action window, then recovery; hits cannot refill or extend it.
   if (b.action.forethought || hasBuff(b, 'forethoughtRecovery')) return;
   if (b.forethought) {
     if (valid(w, b)) return;
@@ -65,7 +81,7 @@ export function armForethought(
     delete b.forethought;
     return;
   }
-  b.forethought = { ownerId: p.id, ownerClass: p.classId, remaining: 8 };
+  b.forethought = { ownerId: p.id, ownerClass: p.classId, remaining: 8, index: 1 };
 }
 
 export function tickForethought(w: World, b: Boss, dt: number): void {
@@ -82,6 +98,7 @@ export function forethoughtView(w: World, b: Boss): BossView['forethought'] {
   const f = b.forethought!;
   return {
     remaining: f.remaining,
+    index: f.index,
     abilityId: f.abilityId,
     preview: f.plan ? w.foresightPreview(b, f.plan) : undefined,
   };
