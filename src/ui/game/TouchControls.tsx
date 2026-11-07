@@ -1,3 +1,4 @@
+import { silenceStatus } from '../../engine/core/silenceStatus';
 /**
  * Warband — mobile TOUCH control overlay.
  *
@@ -144,6 +145,9 @@ function TouchButton({
   ability?: Omit<PlayerAbilityDef, 'slot'>;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
+  const silence = useHudStore((s) =>
+    cdSlot && cdSlot !== 'basic' && s.state === 'alive' ? silenceStatus(s.buffs) : undefined,
+  );
   const remaining = useHudStore((s) => (cdSlot ? (s.cooldowns[cdSlot] ?? 0) : 0));
   const aperture = useHudStore((s) =>
     s.infernalAperture?.slot === cdSlot ? s.infernalAperture : undefined,
@@ -204,10 +208,12 @@ function TouchButton({
     <button
       ref={ref}
       type="button"
-      className={`wb-touch-btn wb-touch-btn-${kind}`}
+      className={`wb-touch-btn wb-touch-btn-${kind}${silence ? ' silenced' : ''}`}
+      aria-disabled={!!silence}
       data-claim-ready={
-        (reprise?.armed ? !reprise.blocked : ember && !aperture?.blocked) ||
-        (alive && !cooling && claimTarget != null)
+        !silence &&
+        ((reprise?.armed ? !reprise.blocked : ember && !aperture?.blocked) ||
+          (alive && !cooling && claimTarget != null))
           ? true
           : undefined
       }
@@ -226,8 +232,9 @@ function TouchButton({
       <span className={`wb-touch-btn-label${cooling ? ' cooling' : ''}`}>
         {reprise?.armed ? 'Return' : ember ? 'Ember' : label}
       </span>
-      {actionStatus && <span className="wb-touch-claim-status">{actionStatus}</span>}
-      {alive && !cooling && claimTarget !== undefined && (
+      {silence && <span className="wb-touch-claim-status">Silenced</span>}
+      {!silence && actionStatus && <span className="wb-touch-claim-status">{actionStatus}</span>}
+      {!silence && alive && !cooling && claimTarget !== undefined && (
         <span className={`wb-touch-claim-status${claimTarget === null ? ' blocked' : ''}`}>
           {claimTarget === null ? 'Need target' : 'Target ready'}
         </span>

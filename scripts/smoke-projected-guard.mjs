@@ -194,9 +194,105 @@ try {
     const third = await hit();
     assert.ok(third.hp < third.maxHp);
     assert.equal(third.slow, true);
+    // The same real renderer/HUD and remote snapshot also exercise emitted-wave cover.
+    await page.evaluate(async () => {
+      const f = window.fixture;
+      const { grantFrontGuard } = await import('/src/engine/combat/defense.ts');
+      const { getMonster } = await import('/src/engine/content/monsters.ts');
+      const ab = structuredClone(getMonster('dragon').abilities.find((a) => a.id === 'fireBreath'));
+      f.w.monsterDef = { ...f.w.monsterDef, abilities: [...f.w.monsterDef.abilities, ab] };
+      f.wave = ab;
+      f.p.buffs = [];
+      f.ally.buffs = [];
+      f.b.pos = { x: 700, y: 400 };
+      f.b.action = {
+        ...f.b.action,
+        kind: 'windup',
+        abilityId: ab.id,
+        aimAngle: Math.PI,
+        targetId: f.ally.id,
+        remaining: 1,
+        total: 1,
+      };
+      grantFrontGuard(f.p, 1, 4, undefined, { reach: 60, halfWidth: 60 });
+      f.publish();
+    });
+    assert.equal(
+      await page.evaluate(() => {
+        const f = window.fixture;
+        return f.w
+          .toRenderState(f.p.id)
+          .players.find((p) => p.id === f.ally.id)
+          .waveCover.includes(f.b.id);
+      }),
+      true,
+    );
+    await still();
+    if (process.env.SHOT_DIR)
+      await page.screenshot({ path: `${process.env.SHOT_DIR}/wave-cover-${width}.png` });
+    assert.equal(
+      await page.evaluate(async () => {
+        const f = window.fixture;
+        const { resolveBossAbility } = await import('/src/engine/combat/abilities.ts');
+        const before = f.ally.hp;
+        resolveBossAbility(f.w, f.b, f.wave, f.b.action);
+        f.b.action.kind = 'idle';
+        f.publish();
+        return f.ally.hp === before && !f.p.buffs.some((b) => b.kind === 'frontGuard');
+      }),
+      true,
+    );
+    await page.evaluate(async () => {
+      const f = window.fixture;
+      const { resolveBossAbility } = await import('/src/engine/combat/abilities.ts');
+      const { getMonster } = await import('/src/engine/content/monsters.ts');
+      const ab = getMonster('beholder').abilities.find((a) => a.id === 'disintegrate');
+      resolveBossAbility(f.w, f.b, ab, { ...f.b.action, targetPos: { ...f.p.pos } });
+      f.publish();
+    });
+    await page.waitForSelector('.hud-silence');
+    assert.match(await page.locator('.hud-silence').innerText(), /Silenced.*2\.0s/s);
+    assert.match(await page.locator('.hud-silence').innerText(), /Basic attack available/);
+    assert.ok((await page.locator('.hud-ability.silenced').count()) >= 4);
+    if (width === 320) {
+      assert.equal(await page.locator('.wb-touch-btn-a2').getAttribute('aria-disabled'), 'true');
+      const banner = await page.locator('.hud-silence').boundingBox();
+      const party = await page.locator('.hud-teammates').boundingBox();
+      assert.ok(
+        banner && party && banner.x >= party.x + party.width,
+        'silence notice clears party health',
+      );
+      assert.equal(await page.locator('.wb-touch-btn-basic.silenced').count(), 0);
+    }
+    await still();
+    if (process.env.SHOT_DIR)
+      await page.screenshot({ path: `${process.env.SHOT_DIR}/silence-${width}.png` });
+    await page.evaluate(async () => {
+      const f = window.fixture;
+      const { resolveBossAbility } = await import('/src/engine/combat/abilities.ts');
+      const { getMonster } = await import('/src/engine/content/monsters.ts');
+      const ab = getMonster('beholder').abilities.find((a) => a.id === 'antimagic');
+      resolveBossAbility(f.w, f.b, ab, f.b.action);
+      const zone = f.w.groundZones[0];
+      Object.assign(zone, { pos: { ...f.p.pos }, armRemaining: 0 });
+      f.w.groundZones = [zone];
+      f.publish();
+    });
+    await page.waitForFunction(() =>
+      document.querySelector('.hud-silence')?.textContent.includes('Leave the antimagic pool'),
+    );
+    await page.evaluate(async () => {
+      const f = window.fixture;
+      f.w.groundZones = [];
+      const { tickBuffs } = await import('/src/engine/combat/combat.ts');
+      tickBuffs(f.p, 3);
+      f.publish();
+    });
+    await page.waitForFunction(() => !document.querySelector('.hud-silence'));
+    assert.equal(await page.locator('.hud-ability.silenced').count(), 0);
     assert.deepEqual(errors, []);
     console.log(
-      `PASS ${width}px: actual Shield Wall input, shared 2→1→0 blocks, ally interception and restored hostile contact after exhaustion`,
+      `PASS ${width}px: Shield Wall input, shared finite blocks, wave cover, remote preview, Beholder silence/pool feedback and recovery`,
     );
     await page.close();
   }

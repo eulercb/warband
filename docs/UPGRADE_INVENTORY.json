@@ -7745,7 +7745,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Taunt and Shield Wall project a 120u-wide shield 60u ahead, sharing their frontal-block charges. Aim to intercept hostile shots and ready a melee counter; resist hard control for 4s. Second Wind resists control for 3s",
+      "description": "Taunt and Shield Wall project a 120u-wide shield 60u ahead, sharing their frontal-block charges. Aim to block hostile shots, waves and beam ticks for allies behind you and ready a melee counter; resist hard control for 4s. Second Wind resists control for 3s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
