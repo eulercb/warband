@@ -248,6 +248,7 @@ jobs:
             curl -sf http://127.0.0.1:5173/ >/dev/null && break
             sleep 1
           done
+          node scripts/smoke-harness-startup.test.mjs
           node scripts/run-smoke.mjs smoke:martial
           node scripts/run-smoke.mjs smoke:projected-guard
           node scripts/run-smoke.mjs smoke:battle-maneuvers

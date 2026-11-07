@@ -114,3 +114,20 @@ all six remaining scripts from that CI job: projected guard, Battlemaster moveme
 absorption, auras, martial grands and nature grands. Registry contract tests,
 changed-script lint/format and final TypeScript also passed. GitHub's completion
 action reports the new head's merge/help outcome without continued polling here.
+
+## CI startup follow-up
+
+The next CI run passed all 18 production martial cohorts, then failed while
+loading React in the projected-shield fixture. That fixture and eight others
+imported generated `node_modules/.vite` cache URLs directly. Local runs against
+an already warmed dev server did not establish that those files existed on a
+fresh CI server.
+
+The fixtures now use one browser entry with ordinary React package imports;
+Vite resolves and versions those dependencies. React, React DOM client and the
+JSX runtime are prebundled together. No game mechanics changed. A fast regression
+check mounts hooks plus the actual HUD with its own empty cache and rejects
+hardcoded dependency-cache imports across smoke scripts. The martial CI job runs
+it before the longer production scenarios. The startup regression and selected
+shield, Battlemaster and loadout scenarios are verified against a separate fresh
+server/cache, rather than relying on the earlier warm-server evidence.

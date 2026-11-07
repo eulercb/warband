@@ -54,6 +54,9 @@ Browser smoke cohorts/selectors should use stable IDs and derive display labels
 from the game registry; do not duplicate renamed skill/passive names in CI.
 When changing a skill contract, search existing browser scripts for its text and
 status expectations and run the affected old smoke alongside the new mechanic smoke.
+Dev-browser fixtures import React through the shared Vite-served entry; never
+hardcode generated dependency-cache URLs. Verify startup with an empty cache,
+not only a long-running development server.
 
 At each delivery, name the next development step after live playtesting and the
 following roadmap stages. Record accepted player feedback and distinguish review

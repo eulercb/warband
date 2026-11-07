@@ -43,6 +43,9 @@ const { sha: buildSha, date: buildDate } = buildStamp();
 
 export default defineConfig({
   base,
+  // Smoke fixtures also enter outside index.html; prebundle their React runtime
+  // together so the first fixture cannot trigger a late dependency replacement.
+  optimizeDeps: { include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
   // Inlined as literals at build/transform time; declared in src/vite-env.d.ts.
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
