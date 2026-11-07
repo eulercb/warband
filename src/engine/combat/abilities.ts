@@ -1,3 +1,4 @@
+import { blockBossPulse } from './projectedGuard';
 import { resolvedForethought } from '../content/classes';
 import { clipBulwarkStep } from './apertureMovement';
 import { whisperCast, spendSecret, hostileAdd } from './whispers';
@@ -1620,8 +1621,12 @@ export function resolveBossAbility(
     case 'cone': {
       const range = ab.range ?? 300;
       const half = ((ab.halfAngleDeg ?? 30) * Math.PI) / 180;
-      for (const p of alivePlayers) {
-        if (pointInCone(p.pos, boss.pos, action.aimAngle, range, half, p.radius)) {
+      const targets = alivePlayers.filter((p) =>
+        pointInCone(p.pos, boss.pos, action.aimAngle, range, half, p.radius),
+      );
+      const covered = blockBossPulse(world, boss.pos, targets);
+      for (const p of targets) {
+        if (!covered.has(p)) {
           dealtToPlayers += damagePlayer(world, p, dmg, boss.pos);
           bossHitRider(world, boss, p, ab);
           if (ab.stun) applyStun(world, p, ab.stun, 'bossStun');
@@ -1646,8 +1651,10 @@ export function resolveBossAbility(
 
     case 'pbaoe': {
       const radius = ab.radius ?? 160;
-      for (const p of alivePlayers) {
-        if (pointInCircle(p.pos, boss.pos, radius, p.radius)) {
+      const targets = alivePlayers.filter((p) => pointInCircle(p.pos, boss.pos, radius, p.radius));
+      const covered = blockBossPulse(world, boss.pos, targets);
+      for (const p of targets) {
+        if (!covered.has(p)) {
           dealtToPlayers += damagePlayer(world, p, dmg, boss.pos);
           if (ab.knockback) knockback(world, p, boss.pos, ab.knockback);
           bossHitRider(world, boss, p, ab);
@@ -1830,6 +1837,7 @@ export function beamTick(world: World, boss: Boss, ab: BossAbilityDef, action: B
       : null;
   if (!target) return 0;
   if (dist(boss.pos, target.pos) > (ab.range ?? 500)) return 0; // out-ranged: broken
+  if (blockBossPulse(world, boss.pos, [target]).has(target)) return 0;
   const dealt = damagePlayer(
     world,
     target,

@@ -8,6 +8,34 @@ export function drawDefenseState(
   y: number,
   r: number,
 ): void {
+  if (p.waveCover?.length) {
+    // Only shown for an actual currently threatened, occluded recipient.
+    g.circle(x, y, r + 6)
+      .fill({ color: 0x80e4ff, alpha: 0.22 })
+      .stroke({ color: 0xb9f1ff, width: 2, alpha: 1 });
+    g.poly([
+      x - 5,
+      y - r - 12,
+      x + 5,
+      y - r - 12,
+      x + 5,
+      y - r - 6,
+      x,
+      y - r - 2,
+      x - 5,
+      y - r - 6,
+    ]).fill(0xb9f1ff);
+  }
+  if (p.state === 'alive' && p.buffs.some((b) => b.kind === 'silence' && b.remaining > 0)) {
+    g.circle(x, y, r + 13).stroke({ color: 0xf3b2ff, width: 3, alpha: 0.9 });
+    // A crossed speech bubble above the hero, independent of the buff-chip cap.
+    g.roundRect(x - 9, y - r - 29, 18, 14, 3)
+      .fill({ color: 0x32153c, alpha: 0.95 })
+      .stroke({ color: 0xf3b2ff, width: 2 });
+    g.moveTo(x - 9, y - r - 12)
+      .lineTo(x + 9, y - r - 31)
+      .stroke({ color: 0xffffff, width: 3 });
+  }
   const guard = p.buffs.find((b) => b.kind === 'frontGuard' && b.remaining > 0 && b.mult > 0);
   const angle = Math.atan2(p.aim.y, p.aim.x);
   if (guard && !guard.projectedGuard) {

@@ -28,22 +28,26 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
+Current follow-up: [wave cover and silence feedback](WAVE_COVER_AND_SILENCE.md).
 Knight, Barbarian and Monk's six subclasses have been inspected together.
-Champion A now projects finite guard charges into hostile shot paths; this
-awaits owner live testing. Warlord's proactive counter core and Berserker's
+Champion A's projected shield (#157) was merged and tested: the owner likes the
+idea and requested wave-cover protection. The current follow-up adds emitted-wave
+and beam cover plus clear silence feedback; it awaits live testing.
+Warlord's proactive counter core and Berserker's
 contact-versus-walking distinction are recommended for retention. Battlemaster,
 Totem's unresolved package and Monk identities remain explicit purpose findings.
 
 Thirteen of 24 subclasses have been inspected: seven earlier subclasses are
 accepted/retained, six martial subclasses now have review findings (one new
-Champion implementation awaiting testing), and 11 await review. Inspection,
+Champion implementation with cover follow-up awaiting testing), and 11 await
+review. Inspection,
 implementation and owner acceptance remain distinct states.
 
 ## Next development work, in order
 
 | Stage                        | Concrete work                                                                                                                                  |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test Champion interception, then resolve Battlemaster's two identity purposes and implement the mature plan.                              |
+| Next                         | Live-test emitted-wave cover and silence feedback, then resolve and implement Battlemaster's two identity purposes.                            |
 | Following                    | Address Totem and Monk findings in bounded deliveries; retain the Berserker distinction and useful simple skills.                              |
 | Martial identities           | Six inspected; Champion A implemented, other findings remain tracked in the martial purpose review.                                            |
 | Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                            |

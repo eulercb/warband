@@ -312,6 +312,8 @@ export interface StunDr {
  * vulnerability, and pick the matching glow color per effect (§ visual-cues).
  */
 export interface BuffView {
+  /** Host-confirmed exposure to an armed, applicable silence zone. */
+  sustainedSilence?: boolean;
   projectedGuard?: { reach: number; halfWidth: number };
   whisperRefrain?: { anchor: Vec2; radius: number; charges: number };
   visual?: 'divineShield';
@@ -1370,6 +1372,8 @@ export interface Telegraph {
 // ---------------------------------------------------------------------------
 
 export interface PlayerView {
+  /** Active emitted attacks currently occluded; positional preview, not immunity. */
+  waveCover?: EntityId[];
   infernalAperture?: {
     conduitReady?: boolean;
     bulwark?: { pos: Vec2; radius: number };

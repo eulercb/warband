@@ -44,9 +44,19 @@ export default function MechanicsReference() {
         60u ahead, turning with aim. Hostile shots crossing it spend one block and ready your melee
         counter, protecting bodies behind it and preventing that shot's contact effects. Bodies or
         cover reached first still intercept first. Body blocks share the same pool; projected blocks
-        still cost a charge during i-frames. Beams, ground hazards and enemy movement bypass the
-        projection. Downing, class changes and expiry remove it. The visible line and pips show the
-        active guard and remaining blocks; stronger-guard precedence applies.
+        still cost a charge during i-frames. Each emitted cone or boss-centered pulse spends one
+        block to protect everyone fully behind the shield; each beam tick costs another block. Tall
+        obstacles and Aperture barricades also stop these attacks. Low rubble stops projectiles
+        only. Targeted ground impacts, placed hazards and enemy movement bypass the projection. Cyan
+        rings mark players currently covered against an incoming wave; moving or exhausting charges
+        can expose them. Downing, class changes and expiry remove it. The visible line and pips show
+        the active guard and remaining blocks; stronger-guard precedence applies.
+      </p>
+      <p>
+        Silence locks every special skill, including subclass skills, Return and Ember. Basic
+        attacks remain available. The purple status shows remaining time, or asks you to leave an
+        antimagic pool while it keeps refreshing the effect. After leaving, the lingering silence
+        counts down. A crossed speech bubble marks affected heroes in the arena.
       </p>
       <p>
         Elder Mind opens two consecutive boss reveals from a positive direct hit, without a curse.
@@ -66,13 +76,13 @@ export default function MechanicsReference() {
         Cover and enemies before entry and after exit still intercept; the intervening space is
         bypassed. Mouths adjust up to 108u to find clear space. A temporary 96u-wide midpoint
         barricade blocks physical shots and hostile approach; allies can walk through it. Enemies
-        detour, and blocked routes dissolve the barricade. Area attacks, cones and beams can still
-        hit you. If no safe barricade fits, the mouths still open; if no nearby lane fits, the
-        follow-up ember remains usable. One fresh press of the owning skill fires an ember from your
-        current position toward current aim, without refreshing buffs or cooldown. Holding/autofire
-        cannot fire it. An earned Shadow Reprise return takes priority on a shared Forge slot. Gate
-        expiry stops new entry; admitted shots finish transit. Downing, death, changing class or
-        replacing the owning skill cancels pending transit.
+        detour, and blocked routes dissolve the barricade. Targeted ground impacts and placed
+        hazards can still hit you. If no safe barricade fits, the mouths still open; if no nearby
+        lane fits, the follow-up ember remains usable. One fresh press of the owning skill fires an
+        ember from your current position toward current aim, without refreshing buffs or cooldown.
+        Holding/autofire cannot fire it. An earned Shadow Reprise return takes priority on a shared
+        Forge slot. Gate expiry stops new entry; admitted shots finish transit. Downing, death,
+        changing class or replacing the owning skill cancels pending transit.
       </p>
       <p>
         Shadow Reprise leaves a departure anchor for up to 6s. A later prepared direct hit

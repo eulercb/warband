@@ -2366,7 +2366,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'kn_champion_g_a',
     'Unbroken Champion',
     '⚔️',
-    'Taunt and Shield Wall project a 120u-wide shield 60u ahead, sharing their frontal-block charges. Aim to intercept hostile shots and ready a melee counter; resist hard control for 4s. Second Wind resists control for 3s',
+    'Taunt and Shield Wall project a 120u-wide shield 60u ahead, sharing their frontal-block charges. Aim to block hostile shots, waves and beam ticks for allies behind you and ready a melee counter; resist hard control for 4s. Second Wind resists control for 3s',
     (a) => {
       for (const [ab, charges] of [
         [a.a1, 1],
@@ -6495,7 +6495,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       name: blend(fused.name),
       desc:
         base.id === 'kn_champion_g_a'
-          ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Intercept hostile shots to ready a melee counter; gain 4s control resistance'
+          ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'
           : base.id === 'wa_great_old_one_g_a'
             ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
             : base.id === 'wa_great_old_one_g_b'

@@ -1,4 +1,4 @@
-import { sweepProjectedGuard } from '../combat/projectedGuard';
+import { sweepProjectedGuard, blockBossPulse } from '../combat/projectedGuard';
 import { firstObstacleStop } from '../combat/abilities';
 import {
   armForethought,
@@ -202,7 +202,15 @@ import {
 // Toroidal (wrap-around) geometry — drop-in replacements for the Euclidean
 // sub/dist/distSq/pointInSegment so combat measures the shortest path on the
 // torus. `wrapPos` canonicalises positions after they move (see §infinite-map).
-import { sub, dist, distSq, pointInSegment, wrapPos } from '../core/torus';
+import {
+  sub,
+  dist,
+  distSq,
+  pointInCone,
+  pointInCircle,
+  pointInSegment,
+  wrapPos,
+} from '../core/torus';
 import { getClass, cloneAbilities, slowAttackCooldowns } from '../content/classes';
 import type { PlayerAbilityDef } from '../content/classes';
 import { applyUpgrades } from '../content/upgrades';
@@ -3890,6 +3898,36 @@ export class World {
     }
   }
 
+  private waveCoverView(p: Player): number[] {
+    if (this.scene !== null || p.state !== 'alive' || p.hp <= 0) return [];
+    return this.bosses
+      .filter((b) => {
+        const a = b.action;
+        if (b.hp <= 0 || (a.kind !== 'windup' && a.kind !== 'channel') || !a.abilityId)
+          return false;
+        const raw = abilityById(this.defOf(b), a.abilityId);
+        if (!raw) return false;
+        const ab = this.affixAbility(b, raw);
+        const threatened =
+          ab.shape === 'cone'
+            ? pointInCone(
+                p.pos,
+                b.pos,
+                a.aimAngle,
+                ab.range ?? 300,
+                ((ab.halfAngleDeg ?? 30) * Math.PI) / 180,
+                p.radius,
+              )
+            : ab.shape === 'pbaoe'
+              ? pointInCircle(p.pos, b.pos, ab.radius ?? 160, p.radius)
+              : ab.shape === 'beam' &&
+                a.targetId === p.id &&
+                dist(b.pos, p.pos) <= (ab.range ?? 500);
+        return threatened && blockBossPulse(this, b.pos, [p], false).has(p);
+      })
+      .map((b) => b.id);
+  }
+
   private playerView(p: Player): PlayerView {
     const infernalClaimTargets: NonNullable<PlayerView['infernalClaimTargets']> = {};
     for (const slot of [...SLOTS, ...SUB_SLOTS]) {
@@ -3937,10 +3975,24 @@ export class World {
       state: p.state,
       cooldowns: { ...p.cooldowns },
       ...(Object.keys(infernalClaimTargets).length ? { infernalClaimTargets } : {}),
+      waveCover: this.waveCoverView(p),
       shadowReprise: shadowRepriseView(this, p),
       infernalAperture: apertureView(this, p),
       buffs: p.buffs.map((b) => {
         const view = buffView(b);
+        if (b.kind === 'silence' && b.remaining > 0 && p.state === 'alive')
+          view.sustainedSilence =
+            this.scene === null &&
+            this.groundZones.some(
+              (z) =>
+                z.side === 'boss' &&
+                (z.silence ?? 0) > 0 &&
+                z.remaining > 0 &&
+                (z.armRemaining ?? 0) <= 0 &&
+                (!isFlying(p) || zoneReachesAir(z)) &&
+                dist(z.pos, p.pos) <= z.radius + p.radius,
+            );
+
         if (b.projectedGuardClass !== p.classId || p.state !== 'alive' || p.hp <= 0)
           delete view.projectedGuard;
         return view;

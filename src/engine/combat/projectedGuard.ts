@@ -115,3 +115,93 @@ export function sweepProjectedGuard(w: World, shot: Projectile, from: Vec2): boo
   }
   return true;
 }
+
+/** One emitted pulse: snapshot every recipient before spending any shared block. */
+export function blockBossPulse(
+  w: World,
+  source: Vec2,
+  targets: Player[],
+  spend = true,
+): Set<Player> {
+  const covered = new Set<Player>();
+  if (w.scene !== null) return covered;
+  const reserved = new Map<Player, Buff>();
+  for (const target of targets) {
+    const step = sub(target.pos, source);
+    // Broad waves need tall cover; low rubble only catches projectiles.
+    const solid = [
+      ...w.obstacles.filter((o) =>
+        ['pillar', 'monolith', 'crystal', 'totem'].includes(o.kind ?? 'rock'),
+      ),
+      ...apertureBulwarks(w),
+    ];
+    if (solid.some((o) => circleTime(sub(source, o.pos), step, o.radius) !== undefined)) {
+      covered.add(target);
+      continue;
+    }
+    let nearest: { p: Player; guard: Buff; t: number } | undefined;
+    for (const p of w.players) {
+      if (p.state !== 'alive' || p.hp <= 0) continue;
+      const guard = p.buffs.find(
+        (b) =>
+          b.kind === 'frontGuard' &&
+          b.remaining > 0 &&
+          b.mult > 0 &&
+          b.projectedGuard &&
+          b.projectedGuardClass === p.classId,
+      );
+      if (!guard) continue;
+      // Both silhouette edges must fit behind the finite face.
+      const len = Math.hypot(step.x, step.y);
+      if (len < EPS) continue;
+      const t = shieldTime(p, guard, { vel: step, hitRadius: 0 } as Projectile, source, step);
+      if (t === undefined) continue;
+      const edge = { x: (-step.y / len) * target.radius, y: (step.x / len) * target.radius };
+      if (
+        [-1, 1].some(
+          (sign) =>
+            shieldTime(p, guard, { vel: step, hitRadius: 0 } as Projectile, source, {
+              x: step.x + edge.x * sign,
+              y: step.y + edge.y * sign,
+            }) === undefined,
+        )
+      )
+        continue;
+      if (
+        !nearest ||
+        t < nearest.t - EPS ||
+        (Math.abs(t - nearest.t) <= EPS && p.id < nearest.p.id)
+      )
+        nearest = { p, guard, t };
+    }
+    if (nearest) {
+      covered.add(target);
+      reserved.set(nearest.p, nearest.guard);
+    }
+  }
+  // A personal frontal block reached by the same wave shares this reservation.
+  for (const p of reserved.keys()) {
+    const toward = sub(source, p.pos);
+    const denominator = Math.hypot(toward.x, toward.y) * Math.hypot(p.aim.x, p.aim.y);
+    if (
+      targets.includes(p) &&
+      denominator > EPS &&
+      (toward.x * p.aim.x + toward.y * p.aim.y) / denominator >= 0.5
+    )
+      covered.add(p);
+  }
+  if (!spend) return covered;
+  for (const [p, guard] of reserved) {
+    consumeFrontGuard(p, guard, 1.3);
+    onGuardedDamage(p);
+    w.events.push({
+      t: 'support',
+      sourceId: p.id,
+      targetId: p.id,
+      from: { ...p.pos },
+      pos: { ...p.pos },
+      kind: 'protect',
+    });
+  }
+  return covered;
+}

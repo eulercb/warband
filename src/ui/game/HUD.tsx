@@ -1,3 +1,4 @@
+import { silenceStatus } from '../../engine/core/silenceStatus';
 import { previewGrandStats } from '../../engine/content/grandStats';
 import { useSelectedCharUpgrades } from '../state/useSelectedCharUpgrades';
 import { effectiveRecharge } from '../../engine/content/abilityLimits';
@@ -156,6 +157,9 @@ function AbilityIcon({
   mods: { cooldownMult: number; castMult: number; damageMult: number };
 }) {
   const remaining = useHudStore((s) => s.cooldowns[slot] ?? 0);
+  const silence = useHudStore((s) =>
+    slot !== 'basic' && s.state === 'alive' ? silenceStatus(s.buffs) : undefined,
+  );
   const aperture = useHudStore((s) =>
     s.infernalAperture?.slot === slot ? s.infernalAperture : undefined,
   );
@@ -195,8 +199,9 @@ function AbilityIcon({
         ? 'Need target'
         : 'Target ready';
   const ready =
-    (reprise?.armed ? !reprise.blocked : ember && !aperture?.blocked) ||
-    (!cooling && (claimTarget === undefined || (alive && claimTarget !== null)));
+    !silence &&
+    ((reprise?.armed ? !reprise.blocked : ember && !aperture?.blocked) ||
+      (!cooling && (claimTarget === undefined || (alive && claimTarget !== null))));
   const label = slotLabel(slot, source);
   const name = reprise?.armed ? 'Return' : ember ? 'Ember' : (displayName ?? def.name);
   // Concrete effect numbers on hover/focus (item 19), reflecting the hero's
@@ -204,9 +209,10 @@ function AbilityIcon({
   const tip = `${name} — ${describeAbility({ ...def, slot }, mods)}${claimStatus ? ` · ${claimStatus}` : ''}`;
   return (
     <div
-      className={`hud-ability${ready ? ' ready' : ''}${claimStatus === 'Target ready' && !cooling ? ' claim-ready' : ''}`}
+      className={`hud-ability${ready ? ' ready' : ''}${silence ? ' silenced' : ''}${!silence && claimStatus === 'Target ready' && !cooling ? ' claim-ready' : ''}`}
       title={tip}
-      aria-label={tip}
+      aria-label={silence ? `${tip} · ${silence}` : tip}
+      aria-disabled={!!silence}
     >
       <div
         className={`hud-ability-key${source === 'gamepad' ? ' pad' : ''}${
@@ -216,8 +222,9 @@ function AbilityIcon({
         {label}
       </div>
       <div className="hud-ability-name">{name}</div>
-      {actionStatus && <div className="hud-claim-status">{actionStatus}</div>}
-      {!cooling && claimStatus && (
+      {silence && <div className="hud-silence-label">Silenced</div>}
+      {!silence && actionStatus && <div className="hud-claim-status">{actionStatus}</div>}
+      {!silence && !cooling && claimStatus && (
         <div className={`hud-claim-status${claimTarget === null ? ' blocked' : ''}`}>
           {claimStatus}
         </div>
@@ -428,6 +435,12 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
 
       {/* Local health + abilities */}
       <div className="hud-bottom">
+        {hud.state === 'alive' && silenceStatus(hud.buffs) && (
+          <div className="hud-silence" role="status">
+            <strong>{silenceStatus(hud.buffs)}</strong>
+            <span>Specials locked · Basic attack available</span>
+          </div>
+        )}
         {hud.state === 'alive' && claimSlots.length > 0 && (
           <div className={`hud-claim-prompt${claimReady ? ' ready' : ''}`}>
             <strong>{claimReady ? 'Infernal Claim READY' : 'Infernal Claim: no target'}</strong>

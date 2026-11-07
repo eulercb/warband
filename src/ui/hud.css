@@ -1091,3 +1091,50 @@
   margin: 3px 0;
   text-align: center;
 }
+
+.hud-silence {
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 2px solid #f3b2ff;
+  border-radius: 7px;
+  background: #32153cf2;
+  color: #ffe7ff;
+  font-size: 12px;
+}
+.hud-silence span {
+  font-size: 11px;
+}
+.hud-ability.silenced,
+.wb-touch-btn.silenced {
+  border-color: #f3b2ff;
+  box-shadow: inset 0 0 15px #b642a055;
+}
+.hud-silence-label {
+  color: #ffc2f8;
+  font-size: 10px;
+  position: relative;
+  z-index: 2;
+}
+.wb-touch-btn.silenced .wb-touch-claim-status {
+  color: #ffc2f8;
+}
+
+@media (max-width: 640px) and (pointer: coarse) {
+  /* Keep status and local health in the right column beside the party frames. */
+  .hud-bottom {
+    width: min(190px, 46vw);
+  }
+  .hud-bottom .hud-selfhp {
+    width: 100%;
+  }
+  .hud-silence {
+    box-sizing: border-box;
+    width: 100%;
+    align-self: stretch;
+    overflow-wrap: anywhere;
+  }
+}
