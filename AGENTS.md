@@ -52,6 +52,8 @@ owner explicitly requests monitoring. The existing GitHub CI-completion action
 reports whether to merge or return for help. Inspect failed checks when asked.
 Browser smoke cohorts/selectors should use stable IDs and derive display labels
 from the game registry; do not duplicate renamed skill/passive names in CI.
+When changing a skill contract, search existing browser scripts for its text and
+status expectations and run the affected old smoke alongside the new mechanic smoke.
 
 At each delivery, name the next development step after live playtesting and the
 following roadmap stages. Record accepted player feedback and distinguish review

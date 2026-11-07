@@ -87,6 +87,7 @@ export async function loadPassiveRegistry() {
     const { CLASSES } = await server.ssrLoadModule('/src/engine/content/classes.ts');
     return {
       subclasses: ALL_SUBCLASSES,
+      classes: CLASSES,
       defaultHeroName: CLASSES.knight.name,
       cadenceSkillName: CLASSES.mage.abilities.a2.name,
       cadenceRefundNames: ['a1', 'a2', 'a3'].map((slot) => CLASSES.mage.abilities[slot].name),

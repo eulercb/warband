@@ -100,3 +100,17 @@ is Totem Warrior's unresolved B purpose and scattered riders. Open Hand and Shad
 follow, then remaining nature, caster and support identities, whole-system reward/
 upgrade/graft tuning and the dedicated visual revamp. See
 [development status](DEVELOPMENT_STATUS.md).
+
+## PR161 CI follow-up
+
+The martial production smoke still asserted Shield Wall's removed `guard 4s`
+window and `Guard` badge. It now checks per-block counter wording and accepts
+frontal-charge readiness or a counter already produced by an incoming hit.
+The smoke's hero/skill labels now resolve from the registry by class slot or
+stable subclass skill ID; behavioral assertions remain explicit. Other CI jobs,
+including full coverage/typecheck/build, had passed on the original PR head.
+Local verification passed all 18 desktop/touch production martial cohorts and
+all six remaining scripts from that CI job: projected guard, Battlemaster movement,
+absorption, auras, martial grands and nature grands. Registry contract tests,
+changed-script lint/format and final TypeScript also passed. GitHub's completion
+action reports the new head's merge/help outcome without continued polling here.
