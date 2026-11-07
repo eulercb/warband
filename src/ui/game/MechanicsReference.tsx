@@ -59,13 +59,15 @@ export default function MechanicsReference() {
         counts down. A crossed speech bubble marks affected heroes in the arena.
       </p>
       <p>
-        Grand Tactician lets one positive direct hit from a special request an 80u enemy move.
-        Direction is captured from movement when the skill is pressed; standing still pushes away.
-        Basic attacks and damage ticks do not steer, and no counter or preparation is needed.
-        Committed attacks and existing forced movement finish first. The dashed arrow means queued
-        movement; the solid arrow shows travel. Rooted or steadfast enemies cannot be moved. Each
-        enemy has 6s recovery after movement starts. Competing pushes may pause the move; 1s of
-        waiting on pushes outside a committed attack cancels it into 6s enemy recovery.
+        Grand Tactician immediately steers every eligible enemy hit by a direct special, including
+        different victims of one volley. Each foe moves at most 80u once per cast and has 6s shared
+        recovery. Hold movement when pressing the skill to choose direction; standing still pushes
+        away. The short slide starts in the hit frame, including during windups and channels, and
+        attack countdowns continue. Body-bound cones and bursts move with the caster. A charge keeps
+        its heading and length from its moved origin. Ground marks and already placed hazards stay
+        fixed. Tracking beams keep their target; moving their source can break range or gain cover.
+        Other knockback or pulls combine with steering; cover can stop travel. Roots and Steadfast
+        prevent steering. Basic attacks and damage ticks do not steer.
       </p>
       <p>
         Perfect Maneuver lets a new press of Taunt, Shield Wall, Menacing Roar or Rally while moving

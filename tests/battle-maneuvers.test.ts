@@ -177,7 +177,7 @@ describe('single-cast steering eligibility and lifecycle', () => {
     b.maneuverRecovery = 0;
     onManeuverHit(w, p, b, 1, cast);
     expect(b.maneuverMotion?.dir).toEqual({ x: 1, y: 0 });
-    expect(cast.spent).toBe(true);
+    expect(cast.steeredTargets?.has(b.id)).toBe(true);
     const motion = b.maneuverMotion;
     onManeuverHit(w, p, b, 1, cast);
     expect(b.maneuverMotion).toBe(motion);
@@ -236,7 +236,7 @@ describe('single-cast steering eligibility and lifecycle', () => {
     expect(b.hp).toBeLessThanOrEqual(0);
     expect(b.maneuverMotion).toBeUndefined();
   });
-  it('same-cast interruption and knockback finish before steering starts', () => {
+  it('same-cast interruption, knockback and steering combine immediately', () => {
     const { w, p, b, ab } = setup();
     b.action = {
       ...b.action,
@@ -251,10 +251,10 @@ describe('single-cast steering eligibility and lifecycle', () => {
     resolvePlayerAbility(w, p, 'a3', down, { ...ab, thoughtBreak: true, knockback: 100 });
     expect(b.action.kind).toBe('recover');
     expect(b.shove).toBeDefined();
-    expect(b.maneuverMotion?.phase).toBe('queued');
+    expect(b.maneuverMotion?.phase).toBe('travel');
     const from = { ...b.pos };
     w.step(0.05, new Map());
-    expect(b.pos.y).toBe(from.y);
+    expect(b.pos.y).toBeCloseTo(from.y + 30);
     for (let i = 0; i < 15; i++) w.step(0.05, new Map());
     expect(b.pos.y).toBeCloseTo(from.y + 80);
   });
@@ -491,7 +491,7 @@ describe('same native and component activation contract', () => {
       if (mode === 'push') b.action.kind = 'windup';
       start(mode, s);
       if (mode === 'push') {
-        expect(w.serialize().players[0].maneuver?.phase).toBe('queued');
+        expect(w.serialize().players[0].maneuver?.phase).toBe('travel');
         b.action.kind = 'recover';
       }
       tickManeuvers(w, 0.05);
@@ -511,7 +511,7 @@ describe('same native and component activation contract', () => {
   });
 });
 it.each(['windup', 'channel'] as const)(
-  'keeps committed %s origin/aim/target unchanged then moves in recovery',
+  'moves during committed %s without changing its aim or target',
   (kind) => {
     const { w, p, b, ab } = setup();
     b.action = {
@@ -544,11 +544,12 @@ it.each(['windup', 'channel'] as const)(
     const action = structuredClone(b.action),
       from = { ...b.pos };
     onManeuverHit(w, p, b, 10, maneuverCast(p, ab, { x: 0, y: 1 }));
-    expect(b.maneuverMotion?.phase).toBe('queued');
+    expect(b.maneuverMotion?.phase).toBe('travel');
     expect(b.pos).toEqual(from);
     expect(b.action).toEqual(action);
     tickManeuvers(w, 0.05);
-    expect(b.pos).toEqual(from);
+    expect(b.pos.y).toBeCloseTo(from.y + 30);
+    expect(b.action).toEqual(action);
     for (let i = 0; i < 10; i++) w.step(0.05, new Map());
     expect(b.pos.y).toBeCloseTo(from.y + 80);
     expect(b.maneuverMotion).toBeUndefined();
@@ -557,7 +558,7 @@ it.each(['windup', 'channel'] as const)(
   },
 );
 
-it('resolves charge landing before displacement, rather than moving its origin', () => {
+it('translates a committed charge and ends leftover steering on landing', () => {
   const { w, p, b, ab } = setup();
   const charge = {
     id: 'testCharge',
@@ -577,13 +578,14 @@ it('resolves charge landing before displacement, rather than moving its origin',
     remaining: 0.1,
     total: 0.1,
     targetPos: { x: 670, y: 400 },
+    chargeOffset: { x: 70, y: 0 },
     aimAngle: 0,
   };
   onManeuverHit(w, p, b, 10, maneuverCast(p, ab, { x: 0, y: 1 }));
   w.step(0.1, new Map());
-  expect(b.pos).toEqual({ x: 670, y: 400 });
+  expect(b.pos).toEqual({ x: 670, y: 460 });
   for (let i = 0; i < 4; i++) w.step(0.05, new Map());
-  expect(b.pos).toEqual({ x: 670, y: 480 });
+  expect(b.pos).toEqual({ x: 670, y: 460 });
 });
 
 it('cancels deferred enemy motion if its owner is downed or the target rooted', () => {
@@ -599,15 +601,15 @@ it('cancels deferred enemy motion if its owner is downed or the target rooted', 
   }
 });
 
-it('shares target recovery across owners and waits for an existing shove', () => {
+it('shares target recovery across owners and combines an existing shove', () => {
   const { w, p, b, ab } = setup();
   b.shove = { vx: 1, vy: 0, remaining: 0.2 };
   onManeuverHit(w, p, b, 1, maneuverCast(p, ab, zero));
   tickManeuvers(w, 0.1);
-  expect(b.maneuverMotion?.phase).toBe('queued');
+  expect(b.maneuverMotion?.phase).toBe('travel');
   b.shove = null;
   tickManeuvers(w, 0);
-  expect(b.maneuverRecovery).toBe(6);
+  expect(b.maneuverRecovery).toBeCloseTo(5.9);
   const before = b.maneuverMotion;
   onManeuverHit(w, p, b, 1, maneuverCast(p, ab, { x: 0, y: -1 }));
   expect(b.maneuverMotion).toBe(before);
@@ -730,7 +732,7 @@ it('enemy maneuvers wrap across the seam and stop at the nearest copy of solid c
 });
 
 it.each(['idle', 'recover'] as const)(
-  'reserves the next boss decision until existing forced movement finishes, from %s',
+  'defers a new boss decision while steering, without pausing recovery, from %s',
   (kind) => {
     const { w, p, b, ab } = setup();
     b.action.kind = kind;
@@ -739,27 +741,27 @@ it.each(['idle', 'recover'] as const)(
     b.shove = { vx: 10, vy: 0, remaining: 0.6 };
     onManeuverHit(w, p, b, 1, maneuverCast(p, ab, { x: 0, y: 1 }));
     w.step(0.1, new Map());
-    expect(b.action.kind).toBe(kind);
-    expect(b.maneuverMotion?.phase).toBe('queued');
+    expect(b.action.kind).toBe('idle');
+    expect(b.maneuverMotion?.phase).toBe('travel');
     for (let i = 0; i < 8; i++) w.step(0.1, new Map());
     expect(b.pos.y).toBeCloseTo(480);
   },
 );
 
-it('a new shove pauses remaining enemy maneuver travel without applying two movement paths', () => {
+it('a new shove combines with remaining enemy travel through one collision path', () => {
   const { w, p, b, ab } = setup();
   onManeuverHit(w, p, b, 1, maneuverCast(p, ab, { x: 0, y: 1 }));
   tickManeuvers(w, 0.05);
   expect(b.pos.y).toBe(430);
   b.shove = { vx: 100, vy: 0, remaining: 0.2 };
   w.step(0.05, new Map());
-  expect(b.pos.y).toBe(430);
-  expect(b.maneuverMotion?.phase).toBe('queued');
+  expect(b.pos.y).toBe(460);
+  expect(b.maneuverMotion?.phase).toBe('travel');
   for (let i = 0; i < 5; i++) w.step(0.05, new Map());
   expect(b.pos).toEqual({ x: 620, y: 480 });
 });
 
-it('continually competing pushes cannot hold the next boss decision indefinitely', () => {
+it('repeated competing pushes do not delay steering or hold boss decisions', () => {
   const { w, p, b, ab } = setup();
   b.decisionTimer = 0;
   onManeuverHit(w, p, b, 1, maneuverCast(p, ab, { x: 0, y: 1 }));
@@ -768,11 +770,11 @@ it('continually competing pushes cannot hold the next boss decision indefinitely
     w.step(0.1, new Map());
   }
   expect(b.maneuverMotion).toBeUndefined();
-  expect(b.maneuverRecovery).toBeGreaterThan(5);
+  expect(b.maneuverRecovery).toBeGreaterThan(4);
   expect(w.toRenderState(p.id).players[0].maneuver?.phase).toBe('recovery');
 });
 
-it('a Volley cast captures direction and can move only one foe across its blades', () => {
+it('a Volley cast captures direction and records each foe independently across its blades', () => {
   const { w, b } = setup('push', 'kn_battle_precision');
   b.pos = { x: 800, y: 400 };
   w.step(0.01, input(w, down, { sub1: true }));
@@ -782,7 +784,7 @@ it('a Volley cast captures direction and can move only one foe across its blades
   for (const shot of w.projectiles) expect(shot.maneuverCast).toBe(cast);
   for (let i = 0; i < 40 && !b.maneuverMotion; i++) w.step(0.02, input(w, { x: 0, y: -1 }));
   expect(b.maneuverMotion?.dir).toEqual(down);
-  expect(cast.spent).toBe(true);
+  expect(cast.steeredTargets?.has(b.id)).toBe(true);
 });
 
 it('copies use component-authoritative movement and never let a basic inherit steering', () => {

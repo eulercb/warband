@@ -1111,7 +1111,7 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return `Fortune ${s(e.fortune.duration)} — next direct hit delays wind-ups ${n((e.fortune.castSlowMult - 1) * 100)}%, weakens damage ${n((1 - e.fortune.damageMult) * 100)}% for ${s(e.fortune.debuffDuration)}${e.fortune.markBonus ? `; next hit from a later cast +${n(e.fortune.markBonus * 100)}% damage` : ''}`;
     case 'maneuver':
       return e.mode === 'push'
-        ? `one positive direct special hit moves a foe ${n(e.distance)}u in the movement direction held when pressed (standing still pushes away), after committed attacks; 6s shared foe recovery`
+        ? `direct special hits immediately steer each foe ${n(e.distance)}u in the movement direction held when pressed (standing still pushes away); once per foe per cast, 6s shared foe recovery`
         : `press this defensive special while moving to step up to ${n(e.distance)}u in that direction, without immunity; standing still holds position; movement once per 6s, requires a new press`;
     case 'forethought':
       return `positive direct hit ${e.requiresCurse ? 'on your cursed boss ' : ''}reveals two consecutive moves and early aim, one at a time; each pending read lasts up to 8s; beams track their victim; after the second move, 8s shared Mind closed recovery`;

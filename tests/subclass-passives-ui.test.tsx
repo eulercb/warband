@@ -168,12 +168,12 @@ it('HUD and pause previews match the host after activating another class’s aut
 });
 
 it.each([
-  ['push', 'ready', false, 'Special-hit steering', 'Special hit steers'],
+  ['push', 'ready', false, 'Special-hit steering', 'Special hits steer every foe'],
   ['step', 'ready', false, 'Defensive footwork', 'New defensive press while moving steps'],
-  ['push', 'ready', true, 'Special-hit steering', 'Special hit steers'],
+  ['push', 'ready', true, 'Special-hit steering', 'Special hits steer every foe'],
   ['step', 'ready', true, 'Defensive footwork', 'New defensive press while moving steps'],
-  ['push', 'queued', false, 'Reposition queued', 'After this attack or current forced movement'],
-  ['push', 'travel', false, 'Repositioning foe', undefined],
+  ['push', 'queued', false, 'Repositioning foes', 'Moves during current attacks'],
+  ['push', 'travel', false, 'Repositioning foes', undefined],
   ['step', 'recovery', false, 'Maneuver resting · 3.5s', undefined],
 ] as const)(
   'shows actionable maneuver feedback for %s/%s/portable=%s',

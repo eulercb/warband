@@ -28,24 +28,25 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Battlemaster responsiveness](BATTLEMASTER_RESPONSIVENESS.md).
+Current delivery: [Battlemaster instant group steering](BATTLEMASTER_INSTANT_STEERING.md).
+[Responsive controls](BATTLEMASTER_RESPONSIVENESS.md) were merged/tested in #161.
 The [original positioning delivery](BATTLEMASTER_POSITIONING.md) is historical.
 The owner merged/tested the silence-marker separation (#159); that readability
 follow-up is the current baseline, with future changes responding to feedback.
 Champion's projected shield and emitted-wave cover (#157–158) remain merged/tested.
 
-Battlemaster positioning (#160) was merged/tested: controlled enemy movement
-was interesting, but activation felt unreliable and melee-hit-dependent escape
-was inadequate. The pair is not accepted yet. This follow-up uses direct special
-hits for A and fresh moving defensive casts for B, lengthens personal travel to
-180u, and repairs charged-block counter generation. Local verification and owner
-acceptance are separate gates; the new controls await live testing.
+Battlemaster responsive controls (#161) were merged/tested; most changes felt nice.
+Perfect Maneuver's hit-independent 180u defensive step is retained. The owner
+requested that Grand Tactician move enemies during current boss actions and affect
+every enemy actually hit. This follow-up starts steering in the hit frame, tracks
+recipients per cast, and aligns moving attack geometry/remote telegraphs. Steering
+correction acceptance awaits live testing; Totem's purpose repair remains next.
 Warlord's proactive counter core and Berserker's contact-versus-walking distinction
 remain retained review findings. Totem and Monk purpose findings remain open.
 
 Thirteen of 24 subclasses have been inspected: seven earlier subclasses are
 accepted/retained, six martial subclasses now have review findings (one new
-Champion implemented and Battlemaster pair now awaiting live acceptance), and 11 await
+Champion implemented, Battlemaster defensive movement retained and its steering correction awaiting live acceptance), and 11 await
 review. Inspection,
 implementation and owner acceptance remain distinct states.
 
@@ -53,7 +54,7 @@ implementation and owner acceptance remain distinct states.
 
 | Stage                        | Concrete work                                                                                                                                  |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test Battlemaster's simplified controls, then repair Totem Warrior's unresolved B purpose and scattered riders.                           |
+| Next                         | Live-test immediate group steering, then repair Totem Warrior's unresolved B purpose and scattered riders.                                     |
 | Following                    | Address Totem and Monk findings in bounded deliveries; retain the Berserker distinction and useful simple skills.                              |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem/Monk findings remain open.                                                  |
 | Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                            |

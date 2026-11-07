@@ -2420,7 +2420,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'kn_battlemaster_g_a',
     'Grand Tactician',
     '🎖️',
-    'A positive direct special hit moves one foe 80u in the movement direction held when pressed; standing still pushes it away. Committed attacks finish first; 6s shared foe recovery',
+    'Direct special hits immediately steer every foe hit 80u in the movement direction held when pressed; standing still pushes away. Once per foe per cast; 6s shared foe recovery',
     (a) => {
       for (const ab of Object.values(a)) battleManeuver(ab, 'push', 80);
     },
@@ -6494,7 +6494,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       desc:
         base.id === 'kn_battlemaster_g_a' || base.id === 'kn_battlemaster_g_b'
           ? base.id === 'kn_battlemaster_g_a'
-            ? 'Reforged steering: a positive direct special hit moves one foe 80u in the movement direction held when pressed; standing still pushes it away. Committed attacks finish first; 6s shared foe recovery'
+            ? 'Reforged steering: direct special hits immediately steer every foe hit 80u in the movement direction held when pressed; standing still pushes away. Once per foe per cast; 6s shared foe recovery'
             : 'Reforged footwork: press a defensive special while moving to step up to 180u in that direction. Standing still holds position. No immunity; movement once per 6s, requires a new press'
           : base.id === 'kn_champion_g_a'
             ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'

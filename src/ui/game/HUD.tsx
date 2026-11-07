@@ -439,18 +439,16 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
           <div className={`hud-maneuver ${hud.maneuver.phase}`}>
             <strong>
               {hud.maneuver.phase === 'queued'
-                ? 'Reposition queued'
+                ? 'Repositioning foes'
                 : hud.maneuver.phase === 'travel'
-                  ? 'Repositioning foe'
+                  ? 'Repositioning foes'
                   : hud.maneuver.phase === 'recovery'
                     ? `Maneuver resting · ${hud.maneuver.remaining.toFixed(1)}s`
                     : hud.maneuver.mode === 'push'
                       ? 'Special-hit steering'
                       : 'Defensive footwork'}
             </strong>
-            {hud.maneuver.phase === 'queued' && (
-              <span>After this attack or current forced movement</span>
-            )}
+            {hud.maneuver.phase === 'queued' && <span>Moves during current attacks</span>}
             {hud.maneuver.phase === 'ready' && (
               <span>
                 {silenceStatus(hud.buffs)
@@ -461,7 +459,7 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
                         hud.buffs.some((b) => b.kind === 'root' && b.remaining > 0)
                       ? 'Rooted: defensive cast available; step blocked'
                       : hud.maneuver.mode === 'push'
-                        ? 'Special hit steers · Direction at press; still pushes away'
+                        ? 'Special hits steer every foe · Direction at press; still pushes away'
                         : 'New defensive press while moving steps · Still holds position'}
               </span>
             )}

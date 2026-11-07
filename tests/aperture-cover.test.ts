@@ -334,7 +334,7 @@ describe('Safe fire and actual hostile movement', () => {
     expect(b.action.targetPos).toEqual({ x: 500, y: 400 });
     expect(preview.angle).toBe(Math.PI);
     dissolveBulwark(w, p.id);
-    expect(w.serialize().bosses[0].telegraph!.range).toBe(line.range);
+    expect(w.serialize().bosses[0].telegraph!.range).toBe(500); // actual committed path, not maximum reach
   });
   it('rooted and stunned bodies stay still without consuming the cover', () => {
     for (const kind of ['root', 'stun'] as const) {

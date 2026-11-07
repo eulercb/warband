@@ -1,5 +1,9 @@
 # Battlemaster: dependable steering and defensive footwork
 
+PR161 was merged/tested. The owner retained responsive defensive movement and
+requested immediate multi-enemy steering; [the current follow-up](BATTLEMASTER_INSTANT_STEERING.md)
+supersedes this note's one-foe and wait-until-after-action rules.
+
 Status: follow-up to merged/tested PR160. The owner liked controlled enemy movement
 but found both activations confusing; the counter-based pair is **not accepted**.
 This delivery replaces its activation rules. Owner playtesting remains the next gate.

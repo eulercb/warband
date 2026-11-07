@@ -21,6 +21,10 @@ Defensive escape movement must work without connecting a hit or approaching the
 threat first. Prefer one clear activation; distinguish fresh presses from held
 autofire, capture direction consistently, and attach charged-block rewards to the
 actual charges rather than a separate short-lived, one-use window.
+Owner-approved Battlemaster steering starts during active attacks and applies once
+per enemy per cast. Do not restore the old one-foe or wait-until-action-finishes gate.
+Keep body-bound attacks distinct from placed ground targets, with moving telegraphs
+matching hit geometry and ongoing attack timers.
 Check actual targeting semantics before promising a safe area or fixed aim. Do not add
 complexity to every skill or discard functioning simple skills merely for novelty.
 
