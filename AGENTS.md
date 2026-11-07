@@ -14,6 +14,9 @@ three. Simple numerical growth remains useful but is not proof of a new identity
 Apply this criterion across future class work, not only Whispers.
 Information mechanics need actionable, salient in-arena cues and clearly distinct
 pending/forecast/active states; a short-lived text label alone is insufficient.
+Give disruptive control markers a dedicated readable arena lane; keep them clear
+of name, HP and ordinary buff rows, avoid duplicate glyphs in that row, and check
+crowded simultaneous statuses on desktop and phone.
 Check actual targeting semantics before promising a safe area or fixed aim. Do not add
 complexity to every skill or discard functioning simple skills merely for novelty.
 

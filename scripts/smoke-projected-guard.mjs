@@ -250,6 +250,20 @@ try {
       resolveBossAbility(f.w, f.b, ab, { ...f.b.action, targetPos: { ...f.p.pos } });
       f.publish();
     });
+    // Stress the actual arena status row while silence has its own foreground lane.
+    await page.evaluate(async () => {
+      const f = window.fixture;
+      const { applyBuff, makeBuff } = await import('/src/engine/combat/combat.ts');
+      for (const [kind, mult] of [
+        ['guard', 1.3],
+        ['counter', 1.3],
+        ['damageTaken', 0.8],
+        ['moveSpeed', 0.7],
+        ['steadfast', 0],
+      ])
+        applyBuff(f.p, makeBuff(kind, mult, 3, 'smoke-' + kind));
+      f.publish();
+    });
     await page.waitForSelector('.hud-silence');
     assert.match(await page.locator('.hud-silence').innerText(), /Silenced.*2\.0s/s);
     assert.match(await page.locator('.hud-silence').innerText(), /Basic attack available/);

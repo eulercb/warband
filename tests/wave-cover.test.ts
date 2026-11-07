@@ -1,5 +1,9 @@
 import { Graphics } from 'pixi.js';
-import { drawDefenseState } from '../src/render/pipeline/defenseVisuals';
+import {
+  drawDefenseState,
+  drawSilenceMarker,
+  silenceAnchor,
+} from '../src/render/pipeline/defenseVisuals';
 import { describe, expect, it } from 'vitest';
 import { World } from '../src/engine/world/world';
 import { resolveBossAbility, beamTick } from '../src/engine/combat/abilities';
@@ -306,6 +310,7 @@ describe('cover and silence presentation contracts', () => {
     view.waveCover = [w.boss!.id];
     view.buffs = [{ kind: 'silence', mult: 0, remaining: 2 }];
     drawDefenseState(g, view, 100, 100, 12);
+    drawSilenceMarker(g, view, { x: 100, y: 100 }, 12, { x: 320, y: 568 });
     expect(
       g.context.instructions.some((i) => i.action === 'fill' && i.data.style.color === 0xb9f1ff),
     ).toBe(true);
@@ -316,10 +321,25 @@ describe('cover and silence presentation contracts', () => {
     view.waveCover = [];
     view.buffs[0].remaining = 0;
     drawDefenseState(g, view, 100, 100, 12);
+    drawSilenceMarker(g, view, { x: 100, y: 100 }, 12, { x: 320, y: 568 });
     expect(g.context.instructions).toHaveLength(0);
     view.buffs[0].remaining = 2;
     view.state = 'downed';
     drawDefenseState(g, view, 100, 100, 12);
+    drawSilenceMarker(g, view, { x: 100, y: 100 }, 12, { x: 320, y: 568 });
+    expect(g.context.instructions).toHaveLength(0);
+    view.state = 'alive';
+    for (const center of [
+      { x: -1, y: 100 },
+      { x: 100, y: -1 },
+      { x: 321, y: 100 },
+      { x: 100, y: 569 },
+    ]) {
+      drawSilenceMarker(g, view, center, 12, { x: 320, y: 568 });
+      expect(g.context.instructions).toHaveLength(0);
+    }
+    view.hp = 0;
+    drawSilenceMarker(g, view, { x: 100, y: 100 }, 12, { x: 320, y: 568 });
     expect(g.context.instructions).toHaveLength(0);
     g.destroy();
   });
@@ -343,4 +363,23 @@ describe('cover and silence presentation contracts', () => {
     expect(guard(p)).toBeUndefined();
     expect(guard(other)?.mult).toBe(1);
   });
+});
+
+it('keeps silence beside/below the hero and inside narrow viewports at either edge', () => {
+  for (const center of [
+    { x: 100, y: 100 },
+    { x: 220, y: 100 },
+    { x: 1, y: 1 },
+    { x: 319, y: 567 },
+  ]) {
+    const at = silenceAnchor(center, 12, { x: 320, y: 568 });
+    expect(at.x).toBeGreaterThanOrEqual(17);
+    expect(at.x).toBeLessThanOrEqual(303);
+    expect(at.y).toBeGreaterThanOrEqual(17);
+    expect(at.y).toBeLessThanOrEqual(551);
+    if (center.y === 100) {
+      expect(at.y - 15).toBeGreaterThan(center.y);
+      expect(Math.abs(at.x - center.x)).toBeGreaterThan(30);
+    }
+  }
 });

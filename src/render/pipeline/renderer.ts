@@ -6,7 +6,7 @@ import { drawApparition, drawBorrowedAlly } from './perceptionVisuals';
 import { drawMoonBear } from './moonFormVisuals';
 import { drawWhisperAfterimage } from './whisperVisuals';
 import { drawCompanion } from './companionVisuals';
-import { drawTauntState, drawProjectedShield } from './defenseVisuals';
+import { drawTauntState, drawProjectedShield, drawSilenceMarker } from './defenseVisuals';
 import { ADD_RADIUS } from '../../engine/core/constants';
 import { drawOpportunityMarker } from '../overlays/opportunityMarker';
 import { drawEnemyDebuffs } from './enemyDebuffs';
@@ -230,13 +230,21 @@ export class Renderer {
     this.drawOverlays(state, now); // vector bars/rings for sprite- and rig-driven actors
     this.drawProjectiles(state); // geometry for flag-off projectiles
     this.enemyStatusLayer.clear();
-    for (const player of state.players)
+    for (const player of state.players) {
       drawProjectedShield(
         this.enemyStatusLayer,
         player,
         this.camera.worldToScreen(player.pos),
         this.camera.scale,
       );
+      drawSilenceMarker(
+        this.enemyStatusLayer,
+        player,
+        this.camera.worldToScreen(player.pos),
+        (player.form === 'moonBear' ? 25 : PLAYER_RADIUS) * this.camera.scale,
+        this.camera.viewSize,
+      );
+    }
     for (const boss of state.bosses) {
       if (boss.hp <= 0) continue;
       const pos = this.camera.worldToScreen(boss.pos);
@@ -812,7 +820,8 @@ export class Renderer {
       }
       t.visible = true;
       // Name, with a compact buff/debuff readout (glyph + seconds) beneath it.
-      const badges = p.state === 'alive' ? buffLabel(p.buffs) : '';
+      const badges =
+        p.state === 'alive' ? buffLabel(p.buffs.filter((b) => b.kind !== 'silence')) : '';
       t.text = badges ? `${p.name}\n${badges}` : p.name;
       const s = this.camera.worldToScreen(p.pos);
       t.position.set(s.x, s.y - (p.form === 'moonBear' ? 25 : PLAYER_RADIUS) * scale - 12);
