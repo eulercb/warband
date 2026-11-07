@@ -362,7 +362,8 @@ describe('Unbroken Champion projected shield', () => {
           e.kind === 'frontGuard' ? { ...e, projection: undefined } : e,
         ),
       };
-    expect(componentValue(comp) - componentValue(without)).toBe(32);
+    // Counter readiness is already priced on the charged guard; projection adds geometry.
+    expect(componentValue(comp) - componentValue(without)).toBe(24);
     expect(
       refreshComponents(copy).effects.some((e) => e.kind === 'frontGuard' && e.projection),
     ).toBe(true);

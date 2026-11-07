@@ -313,9 +313,7 @@ export function resolvedForethought(def: PlayerAbilityDef): PlayerAbilityDef['fo
 export function resolvedManeuver(def: PlayerAbilityDef): PlayerAbilityDef['maneuver'] {
   if (!def.components) return def.maneuver;
   const e = def.components.effects.find((e) => e.kind === 'maneuver');
-  return e?.kind === 'maneuver'
-    ? { mode: e.mode, distance: e.distance, portable: true }
-    : undefined;
+  return e?.kind === 'maneuver' ? { mode: e.mode, distance: e.distance } : undefined;
 }
 
 export function resolvedThoughtBreak(def: PlayerAbilityDef): boolean {
@@ -368,8 +366,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Taunt',
-        guardWindow: 4,
-        frontGuard: { charges: 1, duration: 4 },
+        frontGuard: { charges: 1, duration: 4, counter: 1.3 },
         kind: 'taunt',
         cooldown: 12,
         damage: 0,
@@ -378,11 +375,10 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a2: {
         slot: 'a2',
         name: 'Shield Wall',
-        guardWindow: 4,
         kind: 'selfBuff',
         cooldown: 16,
         damage: 0,
-        frontGuard: { charges: 2, duration: 4 },
+        frontGuard: { charges: 2, duration: 4, counter: 1.3 },
       },
       a3: {
         slot: 'a3',
@@ -1374,11 +1370,9 @@ export function describeAbility(
     parts.push(`+${n(def.controlDamageBonus * 100)}% dmg vs slowed/rooted/stunned foes`);
   if (def.maneuver)
     parts.push(
-      def.maneuver.portable
-        ? `first direct cast marks one foe for 4s; later direct cast (basic allowed) ${def.maneuver.mode === 'push' ? `moves it ${n(def.maneuver.distance)}u along held movement (standing still pushes away), after committed attacks` : `steps you ${n(def.maneuver.distance)}u along held movement (standing still holds position), without immunity`}; once per 6s`
-        : def.maneuver.mode === 'push'
-          ? 'melee counter on your Tactical Opening target moves it 80u along held movement (standing still pushes away), after its committed attack; 6s shared foe recovery'
-          : 'readied melee counter steps you up to 90u along held movement (standing still holds position); no immunity; once per 6s',
+      def.maneuver.mode === 'push'
+        ? `one positive direct special hit moves a foe ${n(def.maneuver.distance)}u in the movement direction held when pressed (standing still pushes away), after committed attacks; 6s shared foe recovery`
+        : `press this defensive special while moving to step up to ${n(def.maneuver.distance)}u in that direction, without immunity; standing still holds position; movement once per 6s, requires a new press`,
     );
   if (def.thoughtBreak)
     parts.push(

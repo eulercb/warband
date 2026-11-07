@@ -44,7 +44,6 @@
             "a2.cooldown",
             "a2.damage",
             "a2.frontGuard",
-            "a2.guardWindow",
             "a2.impactRadius",
             "a2.kind",
             "a2.name",
@@ -68,7 +67,6 @@
             "a2.cooldown",
             "a2.damage",
             "a2.frontGuard",
-            "a2.guardWindow",
             "a2.impactRadius",
             "a2.kind",
             "a2.name",
@@ -90,7 +88,6 @@
             "a2.cooldown",
             "a2.damage",
             "a2.frontGuard",
-            "a2.guardWindow",
             "a2.impactRadius",
             "a2.kind",
             "a2.name",
@@ -114,7 +111,6 @@
             "a2.damage",
             "a2.freeze",
             "a2.frontGuard",
-            "a2.guardWindow",
             "a2.impactRadius",
             "a2.kind",
             "a2.name",
@@ -220,7 +216,6 @@
             "a1.buffMoveMult",
             "a1.cooldown",
             "a1.frontGuard",
-            "a1.guardWindow",
             "a1.kind",
             "a1.momentumWindow",
             "a1.name",
@@ -242,7 +237,6 @@
             "a1.buffMoveMult",
             "a1.cooldown",
             "a1.frontGuard",
-            "a1.guardWindow",
             "a1.kind",
             "a1.momentumWindow",
             "a1.name",
@@ -264,7 +258,6 @@
             "a1.buffMoveMult",
             "a1.cooldown",
             "a1.frontGuard",
-            "a1.guardWindow",
             "a1.kind",
             "a1.momentumWindow",
             "a1.name",
@@ -292,7 +285,6 @@
             "a2.cooldown",
             "a2.damage",
             "a2.frontGuard",
-            "a2.guardWindow",
             "a2.kind",
             "a2.name",
             "a2.range",
@@ -312,7 +304,6 @@
             "a2.cooldown",
             "a2.damage",
             "a2.frontGuard",
-            "a2.guardWindow",
             "a2.kind",
             "a2.name",
             "a2.range",
@@ -332,7 +323,6 @@
             "a2.cooldown",
             "a2.damage",
             "a2.frontGuard",
-            "a2.guardWindow",
             "a2.kind",
             "a2.name",
             "a2.range",
@@ -530,7 +520,6 @@
             "a1.buffDefMult",
             "a1.buffDuration",
             "a1.frontGuard",
-            "a1.guardWindow",
             "a1.kind",
             "a1.name",
             "a1.range"
@@ -551,7 +540,6 @@
             "a1.buffDuration",
             "a1.cooldown",
             "a1.frontGuard",
-            "a1.guardWindow",
             "a1.kind",
             "a1.name",
             "a1.range"
@@ -571,7 +559,6 @@
             "a1.buffDefMult",
             "a1.buffDuration",
             "a1.frontGuard",
-            "a1.guardWindow",
             "a1.kind",
             "a1.name",
             "a1.range"
@@ -645,7 +632,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Shield Wall gains one frontal damage block (cap 4) and 1.5s duration; its counter window also grows by 1.5s",
+      "description": "Shield Wall gains one frontal damage block (cap 4) and 1.5s duration; each block readies a melee counter",
       "disposition": "adjust",
       "rationale": "Review live field changes and wording; prefer a useful timing, coverage or resource decision.",
       "pilotPriority": false,
@@ -656,13 +643,11 @@
           "prefix": [],
           "once": [
             { "path": "abilities.a2.frontGuard.charges", "before": 2, "after": 3 },
-            { "path": "abilities.a2.frontGuard.duration", "before": 4, "after": 5.5 },
-            { "path": "abilities.a2.guardWindow", "before": 4, "after": 5.5 }
+            { "path": "abilities.a2.frontGuard.duration", "before": 4, "after": 5.5 }
           ],
           "atCap": [
             { "path": "abilities.a2.frontGuard.charges", "before": 2, "after": 4 },
-            { "path": "abilities.a2.frontGuard.duration", "before": 4, "after": 8 },
-            { "path": "abilities.a2.guardWindow", "before": 4, "after": 11.5 }
+            { "path": "abilities.a2.frontGuard.duration", "before": 4, "after": 8 }
           ]
         }
       ]
@@ -2723,10 +2708,9 @@
             { "path": "abilities.a2.damage", "before": 0, "after": 80 },
             {
               "path": "abilities.a2.frontGuard",
-              "before": { "charges": 2, "duration": 4 },
+              "before": { "charges": 2, "duration": 4, "counter": 1.3 },
               "after": null
             },
-            { "path": "abilities.a2.guardWindow", "before": 4, "after": null },
             { "path": "abilities.a2.impactRadius", "before": null, "after": 110 },
             { "path": "abilities.a2.kind", "before": "selfBuff", "after": "projectile" },
             { "path": "abilities.a2.name", "before": "Shield Wall", "after": "Fireball" },
@@ -2740,10 +2724,9 @@
             { "path": "abilities.a2.damage", "before": 0, "after": 80 },
             {
               "path": "abilities.a2.frontGuard",
-              "before": { "charges": 2, "duration": 4 },
+              "before": { "charges": 2, "duration": 4, "counter": 1.3 },
               "after": null
             },
-            { "path": "abilities.a2.guardWindow", "before": 4, "after": null },
             { "path": "abilities.a2.impactRadius", "before": null, "after": 110 },
             { "path": "abilities.a2.kind", "before": "selfBuff", "after": "projectile" },
             { "path": "abilities.a2.name", "before": "Shield Wall", "after": "Fireball" },
@@ -3382,10 +3365,9 @@
             { "path": "abilities.a1.cooldown", "before": 12, "after": 14 },
             {
               "path": "abilities.a1.frontGuard",
-              "before": { "charges": 1, "duration": 4 },
+              "before": { "charges": 1, "duration": 4, "counter": 1.3 },
               "after": null
             },
-            { "path": "abilities.a1.guardWindow", "before": 4, "after": null },
             { "path": "abilities.a1.kind", "before": "taunt", "after": "selfBuff" },
             { "path": "abilities.a1.momentumWindow", "before": null, "after": 6 },
             { "path": "abilities.a1.name", "before": "Taunt", "after": "Rage" }
@@ -3397,10 +3379,9 @@
             { "path": "abilities.a1.cooldown", "before": 12, "after": 14 },
             {
               "path": "abilities.a1.frontGuard",
-              "before": { "charges": 1, "duration": 4 },
+              "before": { "charges": 1, "duration": 4, "counter": 1.3 },
               "after": null
             },
-            { "path": "abilities.a1.guardWindow", "before": 4, "after": null },
             { "path": "abilities.a1.kind", "before": "taunt", "after": "selfBuff" },
             { "path": "abilities.a1.momentumWindow", "before": null, "after": 6 },
             { "path": "abilities.a1.name", "before": "Taunt", "after": "Rage" }
@@ -3786,10 +3767,9 @@
             { "path": "abilities.a2.damage", "before": 0, "after": 56 },
             {
               "path": "abilities.a2.frontGuard",
-              "before": { "charges": 2, "duration": 4 },
+              "before": { "charges": 2, "duration": 4, "counter": 1.3 },
               "after": null
             },
-            { "path": "abilities.a2.guardWindow", "before": 4, "after": null },
             { "path": "abilities.a2.kind", "before": "selfBuff", "after": "heal" },
             { "path": "abilities.a2.name", "before": "Shield Wall", "after": "Field Dressing" },
             { "path": "abilities.a2.range", "before": null, "after": 400 },
@@ -3801,10 +3781,9 @@
             { "path": "abilities.a2.damage", "before": 0, "after": 56 },
             {
               "path": "abilities.a2.frontGuard",
-              "before": { "charges": 2, "duration": 4 },
+              "before": { "charges": 2, "duration": 4, "counter": 1.3 },
               "after": null
             },
-            { "path": "abilities.a2.guardWindow", "before": 4, "after": null },
             { "path": "abilities.a2.kind", "before": "selfBuff", "after": "heal" },
             { "path": "abilities.a2.name", "before": "Shield Wall", "after": "Field Dressing" },
             { "path": "abilities.a2.range", "before": null, "after": 400 },
@@ -4656,10 +4635,9 @@
             { "path": "abilities.a1.buffDuration", "before": 4, "after": 6 },
             {
               "path": "abilities.a1.frontGuard",
-              "before": { "charges": 1, "duration": 4 },
+              "before": { "charges": 1, "duration": 4, "counter": 1.3 },
               "after": null
             },
-            { "path": "abilities.a1.guardWindow", "before": 4, "after": null },
             { "path": "abilities.a1.kind", "before": "taunt", "after": "buffAlly" },
             { "path": "abilities.a1.name", "before": "Taunt", "after": "Inspiration" },
             { "path": "abilities.a1.range", "before": null, "after": 420 }
@@ -4671,10 +4649,9 @@
             { "path": "abilities.a1.buffDuration", "before": 4, "after": 6 },
             {
               "path": "abilities.a1.frontGuard",
-              "before": { "charges": 1, "duration": 4 },
+              "before": { "charges": 1, "duration": 4, "counter": 1.3 },
               "after": null
             },
-            { "path": "abilities.a1.guardWindow", "before": 4, "after": null },
             { "path": "abilities.a1.kind", "before": "taunt", "after": "buffAlly" },
             { "path": "abilities.a1.name", "before": "Taunt", "after": "Inspiration" },
             { "path": "abilities.a1.range", "before": null, "after": 420 }
@@ -8017,7 +7994,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Tactical Opening marks its foe. Land your melee counter on it to move it 80u along held movement (standing still pushes away), after its committed attack; 6s shared foe recovery",
+      "description": "A positive direct special hit moves one foe 80u in the movement direction held when pressed; standing still pushes it away. Committed attacks finish first; 6s shared foe recovery",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8030,34 +8007,24 @@
             {
               "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
-            },
-            {
-              "path": "abilities.basic.maneuver",
-              "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
+              "after": { "mode": "push", "distance": 80 }
             },
             {
               "path": "subAbilities.sub1.maneuver",
               "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
+              "after": { "mode": "push", "distance": 80 }
             }
           ],
           "atCap": [
             {
               "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
-            },
-            {
-              "path": "abilities.basic.maneuver",
-              "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
+              "after": { "mode": "push", "distance": 80 }
             },
             {
               "path": "subAbilities.sub1.maneuver",
               "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
+              "after": { "mode": "push", "distance": 80 }
             }
           ]
         },
@@ -8069,24 +8036,14 @@
             {
               "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
-            },
-            {
-              "path": "abilities.basic.maneuver",
-              "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
+              "after": { "mode": "push", "distance": 80 }
             }
           ],
           "atCap": [
             {
               "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
-            },
-            {
-              "path": "abilities.basic.maneuver",
-              "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
+              "after": { "mode": "push", "distance": 80 }
             }
           ]
         },
@@ -8098,24 +8055,24 @@
             {
               "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
+              "after": { "mode": "push", "distance": 80 }
             },
             {
-              "path": "abilities.basic.maneuver",
+              "path": "subAbilities.sub1.maneuver",
               "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
+              "after": { "mode": "push", "distance": 80 }
             }
           ],
           "atCap": [
             {
               "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
+              "after": { "mode": "push", "distance": 80 }
             },
             {
-              "path": "abilities.basic.maneuver",
+              "path": "subAbilities.sub1.maneuver",
               "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
+              "after": { "mode": "push", "distance": 80 }
             }
           ]
         },
@@ -8127,24 +8084,14 @@
             {
               "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
-            },
-            {
-              "path": "abilities.basic.maneuver",
-              "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
+              "after": { "mode": "push", "distance": 80 }
             }
           ],
           "atCap": [
             {
               "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
-            },
-            {
-              "path": "abilities.basic.maneuver",
-              "before": null,
-              "after": { "mode": "push", "distance": 80, "portable": false }
+              "after": { "mode": "push", "distance": 80 }
             }
           ]
         }
@@ -8163,7 +8110,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Land a readied melee counter while moving to step up to 90u in that direction after the strike. Stationary: hold position. No immunity; once per 6s",
+      "description": "Press Taunt, Shield Wall, Menacing Roar or Rally while moving to step up to 180u in that direction. Standing still holds position. No immunity; movement once per 6s, requires a new press",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8174,36 +8121,26 @@
           "prefix": [],
           "once": [
             {
-              "path": "abilities.a3.maneuver",
+              "path": "abilities.a1.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
             },
             {
-              "path": "abilities.basic.maneuver",
+              "path": "abilities.a2.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
-            },
-            {
-              "path": "subAbilities.sub1.maneuver",
-              "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
             }
           ],
           "atCap": [
             {
-              "path": "abilities.a3.maneuver",
+              "path": "abilities.a1.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
             },
             {
-              "path": "abilities.basic.maneuver",
+              "path": "abilities.a2.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
-            },
-            {
-              "path": "subAbilities.sub1.maneuver",
-              "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
             }
           ]
         },
@@ -8213,26 +8150,36 @@
           "prefix": [],
           "once": [
             {
-              "path": "abilities.a3.maneuver",
+              "path": "abilities.a1.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
             },
             {
-              "path": "abilities.basic.maneuver",
+              "path": "abilities.a2.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
+            },
+            {
+              "path": "subAbilities.sub1.maneuver",
+              "before": null,
+              "after": { "mode": "step", "distance": 180 }
             }
           ],
           "atCap": [
             {
-              "path": "abilities.a3.maneuver",
+              "path": "abilities.a1.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
             },
             {
-              "path": "abilities.basic.maneuver",
+              "path": "abilities.a2.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
+            },
+            {
+              "path": "subAbilities.sub1.maneuver",
+              "before": null,
+              "after": { "mode": "step", "distance": 180 }
             }
           ]
         },
@@ -8242,26 +8189,26 @@
           "prefix": [],
           "once": [
             {
-              "path": "abilities.a3.maneuver",
+              "path": "abilities.a1.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
             },
             {
-              "path": "abilities.basic.maneuver",
+              "path": "abilities.a2.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
             }
           ],
           "atCap": [
             {
-              "path": "abilities.a3.maneuver",
+              "path": "abilities.a1.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
             },
             {
-              "path": "abilities.basic.maneuver",
+              "path": "abilities.a2.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
             }
           ]
         },
@@ -8271,26 +8218,36 @@
           "prefix": [],
           "once": [
             {
-              "path": "abilities.a3.maneuver",
+              "path": "abilities.a1.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
             },
             {
-              "path": "abilities.basic.maneuver",
+              "path": "abilities.a2.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
+            },
+            {
+              "path": "subAbilities.sub1.maneuver",
+              "before": null,
+              "after": { "mode": "step", "distance": 180 }
             }
           ],
           "atCap": [
             {
-              "path": "abilities.a3.maneuver",
+              "path": "abilities.a1.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
             },
             {
-              "path": "abilities.basic.maneuver",
+              "path": "abilities.a2.maneuver",
               "before": null,
-              "after": { "mode": "step", "distance": 90, "portable": false }
+              "after": { "mode": "step", "distance": 180 }
+            },
+            {
+              "path": "subAbilities.sub1.maneuver",
+              "before": null,
+              "after": { "mode": "step", "distance": 180 }
             }
           ]
         }

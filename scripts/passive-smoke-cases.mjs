@@ -1,6 +1,9 @@
 /** Stable smoke identities; player-facing labels come from the game registry. */
 import assert from 'node:assert/strict';
 import { createServer } from 'vite';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 export const PASSIVE_COHORTS = {
   pilot: ['rogue', 'warlock'],
@@ -78,20 +81,32 @@ export function resolvePassiveSmokeCases(subclasses, { cohort, skillIds } = {}) 
 }
 
 export async function loadPassiveRegistry() {
-  const server = await createServer({
-    logLevel: 'silent',
-    server: { middlewareMode: true, hmr: false },
-  });
+  // This reader needs SSR only. It must not initialize/rewrite a running browser
+  // server's dependency cache, even while a smoke fixture is starting.
+  const cacheDir = await mkdtemp(join(tmpdir(), 'warband-registry-'));
+  let server;
   try {
+    server = await createServer({
+      configFile: false,
+      cacheDir,
+      optimizeDeps: { noDiscovery: true, include: [] },
+      logLevel: 'silent',
+      server: { middlewareMode: true, hmr: false },
+    });
     const { ALL_SUBCLASSES } = await server.ssrLoadModule('/src/engine/content/subclasses.ts');
     const { CLASSES } = await server.ssrLoadModule('/src/engine/content/classes.ts');
     return {
       subclasses: ALL_SUBCLASSES,
+      classes: CLASSES,
       defaultHeroName: CLASSES.knight.name,
       cadenceSkillName: CLASSES.mage.abilities.a2.name,
       cadenceRefundNames: ['a1', 'a2', 'a3'].map((slot) => CLASSES.mage.abilities[slot].name),
     };
   } finally {
-    await server.close();
+    try {
+      await server?.close();
+    } finally {
+      await rm(cacheDir, { recursive: true, force: true });
+    }
   }
 }

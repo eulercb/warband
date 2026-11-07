@@ -37,9 +37,8 @@ try {
         const { pushHud } = await import('/src/ui/state/hudBridge.ts');
         const { useStore } = await import('/src/ui/state/store.ts');
         const { sampleTouch } = await import('/src/input/touch.ts');
-        const React = (await import('/node_modules/.vite/deps/react.js')).default;
-        const { createRoot } = (await import('/node_modules/.vite/deps/react-dom_client.js'))
-          .default;
+        const { React, createRoot } = await import('/scripts/browser-smoke-react.mjs');
+
         const { default: HUD } = await import('/src/ui/game/HUD.tsx');
         const { default: TouchControls } = await import('/src/ui/game/TouchControls.tsx');
         useStore.getState().setActiveChaosForge(mode === 'portableStep');
@@ -149,71 +148,34 @@ try {
           await page.evaluate(() => window.fixture.step());
         }
       };
-      if (mode !== 'portableStep') await press('a3');
-      await press('basic');
-      if (mode === 'portableStep') {
-        await page.evaluate(() => {
-          for (let i = 0; i < 20 && !window.fixture.p.maneuverMark; i++) window.fixture.step();
-        });
-        const preparation = await page.evaluate(() => {
-          const f = window.fixture,
-            a = f.p.abilities.basic;
-          return {
-            mark: f.p.maneuverMark,
-            kind: a.kind,
-            damage: a.damage,
-            range: a.range,
-            radius: a.radius,
-            cast: a.castTime,
-            effect: a.maneuver,
-            components: a.components,
-            cooldown: f.p.cooldowns.basic,
-            pos: f.p.pos,
-            boss: { pos: f.b.pos, radius: f.b.radius, buffs: f.b.buffs, hp: f.b.hp },
-            shots: f.w.projectiles.map((s) => ({
-              pos: s.pos,
-              range: s.rangeLeft,
-              effect: s.maneuverCast?.effect,
-            })),
-          };
-        });
-        assert.equal(
-          await page.evaluate(() => window.fixture.p.maneuverMark?.effect.mode),
-          'step',
-          JSON.stringify(preparation),
+      const slot = await page.evaluate((mode) => {
+        const f = window.fixture;
+        if (mode !== 'push') f.b.pos = { x: 1200, y: 1000 };
+        const carrier = Object.entries(f.p.abilities).find(
+          ([slot, ab]) =>
+            slot !== 'basic' && ab.maneuver?.mode === (mode === 'push' ? 'push' : 'step'),
         );
-      } else
-        assert.equal(
-          await page.evaluate(() => window.fixture.p.buffs.some((b) => b.kind === 'counter')),
-          true,
-        );
-      // Wait for the real basic recharge while preserving counter preparation.
-      await page.evaluate(() => {
-        for (let i = 0; i < 100 && window.fixture.p.cooldowns.basic > 0; i++) window.fixture.step();
-        window.fixture.step({}, { x: 0, y: 1 }, 0.01);
-      });
+        if (!carrier) throw new Error('No receiving special');
+        f.step({}, { x: 0, y: 1 }, 0.01);
+        return carrier[0];
+      }, mode);
       await page.waitForSelector('.hud-maneuver.ready');
       assert.equal(
         await page.evaluate(() => window.remoteManeuver.player.mode),
-        mode === 'portableStep' ? 'step' : mode,
+        mode === 'push' ? 'push' : 'step',
       );
       if (mode === 'portableStep') {
-        assert.equal(await page.evaluate(() => window.remoteManeuver.player.portable), true);
+        assert.equal(await page.evaluate(() => window.remoteManeuver.player.targetId), undefined);
         assert.equal(
-          await page.evaluate(() => window.remoteManeuver.player.targetId === window.fixture.b.id),
+          await page.evaluate(
+            (slot) =>
+              window.fixture.p.abilities[slot].components.effects.some(
+                (e) => e.kind === 'maneuver',
+              ),
+            slot,
+          ),
           true,
         );
-        await page.evaluate(() => {
-          const f = window.fixture;
-          for (let i = 0; i < 40; i++) {
-            const dx = f.b.pos.x - f.p.pos.x,
-              dy = f.b.pos.y - f.p.pos.y,
-              d = Math.hypot(dx, dy);
-            if (d <= f.b.radius + f.p.radius + 8) break;
-            f.step({}, { x: dx / d, y: dy / d });
-          }
-          f.step({}, { x: 0, y: 1 }, 0.01);
-        });
       }
       const still = async () =>
         page.evaluate(async () => {
@@ -244,6 +206,14 @@ try {
         await page.screenshot({
           path: `${process.env.SHOT_DIR}/battle-${mode}-ready-${width}.png`,
         });
+      if (mode === 'step') {
+        await press(slot, { x: 0, y: 1 });
+        assert.equal(await page.evaluate(() => !!window.fixture.p.glide), false);
+        await page.evaluate(() => {
+          for (let i = 0; i < 70 && window.fixture.p.buffs.some((b) => b.kind === 'silence'); i++)
+            window.fixture.step();
+        });
+      }
       if (mode === 'push')
         await page.evaluate(() => {
           const f = window.fixture;
@@ -263,14 +233,13 @@ try {
         player: { ...window.fixture.p.pos },
         boss: { ...window.fixture.b.pos },
       }));
-      await press('basic', { x: 0, y: 1 });
+      await press(slot, { x: 0, y: 1 });
       if (mode === 'push') {
         assert.deepEqual(await page.evaluate(() => window.fixture.b.pos), before.boss);
         const debug = await page.evaluate(() => ({
-          counter: window.fixture.p.buffs.filter((b) => b.kind === 'counter'),
-          cd: window.fixture.p.cooldowns.basic,
+          cd: window.fixture.p.cooldowns.a3,
           last: window.fixture.p.maneuverLast,
-          source: window.fixture.p.abilities.basic.maneuver,
+          source: window.fixture.p.abilities.a3.maneuver,
           events: window.fixture.w.events,
           player: window.fixture.p.pos,
           boss: window.fixture.b.pos,
@@ -296,7 +265,7 @@ try {
             window.fixture.step();
           for (let i = 0; i < 5; i++) window.fixture.step();
         });
-        assert.ok(await page.evaluate((y) => window.fixture.p.pos.y >= y + 89, before.player.y));
+        assert.ok(await page.evaluate((y) => window.fixture.p.pos.y >= y + 179, before.player.y));
         assert.deepEqual(await page.evaluate(() => window.stepPayload), {
           iframes: 0,
           landingDamage: 0,
@@ -318,7 +287,7 @@ try {
       }
       assert.deepEqual(errors, []);
       console.log(
-        `PASS ${width}px ${mode}: ${mode === 'portableStep' ? 'actual Forge mark→later direct cast input' : 'actual Bash→Opening→counter input'}, directional preparation, remote cue and ${mode === 'push' ? 'queued attack-safe enemy repositioning' : mode === 'portableStep' ? 'standalone Forge mark, marked-enemy brackets and personal step' : 'post-strike footwork without immunity'}`,
+        `PASS ${width}px ${mode}: real special input, remote cue, ${mode === 'push' ? 'single-hit steering preserves committed attack' : 'hit-independent 180u defensive movement'}`,
       );
       await page.close();
     }

@@ -39,9 +39,8 @@ try {
         window.$RefreshSig$ = () => (type) => type;
         window.__vite_plugin_react_preamble_installed__ = true;
         await import('/src/ui/styles.css');
-        const { createElement } = (await import('/node_modules/.vite/deps/react.js')).default;
-        const { createRoot } = (await import('/node_modules/.vite/deps/react-dom_client.js'))
-          .default;
+        const { createElement, createRoot } = await import('/scripts/browser-smoke-react.mjs');
+
         const { GrandManager } = await import('/src/ui/game/GrandManager.tsx');
         const { getSubclass } = await import('/src/engine/content/subclasses.ts');
         const { changeGrand, normalizeGrandLoadout, grandSlot } =

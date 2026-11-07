@@ -33,8 +33,8 @@ try {
       const { Renderer } = await import('/src/render/pipeline/renderer.ts');
       const { pushHud } = await import('/src/ui/state/hudBridge.ts');
       const { useStore } = await import('/src/ui/state/store.ts');
-      const { createRoot } = (await import('/node_modules/.vite/deps/react-dom_client.js')).default;
-      const React = (await import('/node_modules/.vite/deps/react.js')).default;
+      const { createRoot, React } = await import('/scripts/browser-smoke-react.mjs');
+
       const { default: HUD } = await import('/src/ui/game/HUD.tsx');
       const { default: TouchControls } = await import('/src/ui/game/TouchControls.tsx');
       const { sampleTouch } = await import('/src/input/touch.ts');

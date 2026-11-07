@@ -1,4 +1,4 @@
-import { maneuverCast } from './battleManeuvers';
+import { maneuverCast, onManeuverCast } from './battleManeuvers';
 import { blockBossPulse } from './projectedGuard';
 import { resolvedForethought } from '../content/classes';
 import { clipBulwarkStep } from './apertureMovement';
@@ -473,6 +473,7 @@ export function resolvePlayerAbility(
   // identical when Forge is off. See docs/CHAOS_FORGE.md.
   const departure = { ...p.pos };
   const chorus = beginSupportCast(world, p, ab);
+  onManeuverCast(world, p, ab.maneuverCast);
   if (ab.components) {
     resolveComposedAbility(world, p, ab, moveDir, ab.components, chorus);
     recordShadowReprise(world, p, ab, slot, departure);

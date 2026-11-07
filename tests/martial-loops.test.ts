@@ -94,7 +94,7 @@ describe('Knight guarded counter', () => {
     const p = w.players[0];
     resolvePlayerAbility(w, p, 'a2', ZERO);
     damagePlayer(w, p, 0);
-    expect(p.buffs.some((b) => b.kind === 'guard')).toBe(true);
+    expect(p.buffs.some((b) => b.kind === 'frontGuard')).toBe(true);
     applyBuff(p, makeBuff('invuln', 0, 1, 'dodge'));
     damagePlayer(w, p, 30);
     expect(p.buffs.some((b) => b.kind === 'counter')).toBe(false);
@@ -106,7 +106,7 @@ describe('Knight guarded counter', () => {
     const w = world('knight');
     const p = w.players[0];
     resolvePlayerAbility(w, p, 'a2', ZERO);
-    damagePlayer(w, p, 10);
+    damagePlayer(w, p, 10, w.boss!.pos);
     p.aim = { x: -1, y: 0 };
     resolvePlayerAbility(w, p, 'basic', ZERO);
     expect(p.buffs.some((b) => b.kind === 'counter')).toBe(true);
@@ -123,10 +123,11 @@ describe('Knight guarded counter', () => {
     expect(a.hp).toBe(987);
     expect(p.buffs.some((b) => b.kind === 'counter')).toBe(false);
   });
-  it('one guarded hit per cast and timed readiness do not stack or refresh from later damage', () => {
+  it('Rally has one uncharged guard window; later damage does not stack or refresh its counter', () => {
     const w = world('knight');
     const p = w.players[0];
-    resolvePlayerAbility(w, p, 'a2', ZERO);
+    sub(w, 'kn_battle_rally');
+    resolvePlayerAbility(w, p, 'sub1', ZERO);
     damagePlayer(w, p, 10);
     tickBuffs(p, 1);
     damagePlayer(w, p, 10);
@@ -428,14 +429,14 @@ it.each([
     'consumesFlow',
   ] as const)
     expect(refreshed[field]).toBe(original[field]);
-  expect(describeAbility(refreshed)).toMatch(/guard|pierce|momentum|Flow/);
+  expect(describeAbility(refreshed)).toMatch(/block|guard|pierce|momentum|Flow/);
   if (classId === 'barbarian' && slot === 'a3') {
     resolvePlayerAbility(w, p, 'a1', ZERO);
     resolvePlayerAbility(w, p, 'basic', ZERO);
   }
   if (classId === 'monk' && slot === 'a3') resolvePlayerAbility(w, p, 'a2', ZERO);
   resolvePlayerAbility(w, p, slot, ZERO);
-  if (classId === 'knight') expect(p.buffs.some((b) => b.kind === 'guard')).toBe(true);
+  if (classId === 'knight') expect(p.buffs.some((b) => b.kind === 'frontGuard')).toBe(true);
   if (classId === 'ranger') expect(w.projectiles[0].pierceLeft).toBe(1);
   if (classId === 'monk' && slot === 'a3')
     expect(p.buffs.some((b) => b.kind === 'flow')).toBe(false);
@@ -444,9 +445,13 @@ it('real upgrades extend guard and Flow on composed skills without changing old 
   const knight = world('knight').players[0];
   knight.abilities!.a2 = recompose(decompose(knight.abilities!.a2), knight.abilities!.a2);
   applyCharUpgrades(knight, ['kn_bulwark']);
-  expect(knight.abilities!.a2.guardWindow).toBe(5.5);
-  expect(knight.abilities!.a2.frontGuard).toEqual({ charges: 3, duration: 5.5 });
-  expect(recompose(knight.abilities!.a2.components!, knight.abilities!.a2).guardWindow).toBe(5.5);
+  expect(knight.abilities!.a2.guardWindow).toBeUndefined();
+  expect(knight.abilities!.a2.frontGuard).toEqual({ charges: 3, duration: 5.5, counter: 1.3 });
+  expect(recompose(knight.abilities!.a2.components!, knight.abilities!.a2).frontGuard).toEqual({
+    charges: 3,
+    duration: 5.5,
+    counter: 1.3,
+  });
   const monk = world('monk').players[0];
   applyCharUpgrades(monk, ['mo_wind']);
   expect(monk.abilities!.a2.prepareFlow).toBe(4.5);

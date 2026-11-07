@@ -28,8 +28,8 @@ try {
       window.$RefreshSig$ = () => (type) => type;
       window.__vite_plugin_react_preamble_installed__ = true;
       await import('/src/ui/styles.css');
-      const { createElement } = (await import('/node_modules/.vite/deps/react.js')).default;
-      const { createRoot } = (await import('/node_modules/.vite/deps/react-dom_client.js')).default;
+      const { createElement, createRoot } = await import('/scripts/browser-smoke-react.mjs');
+
       const { Host } = await import('/src/net/session/host.ts');
       const { useStore } = await import('/src/ui/state/store.ts');
       const { default: GrandPanel } = await import('/src/ui/game/GrandManager.tsx');

@@ -51,7 +51,6 @@ export interface EventSink {
     foe: Boss | Add,
     effective: number,
     cast: import('../core/types').ManeuverCast,
-    counter?: Buff,
   ) => void;
   events: GameEvent[];
   onWhisperHit?: (
@@ -474,7 +473,7 @@ export function damageBoss(
   onMoonDirectHit(sink, source, boss, effective, mods?.direct);
   commandCompanion(source, boss, 'boss', effective, mods?.direct);
   if (mods?.direct && mods.maneuverCast)
-    sink.onManeuverHit?.(source, boss, effective, mods.maneuverCast, counterBuff);
+    sink.onManeuverHit?.(source, boss, effective, mods.maneuverCast);
   onSubclassDirectHit(
     sink,
     source,
@@ -569,7 +568,7 @@ export function damageAdd(
   onMoonDirectHit(sink, source, add, effective, mods?.direct);
   commandCompanion(source, add, 'add', effective, mods?.direct);
   if (mods?.direct && mods.maneuverCast)
-    sink.onManeuverHit?.(source, add, effective, mods.maneuverCast, counterBuff);
+    sink.onManeuverHit?.(source, add, effective, mods.maneuverCast);
   onSubclassDirectHit(
     sink,
     source,

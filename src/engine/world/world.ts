@@ -1446,7 +1446,7 @@ export class World {
     const ab = {
       ...consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original), this)),
     };
-    ab.maneuverCast = maneuverCast(p, ab, moveDir);
+    ab.maneuverCast = maneuverCast(p, ab, moveDir, fresh);
     const nextCd = effectiveRecharge(ab, p.cooldownMult, p.castMult, slot);
     p.rechargeLocks ??= {};
     p.rechargeLocks[p.classId] ??= {};
@@ -2034,9 +2034,8 @@ export class World {
     target: Boss | Add,
     effective: number,
     cast: import('../core/types').ManeuverCast,
-    counter?: Buff,
   ): void {
-    onManeuverHit(this, source, target, effective, cast, counter);
+    onManeuverHit(this, source, target, effective, cast);
   }
 
   onForethought(source: Player, target: Boss, hit: NonNullable<HitMods['forethought']>): void {

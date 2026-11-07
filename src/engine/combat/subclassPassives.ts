@@ -239,7 +239,6 @@ export function onSubclassDirectHit(
       mult: 1.3,
       remaining: 4,
       source: PREFIX + id,
-      openingTargetId: target.id,
     });
     putBuff(target, { kind: 'castSlow', mult: 1.3, remaining: 3, source: 'battleOpening' });
     spendCooldown(p, id);

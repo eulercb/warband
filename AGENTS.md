@@ -17,6 +17,10 @@ pending/forecast/active states; a short-lived text label alone is insufficient.
 Give disruptive control markers a dedicated readable arena lane; keep them clear
 of name, HP and ordinary buff rows, avoid duplicate glyphs in that row, and check
 crowded simultaneous statuses on desktop and phone.
+Defensive escape movement must work without connecting a hit or approaching the
+threat first. Prefer one clear activation; distinguish fresh presses from held
+autofire, capture direction consistently, and attach charged-block rewards to the
+actual charges rather than a separate short-lived, one-use window.
 Check actual targeting semantics before promising a safe area or fixed aim. Do not add
 complexity to every skill or discard functioning simple skills merely for novelty.
 
@@ -48,6 +52,13 @@ owner explicitly requests monitoring. The existing GitHub CI-completion action
 reports whether to merge or return for help. Inspect failed checks when asked.
 Browser smoke cohorts/selectors should use stable IDs and derive display labels
 from the game registry; do not duplicate renamed skill/passive names in CI.
+When changing a skill contract, search existing browser scripts for its text and
+status expectations and run the affected old smoke alongside the new mechanic smoke.
+Dev-browser fixtures import React through the shared Vite-served entry; never
+hardcode generated dependency-cache URLs. Verify startup with an empty cache,
+not only a long-running development server. Initialize the actual renderer after
+UI/network imports; a React-only mount does not exercise lazy Pixi chunks. Keep
+registry readers on private caches and verify dependency versions stay stable.
 
 At each delivery, name the next development step after live playtesting and the
 following roadmap stages. Record accepted player feedback and distinguish review

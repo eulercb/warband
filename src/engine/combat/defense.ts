@@ -67,14 +67,17 @@ export function grantFrontGuard(
   projection?: { reach: number; halfWidth: number },
 ): void {
   const old = p.buffs.find((b) => b.kind === 'frontGuard' && b.remaining > 0 && b.mult > 0);
-  if (old && (old.mult > charges || (old.mult === charges && old.remaining >= duration))) return;
+  if (old && (old.mult > charges || (old.mult === charges && old.remaining >= duration))) {
+    old.blockCounter = Math.max(old.blockCounter ?? 0, counter ?? 0) || undefined;
+    return;
+  }
   p.buffs = p.buffs.filter((b) => b.kind !== 'frontGuard');
   p.buffs.push({
     kind: 'frontGuard',
     mult: charges,
     remaining: duration,
     source: 'frontGuard',
-    blockCounter: counter,
+    blockCounter: Math.max(old?.blockCounter ?? 0, counter ?? 0) || undefined,
     ...(projection ? { projectedGuard: { ...projection }, projectedGuardClass: p.classId } : {}),
   });
 }

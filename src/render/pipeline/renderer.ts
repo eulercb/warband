@@ -1,4 +1,4 @@
-import { drawManeuverArrow, drawManeuverTarget } from './maneuverVisuals';
+import { drawManeuverArrow } from './maneuverVisuals';
 import { drawForesight } from './foresightVisuals';
 import { forethoughtLabel } from '../../engine/content/forethought';
 import { drawInfernalAperture } from './apertureVisuals';
@@ -273,20 +273,6 @@ export class Renderer {
           true,
           prepared.mode === 'push',
         );
-      }
-      if (prepared.mode === 'step' && prepared.portable && prepared.targetId !== undefined) {
-        const marked = [...state.bosses, ...state.adds].find(
-          (e) => e.id === prepared.targetId && e.hp > 0,
-        );
-        if (marked) {
-          const markedBoss = state.bosses.find((e) => e.id === marked.id);
-          drawManeuverTarget(
-            this.enemyStatusLayer,
-            this.camera.worldToScreen(marked.pos),
-            (markedBoss ? getMonster(markedBoss.monsterId).radius : ADD_RADIUS) * this.camera.scale,
-            true,
-          );
-        }
       }
     }
     for (const foe of [...state.bosses, ...state.adds]) {

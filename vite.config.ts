@@ -43,6 +43,20 @@ const { sha: buildSha, date: buildDate } = buildStamp();
 
 export default defineConfig({
   base,
+  // Fixtures enter outside index.html and initialize Pixi after loading UI. Never
+  // rebuild its lazy chunks when a later UI import discovers another dependency.
+  optimizeDeps: {
+    noDiscovery: true,
+    include: [
+      '@trystero-p2p/torrent',
+      'pixi.js',
+      'react',
+      'react-dom/client',
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
+      'zustand',
+    ],
+  },
   // Inlined as literals at build/transform time; declared in src/vite-env.d.ts.
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),

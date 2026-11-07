@@ -49,7 +49,8 @@ describe('Chaos Forge char-upgrade synthesis', () => {
   });
 
   it('a directional-guard boon adapts to a forged delivery without that guard', () => {
-    setForgeSeed(4242);
+    // This seed has a guard-free receiver above its recharge floor.
+    setForgeSeed(1);
     const before = previewAbilityTable('knight', []);
     const after = previewAbilityTable('knight', ['kn_bulwark']); // tugs a2's buff (component-sourced)
     // This fused burst has no directional guard: the boon improves its real recharge.

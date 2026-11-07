@@ -267,7 +267,7 @@ it('cleanse removes only detrimental movement/control; copied heal cleansing wor
 it('upgrades preserve new identities, cap repeated immunity/charges, and retain Forge payloads', () => {
   const { p } = setup();
   applyCharUpgrades(p, Array(5).fill('kn_bulwark'));
-  expect(p.abilities!.a2.frontGuard).toEqual({ charges: 4, duration: 8 });
+  expect(p.abilities!.a2.frontGuard).toEqual({ charges: 4, duration: 8, counter: 1.3 });
   const pa = setup('paladin').p;
   applyCharUpgrades(pa, [...Array.from({ length: 5 }, () => 'pa_aegis'), 'pa_grand_aegis']);
   expect(pa.abilities!.a3.iframes).toBe(2);

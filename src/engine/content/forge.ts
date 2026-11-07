@@ -637,7 +637,7 @@ export function recompose(
         if (d.kind === 'blink') def.whisperRefrain = { ...e.refrain };
         break;
       case 'maneuver':
-        def.maneuver = { mode: e.mode, distance: e.distance, portable: true };
+        def.maneuver = { mode: e.mode, distance: e.distance };
         break;
       case 'forethought':
         def.forethought = { requiresCurse: !!e.requiresCurse };
@@ -1110,7 +1110,9 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
     case 'fortune':
       return `Fortune ${s(e.fortune.duration)} — next direct hit delays wind-ups ${n((e.fortune.castSlowMult - 1) * 100)}%, weakens damage ${n((1 - e.fortune.damageMult) * 100)}% for ${s(e.fortune.debuffDuration)}${e.fortune.markBonus ? `; next hit from a later cast +${n(e.fortune.markBonus * 100)}% damage` : ''}`;
     case 'maneuver':
-      return `first direct cast marks one foe for 4s; a later direct cast, including a basic, on it ${e.mode === 'push' ? `moves that foe ${n(e.distance)}u along held movement (standing still pushes away), after committed attacks` : `steps you ${n(e.distance)}u along held movement (standing still holds position)`}; once per 6s`;
+      return e.mode === 'push'
+        ? `one positive direct special hit moves a foe ${n(e.distance)}u in the movement direction held when pressed (standing still pushes away), after committed attacks; 6s shared foe recovery`
+        : `press this defensive special while moving to step up to ${n(e.distance)}u in that direction, without immunity; standing still holds position; movement once per 6s, requires a new press`;
     case 'forethought':
       return `positive direct hit ${e.requiresCurse ? 'on your cursed boss ' : ''}reveals two consecutive moves and early aim, one at a time; each pending read lasts up to 8s; beams track their victim; after the second move, 8s shared Mind closed recovery`;
     case 'thoughtBreak':
@@ -1478,6 +1480,9 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
           ? kind === 'selfBuff' || kind === 'buffAlly'
           : DIRECT_STRIKE.has(kind) || kind === 'groundZone';
     case 'maneuver':
+      return e.mode === 'push'
+        ? DIRECT_STRIKE.has(kind)
+        : kind === 'selfBuff' || kind === 'taunt' || kind === 'heal' || kind === 'buffAlly';
     case 'forethought':
     case 'thoughtBreak':
       return DIRECT_STRIKE.has(kind);
@@ -1590,12 +1595,16 @@ export function synthesizeAbility(
   key: string,
   slot: AbilitySlot,
   donors: Donor[],
+  deliveryKinds?: ReadonlySet<DeliveryKind>,
 ): SynthAbility {
   const rng = new Rng(mixSeed(seed, FORGE_SALT.ability, hashStr(key)));
 
   // 1. Delivery: a donor from this slot (basics stay light strikes by construction).
-  const deliveryPool = donors.filter((d) => d.slot === slot);
-  const src = deliveryPool.length > 0 ? deliveryPool : donors;
+  const deliveryCandidates = deliveryKinds
+    ? donors.filter((d) => deliveryKinds.has(d.def.kind))
+    : donors;
+  const deliveryPool = deliveryCandidates.filter((d) => d.slot === slot);
+  const src = deliveryPool.length > 0 ? deliveryPool : deliveryCandidates;
   const deliveryDonor = rng.pick(src);
   const delivery: Delivery = { ...decompose(deliveryDonor.def).delivery };
 
@@ -2787,7 +2796,7 @@ function capEffect(e: EffectComponent): EffectComponent {
         },
       };
     case 'maneuver':
-      return { ...e, distance: clamp(round1(e.distance), 30, e.mode === 'push' ? 80 : 90) };
+      return { ...e, distance: clamp(round1(e.distance), 30, e.mode === 'push' ? 80 : 180) };
     case 'forethought':
     case 'thoughtBreak':
       return e;
@@ -3067,9 +3076,50 @@ export function synthesizeClass(seed: number, base: ClassDef, donors: Donor[]): 
   const classNames = new Map<ClassId, string>();
   for (const d of donors) classNames.set(d.classId, d.className);
   const SLOTS: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
+  const synthesized = new Map<AbilitySlot, SynthAbility>();
   for (const slot of SLOTS) {
     const syn = synthesizeAbility(seed, `${base.id}.${slot}`, slot, donors);
+    synthesized.set(slot, syn);
     abilities[slot] = syn.def;
+  }
+  // Knight's two positioning identities need a receiving special in every kit.
+  // Constrain only a missing role, then run normal synthesis and component pricing.
+  // Include the authored receiver so even a restricted donor pool has a valid source.
+  if (base.id === 'knight') {
+    const utilities = new Set<DeliveryKind>(['selfBuff', 'taunt', 'heal', 'buffAlly']);
+    const ensureReceiver = (
+      slot: AbilitySlot,
+      kinds: ReadonlySet<DeliveryKind>,
+      preserveKinds: ReadonlySet<DeliveryKind>,
+    ): void => {
+      if (SLOTS.some((s) => s !== 'basic' && kinds.has(abilities[s].kind))) return;
+      const receiverSlot =
+        preserveKinds.has(abilities[slot].kind) &&
+        !SLOTS.some((s) => s !== 'basic' && s !== slot && preserveKinds.has(abilities[s].kind))
+          ? 'a1'
+          : slot;
+      const fallback: Donor = {
+        name: base.abilities[slot].name,
+        classId: base.id,
+        className: base.name,
+        slot: receiverSlot,
+        def: base.abilities[slot],
+      };
+      classNames.set(base.id, base.name);
+      const syn = synthesizeAbility(
+        seed,
+        `${base.id}.${receiverSlot}.receiver`,
+        receiverSlot,
+        [...donors, fallback],
+        kinds,
+      );
+      synthesized.set(receiverSlot, syn);
+      abilities[receiverSlot] = syn.def;
+    };
+    ensureReceiver('a2', utilities, DIRECT_STRIKE);
+    ensureReceiver('a3', DIRECT_STRIKE, utilities);
+  }
+  for (const syn of synthesized.values()) {
     for (const c of syn.donorClasses) tally.set(c, (tally.get(c) ?? 0) + 1);
   }
   // Top donor classes, ties broken by id for determinism. Every tallied class is

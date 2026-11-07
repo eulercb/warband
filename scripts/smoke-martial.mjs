@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright-core';
+import { loadPassiveRegistry } from './passive-smoke-cases.mjs';
+const { subclasses, classes, defaultHeroName } = await loadPassiveRegistry();
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || chromium.executablePath(),
   headless: true,
@@ -14,12 +16,17 @@ try {
       ['ranger'],
       ['barbarian'],
       ['monk'],
-      ['knight', { name: 'Riposte', text: /readies next melee counter/ }],
-      ['barbarian', { name: 'Frenzy', text: /pay 2% max HP/ }],
-      ['barbarian', { name: 'Wolf Spirit', text: /walk 120u/ }],
-      ['monk', { name: 'Shadow Dart', text: /at least 0.6s stun/ }],
-      ['monk', { name: 'Cloud of Shadow', text: /slow to 60%/ }],
+      ['knight', { skillId: 'kn_champion_riposte', text: /readies next melee counter/ }],
+      ['barbarian', { skillId: 'bb_berserker_frenzy', text: /pay 2% max HP/ }],
+      ['barbarian', { skillId: 'bb_totem_wolf', text: /walk 120u/ }],
+      ['monk', { skillId: 'mo_shadow_dart', text: /at least 0.6s stun/ }],
+      ['monk', { skillId: 'mo_shadow_cloud', text: /slow to 60%/ }],
     ]) {
+      if (subclass) {
+        const skill = subclasses.flatMap((s) => s.skills).find((s) => s.id === subclass.skillId);
+        assert.ok(skill, `Missing martial smoke skill: ${subclass.skillId}`);
+        subclass.name = skill.name;
+      }
       if (process.env.SMOKE_SUBCLASSES_ONLY === '1' && !subclass) continue;
       const context = await browser.newContext({
         viewport: mobile ? { width: 320, height: 568 } : { width: 1280, height: 800 },
@@ -42,7 +49,7 @@ try {
       const button = (name) => page.getByRole('button', { name, exact: true });
       await page.goto(process.env.SMOKE_URL || 'http://localhost:4173/');
       if (mobile) await click(button('Menu'));
-      await click(button('Hero: Knight'));
+      await click(button(`Hero: ${defaultHeroName}`));
       await click(page.locator(`.wb-codex-card[data-cls="${classId}"]`));
       if (mobile) await click(button('Menu'));
       await click(button('Host Game'));
@@ -55,10 +62,30 @@ try {
       }
       await click(button('Start Fight'));
       const cases = {
-        knight: { name: 'Shield Wall', slot: 'a2', key: 'KeyE', text: /guard 4s/ },
-        ranger: { name: 'Multishot', slot: 'a1', key: 'KeyQ', text: /pierce 1 additional/ },
-        barbarian: { name: 'Rage', slot: 'a1', key: 'KeyQ', text: /3 momentum/ },
-        monk: { name: 'Step of the Wind', slot: 'a2', key: 'KeyE', text: /Flow for 4s/ },
+        knight: {
+          name: classes.knight.abilities.a2.name,
+          slot: 'a2',
+          key: 'KeyE',
+          text: /each successful frontal block readies a \+30% melee counter/,
+        },
+        ranger: {
+          name: classes.ranger.abilities.a1.name,
+          slot: 'a1',
+          key: 'KeyQ',
+          text: /pierce 1 additional/,
+        },
+        barbarian: {
+          name: classes.barbarian.abilities.a1.name,
+          slot: 'a1',
+          key: 'KeyQ',
+          text: /3 momentum/,
+        },
+        monk: {
+          name: classes.monk.abilities.a2.name,
+          slot: 'a2',
+          key: 'KeyE',
+          text: /Flow for 4s/,
+        },
       };
       const test = subclass ? { ...subclass, slot: 'sub1', key: 'KeyZ' } : cases[classId];
       const touchButton = (slot) =>
@@ -105,7 +132,10 @@ try {
       );
       const self = page.locator('.hud-selfhp');
       if (classId === 'knight' && !subclass)
-        await self.getByTitle(/Guard: taking a nonlethal hit/).waitFor();
+        await self
+          .getByTitle(/Frontal guard:|Counter ready:/)
+          .first()
+          .waitFor();
       if (classId === 'monk' && !subclass) {
         const flow = self.getByTitle(/Flow: next marked skill/);
         await flow.waitFor();
@@ -113,8 +143,9 @@ try {
       }
       if (subclass && classId === 'monk')
         await self.getByTitle(/Flow: next marked skill/).waitFor({ state: 'hidden' });
-      if (subclass?.name === 'Frenzy') await self.getByTitle(/Blood Frenzy/).waitFor();
-      if (subclass?.name === 'Wolf Spirit') await self.getByTitle(/Wolf Hunt/).waitFor();
+      if (subclass?.skillId === 'bb_berserker_frenzy')
+        await self.getByTitle(/Blood Frenzy/).waitFor();
+      if (subclass?.skillId === 'bb_totem_wolf') await self.getByTitle(/Wolf Hunt/).waitFor();
       if (mobile) await click(button('Pause'));
       else await page.keyboard.press('Escape');
       await page.locator('.wb-pause-skills').waitFor();
