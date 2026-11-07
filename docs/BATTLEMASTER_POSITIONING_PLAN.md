@@ -1,10 +1,10 @@
 # Battlemaster: positioning identity implementation plan
 
-Status: **design review completed; candidate mechanics, not implemented or owner
-accepted**. This advances the next step from the [martial purpose review](MARTIAL_PURPOSE_REVIEW.md).
-One bounded Sol 6.1 high review examined the runtime starting kit, subclass skills,
-passive, ordinary/Honed layers, skill grands, counter resolution and Forge paths.
-The current delivery fixes silence readability separately.
+Status: the candidate plan below is now implemented in
+[Battlemaster positioning](BATTLEMASTER_POSITIONING.md), after the focused
+prototype and lifecycle review. Owner live acceptance is pending. The historical
+proposal below records the reviewed design; the delivery note defines current
+receiving-skill, portability and recovery rules.
 
 ## Why replace the current packages
 

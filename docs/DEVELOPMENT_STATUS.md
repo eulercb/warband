@@ -28,22 +28,21 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current follow-up: [player status clarity](PLAYER_STATUS_CLARITY.md).
-Champion A's projected shield and emitted-wave cover (#157–158) were merged and
-tested. The owner reported remaining overlap between silence and other character
-status symbols; this delivery separates that marker and awaits live testing.
-The [wave-cover rules](WAVE_COVER_AND_SILENCE.md) remain the mechanical baseline.
+Current delivery: [Battlemaster positioning](BATTLEMASTER_POSITIONING.md).
+The owner merged/tested the silence-marker separation (#159); that readability
+follow-up is the current baseline, with future changes responding to feedback.
+Champion's projected shield and emitted-wave cover (#157–158) remain merged/tested.
 
-Battlemaster's [positioning design review](BATTLEMASTER_POSITIONING_PLAN.md) now
-proposes enemy displacement versus personal footwork. Its committed-action and
-portable-skill prototype contracts remain unverified; no identity replacement is
-implemented yet. Warlord's proactive counter core and Berserker's contact-versus-
-walking distinction remain recommended for retention. Totem and Monk findings
-remain open.
+Battlemaster A now repositions its Tactical Opening target after a connecting
+counter; B steps the Knight after a connecting counter. Committed-attack,
+collision and portable-cast prototypes are implemented and regression-tested;
+owner live acceptance remains pending. The old numerical packages are removed.
+Warlord's proactive counter core and Berserker's contact-versus-walking distinction
+remain retained review findings. Totem and Monk purpose findings remain open.
 
 Thirteen of 24 subclasses have been inspected: seven earlier subclasses are
 accepted/retained, six martial subclasses now have review findings (one new
-Champion implementation with status-readability follow-up awaiting testing), and 11 await
+Champion implemented and Battlemaster pair now awaiting live acceptance), and 11 await
 review. Inspection,
 implementation and owner acceptance remain distinct states.
 
@@ -51,9 +50,9 @@ implementation and owner acceptance remain distinct states.
 
 | Stage                        | Concrete work                                                                                                                                  |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test separated status markers; prototype Battlemaster positioning contracts, then implement the identity pair.                            |
+| Next                         | Live-test Battlemaster's two positioning routes, then repair Totem Warrior's unresolved package and scattered riders.                          |
 | Following                    | Address Totem and Monk findings in bounded deliveries; retain the Berserker distinction and useful simple skills.                              |
-| Martial identities           | Six inspected; Champion A implemented, other findings remain tracked in the martial purpose review.                                            |
+| Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem/Monk findings remain open.                                                  |
 | Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                            |
 | Remaining caster identities  | Abjurer, Draconic and Wild Magic; Evoker stays retained.                                                                                       |
 | Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                           |

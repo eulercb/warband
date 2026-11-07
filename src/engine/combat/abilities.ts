@@ -1,3 +1,4 @@
+import { maneuverCast } from './battleManeuvers';
 import { blockBossPulse } from './projectedGuard';
 import { resolvedForethought } from '../content/classes';
 import { clipBulwarkStep } from './apertureMovement';
@@ -258,6 +259,17 @@ function startGlide(
 export function stepPlayerGlide(world: World, p: Player, dt: number): void {
   const g = p.glide;
   if (!g) return;
+  if (
+    g.maneuverClass &&
+    (g.maneuverClass !== p.classId ||
+      p.hp <= 0 ||
+      p.shove ||
+      isRooted(p) ||
+      p.buffs.some((b) => b.kind === 'stun' && b.remaining > 0))
+  ) {
+    p.glide = null;
+    return;
+  }
   // A felled hero drops out of a dash (no ghost-sliding a corpse).
   if (p.state !== 'alive') {
     p.glide = null;
@@ -413,6 +425,7 @@ export function resolvePlayerAbility(
   const limited = resolved && boundedAbility(resolved, world.arena);
   const ab = limited && {
     ...limited,
+    maneuverCast: reserved?.maneuverCast ?? maneuverCast(p, limited, moveDir),
     ...(limited.preparedRefund ? { refundCast: { spent: false } } : {}),
     // Every delivery owns a distinct token, including composed landing strikes.
     pilotCast: { spent: false },
@@ -540,6 +553,7 @@ export function resolvePlayerAbility(
           echoFraction: ab.echoFraction,
           markOnPreparedHit: ab.markOnPreparedHit,
           pilotCast: ab.pilotCast,
+          maneuverCast: ab.maneuverCast,
           thoughtBreakCast: ab.thoughtBreakCast,
           forethoughtHit: ab.forethoughtHit,
           whisperCast: ab.whisperCast,
@@ -1075,6 +1089,7 @@ function resolveComposedAbility(
           echoFraction: ab.echoFraction,
           markOnPreparedHit: ab.markOnPreparedHit,
           pilotCast: ab.pilotCast,
+          maneuverCast: ab.maneuverCast,
           thoughtBreakCast: ab.thoughtBreakCast,
           forethoughtHit: ab.forethoughtHit,
           whisperCast: ab.whisperCast,
@@ -1273,6 +1288,7 @@ interface SpawnProjOpts {
   echoFraction?: number;
   markOnPreparedHit?: number;
   pilotCast?: { spent: boolean };
+  maneuverCast?: import('../core/types').ManeuverCast;
   thoughtBreakCast?: import('../core/types').ThoughtBreakCast;
   forethoughtHit?: PlayerAbilityDef['forethoughtHit'];
   whisperCast?: import('../core/types').WhisperCast;
@@ -1321,6 +1337,7 @@ function spawnPlayerProjectile(
     echoFraction: o.echoFraction,
     markOnPreparedHit: o.markOnPreparedHit,
     pilotCast: o.pilotCast,
+    maneuverCast: o.maneuverCast,
     thoughtBreakCast: o.thoughtBreakCast,
     forethoughtHit: o.forethoughtHit,
     whisperCast: o.whisperCast,

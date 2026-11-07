@@ -17,7 +17,7 @@ import type { PlayerAbilityDef } from './classes';
 import { CLASSES, getClass, cloneAbilities, slowAttackCooldowns, describeAbility } from './classes';
 import { getSubclass, getSubSkill, subclassOfSkill, ALL_SUBCLASSES } from './subclasses';
 import { applyUpgrades, type UpgradeId } from './upgrades';
-import { refreshComponents, forgeName, forgeVariant } from './forge';
+import { refreshComponents, forgeName, forgeVariant, forgeSeed } from './forge';
 import { Rng, mixSeed } from '../core/math';
 import { hashStr } from './procgen';
 import {
@@ -2332,6 +2332,14 @@ function supportSharedWard(ab: PlayerAbilityDef): void {
   };
 }
 
+/** Only direct receiving skills carry the portable contract; utilities use the base counter route. */
+function battleManeuver(ab: PlayerAbilityDef, mode: 'push' | 'step', distance: number): void {
+  if (!isStrike(ab) || ab.damage <= 0) return;
+  const portable = forgeSeed() !== null || !!ab.components;
+  if (!portable && ab.kind !== 'meleeCone') return;
+  ab.maneuver = { mode, distance, portable };
+}
+
 /** Pilot identities tune native base skills during replay and bound subclass skills on rebind. */
 function pilotIdentity(
   subclassId: string,
@@ -2409,35 +2417,22 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'kn_battlemaster_g_a',
     'Grand Tactician',
     '🎖️',
-    'Cleave, Shield Bash and direct Battlemaster strikes gain +25% damage against already controlled foes; Menacing Roar and Rally counter setup lasts 1s longer',
+    'Tactical Opening marks its foe. Land your melee counter on it to move it 80u along held movement (standing still pushes away), after its committed attack; 6s shared foe recovery',
     (a) => {
-      for (const ab of [a.basic, a.a3]) addN(ab, 'controlDamageBonus', 0.25);
+      for (const ab of Object.values(a)) battleManeuver(ab, 'push', 80);
     },
-    (ab) => {
-      if (isStrike(ab)) addN(ab, 'controlDamageBonus', 0.25);
-      if (ab.warCry) ab.warCry = { ...ab.warCry, duration: Math.min(8, ab.warCry.duration + 1) };
-      if (ab.guardWindow) addN(ab, 'guardWindow', 1);
-    },
+    (ab) => battleManeuver(ab, 'push', 80),
   ),
   pilotIdentity(
     'kn_battlemaster',
     'kn_battlemaster_g_b',
     'Perfect Maneuver',
     '⚙️',
-    'Taunt adds 30 absorption for 4s; Shield Bash slows wind-ups by 30% for 3s; Battlemaster direct strikes slow movement to 75% for 2s and utilities share a 15% ward with other allies within 180u',
+    'Land a readied melee counter while moving to step up to 90u in that direction after the strike. Stationary: hold position. No immunity; once per 6s',
     (a) => {
-      a.a1.absorption = {
-        amount: (a.a1.absorption?.amount ?? 0) + 30,
-        duration: 4,
-        target: 'self',
-      };
-      a.a3.castSlow = Math.max(a.a3.castSlow ?? 1, 1.3);
-      a.a3.castSlowDuration = Math.max(a.a3.castSlowDuration ?? 0, 3);
+      for (const ab of Object.values(a)) battleManeuver(ab, 'step', 90);
     },
-    (ab) => {
-      if (isStrike(ab)) slowRider(ab, 0.75, 2);
-      else ab.allyWard = { range: 180, mult: 0.85, duration: 4 };
-    },
+    (ab) => battleManeuver(ab, 'step', 90),
   ),
 
   // Ranger
@@ -6494,17 +6489,19 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       ...base,
       name: blend(fused.name),
       desc:
-        base.id === 'kn_champion_g_a'
-          ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'
-          : base.id === 'wa_great_old_one_g_a'
-            ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
-            : base.id === 'wa_great_old_one_g_b'
-              ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
-              : base.id === 'wa_fiend_g_a'
-                ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
-                : base.id === 'ro_assassin_g_a'
-                  ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
-                  : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
+        base.id === 'kn_battlemaster_g_a' || base.id === 'kn_battlemaster_g_b'
+          ? `Reforged maneuver: direct starting and Battlemaster strikes mark one foe for 4s; a later direct cast, including your basic, ${base.id === 'kn_battlemaster_g_a' ? 'moves it 80u along held movement (standing still pushes away), after committed attacks' : 'steps you up to 90u along held movement (standing still holds position), without immunity'}; once per 6s`
+          : base.id === 'kn_champion_g_a'
+            ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'
+            : base.id === 'wa_great_old_one_g_a'
+              ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
+              : base.id === 'wa_great_old_one_g_b'
+                ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
+                : base.id === 'wa_fiend_g_a'
+                  ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
+                  : base.id === 'ro_assassin_g_a'
+                    ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
+                    : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
     };
   }
 

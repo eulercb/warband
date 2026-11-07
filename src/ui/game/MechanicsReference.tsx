@@ -59,6 +59,23 @@ export default function MechanicsReference() {
         counts down. A crossed speech bubble marks affected heroes in the arena.
       </p>
       <p>
+        Grand Tactician remembers the foe that triggered Tactical Opening. A connecting melee
+        counter on that foe requests an 80u move along held movement; standing still pushes it away.
+        Committed attacks and existing forced movement finish first. The dashed arrow means queued
+        movement; brackets and a solid arrow show preparation. Rooted or steadfast enemies cannot be
+        moved. Each enemy has 6s recovery after movement starts. Competing pushes may pause the
+        move; 1s of waiting on pushes outside a committed attack cancels it into 6s enemy recovery.
+      </p>
+      <p>
+        Perfect Maneuver lets a connecting melee counter start a 90u step along held movement, after
+        the strike finishes; standing still holds position. It grants no immunity and ends at solid
+        cover. Roots or stuns prevent the step; incoming knockback can interrupt it. Once per 6s.
+        Copied/Forge maneuvers use a 4s mark from their first positive direct cast; a later direct
+        cast, including a basic, spends it on that foe. One cast cannot prepare and spend its own
+        mark. Class changes discard preparation and pending movement; old delayed hits cannot
+        restore them.
+      </p>
+      <p>
         Elder Mind opens two consecutive boss reveals from a positive direct hit, without a curse.
         Move 1/2 is followed automatically by 2/2 after the first ends or is interrupted; the second
         uses the boss's actual next decision. Each pending read lasts up to 8s. Hits cannot refresh

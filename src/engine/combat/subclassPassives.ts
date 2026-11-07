@@ -88,6 +88,7 @@ export function preparedSubclassCritBonus(p: Player): number {
 }
 
 interface Target {
+  id?: number;
   hp: number;
   maxHp: number;
   buffs: Buff[];
@@ -233,7 +234,13 @@ export function onSubclassDirectHit(
     offCooldown(p, id) &&
     !p.buffs.some((b) => b.kind === 'counter' && b.remaining > 0)
   ) {
-    putBuff(p, { kind: 'counter', mult: 1.3, remaining: 4, source: PREFIX + id });
+    putBuff(p, {
+      kind: 'counter',
+      mult: 1.3,
+      remaining: 4,
+      source: PREFIX + id,
+      openingTargetId: target.id,
+    });
     putBuff(target, { kind: 'castSlow', mult: 1.3, remaining: 3, source: 'battleOpening' });
     spendCooldown(p, id);
     return;

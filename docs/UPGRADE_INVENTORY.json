@@ -8017,7 +8017,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Cleave, Shield Bash and direct Battlemaster strikes gain +25% damage against already controlled foes; Menacing Roar and Rally counter setup lasts 1s longer",
+      "description": "Tactical Opening marks its foe. Land your melee counter on it to move it 80u along held movement (standing still pushes away), after its committed attack; 6s shared foe recovery",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8027,14 +8027,38 @@
           "subSkills": ["kn_battle_trip"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
+            {
+              "path": "abilities.a3.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            },
+            {
+              "path": "abilities.basic.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            },
+            {
+              "path": "subAbilities.sub1.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            }
           ],
           "atCap": [
-            { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
+            {
+              "path": "abilities.a3.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            },
+            {
+              "path": "abilities.basic.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            },
+            {
+              "path": "subAbilities.sub1.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            }
           ]
         },
         {
@@ -8042,14 +8066,28 @@
           "subSkills": ["kn_battle_menacing"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.warCry.duration", "before": 4, "after": 5 }
+            {
+              "path": "abilities.a3.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            },
+            {
+              "path": "abilities.basic.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            }
           ],
           "atCap": [
-            { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.warCry.duration", "before": 4, "after": 5 }
+            {
+              "path": "abilities.a3.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            },
+            {
+              "path": "abilities.basic.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            }
           ]
         },
         {
@@ -8057,14 +8095,28 @@
           "subSkills": ["kn_battle_precision"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
+            {
+              "path": "abilities.a3.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            },
+            {
+              "path": "abilities.basic.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            }
           ],
           "atCap": [
-            { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
+            {
+              "path": "abilities.a3.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            },
+            {
+              "path": "abilities.basic.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            }
           ]
         },
         {
@@ -8072,14 +8124,28 @@
           "subSkills": ["kn_battle_rally"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.guardWindow", "before": 5, "after": 6 }
+            {
+              "path": "abilities.a3.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            },
+            {
+              "path": "abilities.basic.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            }
           ],
           "atCap": [
-            { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "subAbilities.sub1.guardWindow", "before": 5, "after": 6 }
+            {
+              "path": "abilities.a3.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            },
+            {
+              "path": "abilities.basic.maneuver",
+              "before": null,
+              "after": { "mode": "push", "distance": 80, "portable": false }
+            }
           ]
         }
       ]
@@ -8097,7 +8163,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Taunt adds 30 absorption for 4s; Shield Bash slows wind-ups by 30% for 3s; Battlemaster direct strikes slow movement to 75% for 2s and utilities share a 15% ward with other allies within 180u",
+      "description": "Land a readied melee counter while moving to step up to 90u in that direction after the strike. Stationary: hold position. No immunity; once per 6s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8108,25 +8174,37 @@
           "prefix": [],
           "once": [
             {
-              "path": "abilities.a1.absorption",
+              "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "amount": 30, "duration": 4, "target": "self" }
+              "after": { "mode": "step", "distance": 90, "portable": false }
             },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
+            {
+              "path": "abilities.basic.maneuver",
+              "before": null,
+              "after": { "mode": "step", "distance": 90, "portable": false }
+            },
+            {
+              "path": "subAbilities.sub1.maneuver",
+              "before": null,
+              "after": { "mode": "step", "distance": 90, "portable": false }
+            }
           ],
           "atCap": [
             {
-              "path": "abilities.a1.absorption",
+              "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "amount": 30, "duration": 4, "target": "self" }
+              "after": { "mode": "step", "distance": 90, "portable": false }
             },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
+            {
+              "path": "abilities.basic.maneuver",
+              "before": null,
+              "after": { "mode": "step", "distance": 90, "portable": false }
+            },
+            {
+              "path": "subAbilities.sub1.maneuver",
+              "before": null,
+              "after": { "mode": "step", "distance": 90, "portable": false }
+            }
           ]
         },
         {
@@ -8135,30 +8213,26 @@
           "prefix": [],
           "once": [
             {
-              "path": "abilities.a1.absorption",
+              "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "amount": 30, "duration": 4, "target": "self" }
+              "after": { "mode": "step", "distance": 90, "portable": false }
             },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
             {
-              "path": "subAbilities.sub1.allyWard",
+              "path": "abilities.basic.maneuver",
               "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
+              "after": { "mode": "step", "distance": 90, "portable": false }
             }
           ],
           "atCap": [
             {
-              "path": "abilities.a1.absorption",
+              "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "amount": 30, "duration": 4, "target": "self" }
+              "after": { "mode": "step", "distance": 90, "portable": false }
             },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
             {
-              "path": "subAbilities.sub1.allyWard",
+              "path": "abilities.basic.maneuver",
               "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
+              "after": { "mode": "step", "distance": 90, "portable": false }
             }
           ]
         },
@@ -8168,25 +8242,27 @@
           "prefix": [],
           "once": [
             {
-              "path": "abilities.a1.absorption",
+              "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "amount": 30, "duration": 4, "target": "self" }
+              "after": { "mode": "step", "distance": 90, "portable": false }
             },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
+            {
+              "path": "abilities.basic.maneuver",
+              "before": null,
+              "after": { "mode": "step", "distance": 90, "portable": false }
+            }
           ],
           "atCap": [
             {
-              "path": "abilities.a1.absorption",
+              "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "amount": 30, "duration": 4, "target": "self" }
+              "after": { "mode": "step", "distance": 90, "portable": false }
             },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
+            {
+              "path": "abilities.basic.maneuver",
+              "before": null,
+              "after": { "mode": "step", "distance": 90, "portable": false }
+            }
           ]
         },
         {
@@ -8195,30 +8271,26 @@
           "prefix": [],
           "once": [
             {
-              "path": "abilities.a1.absorption",
+              "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "amount": 30, "duration": 4, "target": "self" }
+              "after": { "mode": "step", "distance": 90, "portable": false }
             },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
             {
-              "path": "subAbilities.sub1.allyWard",
+              "path": "abilities.basic.maneuver",
               "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
+              "after": { "mode": "step", "distance": 90, "portable": false }
             }
           ],
           "atCap": [
             {
-              "path": "abilities.a1.absorption",
+              "path": "abilities.a3.maneuver",
               "before": null,
-              "after": { "amount": 30, "duration": 4, "target": "self" }
+              "after": { "mode": "step", "distance": 90, "portable": false }
             },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
             {
-              "path": "subAbilities.sub1.allyWard",
+              "path": "abilities.basic.maneuver",
               "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
+              "after": { "mode": "step", "distance": 90, "portable": false }
             }
           ]
         }

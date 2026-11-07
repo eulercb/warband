@@ -10,6 +10,10 @@ Use [the purpose rubric](IDENTITY_REVIEW_PLAN.md) and
 [MARTIAL_GRANDS.md](MARTIAL_GRANDS.md) are historical where this note or later
 deliveries supersede them.
 
+Later implementation: [Battlemaster positioning](BATTLEMASTER_POSITIONING.md)
+replaces the Battlemaster packages described below; owner live acceptance is
+pending. The table records the original review findings.
+
 ## Decisions
 
 | Subclass      | First route                                                                                                                                                    | Alternative route                                                                                                                                                             | Decision                                                                                                                                                                     |

@@ -1,3 +1,10 @@
+import {
+  maneuverCast,
+  onManeuverHit,
+  tickManeuvers,
+  maneuverView,
+  invalidateManeuvers,
+} from '../combat/battleManeuvers';
 import { sweepProjectedGuard, blockBossPulse } from '../combat/projectedGuard';
 import { firstObstacleStop } from '../combat/abilities';
 import {
@@ -1215,6 +1222,7 @@ export class World {
     this.updatePendingStrikes(dt);
     this.updateTerrain(dt);
     this.checkDownedTransitions();
+    tickManeuvers(this, dt);
     this.updateBosses(dt);
     // Boss-vs-boss synergy (twin/N-boss packs): a telegraphed bond that empowers
     // or wards a wounded partner. Inert for a lone boss (guards on pack size).
@@ -1324,6 +1332,7 @@ export class World {
         continue;
       }
 
+      p.maneuverMove = normalize(cmd.move);
       // aim (always allowed)
       if (cmd.aim.x !== 0 || cmd.aim.y !== 0) p.aim = normalize(cmd.aim);
 
@@ -1434,10 +1443,10 @@ export class World {
     )
       return;
 
-    const ab = consumeMartialFinishers(
-      p,
-      consumeSpellSurge(p, consumeEvocation(p, original), this),
-    );
+    const ab = {
+      ...consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original), this)),
+    };
+    ab.maneuverCast = maneuverCast(p, ab, moveDir);
     const nextCd = effectiveRecharge(ab, p.cooldownMult, p.castMult, slot);
     p.rechargeLocks ??= {};
     p.rechargeLocks[p.classId] ??= {};
@@ -1516,6 +1525,7 @@ export class World {
       sub1: p.cooldowns.sub1,
       sub2: p.cooldowns.sub2,
     };
+    invalidateManeuvers(this, p);
     delete p.infernalAperture;
     this.projectiles = this.projectiles.filter(
       (shot) => shot.ownerId !== p.id || !shot.apertureTransit,
@@ -1888,6 +1898,7 @@ export class World {
       echoFraction?: number;
       markOnPreparedHit?: number;
       pilotCast?: { spent: boolean };
+      maneuverCast?: import('../core/types').ManeuverCast;
       thoughtBreakCast?: import('../core/types').ThoughtBreakCast;
       forethoughtHit?: import('../content/classes').PlayerAbilityDef['forethoughtHit'];
       whisperCast?: import('../core/types').WhisperCast;
@@ -1902,6 +1913,7 @@ export class World {
     const crit = this.critRng.next() < chance;
     return {
       direct: true,
+      maneuverCast: bonus?.maneuverCast,
       ...(bonus?.forethoughtHit ? { forethought: bonus.forethoughtHit } : {}),
       ...(bonus?.thoughtBreakCast ? { thoughtBreak: bonus.thoughtBreakCast } : {}),
       whisperCast: bonus?.whisperCast,
@@ -1969,6 +1981,7 @@ export class World {
       echoFraction?: number;
       markOnPreparedHit?: number;
       pilotCast?: { spent: boolean };
+      maneuverCast?: import('../core/types').ManeuverCast;
       thoughtBreakCast?: import('../core/types').ThoughtBreakCast;
       forethoughtHit?: import('../content/classes').PlayerAbilityDef['forethoughtHit'];
       whisperCast?: import('../core/types').WhisperCast;
@@ -2016,6 +2029,16 @@ export class World {
   }
 
   /** Read through direct-hit provenance without changing the active action. */
+  onManeuverHit(
+    source: Player,
+    target: Boss | Add,
+    effective: number,
+    cast: import('../core/types').ManeuverCast,
+    counter?: Buff,
+  ): void {
+    onManeuverHit(this, source, target, effective, cast, counter);
+  }
+
   onForethought(source: Player, target: Boss, hit: NonNullable<HitMods['forethought']>): void {
     armForethought(this, source, target, hit);
   }
@@ -2674,6 +2697,13 @@ export class World {
     // whether or not the boss is stunned; the "active" ones pause while stunned.
     const stunned = hasBuff(boss, 'stun');
     this.tickBossAffixes(dt, boss, stunned);
+    if (
+      boss.maneuverMotion &&
+      (boss.maneuverMotion.phase === 'travel' ||
+        boss.action.kind === 'idle' ||
+        boss.action.kind === 'recover')
+    )
+      return;
     if (stunned) return; // stunned: no movement or actions
 
     // Twin bosses split their attention: the second boss hunts the 2nd-highest
@@ -3471,6 +3501,10 @@ export class World {
         continue;
       }
 
+      if (a.maneuverMotion) {
+        keep.push(a);
+        continue;
+      }
       if (stepCharmedAdd(this, a, dt) || stepFear(this, a, dt)) {
         keep.push(a);
         continue;
@@ -3976,6 +4010,7 @@ export class World {
       cooldowns: { ...p.cooldowns },
       ...(Object.keys(infernalClaimTargets).length ? { infernalClaimTargets } : {}),
       waveCover: this.waveCoverView(p),
+      maneuver: maneuverView(this, p),
       shadowReprise: shadowRepriseView(this, p),
       infernalAperture: apertureView(this, p),
       buffs: p.buffs.map((b) => {
@@ -4025,6 +4060,12 @@ export class World {
 
   private bossView(b: Boss): BossView {
     return {
+      maneuver: b.maneuverMotion && {
+        ownerId: b.maneuverMotion.ownerId,
+        dir: { ...b.maneuverMotion.dir },
+        remaining: b.maneuverMotion.remaining,
+        phase: b.maneuverMotion.phase,
+      },
       id: b.id,
       taunt:
         this.tauntTimer > 0 &&
@@ -4064,6 +4105,12 @@ export class World {
       bosses: this.bosses.map((b) => this.bossView(b)),
       adds: this.adds.map((a) => ({
         id: a.id,
+        maneuver: a.maneuverMotion && {
+          ownerId: a.maneuverMotion.ownerId,
+          dir: { ...a.maneuverMotion.dir },
+          remaining: a.maneuverMotion.remaining,
+          phase: a.maneuverMotion.phase,
+        },
         pos: { ...a.pos },
         hp: Math.max(0, Math.round(a.hp)),
         maxHp: a.maxHp,

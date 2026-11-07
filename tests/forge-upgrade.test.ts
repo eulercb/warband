@@ -111,14 +111,14 @@ describe('Chaos Forge char-upgrade synthesis', () => {
   // item 4 — subclass grands rename AND their descriptions reference the run's blended
   // subclass name instead of the original ("Your Champion skills…" → the fused name).
   it('a subclass grand gets a fresh name + a description naming the blended subclass', () => {
-    const id = 'kn_battlemaster_g_b'; // General subclass-name adaptation; Champion has an explicit projected-guard recipe.
+    const id = 'kn_champion_g_b'; // Generic name adaptation; A and Battlemaster have explicit portable recipes.
     const off = getCharUpgrade(id)!;
-    expect(off.desc).toContain('Battlemaster'); // authored: names the canonical subclass
+    expect(off.desc).toContain(getSubclass(off.subclassId!)!.name); // authored: names the canonical subclass
     setForgeSeed(4242);
     const on = getCharUpgrade(id)!;
     expect(on.name).not.toBe(off.name); // renamed
     expect(on.apply).toBe(off.apply);
-    const fused = getSubclass('kn_battlemaster')!;
+    const fused = getSubclass(off.subclassId!)!;
     expect(on.desc).toContain(fused.name); // now names the blended subclass
     expect(on.desc).not.toBe(off.desc); // no longer the original static copy
   });

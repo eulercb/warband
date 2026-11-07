@@ -166,3 +166,45 @@ it('HUD and pause previews match the host after activating another class’s aut
   expect(p.damageTakenMult).toBe(1);
   expect(container.querySelector('.wb-pause-stat-grid')?.textContent).toContain('-10%');
 });
+
+it.each([
+  ['push', 'ready', false, 'Reposition ready', 'Counter the bracketed foe'],
+  ['step', 'ready', false, 'Footwork ready', 'Land a melee counter'],
+  ['push', 'ready', true, 'Reposition ready', 'Hit the marked foe again; basic works'],
+  ['step', 'ready', true, 'Footwork ready', 'Hit the marked foe again; basic works'],
+  ['push', 'queued', false, 'Reposition queued', 'After this attack or current forced movement'],
+  ['push', 'travel', false, 'Repositioning foe', undefined],
+  ['step', 'recovery', false, 'Maneuver resting · 3.5s', undefined],
+] as const)(
+  'shows actionable maneuver feedback for %s/%s/portable=%s',
+  (mode, phase, portable, title, instruction) => {
+    useStore.setState({
+      localClass: 'knight',
+      myCharUpgrades: [],
+      mySubSkills: ['kn_battle_trip'],
+    });
+    useHudStore.setState({
+      classId: 'knight',
+      classes: ['knight'],
+      subSkills: ['kn_battle_trip'],
+      state: 'alive',
+      hp: 240,
+      maxHp: 240,
+      maneuver: {
+        mode,
+        phase,
+        portable,
+        remaining: 3.5,
+        distance: 80,
+        dir: { x: 0, y: 1 },
+        targetId: 22,
+      },
+    });
+    const { container } = render(<HUD />);
+    expect(screen.getByText(title)).toBeTruthy();
+    if (instruction)
+      expect(container.querySelector('.hud-maneuver')?.textContent).toContain(instruction);
+    if (phase === 'queued' || phase === 'travel')
+      expect(container.querySelector('.hud-maneuver')?.textContent).not.toContain('ready');
+  },
+);

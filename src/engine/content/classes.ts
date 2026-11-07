@@ -204,6 +204,8 @@ export interface PlayerAbilityDef {
   surgeTwin?: boolean;
   /** Bounded delivery/control changes reserved only when this cast spends Surge. */
   /** Standalone copied interruption; no Surge boost or cast-speed bonus. */
+  maneuver?: import('../core/types').ManeuverEffect;
+  maneuverCast?: import('../core/types').ManeuverCast;
   thoughtBreak?: boolean;
   /** Positive direct boss hit reads its next move; native setup needs a personal curse. */
   forethought?: { requiresCurse: boolean };
@@ -306,6 +308,14 @@ export function resolvedForethought(def: PlayerAbilityDef): PlayerAbilityDef['fo
   if (!def.components) return def.forethought;
   const effect = def.components.effects.find((e) => e.kind === 'forethought');
   return effect?.kind === 'forethought' ? { requiresCurse: !!effect.requiresCurse } : undefined;
+}
+
+export function resolvedManeuver(def: PlayerAbilityDef): PlayerAbilityDef['maneuver'] {
+  if (!def.components) return def.maneuver;
+  const e = def.components.effects.find((e) => e.kind === 'maneuver');
+  return e?.kind === 'maneuver'
+    ? { mode: e.mode, distance: e.distance, portable: true }
+    : undefined;
 }
 
 export function resolvedThoughtBreak(def: PlayerAbilityDef): boolean {
@@ -1362,6 +1372,14 @@ export function describeAbility(
 
   if (def.controlDamageBonus)
     parts.push(`+${n(def.controlDamageBonus * 100)}% dmg vs slowed/rooted/stunned foes`);
+  if (def.maneuver)
+    parts.push(
+      def.maneuver.portable
+        ? `first direct cast marks one foe for 4s; later direct cast (basic allowed) ${def.maneuver.mode === 'push' ? `moves it ${n(def.maneuver.distance)}u along held movement (standing still pushes away), after committed attacks` : `steps you ${n(def.maneuver.distance)}u along held movement (standing still holds position), without immunity`}; once per 6s`
+        : def.maneuver.mode === 'push'
+          ? 'melee counter on your Tactical Opening target moves it 80u along held movement (standing still pushes away), after its committed attack; 6s shared foe recovery'
+          : 'readied melee counter steps you up to 90u along held movement (standing still holds position); no immunity; once per 6s',
+    );
   if (def.thoughtBreak)
     parts.push(
       'one positive direct boss hit can break its wind-up or channel; 8s shared target recovery; no Surge required',

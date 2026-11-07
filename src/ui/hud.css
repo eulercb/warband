@@ -1138,3 +1138,37 @@
     overflow-wrap: anywhere;
   }
 }
+
+.hud-maneuver {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 320px;
+  padding: 6px 9px;
+  border: 1px solid #ffd36b;
+  border-radius: 6px;
+  background: #241e0ff2;
+  color: #ffe4a1;
+  font-size: 11px;
+  box-sizing: border-box;
+}
+.hud-maneuver.recovery {
+  color: #d0bd93;
+  border-color: #8c7950;
+}
+.hud-maneuver span {
+  font-size: 10px;
+  line-height: 1.3;
+}
+@media (max-width: 640px) and (pointer: coarse) {
+  .hud-maneuver {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) and (pointer: coarse) {
+  /* Prioritize the skill lockout notice and keep health/touch controls clear. */
+  .hud-bottom:has(.hud-silence) .hud-maneuver {
+    display: none;
+  }
+}
