@@ -56,7 +56,9 @@ When changing a skill contract, search existing browser scripts for its text and
 status expectations and run the affected old smoke alongside the new mechanic smoke.
 Dev-browser fixtures import React through the shared Vite-served entry; never
 hardcode generated dependency-cache URLs. Verify startup with an empty cache,
-not only a long-running development server.
+not only a long-running development server. Initialize the actual renderer after
+UI/network imports; a React-only mount does not exercise lazy Pixi chunks. Keep
+registry readers on private caches and verify dependency versions stay stable.
 
 At each delivery, name the next development step after live playtesting and the
 following roadmap stages. Record accepted player feedback and distinguish review

@@ -131,3 +131,41 @@ hardcoded dependency-cache imports across smoke scripts. The martial CI job runs
 it before the longer production scenarios. The startup regression and selected
 shield, Battlemaster and loadout scenarios are verified against a separate fresh
 server/cache, rather than relying on the earlier warm-server evidence.
+
+## Renderer dependency stability follow-up
+
+The following run passed the React/HUD startup check but failed loading Pixi's
+lazy `browserAll` chunk in projected guard. The earlier startup check did not
+initialize Pixi, and therefore did not verify that dependency chunks survived
+until renderer creation. Passing that check was insufficient evidence.
+
+A controlled delayed-discovery reproduction failed with duplicate Pixi extension
+registration before the fix and completed renderer initialization afterward.
+That is evidence of mixed dependency versions; it is not a claim that the exact
+missing-chunk error was reproduced deterministically on every run.
+
+The dev server now prebundles every runtime package import, including Pixi and
+both production/development JSX runtimes, and disables later dependency discovery.
+A source-aware contract checks the list against actual runtime imports so adding
+a package cannot silently reintroduce a late rebuild. The registry reader uses a
+private temporary cache and minimal SSR configuration with no client optimization.
+A warmed shared-cache probe did not reproduce cache interference; that isolation
+removes a competing cache writer rather than establishing it as the confirmed
+cause of this particular failure.
+
+The strengthened cold regression follows index readiness → registry read → engine,
+network and renderer imports → UI imports → actual Pixi initialization and drawing.
+It asserts that the dependency version used by Pixi does not change while UI loads.
+Shield, Battlemaster and loadout scenarios are also run on a separate fresh cache.
+The CI artifact now retains the martial dev-server log alongside screenshots, to
+make any remaining startup failure diagnosable without guessing from its final URL.
+No game mechanics are changed by this follow-up; owner acceptance is still pending.
+
+Verification: the delayed-import probe completed after the fixed dependency set;
+all three startup contracts passed in three independent fresh-cache trials under
+**Node 22.23.4**, matching CI. The previously failing shield harness passed at
+1280px and 320px under that same runtime. Ten fresh-cache shield/Battlemaster/
+loadout checks also passed under local Node 24, together with 125 focused gameplay/
+HUD tests, three registry contracts, changed-file lint, formatting, production
+build and final TypeScript. The new GitHub run remains the external confirmation;
+these local results do not claim that it has already passed.

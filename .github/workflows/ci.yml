@@ -261,7 +261,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: martial-smoke-screenshots
-          path: ${{ runner.temp }}/martial-shots
+          path: |
+            ${{ runner.temp }}/martial-shots
+            ${{ runner.temp }}/martial-dev.log
           if-no-files-found: ignore
 
   caster-defense-smoke:
