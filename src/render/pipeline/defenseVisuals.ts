@@ -28,13 +28,6 @@ export function drawDefenseState(
   }
   if (p.state === 'alive' && p.buffs.some((b) => b.kind === 'silence' && b.remaining > 0)) {
     g.circle(x, y, r + 13).stroke({ color: 0xf3b2ff, width: 3, alpha: 0.9 });
-    // A crossed speech bubble above the hero, independent of the buff-chip cap.
-    g.roundRect(x - 9, y - r - 29, 18, 14, 3)
-      .fill({ color: 0x32153c, alpha: 0.95 })
-      .stroke({ color: 0xf3b2ff, width: 2 });
-    g.moveTo(x - 9, y - r - 12)
-      .lineTo(x + 9, y - r - 31)
-      .stroke({ color: 0xffffff, width: 3 });
   }
   const guard = p.buffs.find((b) => b.kind === 'frontGuard' && b.remaining > 0 && b.mult > 0);
   const angle = Math.atan2(p.aim.y, p.aim.x);
@@ -166,4 +159,51 @@ export function drawProjectedShield(g: Graphics, p: PlayerView, center: Vec2, sc
       py = y + nx * d;
     g.circle(px, py, 3).fill(0xffffff);
   }
+}
+
+/** Screen-space lane beside/below the body, away from name, buff rows and HP. */
+export function silenceAnchor(center: Vec2, radius: number, view: Vec2): Vec2 {
+  const side = center.x > view.x / 2 ? -1 : 1;
+  return {
+    x: Math.max(17, Math.min(view.x - 17, center.x + side * (radius + 25))),
+    y: Math.max(17, Math.min(view.y - 17, center.y + radius + 12)),
+  };
+}
+/** Dedicated foreground mute badge: never buried under body/name/status glyphs. */
+export function drawSilenceMarker(
+  g: Graphics,
+  p: PlayerView,
+  center: Vec2,
+  radius: number,
+  view: Vec2,
+): void {
+  if (
+    p.state !== 'alive' ||
+    p.hp <= 0 ||
+    !p.buffs.some((b) => b.kind === 'silence' && b.remaining > 0)
+  )
+    return;
+  // Off-screen teammates must not project a clamped badge/connector across the arena.
+  if (center.x < 0 || center.y < 0 || center.x > view.x || center.y > view.y) return;
+  const { x, y } = silenceAnchor(center, radius, view);
+  // Short connector keeps association clear when teammates gather together.
+  const dx = x - center.x,
+    dy = y - center.y,
+    length = Math.hypot(dx, dy);
+  g.moveTo(center.x + (dx / length) * (radius + 3), center.y + (dy / length) * (radius + 3))
+    .lineTo(x, y)
+    .stroke({ color: 0xf3b2ff, width: 2, alpha: 0.85 });
+  g.roundRect(x - 15, y - 15, 30, 30, 7)
+    .fill({ color: 0x180d24, alpha: 1 })
+    .stroke({ color: 0xf3b2ff, width: 2 });
+  g.roundRect(x - 8, y - 8, 16, 12, 3)
+    .fill({ color: 0x32153c, alpha: 1 })
+    .stroke({ color: 0xf3b2ff, width: 2 });
+  g.poly([x - 4, y + 4, x - 4, y + 8, x + 1, y + 4]).fill(0xf3b2ff);
+  g.moveTo(x - 10, y + 10)
+    .lineTo(x + 10, y - 10)
+    .stroke({ color: 0x180d24, width: 6 });
+  g.moveTo(x - 10, y + 10)
+    .lineTo(x + 10, y - 10)
+    .stroke({ color: 0xffffff, width: 3 });
 }
