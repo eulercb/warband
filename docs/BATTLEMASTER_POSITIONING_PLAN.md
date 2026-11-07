@@ -1,5 +1,8 @@
 # Battlemaster: positioning identity implementation plan
 
+Historical PR160 design. Owner testing found activation unreliable; its counter
+and portable-mark rules are superseded by [the responsiveness follow-up](BATTLEMASTER_RESPONSIVENESS.md).
+
 Status: the candidate plan below is now implemented in
 [Battlemaster positioning](BATTLEMASTER_POSITIONING.md), after the focused
 prototype and lifecycle review. Owner live acceptance is pending. The historical

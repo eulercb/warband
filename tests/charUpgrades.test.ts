@@ -322,8 +322,8 @@ describe('applyCharUpgrades guards', () => {
 describe('knight upgrades', () => {
   it('kn_bulwark thickens and extends Shield Wall', () => {
     const a = apply('knight', ['kn_bulwark']).abilities!;
-    expect(a.a2.frontGuard).toEqual({ charges: 3, duration: 5.5 });
-    expect(a.a2.guardWindow!).toBeCloseTo(5.5, 5); // 4 + 1.5
+    expect(a.a2.frontGuard).toEqual({ charges: 3, duration: 5.5, counter: 1.3 });
+    expect(a.a2.guardWindow).toBeUndefined();
   });
   it('kn_concuss lengthens the Shield Bash stun and adds damage', () => {
     const a = apply('knight', ['kn_concuss']).abilities!;
@@ -1356,8 +1356,8 @@ describe('skill-keyed progression: isolation (item 17)', () => {
     const p = apply('knight', ['hy_pyromancer', 'kn_bulwark', 'restore:a2']);
     const a2 = p.abilities!.a2;
     expect(a2.name).toBe('Shield Wall');
-    expect(a2.frontGuard).toEqual({ charges: 3, duration: 5.5 });
-    expect(a2.guardWindow!).toBeCloseTo(5.5, 5); // 4 + 1.5
+    expect(a2.frontGuard).toEqual({ charges: 3, duration: 5.5, counter: 1.3 });
+    expect(a2.guardWindow).toBeUndefined();
   });
 
   it('a whole-kit combat style still lands on the CURRENT occupant (the graft)', () => {
@@ -1375,15 +1375,15 @@ describe('skill-keyed progression: stash / restore round-trip (item 15)', () => 
     const p = apply('knight', ['kn_bulwark', 'hy_pyromancer', 'restore:a2']);
     const a2 = p.abilities!.a2;
     expect(a2.name).toBe('Shield Wall'); // reclaimed
-    expect(a2.frontGuard).toEqual({ charges: 3, duration: 5.5 });
-    expect(a2.guardWindow!).toBeCloseTo(5.5, 5);
+    expect(a2.frontGuard).toEqual({ charges: 3, duration: 5.5, counter: 1.3 });
+    expect(a2.guardWindow).toBeUndefined();
   });
 
   it('reclaim is a no-op when the native skill was never displaced', () => {
     const p = apply('knight', ['kn_bulwark', 'restore:a2']);
     const a2 = p.abilities!.a2;
     expect(a2.name).toBe('Shield Wall');
-    expect(a2.frontGuard).toEqual({ charges: 3, duration: 5.5 });
+    expect(a2.frontGuard).toEqual({ charges: 3, duration: 5.5, counter: 1.3 });
   });
 
   it('re-seats a previously-stashed GRAFT with its accrued graftup boons intact', () => {
@@ -1404,7 +1404,7 @@ describe('skill-keyed progression: stash / restore round-trip (item 15)', () => 
   it('previewAbilityTable (HUD path) reflects reclaimed progression too', () => {
     const t = previewAbilityTable('knight', ['kn_bulwark', 'hy_pyromancer', 'restore:a2']);
     expect(t.a2.name).toBe('Shield Wall');
-    expect(t.a2.frontGuard).toEqual({ charges: 3, duration: 5.5 });
+    expect(t.a2.frontGuard).toEqual({ charges: 3, duration: 5.5, counter: 1.3 });
   });
 });
 

@@ -168,10 +168,10 @@ it('HUD and pause previews match the host after activating another class’s aut
 });
 
 it.each([
-  ['push', 'ready', false, 'Reposition ready', 'Counter the bracketed foe'],
-  ['step', 'ready', false, 'Footwork ready', 'Land a melee counter'],
-  ['push', 'ready', true, 'Reposition ready', 'Hit the marked foe again; basic works'],
-  ['step', 'ready', true, 'Footwork ready', 'Hit the marked foe again; basic works'],
+  ['push', 'ready', false, 'Special-hit steering', 'Special hit steers'],
+  ['step', 'ready', false, 'Defensive footwork', 'New defensive press while moving steps'],
+  ['push', 'ready', true, 'Special-hit steering', 'Special hit steers'],
+  ['step', 'ready', true, 'Defensive footwork', 'New defensive press while moving steps'],
   ['push', 'queued', false, 'Reposition queued', 'After this attack or current forced movement'],
   ['push', 'travel', false, 'Repositioning foe', undefined],
   ['step', 'recovery', false, 'Maneuver resting · 3.5s', undefined],
@@ -208,3 +208,21 @@ it.each([
       expect(container.querySelector('.hud-maneuver')?.textContent).not.toContain('ready');
   },
 );
+
+it.each([
+  ['silence', 'Silenced: specials unavailable'],
+  ['stun', 'Stunned: specials unavailable'],
+  ['root', 'Rooted: defensive cast available; step blocked'],
+] as const)('explains why %s prevents defensive footwork', (kind, message) => {
+  useHudStore.setState({
+    classId: 'knight',
+    classes: ['knight'],
+    state: 'alive',
+    hp: 240,
+    maxHp: 240,
+    buffs: [{ kind, mult: 0, remaining: 2 }],
+    maneuver: { mode: 'step', phase: 'ready', remaining: 0, distance: 180, dir: { x: 0, y: 1 } },
+  });
+  render(<HUD />);
+  expect(screen.getByText(message)).toBeTruthy();
+});

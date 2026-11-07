@@ -126,7 +126,7 @@ describe('bounded absorption', () => {
   });
   it('preserves guarded counters on absorbed contact without enemy lifesteal credit', () => {
     const { w, p } = setup();
-    armMartialUtility(p, getClass('knight').abilities.a2);
+    armMartialUtility(p, { ...getSubSkill('kn_battle_rally')!.ability, slot: 'sub1' });
     grantAbsorption(p, 30, 4);
     expect(damagePlayer(w, p, 20)).toBe(0);
     expect(p.buffs.some((b) => b.kind === 'counter')).toBe(true);
@@ -138,7 +138,7 @@ describe('bounded absorption', () => {
     const { w, p } = setup();
     p.hp = 5;
     grantAbsorption(p, 30, 4);
-    armMartialUtility(p, getClass('knight').abilities.a2);
+    armMartialUtility(p, { ...getSubSkill('kn_battle_rally')!.ability, slot: 'sub1' });
     expect(damagePlayer(w, p, 36)).toBe(6);
     expect(p.hp).toBe(-1);
     expect(p.buffs.some((b) => b.kind === 'counter')).toBe(false);

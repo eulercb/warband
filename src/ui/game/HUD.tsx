@@ -445,23 +445,24 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
                   : hud.maneuver.phase === 'recovery'
                     ? `Maneuver resting · ${hud.maneuver.remaining.toFixed(1)}s`
                     : hud.maneuver.mode === 'push'
-                      ? 'Reposition ready'
-                      : 'Footwork ready'}
+                      ? 'Special-hit steering'
+                      : 'Defensive footwork'}
             </strong>
             {hud.maneuver.phase === 'queued' && (
               <span>After this attack or current forced movement</span>
             )}
             {hud.maneuver.phase === 'ready' && (
               <span>
-                {hud.maneuver.portable
-                  ? 'Hit the marked foe again; basic works'
-                  : hud.maneuver.mode === 'push'
-                    ? 'Counter the bracketed foe'
-                    : 'Land a melee counter'}{' '}
-                ·{' '}
-                {hud.maneuver.mode === 'push'
-                  ? 'Hold movement to steer; still pushes away'
-                  : 'Hold movement to step; still holds position'}
+                {silenceStatus(hud.buffs)
+                  ? 'Silenced: specials unavailable'
+                  : hud.buffs.some((b) => b.kind === 'stun' && b.remaining > 0)
+                    ? 'Stunned: specials unavailable'
+                    : hud.maneuver.mode === 'step' &&
+                        hud.buffs.some((b) => b.kind === 'root' && b.remaining > 0)
+                      ? 'Rooted: defensive cast available; step blocked'
+                      : hud.maneuver.mode === 'push'
+                        ? 'Special hit steers · Direction at press; still pushes away'
+                        : 'New defensive press while moving steps · Still holds position'}
               </span>
             )}
           </div>

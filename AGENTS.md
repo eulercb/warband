@@ -17,6 +17,10 @@ pending/forecast/active states; a short-lived text label alone is insufficient.
 Give disruptive control markers a dedicated readable arena lane; keep them clear
 of name, HP and ordinary buff rows, avoid duplicate glyphs in that row, and check
 crowded simultaneous statuses on desktop and phone.
+Defensive escape movement must work without connecting a hit or approaching the
+threat first. Prefer one clear activation; distinguish fresh presses from held
+autofire, capture direction consistently, and attach charged-block rewards to the
+actual charges rather than a separate short-lived, one-use window.
 Check actual targeting semantics before promising a safe area or fixed aim. Do not add
 complexity to every skill or discard functioning simple skills merely for novelty.
 

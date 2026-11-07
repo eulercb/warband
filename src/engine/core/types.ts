@@ -266,7 +266,6 @@ export interface Buff {
     /** Host-only identity tokens: late interleaved projectiles cannot spend twice. */
     usedCasts: { spent: boolean }[];
   };
-  openingTargetId?: EntityId;
   blockCounter?: number;
   projectedGuard?: { reach: number; halfWidth: number };
   projectedGuardClass?: ClassId;
@@ -409,12 +408,11 @@ export interface ManeuverEffect {
 }
 /** Host-only positive-hit provenance, shared by every recipient/projectile of a cast. */
 export interface ManeuverCast {
-  order: number;
   epoch: number;
   ownerClass: ClassId;
   move: Vec2;
   effect?: ManeuverEffect;
-  counter?: Buff;
+  fresh: boolean;
   spent: boolean;
 }
 export interface ManeuverMotion {
@@ -427,18 +425,9 @@ export interface ManeuverMotion {
   phase: 'queued' | 'travel';
 }
 export interface Player {
-  maneuverOrder?: number;
-  maneuverLatestOrder?: number;
   maneuverEpoch?: number;
   maneuverMove?: Vec2;
   maneuverLast?: { effect: ManeuverEffect; ownerClass: ClassId; targetId?: EntityId };
-  maneuverMark?: {
-    targetId: EntityId;
-    cast: ManeuverCast;
-    effect: ManeuverEffect;
-    remaining: number;
-    ownerClass: ClassId;
-  };
   maneuverStep?: { dir: Vec2; distance: number; ownerClass: ClassId };
   maneuverRecovery?: number;
   infernalAperture?: {

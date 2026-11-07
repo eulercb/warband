@@ -8,7 +8,14 @@ function put(p: Player, buff: Buff): void {
     (b) => b.source === buff.source || (buff.kind === 'counter' && b.kind === 'counter'),
   );
   if (index < 0) p.buffs.push(buff);
-  else p.buffs[index] = buff;
+  else {
+    const old = p.buffs[index];
+    if (buff.kind === 'counter' && old.remaining > 0) {
+      buff.mult = Math.max(buff.mult, old.mult);
+      buff.remaining = Math.max(buff.remaining, old.remaining);
+    }
+    p.buffs[index] = buff;
+  }
 }
 function ready(p: Player, kind: Buff['kind']): Buff | undefined {
   return p.buffs.find((b) => b.kind === kind && b.remaining > 0);

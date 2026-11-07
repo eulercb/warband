@@ -28,13 +28,13 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a self-buff: directional charges, counter and duration', () => {
     // Knight Shield Wall explains facing and hazard/control exceptions.
     expect(describeAbility(CLASSES.knight.abilities.a2)).toBe(
-      'block 2 frontal damage hits in a 120° arc for 4s; aim to face attacks; ground hazards and control bypass it · guard 4s; first damaging nonlethal hit readies next melee hit +30% for 4s · 16s cooldown',
+      'block 2 frontal damage hits in a 120° arc for 4s; aim to face attacks; ground hazards and control bypass it · each successful frontal block readies a +30% melee counter; counters do not stack · 16s cooldown',
     );
   });
 
   it('a taunt names its effect (no magnitude) plus duration', () => {
     expect(describeAbility(CLASSES.knight.abilities.a1)).toBe(
-      'Force all bosses to target you for new attacks; raises threat; locked attacks and summons unaffected · block 1 frontal damage hits in a 120° arc for 4s; aim to face attacks; ground hazards and control bypass it · guard 4s; first damaging nonlethal hit readies next melee hit +30% for 4s · for 4s · 12s cooldown',
+      'Force all bosses to target you for new attacks; raises threat; locked attacks and summons unaffected · block 1 frontal damage hits in a 120° arc for 4s; aim to face attacks; ground hazards and control bypass it · each successful frontal block readies a +30% melee counter; counters do not stack · for 4s · 12s cooldown',
     );
   });
 

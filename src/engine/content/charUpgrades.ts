@@ -17,7 +17,7 @@ import type { PlayerAbilityDef } from './classes';
 import { CLASSES, getClass, cloneAbilities, slowAttackCooldowns, describeAbility } from './classes';
 import { getSubclass, getSubSkill, subclassOfSkill, ALL_SUBCLASSES } from './subclasses';
 import { applyUpgrades, type UpgradeId } from './upgrades';
-import { refreshComponents, forgeName, forgeVariant, forgeSeed } from './forge';
+import { refreshComponents, forgeName, forgeVariant } from './forge';
 import { Rng, mixSeed } from '../core/math';
 import { hashStr } from './procgen';
 import {
@@ -217,7 +217,7 @@ const KNIGHT: CharUpgradeDef[] = [
     'kn_bulwark',
     'Impenetrable',
     '🛡️',
-    'Shield Wall gains one frontal damage block (cap 4) and 1.5s duration; its counter window also grows by 1.5s',
+    'Shield Wall gains one frontal damage block (cap 4) and 1.5s duration; each block readies a melee counter',
     ({ abilities: a }) => {
       if (a.a2.frontGuard)
         a.a2.frontGuard = {
@@ -226,7 +226,6 @@ const KNIGHT: CharUpgradeDef[] = [
           duration: Math.min(8, a.a2.frontGuard.duration + 1.5),
         };
       else mul(a.a2, 'cooldown', 0.9); // A forged replacement without directional guard gets real tempo.
-      if (a.a2.guardWindow) a.a2.guardWindow += 1.5;
     },
   ),
   u(
@@ -2332,12 +2331,16 @@ function supportSharedWard(ab: PlayerAbilityDef): void {
   };
 }
 
-/** Only direct receiving skills carry the portable contract; utilities use the base counter route. */
+/** Each receiving special carries its complete, standalone positioning action. */
 function battleManeuver(ab: PlayerAbilityDef, mode: 'push' | 'step', distance: number): void {
-  if (!isStrike(ab) || ab.damage <= 0) return;
-  const portable = forgeSeed() !== null || !!ab.components;
-  if (!portable && ab.kind !== 'meleeCone') return;
-  ab.maneuver = { mode, distance, portable };
+  if (ab.slot === 'basic') return;
+  if (
+    mode === 'push'
+      ? !isStrike(ab) || ab.damage <= 0
+      : !['selfBuff', 'taunt', 'heal', 'buffAlly'].includes(ab.kind)
+  )
+    return;
+  ab.maneuver = { mode, distance };
 }
 
 /** Pilot identities tune native base skills during replay and bound subclass skills on rebind. */
@@ -2417,7 +2420,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'kn_battlemaster_g_a',
     'Grand Tactician',
     '🎖️',
-    'Tactical Opening marks its foe. Land your melee counter on it to move it 80u along held movement (standing still pushes away), after its committed attack; 6s shared foe recovery',
+    'A positive direct special hit moves one foe 80u in the movement direction held when pressed; standing still pushes it away. Committed attacks finish first; 6s shared foe recovery',
     (a) => {
       for (const ab of Object.values(a)) battleManeuver(ab, 'push', 80);
     },
@@ -2428,11 +2431,11 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'kn_battlemaster_g_b',
     'Perfect Maneuver',
     '⚙️',
-    'Land a readied melee counter while moving to step up to 90u in that direction after the strike. Stationary: hold position. No immunity; once per 6s',
+    'Press Taunt, Shield Wall, Menacing Roar or Rally while moving to step up to 180u in that direction. Standing still holds position. No immunity; movement once per 6s, requires a new press',
     (a) => {
-      for (const ab of Object.values(a)) battleManeuver(ab, 'step', 90);
+      for (const ab of Object.values(a)) battleManeuver(ab, 'step', 180);
     },
-    (ab) => battleManeuver(ab, 'step', 90),
+    (ab) => battleManeuver(ab, 'step', 180),
   ),
 
   // Ranger
@@ -6490,7 +6493,9 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       name: blend(fused.name),
       desc:
         base.id === 'kn_battlemaster_g_a' || base.id === 'kn_battlemaster_g_b'
-          ? `Reforged maneuver: direct starting and Battlemaster strikes mark one foe for 4s; a later direct cast, including your basic, ${base.id === 'kn_battlemaster_g_a' ? 'moves it 80u along held movement (standing still pushes away), after committed attacks' : 'steps you up to 90u along held movement (standing still holds position), without immunity'}; once per 6s`
+          ? base.id === 'kn_battlemaster_g_a'
+            ? 'Reforged steering: a positive direct special hit moves one foe 80u in the movement direction held when pressed; standing still pushes it away. Committed attacks finish first; 6s shared foe recovery'
+            : 'Reforged footwork: press a defensive special while moving to step up to 180u in that direction. Standing still holds position. No immunity; movement once per 6s, requires a new press'
           : base.id === 'kn_champion_g_a'
             ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'
             : base.id === 'wa_great_old_one_g_a'

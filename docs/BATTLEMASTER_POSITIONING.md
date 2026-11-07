@@ -1,5 +1,8 @@
 # Battlemaster: move the foe or move yourself
 
+Historical PR160 design. Owner testing found activation unreliable; its counter
+and portable-mark rules are superseded by [the responsiveness follow-up](BATTLEMASTER_RESPONSIVENESS.md).
+
 Status: implemented and locally verified; **owner live acceptance pending**.
 The owner merged/tested #159's silence-marker separation before this delivery.
 The earlier [positioning plan](BATTLEMASTER_POSITIONING_PLAN.md) supplied the

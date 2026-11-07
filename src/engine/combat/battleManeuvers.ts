@@ -1,14 +1,5 @@
-/** Deliberate positioning: native counters, portable two-cast preparation, and safe travel. */
-import type {
-  Add,
-  Boss,
-  Buff,
-  ManeuverCast,
-  ManeuverEffect,
-  Player,
-  PlayerView,
-  Vec2,
-} from '../core/types';
+/** Direct special-hit steering and hit-independent defensive footwork. */
+import type { Add, Boss, ManeuverCast, Player, PlayerView, Vec2 } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
 import { resolvedManeuver } from '../content/classes';
 import type { World } from '../world/world';
@@ -20,120 +11,83 @@ import { firstObstacleStop } from './abilities';
 import { clipBulwarkStep } from './apertureMovement';
 const RECOVERY = 6;
 type Foe = Boss | Add;
-const ready = (p: Player) => p.buffs.find((b) => b.kind === 'counter' && b.remaining > 0);
-function native(p: Player, e: ManeuverEffect): boolean {
-  return (
-    !e.portable &&
-    p.classId === 'knight' &&
-    p.subclassPassiveId === 'battle_opening' &&
-    !!p.charUpgradeIds?.includes(e.mode === 'push' ? 'kn_battlemaster_g_a' : 'kn_battlemaster_g_b')
-  );
-}
-export function maneuverCast(p: Player, ab: PlayerAbilityDef, move: Vec2): ManeuverCast {
+export function maneuverCast(
+  p: Player,
+  ab: PlayerAbilityDef,
+  move: Vec2,
+  fresh = true,
+): ManeuverCast {
   return {
-    order: (p.maneuverOrder = (p.maneuverOrder ?? 0) + 1),
     epoch: p.maneuverEpoch ?? 0,
     ownerClass: p.classId,
     move: normalize(move),
-    effect: resolvedManeuver(ab),
-    counter: ready(p),
+    effect: ab.slot === 'basic' ? undefined : resolvedManeuver(ab),
+    fresh,
     spent: false,
   };
 }
+/** Only a successful eligible recipient spends this cast's single steering request. */
 export function onManeuverHit(
   w: World,
   p: Player,
   foe: Foe,
   effective: number,
   cast: ManeuverCast,
-  counter?: Buff,
 ): void {
-  if (
-    w.scene !== null ||
-    cast.spent ||
-    effective <= 0 ||
-    p.state !== 'alive' ||
-    p.hp <= 0 ||
-    p.classId !== cast.ownerClass ||
-    cast.epoch !== (p.maneuverEpoch ?? 0)
-  )
-    return;
-  const effect = cast.effect;
-  if (effect && native(p, effect)) {
-    if (!counter || cast.counter !== counter) return;
-    cast.spent = true;
-    if (effect.mode === 'push' && counter.openingTargetId !== foe.id) return;
-    perform(p, foe, effect, cast.move);
-    return;
-  }
-  if ((p.maneuverRecovery ?? 0) > 0) return;
-  if (cast.order < (p.maneuverLatestOrder ?? 0)) return;
-  const mark = p.maneuverMark;
-  const spendsMark = !!(
-    mark &&
-    mark.ownerClass === p.classId &&
-    mark.remaining > 0 &&
-    mark.targetId === foe.id &&
-    cast.order > mark.cast.order
-  );
-  const portableEffect = spendsMark ? mark.effect : effect;
-  if (portableEffect?.mode === 'push' && (foe.maneuverMotion || (foe.maneuverRecovery ?? 0) > 0)) {
-    p.maneuverLast = { effect: { ...portableEffect }, ownerClass: p.classId, targetId: foe.id };
-    return;
-  }
-  if (spendsMark && mark) {
-    cast.spent = true;
-    delete p.maneuverMark;
-    p.maneuverLatestOrder = cast.order;
-    perform(p, foe, mark.effect, cast.move);
-  } else if (effect && foe.hp > 0) {
-    cast.spent = true;
-    p.maneuverLatestOrder = cast.order;
-    p.maneuverMark = {
-      targetId: foe.id,
-      cast,
-      effect: { ...effect, portable: true },
-      remaining: 4,
-      ownerClass: p.classId,
-    };
-  }
-}
-function perform(p: Player, foe: Foe, e: ManeuverEffect, move: Vec2): void {
-  if (e.mode === 'step') {
-    if (
-      (p.maneuverRecovery ?? 0) > 0 ||
-      (!move.x && !move.y) ||
-      isRooted(p) ||
-      hasBuff(p, 'stun') ||
-      p.castTimer > 0 ||
-      p.glide ||
-      p.shove
-    )
-      return;
-    p.maneuverLast = { effect: { ...e }, ownerClass: p.classId };
-    p.maneuverStep = { dir: { ...move }, distance: e.distance, ownerClass: p.classId };
-    p.maneuverRecovery = RECOVERY;
-    return;
-  }
+  const e = cast.effect;
+  if (!validCast(w, p, cast) || effective <= 0 || e?.mode !== 'push') return;
   p.maneuverLast = { effect: { ...e }, ownerClass: p.classId, targetId: foe.id };
   if (
     foe.hp <= 0 ||
+    ('charm' in foe && !!foe.charm) ||
     foe.maneuverMotion ||
     (foe.maneuverRecovery ?? 0) > 0 ||
     isRooted(foe) ||
     isSteadfast(foe)
   )
     return;
-  const dir = move.x || move.y ? { ...move } : normalize(sub(foe.pos, p.pos));
+  const dir = cast.move.x || cast.move.y ? { ...cast.move } : normalize(sub(foe.pos, p.pos));
   if (!dir.x && !dir.y) dir.x = 1;
   foe.maneuverMotion = {
     ownerId: p.id,
     ownerClass: p.classId,
-    dir: { ...dir },
+    ownerEpoch: p.maneuverEpoch ?? 0,
+    dir,
     remaining: e.distance,
     phase: 'queued',
-    ownerEpoch: p.maneuverEpoch ?? 0,
   };
+  cast.spent = true;
+}
+function validCast(w: World, p: Player, cast: ManeuverCast): boolean {
+  return (
+    w.scene === null &&
+    !cast.spent &&
+    p.state === 'alive' &&
+    p.hp > 0 &&
+    p.classId === cast.ownerClass &&
+    cast.epoch === (p.maneuverEpoch ?? 0)
+  );
+}
+/** Schedule after the utility payload; travel is committed after current-frame strikes. */
+export function onManeuverCast(w: World, p: Player, cast: ManeuverCast): void {
+  const e = cast.effect;
+  if (
+    !validCast(w, p, cast) ||
+    e?.mode !== 'step' ||
+    !cast.fresh ||
+    (!cast.move.x && !cast.move.y) ||
+    (p.maneuverRecovery ?? 0) > 0 ||
+    isRooted(p) ||
+    hasBuff(p, 'stun') ||
+    p.castTimer > 0 ||
+    p.glide ||
+    p.shove ||
+    p.maneuverStep
+  )
+    return;
+  p.maneuverLast = { effect: { ...e }, ownerClass: p.classId };
+  p.maneuverStep = { dir: { ...cast.move }, distance: e.distance, ownerClass: p.classId };
+  cast.spent = true;
 }
 /** Never relocate a committed attack; recover/idle are the only launch points. */
 function releaseManeuver(w: World, foe: Foe, dt: number): void {
@@ -172,21 +126,6 @@ function releaseManeuver(w: World, foe: Foe, dt: number): void {
 export function tickManeuvers(w: World, dt: number): void {
   for (const p of w.players) {
     p.maneuverRecovery = Math.max(0, (p.maneuverRecovery ?? 0) - dt);
-    const mark = p.maneuverMark;
-    if (mark) {
-      mark.remaining -= dt;
-      const foe = [...w.bosses, ...w.adds].find(
-        (e) => e.id === mark.targetId && e.hp > 0 && !('charm' in e && e.charm),
-      );
-      if (
-        mark.remaining <= 0 ||
-        p.state !== 'alive' ||
-        p.hp <= 0 ||
-        p.classId !== mark.ownerClass ||
-        !foe
-      )
-        delete p.maneuverMark;
-    }
     const step = p.maneuverStep;
     if (!step) continue;
     delete p.maneuverStep;
@@ -201,6 +140,7 @@ export function tickManeuvers(w: World, dt: number): void {
       p.shove
     )
       continue;
+    p.maneuverRecovery = RECOVERY;
     p.glide = {
       dir: step.dir,
       remaining: step.distance,
@@ -261,33 +201,14 @@ export function tickManeuvers(w: World, dt: number): void {
 }
 export function maneuverView(w: World, p: Player): PlayerView['maneuver'] {
   if (p.state !== 'alive' || p.hp <= 0) return undefined;
-  const mark = p.maneuverMark?.ownerClass === p.classId ? p.maneuverMark : undefined;
-  const counter = ready(p);
   const last = p.maneuverLast?.ownerClass === p.classId ? p.maneuverLast : undefined;
-  const candidate: ManeuverEffect | undefined =
-    p.classId === 'knight' && p.subclassPassiveId === 'battle_opening'
-      ? p.charUpgradeIds?.includes('kn_battlemaster_g_a')
-        ? { mode: 'push', distance: 80 }
-        : p.charUpgradeIds?.includes('kn_battlemaster_g_b')
-          ? { mode: 'step', distance: 90 }
-          : undefined
-      : undefined;
-  const nativeEffect =
-    candidate &&
-    [...Object.values(p.abilities ?? {}), ...Object.values(p.subAbilities ?? {})].some((ab) => {
-      if (!ab) return false;
-      const effect = resolvedManeuver(ab);
-      return !!effect && effect.mode === candidate.mode && native(p, effect);
-    })
-      ? candidate
-      : undefined;
-  const effect = mark?.effect ?? nativeEffect ?? last?.effect;
+  const equipped = [...Object.values(p.abilities ?? {}), ...Object.values(p.subAbilities ?? {})]
+    .filter((ab): ab is PlayerAbilityDef => !!ab)
+    .map(resolvedManeuver)
+    .find((e) => !!e);
+  const effect = equipped ?? last?.effect;
   if (!effect) return undefined;
-  const targetId =
-    mark?.targetId ??
-    (nativeEffect?.mode === 'push' && counter?.openingTargetId !== undefined
-      ? counter.openingTargetId
-      : last?.targetId);
+  const targetId = effect.mode === 'push' ? last?.targetId : undefined;
   const foe = [...w.bosses, ...w.adds].find(
     (e) => e.id === targetId && e.hp > 0 && !('charm' in e && e.charm),
   );
@@ -308,15 +229,12 @@ export function maneuverView(w: World, p: Player): PlayerView['maneuver'] {
   const recovery =
     effect.mode === 'push' ? (foe?.maneuverRecovery ?? 0) : (p.maneuverRecovery ?? 0);
   if (recovery > 0) return { ...base, phase: 'recovery', remaining: recovery };
-  if (mark && foe) return { ...base, phase: 'ready', remaining: mark.remaining };
-  if (!nativeEffect || !counter || (effect.mode === 'push' && !foe)) return undefined;
-  return { ...base, phase: 'ready', remaining: counter.remaining };
+  return equipped ? { ...base, phase: 'ready', remaining: 0 } : undefined;
 }
 
 /** A swap permanently invalidates old delayed hits, including swap-away-and-back. */
 export function invalidateManeuvers(w: World, p: Player): void {
   p.maneuverEpoch = (p.maneuverEpoch ?? 0) + 1;
-  delete p.maneuverMark;
   delete p.maneuverStep;
   delete p.maneuverLast;
   if (p.glide?.maneuverClass) p.glide = null;

@@ -28,15 +28,18 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Battlemaster positioning](BATTLEMASTER_POSITIONING.md).
+Current delivery: [Battlemaster responsiveness](BATTLEMASTER_RESPONSIVENESS.md).
+The [original positioning delivery](BATTLEMASTER_POSITIONING.md) is historical.
 The owner merged/tested the silence-marker separation (#159); that readability
 follow-up is the current baseline, with future changes responding to feedback.
 Champion's projected shield and emitted-wave cover (#157–158) remain merged/tested.
 
-Battlemaster A now repositions its Tactical Opening target after a connecting
-counter; B steps the Knight after a connecting counter. Committed-attack,
-collision and portable-cast prototypes are implemented and regression-tested;
-owner live acceptance remains pending. The old numerical packages are removed.
+Battlemaster positioning (#160) was merged/tested: controlled enemy movement
+was interesting, but activation felt unreliable and melee-hit-dependent escape
+was inadequate. The pair is not accepted yet. This follow-up uses direct special
+hits for A and fresh moving defensive casts for B, lengthens personal travel to
+180u, and repairs charged-block counter generation. Local verification and owner
+acceptance are separate gates; the new controls await live testing.
 Warlord's proactive counter core and Berserker's contact-versus-walking distinction
 remain retained review findings. Totem and Monk purpose findings remain open.
 
@@ -50,7 +53,7 @@ implementation and owner acceptance remain distinct states.
 
 | Stage                        | Concrete work                                                                                                                                  |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test Battlemaster's two positioning routes, then repair Totem Warrior's unresolved package and scattered riders.                          |
+| Next                         | Live-test Battlemaster's simplified controls, then repair Totem Warrior's unresolved B purpose and scattered riders.                           |
 | Following                    | Address Totem and Monk findings in bounded deliveries; retain the Berserker distinction and useful simple skills.                              |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem/Monk findings remain open.                                                  |
 | Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                            |
