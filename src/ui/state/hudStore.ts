@@ -65,6 +65,7 @@ export interface HudState {
   state: PlayerState;
   /** Remaining cooldown seconds per slot (0 = ready; sub1/sub2 present when bound). */
   cooldowns: Cooldowns;
+  maneuver?: PlayerView['maneuver'];
   shadowReprise?: PlayerView['shadowReprise'];
   infernalAperture?: PlayerView['infernalAperture'];
   infernalClaimTargets: NonNullable<PlayerView['infernalClaimTargets']>;
@@ -113,6 +114,7 @@ const INITIAL: Omit<HudState, 'set' | 'resetHud'> = {
   state: 'alive',
   cooldowns: { basic: 0, a1: 0, a2: 0, a3: 0 },
   infernalClaimTargets: {},
+  maneuver: undefined,
   shadowReprise: undefined,
   infernalAperture: undefined,
   subSkills: [],

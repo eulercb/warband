@@ -266,6 +266,7 @@ export interface Buff {
     /** Host-only identity tokens: late interleaved projectiles cannot spend twice. */
     usedCasts: { spent: boolean }[];
   };
+  openingTargetId?: EntityId;
   blockCounter?: number;
   projectedGuard?: { reach: number; halfWidth: number };
   projectedGuardClass?: ClassId;
@@ -401,7 +402,45 @@ export interface ApparitionView {
   remaining: number;
   pending: boolean;
 }
+export interface ManeuverEffect {
+  mode: 'push' | 'step';
+  distance: number;
+  portable?: boolean;
+}
+/** Host-only positive-hit provenance, shared by every recipient/projectile of a cast. */
+export interface ManeuverCast {
+  order: number;
+  epoch: number;
+  ownerClass: ClassId;
+  move: Vec2;
+  effect?: ManeuverEffect;
+  counter?: Buff;
+  spent: boolean;
+}
+export interface ManeuverMotion {
+  blockedTime?: number;
+  ownerEpoch: number;
+  ownerId: EntityId;
+  ownerClass: ClassId;
+  dir: Vec2;
+  remaining: number;
+  phase: 'queued' | 'travel';
+}
 export interface Player {
+  maneuverOrder?: number;
+  maneuverLatestOrder?: number;
+  maneuverEpoch?: number;
+  maneuverMove?: Vec2;
+  maneuverLast?: { effect: ManeuverEffect; ownerClass: ClassId; targetId?: EntityId };
+  maneuverMark?: {
+    targetId: EntityId;
+    cast: ManeuverCast;
+    effect: ManeuverEffect;
+    remaining: number;
+    ownerClass: ClassId;
+  };
+  maneuverStep?: { dir: Vec2; distance: number; ownerClass: ClassId };
+  maneuverRecovery?: number;
   infernalAperture?: {
     conduitReady?: boolean;
     bulwark?: { pos: Vec2; radius: number };
@@ -562,6 +601,7 @@ export interface Player {
    * Absent/null when not mid-dash. Teleports (blink) move instantly and never set it.
    */
   glide?: {
+    maneuverClass?: ClassId;
     /** Unit travel direction (locked at dash start). */
     dir: Vec2;
     /** World units left to travel before touchdown. */
@@ -599,6 +639,8 @@ export interface BossAction {
 }
 
 export interface Boss {
+  maneuverMotion?: ManeuverMotion;
+  maneuverRecovery?: number;
   /** Host-only next intention and its reserved targeting. */
   forethought?: {
     index: 1 | 2;
@@ -695,6 +737,8 @@ export interface Boss {
 }
 
 export interface Add {
+  maneuverMotion?: ManeuverMotion;
+  maneuverRecovery?: number;
   perception?: EnemyPerception;
   perceptionRecovery?: number;
   charm?: { ownerId: EntityId; ownerClass: ClassId; remaining: number };
@@ -776,6 +820,7 @@ export interface ProjectileImpact {
 }
 
 export interface Projectile {
+  maneuverCast?: ManeuverCast;
   thoughtBreakCast?: ThoughtBreakCast;
   forethoughtHit?: { ownerClass: ClassId; requiresCurse: boolean };
   /** Host-only conduit state; projectiles in transit are omitted from snapshots. */
@@ -1372,6 +1417,15 @@ export interface Telegraph {
 // ---------------------------------------------------------------------------
 
 export interface PlayerView {
+  maneuver?: {
+    mode: 'push' | 'step';
+    portable?: boolean;
+    targetId?: EntityId;
+    remaining: number;
+    dir: Vec2;
+    distance: number;
+    phase: 'ready' | 'queued' | 'travel' | 'recovery';
+  };
   /** Active emitted attacks currently occluded; positional preview, not immunity. */
   waveCover?: EntityId[];
   infernalAperture?: {
@@ -1445,6 +1499,7 @@ export interface ForesightView {
 }
 
 export interface BossView {
+  maneuver?: { ownerId: EntityId; dir: Vec2; remaining: number; phase: 'queued' | 'travel' };
   revealed?: ForesightView;
   forethought?: { remaining: number; abilityId?: string; preview?: ForesightView; index?: 1 | 2 };
   taunt?: { targetId: EntityId; remaining: number };
@@ -1473,6 +1528,7 @@ export interface BossView {
 }
 
 export interface AddView {
+  maneuver?: { ownerId: EntityId; dir: Vec2; remaining: number; phase: 'queued' | 'travel' };
   id: EntityId;
   pos: Vec2;
   hp: number;

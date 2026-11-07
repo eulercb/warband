@@ -136,6 +136,7 @@ export type EffectComponent =
   | { kind: 'bardSong'; part: 'harmony' | 'discord' | 'chorus' }
   | { kind: 'controlDamage'; bonus: number }
   | { kind: 'prepareSurge'; duration: number }
+  | { kind: 'maneuver'; mode: 'push' | 'step'; distance: number }
   | { kind: 'thoughtBreak' }
   | { kind: 'forethought'; requiresCurse?: boolean }
   | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
@@ -341,6 +342,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     if (def.controlDamageBonus)
       effects.push({ kind: 'controlDamage', bonus: def.controlDamageBonus });
     if (def.prepareSurge) effects.push({ kind: 'prepareSurge', duration: def.prepareSurge });
+    if (def.maneuver)
+      effects.push({ kind: 'maneuver', mode: def.maneuver.mode, distance: def.maneuver.distance });
     if (def.thoughtBreak) effects.push({ kind: 'thoughtBreak' });
     if (def.forethought)
       effects.push({ kind: 'forethought', requiresCurse: def.forethought.requiresCurse });
@@ -428,7 +431,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
 function uniqueMentalContracts(effects: EffectComponent[]): EffectComponent[] {
   const seen = new Set<string>();
   return effects.filter((e) => {
-    if (e.kind !== 'thoughtBreak' && e.kind !== 'forethought') return true;
+    if (e.kind !== 'thoughtBreak' && e.kind !== 'forethought' && e.kind !== 'maneuver') return true;
     if (seen.has(e.kind)) return false;
     seen.add(e.kind);
     return true;
@@ -451,7 +454,7 @@ export function recompose(
   meta: { slot: PlayerAbilityDef['slot']; name: string; cooldown: number },
 ): PlayerAbilityDef {
   if (
-    ['forethought', 'thoughtBreak'].some(
+    ['forethought', 'thoughtBreak', 'maneuver'].some(
       (kind) => comp.effects.filter((e) => e.kind === kind).length > 1,
     ) ||
     comp.effects.some(
@@ -632,6 +635,9 @@ export function recompose(
         break;
       case 'whisperRefrain':
         if (d.kind === 'blink') def.whisperRefrain = { ...e.refrain };
+        break;
+      case 'maneuver':
+        def.maneuver = { mode: e.mode, distance: e.distance, portable: true };
         break;
       case 'forethought':
         def.forethought = { requiresCurse: !!e.requiresCurse };
@@ -840,6 +846,8 @@ function effectValue(e: EffectComponent, fan: number): number {
             (e.fortune.markBonus ?? 0) * 8) +
         e.fortune.debuffDuration * 2
       );
+    case 'maneuver':
+      return 12 + e.distance * 0.25;
     case 'forethought':
       return 24; // advance information and early commitment, no damage/control
     case 'thoughtBreak':
@@ -1101,6 +1109,8 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return `prepare spell surge for ${s(e.duration)}`;
     case 'fortune':
       return `Fortune ${s(e.fortune.duration)} — next direct hit delays wind-ups ${n((e.fortune.castSlowMult - 1) * 100)}%, weakens damage ${n((1 - e.fortune.damageMult) * 100)}% for ${s(e.fortune.debuffDuration)}${e.fortune.markBonus ? `; next hit from a later cast +${n(e.fortune.markBonus * 100)}% damage` : ''}`;
+    case 'maneuver':
+      return `first direct cast marks one foe for 4s; a later direct cast, including a basic, on it ${e.mode === 'push' ? `moves that foe ${n(e.distance)}u along held movement (standing still pushes away), after committed attacks` : `steps you ${n(e.distance)}u along held movement (standing still holds position)`}; once per 6s`;
     case 'forethought':
       return `positive direct hit ${e.requiresCurse ? 'on your cursed boss ' : ''}reveals two consecutive moves and early aim, one at a time; each pending read lasts up to 8s; beams track their victim; after the second move, 8s shared Mind closed recovery`;
     case 'thoughtBreak':
@@ -1467,6 +1477,7 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
         : e.part === 'chorus'
           ? kind === 'selfBuff' || kind === 'buffAlly'
           : DIRECT_STRIKE.has(kind) || kind === 'groundZone';
+    case 'maneuver':
     case 'forethought':
     case 'thoughtBreak':
       return DIRECT_STRIKE.has(kind);
@@ -2107,6 +2118,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
           debuffDuration: e.fortune.debuffDuration * f,
         },
       };
+    case 'maneuver':
+      return { ...e, distance: e.distance * f };
     case 'forethought':
     case 'thoughtBreak':
       // Native conditional riders become this fixed portable effect before pricing.
@@ -2286,6 +2299,7 @@ function addBoonComponents(
         'infernalAperture',
         'thoughtBreak',
         'forethought',
+        'maneuver',
         'steadfast',
         'cleanse',
         'momentum',
@@ -2502,6 +2516,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.shadowReprise ? { ...e, reprise: { ...def.shadowReprise } } : e;
     case 'whisperRefrain':
       return def.whisperRefrain ? { ...e, refrain: { ...def.whisperRefrain } } : e;
+    case 'maneuver':
+      return def.maneuver ? { ...e, mode: def.maneuver.mode, distance: def.maneuver.distance } : e;
     case 'forethought':
       return def.forethought
         ? { kind: 'forethought', requiresCurse: def.forethought.requiresCurse }
@@ -2770,6 +2786,8 @@ function capEffect(e: EffectComponent): EffectComponent {
             : {}),
         },
       };
+    case 'maneuver':
+      return { ...e, distance: clamp(round1(e.distance), 30, e.mode === 'push' ? 80 : 90) };
     case 'forethought':
     case 'thoughtBreak':
       return e;

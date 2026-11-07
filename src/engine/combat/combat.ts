@@ -46,6 +46,13 @@ import {
 
 /** Minimal structural sink so combat needn't import the World. */
 export interface EventSink {
+  onManeuverHit?: (
+    p: Player,
+    foe: Boss | Add,
+    effective: number,
+    cast: import('../core/types').ManeuverCast,
+    counter?: Buff,
+  ) => void;
   events: GameEvent[];
   onWhisperHit?: (
     source: Player,
@@ -82,6 +89,7 @@ export interface EventSink {
  * styling. All optional; absent = an ordinary hit.
  */
 export interface HitMods {
+  maneuverCast?: import('../core/types').ManeuverCast;
   thoughtBreak?: import('../core/types').ThoughtBreakCast;
   forethought?: { ownerClass: import('../core/types').ClassId; requiresCurse: boolean };
   whisperCast?: WhisperCast;
@@ -426,7 +434,10 @@ export function damageBoss(
     buffMult(boss, 'damageTaken') *
     curseMultiplier(source, boss);
   if (mods?.borrowed) outgoing = baseDamage * buffMult(boss, 'damageTaken');
-  const counter = mods?.melee && source.buffs.some((b) => b.kind === 'counter' && b.remaining > 0);
+  const counterBuff = mods?.melee
+    ? source.buffs.find((b) => b.kind === 'counter' && b.remaining > 0)
+    : undefined;
+  const counter = !!counterBuff;
   if (!mods?.borrowed && outgoing > 0 && boss.hp > 0) {
     outgoing *=
       subclassDamageMultiplier(source, boss, mods) *
@@ -462,6 +473,8 @@ export function damageBoss(
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
   onMoonDirectHit(sink, source, boss, effective, mods?.direct);
   commandCompanion(source, boss, 'boss', effective, mods?.direct);
+  if (mods?.direct && mods.maneuverCast)
+    sink.onManeuverHit?.(source, boss, effective, mods.maneuverCast, counterBuff);
   onSubclassDirectHit(
     sink,
     source,
@@ -523,7 +536,10 @@ export function damageAdd(
     buffMult(add, 'damageTaken') *
     curseMultiplier(source, add);
   if (mods?.borrowed) outgoing = baseDamage * buffMult(add, 'damageTaken');
-  const counter = mods?.melee && source.buffs.some((b) => b.kind === 'counter' && b.remaining > 0);
+  const counterBuff = mods?.melee
+    ? source.buffs.find((b) => b.kind === 'counter' && b.remaining > 0)
+    : undefined;
+  const counter = !!counterBuff;
   if (!mods?.borrowed && outgoing > 0 && add.hp > 0) {
     outgoing *=
       subclassDamageMultiplier(source, add, mods) *
@@ -552,6 +568,8 @@ export function damageAdd(
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
   onMoonDirectHit(sink, source, add, effective, mods?.direct);
   commandCompanion(source, add, 'add', effective, mods?.direct);
+  if (mods?.direct && mods.maneuverCast)
+    sink.onManeuverHit?.(source, add, effective, mods.maneuverCast, counterBuff);
   onSubclassDirectHit(
     sink,
     source,

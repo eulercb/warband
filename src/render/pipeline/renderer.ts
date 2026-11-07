@@ -1,3 +1,4 @@
+import { drawManeuverArrow, drawManeuverTarget } from './maneuverVisuals';
 import { drawForesight } from './foresightVisuals';
 import { forethoughtLabel } from '../../engine/content/forethought';
 import { drawInfernalAperture } from './apertureVisuals';
@@ -32,7 +33,7 @@ import { Application, Assets, Container, Graphics, Text, TextStyle } from 'pixi.
 import type { Spritesheet } from 'pixi.js';
 import type { RenderState, TerrainKind, Vec2 } from '../../engine/core/types';
 import { PLAYER_RADIUS, CLASS_COLORS, ARENA_W, ARENA_H } from '../../engine/core/constants';
-import { nearestCopy, wrapPos } from '../../engine/core/torus';
+import { nearestCopy, wrapPos, sub } from '../../engine/core/torus';
 import { getMonster } from '../../engine/content/monsters';
 import { getClass } from '../../engine/content/classes';
 import { themeFor } from '../../engine/world/terrain';
@@ -237,12 +238,69 @@ export class Renderer {
         this.camera.worldToScreen(player.pos),
         this.camera.scale,
       );
-      drawSilenceMarker(
+    }
+    const localManeuver = state.players.find((p) => p.id === state.localPlayerId);
+    const prepared = localManeuver?.maneuver;
+    if (localManeuver && prepared?.phase === 'ready') {
+      const target =
+        prepared.mode === 'step'
+          ? localManeuver
+          : [...state.bosses, ...state.adds].find(
+              (e) => e.id === prepared.targetId && e.hp > 0 && !e.maneuver,
+            );
+      if (target) {
+        const targetBoss = state.bosses.find((b) => b.id === target.id);
+        const radius = targetBoss
+          ? getMonster(targetBoss.monsterId).radius
+          : 'classId' in target
+            ? 'form' in target && target.form === 'moonBear'
+              ? 25
+              : PLAYER_RADIUS
+            : ADD_RADIUS;
+        const delta =
+          prepared.dir.x || prepared.dir.y
+            ? prepared.dir
+            : prepared.mode === 'push'
+              ? sub(target.pos, localManeuver.pos)
+              : { x: 0, y: 0 };
+        drawManeuverArrow(
+          this.enemyStatusLayer,
+          this.camera.worldToScreen(target.pos),
+          radius * this.camera.scale,
+          delta,
+          prepared.distance * this.camera.scale,
+          false,
+          true,
+          prepared.mode === 'push',
+        );
+      }
+      if (prepared.mode === 'step' && prepared.portable && prepared.targetId !== undefined) {
+        const marked = [...state.bosses, ...state.adds].find(
+          (e) => e.id === prepared.targetId && e.hp > 0,
+        );
+        if (marked) {
+          const markedBoss = state.bosses.find((e) => e.id === marked.id);
+          drawManeuverTarget(
+            this.enemyStatusLayer,
+            this.camera.worldToScreen(marked.pos),
+            (markedBoss ? getMonster(markedBoss.monsterId).radius : ADD_RADIUS) * this.camera.scale,
+            true,
+          );
+        }
+      }
+    }
+    for (const foe of [...state.bosses, ...state.adds]) {
+      if (foe.hp <= 0 || !foe.maneuver) continue;
+      const targetBoss = state.bosses.find((b) => b.id === foe.id);
+      const radius = targetBoss ? getMonster(targetBoss.monsterId).radius : ADD_RADIUS;
+      drawManeuverArrow(
         this.enemyStatusLayer,
-        player,
-        this.camera.worldToScreen(player.pos),
-        (player.form === 'moonBear' ? 25 : PLAYER_RADIUS) * this.camera.scale,
-        this.camera.viewSize,
+        this.camera.worldToScreen(foe.pos),
+        radius * this.camera.scale,
+        foe.maneuver.dir,
+        foe.maneuver.remaining * this.camera.scale,
+        foe.maneuver.phase === 'queued',
+        foe.maneuver.ownerId === state.localPlayerId,
       );
     }
     for (const boss of state.bosses) {
@@ -285,6 +343,17 @@ export class Renderer {
         pos.y,
         ADD_RADIUS * this.camera.scale,
         true,
+        this.camera.viewSize,
+      );
+    }
+
+    // Disruptive status badges stay above action arrows and other actor symbols.
+    for (const player of state.players) {
+      drawSilenceMarker(
+        this.enemyStatusLayer,
+        player,
+        this.camera.worldToScreen(player.pos),
+        (player.form === 'moonBear' ? 25 : PLAYER_RADIUS) * this.camera.scale,
         this.camera.viewSize,
       );
     }
@@ -841,7 +910,14 @@ export class Renderer {
       // surface its permanent airborne state as a no-countdown 🕊️ on the nameplate.
       const badges = buffLabel(boss.buffs, 4, def.flying === true);
       const intent = forethoughtLabel(boss.monsterId, boss.forethought, boss.revealed);
-      t.text = [name, badges, intent].filter(Boolean).join('\n');
+      t.text = [
+        name,
+        badges,
+        intent,
+        boss.maneuver?.phase === 'queued' ? 'Reposition after action' : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
       const s = this.camera.worldToScreen(boss.pos);
       t.position.set(s.x, s.y - def.radius * scale - 10);
       t.alpha = boss.hp > 0 ? 1 : 0.4; // a felled twin's corpse label fades

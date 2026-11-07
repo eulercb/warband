@@ -69,14 +69,14 @@ describe('martial authored builds', () => {
   );
 
   it.each([false, true])(
-    'Taunt grand and maneuver identity add real protection and suppression, composed=%s',
+    'Taunt grand remains a separate protection choice from maneuver identity, composed=%s',
     (composed) => {
       const { w, p } = setup('knight', ['kn_gk_a1_a', 'kn_battlemaster_g_b'], ['kn_battle_trip']);
       if (composed) compose(p);
       resolvePlayerAbility(w, p, 'a1', zero);
-      expect(absorptionAmount(p.buffs)).toBe(60);
+      expect(absorptionAmount(p.buffs)).toBe(30);
       resolvePlayerAbility(w, p, 'a3', zero);
-      expect(w.boss!.buffs.some((b) => b.kind === 'castSlow' && b.mult >= 1.3)).toBe(true);
+      expect(w.boss!.buffs.some((b) => b.kind === 'castSlow' && b.mult >= 1.3)).toBe(false);
     },
   );
 

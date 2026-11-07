@@ -435,6 +435,37 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
 
       {/* Local health + abilities */}
       <div className="hud-bottom">
+        {hud.state === 'alive' && hud.maneuver && (
+          <div className={`hud-maneuver ${hud.maneuver.phase}`}>
+            <strong>
+              {hud.maneuver.phase === 'queued'
+                ? 'Reposition queued'
+                : hud.maneuver.phase === 'travel'
+                  ? 'Repositioning foe'
+                  : hud.maneuver.phase === 'recovery'
+                    ? `Maneuver resting · ${hud.maneuver.remaining.toFixed(1)}s`
+                    : hud.maneuver.mode === 'push'
+                      ? 'Reposition ready'
+                      : 'Footwork ready'}
+            </strong>
+            {hud.maneuver.phase === 'queued' && (
+              <span>After this attack or current forced movement</span>
+            )}
+            {hud.maneuver.phase === 'ready' && (
+              <span>
+                {hud.maneuver.portable
+                  ? 'Hit the marked foe again; basic works'
+                  : hud.maneuver.mode === 'push'
+                    ? 'Counter the bracketed foe'
+                    : 'Land a melee counter'}{' '}
+                ·{' '}
+                {hud.maneuver.mode === 'push'
+                  ? 'Hold movement to steer; still pushes away'
+                  : 'Hold movement to step; still holds position'}
+              </span>
+            )}
+          </div>
+        )}
         {hud.state === 'alive' && silenceStatus(hud.buffs) && (
           <div className="hud-silence" role="status">
             <strong>{silenceStatus(hud.buffs)}</strong>
