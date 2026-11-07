@@ -414,9 +414,9 @@ export interface ManeuverCast {
   effect?: ManeuverEffect;
   fresh: boolean;
   spent: boolean;
+  steeredTargets?: Set<EntityId>;
 }
 export interface ManeuverMotion {
-  blockedTime?: number;
   ownerEpoch: number;
   ownerId: EntityId;
   ownerClass: ClassId;
@@ -612,6 +612,8 @@ export interface Player {
 export type BossActionKind = 'idle' | 'windup' | 'channel' | 'recover';
 
 export interface BossAction {
+  /** Body-relative committed charge path; ordinary ground targets stay world-fixed. */
+  chargeOffset?: Vec2;
   /** Original reader and bounded ordinal, carried until this action ends. */
   forethoughtRead?: { ownerId: EntityId; ownerClass: ClassId; index: 1 | 2 };
   /** Attack exposed by Forethought; remains visible through wind-up/channel. */
@@ -1388,6 +1390,9 @@ export type GameEvent =
 export type TelegraphKind = 'cone' | 'circle' | 'line';
 
 export interface Telegraph {
+  /** Which target coordinates move with the displayed caster or live victim. */
+  anchor?: 'self' | 'path' | 'tracking';
+  targetId?: EntityId;
   kind: TelegraphKind;
   origin: Vec2; // emanation point (boss position for cones/lines)
   angle: number; // radians (cone/line facing)

@@ -53,7 +53,7 @@ try {
               name: 'Battlemaster',
               classId: 'knight',
               charUpgrades: [id],
-              subSkills: ['kn_battle_trip'],
+              subSkills: [mode === 'push' ? 'kn_battle_precision' : 'kn_battle_trip'],
             },
           ],
         });
@@ -74,7 +74,7 @@ try {
         useStore.setState({
           localClass: 'knight',
           myCharUpgrades: [id],
-          mySubSkills: ['kn_battle_trip'],
+          mySubSkills: [mode === 'push' ? 'kn_battle_precision' : 'kn_battle_trip'],
           autofire: false,
         });
         const host = Object.create(Host.prototype);
@@ -91,6 +91,7 @@ try {
           window.remoteManeuver = {
             player: remote.players[0].maneuver,
             boss: remote.bosses[0].maneuver,
+            adds: remote.adds.map((a) => ({ id: a.id, pos: a.pos, maneuver: a.maneuver })),
           };
           if (p.glide?.maneuverClass)
             window.stepPayload = {
@@ -131,7 +132,9 @@ try {
       }, mode);
       const press = async (slot, move = { x: 0, y: 0 }) => {
         if (width === 320) {
-          const el = page.locator(`.wb-touch-btn-${slot}`);
+          const el = page.locator(
+            slot.startsWith('sub') ? '.wb-touch-btn-sub' : `.wb-touch-btn-${slot}`,
+          );
           await el.waitFor();
           const box = await el.boundingBox();
           assert.ok(box);
@@ -151,6 +154,7 @@ try {
       const slot = await page.evaluate((mode) => {
         const f = window.fixture;
         if (mode !== 'push') f.b.pos = { x: 1200, y: 1000 };
+        if (mode === 'push') return 'sub1';
         const carrier = Object.entries(f.p.abilities).find(
           ([slot, ab]) =>
             slot !== 'basic' && ab.maneuver?.mode === (mode === 'push' ? 'push' : 'step'),
@@ -217,6 +221,22 @@ try {
       if (mode === 'push')
         await page.evaluate(() => {
           const f = window.fixture;
+          f.p.moveSpeed = 0;
+          f.b.pos = { x: 900, y: 400 };
+          for (const pos of [
+            { x: 900, y: 310 },
+            { x: 900, y: 490 },
+          ]) {
+            f.w.spawnAddWave(pos, 1, { minR: 0, maxR: 0 });
+            const add = f.w.adds.at(-1);
+            Object.assign(add, {
+              pos: { ...pos },
+              hp: 1000,
+              maxHp: 1000,
+              moveSpeed: 0,
+              attackCd: 100,
+            });
+          }
           f.b.action = {
             ...f.b.action,
             kind: 'windup',
@@ -233,32 +253,33 @@ try {
         player: { ...window.fixture.p.pos },
         boss: { ...window.fixture.b.pos },
       }));
-      await press(slot, { x: 0, y: 1 });
+      await press(slot, mode === 'push' ? { x: 1, y: 0 } : { x: 0, y: 1 });
       if (mode === 'push') {
-        assert.deepEqual(await page.evaluate(() => window.fixture.b.pos), before.boss);
-        const debug = await page.evaluate(() => ({
-          cd: window.fixture.p.cooldowns.a3,
-          last: window.fixture.p.maneuverLast,
-          source: window.fixture.p.abilities.a3.maneuver,
-          events: window.fixture.w.events,
-          player: window.fixture.p.pos,
-          boss: window.fixture.b.pos,
-        }));
-        assert.equal(
-          await page.evaluate(() => window.remoteManeuver.boss?.phase),
-          'queued',
-          JSON.stringify(debug),
+        await page.evaluate(() => {
+          const f = window.fixture;
+          window.volleyToken = f.w.projectiles[0].maneuverCast;
+          for (let i = 0; i < 40 && (window.volleyToken.steeredTargets?.size ?? 0) < 3; i++)
+            f.step({}, { x: 1, y: 0 }, 0.025);
+        });
+        assert.equal(await page.evaluate(() => window.volleyToken.steeredTargets?.size), 3);
+        assert.ok(await page.evaluate((x) => window.fixture.b.pos.x > x, before.boss.x));
+        assert.equal(await page.evaluate(() => window.fixture.b.action.kind), 'windup');
+        assert.ok(await page.evaluate(() => window.fixture.b.action.remaining < 1.9));
+        assert.equal(await page.evaluate(() => window.remoteManeuver.adds.length), 2);
+        assert.ok(
+          await page.evaluate(() => window.remoteManeuver.adds.every((a) => a.pos.x >= 900)),
         );
-        await page.waitForSelector('.hud-maneuver.queued');
+        await page.waitForSelector('.hud-maneuver.travel');
         await still();
         if (process.env.SHOT_DIR)
           await page.screenshot({
-            path: `${process.env.SHOT_DIR}/battle-push-queued-${width}.png`,
+            path: `${process.env.SHOT_DIR}/battle-push-immediate-${width}.png`,
           });
         await page.evaluate(() => {
-          for (let i = 0; i < 70; i++) window.fixture.step();
+          for (let i = 0; i < 10; i++) window.fixture.step();
         });
-        assert.ok(await page.evaluate((y) => window.fixture.b.pos.y >= y + 79, before.boss.y));
+        assert.ok(await page.evaluate((x) => window.fixture.b.pos.x >= x + 79, before.boss.x));
+        assert.ok(await page.evaluate(() => window.fixture.w.adds.every((a) => a.pos.x >= 979)));
       } else {
         await page.evaluate(() => {
           for (let i = 0; i < 60 && (window.fixture.p.maneuverRecovery ?? 0) <= 0; i++)
@@ -287,7 +308,7 @@ try {
       }
       assert.deepEqual(errors, []);
       console.log(
-        `PASS ${width}px ${mode}: real special input, remote cue, ${mode === 'push' ? 'single-hit steering preserves committed attack' : 'hit-independent 180u defensive movement'}`,
+        `PASS ${width}px ${mode}: real special input, remote cue, ${mode === 'push' ? 'one volley immediately steers boss and summons during windup' : 'hit-independent 180u defensive movement'}`,
       );
       await page.close();
     }

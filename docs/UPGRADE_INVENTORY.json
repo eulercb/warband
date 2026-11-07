@@ -7994,7 +7994,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "A positive direct special hit moves one foe 80u in the movement direction held when pressed; standing still pushes it away. Committed attacks finish first; 6s shared foe recovery",
+      "description": "Direct special hits immediately steer every foe hit 80u in the movement direction held when pressed; standing still pushes away. Once per foe per cast; 6s shared foe recovery",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,

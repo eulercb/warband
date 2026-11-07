@@ -6,7 +6,7 @@ import {
   invalidateManeuvers,
 } from '../combat/battleManeuvers';
 import { sweepProjectedGuard, blockBossPulse } from '../combat/projectedGuard';
-import { firstObstacleStop } from '../combat/abilities';
+import { firstObstacleStop, bossChargeTarget } from '../combat/abilities';
 import {
   armForethought,
   closeForethought,
@@ -1211,7 +1211,7 @@ export class World {
     this.maintainCloseBursts();
     this.applyInputs(dt, inputs);
     this.stepGlides(dt); // item 2: advance in-progress dash/leap glides host-side
-    this.stepShoves(dt); // item 2: advance in-progress knockback/pull slides host-side
+    this.stepShoves(dt); // Hero slides advance here; enemy impulses combine after hits.
     this.checkDownedTransitions();
     this.auraClock = updatePaladinAuras(this, dt, this.auraClock);
     this.updateRevive(dt, inputs);
@@ -1409,9 +1409,11 @@ export class World {
 
   /**
    * item 2 — advance every in-progress forced-move slide (knockback / pull / grab)
-   * one tick, for heroes, bosses AND adds alike, so a push/pull visibly travels to
+   * one tick for heroes, so a push/pull visibly travels to
    * its endpoint instead of teleporting. Host-authoritative; the intermediate
-   * positions replicate + interpolate to peers through the snapshot pipeline. A
+   * positions replicate + interpolate to peers through the snapshot pipeline.
+   * Enemy impulses advance in tickManeuvers after all hits, including projectile
+   * hits that start steering, so existing knockback is never integrated twice. A
    * felled hero drops its shove (no ghost-sliding a corpse).
    */
   private stepShoves(dt: number): void {
@@ -1419,8 +1421,6 @@ export class World {
       if (p.state !== 'alive') p.shove = null;
       else stepShove(this, p, dt);
     }
-    for (const b of this.bosses) stepShove(this, b, dt);
-    for (const a of this.adds) stepShove(this, a, dt);
   }
 
   private tryUseAbility(p: Player, slot: ExtSlot, moveDir: Vec2, fresh = false): void {
@@ -2696,18 +2696,11 @@ export class World {
     // whether or not the boss is stunned; the "active" ones pause while stunned.
     const stunned = hasBuff(boss, 'stun');
     this.tickBossAffixes(dt, boss, stunned);
-    if (
-      boss.maneuverMotion &&
-      (boss.maneuverMotion.phase === 'travel' ||
-        boss.action.kind === 'idle' ||
-        boss.action.kind === 'recover')
-    )
-      return;
     if (stunned) return; // stunned: no movement or actions
 
     // Twin bosses split their attention: the second boss hunts the 2nd-highest
     // threat when one exists, so a duo can't simply pile onto the tank.
-    if (stepFear(this, boss, dt)) return;
+    if (!boss.maneuverMotion && stepFear(this, boss, dt)) return;
     const target = nthThreatTarget(this.players, index, this.tauntTargetId, this.tauntTimer);
     if (
       target &&
@@ -2735,7 +2728,7 @@ export class World {
         boss.decisionTimer -= dt;
         this.bossMove(dt, boss, def, target);
         this.handleBlink(boss, def);
-        if (boss.decisionTimer <= 0) {
+        if (boss.decisionTimer <= 0 && !boss.maneuverMotion) {
           this.bossDecide(boss, def, target);
           boss.decisionTimer = BOSS_DECISION_MIN;
         }
@@ -3252,6 +3245,7 @@ export class World {
   }
 
   private bossMove(dt: number, boss: Boss, def: MonsterDef, target: Player | null): void {
+    if (boss.maneuverMotion) return;
     if (moveToQuarry(this, boss, dt)) return;
     if (!target) return;
     const d = dist(boss.pos, target.pos);
@@ -3283,6 +3277,7 @@ export class World {
   }
 
   private handleBlink(boss: Boss, def: MonsterDef): void {
+    if (boss.maneuverMotion) return;
     if (boss.perception && this.tauntTimer <= 0) return;
     // item 9: a rooted boss can't blink OR teleport. Because both a native blink and
     // the Teleporting affix resolve through this one path (blinkConfigFor), gating
@@ -3433,6 +3428,8 @@ export class World {
       action.targetPos = vadd(boss.pos, fromAngle(action.aimAngle, capped));
     }
 
+    if (ab.shape === 'line' && action.targetPos)
+      action.chargeOffset = sub(action.targetPos, boss.pos);
     return action;
   }
 
@@ -3827,10 +3824,11 @@ export class World {
         return {
           ...base,
           mode: 'self',
-          shape: { ...shape, target: { ...b.pos }, radius: ab.radius ?? 160 },
+          shape: { ...shape, anchor: 'self', target: { ...b.pos }, radius: ab.radius ?? 160 },
         };
       case 'line': {
-        let end = firstObstacleStop(this, b.pos, target, b.radius, true) ?? target;
+        const chargeEnd = bossChargeTarget(b, a, ab);
+        let end = firstObstacleStop(this, b.pos, chargeEnd, b.radius, true) ?? chargeEnd;
         end = clipBulwarkStep(this, b, end).pos;
         return {
           ...base,
@@ -3838,6 +3836,8 @@ export class World {
           shape: {
             ...shape,
             kind: 'line',
+            anchor: 'path',
+            range: dist(b.pos, end),
             target: { ...end },
             width: 2 * ((ab.width ?? 45) + b.radius * 0.5),
           },
@@ -3861,7 +3861,13 @@ export class World {
           ...base,
           mode: 'tracking',
           range: ab.range ?? 500,
-          shape: { ...shape, target: { ...(victim?.pos ?? target) }, radius: ab.range ?? 500 },
+          shape: {
+            ...shape,
+            anchor: 'tracking',
+            targetId: a.targetId ?? undefined,
+            target: { ...(victim?.pos ?? target) },
+            radius: ab.range ?? 500,
+          },
         };
       }
       case 'voidzones':
@@ -3910,22 +3916,39 @@ export class World {
       case 'circleAtTarget':
         return { ...base, kind: 'circle', radius: ab.radius ?? 110 };
       case 'pbaoe':
-        return { ...base, kind: 'circle', radius: ab.radius ?? 160, target: { ...boss.pos } };
-      case 'line': {
-        const clipped = clipBulwarkStep(this, boss, base.target);
         return {
           ...base,
-          ...(clipped.stopped ? { target: clipped.pos, range: dist(boss.pos, clipped.pos) } : {}),
+          kind: 'circle',
+          anchor: 'self',
+          radius: ab.radius ?? 160,
+          target: { ...boss.pos },
+        };
+      case 'line': {
+        const shape = this.foresightPreview(boss, a)!.shape!;
+        return { ...shape, remainingWindup: base.remainingWindup, totalWindup: base.totalWindup };
+      }
+      case 'beam': {
+        const victim = this.players.find((p) => p.id === a.targetId && p.state === 'alive');
+        return {
+          ...base,
           kind: 'line',
-          width: ab.width ?? 45,
+          anchor: 'tracking',
+          targetId: a.targetId ?? undefined,
+          target: { ...(victim?.pos ?? base.target) },
+          width: ab.width ?? 24,
+          range: ab.range ?? 500,
         };
       }
-      case 'beam':
-        return { ...base, kind: 'line', width: ab.width ?? 24, range: ab.range ?? 500 };
       case 'summon':
         // No damage zone, but flash a growing ring around the boss so the party
         // can read the incoming adds during the wind-up (Lich readability fix).
-        return { ...base, kind: 'circle', radius: ab.radius ?? 170, target: { ...boss.pos } };
+        return {
+          ...base,
+          kind: 'circle',
+          anchor: 'self',
+          radius: ab.radius ?? 170,
+          target: { ...boss.pos },
+        };
       default:
         return null; // projectile / voidzones: no ground telegraph
     }

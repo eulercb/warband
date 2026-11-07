@@ -4,8 +4,9 @@
  * The interpolator buffers authoritative snapshots (stamped with `performance.now()`
  * on arrival) and, on `sample(nowMs)`, renders `INTERP_DELAY_MS` in the past by
  * LERPing entity POSITIONS between the two snapshots that bracket that render time.
- * Everything else (hp, state, telegraph, facing, zones, terrain, obstacles) is
- * carried VERBATIM from the newer bracketing snapshot — never interpolated.
+ * State, timing, facing, zones, terrain and obstacles use the newer snapshot.
+ * Boss-bound indicator coordinates follow the displayed pose; world targets
+ * retain their authoritative coordinates.
  *
  * These tests drive the real public API: `push` (which reads `performance.now()`,
  * mocked here so arrival times are deterministic), `sample`, `latestOwnView` and
@@ -350,9 +351,9 @@ describe('SnapshotInterpolator — clamping past the ends (no extrapolation)', (
 });
 
 describe('SnapshotInterpolator — non-positional fields from the newer snapshot', () => {
-  it('carries boss facing, hp, phase, telegraph, action & abilityId verbatim while lerping pos', () => {
+  it('carries boss state while anchoring its telegraph origin to the interpolated pose', () => {
     const interp = new SnapshotInterpolator();
-    const tele = mkTelegraph({ kind: 'cone', angle: 1.2, range: 300 });
+    const tele = mkTelegraph({ kind: 'cone', origin: { x: 300, y: 300 }, angle: 1.2, range: 300 });
     pushAt(
       interp,
       mkSnapshot({
@@ -397,13 +398,13 @@ describe('SnapshotInterpolator — non-positional fields from the newer snapshot
     // Position is interpolated...
     expect(boss.pos.x).toBeCloseTo(200);
     expect(boss.pos.y).toBeCloseTo(200);
-    // ...everything else is the newer snapshot, untouched.
+    // State and timing use the newer snapshot; geometry follows the displayed pose.
     expect(boss.facing).toBe(3); // NOT ~1.5
     expect(boss.hp).toBe(500);
     expect(boss.phase).toBe('enraged');
     expect(boss.action).toBe('windup');
     expect(boss.abilityId).toBe('fireBreath');
-    expect(boss.telegraph).toEqual(tele);
+    expect(boss.telegraph).toEqual({ ...tele, origin: { x: 200, y: 200 } });
   });
 
   it('carries zones, terrain and obstacles from the newer snapshot (statics, never interpolated)', () => {
@@ -848,7 +849,7 @@ describe('SnapshotInterpolator — degenerate bracket + telegraph passthrough', 
 
   it('deep-copies telegraphs from the carry snapshot when present', () => {
     const interp = new SnapshotInterpolator();
-    const tele = mkTelegraph({ kind: 'cone', angle: 1.2, range: 300 });
+    const tele = mkTelegraph({ kind: 'cone', origin: { x: 300, y: 300 }, angle: 1.2, range: 300 });
     const snap: Snapshot = {
       ...mkSnapshot({ tick: 4, players: [mkPlayer({ id: 1, pos: { x: 0, y: 0 } })] }),
       telegraphs: [tele],

@@ -4,8 +4,9 @@
  * The host streams authoritative `Snapshot`s at ~20 Hz. To hide jitter and
  * packet timing, clients render `INTERP_DELAY_MS` in the past and linearly
  * interpolate entity positions between the two buffered snapshots that bracket
- * that render time. Non-positional data (hp, state, telegraph, facing, zones)
- * is carried verbatim from the newer of the two snapshots — never interpolated.
+ * that render time. Non-positional state (hp, action, facing, zones) comes from the newer snapshot.
+ * Boss-bound telegraph coordinates follow the displayed caster/victim; placed
+ * world targets retain their authoritative coordinates.
  *
  * `net/client.ts` depends on this EXACT public interface.
  */
@@ -22,9 +23,10 @@ import type {
   GameEvent,
   Vec2,
   EntityId,
+  Telegraph,
 } from '../../engine/core/types';
 import { INTERP_DELAY_MS } from '../../engine/core/constants';
-import { nearestCopy, wrapPos } from '../../engine/core/torus';
+import { nearestCopy, wrapPos, sub } from '../../engine/core/torus';
 
 interface Buffered {
   snap: Snapshot;
@@ -116,7 +118,17 @@ export class SnapshotInterpolator {
     }
 
     const players = this.lerpPlayers(from, carry, t);
-    const bosses = this.lerpBosses(from, carry, t);
+    // Client-side prediction override for the local player.
+    if (opts.predictedLocalPos && opts.localPlayerId != null) {
+      for (const p of players) {
+        if (p.id === opts.localPlayerId) {
+          p.pos = { x: opts.predictedLocalPos.x, y: opts.predictedLocalPos.y };
+          break;
+        }
+      }
+    }
+
+    const bosses = this.lerpBosses(from, carry, t, players);
     const adds = this.lerpAdds(from, carry, t);
     const projectiles = this.lerpProjectiles(from, carry, t);
 
@@ -127,16 +139,6 @@ export class SnapshotInterpolator {
     const obstacles: ObstacleView[] = carry.obstacles.map((o) => ({ ...o }));
     const telegraphs = carry.telegraphs ? carry.telegraphs.map((t) => ({ ...t })) : undefined;
     const events = this.collectEvents();
-
-    // Client-side prediction override for the local player.
-    if (opts.predictedLocalPos && opts.localPlayerId != null) {
-      for (const p of players) {
-        if (p.id === opts.localPlayerId) {
-          p.pos = { x: opts.predictedLocalPos.x, y: opts.predictedLocalPos.y };
-          break;
-        }
-      }
-    }
 
     return {
       tick: carry.tick,
@@ -188,13 +190,46 @@ export class SnapshotInterpolator {
     }));
   }
 
-  private lerpBosses(from: Snapshot | null, carry: Snapshot, t: number): BossView[] {
+  private lerpBosses(
+    from: Snapshot | null,
+    carry: Snapshot,
+    t: number,
+    players: PlayerView[],
+  ): BossView[] {
     const prev = from ? indexById(from.bosses) : null;
-    // Telegraph + facing intentionally taken from `carry` (never interpolated).
-    return carry.bosses.map((b) => ({
-      ...b,
-      pos: this.lerpVec(prev?.get(b.id)?.pos, b.pos, t),
-    }));
+    return carry.bosses.map((b) => {
+      const pos = this.lerpVec(prev?.get(b.id)?.pos, b.pos, t);
+      const delta = sub(pos, b.pos);
+      const anchor = (shape: Telegraph): Telegraph => ({
+        ...shape,
+        origin: wrapPos({ x: shape.origin.x + delta.x, y: shape.origin.y + delta.y }),
+        target:
+          shape.anchor === 'self' || shape.anchor === 'path'
+            ? wrapPos({ x: shape.target.x + delta.x, y: shape.target.y + delta.y })
+            : shape.anchor === 'tracking'
+              ? {
+                  ...(players.find((p) => p.id === shape.targetId && p.state === 'alive')?.pos ??
+                    shape.target),
+                }
+              : { ...shape.target },
+      });
+      return {
+        ...b,
+        pos,
+        telegraph: b.telegraph ? anchor(b.telegraph) : null,
+        ...(b.revealed?.shape
+          ? { revealed: { ...b.revealed, shape: anchor(b.revealed.shape) } }
+          : {}),
+        ...(b.forethought?.preview?.shape
+          ? {
+              forethought: {
+                ...b.forethought,
+                preview: { ...b.forethought.preview, shape: anchor(b.forethought.preview.shape) },
+              },
+            }
+          : {}),
+      };
+    });
   }
 
   private lerpAdds(from: Snapshot | null, carry: Snapshot, t: number): AddView[] {

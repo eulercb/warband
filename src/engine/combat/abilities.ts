@@ -1602,6 +1602,13 @@ function bossHitRider(world: World, boss: Boss, p: Player, ab: BossAbilityDef): 
   }
 }
 
+/** Charges retain their committed heading/length when their caster is displaced. */
+export function bossChargeTarget(boss: Boss, action: BossAction, ab: BossAbilityDef): Vec2 {
+  return action.chargeOffset
+    ? vadd(boss.pos, action.chargeOffset)
+    : (action.targetPos ?? vadd(boss.pos, fromAngle(action.aimAngle, ab.range ?? 600)));
+}
+
 /**
  * Resolve a boss ability's effect at execute time. `action` carries the
  * targeting locked at wind-up start (aimAngle / targetPos / targetId).
@@ -1690,7 +1697,7 @@ export function resolveBossAbility(
       // relocation) fizzles while the roots hold.
       if (isRooted(boss)) break;
       const from = { ...boss.pos };
-      let to = action.targetPos ?? vadd(boss.pos, fromAngle(action.aimAngle, ab.range ?? 600));
+      let to = bossChargeTarget(boss, action, ab);
       // item 2: parity with the hero dash — a charge can't tunnel through TALL cover.
       // It stops flush at the first pillar/monolith/crystal along its path (both its
       // path damage and its relocation end there), while still trampling low rubble.
@@ -1706,7 +1713,8 @@ export function resolveBossAbility(
         }
       }
       boss.pos = clampToArena(world, to, boss.radius);
-      boss.shove = null; // item 2: the charge relocation is an instant reposition, not a slide
+      boss.shove = null; // The charge landing owns the final position.
+      delete boss.maneuverMotion;
       world.events.push({ t: 'telegraph', pos: to, shape: 'line' });
       break;
     }

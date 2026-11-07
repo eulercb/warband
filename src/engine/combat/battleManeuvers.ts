@@ -7,7 +7,7 @@ import { sub, wrapPos } from '../core/torus';
 import { normalize } from '../core/math';
 import { isRooted, hasBuff } from './combat';
 import { isSteadfast } from './defense';
-import { firstObstacleStop } from './abilities';
+import { firstObstacleStop, stepShove } from './abilities';
 import { clipBulwarkStep } from './apertureMovement';
 const RECOVERY = 6;
 type Foe = Boss | Add;
@@ -26,7 +26,7 @@ export function maneuverCast(
     spent: false,
   };
 }
-/** Only a successful eligible recipient spends this cast's single steering request. */
+/** Each eligible recipient can be steered once by this shared cast token. */
 export function onManeuverHit(
   w: World,
   p: Player,
@@ -35,7 +35,13 @@ export function onManeuverHit(
   cast: ManeuverCast,
 ): void {
   const e = cast.effect;
-  if (!validCast(w, p, cast) || effective <= 0 || e?.mode !== 'push') return;
+  if (
+    !validCast(w, p, cast) ||
+    effective <= 0 ||
+    e?.mode !== 'push' ||
+    cast.steeredTargets?.has(foe.id)
+  )
+    return;
   p.maneuverLast = { effect: { ...e }, ownerClass: p.classId, targetId: foe.id };
   if (
     foe.hp <= 0 ||
@@ -54,9 +60,10 @@ export function onManeuverHit(
     ownerEpoch: p.maneuverEpoch ?? 0,
     dir,
     remaining: e.distance,
-    phase: 'queued',
+    phase: 'travel',
   };
-  cast.spent = true;
+  foe.maneuverRecovery = RECOVERY;
+  (cast.steeredTargets ??= new Set()).add(foe.id);
 }
 function validCast(w: World, p: Player, cast: ManeuverCast): boolean {
   return (
@@ -88,39 +95,6 @@ export function onManeuverCast(w: World, p: Player, cast: ManeuverCast): void {
   p.maneuverLast = { effect: { ...e }, ownerClass: p.classId };
   p.maneuverStep = { dir: { ...cast.move }, distance: e.distance, ownerClass: p.classId };
   cast.spent = true;
-}
-/** Never relocate a committed attack; recover/idle are the only launch points. */
-function releaseManeuver(w: World, foe: Foe, dt: number): void {
-  const m = foe.maneuverMotion;
-  if (!m || m.phase !== 'queued') return;
-  const owner = w.players.find((p) => p.id === m.ownerId);
-  if (
-    !owner ||
-    owner.state !== 'alive' ||
-    owner.hp <= 0 ||
-    owner.classId !== m.ownerClass ||
-    (owner.maneuverEpoch ?? 0) !== m.ownerEpoch ||
-    foe.hp <= 0 ||
-    ('charm' in foe && !!foe.charm) ||
-    isRooted(foe) ||
-    isSteadfast(foe)
-  ) {
-    delete foe.maneuverMotion;
-    return;
-  }
-  if ('action' in foe && (foe.action.kind === 'windup' || foe.action.kind === 'channel')) return;
-  if (foe.shove) {
-    m.blockedTime = (m.blockedTime ?? 0) + dt;
-    // Competing pushes cannot reserve the boss's next decision indefinitely.
-    if (m.blockedTime >= 1 - 1e-6) {
-      delete foe.maneuverMotion;
-      foe.maneuverRecovery = RECOVERY;
-    }
-    return;
-  }
-  m.phase = 'travel';
-  foe.maneuverRecovery = RECOVERY;
-  foe.shove = null;
 }
 /** Runs after all current-frame strikes and before boss decisions; moves host positions only. */
 export function tickManeuvers(w: World, dt: number): void {
@@ -158,10 +132,11 @@ export function tickManeuvers(w: World, dt: number): void {
   }
   for (const foe of [...w.bosses, ...w.adds]) {
     foe.maneuverRecovery = Math.max(0, (foe.maneuverRecovery ?? 0) - dt);
-    if (foe.maneuverMotion?.phase === 'travel' && foe.shove) foe.maneuverMotion.phase = 'queued';
-    releaseManeuver(w, foe, dt);
     const m = foe.maneuverMotion;
-    if (!m || m.phase !== 'travel') continue;
+    if (!m || m.phase !== 'travel') {
+      stepShove(w, foe, dt);
+      continue;
+    }
     const owner = w.players.find((p) => p.id === m.ownerId);
     if (
       !owner ||
@@ -175,27 +150,40 @@ export function tickManeuvers(w: World, dt: number): void {
       isSteadfast(foe)
     ) {
       delete foe.maneuverMotion;
+      stepShove(w, foe, dt);
       continue;
     }
     const distance = Math.min(m.remaining, 600 * dt);
-    const to = { x: foe.pos.x + m.dir.x * distance, y: foe.pos.y + m.dir.y * distance };
+    const shove = foe.shove;
+    const shoveTime = shove ? Math.min(dt, shove.remaining) : 0;
+    const delta = {
+      x: m.dir.x * distance + (shove?.vx ?? 0) * shoveTime,
+      y: m.dir.y * distance + (shove?.vy ?? 0) * shoveTime,
+    };
+    if (shove) {
+      shove.remaining -= shoveTime;
+      if (shove.remaining <= 1e-6) foe.shove = null;
+    }
+    const to = { x: foe.pos.x + delta.x, y: foe.pos.y + delta.y };
     // Existing large bodies can touch/overlap cover; allow escape, never deeper entry.
     if (
       w.obstacles.some((o) => {
         const rel = sub(foe.pos, o.pos);
         return (
           Math.hypot(rel.x, rel.y) < foe.radius + o.radius - 1e-6 &&
-          rel.x * m.dir.x + rel.y * m.dir.y < 0
+          rel.x * delta.x + rel.y * delta.y < 0
         );
       })
     ) {
       delete foe.maneuverMotion;
+      foe.shove = null;
       continue;
     }
     const stop = firstObstacleStop(w, foe.pos, to, foe.radius, false);
     const clipped = clipBulwarkStep(w, foe, stop ?? to);
     foe.pos = wrapPos(clipped.pos);
     m.remaining -= distance;
+    if (stop || clipped.stopped) foe.shove = null;
     if (stop || clipped.stopped || m.remaining <= 1e-6) delete foe.maneuverMotion;
   }
 }
@@ -208,10 +196,14 @@ export function maneuverView(w: World, p: Player): PlayerView['maneuver'] {
     .find((e) => !!e);
   const effect = equipped ?? last?.effect;
   if (!effect) return undefined;
-  const targetId = effect.mode === 'push' ? last?.targetId : undefined;
-  const foe = [...w.bosses, ...w.adds].find(
-    (e) => e.id === targetId && e.hp > 0 && !('charm' in e && e.charm),
-  );
+  const enemies = [...w.bosses, ...w.adds];
+  const moving =
+    effect.mode === 'push'
+      ? enemies.find((e) => e.hp > 0 && e.maneuverMotion?.ownerId === p.id)
+      : undefined;
+  const targetId = moving?.id ?? (effect.mode === 'push' ? last?.targetId : undefined);
+  const foe =
+    moving ?? enemies.find((e) => e.id === targetId && e.hp > 0 && !('charm' in e && e.charm));
   const base = {
     mode: effect.mode,
     distance: effect.distance,

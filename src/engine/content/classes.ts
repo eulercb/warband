@@ -1371,7 +1371,7 @@ export function describeAbility(
   if (def.maneuver)
     parts.push(
       def.maneuver.mode === 'push'
-        ? `one positive direct special hit moves a foe ${n(def.maneuver.distance)}u in the movement direction held when pressed (standing still pushes away), after committed attacks; 6s shared foe recovery`
+        ? `direct special hits immediately steer each foe ${n(def.maneuver.distance)}u in the movement direction held when pressed (standing still pushes away); once per foe per cast, 6s shared foe recovery`
         : `press this defensive special while moving to step up to ${n(def.maneuver.distance)}u in that direction, without immunity; standing still holds position; movement once per 6s, requires a new press`,
     );
   if (def.thoughtBreak)

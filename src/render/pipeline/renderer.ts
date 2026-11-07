@@ -896,14 +896,7 @@ export class Renderer {
       // surface its permanent airborne state as a no-countdown 🕊️ on the nameplate.
       const badges = buffLabel(boss.buffs, 4, def.flying === true);
       const intent = forethoughtLabel(boss.monsterId, boss.forethought, boss.revealed);
-      t.text = [
-        name,
-        badges,
-        intent,
-        boss.maneuver?.phase === 'queued' ? 'Reposition after action' : '',
-      ]
-        .filter(Boolean)
-        .join('\n');
+      t.text = [name, badges, intent].filter(Boolean).join('\n');
       const s = this.camera.worldToScreen(boss.pos);
       t.position.set(s.x, s.y - def.radius * scale - 10);
       t.alpha = boss.hp > 0 ? 1 : 0.4; // a felled twin's corpse label fades
