@@ -306,7 +306,7 @@ describe('per-class subclass binding (item 15)', () => {
 });
 
 describe('subclass grands transform bound sub-abilities at spawn + across a swap (item 17)', () => {
-  it('applies an owned subclass grand to the bound sub-abilities at spawn', () => {
+  it('applies the Champion identity to its whole kit while preserving useful bound strikes', () => {
     const w = new World({
       monsterId: 'dragon',
       seed: 7,
@@ -321,13 +321,14 @@ describe('subclass grands transform bound sub-abilities at spawn + across a swap
       ],
     });
     const p = w.players[0];
-    // Earthshaker retains its cone footprint and gains 15% lifesteal.
+    // The identity projects native guard charges; individual strikes retain their own roles.
     expect(p.subAbilities?.sub1?.damage).toBe(40);
-    expect(p.subAbilities?.sub1?.lifestealFrac).toBe(0.15);
+    expect(p.subAbilities?.sub1?.lifestealFrac).toBeUndefined();
+    expect(p.abilities!.a2.frontGuard?.projection).toEqual({ reach: 60, halfWidth: 60 });
     expect(p.subAbilities?.sub1?.range).toBe(180);
     // Riposte (melee dmg 46, range 80) is the second bound Champion skill.
     expect(p.subAbilities?.sub2?.damage).toBe(46);
-    expect(p.subAbilities?.sub2?.lifestealFrac).toBe(0.15);
+    expect(p.subAbilities?.sub2?.lifestealFrac).toBeUndefined();
   });
 
   it('re-applies each class’s subclass grand when the hero swaps class', () => {
@@ -346,10 +347,11 @@ describe('subclass grands transform bound sub-abilities at spawn + across a swap
       ],
     });
     const p = w.players[0];
-    // On knight: the Champion identity grants Earthshaker lifesteal.
+    // On Knight, the identity changes the defensive base kit rather than Earthshaker damage.
     expect(p.subAbilities?.sub1?.name).toBe('Earthshaker');
     expect(p.subAbilities?.sub1?.damage).toBe(40);
-    expect(p.subAbilities?.sub1?.lifestealFrac).toBe(0.15);
+    expect(p.subAbilities?.sub1?.lifestealFrac).toBeUndefined();
+    expect(p.abilities!.a2.frontGuard?.projection).toEqual({ reach: 60, halfWidth: 60 });
     // Swap to mage: sub1 rebinds to Lightning Bolt and the Evoker grand transforms it
     // Controlled-target damage grows from20% to40%, without inventing freeze.
     w.setActiveClass(p, 'mage');
@@ -357,5 +359,8 @@ describe('subclass grands transform bound sub-abilities at spawn + across a swap
     expect(p.subAbilities?.sub1?.damage).toBe(40);
     expect(p.subAbilities?.sub1?.controlDamageBonus).toBeCloseTo(0.4);
     expect(p.subAbilities?.sub1?.freeze).toBeUndefined();
+    expect(p.abilities!.a2.frontGuard?.projection).toBeUndefined();
+    w.setActiveClass(p, 'knight');
+    expect(p.abilities!.a2.frontGuard?.projection).toEqual({ reach: 60, halfWidth: 60 });
   });
 });

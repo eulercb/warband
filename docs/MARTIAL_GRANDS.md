@@ -1,5 +1,9 @@
 # Knight, Barbarian and Monk: authored upgrade builds
 
+Later [purpose review](MARTIAL_PURPOSE_REVIEW.md) and
+[Champion projected shield](CHAMPION_PROJECTED_GUARD.md) supersede the original
+Champion A recipe below and track remaining identity findings.
+
 This is the second content cohort after Rogue/Warlock. Each of these three classes
 now has four native-skill grands, eight individual subclass-skill grands and four
 subclass identities. Equip two starting-skill grands (basic/grafts included), one

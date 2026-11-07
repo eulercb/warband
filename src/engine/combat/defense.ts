@@ -12,17 +12,22 @@ export function blockFromFront(p: Player, origin: Vec2 | undefined, damage: numb
   const aim = Math.hypot(p.aim.x, p.aim.y);
   if (distance < 1e-6 || aim < 1e-6 || delta.x * p.aim.x + delta.y * p.aim.y < distance * aim * 0.5)
     return false;
-  if (guard.blockCounter) {
+  return consumeFrontGuard(p, guard);
+}
+/** Body blocks and projected interceptions consume exactly the same finite pool. */
+export function consumeFrontGuard(p: Player, guard: Buff, counterOverride?: number): boolean {
+  const counterMult = Math.max(guard.blockCounter ?? 0, counterOverride ?? 0);
+  if (counterMult) {
     const counter = p.buffs.find((b) => b.kind === 'counter' && b.remaining > 0);
     if (!counter)
       p.buffs.push({
         kind: 'counter',
-        mult: guard.blockCounter,
+        mult: counterMult,
         remaining: 4,
         source: 'martialCounter',
       });
     else {
-      counter.mult = Math.max(counter.mult, guard.blockCounter);
+      counter.mult = Math.max(counter.mult, counterMult);
       counter.remaining = Math.max(counter.remaining, 4);
     }
   }
@@ -59,6 +64,7 @@ export function grantFrontGuard(
   charges: number,
   duration: number,
   counter?: number,
+  projection?: { reach: number; halfWidth: number },
 ): void {
   const old = p.buffs.find((b) => b.kind === 'frontGuard' && b.remaining > 0 && b.mult > 0);
   if (old && (old.mult > charges || (old.mult === charges && old.remaining >= duration))) return;
@@ -69,5 +75,6 @@ export function grantFrontGuard(
     remaining: duration,
     source: 'frontGuard',
     blockCounter: counter,
+    ...(projection ? { projectedGuard: { ...projection }, projectedGuardClass: p.classId } : {}),
   });
 }

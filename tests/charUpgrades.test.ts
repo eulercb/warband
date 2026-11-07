@@ -1320,13 +1320,12 @@ describe('applySubclassGrands: absent-field guards', () => {
 
   it('applies a subclass grand even when the hero has no base ability table (abilities ?? {})', () => {
     const p = makePlayer('knight');
-    p.subAbilities = { sub1: champSub() };
-    p.subSkillIds = ['kn_champion_slam']; // maps sub1 → the kn_champion subclass
+    p.subAbilities = { sub1: previewSubAbility('kn_champion_rally', [])! };
+    p.subSkillIds = ['kn_champion_rally']; // maps sub1 → the kn_champion subclass
     (p as unknown as { abilities?: unknown }).abilities = undefined; // no base kit present
     applySubclassGrands(p, ['kn_champion_g_a']);
-    // Unbroken Champion grafts 15% lifesteal onto its (damaging) sub-skill — proof the
-    // grand ran despite the missing base table (the `?? {}` fallback stood in).
-    expect(p.subAbilities.sub1!.lifestealFrac).toBeCloseTo(0.15, 5);
+    // This identity still tunes Second Wind's useful hold-the-line resistance without a base kit.
+    expect(p.subAbilities.sub1!.steadfastDuration).toBe(3);
   });
 });
 
@@ -1850,11 +1849,11 @@ describe('previewSubAbility (item 5)', () => {
     expect(unrelated.damage).toBe(base.damage);
   });
 
-  it('applies a subclass grand to every skill of that subclass only', () => {
+  it('applies a skill-changing identity only to its own subclass', () => {
     const base = previewSubAbility('kn_champion_slam', [])!;
-    const granded = previewSubAbility('kn_champion_slam', ['kn_champion_g_a'])!;
+    const granded = previewSubAbility('kn_champion_slam', ['kn_champion_g_b'])!;
     expect(granded.damage).toBe(base.damage);
-    expect(granded.lifestealFrac).toBe(0.15);
+    expect(granded.controlDamageBonus).toBe(0.2);
     // A different subclass's grand leaves this skill untouched.
     const otherGrand = SUBCLASS_GRANDS.find((g) => g.subclassId !== 'kn_champion')!;
     const unaffected = previewSubAbility('kn_champion_slam', [otherGrand.id])!;
@@ -2265,7 +2264,7 @@ function makePlayerWithSubs(
 }
 
 describe('subclass grands transform the bound sub-abilities (item 17)', () => {
-  it('Unbroken Champion adds lifesteal to both bound Champion strikes', () => {
+  it('Unbroken Champion projects the starting guards without adding leech to bound strikes', () => {
     // sub1 = Earthshaker (cone dmg 40, reach 180); sub2 = Riposte (melee dmg 46, range 80).
     const p = makePlayerWithSubs(
       'knight',
@@ -2274,10 +2273,12 @@ describe('subclass grands transform the bound sub-abilities (item 17)', () => {
     );
     expect(p.subAbilities!.sub1!.damage).toBe(40);
     expect(p.subAbilities!.sub1!.range).toBe(180);
-    expect(p.subAbilities!.sub1!.lifestealFrac!).toBeCloseTo(0.15, 5);
+    expect(p.subAbilities!.sub1!.lifestealFrac).toBeUndefined();
+    expect(p.abilities!.a1.frontGuard?.projection).toEqual({ reach: 60, halfWidth: 60 });
     expect(p.subAbilities!.sub2!.damage).toBe(46);
     expect(p.subAbilities!.sub2!.range).toBe(80);
-    expect(p.subAbilities!.sub2!.lifestealFrac!).toBeCloseTo(0.15, 5);
+    expect(p.subAbilities!.sub2!.lifestealFrac).toBeUndefined();
+    expect(p.abilities!.a2.frontGuard?.projection).toEqual({ reach: 60, halfWidth: 60 });
   });
 
   it("Warlord's Tempo rewards controlled targets on both bound strikes", () => {

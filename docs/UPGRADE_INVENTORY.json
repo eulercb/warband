@@ -7745,7 +7745,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Taunt and Shield Wall grant 4s hard-control resistance; Champion strikes leech 15%, and Second Wind grants 3s resistance",
+      "description": "Taunt and Shield Wall project a 120u-wide shield 60u ahead, sharing their frontal-block charges. Aim to intercept hostile shots and ready a melee counter; resist hard control for 4s. Second Wind resists control for 3s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -7755,14 +7755,32 @@
           "subSkills": ["kn_champion_slam"],
           "prefix": [],
           "once": [
+            {
+              "path": "abilities.a1.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
             { "path": "abilities.a1.steadfastDuration", "before": null, "after": 4 },
-            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.15 }
+            {
+              "path": "abilities.a2.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
+            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 }
           ],
           "atCap": [
+            {
+              "path": "abilities.a1.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
             { "path": "abilities.a1.steadfastDuration", "before": null, "after": 4 },
-            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.15 }
+            {
+              "path": "abilities.a2.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
+            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 }
           ]
         },
         {
@@ -7770,11 +7788,31 @@
           "subSkills": ["kn_champion_charge"],
           "prefix": [],
           "once": [
+            {
+              "path": "abilities.a1.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
             { "path": "abilities.a1.steadfastDuration", "before": null, "after": 4 },
+            {
+              "path": "abilities.a2.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
             { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 }
           ],
           "atCap": [
+            {
+              "path": "abilities.a1.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
             { "path": "abilities.a1.steadfastDuration", "before": null, "after": 4 },
+            {
+              "path": "abilities.a2.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
             { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 }
           ]
         },
@@ -7783,12 +7821,32 @@
           "subSkills": ["kn_champion_rally"],
           "prefix": [],
           "once": [
+            {
+              "path": "abilities.a1.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
             { "path": "abilities.a1.steadfastDuration", "before": null, "after": 4 },
+            {
+              "path": "abilities.a2.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
             { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 },
             { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 3 }
           ],
           "atCap": [
+            {
+              "path": "abilities.a1.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
             { "path": "abilities.a1.steadfastDuration", "before": null, "after": 4 },
+            {
+              "path": "abilities.a2.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
             { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 },
             { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 3 }
           ]
@@ -7798,14 +7856,32 @@
           "subSkills": ["kn_champion_riposte"],
           "prefix": [],
           "once": [
+            {
+              "path": "abilities.a1.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
             { "path": "abilities.a1.steadfastDuration", "before": null, "after": 4 },
-            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.15 }
+            {
+              "path": "abilities.a2.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
+            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 }
           ],
           "atCap": [
+            {
+              "path": "abilities.a1.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
             { "path": "abilities.a1.steadfastDuration", "before": null, "after": 4 },
-            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.15 }
+            {
+              "path": "abilities.a2.frontGuard.projection",
+              "before": null,
+              "after": { "reach": 60, "halfWidth": 60 }
+            },
+            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 4 }
           ]
         }
       ]

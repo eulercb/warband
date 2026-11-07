@@ -267,6 +267,8 @@ export interface Buff {
     usedCasts: { spent: boolean }[];
   };
   blockCounter?: number;
+  projectedGuard?: { reach: number; halfWidth: number };
+  projectedGuardClass?: ClassId;
   coating?: { damage: number; duration: number };
   venom?: { ownerId: number; accum: number; ticks: number; field?: boolean };
 }
@@ -310,6 +312,7 @@ export interface StunDr {
  * vulnerability, and pick the matching glow color per effect (§ visual-cues).
  */
 export interface BuffView {
+  projectedGuard?: { reach: number; halfWidth: number };
   whisperRefrain?: { anchor: Vec2; radius: number; charges: number };
   visual?: 'divineShield';
   /** Optional public curse owner; old snapshots omit it. */

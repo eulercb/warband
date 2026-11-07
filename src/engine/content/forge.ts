@@ -111,7 +111,13 @@ export type EffectComponent =
   | { kind: 'flowExtend'; seconds: number }
   | { kind: 'guard'; duration: number }
   | { kind: 'mirrorImages'; count: number; duration: number }
-  | { kind: 'frontGuard'; charges: number; duration: number; counter?: number }
+  | {
+      kind: 'frontGuard';
+      charges: number;
+      duration: number;
+      counter?: number;
+      projection?: { reach: number; halfWidth: number };
+    }
   | { kind: 'steadfast'; duration: number }
   | { kind: 'cleanse' }
   | { kind: 'momentum'; duration: number }
@@ -555,6 +561,7 @@ export function recompose(
           charges: e.charges,
           duration: e.duration,
           ...(e.counter ? { counter: e.counter } : {}),
+          ...(e.projection ? { projection: { ...e.projection } } : {}),
         };
         break;
       case 'steadfast':
@@ -775,7 +782,12 @@ function effectValue(e: EffectComponent, fan: number): number {
     case 'mirrorImages':
       return e.count * 15 + e.duration * 2;
     case 'frontGuard':
-      return e.charges * 20 + e.duration * 2 + (e.counter ? 8 : 0);
+      return (
+        e.charges * 20 +
+        e.duration * 2 +
+        (e.counter || e.projection ? 8 : 0) +
+        (e.projection ? (e.projection.reach + e.projection.halfWidth) * 0.2 : 0)
+      );
     case 'steadfast':
       return e.duration * 6;
     case 'cleanse':
@@ -1048,7 +1060,7 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
     case 'mirrorImages':
       return `${n(e.count)} mirror images for ${s(e.duration)}; each reduces one direct hit by 60%, then breaks; ground damage bypasses`;
     case 'frontGuard':
-      return `block ${n(e.charges)} frontal damage hits for ${s(e.duration)}; aim within 120°; hazards and control bypass${e.counter ? '; each block readies a +30% melee counter, no stacking' : ''}`;
+      return `block ${n(e.charges)} frontal damage hits for ${s(e.duration)}; aim within 120°; hazards and control bypass${e.projection ? `; project a ${n(e.projection.halfWidth * 2)}u shield ${n(e.projection.reach)}u ahead; intercept hostile shots and ready a +30% melee counter` : ''}${e.counter ? '; each block readies a +30% melee counter, no stacking' : ''}`;
     case 'steadfast':
       return `resist roots, stuns and forced movement for ${s(e.duration)} (slows still apply)`;
     case 'cleanse':
@@ -1410,7 +1422,7 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'steadfast':
       return ['selfBuff', 'heal', 'dash', 'blink', 'taunt'].includes(kind);
     case 'frontGuard':
-      return ['selfBuff', 'taunt', 'dash', 'blink'].includes(kind);
+      return !!e.projection || ['selfBuff', 'taunt', 'dash', 'blink'].includes(kind);
     case 'mirrorImages':
     case 'bloodRage':
     case 'wolfHunt':
@@ -2639,6 +2651,14 @@ function capEffect(e: EffectComponent): EffectComponent {
         ...e,
         charges: clamp(Math.round(e.charges), 1, 4),
         duration: clamp(round1(e.duration), 1, 8),
+        ...(e.projection
+          ? {
+              projection: {
+                reach: clamp(round1(e.projection.reach), 24, 60),
+                halfWidth: clamp(round1(e.projection.halfWidth), 24, 60),
+              },
+            }
+          : {}),
       };
     case 'cleanse':
       return e;

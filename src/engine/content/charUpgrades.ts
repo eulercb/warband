@@ -221,6 +221,7 @@ const KNIGHT: CharUpgradeDef[] = [
     ({ abilities: a }) => {
       if (a.a2.frontGuard)
         a.a2.frontGuard = {
+          ...a.a2.frontGuard,
           charges: Math.min(4, a.a2.frontGuard.charges + 1),
           duration: Math.min(8, a.a2.frontGuard.duration + 1.5),
         };
@@ -2365,12 +2366,22 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'kn_champion_g_a',
     'Unbroken Champion',
     '⚔️',
-    'Taunt and Shield Wall grant 4s hard-control resistance; Champion strikes leech 15%, and Second Wind grants 3s resistance',
+    'Taunt and Shield Wall project a 120u-wide shield 60u ahead, sharing their frontal-block charges. Aim to intercept hostile shots and ready a melee counter; resist hard control for 4s. Second Wind resists control for 3s',
     (a) => {
-      for (const ab of [a.a1, a.a2]) ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 4);
+      for (const [ab, charges] of [
+        [a.a1, 1],
+        [a.a2, 2],
+      ] as const) {
+        ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 4);
+        ab.frontGuard = {
+          charges,
+          duration: 4,
+          ...ab.frontGuard,
+          projection: { reach: 60, halfWidth: 60 },
+        };
+      }
     },
     (ab) => {
-      if (isStrike(ab)) lifeRider(ab, 0.15);
       if (ab.kind === 'selfBuff') ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 3);
     },
   ),
@@ -6483,15 +6494,17 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       ...base,
       name: blend(fused.name),
       desc:
-        base.id === 'wa_great_old_one_g_a'
-          ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
-          : base.id === 'wa_great_old_one_g_b'
-            ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
-            : base.id === 'wa_fiend_g_a'
-              ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
-              : base.id === 'ro_assassin_g_a'
-                ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
-                : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
+        base.id === 'kn_champion_g_a'
+          ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Intercept hostile shots to ready a melee counter; gain 4s control resistance'
+          : base.id === 'wa_great_old_one_g_a'
+            ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
+            : base.id === 'wa_great_old_one_g_b'
+              ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
+              : base.id === 'wa_fiend_g_a'
+                ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
+                : base.id === 'ro_assassin_g_a'
+                  ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
+                  : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
     };
   }
 

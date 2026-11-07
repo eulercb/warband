@@ -12,7 +12,7 @@ import { personallyCursed } from '../core/curses';
 import { supportCue, buffCues } from './visualCues';
 import { armPaladinAura } from './paladinAuras';
 import { grantAbsorption, healthScaledAbsorption } from './absorption';
-import { getClass } from '../content/classes';
+import { getClass, resolvedFrontGuard } from '../content/classes';
 /** Authored support interactions travel with copied skills, not the active class. */
 import type { Player, Vec2 } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
@@ -35,8 +35,15 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
     );
   if ((ab.kind === 'selfBuff' || ab.kind === 'groundZone') && ab.prepareCrit)
     applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
-  if (ab.frontGuard)
-    grantFrontGuard(p, ab.frontGuard.charges, ab.frontGuard.duration, ab.frontGuard.counter);
+  const frontGuard = resolvedFrontGuard(ab);
+  if (frontGuard)
+    grantFrontGuard(
+      p,
+      frontGuard.charges,
+      frontGuard.duration,
+      frontGuard.counter,
+      frontGuard.projection,
+    );
   if (ab.steadfastDuration) {
     p.buffs = p.buffs.filter((b) => b.kind !== 'root');
     p.shove = null;

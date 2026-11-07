@@ -386,7 +386,15 @@ export function buffBadges(buffs: BuffView[] | undefined, cap = 4, flying = fals
   }
   if (buffs) {
     for (const b of buffs) {
-      const d = describe(b.kind, b.mult);
+      const d =
+        b.kind === 'frontGuard' && b.projectedGuard
+          ? {
+              glyph: '▰',
+              color: 0xb9f1ff,
+              good: true,
+              label: `Projected shield: ${Math.ceil(b.mult)} shared frontal blocks; intercepted hostile shots ready a melee counter`,
+            }
+          : describe(b.kind, b.mult);
       if (!d) continue;
       const existing = byGlyph.get(d.glyph);
       if (existing?.permanent) continue; // constant status already shown — don't overwrite it
