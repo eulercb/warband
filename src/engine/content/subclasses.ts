@@ -1076,7 +1076,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'mo_openhand_wave',
           'Wave Palm',
           '🌊',
-          'Aim a 220u palm-wave for 34, pushing foes back 100u; Flow extends its reach',
+          'Aim a 200u palm-wave for 34, pushing foes back 100u',
           cone('Wave Palm', 7, 34, 220, 25, { knockback: 100, consumesFlow: true }),
         ),
         sk(

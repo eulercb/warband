@@ -447,6 +447,7 @@ export interface AncestralView {
   seedSlot?: ExtSlot;
 }
 export interface PalmSweepCast {
+  aim: Vec2;
   ownerClass: ClassId;
   epoch: number;
   source: import('../content/classes').PlayerAbilityDef;
@@ -454,6 +455,11 @@ export interface PalmSweepCast {
   dir: Vec2;
 }
 export interface PalmSweepView {
+  queuedSlot?: ExtSlot;
+  shape?: import('../content/classes').AbilityKind;
+  angle?: number;
+  halfAngle?: number;
+  range?: number;
   dir: Vec2;
   radius: number;
   distance: number;
@@ -466,6 +472,15 @@ export interface PalmSweepView {
 }
 export interface Player {
   palmEpoch?: number;
+  lastFlowSlot?: ExtSlot;
+  flowQueue?: {
+    slot: ExtSlot;
+    source: import('../content/classes').PlayerAbilityDef;
+    ownerClass: ClassId;
+    epoch: number;
+    move: Vec2;
+    aim: Vec2;
+  };
   ancestralStation?: { pos: Vec2; ownerClass: ClassId; epoch: number };
   ancestralEpoch?: number;
   maneuverEpoch?: number;

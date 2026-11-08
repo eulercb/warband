@@ -731,17 +731,17 @@ it('shows moving Palm readiness, active travel and the rooted local fallback', (
   };
   useHudStore.getState().set({ active: true, classId: 'monk', state: 'alive', palmSweep: sweep });
   const { container } = render(<TouchControls />);
-  expect(container.textContent).toContain('Moving Palm');
+  expect(container.textContent).toContain('Flowing movement');
   act(() => useHudStore.getState().set({ palmSweep: { ...sweep, active: true } }));
-  expect(container.textContent).toContain('Sweeping');
-  act(() =>
-    useHudStore.getState().set({ palmSweep: { ...sweep, blocked: 'Rooted · local Palm' } }),
-  );
-  expect(container.textContent).toContain('Rooted · local Palm');
+  expect(container.textContent).toContain('Flowing');
+  act(() => useHudStore.getState().set({ palmSweep: { ...sweep, queuedSlot: 'a2' } }));
+  expect(container.textContent).toContain('Queued');
+  act(() => useHudStore.getState().set({ palmSweep: { ...sweep, blocked: 'Rooted · no travel' } }));
+  expect(container.textContent).toContain('Rooted · no travel');
   act(() => useHudStore.getState().set({ palmSweep: { ...sweep, ready: false } }));
-  expect(container.textContent).not.toContain('Moving Palm');
+  expect(container.textContent).not.toContain('Flowing movement');
   act(() => useHudStore.getState().set({ palmSweep: { ...sweep, ready: false, casting: true } }));
-  expect(container.textContent).toContain('Moving Palm');
+  expect(container.textContent).toContain('Flowing movement');
   act(() => useHudStore.getState().set({ buffs: [{ kind: 'silence', mult: 0, remaining: 2 }] }));
-  expect(container.textContent).not.toContain('Moving Palm');
+  expect(container.textContent).not.toContain('Flowing movement');
 });

@@ -7323,7 +7323,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Flurry of Blows sweeps a full circle with +8 damage and +15u reach; connecting hits still extend existing Flow",
+      "description": "Flurry of Blows sweeps a full circle with +8 damage and +15u reach",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -11482,7 +11482,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Quivering Palm carries its burst with you up to 180u along movement input or aim, striking each foe once. Flow removes the launch wind-up; travel takes 0.4s",
+      "description": "Flow-consuming specials carry you up to 180u over 0.4s along movement input or aim; aimed strikes keep their facing. Buffer one preparer or spender during travel",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -11492,10 +11492,14 @@
           "subSkills": ["mo_openhand_flurry"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
+            { "path": "abilities.a1.palmSweep", "before": null, "after": { "distance": 180 } },
+            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } },
+            { "path": "subAbilities.sub1.palmSweep", "before": null, "after": { "distance": 180 } }
           ],
           "atCap": [
-            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
+            { "path": "abilities.a1.palmSweep", "before": null, "after": { "distance": 180 } },
+            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } },
+            { "path": "subAbilities.sub1.palmSweep", "before": null, "after": { "distance": 180 } }
           ]
         },
         {
@@ -11503,10 +11507,14 @@
           "subSkills": ["mo_openhand_wave"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
+            { "path": "abilities.a1.palmSweep", "before": null, "after": { "distance": 180 } },
+            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } },
+            { "path": "subAbilities.sub1.palmSweep", "before": null, "after": { "distance": 180 } }
           ],
           "atCap": [
-            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
+            { "path": "abilities.a1.palmSweep", "before": null, "after": { "distance": 180 } },
+            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } },
+            { "path": "subAbilities.sub1.palmSweep", "before": null, "after": { "distance": 180 } }
           ]
         },
         {
@@ -11514,9 +11522,11 @@
           "subSkills": ["mo_openhand_wind"],
           "prefix": [],
           "once": [
+            { "path": "abilities.a1.palmSweep", "before": null, "after": { "distance": 180 } },
             { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
           ],
           "atCap": [
+            { "path": "abilities.a1.palmSweep", "before": null, "after": { "distance": 180 } },
             { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
           ]
         },
@@ -11525,9 +11535,11 @@
           "subSkills": ["mo_openhand_ki"],
           "prefix": [],
           "once": [
+            { "path": "abilities.a1.palmSweep", "before": null, "after": { "distance": 180 } },
             { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
           ],
           "atCap": [
+            { "path": "abilities.a1.palmSweep", "before": null, "after": { "distance": 180 } },
             { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
           ]
         }

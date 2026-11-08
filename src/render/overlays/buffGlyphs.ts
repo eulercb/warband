@@ -154,7 +154,7 @@ function describe(
         glyph: '🌊',
         color: 0x59d9ff,
         good: true,
-        label: 'Flow: next marked skill is instant, with its listed reach/control bonus',
+        label: 'Flow prepared',
       };
     case 'harmony':
       return {

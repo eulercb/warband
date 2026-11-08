@@ -1,4 +1,10 @@
-import { reservePalmSweep, startPalmSweep, validPalmSweep, palmContact } from './palmSweep';
+import {
+  reservePalmSweep,
+  startPalmSweep,
+  validPalmSweep,
+  palmContact,
+  sweptConeContact,
+} from './palmSweep';
 import {
   reserveAncestralCast,
   ancestralOrigin,
@@ -275,6 +281,7 @@ export function stepPlayerGlide(world: World, p: Player, dt: number): void {
       p.buffs.some((b) => b.kind === 'stun' && b.remaining > 0))
   ) {
     p.glide = null;
+    delete p.flowQueue;
     return;
   }
   if (
@@ -285,11 +292,13 @@ export function stepPlayerGlide(world: World, p: Player, dt: number): void {
       p.buffs.some((b) => b.kind === 'stun' && b.remaining > 0))
   ) {
     p.glide = null;
+    delete p.flowQueue;
     return;
   }
   // A felled hero drops out of a dash (no ghost-sliding a corpse).
   if (p.state !== 'alive') {
     p.glide = null;
+    delete p.flowQueue;
     return;
   }
   const step = Math.min((g.speed ?? GLIDE_SPEED) * dt, g.remaining);
@@ -303,7 +312,11 @@ export function stepPlayerGlide(world: World, p: Player, dt: number): void {
   }
   p.pos = clampToArena(world, next, p.radius);
   if (!g.supportedAlly) g.supportedAlly = guardCrossedAlly(world, p, g.ab, from, p.pos);
-  if (g.palmSweep) resolveBurstAt(world, p, g.ab, p.pos, g.palmSweep.hitIds, from);
+  if (g.palmSweep) {
+    if (g.ab.kind === 'pbaoe') resolveBurstAt(world, p, g.ab, p.pos, g.palmSweep.hitIds, from);
+    else if (g.ab.kind === 'meleeCone')
+      resolveConeAt(world, p, g.ab, p.pos, g.palmSweep.hitIds, from);
+  }
   g.remaining -= step;
   if (ended || g.remaining <= 1e-6) {
     if (!g.palmSweep) applyDashLanding(world, p, g.ab);
@@ -445,7 +458,9 @@ export function resolvePlayerAbility(
     ...limited,
     maneuverCast: reserved?.maneuverCast ?? maneuverCast(p, limited, moveDir),
     ancestralCast: reserved?.ancestralCast ?? reserveAncestralCast(world, p, limited, slot),
-    palmSweepCast: reserved?.palmSweepCast ?? reservePalmSweep(world, p, limited, slot, moveDir),
+    palmSweepCast:
+      reserved?.palmSweepCast ??
+      reservePalmSweep(world, p, limited, slot, moveDir, limited.flowAim ?? p.aim),
     ...(limited.preparedRefund ? { refundCast: { spent: false } } : {}),
     // Every delivery owns a distinct token, including composed landing strikes.
     pilotCast: { spent: false },
@@ -474,7 +489,7 @@ export function resolvePlayerAbility(
     charge.closeBurst = { ...ab.closeBurst };
     applyBuff(p, charge);
   }
-  const aimAngle = angleOf(p.aim);
+  const aimAngle = angleOf(ab.flowAim ?? ab.palmSweepCast?.aim ?? p.aim);
   const color = CLASS_COLORS[p.classId] ?? 0xffffff;
 
   world.events.push({
@@ -505,12 +520,16 @@ export function resolvePlayerAbility(
     ab.finisherOrigin =
       kind === 'sanctuary' || kind === 'consecration'
         ? { ...p.pos }
-        : clampToArena(world, vadd(p.pos, vscale(p.aim, range)));
+        : clampToArena(
+            world,
+            vadd(p.pos, vscale(ab.flowAim ?? ab.palmSweepCast?.aim ?? p.aim, range)),
+          );
   }
   const chorus = beginSupportCast(world, p, ab);
   onManeuverCast(world, p, ab.maneuverCast);
   if (ab.components) {
     resolveComposedAbility(world, p, ab, moveDir, ab.components, chorus);
+    if (ab.kind === 'projectile' || ab.kind === 'groundZone') startPalmSweep(world, p, ab);
     recordShadowReprise(world, p, ab, slot, departure);
     openInfernalAperture(world, p, ab, slot);
     finishAncestralCast(world, p, ab);
@@ -519,40 +538,8 @@ export function resolvePlayerAbility(
 
   switch (ab.kind) {
     case 'meleeCone': {
-      const range = ab.range ?? 70;
-      const half = ((ab.halfAngleDeg ?? 45) * Math.PI) / 180;
-      emitSkillArea(world, p.id, color, {
-        kind: 'cone',
-        origin: { ...p.pos },
-        angle: aimAngle,
-        range,
-        radius: 0,
-        halfAngle: half,
-      });
-      let dealt = 0;
-      for (const b of world.bosses) {
-        if (b.hp <= 0) continue;
-        if (pointInCone(b.pos, p.pos, aimAngle, range, half, b.radius)) {
-          // item 5: a directional cone strike can crit AND backstab (rear arc).
-          dealt += damageBoss(world, p, b, ab.damage, world.meleeHit(p, b, ab));
-          applyStrikeRiders(world, p.pos, b, ab);
-        }
-      }
-      for (const a of world.adds) {
-        if (!hostileAdd(a)) continue;
-        if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
-          dealt += damageAdd(
-            world,
-            p,
-            a,
-            ab.damage * controlledSpellMultiplier(a, ab.controlDamageBonus),
-            world.critRoll(p, ab),
-          );
-          applyStrikeRiders(world, p.pos, a, ab);
-        }
-      }
-      onParryHit(p, ab, dealt);
-      lifesteal(world, p, ab, dealt);
+      const moving = startPalmSweep(world, p, ab);
+      resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
       break;
     }
 
@@ -571,6 +558,7 @@ export function resolvePlayerAbility(
         const dir = fromAngle(a);
         spawnPlayerProjectile(world, p, kind, dir, {
           speed,
+          castAim: ab.flowAim ?? ab.palmSweepCast?.aim,
           damage: ab.damage,
           impactRadius: ab.impactRadius ?? 0,
           maxRange,
@@ -635,7 +623,7 @@ export function resolvePlayerAbility(
       // slam fires on touchdown, all in stepPlayerGlide). A root locks it — a rooted
       // hero can't dash away — matching the boss charge and the root contract.
       let dir = moveDir;
-      if (dir.x === 0 && dir.y === 0) dir = p.aim;
+      if (dir.x === 0 && dir.y === 0) dir = ab.flowAim ?? p.aim;
       startGlide(world, p, ab, dir);
       break;
     }
@@ -643,7 +631,7 @@ export function resolvePlayerAbility(
     case 'blink': {
       // item 2: a teleport stays instant and may pass THROUGH movement-blocking cover
       // — but a root still locks it (blink/teleport are on the root contract).
-      const dir = normalize(p.aim);
+      const dir = normalize(ab.flowAim ?? p.aim);
       const from = { ...p.pos };
       const target = vadd(p.pos, vscale(dir, ab.range ?? 250));
       if (ab.swap) dimensionDoor(world, p, target, ab.radius ?? 220);
@@ -747,9 +735,61 @@ export function resolvePlayerAbility(
       break;
     }
   }
+  if (ab.kind === 'projectile' || ab.kind === 'groundZone') startPalmSweep(world, p, ab);
   recordShadowReprise(world, p, ab, slot, departure);
   openInfernalAperture(world, p, ab, slot);
   finishAncestralCast(world, p, ab);
+}
+
+/** Carry the aimed sector; each target is contacted once across the travelled path. */
+function resolveConeAt(
+  world: World,
+  p: Player,
+  ab: PlayerAbilityDef,
+  origin: Vec2,
+  hitIds?: number[],
+  from: Vec2 = origin,
+): void {
+  const range = ab.range ?? 70,
+    half = ((ab.halfAngleDeg ?? 45) * Math.PI) / 180,
+    aimAngle = angleOf(ab.palmSweepCast?.aim ?? ab.flowAim ?? p.aim);
+  if (!hitIds)
+    emitSkillArea(world, p.id, CLASS_COLORS[p.classId] ?? 0xffffff, {
+      kind: 'cone',
+      origin: { ...origin },
+      angle: aimAngle,
+      range,
+      radius: 0,
+      halfAngle: half,
+    });
+  let dealt = 0;
+  for (const b of world.bosses) {
+    if (b.hp <= 0 || hitIds?.includes(b.id)) continue;
+    const contact = sweptConeContact(from, origin, b.pos, aimAngle, range, half, b.radius);
+    if (contact) {
+      hitIds?.push(b.id);
+      // item 5: a directional cone strike can crit AND backstab (rear arc).
+      dealt += damageBoss(world, p, b, ab.damage, world.meleeHit(p, b, ab, contact));
+      applyStrikeRiders(world, contact, b, ab);
+    }
+  }
+  for (const a of world.adds) {
+    if (!hostileAdd(a) || hitIds?.includes(a.id)) continue;
+    const contact = sweptConeContact(from, origin, a.pos, aimAngle, range, half, a.radius);
+    if (contact) {
+      hitIds?.push(a.id);
+      dealt += damageAdd(
+        world,
+        p,
+        a,
+        ab.damage * controlledSpellMultiplier(a, ab.controlDamageBonus),
+        world.critRoll(p, ab),
+      );
+      applyStrikeRiders(world, contact, a, ab);
+    }
+  }
+  onParryHit(p, ab, dealt);
+  lifesteal(world, p, ab, dealt);
 }
 
 /** One contact per foe; moving bursts test the entire actual travelled segment. */
@@ -763,7 +803,7 @@ function resolveBurstAt(
 ): void {
   const radius = ab.radius ?? 150;
   if (!hitIds)
-    emitSkillArea(world, p.id, CLASS_COLORS[p.classId], {
+    emitSkillArea(world, p.id, CLASS_COLORS[p.classId] ?? 0xffffff, {
       kind: 'circle',
       origin: { ...origin },
       angle: 0,
@@ -931,12 +971,13 @@ function spawnComposedZone(
   z: ZoneSpec,
   range: number,
   cast?: import('../core/types').WhisperCast,
+  castAim: Vec2 = p.aim,
 ): void {
   range = Math.min(range, Math.min(world.arena.w, world.arena.h) * 0.4);
   const centered = z.zoneKind === 'sanctuary' || z.zoneKind === 'consecration';
   const pos = centered
     ? { ...p.pos }
-    : clampToArena(world, vadd(p.pos, vscale(p.aim, range)), z.radius);
+    : clampToArena(world, vadd(p.pos, vscale(castAim, range)), z.radius);
   const arm = centered ? { armTime: 0, armFrom: p.pos } : zoneArm(p.pos, pos); // item 12
   spawnZone(world, {
     kind: z.zoneKind,
@@ -984,7 +1025,7 @@ function resolveComposedAbility(
   const d = comp.delivery;
   const effects = comp.effects;
   const color = CLASS_COLORS[p.classId];
-  const aimAngle = angleOf(p.aim);
+  const aimAngle = angleOf(ab.flowAim ?? ab.palmSweepCast?.aim ?? p.aim);
   const zoneEff = effects.find((e) => e.kind === 'zone');
   const healEff = effects.find((e) => e.kind === 'heal');
   const healOnUse = effects.find((e) => e.kind === 'healOnUse');
@@ -1029,39 +1070,8 @@ function resolveComposedAbility(
 
   switch (d.kind) {
     case 'meleeCone': {
-      const range = ab.range ?? 70;
-      const half = ((ab.halfAngleDeg ?? 45) * Math.PI) / 180;
-      emitSkillArea(world, p.id, color, {
-        kind: 'cone',
-        origin: { ...p.pos },
-        angle: aimAngle,
-        range,
-        radius: 0,
-        halfAngle: half,
-      });
-      let dealt = 0;
-      for (const b of world.bosses) {
-        if (b.hp <= 0) continue;
-        if (pointInCone(b.pos, p.pos, aimAngle, range, half, b.radius)) {
-          dealt += damageBoss(world, p, b, dmg, world.meleeHit(p, b, ab));
-          applyStrikeRiders(world, p.pos, b, ab);
-        }
-      }
-      for (const a of world.adds) {
-        if (!hostileAdd(a)) continue;
-        if (pointInCone(a.pos, p.pos, aimAngle, range, half, a.radius)) {
-          dealt += damageAdd(
-            world,
-            p,
-            a,
-            dmg * controlledSpellMultiplier(a, ab.controlDamageBonus),
-            world.critRoll(p, ab),
-          );
-          applyStrikeRiders(world, p.pos, a, ab);
-        }
-      }
-      onParryHit(p, ab, dealt);
-      lifesteal(world, p, ab, dealt);
+      const moving = startPalmSweep(world, p, ab);
+      resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
       buffSelf();
       buffAllies(FORGE_RALLY_RANGE);
       break;
@@ -1095,6 +1105,7 @@ function resolveComposedAbility(
         const a = aimAngle + t * spread;
         spawnPlayerProjectile(world, p, kind, fromAngle(a), {
           speed,
+          castAim: ab.flowAim ?? ab.palmSweepCast?.aim,
           damage: dmg,
           // A shot that carries a zone needs a positive impact radius so it
           // detonates (and blooms the zone) rather than passing through.
@@ -1137,7 +1148,14 @@ function resolveComposedAbility(
     case 'groundZone': {
       prepareSpellSurge(p, ab);
       if (zoneEff && zoneEff.kind === 'zone')
-        spawnComposedZone(world, p, zoneEff.zone, ab.range ?? 500, ab.whisperCast);
+        spawnComposedZone(
+          world,
+          p,
+          zoneEff.zone,
+          ab.range ?? 500,
+          ab.whisperCast,
+          ab.flowAim ?? ab.palmSweepCast?.aim ?? p.aim,
+        );
       buffSelf();
       break;
     }
@@ -1149,7 +1167,7 @@ function resolveComposedAbility(
       // stored ab in stepPlayerGlide). A root locks either. The self-buff + component
       // heal fire on use, exactly as before.
       if (d.kind === 'blink') {
-        const dir = normalize(p.aim);
+        const dir = normalize(ab.flowAim ?? p.aim);
         const from = { ...p.pos };
         const target = vadd(p.pos, vscale(dir, ab.range ?? 220));
         if (ab.swap) dimensionDoor(world, p, target, ab.radius ?? 220);
@@ -1163,7 +1181,7 @@ function resolveComposedAbility(
         armWhisperRefrain(world, p, ab, ab.slot, from);
       } else {
         let dir = moveDir;
-        if (dir.x === 0 && dir.y === 0) dir = p.aim;
+        if (dir.x === 0 && dir.y === 0) dir = ab.flowAim ?? p.aim;
         startGlide(world, p, ab, dir, false); // composed heal handled by selfHeal()
       }
       buffSelf();
@@ -1243,7 +1261,11 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
   const radius = ab.radius ?? 130;
   const pos = centered
     ? { ...p.pos }
-    : clampToArena(world, vadd(p.pos, vscale(p.aim, ab.range ?? 500)), radius);
+    : clampToArena(
+        world,
+        vadd(p.pos, vscale(ab.flowAim ?? ab.palmSweepCast?.aim ?? p.aim, ab.range ?? 500)),
+        radius,
+      );
   // item 12 — a ranged (non-centered) cast telegraphs: an indicator flies from the
   // caster to `pos` while the zone arms, so players read where it will land.
   const arm = centered ? { armTime: 0, armFrom: p.pos } : zoneArm(p.pos, pos);
@@ -1292,6 +1314,7 @@ function projectileKindFor(p: Player, slot: ExtSlot): ProjectileKind {
 }
 
 interface SpawnProjOpts {
+  castAim?: Vec2;
   speed: number;
   damage: number;
   impactRadius: number;
@@ -1342,7 +1365,8 @@ function spawnPlayerProjectile(
     vel: vscale(dir, o.speed),
     ownerId: p.id,
     side: 'player',
-    spreadOffset: Math.atan2(dir.y, dir.x) - Math.atan2(p.aim.y, p.aim.x),
+    spreadOffset:
+      Math.atan2(dir.y, dir.x) - Math.atan2((o.castAim ?? p.aim).y, (o.castAim ?? p.aim).x),
     damage: o.damage,
     impactRadius: o.impactRadius,
     hitRadius: o.impactRadius > 0 ? 10 : 8,

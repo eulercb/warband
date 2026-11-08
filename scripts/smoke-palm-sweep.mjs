@@ -124,7 +124,8 @@ try {
           publish,
           step,
           root: () => applyBuff(p, makeBuff('root', 0, 3, 'testRoot')),
-          slot: Object.values(p.abilities).find((a) => resolvedPalmSweep(a)).slot,
+          slot: Object.values(p.abilities).find((a) => a.kind === 'pbaoe' && resolvedPalmSweep(a))
+            .slot,
         };
         publish();
       }, portable);
@@ -154,7 +155,7 @@ try {
       assert.equal(await page.evaluate(() => window.remotePalm.active), true);
       assert.equal(await page.evaluate(() => window.remotePalm.dir.x), -1);
       const controls = page.locator(width === 320 ? '.wb-touch-controls' : '.hud-bottom');
-      await controls.getByText('Sweeping', { exact: true }).waitFor();
+      await controls.getByText('Flowing', { exact: true }).waitFor();
       await page.mouse.move(0, 0);
       await page.screenshot({
         path: `${process.env.SHOT_DIR || '/tmp'}/palm-sweep-${width}-${portable ? 'forge' : 'native'}.png`,
@@ -179,12 +180,106 @@ try {
         f.root();
         f.publish();
       });
-      await controls.getByText('Rooted · local Palm', { exact: true }).waitFor();
+      await controls.getByText('Rooted · no travel', { exact: true }).waitFor();
       await press(slot);
       await page.evaluate(() => {
         for (let i = 0; i < 80; i++) window.fixture.step({}, 0.02);
       });
       assert.equal(await page.evaluate(() => window.fixture.p.pos.x), 320);
+      if (!portable) {
+        const chain = await page.evaluate(async () => {
+          const { World } = await import('/src/engine/world/world.ts');
+          const { Host } = await import('/src/net/session/host.ts');
+          const { pushHud } = await import('/src/ui/state/hudBridge.ts');
+          const { useStore } = await import('/src/ui/state/store.ts');
+          const cases = [];
+          for (const skill of [
+            'mo_openhand_flurry',
+            'mo_openhand_wave',
+            'mo_openhand_wind',
+            'mo_openhand_ki',
+          ]) {
+            const w = new World({
+              seed: 31,
+              monsterId: 'dragon',
+              players: [
+                {
+                  peerId: 'a',
+                  name: 'Flow chain',
+                  classId: 'monk',
+                  charUpgrades: ['mo_openhand_g_b'],
+                  subSkills: [skill],
+                },
+              ],
+            });
+            w.scene = null;
+            w.obstacles = [];
+            w.terrain = [];
+            const p = w.players[0];
+            p.pos = { x: 500, y: 400 };
+            w.boss.pos = { x: 900, y: 400 };
+            w.boss.moveSpeed = 0;
+            w.boss.decisionTimer = 1000;
+            useStore.setState({ mySubSkills: [skill] });
+            const host = Object.create(Host.prototype);
+            Object.assign(host, { world: w, localPlayerId: p.id, drainEvents: () => w.events });
+            const step = (buttons = {}, move = { x: 1, y: 0 }) => {
+              w.step(
+                0.01,
+                new Map([
+                  [
+                    'a',
+                    {
+                      seq: w.tick,
+                      move,
+                      aim: { x: -1, y: 0 },
+                      buttons: {
+                        basic: false,
+                        a1: false,
+                        a2: false,
+                        a3: false,
+                        revive: false,
+                        ...buttons,
+                      },
+                    },
+                  ],
+                ]),
+              );
+              if (w.tick < 70 || p.flowQueue || p.glide?.palmSweep) {
+                const view = host.getRenderState(performance.now());
+                pushHud(view, 'keyboard');
+                window.fixture.renderer.render(view);
+              }
+            };
+            const slots = ['a1', 'a3', ...(p.subAbilities.sub1.consumesFlow ? ['sub1'] : [])];
+            for (const slot of slots) {
+              step({ a2: true });
+              step({ [slot]: true }, { x: -1, y: 0 });
+              if (p.flowQueue?.slot !== slot) throw new Error(`Missing queued ${skill}/${slot}`);
+              if (p.cooldowns[slot] > 0) throw new Error('Queued action spent cooldown early');
+              await new Promise((resolve) => setTimeout(resolve, 0));
+              if (
+                !document
+                  .querySelector('.wb-touch-controls, .hud-bottom')
+                  ?.textContent.includes('Queued')
+              )
+                throw new Error('Queued cue missing');
+              for (let i = 0; i < 30 && !p.glide?.palmSweep; i++) step();
+              if (p.glide?.palmSweep?.cast.slot !== slot)
+                throw new Error(`No chained travel ${skill}/${slot}`);
+              const sweep = host.getRenderState(performance.now()).players[0].palmSweep;
+              if (sweep.dir.x !== -1 || sweep.angle !== Math.PI)
+                throw new Error('Captured travel/facing mismatch');
+              for (let i = 0; i < 45; i++) step({}, { x: 0, y: 0 });
+              // Independent repeated scenario setup, no artificial readiness or HP.
+              for (let i = 0; i < 2000; i++) step({}, { x: 0, y: 0 });
+              cases.push(`${skill}/${slot}`);
+            }
+          }
+          return cases;
+        });
+        assert.equal(chain.length, 10);
+      }
       assert.deepEqual(errors, []);
       console.log(
         `PASS Palm sweep ${width}px ${portable ? 'Forge' : 'native'}: input, travelling footprint, remote snapshot and rooted fallback`,

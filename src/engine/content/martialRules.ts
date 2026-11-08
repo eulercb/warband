@@ -1,15 +1,50 @@
-import type { AbilityKind } from './classes';
+import { boundedAbility } from './abilityLimits';
+import type { AbilityKind, PlayerAbilityDef } from './classes';
 export const BLOOD_PRICE = 0.02;
 export const BLOOD_LEECH = 0.2;
 export const HUNT_STEP = 120;
 export const FLOW_EXTENSION_CAP = 1;
-export function flowPayoff(kind: AbilityKind): string {
-  if (kind === 'projectile') return 'spend Flow for no wind-up and at least 0.6s stun on hit';
-  if (kind === 'groundZone')
-    return 'spend Flow for no wind-up, +35u radius and slow to 60% for at least 0.8s';
-  return kind === 'meleeCone'
-    ? 'spend Flow for no wind-up and +30u cone reach'
-    : 'spend Flow for no wind-up and +35u burst radius';
+export const FLOW_REACH = 30,
+  FLOW_AREA = 35,
+  FLOW_STUN = 0.6;
+export function flowPayoff(
+  kind: AbilityKind,
+  windup = 0,
+  geometry: Partial<PlayerAbilityDef> = {},
+): string {
+  const parts: string[] = [];
+  if (windup > 0) parts.push('no wind-up');
+  const base = {
+    ...geometry,
+    name: '',
+    slot: geometry.slot ?? ('sub1' as const),
+    kind,
+    cooldown: 0,
+    damage: 0,
+  };
+  if (kind === 'projectile') {
+    if ((geometry.freeze ?? 0) < FLOW_STUN) parts.push('at least 0.6s stun on hit');
+  } else if (kind === 'meleeCone') {
+    const before = boundedAbility({ ...base, range: geometry.range ?? 70 }).range;
+    const after = boundedAbility({ ...base, range: (geometry.range ?? 70) + FLOW_REACH }).range;
+    if (after > before) parts.push(`+${Math.round(after - before)}u cone reach`);
+  } else {
+    const before = boundedAbility({
+      ...base,
+      radius: geometry.radius ?? (kind === 'groundZone' ? 130 : 150),
+    }).radius;
+    const after = boundedAbility({ ...base, radius: (geometry.radius ?? 130) + FLOW_AREA }).radius;
+    if (after > before)
+      parts.push(
+        `+${Math.round(after - before)}u ${kind === 'groundZone' ? 'field' : 'burst'} radius`,
+      );
+    if (
+      kind === 'groundZone' &&
+      ((geometry.slowMult ?? 1) > 0.6 || (geometry.slowDuration ?? 0) < 0.8)
+    )
+      parts.push('slow to 60% for at least 0.8s');
+  }
+  return parts.length ? `spend Flow for ${parts.join(' and ')}` : 'consumes Flow';
 }
 
 /** Name only the geometry and payload that the receiving finisher actually uses. */
@@ -29,7 +64,7 @@ export function flowPreparation(kind: AbilityKind, duration: string): string {
         : kind === 'selfBuff'
           ? 'centering yourself'
           : 'casting';
-  return `${trigger} readies Flow for ${duration}; next marked special gains its listed Flow effect`;
+  return `${trigger} readies Flow for ${duration}`;
 }
 
 export function momentumPreparation(duration: number, hunt = 0): string | null {

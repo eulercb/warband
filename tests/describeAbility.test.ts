@@ -127,7 +127,7 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a mobility skill that heals on use shows the flat heal', () => {
     // Monk Step of the Wind — healOnUse 18.
     expect(describeAbility(CLASSES.monk.abilities.a2)).toBe(
-      'heal 18 · dashing readies Flow for 4s; next marked special gains its listed Flow effect · 250u dash · 0.3s i-frames · 5s cooldown',
+      'heal 18 · dashing readies Flow for 4s · 250u dash · 0.3s i-frames · 5s cooldown',
     );
   });
 });

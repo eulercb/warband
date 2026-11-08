@@ -14,12 +14,23 @@ export function drawPalmSweep(
     radius = r.radius * scale,
     color = r.blocked ? 0xacaab5 : 0xf4d19e;
   const alpha = r.active ? 0.85 : 0.3;
-  g.arc(p.x, p.y, radius, 0.18, Math.PI - 0.18).stroke({ color, width: r.active ? 3 : 1, alpha });
-  g.arc(p.x, p.y, radius, Math.PI + 0.18, Math.PI * 2 - 0.18).stroke({
-    color,
-    width: r.active ? 3 : 1,
-    alpha,
-  });
+  if (r.shape === 'meleeCone') {
+    const angle = r.angle ?? 0,
+      half = r.halfAngle ?? Math.PI / 4,
+      reach = (r.range ?? 70) * scale;
+    g.moveTo(p.x, p.y)
+      .lineTo(p.x + Math.cos(angle - half) * reach, p.y + Math.sin(angle - half) * reach)
+      .arc(p.x, p.y, reach, angle - half, angle + half)
+      .lineTo(p.x, p.y)
+      .stroke({ color, width: r.active ? 3 : 1, alpha });
+  } else if (!r.shape || r.shape === 'pbaoe') {
+    g.arc(p.x, p.y, radius, 0.18, Math.PI - 0.18).stroke({ color, width: r.active ? 3 : 1, alpha });
+    g.arc(p.x, p.y, radius, Math.PI + 0.18, Math.PI * 2 - 0.18).stroke({
+      color,
+      width: r.active ? 3 : 1,
+      alpha,
+    });
+  }
   if (r.active) {
     const from = screen(r.origin);
     g.moveTo(from.x, from.y)

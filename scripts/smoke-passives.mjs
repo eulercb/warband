@@ -186,7 +186,7 @@ try {
             0,
           );
         } else {
-          const flow = page.locator('.hud-selfhp').getByTitle(/Flow: next marked/);
+          const flow = page.locator('.hud-selfhp').getByTitle(/Flow prepared/);
           await hold('a2', 'KeyE', () => flow.waitFor());
           // The dash owns the hero until landing; release, then press after it finishes.
           await page.waitForTimeout(700);

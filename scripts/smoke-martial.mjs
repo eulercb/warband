@@ -118,7 +118,7 @@ try {
         await hold('a2', 'KeyE', () =>
           page
             .locator('.hud-selfhp')
-            .getByTitle(/Flow: next marked skill/)
+            .getByTitle(/Flow prepared/)
             .waitFor(),
         );
       }
@@ -137,12 +137,12 @@ try {
           .first()
           .waitFor();
       if (classId === 'monk' && !subclass) {
-        const flow = self.getByTitle(/Flow: next marked skill/);
+        const flow = self.getByTitle(/Flow prepared/);
         await flow.waitFor();
         await hold('a3', 'KeyR', () => flow.waitFor({ state: 'hidden' }));
       }
       if (subclass && classId === 'monk')
-        await self.getByTitle(/Flow: next marked skill/).waitFor({ state: 'hidden' });
+        await self.getByTitle(/Flow prepared/).waitFor({ state: 'hidden' });
       if (subclass?.skillId === 'bb_berserker_frenzy')
         await self.getByTitle(/Blood Frenzy/).waitFor();
       if (subclass?.skillId === 'bb_totem_wolf') await self.getByTitle(/Wolf Hunt/).waitFor();
