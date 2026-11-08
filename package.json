@@ -52,7 +52,10 @@
     "smoke:thought-break": "node scripts/smoke-thought-break.mjs",
     "smoke:forethought": "node scripts/smoke-forethought.mjs",
     "smoke:battle-maneuvers": "node scripts/smoke-battle-maneuvers.mjs",
-    "smoke:ancestral-relay": "node scripts/smoke-ancestral-relay.mjs"
+    "smoke:ancestral-relay": "node scripts/smoke-ancestral-relay.mjs",
+    "test:smoke-contracts": "node scripts/passive-smoke-cases.test.mjs && node scripts/defense-smoke-cases.test.mjs && node scripts/defense-cast-probe.test.mjs",
+    "pretest": "npm run test:smoke-contracts",
+    "pretest:coverage": "npm run test:smoke-contracts"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

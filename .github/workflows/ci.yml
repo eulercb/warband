@@ -51,9 +51,6 @@ jobs:
       - name: CI completion automation contracts
         run: node scripts/ci-completion.test.mjs
 
-      - name: Passive smoke roster contracts
-        run: node scripts/passive-smoke-cases.test.mjs
-
       - name: Upgrade inventory replay
         run: node scripts/audit-upgrade-catalogue.mjs --check
 
@@ -63,6 +60,7 @@ jobs:
       - name: Test + coverage (Vitest)
         # Runs the unit suite and enforces the coverage thresholds configured in
         # vite.config.ts; fails the build if coverage regresses below them.
+        # npm's pretest:coverage hook runs smoke roster/description/timing contracts first.
         run: npm run test:coverage
 
       - name: Build (tsc + Vite)

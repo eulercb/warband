@@ -99,3 +99,62 @@ and cast footprint read clearly during crowded combat.
 After acceptance: address Open Hand, then Shadow Monk in bounded deliveries;
 continue remaining nature/caster/support purpose reviews, then system tuning and
 the dedicated visual revamp. See [development status](DEVELOPMENT_STATUS.md).
+
+## PR163 CI follow-up: short-lived effect observation
+
+The original head passed nine of ten GitHub jobs, including full coverage and the
+new Totem desktop/touch scenarios. `Defense and recovery (remaining)` failed while
+waiting for Life Transfer's absorption meter after the cast. Its five preceding
+desktop cases passed. The original Life Transfer test also passed locally on both
+desktop and phone under Node 22.23.4, so the timeout was not a deterministic Totem
+failure.
+
+A broader local run reproduced a mobile Life Transfer failure with the new
+diagnostics: its cooldown had started but its self HUD disappeared. The screenshot
+showed defeat after **4.6s**, confirming that live boss damage could kill the hero
+while asynchronous test setup/readback was still in progress. The GitHub log
+alone did not reveal whether its desktop meter disappeared through consumption,
+expiry or defeat; we do not claim an exact reproduction of that unseen sequence.
+
+The runners now install Playwright's clock before page load and freeze it before
+Start Fight. Renderer/HUD setup, descriptions, input preparation and readback use
+no combat time. Real RAF/timer-driven gameplay advances in 50ms increments until
+the expected cast is observed; healing cases deliberately advance until wounded.
+No HP, boss, skill, cooldown or damage values are patched. Keyboard and touch
+still flow through the production app. This removes browser/IPC latency from the
+amount of incoming damage and effect expiry during setup and assertions.
+
+Both production defense runners now install a browser-side MutationObserver
+before sending keyboard/touch input. It retains a positive rendered meter with
+`0 < amount <= cap`, or the actual expected effect badge, alongside an observed
+positive skill cooldown. The original live boss encounter, real input, effect
+checks and description checks remain, with simulation time explicitly controlled. Silence or a non-ready button alone no
+longer qualifies as proof of a cast. A failed observation includes the skill,
+cooldown, health and effect titles in the log. No retries, longer timeouts or
+weaker barrier assertions were added.
+
+A deterministic DOM regression renders the barrier, removes it before the
+Node-side read, and verifies that the new observer retains the valid evidence.
+Negative cases cover absent effects, zero/over-cap meters, missing cooldown and
+silenced appearance; other cases cover transient badges and icon-prefixed labels.
+The production rosters now resolve names and exact loadout labels from class
+slots/stable skill IDs. Fast CI contracts compare all 16 authored description
+expectations with registry descriptions and exercise rename resilience before the
+longer browser jobs. These checks now run automatically before `npm test` and
+`npm run test:coverage`, sharing the same command locally and in GitHub.
+
+Recent failures have had several distinct causes: stale skill assertions after
+contract changes; generated dependency-cache URLs/late dependency rebuilds on a
+fresh browser server (fixed in PR161); and live-fight timing during asynchronous setup/observation. Passing a new mechanic's focused browser test did not cover all those
+shared producer surfaces. `AGENTS.md` now records the additional defense/HUD
+verification requirement so future work carries it forward automatically.
+
+The development order remains Totem live acceptance → Open Hand → Shadow Monk,
+then the remaining identity reviews, whole-system tuning and visual milestone.
+
+Follow-up verification: all 32 unique production defense/recovery scenarios passed
+across desktop and 320px touch under Node 22.23.4, including Life Transfer in both
+viewports. Completed valid cases were retained while outstanding cases were
+resumed after the lobby clock-margin correction. The 11 fast contracts, automatic
+npm test hook with 32 focused Totem tests, lint, formatting and final TypeScript
+also passed. No game source or balance values changed in this CI repair.
