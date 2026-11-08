@@ -7,7 +7,7 @@ import type { AbsorptionGrant } from '../combat/absorption';
  * Warband — data-driven class definitions (Knight / Ranger / Mage / Cleric).
  * All balance numbers per the build brief §7; tweak freely.
  */
-import { flowPayoff } from './martialRules';
+import { flowPayoff, momentumPayoff, flowPreparation, momentumPreparation } from './martialRules';
 import { bardSongText } from './bardText';
 import type { ClassId, AbilitySlot, ExtSlot, ZoneKind, CloseBurst, Vec2 } from '../core/types';
 import { PLAYER_RADIUS, CLASS_COLORS, ATTACK_CD_SCALE } from '../core/constants';
@@ -206,6 +206,8 @@ export interface PlayerAbilityDef {
   /** Standalone copied interruption; no Surge boost or cast-speed bonus. */
   /** Persistent relay of this burst's single origin; no extra damage event. */
   ancestralRelay?: { range: number };
+  palmSweep?: { distance: number };
+  palmSweepCast?: import('../core/types').PalmSweepCast;
   /** Host-only cast reservation, never authored or copied into stored ability tables. */
   ancestralCast?: import('../core/types').AncestralCast;
   /** Resolved receiving point for the existing finisher Shelter pulse. */
@@ -316,8 +318,17 @@ export function resolvedForethought(def: PlayerAbilityDef): PlayerAbilityDef['fo
   return effect?.kind === 'forethought' ? { requiresCurse: !!effect.requiresCurse } : undefined;
 }
 
+/** Only a body-bound burst can carry this attack through movement. */
+export function resolvedPalmSweep(def: PlayerAbilityDef): PlayerAbilityDef['palmSweep'] {
+  if (def.kind !== 'pbaoe' || def.slot === 'basic' || def.infernalClaim || def.ancestralRelay)
+    return undefined;
+  if (!def.components) return def.palmSweep;
+  const e = def.components.effects.find((e) => e.kind === 'palmSweep');
+  return e?.kind === 'palmSweep' ? { distance: e.distance } : undefined;
+}
 export function resolvedAncestralRelay(def: PlayerAbilityDef): PlayerAbilityDef['ancestralRelay'] {
-  if (def.kind !== 'pbaoe' || def.slot === 'basic' || def.infernalClaim) return undefined;
+  if (def.kind !== 'pbaoe' || def.slot === 'basic' || def.infernalClaim || def.palmSweep)
+    return undefined;
   if (!def.components) return def.ancestralRelay;
   const effect = def.components.effects.find((e) => e.kind === 'ancestralRelay');
   return effect?.kind === 'ancestralRelay' ? { range: effect.range } : undefined;
@@ -1324,20 +1335,18 @@ export function describeAbility(
     parts.push(
       `guard ${s(def.guardWindow)}; first damaging nonlethal hit readies next melee hit +30% for 4s`,
     );
-  if (def.momentumWindow)
-    parts.push(
-      `melee hits build up to 3 momentum during ${s(def.momentumWindow)}; marked finishers gain +10% dmg per stack (at most 1 stack per 0.4s)`,
-    );
-  if (def.spendsMomentum)
-    parts.push('spend momentum for +10% dmg and +8u cone reach / +10u burst radius per stack');
-  if (def.prepareFlow)
-    parts.push(
-      `${def.kind === 'selfBuff' ? 'centering yourself' : 'successful movement'} readies Flow for ${s(def.prepareFlow)}; next marked special is instant with more reach`,
-    );
+  if (def.momentumWindow) {
+    const setup = momentumPreparation(def.momentumWindow, def.wolfHunt);
+    if (setup) parts.push(setup);
+  }
+  if (def.spendsMomentum) parts.push(momentumPayoff(def.kind));
+  if (def.prepareFlow) parts.push(flowPreparation(def.kind, s(def.prepareFlow)));
   if (def.consumesFlow) parts.push(flowPayoff(def.kind));
   if (def.pierce)
     parts.push(
-      `pierce ${n(def.pierce)} additional ${def.pierce === 1 ? 'enemy' : 'enemies'} (direct shots only; blasts/zones use one impact)`,
+      def.impactRadius
+        ? 'blast ends at its first impact'
+        : `pierce ${n(def.pierce)} additional ${def.pierce === 1 ? 'enemy' : 'enemies'}`,
     );
 
   // --- Shape / reach ---
@@ -1381,6 +1390,10 @@ export function describeAbility(
 
   if (def.controlDamageBonus)
     parts.push(`+${n(def.controlDamageBonus * 100)}% dmg vs slowed/rooted/stunned foes`);
+  if (def.palmSweep)
+    parts.push(
+      `carry this burst with your body up to ${n(def.palmSweep.distance)}u over ${s(def.palmSweep.distance / 450)} along movement input or aim; each foe once; cover stops travel, roots make it local; no immunity`,
+    );
   if (def.ancestralRelay)
     parts.push(
       `ancestral relay within ${n(def.ancestralRelay.range)}u — burst at the prepared ancestor, then leave your cast point for the next burst; first burst is local`,

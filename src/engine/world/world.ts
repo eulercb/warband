@@ -1,3 +1,4 @@
+import { reservePalmSweep, palmSweepView } from '../combat/palmSweep';
 import {
   reserveAncestralCast,
   tickAncestralRelay,
@@ -1454,6 +1455,7 @@ export class World {
       ...consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original), this)),
     };
     ab.maneuverCast = maneuverCast(p, ab, moveDir, fresh);
+    ab.palmSweepCast = reservePalmSweep(this, p, ab, slot, moveDir);
     ab.ancestralCast = reserveAncestralCast(this, p, ab, slot);
     const nextCd = effectiveRecharge(ab, p.cooldownMult, p.castMult, slot);
     p.rechargeLocks ??= {};
@@ -1535,6 +1537,8 @@ export class World {
     };
     invalidateManeuvers(this, p);
     invalidateAncestralRelay(p);
+    p.palmEpoch = (p.palmEpoch ?? 0) + 1;
+    if (p.glide?.palmSweep) p.glide = null;
     delete p.infernalAperture;
     this.projectiles = this.projectiles.filter(
       (shot) => shot.ownerId !== p.id || !shot.apertureTransit,
@@ -4045,6 +4049,7 @@ export class World {
       maneuver: maneuverView(this, p),
       shadowReprise: shadowRepriseView(this, p),
       ancestralRelay: ancestralRelayView(this, p),
+      palmSweep: palmSweepView(this, p),
       infernalAperture: apertureView(this, p),
       buffs: p.buffs.map((b) => {
         const view = buffView(b);

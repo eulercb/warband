@@ -186,6 +186,11 @@ function AbilityIcon({
       : relay && relay.seedSlot === slot
         ? 'Place ancestor ahead'
         : null;
+  const sweep = useHudStore((s) => (s.palmSweep?.slot === slot ? s.palmSweep : undefined));
+  const sweepStatus =
+    sweep && (sweep.active || sweep.casting || sweep.ready)
+      ? (sweep.blocked ?? (sweep.active ? 'Sweeping' : 'Moving Palm'))
+      : null;
   const breakPrepared = useHudStore(
     (s) =>
       s.state === 'alive' &&
@@ -198,6 +203,7 @@ function AbilityIcon({
     : (apertureStatus ??
       repriseStatus ??
       relayStatus ??
+      sweepStatus ??
       (breakPrepared ? 'Thought Break prepared' : null));
   const claimTarget = useHudStore((s) => s.infernalClaimTargets[slot]);
   const alive = useHudStore((s) => s.state === 'alive');

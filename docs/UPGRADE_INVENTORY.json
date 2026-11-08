@@ -7426,7 +7426,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Quivering Palm pulls foes 110u inward and gains +20 damage; Flow still makes it instant and wider",
+      "description": "Quivering Palm pulls foes 110u inward and gains +20 damage",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -11394,7 +11394,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Step of the Wind and Open Hand Flow utilities prepare Flow 2s longer; basics extend it faster within the same 1s budget; direct specials gain +25% damage against controlled foes",
+      "description": "Step of the Wind and Open Hand Flow utilities prepare Flow 2s longer; direct specials gain +25% damage against controlled foes",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -11407,14 +11407,12 @@
             { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
             { "path": "abilities.a2.prepareFlow", "before": 4, "after": 6 },
             { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.flowExtendOnHit", "before": 0.25, "after": 0.5 },
             { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ],
           "atCap": [
             { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
             { "path": "abilities.a2.prepareFlow", "before": 4, "after": 6 },
             { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.flowExtendOnHit", "before": 0.25, "after": 0.5 },
             { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ]
         },
@@ -11426,14 +11424,12 @@
             { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
             { "path": "abilities.a2.prepareFlow", "before": 4, "after": 6 },
             { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.flowExtendOnHit", "before": 0.25, "after": 0.5 },
             { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ],
           "atCap": [
             { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
             { "path": "abilities.a2.prepareFlow", "before": 4, "after": 6 },
             { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.flowExtendOnHit", "before": 0.25, "after": 0.5 },
             { "path": "subAbilities.sub1.controlDamageBonus", "before": null, "after": 0.25 }
           ]
         },
@@ -11445,14 +11441,12 @@
             { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
             { "path": "abilities.a2.prepareFlow", "before": 4, "after": 6 },
             { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.flowExtendOnHit", "before": 0.25, "after": 0.5 },
             { "path": "subAbilities.sub1.prepareFlow", "before": 4, "after": 6 }
           ],
           "atCap": [
             { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
             { "path": "abilities.a2.prepareFlow", "before": 4, "after": 6 },
             { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.flowExtendOnHit", "before": 0.25, "after": 0.5 },
             { "path": "subAbilities.sub1.prepareFlow", "before": 4, "after": 6 }
           ]
         },
@@ -11464,14 +11458,12 @@
             { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
             { "path": "abilities.a2.prepareFlow", "before": 4, "after": 6 },
             { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.flowExtendOnHit", "before": 0.25, "after": 0.5 },
             { "path": "subAbilities.sub1.prepareFlow", "before": 4, "after": 6 }
           ],
           "atCap": [
             { "path": "abilities.a1.controlDamageBonus", "before": null, "after": 0.25 },
             { "path": "abilities.a2.prepareFlow", "before": 4, "after": 6 },
             { "path": "abilities.a3.controlDamageBonus", "before": null, "after": 0.25 },
-            { "path": "abilities.basic.flowExtendOnHit", "before": 0.25, "after": 0.5 },
             { "path": "subAbilities.sub1.prepareFlow", "before": 4, "after": 6 }
           ]
         }
@@ -11490,7 +11482,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Step of the Wind heals 15 more and resists hard control for 2s; Quivering Palm leeches 20%; Open Hand direct strikes leech 15%, Wind Step resists control, and Wholeness of Body cleanses",
+      "description": "Quivering Palm carries its burst with you up to 180u along movement input or aim, striking each foe once. Flow removes the launch wind-up; travel takes 0.4s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -11500,16 +11492,10 @@
           "subSkills": ["mo_openhand_flurry"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 2 },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.2 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.15 }
+            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
           ],
           "atCap": [
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 2 },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.2 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.15 }
+            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
           ]
         },
         {
@@ -11517,16 +11503,10 @@
           "subSkills": ["mo_openhand_wave"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 2 },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.2 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.15 }
+            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
           ],
           "atCap": [
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 2 },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.2 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.15 }
+            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
           ]
         },
         {
@@ -11534,16 +11514,10 @@
           "subSkills": ["mo_openhand_wind"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 2 },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.2 },
-            { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 2 }
+            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
           ],
           "atCap": [
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 2 },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.2 },
-            { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 2 }
+            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
           ]
         },
         {
@@ -11551,16 +11525,10 @@
           "subSkills": ["mo_openhand_ki"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 2 },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.2 },
-            { "path": "subAbilities.sub1.cleanseOnHeal", "before": null, "after": true }
+            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
           ],
           "atCap": [
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.steadfastDuration", "before": null, "after": 2 },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.2 },
-            { "path": "subAbilities.sub1.cleanseOnHeal", "before": null, "after": true }
+            { "path": "abilities.a3.palmSweep", "before": null, "after": { "distance": 180 } }
           ]
         }
       ]
@@ -14353,7 +14321,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Reckless Cleave sweeps a full circle and gains +12 damage; Momentum still adds reach",
+      "description": "Reckless Cleave sweeps a full circle and gains +12 damage",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -14746,7 +14714,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Shadow Dart gains +10 damage and bursts in a 65u impact radius; Flow still adds its stun",
+      "description": "Shadow Dart gains +10 damage and bursts in a 65u impact radius",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,

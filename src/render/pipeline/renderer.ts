@@ -1,3 +1,4 @@
+import { drawPalmSweep } from './palmVisuals';
 import { drawAncestralRelay } from './ancestralVisuals';
 import { drawManeuverArrow } from './maneuverVisuals';
 import { drawForesight } from './foresightVisuals';
@@ -623,6 +624,15 @@ export class Renderer {
           p.infernalAperture.bulwark
             ? this.camera.worldToScreen(p.infernalAperture.bulwark.pos)
             : undefined,
+        );
+      if (p.palmSweep)
+        drawPalmSweep(
+          g,
+          p.palmSweep,
+          p.pos,
+          (pos) => this.camera.worldToScreen(pos),
+          this.camera.scale,
+          p.id === state.localPlayerId,
         );
       if (p.ancestralRelay)
         drawAncestralRelay(

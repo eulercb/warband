@@ -67,6 +67,7 @@ export interface HudState {
   cooldowns: Cooldowns;
   maneuver?: PlayerView['maneuver'];
   ancestralRelay?: PlayerView['ancestralRelay'];
+  palmSweep?: PlayerView['palmSweep'];
   shadowReprise?: PlayerView['shadowReprise'];
   infernalAperture?: PlayerView['infernalAperture'];
   infernalClaimTargets: NonNullable<PlayerView['infernalClaimTargets']>;
@@ -117,6 +118,7 @@ const INITIAL: Omit<HudState, 'set' | 'resetHud'> = {
   infernalClaimTargets: {},
   maneuver: undefined,
   ancestralRelay: undefined,
+  palmSweep: undefined,
   shadowReprise: undefined,
   infernalAperture: undefined,
   subSkills: [],

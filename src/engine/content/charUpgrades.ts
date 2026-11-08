@@ -1936,7 +1936,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'mo_gk_a3_a',
     'Death Touch',
     '💀',
-    'Quivering Palm pulls foes 110u inward and gains +20 damage; Flow still makes it instant and wider',
+    'Quivering Palm pulls foes 110u inward and gains +20 damage',
     (ab) => {
       ab.pull = 110;
       delete ab.knockback;
@@ -2750,11 +2750,12 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'Native Rage prepares an ancestor 180u ahead. Whirlwind strikes there within 360u, then leaves your cast point as the next ancestor; preparation persists between recharges. Spirit Shelter follows the burst or Earth field',
     (a) => {
       for (const ab of Object.values(a))
-        if (ab.slot !== 'basic' && ab.kind === 'pbaoe' && !ab.infernalClaim)
+        if (ab.slot !== 'basic' && ab.kind === 'pbaoe' && !ab.infernalClaim && !ab.palmSweep)
           ab.ancestralRelay = { range: 360 };
     },
     (ab) => {
-      if (ab.kind === 'pbaoe' && !ab.infernalClaim) ab.ancestralRelay = { range: 360 };
+      if (ab.kind === 'pbaoe' && !ab.infernalClaim && !ab.palmSweep)
+        ab.ancestralRelay = { range: 360 };
     },
   ),
 
@@ -3090,15 +3091,21 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'mo_openhand_g_a',
     'Perfect Harmony',
     '👊',
-    'Step of the Wind and Open Hand Flow utilities prepare Flow 2s longer; basics extend it faster within the same 1s budget; direct specials gain +25% damage against controlled foes',
+    'Step of the Wind and Open Hand Flow utilities prepare Flow 2s longer; direct specials gain +25% damage against controlled foes',
     (a) => {
-      addN(a.a2, 'prepareFlow', 2);
-      addN(a.basic, 'flowExtendOnHit', 0.25);
-      for (const ab of [a.a1, a.a3]) addN(ab, 'controlDamageBonus', 0.25);
+      for (const ab of Object.values(a)) if (ab.prepareFlow) addN(ab, 'prepareFlow', 2);
+      for (const ab of Object.values(a))
+        if (ab.slot !== 'basic' && isStrike(ab)) {
+          if (ab.components) ab.damage *= 1.25;
+          else addN(ab, 'controlDamageBonus', 0.25);
+        }
     },
     (ab) => {
       if (ab.prepareFlow) addN(ab, 'prepareFlow', 2);
-      if (isStrike(ab)) addN(ab, 'controlDamageBonus', 0.25);
+      if (isStrike(ab)) {
+        if (ab.components) ab.damage *= 1.25;
+        else addN(ab, 'controlDamageBonus', 0.25);
+      }
     },
   ),
   pilotIdentity(
@@ -3106,16 +3113,15 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'mo_openhand_g_b',
     'Flowing Water',
     '🌊',
-    'Step of the Wind heals 15 more and resists hard control for 2s; Quivering Palm leeches 20%; Open Hand direct strikes leech 15%, Wind Step resists control, and Wholeness of Body cleanses',
+    'Quivering Palm carries its burst with you up to 180u along movement input or aim, striking each foe once. Flow removes the launch wind-up; travel takes 0.4s',
     (a) => {
-      a.a2.steadfastDuration = Math.max(a.a2.steadfastDuration ?? 0, 2);
-      addN(a.a2, 'healOnUse', 15);
-      addN(a.a3, 'lifestealFrac', 0.2);
+      for (const ab of Object.values(a))
+        if (ab.slot !== 'basic' && ab.kind === 'pbaoe' && !ab.infernalClaim && !ab.ancestralRelay)
+          ab.palmSweep = { distance: 180 };
     },
     (ab) => {
-      if (isStrike(ab)) lifeRider(ab, 0.15);
-      if (ab.kind === 'dash') ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 2);
-      if (ab.kind === 'selfBuff' && ab.healOnUse) ab.cleanseOnHeal = true;
+      if (ab.kind === 'pbaoe' && !ab.infernalClaim && !ab.ancestralRelay)
+        ab.palmSweep = { distance: 180 };
     },
   ),
   pilotIdentity(
@@ -3923,7 +3929,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'bb_berserker_reckless',
     'Reaping Arc',
     '🪓',
-    'Reckless Cleave sweeps a full circle and gains +12 damage; Momentum still adds reach',
+    'Reckless Cleave sweeps a full circle and gains +12 damage',
     (ab) => {
       ab.halfAngleDeg = 180;
       addN(ab, 'damage', 12);
@@ -4031,7 +4037,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mo_shadow_dart',
     'Splintering Dart',
     '🌑',
-    'Shadow Dart gains +10 damage and bursts in a 65u impact radius; Flow still adds its stun',
+    'Shadow Dart gains +10 damage and bursts in a 65u impact radius',
     (ab) => {
       addN(ab, 'damage', 10);
       ab.impactRadius = Math.max(ab.impactRadius ?? 0, 65);
@@ -6491,23 +6497,27 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       ...base,
       name: blend(fused.name),
       desc:
-        base.id === 'bb_totem_g_b'
-          ? 'Reforged relay: burst specials strike at your previous prepared point within 360u, then leave the current cast point for next time. First burst is local; preparation persists between recharges'
-          : base.id === 'kn_battlemaster_g_a' || base.id === 'kn_battlemaster_g_b'
-            ? base.id === 'kn_battlemaster_g_a'
-              ? 'Reforged steering: direct special hits immediately steer every foe hit 80u in the movement direction held when pressed; standing still pushes away. Once per foe per cast; 6s shared foe recovery'
-              : 'Reforged footwork: press a defensive special while moving to step up to 180u in that direction. Standing still holds position. No immunity; movement once per 6s, requires a new press'
-            : base.id === 'kn_champion_g_a'
-              ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'
-              : base.id === 'wa_great_old_one_g_a'
-                ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
-                : base.id === 'wa_great_old_one_g_b'
-                  ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
-                  : base.id === 'wa_fiend_g_a'
-                    ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
-                    : base.id === 'ro_assassin_g_a'
-                      ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
-                      : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
+        base.id === 'mo_openhand_g_a'
+          ? 'Reforged Perfect Harmony: existing Flow preparation lasts 2s longer; direct specials gain 25% damage'
+          : base.id === 'mo_openhand_g_b'
+            ? 'Reforged Flowing Water: burst specials carry their attack with your body up to 180u along movement input or aim, each foe once; ordinary wind-up and recharge, no Flow required'
+            : base.id === 'bb_totem_g_b'
+              ? 'Reforged relay: burst specials strike at your previous prepared point within 360u, then leave the current cast point for next time. First burst is local; preparation persists between recharges'
+              : base.id === 'kn_battlemaster_g_a' || base.id === 'kn_battlemaster_g_b'
+                ? base.id === 'kn_battlemaster_g_a'
+                  ? 'Reforged steering: direct special hits immediately steer every foe hit 80u in the movement direction held when pressed; standing still pushes away. Once per foe per cast; 6s shared foe recovery'
+                  : 'Reforged footwork: press a defensive special while moving to step up to 180u in that direction. Standing still holds position. No immunity; movement once per 6s, requires a new press'
+                : base.id === 'kn_champion_g_a'
+                  ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'
+                  : base.id === 'wa_great_old_one_g_a'
+                    ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
+                    : base.id === 'wa_great_old_one_g_b'
+                      ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
+                      : base.id === 'wa_fiend_g_a'
+                        ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
+                        : base.id === 'ro_assassin_g_a'
+                          ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
+                          : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
     };
   }
 

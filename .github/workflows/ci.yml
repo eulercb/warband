@@ -251,6 +251,7 @@ jobs:
           node scripts/run-smoke.mjs smoke:projected-guard
           node scripts/run-smoke.mjs smoke:battle-maneuvers
           node scripts/run-smoke.mjs smoke:ancestral-relay
+          node scripts/run-smoke.mjs smoke:palm-sweep
           node scripts/run-smoke.mjs smoke:absorption
           node scripts/run-smoke.mjs smoke:auras
           node scripts/run-smoke.mjs smoke:martial-grands

@@ -55,7 +55,8 @@
     "smoke:ancestral-relay": "node scripts/smoke-ancestral-relay.mjs",
     "test:smoke-contracts": "node scripts/passive-smoke-cases.test.mjs && node scripts/defense-smoke-cases.test.mjs && node scripts/defense-cast-probe.test.mjs",
     "pretest": "npm run test:smoke-contracts",
-    "pretest:coverage": "npm run test:smoke-contracts"
+    "pretest:coverage": "npm run test:smoke-contracts",
+    "smoke:palm-sweep": "node scripts/smoke-palm-sweep.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

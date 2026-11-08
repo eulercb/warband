@@ -31,7 +31,7 @@ import type { AbsorptionGrant } from '../combat/absorption';
  * the balance-pricing weight, the component describer and the name blender. The
  * synthesizers and the active-run registry build on these (phase B+).
  */
-import { flowPayoff } from './martialRules';
+import { flowPayoff, momentumPayoff, flowPreparation, momentumPreparation } from './martialRules';
 import { bardSongText } from './bardText';
 import type { ZoneKind, ClassId, AbilitySlot } from '../core/types';
 import type { PlayerAbilityDef, AbilityKind, ClassDef } from './classes';
@@ -137,6 +137,7 @@ export type EffectComponent =
   | { kind: 'controlDamage'; bonus: number }
   | { kind: 'prepareSurge'; duration: number }
   | { kind: 'maneuver'; mode: 'push' | 'step'; distance: number }
+  | { kind: 'palmSweep'; distance: number }
   | { kind: 'ancestralRelay'; range: number }
   | { kind: 'thoughtBreak' }
   | { kind: 'forethought'; requiresCurse?: boolean }
@@ -395,7 +396,9 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.fortune) effects.push({ kind: 'fortune', fortune: { ...def.fortune } });
   if (def.infernalAperture)
     effects.push({ kind: 'infernalAperture', aperture: { ...def.infernalAperture } });
-  if (def.ancestralRelay && def.kind === 'pbaoe' && !def.infernalClaim)
+  if (def.palmSweep && def.kind === 'pbaoe' && !def.infernalClaim && !def.ancestralRelay)
+    effects.push({ kind: 'palmSweep', distance: def.palmSweep.distance });
+  if (def.ancestralRelay && def.kind === 'pbaoe' && !def.infernalClaim && !def.palmSweep)
     effects.push({ kind: 'ancestralRelay', range: def.ancestralRelay.range });
   if (def.shadowReprise) effects.push({ kind: 'shadowReprise', reprise: { ...def.shadowReprise } });
   if (def.whisperRefrain && def.kind === 'blink')
@@ -438,7 +441,8 @@ function uniqueMentalContracts(effects: EffectComponent[]): EffectComponent[] {
       e.kind !== 'thoughtBreak' &&
       e.kind !== 'forethought' &&
       e.kind !== 'maneuver' &&
-      e.kind !== 'ancestralRelay'
+      e.kind !== 'ancestralRelay' &&
+      e.kind !== 'palmSweep'
     )
       return true;
     if (
@@ -446,6 +450,15 @@ function uniqueMentalContracts(effects: EffectComponent[]): EffectComponent[] {
       effects.some((x) => x.kind === 'skillContract' && x.contract.infernalClaim)
     )
       return false;
+    if (
+      e.kind === 'palmSweep' &&
+      effects.some(
+        (x) =>
+          x.kind === 'ancestralRelay' || (x.kind === 'skillContract' && x.contract.infernalClaim),
+      )
+    )
+      return false;
+    if (e.kind === 'ancestralRelay' && effects.some((x) => x.kind === 'palmSweep')) return false;
     if (seen.has(e.kind)) return false;
     seen.add(e.kind);
     return true;
@@ -467,13 +480,13 @@ export function recompose(
   comp: AbilityComponents,
   meta: { slot: PlayerAbilityDef['slot']; name: string; cooldown: number },
 ): PlayerAbilityDef {
-  if (comp.effects.some((e) => e.kind === 'ancestralRelay'))
+  if (comp.effects.some((e) => e.kind === 'ancestralRelay' || e.kind === 'palmSweep'))
     comp = {
       ...comp,
       effects: uniqueMentalContracts(
         comp.effects.filter(
           (e) =>
-            e.kind !== 'ancestralRelay' ||
+            (e.kind !== 'ancestralRelay' && e.kind !== 'palmSweep') ||
             (comp.delivery.kind === 'pbaoe' && meta.slot !== 'basic'),
         ),
       ),
@@ -654,6 +667,9 @@ export function recompose(
         break;
       case 'infernalAperture':
         def.infernalAperture = { ...e.aperture };
+        break;
+      case 'palmSweep':
+        def.palmSweep = { distance: e.distance };
         break;
       case 'ancestralRelay':
         def.ancestralRelay = { range: e.range };
@@ -856,6 +872,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return e.part === 'chorus' ? 15 : 8;
     case 'infernalAperture':
       return (54 * e.aperture.duration) / 6 + e.aperture.emberDamage;
+    case 'palmSweep':
+      return 18 + e.distance * 0.15;
     case 'ancestralRelay':
       return 12 + e.range * 0.08;
     case 'shadowReprise':
@@ -993,10 +1011,17 @@ export function describeComposed(comp: AbilityComponents, cooldown: number): str
     );
   if (d.kind === 'selfBuff' && d.iframes) parts.push(`${s(d.iframes)} damage immunity`);
 
-  // Every effect yields a non-empty clause, so no gap-filtering is needed.
+  // Omit a suppressed generation mode rather than advertising incompatible triggers.
+  const hunt = comp.effects.find((e) => e.kind === 'wolfHunt');
   for (const e of comp.effects) {
     const effect = fittedSurgePiercing(comp, e);
-    parts.push(effectPhrase(effect, d.kind));
+    const phrase = effectPhrase(
+      effect,
+      d.kind,
+      !!d.impactRadius || comp.effects.some((e) => e.kind === 'zone'),
+      hunt?.kind === 'wolfHunt' ? hunt.duration : 0,
+    );
+    if (phrase) parts.push(phrase);
     if (e.kind === 'surgeStrike' && (d.castTime ?? 0) > 0) parts.push('surge halves wind-up');
   }
   if (
@@ -1040,7 +1065,12 @@ function deliveryPhrase(d: Delivery): string {
 }
 
 /** A short clause for one effect, or '' when it carries no player-facing number. */
-function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
+function effectPhrase(
+  e: EffectComponent,
+  delivery: DeliveryKind,
+  singleImpact = false,
+  huntDuration = 0,
+): string {
   switch (e.kind) {
     case 'apparition':
       return `one damaged add fights its former allies (bosses resist) for ${s(e.effect.duration)}`;
@@ -1106,15 +1136,17 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
     case 'guard':
       return `guard ${s(e.duration)}; first damaging nonlethal hit readies next melee hit +30% for 4s`;
     case 'momentum':
-      return `melee hits build up to 3 momentum during ${s(e.duration)}; marked finishers gain +10% dmg per stack (at most 1 stack per 0.4s)`;
+      return momentumPreparation(e.duration, huntDuration) ?? '';
     case 'momentumStrike':
-      return 'spend momentum for +10% dmg and +8u cone reach / +10u burst radius per stack';
+      return momentumPayoff(delivery);
     case 'prepareFlow':
-      return `${delivery === 'selfBuff' ? 'centering yourself' : 'successful movement'} readies Flow for ${s(e.duration)}; next marked special is instant with more reach`;
+      return flowPreparation(delivery, s(e.duration));
     case 'flowStrike':
       return flowPayoff(delivery);
     case 'pierce':
-      return `pierce ${e.count} additional ${e.count === 1 ? 'enemy' : 'enemies'} (direct shots only; blasts/zones use one impact)`;
+      return singleImpact
+        ? 'shot ends at its first impact'
+        : `pierce ${e.count} additional ${e.count === 1 ? 'enemy' : 'enemies'}`;
     case 'paladinAura':
       return auraText(e.aura);
     case 'absorption':
@@ -1129,6 +1161,8 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return bardSongText(e.part);
     case 'infernalAperture':
       return `fixed firing conduit ${s(e.aperture.duration)}, entrance ${n(e.aperture.reach / 4)}u / exit ${n(e.aperture.reach)}u along aim; nearby mouths adjust around cover; creates 96u-wide temporary cover when space permits, blocking shots and hostile approach; aim through entrance, press again for one ${n(e.aperture.emberDamage)}-damage ember`;
+    case 'palmSweep':
+      return `carry this burst with your body up to ${n(e.distance)}u over ${s(e.distance / 450)} along movement input or aim; each foe once; cover stops travel, roots make it local; no immunity`;
     case 'ancestralRelay':
       return `burst at your ancestor within ${n(e.range)}u, then leave it at your cast position; first burst establishes it, no expiry`;
     case 'shadowReprise':
@@ -1529,6 +1563,8 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'selfBuff' || kind === 'blink' || kind === 'groundZone';
     case 'infernalAperture':
       return true;
+    case 'palmSweep':
+      return kind === 'pbaoe';
     case 'ancestralRelay':
       return kind === 'pbaoe';
     case 'shadowReprise':
@@ -2139,6 +2175,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
           emberDamage: e.aperture.emberDamage * f,
         },
       };
+    case 'palmSweep':
+      return { ...e, distance: e.distance * f };
     case 'ancestralRelay':
       return { ...e, range: e.range * f };
     case 'shadowReprise':
@@ -2340,6 +2378,7 @@ function addBoonComponents(
         'prepareCrit',
         'fortune',
         'whisperRefrain',
+        'palmSweep',
         'ancestralRelay',
         'shadowReprise',
         'infernalAperture',
@@ -2558,6 +2597,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.fortune ? { ...e, fortune: { ...def.fortune } } : e;
     case 'infernalAperture':
       return def.infernalAperture ? { ...e, aperture: { ...def.infernalAperture } } : e;
+    case 'palmSweep':
+      return def.palmSweep ? { ...e, distance: def.palmSweep.distance } : e;
     case 'ancestralRelay':
       return def.ancestralRelay ? { ...e, range: def.ancestralRelay.range } : e;
     case 'shadowReprise':
@@ -2797,6 +2838,8 @@ function capEffect(e: EffectComponent): EffectComponent {
           emberDamage: clamp(round1(e.aperture.emberDamage), 1, 22),
         },
       };
+    case 'palmSweep':
+      return { ...e, distance: clamp(round5(e.distance), 30, 180) };
     case 'ancestralRelay':
       return { ...e, range: clamp(round5(e.range), 120, 360) };
     case 'shadowReprise':
@@ -3160,12 +3203,16 @@ export function synthesizeClass(seed: number, base: ClassDef, donors: Donor[]): 
     ensureReceiver('a2', utilities, DIRECT_STRIKE);
     ensureReceiver('a3', DIRECT_STRIKE, utilities);
   }
-  // Every Barbarian kit needs an ordinary burst for Ancestral Relay's self-seeding route.
+  // Barbarian and Monk identities need a compatible starting burst; use normal synthesis/pricing.
   if (
-    base.id === 'barbarian' &&
+    (base.id === 'barbarian' || base.id === 'monk') &&
     !SLOTS.some(
       (slot) =>
-        slot !== 'basic' && abilities[slot].kind === 'pbaoe' && !abilities[slot].infernalClaim,
+        slot !== 'basic' &&
+        abilities[slot].kind === 'pbaoe' &&
+        !abilities[slot].infernalClaim &&
+        !abilities[slot].ancestralRelay &&
+        !abilities[slot].palmSweep,
     )
   ) {
     const fallback: Donor = {
@@ -3175,7 +3222,9 @@ export function synthesizeClass(seed: number, base: ClassDef, donors: Donor[]): 
       slot: 'a3',
       def: base.abilities.a3,
     };
-    const eligible = donors.filter((d) => !d.def.infernalClaim);
+    const eligible = donors.filter(
+      (d) => !d.def.infernalClaim && !d.def.ancestralRelay && !d.def.palmSweep,
+    );
     const syn = synthesizeAbility(
       seed,
       `${base.id}.a3.receiver`,
