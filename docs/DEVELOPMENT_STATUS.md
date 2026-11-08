@@ -28,25 +28,22 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Battlemaster instant group steering](BATTLEMASTER_INSTANT_STEERING.md).
-[Responsive controls](BATTLEMASTER_RESPONSIVENESS.md) were merged/tested in #161.
-The [original positioning delivery](BATTLEMASTER_POSITIONING.md) is historical.
-The owner merged/tested the silence-marker separation (#159); that readability
-follow-up is the current baseline, with future changes responding to feedback.
-Champion's projected shield and emitted-wave cover (#157–158) remain merged/tested.
+Current delivery: [Totem Ancestral Relay](TOTEM_ANCESTRAL_RELAY.md).
+[Battlemaster instant group steering](BATTLEMASTER_INSTANT_STEERING.md) (#162)
+is merged/tested and accepted. Its immediate per-enemy steering is the baseline;
+Perfect Maneuver's hit-independent defensive step remains retained.
+The owner merged/tested silence-marker separation (#159). Champion's projected
+shield and emitted-wave cover (#157–158) remain merged/tested.
 
-Battlemaster responsive controls (#161) were merged/tested; most changes felt nice.
-Perfect Maneuver's hit-independent 180u defensive step is retained. The owner
-requested that Grand Tactician move enemies during current boss actions and affect
-every enemy actually hit. This follow-up starts steering in the hit frame, tracks
-recipients per cast, and aligns moving attack geometry/remote telegraphs. Steering
-correction acceptance awaits live testing; Totem's purpose repair remains next.
+Totem B now prepares and relays a remote burst, with the existing Shelter pulse
+following its centre; Great Spirit's unrelated riders are removed. This is
+implemented and locally verified, pending owner live acceptance.
 Warlord's proactive counter core and Berserker's contact-versus-walking distinction
-remain retained review findings. Totem and Monk purpose findings remain open.
+remain retained review findings. Totem live acceptance and Monk purpose findings remain open.
 
 Thirteen of 24 subclasses have been inspected: seven earlier subclasses are
 accepted/retained, six martial subclasses now have review findings (one new
-Champion implemented, Battlemaster defensive movement retained and its steering correction awaiting live acceptance), and 11 await
+Champion implemented, Battlemaster pair accepted, Totem repair implemented pending acceptance), and 11 await
 review. Inspection,
 implementation and owner acceptance remain distinct states.
 
@@ -54,9 +51,9 @@ implementation and owner acceptance remain distinct states.
 
 | Stage                        | Concrete work                                                                                                                                  |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test immediate group steering, then repair Totem Warrior's unresolved B purpose and scattered riders.                                     |
-| Following                    | Address Totem and Monk findings in bounded deliveries; retain the Berserker distinction and useful simple skills.                              |
-| Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem/Monk findings remain open.                                                  |
+| Next                         | Live-test Totem Ancestral Relay; then address Open Hand’s unresolved purpose.                                                                  |
+| Following                    | Review and address Shadow Monk after Open Hand; retain Berserker and useful simple skills.                                                     |
+| Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem implemented awaiting live acceptance; Monk findings remain open.            |
 | Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                            |
 | Remaining caster identities  | Abjurer, Draconic and Wild Magic; Evoker stays retained.                                                                                       |
 | Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                           |

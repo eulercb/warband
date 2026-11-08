@@ -2727,35 +2727,34 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'bb_totem_g_a',
     'Great Spirit',
     '🐻',
-    'Rage blocks one frontal hit for 4s and readies a counter on the block; Reckless Swing and Whirlwind leech 10%; Totem guard, hunt, control-resistance and earth-field windows last 1s longer',
+    'Rage blocks one frontal hit for 4s and readies a melee counter; Totem guard and control-resistance windows last 1s longer, up to 8s',
     (a) => {
-      a.a1.frontGuard = { charges: 1, duration: 4, counter: 1.3 };
-      for (const ab of [a.basic, a.a3]) addN(ab, 'lifestealFrac', 0.1);
+      a.a1.frontGuard = {
+        ...a.a1.frontGuard,
+        charges: Math.max(a.a1.frontGuard?.charges ?? 0, 1),
+        duration: Math.max(a.a1.frontGuard?.duration ?? 0, 4),
+        counter: Math.max(a.a1.frontGuard?.counter ?? 0, 1.3),
+      };
     },
     (ab) => {
       if (ab.frontGuard)
         ab.frontGuard = { ...ab.frontGuard, duration: Math.min(8, ab.frontGuard.duration + 1) };
-      if (ab.wolfHunt) addN(ab, 'wolfHunt', 1);
-      if (ab.steadfastDuration) addN(ab, 'steadfastDuration', 1);
-      if (ab.kind === 'groundZone') addN(ab, 'zoneDuration', 1);
+      if (ab.steadfastDuration) ab.steadfastDuration = Math.min(8, ab.steadfastDuration + 1);
     },
   ),
   pilotIdentity(
     'bb_totem',
     'bb_totem_g_b',
-    'Ancestral Might',
+    'Ancestral Relay',
     '🌍',
-    'Rage grants 15% self mitigation and shares a 4s ward with other allies within 180u; Totem self utilities share that ward, while Earth Totem lasts 1s longer with a longer slow linger',
+    'Native Rage prepares an ancestor 180u ahead. Whirlwind strikes there within 360u, then leaves your cast point as the next ancestor; preparation persists between recharges. Spirit Shelter follows the burst or Earth field',
     (a) => {
-      setMin(a.a1, 'buffDefMult', 0.85);
-      a.a1.allyWard = { range: 180, mult: 0.85, duration: 4 };
+      for (const ab of Object.values(a))
+        if (ab.slot !== 'basic' && ab.kind === 'pbaoe' && !ab.infernalClaim)
+          ab.ancestralRelay = { range: 360 };
     },
     (ab) => {
-      if (ab.kind === 'selfBuff') ab.allyWard = { range: 180, mult: 0.85, duration: 4 };
-      if (ab.kind === 'groundZone') {
-        addN(ab, 'zoneDuration', 1);
-        addN(ab, 'slowDuration', 1);
-      }
+      if (ab.kind === 'pbaoe' && !ab.infernalClaim) ab.ancestralRelay = { range: 360 };
     },
   ),
 
@@ -6492,21 +6491,23 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       ...base,
       name: blend(fused.name),
       desc:
-        base.id === 'kn_battlemaster_g_a' || base.id === 'kn_battlemaster_g_b'
-          ? base.id === 'kn_battlemaster_g_a'
-            ? 'Reforged steering: direct special hits immediately steer every foe hit 80u in the movement direction held when pressed; standing still pushes away. Once per foe per cast; 6s shared foe recovery'
-            : 'Reforged footwork: press a defensive special while moving to step up to 180u in that direction. Standing still holds position. No immunity; movement once per 6s, requires a new press'
-          : base.id === 'kn_champion_g_a'
-            ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'
-            : base.id === 'wa_great_old_one_g_a'
-              ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
-              : base.id === 'wa_great_old_one_g_b'
-                ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
-                : base.id === 'wa_fiend_g_a'
-                  ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
-                  : base.id === 'ro_assassin_g_a'
-                    ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
-                    : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
+        base.id === 'bb_totem_g_b'
+          ? 'Reforged relay: burst specials strike at your previous prepared point within 360u, then leave the current cast point for next time. First burst is local; preparation persists between recharges'
+          : base.id === 'kn_battlemaster_g_a' || base.id === 'kn_battlemaster_g_b'
+            ? base.id === 'kn_battlemaster_g_a'
+              ? 'Reforged steering: direct special hits immediately steer every foe hit 80u in the movement direction held when pressed; standing still pushes away. Once per foe per cast; 6s shared foe recovery'
+              : 'Reforged footwork: press a defensive special while moving to step up to 180u in that direction. Standing still holds position. No immunity; movement once per 6s, requires a new press'
+            : base.id === 'kn_champion_g_a'
+              ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'
+              : base.id === 'wa_great_old_one_g_a'
+                ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
+                : base.id === 'wa_great_old_one_g_b'
+                  ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
+                  : base.id === 'wa_fiend_g_a'
+                    ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
+                    : base.id === 'ro_assassin_g_a'
+                      ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
+                      : swapDescName(base.desc, canonSubclassName(base.subclassId), fused.name),
     };
   }
 

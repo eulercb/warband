@@ -51,7 +51,8 @@
     "smoke:infernal-aperture": "node scripts/smoke-infernal-aperture.mjs",
     "smoke:thought-break": "node scripts/smoke-thought-break.mjs",
     "smoke:forethought": "node scripts/smoke-forethought.mjs",
-    "smoke:battle-maneuvers": "node scripts/smoke-battle-maneuvers.mjs"
+    "smoke:battle-maneuvers": "node scripts/smoke-battle-maneuvers.mjs",
+    "smoke:ancestral-relay": "node scripts/smoke-ancestral-relay.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

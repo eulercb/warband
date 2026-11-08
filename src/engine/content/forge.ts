@@ -137,6 +137,7 @@ export type EffectComponent =
   | { kind: 'controlDamage'; bonus: number }
   | { kind: 'prepareSurge'; duration: number }
   | { kind: 'maneuver'; mode: 'push' | 'step'; distance: number }
+  | { kind: 'ancestralRelay'; range: number }
   | { kind: 'thoughtBreak' }
   | { kind: 'forethought'; requiresCurse?: boolean }
   | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
@@ -394,6 +395,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.fortune) effects.push({ kind: 'fortune', fortune: { ...def.fortune } });
   if (def.infernalAperture)
     effects.push({ kind: 'infernalAperture', aperture: { ...def.infernalAperture } });
+  if (def.ancestralRelay && def.kind === 'pbaoe' && !def.infernalClaim)
+    effects.push({ kind: 'ancestralRelay', range: def.ancestralRelay.range });
   if (def.shadowReprise) effects.push({ kind: 'shadowReprise', reprise: { ...def.shadowReprise } });
   if (def.whisperRefrain && def.kind === 'blink')
     effects.push({ kind: 'whisperRefrain', refrain: { ...def.whisperRefrain } });
@@ -431,7 +434,18 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
 function uniqueMentalContracts(effects: EffectComponent[]): EffectComponent[] {
   const seen = new Set<string>();
   return effects.filter((e) => {
-    if (e.kind !== 'thoughtBreak' && e.kind !== 'forethought' && e.kind !== 'maneuver') return true;
+    if (
+      e.kind !== 'thoughtBreak' &&
+      e.kind !== 'forethought' &&
+      e.kind !== 'maneuver' &&
+      e.kind !== 'ancestralRelay'
+    )
+      return true;
+    if (
+      e.kind === 'ancestralRelay' &&
+      effects.some((x) => x.kind === 'skillContract' && x.contract.infernalClaim)
+    )
+      return false;
     if (seen.has(e.kind)) return false;
     seen.add(e.kind);
     return true;
@@ -453,6 +467,17 @@ export function recompose(
   comp: AbilityComponents,
   meta: { slot: PlayerAbilityDef['slot']; name: string; cooldown: number },
 ): PlayerAbilityDef {
+  if (comp.effects.some((e) => e.kind === 'ancestralRelay'))
+    comp = {
+      ...comp,
+      effects: uniqueMentalContracts(
+        comp.effects.filter(
+          (e) =>
+            e.kind !== 'ancestralRelay' ||
+            (comp.delivery.kind === 'pbaoe' && meta.slot !== 'basic'),
+        ),
+      ),
+    };
   if (
     ['forethought', 'thoughtBreak', 'maneuver'].some(
       (kind) => comp.effects.filter((e) => e.kind === kind).length > 1,
@@ -629,6 +654,9 @@ export function recompose(
         break;
       case 'infernalAperture':
         def.infernalAperture = { ...e.aperture };
+        break;
+      case 'ancestralRelay':
+        def.ancestralRelay = { range: e.range };
         break;
       case 'shadowReprise':
         def.shadowReprise = { ...e.reprise };
@@ -828,6 +856,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return e.part === 'chorus' ? 15 : 8;
     case 'infernalAperture':
       return (54 * e.aperture.duration) / 6 + e.aperture.emberDamage;
+    case 'ancestralRelay':
+      return 12 + e.range * 0.08;
     case 'shadowReprise':
       return (
         ((((e.reprise.prepared ? 30 : 40) * e.reprise.lifetime) / 6) * e.reprise.returnWindow) / 2
@@ -1099,6 +1129,8 @@ function effectPhrase(e: EffectComponent, delivery: DeliveryKind): string {
       return bardSongText(e.part);
     case 'infernalAperture':
       return `fixed firing conduit ${s(e.aperture.duration)}, entrance ${n(e.aperture.reach / 4)}u / exit ${n(e.aperture.reach)}u along aim; nearby mouths adjust around cover; creates 96u-wide temporary cover when space permits, blocking shots and hostile approach; aim through entrance, press again for one ${n(e.aperture.emberDamage)}-damage ember`;
+    case 'ancestralRelay':
+      return `burst at your ancestor within ${n(e.range)}u, then leave it at your cast position; first burst establishes it, no expiry`;
     case 'shadowReprise':
       return `departure anchor ${s(e.reprise.lifetime)}, later ${e.reprise.prepared ? 'prepared ' : ''}direct hit unlocks ${s(e.reprise.returnWindow)} return; press this skill again within ${delivery === 'blink' ? 'blink range' : `${n(e.reprise.range)}u`}`;
     case 'whisperRefrain':
@@ -1497,6 +1529,8 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'selfBuff' || kind === 'blink' || kind === 'groundZone';
     case 'infernalAperture':
       return true;
+    case 'ancestralRelay':
+      return kind === 'pbaoe';
     case 'shadowReprise':
       return true; // slotAllowsEffect excludes basic attacks
     case 'whisperRefrain':
@@ -2105,6 +2139,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
           emberDamage: e.aperture.emberDamage * f,
         },
       };
+    case 'ancestralRelay':
+      return { ...e, range: e.range * f };
     case 'shadowReprise':
       return {
         ...e,
@@ -2304,6 +2340,7 @@ function addBoonComponents(
         'prepareCrit',
         'fortune',
         'whisperRefrain',
+        'ancestralRelay',
         'shadowReprise',
         'infernalAperture',
         'thoughtBreak',
@@ -2521,6 +2558,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.fortune ? { ...e, fortune: { ...def.fortune } } : e;
     case 'infernalAperture':
       return def.infernalAperture ? { ...e, aperture: { ...def.infernalAperture } } : e;
+    case 'ancestralRelay':
+      return def.ancestralRelay ? { ...e, range: def.ancestralRelay.range } : e;
     case 'shadowReprise':
       return def.shadowReprise ? { ...e, reprise: { ...def.shadowReprise } } : e;
     case 'whisperRefrain':
@@ -2758,6 +2797,8 @@ function capEffect(e: EffectComponent): EffectComponent {
           emberDamage: clamp(round1(e.aperture.emberDamage), 1, 22),
         },
       };
+    case 'ancestralRelay':
+      return { ...e, range: clamp(round5(e.range), 120, 360) };
     case 'shadowReprise':
       return {
         ...e,
@@ -3118,6 +3159,33 @@ export function synthesizeClass(seed: number, base: ClassDef, donors: Donor[]): 
     };
     ensureReceiver('a2', utilities, DIRECT_STRIKE);
     ensureReceiver('a3', DIRECT_STRIKE, utilities);
+  }
+  // Every Barbarian kit needs an ordinary burst for Ancestral Relay's self-seeding route.
+  if (
+    base.id === 'barbarian' &&
+    !SLOTS.some(
+      (slot) =>
+        slot !== 'basic' && abilities[slot].kind === 'pbaoe' && !abilities[slot].infernalClaim,
+    )
+  ) {
+    const fallback: Donor = {
+      name: base.abilities.a3.name,
+      classId: base.id,
+      className: base.name,
+      slot: 'a3',
+      def: base.abilities.a3,
+    };
+    const eligible = donors.filter((d) => !d.def.infernalClaim);
+    const syn = synthesizeAbility(
+      seed,
+      `${base.id}.a3.receiver`,
+      'a3',
+      [...eligible, fallback],
+      new Set<DeliveryKind>(['pbaoe']),
+    );
+    classNames.set(base.id, base.name);
+    synthesized.set('a3', syn);
+    abilities.a3 = syn.def;
   }
   for (const syn of synthesized.values()) {
     for (const c of syn.donorClasses) tally.set(c, (tally.get(c) ?? 0) + 1);

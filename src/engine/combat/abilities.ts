@@ -1,3 +1,9 @@
+import {
+  reserveAncestralCast,
+  ancestralOrigin,
+  finishAncestralCast,
+  nativeRelayIdentity,
+} from './ancestralRelay';
 import { maneuverCast, onManeuverCast } from './battleManeuvers';
 import { blockBossPulse } from './projectedGuard';
 import { resolvedForethought } from '../content/classes';
@@ -426,6 +432,7 @@ export function resolvePlayerAbility(
   const ab = limited && {
     ...limited,
     maneuverCast: reserved?.maneuverCast ?? maneuverCast(p, limited, moveDir),
+    ancestralCast: reserved?.ancestralCast ?? reserveAncestralCast(world, p, limited, slot),
     ...(limited.preparedRefund ? { refundCast: { spent: false } } : {}),
     // Every delivery owns a distinct token, including composed landing strikes.
     pilotCast: { spent: false },
@@ -472,12 +479,28 @@ export function resolvePlayerAbility(
   // `.components`, so it takes the untouched switch below — byte-for-byte
   // identical when Forge is off. See docs/CHAOS_FORGE.md.
   const departure = { ...p.pos };
+  if (ab.ancestralCast?.kind === 'relay') ab.finisherOrigin = ancestralOrigin(world, p, ab);
+  else if (nativeRelayIdentity(p) && ab.kind === 'groundZone') {
+    const zone = ab.components?.effects.find((e) => e.kind === 'zone');
+    const kind =
+      zone?.kind === 'zone'
+        ? zone.zone.zoneKind
+        : (ab.zoneKind ?? ((ab.zoneTickHeal ?? 0) > 0 ? 'sanctuary' : 'rainOfArrows'));
+    const range = ab.components
+      ? Math.min(ab.range ?? 500, Math.min(world.arena.w, world.arena.h) * 0.4)
+      : (ab.range ?? 500);
+    ab.finisherOrigin =
+      kind === 'sanctuary' || kind === 'consecration'
+        ? { ...p.pos }
+        : clampToArena(world, vadd(p.pos, vscale(p.aim, range)));
+  }
   const chorus = beginSupportCast(world, p, ab);
   onManeuverCast(world, p, ab.maneuverCast);
   if (ab.components) {
     resolveComposedAbility(world, p, ab, moveDir, ab.components, chorus);
     recordShadowReprise(world, p, ab, slot, departure);
     openInfernalAperture(world, p, ab, slot);
+    finishAncestralCast(world, p, ab);
     return;
   }
 
@@ -582,9 +605,10 @@ export function resolvePlayerAbility(
         break;
       }
       const radius = ab.radius ?? 150;
+      const origin = ancestralOrigin(world, p, ab);
       emitSkillArea(world, p.id, color, {
         kind: 'circle',
-        origin: { ...p.pos },
+        origin: { ...origin },
         angle: 0,
         range: 0,
         radius,
@@ -593,7 +617,7 @@ export function resolvePlayerAbility(
       let dealt = 0;
       for (const b of world.bosses) {
         if (b.hp <= 0) continue;
-        if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
+        if (pointInCircle(b.pos, origin, radius, b.radius)) {
           // item 5: a point-blank burst can crit (omnidirectional → no backstab).
           dealt += damageBoss(
             world,
@@ -602,12 +626,12 @@ export function resolvePlayerAbility(
             ab.damage * controlledSpellMultiplier(b, ab.controlDamageBonus),
             world.critRoll(p, ab),
           );
-          applyStrikeRiders(world, p.pos, b, ab);
+          applyStrikeRiders(world, origin, b, ab);
         }
       }
       for (const a of world.adds) {
         if (!hostileAdd(a)) continue;
-        if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
+        if (pointInCircle(a.pos, origin, radius, a.radius)) {
           dealt += damageAdd(
             world,
             p,
@@ -615,7 +639,7 @@ export function resolvePlayerAbility(
             ab.damage * controlledSpellMultiplier(a, ab.controlDamageBonus),
             world.critRoll(p, ab),
           );
-          applyStrikeRiders(world, p.pos, a, ab);
+          applyStrikeRiders(world, origin, a, ab);
         }
       }
       onParryHit(p, ab, dealt);
@@ -744,6 +768,7 @@ export function resolvePlayerAbility(
   }
   recordShadowReprise(world, p, ab, slot, departure);
   openInfernalAperture(world, p, ab, slot);
+  finishAncestralCast(world, p, ab);
 }
 
 /** Resolve the closest aimed living foe carrying this player's own curse. */
@@ -951,11 +976,11 @@ function resolveComposedAbility(
     }
   };
   // Rally: put ally-targeted buffs on EVERY ally in reach (the caster included).
-  const buffAllies = (range: number): void => {
+  const buffAllies = (range: number, origin: Vec2 = p.pos): void => {
     const rallies = effects.some((e) => e.kind === 'buff' && e.target === 'allies');
     if (!rallies && !flightEff) return;
     for (const a of aliveAllies(world)) {
-      if (dist(p.pos, a.pos) > range) continue;
+      if (dist(origin, a.pos) > range) continue;
       applyForgeBuffs(a, effects, 'allies', 'forgeAlly', world, p);
       applyFlight(a);
     }
@@ -1012,9 +1037,10 @@ function resolveComposedAbility(
         break;
       }
       const radius = ab.radius ?? 150;
+      const origin = ancestralOrigin(world, p, ab);
       emitSkillArea(world, p.id, color, {
         kind: 'circle',
-        origin: { ...p.pos },
+        origin: { ...origin },
         angle: 0,
         range: 0,
         radius,
@@ -1023,7 +1049,7 @@ function resolveComposedAbility(
       let dealt = 0;
       for (const b of world.bosses) {
         if (b.hp <= 0) continue;
-        if (pointInCircle(b.pos, p.pos, radius, b.radius)) {
+        if (pointInCircle(b.pos, origin, radius, b.radius)) {
           dealt += damageBoss(
             world,
             p,
@@ -1031,12 +1057,12 @@ function resolveComposedAbility(
             dmg * controlledSpellMultiplier(b, ab.controlDamageBonus),
             world.critRoll(p, ab),
           );
-          applyStrikeRiders(world, p.pos, b, ab);
+          applyStrikeRiders(world, origin, b, ab);
         }
       }
       for (const a of world.adds) {
         if (!hostileAdd(a)) continue;
-        if (pointInCircle(a.pos, p.pos, radius, a.radius)) {
+        if (pointInCircle(a.pos, origin, radius, a.radius)) {
           dealt += damageAdd(
             world,
             p,
@@ -1044,14 +1070,14 @@ function resolveComposedAbility(
             dmg * controlledSpellMultiplier(a, ab.controlDamageBonus),
             world.critRoll(p, ab),
           );
-          applyStrikeRiders(world, p.pos, a, ab);
+          applyStrikeRiders(world, origin, a, ab);
         }
       }
       onParryHit(p, ab, dealt);
       lifesteal(world, p, ab, dealt);
       if (ab.rebukeDuration) armRebuke(p, ab);
       buffSelf();
-      buffAllies(FORGE_RALLY_RANGE);
+      buffAllies(FORGE_RALLY_RANGE, origin);
       break;
     }
 

@@ -175,6 +175,17 @@ function AbilityIcon({
       ? `Return ${reprise.returnRemaining.toFixed(1)}s${reprise.blocked ? ` · ${reprise.blocked}` : ''}`
       : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
     : null;
+  const relay = useHudStore((s) => s.ancestralRelay);
+  const relayStatus =
+    relay && relay.slot === slot
+      ? relay.remote
+        ? 'At ancestor'
+        : relay.station
+          ? 'At you · ancestor out of reach'
+          : 'At you · establish ancestor'
+      : relay && relay.seedSlot === slot
+        ? 'Place ancestor ahead'
+        : null;
   const breakPrepared = useHudStore(
     (s) =>
       s.state === 'alive' &&
@@ -184,7 +195,10 @@ function AbilityIcon({
   );
   const actionStatus = reprise?.armed
     ? repriseStatus
-    : (apertureStatus ?? repriseStatus ?? (breakPrepared ? 'Thought Break prepared' : null));
+    : (apertureStatus ??
+      repriseStatus ??
+      relayStatus ??
+      (breakPrepared ? 'Thought Break prepared' : null));
   const claimTarget = useHudStore((s) => s.infernalClaimTargets[slot]);
   const alive = useHudStore((s) => s.state === 'alive');
   // Subscribe to bindings so the label updates live when the player rebinds.

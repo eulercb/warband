@@ -9650,7 +9650,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Rage blocks one frontal hit for 4s and readies a counter on the block; Reckless Swing and Whirlwind leech 10%; Totem guard, hunt, control-resistance and earth-field windows last 1s longer",
+      "description": "Rage blocks one frontal hit for 4s and readies a melee counter; Totem guard and control-resistance windows last 1s longer, up to 8s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -9665,8 +9665,6 @@
               "before": null,
               "after": { "charges": 1, "duration": 4, "counter": 1.3 }
             },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.1 },
-            { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.1 },
             { "path": "subAbilities.sub1.frontGuard.duration", "before": 6, "after": 7 },
             { "path": "subAbilities.sub1.steadfastDuration", "before": 6, "after": 7 }
           ],
@@ -9676,8 +9674,6 @@
               "before": null,
               "after": { "charges": 1, "duration": 4, "counter": 1.3 }
             },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.1 },
-            { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.1 },
             { "path": "subAbilities.sub1.frontGuard.duration", "before": 6, "after": 7 },
             { "path": "subAbilities.sub1.steadfastDuration", "before": 6, "after": 7 }
           ]
@@ -9691,20 +9687,14 @@
               "path": "abilities.a1.frontGuard",
               "before": null,
               "after": { "charges": 1, "duration": 4, "counter": 1.3 }
-            },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.1 },
-            { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.1 },
-            { "path": "subAbilities.sub1.wolfHunt", "before": 5, "after": 6 }
+            }
           ],
           "atCap": [
             {
               "path": "abilities.a1.frontGuard",
               "before": null,
               "after": { "charges": 1, "duration": 4, "counter": 1.3 }
-            },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.1 },
-            { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.1 },
-            { "path": "subAbilities.sub1.wolfHunt", "before": 5, "after": 6 }
+            }
           ]
         },
         {
@@ -9716,20 +9706,14 @@
               "path": "abilities.a1.frontGuard",
               "before": null,
               "after": { "charges": 1, "duration": 4, "counter": 1.3 }
-            },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.1 },
-            { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.1 },
-            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 5 }
+            }
           ],
           "atCap": [
             {
               "path": "abilities.a1.frontGuard",
               "before": null,
               "after": { "charges": 1, "duration": 4, "counter": 1.3 }
-            },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.1 },
-            { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.1 },
-            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 5 }
+            }
           ]
         },
         {
@@ -9742,8 +9726,6 @@
               "before": null,
               "after": { "charges": 1, "duration": 4, "counter": 1.3 }
             },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.1 },
-            { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.1 },
             { "path": "subAbilities.sub1.steadfastDuration", "before": 2, "after": 3 }
           ],
           "atCap": [
@@ -9752,8 +9734,6 @@
               "before": null,
               "after": { "charges": 1, "duration": 4, "counter": 1.3 }
             },
-            { "path": "abilities.a3.lifestealFrac", "before": null, "after": 0.1 },
-            { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.1 },
             { "path": "subAbilities.sub1.steadfastDuration", "before": 2, "after": 3 }
           ]
         }
@@ -9761,7 +9741,7 @@
     },
     {
       "id": "bb_totem_g_b",
-      "name": "Ancestral Might",
+      "name": "Ancestral Relay",
       "category": "subclass-grand",
       "classId": "barbarian",
       "exclude": [],
@@ -9772,7 +9752,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Rage grants 15% self mitigation and shares a 4s ward with other allies within 180u; Totem self utilities share that ward, while Earth Totem lasts 1s longer with a longer slow linger",
+      "description": "Native Rage prepares an ancestor 180u ahead. Whirlwind strikes there within 360u, then leaves your cast point as the next ancestor; preparation persists between recharges. Spirit Shelter follows the burst or Earth field",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -9782,30 +9762,10 @@
           "subSkills": ["bb_totem_bear"],
           "prefix": [],
           "once": [
-            {
-              "path": "abilities.a1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            },
-            { "path": "abilities.a1.buffDefMult", "before": null, "after": 0.85 },
-            {
-              "path": "subAbilities.sub1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            }
+            { "path": "abilities.a3.ancestralRelay", "before": null, "after": { "range": 360 } }
           ],
           "atCap": [
-            {
-              "path": "abilities.a1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            },
-            { "path": "abilities.a1.buffDefMult", "before": null, "after": 0.85 },
-            {
-              "path": "subAbilities.sub1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            }
+            { "path": "abilities.a3.ancestralRelay", "before": null, "after": { "range": 360 } }
           ]
         },
         {
@@ -9813,30 +9773,10 @@
           "subSkills": ["bb_totem_wolf"],
           "prefix": [],
           "once": [
-            {
-              "path": "abilities.a1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            },
-            { "path": "abilities.a1.buffDefMult", "before": null, "after": 0.85 },
-            {
-              "path": "subAbilities.sub1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            }
+            { "path": "abilities.a3.ancestralRelay", "before": null, "after": { "range": 360 } }
           ],
           "atCap": [
-            {
-              "path": "abilities.a1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            },
-            { "path": "abilities.a1.buffDefMult", "before": null, "after": 0.85 },
-            {
-              "path": "subAbilities.sub1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            }
+            { "path": "abilities.a3.ancestralRelay", "before": null, "after": { "range": 360 } }
           ]
         },
         {
@@ -9844,24 +9784,10 @@
           "subSkills": ["bb_totem_quake"],
           "prefix": [],
           "once": [
-            {
-              "path": "abilities.a1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            },
-            { "path": "abilities.a1.buffDefMult", "before": null, "after": 0.85 },
-            { "path": "subAbilities.sub1.slowDuration", "before": 1, "after": 2 },
-            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 5 }
+            { "path": "abilities.a3.ancestralRelay", "before": null, "after": { "range": 360 } }
           ],
           "atCap": [
-            {
-              "path": "abilities.a1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            },
-            { "path": "abilities.a1.buffDefMult", "before": null, "after": 0.85 },
-            { "path": "subAbilities.sub1.slowDuration", "before": 1, "after": 2 },
-            { "path": "subAbilities.sub1.zoneDuration", "before": 4, "after": 5 }
+            { "path": "abilities.a3.ancestralRelay", "before": null, "after": { "range": 360 } }
           ]
         },
         {
@@ -9869,30 +9795,10 @@
           "subSkills": ["bb_totem_mend"],
           "prefix": [],
           "once": [
-            {
-              "path": "abilities.a1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            },
-            { "path": "abilities.a1.buffDefMult", "before": null, "after": 0.85 },
-            {
-              "path": "subAbilities.sub1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            }
+            { "path": "abilities.a3.ancestralRelay", "before": null, "after": { "range": 360 } }
           ],
           "atCap": [
-            {
-              "path": "abilities.a1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            },
-            { "path": "abilities.a1.buffDefMult", "before": null, "after": 0.85 },
-            {
-              "path": "subAbilities.sub1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            }
+            { "path": "abilities.a3.ancestralRelay", "before": null, "after": { "range": 360 } }
           ]
         }
       ]

@@ -164,6 +164,17 @@ function TouchButton({
       ? `Return ${reprise.returnRemaining.toFixed(1)}s${reprise.blocked ? ` · ${reprise.blocked}` : ''}`
       : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
     : null;
+  const relay = useHudStore((s) => s.ancestralRelay);
+  const relayStatus =
+    relay && relay.slot === cdSlot
+      ? relay.remote
+        ? 'At ancestor'
+        : relay.station
+          ? 'At you · ancestor out of reach'
+          : 'At you · establish ancestor'
+      : relay && relay.seedSlot === cdSlot
+        ? 'Place ancestor ahead'
+        : null;
   const breakPrepared = useHudStore(
     (s) =>
       s.state === 'alive' &&
@@ -173,7 +184,7 @@ function TouchButton({
   );
   const actionStatus = reprise?.armed
     ? repriseStatus
-    : (apertureStatus ?? repriseStatus ?? (breakPrepared ? 'Break prepared' : null));
+    : (apertureStatus ?? repriseStatus ?? relayStatus ?? (breakPrepared ? 'Break prepared' : null));
   const claimTarget = useHudStore((s) => (cdSlot ? s.infernalClaimTargets[cdSlot] : undefined));
   const alive = useHudStore((s) => s.state === 'alive');
   const frac = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;

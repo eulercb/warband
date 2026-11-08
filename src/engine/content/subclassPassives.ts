@@ -22,7 +22,7 @@ export const SUBCLASS_PASSIVES: Record<string, SubclassPassiveDef> = {
     classId: 'barbarian',
     name: 'Spirit Shelter',
     icon: '🐻',
-    desc: 'Spending Momentum grants you and living allies within 180u the greater of 8 + 4 per stack or 4% + 2% recipient max HP per stack (up to 20 or 10% max HP) as absorption, lasting 4s. Once per 6s.',
+    desc: 'Spending Momentum grants you and living allies within 180u the greater of 8 + 4 per stack or 4% + 2% recipient max HP per stack (up to 20 or 10% max HP) as absorption, lasting 4s. Once per 6s. Ancestral Relay centres this pulse on its burst or placed Earth field.',
   },
   mo_openhand: {
     id: 'openhand_flowguard',
