@@ -36,6 +36,9 @@ calculation for prepared previews rather than duplicating its geometry rules.
 Owner follow-up: preparers state preparation/duration without repeating receiver
 payoffs. Do not advertise removal of absent windup or geometry/control bonuses
 already met or capped; inspect native, upgraded and composed descriptions.
+If pruning exposes a spender with no actual attack payoff, fix its resource
+interaction rather than restoring an inactive claim. Check resolved prepared
+versus unprepared payloads through Honed, grands and retained Forge components.
 
 Before presenting a redesign, describe what a player or enemy actually does
 differently, compare it with existing mechanics, and show a useful solo-boss

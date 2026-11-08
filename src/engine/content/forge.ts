@@ -1146,10 +1146,15 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
       return flowPreparation(delivery, s(e.duration));
     case 'flowStrike': {
       const freeze = comp.effects.findLast((x) => x.kind === 'freeze'),
-        zone = comp.effects.find((x) => x.kind === 'zone');
+        zone = comp.effects.find((x) => x.kind === 'zone'),
+        push = comp.effects.findLast((x) => x.kind === 'shove' && !x.pull),
+        pull = comp.effects.findLast((x) => x.kind === 'shove' && x.pull);
       return flowPayoff(delivery, windup, {
         ...d,
         freeze: freeze?.kind === 'freeze' ? freeze.seconds : undefined,
+        knockback: push?.kind === 'shove' ? push.distance : undefined,
+        pull: pull?.kind === 'shove' ? pull.distance : undefined,
+        radius: zone?.kind === 'zone' ? zone.zone.radius : d.radius,
         slowMult: zone?.kind === 'zone' ? zone.zone.slowMult : undefined,
         slowDuration: zone?.kind === 'zone' ? zone.zone.slowDuration : undefined,
         zoneTickHeal: zone?.kind === 'zone' ? zone.zone.tickHeal : undefined,

@@ -7,6 +7,35 @@ export const FLOW_EXTENSION_CAP = 1;
 export const FLOW_REACH = 30,
   FLOW_AREA = 35,
   FLOW_STUN = 0.6;
+export const FLOW_FORCE = 40,
+  FLOW_FORCE_CAP = 260;
+/** Resolve capped cone reach and its existing-force fallback for both combat and readouts. */
+export function flowConeEffects(ab: Partial<PlayerAbilityDef>): {
+  range: number;
+  knockback?: number;
+  pull?: number;
+} {
+  const base = {
+    ...ab,
+    name: '',
+    slot: ab.slot ?? ('sub1' as const),
+    kind: 'meleeCone' as const,
+    cooldown: 0,
+    damage: 0,
+    range: ab.range ?? 70,
+  };
+  const range = base.range + FLOW_REACH;
+  if (boundedAbility({ ...base, range }).range > boundedAbility(base).range) return { range };
+  if ((ab.knockback ?? 0) > 0)
+    return {
+      range,
+      knockback: Math.max(ab.knockback!, Math.min(FLOW_FORCE_CAP, ab.knockback! + FLOW_FORCE)),
+    };
+  if ((ab.pull ?? 0) > 0)
+    return { range, pull: Math.max(ab.pull!, Math.min(FLOW_FORCE_CAP, ab.pull! + FLOW_FORCE)) };
+  return { range };
+}
+
 export function flowPayoff(
   kind: AbilityKind,
   windup = 0,
@@ -26,8 +55,13 @@ export function flowPayoff(
     if ((geometry.freeze ?? 0) < FLOW_STUN) parts.push('at least 0.6s stun on hit');
   } else if (kind === 'meleeCone') {
     const before = boundedAbility({ ...base, range: geometry.range ?? 70 }).range;
-    const after = boundedAbility({ ...base, range: (geometry.range ?? 70) + FLOW_REACH }).range;
+    const effects = flowConeEffects(geometry);
+    const after = boundedAbility({ ...base, ...effects }).range;
     if (after > before) parts.push(`+${Math.round(after - before)}u cone reach`);
+    const push = (effects.knockback ?? geometry.knockback ?? 0) - (geometry.knockback ?? 0);
+    const pull = (effects.pull ?? geometry.pull ?? 0) - (geometry.pull ?? 0);
+    if (push > 0) parts.push(`+${Math.round(push)}u push`);
+    else if (pull > 0) parts.push(`+${Math.round(pull)}u pull`);
   } else {
     const before = boundedAbility({
       ...base,
