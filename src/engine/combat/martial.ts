@@ -4,7 +4,7 @@ import {
   BLOOD_LEECH,
   HUNT_STEP,
   FLOW_EXTENSION_CAP,
-  FLOW_REACH,
+  flowConeEffects,
   FLOW_AREA,
   FLOW_STUN,
 } from '../content/martialRules';
@@ -205,7 +205,7 @@ export function consumeMartialFinishers(p: Player, ab: PlayerAbilityDef): Player
               : e,
           ),
         };
-    } else if (out.kind === 'meleeCone') out.range = (out.range ?? 70) + FLOW_REACH;
+    } else if (out.kind === 'meleeCone') out = { ...out, ...flowConeEffects(out) };
     else out.radius = (out.radius ?? 130) + FLOW_AREA;
   }
   return out;

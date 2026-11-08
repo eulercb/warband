@@ -253,6 +253,9 @@ try {
             };
             const slots = ['a1', 'a3', ...(p.subAbilities.sub1.consumesFlow ? ['sub1'] : [])];
             for (const slot of slots) {
+              if (skill === 'mo_openhand_wave' && slot === 'sub1')
+                w.boss.pos = { x: p.pos.x - 100, y: p.pos.y };
+              const hp = w.boss.hp;
               step({ a2: true });
               step({ [slot]: true }, { x: -1, y: 0 });
               if (p.flowQueue?.slot !== slot) throw new Error(`Missing queued ${skill}/${slot}`);
@@ -267,6 +270,22 @@ try {
               for (let i = 0; i < 30 && !p.glide?.palmSweep; i++) step();
               if (p.glide?.palmSweep?.cast.slot !== slot)
                 throw new Error(`No chained travel ${skill}/${slot}`);
+              if (skill === 'mo_openhand_wave' && slot === 'sub1') {
+                // The retreating body must first carry the aimed wave into contact.
+                for (let i = 0; i < 20 && w.boss.hp === hp && p.glide?.palmSweep; i++)
+                  step({}, { x: 0, y: 0 });
+                if (p.glide.ab.knockback !== 140 || !(w.boss.hp < hp) || !(w.boss.shove?.vx < 0))
+                  throw new Error(
+                    `Wave prepared push mismatch: ${JSON.stringify({ force: p.glide.ab.knockback, hp: w.boss.hp, before: hp, shove: w.boss.shove, boss: w.boss.pos, player: p.pos, aim: p.aim })}`,
+                  );
+                await new Promise((resolve) => setTimeout(resolve, 0));
+                if (
+                  ![...document.querySelectorAll('[title]')].some((el) =>
+                    el.title.includes('spend Flow for +40u push'),
+                  )
+                )
+                  throw new Error('Wave Flow payoff missing from skill readout');
+              }
               const sweep = host.getRenderState(performance.now()).players[0].palmSweep;
               if (sweep.dir.x !== -1 || sweep.angle !== Math.PI)
                 throw new Error('Captured travel/facing mismatch');
