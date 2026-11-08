@@ -80,7 +80,7 @@ export const DEFENSE_CASES = {
       classId: 'monk',
       skillId: 'mo_openhand_ki',
       text: /centering yourself/,
-      badge: /Flow: next marked/,
+      badge: /Flow prepared/,
       hurt: true,
     },
     {

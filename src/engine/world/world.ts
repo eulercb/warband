@@ -1,4 +1,10 @@
-import { reservePalmSweep, palmSweepView } from '../combat/palmSweep';
+import { resolvedPalmSweep } from '../content/classes';
+import {
+  reservePalmSweep,
+  palmSweepView,
+  bufferFlowAction,
+  maintainFlowQueue,
+} from '../combat/palmSweep';
 import {
   reserveAncestralCast,
   tickAncestralRelay,
@@ -1335,6 +1341,7 @@ export class World {
   private applyInputs(dt: number, inputs: Map<string, InputCommand>): void {
     for (const p of this.players) {
       const cmd = inputs.get(p.peerId) ?? ZERO_INPUT;
+      maintainFlowQueue(this, p);
       if (p.state !== 'alive') {
         p.prevButtons = { ...cmd.buttons };
         continue;
@@ -1360,6 +1367,16 @@ export class World {
       // shove owns their position — input movement + abilities hold until it lands,
       // so the push travels its full distance rather than being walked out of.
       const shoved = p.shove != null;
+      if (gliding && !stunned && !shoved && this.scene === null) {
+        for (const slot of [...SLOTS, ...SUB_SLOTS]) {
+          if (
+            cmd.buttons[slot] &&
+            !p.prevButtons[slot] &&
+            bufferFlowAction(this, p, slot, normalize(cmd.move), p.aim)
+          )
+            break;
+        }
+      }
 
       if (!stunned && !casting && !gliding && !shoved) {
         const move = clampLength(cmd.move, 1);
@@ -1383,6 +1400,7 @@ export class World {
             // (tryUseAbility still gates on cooldown, so it fires at cadence).
             const held = cmd.buttons[slot];
             const fired = cmd.autofire ? held : held && !p.prevButtons[slot];
+            if (p.glide || p.castTimer > 0) break;
             if (fired) this.tryUseAbility(p, slot, moveDir, !p.prevButtons[slot]);
           }
           // Subclass skills (item 13) — same edge / autofire rules, but only while
@@ -1393,7 +1411,20 @@ export class World {
             if (!subSlotForActiveClass(p, slot)) continue;
             const held = cmd.buttons[slot] ?? false;
             const fired = cmd.autofire ? held : held && !(p.prevButtons[slot] ?? false);
+            if (p.glide || p.castTimer > 0) break;
             if (fired) this.tryUseAbility(p, slot, moveDir, !p.prevButtons[slot]);
+          }
+          if (!gliding && p.glide) {
+            const launched = p.glide.palmSweep?.cast.slot ?? p.glide.ab.slot;
+            for (const slot of [...SLOTS, ...SUB_SLOTS]) {
+              if (
+                slot !== launched &&
+                cmd.buttons[slot] &&
+                !p.prevButtons[slot] &&
+                bufferFlowAction(this, p, slot, moveDir, p.aim)
+              )
+                break;
+            }
           }
           // Multiclass swap (item 14) is no longer driven off the raw button here:
           // the client owns the tap-vs-hold gesture (a quick tap cycles, a hold
@@ -1412,6 +1443,12 @@ export class World {
   private stepGlides(dt: number): void {
     for (const p of this.players) {
       if (p.glide) stepPlayerGlide(this, p, dt);
+      maintainFlowQueue(this, p);
+      if (!p.glide && p.flowQueue) {
+        const queued = p.flowQueue;
+        delete p.flowQueue;
+        this.tryUseAbility(p, queued.slot, queued.move, true, queued.aim);
+      }
     }
   }
 
@@ -1431,7 +1468,13 @@ export class World {
     }
   }
 
-  private tryUseAbility(p: Player, slot: ExtSlot, moveDir: Vec2, fresh = false): void {
+  private tryUseAbility(
+    p: Player,
+    slot: ExtSlot,
+    moveDir: Vec2,
+    fresh = false,
+    capturedAim?: Vec2,
+  ): void {
     const original = abilityForSlot(p, slot);
     if (!original) return; // sub slot with no bound skill
     if (tryApertureEmber(this, p, slot, fresh)) return;
@@ -1454,8 +1497,9 @@ export class World {
     const ab = {
       ...consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original), this)),
     };
+    if (capturedAim || resolvedPalmSweep(ab)) ab.flowAim = { ...(capturedAim ?? p.aim) };
     ab.maneuverCast = maneuverCast(p, ab, moveDir, fresh);
-    ab.palmSweepCast = reservePalmSweep(this, p, ab, slot, moveDir);
+    ab.palmSweepCast = reservePalmSweep(this, p, ab, slot, moveDir, ab.flowAim ?? p.aim);
     ab.ancestralCast = reserveAncestralCast(this, p, ab, slot);
     const nextCd = effectiveRecharge(ab, p.cooldownMult, p.castMult, slot);
     p.rechargeLocks ??= {};
@@ -1538,6 +1582,8 @@ export class World {
     invalidateManeuvers(this, p);
     invalidateAncestralRelay(p);
     p.palmEpoch = (p.palmEpoch ?? 0) + 1;
+    delete p.flowQueue;
+    delete p.lastFlowSlot;
     if (p.glide?.palmSweep) p.glide = null;
     delete p.infernalAperture;
     this.projectiles = this.projectiles.filter(
@@ -2000,12 +2046,13 @@ export class World {
       whisperCast?: import('../core/types').WhisperCast;
       mark?: { bonus: number; cast: { spent: boolean } };
     },
+    origin: Vec2 = source.pos,
   ): HitMods {
     const hit = this.critRoll(
       source,
       hasBuff(boss, 'invuln') ? { ...bonus, consumesPrecision: false } : bonus,
     );
-    const toAttacker = angleOf(sub(source.pos, boss.pos));
+    const toAttacker = angleOf(sub(origin, boss.pos));
     const backstab = inRearArc(boss.facing, toAttacker, BACKSTAB_REAR_ARC_DEG);
     return {
       ...hit,

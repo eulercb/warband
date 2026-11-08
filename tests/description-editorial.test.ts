@@ -76,13 +76,13 @@ it('resource clauses describe only the receiving skill geometry, native and comp
   expect(dart).toContain('at least 0.6s stun on hit');
   expect(dart).not.toMatch(/cone reach|burst radius/);
   const field = describeAbility(getSubSkill('mo_shadow_cloud')!.ability);
-  expect(field).toContain('+35u radius');
+  expect(field).toContain('+35u field radius');
   expect(field).not.toContain('cone reach');
 });
 it('preparation utilities do not promise receiver geometry and direct arrows omit blast caveats', () => {
   for (const id of ['mo_openhand_wind', 'mo_openhand_ki', 'mo_shadow_step']) {
     const text = describeAbility(getSubSkill(id)!.ability);
-    expect(text).toContain('next marked special gains its listed Flow effect');
+    expect(text).not.toContain('next marked special');
     expect(text).not.toContain('instant with more reach');
   }
   const arrow = describeAbility({ ...CLASSES.ranger.abilities.basic, pierce: 2 });
@@ -106,4 +106,39 @@ it('walking replacement does not simultaneously advertise melee Momentum generat
   expect(describeAbility(longer)).toContain(
     'after the 6s hunt, melee hits build Momentum for the final 2s',
   );
+});
+
+it('Flow readouts omit absent windup and capped or already-satisfied effects', async () => {
+  const { flowPayoff } = await import('../src/engine/content/martialRules');
+  expect(flowPayoff('meleeCone', 0, { range: 200 })).toBe('consumes Flow');
+  expect(flowPayoff('meleeCone', 0.4, { range: 190 })).toBe(
+    'spend Flow for no wind-up and +10u cone reach',
+  );
+  expect(flowPayoff('projectile', 0, { freeze: 1 })).toBe('consumes Flow');
+  expect(flowPayoff('groundZone', 0, { radius: 240, slowMult: 0.5, slowDuration: 1 })).toBe(
+    'consumes Flow',
+  );
+  const { decompose, recompose } = await import('../src/engine/content/forge');
+  for (const id of ['mo_openhand_flurry', 'mo_openhand_wave', 'mo_openhand_wind']) {
+    const ab = getSubSkill(id)!.ability;
+    for (const def of [ab, recompose(decompose(ab), { slot: 'sub1', name: 'Copy', cooldown: 9 })]) {
+      const text = describeAbility(def);
+      expect(text).not.toContain('no wind-up');
+      expect(text).not.toContain('next marked special');
+      if (id === 'mo_openhand_wave') expect(text).not.toContain('cone reach');
+    }
+  }
+  expect(describeAbility(CLASSES.monk.abilities.a3)).toContain('no wind-up');
+});
+
+it('Flow default receiver geometry and self-centering text match actual resource defaults', async () => {
+  const { flowPayoff, flowPreparation } = await import('../src/engine/content/martialRules');
+  expect(flowPayoff('meleeCone')).toContain('+30u cone reach');
+  expect(flowPayoff('pbaoe')).toContain('+15u burst radius');
+  expect(flowPayoff('groundZone')).toContain('+35u field radius');
+  expect(flowPayoff('groundZone', 0, { radius: 100, slowMult: 0.4, slowDuration: 0.1 })).toContain(
+    'slow to 60%',
+  );
+  expect(flowPreparation('groundZone', '4s')).toBe('casting readies Flow for 4s');
+  expect(flowPreparation('selfBuff', '4s')).toBe('centering yourself readies Flow for 4s');
 });

@@ -1896,7 +1896,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'mo_gk_basic_b',
     'Whirling Fists',
     '🌀',
-    'Flurry of Blows sweeps a full circle with +8 damage and +15u reach; connecting hits still extend existing Flow',
+    'Flurry of Blows sweeps a full circle with +8 damage and +15u reach',
     (ab) => {
       ab.halfAngleDeg = 180;
       addN(ab, 'damage', 8);
@@ -3113,14 +3113,19 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'mo_openhand_g_b',
     'Flowing Water',
     '🌊',
-    'Quivering Palm carries its burst with you up to 180u along movement input or aim, striking each foe once. Flow removes the launch wind-up; travel takes 0.4s',
+    'Flow-consuming specials carry you up to 180u over 0.4s along movement input or aim; aimed strikes keep their facing. Buffer one preparer or spender during travel',
     (a) => {
-      for (const ab of Object.values(a))
-        if (ab.slot !== 'basic' && ab.kind === 'pbaoe' && !ab.infernalClaim && !ab.ancestralRelay)
+      for (const ab of Object.values(a)) {
+        if (ab.components && ab.kind === 'pbaoe' && !ab.infernalClaim && !ab.ancestralRelay)
+          ab.consumesFlow = true;
+        if (ab.slot !== 'basic' && ab.consumesFlow && !ab.infernalClaim && !ab.ancestralRelay)
           ab.palmSweep = { distance: 180 };
+      }
     },
     (ab) => {
-      if (ab.kind === 'pbaoe' && !ab.infernalClaim && !ab.ancestralRelay)
+      if (ab.components && ab.kind === 'pbaoe' && !ab.infernalClaim && !ab.ancestralRelay)
+        ab.consumesFlow = true;
+      if (ab.consumesFlow && !ab.infernalClaim && !ab.ancestralRelay)
         ab.palmSweep = { distance: 180 };
     },
   ),
@@ -6500,7 +6505,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
         base.id === 'mo_openhand_g_a'
           ? 'Reforged Perfect Harmony: existing Flow preparation lasts 2s longer; direct specials gain 25% damage'
           : base.id === 'mo_openhand_g_b'
-            ? 'Reforged Flowing Water: burst specials carry their attack with your body up to 180u along movement input or aim, each foe once; ordinary wind-up and recharge, no Flow required'
+            ? 'Reforged Flowing Water: burst specials can spend Flow; Flow-consuming specials carry you up to 180u over 0.4s; cones/bursts travel with you, shots and fields launch once. Buffer one preparer or spender during movement'
             : base.id === 'bb_totem_g_b'
               ? 'Reforged relay: burst specials strike at your previous prepared point within 360u, then leave the current cast point for next time. First burst is local; preparation persists between recharges'
               : base.id === 'kn_battlemaster_g_a' || base.id === 'kn_battlemaster_g_b'

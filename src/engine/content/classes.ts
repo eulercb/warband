@@ -207,6 +207,8 @@ export interface PlayerAbilityDef {
   /** Persistent relay of this burst's single origin; no extra damage event. */
   ancestralRelay?: { range: number };
   palmSweep?: { distance: number };
+  /** Resolved cast aim captured for travelling and buffered actions; never authored. */
+  flowAim?: Vec2;
   palmSweepCast?: import('../core/types').PalmSweepCast;
   /** Host-only cast reservation, never authored or copied into stored ability tables. */
   ancestralCast?: import('../core/types').AncestralCast;
@@ -318,9 +320,14 @@ export function resolvedForethought(def: PlayerAbilityDef): PlayerAbilityDef['fo
   return effect?.kind === 'forethought' ? { requiresCurse: !!effect.requiresCurse } : undefined;
 }
 
-/** Only a body-bound burst can carry this attack through movement. */
+/** Portable travel: carry cones/bursts, launch shots/fields once before moving. */
 export function resolvedPalmSweep(def: PlayerAbilityDef): PlayerAbilityDef['palmSweep'] {
-  if (def.kind !== 'pbaoe' || def.slot === 'basic' || def.infernalClaim || def.ancestralRelay)
+  if (
+    !['meleeCone', 'pbaoe', 'projectile', 'groundZone'].includes(def.kind) ||
+    def.slot === 'basic' ||
+    def.infernalClaim ||
+    def.ancestralRelay
+  )
     return undefined;
   if (!def.components) return def.palmSweep;
   const e = def.components.effects.find((e) => e.kind === 'palmSweep');
@@ -1341,7 +1348,7 @@ export function describeAbility(
   }
   if (def.spendsMomentum) parts.push(momentumPayoff(def.kind));
   if (def.prepareFlow) parts.push(flowPreparation(def.kind, s(def.prepareFlow)));
-  if (def.consumesFlow) parts.push(flowPayoff(def.kind));
+  if (def.consumesFlow) parts.push(flowPayoff(def.kind, (def.castTime ?? 0) * castMul, def));
   if (def.pierce)
     parts.push(
       def.impactRadius
@@ -1392,7 +1399,7 @@ export function describeAbility(
     parts.push(`+${n(def.controlDamageBonus * 100)}% dmg vs slowed/rooted/stunned foes`);
   if (def.palmSweep)
     parts.push(
-      `carry this burst with your body up to ${n(def.palmSweep.distance)}u over ${s(def.palmSweep.distance / 450)} along movement input or aim; each foe once; cover stops travel, roots make it local; no immunity`,
+      `flow with this special up to ${n(def.palmSweep.distance)}u over ${s(def.palmSweep.distance / 450)} along movement input or aim; cover stops travel; roots prevent travel; no immunity`,
     );
   if (def.ancestralRelay)
     parts.push(

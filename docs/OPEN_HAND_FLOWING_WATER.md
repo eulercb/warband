@@ -1,5 +1,9 @@
 # Open Hand — travelling Palm and delivery-aware descriptions
 
+Historical delivery #164, merged and tested. The owner liked travelling Palm;
+[the whole-kit Flow-chain follow-up](OPEN_HAND_FLOW_CHAIN.md) supersedes its scope
+and descriptions below.
+
 Baseline: the owner merged/tested Totem's Ancestral Relay (#163). Its gameplay is
 accepted; this delivery also addresses the reported Earth Totem tooltip mismatch.
 One bounded Sol 6.1 high review and one narrow travel-speed follow-up supported the

@@ -4,6 +4,10 @@ import { World } from '../src/engine/world/world';
 import { resolvePlayerAbility, stepPlayerGlide } from '../src/engine/combat/abilities';
 import {
   palmContact,
+  sweptConeContact,
+  bufferFlowAction,
+  maintainFlowQueue,
+  flowChainAction,
   palmDirection,
   palmSweepView,
   reservePalmSweep,
@@ -21,6 +25,8 @@ import {
   synthesizeClass,
   setForgeSeed,
 } from '../src/engine/content/forge';
+import { pointInCone, wrapPos } from '../src/engine/core/torus';
+import type { InputCommand } from '../src/engine/core/types';
 import { applyBuff, makeBuff } from '../src/engine/combat/combat';
 import { drawPalmSweep } from '../src/render/pipeline/palmVisuals';
 import type { Player, ExtSlot, Vec2 } from '../src/engine/core/types';
@@ -439,4 +445,311 @@ it('previews combined Flow and Momentum with the actual resolver without spendin
   expect(p.glide?.ab.radius).toBe(195);
   expect(palmSweepView(w, p)?.radius).toBe(195);
   expect(p.buffs.some((b) => b.kind === 'flow' || b.kind === 'momentum')).toBe(false);
+});
+
+function input(
+  w: World,
+  buttons: Partial<InputCommand['buttons']> = {},
+  move = zero,
+  aim = right,
+  autofire = false,
+  dt = 0.01,
+) {
+  w.step(
+    dt,
+    new Map([
+      [
+        'a',
+        {
+          seq: w.tick,
+          move,
+          aim,
+          autofire,
+          buttons: { basic: false, a1: false, a2: false, a3: false, revive: false, ...buttons },
+        },
+      ],
+    ]),
+  );
+}
+describe('Flowing Water whole-kit chain', () => {
+  it.each(['a1', 'a3', 'sub1'] as const)(
+    'carries %s without requiring preparation and hits each foe once',
+    (slot) => {
+      const { w, p, b } = setup();
+      expect(
+        resolvedPalmSweep(slot === 'sub1' ? p.subAbilities!.sub1! : p.abilities![slot]),
+      ).toBeDefined();
+      resolvePlayerAbility(w, p, slot, right);
+      expect(p.glide?.palmSweep).toBeDefined();
+      const hp = b.hp;
+      stepPlayerGlide(w, p, 1);
+      expect(b.hp).toBe(hp);
+      expect(p.pos.x).toBe(680);
+      expect(p.buffs.some((b) => b.kind === 'invuln')).toBe(false);
+    },
+  );
+  it('includes Wave, preserves its capped cone and uses prepared control', () => {
+    const { w, p, b } = setup(skills[1]);
+    applyBuff(p, makeBuff('flow', 0, 4, 'flow'));
+    use(w, p, 'sub1', left);
+    expect(p.glide?.ab.range).toBe(200);
+    expect(palmSweepView(w, p)).toMatchObject({
+      shape: 'meleeCone',
+      dir: left,
+      angle: 0,
+      range: 200,
+    });
+    expect(b.hp).toBeLessThan(10000);
+    expect(p.buffs.some((b) => b.kind === 'flow')).toBe(false);
+    stepPlayerGlide(w, p, 1);
+    expect(p.pos.x).toBe(320);
+  });
+  it('retreats while keeping captured attack facing, without hitting behind the cone', () => {
+    const { w, p, b } = setup();
+    b.pos = { x: 570, y: 400 };
+    resolvePlayerAbility(w, p, 'a1', left);
+    const hp = b.hp;
+    p.aim = left;
+    stepPlayerGlide(w, p, 1);
+    expect(b.hp).toBe(hp);
+    expect(p.pos.x).toBe(320);
+    const rear = setup();
+    rear.b.pos = { x: 420, y: 400 };
+    resolvePlayerAbility(rear.w, rear.p, 'a1', right);
+    stepPlayerGlide(rear.w, rear.p, 1);
+    expect(rear.b.hp).toBe(10000);
+  });
+  it('buffers Step → strike → Wind Step, captures directions, spends only on dispatch', () => {
+    const { w, p } = setup(skills[2]);
+    input(w, { a2: true }, right);
+    expect(p.glide).toBeTruthy();
+    input(w, { a1: true }, left, right);
+    expect(p.flowQueue?.slot).toBe('a1');
+    expect(p.cooldowns.a1).toBe(0);
+    expect(p.buffs.some((b) => b.kind === 'flow')).toBe(true);
+    for (let i = 0; i < 30 && !p.glide?.palmSweep; i++) input(w, {}, zero, left);
+    expect(p.glide?.palmSweep?.cast.slot).toBe('a1');
+    expect(p.glide?.dir).toEqual(left);
+    expect(palmSweepView(w, p)?.angle).toBe(0);
+    expect(p.cooldowns.a1).toBeGreaterThan(0);
+    input(w, { sub1: true }, right);
+    expect(p.flowQueue?.slot).toBe('sub1');
+    for (let i = 0; i < 50 && p.flowQueue; i++) input(w);
+    expect(p.glide?.ab.prepareFlow).toBeTruthy();
+    expect(p.cooldowns.sub1).toBeGreaterThan(0);
+  });
+  it.each([false, true])(
+    'keeps one latest fresh press, never held repeats, autofire=%s',
+    (autofire) => {
+      const { w, p } = setup(skills[2]);
+      resolvePlayerAbility(w, p, 'a1', right);
+      input(w, { a2: true }, left, right, autofire);
+      expect(p.flowQueue?.slot).toBe('a2');
+      input(w, { a2: true, sub1: true }, right, right, autofire);
+      expect(p.flowQueue?.slot).toBe('sub1');
+      input(w, { a2: true, sub1: true }, left, left, autofire);
+      expect(p.flowQueue?.move).toEqual(right);
+      expect(p.cooldowns.a2).toBe(0);
+      expect(p.cooldowns.sub1).toBe(0);
+    },
+  );
+  it('allows a simultaneous preparer/spender chord without replacing its first glide', () => {
+    const { w, p } = setup(skills[0]);
+    input(w, { a2: true, a3: true }, right);
+    expect(p.glide?.ab.kind).toBe('dash');
+    expect(p.flowQueue?.slot).toBe('a3');
+    expect(p.cooldowns.a3).toBe(0);
+    for (let i = 0; i < 30 && !p.glide?.palmSweep; i++) input(w);
+    expect(p.glide?.palmSweep?.cast.slot).toBe('a3');
+  });
+  it.each(['cooldown', 'silence'] as const)(
+    'drops an unavailable %s follow-up once, without spending Flow',
+    (reason) => {
+      const { w, p } = setup();
+      resolvePlayerAbility(w, p, 'a1', right);
+      input(w, { a3: true });
+      if (reason === 'cooldown') p.cooldowns.a3 = 100;
+      else applyBuff(p, makeBuff('silence', 0, 4, 'silence'));
+      applyBuff(p, makeBuff('flow', 0, 4, 'flow'));
+      for (let i = 0; i < 45; i++) input(w);
+      expect(p.flowQueue).toBeUndefined();
+      expect(p.glide).toBeFalsy();
+      expect(p.buffs.some((b) => b.kind === 'flow')).toBe(true);
+    },
+  );
+  it.each(['root', 'stun', 'shove', 'down', 'class', 'scene', 'source', 'epoch'] as const)(
+    'clears buffered input on %s',
+    (reason) => {
+      const { w, p } = setup();
+      resolvePlayerAbility(w, p, 'a1', right);
+      expect(bufferFlowAction(w, p, 'a3', right, left)).toBe(true);
+      if (reason === 'root' || reason === 'stun') applyBuff(p, makeBuff(reason, 0, 4, reason));
+      if (reason === 'shove') p.shove = { vx: 1, vy: 0, remaining: 1 };
+      if (reason === 'down') p.state = 'downed';
+      if (reason === 'class') w.setActiveClass(p, 'mage');
+      if (reason === 'scene') w.scene = 'reward';
+      if (reason === 'source') p.abilities!.a3 = { ...p.abilities!.a3 };
+      if (reason === 'epoch') p.palmEpoch = (p.palmEpoch ?? 0) + 1;
+      maintainFlowQueue(w, p);
+      expect(p.flowQueue).toBeUndefined();
+    },
+  );
+  it('rejects irrelevant actions and ordinary non-flow movement', () => {
+    const { w, p } = setup();
+    expect(flowChainAction(undefined)).toBe(false);
+    expect(bufferFlowAction(w, p, 'a3', zero, right)).toBe(false);
+    resolvePlayerAbility(w, p, 'a1', right);
+    expect(bufferFlowAction(w, p, 'basic', zero, right)).toBe(false);
+    expect(bufferFlowAction(w, p, 'sub2', zero, right)).toBe(false);
+    p.glide!.palmSweep = undefined;
+    p.glide!.ab = { ...p.glide!.ab, prepareFlow: undefined };
+    expect(bufferFlowAction(w, p, 'a3', zero, right)).toBe(false);
+  });
+  it.each(['projectile', 'groundZone'] as const)(
+    'copied %s launches once, then moves without re-emitting the payload',
+    (kind) => {
+      const { w, p } = setup(skills[0], []);
+      p.abilities!.a1 = recompose(
+        decompose({
+          ...p.abilities!.a1,
+          kind,
+          castTime: 0,
+          range: 300,
+          radius: 60,
+          zoneDuration: 3,
+          zoneTickDamage: 10,
+          palmSweep: { distance: 180 },
+        }),
+        { slot: 'a1', name: 'Portable flow', cooldown: 9 },
+      );
+      const payload = () => (kind === 'projectile' ? w.projectiles : w.groundZones);
+      resolvePlayerAbility(w, p, 'a1', left);
+      const first = payload().map((x) => ({ id: x.id, pos: { ...x.pos } }));
+      expect(first.length).toBeGreaterThan(0);
+      expect(p.glide?.palmSweep).toBeDefined();
+      p.aim = left;
+      for (let i = 0; i < 8; i++) stepPlayerGlide(w, p, 0.05);
+      expect(payload().map((x) => ({ id: x.id, pos: { ...x.pos } }))).toEqual(first);
+      expect(p.pos.x).toBe(320);
+    },
+  );
+});
+describe('continuous aimed cone geometry', () => {
+  it('handles zero movement, misses, full circles and wrapped contact', () => {
+    expect(sweptConeContact(zero, zero, right, 0, 10, 0.2, 0)).toEqual(zero);
+    expect(sweptConeContact(zero, zero, left, 0, 10, 0.2, 0)).toBeNull();
+    expect(sweptConeContact(zero, { x: 100, y: 0 }, { x: 50, y: 40 }, 0, 10, 0.2, 0)).toBeNull();
+    expect(sweptConeContact(zero, { x: 100, y: 0 }, { x: 50, y: 0 }, 0, 10, Math.PI, 0)?.x).toBe(
+      40,
+    );
+    expect(
+      sweptConeContact({ x: 1590, y: 400 }, { x: 100, y: 400 }, { x: 40, y: 400 }, 0, 10, 0.2, 0)
+        ?.x,
+    ).toBeCloseTo(30);
+  });
+  it('matches dense independent ordinary cone samples for varied aim, radii and travel', () => {
+    let seed = 123;
+    const rand = () => {
+      seed = (1664525 * seed + 1013904223) >>> 0;
+      return seed / 2 ** 32;
+    };
+    for (let i = 0; i < 500; i++) {
+      const from = { x: 500, y: 400 },
+        to = { x: 500 + (rand() - 0.5) * 360, y: 400 + (rand() - 0.5) * 360 },
+        target = { x: 500 + (rand() - 0.5) * 600, y: 400 + (rand() - 0.5) * 600 };
+      const angle = rand() * Math.PI * 2,
+        range = 30 + rand() * 170,
+        half = 0.05 + rand() * 2.9,
+        radius = rand() * 40;
+      const hit = sweptConeContact(from, to, target, angle, range, half, radius);
+      let sampled = false;
+      for (let j = 0; j <= 2000; j++)
+        if (
+          pointInCone(
+            target,
+            wrapPos({
+              x: from.x + ((to.x - from.x) * j) / 2000,
+              y: from.y + ((to.y - from.y) * j) / 2000,
+            }),
+            angle,
+            range,
+            half,
+            radius,
+          )
+        ) {
+          sampled = true;
+          break;
+        }
+      if (sampled)
+        expect(hit, JSON.stringify({ to, target, angle, range, half, radius })).not.toBeNull();
+      if (hit) expect(pointInCone(target, hit, angle, range, half, radius)).toBe(true);
+    }
+  });
+});
+
+it('renders each travelling shape with matching geometry, including optional snapshot defaults', () => {
+  const { w, p } = setup();
+  const g = new Graphics();
+  const view = palmSweepView(w, p)!;
+  for (const shape of ['meleeCone', 'pbaoe', 'projectile', 'groundZone', undefined] as const) {
+    drawPalmSweep(
+      g,
+      { ...view, shape, range: undefined, halfAngle: undefined, angle: undefined },
+      p.pos,
+      (v) => v,
+      1,
+      true,
+    );
+    drawPalmSweep(
+      g,
+      { ...view, shape, active: true, range: 100, halfAngle: 0.2, angle: Math.PI },
+      p.pos,
+      (v) => v,
+      1,
+      false,
+    );
+  }
+  drawPalmSweep(g, { ...view, casting: true, ready: false }, p.pos, (v) => v, 1, true);
+  drawPalmSweep(g, { ...view, distance: 0 }, p.pos, (v) => v, 1, true);
+  expect(g.context.instructions.length).toBeGreaterThan(0);
+  g.destroy();
+});
+it('keeps moving cones single-contact for summons, including misses and immune contacts', () => {
+  const { w, p, b } = setup();
+  b.pos = { x: 100, y: 100 };
+  p.abilities!.a1 = { ...p.abilities!.a1, range: 30, halfAngleDeg: 10 };
+  const enemy = (x: number, y: number) => ({
+    id: w.allocId(),
+    pos: { x, y },
+    hp: 1000,
+    maxHp: 1000,
+    radius: 8,
+    moveSpeed: 0,
+    targetId: null,
+    attackCd: 0,
+    buffs: [],
+  });
+  const a = enemy(610, 400),
+    miss = enemy(610, 500);
+  w.adds.push(a, miss);
+  resolvePlayerAbility(w, p, 'a1', right);
+  stepPlayerGlide(w, p, 0.25);
+  expect(a.hp).toBeLessThan(1000);
+  const hp = a.hp;
+  stepPlayerGlide(w, p, 1);
+  expect(a.hp).toBe(hp);
+  expect(miss.hp).toBe(1000);
+});
+it('buffers only while live and drops a queued skill whose contract is removed in place', () => {
+  const { w, p } = setup();
+  resolvePlayerAbility(w, p, 'a1', right);
+  applyBuff(p, makeBuff('root', 0, 4, 'root'));
+  expect(bufferFlowAction(w, p, 'a3', zero, right)).toBe(false);
+  p.buffs = [];
+  expect(bufferFlowAction(w, p, 'a3', zero, right)).toBe(true);
+  p.abilities!.a3.palmSweep = undefined;
+  maintainFlowQueue(w, p);
+  expect(p.flowQueue).toBeUndefined();
+  w.scene = 'reward';
+  expect(bufferFlowAction(w, p, 'a2', zero, right)).toBe(false);
 });

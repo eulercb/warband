@@ -1,5 +1,13 @@
 /** Bounded martial skill interactions. Ordinary buff timers carry all readiness. */
-import { BLOOD_PRICE, BLOOD_LEECH, HUNT_STEP, FLOW_EXTENSION_CAP } from '../content/martialRules';
+import {
+  BLOOD_PRICE,
+  BLOOD_LEECH,
+  HUNT_STEP,
+  FLOW_EXTENSION_CAP,
+  FLOW_REACH,
+  FLOW_AREA,
+  FLOW_STUN,
+} from '../content/martialRules';
 import type { Buff, Player } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
 function put(p: Player, buff: Buff): void {
@@ -175,9 +183,9 @@ export function consumeMartialFinishers(p: Player, ab: PlayerAbilityDef): Player
   if (flow) {
     p.buffs.splice(p.buffs.indexOf(flow), 1);
     out = { ...out, castTime: 0, flowUsed: true };
-    if (out.kind === 'projectile') out.freeze = Math.max(out.freeze ?? 0, 0.6);
+    if (out.kind === 'projectile') out.freeze = Math.max(out.freeze ?? 0, FLOW_STUN);
     else if (out.kind === 'groundZone') {
-      out.radius = (out.radius ?? 130) + 35;
+      out.radius = (out.radius ?? 130) + FLOW_AREA;
       out.slowMult = Math.min(out.slowMult ?? 1, 0.6);
       out.slowDuration = Math.max(out.slowDuration ?? 0, 0.8);
       if (out.components)
@@ -197,8 +205,8 @@ export function consumeMartialFinishers(p: Player, ab: PlayerAbilityDef): Player
               : e,
           ),
         };
-    } else if (out.kind === 'meleeCone') out.range = (out.range ?? 70) + 30;
-    else out.radius = (out.radius ?? 130) + 35;
+    } else if (out.kind === 'meleeCone') out.range = (out.range ?? 70) + FLOW_REACH;
+    else out.radius = (out.radius ?? 130) + FLOW_AREA;
   }
   return out;
 }

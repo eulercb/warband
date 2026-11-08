@@ -396,7 +396,12 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.fortune) effects.push({ kind: 'fortune', fortune: { ...def.fortune } });
   if (def.infernalAperture)
     effects.push({ kind: 'infernalAperture', aperture: { ...def.infernalAperture } });
-  if (def.palmSweep && def.kind === 'pbaoe' && !def.infernalClaim && !def.ancestralRelay)
+  if (
+    def.palmSweep &&
+    ['meleeCone', 'pbaoe', 'projectile', 'groundZone'].includes(def.kind) &&
+    !def.infernalClaim &&
+    !def.ancestralRelay
+  )
     effects.push({ kind: 'palmSweep', distance: def.palmSweep.distance });
   if (def.ancestralRelay && def.kind === 'pbaoe' && !def.infernalClaim && !def.palmSweep)
     effects.push({ kind: 'ancestralRelay', range: def.ancestralRelay.range });
@@ -487,7 +492,10 @@ export function recompose(
         comp.effects.filter(
           (e) =>
             (e.kind !== 'ancestralRelay' && e.kind !== 'palmSweep') ||
-            (comp.delivery.kind === 'pbaoe' && meta.slot !== 'basic'),
+            (meta.slot !== 'basic' &&
+              (e.kind === 'palmSweep'
+                ? ['meleeCone', 'pbaoe', 'projectile', 'groundZone'].includes(comp.delivery.kind)
+                : comp.delivery.kind === 'pbaoe')),
         ),
       ),
     };
@@ -1012,15 +1020,9 @@ export function describeComposed(comp: AbilityComponents, cooldown: number): str
   if (d.kind === 'selfBuff' && d.iframes) parts.push(`${s(d.iframes)} damage immunity`);
 
   // Omit a suppressed generation mode rather than advertising incompatible triggers.
-  const hunt = comp.effects.find((e) => e.kind === 'wolfHunt');
   for (const e of comp.effects) {
     const effect = fittedSurgePiercing(comp, e);
-    const phrase = effectPhrase(
-      effect,
-      d.kind,
-      !!d.impactRadius || comp.effects.some((e) => e.kind === 'zone'),
-      hunt?.kind === 'wolfHunt' ? hunt.duration : 0,
-    );
+    const phrase = effectPhrase(effect, comp);
     if (phrase) parts.push(phrase);
     if (e.kind === 'surgeStrike' && (d.castTime ?? 0) > 0) parts.push('surge halves wind-up');
   }
@@ -1065,12 +1067,13 @@ function deliveryPhrase(d: Delivery): string {
 }
 
 /** A short clause for one effect, or '' when it carries no player-facing number. */
-function effectPhrase(
-  e: EffectComponent,
-  delivery: DeliveryKind,
-  singleImpact = false,
-  huntDuration = 0,
-): string {
+function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
+  const d = comp.delivery,
+    delivery = d.kind,
+    windup = d.castTime ?? 0;
+  const singleImpact = !!d.impactRadius || comp.effects.some((x) => x.kind === 'zone');
+  const hunt = comp.effects.find((x) => x.kind === 'wolfHunt'),
+    huntDuration = hunt?.kind === 'wolfHunt' ? hunt.duration : 0;
   switch (e.kind) {
     case 'apparition':
       return `one damaged add fights its former allies (bosses resist) for ${s(e.effect.duration)}`;
@@ -1141,8 +1144,17 @@ function effectPhrase(
       return momentumPayoff(delivery);
     case 'prepareFlow':
       return flowPreparation(delivery, s(e.duration));
-    case 'flowStrike':
-      return flowPayoff(delivery);
+    case 'flowStrike': {
+      const freeze = comp.effects.findLast((x) => x.kind === 'freeze'),
+        zone = comp.effects.find((x) => x.kind === 'zone');
+      return flowPayoff(delivery, windup, {
+        ...d,
+        freeze: freeze?.kind === 'freeze' ? freeze.seconds : undefined,
+        slowMult: zone?.kind === 'zone' ? zone.zone.slowMult : undefined,
+        slowDuration: zone?.kind === 'zone' ? zone.zone.slowDuration : undefined,
+        zoneTickHeal: zone?.kind === 'zone' ? zone.zone.tickHeal : undefined,
+      });
+    }
     case 'pierce':
       return singleImpact
         ? 'shot ends at its first impact'
@@ -1162,7 +1174,7 @@ function effectPhrase(
     case 'infernalAperture':
       return `fixed firing conduit ${s(e.aperture.duration)}, entrance ${n(e.aperture.reach / 4)}u / exit ${n(e.aperture.reach)}u along aim; nearby mouths adjust around cover; creates 96u-wide temporary cover when space permits, blocking shots and hostile approach; aim through entrance, press again for one ${n(e.aperture.emberDamage)}-damage ember`;
     case 'palmSweep':
-      return `carry this burst with your body up to ${n(e.distance)}u over ${s(e.distance / 450)} along movement input or aim; each foe once; cover stops travel, roots make it local; no immunity`;
+      return `flow with this special up to ${n(e.distance)}u over ${s(e.distance / 450)} along movement input or aim; cover stops travel; roots prevent travel; no immunity`;
     case 'ancestralRelay':
       return `burst at your ancestor within ${n(e.range)}u, then leave it at your cast position; first burst establishes it, no expiry`;
     case 'shadowReprise':
@@ -1564,7 +1576,7 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
     case 'infernalAperture':
       return true;
     case 'palmSweep':
-      return kind === 'pbaoe';
+      return DIRECT_STRIKE.has(kind) || kind === 'groundZone';
     case 'ancestralRelay':
       return kind === 'pbaoe';
     case 'shadowReprise':

@@ -176,9 +176,11 @@ function TouchButton({
         ? 'Place ancestor ahead'
         : null;
   const sweep = useHudStore((s) => (s.palmSweep?.slot === cdSlot ? s.palmSweep : undefined));
-  const sweepStatus =
-    sweep && (sweep.active || sweep.casting || sweep.ready)
-      ? (sweep.blocked ?? (sweep.active ? 'Sweeping' : 'Moving Palm'))
+  const queued = useHudStore((s) => !!s.palmSweep?.queuedSlot && s.palmSweep.queuedSlot === cdSlot);
+  const sweepStatus = queued
+    ? 'Queued'
+    : sweep && (sweep.active || sweep.casting || sweep.ready)
+      ? (sweep.blocked ?? (sweep.active ? 'Flowing' : 'Flowing movement'))
       : null;
   const breakPrepared = useHudStore(
     (s) =>

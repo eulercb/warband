@@ -28,16 +28,19 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Open Hand travelling Palm and description audit](OPEN_HAND_FLOWING_WATER.md).
+Current delivery: [Open Hand whole-kit Flow chain](OPEN_HAND_FLOW_CHAIN.md).
+The owner merged/tested #164 and liked travelling Palm; the requested extension
+to all relevant spenders and further description cleanup is this follow-up.
 Totem Ancestral Relay (#163) is merged/tested and accepted. The owner reported
 unnecessary/mismatched resource text (Earth Totem advertising cone reach); this
 follow-up corrects receiving-skill wording in native and Forge descriptions.
 Battlemaster instant group steering (#162), silence separation (#159) and
 Champion projected shield/emitted-wave cover (#157–158) remain accepted baselines.
 
-Open Hand B now carries Palm's burst with the real body; A is retained as
-streamlined numerical support, without claiming a new behavior. This is
-implemented and locally verified, pending owner live acceptance.
+Open Hand B now carries all four native Flow spenders, preserving aimed cones
+and Palm's circle, with one fresh-press follow-up buffer connecting preparers and
+spenders. A remains streamlined numerical support. The expanded loop is
+implemented, pending owner live acceptance.
 Warlord's proactive counter core and Berserker's contact-versus-walking distinction
 remain retained review findings. Open Hand live acceptance and Shadow Monk purpose findings remain open.
 
@@ -51,7 +54,7 @@ implementation and owner acceptance remain distinct states.
 
 | Stage                        | Concrete work                                                                                                                                                                      |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test Open Hand travelling Palm and the description cleanup; then address Shadow Monk.                                                                                         |
+| Next                         | Live-test the expanded Open Hand Flow chain; next development is Shadow Monk purpose review and implementation.                                                                    |
 | Following                    | Continue remaining nature identities after Shadow Monk; retain accepted routes and useful simple skills.                                                                           |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B implemented awaiting live acceptance, A retained as support; Shadow findings remain open. |
 | Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                                                                |
