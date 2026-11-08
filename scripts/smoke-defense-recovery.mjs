@@ -2,56 +2,23 @@
 import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright-core';
-const tests = [
-  { classId: 'mage', name: 'Dimension Door', text: /arrival foes return to departure/ },
-  {
-    classId: 'rogue',
-    name: 'Smoke Bomb',
-    text: /prepare next precision crit/,
-    badge: /Prepared critical/,
-  },
-  {
-    classId: 'rogue',
-    name: 'Shield Spell',
-    text: /block 1 frontal damage hit/,
-    badge: /Frontal guard:/,
-  },
-  { classId: 'bard', name: 'Bolster', text: /cleanse movement\/control/, badge: /Steadfast:/ },
-  {
-    classId: 'ranger',
-    name: "Nature's Bond",
-    text: /effectively healed recipient/,
-    badge: /Hastened/,
-    hurt: true,
-  },
-  { classId: 'mage', name: 'Life Transfer', text: /20 absorption/, bubble: true },
-  {
-    classId: 'monk',
-    name: 'Wholeness of Body',
-    text: /centering yourself/,
-    badge: /Flow: next marked/,
-    hurt: true,
-  },
-  {
-    classId: 'sorcerer',
-    name: 'Mirror Image',
-    slot: 'a2',
-    key: 'KeyE',
-    text: /3 mirror images/,
-    badge: /Mirror images:/,
-  },
-].filter(
-  (test) => !process.env.SMOKE_RECOVERY_NAME || test.name === process.env.SMOKE_RECOVERY_NAME,
+import { loadDefenseSmokeCases, defenseViewports } from './defense-smoke-cases.mjs';
+import { armDefenseCastProbe, advanceDefenseUntil } from './defense-cast-probe.mjs';
+const { tests, defaultHeroName } = await loadDefenseSmokeCases(
+  'remaining',
+  process.env.SMOKE_RECOVERY_NAME,
 );
-assert.ok(tests.length, 'Unknown SMOKE_RECOVERY_NAME');
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || chromium.executablePath(),
   headless: true,
 });
 let currentPage;
 try {
-  for (const mobile of [false, true])
+  for (const mobile of defenseViewports())
     for (const test of tests) {
+      console.log(
+        `RUN ${mobile ? 'mobile 320×568' : 'desktop'} ${test.skillId ?? `${test.classId}.${test.slot}`}: ${test.name}`,
+      );
       const classId = test.classId;
       const context = await browser.newContext({
         viewport: mobile ? { width: 320, height: 568 } : { width: 1280, height: 800 },
@@ -72,9 +39,10 @@ try {
         else await locator.click();
       };
       const button = (name) => page.getByRole('button', { name, exact: true });
+      await page.clock.install();
       await page.goto(process.env.SMOKE_URL || 'http://localhost:4173/');
       if (mobile) await click(button('Menu'));
-      await click(button('Hero: Knight'));
+      await click(button(`Hero: ${defaultHeroName}`));
       await click(page.locator(`.wb-codex-card[data-cls="${classId}"]`));
       if (mobile) await click(button('Menu'));
       await click(button('Host Game'));
@@ -90,13 +58,16 @@ try {
       if (!test.slot) {
         await click(page.locator('.wb-sf-loadout-toggle'));
         await click(
-          page.getByRole('group', { name: 'Test loadout' }).getByRole('button', {
-            name: test.name === 'Second Wind' ? '💚 Second Wind' : new RegExp(test.name),
-            exact: test.name === 'Second Wind',
-          }),
+          page
+            .getByRole('group', { name: 'Test loadout' })
+            .getByRole('button', { name: test.label, exact: true }),
         );
       }
+      // Freeze before combat starts: slow browser setup must not kill the hero.
+      await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 60_000);
       await click(button('Start Fight'));
+      await page.locator('.game-root .game-canvas canvas').waitFor({ state: 'attached' });
+      await page.clock.runFor(150);
       const touchButton = () =>
         test.slot
           ? page.locator(`.wb-touch-btn-${test.slot}`)
@@ -116,7 +87,7 @@ try {
           });
         } else await page.keyboard.down(key);
         try {
-          await until();
+          return await until();
         } finally {
           if (mobile)
             await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
@@ -124,42 +95,24 @@ try {
         }
       };
       if (test.hurt)
-        await page.waitForFunction(
+        await advanceDefenseUntil(
+          page,
           () => {
             const hp = document.querySelector('.hud-selfhp .hud-healthbar-num');
             if (!hp) return false;
             const [now, max] = hp.textContent.split('/').map(Number);
             return now > 0 && now < max - 30;
           },
-          null,
-          { timeout: 30000 },
+          30000,
         );
       if (!mobile) await page.mouse.move(640, 200);
-      await hold(test.key || 'KeyZ', () =>
-        mobile
-          ? touchButton().locator('.wb-touch-btn-label.cooling').waitFor()
-          : page.waitForFunction((n) => {
-              const el = document.querySelector(`.hud-ability[aria-label*="${n} —"]`);
-              return el && !el.classList.contains('ready');
-            }, test.name),
-      );
-      const self = page.locator('.hud-selfhp');
-      if (test.bubble) {
-        // Read the live meter atomically: a hit/expiry may remove it between awaits.
-        const state = await page.waitForFunction(() => {
-          const meter = document.querySelector(
-            '.hud-selfhp [role="meter"][aria-label="Absorption"]',
-          );
-          if (!meter) return false;
-          const amount = Number(meter.getAttribute('aria-valuenow'));
-          const max = Number(meter.getAttribute('aria-valuemax'));
-          return amount > 0 && amount <= max ? { amount, max } : false;
-        });
-        assert.ok(await state.jsonValue());
-        await state.dispose();
-      } else if (test.badge) await self.getByTitle(test.badge).waitFor();
-      // Let the normal ranged-zone arming animation finish for the review capture.
-      if (test.zone) await self.getByTitle(/Hastened/).waitFor();
+      // Observe before dispatch: CI can read the DOM after a short effect is consumed.
+      const waitForCast = await armDefenseCastProbe(page, test);
+      const observed = await hold(test.key || 'KeyZ', waitForCast);
+      assert.ok(observed.cooldown > 0, `${test.name}: no real recharge observed`);
+      if (test.bubble)
+        assert.ok(observed.effect.amount > 0 && observed.effect.amount <= observed.effect.max);
+      else if (test.badge || test.zone) assert.ok(observed.effect.title);
       if (mobile) assert.ok(await page.getByRole('group', { name: 'Touch controls' }).isVisible());
       if (process.env.SHOT_DIR)
         await page.screenshot({

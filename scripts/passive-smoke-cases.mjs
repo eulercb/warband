@@ -94,10 +94,20 @@ export async function loadPassiveRegistry() {
       server: { middlewareMode: true, hmr: false },
     });
     const { ALL_SUBCLASSES } = await server.ssrLoadModule('/src/engine/content/subclasses.ts');
-    const { CLASSES } = await server.ssrLoadModule('/src/engine/content/classes.ts');
+    const { CLASSES, describeAbility } = await server.ssrLoadModule(
+      '/src/engine/content/classes.ts',
+    );
     return {
       subclasses: ALL_SUBCLASSES,
       classes: CLASSES,
+      abilityDescriptions: Object.fromEntries([
+        ...Object.values(CLASSES).flatMap((c) =>
+          Object.entries(c.abilities).map(([slot, ab]) => [`${c.id}.${slot}`, describeAbility(ab)]),
+        ),
+        ...ALL_SUBCLASSES.flatMap((s) =>
+          s.skills.map((skill) => [skill.id, describeAbility({ ...skill.ability, slot: 'sub1' })]),
+        ),
+      ]),
       defaultHeroName: CLASSES.knight.name,
       cadenceSkillName: CLASSES.mage.abilities.a2.name,
       cadenceRefundNames: ['a1', 'a2', 'a3'].map((slot) => CLASSES.mage.abilities[slot].name),

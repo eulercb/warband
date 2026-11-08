@@ -9,7 +9,7 @@ import type { AbsorptionGrant } from '../combat/absorption';
  */
 import { flowPayoff } from './martialRules';
 import { bardSongText } from './bardText';
-import type { ClassId, AbilitySlot, ExtSlot, ZoneKind, CloseBurst } from '../core/types';
+import type { ClassId, AbilitySlot, ExtSlot, ZoneKind, CloseBurst, Vec2 } from '../core/types';
 import { PLAYER_RADIUS, CLASS_COLORS, ATTACK_CD_SCALE } from '../core/constants';
 import { procVariant, classVariant } from './procgen';
 import { describeComposed, forgeVariant, synthesizeClass, type Donor } from './forge';
@@ -204,6 +204,12 @@ export interface PlayerAbilityDef {
   surgeTwin?: boolean;
   /** Bounded delivery/control changes reserved only when this cast spends Surge. */
   /** Standalone copied interruption; no Surge boost or cast-speed bonus. */
+  /** Persistent relay of this burst's single origin; no extra damage event. */
+  ancestralRelay?: { range: number };
+  /** Host-only cast reservation, never authored or copied into stored ability tables. */
+  ancestralCast?: import('../core/types').AncestralCast;
+  /** Resolved receiving point for the existing finisher Shelter pulse. */
+  finisherOrigin?: Vec2;
   maneuver?: import('../core/types').ManeuverEffect;
   maneuverCast?: import('../core/types').ManeuverCast;
   thoughtBreak?: boolean;
@@ -308,6 +314,13 @@ export function resolvedForethought(def: PlayerAbilityDef): PlayerAbilityDef['fo
   if (!def.components) return def.forethought;
   const effect = def.components.effects.find((e) => e.kind === 'forethought');
   return effect?.kind === 'forethought' ? { requiresCurse: !!effect.requiresCurse } : undefined;
+}
+
+export function resolvedAncestralRelay(def: PlayerAbilityDef): PlayerAbilityDef['ancestralRelay'] {
+  if (def.kind !== 'pbaoe' || def.slot === 'basic' || def.infernalClaim) return undefined;
+  if (!def.components) return def.ancestralRelay;
+  const effect = def.components.effects.find((e) => e.kind === 'ancestralRelay');
+  return effect?.kind === 'ancestralRelay' ? { range: effect.range } : undefined;
 }
 
 export function resolvedManeuver(def: PlayerAbilityDef): PlayerAbilityDef['maneuver'] {
@@ -1368,6 +1381,10 @@ export function describeAbility(
 
   if (def.controlDamageBonus)
     parts.push(`+${n(def.controlDamageBonus * 100)}% dmg vs slowed/rooted/stunned foes`);
+  if (def.ancestralRelay)
+    parts.push(
+      `ancestral relay within ${n(def.ancestralRelay.range)}u — burst at the prepared ancestor, then leave your cast point for the next burst; first burst is local`,
+    );
   if (def.maneuver)
     parts.push(
       def.maneuver.mode === 'push'

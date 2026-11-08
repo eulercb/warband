@@ -434,7 +434,12 @@ export function onSubclassFinisher(world: World, p: Player, ab: PlayerAbilityDef
   if (ab.momentumUsed && id === 'totem_shelter' && offCooldown(p, id)) {
     let gained = false;
     for (const ally of world.players) {
-      if (ally.state !== 'alive' || ally.hp <= 0 || dist(p.pos, ally.pos) > 180) continue;
+      if (
+        ally.state !== 'alive' ||
+        ally.hp <= 0 ||
+        dist(ab.finisherOrigin ?? p.pos, ally.pos) > 180
+      )
+        continue;
       if (
         grantAbsorption(
           ally,
@@ -451,7 +456,7 @@ export function onSubclassFinisher(world: World, p: Player, ab: PlayerAbilityDef
         t: 'support',
         sourceId: p.id,
         targetId: ally.id,
-        from: { ...p.pos },
+        from: { ...(ab.finisherOrigin ?? p.pos) },
         pos: { ...ally.pos },
         kind: 'absorb',
       });

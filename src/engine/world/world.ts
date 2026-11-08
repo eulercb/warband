@@ -1,4 +1,10 @@
 import {
+  reserveAncestralCast,
+  tickAncestralRelay,
+  invalidateAncestralRelay,
+  ancestralRelayView,
+} from '../combat/ancestralRelay';
+import {
   maneuverCast,
   onManeuverHit,
   tickManeuvers,
@@ -1207,6 +1213,7 @@ export class World {
     maintainMoonForms(this);
     tickWhispers(this, dt);
     tickShadowReprise(this, dt);
+    tickAncestralRelay(this);
     tickInfernalApertures(this, dt);
     this.maintainCloseBursts();
     this.applyInputs(dt, inputs);
@@ -1447,6 +1454,7 @@ export class World {
       ...consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original), this)),
     };
     ab.maneuverCast = maneuverCast(p, ab, moveDir, fresh);
+    ab.ancestralCast = reserveAncestralCast(this, p, ab, slot);
     const nextCd = effectiveRecharge(ab, p.cooldownMult, p.castMult, slot);
     p.rechargeLocks ??= {};
     p.rechargeLocks[p.classId] ??= {};
@@ -1526,6 +1534,7 @@ export class World {
       sub2: p.cooldowns.sub2,
     };
     invalidateManeuvers(this, p);
+    invalidateAncestralRelay(p);
     delete p.infernalAperture;
     this.projectiles = this.projectiles.filter(
       (shot) => shot.ownerId !== p.id || !shot.apertureTransit,
@@ -3657,6 +3666,7 @@ export class World {
           this.events.push({ t: 'revive', id: p.id, pos: { ...p.pos } });
           continue;
         }
+        invalidateAncestralRelay(p);
         p.state = 'downed';
         p.hp = 0;
         p.downedTimer = DOWNED_BLEEDOUT;
@@ -4034,6 +4044,7 @@ export class World {
       waveCover: this.waveCoverView(p),
       maneuver: maneuverView(this, p),
       shadowReprise: shadowRepriseView(this, p),
+      ancestralRelay: ancestralRelayView(this, p),
       infernalAperture: apertureView(this, p),
       buffs: p.buffs.map((b) => {
         const view = buffView(b);

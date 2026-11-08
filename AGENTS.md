@@ -58,6 +58,19 @@ Browser smoke cohorts/selectors should use stable IDs and derive display labels
 from the game registry; do not duplicate renamed skill/passive names in CI.
 When changing a skill contract, search existing browser scripts for its text and
 status expectations and run the affected old smoke alongside the new mechanic smoke.
+Production effect smokes must control RAF/timer time: freeze combat during setup
+and readback, and advance deliberately for real input and required incoming damage.
+Do not let slow browser setup kill the tested hero or expire its effect. Preserve
+real production input and game rules rather than patching HP or granting effects.
+Transient HUD assertions must start observing before sending cast input and retain
+positive rendered evidence; a cooldown or silenced button alone does not prove
+an effect. Keep real input, bounded amounts and actual effect assertions. Run both
+production defense/recovery cohorts when changing their shared observer or roster;
+shared support/HUD changes require reviewing these cohorts even if the new feature
+belongs to another class. The fast defensive-smoke contracts check registry labels,
+authored wording and short-lived effect observation before browser jobs. They run
+automatically before `npm test` and `npm run test:coverage`; when invoking Vitest
+directly, run `npm run test:smoke-contracts` first.
 Dev-browser fixtures import React through the shared Vite-served entry; never
 hardcode generated dependency-cache URLs. Verify startup with an empty cache,
 not only a long-running development server. Initialize the actual renderer after

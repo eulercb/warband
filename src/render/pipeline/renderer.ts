@@ -1,3 +1,4 @@
+import { drawAncestralRelay } from './ancestralVisuals';
 import { drawManeuverArrow } from './maneuverVisuals';
 import { drawForesight } from './foresightVisuals';
 import { forethoughtLabel } from '../../engine/content/forethought';
@@ -622,6 +623,15 @@ export class Renderer {
           p.infernalAperture.bulwark
             ? this.camera.worldToScreen(p.infernalAperture.bulwark.pos)
             : undefined,
+        );
+      if (p.ancestralRelay)
+        drawAncestralRelay(
+          g,
+          p.ancestralRelay,
+          (pos) => this.camera.worldToScreen(pos),
+          this.camera.scale,
+          p.id === state.localPlayerId,
+          this.camera.worldToScreen(p.pos),
         );
       if (p.shadowReprise)
         drawShadowAnchor(

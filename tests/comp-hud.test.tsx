@@ -978,3 +978,36 @@ describe('absorption HUD', () => {
     expect(screen.queryByRole('meter', { name: 'Absorption' })).toBeNull();
   });
 });
+
+it('shows persistent relay placement, local fallback and silence priority', () => {
+  useStore.setState({ localClass: 'barbarian', myCharUpgrades: ['bb_totem_g_b'] });
+  const relay = {
+    origin: { x: 0, y: 0 },
+    remote: false,
+    radius: 135,
+    range: 360,
+    casting: false,
+    slot: 'a3' as const,
+    seedSlot: 'a1' as const,
+  };
+  useHudStore
+    .getState()
+    .set({ active: true, classId: 'barbarian', state: 'alive', ancestralRelay: relay });
+  const { container } = render(<HUD />);
+  expect(container.textContent).toContain('At you · establish ancestor');
+  expect(container.textContent).toContain('Place ancestor ahead');
+  act(() =>
+    useHudStore.getState().set({ ancestralRelay: { ...relay, station: { x: 500, y: 0 } } }),
+  );
+  expect(container.textContent).toContain('At you · ancestor out of reach');
+  act(() =>
+    useHudStore
+      .getState()
+      .set({ ancestralRelay: { ...relay, remote: true, station: { x: 100, y: 0 } } }),
+  );
+  expect(container.textContent).toContain('At ancestor');
+  act(() => useHudStore.getState().set({ buffs: [{ kind: 'silence', mult: 0, remaining: 2 }] }));
+  expect(container.textContent).not.toContain('At ancestor');
+  act(() => useHudStore.getState().set({ buffs: [], ancestralRelay: undefined }));
+  expect(container.textContent).not.toContain('Place ancestor ahead');
+});

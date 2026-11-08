@@ -424,7 +424,31 @@ export interface ManeuverMotion {
   remaining: number;
   phase: 'queued' | 'travel';
 }
+export interface AncestralCast {
+  ownerClass: ClassId;
+  epoch: number;
+  kind: 'seed' | 'relay';
+  origin: Vec2;
+  next: Vec2;
+  remote: boolean;
+  source: import('../content/classes').PlayerAbilityDef;
+  slot: ExtSlot;
+  spent: boolean;
+}
+export interface AncestralView {
+  station?: Vec2;
+  origin: Vec2;
+  next?: Vec2;
+  remote: boolean;
+  radius: number;
+  range: number;
+  casting: boolean;
+  slot: ExtSlot;
+  seedSlot?: ExtSlot;
+}
 export interface Player {
+  ancestralStation?: { pos: Vec2; ownerClass: ClassId; epoch: number };
+  ancestralEpoch?: number;
   maneuverEpoch?: number;
   maneuverMove?: Vec2;
   maneuverLast?: { effect: ManeuverEffect; ownerClass: ClassId; targetId?: EntityId };
@@ -1411,6 +1435,7 @@ export interface Telegraph {
 // ---------------------------------------------------------------------------
 
 export interface PlayerView {
+  ancestralRelay?: AncestralView;
   maneuver?: {
     mode: 'push' | 'step';
     portable?: boolean;
