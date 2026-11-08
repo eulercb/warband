@@ -32670,7 +32670,7 @@
       "name": "Wind Step",
       "seconds": 5,
       "rawSeconds": 5,
-      "persistentSeconds": 2,
+      "persistentSeconds": 0.3,
       "recoveryFloor": 4,
       "range": 280,
       "radius": null
@@ -32686,7 +32686,7 @@
       "name": "Wind Step",
       "seconds": 4,
       "rawSeconds": 2.952,
-      "persistentSeconds": 2,
+      "persistentSeconds": 0.3,
       "recoveryFloor": 4,
       "range": 280,
       "radius": null
@@ -32734,7 +32734,7 @@
       "name": "Wind Step",
       "seconds": 5,
       "rawSeconds": 5,
-      "persistentSeconds": 2,
+      "persistentSeconds": 0.3,
       "recoveryFloor": 4,
       "range": 280,
       "radius": null
@@ -32750,7 +32750,7 @@
       "name": "Wind Step",
       "seconds": 4,
       "rawSeconds": 2.952,
-      "persistentSeconds": 2,
+      "persistentSeconds": 0.3,
       "recoveryFloor": 4,
       "range": 280,
       "radius": null
@@ -32798,7 +32798,7 @@
       "name": "Wind Step",
       "seconds": 5,
       "rawSeconds": 5,
-      "persistentSeconds": 2,
+      "persistentSeconds": 0.3,
       "recoveryFloor": 4,
       "range": 280,
       "radius": null
@@ -32814,7 +32814,7 @@
       "name": "Wind Step",
       "seconds": 4,
       "rawSeconds": 2.952,
-      "persistentSeconds": 2,
+      "persistentSeconds": 0.3,
       "recoveryFloor": 4,
       "range": 280,
       "radius": null
@@ -32862,7 +32862,7 @@
       "name": "Wind Step",
       "seconds": 5,
       "rawSeconds": 5,
-      "persistentSeconds": 2,
+      "persistentSeconds": 0.3,
       "recoveryFloor": 4,
       "range": 280,
       "radius": null
@@ -32878,7 +32878,7 @@
       "name": "Wind Step",
       "seconds": 4,
       "rawSeconds": 2.952,
-      "persistentSeconds": 2,
+      "persistentSeconds": 0.3,
       "recoveryFloor": 4,
       "range": 280,
       "radius": null

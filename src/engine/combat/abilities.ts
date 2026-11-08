@@ -1,3 +1,4 @@
+import { reservePalmSweep, startPalmSweep, validPalmSweep, palmContact } from './palmSweep';
 import {
   reserveAncestralCast,
   ancestralOrigin,
@@ -276,12 +277,22 @@ export function stepPlayerGlide(world: World, p: Player, dt: number): void {
     p.glide = null;
     return;
   }
+  if (
+    g.palmSweep &&
+    (!validPalmSweep(world, p, g.palmSweep.cast) ||
+      p.shove ||
+      isRooted(p) ||
+      p.buffs.some((b) => b.kind === 'stun' && b.remaining > 0))
+  ) {
+    p.glide = null;
+    return;
+  }
   // A felled hero drops out of a dash (no ghost-sliding a corpse).
   if (p.state !== 'alive') {
     p.glide = null;
     return;
   }
-  const step = Math.min(GLIDE_SPEED * dt, g.remaining);
+  const step = Math.min((g.speed ?? GLIDE_SPEED) * dt, g.remaining);
   const from = { ...p.pos };
   let next = vadd(from, vscale(g.dir, step));
   const stop = firstObstacleStop(world, from, next, p.radius, g.leap);
@@ -292,9 +303,10 @@ export function stepPlayerGlide(world: World, p: Player, dt: number): void {
   }
   p.pos = clampToArena(world, next, p.radius);
   if (!g.supportedAlly) g.supportedAlly = guardCrossedAlly(world, p, g.ab, from, p.pos);
+  if (g.palmSweep) resolveBurstAt(world, p, g.ab, p.pos, g.palmSweep.hitIds, from);
   g.remaining -= step;
   if (ended || g.remaining <= 1e-6) {
-    applyDashLanding(world, p, g.ab);
+    if (!g.palmSweep) applyDashLanding(world, p, g.ab);
     p.glide = null;
   }
 }
@@ -433,6 +445,7 @@ export function resolvePlayerAbility(
     ...limited,
     maneuverCast: reserved?.maneuverCast ?? maneuverCast(p, limited, moveDir),
     ancestralCast: reserved?.ancestralCast ?? reserveAncestralCast(world, p, limited, slot),
+    palmSweepCast: reserved?.palmSweepCast ?? reservePalmSweep(world, p, limited, slot, moveDir),
     ...(limited.preparedRefund ? { refundCast: { spent: false } } : {}),
     // Every delivery owns a distinct token, including composed landing strikes.
     pilotCast: { spent: false },
@@ -604,46 +617,14 @@ export function resolvePlayerAbility(
         resolveInfernalClaim(world, p, ab);
         break;
       }
-      const radius = ab.radius ?? 150;
-      const origin = ancestralOrigin(world, p, ab);
-      emitSkillArea(world, p.id, color, {
-        kind: 'circle',
-        origin: { ...origin },
-        angle: 0,
-        range: 0,
-        radius,
-        halfAngle: 0,
-      });
-      let dealt = 0;
-      for (const b of world.bosses) {
-        if (b.hp <= 0) continue;
-        if (pointInCircle(b.pos, origin, radius, b.radius)) {
-          // item 5: a point-blank burst can crit (omnidirectional → no backstab).
-          dealt += damageBoss(
-            world,
-            p,
-            b,
-            ab.damage * controlledSpellMultiplier(b, ab.controlDamageBonus),
-            world.critRoll(p, ab),
-          );
-          applyStrikeRiders(world, origin, b, ab);
-        }
-      }
-      for (const a of world.adds) {
-        if (!hostileAdd(a)) continue;
-        if (pointInCircle(a.pos, origin, radius, a.radius)) {
-          dealt += damageAdd(
-            world,
-            p,
-            a,
-            ab.damage * controlledSpellMultiplier(a, ab.controlDamageBonus),
-            world.critRoll(p, ab),
-          );
-          applyStrikeRiders(world, origin, a, ab);
-        }
-      }
-      onParryHit(p, ab, dealt);
-      lifesteal(world, p, ab, dealt);
+      const sweeping = startPalmSweep(world, p, ab);
+      resolveBurstAt(
+        world,
+        p,
+        ab,
+        ancestralOrigin(world, p, ab),
+        sweeping ? p.glide!.palmSweep!.hitIds : undefined,
+      );
       if (ab.rebukeDuration) armRebuke(p, ab);
       break;
     }
@@ -769,6 +750,61 @@ export function resolvePlayerAbility(
   recordShadowReprise(world, p, ab, slot, departure);
   openInfernalAperture(world, p, ab, slot);
   finishAncestralCast(world, p, ab);
+}
+
+/** One contact per foe; moving bursts test the entire actual travelled segment. */
+function resolveBurstAt(
+  world: World,
+  p: Player,
+  ab: PlayerAbilityDef,
+  origin: Vec2,
+  hitIds?: number[],
+  from: Vec2 = origin,
+): void {
+  const radius = ab.radius ?? 150;
+  if (!hitIds)
+    emitSkillArea(world, p.id, CLASS_COLORS[p.classId], {
+      kind: 'circle',
+      origin: { ...origin },
+      angle: 0,
+      range: 0,
+      radius,
+      halfAngle: 0,
+    });
+  let dealt = 0;
+  for (const b of world.bosses) {
+    if (b.hp <= 0 || hitIds?.includes(b.id)) continue;
+    const contact = palmContact(from, origin, b.pos, radius + b.radius);
+    if (contact) {
+      hitIds?.push(b.id);
+      // item 5: a point-blank burst can crit (omnidirectional → no backstab).
+      dealt += damageBoss(
+        world,
+        p,
+        b,
+        ab.damage * controlledSpellMultiplier(b, ab.controlDamageBonus),
+        world.critRoll(p, ab),
+      );
+      applyStrikeRiders(world, contact, b, ab);
+    }
+  }
+  for (const a of world.adds) {
+    if (!hostileAdd(a) || hitIds?.includes(a.id)) continue;
+    const contact = palmContact(from, origin, a.pos, radius + a.radius);
+    if (contact) {
+      hitIds?.push(a.id);
+      dealt += damageAdd(
+        world,
+        p,
+        a,
+        ab.damage * controlledSpellMultiplier(a, ab.controlDamageBonus),
+        world.critRoll(p, ab),
+      );
+      applyStrikeRiders(world, contact, a, ab);
+    }
+  }
+  onParryHit(p, ab, dealt);
+  lifesteal(world, p, ab, dealt);
 }
 
 /** Resolve the closest aimed living foe carrying this player's own curse. */
@@ -1036,45 +1072,9 @@ function resolveComposedAbility(
         resolveInfernalClaim(world, p, ab);
         break;
       }
-      const radius = ab.radius ?? 150;
-      const origin = ancestralOrigin(world, p, ab);
-      emitSkillArea(world, p.id, color, {
-        kind: 'circle',
-        origin: { ...origin },
-        angle: 0,
-        range: 0,
-        radius,
-        halfAngle: 0,
-      });
-      let dealt = 0;
-      for (const b of world.bosses) {
-        if (b.hp <= 0) continue;
-        if (pointInCircle(b.pos, origin, radius, b.radius)) {
-          dealt += damageBoss(
-            world,
-            p,
-            b,
-            dmg * controlledSpellMultiplier(b, ab.controlDamageBonus),
-            world.critRoll(p, ab),
-          );
-          applyStrikeRiders(world, origin, b, ab);
-        }
-      }
-      for (const a of world.adds) {
-        if (!hostileAdd(a)) continue;
-        if (pointInCircle(a.pos, origin, radius, a.radius)) {
-          dealt += damageAdd(
-            world,
-            p,
-            a,
-            dmg * controlledSpellMultiplier(a, ab.controlDamageBonus),
-            world.critRoll(p, ab),
-          );
-          applyStrikeRiders(world, origin, a, ab);
-        }
-      }
-      onParryHit(p, ab, dealt);
-      lifesteal(world, p, ab, dealt);
+      const origin = ancestralOrigin(world, p, ab),
+        sweeping = startPalmSweep(world, p, ab);
+      resolveBurstAt(world, p, ab, origin, sweeping ? p.glide!.palmSweep!.hitIds : undefined);
       if (ab.rebukeDuration) armRebuke(p, ab);
       buffSelf();
       buffAllies(FORGE_RALLY_RANGE, origin);

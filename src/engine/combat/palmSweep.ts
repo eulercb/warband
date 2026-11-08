@@ -1,0 +1,110 @@
+/** A moving delivery of one burst, never a second landing attack. */
+import type { PalmSweepCast, Player, Vec2, ExtSlot, PalmSweepView } from '../core/types';
+import type { PlayerAbilityDef } from '../content/classes';
+import type { World } from '../world/world';
+import { resolvedPalmSweep } from '../content/classes';
+import { boundedAbility } from '../content/abilityLimits';
+import { abilityForSlot } from './abilities';
+import { isRooted } from './combat';
+import { consumeMartialFinishers } from './martial';
+import { normalize } from '../core/math';
+import { sub, wrapPos } from '../core/torus';
+export const PALM_SPEED = 450;
+const live = (w: World, p: Player) =>
+  !w.finished && w.scene === null && p.state === 'alive' && p.hp > 0;
+export function palmDirection(move: Vec2, aim: Vec2): Vec2 {
+  const d = normalize(move.x || move.y ? move : aim);
+  return d.x || d.y ? d : { x: 1, y: 0 };
+}
+export function reservePalmSweep(
+  w: World,
+  p: Player,
+  ab: PlayerAbilityDef,
+  slot: ExtSlot,
+  move: Vec2,
+): PalmSweepCast | undefined {
+  if (!live(w, p) || !resolvedPalmSweep(ab)) return undefined;
+  const source = abilityForSlot(p, slot);
+  if (!source) return undefined;
+  return {
+    source,
+    slot,
+    ownerClass: p.classId,
+    epoch: p.palmEpoch ?? 0,
+    dir: palmDirection(move, p.aim),
+  };
+}
+export function validPalmSweep(w: World, p: Player, cast: PalmSweepCast): boolean {
+  return (
+    live(w, p) &&
+    cast.ownerClass === p.classId &&
+    cast.epoch === (p.palmEpoch ?? 0) &&
+    abilityForSlot(p, cast.slot) === cast.source &&
+    !!resolvedPalmSweep(cast.source)
+  );
+}
+export function startPalmSweep(w: World, p: Player, ab: PlayerAbilityDef): boolean {
+  const cast = ab.palmSweepCast,
+    effect = resolvedPalmSweep(ab);
+  if (!cast || !effect || !validPalmSweep(w, p, cast) || isRooted(p)) return false;
+  p.glide = {
+    dir: { ...cast.dir },
+    remaining: Math.max(30, Math.min(180, effect.distance)),
+    leap: false,
+    ab,
+    speed: PALM_SPEED,
+    palmSweep: { cast, hitIds: [], origin: { ...p.pos } },
+  };
+  return true;
+}
+/** First contact with the swept circle, including wrapped arena seams. */
+export function palmContact(from: Vec2, to: Vec2, target: Vec2, radius: number): Vec2 | null {
+  const d = sub(to, from),
+    r = sub(target, from),
+    a = d.x * d.x + d.y * d.y,
+    c = r.x * r.x + r.y * r.y - radius * radius;
+  if (c <= 0) return { ...from };
+  if (a <= 0) return null;
+  const b = r.x * d.x + r.y * d.y,
+    disc = b * b - a * c;
+  if (disc < 0) return null;
+  const t = (b - Math.sqrt(disc)) / a;
+  return t >= 0 && t <= 1 ? wrapPos({ x: from.x + d.x * t, y: from.y + d.y * t }) : null;
+}
+export function palmSweepView(w: World, p: Player): PalmSweepView | undefined {
+  if (!live(w, p)) return undefined;
+  const g = p.glide,
+    active = !!g?.palmSweep && validPalmSweep(w, p, g.palmSweep.cast);
+  const raw = active
+    ? g.ab
+    : p.castAbility && resolvedPalmSweep(p.castAbility)
+      ? p.castAbility
+      : [...Object.values(p.abilities ?? {}), ...Object.values(p.subAbilities ?? {})].find(
+          (a) => a && resolvedPalmSweep(a),
+        );
+  if (!raw) return undefined;
+  const casting = !active && p.castTimer > 0 && p.castAbility === raw;
+  // Preview the real resource resolver on isolated buff state, never spend live preparation.
+  const prepared =
+    active || casting
+      ? raw
+      : consumeMartialFinishers({ ...p, buffs: p.buffs.map((b) => ({ ...b })) }, raw);
+  const ab = boundedAbility(prepared, w.arena),
+    effect = resolvedPalmSweep(ab)!;
+  const slot = active ? g.palmSweep!.cast.slot : casting ? p.castSlot! : ab.slot;
+  return {
+    dir: active
+      ? { ...g.dir }
+      : casting
+        ? { ...ab.palmSweepCast!.dir }
+        : palmDirection(p.maneuverMove ?? { x: 0, y: 0 }, p.aim),
+    radius: ab.radius ?? 150,
+    distance: active ? g.remaining : Math.min(180, effect.distance),
+    active,
+    casting,
+    ready: (p.cooldowns[slot] ?? 0) <= 0,
+    blocked: isRooted(p) ? 'Rooted · local Palm' : null,
+    slot,
+    origin: active ? { ...g.palmSweep!.origin } : { ...p.pos },
+  };
+}

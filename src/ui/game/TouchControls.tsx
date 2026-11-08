@@ -175,6 +175,11 @@ function TouchButton({
       : relay && relay.seedSlot === cdSlot
         ? 'Place ancestor ahead'
         : null;
+  const sweep = useHudStore((s) => (s.palmSweep?.slot === cdSlot ? s.palmSweep : undefined));
+  const sweepStatus =
+    sweep && (sweep.active || sweep.casting || sweep.ready)
+      ? (sweep.blocked ?? (sweep.active ? 'Sweeping' : 'Moving Palm'))
+      : null;
   const breakPrepared = useHudStore(
     (s) =>
       s.state === 'alive' &&
@@ -184,7 +189,11 @@ function TouchButton({
   );
   const actionStatus = reprise?.armed
     ? repriseStatus
-    : (apertureStatus ?? repriseStatus ?? relayStatus ?? (breakPrepared ? 'Break prepared' : null));
+    : (apertureStatus ??
+      repriseStatus ??
+      relayStatus ??
+      sweepStatus ??
+      (breakPrepared ? 'Break prepared' : null));
   const claimTarget = useHudStore((s) => (cdSlot ? s.infernalClaimTargets[cdSlot] : undefined));
   const alive = useHudStore((s) => s.state === 'alive');
   const frac = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;

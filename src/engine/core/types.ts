@@ -446,7 +446,26 @@ export interface AncestralView {
   slot: ExtSlot;
   seedSlot?: ExtSlot;
 }
+export interface PalmSweepCast {
+  ownerClass: ClassId;
+  epoch: number;
+  source: import('../content/classes').PlayerAbilityDef;
+  slot: ExtSlot;
+  dir: Vec2;
+}
+export interface PalmSweepView {
+  dir: Vec2;
+  radius: number;
+  distance: number;
+  active: boolean;
+  casting: boolean;
+  ready: boolean;
+  blocked: string | null;
+  slot: ExtSlot;
+  origin: Vec2;
+}
 export interface Player {
+  palmEpoch?: number;
   ancestralStation?: { pos: Vec2; ownerClass: ClassId; epoch: number };
   ancestralEpoch?: number;
   maneuverEpoch?: number;
@@ -614,6 +633,8 @@ export interface Player {
    * Absent/null when not mid-dash. Teleports (blink) move instantly and never set it.
    */
   glide?: {
+    palmSweep?: { cast: PalmSweepCast; hitIds: number[]; origin: Vec2 };
+    speed?: number;
     maneuverClass?: ClassId;
     /** Unit travel direction (locked at dash start). */
     dir: Vec2;
@@ -1459,6 +1480,7 @@ export interface PlayerView {
     slot: ExtSlot;
     blocked: string | null;
   };
+  palmSweep?: PalmSweepView;
   shadowReprise?: {
     anchor: Vec2;
     slot: ExtSlot;

@@ -41,7 +41,7 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a multi-projectile attack shows the projectile count', () => {
     // Ranger Multishot — projCount 3, now an aimed wind-up volley (item 10).
     expect(describeAbility(CLASSES.ranger.abilities.a1)).toBe(
-      '3× 19 dmg · pierce 1 additional enemy (direct shots only; blasts/zones use one impact) · 0.3s wind-up · 6s cooldown',
+      '3× 19 dmg · pierce 1 additional enemy · 0.3s wind-up · 6s cooldown',
     );
     // Sorcerer Chaos Bolt — twin bolts.
     expect(describeAbility(CLASSES.sorcerer.abilities.basic)).toBe('2× 12 dmg · 0.5s cooldown');
@@ -127,7 +127,7 @@ describe('describeAbility (base-kit abilities)', () => {
   it('a mobility skill that heals on use shows the flat heal', () => {
     // Monk Step of the Wind — healOnUse 18.
     expect(describeAbility(CLASSES.monk.abilities.a2)).toBe(
-      'heal 18 · successful movement readies Flow for 4s; next marked special is instant with more reach · 250u dash · 0.3s i-frames · 5s cooldown',
+      'heal 18 · dashing readies Flow for 4s; next marked special gains its listed Flow effect · 250u dash · 0.3s i-frames · 5s cooldown',
     );
   });
 });

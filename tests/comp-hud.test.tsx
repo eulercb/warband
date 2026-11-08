@@ -1011,3 +1011,33 @@ it('shows persistent relay placement, local fallback and silence priority', () =
   act(() => useHudStore.getState().set({ buffs: [], ancestralRelay: undefined }));
   expect(container.textContent).not.toContain('Place ancestor ahead');
 });
+
+it('shows moving Palm readiness, active travel and the rooted local fallback', () => {
+  useStore.setState({ localClass: 'monk', myCharUpgrades: ['mo_openhand_g_b'] });
+  const sweep = {
+    dir: { x: 1, y: 0 },
+    origin: { x: 0, y: 0 },
+    radius: 130,
+    distance: 180,
+    active: false,
+    casting: false,
+    ready: true,
+    blocked: null,
+    slot: 'a3' as const,
+  };
+  useHudStore.getState().set({ active: true, classId: 'monk', state: 'alive', palmSweep: sweep });
+  const { container } = render(<HUD />);
+  expect(container.textContent).toContain('Moving Palm');
+  act(() => useHudStore.getState().set({ palmSweep: { ...sweep, active: true } }));
+  expect(container.textContent).toContain('Sweeping');
+  act(() =>
+    useHudStore.getState().set({ palmSweep: { ...sweep, blocked: 'Rooted · local Palm' } }),
+  );
+  expect(container.textContent).toContain('Rooted · local Palm');
+  act(() => useHudStore.getState().set({ palmSweep: { ...sweep, ready: false } }));
+  expect(container.textContent).not.toContain('Moving Palm');
+  act(() => useHudStore.getState().set({ palmSweep: { ...sweep, ready: false, casting: true } }));
+  expect(container.textContent).toContain('Moving Palm');
+  act(() => useHudStore.getState().set({ buffs: [{ kind: 'silence', mult: 0, remaining: 2 }] }));
+  expect(container.textContent).not.toContain('Moving Palm');
+});

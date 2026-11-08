@@ -28,6 +28,12 @@ matching hit geometry and ongoing attack timers.
 Check actual targeting semantics before promising a safe area or fixed aim. Do not add
 complexity to every skill or discard functioning simple skills merely for novelty.
 
+Owner feedback, 2026-11-08: skill readouts must describe the actual receiving
+geometry and active resource mode. Do not list cone reach on a field, promise
+projectile reach for Flow, or advertise melee generation while walking replaces
+it. Check native, upgraded and Forge readouts together. Reuse the combat resource
+calculation for prepared previews rather than duplicating its geometry rules.
+
 Before presenting a redesign, describe what a player or enemy actually does
 differently, compare it with existing mechanics, and show a useful solo-boss
 route as well as co-op behavior. If bosses need limits, preserve the mechanic's

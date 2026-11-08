@@ -429,7 +429,7 @@ it.each([
     'consumesFlow',
   ] as const)
     expect(refreshed[field]).toBe(original[field]);
-  expect(describeAbility(refreshed)).toMatch(/block|guard|pierce|momentum|Flow/);
+  expect(describeAbility(refreshed)).toMatch(/block|guard|pierce|momentum|Flow/i);
   if (classId === 'barbarian' && slot === 'a3') {
     resolvePlayerAbility(w, p, 'a1', ZERO);
     resolvePlayerAbility(w, p, 'basic', ZERO);
