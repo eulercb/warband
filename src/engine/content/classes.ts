@@ -1,3 +1,4 @@
+import { shadowCommitKind, shadowCommitDescription } from './shadowRules';
 import { boundedAbility, effectiveRecharge } from './abilityLimits';
 import { curseDescription, type CurseStyle } from '../core/curses';
 import { absorptionDescription } from '../combat/absorption';
@@ -207,6 +208,7 @@ export interface PlayerAbilityDef {
   /** Persistent relay of this burst's single origin; no extra damage event. */
   ancestralRelay?: { range: number };
   palmSweep?: { distance: number };
+  shadowCommit?: boolean;
   /** Resolved cast aim captured for travelling and buffered actions; never authored. */
   flowAim?: Vec2;
   palmSweepCast?: import('../core/types').PalmSweepCast;
@@ -320,13 +322,31 @@ export function resolvedForethought(def: PlayerAbilityDef): PlayerAbilityDef['fo
   return effect?.kind === 'forethought' ? { requiresCurse: !!effect.requiresCurse } : undefined;
 }
 
+/** A self-contained deferred original strike, not an echo or moving attack. */
+export function resolvedShadowCommit(
+  def: Omit<PlayerAbilityDef, 'slot'> & { slot?: ExtSlot },
+): boolean {
+  if (
+    !shadowCommitKind(def.kind) ||
+    def.slot === 'basic' ||
+    def.infernalClaim ||
+    def.ancestralRelay ||
+    def.palmSweep
+  )
+    return false;
+  return def.components
+    ? def.components.effects.some((e) => e.kind === 'shadowCommit')
+    : !!def.shadowCommit;
+}
+
 /** Portable travel: carry cones/bursts, launch shots/fields once before moving. */
 export function resolvedPalmSweep(def: PlayerAbilityDef): PlayerAbilityDef['palmSweep'] {
   if (
     !['meleeCone', 'pbaoe', 'projectile', 'groundZone'].includes(def.kind) ||
     def.slot === 'basic' ||
     def.infernalClaim ||
-    def.ancestralRelay
+    def.ancestralRelay ||
+    def.shadowCommit
   )
     return undefined;
   if (!def.components) return def.palmSweep;
@@ -334,7 +354,13 @@ export function resolvedPalmSweep(def: PlayerAbilityDef): PlayerAbilityDef['palm
   return e?.kind === 'palmSweep' ? { distance: e.distance } : undefined;
 }
 export function resolvedAncestralRelay(def: PlayerAbilityDef): PlayerAbilityDef['ancestralRelay'] {
-  if (def.kind !== 'pbaoe' || def.slot === 'basic' || def.infernalClaim || def.palmSweep)
+  if (
+    def.kind !== 'pbaoe' ||
+    def.slot === 'basic' ||
+    def.infernalClaim ||
+    def.palmSweep ||
+    def.shadowCommit
+  )
     return undefined;
   if (!def.components) return def.ancestralRelay;
   const effect = def.components.effects.find((e) => e.kind === 'ancestralRelay');
@@ -1232,6 +1258,7 @@ export function describeAbility(
   mods?: DescribeMods,
 ): string {
   const def = boundedAbility(input);
+  if (resolvedShadowCommit(def)) def.castTime = 0;
   // The hero's GENERIC multipliers (Mighty/Haste/Focus and any boon that tugs
   // player.damageMult / cooldownMult / castMult) are applied by the SIM at use-time,
   // on top of the class-upgraded def — so fold them into the displayed numbers here so
@@ -1397,6 +1424,7 @@ export function describeAbility(
 
   if (def.controlDamageBonus)
     parts.push(`+${n(def.controlDamageBonus * 100)}% dmg vs slowed/rooted/stunned foes`);
+  if (resolvedShadowCommit(def)) parts.push(shadowCommitDescription(def.kind));
   if (def.palmSweep)
     parts.push(
       `flow with this special up to ${n(def.palmSweep.distance)}u over ${s(def.palmSweep.distance / 450)} along movement input or aim; cover stops travel; roots prevent travel; no immunity`,

@@ -1,3 +1,5 @@
+import { tickShadowCommits, shadowCommitViews } from '../combat/shadowCommit';
+import { resolvedShadowCommit } from '../content/classes';
 import { resolvedPalmSweep } from '../content/classes';
 import {
   reservePalmSweep,
@@ -1220,6 +1222,7 @@ export class World {
     maintainMoonForms(this);
     tickWhispers(this, dt);
     tickShadowReprise(this, dt);
+    tickShadowCommits(this, dt);
     tickAncestralRelay(this);
     tickInfernalApertures(this, dt);
     this.maintainCloseBursts();
@@ -1497,7 +1500,9 @@ export class World {
     const ab = {
       ...consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original), this)),
     };
-    if (capturedAim || resolvedPalmSweep(ab)) ab.flowAim = { ...(capturedAim ?? p.aim) };
+    if (resolvedShadowCommit(ab)) ab.castTime = 0;
+    if (capturedAim || resolvedPalmSweep(ab) || resolvedShadowCommit(ab))
+      ab.flowAim = { ...(capturedAim ?? p.aim) };
     ab.maneuverCast = maneuverCast(p, ab, moveDir, fresh);
     ab.palmSweepCast = reservePalmSweep(this, p, ab, slot, moveDir, ab.flowAim ?? p.aim);
     ab.ancestralCast = reserveAncestralCast(this, p, ab, slot);
@@ -1582,6 +1587,8 @@ export class World {
     invalidateManeuvers(this, p);
     invalidateAncestralRelay(p);
     p.palmEpoch = (p.palmEpoch ?? 0) + 1;
+    p.shadowCommitEpoch = (p.shadowCommitEpoch ?? 0) + 1;
+    delete p.shadowCommits;
     delete p.flowQueue;
     delete p.lastFlowSlot;
     if (p.glide?.palmSweep) p.glide = null;
@@ -4097,6 +4104,7 @@ export class World {
       shadowReprise: shadowRepriseView(this, p),
       ancestralRelay: ancestralRelayView(this, p),
       palmSweep: palmSweepView(this, p),
+      shadowCommits: shadowCommitViews(this, p),
       infernalAperture: apertureView(this, p),
       buffs: p.buffs.map((b) => {
         const view = buffView(b);

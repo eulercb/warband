@@ -11646,7 +11646,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Step of the Wind heals 15 more and prepares Flow 0.5s longer; Stunning Strike, Quivering Palm and damaging Shadow skills slow wind-ups by 30%; Shadow Step prepares Flow 0.5s longer and grants 2s hard-control resistance",
+      "description": "Melee specials leave a shadow to deliver their strike after 0.6s at the cast position and facing; you can move and act meanwhile",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -11656,24 +11656,16 @@
           "subSkills": ["mo_shadow_dart"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a1.castSlowDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.prepareFlow", "before": 4, "after": 4.5 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
-            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
+            { "path": "abilities.a1.castTime", "before": null, "after": 0 },
+            { "path": "abilities.a1.shadowCommit", "before": null, "after": true },
+            { "path": "abilities.a3.castTime", "before": 0.4, "after": 0 },
+            { "path": "abilities.a3.shadowCommit", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "abilities.a1.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a1.castSlowDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.prepareFlow", "before": 4, "after": 4.5 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
-            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
+            { "path": "abilities.a1.castTime", "before": null, "after": 0 },
+            { "path": "abilities.a1.shadowCommit", "before": null, "after": true },
+            { "path": "abilities.a3.castTime", "before": 0.4, "after": 0 },
+            { "path": "abilities.a3.shadowCommit", "before": null, "after": true }
           ]
         },
         {
@@ -11681,24 +11673,16 @@
           "subSkills": ["mo_shadow_step"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a1.castSlowDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.prepareFlow", "before": 4, "after": 4.5 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.prepareFlow", "before": 4, "after": 4.5 },
-            { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 2 }
+            { "path": "abilities.a1.castTime", "before": null, "after": 0 },
+            { "path": "abilities.a1.shadowCommit", "before": null, "after": true },
+            { "path": "abilities.a3.castTime", "before": 0.4, "after": 0 },
+            { "path": "abilities.a3.shadowCommit", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "abilities.a1.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a1.castSlowDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.prepareFlow", "before": 4, "after": 4.5 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.prepareFlow", "before": 4, "after": 4.5 },
-            { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 2 }
+            { "path": "abilities.a1.castTime", "before": null, "after": 0 },
+            { "path": "abilities.a1.shadowCommit", "before": null, "after": true },
+            { "path": "abilities.a3.castTime", "before": 0.4, "after": 0 },
+            { "path": "abilities.a3.shadowCommit", "before": null, "after": true }
           ]
         },
         {
@@ -11706,24 +11690,16 @@
           "subSkills": ["mo_shadow_cloud"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a1.castSlowDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.prepareFlow", "before": 4, "after": 4.5 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
-            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
+            { "path": "abilities.a1.castTime", "before": null, "after": 0 },
+            { "path": "abilities.a1.shadowCommit", "before": null, "after": true },
+            { "path": "abilities.a3.castTime", "before": 0.4, "after": 0 },
+            { "path": "abilities.a3.shadowCommit", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "abilities.a1.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a1.castSlowDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.prepareFlow", "before": 4, "after": 4.5 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
-            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
+            { "path": "abilities.a1.castTime", "before": null, "after": 0 },
+            { "path": "abilities.a1.shadowCommit", "before": null, "after": true },
+            { "path": "abilities.a3.castTime", "before": 0.4, "after": 0 },
+            { "path": "abilities.a3.shadowCommit", "before": null, "after": true }
           ]
         },
         {
@@ -11731,24 +11707,20 @@
           "subSkills": ["mo_shadow_strike"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a1.castSlowDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.prepareFlow", "before": 4, "after": 4.5 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
-            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
+            { "path": "abilities.a1.castTime", "before": null, "after": 0 },
+            { "path": "abilities.a1.shadowCommit", "before": null, "after": true },
+            { "path": "abilities.a3.castTime", "before": 0.4, "after": 0 },
+            { "path": "abilities.a3.shadowCommit", "before": null, "after": true },
+            { "path": "subAbilities.sub1.castTime", "before": null, "after": 0 },
+            { "path": "subAbilities.sub1.shadowCommit", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "abilities.a1.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a1.castSlowDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.healOnUse", "before": 18, "after": 33 },
-            { "path": "abilities.a2.prepareFlow", "before": 4, "after": 4.5 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
-            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
+            { "path": "abilities.a1.castTime", "before": null, "after": 0 },
+            { "path": "abilities.a1.shadowCommit", "before": null, "after": true },
+            { "path": "abilities.a3.castTime", "before": 0.4, "after": 0 },
+            { "path": "abilities.a3.shadowCommit", "before": null, "after": true },
+            { "path": "subAbilities.sub1.castTime", "before": null, "after": 0 },
+            { "path": "subAbilities.sub1.shadowCommit", "before": null, "after": true }
           ]
         }
       ]

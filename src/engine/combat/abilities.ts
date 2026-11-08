@@ -1,3 +1,4 @@
+import { commitShadow } from './shadowCommit';
 import {
   reservePalmSweep,
   startPalmSweep,
@@ -538,8 +539,10 @@ export function resolvePlayerAbility(
 
   switch (ab.kind) {
     case 'meleeCone': {
-      const moving = startPalmSweep(world, p, ab);
-      resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
+      if (!commitShadow(world, p, ab, ab.slot, p.pos, ab.flowAim ?? p.aim)) {
+        const moving = startPalmSweep(world, p, ab);
+        resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
+      }
       break;
     }
 
@@ -606,13 +609,14 @@ export function resolvePlayerAbility(
         break;
       }
       const sweeping = startPalmSweep(world, p, ab);
-      resolveBurstAt(
-        world,
-        p,
-        ab,
-        ancestralOrigin(world, p, ab),
-        sweeping ? p.glide!.palmSweep!.hitIds : undefined,
-      );
+      if (!commitShadow(world, p, ab, ab.slot, p.pos, p.aim))
+        resolveBurstAt(
+          world,
+          p,
+          ab,
+          ancestralOrigin(world, p, ab),
+          sweeping ? p.glide!.palmSweep!.hitIds : undefined,
+        );
       if (ab.rebukeDuration) armRebuke(p, ab);
       break;
     }
@@ -739,6 +743,19 @@ export function resolvePlayerAbility(
   recordShadowReprise(world, p, ab, slot, departure);
   openInfernalAperture(world, p, ab, slot);
   finishAncestralCast(world, p, ab);
+}
+
+/** Release only the committed original contact; never repeat activation hooks. */
+export function releaseShadowCommit(
+  world: World,
+  p: Player,
+  ab: PlayerAbilityDef,
+  origin: Vec2,
+  aim: Vec2,
+): void {
+  const cast = { ...ab, flowAim: aim, finisherOrigin: origin };
+  if (ab.kind === 'meleeCone') resolveConeAt(world, p, cast, origin);
+  else resolveBurstAt(world, p, cast, origin);
 }
 
 /** Carry the aimed sector; each target is contacted once across the travelled path. */
@@ -1070,8 +1087,10 @@ function resolveComposedAbility(
 
   switch (d.kind) {
     case 'meleeCone': {
-      const moving = startPalmSweep(world, p, ab);
-      resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
+      if (!commitShadow(world, p, ab, ab.slot, p.pos, ab.flowAim ?? p.aim)) {
+        const moving = startPalmSweep(world, p, ab);
+        resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
+      }
       buffSelf();
       buffAllies(FORGE_RALLY_RANGE);
       break;
@@ -1084,7 +1103,8 @@ function resolveComposedAbility(
       }
       const origin = ancestralOrigin(world, p, ab),
         sweeping = startPalmSweep(world, p, ab);
-      resolveBurstAt(world, p, ab, origin, sweeping ? p.glide!.palmSweep!.hitIds : undefined);
+      if (!commitShadow(world, p, ab, ab.slot, origin, p.aim))
+        resolveBurstAt(world, p, ab, origin, sweeping ? p.glide!.palmSweep!.hitIds : undefined);
       if (ab.rebukeDuration) armRebuke(p, ab);
       buffSelf();
       buffAllies(FORGE_RALLY_RANGE, origin);

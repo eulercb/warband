@@ -28,41 +28,37 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Wave Palm's capped Flow payoff](WAVE_PALM_FLOW.md) and
-[Shadow Monk purpose review](SHADOW_MONK_PURPOSE_REVIEW.md).
-Open Hand's expanded Flowing Water loop (#165) is merged, tested and accepted.
-The owner then identified Wave consuming Flow without an attack bonus: capped
-reach and absent windup made its old payoff inert. The +40u existing-force fallback
-is implemented pending live acceptance. Accepted Open Hand movement remains.
-Totem Ancestral Relay (#163), Battlemaster instant group steering (#162), silence
-separation (#159) and Champion projected shield/emitted-wave cover (#157–158)
-remain accepted baselines.
+Current delivery: [Shadow Monk Silent Death commitment prototype](SHADOW_MONK_COMMITMENT.md).
+Open Hand's expanded Flowing Water loop (#165) remains merged/tested/accepted.
+Wave's real Flow force correction (#166) is merged; the owner authorized moving
+on, with no additional live feedback recorded. Existing Totem, Battlemaster,
+Champion and silence baselines remain accepted.
 
-Open Hand A remains numerical support; B's movement loop is accepted. Shadow's
-source review is complete: both identities remain useful growth on the existing
-mobility-refund loop, with their behavioral replacement unresolved. A focused
-prototype is next; no Shadow redesign is implemented or accepted.
-Warlord's proactive counter core and Berserker's contact-versus-walking distinction
-remain retained review findings. Wave follow-up acceptance and Shadow Monk
-replacement remain open.
+Shadow B now commits the original melee strike at the departure point for 0.6s,
+freeing the body to move and act normally meanwhile. This follows its completed
+purpose review and one bounded prototype design review. It is implemented and
+awaits owner feel/identity acceptance. Shadow A is retained precision growth;
+Shadow Rhythm and the useful simple Dart/Cloud/movement skills are retained.
+Warlord and Berserker remain retained purpose findings.
 
 Thirteen of 24 subclasses have been inspected: seven earlier subclasses are
 accepted/retained. Among the six martial reviews, Champion, Battlemaster, Totem
-and Open Hand are accepted, Berserker is retained, and Shadow remains open. Eleven subclasses await review.
+and Open Hand are accepted, Berserker is retained, and Shadow B is implemented
+pending live acceptance with A retained as growth. Eleven subclasses await review.
 Inspection, implementation and owner acceptance remain distinct states.
 
 ## Next development work, in order
 
-| Stage                        | Concrete work                                                                                                                                                                         |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test Wave’s real Flow payoff; next development is the bounded Shadow Monk prototype described in its completed purpose review.                                                   |
-| Following                    | Continue remaining nature identities after Shadow Monk; retain accepted routes and useful simple skills.                                                                              |
-| Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow purpose reviewed, behavioral replacement unresolved. |
-| Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                                                                   |
-| Remaining caster identities  | Abjurer, Draconic and Wild Magic; Evoker stays retained.                                                                                                                              |
-| Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                                                                  |
-| Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                                                         |
-| Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                                        |
+| Stage                        | Concrete work                                                                                                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Next                         | Live-test Shadow commitment; next development is the Hunter / Beast Master / Land purpose review (Moon retained).                                                                                             |
+| Following                    | Continue remaining nature identities after Shadow Monk; retain accepted routes and useful simple skills.                                                                                                      |
+| Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B commitment implemented pending acceptance, A retained as precision growth. |
+| Remaining nature identities  | Hunter, Beast Master and Land; Moon stays retained.                                                                                                                                                           |
+| Remaining caster identities  | Abjurer, Draconic and Wild Magic; Evoker stays retained.                                                                                                                                                      |
+| Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                                                                                          |
+| Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                                                                                 |
+| Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                                                                |
 
 Use one bounded Sol 6.1 high design review where substantial planning is needed.
 Proceed with a mature authorized plan; surface unresolved material gameplay

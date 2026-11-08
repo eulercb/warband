@@ -33790,7 +33790,7 @@
       "seconds": 18,
       "rawSeconds": 18,
       "persistentSeconds": 1.8,
-      "recoveryFloor": 4.2,
+      "recoveryFloor": 4,
       "range": null,
       "radius": 205
     },
@@ -33851,7 +33851,7 @@
       "seconds": 10.629,
       "rawSeconds": 10.629,
       "persistentSeconds": 1.8,
-      "recoveryFloor": 4.2,
+      "recoveryFloor": 4,
       "range": null,
       "radius": 205
     },
@@ -34034,7 +34034,7 @@
       "seconds": 18,
       "rawSeconds": 18,
       "persistentSeconds": 3,
-      "recoveryFloor": 5.4,
+      "recoveryFloor": 5,
       "range": null,
       "radius": 240
     },
@@ -34095,7 +34095,7 @@
       "seconds": 10.629,
       "rawSeconds": 10.629,
       "persistentSeconds": 3,
-      "recoveryFloor": 5.4,
+      "recoveryFloor": 5,
       "range": null,
       "radius": 240
     },

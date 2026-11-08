@@ -1,5 +1,9 @@
 # Shadow Monk — purpose review after accepted Open Hand
 
+Historical review: the [Silent Death commitment prototype](SHADOW_MONK_COMMITMENT.md)
+now implements the subsequent bounded design decision. The findings below explain
+the pre-prototype baseline; live acceptance of the replacement remains open.
+
 Baseline: the owner accepted #165's expanded Open Hand movement loop. One bounded
 Sol 6.1 high source review examined Shadow alongside the Wave Flow correction.
 This document records completed review findings and the next prototype task;
