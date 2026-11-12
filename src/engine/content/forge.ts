@@ -1,3 +1,4 @@
+import { shadowCommitKind, shadowCommitDescription } from './shadowRules';
 import { curseDescription, type CurseStyle } from '../core/curses';
 import { absorptionDescription, absorptionMaximum, scaleAbsorption } from '../combat/absorption';
 import { auraText } from './paladinText';
@@ -137,6 +138,7 @@ export type EffectComponent =
   | { kind: 'controlDamage'; bonus: number }
   | { kind: 'prepareSurge'; duration: number }
   | { kind: 'maneuver'; mode: 'push' | 'step'; distance: number }
+  | { kind: 'shadowCommit' }
   | { kind: 'palmSweep'; distance: number }
   | { kind: 'ancestralRelay'; range: number }
   | { kind: 'thoughtBreak' }
@@ -397,13 +399,30 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.infernalAperture)
     effects.push({ kind: 'infernalAperture', aperture: { ...def.infernalAperture } });
   if (
+    def.shadowCommit &&
+    shadowCommitKind(def.kind) &&
+    !def.palmSweep &&
+    !def.ancestralRelay &&
+    !def.infernalClaim
+  ) {
+    effects.push({ kind: 'shadowCommit' });
+    delivery.castTime = 0;
+  }
+  if (
     def.palmSweep &&
     ['meleeCone', 'pbaoe', 'projectile', 'groundZone'].includes(def.kind) &&
     !def.infernalClaim &&
-    !def.ancestralRelay
+    !def.ancestralRelay &&
+    !def.shadowCommit
   )
     effects.push({ kind: 'palmSweep', distance: def.palmSweep.distance });
-  if (def.ancestralRelay && def.kind === 'pbaoe' && !def.infernalClaim && !def.palmSweep)
+  if (
+    def.ancestralRelay &&
+    def.kind === 'pbaoe' &&
+    !def.infernalClaim &&
+    !def.palmSweep &&
+    !def.shadowCommit
+  )
     effects.push({ kind: 'ancestralRelay', range: def.ancestralRelay.range });
   if (def.shadowReprise) effects.push({ kind: 'shadowReprise', reprise: { ...def.shadowReprise } });
   if (def.whisperRefrain && def.kind === 'blink')
@@ -447,23 +466,19 @@ function uniqueMentalContracts(effects: EffectComponent[]): EffectComponent[] {
       e.kind !== 'forethought' &&
       e.kind !== 'maneuver' &&
       e.kind !== 'ancestralRelay' &&
-      e.kind !== 'palmSweep'
+      e.kind !== 'palmSweep' &&
+      e.kind !== 'shadowCommit'
     )
       return true;
     if (
-      e.kind === 'ancestralRelay' &&
-      effects.some((x) => x.kind === 'skillContract' && x.contract.infernalClaim)
-    )
-      return false;
-    if (
-      e.kind === 'palmSweep' &&
+      ['shadowCommit', 'palmSweep', 'ancestralRelay'].includes(e.kind) &&
       effects.some(
         (x) =>
-          x.kind === 'ancestralRelay' || (x.kind === 'skillContract' && x.contract.infernalClaim),
+          (['shadowCommit', 'palmSweep', 'ancestralRelay'].includes(x.kind) && x.kind !== e.kind) ||
+          (x.kind === 'skillContract' && x.contract.infernalClaim),
       )
     )
       return false;
-    if (e.kind === 'ancestralRelay' && effects.some((x) => x.kind === 'palmSweep')) return false;
     if (seen.has(e.kind)) return false;
     seen.add(e.kind);
     return true;
@@ -485,20 +500,28 @@ export function recompose(
   comp: AbilityComponents,
   meta: { slot: PlayerAbilityDef['slot']; name: string; cooldown: number },
 ): PlayerAbilityDef {
-  if (comp.effects.some((e) => e.kind === 'ancestralRelay' || e.kind === 'palmSweep'))
+  if (
+    comp.effects.some(
+      (e) => e.kind === 'ancestralRelay' || e.kind === 'palmSweep' || e.kind === 'shadowCommit',
+    )
+  )
     comp = {
       ...comp,
       effects: uniqueMentalContracts(
         comp.effects.filter(
           (e) =>
-            (e.kind !== 'ancestralRelay' && e.kind !== 'palmSweep') ||
+            (e.kind !== 'ancestralRelay' && e.kind !== 'palmSweep' && e.kind !== 'shadowCommit') ||
             (meta.slot !== 'basic' &&
-              (e.kind === 'palmSweep'
-                ? ['meleeCone', 'pbaoe', 'projectile', 'groundZone'].includes(comp.delivery.kind)
-                : comp.delivery.kind === 'pbaoe')),
+              (e.kind === 'shadowCommit'
+                ? shadowCommitKind(comp.delivery.kind)
+                : e.kind === 'palmSweep'
+                  ? ['meleeCone', 'pbaoe', 'projectile', 'groundZone'].includes(comp.delivery.kind)
+                  : comp.delivery.kind === 'pbaoe')),
         ),
       ),
     };
+  if (comp.effects.some((e) => e.kind === 'shadowCommit'))
+    comp = { ...comp, delivery: { ...comp.delivery, castTime: 0 } };
   if (
     ['forethought', 'thoughtBreak', 'maneuver'].some(
       (kind) => comp.effects.filter((e) => e.kind === kind).length > 1,
@@ -676,6 +699,10 @@ export function recompose(
       case 'infernalAperture':
         def.infernalAperture = { ...e.aperture };
         break;
+      case 'shadowCommit':
+        def.shadowCommit = true;
+        def.castTime = 0;
+        break;
       case 'palmSweep':
         def.palmSweep = { distance: e.distance };
         break;
@@ -791,7 +818,9 @@ export function componentValue(comp: AbilityComponents): number {
   }
   // A rooted cast is dead time the caster pays for — a small discount so a
   // slow, heavy nuke prices a touch cheaper than an instant one of equal output.
-  const cast = comp.delivery.castTime ?? 0;
+  const cast = comp.effects.some((e) => e.kind === 'shadowCommit')
+    ? 0
+    : (comp.delivery.castTime ?? 0);
   return v * (1 - Math.min(0.25, cast * 0.2));
 }
 
@@ -880,6 +909,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return e.part === 'chorus' ? 15 : 8;
     case 'infernalAperture':
       return (54 * e.aperture.duration) / 6 + e.aperture.emberDamage;
+    case 'shadowCommit':
+      return 40;
     case 'palmSweep':
       return 18 + e.distance * 0.15;
     case 'ancestralRelay':
@@ -1178,6 +1209,8 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
       return bardSongText(e.part);
     case 'infernalAperture':
       return `fixed firing conduit ${s(e.aperture.duration)}, entrance ${n(e.aperture.reach / 4)}u / exit ${n(e.aperture.reach)}u along aim; nearby mouths adjust around cover; creates 96u-wide temporary cover when space permits, blocking shots and hostile approach; aim through entrance, press again for one ${n(e.aperture.emberDamage)}-damage ember`;
+    case 'shadowCommit':
+      return shadowCommitDescription(delivery);
     case 'palmSweep':
       return `flow with this special up to ${n(e.distance)}u over ${s(e.distance / 450)} along movement input or aim; cover stops travel; roots prevent travel; no immunity`;
     case 'ancestralRelay':
@@ -1580,6 +1613,8 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'selfBuff' || kind === 'blink' || kind === 'groundZone';
     case 'infernalAperture':
       return true;
+    case 'shadowCommit':
+      return shadowCommitKind(kind);
     case 'palmSweep':
       return DIRECT_STRIKE.has(kind) || kind === 'groundZone';
     case 'ancestralRelay':
@@ -2192,6 +2227,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
           emberDamage: e.aperture.emberDamage * f,
         },
       };
+    case 'shadowCommit':
+      return e;
     case 'palmSweep':
       return { ...e, distance: e.distance * f };
     case 'ancestralRelay':
@@ -2395,6 +2432,7 @@ function addBoonComponents(
         'prepareCrit',
         'fortune',
         'whisperRefrain',
+        'shadowCommit',
         'palmSweep',
         'ancestralRelay',
         'shadowReprise',
@@ -2614,6 +2652,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.fortune ? { ...e, fortune: { ...def.fortune } } : e;
     case 'infernalAperture':
       return def.infernalAperture ? { ...e, aperture: { ...def.infernalAperture } } : e;
+    case 'shadowCommit':
+      return e;
     case 'palmSweep':
       return def.palmSweep ? { ...e, distance: def.palmSweep.distance } : e;
     case 'ancestralRelay':
@@ -2855,6 +2895,8 @@ function capEffect(e: EffectComponent): EffectComponent {
           emberDamage: clamp(round1(e.aperture.emberDamage), 1, 22),
         },
       };
+    case 'shadowCommit':
+      return e;
     case 'palmSweep':
       return { ...e, distance: clamp(round5(e.distance), 30, 180) };
     case 'ancestralRelay':

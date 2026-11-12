@@ -1,3 +1,4 @@
+import { drawShadowCommit } from './shadowCommitVisuals';
 import { drawPalmSweep } from './palmVisuals';
 import { drawAncestralRelay } from './ancestralVisuals';
 import { drawManeuverArrow } from './maneuverVisuals';
@@ -624,6 +625,14 @@ export class Renderer {
           p.infernalAperture.bulwark
             ? this.camera.worldToScreen(p.infernalAperture.bulwark.pos)
             : undefined,
+        );
+      for (const c of p.shadowCommits ?? [])
+        drawShadowCommit(
+          g,
+          c,
+          (pos) => this.camera.worldToScreen(pos),
+          this.camera.scale,
+          p.id === state.localPlayerId,
         );
       if (p.palmSweep)
         drawPalmSweep(

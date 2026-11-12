@@ -591,6 +591,8 @@ export interface Player {
   subSkillIds?: string[];
   /** Reserved spell definition while a wind-up is running (host only). */
   castAbility?: import('../content/classes').PlayerAbilityDef;
+  shadowCommits?: ShadowCommitCast[];
+  shadowCommitEpoch?: number;
   /** Active authored passive and per-passive host cooldowns (persist across swaps). */
   subclassPassiveId?: string;
   subclassPassiveCooldowns?: Record<string, number>;
@@ -1470,7 +1472,32 @@ export interface Telegraph {
 // data a remote client needs to draw and interpolate.
 // ---------------------------------------------------------------------------
 
+export interface ShadowCommitView {
+  id: EntityId;
+  slot: ExtSlot;
+  origin: Vec2;
+  angle: number;
+  kind: 'meleeCone' | 'pbaoe';
+  range: number;
+  radius: number;
+  halfAngle: number;
+  remaining: number;
+  duration: number;
+}
+export interface ShadowCommitCast {
+  id: EntityId;
+  slot: ExtSlot;
+  origin: Vec2;
+  aim: Vec2;
+  source: import('../content/classes').PlayerAbilityDef;
+  ab: import('../content/classes').PlayerAbilityDef;
+  ownerClass: ClassId;
+  epoch: number;
+  remaining: number;
+}
+
 export interface PlayerView {
+  shadowCommits?: ShadowCommitView[];
   ancestralRelay?: AncestralView;
   maneuver?: {
     mode: 'push' | 'step';
