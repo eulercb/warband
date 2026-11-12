@@ -1,3 +1,4 @@
+import { armReturningShot } from './returningShot';
 import { commitShadow } from './shadowCommit';
 import {
   reservePalmSweep,
@@ -561,6 +562,7 @@ export function resolvePlayerAbility(
         const dir = fromAngle(a);
         spawnPlayerProjectile(world, p, kind, dir, {
           speed,
+          returningSource: ab,
           castAim: ab.flowAim ?? ab.palmSweepCast?.aim,
           damage: ab.damage,
           impactRadius: ab.impactRadius ?? 0,
@@ -1125,6 +1127,7 @@ function resolveComposedAbility(
         const a = aimAngle + t * spread;
         spawnPlayerProjectile(world, p, kind, fromAngle(a), {
           speed,
+          returningSource: ab,
           castAim: ab.flowAim ?? ab.palmSweepCast?.aim,
           damage: dmg,
           // A shot that carries a zone needs a positive impact radius so it
@@ -1334,6 +1337,7 @@ function projectileKindFor(p: Player, slot: ExtSlot): ProjectileKind {
 }
 
 interface SpawnProjOpts {
+  returningSource?: PlayerAbilityDef;
   castAim?: Vec2;
   speed: number;
   damage: number;
@@ -1420,6 +1424,7 @@ function spawnPlayerProjectile(
     lifesteal: o.lifesteal,
     onImpact: o.onImpact,
   };
+  if (o.returningSource) armReturningShot(p, proj, o.returningSource);
   world.projectiles.push(proj);
   world.events.push({ t: 'projectile', kind, pos: { ...origin } });
 }

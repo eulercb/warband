@@ -1,3 +1,4 @@
+import { returningShotFits, RETURNING_SHOT_TEXT } from './returningRules';
 import { shadowCommitKind, shadowCommitDescription } from './shadowRules';
 import { boundedAbility, effectiveRecharge } from './abilityLimits';
 import { curseDescription, type CurseStyle } from '../core/curses';
@@ -209,6 +210,7 @@ export interface PlayerAbilityDef {
   ancestralRelay?: { range: number };
   palmSweep?: { distance: number };
   shadowCommit?: boolean;
+  returningShot?: boolean;
   /** Resolved cast aim captured for travelling and buffered actions; never authored. */
   flowAim?: Vec2;
   palmSweepCast?: import('../core/types').PalmSweepCast;
@@ -320,6 +322,23 @@ export function resolvedForethought(def: PlayerAbilityDef): PlayerAbilityDef['fo
   if (!def.components) return def.forethought;
   const effect = def.components.effects.find((e) => e.kind === 'forethought');
   return effect?.kind === 'forethought' ? { requiresCurse: !!effect.requiresCurse } : undefined;
+}
+
+export function resolvedReturningShot(
+  def: Omit<PlayerAbilityDef, 'slot'> & { slot?: ExtSlot },
+): boolean {
+  const delivery = def.components?.delivery ?? def;
+  if (
+    !returningShotFits(
+      delivery.kind,
+      delivery.impactRadius,
+      def.components?.effects.some((e) => e.kind === 'zone'),
+    )
+  )
+    return false;
+  return def.components
+    ? def.components.effects.some((e) => e.kind === 'returningShot')
+    : !!def.returningShot;
 }
 
 /** A self-contained deferred original strike, not an echo or moving attack. */
@@ -1424,6 +1443,7 @@ export function describeAbility(
 
   if (def.controlDamageBonus)
     parts.push(`+${n(def.controlDamageBonus * 100)}% dmg vs slowed/rooted/stunned foes`);
+  if (resolvedReturningShot(def)) parts.push(RETURNING_SHOT_TEXT);
   if (resolvedShadowCommit(def)) parts.push(shadowCommitDescription(def.kind));
   if (def.palmSweep)
     parts.push(

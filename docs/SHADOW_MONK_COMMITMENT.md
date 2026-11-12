@@ -1,5 +1,8 @@
 # Shadow Monk — Silent Death commitment prototype
 
+Owner follow-up: #167 was merged, tested and accepted. The current delivery and
+next development sequence are recorded in [development status](DEVELOPMENT_STATUS.md).
+
 Baseline: #165's Open Hand Flowing Water loop is accepted. The Wave Flow
 correction (#166) is merged; the owner authorized the next step without further
 live feedback on that follow-up. One bounded Sol 6.1 high review resolved the

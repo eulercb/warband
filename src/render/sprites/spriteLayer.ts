@@ -179,6 +179,7 @@ export class SpriteLayer {
 
     if (SPRITE_FLAGS.projectile) {
       for (const pr of state.projectiles) {
+        if (pr.returnPhase) continue;
         const actor = pr.kind as ActorKey;
         const n = this.ensure(pr.id, actor);
         const scr = camera.worldToScreen(pr.pos);
