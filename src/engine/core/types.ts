@@ -354,13 +354,29 @@ export interface PlayerStats {
 // ---------------------------------------------------------------------------
 
 /** Host-only companion orders; clients receive only the visual pose. */
+export interface CompanionCommandCast {
+  ownerId: EntityId;
+  ownerClass: ClassId;
+  epoch: number;
+  slot: ExtSlot;
+  source: import('../content/classes').PlayerAbilityDef;
+  spent: boolean;
+}
+export interface CompanionHunt {
+  targetId: EntityId;
+  kind: 'boss' | 'add';
+  remaining: number;
+  cast: CompanionCommandCast;
+}
 export interface SpiritCompanion {
+  hunt?: CompanionHunt;
   pos: Vec2;
   facing: number;
   order?: { targetId: EntityId; kind: 'boss' | 'add'; windup: number; remaining: number };
   wardTargetId?: EntityId;
 }
 export interface SpiritCompanionView {
+  quarry?: { targetId: EntityId; pos: Vec2; radius: number; remaining: number; duration: number };
   pos: Vec2;
   facing: number;
   attacking: boolean;
@@ -521,6 +537,7 @@ export interface Player {
   whisperSecret?: { targetId: EntityId; remaining: number };
   whisperRecovery?: number;
   spiritCompanion?: SpiritCompanion;
+  companionEpoch?: number;
   id: EntityId;
   peerId: string; // network identity ('' allowed but host uses its own selfId)
   name: string;
@@ -873,8 +890,16 @@ export interface ProjectileImpact {
 }
 
 export interface Projectile {
+  companionCommand?: CompanionCommandCast;
   returningShot?: {
     phase: 'out' | 'back';
+    outward: number;
+    backRange: number;
+    backSpeed: number;
+    backLifetime: number;
+    shotPos: Vec2;
+    ownerPos: Vec2;
+    lastOwner: Vec2;
     turnFlash: number;
     outLeft: number;
     hitsLeft: number;

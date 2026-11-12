@@ -14,7 +14,7 @@ import { setForgeSeed } from '../src/engine/content/forge';
 // This deliberately flags narrow editorial regressions, not every use of
 // “still” or “preserve”: precision/coating rules and ground targeting matter.
 const redundant =
-  /percentage points?|(?:bonus|growth) remains|ordinary fan growth|still (?:reaches flyers|shares its twin damage budget)|(?:preserve|preserves) the chosen fan width|utilities gain power and footprint|(?:within|under) (?:the )?shared (?:recharge )?budget|stronger (?:existing guards|zone effects) (?:are )?preserved|stronger guards preserved|base-kit route|works? with every subclass choice|it remains a (?:physical )?ground effect/i;
+  /overhead arrows still reach flyers|ordinary freeze still|still spends Momentum|ordinary picks still grow images|recharge is retained|endpoint exchange.*unchanged|Honed force is retained|percentage points?|(?:bonus|growth) remains|ordinary fan growth|still (?:reaches flyers|shares its twin damage budget)|(?:preserve|preserves) the chosen fan width|utilities gain power and footprint|(?:within|under) (?:the )?shared (?:recharge )?budget|stronger (?:existing guards|zone effects) (?:are )?preserved|stronger guards preserved|base-kit route|works? with every subclass choice|it remains a (?:physical )?ground effect/i;
 afterEach(() => setForgeSeed(null));
 it.each([null, 31])('catalogue copy avoids redundant preservation prose (Forge %s)', (seed) => {
   setForgeSeed(seed);

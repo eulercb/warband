@@ -91,6 +91,46 @@ function input(w: World, buttons: Partial<InputCommand['buttons']> = {}, move = 
   );
 }
 describe('returning Hunter flight', () => {
+  it.each([
+    { speed: 700, range: 820, outward: 820 },
+    { speed: 100, range: 820, outward: 300 },
+    { speed: 700, range: 180, outward: 180 },
+  ])(
+    'preserves ordinary reachable outward distance ($speed/$range)',
+    ({ speed, range, outward }) => {
+      const { w, p, b } = setup();
+      b.pos = { x: 1000, y: 800 };
+      p.abilities!.a1.projSpeed = speed;
+      p.abilities!.a1.maxRange = range;
+      const shot = fire(w);
+      const r = shot.returningShot!,
+        start = r.shotPos.x;
+      expect(r.outward).toBe(outward);
+      expect(r.backSpeed).toBeGreaterThan(speed);
+      expect(r.backLifetime).toBeLessThanOrEqual(0.8);
+      for (let i = 0; i < 310 && r.phase === 'out'; i++) advance(w);
+      expect(r.phase).toBe('back');
+      expect(r.shotPos.x - start).toBeCloseTo(outward);
+      finish(w);
+    },
+  );
+  it.each([
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+  ])('reverses toward the original owner image across a seam (%s)', (aim) => {
+    const { w, p, b } = setup();
+    b.pos = { x: 1000, y: 800 };
+    p.aim = aim;
+    const shot = fire(w);
+    untilReturn(w);
+    const r = shot.returningShot!;
+    expect(shot.vel.x * aim.x + shot.vel.y * aim.y).toBeLessThan(0);
+    expect(Math.hypot(r.shotPos.x - r.ownerPos.x, r.shotPos.y - r.ownerPos.y)).toBeGreaterThan(800);
+    advance(w, 0.1);
+    expect(w.projectiles).toContain(shot);
+    finish(w);
+  });
+
   it.each(skills)('works from the starting Multishot with first pick %s', (skill) => {
     const { w, p, b } = setup(skill, undefined, false);
     input(w, { a1: true });
@@ -157,7 +197,7 @@ describe('returning Hunter flight', () => {
   });
   it('routes the returning leg toward the live body into a different firing lane', () => {
     const { w, p, b } = setup();
-    b.pos = { x: 700, y: 300 };
+    b.pos = { x: 1000, y: 320 };
     const shot = fire(w);
     untilReturn(w);
     expect(b.hp).toBe(10000);
@@ -176,15 +216,15 @@ describe('returning Hunter flight', () => {
     finish(w);
     expect(b.hp).toBe(10000);
   });
-  it('uses half a short travel cap outward and retains finite total range and lifetime', () => {
+  it('preserves a short outward cap and supplies a separate finite return', () => {
     const { w, p, b } = setup();
     b.pos = { x: 1200, y: 100 };
     p.abilities!.a1.maxRange = 200;
     const shot = fire(w),
       start = shot.pos.x;
     untilReturn(w);
-    expect(shot.pos.x - start).toBeLessThanOrEqual(100);
-    expect(shot.rangeLeft).toBeGreaterThan(90);
+    expect(shot.pos.x - start).toBeCloseTo(200);
+    expect(shot.rangeLeft).toBeGreaterThan(290);
     finish(w);
     const long = setup();
     long.b.pos = { x: 1200, y: 100 };
@@ -192,7 +232,17 @@ describe('returning Hunter flight', () => {
     untilReturn(long.w);
     long.p.pos = { x: 1100, y: 850 };
     finish(long.w);
-    expect(escaped.rangeLeft <= 0 || escaped.lifetime <= 0).toBe(true);
+    expect(escaped.returningShot!.backLifetime).toBeLessThan(0.8);
+  });
+  it('catches a returning shot when the owner steps into its current position', () => {
+    const { w, p, b } = setup();
+    b.pos = { x: 1200, y: 100 };
+    p.abilities!.a1.maxRange = 180;
+    const shot = fire(w);
+    untilReturn(w);
+    p.pos = { ...shot.pos };
+    advance(w);
+    expect(w.projectiles).toHaveLength(0);
   });
   it('sweeps the owner catch so a large step cannot shoot past the body', () => {
     const { w, p, b } = setup();

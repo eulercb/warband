@@ -1,5 +1,9 @@
 # Hunter — Relentless Hunt returning shots
 
+Historical first delivery. The owner liked this mechanic after merging #168;
+the short outward range below is superseded by the
+[ordinary-reach correction](BEAST_MASTER_PURPOSE.md).
+
 Baseline: Shadow commitment (#167) is merged, tested and accepted. The
 [nature purpose review](NATURE_PURPOSE_REVIEW.md) found Hunter B lacked a coherent
 attack loop. This delivery implements its replacement; player acceptance of the

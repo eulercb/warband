@@ -1560,6 +1560,13 @@ export function specialRewardStep(
 export function activeSubclassPassive(
   classId: ClassId | null,
   skills: readonly string[],
+  upgrades: readonly string[] = [],
 ): SubclassPassiveDef | undefined {
-  return skills.map(subclassOfSkill).find((sub) => sub?.classId === classId)?.passive;
+  const passive = skills.map(subclassOfSkill).find((sub) => sub?.classId === classId)?.passive;
+  if (passive?.id === 'beast_pack_bond' && upgrades.includes('rg_beastmaster_g_b'))
+    return {
+      ...passive,
+      desc: 'Fresh direct casts designate their first damaged living foe within 600u for a 6s hunt. Your wolf bites for 16 damage every 2.5s; held attacks do not retarget or renew. Controlled foes take 25% more bite damage. A dedicated heal prepares protection for its recipient on the next successful bite.',
+    };
+  return passive;
 }

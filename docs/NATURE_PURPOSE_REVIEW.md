@@ -1,5 +1,9 @@
 # Nature purpose review — Hunter, Beast Master and Land
 
+Historical review. See the subsequent
+[Beast Master purpose and Hunter range delivery](BEAST_MASTER_PURPOSE.md)
+for the implemented follow-up; Land remains the next open nature task.
+
 The owner merged/tested Shadow commitment (#167) and accepted moving on. One
 bounded Sol 6.1 high review inspected these three remaining nature subclasses,
 including their base kits, passives, first picks, ordinary/Honed upgrades,

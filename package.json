@@ -58,7 +58,8 @@
     "pretest:coverage": "npm run test:smoke-contracts",
     "smoke:palm-sweep": "node scripts/smoke-palm-sweep.mjs",
     "smoke:shadow-commit": "node scripts/smoke-shadow-commit.mjs",
-    "smoke:returning-shot": "node scripts/smoke-returning-shot.mjs"
+    "smoke:returning-shot": "node scripts/smoke-returning-shot.mjs",
+    "smoke:companion-hunt": "node scripts/smoke-companion-hunt.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

@@ -563,6 +563,7 @@ export function resolvePlayerAbility(
         spawnPlayerProjectile(world, p, kind, dir, {
           speed,
           returningSource: ab,
+          companionCommand: ab.companionCommand,
           castAim: ab.flowAim ?? ab.palmSweepCast?.aim,
           damage: ab.damage,
           impactRadius: ab.impactRadius ?? 0,
@@ -1128,6 +1129,7 @@ function resolveComposedAbility(
         spawnPlayerProjectile(world, p, kind, fromAngle(a), {
           speed,
           returningSource: ab,
+          companionCommand: ab.companionCommand,
           castAim: ab.flowAim ?? ab.palmSweepCast?.aim,
           damage: dmg,
           // A shot that carries a zone needs a positive impact radius so it
@@ -1337,6 +1339,7 @@ function projectileKindFor(p: Player, slot: ExtSlot): ProjectileKind {
 }
 
 interface SpawnProjOpts {
+  companionCommand?: import('../core/types').CompanionCommandCast;
   returningSource?: PlayerAbilityDef;
   castAim?: Vec2;
   speed: number;
@@ -1413,6 +1416,7 @@ function spawnPlayerProjectile(
     markOnPreparedHit: o.markOnPreparedHit,
     pilotCast: o.pilotCast,
     maneuverCast: o.maneuverCast,
+    companionCommand: o.companionCommand,
     thoughtBreakCast: o.thoughtBreakCast,
     forethoughtHit: o.forethoughtHit,
     whisperCast: o.whisperCast,

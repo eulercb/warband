@@ -1,4 +1,10 @@
-import { prepareReturningStep, returningCaught } from '../combat/returningShot';
+import { reserveCompanionCommand, companionHuntView } from '../combat/companions';
+import {
+  prepareReturningStep,
+  returningCaught,
+  advanceReturningPosition,
+  finishReturningStep,
+} from '../combat/returningShot';
 import { tickShadowCommits, shadowCommitViews } from '../combat/shadowCommit';
 import { resolvedShadowCommit } from '../content/classes';
 import { resolvedPalmSweep } from '../content/classes';
@@ -1501,6 +1507,7 @@ export class World {
     const ab = {
       ...consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original), this)),
     };
+    ab.companionCommand = reserveCompanionCommand(p, original, slot, fresh);
     if (resolvedShadowCommit(ab)) ab.castTime = 0;
     if (capturedAim || resolvedPalmSweep(ab) || resolvedShadowCommit(ab))
       ab.flowAim = { ...(capturedAim ?? p.aim) };
@@ -1589,6 +1596,7 @@ export class World {
     invalidateAncestralRelay(p);
     p.palmEpoch = (p.palmEpoch ?? 0) + 1;
     p.shadowCommitEpoch = (p.shadowCommitEpoch ?? 0) + 1;
+    p.companionEpoch = (p.companionEpoch ?? 0) + 1;
     delete p.shadowCommits;
     delete p.flowQueue;
     delete p.lastFlowSlot;
@@ -1720,13 +1728,10 @@ export class World {
     for (const proj of this.projectiles) {
       const returningDt = prepareReturningStep(this, proj, dt);
       if (returningDt === undefined) continue;
-      const beforeRange = proj.rangeLeft;
       const routed = stepApertureProjectile(this, proj, returningDt, (shot) =>
         this.resolvePlayerProjectile(shot),
       );
       if (routed !== null) {
-        if (proj.returningShot?.phase === 'out')
-          proj.returningShot.outLeft -= Math.max(0, beforeRange - proj.rangeLeft);
         if (routed && !returningCaught(this, proj, proj.pos)) keep.push(proj);
         continue;
       }
@@ -1737,8 +1742,7 @@ export class World {
       // Hard travel cap: a ranged shot fizzles once its range budget is spent, so
       // no projectile can lap the torus forever and hit the caster from behind.
       proj.rangeLeft -= Math.hypot(step.x, step.y);
-      if (proj.returningShot?.phase === 'out')
-        proj.returningShot.outLeft -= Math.hypot(step.x, step.y);
+      advanceReturningPosition(proj, step);
 
       // Cover obstacles absorb any ranged attack whose path crosses them
       // (segment test avoids fast projectiles tunneling through) — no damage.
@@ -1752,6 +1756,7 @@ export class World {
               ? this.resolvePlayerProjectile(proj)
               : this.resolveBossProjectile(proj);
 
+      if (!consumed) finishReturningStep(proj);
       if (!consumed && proj.lifetime > 0 && proj.rangeLeft > 0) {
         // Projectiles wrap around the torus too (rather than flying off-map).
         proj.pos = wrapPos(proj.pos);
@@ -1986,6 +1991,7 @@ export class World {
       echoFraction?: number;
       markOnPreparedHit?: number;
       pilotCast?: { spent: boolean };
+      companionCommand?: import('../core/types').CompanionCommandCast;
       maneuverCast?: import('../core/types').ManeuverCast;
       thoughtBreakCast?: import('../core/types').ThoughtBreakCast;
       forethoughtHit?: import('../content/classes').PlayerAbilityDef['forethoughtHit'];
@@ -2001,6 +2007,7 @@ export class World {
     const crit = this.critRng.next() < chance;
     return {
       direct: true,
+      companionCommand: bonus?.companionCommand,
       maneuverCast: bonus?.maneuverCast,
       ...(bonus?.forethoughtHit ? { forethought: bonus.forethoughtHit } : {}),
       ...(bonus?.thoughtBreakCast ? { thoughtBreak: bonus.thoughtBreakCast } : {}),
@@ -2069,6 +2076,7 @@ export class World {
       echoFraction?: number;
       markOnPreparedHit?: number;
       pilotCast?: { spent: boolean };
+      companionCommand?: import('../core/types').CompanionCommandCast;
       maneuverCast?: import('../core/types').ManeuverCast;
       thoughtBreakCast?: import('../core/types').ThoughtBreakCast;
       forethoughtHit?: import('../content/classes').PlayerAbilityDef['forethoughtHit'];
@@ -4098,6 +4106,7 @@ export class World {
               pos: { ...p.spiritCompanion.pos },
               facing: p.spiritCompanion.facing,
               attacking: !!p.spiritCompanion.order,
+              ...(companionHuntView(this, p) ? { quarry: companionHuntView(this, p) } : {}),
               bondReady: p.buffs.some((b) => b.kind === 'packBond' && b.remaining > 0),
             },
           }

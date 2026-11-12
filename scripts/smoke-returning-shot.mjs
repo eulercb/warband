@@ -118,7 +118,7 @@ try {
           b.decisionTimer = 1000;
           const add = {
             id: w.allocId(),
-            pos: { x: 700, y: 300 },
+            pos: { x: 700, y: 230 },
             hp: 1000,
             maxHp: 1000,
             radius: 12,
@@ -237,9 +237,10 @@ try {
           const f = window.fixture;
           for (
             let i = 0;
-            i < 160 && !window.flightRemote.some((s) => s.returnPhase === 'back');
+            i < 340 && !window.flightRemote.some((s) => s.returnPhase === 'back');
             i++
           ) {
+            if (portable && f.p.pos.y < 200) window.flightMove = { x: 0, y: 0 };
             if (!portable && !f.p.glide) window.flightMove = { x: 0, y: 0 };
             f.step();
           }
