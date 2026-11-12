@@ -46,7 +46,7 @@ named damage/mitigation package.
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Pack Bond without B | Direct hits command individual bites, gated once per 2.5s.                                                                                          |
 | Pack Tactics B      | Fresh cast chooses a quarry; held attacks cannot redirect it. Retarget during recovery without refunding that recovery.                             |
-| Primal Companion A  | Retained faster windup and stronger controlled bites, honestly classified as growth.                                                                |
+| Alpha’s Fury A      | Retained faster windup and stronger controlled bites, honestly classified as growth.                                                                |
 | Pounce / Bite       | Direct contact can issue a fresh command; their individual damage/heal and Honed upgrades retain value.                                             |
 | Snare / Rain        | Existing control strengthens the wolf's controlled-target bite; periodic field ticks cannot designate.                                              |
 | Nature's Bond       | Actual healing prepares the existing recipient ward, consumed by a successful wolf bite. No injury is required to begin a hunt.                     |
