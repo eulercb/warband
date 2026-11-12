@@ -1,3 +1,4 @@
+import { returningShotFits, RETURNING_SHOT_TEXT } from './returningRules';
 import { shadowCommitKind, shadowCommitDescription } from './shadowRules';
 import { curseDescription, type CurseStyle } from '../core/curses';
 import { absorptionDescription, absorptionMaximum, scaleAbsorption } from '../combat/absorption';
@@ -138,6 +139,7 @@ export type EffectComponent =
   | { kind: 'controlDamage'; bonus: number }
   | { kind: 'prepareSurge'; duration: number }
   | { kind: 'maneuver'; mode: 'push' | 'step'; distance: number }
+  | { kind: 'returningShot' }
   | { kind: 'shadowCommit' }
   | { kind: 'palmSweep'; distance: number }
   | { kind: 'ancestralRelay'; range: number }
@@ -399,6 +401,11 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.infernalAperture)
     effects.push({ kind: 'infernalAperture', aperture: { ...def.infernalAperture } });
   if (
+    def.returningShot &&
+    returningShotFits(def.kind, def.impactRadius, (def.zoneDuration ?? 0) > 0)
+  )
+    effects.push({ kind: 'returningShot' });
+  if (
     def.shadowCommit &&
     shadowCommitKind(def.kind) &&
     !def.palmSweep &&
@@ -500,6 +507,23 @@ export function recompose(
   comp: AbilityComponents,
   meta: { slot: PlayerAbilityDef['slot']; name: string; cooldown: number },
 ): PlayerAbilityDef {
+  if (comp.effects.some((e) => e.kind === 'returningShot')) {
+    const fits = returningShotFits(
+      comp.delivery.kind,
+      comp.delivery.impactRadius,
+      comp.effects.some((e) => e.kind === 'zone'),
+    );
+    let kept = false;
+    comp = {
+      ...comp,
+      effects: comp.effects.filter((e) => {
+        if (e.kind !== 'returningShot') return true;
+        if (!fits || kept) return false;
+        kept = true;
+        return true;
+      }),
+    };
+  }
   if (
     comp.effects.some(
       (e) => e.kind === 'ancestralRelay' || e.kind === 'palmSweep' || e.kind === 'shadowCommit',
@@ -698,6 +722,9 @@ export function recompose(
         break;
       case 'infernalAperture':
         def.infernalAperture = { ...e.aperture };
+        break;
+      case 'returningShot':
+        def.returningShot = true;
         break;
       case 'shadowCommit':
         def.shadowCommit = true;
@@ -909,6 +936,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return e.part === 'chorus' ? 15 : 8;
     case 'infernalAperture':
       return (54 * e.aperture.duration) / 6 + e.aperture.emberDamage;
+    case 'returningShot':
+      return 15;
     case 'shadowCommit':
       return 40;
     case 'palmSweep':
@@ -1209,6 +1238,8 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
       return bardSongText(e.part);
     case 'infernalAperture':
       return `fixed firing conduit ${s(e.aperture.duration)}, entrance ${n(e.aperture.reach / 4)}u / exit ${n(e.aperture.reach)}u along aim; nearby mouths adjust around cover; creates 96u-wide temporary cover when space permits, blocking shots and hostile approach; aim through entrance, press again for one ${n(e.aperture.emberDamage)}-damage ember`;
+    case 'returningShot':
+      return RETURNING_SHOT_TEXT;
     case 'shadowCommit':
       return shadowCommitDescription(delivery);
     case 'palmSweep':
@@ -1613,6 +1644,8 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'selfBuff' || kind === 'blink' || kind === 'groundZone';
     case 'infernalAperture':
       return true;
+    case 'returningShot':
+      return kind === 'projectile';
     case 'shadowCommit':
       return shadowCommitKind(kind);
     case 'palmSweep':
@@ -2227,6 +2260,7 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
           emberDamage: e.aperture.emberDamage * f,
         },
       };
+    case 'returningShot':
     case 'shadowCommit':
       return e;
     case 'palmSweep':
@@ -2338,6 +2372,15 @@ function capComponents(comp: AbilityComponents): AbilityComponents {
     delivery,
     effects: comp.effects
       .filter((e) => e.kind !== 'whisperRefrain' || delivery.kind === 'blink')
+      .filter(
+        (e) =>
+          e.kind !== 'returningShot' ||
+          returningShotFits(
+            delivery.kind,
+            delivery.impactRadius,
+            comp.effects.some((x) => x.kind === 'zone'),
+          ),
+      )
       .map((e) => capEffect(fittedSurgePiercing(comp, e))),
   };
 }
@@ -2432,6 +2475,7 @@ function addBoonComponents(
         'prepareCrit',
         'fortune',
         'whisperRefrain',
+        'returningShot',
         'shadowCommit',
         'palmSweep',
         'ancestralRelay',
@@ -2652,6 +2696,7 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.fortune ? { ...e, fortune: { ...def.fortune } } : e;
     case 'infernalAperture':
       return def.infernalAperture ? { ...e, aperture: { ...def.infernalAperture } } : e;
+    case 'returningShot':
     case 'shadowCommit':
       return e;
     case 'palmSweep':
@@ -2895,6 +2940,7 @@ function capEffect(e: EffectComponent): EffectComponent {
           emberDamage: clamp(round1(e.aperture.emberDamage), 1, 22),
         },
       };
+    case 'returningShot':
     case 'shadowCommit':
       return e;
     case 'palmSweep':

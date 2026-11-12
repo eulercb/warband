@@ -1,3 +1,4 @@
+import { returningShotFits } from './returningRules';
 import { boundedAbility, ordinaryRecharge } from './abilityLimits';
 import { scaleAbsorption } from '../combat/absorption';
 /**
@@ -2344,6 +2345,22 @@ function battleManeuver(ab: PlayerAbilityDef, mode: 'push' | 'step', distance: n
 }
 
 /** Pilot identities tune native base skills during replay and bound subclass skills on rebind. */
+/** Re-evaluate receiving geometry after replay, including currently equipped grafts. */
+function returningHunterKit(a: Record<AbilitySlot, PlayerAbilityDef>): void {
+  const fits = (ab: PlayerAbilityDef) =>
+    returningShotFits(
+      ab.kind,
+      ab.impactRadius,
+      ab.components?.effects.some((e) => e.kind === 'zone'),
+    );
+  for (const ab of Object.values(a)) if (ab.slot !== 'basic' && fits(ab)) ab.returningShot = true;
+  if (
+    !Object.values(a).some((ab) => ab.slot !== 'basic' && ab.returningShot && fits(ab)) &&
+    fits(a.basic)
+  )
+    a.basic.returningShot = true;
+}
+
 function pilotIdentity(
   subclassId: string,
   id: string,
@@ -2460,17 +2477,24 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'rg_hunter_g_b',
     'Relentless Hunt',
     '🐾',
-    'Roll grants +25% movement for 4s and 2s hard-control resistance; direct Hunter strikes slow enemy wind-ups by 30% for 3s, while allied field speed gains +5%',
+    'Plain projectile specials return toward your current position with 50% damage per leg. Roll grants +25% movement for 4s and 2s hard-control resistance; if no starting special fits, a compatible basic gains the return',
     (a) => {
+      returningHunterKit(a);
       if (a.a3.kind === 'dash' || a.a3.kind === 'blink') {
         a.a3.buffMoveMult = Math.max(a.a3.buffMoveMult ?? 1, 1.25);
         a.a3.buffDuration = Math.max(a.a3.buffDuration ?? 0, 4);
         a.a3.steadfastDuration = Math.max(a.a3.steadfastDuration ?? 0, 2);
-      } else amplify(a.a3, 0.2, 0.1);
+      }
     },
     (ab) => {
-      natureSuppression(ab);
-      if (ab.kind === 'groundZone' && ab.zoneAllyMoveMult) addN(ab, 'zoneAllyMoveMult', 0.05);
+      if (
+        returningShotFits(
+          ab.kind,
+          ab.impactRadius,
+          ab.components?.effects.some((e) => e.kind === 'zone'),
+        )
+      )
+        ab.returningShot = true;
     },
   ),
   pilotIdentity(
@@ -5875,6 +5899,8 @@ export function applyCharUpgrades(player: Player, ids: string[] | undefined): vo
     if (ab?.components) before.set(slot, flatSig(ab));
   }
   replayCharUpgrades(player, ids);
+  if (player.classId === 'ranger' && ids.some((id) => canonicalGrandId(id) === 'rg_hunter_g_b'))
+    returningHunterKit(abilities);
   for (const slot of SLOTS) {
     const ab = abilities[slot];
     const was = before.get(slot);
@@ -6536,29 +6562,31 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
           ? 'Reforged Perfect Harmony: existing Flow preparation lasts 2s longer; direct specials gain 25% damage'
           : base.id === 'mo_openhand_g_b'
             ? 'Reforged Flowing Water: burst specials can spend Flow; Flow-consuming specials carry you up to 180u over 0.4s; cones/bursts travel with you, shots and fields launch once. Buffer one preparer or spender during movement'
-            : base.id === 'mo_shadow_g_b'
-              ? 'Reforged Silent Death: cone and burst specials leave a shadow to deliver their strike after 0.6s at the cast point; you can move and act meanwhile'
-              : base.id === 'bb_totem_g_b'
-                ? 'Reforged relay: burst specials strike at your previous prepared point within 360u, then leave the current cast point for next time. First burst is local; preparation persists between recharges'
-                : base.id === 'kn_battlemaster_g_a' || base.id === 'kn_battlemaster_g_b'
-                  ? base.id === 'kn_battlemaster_g_a'
-                    ? 'Reforged steering: direct special hits immediately steer every foe hit 80u in the movement direction held when pressed; standing still pushes away. Once per foe per cast; 6s shared foe recovery'
-                    : 'Reforged footwork: press a defensive special while moving to step up to 180u in that direction. Standing still holds position. No immunity; movement once per 6s, requires a new press'
-                  : base.id === 'kn_champion_g_a'
-                    ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'
-                    : base.id === 'wa_great_old_one_g_a'
-                      ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
-                      : base.id === 'wa_great_old_one_g_b'
-                        ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
-                        : base.id === 'wa_fiend_g_a'
-                          ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
-                          : base.id === 'ro_assassin_g_a'
-                            ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
-                            : swapDescName(
-                                base.desc,
-                                canonSubclassName(base.subclassId),
-                                fused.name,
-                              ),
+            : base.id === 'rg_hunter_g_b'
+              ? 'Reforged Relentless Hunt: plain projectile specials return toward your current position, with 50% damage per leg; when no starting special fits, a compatible basic receives the return'
+              : base.id === 'mo_shadow_g_b'
+                ? 'Reforged Silent Death: cone and burst specials leave a shadow to deliver their strike after 0.6s at the cast point; you can move and act meanwhile'
+                : base.id === 'bb_totem_g_b'
+                  ? 'Reforged relay: burst specials strike at your previous prepared point within 360u, then leave the current cast point for next time. First burst is local; preparation persists between recharges'
+                  : base.id === 'kn_battlemaster_g_a' || base.id === 'kn_battlemaster_g_b'
+                    ? base.id === 'kn_battlemaster_g_a'
+                      ? 'Reforged steering: direct special hits immediately steer every foe hit 80u in the movement direction held when pressed; standing still pushes away. Once per foe per cast; 6s shared foe recovery'
+                      : 'Reforged footwork: press a defensive special while moving to step up to 180u in that direction. Standing still holds position. No immunity; movement once per 6s, requires a new press'
+                    : base.id === 'kn_champion_g_a'
+                      ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'
+                      : base.id === 'wa_great_old_one_g_a'
+                        ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
+                        : base.id === 'wa_great_old_one_g_b'
+                          ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
+                          : base.id === 'wa_fiend_g_a'
+                            ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
+                            : base.id === 'ro_assassin_g_a'
+                              ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
+                              : swapDescName(
+                                  base.desc,
+                                  canonSubclassName(base.subclassId),
+                                  fused.name,
+                                ),
     };
   }
 

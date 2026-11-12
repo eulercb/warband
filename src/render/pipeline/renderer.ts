@@ -1,3 +1,4 @@
+import { drawReturningShot } from './returningVisuals';
 import { drawShadowCommit } from './shadowCommitVisuals';
 import { drawPalmSweep } from './palmVisuals';
 import { drawAncestralRelay } from './ancestralVisuals';
@@ -353,7 +354,8 @@ export class Renderer {
 
     // Live-projectile particle trails, then advance + draw the particle pool.
     if (state.projectiles.length > 0) {
-      for (const pr of state.projectiles) this.particles.trail(pr.pos, pr.kind, pr.color);
+      for (const pr of state.projectiles)
+        if (!pr.returnPhase) this.particles.trail(pr.pos, pr.kind, pr.color);
     }
     this.particles.update(dtMs);
     this.particles.draw(this.camera);
@@ -847,8 +849,12 @@ export class Renderer {
   private drawProjectiles(state: RenderState): void {
     const g = this.projectilesLayer;
     g.clear();
-    if (SPRITE_FLAGS.projectile) return; // SpriteLayer draws projectiles
     for (const pr of state.projectiles) {
+      if (pr.returnPhase) {
+        drawReturningShot(g, pr, this.camera.worldToScreen(pr.pos), this.camera.scale);
+        continue;
+      }
+      if (SPRITE_FLAGS.projectile) continue;
       drawProjectile(g, pr, this.camera.worldToScreen(pr.pos), this.camera.scale);
     }
   }

@@ -8344,7 +8344,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Roll grants +25% movement for 4s and 2s hard-control resistance; direct Hunter strikes slow enemy wind-ups by 30% for 3s, while allied field speed gains +5%",
+      "description": "Plain projectile specials return toward your current position with 50% damage per leg. Roll grants +25% movement for 4s and 2s hard-control resistance; if no starting special fits, a compatible basic gains the return",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8354,18 +8354,16 @@
           "subSkills": ["rg_hunter_hail"],
           "prefix": [],
           "once": [
+            { "path": "abilities.a1.returningShot", "before": null, "after": true },
             { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
-            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
-            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 }
           ],
           "atCap": [
+            { "path": "abilities.a1.returningShot", "before": null, "after": true },
             { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
-            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
-            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 }
           ]
         },
         {
@@ -8373,18 +8371,18 @@
           "subSkills": ["rg_hunter_mark"],
           "prefix": [],
           "once": [
+            { "path": "abilities.a1.returningShot", "before": null, "after": true },
             { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
             { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
-            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
+            { "path": "subAbilities.sub1.returningShot", "before": null, "after": true }
           ],
           "atCap": [
+            { "path": "abilities.a1.returningShot", "before": null, "after": true },
             { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
             { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
-            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
+            { "path": "subAbilities.sub1.returningShot", "before": null, "after": true }
           ]
         },
         {
@@ -8392,16 +8390,16 @@
           "subSkills": ["rg_hunter_stand"],
           "prefix": [],
           "once": [
+            { "path": "abilities.a1.returningShot", "before": null, "after": true },
             { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
-            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": 1.2, "after": 1.25 }
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 }
           ],
           "atCap": [
+            { "path": "abilities.a1.returningShot", "before": null, "after": true },
             { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
-            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": 1.2, "after": 1.25 }
+            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 }
           ]
         },
         {
@@ -8409,18 +8407,18 @@
           "subSkills": ["rg_hunter_volley"],
           "prefix": [],
           "once": [
+            { "path": "abilities.a1.returningShot", "before": null, "after": true },
             { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
             { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
-            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
+            { "path": "subAbilities.sub1.returningShot", "before": null, "after": true }
           ],
           "atCap": [
+            { "path": "abilities.a1.returningShot", "before": null, "after": true },
             { "path": "abilities.a3.buffDuration", "before": null, "after": 4 },
             { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
             { "path": "abilities.a3.steadfastDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.castSlow", "before": null, "after": 1.3 },
-            { "path": "subAbilities.sub1.castSlowDuration", "before": null, "after": 3 }
+            { "path": "subAbilities.sub1.returningShot", "before": null, "after": true }
           ]
         }
       ]

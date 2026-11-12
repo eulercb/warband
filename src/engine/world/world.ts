@@ -1,3 +1,4 @@
+import { prepareReturningStep, returningCaught } from '../combat/returningShot';
 import { tickShadowCommits, shadowCommitViews } from '../combat/shadowCommit';
 import { resolvedShadowCommit } from '../content/classes';
 import { resolvedPalmSweep } from '../content/classes';
@@ -1594,7 +1595,7 @@ export class World {
     if (p.glide?.palmSweep) p.glide = null;
     delete p.infernalAperture;
     this.projectiles = this.projectiles.filter(
-      (shot) => shot.ownerId !== p.id || !shot.apertureTransit,
+      (shot) => shot.ownerId !== p.id || (!shot.apertureTransit && !shot.returningShot),
     );
     p.classId = classId;
     if (p.grandLoadout)
@@ -1717,30 +1718,39 @@ export class World {
   private updateProjectiles(dt: number): void {
     const keep: Projectile[] = [];
     for (const proj of this.projectiles) {
-      const routed = stepApertureProjectile(this, proj, dt, (shot) =>
+      const returningDt = prepareReturningStep(this, proj, dt);
+      if (returningDt === undefined) continue;
+      const beforeRange = proj.rangeLeft;
+      const routed = stepApertureProjectile(this, proj, returningDt, (shot) =>
         this.resolvePlayerProjectile(shot),
       );
       if (routed !== null) {
-        if (routed) keep.push(proj);
+        if (proj.returningShot?.phase === 'out')
+          proj.returningShot.outLeft -= Math.max(0, beforeRange - proj.rangeLeft);
+        if (routed && !returningCaught(this, proj, proj.pos)) keep.push(proj);
         continue;
       }
       const prev = { x: proj.pos.x, y: proj.pos.y };
-      const step = vscale(proj.vel, dt);
+      const step = vscale(proj.vel, returningDt);
       proj.pos = vadd(proj.pos, step);
       proj.lifetime -= dt;
       // Hard travel cap: a ranged shot fizzles once its range budget is spent, so
       // no projectile can lap the torus forever and hit the caster from behind.
       proj.rangeLeft -= Math.hypot(step.x, step.y);
+      if (proj.returningShot?.phase === 'out')
+        proj.returningShot.outLeft -= Math.hypot(step.x, step.y);
 
       // Cover obstacles absorb any ranged attack whose path crosses them
       // (segment test avoids fast projectiles tunneling through) — no damage.
-      const consumed = sweepProjectedGuard(this, proj, prev)
+      const consumed = returningCaught(this, proj, prev)
         ? true
-        : this.projectileHitsObstacle(prev, proj)
+        : sweepProjectedGuard(this, proj, prev)
           ? true
-          : proj.side === 'player'
-            ? this.resolvePlayerProjectile(proj)
-            : this.resolveBossProjectile(proj);
+          : this.projectileHitsObstacle(prev, proj)
+            ? true
+            : proj.side === 'player'
+              ? this.resolvePlayerProjectile(proj)
+              : this.resolveBossProjectile(proj);
 
       if (!consumed && proj.lifetime > 0 && proj.rangeLeft > 0) {
         // Projectiles wrap around the torus too (rather than flying off-map).
@@ -1784,6 +1794,11 @@ export class World {
 
     const body = (hitBoss ?? hitAdd)!;
     const before = body.hp;
+    if (proj.returningShot && proj.returningShot.hitsLeft <= 0) {
+      proj.hitIds ??= [];
+      proj.hitIds.push(body.id);
+      return false;
+    }
     let dealt = 0;
     if (proj.impactRadius > 0) {
       // AoE on impact
@@ -1875,6 +1890,13 @@ export class World {
     // projectile→area→ally-buff fusion). Gated by the optional field, so
     // canonical shots never take this branch.
     if (proj.onImpact) this.spawnImpactZone(proj);
+    if (proj.returningShot) {
+      if (body.hp >= before) return true;
+      proj.hitIds ??= [];
+      proj.hitIds.push(body.id);
+      proj.returningShot.hitsLeft--;
+      return false;
+    }
     if (
       (proj.pierceLeft ?? 0) > 0 &&
       proj.impactRadius <= 0 &&
@@ -4218,6 +4240,8 @@ export class World {
           pos: { ...p.pos },
           vel: { ...p.vel },
           color: p.color,
+          returnPhase: p.returningShot?.phase,
+          returnTurn: (p.returningShot?.turnFlash ?? 0) > 0 || undefined,
         })),
       apparitions: apparitionViews(this),
       groundZones: this.groundZones.map((z) => ({

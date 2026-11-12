@@ -873,6 +873,16 @@ export interface ProjectileImpact {
 }
 
 export interface Projectile {
+  returningShot?: {
+    phase: 'out' | 'back';
+    turnFlash: number;
+    outLeft: number;
+    hitsLeft: number;
+    hitsPerLeg: number;
+    ownerClass: ClassId;
+    slot: ExtSlot;
+    source: import('../content/classes').PlayerAbilityDef;
+  };
   maneuverCast?: ManeuverCast;
   thoughtBreakCast?: ThoughtBreakCast;
   forethoughtHit?: { ownerClass: ClassId; requiresCurse: boolean };
@@ -1620,6 +1630,8 @@ export interface AddView {
 }
 
 export interface ProjectileView {
+  returnPhase?: 'out' | 'back';
+  returnTurn?: boolean;
   id: EntityId;
   kind: ProjectileKind;
   side: Side;
