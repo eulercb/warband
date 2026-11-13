@@ -8534,7 +8534,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Press a direct ability to designate its first damaged living foe within 600u for a 6s hunt that continues if you move away: your wolf bites for 16, with two smaller flanking wolves biting for 4 each, every 2.5s. The pack follows you between hunts; held attacks do not retarget or renew the hunt",
+      "description": "Press a direct ability to designate its first damaged living foe within 600u for a 6s hunt that continues if you move away: your wolf bites for 16, with two smaller flanking wolves biting for 4 each, every 2.5s. The pack follows you between hunts; held basics can start a new hunt when idle; held attacks do not retarget or renew an active hunt",
       "disposition": "investigate",
       "rationale": "No resolved change in these valid contexts; trace executor/replay before changing it.",
       "pilotPriority": false,

@@ -355,6 +355,8 @@ export interface PlayerStats {
 
 /** Host-only companion orders; clients receive only the visual pose. */
 export interface CompanionCommandCast {
+  /** Held basics can start an idle hunt, never replace an active quarry. */
+  idleOnly?: boolean;
   ownerId: EntityId;
   ownerClass: ClassId;
   epoch: number;

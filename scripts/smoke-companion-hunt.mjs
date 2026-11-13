@@ -153,6 +153,7 @@ try {
                   'a',
                   {
                     seq: w.tick,
+                    autofire: true,
                     move,
                     aim: { x: 1, y: 0 },
                     buttons: { basic, a1: false, a2: false, a3: false, revive: false },
@@ -199,7 +200,7 @@ try {
       await page.evaluate(async () => {
         const f = window.pack,
           before = f.b.hp;
-        for (let i = 0; i < 300; i++) f.step(false, { x: -1, y: 0 });
+        for (let i = 0; i < 250; i++) f.step(false, { x: -1, y: 0 });
         const delta = (await import('/src/engine/core/torus.ts')).dist;
         if (!(delta(f.p.pos, f.b.pos) > 600)) throw new Error('Owner never left activation range');
         if (!f.p.spiritCompanion?.hunt || !window.packRemote?.quarry)
@@ -214,6 +215,26 @@ try {
         if (f.b.hp !== hp) throw new Error('Wolf attacked without a new command');
         for (const wolf of [f.p.spiritCompanion, ...f.p.spiritCompanion.flankers])
           if (delta(wolf.pos, f.p.pos) > 90) throw new Error('Pack failed to return to owner');
+      });
+      await page.evaluate(() => {
+        const f = window.pack;
+        for (let i = 0; i < 250; i++) f.step(false, { x: 1, y: 0 });
+        let previous,
+          starts = 0,
+          lastRemaining = 0;
+        for (let i = 0; i < 1400; i++) {
+          f.step(true);
+          const h = f.p.spiritCompanion?.hunt;
+          if (h && h !== previous) {
+            if (previous && previous.remaining > 0)
+              throw new Error('Held basic replaced an active hunt');
+            starts++;
+          } else if (h && h.remaining >= lastRemaining)
+            throw new Error('Held basic extended active duration');
+          previous = h;
+          lastRemaining = h?.remaining ?? 0;
+        }
+        if (starts < 2) throw new Error('Held basic failed to start later hunts');
       });
       assert.deepEqual(errors, []);
       assert.equal(

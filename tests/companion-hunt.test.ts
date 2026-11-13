@@ -1,6 +1,6 @@
 import { resolvePlayerAbility } from '../src/engine/combat/abilities';
 import { SnapshotInterpolator } from '../src/render/pipeline/interpolate';
-import { dist } from '../src/engine/core/torus';
+import { dist, sub } from '../src/engine/core/torus';
 import { ARENA_W, INTERP_DELAY_MS } from '../src/engine/core/constants';
 import { describe, expect, it, vi } from 'vitest';
 import { Graphics } from 'pixi.js';
@@ -192,15 +192,16 @@ describe('Pack Tactics chosen quarry', () => {
       expect(p.spiritCompanion!.hunt).toBe(hunt);
       expect(hunt.remaining).toBeLessThan(4);
       for (let i = 0; i < 600; i++) input(w, true);
-      expect(p.spiritCompanion!.hunt).toBeUndefined();
+      expect(p.spiritCompanion!.hunt).toBeDefined();
+      expect(p.spiritCompanion!.hunt).not.toBe(hunt);
     },
   );
-  it('rejects a pending command after its source is replaced without tagging a later auto-cast', () => {
+  it('rejects a stale pending command before new-source held basics can command again', () => {
     const { w, p, b } = setup();
     p.cooldowns.basic = 0.3;
     input(w, true);
     p.abilities!.basic = { ...p.abilities!.basic };
-    for (let i = 0; i < 150; i++) input(w, true);
+    for (let i = 0; i < 90; i++) input(w, true);
     expect(b.hp).toBeLessThan(10000);
     expect(p.spiritCompanion?.hunt).toBeUndefined();
     expect(p.companionPresses?.basic).toBeUndefined();
@@ -233,7 +234,7 @@ describe('Pack Tactics chosen quarry', () => {
     for (let i = 0; i < 80; i++) input(w, false);
     expect(p.spiritCompanion?.hunt).toBeUndefined();
   });
-  it('a missed first accepted cast does not transfer its command to later held auto-casts', () => {
+  it('later held basics can start an idle hunt after the first cast misses', () => {
     const { w, p, b } = setup();
     b.pos = { x: 650, y: 700 };
     input(w, true);
@@ -242,7 +243,49 @@ describe('Pack Tactics chosen quarry', () => {
     b.pos = { x: 650, y: 400 };
     for (let i = 0; i < 180; i++) input(w, true);
     expect(b.hp).toBeLessThan(10000);
-    expect(p.spiritCompanion?.hunt).toBeUndefined();
+    expect(p.spiritCompanion?.hunt?.targetId).toBe(b.id);
+  });
+  it('an in-flight held-basic command cannot replace a newly started hunt', () => {
+    const { p, a, b, command } = setup();
+    const held = reserveCompanionCommand(p, p.abilities!.basic, 'basic', false)!;
+    command();
+    const hunt = p.spiritCompanion!.hunt;
+    commandCompanion(p, a, 'add', 1, true, held);
+    expect(p.spiritCompanion!.hunt).toBe(hunt);
+    expect(hunt!.targetId).toBe(b.id);
+  });
+  it('repeated held basics restart hunts after expiry without extending an active hunt', () => {
+    const { w, p, b } = setup();
+    let previous = p.spiritCompanion?.hunt,
+      starts = 0,
+      lastRemaining = 0;
+    for (let i = 0; i < 1500; i++) {
+      input(w, true);
+      const hunt = p.spiritCompanion?.hunt;
+      if (hunt && hunt !== previous) {
+        starts++;
+        if (previous) expect(previous.remaining).toBeLessThanOrEqual(0);
+      } else if (hunt) expect(hunt.remaining).toBeLessThan(lastRemaining);
+      previous = hunt;
+      lastRemaining = hunt?.remaining ?? 0;
+    }
+    expect(starts).toBeGreaterThanOrEqual(3);
+    expect(b.hp).toBeLessThan(9600);
+  });
+  it('returning flankers follow the lead route when independent shortest routes would split', () => {
+    const { w, p, advance } = setup();
+    updateCompanions(w, 0.01);
+    p.pos = { x: 30, y: 400 };
+    const pet = p.spiritCompanion!;
+    pet.pos = { x: ARENA_W / 2 - 10, y: 400 };
+    pet.flankers![0].pos = { x: ARENA_W / 2 + 50, y: 350 };
+    pet.flankers![1].pos = { x: ARENA_W / 2 + 70, y: 450 };
+    const before = [pet, ...pet.flankers!].map((wolf) => ({ ...wolf.pos }));
+    updateCompanions(w, 0.01);
+    for (const [i, wolf] of [pet, ...pet.flankers!].entries())
+      expect(sub(wolf.pos, before[i]).x).toBeLessThan(0);
+    advance(4);
+    for (const wolf of [pet, ...pet.flankers!]) expect(dist(wolf.pos, p.pos)).toBeLessThan(90);
   });
   it('the complete pack also hits a chosen add without acquiring another target', () => {
     const { a, b, command, advance } = setup();
@@ -393,9 +436,10 @@ describe('Pack Tactics chosen quarry', () => {
     expect(p.spiritCompanion?.hunt).toBeUndefined();
     expect(a.hp).toBe(kind === 'dead' ? 0 : 1000);
   });
-  it('rejects stale/foreign tokens and never reserves a command for held input or a copied passive', () => {
+  it('rejects stale/foreign tokens and held specials, while held basics only command idle hunts', () => {
     const { p, b, token } = setup();
-    expect(reserveCompanionCommand(p, p.abilities!.basic, 'basic', false)).toBeUndefined();
+    expect(reserveCompanionCommand(p, p.abilities!.basic, 'basic', false)?.idleOnly).toBe(true);
+    expect(reserveCompanionCommand(p, p.abilities!.a1, 'a1', false)).toBeUndefined();
     const c = token();
     c.ownerId++;
     commandCompanion(p, b, 'boss', 1, true, c);
