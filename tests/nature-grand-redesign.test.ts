@@ -102,7 +102,7 @@ describe('Ranger/Druid authored builds', () => {
     }
   });
 
-  it('keeps Pack Tactics leech additive through five Honed ranks and never lowers stronger existing leech', () => {
+  it('preserves individual Honed leech without an unrelated identity rider', () => {
     for (const identity of [false, true]) {
       const { p } = setup(
         'ranger',
@@ -112,7 +112,7 @@ describe('Ranger/Druid authored builds', () => {
         ],
         ['rg_beast_bite'],
       );
-      expect(p.subAbilities!.sub1!.lifestealFrac).toBeCloseTo(identity ? 0.4 : 0.3);
+      expect(p.subAbilities!.sub1!.lifestealFrac).toBeCloseTo(0.3);
     }
     for (const [classId, skill] of [
       ['ranger', 'rg_beast_bite'],
@@ -198,7 +198,13 @@ describe('Ranger/Druid authored builds', () => {
           const baseline = setup(classId, [], [first.id]).p;
           for (const identity of identities.filter((d) => d.subclassId === sub.id)) {
             const changed = setup(classId, [identity.id], [first.id]).p;
-            expect(changed.abilities, `${identity.id}/${first.id}`).not.toEqual(baseline.abilities);
+            if (identity.id === 'rg_beastmaster_g_b') {
+              expect(changed.subclassPassiveId).toBe('beast_pack_bond');
+              expect(changed.charUpgradeIds).toContain(identity.id);
+            } else
+              expect(changed.abilities, `${identity.id}/${first.id}`).not.toEqual(
+                baseline.abilities,
+              );
           }
         }
       for (const grand of skills) {

@@ -1,4 +1,5 @@
 /** A small spirit-wolf silhouette, separate from hero/bot bodies and enemy status rings. */
+import { sub } from '../../engine/core/torus';
 import type { Graphics } from 'pixi.js';
 import type { SpiritCompanionView, Vec2 } from '../../engine/core/types';
 export function drawCompanion(
@@ -7,6 +8,29 @@ export function drawCompanion(
   screen: Vec2,
   scale: number,
 ): void {
+  if (pet.quarry) {
+    const q = pet.quarry,
+      d = sub(q.pos, pet.pos);
+    const x = screen.x + d.x * scale,
+      y = screen.y + d.y * scale;
+    const radius = (q.radius + 12) * scale;
+    g.moveTo(screen.x, screen.y).lineTo(x, y).stroke({ color: 0x7ae7ce, width: 1.5, alpha: 0.4 });
+    g.circle(x, y, radius).stroke({ color: 0x7ae7ce, width: 1, alpha: 0.4 });
+    g.moveTo(x, y - radius - 4)
+      .arc(
+        x,
+        y,
+        radius + 4,
+        -Math.PI / 2,
+        -Math.PI / 2 + Math.PI * 2 * Math.max(0, Math.min(1, q.remaining / q.duration)),
+      )
+      .stroke({ color: 0xffdc79, width: 3, alpha: 0.9 });
+    g.poly([x - 7, y - radius - 8, x, y - radius - 2, x + 7, y - radius - 8]).stroke({
+      color: 0xffdc79,
+      width: 2,
+      alpha: 1,
+    });
+  }
   const size = Math.max(7, 14 * scale);
   const c = Math.cos(pet.facing),
     s = Math.sin(pet.facing);

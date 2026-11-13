@@ -1,4 +1,4 @@
-import { returningShotFits, RETURNING_SHOT_TEXT } from './returningRules';
+import { returningShotFits, returningShotDescription } from './returningRules';
 import { shadowCommitKind, shadowCommitDescription } from './shadowRules';
 import { curseDescription, type CurseStyle } from '../core/curses';
 import { absorptionDescription, absorptionMaximum, scaleAbsorption } from '../combat/absorption';
@@ -1239,7 +1239,7 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
     case 'infernalAperture':
       return `fixed firing conduit ${s(e.aperture.duration)}, entrance ${n(e.aperture.reach / 4)}u / exit ${n(e.aperture.reach)}u along aim; nearby mouths adjust around cover; creates 96u-wide temporary cover when space permits, blocking shots and hostile approach; aim through entrance, press again for one ${n(e.aperture.emberDamage)}-damage ember`;
     case 'returningShot':
-      return RETURNING_SHOT_TEXT;
+      return returningShotDescription(d.maxRange, d.projSpeed);
     case 'shadowCommit':
       return shadowCommitDescription(delivery);
     case 'palmSweep':

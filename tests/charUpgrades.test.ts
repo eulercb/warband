@@ -1,3 +1,5 @@
+import { activeSubclassPassive } from '../src/engine/content/subclasses';
+import { packTactics } from '../src/engine/combat/companions';
 import { describe, it, expect } from 'vitest';
 import {
   upgradeAllowedFor,
@@ -2328,7 +2330,16 @@ describe('subclass grands transform the bound sub-abilities (item 17)', () => {
       const boundChanged = JSON.stringify(p.subAbilities!.sub1) !== pristine;
       const baseChanged =
         JSON.stringify(p.abilities) !== JSON.stringify(makePlayer(d.classId as ClassId).abilities);
-      expect(boundChanged || baseChanged, d.id).toBe(true);
+      expect(
+        boundChanged ||
+          baseChanged ||
+          packTactics({
+            ...p,
+            state: 'alive',
+            subclassPassiveId: activeSubclassPassive(p.classId, p.subSkillIds ?? [])?.id,
+          }),
+        d.id,
+      ).toBe(true);
     }
   });
 });

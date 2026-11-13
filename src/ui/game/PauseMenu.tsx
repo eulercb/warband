@@ -126,7 +126,7 @@ export function OwnedSkills() {
         : [],
     [classId, identityClass, myUpgrades, myCharUpgrades, subSkills, grandState],
   );
-  const passive = activeSubclassPassive(classId, subSkills);
+  const passive = activeSubclassPassive(classId, subSkills, myCharUpgrades);
   if (!classId || rows.length === 0) return null;
   return (
     <div className="wb-pause-skills">

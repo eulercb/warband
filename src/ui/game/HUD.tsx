@@ -343,7 +343,7 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
   useBindings((s) => s.bindings);
 
   const hpPct = pct(hud.hp, hud.maxHp);
-  const passive = activeSubclassPassive(hud.classId, hud.subSkills);
+  const passive = activeSubclassPassive(hud.classId, hud.subSkills, myCharUpgrades);
 
   // Resolve the local hero's live ability table (hybrid grafts rename slots and
   // change cooldowns; the buttons should follow what the hero actually has).

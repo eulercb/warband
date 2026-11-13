@@ -1,4 +1,4 @@
-import { returningShotFits, RETURNING_SHOT_TEXT } from './returningRules';
+import { returningShotFits, returningShotDescription } from './returningRules';
 import { shadowCommitKind, shadowCommitDescription } from './shadowRules';
 import { boundedAbility, effectiveRecharge } from './abilityLimits';
 import { curseDescription, type CurseStyle } from '../core/curses';
@@ -211,6 +211,8 @@ export interface PlayerAbilityDef {
   palmSweep?: { distance: number };
   shadowCommit?: boolean;
   returningShot?: boolean;
+  /** Host-only fresh command provenance; copied abilities never carry a wolf. */
+  companionCommand?: import('../core/types').CompanionCommandCast;
   /** Resolved cast aim captured for travelling and buffered actions; never authored. */
   flowAim?: Vec2;
   palmSweepCast?: import('../core/types').PalmSweepCast;
@@ -1443,7 +1445,7 @@ export function describeAbility(
 
   if (def.controlDamageBonus)
     parts.push(`+${n(def.controlDamageBonus * 100)}% dmg vs slowed/rooted/stunned foes`);
-  if (resolvedReturningShot(def)) parts.push(RETURNING_SHOT_TEXT);
+  if (resolvedReturningShot(def)) parts.push(returningShotDescription(def.maxRange, def.projSpeed));
   if (resolvedShadowCommit(def)) parts.push(shadowCommitDescription(def.kind));
   if (def.palmSweep)
     parts.push(

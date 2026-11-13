@@ -1,5 +1,16 @@
+import type { PlayerAbilityDef } from '../content/classes';
+import { abilityForSlot } from './abilities';
 /** A commanded spirit, not a party bot: one host-owned wolf and one pending bite per owner. */
-import type { Add, Boss, Player, SpiritCompanion, Vec2 } from '../core/types';
+import type {
+  Add,
+  Boss,
+  Player,
+  SpiritCompanion,
+  Vec2,
+  CompanionCommandCast,
+  ExtSlot,
+  CompanionHunt,
+} from '../core/types';
 import type { World } from '../world/world';
 import { dist, sub, wrapPos } from '../core/torus';
 import { isBurstControl } from '../core/control';
@@ -20,24 +31,69 @@ function ensure(p: Player): SpiritCompanion {
   return (p.spiritCompanion ??= { pos: home(p), facing: Math.atan2(p.aim.y, p.aim.x) });
 }
 
-/** Only actual positive direct hits can issue orders. Multi-hit attacks share one gate. */
-export function commandCompanion(
+export const COMPANION_HUNT_TIME = 6;
+export function packTactics(p: Player): boolean {
+  return active(p) && !!p.charUpgradeIds?.includes('rg_beastmaster_g_b');
+}
+export function reserveCompanionCommand(
   p: Player,
+  source: PlayerAbilityDef,
+  slot: ExtSlot,
+  fresh: boolean,
+): CompanionCommandCast | undefined {
+  if (!fresh || !packTactics(p)) return undefined;
+  return {
+    ownerId: p.id,
+    ownerClass: p.classId,
+    epoch: p.companionEpoch ?? 0,
+    source,
+    slot,
+    spent: false,
+  };
+}
+function validCommand(p: Player, c: CompanionCommandCast): boolean {
+  return (
+    packTactics(p) &&
+    c.ownerId === p.id &&
+    c.ownerClass === p.classId &&
+    c.epoch === (p.companionEpoch ?? 0) &&
+    abilityForSlot(p, c.slot) === c.source
+  );
+}
+function huntTarget(w: World, p: Player, h: CompanionHunt): Boss | Add | undefined {
+  if (w.finished || w.scene !== null || !validCommand(p, h.cast) || h.remaining <= 0)
+    return undefined;
+  const target =
+    h.kind === 'boss'
+      ? w.bosses.find((b) => b.id === h.targetId)
+      : w.adds.find((a) => a.id === h.targetId);
+  return target &&
+    target.hp > 0 &&
+    !('charm' in target && target.charm) &&
+    dist(p.pos, target.pos) <= COMPANION_RANGE
+    ? target
+    : undefined;
+}
+export function companionHuntView(w: World, p: Player) {
+  const h = p.spiritCompanion?.hunt;
+  if (!h) return undefined;
+  const t = huntTarget(w, p, h);
+  return t
+    ? {
+        targetId: t.id,
+        pos: { ...t.pos },
+        radius: t.radius,
+        remaining: h.remaining,
+        duration: COMPANION_HUNT_TIME,
+      }
+    : undefined;
+}
+function scheduleBite(
+  p: Player,
+  pet: SpiritCompanion,
   target: Boss | Add,
   kind: 'boss' | 'add',
-  effective: number,
-  direct?: boolean,
 ): void {
-  if (
-    !active(p) ||
-    !direct ||
-    effective <= 0 ||
-    target.hp <= 0 ||
-    dist(p.pos, target.pos) > COMPANION_RANGE ||
-    (p.subclassPassiveCooldowns?.[PACK_BOND] ?? 0) > 0
-  )
-    return;
-  const pet = ensure(p);
   pet.order = {
     targetId: target.id,
     kind,
@@ -46,6 +102,36 @@ export function commandCompanion(
   };
   p.subclassPassiveCooldowns ??= {};
   p.subclassPassiveCooldowns[PACK_BOND] = 2.5;
+}
+
+/** Only actual positive direct hits can issue orders. Multi-hit attacks share one gate. */
+export function commandCompanion(
+  p: Player,
+  target: Boss | Add,
+  kind: 'boss' | 'add',
+  effective: number,
+  direct?: boolean,
+  command?: CompanionCommandCast,
+): void {
+  if (
+    !active(p) ||
+    !direct ||
+    effective <= 0 ||
+    target.hp <= 0 ||
+    ('charm' in target && !!target.charm) ||
+    dist(p.pos, target.pos) > COMPANION_RANGE
+  )
+    return;
+  if (!packTactics(p) && (p.subclassPassiveCooldowns?.[PACK_BOND] ?? 0) > 0) return;
+  const pet = ensure(p);
+  if (packTactics(p)) {
+    if (!command || command.spent || !validCommand(p, command)) return;
+    command.spent = true;
+    if (pet.order?.targetId !== target.id) delete pet.order;
+    pet.hunt = { targetId: target.id, kind, remaining: COMPANION_HUNT_TIME, cast: command };
+    return;
+  }
+  scheduleBite(p, pet, target, kind);
 }
 
 /** Nature's Bond (or a copied dedicated heal) links its actually healed recipient. */
@@ -83,13 +169,24 @@ function protect(world: World, p: Player, pet: SpiritCompanion): void {
 /** No target scanning, collision, independent aggro, damage zones, crits or recursive orders. */
 export function updateCompanions(world: World, dt: number): void {
   for (const p of world.players) {
-    if (!active(p) || world.scene !== null) {
+    if (!active(p) || world.scene !== null || world.finished) {
+      p.companionEpoch = (p.companionEpoch ?? 0) + 1;
       delete p.spiritCompanion;
       p.buffs = p.buffs.filter((b) => b.source !== WARD_SOURCE);
       continue;
     }
     const pet = ensure(p);
     if (!p.buffs.some((b) => b.kind === 'packBond' && b.remaining > 0)) delete pet.wardTargetId;
+    let quarry: Boss | Add | undefined;
+    if (pet.hunt) {
+      pet.hunt.remaining -= dt;
+      quarry = huntTarget(world, p, pet.hunt);
+      if (!quarry) {
+        delete pet.hunt;
+        delete pet.order;
+      } else if (!pet.order && (p.subclassPassiveCooldowns?.[PACK_BOND] ?? 0) <= 0)
+        scheduleBite(p, pet, quarry, pet.hunt.kind);
+    }
     const order = pet.order;
     if (order) {
       const target =
@@ -121,6 +218,19 @@ export function updateCompanions(world: World, dt: number): void {
       }
     }
     if (!pet.order) {
+      if (quarry) {
+        const d = sub(p.pos, quarry.pos),
+          length = Math.hypot(d.x, d.y) || 1;
+        move(
+          pet,
+          wrapPos({
+            x: quarry.pos.x + (d.x / length) * (quarry.radius + 32),
+            y: quarry.pos.y + (d.y / length) * (quarry.radius + 32),
+          }),
+          600 * dt,
+        );
+        continue;
+      }
       const rest = home(p);
       if (dist(pet.pos, rest) > COMPANION_RANGE) pet.pos = rest;
       else move(pet, rest, Math.max(420, p.moveSpeed * 1.5) * dt);

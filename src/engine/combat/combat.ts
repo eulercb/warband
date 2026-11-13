@@ -88,6 +88,7 @@ export interface EventSink {
  * styling. All optional; absent = an ordinary hit.
  */
 export interface HitMods {
+  companionCommand?: import('../core/types').CompanionCommandCast;
   maneuverCast?: import('../core/types').ManeuverCast;
   thoughtBreak?: import('../core/types').ThoughtBreakCast;
   forethought?: { ownerClass: import('../core/types').ClassId; requiresCurse: boolean };
@@ -471,7 +472,7 @@ export function damageBoss(
   const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
   onMoonDirectHit(sink, source, boss, effective, mods?.direct);
-  commandCompanion(source, boss, 'boss', effective, mods?.direct);
+  commandCompanion(source, boss, 'boss', effective, mods?.direct, mods?.companionCommand);
   if (mods?.direct && mods.maneuverCast)
     sink.onManeuverHit?.(source, boss, effective, mods.maneuverCast);
   onSubclassDirectHit(
@@ -566,7 +567,7 @@ export function damageAdd(
   const bloodHeal = bloodHitHealing(source, effective, mods?.direct);
   if (bloodHeal > 0) healPlayer(sink, source, source, bloodHeal);
   onMoonDirectHit(sink, source, add, effective, mods?.direct);
-  commandCompanion(source, add, 'add', effective, mods?.direct);
+  commandCompanion(source, add, 'add', effective, mods?.direct, mods?.companionCommand);
   if (mods?.direct && mods.maneuverCast)
     sink.onManeuverHit?.(source, add, effective, mods.maneuverCast);
   onSubclassDirectHit(

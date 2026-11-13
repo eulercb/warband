@@ -1,3 +1,4 @@
+import { advanceReturningPosition, finishReturningStep } from './returningShot';
 import { placeAperture, type CoverCircle } from './aperturePlacement';
 /** Fixed firing geometry. Conduits move existing shots, never clone or remotely cast them. */
 import type { ExtSlot, Player, PlayerView, Projectile, Vec2 } from '../core/types';
@@ -257,6 +258,7 @@ export function stepApertureProjectile(
       p.lifetime -= spent;
       time -= spent;
       if (tr.remaining > 1e-9) return p.lifetime > 0;
+      advanceReturningPosition(p, sub(tr.exit, p.pos));
       p.pos = { ...tr.exit };
       p.vel = { ...tr.velocity };
       delete p.apertureTransit;
@@ -291,11 +293,13 @@ export function stepApertureProjectile(
     const moved = distance * at,
       spent = moved / speed;
     p.pos = wrapPos({ x: from.x + (to.x - from.x) * at, y: from.y + (to.y - from.y) * at });
+    advanceReturningPosition(p, { x: (to.x - from.x) * at, y: (to.y - from.y) * at });
     p.rangeLeft -= moved;
     p.lifetime -= spent;
     time -= spent;
     if (event === 'cover') return false;
     if (event === 'body') {
+      advanceReturningPosition(p, { x: (p.vel.x / speed) * 1e-7, y: (p.vel.y / speed) * 1e-7 });
       // Nudge only toward contact, well below a world-space pixel, to avoid roundoff misses.
       p.pos = wrapPos({
         x: p.pos.x + (p.vel.x / speed) * 1e-7,
@@ -326,7 +330,7 @@ export function stepApertureProjectile(
       };
       continue;
     }
-    return p.rangeLeft > 0 && p.lifetime > 0;
+    return finishReturningStep(p) || (p.rangeLeft > 0 && p.lifetime > 0);
   }
-  return p.rangeLeft > 0 && p.lifetime > 0;
+  return finishReturningStep(p) || (p.rangeLeft > 0 && p.lifetime > 0);
 }
