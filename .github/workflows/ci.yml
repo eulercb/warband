@@ -208,10 +208,25 @@ jobs:
           path: ${{ runner.temp }}/passive-shots
           if-no-files-found: ignore
 
-  # Run martial and absorption scenarios alongside the existing browser suite,
-  # rather than extending its already long serial class/subclass selection loop.
-  martial-smoke:
-    name: Martial classes (desktop and touch)
+  # Keep the growing browser catalogue below the existing per-step deadline.
+  martial-smoke-group:
+    name: Martial browser (${{ matrix.group }})
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - group: core
+            smokes: >-
+              smoke:martial smoke:martial-grands
+          - group: defense
+            smokes: >-
+              smoke:projected-guard smoke:absorption smoke:auras
+          - group: movement-and-nature
+            smokes: >-
+              smoke:battle-maneuvers smoke:ancestral-relay smoke:palm-sweep
+              smoke:shadow-commit smoke:nature-grands smoke:land-transplant
+              smoke:returning-shot smoke:companion-hunt
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -247,28 +262,31 @@ jobs:
             sleep 1
           done
           node scripts/smoke-harness-startup.test.mjs
-          node scripts/run-smoke.mjs smoke:martial
-          node scripts/run-smoke.mjs smoke:projected-guard
-          node scripts/run-smoke.mjs smoke:battle-maneuvers
-          node scripts/run-smoke.mjs smoke:ancestral-relay
-          node scripts/run-smoke.mjs smoke:palm-sweep
-          node scripts/run-smoke.mjs smoke:shadow-commit
-          node scripts/run-smoke.mjs smoke:absorption
-          node scripts/run-smoke.mjs smoke:auras
-          node scripts/run-smoke.mjs smoke:martial-grands
-          node scripts/run-smoke.mjs smoke:nature-grands
-          node scripts/run-smoke.mjs smoke:land-transplant
-          node scripts/run-smoke.mjs smoke:returning-shot
-          node scripts/run-smoke.mjs smoke:companion-hunt
+          for smoke in ${{ matrix.smokes }}; do
+            node scripts/run-smoke.mjs "$smoke"
+          done
       - name: Upload martial screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: martial-smoke-screenshots
+          name: martial-${{ matrix.group }}-screenshots
           path: |
             ${{ runner.temp }}/martial-shots
             ${{ runner.temp }}/martial-dev.log
           if-no-files-found: ignore
+
+  # Preserve the existing required-check name while requiring every group to pass.
+  martial-smoke:
+    name: Martial classes (desktop and touch)
+    needs: martial-smoke-group
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every martial browser group
+        env:
+          GROUP_RESULT: ${{ needs.martial-smoke-group.result }}
+        run: test "$GROUP_RESULT" = success
 
   caster-defense-smoke:
     name: Caster defense (desktop and touch)

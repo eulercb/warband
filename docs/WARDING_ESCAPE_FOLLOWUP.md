@@ -109,3 +109,23 @@ After acceptance, next development returns to **Chaos Crossing's coherent redesi
 then the five remaining support identities. Whole-system balance/progression/graft
 comparisons and the visual milestone follow. These tests establish mechanics and
 readability; owner playtesting and later comparisons establish feel and tuning.
+
+## CI timeout follow-up
+
+CI run 295 on the original follow-up commit passed lint, TypeScript, unit/coverage,
+build and every other browser job. The martial job reported every browser case as
+passed, then hit its 15-minute step deadline after the last case reported success. There
+was no failed gameplay assertion in that job's log.
+
+The growing serial martial job is now split into three groups: core,
+defense, and movement/nature. All thirteen existing smoke commands remain, each
+assigned once; desktop and phone coverage and the 15-minute step limit remain.
+Groups use separate artifacts, continue independently after a failure, and run at
+most two at once. An aggregate keeps the existing **Martial classes (desktop and
+touch)** required-check name and succeeds only when every group succeeds.
+
+Validation checked YAML syntax, exact command partition, artifact uniqueness and
+the aggregate dependency. Existing CI-completion automation tests and final
+TypeScript passed. Browser cases were not rerun locally for this workflow-only
+change; the failed CI log already records all of them passing. After push, the
+existing completion action reports the fresh GitHub result without chat polling.
