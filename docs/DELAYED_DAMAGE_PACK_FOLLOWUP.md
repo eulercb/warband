@@ -1,5 +1,9 @@
 # Delayed damage and Pack Tactics follow-up
 
+Historical delivery (#170), merged/tested. Damage premiums are accepted for now.
+The [pack continuity follow-up](PACK_HUNT_CONTINUITY.md) supersedes idle follower,
+activation intent and owner-range cancellation rules below.
+
 The owner merged and tested #169: outward reach now feels right, but splitting
 normal damage into delayed portions feels weak. Pack Tactics' command behavior
 was liked, with a request for damage competitive with Alpha’s Fury and a more

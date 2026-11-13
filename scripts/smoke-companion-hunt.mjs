@@ -163,11 +163,16 @@ try {
             publish();
           }
           window.pack = { w, p, b, step, publish };
-          publish();
+          step();
         },
         { pick, portable },
       );
       await page.waitForSelector('.hud-ability', { state: 'attached' });
+      assert.equal(await page.evaluate(() => window.packRemote?.flankers?.length), 2);
+      assert.equal(await page.evaluate(() => !!window.packRemote?.quarry), false);
+      await page.screenshot({
+        path: `${process.env.SHOT_DIR || '/tmp'}/pack-idle-${width}-${pick}.png`,
+      });
       await page.evaluate(() => {
         const f = window.pack;
         f.step(true);
@@ -191,18 +196,24 @@ try {
       await page.screenshot({
         path: `${process.env.SHOT_DIR || '/tmp'}/pack-hunt-${width}-${pick}.png`,
       });
-      await page.evaluate(() => {
+      await page.evaluate(async () => {
         const f = window.pack,
           before = f.b.hp;
-        for (let i = 0; i < 260; i++) f.step(false, { x: 0, y: -1 });
+        for (let i = 0; i < 300; i++) f.step(false, { x: -1, y: 0 });
+        const delta = (await import('/src/engine/core/torus.ts')).dist;
+        if (!(delta(f.p.pos, f.b.pos) > 600)) throw new Error('Owner never left activation range');
+        if (!f.p.spiritCompanion?.hunt || !window.packRemote?.quarry)
+          throw new Error('Distance cancelled an active hunt');
         if (!(f.b.hp < before))
           throw new Error('Wolf failed to bite while hero moved without attacking');
         for (let i = 0; i < 400; i++) f.step();
-        if (f.p.spiritCompanion?.hunt || f.p.spiritCompanion?.flankers)
-          throw new Error('Hunt or helpers never expired');
+        if (f.p.spiritCompanion?.hunt) throw new Error('Hunt never expired');
+        if (f.p.spiritCompanion?.flankers?.length !== 2) throw new Error('Idle pack disappeared');
         const hp = f.b.hp;
         for (let i = 0; i < 300; i++) f.step();
         if (f.b.hp !== hp) throw new Error('Wolf attacked without a new command');
+        for (const wolf of [f.p.spiritCompanion, ...f.p.spiritCompanion.flankers])
+          if (delta(wolf.pos, f.p.pos) > 90) throw new Error('Pack failed to return to owner');
       });
       assert.deepEqual(errors, []);
       assert.equal(

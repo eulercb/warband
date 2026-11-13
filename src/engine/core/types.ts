@@ -542,6 +542,7 @@ export interface Player {
   whisperRecovery?: number;
   spiritCompanion?: SpiritCompanion;
   companionEpoch?: number;
+  companionPresses?: Partial<Record<ExtSlot, CompanionCommandCast>>;
   id: EntityId;
   peerId: string; // network identity ('' allowed but host uses its own selfId)
   name: string;

@@ -48,6 +48,12 @@ fraction/rate of each portion and any combined potential honestly. Distinguish
 converted damage from already-additive poison, echoes and retorts; do not blanket
 buff every damage-over-time effect. Apply this review to future conversions too.
 
+Owner follow-up: Pack Tactics keeps three idle followers. Its 600u range gates
+activation, not continuation of the chosen 6s hunt. Preserve one command per
+new press / first accepted cast through ordinary input gates, without allowing
+held autofire to renew the hunt or recycle a missed cast's command. Test actual
+autofire repetition, not merely repeated held input with autofire disabled.
+
 Before presenting a redesign, describe what a player or enemy actually does
 differently, compare it with existing mechanics, and show a useful solo-boss
 route as well as co-op behavior. If bosses need limits, preserve the mechanic's
