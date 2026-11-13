@@ -88,6 +88,16 @@ describe('Chaos Forge char-upgrade synthesis', () => {
       for (const { up, cid } of boons) {
         const before = kitStr(previewAbilityTable(cid, []));
         const after = kitStr(previewAbilityTable(cid, [up.id]));
+        if (up.id === 'dr_land_g_b' && after === before) {
+          // A field-only identity has no numeric fallback on a kit without fields.
+          expect(
+            Object.values(previewAbilityTable(cid, [])).some(
+              (ab) =>
+                ab.kind === 'groundZone' || ab.components?.effects.some((e) => e.kind === 'zone'),
+            ),
+          ).toBe(false);
+          continue;
+        }
         expect(after, `${up.id}@${seed}`).not.toBe(before); // the boon lands on the fused kit
       }
       setForgeSeed(null);

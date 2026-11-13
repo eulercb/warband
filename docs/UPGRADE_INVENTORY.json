@@ -795,7 +795,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Arrow hits for 25 (+5) and flies 13% faster; Multishot arrows deal 20 each (+4)",
+      "description": "Arrow gains +5 damage and +90 speed; Multishot gains +4 damage per arrow",
       "disposition": "adjust",
       "rationale": "Review live field changes and wording; prefer a useful timing, coverage or resource decision.",
       "pilotPriority": false,
@@ -867,7 +867,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Multishot looses 5 arrows (+2) in a wider 38° fan",
+      "description": "Multishot gains +2 arrows and +8° fan width per rank",
       "disposition": "adjust",
       "rationale": "Review live field changes and wording; prefer a useful timing, coverage or resource decision.",
       "pilotPriority": false,
@@ -900,7 +900,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Rain of Arrows ticks for 19 (+7), lasts 4.5s (+1.5), and covers 135u (+15)",
+      "description": "Rain of Arrows gains +7 damage per tick, +1.5s duration and +15u radius",
       "disposition": "adjust",
       "rationale": "Review live field changes and wording; prefer a useful timing, coverage or resource decision.",
       "pilotPriority": false,
@@ -935,7 +935,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Roll travels 270u (+50), dodges for 0.45s (+0.15), while retaining deliberate recharge",
+      "description": "Roll gains +50u travel and +0.15s phasing",
       "disposition": "adjust",
       "rationale": "Review live field changes and wording; prefer a useful timing, coverage or resource decision.",
       "pilotPriority": false,
@@ -1942,7 +1942,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Thornlash splits into 2 thorns in a 14° spread and hits for 22 each (+5)",
+      "description": "Thornlash gains +1 thorn and +5 damage per thorn; its fan is at least 14°",
       "disposition": "adjust",
       "rationale": "Review live field changes and wording; prefer a useful timing, coverage or resource decision.",
       "pilotPriority": false,
@@ -2344,7 +2344,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Chaos Bolt fires 3 bolts (+1) and each hits for 16 (+4)",
+      "description": "Chaos Bolt gains +1 bolt and +4 damage per bolt per rank",
       "disposition": "adjust",
       "rationale": "Review live field changes and wording; prefer a useful timing, coverage or resource decision.",
       "pilotPriority": false,
@@ -10852,7 +10852,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Regrowth relays 35% of effective primary healing to one other wounded ally within 180u; Entangle heals +3 per tick; Land fields grant +20% allied movement and healing fields gain +2 per tick, while direct strikes slow foes to 75% for 2s",
+      "description": "Entangle and Land fields can be transplanted once during their original recharge: press the same ability again to anchor the existing field ahead along your aim. No lifetime or tick reset; moving a following field anchors it",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -10861,96 +10861,40 @@
           "classId": "druid",
           "subSkills": ["dr_land_spike"],
           "prefix": [],
-          "once": [
-            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
-            {
-              "path": "abilities.a2.relayHeal",
-              "before": null,
-              "after": { "fraction": 0.35, "radius": 180 }
-            },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
-            {
-              "path": "abilities.a2.relayHeal",
-              "before": null,
-              "after": { "fraction": 0.35, "radius": 180 }
-            },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
-          ]
+          "once": [{ "path": "abilities.a1.zoneTransplant", "before": null, "after": true }],
+          "atCap": [{ "path": "abilities.a1.zoneTransplant", "before": null, "after": true }]
         },
         {
           "classId": "druid",
           "subSkills": ["dr_land_wall"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
-            {
-              "path": "abilities.a2.relayHeal",
-              "before": null,
-              "after": { "fraction": 0.35, "radius": 180 }
-            },
-            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 4, "after": 6 }
+            { "path": "abilities.a1.zoneTransplant", "before": null, "after": true },
+            { "path": "subAbilities.sub1.zoneTransplant", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
-            {
-              "path": "abilities.a2.relayHeal",
-              "before": null,
-              "after": { "fraction": 0.35, "radius": 180 }
-            },
-            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 4, "after": 6 }
+            { "path": "abilities.a1.zoneTransplant", "before": null, "after": true },
+            { "path": "subAbilities.sub1.zoneTransplant", "before": null, "after": true }
           ]
         },
         {
           "classId": "druid",
           "subSkills": ["dr_land_wind"],
           "prefix": [],
-          "once": [
-            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
-            {
-              "path": "abilities.a2.relayHeal",
-              "before": null,
-              "after": { "fraction": 0.35, "radius": 180 }
-            }
-          ],
-          "atCap": [
-            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
-            {
-              "path": "abilities.a2.relayHeal",
-              "before": null,
-              "after": { "fraction": 0.35, "radius": 180 }
-            }
-          ]
+          "once": [{ "path": "abilities.a1.zoneTransplant", "before": null, "after": true }],
+          "atCap": [{ "path": "abilities.a1.zoneTransplant", "before": null, "after": true }]
         },
         {
           "classId": "druid",
           "subSkills": ["dr_land_spring"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
-            {
-              "path": "abilities.a2.relayHeal",
-              "before": null,
-              "after": { "fraction": 0.35, "radius": 180 }
-            },
-            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 13, "after": 15 }
+            { "path": "abilities.a1.zoneTransplant", "before": null, "after": true },
+            { "path": "subAbilities.sub1.zoneTransplant", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "abilities.a1.zoneTickHeal", "before": 4, "after": 7 },
-            {
-              "path": "abilities.a2.relayHeal",
-              "before": null,
-              "after": { "fraction": 0.35, "radius": 180 }
-            },
-            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.2 },
-            { "path": "subAbilities.sub1.zoneTickHeal", "before": 13, "after": 15 }
+            { "path": "abilities.a1.zoneTransplant", "before": null, "after": true },
+            { "path": "subAbilities.sub1.zoneTransplant", "before": null, "after": true }
           ]
         }
       ]

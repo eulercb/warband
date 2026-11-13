@@ -1,3 +1,4 @@
+import { registerTransplant } from './fieldTransplant';
 import { SHADOW_COMMIT_DAMAGE } from '../content/shadowRules';
 import { armReturningShot } from './returningShot';
 import { commitShadow } from './shadowCommit';
@@ -969,8 +970,12 @@ function applyForgeBuffs(
 }
 
 /** Map a forge ZoneSpec to a projectile's on-impact payload. */
-function zoneToImpact(z: ZoneSpec): ProjectileImpact {
+function zoneToImpact(
+  z: ZoneSpec,
+  cast?: import('../core/types').FieldTransplantCast,
+): ProjectileImpact {
   return {
+    fieldTransplantCast: z.zoneTransplant ? cast : undefined,
     kind: z.zoneKind,
     radius: z.radius,
     duration: z.duration,
@@ -998,6 +1003,7 @@ function spawnComposedZone(
   range: number,
   cast?: import('../core/types').WhisperCast,
   castAim: Vec2 = p.aim,
+  transplant?: import('../core/types').FieldTransplantCast,
 ): void {
   range = Math.min(range, Math.min(world.arena.w, world.arena.h) * 0.4);
   const centered = z.zoneKind === 'sanctuary' || z.zoneKind === 'consecration';
@@ -1012,6 +1018,7 @@ function spawnComposedZone(
     side: 'player',
     ownerId: p.id,
     damagePerTick: z.tickDamage ?? 0,
+    fieldTransplantCast: z.zoneTransplant ? transplant : undefined,
     whisperCast: cast,
     zonePoison: z.zonePoison,
     zoneFollow: z.zoneFollow,
@@ -1128,7 +1135,10 @@ function resolveComposedAbility(
       const kind: ProjectileKind =
         impactRadius > 0 || zoneEff ? 'fireball' : projectileKindFor(p, 'a1');
       const maxRange = ab.maxRange ?? PROJECTILE_MAX_RANGE;
-      const onImpact = zoneEff && zoneEff.kind === 'zone' ? zoneToImpact(zoneEff.zone) : undefined;
+      const onImpact =
+        zoneEff && zoneEff.kind === 'zone'
+          ? zoneToImpact(zoneEff.zone, ab.fieldTransplantCast)
+          : undefined;
       for (let i = 0; i < count; i++) {
         const t = count > 1 ? i / (count - 1) - 0.5 : 0;
         const a = aimAngle + t * spread;
@@ -1186,6 +1196,7 @@ function resolveComposedAbility(
           ab.range ?? 500,
           ab.whisperCast,
           ab.flowAim ?? ab.palmSweepCast?.aim ?? p.aim,
+          ab.fieldTransplantCast,
         );
       buffSelf();
       break;
@@ -1307,6 +1318,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     side: 'player',
     ownerId: p.id,
     damagePerTick: dmgPerTick,
+    fieldTransplantCast: ab.fieldTransplantCast,
     whisperCast: ab.whisperCast,
     zonePoison: ab.zonePoison,
     zoneFollow: ab.zoneFollow,
@@ -1466,6 +1478,7 @@ function emitSkillArea(
 }
 
 export interface SpawnZoneOpts {
+  fieldTransplantCast?: import('../core/types').FieldTransplantCast;
   whisperCast?: import('../core/types').WhisperCast;
   zonePoison?: PlayerAbilityDef['zonePoison'];
   zoneFollow?: number;
@@ -1556,6 +1569,7 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     };
   }
   world.groundZones.push(zone);
+  registerTransplant(world, zone, o.fieldTransplantCast);
 }
 
 /**

@@ -44,7 +44,7 @@ function setup(classId: ClassId, history: string[] = [], subSkills: string[] = [
 }
 
 describe('Ranger/Druid authored builds', () => {
-  it('resolves legal four-grand builds through actual Forge deliveries, all first picks and ordinary/Haste caps', () => {
+  it('resolves compatible grand builds through actual Forge deliveries, all first picks and ordinary/Haste caps', () => {
     for (const seed of [7, 29]) {
       setForgeSeed(seed);
       for (const classId of ['ranger', 'druid'] as const) {
@@ -85,7 +85,10 @@ describe('Ranger/Druid authored builds', () => {
                 ],
               });
               const p = w.players[0];
-              expect(p.grandLoadout!.classes[classId]!.equipped).toHaveLength(4);
+              expect(p.grandLoadout!.classes[classId]!.bank).toHaveLength(4);
+              expect(p.grandLoadout!.classes[classId]!.equipped).toEqual(
+                loadout.classes[classId]!.equipped,
+              );
               for (const ab of [...Object.values(p.abilities!), p.subAbilities!.sub1!]) {
                 expect(JSON.stringify(ab), `${seed}/${first.id}/${identity.id}`).not.toContain(
                   'null',

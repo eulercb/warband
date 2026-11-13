@@ -24,6 +24,7 @@ export function pushHud(state: RenderState, source: InputSource): void {
     maneuver: lp?.maneuver,
     ancestralRelay: lp?.ancestralRelay,
     palmSweep: lp?.palmSweep,
+    fieldTransplants: lp?.fieldTransplants,
     shadowReprise: lp?.shadowReprise,
     infernalAperture: lp?.infernalAperture,
     casting: (lp?.castTimer ?? 0) > 0,
