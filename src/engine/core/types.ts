@@ -354,6 +354,26 @@ export interface PlayerStats {
 // ---------------------------------------------------------------------------
 
 /** Host-only companion orders; clients receive only the visual pose. */
+export interface FieldTransplantCast {
+  ownerClass: ClassId;
+  ownerId: EntityId;
+  epoch: number;
+  source: import('../content/classes').PlayerAbilityDef;
+  slot: ExtSlot;
+  createdTick: number;
+  used: boolean;
+  zoneId?: EntityId;
+}
+export interface FieldTransplantView {
+  reach: number;
+  slot: ExtSlot;
+  zoneId: EntityId;
+  from: Vec2;
+  to: Vec2;
+  radius: number;
+  remaining: number;
+  blocked: string | null;
+}
 export interface CompanionCommandCast {
   /** Held basics can start an idle hunt, never replace an active quarry. */
   idleOnly?: boolean;
@@ -544,6 +564,8 @@ export interface Player {
   whisperRecovery?: number;
   spiritCompanion?: SpiritCompanion;
   companionEpoch?: number;
+  transplantEpoch?: number;
+  fieldTransplants?: Partial<Record<ExtSlot, FieldTransplantCast>>;
   companionPresses?: Partial<Record<ExtSlot, CompanionCommandCast>>;
   id: EntityId;
   peerId: string; // network identity ('' allowed but host uses its own selfId)
@@ -875,6 +897,7 @@ export interface ZoneAllyBuff {
  * stays byte-identical when Forge is off.
  */
 export interface ProjectileImpact {
+  fieldTransplantCast?: FieldTransplantCast;
   zonePoison?: { share: number; onExit: boolean; damageMult?: number };
   zoneFollow?: number;
   kind: ZoneKind;
@@ -1564,6 +1587,7 @@ export interface PlayerView {
     slot: ExtSlot;
     blocked: string | null;
   };
+  fieldTransplants?: FieldTransplantView[];
   palmSweep?: PalmSweepView;
   shadowReprise?: {
     anchor: Vec2;

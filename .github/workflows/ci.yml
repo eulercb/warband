@@ -257,6 +257,7 @@ jobs:
           node scripts/run-smoke.mjs smoke:auras
           node scripts/run-smoke.mjs smoke:martial-grands
           node scripts/run-smoke.mjs smoke:nature-grands
+          node scripts/run-smoke.mjs smoke:land-transplant
           node scripts/run-smoke.mjs smoke:returning-shot
           node scripts/run-smoke.mjs smoke:companion-hunt
       - name: Upload martial screenshots

@@ -270,6 +270,8 @@ export interface PlayerAbilityDef {
   /** Authored upgrade mechanics; allocation leaves the original magnitude intact. */
   zonePoison?: { share: number; onExit: boolean; damageMult?: number };
   zoneFollow?: number;
+  zoneTransplant?: boolean;
+  fieldTransplantCast?: import('../core/types').FieldTransplantCast;
   preparedRefund?: number;
   /** Runtime cast identity, never authored or serialized. */
   refundCast?: { spent: boolean };
@@ -1544,6 +1546,10 @@ export function describeAbility(
     );
   if (def.zonePoison)
     parts.push(poisonAllocationDescription(def.zonePoison, (def.zoneTickDamage ?? 0) * dmgMul));
+  if (def.zoneTransplant)
+    parts.push(
+      'once during recharge, press again to transplant this field ahead; lifetime and tick timing do not reset; anchors following fields',
+    );
   if (def.zoneFollow)
     parts.push(`follows first damaged foe up to ${s(def.zoneFollow)}, then anchors`);
   if (def.rebukeDuration)

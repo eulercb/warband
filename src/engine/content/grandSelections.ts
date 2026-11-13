@@ -1,7 +1,14 @@
 /** Versioned earned bank and per-class selections. Never mutate normal upgrade history. */
 import type { AbilitySlot, ClassId } from '../core/types';
 import { CLASS_IDS } from './classes';
-import { CHAR_UPGRADES, canonicalGrandId, occupancyAfter, upgradeAllowedFor } from './charUpgrades';
+import {
+  CHAR_UPGRADES,
+  canonicalGrandId,
+  occupancyAfter,
+  upgradeAllowedFor,
+  previewAbilityTable,
+  previewSubAbility,
+} from './charUpgrades';
 import { subclassOfSkill } from './subclasses';
 export interface GrandSelection {
   bank: string[];
@@ -58,6 +65,23 @@ export function grandEligible(id: string, classId: ClassId, ctx: GrandContext): 
     .filter((sid) => subclassOfSkill(sid)?.classId === classId)
     .slice(0, 2);
   const committed = bound.length ? subclassOfSkill(bound[0])?.id : undefined;
+  if (id === 'dr_land_g_b') {
+    const mods = [...ctx.history, id];
+    const candidates = [
+      ...Object.values(previewAbilityTable(classId, mods)),
+      ...bound.map((sid) => previewSubAbility(sid, mods)),
+    ];
+    if (
+      !candidates.some(
+        (ab) =>
+          ab &&
+          (ab.components
+            ? ab.components.effects.some((e) => e.kind === 'zone' && e.zone.zoneTransplant)
+            : ab.kind === 'groundZone' && ab.zoneTransplant),
+      )
+    )
+      return false;
+  }
   if (d.subclassId && d.subclassId !== committed) return false;
   if (
     d.subSkillId &&

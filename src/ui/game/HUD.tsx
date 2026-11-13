@@ -175,6 +175,10 @@ function AbilityIcon({
       ? `Return ${reprise.returnRemaining.toFixed(1)}s${reprise.blocked ? ` · ${reprise.blocked}` : ''}`
       : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
     : null;
+  const transplant = useHudStore((s) => s.fieldTransplants?.find((t) => t.slot === slot));
+  const transplantStatus = transplant
+    ? (transplant.blocked ?? `Transplant ${Math.round(transplant.reach)}u ahead`)
+    : null;
   const relay = useHudStore((s) => s.ancestralRelay);
   const relayStatus =
     relay && relay.slot === slot
@@ -202,7 +206,9 @@ function AbilityIcon({
   );
   const actionStatus = reprise?.armed
     ? repriseStatus
-    : (apertureStatus ??
+    : ((ember ? apertureStatus : null) ??
+      transplantStatus ??
+      apertureStatus ??
       repriseStatus ??
       relayStatus ??
       sweepStatus ??
@@ -222,10 +228,22 @@ function AbilityIcon({
         : 'Target ready';
   const ready =
     !silence &&
-    ((reprise?.armed ? !reprise.blocked : ember && !aperture?.blocked) ||
+    ((reprise?.armed
+      ? !reprise.blocked
+      : ember
+        ? !aperture?.blocked
+        : transplant
+          ? !transplant.blocked
+          : false) ||
       (!cooling && (claimTarget === undefined || (alive && claimTarget !== null))));
   const label = slotLabel(slot, source);
-  const name = reprise?.armed ? 'Return' : ember ? 'Ember' : (displayName ?? def.name);
+  const name = reprise?.armed
+    ? 'Return'
+    : ember
+      ? 'Ember'
+      : transplant
+        ? 'Transplant'
+        : (displayName ?? def.name);
   // Concrete effect numbers on hover/focus (item 19), reflecting the hero's
   // current upgraded values since `def` comes from the resolved ability table.
   const tip = `${name} — ${describeAbility({ ...def, slot }, mods)}${claimStatus ? ` · ${claimStatus}` : ''}`;

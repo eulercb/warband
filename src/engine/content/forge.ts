@@ -179,6 +179,7 @@ export type BuffTarget = 'self' | 'allies';
  * a zone becomes the buff the zone refreshes on allies standing inside it.
  */
 export interface ZoneSpec {
+  zoneTransplant?: boolean;
   zonePoison?: { share: number; onExit: boolean; damageMult?: number };
   zoneFollow?: number;
   zoneKind: ZoneKind;
@@ -286,6 +287,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
       duration: def.zoneDuration ?? 4,
       radius: def.radius ?? 130,
     };
+    zone.zoneTransplant = def.zoneTransplant;
     zone.zonePoison = def.zonePoison;
     zone.zoneFollow = def.zoneFollow;
     if (def.zoneTickDamage) zone.tickDamage = def.zoneTickDamage;
@@ -801,6 +803,7 @@ export function recompose(
         if (e.zone.allyBuff?.defMult) def.zoneAllyDefMult = e.zone.allyBuff.defMult;
         if (e.zone.curseBonus) def.curseBonus = e.zone.curseBonus;
         if (e.zone.curseStyle) def.curseStyle = e.zone.curseStyle;
+        def.zoneTransplant = e.zone.zoneTransplant;
         def.zonePoison = e.zone.zonePoison;
         def.zoneFollow = e.zone.zoneFollow;
         if (e.zone.tickDamage) def.zoneTickDamage = e.zone.tickDamage;
@@ -1040,6 +1043,7 @@ function zoneValue(z: ZoneSpec): number {
   const ticks = (z.duration / 0.5) * 0.6;
   let v = ((z.tickDamage ?? 0) * poisonAllocation(z.zonePoison).mult + (z.tickHeal ?? 0)) * ticks;
   if (z.zonePoison) v += (z.tickDamage ?? 0) * poisonAllocation(z.zonePoison).poison * 2;
+  if (z.zoneTransplant) v += 12;
   if (z.zoneFollow) v += Math.min(3, z.zoneFollow) * ((z.tickDamage ?? 0) * 0.2 + 2);
   if (z.slowMult != null) v += (1 - z.slowMult) * z.duration * 10;
   if (z.overflowShield) v += (z.tickHeal ?? 0) * ticks * 0.4;
@@ -1321,6 +1325,10 @@ function buffPhrase(e: Extract<EffectComponent, { kind: 'buff' }>): string {
 function zonePhrase(z: ZoneSpec): string {
   const bits: string[] = [];
   if (z.zonePoison) bits.push(poisonAllocationDescription(z.zonePoison, z.tickDamage));
+  if (z.zoneTransplant)
+    bits.push(
+      'once during recharge, press again to transplant this field ahead; lifetime and tick timing do not reset; anchors following fields',
+    );
   if (z.zoneFollow) bits.push(`follow first damaged foe up to ${s(z.zoneFollow)}, then anchor`);
   if (z.tickDamage)
     bits.push(`${n(z.tickDamage * poisonAllocation(z.zonePoison).ground)}/tick dmg`);
@@ -2766,6 +2774,7 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
     case 'zone': {
       // Patch the zone's scalars from the flat fields; preserve its ally-buff + kind.
       const z: ZoneSpec = { ...e.zone };
+      if (def.zoneTransplant) z.zoneTransplant = true;
       if (def.zonePoison) z.zonePoison = { ...def.zonePoison };
       if (def.zoneFollow) z.zoneFollow = def.zoneFollow;
       if (def.zoneTickDamage != null) z.tickDamage = def.zoneTickDamage;

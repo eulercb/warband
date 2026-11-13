@@ -56,6 +56,11 @@ specials retain the fresh-press rule. Return flankers follow the lead wolf's
 route rather than choosing independent owner images. Test actual
 autofire repetition, not merely repeated held input with autofire disabled.
 
+Owner feedback: randomized skill baselines invalidate fixed resulting totals in
+ordinary upgrade prose. State the actual per-rank addition; let resolved native,
+graft and Forge previews show the resulting count/damage/geometry and caps.
+Check repeat ranks and different procedural seeds before claiming a fixed result.
+
 Before presenting a redesign, describe what a player or enemy actually does
 differently, compare it with existing mechanics, and show a useful solo-boss
 route as well as co-op behavior. If bosses need limits, preserve the mechanic's

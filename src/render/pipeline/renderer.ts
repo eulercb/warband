@@ -1,3 +1,4 @@
+import { drawFieldTransplant } from './transplantVisuals';
 import { drawReturningShot } from './returningVisuals';
 import { drawShadowCommit } from './shadowCommitVisuals';
 import { drawPalmSweep } from './palmVisuals';
@@ -700,6 +701,18 @@ export class Renderer {
     if (localId == null) return;
     const p = state.players.find((pl) => pl.id === localId);
     if (!p || p.state !== 'alive') return;
+    for (const t of p.fieldTransplants ?? []) {
+      if (p.shadowReprise?.slot === t.slot && p.shadowReprise.armed) continue;
+      if (p.infernalAperture?.slot === t.slot && p.infernalAperture.emberReady) continue;
+      drawFieldTransplant(
+        g,
+        t,
+        this.camera.worldToScreen(t.from),
+        this.camera.worldToScreen(t.to),
+        this.camera.scale,
+        { width: this.app.screen.width, height: this.app.screen.height },
+      );
+    }
 
     const claimIds = new Set(
       Object.entries(p.infernalClaimTargets ?? {})

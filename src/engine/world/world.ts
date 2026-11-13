@@ -1,3 +1,9 @@
+import {
+  reserveFieldTransplant,
+  tryFieldTransplant,
+  fieldTransplantViews,
+  maintainFieldTransplants,
+} from '../combat/fieldTransplant';
 import { poisonAllocation } from '../content/delayedRules';
 import {
   prepareCompanionInputs,
@@ -1237,12 +1243,14 @@ export class World {
     tickShadowCommits(this, dt);
     tickAncestralRelay(this);
     tickInfernalApertures(this, dt);
+    maintainFieldTransplants(this);
     this.maintainCloseBursts();
     this.applyInputs(dt, inputs);
     this.stepGlides(dt); // item 2: advance in-progress dash/leap glides host-side
     this.stepShoves(dt); // Hero slides advance here; enemy impulses combine after hits.
     this.checkDownedTransitions();
     this.auraClock = updatePaladinAuras(this, dt, this.auraClock);
+    maintainFieldTransplants(this);
     this.updateRevive(dt, inputs);
     dissolveOverlappedBulwarks(this);
     this.updateProjectiles(dt);
@@ -1494,6 +1502,7 @@ export class World {
     const original = abilityForSlot(p, slot);
     if (!original) return; // sub slot with no bound skill
     if (tryApertureEmber(this, p, slot, fresh)) return;
+    if (tryFieldTransplant(this, p, slot, fresh)) return;
     if (tryShadowReturn(this, p, slot, fresh)) return;
     if ((p.cooldowns[slot] ?? 0) > 0) return;
     if (hasBuff(p, 'silence') && slot !== 'basic') return; // silenced: only the basic works
@@ -1513,6 +1522,7 @@ export class World {
     const ab = {
       ...consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original), this)),
     };
+    ab.fieldTransplantCast = reserveFieldTransplant(this, p, original, slot);
     ab.companionCommand = reserveCompanionCommand(p, original, slot, fresh);
     if (resolvedShadowCommit(ab)) ab.castTime = 0;
     if (capturedAim || resolvedPalmSweep(ab) || resolvedShadowCommit(ab))
@@ -1602,6 +1612,8 @@ export class World {
     invalidateAncestralRelay(p);
     p.palmEpoch = (p.palmEpoch ?? 0) + 1;
     p.shadowCommitEpoch = (p.shadowCommitEpoch ?? 0) + 1;
+    p.transplantEpoch = (p.transplantEpoch ?? 0) + 1;
+    delete p.fieldTransplants;
     p.companionEpoch = (p.companionEpoch ?? 0) + 1;
     delete p.companionPresses;
     delete p.shadowCommits;
@@ -1935,6 +1947,7 @@ export class World {
       side: 'player',
       ownerId: proj.ownerId,
       damagePerTick: oi.tickDamage ?? 0,
+      fieldTransplantCast: oi.fieldTransplantCast,
       zonePoison: oi.zonePoison,
       zoneFollow: oi.zoneFollow,
       healPerTick: oi.tickHeal ?? 0,
@@ -4152,6 +4165,7 @@ export class World {
       ...(Object.keys(infernalClaimTargets).length ? { infernalClaimTargets } : {}),
       waveCover: this.waveCoverView(p),
       maneuver: maneuverView(this, p),
+      fieldTransplants: fieldTransplantViews(this, p),
       shadowReprise: shadowRepriseView(this, p),
       ancestralRelay: ancestralRelayView(this, p),
       palmSweep: palmSweepView(this, p),

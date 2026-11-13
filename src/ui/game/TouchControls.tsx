@@ -164,6 +164,10 @@ function TouchButton({
       ? `Return ${reprise.returnRemaining.toFixed(1)}s${reprise.blocked ? ` · ${reprise.blocked}` : ''}`
       : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
     : null;
+  const transplant = useHudStore((s) => s.fieldTransplants?.find((t) => t.slot === cdSlot));
+  const transplantStatus = transplant
+    ? (transplant.blocked ?? `Transplant ${Math.round(transplant.reach)}u ahead`)
+    : null;
   const relay = useHudStore((s) => s.ancestralRelay);
   const relayStatus =
     relay && relay.slot === cdSlot
@@ -191,7 +195,9 @@ function TouchButton({
   );
   const actionStatus = reprise?.armed
     ? repriseStatus
-    : (apertureStatus ??
+    : ((ember ? apertureStatus : null) ??
+      transplantStatus ??
+      apertureStatus ??
       repriseStatus ??
       relayStatus ??
       sweepStatus ??
@@ -234,7 +240,13 @@ function TouchButton({
       aria-disabled={!!silence}
       data-claim-ready={
         !silence &&
-        ((reprise?.armed ? !reprise.blocked : ember && !aperture?.blocked) ||
+        ((reprise?.armed
+          ? !reprise.blocked
+          : ember
+            ? !aperture?.blocked
+            : transplant
+              ? !transplant.blocked
+              : false) ||
           (alive && !cooling && claimTarget != null))
           ? true
           : undefined
@@ -252,7 +264,7 @@ function TouchButton({
         />
       ) : null}
       <span className={`wb-touch-btn-label${cooling ? ' cooling' : ''}`}>
-        {reprise?.armed ? 'Return' : ember ? 'Ember' : label}
+        {reprise?.armed ? 'Return' : ember ? 'Ember' : transplant ? 'Transplant' : label}
       </span>
       {silence && <span className="wb-touch-claim-status">Silenced</span>}
       {!silence && actionStatus && <span className="wb-touch-claim-status">{actionStatus}</span>}

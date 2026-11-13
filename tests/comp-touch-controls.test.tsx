@@ -745,3 +745,62 @@ it('shows moving Palm readiness, active travel and the rooted local fallback', (
   act(() => useHudStore.getState().set({ buffs: [{ kind: 'silence', mult: 0, remaining: 2 }] }));
   expect(container.textContent).not.toContain('Flowing movement');
 });
+
+it('labels a transplant during cooldown, shows blocking, and gives Return/Ember priority', () => {
+  const t = {
+    slot: 'a1' as const,
+    zoneId: 4,
+    from: { x: 0, y: 0 },
+    to: { x: 400, y: 0 },
+    reach: 400,
+    radius: 100,
+    remaining: 3,
+    blocked: null as string | null,
+  };
+  useStore.setState({ localClass: 'druid', myCharUpgrades: ['dr_land_g_b'] });
+  useHudStore.getState().set({
+    active: true,
+    classId: 'druid',
+    state: 'alive',
+    cooldowns: { basic: 0, a1: 8, a2: 0, a3: 0 },
+    fieldTransplants: [{ ...t, slot: 'sub1' }, t],
+  });
+  const { container } = render(<TouchControls />);
+  const button = container.querySelector('.wb-touch-btn-a1')!;
+  expect(button.textContent).toContain('Transplant');
+  expect(button.textContent).toContain('400u ahead');
+  expect(button.getAttribute('data-claim-ready')).toBe('true');
+  act(() => useHudStore.getState().set({ fieldTransplants: [{ ...t, blocked: 'Stunned' }] }));
+  expect(button.textContent).toContain('Stunned');
+  expect(button.hasAttribute('data-claim-ready')).toBe(false);
+  const aperture = {
+    slot: 'a1' as const,
+    conduitReady: false,
+    entry: { x: 0, y: 0 },
+    exit: { x: 100, y: 0 },
+    direction: { x: 1, y: 0 },
+    radius: 20,
+    remaining: 4,
+    emberReady: true,
+    blocked: null,
+  };
+  act(() => useHudStore.getState().set({ infernalAperture: aperture, fieldTransplants: [t] }));
+  expect(button.querySelector('.wb-touch-btn-label')!.textContent).toBe('Ember');
+  expect(button.textContent).toContain('No clear portal lane');
+  act(() => useHudStore.getState().set({ infernalAperture: { ...aperture, emberReady: false } }));
+  expect(button.querySelector('.wb-touch-btn-label')!.textContent).toBe('Transplant');
+  act(() =>
+    useHudStore.getState().set({
+      shadowReprise: {
+        slot: 'a1',
+        anchor: { x: 0, y: 0 },
+        remaining: 3,
+        returnRemaining: 1,
+        prepared: false,
+        armed: true,
+        blocked: null,
+      },
+    }),
+  );
+  expect(button.querySelector('.wb-touch-btn-label')!.textContent).toBe('Return');
+});
