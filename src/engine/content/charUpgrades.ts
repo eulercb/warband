@@ -2517,7 +2517,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'rg_beastmaster_g_b',
     'Pack Tactics',
     '🐾',
-    'A fresh direct cast designates its first damaged living foe within 600u for a 6s hunt: your wolf bites for 16, with two smaller flanking wolves biting for 4 each, every 2.5s. Held attacks do not retarget or renew the hunt',
+    'Press a direct ability to designate its first damaged living foe within 600u for a 6s hunt that continues if you move away: your wolf bites for 16, with two smaller flanking wolves biting for 4 each, every 2.5s. The pack follows you between hunts; held attacks do not retarget or renew the hunt',
     () => {},
     () => {},
   ),
@@ -6551,7 +6551,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
           : base.id === 'mo_openhand_g_b'
             ? 'Reforged Flowing Water: burst specials can spend Flow; Flow-consuming specials carry you up to 180u over 0.4s; cones/bursts travel with you, shots and fields launch once. Buffer one preparer or spender during movement'
             : base.id === 'rg_beastmaster_g_b'
-              ? 'Pack Tactics requires your own active Beast Master passive: a fresh direct cast designates a 6s quarry hunt, with a 16-damage lead wolf and two 4-damage flankers every 2.5s. Copying a skill does not grant a wolf'
+              ? 'Pack Tactics requires your own active Beast Master passive: a newly pressed direct ability designates a quarry within 600u for a 6s hunt that continues if you move away, with a 16-damage lead wolf and two 4-damage flankers every 2.5s. Copying a skill does not grant a wolf'
               : base.id === 'rg_hunter_g_b'
                 ? `Reforged Relentless Hunt: plain projectile specials return toward your current position, with ${RETURNING_DAMAGE_TEXT}; when no starting special fits, a compatible basic receives the return`
                 : base.id === 'mo_shadow_g_b'

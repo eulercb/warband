@@ -1,5 +1,9 @@
 import { poisonAllocation } from '../content/delayedRules';
-import { reserveCompanionCommand, companionHuntView } from '../combat/companions';
+import {
+  prepareCompanionInputs,
+  reserveCompanionCommand,
+  companionHuntView,
+} from '../combat/companions';
 import {
   prepareReturningStep,
   returningCaught,
@@ -1352,6 +1356,7 @@ export class World {
   private applyInputs(dt: number, inputs: Map<string, InputCommand>): void {
     for (const p of this.players) {
       const cmd = inputs.get(p.peerId) ?? ZERO_INPUT;
+      prepareCompanionInputs(this, p, cmd.buttons);
       maintainFlowQueue(this, p);
       if (p.state !== 'alive') {
         p.prevButtons = { ...cmd.buttons };
@@ -1598,6 +1603,7 @@ export class World {
     p.palmEpoch = (p.palmEpoch ?? 0) + 1;
     p.shadowCommitEpoch = (p.shadowCommitEpoch ?? 0) + 1;
     p.companionEpoch = (p.companionEpoch ?? 0) + 1;
+    delete p.companionPresses;
     delete p.shadowCommits;
     delete p.flowQueue;
     delete p.lastFlowSlot;
@@ -4110,7 +4116,7 @@ export class World {
             spiritCompanion: {
               pos: { ...p.spiritCompanion.pos },
               facing: p.spiritCompanion.facing,
-              ...(companionHuntView(this, p) && p.spiritCompanion.flankers
+              ...(p.spiritCompanion.flankers
                 ? {
                     flankers: p.spiritCompanion.flankers.map((wolf) => ({
                       pos: { ...wolf.pos },

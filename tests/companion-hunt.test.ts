@@ -1,4 +1,6 @@
+import { resolvePlayerAbility } from '../src/engine/combat/abilities';
 import { SnapshotInterpolator } from '../src/render/pipeline/interpolate';
+import { dist } from '../src/engine/core/torus';
 import { ARENA_W, INTERP_DELAY_MS } from '../src/engine/core/constants';
 import { describe, expect, it, vi } from 'vitest';
 import { Graphics } from 'pixi.js';
@@ -68,9 +70,10 @@ function setup() {
   };
   return { w, p, b, a, token, command, advance };
 }
-function input(w: World, basic: boolean) {
+function input(w: World, basic: boolean, autofire = true) {
   const command: InputCommand = {
     seq: w.tick,
+    autofire,
     move: { x: 0, y: 0 },
     aim: { x: 1, y: 0 },
     buttons: { basic, a1: false, a2: false, a3: false, revive: false },
@@ -113,6 +116,134 @@ describe('Pack Tactics chosen quarry', () => {
     expect(Number.isFinite(p.spiritCompanion!.pos.x)).toBe(true);
     expect(companionHuntView(w, p)?.targetId).toBe(b.id);
   });
+  it('idle input and an unbound subclass button cannot arm or launch a hunt', () => {
+    const { w, p, b } = setup();
+    input(w, false);
+    const buttons = { basic: false, a1: false, a2: false, a3: false, sub2: true, revive: false };
+    w.step(
+      0.01,
+      new Map([
+        ['a', { seq: w.tick, move: { x: 0, y: 0 }, aim: { x: 1, y: 0 }, buttons, autofire: true }],
+      ]),
+    );
+    expect(p.companionPresses).toBeUndefined();
+    expect(p.spiritCompanion!.flankers).toHaveLength(2);
+    expect(p.spiritCompanion!.hunt).toBeUndefined();
+    expect(b.hp).toBe(10000);
+  });
+  it('keeps all three followers beside the owner while idle, without acquiring targets', () => {
+    const { w, p, b, advance } = setup();
+    updateCompanions(w, 0.01);
+    expect(p.spiritCompanion!.flankers).toHaveLength(2);
+    p.pos = { x: 700, y: 600 };
+    advance(1);
+    expect(b.hp).toBe(10000);
+    for (const wolf of [p.spiritCompanion!, ...p.spiritCompanion!.flankers!]) {
+      expect(dist(wolf.pos, p.pos)).toBeLessThan(90);
+      expect(wolf.order).toBeUndefined();
+    }
+    expect(w.serialize().players[0].spiritCompanion!.flankers).toHaveLength(2);
+    expect(companionHuntView(w, p)).toBeUndefined();
+    p.charUpgradeIds = [];
+    updateCompanions(w, 0.01);
+    expect(p.spiritCompanion!.flankers).toBeUndefined();
+  });
+  it('keeps the entire six-second hunt beyond activation range, then returns the pack without extra bites', () => {
+    const { w, p, b, command, advance } = setup();
+    command();
+    p.pos = { x: 1300, y: 850 };
+    expect(dist(p.pos, b.pos)).toBeGreaterThan(600);
+    advance(0.7);
+    expect(b.hp).toBe(9976);
+    advance(2.5);
+    expect(b.hp).toBe(9952);
+    advance(2.5);
+    expect(b.hp).toBe(9928);
+    expect(companionHuntView(w, p)?.remaining).toBeGreaterThan(0);
+    advance(0.4);
+    expect(companionHuntView(w, p)).toBeUndefined();
+    expect(p.spiritCompanion!.flankers).toHaveLength(2);
+    advance(3);
+    expect(b.hp).toBe(9928);
+    for (const wolf of [p.spiritCompanion!, ...p.spiritCompanion!.flankers!])
+      expect(dist(wolf.pos, p.pos)).toBeLessThan(90);
+  });
+  it.each(['cooldown', 'casting', 'stun', 'gliding'] as const)(
+    'preserves one held command through %s until the first accepted cast',
+    (gate) => {
+      const { w, p, b } = setup();
+      if (gate === 'cooldown') p.cooldowns.basic = 0.3;
+      if (gate === 'casting') p.castTimer = 0.3;
+      if (gate === 'stun') p.buffs.push(makeBuff('stun', 0, 0.3, 'test'));
+      if (gate === 'gliding') resolvePlayerAbility(w, p, 'a3', { x: 0, y: 1 });
+      input(w, true);
+      expect(p.spiritCompanion?.hunt).toBeUndefined();
+      expect(p.companionPresses?.basic).toBeDefined();
+      for (let i = 0; i < 90; i++) {
+        if (gate === 'gliding') b.pos.y = p.pos.y;
+        input(w, true);
+      }
+      expect(p.spiritCompanion?.hunt?.targetId).toBe(b.id);
+      expect(p.companionPresses?.basic).toBeUndefined();
+      const hunt = p.spiritCompanion!.hunt!,
+        hp = b.hp;
+      for (let i = 0; i < 150; i++) input(w, true);
+      expect(b.hp).toBeLessThan(hp - 24);
+      expect(p.spiritCompanion!.hunt).toBe(hunt);
+      expect(hunt.remaining).toBeLessThan(4);
+      for (let i = 0; i < 600; i++) input(w, true);
+      expect(p.spiritCompanion!.hunt).toBeUndefined();
+    },
+  );
+  it('rejects a pending command after its source is replaced without tagging a later auto-cast', () => {
+    const { w, p, b } = setup();
+    p.cooldowns.basic = 0.3;
+    input(w, true);
+    p.abilities!.basic = { ...p.abilities!.basic };
+    for (let i = 0; i < 150; i++) input(w, true);
+    expect(b.hp).toBeLessThan(10000);
+    expect(p.spiritCompanion?.hunt).toBeUndefined();
+    expect(p.companionPresses?.basic).toBeUndefined();
+  });
+  it('does not introduce automatic ability casting when autofire is disabled', () => {
+    const { w, p, b } = setup();
+    p.cooldowns.basic = 0.3;
+    input(w, true, false);
+    for (let i = 0; i < 100; i++) input(w, true, false);
+    expect(b.hp).toBe(10000);
+    expect(p.spiritCompanion?.hunt).toBeUndefined();
+    input(w, false, false);
+    expect(p.companionPresses?.basic).toBeUndefined();
+  });
+  it('an out-of-range retarget attempt leaves the current hunt intact', () => {
+    const { p, a, command, advance } = setup();
+    command();
+    const hunt = p.spiritCompanion!.hunt;
+    p.pos = { x: 1300, y: 850 };
+    command(a);
+    advance(0.1);
+    expect(p.spiritCompanion!.hunt).toBe(hunt);
+  });
+  it('releasing a blocked press cancels its pending command', () => {
+    const { w, p } = setup();
+    p.cooldowns.basic = 0.3;
+    input(w, true);
+    input(w, false);
+    expect(p.companionPresses?.basic).toBeUndefined();
+    for (let i = 0; i < 80; i++) input(w, false);
+    expect(p.spiritCompanion?.hunt).toBeUndefined();
+  });
+  it('a missed first accepted cast does not transfer its command to later held auto-casts', () => {
+    const { w, p, b } = setup();
+    b.pos = { x: 650, y: 700 };
+    input(w, true);
+    expect(p.companionPresses?.basic).toBeUndefined();
+    for (let i = 0; i < 60; i++) input(w, true);
+    b.pos = { x: 650, y: 400 };
+    for (let i = 0; i < 180; i++) input(w, true);
+    expect(b.hp).toBeLessThan(10000);
+    expect(p.spiritCompanion?.hunt).toBeUndefined();
+  });
   it('the complete pack also hits a chosen add without acquiring another target', () => {
     const { a, b, command, advance } = setup();
     command(a);
@@ -120,7 +251,7 @@ describe('Pack Tactics chosen quarry', () => {
     expect(a.hp).toBe(976);
     expect(b.hp).toBe(10000);
   });
-  it('interpolates smaller wolves across the seam and removes them when the hunt ends', () => {
+  it('interpolates smaller wolves across the seam and preserves idle followers after the hunt', () => {
     const { w, p, command } = setup();
     command();
     updateCompanions(w, 0.01);
@@ -143,7 +274,7 @@ describe('Pack Tactics chosen quarry', () => {
       expect(
         interp.sample(1200 + INTERP_DELAY_MS, { localPlayerId: null, arena: w.arena })!.players[0]
           .spiritCompanion!.flankers,
-      ).toBeUndefined();
+      ).toHaveLength(2);
     } finally {
       spy.mockRestore();
     }
@@ -236,7 +367,6 @@ describe('Pack Tactics chosen quarry', () => {
   );
   it.each([
     'dead',
-    'range',
     'charmed',
     'source',
     'class',
@@ -250,7 +380,6 @@ describe('Pack Tactics chosen quarry', () => {
     command(a);
     updateCompanions(w, 0.01);
     if (kind === 'dead') a.hp = 0;
-    if (kind === 'range') a.pos = { x: 1300, y: 400 };
     if (kind === 'charmed') a.charm = { ownerId: p.id, remaining: 2 } as Add['charm'];
     if (kind === 'source') p.abilities!.basic = { ...p.abilities!.basic };
     if (kind === 'class') p.classId = 'mage';

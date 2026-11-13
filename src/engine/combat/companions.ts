@@ -11,6 +11,7 @@ import type {
   ExtSlot,
   CompanionHunt,
   CompanionBody,
+  InputCommand,
 } from '../core/types';
 import type { World } from '../world/world';
 import { dist, sub, wrapPos } from '../core/torus';
@@ -28,8 +29,19 @@ function home(p: Player): Vec2 {
     y: p.pos.y - p.aim.y * 36 + p.aim.x * 26,
   });
 }
+function flankerHome(p: Player, i: number): Vec2 {
+  const side = i === 0 ? -50 : 50;
+  return wrapPos({
+    x: p.pos.x - p.aim.x * 70 - p.aim.y * side,
+    y: p.pos.y - p.aim.y * 70 + p.aim.x * side,
+  });
+}
 function ensure(p: Player): SpiritCompanion {
-  return (p.spiritCompanion ??= { pos: home(p), facing: Math.atan2(p.aim.y, p.aim.x) });
+  const pet = (p.spiritCompanion ??= { pos: home(p), facing: Math.atan2(p.aim.y, p.aim.x) });
+  if (packTactics(p))
+    pet.flankers ??= [0, 1].map((i) => ({ pos: flankerHome(p, i), facing: pet.facing }));
+  else delete pet.flankers;
+  return pet;
 }
 
 export const COMPANION_HUNT_TIME = 6;
@@ -42,7 +54,13 @@ export function reserveCompanionCommand(
   slot: ExtSlot,
   fresh: boolean,
 ): CompanionCommandCast | undefined {
-  if (!fresh || !packTactics(p)) return undefined;
+  if (!packTactics(p)) return undefined;
+  const pending = p.companionPresses?.[slot];
+  if (pending) {
+    delete p.companionPresses![slot];
+    return validCommand(p, pending) ? pending : undefined;
+  }
+  if (!fresh) return undefined;
   return {
     ownerId: p.id,
     ownerClass: p.classId,
@@ -51,6 +69,30 @@ export function reserveCompanionCommand(
     slot,
     spent: false,
   };
+}
+/** Preserve a held press through ordinary cast gates, but hand it to only one accepted cast. */
+export function prepareCompanionInputs(
+  w: World,
+  p: Player,
+  buttons: InputCommand['buttons'],
+): void {
+  if (!packTactics(p) || w.scene !== null || w.finished) {
+    delete p.companionPresses;
+    return;
+  }
+  for (const slot of ['basic', 'a1', 'a2', 'a3', 'sub1', 'sub2'] as const) {
+    if (!buttons[slot]) {
+      if (p.companionPresses) delete p.companionPresses[slot];
+      continue;
+    }
+    if (p.prevButtons[slot]) continue;
+    if (p.companionPresses) delete p.companionPresses[slot];
+    const source = abilityForSlot(p, slot);
+    if (source) {
+      // Active Pack Tactics + an existing source + a fresh press always creates a token.
+      (p.companionPresses ??= {})[slot] = reserveCompanionCommand(p, source, slot, true)!;
+    }
+  }
 }
 function validCommand(p: Player, c: CompanionCommandCast): boolean {
   return (
@@ -68,12 +110,7 @@ function huntTarget(w: World, p: Player, h: CompanionHunt): Boss | Add | undefin
     h.kind === 'boss'
       ? w.bosses.find((b) => b.id === h.targetId)
       : w.adds.find((a) => a.id === h.targetId);
-  return target &&
-    target.hp > 0 &&
-    !('charm' in target && target.charm) &&
-    dist(p.pos, target.pos) <= COMPANION_RANGE
-    ? target
-    : undefined;
+  return target && target.hp > 0 && !('charm' in target && target.charm) ? target : undefined;
 }
 export function companionHuntView(w: World, p: Player) {
   const h = p.spiritCompanion?.hunt;
@@ -102,11 +139,7 @@ function scheduleBite(
     remaining: 0.9,
   };
   if (packTactics(p) && pet.hunt) {
-    pet.flankers ??= [-1, 1].map((side) => ({
-      pos: wrapPos({ x: pet.pos.x, y: pet.pos.y + side * 20 }),
-      facing: pet.facing,
-    }));
-    pet.flankers.forEach((wolf, i) => {
+    pet.flankers!.forEach((wolf, i) => {
       wolf.order = { targetId: target.id, kind, windup: 0.45 + i * 0.15, remaining: 1.1 };
     });
   }
@@ -188,7 +221,10 @@ function tickFlankers(
   dt: number,
 ): void {
   if (!quarry) {
-    delete pet.flankers;
+    for (const [i, wolf] of (pet.flankers ?? []).entries()) {
+      delete wolf.order;
+      move(wolf, flankerHome(p, i), Math.max(420, p.moveSpeed * 1.5) * dt);
+    }
     return;
   }
   const toward = sub(p.pos, quarry.pos),
@@ -227,6 +263,7 @@ export function updateCompanions(world: World, dt: number): void {
     if (!active(p) || world.scene !== null || world.finished) {
       p.companionEpoch = (p.companionEpoch ?? 0) + 1;
       delete p.spiritCompanion;
+      delete p.companionPresses;
       p.buffs = p.buffs.filter((b) => b.source !== WARD_SOURCE);
       continue;
     }
@@ -255,7 +292,7 @@ export function updateCompanions(world: World, dt: number): void {
         target.hp <= 0 ||
         ('charm' in target && !!target.charm) ||
         order.remaining <= 0 ||
-        dist(p.pos, target.pos) > COMPANION_RANGE
+        (!pet.hunt && dist(p.pos, target.pos) > COMPANION_RANGE)
       )
         delete pet.order;
       else {
@@ -288,7 +325,7 @@ export function updateCompanions(world: World, dt: number): void {
         continue;
       }
       const rest = home(p);
-      if (dist(pet.pos, rest) > COMPANION_RANGE) pet.pos = rest;
+      if (!packTactics(p) && dist(pet.pos, rest) > COMPANION_RANGE) pet.pos = rest;
       else move(pet, rest, Math.max(420, p.moveSpeed * 1.5) * dt);
     }
   }
