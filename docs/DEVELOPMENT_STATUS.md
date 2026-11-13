@@ -28,32 +28,36 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Beast Master purpose and Hunter range correction](BEAST_MASTER_PURPOSE.md),
-following the [nature purpose review](NATURE_PURPOSE_REVIEW.md).
-Shadow commitment (#167) is merged/tested/accepted. Hunter returning arrows (#168)
-were merged/tested and liked, with an accepted request to restore outward reach.
-This delivery preserves ordinary outward reach and adds a fast bounded return;
-that correction remains pending owner playtesting.
+Current delivery: [Delayed damage and Pack Tactics follow-up](DELAYED_DAMAGE_PACK_FOLLOWUP.md).
+The owner merged/tested #169 and accepted the restored returning-arrow reach.
+The returning mechanic and chosen-quarry behavior were liked, with damage concerns:
+this delivery adds case-specific delayed damage premiums and two smaller flanking
+wolves to Pack Tactics. Those damage/pack changes remain pending owner acceptance.
 
-Beast Master B now chooses a 6s quarry from a fresh direct cast. The wolf keeps
-its normal bite cadence while its owner acts elsewhere; held fire cannot redirect
-or renew the hunt. This is implemented pending owner acceptance. Beast Master A
-is retained as controlled-companion growth, not a separate behavioral redesign.
-Land A remains growth; B still needs a coherent terrain interaction rather than
-another copy of Living Paths movement. Moon stays retained.
+Returning shots deal 60% per leg. Grand Venom and Clinging Snare receive distinct
+conversion premiums; Silent Death's primary delayed strike gains 10%. Already
+additive poison, echoes and retorts retain their output. Native/Forge descriptions
+show the relevant fractions and actual poison rates.
 
-Sixteen of 24 subclasses have been inspected. Hunter B's range correction and
-Beast Master B are implemented pending acceptance; Land remains open. Eight
-subclasses await review. Inspection, implementation and acceptance remain distinct.
+Beast Master B keeps its 6s fresh-cast quarry command and 2.5s wave recovery:
+a 16-damage lead wolf and two 4-damage flankers supply pack pressure while the
+owner acts elsewhere. A remains controlled-companion and player-strike growth.
+Land A remains growth; B still needs a terrain interaction rather than another
+copy of Living Paths movement. Moon stays retained.
+
+Sixteen of 24 subclasses have been inspected. Hunter and Beast Master behavior
+were liked, with this damage follow-up pending acceptance. Land remains open;
+eight subclasses await review. Inspection, implementation and acceptance remain
+distinct states.
 
 ## Next development work, in order
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test the range correction and Pack Tactics; next development is Land B purpose work.                                                                                    |
+| Next                         | Live-test delayed damage and the flanking pack; next development remains Land B purpose work.                                                                                |
 | Following                    | After Land, review the remaining caster and support identities.                                                                                                              |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
-| Remaining nature identities  | Hunter B range correction and Beast Master B pending acceptance; Land B open. A routes retained as growth; Moon retained.                                                    |
+| Remaining nature identities  | Hunter / Beast Master damage follow-up pending acceptance; Land B open. A routes retained as growth; Moon retained.                                                          |
 | Remaining caster identities  | Abjurer, Draconic and Wild Magic; Evoker stays retained.                                                                                                                     |
 | Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                                                         |
 | Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                                                |

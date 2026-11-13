@@ -5984,7 +5984,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Vial gains +22 tick magnitude, +65u, +4s and 50% slow; split 60% ground / 40% following poison, up to 3 foes, lingering 2s; strongest owner poison wins",
+      "description": "Vial gains +22 tick magnitude, +65u, +4s and 50% slow; 66% ground / 44% following poison rate (110% combined), up to 3 foes, lingering 2s; strongest owner poison wins",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": true,
@@ -6001,7 +6001,7 @@
             {
               "path": "abilities.a3.zonePoison",
               "before": null,
-              "after": { "share": 0.4, "onExit": false }
+              "after": { "share": 0.4, "onExit": false, "damageMult": 1.1 }
             },
             { "path": "abilities.a3.zoneTickDamage", "before": 11, "after": 33 }
           ],
@@ -6013,7 +6013,7 @@
             {
               "path": "abilities.a3.zonePoison",
               "before": null,
-              "after": { "share": 0.4, "onExit": false }
+              "after": { "share": 0.4, "onExit": false, "damageMult": 1.1 }
             },
             { "path": "abilities.a3.zoneTickDamage", "before": 11, "after": 33 }
           ]
@@ -8344,7 +8344,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Plain projectile specials return toward your current position with 50% damage per leg. Roll grants +25% movement for 4s and 2s hard-control resistance; if no starting special fits, a compatible basic gains the return",
+      "description": "Plain projectile specials return toward your current position with 60% damage per leg (120% if both legs hit). Roll grants +25% movement for 4s and 2s hard-control resistance; if no starting special fits, a compatible basic gains the return",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8534,7 +8534,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "A fresh direct cast designates its first damaged living foe within 600u for your wolf to hunt for 6s at its normal bite cadence. Held attacks do not retarget or renew the hunt",
+      "description": "A fresh direct cast designates its first damaged living foe within 600u for a 6s hunt: your wolf bites for 16, with two smaller flanking wolves biting for 4 each, every 2.5s. Held attacks do not retarget or renew the hunt",
       "disposition": "investigate",
       "rationale": "No resolved change in these valid contexts; trace executor/replay before changing it.",
       "pilotPriority": false,
@@ -11604,7 +11604,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Melee specials leave a shadow to deliver their strike after 0.6s at the cast position and facing; you can move and act meanwhile",
+      "description": "Melee specials leave a shadow to deliver 110% strike damage after 0.6s at the cast position and facing; you can move and act meanwhile",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -14961,7 +14961,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Snare allocates 40% of its tick damage to strongest-owner poison that lingers for 2s, up to three foes; the remaining damage stays in the ground field",
+      "description": "Snare deals 75% field + 50% following poison damage rate (125% combined); poison lingers 2s, up to three foes; strongest owner poison wins",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -14974,14 +14974,14 @@
             {
               "path": "subAbilities.sub1.zonePoison",
               "before": null,
-              "after": { "share": 0.4, "onExit": false }
+              "after": { "share": 0.4, "onExit": false, "damageMult": 1.25 }
             }
           ],
           "atCap": [
             {
               "path": "subAbilities.sub1.zonePoison",
               "before": null,
-              "after": { "share": 0.4, "onExit": false }
+              "after": { "share": 0.4, "onExit": false, "damageMult": 1.25 }
             }
           ]
         }

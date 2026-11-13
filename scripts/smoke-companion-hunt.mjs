@@ -176,6 +176,13 @@ try {
         for (let i = 0; i < 50; i++) f.step();
       });
       assert.ok(await page.evaluate(() => window.packRemote?.quarry?.remaining > 0));
+      assert.equal(await page.evaluate(() => window.packRemote?.flankers?.length), 2);
+      assert.equal(
+        await page.evaluate(
+          () => window.packRemote.flankers[0].pos.y === window.packRemote.flankers[1].pos.y,
+        ),
+        false,
+      );
       await page.waitForFunction(() =>
         [...document.querySelectorAll('[title]')].some((el) =>
           el.title.includes('held attacks do not retarget'),
@@ -191,7 +198,8 @@ try {
         if (!(f.b.hp < before))
           throw new Error('Wolf failed to bite while hero moved without attacking');
         for (let i = 0; i < 400; i++) f.step();
-        if (f.p.spiritCompanion?.hunt) throw new Error('Hunt never expired');
+        if (f.p.spiritCompanion?.hunt || f.p.spiritCompanion?.flankers)
+          throw new Error('Hunt or helpers never expired');
         const hp = f.b.hp;
         for (let i = 0; i < 300; i++) f.step();
         if (f.b.hp !== hp) throw new Error('Wolf attacked without a new command');

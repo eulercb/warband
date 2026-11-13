@@ -1,3 +1,4 @@
+import { poisonAllocation, poisonAllocationDescription } from './delayedRules';
 import { returningShotFits, returningShotDescription } from './returningRules';
 import { shadowCommitKind, shadowCommitDescription } from './shadowRules';
 import { curseDescription, type CurseStyle } from '../core/curses';
@@ -178,7 +179,7 @@ export type BuffTarget = 'self' | 'allies';
  * a zone becomes the buff the zone refreshes on allies standing inside it.
  */
 export interface ZoneSpec {
-  zonePoison?: { share: number; onExit: boolean };
+  zonePoison?: { share: number; onExit: boolean; damageMult?: number };
   zoneFollow?: number;
   zoneKind: ZoneKind;
   duration: number;
@@ -1037,8 +1038,8 @@ function buffValue(e: Extract<EffectComponent, { kind: 'buff' }>): number {
 /** Zone output: ticks × per-tick payout, commitment-discounted (0.6, as procgen). */
 function zoneValue(z: ZoneSpec): number {
   const ticks = (z.duration / 0.5) * 0.6;
-  let v = ((z.tickDamage ?? 0) + (z.tickHeal ?? 0)) * ticks;
-  if (z.zonePoison) v += (z.tickDamage ?? 0) * (z.zonePoison.onExit ? 1 : z.zonePoison.share) * 2;
+  let v = ((z.tickDamage ?? 0) * poisonAllocation(z.zonePoison).mult + (z.tickHeal ?? 0)) * ticks;
+  if (z.zonePoison) v += (z.tickDamage ?? 0) * poisonAllocation(z.zonePoison).poison * 2;
   if (z.zoneFollow) v += Math.min(3, z.zoneFollow) * ((z.tickDamage ?? 0) * 0.2 + 2);
   if (z.slowMult != null) v += (1 - z.slowMult) * z.duration * 10;
   if (z.overflowShield) v += (z.tickHeal ?? 0) * ticks * 0.4;
@@ -1319,14 +1320,10 @@ function buffPhrase(e: Extract<EffectComponent, { kind: 'buff' }>): string {
 
 function zonePhrase(z: ZoneSpec): string {
   const bits: string[] = [];
-  if (z.zonePoison)
-    bits.push(
-      z.zonePoison.onExit
-        ? 'full ground damage plus 2s strongest-owner poison on effective exit (one field tick per second), up to 3 foes'
-        : `${pct(z.zonePoison.share * 100)}% allocated to strongest-owner poison, 2s linger, up to 3 foes`,
-    );
+  if (z.zonePoison) bits.push(poisonAllocationDescription(z.zonePoison, z.tickDamage));
   if (z.zoneFollow) bits.push(`follow first damaged foe up to ${s(z.zoneFollow)}, then anchor`);
-  if (z.tickDamage) bits.push(`${n(z.tickDamage)}/tick dmg`);
+  if (z.tickDamage)
+    bits.push(`${n(z.tickDamage * poisonAllocation(z.zonePoison).ground)}/tick dmg`);
   if (z.overflowShield)
     bits.push('unused healing builds a 6s bubble, capped at 30% max HP across all zones');
   if (z.tickHeal) bits.push(`${n(z.tickHeal)}/tick heal`);
@@ -3108,6 +3105,9 @@ function capZone(z: ZoneSpec): ZoneSpec {
     out.zonePoison = {
       ...out.zonePoison,
       share: clamp(out.zonePoison.share, out.zonePoison.onExit ? 0 : 0.2, 0.4),
+      ...(out.zonePoison.damageMult != null
+        ? { damageMult: clamp(out.zonePoison.damageMult, 1, 1.25) }
+        : {}),
     };
   if (out.zoneFollow) out.zoneFollow = clamp(out.zoneFollow, 0, 3);
   if (out.tickDamage != null) out.tickDamage = Math.max(1, Math.round(out.tickDamage));

@@ -7,7 +7,18 @@ export function drawCompanion(
   pet: SpiritCompanionView,
   screen: Vec2,
   scale: number,
+  sizeScale = 1,
 ): void {
+  for (const wolf of pet.flankers ?? []) {
+    const d = sub(wolf.pos, pet.pos);
+    drawCompanion(
+      g,
+      { ...wolf, bondReady: false },
+      { x: screen.x + d.x * scale, y: screen.y + d.y * scale },
+      scale,
+      0.65,
+    );
+  }
   if (pet.quarry) {
     const q = pet.quarry,
       d = sub(q.pos, pet.pos);
@@ -31,7 +42,7 @@ export function drawCompanion(
       alpha: 1,
     });
   }
-  const size = Math.max(7, 14 * scale);
+  const size = Math.max(7, 14 * scale) * sizeScale;
   const c = Math.cos(pet.facing),
     s = Math.sin(pet.facing);
   const point = (x: number, y: number) => ({

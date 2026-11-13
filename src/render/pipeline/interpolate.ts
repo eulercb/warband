@@ -183,6 +183,18 @@ export class SnapshotInterpolator {
         ? {
             spiritCompanion: {
               ...p.spiritCompanion,
+              ...(p.spiritCompanion.flankers
+                ? {
+                    flankers: p.spiritCompanion.flankers.map((wolf, i) => ({
+                      ...wolf,
+                      pos: this.lerpVec(
+                        prev?.get(p.id)?.spiritCompanion?.flankers?.[i]?.pos,
+                        wolf.pos,
+                        t,
+                      ),
+                    })),
+                  }
+                : {}),
               pos: this.lerpVec(prev?.get(p.id)?.spiritCompanion?.pos, p.spiritCompanion.pos, t),
             },
           }

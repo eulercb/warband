@@ -209,7 +209,7 @@ try {
       assert.equal(
         await page.evaluate(() =>
           [...document.querySelectorAll('[title]')].some((el) =>
-            el.title.includes('50% damage per leg'),
+            el.title.includes('60% damage per leg'),
           ),
         ),
         true,

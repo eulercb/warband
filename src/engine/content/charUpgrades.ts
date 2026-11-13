@@ -1,4 +1,4 @@
-import { returningShotFits } from './returningRules';
+import { returningShotFits, RETURNING_DAMAGE_TEXT } from './returningRules';
 import { boundedAbility, ordinaryRecharge } from './abilityLimits';
 import { scaleAbsorption } from '../combat/absorption';
 /**
@@ -1307,9 +1307,9 @@ const GRAND: CharUpgradeDef[] = [
     'ro_grand_venom',
     'Grand Venom',
     '☠️',
-    'Vial gains +22 tick magnitude, +65u, +4s and 50% slow; split 60% ground / 40% following poison, up to 3 foes, lingering 2s; strongest owner poison wins',
+    'Vial gains +22 tick magnitude, +65u, +4s and 50% slow; 66% ground / 44% following poison rate (110% combined), up to 3 foes, lingering 2s; strongest owner poison wins',
     ({ abilities: a }) => {
-      a.a3.zonePoison = { share: 0.4, onExit: false };
+      a.a3.zonePoison = { share: 0.4, onExit: false, damageMult: 1.1 };
       addN(a.a3, 'zoneTickDamage', 22);
       addN(a.a3, 'radius', 65);
       addN(a.a3, 'zoneDuration', 4);
@@ -2477,7 +2477,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'rg_hunter_g_b',
     'Relentless Hunt',
     '🐾',
-    'Plain projectile specials return toward your current position with 50% damage per leg. Roll grants +25% movement for 4s and 2s hard-control resistance; if no starting special fits, a compatible basic gains the return',
+    `Plain projectile specials return toward your current position with ${RETURNING_DAMAGE_TEXT}. Roll grants +25% movement for 4s and 2s hard-control resistance; if no starting special fits, a compatible basic gains the return`,
     (a) => {
       returningHunterKit(a);
       if (a.a3.kind === 'dash' || a.a3.kind === 'blink') {
@@ -2517,7 +2517,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'rg_beastmaster_g_b',
     'Pack Tactics',
     '🐾',
-    'A fresh direct cast designates its first damaged living foe within 600u for your wolf to hunt for 6s at its normal bite cadence. Held attacks do not retarget or renew the hunt',
+    'A fresh direct cast designates its first damaged living foe within 600u for a 6s hunt: your wolf bites for 16, with two smaller flanking wolves biting for 4 each, every 2.5s. Held attacks do not retarget or renew the hunt',
     () => {},
     () => {},
   ),
@@ -3187,7 +3187,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'mo_shadow_g_b',
     'Silent Death',
     '🥷',
-    'Melee specials leave a shadow to deliver their strike after 0.6s at the cast position and facing; you can move and act meanwhile',
+    'Melee specials leave a shadow to deliver 110% strike damage after 0.6s at the cast position and facing; you can move and act meanwhile',
     (a) => {
       for (const ab of Object.values(a))
         if (
@@ -4173,9 +4173,9 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'rg_beast_snare',
     'Clinging Snare',
     '🪤',
-    'Snare allocates 40% of its tick damage to strongest-owner poison that lingers for 2s, up to three foes; the remaining damage stays in the ground field',
+    'Snare deals 75% field + 50% following poison damage rate (125% combined); poison lingers 2s, up to three foes; strongest owner poison wins',
     natureGrand('groundZone', (ab) => {
-      if (ab.zoneTickDamage) ab.zonePoison = { share: 0.4, onExit: false };
+      if (ab.zoneTickDamage) ab.zonePoison = { share: 0.4, onExit: false, damageMult: 1.25 };
       else amplify(ab, 0.25, 0.15);
     }),
   ),
@@ -6551,11 +6551,11 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
           : base.id === 'mo_openhand_g_b'
             ? 'Reforged Flowing Water: burst specials can spend Flow; Flow-consuming specials carry you up to 180u over 0.4s; cones/bursts travel with you, shots and fields launch once. Buffer one preparer or spender during movement'
             : base.id === 'rg_beastmaster_g_b'
-              ? 'Pack Tactics requires your own active Beast Master passive: a fresh direct cast designates a 6s quarry hunt at the normal bite cadence. Copying a skill does not grant a wolf'
+              ? 'Pack Tactics requires your own active Beast Master passive: a fresh direct cast designates a 6s quarry hunt, with a 16-damage lead wolf and two 4-damage flankers every 2.5s. Copying a skill does not grant a wolf'
               : base.id === 'rg_hunter_g_b'
-                ? 'Reforged Relentless Hunt: plain projectile specials return toward your current position, with 50% damage per leg; when no starting special fits, a compatible basic receives the return'
+                ? `Reforged Relentless Hunt: plain projectile specials return toward your current position, with ${RETURNING_DAMAGE_TEXT}; when no starting special fits, a compatible basic receives the return`
                 : base.id === 'mo_shadow_g_b'
-                  ? 'Reforged Silent Death: cone and burst specials leave a shadow to deliver their strike after 0.6s at the cast point; you can move and act meanwhile'
+                  ? 'Reforged Silent Death: cone and burst specials leave a shadow to deliver 110% strike damage after 0.6s at the cast point; you can move and act meanwhile'
                   : base.id === 'bb_totem_g_b'
                     ? 'Reforged relay: burst specials strike at your previous prepared point within 360u, then leave the current cast point for next time. First burst is local; preparation persists between recharges'
                     : base.id === 'kn_battlemaster_g_a' || base.id === 'kn_battlemaster_g_b'

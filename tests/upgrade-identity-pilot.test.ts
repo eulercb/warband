@@ -115,6 +115,66 @@ describe('Assassinate prepared-hit tempo', () => {
   );
 });
 
+describe('delayed conversion premiums', () => {
+  it.each([false, true])(
+    'Clinging Snare delivers its advertised 75/50 rate without double multipliers, composed=%s',
+    (composed) => {
+      const { w, p, boss } = setup('ranger', ['rg_beast_snare_g'], ['rg_beast_snare']);
+      let ab = p.subAbilities!.sub1!;
+      if (composed) ab = p.subAbilities!.sub1 = recompose(decompose(ab), ab);
+      p.damageMult = 2;
+      boss.pos = { x: p.pos.x + (ab.range ?? 500), y: p.pos.y };
+      resolvePlayerAbility(w, p, 'sub1', ZERO);
+      const z = w.groundZones.at(-1)!;
+      boss.pos = { ...z.pos };
+      const raw = z.damagePerTick;
+      zoneTick(w, z);
+      expect(boss.maxHp - boss.hp).toBeCloseTo(raw * 0.75 * 2);
+      tickVenoms(w, 0.5);
+      tickBuffs(boss, 0.5);
+      zoneTick(w, z);
+      tickVenoms(w, 0.5);
+      expect(boss.maxHp - boss.hp).toBeCloseTo(raw * 2 * 1.25 * 2);
+      const text = describeAbility(ab);
+      expect(text).toContain('75% field + 50% following poison');
+      expect(text).toContain('125% combined');
+      expect(text).toContain('damage/0.5s field');
+      expect(text).toContain('damage/s poison');
+      expect(recompose(decompose(ab), ab).zonePoison?.damageMult).toBe(1.25);
+    },
+  );
+  it('a legacy allocation with no premium preserves its original combined rate', () => {
+    const { w, p, boss } = setup('rogue', ['ro_grand_venom']);
+    delete p.abilities!.a3.zonePoison!.damageMult;
+    const z = castZone(w, 'a3');
+    zoneTick(w, z);
+    tickVenoms(w, 0.5);
+    tickBuffs(boss, 0.5);
+    zoneTick(w, z);
+    tickVenoms(w, 0.5);
+    expect(boss.maxHp - boss.hp).toBeCloseTo(z.damagePerTick * 2);
+  });
+  it('Grand Venom keeps its smaller 66/44 allocation premium when stronger coating excludes its poison', () => {
+    const { w, p, boss } = setup('rogue', ['ro_grand_venom']);
+    const z = castZone(w, 'a3');
+    const stronger = makeBuff('venom', 1000, 6, `venom:${p.id}`);
+    stronger.venom = { ownerId: p.id, accum: 0, ticks: 0 };
+    applyBuff(boss, stronger);
+    zoneTick(w, z);
+    expect(boss.maxHp - boss.hp).toBeCloseTo(z.damagePerTick * 0.66);
+    expect(boss.buffs.find((b) => b.kind === 'venom')).toMatchObject(stronger);
+    expect(describeAbility(p.abilities!.a3)).toContain('110% combined');
+  });
+  it('a fourth target receives compensated ground damage but no promise of an uncapped poison payout', () => {
+    const { w, boss } = setup('rogue', ['ro_grand_venom']);
+    const targets = [boss, add(w), add(w), add(w)];
+    const z = castZone(w, 'a3');
+    zoneTick(w, z);
+    expect(targets.filter((t) => t.buffs.some((b) => b.kind === 'venom'))).toHaveLength(3);
+    expect(targets[3].maxHp - targets[3].hp).toBeCloseTo(z.damagePerTick * 0.66);
+  });
+});
+
 describe('Vial allocation and following poison', () => {
   it('composed ordinary Vial retains full ground output after Forge caps and adds an exit tail', () => {
     const { w, p, boss } = setup('rogue', ['ro_poison']);
@@ -183,15 +243,15 @@ describe('Vial allocation and following poison', () => {
     ]) {
       const { w, p, boss } = setup('rogue', upgrades);
       const z = castZone(w, 'a3');
-      expect(z.zonePoison).toEqual({ share: 0.4, onExit: false });
+      expect(z.zonePoison).toEqual({ share: 0.4, onExit: false, damageMult: 1.1 });
       zoneTick(w, z);
       tickVenoms(w, 0.5);
       tickBuffs(boss, 0.5);
       zoneTick(w, z);
       tickVenoms(w, 0.5);
       tickBuffs(boss, 0.5);
-      expect(boss.maxHp - boss.hp).toBeCloseTo(80); // 40*2, allocated once
-      expect(p.stats.damageDealt).toBeCloseTo(80);
+      expect(boss.maxHp - boss.hp).toBeCloseTo(88); // 40*2*1.1, allocation premium applied once
+      expect(p.stats.damageDealt).toBeCloseTo(88);
     }
   });
   it('refresh preserves tick phase beyond eight seconds and caps field recipients at three', () => {
@@ -435,7 +495,7 @@ describe('zone ownership and contact boundaries', () => {
     for (const shot of w.projectiles) shot.pos = { ...boss.pos };
     (w as unknown as { updateProjectiles(dt: number): void }).updateProjectiles(0);
     const z = w.groundZones[0];
-    expect(z.zonePoison).toEqual({ share: 0.4, onExit: false });
+    expect(z.zonePoison).toEqual({ share: 0.4, onExit: false, damageMult: 1.1 });
     zoneTick(w, z);
     expect(boss.buffs.some((b) => b.kind === 'venom')).toBe(true);
   });

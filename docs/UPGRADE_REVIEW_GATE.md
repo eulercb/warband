@@ -70,6 +70,18 @@ whether the idea works.
 | Does synthesis preserve it honestly? | Actual Forge synthesis as well as decompose/recompose; fitting, value, scaling, caps and wording. A field carried outside the component budget is insufficient. |
 | Does the fallback remain playable?   | Native, copied and composed kits without the ideal partner skill. Any intentional composed variant must say what changes.                                       |
 
+## Delayed damage value
+
+Moving damage into a return, poison or delayed strike adds a delivery cost even
+when its eventual sum matches the original hit. Review time-to-damage, evasion,
+healing, immunity windows, owner cancellation and new positioning requirements.
+Give actual conversions a modest case-specific premium and state each portion's
+fraction or rate clearly in native, upgraded and Forge readouts. A combined
+potential assumes all relevant contacts; a field/poison rate is not a guaranteed
+per-cast total. Already-additive poison, echoes and retorts require separate
+assessment, not the same automatic increase. Record both changed and retained
+cases, and compare common setup and actual casts rather than nominal sums alone.
+
 ## Execution evidence
 
 Use positive-hit provenance and shared cast tokens for once-per-cast rewards.

@@ -368,14 +368,18 @@ export interface CompanionHunt {
   remaining: number;
   cast: CompanionCommandCast;
 }
-export interface SpiritCompanion {
-  hunt?: CompanionHunt;
+export interface CompanionBody {
   pos: Vec2;
   facing: number;
   order?: { targetId: EntityId; kind: 'boss' | 'add'; windup: number; remaining: number };
+}
+export interface SpiritCompanion extends CompanionBody {
+  hunt?: CompanionHunt;
+  flankers?: CompanionBody[];
   wardTargetId?: EntityId;
 }
 export interface SpiritCompanionView {
+  flankers?: { pos: Vec2; facing: number; attacking: boolean }[];
   quarry?: { targetId: EntityId; pos: Vec2; radius: number; remaining: number; duration: number };
   pos: Vec2;
   facing: number;
@@ -868,7 +872,7 @@ export interface ZoneAllyBuff {
  * stays byte-identical when Forge is off.
  */
 export interface ProjectileImpact {
-  zonePoison?: { share: number; onExit: boolean };
+  zonePoison?: { share: number; onExit: boolean; damageMult?: number };
   zoneFollow?: number;
   kind: ZoneKind;
   radius: number;
@@ -1258,7 +1262,7 @@ export interface PendingStrike {
 
 export interface GroundZone {
   whisperCast?: WhisperCast;
-  zonePoison?: { share: number; onExit: boolean };
+  zonePoison?: { share: number; onExit: boolean; damageMult?: number };
   zoneFollow?: number;
   followId?: number;
   followAcquired?: boolean;

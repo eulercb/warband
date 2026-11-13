@@ -1566,7 +1566,7 @@ export function activeSubclassPassive(
   if (passive?.id === 'beast_pack_bond' && upgrades.includes('rg_beastmaster_g_b'))
     return {
       ...passive,
-      desc: 'Fresh direct casts designate their first damaged living foe within 600u for a 6s hunt. Your wolf bites for 16 damage every 2.5s; held attacks do not retarget or renew. Controlled foes take 25% more bite damage. A dedicated heal prepares protection for its recipient on the next successful bite.',
+      desc: 'Fresh direct casts designate their first damaged living foe within 600u for a 6s hunt. Your wolf bites for 16 damage with two 4-damage flankers every 2.5s; held attacks do not retarget or renew. Controlled foes take 25% more bite damage. A dedicated heal prepares protection for its recipient on the next successful bite.',
     };
   return passive;
 }

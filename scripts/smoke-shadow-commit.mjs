@@ -203,12 +203,17 @@ try {
         await page.evaluate(() => window.fixture.step());
         await page.mouse.up();
       } else await page.evaluate((slot) => window.fixture.step({ [slot]: true }), slot);
-      const before = await page.evaluate(() => {
+      const before = await page.evaluate(async () => {
         const f = window.fixture;
         if (f.b.hp !== 10000 || f.p.castTimer > 0 || f.p.glide)
           throw new Error('Original attack or body lock happened at launch');
         if (window.shadowRemote?.length !== 1) throw new Error('Missing remote committed shadow');
-        return { origin: window.shadowRemote[0].origin, damage: f.p.shadowCommits[0].ab.damage };
+        return {
+          origin: window.shadowRemote[0].origin,
+          damage:
+            f.p.shadowCommits[0].ab.damage *
+            (await import('/src/engine/content/shadowRules.ts')).SHADOW_COMMIT_DAMAGE,
+        };
       });
       assert.equal(
         await page.evaluate(() =>

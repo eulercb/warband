@@ -1,3 +1,4 @@
+import { poisonAllocation } from '../content/delayedRules';
 /** Shared, bounded active-skill payloads. Copied skills do not require donor passives. */
 import type { World } from '../world/world';
 import type { Player, Boss, Add } from '../core/types';
@@ -228,5 +229,11 @@ export function onUpgradeZoneDamage(
     z.poisonContacts ??= new Map();
     // A tail deals one post-allocation half-second field tick per second for 2s.
     z.poisonContacts.set(target.id, z.damagePerTick * (1 - z.zonePoison.share));
-  } else applyFieldPoison(world, owner, target, z.damagePerTick * z.zonePoison.share * 2);
+  } else
+    applyFieldPoison(
+      world,
+      owner,
+      target,
+      z.damagePerTick * poisonAllocation(z.zonePoison).poison * 2,
+    );
 }

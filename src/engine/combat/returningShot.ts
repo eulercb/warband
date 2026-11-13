@@ -3,7 +3,7 @@ import type { World } from '../world/world';
 import type { Player, Projectile, Vec2 } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
 import { resolvedReturningShot } from '../content/classes';
-import { returningTrajectory } from '../content/returningRules';
+import { RETURNING_DAMAGE_PER_LEG, returningTrajectory } from '../content/returningRules';
 import { abilityForSlot } from './abilities';
 import { sub } from '../core/torus';
 import { pointInSegment } from '../core/math';
@@ -12,7 +12,7 @@ export function armReturningShot(p: Player, shot: Projectile, ab: PlayerAbilityD
   const source = abilityForSlot(p, ab.slot);
   if (!source) return;
   const path = returningTrajectory(shot.rangeLeft, Math.hypot(shot.vel.x, shot.vel.y));
-  shot.damage *= 0.5;
+  shot.damage *= RETURNING_DAMAGE_PER_LEG;
   shot.hitIds = [];
   shot.rangeLeft = path.outward;
   const hits = 1 + Math.max(0, ab.pierce ?? 0);

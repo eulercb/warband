@@ -1,5 +1,9 @@
 # Beast Master purpose and Hunter range follow-up
 
+Historical first delivery (#169). Reach and chosen-quarry behavior were liked in
+owner testing; the [damage and flanking-pack follow-up](DELAYED_DAMAGE_PACK_FOLLOWUP.md)
+supersedes the damage values and one-wolf presentation below.
+
 The owner accepted Hunter returning arrows as interesting, but found their outward
 reach too short. One bounded Sol 6.1 high review covered that correction and the
 next scheduled Beast Master purpose work. This delivery implements both, pending
