@@ -1,3 +1,4 @@
+import { poisonAllocation, poisonAllocationDescription } from './delayedRules';
 import { returningShotFits, returningShotDescription } from './returningRules';
 import { shadowCommitKind, shadowCommitDescription } from './shadowRules';
 import { boundedAbility, effectiveRecharge } from './abilityLimits';
@@ -267,7 +268,7 @@ export interface PlayerAbilityDef {
   claimWard?: number;
   /** A damaging burst also arms one counterburst (40% damage) for this window. */
   /** Authored upgrade mechanics; allocation leaves the original magnitude intact. */
-  zonePoison?: { share: number; onExit: boolean };
+  zonePoison?: { share: number; onExit: boolean; damageMult?: number };
   zoneFollow?: number;
   preparedRefund?: number;
   /** Runtime cast identity, never authored or serialized. */
@@ -1325,7 +1326,10 @@ export function describeAbility(
     parts.push(count > 1 ? `${count}× ${n(dmg)} dmg` : `${n(dmg)} dmg`);
   }
   if (def.landingDamage) parts.push(`${n(def.landingDamage * dmgMul)} landing dmg`);
-  if (def.zoneTickDamage) parts.push(`${n(def.zoneTickDamage * dmgMul)}/tick dmg`);
+  if (def.zoneTickDamage)
+    parts.push(
+      `${n(def.zoneTickDamage * dmgMul * poisonAllocation(def.zonePoison).ground)}/tick dmg`,
+    );
   if (def.paladinAura) parts.push(auraText(def.paladinAura));
   if (def.absorption) parts.push(absorptionDescription(def.absorption));
   if (def.overflowShield)
@@ -1539,11 +1543,7 @@ export function describeAbility(
       `prepared positive hit refunds ${s(def.preparedRefund)} of running precision-blink cooldown; protected recovery gives 15% movement for 2s instead, once per cast and 4s`,
     );
   if (def.zonePoison)
-    parts.push(
-      def.zonePoison.onExit
-        ? 'full ground damage plus 2s strongest-owner poison on effective exit (one field tick per second), up to 3 foes'
-        : `${n(def.zonePoison.share * 100)}% field damage allocated to strongest-owner poison, 2s linger, up to 3 foes`,
-    );
+    parts.push(poisonAllocationDescription(def.zonePoison, (def.zoneTickDamage ?? 0) * dmgMul));
   if (def.zoneFollow)
     parts.push(`follows first damaged foe up to ${s(def.zoneFollow)}, then anchors`);
   if (def.rebukeDuration)

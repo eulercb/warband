@@ -1,3 +1,4 @@
+import { SHADOW_COMMIT_DAMAGE } from '../content/shadowRules';
 import { armReturningShot } from './returningShot';
 import { commitShadow } from './shadowCommit';
 import {
@@ -756,7 +757,12 @@ export function releaseShadowCommit(
   origin: Vec2,
   aim: Vec2,
 ): void {
-  const cast = { ...ab, flowAim: aim, finisherOrigin: origin };
+  const cast = {
+    ...ab,
+    damage: ab.damage * SHADOW_COMMIT_DAMAGE,
+    flowAim: aim,
+    finisherOrigin: origin,
+  };
   if (ab.kind === 'meleeCone') resolveConeAt(world, p, cast, origin);
   else resolveBurstAt(world, p, cast, origin);
 }

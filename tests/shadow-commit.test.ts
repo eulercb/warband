@@ -137,7 +137,7 @@ describe('detached original Shadow strike', () => {
       tickShadowCommits(w, 0.59);
       expect(b.hp).toBe(10000);
       tickShadowCommits(w, 0.01);
-      expect(b.hp).toBe(10000 - p.abilities!.a3.damage);
+      expect(b.hp).toBeCloseTo(10000 - p.abilities!.a3.damage * 1.1);
       const hp = b.hp;
       tickShadowCommits(w, 1);
       expect(b.hp).toBe(hp);

@@ -40,6 +40,14 @@ If pruning exposes a spender with no actual attack payoff, fix its resource
 interaction rather than restoring an inactive claim. Check resolved prepared
 versus unprepared payloads through Honed, grands and retained Forge components.
 
+Owner feedback, 2026-11-13: converting immediate damage into delayed, returning
+or poison portions carries a real delivery cost. Budget a modest explicit damage
+premium for the extra exposure, evasion and interruption risk; inspect each case
+rather than treating equal eventual totals as equal power. Readouts must show the
+fraction/rate of each portion and any combined potential honestly. Distinguish
+converted damage from already-additive poison, echoes and retorts; do not blanket
+buff every damage-over-time effect. Apply this review to future conversions too.
+
 Before presenting a redesign, describe what a player or enemy actually does
 differently, compare it with existing mechanics, and show a useful solo-boss
 route as well as co-op behavior. If bosses need limits, preserve the mechanic's

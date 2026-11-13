@@ -10,6 +10,7 @@ import type {
   CompanionCommandCast,
   ExtSlot,
   CompanionHunt,
+  CompanionBody,
 } from '../core/types';
 import type { World } from '../world/world';
 import { dist, sub, wrapPos } from '../core/torus';
@@ -100,6 +101,15 @@ function scheduleBite(
     windup: p.charUpgradeIds?.includes('rg_beastmaster_g_a') ? 0.15 : 0.3,
     remaining: 0.9,
   };
+  if (packTactics(p) && pet.hunt) {
+    pet.flankers ??= [-1, 1].map((side) => ({
+      pos: wrapPos({ x: pet.pos.x, y: pet.pos.y + side * 20 }),
+      facing: pet.facing,
+    }));
+    pet.flankers.forEach((wolf, i) => {
+      wolf.order = { targetId: target.id, kind, windup: 0.45 + i * 0.15, remaining: 1.1 };
+    });
+  }
   p.subclassPassiveCooldowns ??= {};
   p.subclassPassiveCooldowns[PACK_BOND] = 2.5;
 }
@@ -127,7 +137,10 @@ export function commandCompanion(
   if (packTactics(p)) {
     if (!command || command.spent || !validCommand(p, command)) return;
     command.spent = true;
-    if (pet.order?.targetId !== target.id) delete pet.order;
+    if (pet.hunt?.targetId !== target.id) {
+      delete pet.order;
+      for (const wolf of pet.flankers ?? []) delete wolf.order;
+    }
     pet.hunt = { targetId: target.id, kind, remaining: COMPANION_HUNT_TIME, cast: command };
     return;
   }
@@ -141,7 +154,7 @@ export function prepareCompanionWard(p: Player, target: Player, effective: numbe
   p.buffs = p.buffs.filter((b) => b.source !== WARD_SOURCE);
   p.buffs.push({ kind: 'packBond', mult: 1, remaining: 6, source: WARD_SOURCE });
 }
-function move(pet: SpiritCompanion, to: Vec2, distance: number): void {
+function move(pet: CompanionBody, to: Vec2, distance: number): void {
   const d = sub(to, pet.pos);
   const length = Math.hypot(d.x, d.y);
   if (length < 0.001) return;
@@ -164,6 +177,48 @@ function protect(world: World, p: Player, pet: SpiritCompanion): void {
     pos: { ...ally.pos },
     kind: 'absorb',
   });
+}
+
+/** Two formation followers share the quarry and wave gate, never direct-hit or ward hooks. */
+function tickFlankers(
+  world: World,
+  p: Player,
+  pet: SpiritCompanion,
+  quarry: Boss | Add | undefined,
+  dt: number,
+): void {
+  if (!quarry) {
+    delete pet.flankers;
+    return;
+  }
+  const toward = sub(p.pos, quarry.pos),
+    angle = Math.atan2(toward.y, toward.x);
+  for (const [i, wolf] of (pet.flankers ?? []).entries()) {
+    const side = angle + ((i === 0 ? 1 : -1) * Math.PI * 2) / 3;
+    const station = wrapPos({
+      x: quarry.pos.x + Math.cos(side) * (quarry.radius + 12),
+      y: quarry.pos.y + Math.sin(side) * (quarry.radius + 12),
+    });
+    move(wolf, station, wolf.order ? 1800 * dt : 600 * dt);
+    // Face inward once stationed, so both silhouettes visibly flank their quarry.
+    if (dist(wolf.pos, station) < 1) {
+      const aim = sub(quarry.pos, wolf.pos);
+      wolf.facing = Math.atan2(aim.y, aim.x);
+    }
+    const order = wolf.order;
+    if (!order) continue;
+    order.remaining -= dt;
+    order.windup -= dt;
+    if (order.targetId !== quarry.id || order.remaining <= 0) {
+      delete wolf.order;
+      continue;
+    }
+    if (order.windup > 0 || dist(wolf.pos, quarry.pos) > quarry.radius + 18) continue;
+    delete wolf.order;
+    const amount = 4 * (quarry.buffs.some(isBurstControl) ? 1.25 : 1);
+    if (pet.hunt?.kind === 'boss') damageBoss(world, p, quarry as Boss, amount);
+    else damageAdd(world, p, quarry as Add, amount);
+  }
 }
 
 /** No target scanning, collision, independent aggro, damage zones, crits or recursive orders. */
@@ -217,6 +272,7 @@ export function updateCompanions(world: World, dt: number): void {
         }
       }
     }
+    tickFlankers(world, p, pet, quarry, dt);
     if (!pet.order) {
       if (quarry) {
         const d = sub(p.pos, quarry.pos),

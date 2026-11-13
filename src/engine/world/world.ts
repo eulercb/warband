@@ -1,3 +1,4 @@
+import { poisonAllocation } from '../content/delayedRules';
 import { reserveCompanionCommand, companionHuntView } from '../combat/companions';
 import {
   prepareReturningStep,
@@ -2452,7 +2453,11 @@ export class World {
         if (owner && z.curseBonus) this.applyZoneCurse(b, owner, z);
         if (z.damagePerTick > 0) {
           const before = b.hp;
-          this.applyProjDamageBoss(owner, z.damagePerTick * (1 - (z.zonePoison?.share ?? 0)), b);
+          this.applyProjDamageBoss(
+            owner,
+            z.damagePerTick * poisonAllocation(z.zonePoison).ground,
+            b,
+          );
           onUpgradeZoneDamage(this, z, owner, b, Math.max(0, before - b.hp));
           zoneWhisperHit(
             this,
@@ -2476,7 +2481,7 @@ export class World {
           if (z.damagePerTick > 0) {
             const before = a.hp;
             if (owner)
-              damageAdd(this, owner, a, z.damagePerTick * (1 - (z.zonePoison?.share ?? 0)));
+              damageAdd(this, owner, a, z.damagePerTick * poisonAllocation(z.zonePoison).ground);
             else a.hp -= z.damagePerTick;
             onUpgradeZoneDamage(this, z, owner, a, Math.max(0, before - a.hp));
             zoneWhisperHit(
@@ -4105,6 +4110,15 @@ export class World {
             spiritCompanion: {
               pos: { ...p.spiritCompanion.pos },
               facing: p.spiritCompanion.facing,
+              ...(companionHuntView(this, p) && p.spiritCompanion.flankers
+                ? {
+                    flankers: p.spiritCompanion.flankers.map((wolf) => ({
+                      pos: { ...wolf.pos },
+                      facing: wolf.facing,
+                      attacking: !!wolf.order,
+                    })),
+                  }
+                : {}),
               attacking: !!p.spiritCompanion.order,
               ...(companionHuntView(this, p) ? { quarry: companionHuntView(this, p) } : {}),
               bondReady: p.buffs.some((b) => b.kind === 'packBond' && b.remaining > 0),

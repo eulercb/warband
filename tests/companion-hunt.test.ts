@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { SnapshotInterpolator } from '../src/render/pipeline/interpolate';
+import { ARENA_W, INTERP_DELAY_MS } from '../src/engine/core/constants';
+import { describe, expect, it, vi } from 'vitest';
 import { Graphics } from 'pixi.js';
 import { World } from '../src/engine/world/world';
 import {
@@ -7,8 +9,11 @@ import {
   updateCompanions,
   companionHuntView,
   PACK_BOND,
+  prepareCompanionWard,
 } from '../src/engine/combat/companions';
 import { tickSubclassPassives } from '../src/engine/combat/subclassPassives';
+import { absorptionAmount } from '../src/engine/combat/absorption';
+import { makeBuff } from '../src/engine/combat/combat';
 import { activeSubclassPassive } from '../src/engine/content/subclasses';
 import { drawCompanion } from '../src/render/pipeline/companionVisuals';
 import type { Add, InputCommand } from '../src/engine/core/types';
@@ -73,19 +78,19 @@ function input(w: World, basic: boolean) {
   w.step(0.01, new Map([['a', command]]));
 }
 describe('Pack Tactics chosen quarry', () => {
-  it('repeats ordinary bites while the hero stops attacking, then rests when the lease expires', () => {
+  it('repeats full pack waves while the hero stops attacking, then rests when the lease expires', () => {
     const { p, b, command, advance } = setup();
     command();
-    advance(0.5);
-    expect(b.hp).toBe(9984);
-    advance(2.5);
-    expect(b.hp).toBe(9968);
+    advance(0.7);
+    expect(b.hp).toBe(9976);
     advance(2.5);
     expect(b.hp).toBe(9952);
+    advance(2.5);
+    expect(b.hp).toBe(9928);
     advance(1);
     expect(p.spiritCompanion?.hunt).toBeUndefined();
     advance(4);
-    expect(b.hp).toBe(9952);
+    expect(b.hp).toBe(9928);
   });
   it('renewing the same quarry preserves a pending bite rather than restarting its windup', () => {
     const { p, command, advance, b } = setup();
@@ -104,9 +109,85 @@ describe('Pack Tactics chosen quarry', () => {
     b.pos = { ...p.pos };
     command();
     advance(0.5);
-    expect(b.hp).toBe(9984);
+    expect(b.hp).toBe(9980);
     expect(Number.isFinite(p.spiritCompanion!.pos.x)).toBe(true);
     expect(companionHuntView(w, p)?.targetId).toBe(b.id);
+  });
+  it('the complete pack also hits a chosen add without acquiring another target', () => {
+    const { a, b, command, advance } = setup();
+    command(a);
+    advance(0.7);
+    expect(a.hp).toBe(976);
+    expect(b.hp).toBe(10000);
+  });
+  it('interpolates smaller wolves across the seam and removes them when the hunt ends', () => {
+    const { w, p, command } = setup();
+    command();
+    updateCompanions(w, 0.01);
+    let clock = 1000;
+    const spy = vi.spyOn(performance, 'now').mockImplementation(() => clock);
+    try {
+      const interp = new SnapshotInterpolator();
+      p.spiritCompanion!.flankers![0].pos = { x: ARENA_W - 10, y: 100 };
+      interp.push(w.serialize());
+      clock = 1100;
+      p.spiritCompanion!.flankers![0].pos = { x: 10, y: 200 };
+      interp.push(w.serialize());
+      const view = interp.sample(1050 + INTERP_DELAY_MS, { localPlayerId: null, arena: w.arena })!;
+      expect(view.players[0].spiritCompanion!.flankers![0].pos.x % ARENA_W).toBeCloseTo(0);
+      expect(view.players[0].spiritCompanion!.flankers![0].pos.y).toBeCloseTo(150);
+      clock = 1200;
+      p.spiritCompanion!.hunt!.remaining = 0;
+      updateCompanions(w, 0.01);
+      interp.push(w.serialize());
+      expect(
+        interp.sample(1200 + INTERP_DELAY_MS, { localPlayerId: null, arena: w.arena })!.players[0]
+          .spiritCompanion!.flankers,
+      ).toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+  it('lands a staggered 24-damage wave, or 30 against controlled quarry', () => {
+    for (const controlled of [false, true]) {
+      const { p, b, command, advance } = setup();
+      if (controlled) b.buffs.push(makeBuff('root', 0, 6, 'test'));
+      command();
+      advance(0.35);
+      expect(10000 - b.hp).toBe(controlled ? 20 : 16);
+      advance(0.15);
+      expect(10000 - b.hp).toBe(controlled ? 25 : 20);
+      advance(0.2);
+      expect(10000 - b.hp).toBe(controlled ? 30 : 24);
+      expect(p.spiritCompanion!.flankers).toHaveLength(2);
+      expect(p.spiritCompanion!.flankers![0].pos.y).not.toBe(p.spiritCompanion!.flankers![1].pos.y);
+    }
+  });
+  it('helper bites cannot consume a ward prepared after the lead bite', () => {
+    const { p, b, command, advance } = setup();
+    command();
+    advance(0.35);
+    prepareCompanionWard(p, p, 1);
+    const token = p.spiritCompanion!.hunt!.cast;
+    advance(0.4);
+    expect(10000 - b.hp).toBe(24);
+    expect(absorptionAmount(p.buffs)).toBe(0);
+    expect(p.spiritCompanion!.wardTargetId).toBe(p.id);
+    expect(p.spiritCompanion!.hunt!.cast).toBe(token);
+    advance(2.2);
+    expect(absorptionAmount(p.buffs)).toBeGreaterThan(0);
+  });
+  it('retargeting after the lead bite cancels both pending helper strikes without refunding the wave', () => {
+    const { p, b, a, command, advance } = setup();
+    command();
+    advance(0.35);
+    const gate = p.subclassPassiveCooldowns![PACK_BOND];
+    command(a);
+    expect(p.subclassPassiveCooldowns![PACK_BOND]).toBe(gate);
+    advance(0.4);
+    expect(b.hp).toBe(9984);
+    expect(a.hp).toBe(1000);
+    expect(p.spiritCompanion!.flankers!.every((wolf) => !wolf.order)).toBe(true);
   });
   it('uses a real fresh basic; held/autofire damage cannot renew or redirect', () => {
     const { w, p, b } = setup();
@@ -201,9 +282,14 @@ describe('Pack Tactics chosen quarry', () => {
     expect(q.pos).not.toBe(b.pos);
     const v = w.serialize().players[0].spiritCompanion!;
     expect(v.quarry?.targetId).toBe(b.id);
+    updateCompanions(w, 0.01);
+    const pack = w.serialize().players[0].spiritCompanion!.flankers!;
+    expect(pack).toHaveLength(2);
+    expect(pack[0].pos).not.toBe(p.spiritCompanion!.flankers![0].pos);
+    expect(JSON.stringify(pack)).not.toContain('order');
     expect(JSON.stringify(v)).not.toContain('cast');
     const g = new Graphics();
-    drawCompanion(g, v, { x: 100, y: 100 }, 1);
+    drawCompanion(g, w.serialize().players[0].spiritCompanion!, { x: 100, y: 100 }, 1);
     expect(g.context.instructions.length).toBeGreaterThan(0);
     g.destroy();
   });

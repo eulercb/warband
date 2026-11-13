@@ -148,14 +148,14 @@ describe('returning Hunter flight', () => {
       const ab = p.abilities!.a1,
         shot = fire(w),
         token = shot.pilotCast;
-      expect(shot.damage).toBe(ab.damage / 2);
+      expect(shot.damage).toBe(ab.damage * 0.6);
       untilReturn(w);
-      expect(b.hp).toBe(10000 - ab.damage / 2);
+      expect(b.hp).toBeCloseTo(10000 - ab.damage * 0.6);
       expect(shot.pilotCast).toBe(token);
       expect(shot.returningShot?.phase).toBe('back');
       expect(shot.returningShot?.turnFlash).toBeGreaterThan(0);
       finish(w);
-      expect(b.hp).toBe(10000 - ab.damage);
+      expect(b.hp).toBeCloseTo(10000 - ab.damage * 1.2);
       expect(w.events.filter((e) => e.t === 'hit' && e.targetId === b.id)).toHaveLength(2);
     },
   );
@@ -164,7 +164,7 @@ describe('returning Hunter flight', () => {
     p.abilities!.a1.pierce = 0;
     const shot = fire(w);
     for (let i = 0; i < 30; i++) advance(w);
-    expect(b.hp).toBe(10000 - p.abilities!.a1.damage / 2);
+    expect(b.hp).toBeCloseTo(10000 - p.abilities!.a1.damage * 0.6);
     expect(shot.returningShot?.phase).toBe('out');
     expect(shot.returningShot?.hitsLeft).toBe(0);
     const hp = b.hp;
@@ -172,7 +172,7 @@ describe('returning Hunter flight', () => {
     expect(b.hp).toBe(hp);
     expect(shot.pos.x).toBeGreaterThan(b.pos.x + b.radius);
     finish(w);
-    expect(b.hp).toBe(10000 - p.abilities!.a1.damage);
+    expect(b.hp).toBeCloseTo(10000 - p.abilities!.a1.damage * 1.2);
   });
   it('retains the authored hit count on each leg while harmless outbound travel passes more foes', () => {
     const { w, b } = setup();
@@ -191,9 +191,9 @@ describe('returning Hunter flight', () => {
     w.adds.push(...adds);
     fire(w);
     untilReturn(w);
-    expect(adds.map((a) => a.hp)).toEqual([990.5, 990.5, 1000]);
+    expect(adds.map((a) => a.hp)).toEqual([988.6, 988.6, 1000]);
     finish(w);
-    expect(adds.map((a) => a.hp)).toEqual([990.5, 981, 990.5]);
+    expect(adds.map((a) => a.hp)).toEqual([988.6, 977.2, 988.6]);
   });
   it('routes the returning leg toward the live body into a different firing lane', () => {
     const { w, p, b } = setup();
@@ -205,7 +205,7 @@ describe('returning Hunter flight', () => {
     advance(w);
     expect(shot.vel.y).toBeLessThan(0);
     finish(w);
-    expect(b.hp).toBe(10000 - p.abilities!.a1.damage / 2);
+    expect(b.hp).toBeCloseTo(10000 - p.abilities!.a1.damage * 0.6);
   });
   it.each(['out', 'back'] as const)('solid cover absorbs the %s leg', (phase) => {
     const { w, b } = setup();
@@ -341,7 +341,7 @@ describe('returning contract and readouts', () => {
     w.setActiveClass(p, 'mage');
     p.abilities!.a1 = recompose(c, { slot: 'a1', name: 'Copied Hunt', cooldown: 6 });
     expect(refreshComponents(p.abilities!.a1).effects).toContainEqual({ kind: 'returningShot' });
-    expect(describeAbility(p.abilities!.a1)).toContain('50% damage per leg');
+    expect(describeAbility(p.abilities!.a1)).toContain('60% damage per leg');
     expect(fire(w).returningShot?.ownerClass).toBe('mage');
     c.effects.push({ kind: 'returningShot' });
     expect(
@@ -386,7 +386,7 @@ describe('returning contract and readouts', () => {
       if (ab) {
         resolvePlayerAbility(w, p, ab.slot, zero);
         expect(w.projectiles.some((s) => !!s.returningShot)).toBe(true);
-        expect(describeAbility(ab)).toContain('50% damage per leg');
+        expect(describeAbility(ab)).toContain('60% damage per leg');
       }
       setForgeSeed(null);
     }
