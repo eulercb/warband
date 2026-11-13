@@ -305,6 +305,19 @@ export class Fx {
           });
           break;
         }
+        case 'fieldDispel': {
+          this.spawnBurst(e.pos, {
+            startR: e.radius,
+            endR: 8,
+            ttl: 0.65,
+            color: 0x8fd3ff,
+            alpha0: 0.85,
+            filled: false,
+            lineWidth: 4,
+          });
+          this.spawnFloater(e.pos, 'DISPELLED', 0x8fd3ff);
+          break;
+        }
         case 'blink': {
           const puff = {
             startR: 6,

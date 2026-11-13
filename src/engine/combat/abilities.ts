@@ -1,3 +1,4 @@
+import { blinkArrival, dispelArrivalField } from './warding';
 import { registerTransplant } from './fieldTransplant';
 import { SHADOW_COMMIT_DAMAGE } from '../content/shadowRules';
 import { armReturningShot } from './returningShot';
@@ -640,11 +641,11 @@ export function resolvePlayerAbility(
     case 'blink': {
       // item 2: a teleport stays instant and may pass THROUGH movement-blocking cover
       // — but a root still locks it (blink/teleport are on the root contract).
-      const dir = normalize(ab.flowAim ?? p.aim);
       const from = { ...p.pos };
-      const target = vadd(p.pos, vscale(dir, ab.range ?? 250));
+      const target = blinkArrival(world, p, ab);
       if (ab.swap) dimensionDoor(world, p, target, ab.radius ?? 220);
       else p.pos = clampToArena(world, target, p.radius);
+      dispelArrivalField(world, p, ab);
       if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
       if (ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
       prepareSpellSurge(p, ab);
@@ -1209,11 +1210,11 @@ function resolveComposedAbility(
       // stored ab in stepPlayerGlide). A root locks either. The self-buff + component
       // heal fire on use, exactly as before.
       if (d.kind === 'blink') {
-        const dir = normalize(ab.flowAim ?? p.aim);
         const from = { ...p.pos };
-        const target = vadd(p.pos, vscale(dir, ab.range ?? 220));
+        const target = blinkArrival(world, p, ab);
         if (ab.swap) dimensionDoor(world, p, target, ab.radius ?? 220);
         else p.pos = clampToArena(world, target, p.radius);
+        dispelArrivalField(world, p, ab);
         if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
         prepareSpellSurge(p, ab);
         prepareMartialFlow(p, ab);

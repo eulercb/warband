@@ -148,6 +148,7 @@ export type EffectComponent =
   | { kind: 'forethought'; requiresCurse?: boolean }
   | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
   | { kind: 'fortune'; fortune: NonNullable<PlayerAbilityDef['fortune']> }
+  | { kind: 'dispelField' }
   | { kind: 'whisperRefrain'; refrain: NonNullable<PlayerAbilityDef['whisperRefrain']> }
   | { kind: 'infernalAperture'; aperture: NonNullable<PlayerAbilityDef['infernalAperture']> }
   | { kind: 'shadowReprise'; reprise: NonNullable<PlayerAbilityDef['shadowReprise']> }
@@ -435,6 +436,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   )
     effects.push({ kind: 'ancestralRelay', range: def.ancestralRelay.range });
   if (def.shadowReprise) effects.push({ kind: 'shadowReprise', reprise: { ...def.shadowReprise } });
+  if (def.dispelField && def.kind === 'blink') effects.push({ kind: 'dispelField' });
   if (def.whisperRefrain && def.kind === 'blink')
     effects.push({ kind: 'whisperRefrain', refrain: { ...def.whisperRefrain } });
   if (def.mirrorImages) effects.push({ kind: 'mirrorImages', ...def.mirrorImages });
@@ -510,6 +512,11 @@ export function recompose(
   comp: AbilityComponents,
   meta: { slot: PlayerAbilityDef['slot']; name: string; cooldown: number },
 ): PlayerAbilityDef {
+  if (
+    (comp.delivery.kind !== 'blink' || meta.slot === 'basic') &&
+    comp.effects.some((e) => e.kind === 'dispelField')
+  )
+    comp = { ...comp, effects: comp.effects.filter((e) => e.kind !== 'dispelField') };
   if (comp.effects.some((e) => e.kind === 'returningShot')) {
     const fits = returningShotFits(
       comp.delivery.kind,
@@ -742,6 +749,9 @@ export function recompose(
       case 'shadowReprise':
         def.shadowReprise = { ...e.reprise };
         break;
+      case 'dispelField':
+        def.dispelField = true;
+        break;
       case 'whisperRefrain':
         if (d.kind === 'blink') def.whisperRefrain = { ...e.refrain };
         break;
@@ -952,6 +962,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return (
         ((((e.reprise.prepared ? 30 : 40) * e.reprise.lifetime) / 6) * e.reprise.returnWindow) / 2
       );
+    case 'dispelField':
+      return 40; // one active ground field, endpoint-limited, no pending attacks
     case 'whisperRefrain':
       return 15 + e.refrain.charges * e.refrain.fraction * 40;
     case 'controlDamage':
@@ -1253,6 +1265,8 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
       return `burst at your ancestor within ${n(e.range)}u, then leave it at your cast position; first burst establishes it, no expiry`;
     case 'shadowReprise':
       return `departure anchor ${s(e.reprise.lifetime)}, later ${e.reprise.prepared ? 'prepared ' : ''}direct hit unlocks ${s(e.reprise.returnWindow)} return; press this skill again within ${delivery === 'blink' ? 'blink range' : `${n(e.reprise.range)}u`}`;
+    case 'dispelField':
+      return 'arrival dispels one active hostile ground field centered within 110u; pending attacks and airborne fields remain';
     case 'whisperRefrain':
       return `spend Harmony + Discord: departure afterimage ${s(e.refrain.duration)}, next ${n(e.refrain.charges)} direct casts echo ${n(e.refrain.fraction * 100)}% damage near it (${n(e.refrain.radius)}u)`;
     case 'controlDamage':
@@ -1659,6 +1673,7 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'pbaoe';
     case 'shadowReprise':
       return true; // slotAllowsEffect excludes basic attacks
+    case 'dispelField':
     case 'whisperRefrain':
       return kind === 'blink';
     case 'prepareSurge':
@@ -1735,7 +1750,11 @@ function primaryWant(kind: DeliveryKind): (e: EffectComponent) => boolean {
         e.kind === 'fortune' ||
         e.kind === 'healOnUse';
     case 'blink':
-      return (e) => e.kind === 'whisperRefrain' || e.kind === 'healOnUse' || e.kind === 'buff';
+      return (e) =>
+        e.kind === 'dispelField' ||
+        e.kind === 'whisperRefrain' ||
+        e.kind === 'healOnUse' ||
+        e.kind === 'buff';
     case 'dash':
       return (e) => e.kind === 'landingDamage' || e.kind === 'healOnUse' || e.kind === 'buff';
     case 'taunt':
@@ -2281,6 +2300,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
           returnWindow: e.reprise.returnWindow * Math.sqrt(f),
         },
       };
+    case 'dispelField':
+      return e;
     case 'whisperRefrain':
       return { ...e, refrain: { ...e.refrain, fraction: e.refrain.fraction * f } };
     case 'controlDamage':
@@ -2376,7 +2397,9 @@ function capComponents(comp: AbilityComponents): AbilityComponents {
   return {
     delivery,
     effects: comp.effects
-      .filter((e) => e.kind !== 'whisperRefrain' || delivery.kind === 'blink')
+      .filter(
+        (e) => !['dispelField', 'whisperRefrain'].includes(e.kind) || delivery.kind === 'blink',
+      )
       .filter(
         (e) =>
           e.kind !== 'returningShot' ||
@@ -2479,6 +2502,7 @@ function addBoonComponents(
         'mirrorImages',
         'prepareCrit',
         'fortune',
+        'dispelField',
         'whisperRefrain',
         'returningShot',
         'shadowCommit',
@@ -2710,6 +2734,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.ancestralRelay ? { ...e, range: def.ancestralRelay.range } : e;
     case 'shadowReprise':
       return def.shadowReprise ? { ...e, reprise: { ...def.shadowReprise } } : e;
+    case 'dispelField':
+      return e;
     case 'whisperRefrain':
       return def.whisperRefrain ? { ...e, refrain: { ...def.whisperRefrain } } : e;
     case 'maneuver':
@@ -2963,6 +2989,8 @@ function capEffect(e: EffectComponent): EffectComponent {
           prepared: e.reprise.prepared,
         },
       };
+    case 'dispelField':
+      return e;
     case 'whisperRefrain':
       return {
         ...e,

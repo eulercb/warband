@@ -1,3 +1,4 @@
+import { drawDispelTarget } from './wardingVisuals';
 import { drawFieldTransplant } from './transplantVisuals';
 import { drawReturningShot } from './returningVisuals';
 import { drawShadowCommit } from './shadowCommitVisuals';
@@ -701,6 +702,10 @@ export class Renderer {
     if (localId == null) return;
     const p = state.players.find((pl) => pl.id === localId);
     if (!p || p.state !== 'alive') return;
+    for (const field of p.dispelFields ?? []) {
+      const at = this.camera.worldToScreen(field.pos);
+      drawDispelTarget(g, at, field.radius, this.camera.scale);
+    }
     for (const t of p.fieldTransplants ?? []) {
       if (p.shadowReprise?.slot === t.slot && p.shadowReprise.armed) continue;
       if (p.infernalAperture?.slot === t.slot && p.infernalAperture.emberReady) continue;
