@@ -197,7 +197,7 @@ export interface PlayerAbilityDef {
   infernalAperture?: { duration: number; reach: number; radius: number; emberDamage: number };
   shadowReprise?: { lifetime: number; returnWindow: number; range: number; prepared: boolean };
   whisperRefrain?: { duration: number; radius: number; fraction: number; charges: number };
-  /** Blink arrival can erase one nearby active hostile ground field. */
+  /** Blink reclaims one field and can break silence for conditional recharge. */
   dispelField?: boolean;
   /** Extra damage against currently slowed, rooted or stunned enemies. */
   controlDamageBonus?: number;
@@ -1515,7 +1515,7 @@ export function describeAbility(
   }
   if (def.dispelField && def.kind === 'blink')
     parts.push(
-      'arrival dispels one active hostile ground field centered within 110u; pending attacks and airborne fields remain',
+      'dispel one active hostile field you are in (silencing threats first), otherwise centered within 110u of arrival; works while silenced and clears silence, adding 2s recharge only on a silence break',
     );
   if (def.whisperRefrain) {
     const r = def.whisperRefrain;

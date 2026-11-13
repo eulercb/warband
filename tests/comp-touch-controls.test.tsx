@@ -804,3 +804,23 @@ it('labels a transplant during cooldown, shows blocking, and gives Return/Ember 
   );
   expect(button.querySelector('.wb-touch-btn-label')!.textContent).toBe('Return');
 });
+
+it('keeps the authoritative dispelling touch slot usable while ordinary specials stay silenced', () => {
+  useStore.setState({ localClass: 'mage', myCharUpgrades: ['mg_abjurer_g_a'] });
+  useHudStore.getState().set({
+    active: true,
+    classId: 'mage',
+    state: 'alive',
+    wardingSlots: ['a3'],
+    buffs: [{ kind: 'silence', mult: 0, remaining: 2 }],
+  });
+  const { container } = render(<TouchControls />);
+  const blink = container.querySelector('.wb-touch-btn-a3')!;
+  expect(blink.getAttribute('aria-disabled')).toBe('false');
+  expect(container.querySelector('.wb-touch-btn-a1')?.getAttribute('aria-disabled')).toBe('true');
+  expect(blink.textContent).toContain('Break silence');
+  fireEvent.pointerDown(blink, { pointerId: 1 });
+  expect(setTouchButton).toHaveBeenCalledWith('a3', true);
+  act(() => useHudStore.getState().set({ wardingSlots: [] }));
+  expect(blink.getAttribute('aria-disabled')).toBe('true');
+});

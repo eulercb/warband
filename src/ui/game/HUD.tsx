@@ -157,8 +157,13 @@ function AbilityIcon({
   mods: { cooldownMult: number; castMult: number; damageMult: number };
 }) {
   const remaining = useHudStore((s) => s.cooldowns[slot] ?? 0);
+  const silenceBreak = useHudStore(
+    (s) => s.state === 'alive' && !!s.wardingSlots?.includes(slot) && !!silenceStatus(s.buffs),
+  );
   const silence = useHudStore((s) =>
-    slot !== 'basic' && s.state === 'alive' ? silenceStatus(s.buffs) : undefined,
+    slot !== 'basic' && s.state === 'alive' && !s.wardingSlots?.includes(slot)
+      ? silenceStatus(s.buffs)
+      : undefined,
   );
   const aperture = useHudStore((s) =>
     s.infernalAperture?.slot === slot ? s.infernalAperture : undefined,
@@ -237,13 +242,15 @@ function AbilityIcon({
           : false) ||
       (!cooling && (claimTarget === undefined || (alive && claimTarget !== null))));
   const label = slotLabel(slot, source);
-  const name = reprise?.armed
-    ? 'Return'
-    : ember
-      ? 'Ember'
-      : transplant
-        ? 'Transplant'
-        : (displayName ?? def.name);
+  const name = silenceBreak
+    ? 'Break silence'
+    : reprise?.armed
+      ? 'Return'
+      : ember
+        ? 'Ember'
+        : transplant
+          ? 'Transplant'
+          : (displayName ?? def.name);
   // Concrete effect numbers on hover/focus (item 19), reflecting the hero's
   // current upgraded values since `def` comes from the resolved ability table.
   const tip = `${name} — ${describeAbility({ ...def, slot }, mods)}${claimStatus ? ` · ${claimStatus}` : ''}`;
@@ -508,7 +515,11 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
         {hud.state === 'alive' && silenceStatus(hud.buffs) && (
           <div className="hud-silence" role="status">
             <strong>{silenceStatus(hud.buffs)}</strong>
-            <span>Specials locked · Basic attack available</span>
+            <span>
+              {hud.wardingSlots?.length
+                ? 'Dispelling Blink can break silence · +2s recharge; other specials locked'
+                : 'Specials locked · Basic attack available'}
+            </span>
           </div>
         )}
         {hud.state === 'alive' && claimSlots.length > 0 && (

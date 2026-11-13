@@ -1,5 +1,8 @@
 # Caster purpose review: reclaiming ground
 
+**Follow-up:** [Escape and reclaim](WARDING_ESCAPE_FOLLOWUP.md) supersedes the
+ground-only, arrival-only and silence restrictions below after owner testing.
+
 This review follows owner acceptance of Land transplantation (#173). It inspects
 Abjurer, Draconic and Wild Magic against the combined-build gate. Inspection,
 implementation and live acceptance are separate states; this is not a balance pass.

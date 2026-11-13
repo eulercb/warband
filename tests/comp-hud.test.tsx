@@ -1100,3 +1100,25 @@ it('shows field transplant readiness during recharge and preserves Return/Ember 
   );
   expect(button.querySelector('.hud-ability-name')!.textContent).toBe('Return');
 });
+
+it('keeps only authoritative dispelling slots usable during silence and explains the surcharge', () => {
+  useStore.setState({ localClass: 'mage', myCharUpgrades: ['mg_abjurer_g_a'] });
+  useHudStore.getState().set({
+    active: true,
+    classId: 'mage',
+    state: 'alive',
+    wardingSlots: ['a3'],
+    buffs: [{ kind: 'silence', mult: 0, remaining: 2 }],
+  });
+  const { container } = render(<HUD />);
+  const icons = container.querySelectorAll('.hud-ability');
+  expect(icons[3].getAttribute('aria-disabled')).toBe('false');
+  expect(icons[1].getAttribute('aria-disabled')).toBe('true');
+  expect(icons[3].textContent).toContain('Break silence');
+  expect(container.querySelector('.hud-silence')?.textContent).toContain(
+    'Dispelling Blink can break silence',
+  );
+  act(() => useHudStore.getState().set({ wardingSlots: [] }));
+  expect(icons[3].getAttribute('aria-disabled')).toBe('true');
+  expect(container.querySelector('.hud-silence')?.textContent).toContain('Specials locked');
+});

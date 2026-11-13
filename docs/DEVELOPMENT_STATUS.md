@@ -28,15 +28,18 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Caster purpose review and Grand Warding](CASTER_PURPOSE_REVIEW.md).
+Current delivery: [Grand Warding escape and reclaim](WARDING_ESCAPE_FOLLOWUP.md).
+The owner merged/tested #174 and liked field dispel. The expanded escape is
+implemented pending owner testing: airborne and departure fields qualify; retained
+Blink can break silence for +2s conditional recharge. One field per cast remains.
+Counterspell was evaluated and deferred to a separate potential upgrade choice.
 The owner merged/tested #173 and accepted Land transplantation for now. Moon
 stays retained; Land A stays growth. Hunter/Beast Master follow-ups remain the
 merged/tested baseline. Delayed-damage numbers await the future overall balance pass.
 
-Bramble Spear's redundant splitting sentence is removed: it described Splintering
-Thorns, not another grand bonus. Grand Warding now lets starting Blink dispel one
-active hostile ground field centered within 110u of arrival, retaining its frontal
-block and barrier support. This is implemented pending owner playtesting.
+Bramble Spear's wording cleanup from #174 remains accepted. Grand Warding retains
+its frontal block and barrier support alongside the expanded dispel. The original
+action was accepted; the escape follow-up needs owner playtesting.
 
 Nineteen of 24 subclasses have been inspected. Abjurer B and both Draconic routes
 are retained; Wild A is retained. Wild B Chaos Crossing needs a coherent redesign
@@ -47,11 +50,11 @@ and acceptance remain distinct states.
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test Grand Warding; next development is the Wild Magic Chaos Crossing redesign.                                                                                         |
+| Next                         | Live-test the dispelling Blink escape follow-up; next development is the Wild Magic Chaos Crossing redesign.                                                                 |
 | Following                    | Finish the bounded caster follow-up, then review the five remaining support identities.                                                                                      |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                |
-| Remaining caster identities  | Three inspected; Grand Warding implemented pending live acceptance; Chaos Crossing open. Evoker stays retained.                                                              |
+| Remaining caster identities  | Three inspected; Grand Warding accepted; escape expansion pending live acceptance; Chaos Crossing open. Evoker stays retained.                                               |
 | Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                                                         |
 | Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                                                |
 | Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                               |

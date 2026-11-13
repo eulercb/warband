@@ -6,7 +6,9 @@ const browser = await chromium.launch({
   headless: true,
 });
 try {
-  for (const width of [1280, 320])
+  for (const { scenario, width } of ['arrival', 'escape'].flatMap((scenario) =>
+    [1280, 320].map((width) => ({ scenario, width })),
+  ))
     for (const pick of [
       'mg_abjurer_ward',
       'mg_abjurer_bind',
@@ -73,7 +75,7 @@ try {
       else await unlock.click();
       await page.getByRole('status').filter({ hasText: '1/4 equipped' }).waitFor();
       await page.evaluate(
-        async ({ pick, width }) => {
+        async ({ pick, width, scenario }) => {
           document.querySelector('#select').style.display = 'none';
           const { World } = await import('/src/engine/world/world.ts');
           const { Host } = await import('/src/net/session/host.ts');
@@ -87,6 +89,7 @@ try {
           const { sampleTouch } = await import('/src/input/touch.ts');
           const { blinkArrival } = await import('/src/engine/combat/warding.ts');
           const { synthesizeAbility } = await import('/src/engine/content/forge.ts');
+          const { effectiveRecharge } = await import('/src/engine/content/abilityLimits.ts');
           const { Renderer } = await import('/src/render/pipeline/renderer.ts');
           const skill = pick === 'forge' ? 'mg_abjurer_ward' : pick;
           const w = new World({
@@ -119,7 +122,15 @@ try {
               31,
               'warding',
               'a3',
-              [{ name: source.name, classId: 'mage', className: 'Mage', slot: 'a3', def: source }],
+              [
+                {
+                  name: source.name,
+                  classId: 'mage',
+                  className: 'Mage',
+                  slot: 'a3',
+                  def: source,
+                },
+              ],
               new Set(['blink']),
             ).def;
             if (!made.components.effects.some((e) => e.kind === 'dispelField'))
@@ -131,21 +142,25 @@ try {
           const arrival = blinkArrival(w, p, p.abilities.a3);
           const z = {
             id: w.allocId(),
-            kind: 'voidZone',
+            kind: scenario === 'escape' ? 'antimagic' : 'rainOfArrows',
             side: 'boss',
             ownerId: b.id,
-            pos: arrival,
+            pos: scenario === 'escape' ? { ...p.pos } : arrival,
             radius: 170,
-            damagePerTick: 20,
+            damagePerTick: scenario === 'escape' ? 0 : 20,
+            silence: scenario === 'escape' ? 1 : undefined,
             healPerTick: 0,
             slowMult: 1,
             slowDuration: 1,
             duration: 10,
             remaining: 8,
-            tickAccum: 0.249,
+            tickAccum: 0.499,
           };
           const other = {
             ...z,
+            kind: 'rainOfArrows',
+            silence: undefined,
+            damagePerTick: 20,
             id: w.allocId(),
             pos: { x: arrival.x + 100, y: arrival.y },
             tickAccum: 0,
@@ -198,10 +213,24 @@ try {
             );
             publish();
           }
-          window.ward = { w, p, z, other, step, publish, renderer, arrival, hp: p.hp };
+          window.ward = {
+            w,
+            p,
+            z,
+            other,
+            step,
+            publish,
+            renderer,
+            arrival,
+            hp: p.hp,
+            escape: scenario === 'escape',
+            expectedCd:
+              effectiveRecharge(p.abilities.a3, p.cooldownMult, p.castMult, 'a3') +
+              (scenario === 'escape' ? 2 : 0),
+          };
           publish();
         },
-        { pick, width },
+        { pick, width, scenario },
       );
       await page.waitForSelector(width === 320 ? '.wb-touch-btn-a3' : '.hud-ability', {
         state: 'attached',
@@ -220,13 +249,28 @@ try {
       }
       await page.evaluate(() => {
         const f = window.ward;
+        if (f.escape) {
+          if (!f.p.buffs.some((b) => b.kind === 'silence'))
+            throw new Error('Field did not apply silence');
+          const buttons = [...document.querySelectorAll('.hud-ability')];
+          if (
+            buttons[3].getAttribute('aria-disabled') !== 'false' ||
+            buttons[1].getAttribute('aria-disabled') !== 'true'
+          )
+            throw new Error('Desktop silence exception is incorrect');
+          const touch = document.querySelector('.wb-touch-btn-a3');
+          if (touch && touch.getAttribute('aria-disabled') !== 'false')
+            throw new Error('Touch silence exception is incorrect');
+          if (!document.body.textContent.includes('+2s recharge'))
+            throw new Error('Missing surcharge readout');
+        }
         if (window.wardRemote?.[0]?.id !== f.z.id)
           throw new Error('Replicated preview selected wrong field');
         if (!f.renderer.aimLayer.context.instructions.length)
           throw new Error('Missing rendered preview');
       });
       await page.screenshot({
-        path: `${process.env.SHOT_DIR || '/tmp'}/warding-${width}-${pick}-ready.png`,
+        path: `${process.env.SHOT_DIR || '/tmp'}/warding-${scenario}-${width}-${pick}-ready.png`,
       });
       if (width === 320) {
         const box = await page.locator('.wb-touch-btn-a3').boundingBox();
@@ -253,13 +297,23 @@ try {
         if (f.p.abilities.a3.frontGuard && !f.p.buffs.some((b) => b.kind === 'frontGuard'))
           throw new Error('Lost retained frontal guard');
         if (!(f.p.cooldowns.a3 > 0) || f.p.hp !== f.hp) throw new Error('Paid safe cast failed');
+        if (Math.abs(f.p.cooldowns.a3 - f.expectedCd) > 0.001)
+          throw new Error('Conditional recharge is incorrect');
+        if (f.escape) {
+          if (f.p.buffs.some((b) => b.kind === 'silence'))
+            throw new Error('Silence was not broken');
+          if (
+            !f.renderer.fxTextLayer.children.some((c) => c.text === 'SILENCE BROKEN' && c.visible)
+          )
+            throw new Error('No rendered silence-break cue');
+        }
         if (window.wardRemote.length) throw new Error('Preview remained during recharge');
       });
       await page.screenshot({
-        path: `${process.env.SHOT_DIR || '/tmp'}/warding-${width}-${pick}-dispel.png`,
+        path: `${process.env.SHOT_DIR || '/tmp'}/warding-${scenario}-${width}-${pick}-dispel.png`,
       });
       assert.deepEqual(errors, []);
-      console.log(`warding ${width} ${pick}: passed`);
+      console.log(`warding ${scenario} ${width} ${pick}: passed`);
       await page.close();
     }
 } finally {

@@ -6,7 +6,10 @@ import {
   blinkArrival,
   dispelArrivalField,
   wardingViews,
+  wardingTarget,
+  wardingSlots,
 } from '../src/engine/combat/warding';
+import { refundRecharge } from '../src/engine/content/abilityLimits';
 import { makeBuff } from '../src/engine/combat/combat';
 import {
   decompose,
@@ -94,7 +97,7 @@ describe('Grand Warding arrival dispel', () => {
   it.each(picks)('reclaims shared ground at full health with first pick %s', (skill) => {
     const { w, p, ally } = setup(skill);
     const landing = blinkArrival(w, p, p.abilities!.a3);
-    const z = field(w, { pos: landing, tickAccum: 0.249 });
+    const z = field(w, { pos: landing, tickAccum: 0.499 });
     const keep = field(w, { pos: { x: landing.x + 109, y: landing.y } });
     const before = { hp: p.hp, ally: ally.hp, duration: keep.remaining };
     expect(wardingViews(w, p).map((v) => v.id)).toEqual([z.id]);
@@ -116,16 +119,14 @@ describe('Grand Warding arrival dispel', () => {
     { side: 'player' as const },
     { remaining: 0 },
     { armRemaining: 0.1 },
-    { airborne: true },
-    { kind: 'rainOfArrows' as const },
     { damagePerTick: 0 },
-    { pos: { x: 961, y: 400 }, radius: 900 },
+    { pos: { x: 961, y: 400 }, radius: 20 },
   ])('does not erase excluded fields %s', (data) => {
     const { w, p } = setup();
     const z = field(w, data);
     expect(arrivalField(w, { x: 850, y: 400 })).toBeUndefined();
     p.pos = { x: 850, y: 400 };
-    dispelArrivalField(w, p, p.abilities!.a3);
+    dispelArrivalField(w, p, p.abilities!.a3, { x: 500, y: 400 });
     expect(w.groundZones).toContain(z);
     expect(w.events).toEqual([]);
   });
@@ -137,7 +138,7 @@ describe('Grand Warding arrival dispel', () => {
     const { w, p } = setup();
     const z = field(w, { damagePerTick: 0, ...data });
     p.pos = { ...z.pos };
-    dispelArrivalField(w, p, p.abilities!.a3);
+    dispelArrivalField(w, p, p.abilities!.a3, { x: 500, y: 400 });
     expect(w.groundZones).toEqual([]);
   });
   it('uses torus center distance, inclusive reach and deterministic IDs', () => {
@@ -145,13 +146,13 @@ describe('Grand Warding arrival dispel', () => {
     p.pos = { x: w.arena.w - p.abilities!.a3.range!, y: 400 };
     const endpoint = blinkArrival(w, p, p.abilities!.a3);
     expect(endpoint.x).toBe(0);
-    const far = field(w, { pos: { x: w.arena.w - 110, y: 400 }, id: 100 });
-    const low = field(w, { pos: { x: 110, y: 400 }, id: 99 });
+    const far = field(w, { pos: { x: w.arena.w - 110, y: 400 }, id: 100, radius: 10 });
+    const low = field(w, { pos: { x: 110, y: 400 }, id: 99, radius: 10 });
     expect(arrivalField(w, endpoint)).toBe(low);
     step(w, true);
     expect(w.groundZones).toEqual([far]);
   });
-  it.each(['silence', 'root', 'stun'] as const)(
+  it.each(['root', 'stun'] as const)(
     'normal %s restriction prevents the paid cast and preview',
     (kind) => {
       const { w, p } = setup();
@@ -204,9 +205,9 @@ describe('Grand Warding arrival dispel', () => {
     field(w);
     field(w, { pos: { x: 860, y: 400 } });
     p.pos = { x: 850, y: 400 };
-    dispelArrivalField(w, p, p.abilities!.a3);
-    dispelArrivalField(w, ally, p.abilities!.a3);
-    dispelArrivalField(w, ally, p.abilities!.a3);
+    dispelArrivalField(w, p, p.abilities!.a3, { x: 500, y: 400 });
+    dispelArrivalField(w, ally, p.abilities!.a3, { x: 500, y: 400 });
+    dispelArrivalField(w, ally, p.abilities!.a3, { x: 500, y: 400 });
     expect(w.groundZones).toEqual([]);
     expect(w.events).toHaveLength(2);
   });
@@ -268,7 +269,7 @@ describe('retained component and presentation', () => {
     expect(
       componentValue(comp) -
         componentValue({ ...comp, effects: comp.effects.filter((e) => e.kind !== 'dispelField') }),
-    ).toBe(40);
+    ).toBe(56);
     w.setActiveClass(p, 'rogue');
     p.cooldowns.a3 = 0;
     p.abilities!.a3 = recompose(comp, { ...native, name: 'Copied Warding' });
@@ -316,7 +317,7 @@ describe('retained component and presentation', () => {
       new Set(['blink']),
     ).def;
     expect(made.components!.effects.some((e) => e.kind === 'dispelField')).toBe(true);
-    expect(describeAbility(made)).toContain('dispels one');
+    expect(describeAbility(made)).toContain('dispel one');
     p.abilities!.a3 = made;
     field(w, { pos: blinkArrival(w, p, made) });
     step(w, true);
@@ -334,11 +335,11 @@ describe('retained component and presentation', () => {
         cooldown: 5,
       });
       expect(copy.dispelField).toBeUndefined();
-      expect(describeAbility(copy)).not.toContain('dispels');
+      expect(describeAbility(copy)).not.toContain('dispel one');
       expect(copy.components!.effects.some((e) => e.kind === 'dispelField')).toBe(false);
       p.pos = { x: 850, y: 400 };
       field(w);
-      dispelArrivalField(w, p, copy);
+      dispelArrivalField(w, p, copy, { x: 500, y: 400 });
       expect(w.groundZones).toHaveLength(1);
     },
   );
@@ -349,6 +350,9 @@ describe('retained component and presentation', () => {
     a.components = { delivery: { kind: 'blink', range: a.range }, effects: [] };
     expect(wardingViews(w, p)).toEqual([]);
     a.components.effects.push({ kind: 'dispelField' });
+    a.components.delivery.kind = 'projectile';
+    expect(wardingSlots(p)).toEqual([]);
+    a.components.delivery.kind = 'blink';
     p.abilities!.a2 = { ...a, slot: 'a2' };
     expect(wardingViews(w, p)).toHaveLength(1);
     p.state = 'downed';
@@ -361,6 +365,180 @@ describe('retained component and presentation', () => {
     drawDispelTarget(g, { x: 200, y: 200 }, 170, 1);
     expect(g.context.instructions.length).toBeGreaterThan(0);
     fx.processEvents([{ t: 'fieldDispel', pos: { x: 200, y: 200 }, radius: 170 }], camera);
+    fx.draw(g, camera);
+    expect(g.context.instructions.length).toBeGreaterThan(0);
+    fx.update(1000);
+    fx.draw(g, camera);
+    expect(g.context.instructions.length).toBe(0);
+  });
+});
+
+describe('Grand Warding escape and reclaim', () => {
+  it.each([true, false])('removes airborne fields at departure or arrival (%s)', (departure) => {
+    const { w, p } = setup();
+    const z = field(w, {
+      kind: 'rainOfArrows',
+      pos: departure ? { ...p.pos } : blinkArrival(w, p, p.abilities!.a3),
+    });
+    expect(wardingViews(w, p)[0].id).toBe(z.id);
+    step(w, true);
+    expect(w.groundZones).toEqual([]);
+  });
+  it('prioritizes a departure silence field over a closer damaging field and arrival', () => {
+    const { w, p } = setup();
+    const damage = field(w, { pos: { ...p.pos }, radius: 30 });
+    const silence = field(w, {
+      pos: { x: p.pos.x + 100, y: p.pos.y },
+      radius: 110,
+      silence: 1,
+      damagePerTick: 0,
+    });
+    const arrival = field(w, { pos: blinkArrival(w, p, p.abilities!.a3) });
+    expect(wardingTarget(w, p, p.pos, arrival.pos)).toBe(silence);
+    step(w, true);
+    expect(w.groundZones).toEqual([damage, arrival]);
+    expect(w.events.filter((e) => e.t === 'fieldDispel')).toHaveLength(1);
+  });
+  it('prioritizes threats reaching a flyer over ground silence beneath them', () => {
+    const { w, p } = setup();
+    p.buffs.push(makeBuff('flight', 0, 5, 'flight'));
+    const ground = field(w, { pos: { ...p.pos }, silence: 1 });
+    const air = field(w, { pos: { x: p.pos.x + 80, y: p.pos.y }, airborne: true });
+    expect(wardingViews(w, p)[0].id).toBe(air.id);
+    step(w, true);
+    expect(w.groundZones).toEqual([ground]);
+  });
+  it('still reclaims a ground field beneath a flyer for allies, before remote arrival', () => {
+    const { w, p } = setup();
+    p.buffs.push(makeBuff('flight', 0, 5, 'flight'));
+    const ground = field(w, { pos: { ...p.pos } });
+    const remote = field(w);
+    step(w, true);
+    expect(w.groundZones).toEqual([remote]);
+    expect(w.events.some((e) => e.t === 'fieldDispel' && e.pos.x === ground.pos.x)).toBe(true);
+  });
+  it('uses departure body overlap across the torus and stable nearest/ID ties', () => {
+    const { w, p } = setup();
+    p.pos = { x: 5, y: 400 };
+    const a = field(w, { id: 90, pos: { x: w.arena.w - 20, y: 400 }, radius: 12 });
+    field(w, { id: 91, pos: { x: 30, y: 400 }, radius: 12 });
+    expect(wardingViews(w, p)[0].id).toBe(a.id);
+    step(w, true);
+    expect(w.groundZones.map((z) => z.id)).toEqual([91]);
+  });
+  it.each(picks)('breaks actual field silence with first pick %s, charging exactly 2s', (pick) => {
+    const { w, p } = setup(pick);
+    const control = setup(pick);
+    const z = field(w, { pos: { ...p.pos }, silence: 1, damagePerTick: 0, tickAccum: 0.499 });
+    step(w);
+    expect(p.buffs.some((b) => b.kind === 'silence')).toBe(true);
+    expect(wardingSlots(p)).toEqual(['a3']);
+    expect(w.serialize().players[0].wardingSlots).toEqual(['a3']);
+    expect(wardingViews(w, p)[0].id).toBe(z.id);
+    step(w, true);
+    step(control.w, true);
+    expect(p.buffs.some((b) => b.kind === 'silence')).toBe(false);
+    expect(w.groundZones).toEqual([]);
+    expect(p.cooldowns.a3).toBeCloseTo(control.p.cooldowns.a3 + 2);
+    expect(p.rechargeLocks!.mage!.a3).toBeCloseTo(control.p.rechargeLocks!.mage!.a3! + 2);
+    expect(w.events.some((e) => e.t === 'silenceBreak')).toBe(true);
+    p.buffs.push(makeBuff('silence', 0, 2, 'bossSilence'));
+    step(w, true);
+    expect(p.buffs.some((b) => b.kind === 'silence')).toBe(true); // cannot use exception through recharge
+  });
+  it.each([false, true])(
+    'copied escape clears multiple silences and preserves other debuffs (composed %s)',
+    (composed) => {
+      const { w, p } = setup();
+      const native = p.abilities!.a3;
+      w.setActiveClass(p, 'rogue');
+      p.cooldowns.a3 = 0;
+      p.abilities!.a3 = composed ? recompose(decompose(native), native) : native;
+      p.buffs.push(
+        makeBuff('silence', 0, 2, 'bossSilence'),
+        makeBuff('silence', 0, 3, 'zoneSilence'),
+        makeBuff('moveSpeed', 0.6, 3, 'zoneSlow'),
+      );
+      step(w, true);
+      expect(p.buffs.filter((b) => b.kind === 'silence')).toEqual([]);
+      expect(p.buffs.some((b) => b.source === 'zoneSlow')).toBe(true);
+      expect(w.events.filter((e) => e.t === 'silenceBreak')).toHaveLength(1);
+      expect(p.cooldowns.a3).toBeGreaterThan(2);
+    },
+  );
+  it('does not import silence escape on an ordinary Blink or other specials', () => {
+    const { w, p } = setup(picks[0], []);
+    p.buffs.push(makeBuff('silence', 0, 3, 'bossSilence'));
+    expect(wardingSlots(p)).toEqual([]);
+    step(w, true);
+    expect(p.pos.x).toBe(500);
+    expect(p.cooldowns.a3).toBe(0);
+  });
+  it('protects the conditional surcharge through refunds and active-class swaps', () => {
+    const { w, p } = setup();
+    p.cooldownMult = 0.1;
+    p.buffs.push(makeBuff('silence', 0, 3, 'bossSilence'));
+    step(w, true);
+    const protectedCd = p.rechargeLocks!.mage!.a3!;
+    refundRecharge(p, 'a3', 100);
+    expect(p.cooldowns.a3).toBe(protectedCd);
+    w.setActiveClass(p, 'rogue');
+    w.setActiveClass(p, 'mage');
+    expect(p.cooldowns.a3).toBe(protectedCd);
+  });
+  it('surviving silence fields reapply silence on the ordinary tick without immunity', () => {
+    const { w, p } = setup();
+    p.buffs.push(makeBuff('silence', 0, 1, 'bossSilence'));
+    const departure = field(w, { pos: { ...p.pos }, silence: 1, damagePerTick: 0 });
+    const arrival = field(w, {
+      pos: blinkArrival(w, p, p.abilities!.a3),
+      silence: 1,
+      damagePerTick: 0,
+      tickAccum: 0.499,
+    });
+    step(w, true);
+    expect(w.groundZones).toEqual([arrival]);
+    expect(w.groundZones).not.toContain(departure);
+    expect(w.events.some((e) => e.t === 'silenceBreak')).toBe(true);
+    expect(p.buffs.some((b) => b.kind === 'silence')).toBe(true);
+  });
+  it('failed composed Door placement cannot remove a field, clear silence or add recovery', () => {
+    const { w, p } = setup();
+    p.abilities!.a3 = recompose(decompose({ ...p.abilities!.a3, swap: true }), p.abilities!.a3);
+    expect(wardingViews(w, p)).toEqual([]);
+    w.obstacles = [
+      { id: w.allocId(), pos: { x: 750, y: 400 }, radius: 2000, kind: 'rock', variant: 0 },
+    ];
+    field(w, { pos: { ...p.pos } });
+    p.buffs.push(makeBuff('silence', 0, 2, 'bossSilence'));
+    expect(wardingViews(w, p)).toHaveLength(1);
+    const control = setup();
+    control.p.abilities!.a3 = p.abilities!.a3;
+    step(control.w, true);
+    step(w, true);
+    const blink = w.events.find((e) => e.t === 'blink' && e.id === p.id);
+    expect(blink && blink.t === 'blink' && blink.from).toEqual(
+      blink && blink.t === 'blink' && blink.to,
+    );
+    expect(w.groundZones).toHaveLength(1);
+    expect(p.buffs.some((b) => b.kind === 'silence')).toBe(true);
+    expect(p.cooldowns.a3).toBe(control.p.cooldowns.a3);
+    expect(w.events.some((e) => e.t === 'silenceBreak' || e.t === 'fieldDispel')).toBe(false);
+  });
+  it('zero displacement gives no cleanse, surcharge or field removal', () => {
+    const { w, p } = setup();
+    field(w, { pos: { ...p.pos } });
+    p.buffs.push(makeBuff('silence', 0, 2, 'bossSilence'));
+    dispelArrivalField(w, p, p.abilities!.a3, { ...p.pos });
+    expect(w.groundZones).toHaveLength(1);
+    expect(p.cooldowns.a3).toBe(0);
+    expect(p.buffs.some((b) => b.kind === 'silence')).toBe(true);
+  });
+  it('renders successful silence break feedback and releases it normally', () => {
+    const g = new Graphics(),
+      fx = new Fx(new Container()),
+      camera = new Camera(1280, 800);
+    fx.processEvents([{ t: 'silenceBreak', pos: { x: 200, y: 200 } }], camera);
     fx.draw(g, camera);
     expect(g.context.instructions.length).toBeGreaterThan(0);
     fx.update(1000);
