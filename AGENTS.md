@@ -49,9 +49,11 @@ converted damage from already-additive poison, echoes and retorts; do not blanke
 buff every damage-over-time effect. Apply this review to future conversions too.
 
 Owner follow-up: Pack Tactics keeps three idle followers. Its 600u range gates
-activation, not continuation of the chosen 6s hunt. Preserve one command per
-new press / first accepted cast through ordinary input gates, without allowing
-held autofire to renew the hunt or recycle a missed cast's command. Test actual
+activation, not continuation of the chosen 6s hunt. Preserve new-press command intent through ordinary input gates. Held basics may
+start another hunt once the pack is idle; they never retarget or extend an active
+hunt, including when an older projectile arrives after a new hunt starts. Held
+specials retain the fresh-press rule. Return flankers follow the lead wolf's
+route rather than choosing independent owner images. Test actual
 autofire repetition, not merely repeated held input with autofire disabled.
 
 Before presenting a redesign, describe what a player or enemy actually does

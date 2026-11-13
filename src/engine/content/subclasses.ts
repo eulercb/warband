@@ -1566,7 +1566,7 @@ export function activeSubclassPassive(
   if (passive?.id === 'beast_pack_bond' && upgrades.includes('rg_beastmaster_g_b'))
     return {
       ...passive,
-      desc: 'A newly pressed direct ability designates its first damaged living foe within 600u for a 6s hunt that continues if you move away. All three wolves follow you between hunts. Your wolf bites for 16 damage with two 4-damage flankers every 2.5s; held attacks do not retarget or renew. Controlled foes take 25% more bite damage. A dedicated heal prepares protection for its recipient on the next successful bite.',
+      desc: 'A newly pressed direct ability designates its first damaged living foe within 600u for a 6s hunt that continues if you move away. All three wolves follow you between hunts. Your wolf bites for 16 damage with two 4-damage flankers every 2.5s; held basics can start a new hunt when idle; held attacks do not retarget or renew an active hunt. Controlled foes take 25% more bite damage. A dedicated heal prepares protection for its recipient on the next successful bite.',
     };
   return passive;
 }

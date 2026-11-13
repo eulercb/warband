@@ -1,5 +1,9 @@
 # Pack Tactics: following, reliable commands and hunt continuity
 
+Historical delivery (#171), merged/tested. The
+[held-basic and grouped-return follow-up](PACK_BASIC_RESTART.md) supersedes the
+all-held-attacks restriction and independent follower return paths below.
+
 The owner merged/tested #170. Delayed-damage premiums are accepted for now,
 subject to future overall balance. The smaller flanking wolves were liked, with
 requests that they follow between hunts and remain on a chosen quarry when the

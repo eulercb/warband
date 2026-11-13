@@ -28,16 +28,15 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Pack hunt continuity](PACK_HUNT_CONTINUITY.md).
-The owner merged/tested #170. Delayed-damage premiums are accepted provisionally;
-the future overall balance pass can tune their numbers. Smaller wolves were liked,
-with requested corrections to idle following, range continuity and activation.
+Current delivery: [Held basics and grouped pack return](PACK_BASIC_RESTART.md).
+The owner merged/tested #171 and found following/continuity improved. This delivery
+lets held basics start new hunts when idle, while preserving active target/timer
+commitment. Returning flankers follow the lead's torus route rather than splitting
+across separate shortcuts. These fixes are pending owner acceptance.
 
-Pack Tactics now keeps all three wolves as idle followers. Activation still needs
-a positive direct hit within 600u; the chosen 6s hunt continues beyond that range.
-A held command survives ordinary cooldown/cast/control gates until its first
-accepted cast, without allowing later held casts to renew the hunt. These fixes
-are implemented pending owner acceptance; damage and wave recovery are unchanged.
+Delayed-damage premiums remain provisionally accepted for future overall tuning.
+Pack activation still requires a positive direct hit within 600u; the chosen hunt
+continues beyond that range. Damage, wave recovery and ward behavior are unchanged.
 
 Land A remains growth. Land B's next prototype candidate is a one-time deliberate
 field transplant that preserves lifetime and tick timing. Recast, following-field,
@@ -49,10 +48,10 @@ review. Inspection, implementation and acceptance remain distinct.
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test pack following, command reliability and distant hunts; next development is the Land B field-transplant prototype.                                                  |
+| Next                         | Live-test held-basic hunt restarts and the shared return route; next development is the Land B field-transplant prototype.                                                   |
 | Following                    | After Land, review the remaining caster and support identities.                                                                                                              |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
-| Remaining nature identities  | Delayed damage accepted provisionally; pack continuity pending acceptance; Land B prototype next. A routes retained as growth; Moon retained.                                |
+| Remaining nature identities  | Delayed damage accepted provisionally; held-basic / grouped-return fixes pending acceptance; Land B prototype next. A routes retained as growth; Moon retained.              |
 | Remaining caster identities  | Abjurer, Draconic and Wild Magic; Evoker stays retained.                                                                                                                     |
 | Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                                                         |
 | Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                                                |

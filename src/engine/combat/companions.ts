@@ -60,8 +60,10 @@ export function reserveCompanionCommand(
     delete p.companionPresses![slot];
     return validCommand(p, pending) ? pending : undefined;
   }
-  if (!fresh) return undefined;
+  const idleOnly = !fresh;
+  if (idleOnly && (slot !== 'basic' || p.spiritCompanion?.hunt)) return undefined;
   return {
+    ...(idleOnly ? { idleOnly: true } : {}),
     ownerId: p.id,
     ownerClass: p.classId,
     epoch: p.companionEpoch ?? 0,
@@ -169,6 +171,7 @@ export function commandCompanion(
   const pet = ensure(p);
   if (packTactics(p)) {
     if (!command || command.spent || !validCommand(p, command)) return;
+    if (command.idleOnly && pet.hunt) return;
     command.spent = true;
     if (pet.hunt?.targetId !== target.id) {
       delete pet.order;
@@ -223,7 +226,13 @@ function tickFlankers(
   if (!quarry) {
     for (const [i, wolf] of (pet.flankers ?? []).entries()) {
       delete wolf.order;
-      move(wolf, flankerHome(p, i), Math.max(420, p.moveSpeed * 1.5) * dt);
+      // Follow the lead's chosen torus route instead of selecting a separate owner image.
+      const offset = sub(flankerHome(p, i), home(p));
+      move(
+        wolf,
+        wrapPos({ x: pet.pos.x + offset.x, y: pet.pos.y + offset.y }),
+        Math.max(600, p.moveSpeed * 1.75) * dt,
+      );
     }
     return;
   }
