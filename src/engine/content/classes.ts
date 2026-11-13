@@ -197,6 +197,8 @@ export interface PlayerAbilityDef {
   infernalAperture?: { duration: number; reach: number; radius: number; emberDamage: number };
   shadowReprise?: { lifetime: number; returnWindow: number; range: number; prepared: boolean };
   whisperRefrain?: { duration: number; radius: number; fraction: number; charges: number };
+  /** Blink arrival can erase one nearby active hostile ground field. */
+  dispelField?: boolean;
   /** Extra damage against currently slowed, rooted or stunned enemies. */
   controlDamageBonus?: number;
   /** Seconds of one-use spell surge granted by a utility ability. */
@@ -1511,6 +1513,10 @@ export function describeAbility(
       `departure anchor ${r.lifetime}s, later ${r.prepared ? 'prepared ' : ''}direct hit unlocks ${r.returnWindow}s return; press this skill again within ${def.kind === 'blink' ? (def.range ?? r.range) : r.range}u`,
     );
   }
+  if (def.dispelField && def.kind === 'blink')
+    parts.push(
+      'arrival dispels one active hostile ground field centered within 110u; pending attacks and airborne fields remain',
+    );
   if (def.whisperRefrain) {
     const r = def.whisperRefrain;
     parts.push(

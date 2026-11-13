@@ -28,34 +28,30 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Land transplantation and randomized Volley readouts](LAND_TRANSPLANT_VOLLEY_READOUT.md).
-The owner merged/tested #172. Volley's stale fixed-result wording is corrected:
-its native recipe adds two arrows and eight degrees per rank; resolved cards
-show the current randomized result. Related projectile-count and Ranger readouts
-received the same bounded cleanup.
+Current delivery: [Caster purpose review and Grand Warding](CASTER_PURPOSE_REVIEW.md).
+The owner merged/tested #173 and accepted Land transplantation for now. Moon
+stays retained; Land A stays growth. Hunter/Beast Master follow-ups remain the
+merged/tested baseline. Delayed-damage numbers await the future overall balance pass.
 
-Land B Eternal Season now gives eligible fields one deliberate transplant during
-their original recharge. It preserves lifetime/tick timing and anchors a following
-field, with actual destination previews and retained Forge components. It replaces
-the duplicate movement and scattered riders. This is implemented pending owner
-playtesting. Land A remains growth; Moon stays retained. Hunter/Beast Master
-follow-ups are the merged/tested baseline; delayed-damage numbers remain subject
-to the future overall balance pass.
+Bramble Spear's redundant splitting sentence is removed: it described Splintering
+Thorns, not another grand bonus. Grand Warding now lets starting Blink dispel one
+active hostile ground field centered within 110u of arrival, retaining its frontal
+block and barrier support. This is implemented pending owner playtesting.
 
-Sixteen of 24 subclasses have been inspected. All nature identity decisions now
-have an implementation or retention decision; Land B still needs live acceptance.
-Eight subclasses await review. Inspection, implementation and acceptance remain
-distinct states.
+Nineteen of 24 subclasses have been inspected. Abjurer B and both Draconic routes
+are retained; Wild A is retained. Wild B Chaos Crossing needs a coherent redesign
+and remains open. Five support subclasses await review. Inspection, implementation
+and acceptance remain distinct states.
 
 ## Next development work, in order
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test Land transplantation and the corrected readouts; next development is the Abjurer / Draconic / Wild Magic identity review.                                          |
-| Following                    | After the caster review, review the remaining support identities.                                                                                                            |
+| Next                         | Live-test Grand Warding; next development is the Wild Magic Chaos Crossing redesign.                                                                                         |
+| Following                    | Finish the bounded caster follow-up, then review the five remaining support identities.                                                                                      |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
-| Remaining nature identities  | Hunter / Beast Master merged and tested; Land B implemented pending acceptance. A routes retained as growth; Moon retained.                                                  |
-| Remaining caster identities  | Abjurer, Draconic and Wild Magic; Evoker stays retained.                                                                                                                     |
+| Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                |
+| Remaining caster identities  | Three inspected; Grand Warding implemented pending live acceptance; Chaos Crossing open. Evoker stays retained.                                                              |
 | Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                                                         |
 | Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                                                |
 | Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                               |

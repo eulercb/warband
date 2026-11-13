@@ -1,3 +1,4 @@
+import { wardingViews } from '../combat/warding';
 import {
   reserveFieldTransplant,
   tryFieldTransplant,
@@ -4165,6 +4166,7 @@ export class World {
       ...(Object.keys(infernalClaimTargets).length ? { infernalClaimTargets } : {}),
       waveCover: this.waveCoverView(p),
       maneuver: maneuverView(this, p),
+      dispelFields: wardingViews(this, p),
       fieldTransplants: fieldTransplantViews(this, p),
       shadowReprise: shadowRepriseView(this, p),
       ancestralRelay: ancestralRelayView(this, p),

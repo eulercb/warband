@@ -1781,7 +1781,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'dr_gk_basic_b',
     'Bramble Spear',
     '🌿',
-    'Thornlash pierces two additional foes and deals +30% damage against already controlled targets; ordinary splitting adds more spears',
+    'Thornlash pierces two additional foes and deals +30% damage against already controlled targets',
     natureGrand('projectile', (ab) => {
       ab.pierce = Math.max(ab.pierce ?? 0, 2);
       addN(ab, 'controlDamageBonus', 0.3);
@@ -2562,8 +2562,12 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'mg_abjurer_g_a',
     'Grand Warding',
     '🛡️',
-    'Blink blocks one frontal damage hit for 4s; Abjurer barriers gain 20% protection and last 1s longer (up to 8s), and Life Transfer cleanses its healed recipient',
-    (a) => casterGrand('blink', (ab) => casterGuard(ab, 1, 4))(a.a3),
+    'Blink dispels one active hostile ground field centered within 110u of arrival and blocks one frontal damage hit for 4s; Abjurer barriers gain 20% protection and last 1s longer (up to 8s), and Life Transfer cleanses its healed recipient',
+    (a) =>
+      casterGrand('blink', (ab) => {
+        casterGuard(ab, 1, 4);
+        ab.dispelField = true;
+      })(a.a3),
     (ab) => {
       if (ab.absorption) {
         const barrier = scaleAbsorption(ab.absorption, 1.2, 1);
@@ -6539,6 +6543,16 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
   if (base.subclassId) {
     const fused = getSubclass(base.subclassId);
     if (!fused) return base;
+    if (base.id === 'mg_abjurer_g_a') {
+      const receiver = getClass('mage').abilities.a3;
+      return {
+        ...base,
+        name: blend(fused.name),
+        desc: casterPayloadMatches(receiver, 'blink', [], false)
+          ? `${receiver.name} dispels one active hostile ground field centered within 110u of arrival and blocks one frontal hit for 4s; Abjurer barriers gain 20% protection and 1s duration (up to 8s); dedicated heals cleanse`
+          : `${receiver.name} gains 25% power and 15% footprint; its changed delivery gains no field dispel. Abjurer barriers gain 20% protection and 1s duration (up to 8s); dedicated heals cleanse`,
+      };
+    }
     return {
       ...base,
       name: blend(fused.name),

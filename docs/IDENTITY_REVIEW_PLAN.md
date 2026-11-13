@@ -7,6 +7,9 @@ retains Trickster, repairs prepared coating, and leaves three identity pairs ope
 Historical Whispers examples below describe the problem that prompted calibration,
 not its current implementation. Authorized mature proposals proceed through the
 bounded Sol high workflow; unresolved material gameplay choices need a checkpoint.
+The [caster purpose review](CASTER_PURPOSE_REVIEW.md) inspects Abjurer, Draconic
+and Wild Magic, implements Grand Warding field removal, and leaves Chaos Crossing
+open for the next bounded redesign.
 
 The owner accepted PR145 and requested a stronger purpose for the 48 authored
 identity grands. The next whole-system review starts with playstyle identity,

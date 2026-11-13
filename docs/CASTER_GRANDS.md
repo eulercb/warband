@@ -1,10 +1,11 @@
 # Mage and Sorcerer: authored upgrade builds
 
-**Sorcerer follow-up:** [Weaving and favorable outcomes](SORCERER_LUCK.md)
-supersedes the Sorcerer mechanics recorded below: Bend Luck is Fortune rather
-than a teleport, Spell Weave recycles utility cooldowns rather than generating
-Surge, Ascent adds absorption/movement, and instant Surge spells gain distinct
-riders. Mage entries and the four-grand framework remain current.
+**Current review:** [Caster purpose review](CASTER_PURPOSE_REVIEW.md) supersedes
+Grand Warding's entry below and records the Abjurer/Draconic/Wild decisions.
+[Weaving and favorable outcomes](SORCERER_LUCK.md) supersedes the historical
+Sorcerer tables below: Bend Luck prepares Fortune rather than teleporting, Spell
+Weave refunds a Surge-preparing utility, and Ascent adds absorption/movement.
+The tables below preserve the original delivery record, not current Sorcerer rules.
 
 Each class now has four native-skill grands, eight individual subclass-skill
 grands and four identities. The loadout remains four grands **per class**: two

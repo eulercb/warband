@@ -7037,7 +7037,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Thornlash pierces two additional foes and deals +30% damage against already controlled targets; ordinary splitting adds more spears",
+      "description": "Thornlash pierces two additional foes and deals +30% damage against already controlled targets",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8766,7 +8766,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Blink blocks one frontal damage hit for 4s; Abjurer barriers gain 20% protection and last 1s longer (up to 8s), and Life Transfer cleanses its healed recipient",
+      "description": "Blink dispels one active hostile ground field centered within 110u of arrival and blocks one frontal damage hit for 4s; Abjurer barriers gain 20% protection and last 1s longer (up to 8s), and Life Transfer cleanses its healed recipient",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -8776,6 +8776,7 @@
           "subSkills": ["mg_abjurer_ward"],
           "prefix": [],
           "once": [
+            { "path": "abilities.a3.dispelField", "before": null, "after": true },
             {
               "path": "abilities.a3.frontGuard",
               "before": null,
@@ -8785,6 +8786,7 @@
             { "path": "subAbilities.sub1.absorption.duration", "before": 6, "after": 7 }
           ],
           "atCap": [
+            { "path": "abilities.a3.dispelField", "before": null, "after": true },
             {
               "path": "abilities.a3.frontGuard",
               "before": null,
@@ -8799,6 +8801,7 @@
           "subSkills": ["mg_abjurer_bind"],
           "prefix": [],
           "once": [
+            { "path": "abilities.a3.dispelField", "before": null, "after": true },
             {
               "path": "abilities.a3.frontGuard",
               "before": null,
@@ -8808,6 +8811,7 @@
             { "path": "subAbilities.sub1.zoneTickDamage", "before": 8, "after": 10 }
           ],
           "atCap": [
+            { "path": "abilities.a3.dispelField", "before": null, "after": true },
             {
               "path": "abilities.a3.frontGuard",
               "before": null,
@@ -8822,6 +8826,7 @@
           "subSkills": ["mg_abjurer_teleport"],
           "prefix": [],
           "once": [
+            { "path": "abilities.a3.dispelField", "before": null, "after": true },
             {
               "path": "abilities.a3.frontGuard",
               "before": null,
@@ -8832,6 +8837,7 @@
             { "path": "subAbilities.sub1.range", "before": 300, "after": 330 }
           ],
           "atCap": [
+            { "path": "abilities.a3.dispelField", "before": null, "after": true },
             {
               "path": "abilities.a3.frontGuard",
               "before": null,
@@ -8847,6 +8853,7 @@
           "subSkills": ["mg_abjurer_mend"],
           "prefix": [],
           "once": [
+            { "path": "abilities.a3.dispelField", "before": null, "after": true },
             {
               "path": "abilities.a3.frontGuard",
               "before": null,
@@ -8857,6 +8864,7 @@
             { "path": "subAbilities.sub1.cleanseOnHeal", "before": null, "after": true }
           ],
           "atCap": [
+            { "path": "abilities.a3.dispelField", "before": null, "after": true },
             {
               "path": "abilities.a3.frontGuard",
               "before": null,
