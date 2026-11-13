@@ -145,8 +145,17 @@ function TouchButton({
   ability?: Omit<PlayerAbilityDef, 'slot'>;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
+  const silenceBreak = useHudStore(
+    (s) =>
+      !!cdSlot &&
+      s.state === 'alive' &&
+      !!s.wardingSlots?.includes(cdSlot) &&
+      !!silenceStatus(s.buffs),
+  );
   const silence = useHudStore((s) =>
-    cdSlot && cdSlot !== 'basic' && s.state === 'alive' ? silenceStatus(s.buffs) : undefined,
+    cdSlot && cdSlot !== 'basic' && s.state === 'alive' && !s.wardingSlots?.includes(cdSlot)
+      ? silenceStatus(s.buffs)
+      : undefined,
   );
   const remaining = useHudStore((s) => (cdSlot ? (s.cooldowns[cdSlot] ?? 0) : 0));
   const aperture = useHudStore((s) =>
@@ -264,7 +273,15 @@ function TouchButton({
         />
       ) : null}
       <span className={`wb-touch-btn-label${cooling ? ' cooling' : ''}`}>
-        {reprise?.armed ? 'Return' : ember ? 'Ember' : transplant ? 'Transplant' : label}
+        {silenceBreak
+          ? 'Break silence'
+          : reprise?.armed
+            ? 'Return'
+            : ember
+              ? 'Ember'
+              : transplant
+                ? 'Transplant'
+                : label}
       </span>
       {silence && <span className="wb-touch-claim-status">Silenced</span>}
       {!silence && actionStatus && <span className="wb-touch-claim-status">{actionStatus}</span>}

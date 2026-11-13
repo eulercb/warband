@@ -8766,7 +8766,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Blink dispels one active hostile ground field centered within 110u of arrival and blocks one frontal damage hit for 4s; Abjurer barriers gain 20% protection and last 1s longer (up to 8s), and Life Transfer cleanses its healed recipient",
+      "description": "Blink dispels one active hostile field you are in (silencing threats first), otherwise centered within 110u of arrival. It works while silenced and clears silence (+2s recharge only on a break); blocks one frontal damage hit for 4s; Abjurer barriers gain 20% protection and last 1s longer (up to 8s), and Life Transfer cleanses its healed recipient",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,

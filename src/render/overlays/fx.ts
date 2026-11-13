@@ -305,6 +305,19 @@ export class Fx {
           });
           break;
         }
+        case 'silenceBreak': {
+          this.spawnFloater(e.pos, 'SILENCE BROKEN', 0x8fd3ff);
+          this.spawnBurst(e.pos, {
+            startR: 8,
+            endR: 50,
+            ttl: 0.6,
+            color: 0x8fd3ff,
+            alpha0: 0.85,
+            filled: false,
+            lineWidth: 3,
+          });
+          break;
+        }
         case 'fieldDispel': {
           this.spawnBurst(e.pos, {
             startR: e.radius,

@@ -963,7 +963,7 @@ function effectValue(e: EffectComponent, fan: number): number {
         ((((e.reprise.prepared ? 30 : 40) * e.reprise.lifetime) / 6) * e.reprise.returnWindow) / 2
       );
     case 'dispelField':
-      return 40; // one active ground field, endpoint-limited, no pending attacks
+      return 56; // one endpoint field plus conditional silence escape; no pending attacks
     case 'whisperRefrain':
       return 15 + e.refrain.charges * e.refrain.fraction * 40;
     case 'controlDamage':
@@ -1266,7 +1266,7 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
     case 'shadowReprise':
       return `departure anchor ${s(e.reprise.lifetime)}, later ${e.reprise.prepared ? 'prepared ' : ''}direct hit unlocks ${s(e.reprise.returnWindow)} return; press this skill again within ${delivery === 'blink' ? 'blink range' : `${n(e.reprise.range)}u`}`;
     case 'dispelField':
-      return 'arrival dispels one active hostile ground field centered within 110u; pending attacks and airborne fields remain';
+      return 'dispel one active hostile field you are in (silencing threats first), otherwise centered within 110u of arrival; works while silenced and clears silence, adding 2s recharge only on a silence break';
     case 'whisperRefrain':
       return `spend Harmony + Discord: departure afterimage ${s(e.refrain.duration)}, next ${n(e.refrain.charges)} direct casts echo ${n(e.refrain.fraction * 100)}% damage near it (${n(e.refrain.radius)}u)`;
     case 'controlDamage':

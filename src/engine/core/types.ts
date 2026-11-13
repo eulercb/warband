@@ -1480,6 +1480,7 @@ export type GameEvent =
   | { t: 'revive'; id: EntityId; pos: Vec2 }
   | { t: 'downed'; id: EntityId; pos: Vec2 }
   | { t: 'dodge'; id: EntityId; pos: Vec2 }
+  | { t: 'silenceBreak'; pos: Vec2 }
   | { t: 'fieldDispel'; pos: Vec2; radius: number }
   | { t: 'blink'; id: EntityId; from: Vec2; to: Vec2 }
   | { t: 'telegraph'; pos: Vec2; shape: TelegraphKind }
@@ -1588,6 +1589,7 @@ export interface PlayerView {
     slot: ExtSlot;
     blocked: string | null;
   };
+  wardingSlots?: ExtSlot[];
   dispelFields?: { id: EntityId; pos: Vec2; radius: number }[];
   fieldTransplants?: FieldTransplantView[];
   palmSweep?: PalmSweepView;

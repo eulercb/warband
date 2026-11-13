@@ -645,7 +645,7 @@ export function resolvePlayerAbility(
       const target = blinkArrival(world, p, ab);
       if (ab.swap) dimensionDoor(world, p, target, ab.radius ?? 220);
       else p.pos = clampToArena(world, target, p.radius);
-      dispelArrivalField(world, p, ab);
+      dispelArrivalField(world, p, ab, from);
       if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
       if (ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
       prepareSpellSurge(p, ab);
@@ -1214,7 +1214,7 @@ function resolveComposedAbility(
         const target = blinkArrival(world, p, ab);
         if (ab.swap) dimensionDoor(world, p, target, ab.radius ?? 220);
         else p.pos = clampToArena(world, target, p.radius);
-        dispelArrivalField(world, p, ab);
+        dispelArrivalField(world, p, ab, from);
         if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
         prepareSpellSurge(p, ab);
         prepareMartialFlow(p, ab);

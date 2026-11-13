@@ -68,6 +68,7 @@ export interface HudState {
   maneuver?: PlayerView['maneuver'];
   ancestralRelay?: PlayerView['ancestralRelay'];
   palmSweep?: PlayerView['palmSweep'];
+  wardingSlots?: PlayerView['wardingSlots'];
   fieldTransplants?: PlayerView['fieldTransplants'];
   shadowReprise?: PlayerView['shadowReprise'];
   infernalAperture?: PlayerView['infernalAperture'];
@@ -120,6 +121,7 @@ const INITIAL: Omit<HudState, 'set' | 'resetHud'> = {
   maneuver: undefined,
   ancestralRelay: undefined,
   palmSweep: undefined,
+  wardingSlots: undefined,
   fieldTransplants: undefined,
   shadowReprise: undefined,
   infernalAperture: undefined,

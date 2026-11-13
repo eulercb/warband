@@ -56,6 +56,12 @@ specials retain the fresh-press rule. Return flankers follow the lead wolf's
 route rather than choosing independent owner images. Test actual
 autofire repetition, not merely repeated held input with autofire disabled.
 
+Owner follow-up: Grand Warding dispels airborne fields and fields at departure,
+with one removal per Blink. Actual departure threats take priority over arrival.
+Only the retained dispelling Blink can break silence, adding 2s recharge on an
+actual successful break; no continuing immunity or free boss interruption.
+Keep the host capability, keyboard HUD and touch silence exception consistent.
+
 Owner feedback: randomized skill baselines invalidate fixed resulting totals in
 ordinary upgrade prose. State the actual per-rank addition; let resolved native,
 graft and Forge previews show the resulting count/damage/geometry and caps.

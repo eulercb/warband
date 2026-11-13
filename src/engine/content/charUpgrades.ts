@@ -2562,7 +2562,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'mg_abjurer_g_a',
     'Grand Warding',
     '🛡️',
-    'Blink dispels one active hostile ground field centered within 110u of arrival and blocks one frontal damage hit for 4s; Abjurer barriers gain 20% protection and last 1s longer (up to 8s), and Life Transfer cleanses its healed recipient',
+    'Blink dispels one active hostile field you are in (silencing threats first), otherwise centered within 110u of arrival. It works while silenced and clears silence (+2s recharge only on a break); blocks one frontal damage hit for 4s; Abjurer barriers gain 20% protection and last 1s longer (up to 8s), and Life Transfer cleanses its healed recipient',
     (a) =>
       casterGrand('blink', (ab) => {
         casterGuard(ab, 1, 4);
@@ -6549,8 +6549,8 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
         ...base,
         name: blend(fused.name),
         desc: casterPayloadMatches(receiver, 'blink', [], false)
-          ? `${receiver.name} dispels one active hostile ground field centered within 110u of arrival and blocks one frontal hit for 4s; Abjurer barriers gain 20% protection and 1s duration (up to 8s); dedicated heals cleanse`
-          : `${receiver.name} gains 25% power and 15% footprint; its changed delivery gains no field dispel. Abjurer barriers gain 20% protection and 1s duration (up to 8s); dedicated heals cleanse`,
+          ? `${receiver.name} dispels one active hostile field you are in (silencing threats first), otherwise centered within 110u of arrival. It works while silenced and clears silence (+2s recharge only on a break); blocks one frontal hit for 4s; Abjurer barriers gain 20% protection and 1s duration (up to 8s); dedicated heals cleanse`
+          : `${receiver.name} gains 25% power and 15% footprint; its changed delivery gains no field dispel or silence escape. Abjurer barriers gain 20% protection and 1s duration (up to 8s); dedicated heals cleanse`,
       };
     }
     return {

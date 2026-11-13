@@ -1,4 +1,4 @@
-import { wardingViews } from '../combat/warding';
+import { wardingViews, wardingSlots, carriesDispel } from '../combat/warding';
 import {
   reserveFieldTransplant,
   tryFieldTransplant,
@@ -1506,7 +1506,7 @@ export class World {
     if (tryFieldTransplant(this, p, slot, fresh)) return;
     if (tryShadowReturn(this, p, slot, fresh)) return;
     if ((p.cooldowns[slot] ?? 0) > 0) return;
-    if (hasBuff(p, 'silence') && slot !== 'basic') return; // silenced: only the basic works
+    if (hasBuff(p, 'silence') && slot !== 'basic' && !carriesDispel(original)) return;
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
     if (
       (original.kind === 'dash' || original.kind === 'blink') &&
@@ -4166,6 +4166,7 @@ export class World {
       ...(Object.keys(infernalClaimTargets).length ? { infernalClaimTargets } : {}),
       waveCover: this.waveCoverView(p),
       maneuver: maneuverView(this, p),
+      wardingSlots: wardingSlots(p),
       dispelFields: wardingViews(this, p),
       fieldTransplants: fieldTransplantViews(this, p),
       shadowReprise: shadowRepriseView(this, p),
