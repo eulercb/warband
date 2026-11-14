@@ -36791,7 +36791,7 @@
       "rawSeconds": 6,
       "persistentSeconds": 3,
       "recoveryFloor": 5,
-      "range": 380,
+      "range": 330,
       "radius": null
     },
     {
@@ -36852,7 +36852,7 @@
       "rawSeconds": 3.543,
       "persistentSeconds": 3,
       "recoveryFloor": 5,
-      "range": 380,
+      "range": 330,
       "radius": null
     },
     {
@@ -37035,7 +37035,7 @@
       "rawSeconds": 5.4,
       "persistentSeconds": 3,
       "recoveryFloor": 5,
-      "range": 420,
+      "range": 400,
       "radius": null
     },
     {
@@ -37096,7 +37096,7 @@
       "rawSeconds": 3.189,
       "persistentSeconds": 3,
       "recoveryFloor": 5,
-      "range": 420,
+      "range": 400,
       "radius": null
     },
     {

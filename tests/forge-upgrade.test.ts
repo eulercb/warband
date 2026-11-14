@@ -88,6 +88,16 @@ describe('Chaos Forge char-upgrade synthesis', () => {
       for (const { up, cid } of boons) {
         const before = kitStr(previewAbilityTable(cid, []));
         const after = kitStr(previewAbilityTable(cid, [up.id]));
+        if (up.id === 'so_wild_g_b' && after === before) {
+          // No fabricated numerical fallback when every projectile special is absent.
+          expect(
+            Object.entries(previewAbilityTable(cid, [])).some(
+              ([slot, ab]) =>
+                slot !== 'basic' && ab.kind === 'projectile' && ab.damage > 0 && !ab.returningShot,
+            ),
+          ).toBe(false);
+          continue;
+        }
         if (up.id === 'dr_land_g_b' && after === before) {
           // A field-only identity has no numeric fallback on a kit without fields.
           expect(

@@ -565,6 +565,7 @@ export interface Player {
   spiritCompanion?: SpiritCompanion;
   companionEpoch?: number;
   transplantEpoch?: number;
+  guidance?: GuidanceCast;
   fieldTransplants?: Partial<Record<ExtSlot, FieldTransplantCast>>;
   companionPresses?: Partial<Record<ExtSlot, CompanionCommandCast>>;
   id: EntityId;
@@ -919,7 +920,17 @@ export interface ProjectileImpact {
   overflowShield?: boolean;
 }
 
+export interface GuidanceCast {
+  ownerId: EntityId;
+  ownerClass: ClassId;
+  source: import('../content/classes').PlayerAbilityDef;
+  slot: ExtSlot;
+  remaining: number;
+  angle: number;
+  activeTick: number;
+}
 export interface Projectile {
+  guidance?: GuidanceCast;
   companionCommand?: CompanionCommandCast;
   returningShot?: {
     phase: 'out' | 'back';
@@ -1480,6 +1491,7 @@ export type GameEvent =
   | { t: 'revive'; id: EntityId; pos: Vec2 }
   | { t: 'downed'; id: EntityId; pos: Vec2 }
   | { t: 'dodge'; id: EntityId; pos: Vec2 }
+  | { t: 'spellGuidance'; pos: Vec2 }
   | { t: 'silenceBreak'; pos: Vec2 }
   | { t: 'fieldDispel'; pos: Vec2; radius: number }
   | { t: 'blink'; id: EntityId; from: Vec2; to: Vec2 }
@@ -1589,6 +1601,7 @@ export interface PlayerView {
     slot: ExtSlot;
     blocked: string | null;
   };
+  guidance?: { remaining: number; slot: ExtSlot; angle: number; name: string };
   wardingSlots?: ExtSlot[];
   dispelFields?: { id: EntityId; pos: Vec2; radius: number }[];
   fieldTransplants?: FieldTransplantView[];
@@ -1690,6 +1703,7 @@ export interface AddView {
 }
 
 export interface ProjectileView {
+  guidance?: { remaining: number; angle: number };
   returnPhase?: 'out' | 'back';
   returnTurn?: boolean;
   id: EntityId;

@@ -26,6 +26,7 @@ import {
   previewSubAbility,
 } from '../src/engine/content/charUpgrades';
 import {
+  grandEligible,
   grandCategory,
   grandSlot,
   normalizeGrandLoadout,
@@ -440,7 +441,10 @@ describe('Mage/Sorcerer authored builds', () => {
                 expect(getCharUpgrade(`${first.id}_g`)!.desc).toContain(
                   getSubSkill(first.id)!.name,
                 );
-              expect(p.grandLoadout!.classes[classId]!.equipped).toHaveLength(4);
+              expect(p.grandLoadout!.classes[classId]!.bank).toHaveLength(4);
+              expect(p.grandLoadout!.classes[classId]!.equipped).toHaveLength(
+                grandEligible(identity.id, classId, context) ? 4 : 3,
+              );
               for (const ab of [...Object.values(p.abilities!), p.subAbilities!.sub1!]) {
                 expect(JSON.stringify(ab), `${seed}/${first.id}/${identity.id}`).not.toContain(
                   'null',

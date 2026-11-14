@@ -1,3 +1,9 @@
+import {
+  advanceGuidance,
+  steerProjectile,
+  guidanceView,
+  guidedProjectileView,
+} from '../combat/guidance';
 import { wardingViews, wardingSlots, carriesDispel } from '../combat/warding';
 import {
   reserveFieldTransplant,
@@ -1224,7 +1230,10 @@ export class World {
   // -------------------------------------------------------------------------
 
   step(dt: number, inputs: Map<string, InputCommand>): void {
-    if (this.finished) return;
+    if (this.finished) {
+      advanceGuidance(this, 0);
+      return;
+    }
     this.events = [];
     this.huntWalks.clear();
     this.elapsed += dt;
@@ -1614,6 +1623,7 @@ export class World {
     p.palmEpoch = (p.palmEpoch ?? 0) + 1;
     p.shadowCommitEpoch = (p.shadowCommitEpoch ?? 0) + 1;
     p.transplantEpoch = (p.transplantEpoch ?? 0) + 1;
+    delete p.guidance;
     delete p.fieldTransplants;
     p.companionEpoch = (p.companionEpoch ?? 0) + 1;
     delete p.companionPresses;
@@ -1744,8 +1754,10 @@ export class World {
   // -------------------------------------------------------------------------
 
   private updateProjectiles(dt: number): void {
+    advanceGuidance(this, dt);
     const keep: Projectile[] = [];
     for (const proj of this.projectiles) {
+      steerProjectile(this, proj);
       const returningDt = prepareReturningStep(this, proj, dt);
       if (returningDt === undefined) continue;
       const routed = stepApertureProjectile(this, proj, returningDt, (shot) =>
@@ -4166,6 +4178,7 @@ export class World {
       ...(Object.keys(infernalClaimTargets).length ? { infernalClaimTargets } : {}),
       waveCover: this.waveCoverView(p),
       maneuver: maneuverView(this, p),
+      guidance: guidanceView(this, p),
       wardingSlots: wardingSlots(p),
       dispelFields: wardingViews(this, p),
       fieldTransplants: fieldTransplantViews(this, p),
@@ -4286,6 +4299,7 @@ export class World {
           pos: { ...p.pos },
           vel: { ...p.vel },
           color: p.color,
+          guidance: guidedProjectileView(this, p),
           returnPhase: p.returningShot?.phase,
           returnTurn: (p.returningShot?.turnFlash ?? 0) > 0 || undefined,
         })),

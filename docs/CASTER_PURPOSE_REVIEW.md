@@ -1,5 +1,8 @@
 # Caster purpose review: reclaiming ground
 
+**Crossing follow-up:** [Spell guidance](CHAOS_CROSSING_GUIDANCE.md) supersedes the
+open Wild B finding below. Implementation is pending owner live acceptance.
+
 **Follow-up:** [Escape and reclaim](WARDING_ESCAPE_FOLLOWUP.md) supersedes the
 ground-only, arrival-only and silence restrictions below after owner testing.
 

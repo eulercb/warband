@@ -61,7 +61,8 @@
     "smoke:returning-shot": "node scripts/smoke-returning-shot.mjs",
     "smoke:companion-hunt": "node scripts/smoke-companion-hunt.mjs",
     "smoke:land-transplant": "node scripts/smoke-land-transplant.mjs",
-    "smoke:warding": "node scripts/smoke-warding.mjs"
+    "smoke:warding": "node scripts/smoke-warding.mjs",
+    "smoke:guidance": "node scripts/smoke-guidance.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",
