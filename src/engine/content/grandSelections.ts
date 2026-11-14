@@ -1,5 +1,5 @@
 /** Versioned earned bank and per-class selections. Never mutate normal upgrade history. */
-import { guidedSpell } from './guidanceRules';
+import { guidedSpell, guidedBurst } from './guidanceRules';
 import type { AbilitySlot, ClassId } from '../core/types';
 import { CLASS_IDS } from './classes';
 import {
@@ -72,7 +72,7 @@ export function grandEligible(id: string, classId: ClassId, ctx: GrandContext): 
       ![
         ...Object.values(previewAbilityTable(classId, mods)),
         ...bound.map((sid) => previewSubAbility(sid, mods)),
-      ].some((ab) => ab && guidedSpell(ab))
+      ].some((ab) => ab && (guidedSpell(ab) || guidedBurst(ab)))
     )
       return false;
   }

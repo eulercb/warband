@@ -3,6 +3,10 @@ import {
   steerProjectile,
   guidanceView,
   guidedProjectileView,
+  burstControls,
+  burstViews,
+  relayViews,
+  tryDetonateBurst,
 } from '../combat/guidance';
 import { wardingViews, wardingSlots, carriesDispel } from '../combat/warding';
 import {
@@ -538,6 +542,7 @@ export class World {
   bosses: Boss[] = [];
   adds: Add[] = [];
   projectiles: Projectile[] = [];
+  guidedBursts: import('../core/types').GuidanceCast[] = [];
   groundZones: GroundZone[] = [];
   /** Telegraphed delayed strikes not tied to a boss (corruption rain / vents). */
   pendingStrikes: PendingStrike[] = [];
@@ -1511,6 +1516,7 @@ export class World {
   ): void {
     const original = abilityForSlot(p, slot);
     if (!original) return; // sub slot with no bound skill
+    if (tryDetonateBurst(this, p, slot, fresh)) return;
     if (tryApertureEmber(this, p, slot, fresh)) return;
     if (tryFieldTransplant(this, p, slot, fresh)) return;
     if (tryShadowReturn(this, p, slot, fresh)) return;
@@ -1532,6 +1538,7 @@ export class World {
     const ab = {
       ...consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original), this)),
     };
+    ab.guidanceRelayFresh = fresh;
     ab.fieldTransplantCast = reserveFieldTransplant(this, p, original, slot);
     ab.companionCommand = reserveCompanionCommand(p, original, slot, fresh);
     if (resolvedShadowCommit(ab)) ab.castTime = 0;
@@ -1623,6 +1630,7 @@ export class World {
     p.palmEpoch = (p.palmEpoch ?? 0) + 1;
     p.shadowCommitEpoch = (p.shadowCommitEpoch ?? 0) + 1;
     p.transplantEpoch = (p.transplantEpoch ?? 0) + 1;
+    p.castEpoch = (p.castEpoch ?? 0) + 1;
     delete p.guidance;
     delete p.fieldTransplants;
     p.companionEpoch = (p.companionEpoch ?? 0) + 1;
@@ -3792,6 +3800,7 @@ export class World {
           continue;
         }
         invalidateAncestralRelay(p);
+        p.castEpoch = (p.castEpoch ?? 0) + 1;
         p.state = 'downed';
         p.hp = 0;
         p.downedTimer = DOWNED_BLEEDOUT;
@@ -4179,6 +4188,8 @@ export class World {
       waveCover: this.waveCoverView(p),
       maneuver: maneuverView(this, p),
       guidance: guidanceView(this, p),
+      guidedBursts: burstControls(this, p),
+      guidanceRelay: relayViews(this, p),
       wardingSlots: wardingSlots(p),
       dispelFields: wardingViews(this, p),
       fieldTransplants: fieldTransplantViews(this, p),
@@ -4290,6 +4301,7 @@ export class World {
         maxHp: a.maxHp,
         buffs: a.buffs.map(buffView),
       })),
+      guidedBursts: burstViews(this),
       projectiles: this.projectiles
         .filter((p) => !p.apertureTransit)
         .map((p) => ({

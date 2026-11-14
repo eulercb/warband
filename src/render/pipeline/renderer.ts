@@ -1,4 +1,4 @@
-import { drawGuidance } from './guidanceVisuals';
+import { drawGuidance, drawGuidedBurst } from './guidanceVisuals';
 import { drawDispelTarget } from './wardingVisuals';
 import { drawFieldTransplant } from './transplantVisuals';
 import { drawReturningShot } from './returningVisuals';
@@ -688,6 +688,17 @@ export class Renderer {
     for (const z of state.groundZones) {
       drawZone(g, z, this.camera.worldToScreen(z.pos), this.camera.scale);
     }
+    for (const b of state.guidedBursts ?? [])
+      drawGuidedBurst(
+        g,
+        this.camera.worldToScreen(b.pos),
+        b.radius,
+        this.camera.scale,
+        b.remaining,
+        b.angle,
+        b.queued,
+        b.guided,
+      );
   }
 
   /**

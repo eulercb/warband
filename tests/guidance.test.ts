@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { Container, Graphics } from 'pixi.js';
 import { World } from '../src/engine/world/world';
-import { guidedSpell, GUIDANCE_DURATION } from '../src/engine/content/guidanceRules';
+import { guidedSpell, guidedBurst, GUIDANCE_DURATION } from '../src/engine/content/guidanceRules';
 import { guidanceView, guidedProjectileView, launchGuidance } from '../src/engine/combat/guidance';
 import {
   decompose,
@@ -16,7 +16,7 @@ import { describeAbility } from '../src/engine/content/classes';
 import { previewAbilityTable, previewSubAbility } from '../src/engine/content/charUpgrades';
 import { Fx } from '../src/render/overlays/fx';
 import { Camera } from '../src/render/pipeline/camera';
-import { drawGuidance } from '../src/render/pipeline/guidanceVisuals';
+import { drawGuidance, drawGuidedBurst } from '../src/render/pipeline/guidanceVisuals';
 import {
   openInfernalAperture,
   stepApertureProjectile,
@@ -371,7 +371,7 @@ describe('retained guidance payloads', () => {
         ...Object.values(previewAbilityTable('sorcerer', ['so_wild_g_b'])),
         previewSubAbility(picks[1], ['so_wild_g_b']),
       ];
-      const eligible = candidates.some((ab) => ab && guidedSpell(ab));
+      const eligible = candidates.some((ab) => ab && (guidedSpell(ab) || guidedBurst(ab)));
       expect(grandEligible('so_wild_g_b', 'sorcerer', ctx)).toBe(eligible);
       const selected = normalizeGrandLoadout(
         { version: 1, classes: { sorcerer: { bank: ['so_wild_g_b'], equipped: ['so_wild_g_b'] } } },
@@ -405,4 +405,25 @@ describe('retained guidance payloads', () => {
     fx.draw(g, camera);
     expect(g.context.instructions.length).toBe(0);
   });
+});
+
+it('renders queued, steered and ballistic burst footprints and a bounded relay flash', () => {
+  const g = new Graphics(),
+    fx = new Fx(new Container()),
+    camera = new Camera(1280, 800);
+  for (const [queued, guided] of [
+    [false, true],
+    [true, true],
+    [false, false],
+  ]) {
+    g.clear();
+    drawGuidedBurst(g, { x: 100, y: 100 }, 80, 1, 0.8, 0, queued, guided);
+    expect(g.getLocalBounds().width).toBeCloseTo(162);
+  }
+  fx.processEvents([{ t: 'spellRelay', from: { x: 100, y: 100 }, to: { x: 300, y: 100 } }], camera);
+  fx.draw(g, camera);
+  expect(g.context.instructions.length).toBeGreaterThan(0);
+  fx.update(1000);
+  fx.draw(g, camera);
+  expect(g.context.instructions.length).toBe(0);
 });

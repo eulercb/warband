@@ -1,5 +1,9 @@
 # Chaos Crossing: steer the spell
 
+Historical initial delivery (#176), merged and tested. The owner found guidance
+interesting and requested broader kit coverage. See the superseding
+[Tides, Phase and Fortune follow-up](CROSSING_TIDES_FORTUNE.md) for the current rules.
+
 The owner accepted Grand Warding's escape follow-up (#175). This resumes the
 remaining caster finding from [the purpose review](CASTER_PURPOSE_REVIEW.md):
 Chaos Crossing's collection of movement, healing, resistance and slow riders did

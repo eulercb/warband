@@ -104,7 +104,7 @@ export interface HitMods {
     phase?: number;
     echo?: number;
     mark?: number;
-    cast: { spent: boolean; utilitySpent?: boolean; echoSpent?: boolean };
+    cast: import('../core/types').DirectCastToken;
   };
   mark?: { bonus: number; cast: { spent: boolean } };
   melee?: boolean;

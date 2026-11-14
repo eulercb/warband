@@ -1,4 +1,4 @@
-import { GUIDANCE_TEXT } from './guidanceRules';
+import { GUIDANCE_TEXT, guidedBurstFits } from './guidanceRules';
 import { returningShotFits, RETURNING_DAMAGE_TEXT } from './returningRules';
 import { boundedAbility, ordinaryRecharge } from './abilityLimits';
 import { scaleAbsorption } from '../combat/absorption';
@@ -3278,13 +3278,17 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'so_wild_g_b',
     'Chaos Crossing',
     '🌀',
-    'Projectile specials follow your live aim for up to 1.25s after launch, turning at up to 180°/s. Only the latest compatible cast is steered; fans keep their spread',
+    'Steer your latest projectile special. Tides becomes a steerable burst (+15% damage): press again to detonate, or burst after 1.25s. A fresh Arcane Phase gathers and redirects your guided spell once, spending its remaining travel without resetting time',
     (a) => {
-      for (const ab of [a.a1, a.a2, a.a3])
+      for (const ab of [a.a1, a.a2, a.a3]) {
         if (ab.kind === 'projectile' && ab.damage > 0 && !ab.returningShot) ab.guidedShot = true;
+        else if (guidedBurstFits(ab)) ab.guidedBurst = true;
+      }
+      if (a.a3.kind === 'blink') a.a3.guideRelay = true;
     },
     (ab) => {
       if (ab.kind === 'projectile' && ab.damage > 0 && !ab.returningShot) ab.guidedShot = true;
+      else if (guidedBurstFits(ab)) ab.guidedBurst = true;
     },
   ),
 
@@ -6552,7 +6556,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       name: blend(fused.name),
       desc:
         base.id === 'so_wild_g_b'
-          ? `Reforged Chaos Crossing: ${GUIDANCE_TEXT}; requires a retained positive-damage projectile special, excludes returning shots`
+          ? `Reforged Chaos Crossing: ${GUIDANCE_TEXT}; compatible bursts become steerable nuclei (+15% damage, recast to detonate); a retained Blink can relay the latest guided spell once without resetting time or travel`
           : base.id === 'mo_openhand_g_a'
             ? 'Reforged Perfect Harmony: existing Flow preparation lasts 2s longer; direct specials gain 25% damage'
             : base.id === 'mo_openhand_g_b'

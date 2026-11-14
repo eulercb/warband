@@ -193,7 +193,7 @@ function describe(
         color: 0x8eff9b,
         good: true,
         label:
-          'Fortune: next positive direct hit delays enemy wind-ups and weakens their damage; misses and ticks preserve it',
+          'Fortune: next positive direct hit commits one cast; each living foe it hits has delayed wind-ups and weakened damage; misses and ticks preserve readiness',
       };
     case 'luckExposure':
       return {

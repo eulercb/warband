@@ -24,3 +24,22 @@ export function drawGuidance(
     .lineTo(x - dx * 7 * scale + dy * 5 * scale, y - dy * 7 * scale - dx * 5 * scale)
     .stroke({ color: 0xffdc89, width: 2.5 });
 }
+
+/** A moving burst footprint, separate from projectile bodies and hostile telegraphs. */
+export function drawGuidedBurst(
+  g: Graphics,
+  at: Vec2,
+  radius: number,
+  scale: number,
+  remaining: number,
+  angle: number,
+  queued: boolean,
+  guided: boolean,
+): void {
+  const color = queued ? 0xfff5ce : guided ? 0xffdc89 : 0x9bb8ff;
+  g.circle(at.x, at.y, radius * scale)
+    .fill({ color, alpha: queued ? 0.12 : 0.05 })
+    .stroke({ color, width: 2, alpha: 0.8 });
+  g.circle(at.x, at.y, 8 * scale).fill({ color, alpha: 1 });
+  if (guided) drawGuidance(g, at, angle, remaining, scale, 15);
+}

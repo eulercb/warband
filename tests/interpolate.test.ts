@@ -103,6 +103,7 @@ function mkProjectile(over: Partial<ProjectileView> & Pick<ProjectileView, 'id'>
     side: over.side ?? 'player',
     pos: over.pos ?? { x: 0, y: 0 },
     vel: over.vel ?? { x: 0, y: 0 },
+    guidance: over.guidance,
   };
 }
 
@@ -142,6 +143,7 @@ function mkSnapshot(over: Partial<Snapshot> = {}): Snapshot {
     adds: over.adds ?? [],
     projectiles: over.projectiles ?? [],
     groundZones: over.groundZones ?? [],
+    guidedBursts: over.guidedBursts,
     terrain: over.terrain ?? [],
     obstacles: over.obstacles ?? [],
     events: over.events ?? [],
@@ -862,4 +864,43 @@ describe('SnapshotInterpolator — degenerate bracket + telegraph passthrough', 
     expect(rs.telegraphs?.[0]).toEqual(tele); // same data…
     expect(rs.telegraphs?.[0]).not.toBe(tele); // …but a fresh copy, never aliased
   });
+});
+
+it.each([false, true])('interpolates burst movement but snaps a first relay=%s', (relayed) => {
+  const interp = new SnapshotInterpolator();
+  const burst = {
+    id: 10,
+    ownerId: 1,
+    pos: { x: 100, y: 100 },
+    radius: 100,
+    remaining: 1,
+    angle: 0,
+    queued: false,
+    guided: true,
+    relayed: false,
+  };
+  const guidance = { remaining: 1, angle: 0, relayed: false };
+  pushAt(
+    interp,
+    mkSnapshot({
+      tick: 1,
+      guidedBursts: [burst],
+      projectiles: [mkProjectile({ id: 2, pos: burst.pos, guidance })],
+    }),
+    1000,
+  );
+  pushAt(
+    interp,
+    mkSnapshot({
+      tick: 2,
+      guidedBursts: [{ ...burst, relayed, pos: { x: 300, y: 100 } }],
+      projectiles: [
+        mkProjectile({ id: 2, pos: { x: 300, y: 100 }, guidance: { ...guidance, relayed } }),
+      ],
+    }),
+    1050,
+  );
+  const rs = render(interp, 1025);
+  expect(rs.guidedBursts![0].pos.x).toBeCloseTo(relayed ? 300 : 200);
+  expect(rs.projectiles[0].pos.x).toBeCloseTo(relayed ? 300 : 200);
 });

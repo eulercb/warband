@@ -2004,7 +2004,7 @@ describe('describeCharOffer', () => {
             // of this class — never a re-flavoured bank variant.
             const preview = v.desc.split('Now →').slice(1).join('Now →');
             for (const m of preview.matchAll(/(?:^|·)\s*([^:·]+):/g)) {
-              expect(canon.has(m[1].trim())).toBe(true);
+              expect(canon.has(m[1].trim()), `${id}: ${m[1].trim()}`).toBe(true);
             }
           }
         }

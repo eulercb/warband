@@ -565,6 +565,7 @@ export interface Player {
   spiritCompanion?: SpiritCompanion;
   companionEpoch?: number;
   transplantEpoch?: number;
+  castEpoch?: number;
   guidance?: GuidanceCast;
   fieldTransplants?: Partial<Record<ExtSlot, FieldTransplantCast>>;
   companionPresses?: Partial<Record<ExtSlot, CompanionCommandCast>>;
@@ -920,7 +921,37 @@ export interface ProjectileImpact {
   overflowShield?: boolean;
 }
 
+/** Shared by every direct contact from one cast; never serialized. */
+export interface DirectCastToken {
+  spent: boolean;
+  utilitySpent?: boolean;
+  echoSpent?: boolean;
+  ownerId?: EntityId;
+  ownerClass?: ClassId;
+  epoch?: number;
+  source?: import('../content/classes').PlayerAbilityDef;
+  slot?: ExtSlot;
+  fortune?:
+    | false
+    | {
+        ownerId: EntityId;
+        ownerClass: ClassId;
+        epoch: number;
+        luck: NonNullable<Buff['fortune']>;
+        targets: Set<EntityId>;
+      };
+}
 export interface GuidanceCast {
+  ownerEpoch: number;
+  relayed?: boolean;
+  burst?: {
+    id: EntityId;
+    pos: Vec2;
+    travelLeft: number;
+    payload: import('../content/classes').PlayerAbilityDef;
+    age: number;
+    requested: boolean;
+  };
   ownerId: EntityId;
   ownerClass: ClassId;
   source: import('../content/classes').PlayerAbilityDef;
@@ -998,7 +1029,7 @@ export interface Projectile {
   preparedInvulnOnHit?: number;
   echoFraction?: number;
   markOnPreparedHit?: number;
-  pilotCast?: { spent: boolean; utilitySpent?: boolean; echoSpent?: boolean };
+  pilotCast?: DirectCastToken;
   mark?: { bonus: number; cast: { spent: boolean } };
   preparedRefund?: number;
   refundCast?: { spent: boolean };
@@ -1491,6 +1522,7 @@ export type GameEvent =
   | { t: 'revive'; id: EntityId; pos: Vec2 }
   | { t: 'downed'; id: EntityId; pos: Vec2 }
   | { t: 'dodge'; id: EntityId; pos: Vec2 }
+  | { t: 'spellRelay'; from: Vec2; to: Vec2 }
   | { t: 'spellGuidance'; pos: Vec2 }
   | { t: 'silenceBreak'; pos: Vec2 }
   | { t: 'fieldDispel'; pos: Vec2; radius: number }
@@ -1602,6 +1634,8 @@ export interface PlayerView {
     blocked: string | null;
   };
   guidance?: { remaining: number; slot: ExtSlot; angle: number; name: string };
+  guidedBursts?: { slot: ExtSlot; remaining: number; queued: boolean; blocked: string | null }[];
+  guidanceRelay?: Partial<Record<ExtSlot, { available: boolean }>>;
   wardingSlots?: ExtSlot[];
   dispelFields?: { id: EntityId; pos: Vec2; radius: number }[];
   fieldTransplants?: FieldTransplantView[];
@@ -1702,8 +1736,19 @@ export interface AddView {
   buffs: BuffView[];
 }
 
+export interface GuidedBurstView {
+  id: EntityId;
+  ownerId: EntityId;
+  pos: Vec2;
+  radius: number;
+  remaining: number;
+  angle: number;
+  queued: boolean;
+  guided: boolean;
+  relayed?: boolean;
+}
 export interface ProjectileView {
-  guidance?: { remaining: number; angle: number };
+  guidance?: { remaining: number; angle: number; relayed?: boolean };
   returnPhase?: 'out' | 'back';
   returnTurn?: boolean;
   id: EntityId;
@@ -1743,6 +1788,7 @@ export interface Snapshot {
   /** Every living-or-dying boss in the arena (twin encounters ship several). */
   bosses: BossView[];
   adds: AddView[];
+  guidedBursts?: GuidedBurstView[];
   projectiles: ProjectileView[];
   groundZones: ZoneView[];
   apparitions?: ApparitionView[];
@@ -1771,6 +1817,7 @@ export interface RenderState {
   players: PlayerView[];
   bosses: BossView[];
   adds: AddView[];
+  guidedBursts?: GuidedBurstView[];
   projectiles: ProjectileView[];
   groundZones: ZoneView[];
   apparitions?: ApparitionView[];
