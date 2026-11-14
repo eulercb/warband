@@ -7,7 +7,9 @@ const browser = await chromium.launch({
 });
 try {
   for (const width of [1280, 320])
-    for (const mode of ['tides', 'forge', 'relay', 'fortune']) {
+    for (const mode of ['tides', 'forge', 'relay', 'fortune'].filter(
+      (mode) => !process.env.SMOKE_CROSSING_MODE || mode === process.env.SMOKE_CROSSING_MODE,
+    )) {
       const page = await browser.newPage({
         viewport: { width, height: width === 320 ? 568 : 800 },
         isMobile: width === 320,
@@ -158,15 +160,26 @@ try {
           }
           function step(dt = 0.01) {
             const s =
-              width === 320
-                ? sampleTouch()
-                : keyboard.sample({ x: innerWidth / 2, y: innerHeight / 2 });
+              width === 320 ? sampleTouch() : keyboard.sample(renderer.worldToScreen(p.pos));
             w.step(
               dt,
               new Map([
                 [
                   'a',
-                  { seq: w.tick, move: s.move, aim: s.aim, buttons: s.buttons, autofire: false },
+                  {
+                    seq: w.tick,
+                    move: s.move,
+                    aim: s.aim,
+                    aimPoint:
+                      s.pointerDistance === undefined
+                        ? undefined
+                        : {
+                            x: p.pos.x + (s.aim.x * s.pointerDistance) / renderer.camera.scale,
+                            y: p.pos.y + (s.aim.y * s.pointerDistance) / renderer.camera.scale,
+                          },
+                    buttons: s.buttons,
+                    autofire: false,
+                  },
                 ],
               ]),
             );
@@ -194,12 +207,53 @@ try {
         await page.evaluate(() => window.cross.step(0.001));
       };
       // Default right aim comes from the real controls; avoid the touch aim stick's basic-fire side effect during Fortune setup.
-      await page.mouse.move(width / 2 + 140, (width === 320 ? 568 : 800) / 2);
+      const initialAim = await page.evaluate(() => {
+        const g = window.cross;
+        return g.renderer.worldToScreen(g.p.pos);
+      });
+      await page.mouse.move(initialAim.x + 140, initialAim.y);
       const slot = await page.evaluate(() => window.cross.slot);
+      const aim = async (dx, dy) => {
+        if (width === 320) {
+          const box = await page.locator('.wb-touch-stick-right').boundingBox();
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+          await page.mouse.down();
+          await page.mouse.move(box.x + box.width / 2 + dx * 35, box.y + box.height / 2 + dy * 35);
+          await page.evaluate(() => window.cross.step());
+          await page.mouse.up();
+        } else {
+          const at = await page.evaluate(() => {
+            const g = window.cross;
+            return g.renderer.worldToScreen(g.p.pos);
+          });
+          await page.mouse.move(at.x + dx * 140, at.y + dy * 140);
+          await page.evaluate(() => window.cross.step());
+        }
+      };
+      if (mode !== 'fortune' && mode !== 'forge') {
+        await aim(-1, 0);
+        await press('a3');
+        await page.evaluate(() => {
+          const g = window.cross;
+          if (!g.p.phaseOrigin || !window.crossRemote.players[0].guidanceOrigin)
+            throw Error('No replicated departure origin');
+          g.departure = { ...g.p.phaseOrigin.pos };
+        });
+        await page.screenshot({
+          path: `${process.env.SHOT_DIR || '/tmp'}/phase-origin-${width}-${mode}.png`,
+        });
+      }
+      if (mode !== 'fortune' && mode !== 'forge') await aim(1, 0);
       await press(slot);
       await page.evaluate(() => {
         const g = window.cross;
         for (let i = 0; i < 100 && g.p.castTimer > 0; i++) g.step();
+        if (g.departure) {
+          if (g.p.phaseOrigin || !g.p.guidance?.origin)
+            throw Error('Origin not spent by guided release');
+          if (g.p.guidance.origin.x !== g.departure.x || g.p.guidance.origin.y !== g.departure.y)
+            throw Error('Wrong release origin');
+        }
       });
       if (mode === 'fortune') {
         await press('sub2');
@@ -232,21 +286,6 @@ try {
             : { ...g.w.projectiles.find((q) => q.guidance === g.c).pos };
           g.time = g.c.remaining;
         });
-        if (mode !== 'forge') {
-          await press('a3');
-          await page.evaluate(() => {
-            const g = window.cross;
-            if (!g.c.relayed) throw Error('Phase did not relay');
-            if (g.c.remaining >= g.time) throw Error('Relay reset lifetime');
-            const remote = window.crossRemote;
-            if (
-              g.c.burst
-                ? !remote.guidedBursts[0].relayed
-                : !remote.projectiles.some((q) => q.guidance?.relayed)
-            )
-              throw Error('Relay was not replicated');
-          });
-        }
         if (mode !== 'relay') {
           const label =
             width === 320

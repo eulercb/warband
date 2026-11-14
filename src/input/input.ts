@@ -122,6 +122,9 @@ export class InputManager {
     }
 
     return {
+      ...(state.pointerDistance !== undefined
+        ? { pointerDistance: Math.max(0, safe(state.pointerDistance)) }
+        : {}),
       move: { x: mx, y: my },
       aim: { x: ax, y: ay },
       buttons: {

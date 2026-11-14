@@ -211,7 +211,8 @@ export interface PlayerAbilityDef {
   guidedShot?: boolean;
   guidedBurst?: boolean;
   guideRelay?: boolean;
-  guidanceRelayFresh?: boolean;
+  guidanceOriginFresh?: boolean;
+  guidanceOrigin?: Vec2;
   guidanceCast?: import('../core/types').GuidanceCast;
   /** Extra damage against currently slowed, rooted or stunned enemies. */
   controlDamageBonus?: number;

@@ -204,6 +204,13 @@ export default function GameView() {
         const suppress = frozen || g.open;
         const cmd: InputCommand = {
           seq,
+          aimPoint:
+            lp && sampled.pointerDistance !== undefined
+              ? {
+                  x: lp.pos.x + (sampled.aim.x * sampled.pointerDistance) / renderer.camera.scale,
+                  y: lp.pos.y + (sampled.aim.y * sampled.pointerDistance) / renderer.camera.scale,
+                }
+              : undefined,
           move: suppress ? { x: 0, y: 0 } : sampled.move,
           aim: g.open ? { x: 0, y: 0 } : sampled.aim,
           buttons: suppress ? { ...NEUTRAL_BUTTONS } : sampled.buttons,

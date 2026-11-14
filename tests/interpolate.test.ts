@@ -866,7 +866,7 @@ describe('SnapshotInterpolator — degenerate bracket + telegraph passthrough', 
   });
 });
 
-it.each([false, true])('interpolates burst movement but snaps a first relay=%s', (relayed) => {
+it('interpolates ordinary burst and guided projectile movement', () => {
   const interp = new SnapshotInterpolator();
   const burst = {
     id: 10,
@@ -877,9 +877,8 @@ it.each([false, true])('interpolates burst movement but snaps a first relay=%s',
     angle: 0,
     queued: false,
     guided: true,
-    relayed: false,
   };
-  const guidance = { remaining: 1, angle: 0, relayed: false };
+  const guidance = { remaining: 1, angle: 0 };
   pushAt(
     interp,
     mkSnapshot({
@@ -893,14 +892,12 @@ it.each([false, true])('interpolates burst movement but snaps a first relay=%s',
     interp,
     mkSnapshot({
       tick: 2,
-      guidedBursts: [{ ...burst, relayed, pos: { x: 300, y: 100 } }],
-      projectiles: [
-        mkProjectile({ id: 2, pos: { x: 300, y: 100 }, guidance: { ...guidance, relayed } }),
-      ],
+      guidedBursts: [{ ...burst, pos: { x: 300, y: 100 } }],
+      projectiles: [mkProjectile({ id: 2, pos: { x: 300, y: 100 }, guidance: { ...guidance } })],
     }),
     1050,
   );
   const rs = render(interp, 1025);
-  expect(rs.guidedBursts![0].pos.x).toBeCloseTo(relayed ? 300 : 200);
-  expect(rs.projectiles[0].pos.x).toBeCloseTo(relayed ? 300 : 200);
+  expect(rs.guidedBursts![0].pos.x).toBeCloseTo(200);
+  expect(rs.projectiles[0].pos.x).toBeCloseTo(200);
 });

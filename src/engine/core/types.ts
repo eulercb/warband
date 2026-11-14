@@ -567,6 +567,14 @@ export interface Player {
   transplantEpoch?: number;
   castEpoch?: number;
   guidance?: GuidanceCast;
+  aimPoint?: Vec2;
+  phaseOrigin?: {
+    pos: Vec2;
+    remaining: number;
+    slot: ExtSlot;
+    source: import('../content/classes').PlayerAbilityDef;
+    epoch: number;
+  };
   fieldTransplants?: Partial<Record<ExtSlot, FieldTransplantCast>>;
   companionPresses?: Partial<Record<ExtSlot, CompanionCommandCast>>;
   id: EntityId;
@@ -942,8 +950,8 @@ export interface DirectCastToken {
       };
 }
 export interface GuidanceCast {
+  origin?: Vec2;
   ownerEpoch: number;
-  relayed?: boolean;
   burst?: {
     id: EntityId;
     pos: Vec2;
@@ -962,6 +970,14 @@ export interface GuidanceCast {
 }
 export interface Projectile {
   guidance?: GuidanceCast;
+  aimPoint?: Vec2;
+  phaseOrigin?: {
+    pos: Vec2;
+    remaining: number;
+    slot: ExtSlot;
+    source: import('../content/classes').PlayerAbilityDef;
+    epoch: number;
+  };
   companionCommand?: CompanionCommandCast;
   returningShot?: {
     phase: 'out' | 'back';
@@ -1429,6 +1445,7 @@ export interface ButtonState {
 /** Per-frame unified input produced by keyboard/gamepad. Buttons are HELD state;
  * edges are detected host-side per sim tick. */
 export interface InputState {
+  pointerDistance?: number;
   move: Vec2; // magnitude 0..1
   aim: Vec2; // unit vector
   buttons: ButtonState;
@@ -1436,6 +1453,7 @@ export interface InputState {
 
 /** Networked input command (client -> host). */
 export interface InputCommand {
+  aimPoint?: Vec2;
   seq: number;
   move: Vec2;
   aim: Vec2;
@@ -1522,7 +1540,7 @@ export type GameEvent =
   | { t: 'revive'; id: EntityId; pos: Vec2 }
   | { t: 'downed'; id: EntityId; pos: Vec2 }
   | { t: 'dodge'; id: EntityId; pos: Vec2 }
-  | { t: 'spellRelay'; from: Vec2; to: Vec2 }
+  | { t: 'phaseOrigin'; from: Vec2; to: Vec2 }
   | { t: 'spellGuidance'; pos: Vec2 }
   | { t: 'silenceBreak'; pos: Vec2 }
   | { t: 'fieldDispel'; pos: Vec2; radius: number }
@@ -1635,7 +1653,7 @@ export interface PlayerView {
   };
   guidance?: { remaining: number; slot: ExtSlot; angle: number; name: string };
   guidedBursts?: { slot: ExtSlot; remaining: number; queued: boolean; blocked: string | null }[];
-  guidanceRelay?: Partial<Record<ExtSlot, { available: boolean }>>;
+  guidanceOrigin?: { pos: Vec2; target: Vec2; remaining: number; slot: ExtSlot };
   wardingSlots?: ExtSlot[];
   dispelFields?: { id: EntityId; pos: Vec2; radius: number }[];
   fieldTransplants?: FieldTransplantView[];
@@ -1745,10 +1763,9 @@ export interface GuidedBurstView {
   angle: number;
   queued: boolean;
   guided: boolean;
-  relayed?: boolean;
 }
 export interface ProjectileView {
-  guidance?: { remaining: number; angle: number; relayed?: boolean };
+  guidance?: { remaining: number; angle: number };
   returnPhase?: 'out' | 'back';
   returnTurn?: boolean;
   id: EntityId;

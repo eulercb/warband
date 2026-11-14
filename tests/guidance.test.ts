@@ -420,7 +420,10 @@ it('renders queued, steered and ballistic burst footprints and a bounded relay f
     drawGuidedBurst(g, { x: 100, y: 100 }, 80, 1, 0.8, 0, queued, guided);
     expect(g.getLocalBounds().width).toBeCloseTo(162);
   }
-  fx.processEvents([{ t: 'spellRelay', from: { x: 100, y: 100 }, to: { x: 300, y: 100 } }], camera);
+  fx.processEvents(
+    [{ t: 'phaseOrigin', from: { x: 100, y: 100 }, to: { x: 300, y: 100 } }],
+    camera,
+  );
   fx.draw(g, camera);
   expect(g.context.instructions.length).toBeGreaterThan(0);
   fx.update(1000);

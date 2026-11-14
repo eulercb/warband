@@ -5,7 +5,8 @@ import {
   guidedProjectileView,
   burstControls,
   burstViews,
-  relayViews,
+  originView,
+  tryDiscardOrigin,
   tryDetonateBurst,
 } from '../combat/guidance';
 import { wardingViews, wardingSlots, carriesDispel } from '../combat/warding';
@@ -1390,6 +1391,14 @@ export class World {
       // aim (always allowed)
       if (cmd.aim.x !== 0 || cmd.aim.y !== 0) p.aim = normalize(cmd.aim);
 
+      p.aimPoint =
+        cmd.aimPoint &&
+        Number.isFinite(cmd.aimPoint.x) &&
+        Number.isFinite(cmd.aimPoint.y) &&
+        dist(p.pos, cmd.aimPoint) <= 1200
+          ? { ...cmd.aimPoint }
+          : undefined;
+
       // Ephemeral healing vial (item 21) — quaffed with the item button. A
       // consumable, not an ability, so it works even while stunned or mid-cast
       // (a clutch escape). Edge-triggered; inert in the calm reward scene.
@@ -1520,6 +1529,7 @@ export class World {
     if (tryApertureEmber(this, p, slot, fresh)) return;
     if (tryFieldTransplant(this, p, slot, fresh)) return;
     if (tryShadowReturn(this, p, slot, fresh)) return;
+    if (tryDiscardOrigin(this, p, slot, fresh)) return;
     if ((p.cooldowns[slot] ?? 0) > 0) return;
     if (hasBuff(p, 'silence') && slot !== 'basic' && !carriesDispel(original)) return;
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
@@ -1538,7 +1548,7 @@ export class World {
     const ab = {
       ...consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original), this)),
     };
-    ab.guidanceRelayFresh = fresh;
+    ab.guidanceOriginFresh = fresh;
     ab.fieldTransplantCast = reserveFieldTransplant(this, p, original, slot);
     ab.companionCommand = reserveCompanionCommand(p, original, slot, fresh);
     if (resolvedShadowCommit(ab)) ab.castTime = 0;
@@ -4189,7 +4199,7 @@ export class World {
       maneuver: maneuverView(this, p),
       guidance: guidanceView(this, p),
       guidedBursts: burstControls(this, p),
-      guidanceRelay: relayViews(this, p),
+      guidanceOrigin: originView(this, p),
       wardingSlots: wardingSlots(p),
       dispelFields: wardingViews(this, p),
       fieldTransplants: fieldTransplantViews(this, p),

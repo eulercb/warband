@@ -1,4 +1,4 @@
-import { launchGuidance, launchGuidedBurst, relayGuidance } from './guidance';
+import { launchGuidance, launchGuidedBurst, armPhaseOrigin, takeGuidanceOrigin } from './guidance';
 import { blinkArrival, dispelArrivalField } from './warding';
 import { registerTransplant } from './fieldTransplant';
 import { SHADOW_COMMIT_DAMAGE } from '../content/shadowRules';
@@ -502,6 +502,7 @@ export function resolvePlayerAbility(
     charge.closeBurst = { ...ab.closeBurst };
     applyBuff(p, charge);
   }
+  ab.guidanceOrigin = takeGuidanceOrigin(world, p, ab);
   const aimAngle = angleOf(ab.flowAim ?? ab.palmSweepCast?.aim ?? p.aim);
   const color = CLASS_COLORS[p.classId] ?? 0xffffff;
   ab.guidanceCast = launchGuidance(world, p, ab, slot, ab.flowAim ?? p.aim);
@@ -623,7 +624,7 @@ export function resolvePlayerAbility(
         resolveInfernalClaim(world, p, ab);
         break;
       }
-      if (launchGuidedBurst(world, p, ab, p.pos)) break;
+      if (launchGuidedBurst(world, p, ab, ab.guidanceOrigin ?? p.pos)) break;
       const sweeping = startPalmSweep(world, p, ab);
       if (!commitShadow(world, p, ab, ab.slot, p.pos, p.aim))
         resolveBurstAt(
@@ -656,7 +657,7 @@ export function resolvePlayerAbility(
       if (ab.swap) dimensionDoor(world, p, target, ab.radius ?? 220);
       else p.pos = clampToArena(world, target, p.radius);
       dispelArrivalField(world, p, ab, from);
-      relayGuidance(world, p, ab, from);
+      armPhaseOrigin(world, p, ab, from);
       if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
       if (ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
       prepareSpellSurge(p, ab);
@@ -1132,7 +1133,7 @@ function resolveComposedAbility(
       const origin = ancestralOrigin(world, p, ab),
         sweeping = startPalmSweep(world, p, ab);
       if (
-        !launchGuidedBurst(world, p, ab, origin) &&
+        !launchGuidedBurst(world, p, ab, ab.guidanceOrigin ?? origin) &&
         !commitShadow(world, p, ab, ab.slot, origin, p.aim)
       )
         resolveBurstAt(world, p, ab, origin, sweeping ? p.glide!.palmSweep!.hitIds : undefined);
@@ -1229,7 +1230,7 @@ function resolveComposedAbility(
         if (ab.swap) dimensionDoor(world, p, target, ab.radius ?? 220);
         else p.pos = clampToArena(world, target, p.radius);
         dispelArrivalField(world, p, ab, from);
-        relayGuidance(world, p, ab, from);
+        armPhaseOrigin(world, p, ab, from);
         if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
         prepareSpellSurge(p, ab);
         prepareMartialFlow(p, ab);
@@ -1418,7 +1419,7 @@ function spawnPlayerProjectile(
   dir: Vec2,
   o: SpawnProjOpts,
 ): void {
-  const origin = vadd(p.pos, vscale(dir, p.radius + 4));
+  const origin = vadd(o.returningSource?.guidanceOrigin ?? p.pos, vscale(dir, p.radius + 4));
   const proj: Projectile = {
     guidance: o.returningSource?.guidanceCast,
     id: world.allocId(),

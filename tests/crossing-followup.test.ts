@@ -13,7 +13,7 @@ import { guidedBurst, guideRelay } from '../src/engine/content/guidanceRules';
 import {
   burstControls,
   burstViews,
-  relayViews,
+  originView,
   tryDetonateBurst,
 } from '../src/engine/combat/guidance';
 import { damageBoss, damageAdd, makeBuff } from '../src/engine/combat/combat';
@@ -185,69 +185,6 @@ it.each(['down', 'class', 'source', 'finish'] as const)(
     expect(b.hp).toBe(hp);
   },
 );
-it('Phase relays existing fan shots once, preserving timers, damage, cast tokens and hit history', () => {
-  const { w, p } = setup(['so_wild_g_b'], 'so_wild_surge');
-  cast(w, 'a2');
-  cast(w, 'sub1');
-  const c = p.guidance!,
-    shots = w.projectiles.filter((q) => q.guidance === c);
-  const before = shots.map((q) => ({
-    q,
-    range: q.rangeLeft,
-    life: q.lifetime,
-    damage: q.damage,
-    token: q.pilotCast,
-  }));
-  for (const q of shots) q.hitIds = [777];
-  expect(relayViews(w, p).a3?.available).toBe(true);
-  const remaining = c.remaining;
-  step(w, 'a3', up);
-  expect(c.relayed).toBe(true);
-  expect(w.projectiles.filter((q) => q.guidance === c)).toHaveLength(shots.length);
-  expect(c.remaining).toBeCloseTo(remaining - 0.01);
-  for (const item of before) {
-    expect(item.q.damage).toBe(item.damage);
-    expect(item.q.pilotCast).toBe(item.token);
-    expect(item.q.hitIds).toEqual([777]);
-    expect(item.q.rangeLeft).toBeLessThan(item.range);
-    expect(item.q.lifetime).toBeCloseTo(item.life - 0.01);
-  }
-  expect(relayViews(w, p).a3).toBeUndefined();
-});
-it('insufficient budget fails the whole relay while Phase still escapes; held activation also leaves it alone', () => {
-  for (const held of [false, true]) {
-    const { w, p } = setup(['so_wild_g_b'], 'so_wild_surge');
-    cast(w, 'sub1');
-    const c = p.guidance!,
-      shots = w.projectiles.filter((q) => q.guidance === c);
-    if (!held) shots[0].rangeLeft = 20;
-    else p.prevButtons.a3 = true;
-    expect(relayViews(w, p).a3?.available).toBe(held);
-    const from = { ...p.pos };
-    step(w, 'a3', up, 0.01, held);
-    expect(p.pos.y).toBeGreaterThan(from.y);
-    expect(c.relayed).toBeUndefined();
-    expect(shots[1].pos.y).toBeLessThan(p.pos.y);
-  }
-});
-it('Phase can relay a nucleus without resetting its age/minimum detonation or adding travel', () => {
-  const { w, p } = setup();
-  step(w, 'sub1');
-  const c = p.guidance!,
-    b = c.burst!;
-  step(w, undefined, right, 0.1);
-  const age = b.age,
-    range = b.travelLeft;
-  step(w, 'a3', right);
-  expect(c.relayed).toBe(true);
-  expect(b.age).toBeCloseTo(age + 0.01);
-  expect(b.travelLeft).toBeLessThan(range);
-  expect(b.pos.x).toBeGreaterThan(p.pos.x);
-  step(w, 'sub1');
-  step(w, undefined, right, 0.5);
-  expect(w.guidedBursts).toHaveLength(0);
-  expect(b.age).toBeCloseTo(0.2);
-});
 it('a relayed nucleus with exhausted travel hovers until its remaining lifetime ends', () => {
   const { w, p } = setup();
   step(w, 'sub1');
@@ -278,7 +215,7 @@ it('copied burst/relay effects are fitted, priced, refreshed and described throu
   expect(
     componentValue(pc) -
       componentValue({ ...pc, effects: pc.effects.filter((e) => e.kind !== 'guideRelay') }),
-  ).toBe(24);
+  ).toBe(32);
   let burst, relay;
   for (let seed = 0; seed < 32 && (!burst || !relay); seed++) {
     const donors = [
@@ -310,14 +247,18 @@ it('copied burst/relay effects are fitted, priced, refreshed and described throu
   }
   if (!burst || !relay) throw new Error('Synthesis did not retain the required controllers');
   expect(describeAbility(burst)).toContain('+15%');
-  expect(describeAbility(relay)).toContain('no time reset');
-  // Execute the actually synthesized Blink controller on the copied nucleus.
+  expect(describeAbility(relay)).toContain('departure origin');
   p.abilities!.a3 = relay;
   p.cooldowns.a3 = 0;
-  const controlled = p.guidance!;
   step(w, 'a3', right);
-  expect(controlled.relayed).toBe(true);
-  expect(w.events.some((e) => e.t === 'spellRelay')).toBe(true);
+  const anchor = originView(w, p);
+  expect(anchor).toBeDefined();
+  p.abilities!.a1 = burst;
+  step(w); // Source replacement cancels the previous nucleus, not the Phase origin.
+  p.cooldowns.a1 = 0;
+  cast(w, 'a1');
+  expect(p.guidance?.origin).toEqual(anchor?.pos);
+  expect(p.phaseOrigin).toBeUndefined();
 });
 it.each(['projectile', 'groundZone', 'selfBuff'] as const)(
   'unsupported %s conversion loses nucleus behavior rather than executing hidden flat flags',
@@ -518,10 +459,160 @@ it('hides invalid nuclei immediately and preserves heading when live aim is neut
   w.removePlayerByPeer(p.peerId);
   expect(burstViews(w)).toEqual([]);
 });
-it('does not offer relay when no eligible projectile remains', () => {
+
+it('Phase escapes first; the next guided cast launches and steers toward a live world reticle from departure', () => {
   const { w, p } = setup();
-  cast(w, 'a1');
-  expect(relayViews(w, p).a3).toBeDefined();
-  for (const q of w.projectiles) q.rangeLeft = 0;
-  expect(relayViews(w, p).a3).toBeUndefined();
+  const departure = { ...p.pos };
+  step(w, 'a3', up);
+  expect(originView(w, p)?.pos).toEqual(departure);
+  expect(p.pos.y).toBeGreaterThan(departure.y);
+  const target = { x: 900, y: 400 };
+  p.aimPoint = target;
+  // Drive the real host input with a world-space pointer, including wind-up.
+  const press = (down: boolean, point = target) =>
+    w.step(
+      0.01,
+      new Map([
+        [
+          'a',
+          {
+            seq: w.tick,
+            move: zero,
+            aim: right,
+            aimPoint: point,
+            buttons: { basic: false, a1: down, a2: false, a3: false, revive: false },
+          },
+        ],
+      ]),
+    );
+  press(true);
+  for (let i = 0; i < 100 && p.castTimer > 0; i++) press(false);
+  expect(p.phaseOrigin).toBeUndefined();
+  const c = p.guidance!,
+    q = w.projectiles.find((q) => q.guidance === c)!;
+  expect(c.origin).toEqual(departure);
+  expect(Math.abs(q.pos.y - departure.y)).toBeLessThan(5);
+  expect(Math.atan2(q.vel.y, q.vel.x) - (q.spreadOffset ?? 0)).toBeCloseTo(0);
+  press(false, { x: 900, y: 800 });
+  expect(c.angle).toBeGreaterThan(0);
+});
+it('one origin can route Tides, while basics and utility do not consume it', () => {
+  const { w, p } = setup();
+  const from = { ...p.pos };
+  step(w, 'a3', up);
+  cast(w, 'basic');
+  step(w);
+  cast(w, 'a2');
+  step(w);
+  expect(p.phaseOrigin).toBeDefined();
+  step(w, 'sub1', right);
+  expect(p.guidance!.origin).toEqual(from);
+  expect(Math.abs(p.guidance!.burst!.pos.y - from.y)).toBeLessThan(3);
+  expect(p.phaseOrigin).toBeUndefined();
+});
+it('cooldown recast discards the origin; a ready Phase always escapes and replaces it', () => {
+  const { w, p } = setup();
+  step(w, 'a3');
+  step(w);
+  expect(originView(w, p)).toBeDefined();
+  const pos = { ...p.pos },
+    cd = p.cooldowns.a3;
+  step(w, 'a3');
+  expect(originView(w, p)).toBeUndefined();
+  expect(p.pos).toEqual(pos);
+  expect(p.cooldowns.a3).toBeCloseTo(cd - 0.01);
+  step(w);
+  p.cooldowns.a3 = 0;
+  step(w, 'a3');
+  step(w);
+  const old = { ...p.pos };
+  p.cooldowns.a3 = 0;
+  step(w, 'a3', up);
+  expect(p.pos.y).toBeGreaterThan(old.y);
+  expect(originView(w, p)?.pos).toEqual(old);
+});
+it('held Phase clears old origins without arming another; expiry, tether and class changes fall back to normal casts', () => {
+  for (const mode of ['held', 'expiry', 'tether', 'class']) {
+    const { w, p } = setup();
+    step(w, 'a3');
+    if (mode === 'held') {
+      p.cooldowns.a3 = 0;
+      step(w, 'a3', up, 0.01, true);
+    }
+    if (mode === 'expiry') for (let i = 0; i < 410; i++) step(w);
+    if (mode === 'tether') p.pos.x += 700;
+    if (mode === 'class') {
+      w.setActiveClass(p, 'mage');
+      w.setActiveClass(p, 'sorcerer');
+    }
+    expect(originView(w, p)).toBeUndefined();
+    step(w);
+    cast(w, 'a1');
+    expect(p.guidance?.origin).toBeUndefined();
+  }
+});
+
+it('origin ownership ends on downing, source replacement, finish and disconnect', () => {
+  for (const mode of ['down', 'source', 'finish', 'disconnect']) {
+    const { w, p } = setup();
+    step(w, 'a3');
+    if (mode === 'down') p.hp = 0;
+    if (mode === 'source') p.abilities!.a3 = { ...p.abilities!.a3 };
+    if (mode === 'finish') w.finished = true;
+    if (mode === 'disconnect') w.removePlayerByPeer(p.peerId);
+    if (mode !== 'disconnect') expect(originView(w, p)).toBeUndefined();
+    step(w);
+    expect(w.serialize().players.some((p) => p.guidanceOrigin)).toBe(false);
+  }
+});
+it('invalid network reticles use the projected fallback without introducing non-finite aim', () => {
+  const { w, p } = setup();
+  step(w, 'a3', up);
+  step(w);
+  w.step(
+    0.01,
+    new Map([
+      [
+        'a',
+        {
+          seq: w.tick,
+          move: zero,
+          aim: right,
+          aimPoint: { x: NaN, y: Infinity },
+          buttons: { basic: false, a1: false, a2: false, a3: false, revive: false },
+        },
+      ],
+    ]),
+  );
+  expect(p.aimPoint).toBeUndefined();
+  const view = originView(w, p)!;
+  expect(view.target.x).toBeCloseTo(p.pos.x + 400);
+  expect(view.target.y).toBe(p.pos.y);
+});
+
+it('a reticle exactly on departure keeps a finite heading at launch and during steering', () => {
+  const { w, p } = setup();
+  const departure = { ...p.pos };
+  step(w, 'a3', up);
+  step(w);
+  const buttons = { basic: false, a1: false, a2: false, a3: false, revive: false, sub1: true };
+  w.step(
+    0.01,
+    new Map([['a', { seq: w.tick, move: zero, aim: right, aimPoint: departure, buttons }]]),
+  );
+  const c = p.guidance!;
+  expect(c.origin).toEqual(departure);
+  expect(c.angle).toBe(0);
+  buttons.sub1 = false;
+  w.step(0.1, new Map([['a', { seq: w.tick, move: zero, aim: up, aimPoint: departure, buttons }]]));
+  expect(c.angle).toBe(0);
+  expect(Number.isFinite(c.burst!.pos.x)).toBe(true);
+});
+it('held Phase during cooldown leaves its origin available instead of discarding it', () => {
+  const { w, p } = setup();
+  step(w, 'a3');
+  const origin = p.phaseOrigin;
+  step(w, 'a3', right, 0.1, true);
+  expect(p.phaseOrigin).toBe(origin);
+  expect(originView(w, p)).toBeDefined();
 });

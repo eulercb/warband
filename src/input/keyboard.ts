@@ -162,7 +162,7 @@ export class KeyboardMouse {
       item: down('item'),
     };
 
-    return { move, aim, buttons };
+    return { move, aim, buttons, pointerDistance: Number.isFinite(dist) ? dist : 0 };
   }
 
   dispose(): void {

@@ -356,3 +356,10 @@ describe('InputManager: NaN coercion (safe fallback)', () => {
     expect(Math.hypot(s.aim.x, s.aim.y)).toBeCloseTo(1);
   });
 });
+
+it('preserves mouse pointer distance through source sanitization for remote origins', () => {
+  mouseMove(300, 400);
+  const state = manager.sample(ORIGIN);
+  expect(state.pointerDistance).toBe(500);
+  expect(state.aim).toEqual({ x: 0.6, y: 0.8 });
+});
