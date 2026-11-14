@@ -148,6 +148,13 @@ export class SnapshotInterpolator {
       adds,
       projectiles,
       groundZones,
+      guidedBursts: carry.guidedBursts?.map((b) => ({
+        ...b,
+        pos:
+          b.relayed && !from?.guidedBursts?.find((old) => old.id === b.id)?.relayed
+            ? { ...b.pos }
+            : this.lerpVec(from?.guidedBursts?.find((old) => old.id === b.id)?.pos, b.pos, t),
+      })),
       apparitions: carry.apparitions?.map((a) => ({ ...a, pos: { ...a.pos } })),
       terrain,
       obstacles,
@@ -256,7 +263,10 @@ export class SnapshotInterpolator {
     const prev = from ? indexById(from.projectiles) : null;
     return carry.projectiles.map((pr) => ({
       ...pr,
-      pos: this.lerpVec(prev?.get(pr.id)?.pos, pr.pos, t),
+      pos:
+        pr.guidance?.relayed && !prev?.get(pr.id)?.guidance?.relayed
+          ? { ...pr.pos }
+          : this.lerpVec(prev?.get(pr.id)?.pos, pr.pos, t),
     }));
   }
 

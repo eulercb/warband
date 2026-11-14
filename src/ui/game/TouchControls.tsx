@@ -173,6 +173,8 @@ function TouchButton({
       ? `Return ${reprise.returnRemaining.toFixed(1)}s${reprise.blocked ? ` · ${reprise.blocked}` : ''}`
       : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
     : null;
+  const guidedBurst = useHudStore((s) => s.guidedBursts?.find((b) => b.slot === cdSlot));
+  const spellRelay = useHudStore((s) => (cdSlot ? s.guidanceRelay?.[cdSlot] : undefined));
   const transplant = useHudStore((s) => s.fieldTransplants?.find((t) => t.slot === cdSlot));
   const transplantStatus = transplant
     ? (transplant.blocked ?? `Transplant ${Math.round(transplant.reach)}u ahead`)
@@ -205,6 +207,14 @@ function TouchButton({
   const actionStatus = reprise?.armed
     ? repriseStatus
     : ((ember ? apertureStatus : null) ??
+      (guidedBurst
+        ? (guidedBurst.blocked ?? (guidedBurst.queued ? 'Detonation queued' : 'Burst ready'))
+        : null) ??
+      (spellRelay && remaining <= 0
+        ? spellRelay.available
+          ? 'Relay ready'
+          : 'Relay out of reach'
+        : null) ??
       transplantStatus ??
       apertureStatus ??
       repriseStatus ??
@@ -246,6 +256,7 @@ function TouchButton({
       ref={ref}
       type="button"
       className={`wb-touch-btn wb-touch-btn-${kind}${silence ? ' silenced' : ''}`}
+      data-slot={slot}
       aria-disabled={!!silence}
       data-claim-ready={
         !silence &&
@@ -253,9 +264,11 @@ function TouchButton({
           ? !reprise.blocked
           : ember
             ? !aperture?.blocked
-            : transplant
-              ? !transplant.blocked
-              : false) ||
+            : guidedBurst
+              ? !guidedBurst.blocked
+              : transplant
+                ? !transplant.blocked
+                : false) ||
           (alive && !cooling && claimTarget != null))
           ? true
           : undefined
@@ -272,19 +285,25 @@ function TouchButton({
           }}
         />
       ) : null}
-      <span className={`wb-touch-btn-label${cooling ? ' cooling' : ''}`}>
+      <span className={`wb-touch-btn-label${cooling && !guidedBurst ? ' cooling' : ''}`}>
         {silenceBreak
           ? 'Break silence'
           : reprise?.armed
             ? 'Return'
             : ember
               ? 'Ember'
-              : transplant
-                ? 'Transplant'
-                : label}
+              : guidedBurst
+                ? guidedBurst.queued
+                  ? 'Queued'
+                  : 'Detonate'
+                : transplant
+                  ? 'Transplant'
+                  : label}
       </span>
       {silence && <span className="wb-touch-claim-status">Silenced</span>}
-      {!silence && actionStatus && <span className="wb-touch-claim-status">{actionStatus}</span>}
+      {!silence && actionStatus && (!guidedBurst || guidedBurst.blocked) && (
+        <span className="wb-touch-claim-status">{actionStatus}</span>
+      )}
       {!silence && alive && !cooling && claimTarget !== undefined && (
         <span className={`wb-touch-claim-status${claimTarget === null ? ' blocked' : ''}`}>
           {claimTarget === null ? 'Need target' : 'Target ready'}

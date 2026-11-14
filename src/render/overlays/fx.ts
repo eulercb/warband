@@ -305,6 +305,20 @@ export class Fx {
           });
           break;
         }
+        case 'spellRelay': {
+          this.spawnFloater(e.to, 'RELAY', 0xffdc89);
+          for (const pos of [e.from, e.to])
+            this.spawnBurst(pos, {
+              startR: 8,
+              endR: 40,
+              ttl: 0.4,
+              color: 0xffdc89,
+              alpha0: 0.7,
+              filled: false,
+              lineWidth: 2,
+            });
+          break;
+        }
         case 'spellGuidance': {
           this.spawnFloater(e.pos, 'STEER SPELL', 0xffdc89);
           break;

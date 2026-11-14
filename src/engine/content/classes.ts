@@ -1,4 +1,12 @@
-import { GUIDANCE_TEXT, guidedSpell } from './guidanceRules';
+import {
+  GUIDANCE_TEXT,
+  guidedSpell,
+  guidedBurst,
+  guideRelay,
+  GUIDED_BURST_PREMIUM,
+  GUIDED_BURST_TEXT,
+  GUIDE_RELAY_TEXT,
+} from './guidanceRules';
 import { poisonAllocation, poisonAllocationDescription } from './delayedRules';
 import { returningShotFits, returningShotDescription } from './returningRules';
 import { shadowCommitKind, shadowCommitDescription } from './shadowRules';
@@ -201,6 +209,9 @@ export interface PlayerAbilityDef {
   /** Blink reclaims one field and can break silence for conditional recharge. */
   dispelField?: boolean;
   guidedShot?: boolean;
+  guidedBurst?: boolean;
+  guideRelay?: boolean;
+  guidanceRelayFresh?: boolean;
   guidanceCast?: import('../core/types').GuidanceCast;
   /** Extra damage against currently slowed, rooted or stunned enemies. */
   controlDamageBonus?: number;
@@ -243,7 +254,7 @@ export interface PlayerAbilityDef {
     castSlow?: number;
     castSlowDuration?: number;
   };
-  /** Deterministic luck: next positive direct hit hinders the victim's next actions. */
+  /** The next connecting direct cast hinders each living recipient once. */
   fortune?: {
     duration: number;
     castSlowMult: number;
@@ -264,7 +275,7 @@ export interface PlayerAbilityDef {
   /** Prepared hit marks its target for the owner's next direct hit. */
   markOnPreparedHit?: number;
   /** One shared token for every body struck by a cast, including pierced shots. */
-  pilotCast?: { spent: boolean; utilitySpent?: boolean; echoSpent?: boolean };
+  pilotCast?: import('../core/types').DirectCastToken;
   /** A remote burst centered on a living personally cursed foe. */
   infernalClaim?: boolean;
   /** Forged Claim can brand an aimed foe because the random kit may lack Hex. */
@@ -1329,7 +1340,7 @@ export function describeAbility(
     parts.push(`Heal ${n(def.damage)}`); // heals aren't damage-scaled
   } else if (def.damage > 0) {
     const count = def.projCount ?? 1;
-    const dmg = def.damage * dmgMul;
+    const dmg = def.damage * dmgMul * (guidedBurst(def) ? GUIDED_BURST_PREMIUM : 1);
     parts.push(count > 1 ? `${count}× ${n(dmg)} dmg` : `${n(dmg)} dmg`);
   }
   if (def.landingDamage) parts.push(`${n(def.landingDamage * dmgMul)} landing dmg`);
@@ -1501,7 +1512,7 @@ export function describeAbility(
   if (def.fortune) {
     const f = def.fortune;
     parts.push(
-      `Fortune ${s(f.duration)} — next damaging direct hit delays enemy wind-ups ${n((f.castSlowMult - 1) * 100)}% and weakens their damage ${n((1 - f.damageMult) * 100)}% for ${s(f.debuffDuration)}${f.markBonus ? `; marks that foe for your next direct hit from a later cast +${n(f.markBonus * 100)}% damage within 5s` : ''}`,
+      `Fortune ${s(f.duration)} — next connecting direct cast affects each living foe it hits, delaying enemy wind-ups ${n((f.castSlowMult - 1) * 100)}% and weakening their damage ${n((1 - f.damageMult) * 100)}% for ${s(f.debuffDuration)}${f.markBonus ? `; marks each foe for your next direct hit from a later cast +${n(f.markBonus * 100)}% damage within 5s` : ''}`,
     );
   }
   if (def.infernalAperture) {
@@ -1517,6 +1528,8 @@ export function describeAbility(
     );
   }
   if (guidedSpell(def)) parts.push(GUIDANCE_TEXT);
+  if (guidedBurst(def)) parts.push(GUIDED_BURST_TEXT);
+  if (guideRelay(def)) parts.push(GUIDE_RELAY_TEXT);
   if (def.dispelField && def.kind === 'blink')
     parts.push(
       'dispel one active hostile field you are in (silencing threats first), otherwise centered within 110u of arrival; works while silenced and clears silence, adding 2s recharge only on a silence break',

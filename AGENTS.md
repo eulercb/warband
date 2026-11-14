@@ -62,6 +62,13 @@ Only the retained dispelling Blink can break silence, adding 2s recharge on an
 actual successful break; no continuing immunity or free boss interruption.
 Keep the host capability, keyboard HUD and touch silence exception consistent.
 
+Owner follow-up: Fortune belongs to the whole spending cast, including its fan,
+pierces and direct explosion recipients, once per living foe. Preserve the shared
+cast snapshot after readiness is consumed; never spend a later preparation on the
+same cast or let it consume its own Loaded Fate marks. Supplemental damage stays
+ineligible. New movement/steering behavior must preserve the original cast's
+remaining lifetime, travel, hit history and ownership across native and Forge kits.
+
 Owner feedback: randomized skill baselines invalidate fixed resulting totals in
 ordinary upgrade prose. State the actual per-rank addition; let resolved native,
 graft and Forge previews show the resulting count/damage/geometry and caps.

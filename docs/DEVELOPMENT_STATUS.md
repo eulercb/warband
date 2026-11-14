@@ -28,31 +28,32 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Chaos Crossing spell guidance](CHAOS_CROSSING_GUIDANCE.md).
+Current delivery: [Chaos Crossing: Tides, Phase and cast-wide Fortune](CROSSING_TIDES_FORTUNE.md).
 The owner merged/tested #175 and accepted Grand Warding's expanded field/silence
 escape for now. Its counterspell candidate remains a separate deferred option.
 Land transplantation and the Hunter/Beast Master follow-ups remain accepted.
 
-Chaos Crossing now steers the latest compatible projectile special with live aim
-for up to 1.25s after launch, at 180°/s. It replaces the scattered numerical riders;
-Unbound Chaos remains the Surge-spending alternative. Steering is implemented
-pending owner live testing. Delivery, resource and identity balance remain subject
-to later comparison.
+The owner merged/tested #176 and found steering interesting, but requested more
+coverage beyond Meteor/Chaos Surge. This follow-up gives Tides a steerable burst
+nucleus and Phase a once-per-cast spell relay. Bend Luck now applies to each living
+recipient of its spending cast. These additions are implemented pending owner
+live testing; Unbound Chaos remains the Surge-spending alternative. Delivery,
+resource and identity balance remain subject to later comparison.
 
 Nineteen of 24 subclasses have been inspected. Every inspected caster identity
-now has an implementation or retention decision; Crossing still needs live
-acceptance. Five support subclasses await review. Inspection, implementation and
-acceptance remain distinct states.
+now has an implementation or retention decision; Crossing's follow-up still needs
+live acceptance. Five support subclasses await review. Inspection, implementation
+and acceptance remain distinct states.
 
 ## Next development work, in order
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test Chaos Crossing; next development is the Light/Life support identity review.                                                                                        |
+| Next                         | Live-test the Crossing/Fortune follow-up; next development is the Light/Life support identity review.                                                                        |
 | Following                    | Review Devotion, Vengeance and Valor after Light/Life.                                                                                                                       |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                |
-| Remaining caster identities  | Three inspected; Grand Warding escape accepted; Chaos Crossing implemented pending acceptance. Evoker stays retained.                                                        |
+| Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing follow-up implemented pending acceptance. Evoker stays retained.                                                    |
 | Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                                                         |
 | Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                                                |
 | Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                               |

@@ -1,4 +1,10 @@
-import { GUIDANCE_TEXT } from './guidanceRules';
+import {
+  GUIDANCE_TEXT,
+  guidedBurstFits,
+  GUIDED_BURST_TEXT,
+  GUIDE_RELAY_TEXT,
+  GUIDED_BURST_PREMIUM,
+} from './guidanceRules';
 import { poisonAllocation, poisonAllocationDescription } from './delayedRules';
 import { returningShotFits, returningShotDescription } from './returningRules';
 import { shadowCommitKind, shadowCommitDescription } from './shadowRules';
@@ -149,6 +155,8 @@ export type EffectComponent =
   | { kind: 'forethought'; requiresCurse?: boolean }
   | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
   | { kind: 'fortune'; fortune: NonNullable<PlayerAbilityDef['fortune']> }
+  | { kind: 'guidedBurst' }
+  | { kind: 'guideRelay' }
   | { kind: 'guidedShot' }
   | { kind: 'dispelField' }
   | { kind: 'whisperRefrain'; refrain: NonNullable<PlayerAbilityDef['whisperRefrain']> }
@@ -438,6 +446,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   )
     effects.push({ kind: 'ancestralRelay', range: def.ancestralRelay.range });
   if (def.shadowReprise) effects.push({ kind: 'shadowReprise', reprise: { ...def.shadowReprise } });
+  if (def.guidedBurst && guidedBurstFits(def)) effects.push({ kind: 'guidedBurst' });
+  if (def.guideRelay && kind === 'blink') effects.push({ kind: 'guideRelay' });
   if (def.guidedShot && kind === 'projectile' && def.damage > 0 && !def.returningShot)
     effects.push({ kind: 'guidedShot' });
   if (def.dispelField && def.kind === 'blink') effects.push({ kind: 'dispelField' });
@@ -516,6 +526,16 @@ export function recompose(
   comp: AbilityComponents,
   meta: { slot: PlayerAbilityDef['slot']; name: string; cooldown: number },
 ): PlayerAbilityDef {
+  if (
+    comp.effects.some((e) => e.kind === 'guidedBurst') &&
+    (meta.slot === 'basic' || !burstComponentsFit(comp))
+  )
+    comp = { ...comp, effects: comp.effects.filter((e) => e.kind !== 'guidedBurst') };
+  if (
+    comp.effects.some((e) => e.kind === 'guideRelay') &&
+    (meta.slot === 'basic' || comp.delivery.kind !== 'blink')
+  )
+    comp = { ...comp, effects: comp.effects.filter((e) => e.kind !== 'guideRelay') };
   if (
     (comp.delivery.kind !== 'blink' || meta.slot === 'basic') &&
     comp.effects.some((e) => e.kind === 'dispelField')
@@ -761,6 +781,12 @@ export function recompose(
       case 'shadowReprise':
         def.shadowReprise = { ...e.reprise };
         break;
+      case 'guidedBurst':
+        def.guidedBurst = true;
+        break;
+      case 'guideRelay':
+        def.guideRelay = true;
+        break;
       case 'guidedShot':
         def.guidedShot = true;
         break;
@@ -870,7 +896,13 @@ export function componentValue(comp: AbilityComponents): number {
   let v = comp.delivery.kind === 'selfBuff' ? (comp.delivery.iframes ?? 0) * 30 : 0;
   if (comp.delivery.swap && comp.delivery.kind === 'blink') v += 30;
   for (const e of comp.effects) {
-    v += effectValue(e, fan);
+    v +=
+      effectValue(e, fan) *
+      (e.kind === 'damage' &&
+      comp.effects.some((x) => x.kind === 'guidedBurst') &&
+      burstComponentsFit(comp)
+        ? GUIDED_BURST_PREMIUM
+        : 1);
   }
   // A rooted cast is dead time the caster pays for — a small discount so a
   // slow, heavy nuke prices a touch cheaper than an instant one of equal output.
@@ -977,6 +1009,10 @@ function effectValue(e: EffectComponent, fan: number): number {
       return (
         ((((e.reprise.prepared ? 30 : 40) * e.reprise.lifetime) / 6) * e.reprise.returnWindow) / 2
       );
+    case 'guidedBurst':
+      return 32;
+    case 'guideRelay':
+      return 24;
     case 'guidedShot':
       return 24;
     case 'dispelField':
@@ -1197,7 +1233,7 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
       return bits.join(', ');
     }
     case 'damage':
-      return `${n(e.amount)} dmg`;
+      return `${n(e.amount * (comp.effects.some((x) => x.kind === 'guidedBurst') && burstComponentsFit(comp) ? GUIDED_BURST_PREMIUM : 1))} dmg`;
     case 'heal':
       return `heal ${n(e.amount)}`;
     case 'healOnUse':
@@ -1282,6 +1318,10 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
       return `burst at your ancestor within ${n(e.range)}u, then leave it at your cast position; first burst establishes it, no expiry`;
     case 'shadowReprise':
       return `departure anchor ${s(e.reprise.lifetime)}, later ${e.reprise.prepared ? 'prepared ' : ''}direct hit unlocks ${s(e.reprise.returnWindow)} return; press this skill again within ${delivery === 'blink' ? 'blink range' : `${n(e.reprise.range)}u`}`;
+    case 'guidedBurst':
+      return GUIDED_BURST_TEXT;
+    case 'guideRelay':
+      return GUIDE_RELAY_TEXT;
     case 'guidedShot':
       return GUIDANCE_TEXT;
     case 'dispelField':
@@ -1293,7 +1333,7 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
     case 'prepareSurge':
       return `prepare spell surge for ${s(e.duration)}`;
     case 'fortune':
-      return `Fortune ${s(e.fortune.duration)} — next direct hit delays wind-ups ${n((e.fortune.castSlowMult - 1) * 100)}%, weakens damage ${n((1 - e.fortune.damageMult) * 100)}% for ${s(e.fortune.debuffDuration)}${e.fortune.markBonus ? `; next hit from a later cast +${n(e.fortune.markBonus * 100)}% damage` : ''}`;
+      return `Fortune ${s(e.fortune.duration)} — next connecting direct cast affects each living foe it hits, delaying wind-ups ${n((e.fortune.castSlowMult - 1) * 100)}%, weakening damage ${n((1 - e.fortune.damageMult) * 100)}% for ${s(e.fortune.debuffDuration)}${e.fortune.markBonus ? `; next hit from a later cast +${n(e.fortune.markBonus * 100)}% damage` : ''}`;
     case 'maneuver':
       return e.mode === 'push'
         ? `direct special hits immediately steer each foe ${n(e.distance)}u in the movement direction held when pressed (standing still pushes away); once per foe per cast, 6s shared foe recovery`
@@ -1692,6 +1732,10 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'pbaoe';
     case 'shadowReprise':
       return true; // slotAllowsEffect excludes basic attacks
+    case 'guidedBurst':
+      return kind === 'pbaoe';
+    case 'guideRelay':
+      return kind === 'blink';
     case 'guidedShot':
       return kind === 'projectile';
     case 'dispelField':
@@ -1772,6 +1816,7 @@ function primaryWant(kind: DeliveryKind): (e: EffectComponent) => boolean {
         e.kind === 'healOnUse';
     case 'blink':
       return (e) =>
+        e.kind === 'guideRelay' ||
         e.kind === 'dispelField' ||
         e.kind === 'whisperRefrain' ||
         e.kind === 'healOnUse' ||
@@ -2321,6 +2366,8 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
           returnWindow: e.reprise.returnWindow * Math.sqrt(f),
         },
       };
+    case 'guidedBurst':
+    case 'guideRelay':
     case 'guidedShot':
     case 'dispelField':
       return e;
@@ -2412,6 +2459,24 @@ const roundCd = (x: number, slot: AbilitySlot): number =>
 
 // --- Caps + quantization (identity-true ceilings, clean numbers) ------------
 
+function burstComponentsFit(comp: AbilityComponents): boolean {
+  return (
+    comp.delivery.kind === 'pbaoe' &&
+    comp.effects.some((e) => e.kind === 'damage' && e.amount > 0) &&
+    !comp.effects.some(
+      (e) =>
+        [
+          'shadowCommit',
+          'palmSweep',
+          'ancestralRelay',
+          'shadowReprise',
+          'infernalAperture',
+        ].includes(e.kind) ||
+        (e.kind === 'skillContract' && e.contract.infernalClaim),
+    )
+  );
+}
+
 function capComponents(comp: AbilityComponents): AbilityComponents {
   const delivery = { ...comp.delivery };
   if (delivery.kind === 'selfBuff' && delivery.iframes != null)
@@ -2419,6 +2484,8 @@ function capComponents(comp: AbilityComponents): AbilityComponents {
   return {
     delivery,
     effects: comp.effects
+      .filter((e) => e.kind !== 'guidedBurst' || burstComponentsFit(comp))
+      .filter((e) => e.kind !== 'guideRelay' || delivery.kind === 'blink')
       .filter(
         (e) =>
           e.kind !== 'guidedShot' ||
@@ -2531,6 +2598,8 @@ function addBoonComponents(
         'mirrorImages',
         'prepareCrit',
         'fortune',
+        'guidedBurst',
+        'guideRelay',
         'guidedShot',
         'dispelField',
         'whisperRefrain',
@@ -2764,6 +2833,8 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.ancestralRelay ? { ...e, range: def.ancestralRelay.range } : e;
     case 'shadowReprise':
       return def.shadowReprise ? { ...e, reprise: { ...def.shadowReprise } } : e;
+    case 'guidedBurst':
+    case 'guideRelay':
     case 'guidedShot':
     case 'dispelField':
       return e;
@@ -3020,6 +3091,8 @@ function capEffect(e: EffectComponent): EffectComponent {
           prepared: e.reprise.prepared,
         },
       };
+    case 'guidedBurst':
+    case 'guideRelay':
     case 'guidedShot':
     case 'dispelField':
       return e;

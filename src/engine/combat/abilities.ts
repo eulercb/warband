@@ -1,4 +1,4 @@
-import { launchGuidance } from './guidance';
+import { launchGuidance, launchGuidedBurst, relayGuidance } from './guidance';
 import { blinkArrival, dispelArrivalField } from './warding';
 import { registerTransplant } from './fieldTransplant';
 import { SHADOW_COMMIT_DAMAGE } from '../content/shadowRules';
@@ -469,7 +469,14 @@ export function resolvePlayerAbility(
       reservePalmSweep(world, p, limited, slot, moveDir, limited.flowAim ?? p.aim),
     ...(limited.preparedRefund ? { refundCast: { spent: false } } : {}),
     // Every delivery owns a distinct token, including composed landing strikes.
-    pilotCast: { spent: false },
+    pilotCast: {
+      spent: false,
+      ownerId: p.id,
+      ownerClass: p.classId,
+      epoch: p.castEpoch ?? 0,
+      source: abilityForSlot(p, slot),
+      slot,
+    },
     forethoughtHit: resolvedForethought(limited) && {
       ownerClass: p.classId,
       requiresCurse: resolvedForethought(limited)!.requiresCurse,
@@ -616,6 +623,7 @@ export function resolvePlayerAbility(
         resolveInfernalClaim(world, p, ab);
         break;
       }
+      if (launchGuidedBurst(world, p, ab, p.pos)) break;
       const sweeping = startPalmSweep(world, p, ab);
       if (!commitShadow(world, p, ab, ab.slot, p.pos, p.aim))
         resolveBurstAt(
@@ -648,6 +656,7 @@ export function resolvePlayerAbility(
       if (ab.swap) dimensionDoor(world, p, target, ab.radius ?? 220);
       else p.pos = clampToArena(world, target, p.radius);
       dispelArrivalField(world, p, ab, from);
+      relayGuidance(world, p, ab, from);
       if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
       if (ab.healOnUse) healPlayer(world, p, p, ab.healOnUse);
       prepareSpellSurge(p, ab);
@@ -823,7 +832,7 @@ function resolveConeAt(
 }
 
 /** One contact per foe; moving bursts test the entire actual travelled segment. */
-function resolveBurstAt(
+export function resolveBurstAt(
   world: World,
   p: Player,
   ab: PlayerAbilityDef,
@@ -1122,7 +1131,10 @@ function resolveComposedAbility(
       }
       const origin = ancestralOrigin(world, p, ab),
         sweeping = startPalmSweep(world, p, ab);
-      if (!commitShadow(world, p, ab, ab.slot, origin, p.aim))
+      if (
+        !launchGuidedBurst(world, p, ab, origin) &&
+        !commitShadow(world, p, ab, ab.slot, origin, p.aim)
+      )
         resolveBurstAt(world, p, ab, origin, sweeping ? p.glide!.palmSweep!.hitIds : undefined);
       if (ab.rebukeDuration) armRebuke(p, ab);
       buffSelf();
@@ -1217,6 +1229,7 @@ function resolveComposedAbility(
         if (ab.swap) dimensionDoor(world, p, target, ab.radius ?? 220);
         else p.pos = clampToArena(world, target, p.radius);
         dispelArrivalField(world, p, ab, from);
+        relayGuidance(world, p, ab, from);
         if (ab.iframes) applyBuff(p, makeBuff('invuln', 0, ab.iframes, 'dash'));
         prepareSpellSurge(p, ab);
         prepareMartialFlow(p, ab);

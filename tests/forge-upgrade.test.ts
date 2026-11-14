@@ -1,3 +1,4 @@
+import { guidedBurstFits } from '../src/engine/content/guidanceRules';
 /**
  * Chaos Forge — char-upgrade synthesis (docs/CHAOS_FORGE.md §9, item 6). In a Forge run
  * a class boon (a) genuinely improves the FUSED skill it targets — a buff/zone/heal tweak
@@ -93,7 +94,9 @@ describe('Chaos Forge char-upgrade synthesis', () => {
           expect(
             Object.entries(previewAbilityTable(cid, [])).some(
               ([slot, ab]) =>
-                slot !== 'basic' && ab.kind === 'projectile' && ab.damage > 0 && !ab.returningShot,
+                slot !== 'basic' &&
+                ((ab.kind === 'projectile' && ab.damage > 0 && !ab.returningShot) ||
+                  guidedBurstFits(ab)),
             ),
           ).toBe(false);
           continue;

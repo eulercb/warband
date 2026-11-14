@@ -824,3 +824,33 @@ it('keeps the authoritative dispelling touch slot usable while ordinary specials
   act(() => useHudStore.getState().set({ wardingSlots: [] }));
   expect(blink.getAttribute('aria-disabled')).toBe('true');
 });
+
+it('shows guided detonation during recharge, queued input and relay availability', () => {
+  useStore.setState({ localClass: 'sorcerer', myCharUpgrades: ['so_wild_g_b'] });
+  useHudStore.getState().set({
+    active: true,
+    classId: 'sorcerer',
+    state: 'alive',
+    cooldowns: { basic: 0, a1: 0, a2: 8, a3: 0 },
+    guidedBursts: [{ slot: 'a2', remaining: 1, queued: false, blocked: null }],
+    guidanceRelay: { a3: { available: true } },
+  });
+  const { container } = render(<TouchControls />);
+  const button = container.querySelector('.wb-touch-btn-a2')!;
+  expect(button.textContent).toContain('Detonate');
+  expect(container.textContent).toContain('Relay ready');
+  act(() =>
+    useHudStore.getState().set({
+      guidedBursts: [{ slot: 'a2', remaining: 0.8, queued: true, blocked: null }],
+      guidanceRelay: { a3: { available: false } },
+    }),
+  );
+  expect(button.textContent).toContain('Queued');
+  expect(container.textContent).toContain('Relay out of reach');
+  act(() =>
+    useHudStore.getState().set({
+      guidedBursts: [{ slot: 'a2', remaining: 0.7, queued: false, blocked: 'Stunned' }],
+    }),
+  );
+  expect(button.textContent).toContain('Stunned');
+});
