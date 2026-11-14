@@ -221,7 +221,7 @@ jobs:
               smoke:martial smoke:martial-grands
           - group: defense
             smokes: >-
-              smoke:projected-guard smoke:absorption smoke:auras
+              smoke:projected-guard smoke:absorption smoke:auras smoke:light-reflection
           - group: movement-and-nature
             smokes: >-
               smoke:battle-maneuvers smoke:ancestral-relay smoke:palm-sweep

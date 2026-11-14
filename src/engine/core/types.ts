@@ -513,6 +513,14 @@ export interface PalmSweepView {
   origin: Vec2;
 }
 export interface Player {
+  reflectionWard?: {
+    remaining: number;
+    ownerId: EntityId;
+    ownerClass: ClassId;
+    epoch: number;
+    slot: ExtSlot;
+    source: import('../content/classes').PlayerAbilityDef;
+  };
   palmEpoch?: number;
   lastFlowSlot?: ExtSlot;
   flowQueue?: {
@@ -969,6 +977,7 @@ export interface GuidanceCast {
   activeTick: number;
 }
 export interface Projectile {
+  reflected?: boolean;
   guidance?: GuidanceCast;
   aimPoint?: Vec2;
   phaseOrigin?: {
@@ -1540,6 +1549,7 @@ export type GameEvent =
   | { t: 'revive'; id: EntityId; pos: Vec2 }
   | { t: 'downed'; id: EntityId; pos: Vec2 }
   | { t: 'dodge'; id: EntityId; pos: Vec2 }
+  | { t: 'reflection'; pos: Vec2 }
   | { t: 'phaseOrigin'; from: Vec2; to: Vec2 }
   | { t: 'spellGuidance'; pos: Vec2 }
   | { t: 'silenceBreak'; pos: Vec2 }
@@ -1626,6 +1636,7 @@ export interface ShadowCommitCast {
 }
 
 export interface PlayerView {
+  reflectionWard?: { remaining: number };
   shadowCommits?: ShadowCommitView[];
   ancestralRelay?: AncestralView;
   maneuver?: {
@@ -1765,6 +1776,7 @@ export interface GuidedBurstView {
   guided: boolean;
 }
 export interface ProjectileView {
+  reflected?: boolean;
   guidance?: { remaining: number; angle: number };
   returnPhase?: 'out' | 'back';
   returnTurn?: boolean;

@@ -1,3 +1,4 @@
+import { REFLECTION_TEXT, reflectiveWard } from './reflectionRules';
 import {
   GUIDANCE_TEXT,
   guidedSpell,
@@ -208,6 +209,7 @@ export interface PlayerAbilityDef {
   whisperRefrain?: { duration: number; radius: number; fraction: number; charges: number };
   /** Blink reclaims one field and can break silence for conditional recharge. */
   dispelField?: boolean;
+  reflectWard?: boolean;
   guidedShot?: boolean;
   guidedBurst?: boolean;
   guideRelay?: boolean;
@@ -1528,6 +1530,7 @@ export function describeAbility(
       `departure anchor ${r.lifetime}s, later ${r.prepared ? 'prepared ' : ''}direct hit unlocks ${r.returnWindow}s return; press this skill again within ${def.kind === 'blink' ? (def.range ?? r.range) : r.range}u`,
     );
   }
+  if (reflectiveWard(def)) parts.push(REFLECTION_TEXT);
   if (guidedSpell(def)) parts.push(GUIDANCE_TEXT);
   if (guidedBurst(def)) parts.push(GUIDED_BURST_TEXT);
   if (guideRelay(def)) parts.push(GUIDE_RELAY_TEXT);

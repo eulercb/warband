@@ -63,7 +63,8 @@
     "smoke:land-transplant": "node scripts/smoke-land-transplant.mjs",
     "smoke:warding": "node scripts/smoke-warding.mjs",
     "smoke:guidance": "node scripts/smoke-guidance.mjs",
-    "smoke:crossing-followup": "node scripts/smoke-crossing-followup.mjs"
+    "smoke:crossing-followup": "node scripts/smoke-crossing-followup.mjs",
+    "smoke:light-reflection": "node scripts/smoke-light-reflection.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

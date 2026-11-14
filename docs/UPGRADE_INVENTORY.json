@@ -9066,7 +9066,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Blessing adds 35 absorption for 4s to the lowest-health ally; Smite delays wind-ups 30% for 3s. Direct Light strikes leech 20%, heals cleanse, and wards give you 3s hard-control resistance",
+      "description": "Blessing adds 35 absorption for 4s to its lowest-health recipient. A real barrier gain from Blessing or Warding Flare grants one 4s projectile reflection; Smite delays wind-ups 30% for 3s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -9081,9 +9081,9 @@
               "before": null,
               "after": { "amount": 35, "duration": 4, "target": "weakest" }
             },
+            { "path": "abilities.a3.reflectWard", "before": null, "after": true },
             { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
+            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 }
           ],
           "atCap": [
             {
@@ -9091,9 +9091,9 @@
               "before": null,
               "after": { "amount": 35, "duration": 4, "target": "weakest" }
             },
+            { "path": "abilities.a3.reflectWard", "before": null, "after": true },
             { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
+            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 }
           ]
         },
         {
@@ -9106,9 +9106,9 @@
               "before": null,
               "after": { "amount": 35, "duration": 4, "target": "weakest" }
             },
+            { "path": "abilities.a3.reflectWard", "before": null, "after": true },
             { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
+            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 }
           ],
           "atCap": [
             {
@@ -9116,9 +9116,9 @@
               "before": null,
               "after": { "amount": 35, "duration": 4, "target": "weakest" }
             },
+            { "path": "abilities.a3.reflectWard", "before": null, "after": true },
             { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
+            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 }
           ]
         },
         {
@@ -9131,9 +9131,9 @@
               "before": null,
               "after": { "amount": 35, "duration": 4, "target": "weakest" }
             },
+            { "path": "abilities.a3.reflectWard", "before": null, "after": true },
             { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.cleanseOnHeal", "before": null, "after": true }
+            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 }
           ],
           "atCap": [
             {
@@ -9141,9 +9141,9 @@
               "before": null,
               "after": { "amount": 35, "duration": 4, "target": "weakest" }
             },
+            { "path": "abilities.a3.reflectWard", "before": null, "after": true },
             { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.cleanseOnHeal", "before": null, "after": true }
+            { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 }
           ]
         },
         {
@@ -9156,9 +9156,10 @@
               "before": null,
               "after": { "amount": 35, "duration": 4, "target": "weakest" }
             },
+            { "path": "abilities.a3.reflectWard", "before": null, "after": true },
             { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
             { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 3 }
+            { "path": "subAbilities.sub1.reflectWard", "before": null, "after": true }
           ],
           "atCap": [
             {
@@ -9166,9 +9167,10 @@
               "before": null,
               "after": { "amount": 35, "duration": 4, "target": "weakest" }
             },
+            { "path": "abilities.a3.reflectWard", "before": null, "after": true },
             { "path": "abilities.basic.castSlow", "before": null, "after": 1.3 },
             { "path": "abilities.basic.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.steadfastDuration", "before": null, "after": 3 }
+            { "path": "subAbilities.sub1.reflectWard", "before": null, "after": true }
           ]
         }
       ]

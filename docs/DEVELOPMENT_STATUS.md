@@ -28,33 +28,32 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Chaos Crossing: Phase departure origin](PHASE_DEPARTURE_ORIGIN.md).
+Current delivery: [Light/Life purpose review and Endless Radiance reflection](LIGHT_LIFE_PURPOSE_REVIEW.md).
 The owner merged/tested #175 and accepted Grand Warding's expanded field/silence
 escape for now. Its counterspell candidate remains a separate deferred option.
 Land transplantation and the Hunter/Beast Master follow-ups remain accepted.
 
-The owner merged/tested #177 and accepted most of its changes, including Tides
-and cast-wide Fortune. Phase's live-projectile relay failed in play: its window
-was too short and it encouraged teleporting toward the enemy. This delivery
-replaces it with one later guided spell launched from a 4s departure origin,
-with a world-reticle preview and cooldown cancellation. The replacement awaits
-owner live testing; it is not yet an accepted identity result.
+The owner merged/tested #178 and accepted Phase departure casting. Tides and
+cast-wide Fortune from #177 remain accepted for now. The caster follow-up is
+complete pending new evidence, rather than a claim of equal identity power.
 
-Nineteen of 24 subclasses have been inspected. Every inspected caster identity
-now has an implementation or retention decision; Crossing's Phase replacement still needs
-live acceptance. Five support subclasses await review. Inspection, implementation
-and acceptance remain distinct states.
+Twenty-one of 24 subclasses have now been inspected. The Light/Life review found
+four useful but mostly numerical packages. Dawnbreaker is retained as growth;
+Endless Radiance now has a bounded projectile-reflection action pending owner
+live testing. Both Life identity purpose findings remain open. Inspection,
+implementation and acceptance remain separate states; this does not complete
+the support identity work.
 
 ## Next development work, in order
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test Phase departure casting; next development is the Light/Life support identity review.                                                                               |
-| Following                    | Review Devotion, Vengeance and Valor after Light/Life.                                                                                                                       |
+| Next                         | Live-test Endless Radiance reflection; next development is the Life identity purpose follow-up.                                                                              |
+| Following                    | Review Devotion, Vengeance and Valor after the Life follow-up.                                                                                                               |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                |
-| Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing follow-up implemented pending acceptance. Evoker stays retained.                                                    |
-| Remaining support identities | Light, Life, Devotion, Vengeance and Valor; Whispers stays accepted.                                                                                                         |
+| Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing departure casting accepted. Evoker stays retained.                                                                  |
+| Remaining support identities | Light inspected (B reflection pending; A retained growth); Life purpose open; Devotion, Vengeance and Valor unreviewed. Whispers accepted.                                   |
 | Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                                                |
 | Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                               |
 
