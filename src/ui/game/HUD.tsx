@@ -180,6 +180,8 @@ function AbilityIcon({
       ? `Return ${reprise.returnRemaining.toFixed(1)}s${reprise.blocked ? ` · ${reprise.blocked}` : ''}`
       : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
     : null;
+  const guidedBurst = useHudStore((s) => s.guidedBursts?.find((b) => b.slot === slot));
+  const spellRelay = useHudStore((s) => (slot ? s.guidanceRelay?.[slot] : undefined));
   const transplant = useHudStore((s) => s.fieldTransplants?.find((t) => t.slot === slot));
   const transplantStatus = transplant
     ? (transplant.blocked ?? `Transplant ${Math.round(transplant.reach)}u ahead`)
@@ -212,6 +214,14 @@ function AbilityIcon({
   const actionStatus = reprise?.armed
     ? repriseStatus
     : ((ember ? apertureStatus : null) ??
+      (guidedBurst
+        ? (guidedBurst.blocked ?? (guidedBurst.queued ? 'Detonation queued' : 'Burst ready'))
+        : null) ??
+      (spellRelay && remaining <= 0
+        ? spellRelay.available
+          ? 'Relay ready'
+          : 'Relay out of reach'
+        : null) ??
       transplantStatus ??
       apertureStatus ??
       repriseStatus ??
@@ -237,9 +247,11 @@ function AbilityIcon({
       ? !reprise.blocked
       : ember
         ? !aperture?.blocked
-        : transplant
-          ? !transplant.blocked
-          : false) ||
+        : guidedBurst
+          ? !guidedBurst.blocked
+          : transplant
+            ? !transplant.blocked
+            : false) ||
       (!cooling && (claimTarget === undefined || (alive && claimTarget !== null))));
   const label = slotLabel(slot, source);
   const name = silenceBreak
@@ -248,9 +260,13 @@ function AbilityIcon({
       ? 'Return'
       : ember
         ? 'Ember'
-        : transplant
-          ? 'Transplant'
-          : (displayName ?? def.name);
+        : guidedBurst
+          ? guidedBurst.queued
+            ? 'Queued'
+            : 'Detonate'
+          : transplant
+            ? 'Transplant'
+            : (displayName ?? def.name);
   // Concrete effect numbers on hover/focus (item 19), reflecting the hero's
   // current upgraded values since `def` comes from the resolved ability table.
   const tip = `${name} — ${describeAbility({ ...def, slot }, mods)}${claimStatus ? ` · ${claimStatus}` : ''}`;
@@ -270,7 +286,9 @@ function AbilityIcon({
       </div>
       <div className="hud-ability-name">{name}</div>
       {silence && <div className="hud-silence-label">Silenced</div>}
-      {!silence && actionStatus && <div className="hud-claim-status">{actionStatus}</div>}
+      {!silence && actionStatus && (!guidedBurst || guidedBurst.blocked) && (
+        <div className="hud-claim-status">{actionStatus}</div>
+      )}
       {!silence && !cooling && claimStatus && (
         <div className={`hud-claim-status${claimTarget === null ? ' blocked' : ''}`}>
           {claimStatus}

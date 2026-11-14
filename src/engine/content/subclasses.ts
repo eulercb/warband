@@ -1230,7 +1230,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'so_wild_bend',
           'Bend Luck',
           '🍀',
-          'Prepare Surge for 8s and Fortune for 6s: your next connecting direct hit delays wind-ups 40% and weakens enemy damage 15% for 3s',
+          'Prepare Surge for 8s and Fortune for 6s: your next connecting direct cast delays wind-ups 40% and weakens damage 15% for 3s on each living foe it hits',
           buff('Bend Luck', 10, {
             prepareSurge: 8,
             fortune: { duration: 6, castSlowMult: 1.4, damageMult: 0.85, debuffDuration: 3 },

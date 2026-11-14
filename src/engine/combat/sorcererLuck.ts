@@ -1,5 +1,6 @@
+import { abilityForSlot } from './abilities';
 /** Deterministic fortune uses positive direct-hit provenance and shared cast ownership. */
-import type { Add, Boss, Player } from '../core/types';
+import type { Add, Boss, Player, DirectCastToken } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
 import { applyBuff, type EventSink, type HitMods } from './combat';
 
@@ -44,16 +45,45 @@ export function onFortunateHit(
   mods?: HitMods,
 ): void {
   if (!mods?.direct || effective <= 0 || p.state !== 'alive' || p.hp <= 0 || target.hp <= 0) return;
-  const ready = p.buffs.find(
-    (b) =>
-      b.kind === 'fortune' &&
-      b.remaining > 0 &&
-      b.source === `subclass:fortune:${p.classId}` &&
-      b.fortune,
-  );
-  if (!ready?.fortune) return;
-  p.buffs.splice(p.buffs.indexOf(ready), 1);
-  const luck = ready.fortune;
+  const cast: DirectCastToken = mods.pilot?.cast ?? { spent: false };
+  if (
+    (cast.ownerId !== undefined && cast.ownerId !== p.id) ||
+    (cast.ownerClass !== undefined && cast.ownerClass !== p.classId) ||
+    (cast.epoch !== undefined && cast.epoch !== (p.castEpoch ?? 0)) ||
+    (cast.source && cast.slot && abilityForSlot(p, cast.slot) !== cast.source)
+  )
+    return;
+  if (cast.fortune === undefined) {
+    const ready = p.buffs.find(
+      (b) =>
+        b.kind === 'fortune' &&
+        b.remaining > 0 &&
+        b.source === `subclass:fortune:${p.classId}` &&
+        b.fortune,
+    );
+    cast.fortune = false;
+    if (ready?.fortune) {
+      p.buffs.splice(p.buffs.indexOf(ready), 1);
+      cast.fortune = {
+        ownerId: p.id,
+        ownerClass: p.classId,
+        epoch: p.castEpoch ?? 0,
+        luck: { ...ready.fortune },
+        targets: new Set(),
+      };
+    }
+  }
+  const claim = cast.fortune;
+  if (
+    !claim ||
+    claim.ownerId !== p.id ||
+    claim.ownerClass !== p.classId ||
+    claim.epoch !== (p.castEpoch ?? 0) ||
+    claim.targets.has(target.id)
+  )
+    return;
+  claim.targets.add(target.id);
+  const luck = claim.luck;
   const delay = target.buffs.find((b) => b.source === 'fortuneDelay' && b.remaining > 0);
   const weakness = target.buffs.find((b) => b.source === 'weakness:fortune' && b.remaining > 0);
   applyBuff(target, {
