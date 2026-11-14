@@ -62,6 +62,14 @@ Only the retained dispelling Blink can break silence, adding 2s recharge on an
 actual successful break; no continuing immunity or free boss interruption.
 Keep the host capability, keyboard HUD and touch silence exception consistent.
 
+Owner feedback, 2026-11-14: mobility interactions must fit actual escape timing
+and direction. Catching short-lived friendly shots with a teleport failed live
+playtesting despite passing engine checks. Phase now prepares a departure origin
+for a later spell. Remote origins must use a world reticle for both launch and
+steering; forwarding the player's unit aim creates misleading parallel shots
+after sideways escapes. A ready escape always takes priority over a cooldown
+recast/cancel action. Test retreat-first use with real pointer/stick controls.
+
 Owner follow-up: Fortune belongs to the whole spending cast, including its fan,
 pierces and direct explosion recipients, once per living foe. Preserve the shared
 cast snapshot after readiness is consumed; never spend a later preparation on the

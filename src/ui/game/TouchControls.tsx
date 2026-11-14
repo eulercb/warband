@@ -174,7 +174,9 @@ function TouchButton({
       : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
     : null;
   const guidedBurst = useHudStore((s) => s.guidedBursts?.find((b) => b.slot === cdSlot));
-  const spellRelay = useHudStore((s) => (cdSlot ? s.guidanceRelay?.[cdSlot] : undefined));
+  const spellOrigin = useHudStore((s) =>
+    s.guidanceOrigin?.slot === cdSlot ? s.guidanceOrigin : undefined,
+  );
   const transplant = useHudStore((s) => s.fieldTransplants?.find((t) => t.slot === cdSlot));
   const transplantStatus = transplant
     ? (transplant.blocked ?? `Transplant ${Math.round(transplant.reach)}u ahead`)
@@ -210,11 +212,7 @@ function TouchButton({
       (guidedBurst
         ? (guidedBurst.blocked ?? (guidedBurst.queued ? 'Detonation queued' : 'Burst ready'))
         : null) ??
-      (spellRelay && remaining <= 0
-        ? spellRelay.available
-          ? 'Relay ready'
-          : 'Relay out of reach'
-        : null) ??
+      (spellOrigin ? `${spellOrigin.remaining.toFixed(1)}s` : null) ??
       transplantStatus ??
       apertureStatus ??
       repriseStatus ??
@@ -264,11 +262,13 @@ function TouchButton({
           ? !reprise.blocked
           : ember
             ? !aperture?.blocked
-            : guidedBurst
-              ? !guidedBurst.blocked
-              : transplant
-                ? !transplant.blocked
-                : false) ||
+            : spellOrigin
+              ? true
+              : guidedBurst
+                ? !guidedBurst.blocked
+                : transplant
+                  ? !transplant.blocked
+                  : false) ||
           (alive && !cooling && claimTarget != null))
           ? true
           : undefined
@@ -285,20 +285,24 @@ function TouchButton({
           }}
         />
       ) : null}
-      <span className={`wb-touch-btn-label${cooling && !guidedBurst ? ' cooling' : ''}`}>
+      <span
+        className={`wb-touch-btn-label${cooling && !guidedBurst && !spellOrigin ? ' cooling' : ''}`}
+      >
         {silenceBreak
           ? 'Break silence'
           : reprise?.armed
             ? 'Return'
             : ember
               ? 'Ember'
-              : guidedBurst
-                ? guidedBurst.queued
-                  ? 'Queued'
-                  : 'Detonate'
-                : transplant
-                  ? 'Transplant'
-                  : label}
+              : spellOrigin && cooling
+                ? 'Cast here'
+                : guidedBurst
+                  ? guidedBurst.queued
+                    ? 'Queued'
+                    : 'Detonate'
+                  : transplant
+                    ? 'Transplant'
+                    : label}
       </span>
       {silence && <span className="wb-touch-claim-status">Silenced</span>}
       {!silence && actionStatus && (!guidedBurst || guidedBurst.blocked) && (

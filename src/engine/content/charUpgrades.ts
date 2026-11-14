@@ -3278,7 +3278,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'so_wild_g_b',
     'Chaos Crossing',
     '🌀',
-    'Steer your latest projectile special. Tides becomes a steerable burst (+15% damage): press again to detonate, or burst after 1.25s. A fresh Arcane Phase gathers and redirects your guided spell once, spending its remaining travel without resetting time',
+    'Steer your latest projectile special. Tides becomes a steerable burst (+15% damage): press again to detonate, or burst after 1.25s. A fresh Arcane Phase leaves a 4s departure origin for your next guided special; press Phase again to cast from yourself',
     (a) => {
       for (const ab of [a.a1, a.a2, a.a3]) {
         if (ab.kind === 'projectile' && ab.damage > 0 && !ab.returningShot) ab.guidedShot = true;
@@ -6556,7 +6556,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       name: blend(fused.name),
       desc:
         base.id === 'so_wild_g_b'
-          ? `Reforged Chaos Crossing: ${GUIDANCE_TEXT}; compatible bursts become steerable nuclei (+15% damage, recast to detonate); a retained Blink can relay the latest guided spell once without resetting time or travel`
+          ? `Reforged Chaos Crossing: ${GUIDANCE_TEXT}; compatible bursts become steerable nuclei (+15% damage, recast to detonate); a retained Blink leaves a 4s departure origin for the next guided special`
           : base.id === 'mo_openhand_g_a'
             ? 'Reforged Perfect Harmony: existing Flow preparation lasts 2s longer; direct specials gain 25% damage'
             : base.id === 'mo_openhand_g_b'

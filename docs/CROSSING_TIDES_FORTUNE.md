@@ -1,5 +1,9 @@
 # Chaos Crossing: guide the burst, relay the spell
 
+Historical delivery (#177), merged and tested. Tides and Fortune were accepted
+for now; the live-shot Phase relay failed in play. The superseding
+[Phase departure origin](PHASE_DEPARTURE_ORIGIN.md) replaces that interaction.
+
 The owner merged and tested initial guidance (#176). Steering felt interesting,
 but only Meteor and optional Chaos Surge participated. This follow-up expands the
 same positioning decision to Tides and Arcane Phase, and makes Bend Luck useful

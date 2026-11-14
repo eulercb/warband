@@ -181,7 +181,9 @@ function AbilityIcon({
       : `Need ${reprise.prepared ? 'prepared ' : ''}hit`
     : null;
   const guidedBurst = useHudStore((s) => s.guidedBursts?.find((b) => b.slot === slot));
-  const spellRelay = useHudStore((s) => (slot ? s.guidanceRelay?.[slot] : undefined));
+  const spellOrigin = useHudStore((s) =>
+    s.guidanceOrigin?.slot === slot ? s.guidanceOrigin : undefined,
+  );
   const transplant = useHudStore((s) => s.fieldTransplants?.find((t) => t.slot === slot));
   const transplantStatus = transplant
     ? (transplant.blocked ?? `Transplant ${Math.round(transplant.reach)}u ahead`)
@@ -217,11 +219,7 @@ function AbilityIcon({
       (guidedBurst
         ? (guidedBurst.blocked ?? (guidedBurst.queued ? 'Detonation queued' : 'Burst ready'))
         : null) ??
-      (spellRelay && remaining <= 0
-        ? spellRelay.available
-          ? 'Relay ready'
-          : 'Relay out of reach'
-        : null) ??
+      (spellOrigin ? `Origin ${spellOrigin.remaining.toFixed(1)}s` : null) ??
       transplantStatus ??
       apertureStatus ??
       repriseStatus ??
@@ -247,11 +245,13 @@ function AbilityIcon({
       ? !reprise.blocked
       : ember
         ? !aperture?.blocked
-        : guidedBurst
-          ? !guidedBurst.blocked
-          : transplant
-            ? !transplant.blocked
-            : false) ||
+        : spellOrigin
+          ? true
+          : guidedBurst
+            ? !guidedBurst.blocked
+            : transplant
+              ? !transplant.blocked
+              : false) ||
       (!cooling && (claimTarget === undefined || (alive && claimTarget !== null))));
   const label = slotLabel(slot, source);
   const name = silenceBreak
@@ -264,9 +264,11 @@ function AbilityIcon({
           ? guidedBurst.queued
             ? 'Queued'
             : 'Detonate'
-          : transplant
-            ? 'Transplant'
-            : (displayName ?? def.name);
+          : spellOrigin && cooling
+            ? 'Cast here'
+            : transplant
+              ? 'Transplant'
+              : (displayName ?? def.name);
   // Concrete effect numbers on hover/focus (item 19), reflecting the hero's
   // current upgraded values since `def` comes from the resolved ability table.
   const tip = `${name} — ${describeAbility({ ...def, slot }, mods)}${claimStatus ? ` · ${claimStatus}` : ''}`;

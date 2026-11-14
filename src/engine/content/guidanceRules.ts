@@ -24,7 +24,7 @@ export const GUIDED_BURST_PREMIUM = 1.15;
 export const GUIDED_BURST_TEXT =
   'steer one burst nucleus at 240u/s for up to 1.25s and 300u; press again to detonate (minimum 0.20s, early presses queue); one final burst deals +15% damage';
 export const GUIDE_RELAY_TEXT =
-  'a fresh successful Blink gathers and redirects your latest guided spell once; relocation spends its remaining travel, with no time reset; insufficient travel leaves the spell in place';
+  'a fresh successful Blink leaves a 4s departure origin for your next guided special, aimed at the live reticle; press Blink again to discard it; expires beyond 600u';
 export function guidedBurstFits(ab: Omit<PlayerAbilityDef, 'slot'> & { slot?: string }): boolean {
   return (
     ab.kind === 'pbaoe' &&

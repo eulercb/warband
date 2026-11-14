@@ -1012,7 +1012,7 @@ function effectValue(e: EffectComponent, fan: number): number {
     case 'guidedBurst':
       return 32;
     case 'guideRelay':
-      return 24;
+      return 32;
     case 'guidedShot':
       return 24;
     case 'dispelField':

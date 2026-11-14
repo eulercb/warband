@@ -1,4 +1,3 @@
-import { boundedAbility } from '../content/abilityLimits';
 /** Steering changes heading only; collision, travel budgets and hit provenance remain ordinary. */
 import type { World } from '../world/world';
 import type { Player, Projectile, GuidanceCast, ExtSlot, Vec2 } from '../core/types';
@@ -12,9 +11,8 @@ import {
   GUIDED_BURST_MIN,
   GUIDED_BURST_PREMIUM,
 } from '../content/guidanceRules';
-import { dist, wrapCoord } from '../core/torus';
+import { dist, wrapCoord, sub } from '../core/torus';
 import { hasBuff } from './combat';
-import { blinkArrival } from './warding';
 import { abilityForSlot, resolveBurstAt } from './abilities';
 function live(w: World, p: Player, c: GuidanceCast): boolean {
   return (
@@ -40,6 +38,7 @@ export function launchGuidance(
   if (!source) return undefined;
   const c: GuidanceCast = {
     source,
+    origin: ab.guidanceOrigin,
     ownerEpoch: p.castEpoch ?? 0,
     ownerClass: p.classId,
     ownerId: p.id,
@@ -54,6 +53,10 @@ export function launchGuidance(
 }
 export function advanceGuidance(w: World, dt: number): void {
   for (const p of w.players) {
+    if (p.phaseOrigin) {
+      p.phaseOrigin.remaining -= dt;
+      if (!originLive(w, p)) delete p.phaseOrigin;
+    }
     const c = p.guidance;
     if (!c || c.burst) continue;
     if (
@@ -65,7 +68,7 @@ export function advanceGuidance(w: World, dt: number): void {
       continue;
     }
     const elapsed = Math.min(dt, c.remaining);
-    const target = Math.hypot(p.aim.x, p.aim.y) > 0.001 ? Math.atan2(p.aim.y, p.aim.x) : c.angle;
+    const target = steeringAngle(p, c);
     const delta = Math.atan2(Math.sin(target - c.angle), Math.cos(target - c.angle));
     c.angle += Math.max(
       -GUIDANCE_TURN_RATE * elapsed,
@@ -101,7 +104,7 @@ export function guidedProjectileView(w: World, q: Projectile) {
   const c = q.guidance,
     p = c && w.players.find((p) => p.id === c.ownerId);
   if (!c || !p || p.guidance !== c || !guidanceView(w, p)) return undefined;
-  return { remaining: c.remaining, angle: c.angle + (q.spreadOffset ?? 0), relayed: c.relayed };
+  return { remaining: c.remaining, angle: c.angle + (q.spreadOffset ?? 0) };
 }
 
 export function launchGuidedBurst(
@@ -115,6 +118,7 @@ export function launchGuidedBurst(
   if (!source) return false;
   const c: GuidanceCast = {
     source,
+    origin: ab.guidanceOrigin,
     ownerId: p.id,
     ownerClass: p.classId,
     ownerEpoch: p.castEpoch ?? 0,
@@ -151,7 +155,7 @@ function advanceBursts(w: World, dt: number): void {
       b.requested ? Math.max(0, GUIDED_BURST_MIN - b.age) : Infinity,
     );
     if (p.guidance === c) {
-      const target = Math.hypot(p.aim.x, p.aim.y) > 0.001 ? Math.atan2(p.aim.y, p.aim.x) : c.angle,
+      const target = steeringAngle(p, c),
         delta = Math.atan2(Math.sin(target - c.angle), Math.cos(target - c.angle));
       c.angle += Math.max(
         -GUIDANCE_TURN_RATE * elapsed,
@@ -221,74 +225,71 @@ export function burstViews(w: World) {
         angle: c.angle,
         queued: c.burst!.requested,
         guided: p.guidance === c,
-        relayed: c.relayed,
       },
     ];
   });
 }
-function relayPlan(w: World, p: Player, to: Vec2, aim: Vec2) {
-  const c = p.guidance;
-  if (!c || !live(w, p, c) || c.remaining <= 0 || c.relayed) return undefined;
-  const angle = Math.atan2(aim.y, aim.x);
-  if (c.burst) {
-    const distance = dist(c.burst.pos, to);
-    return {
-      c,
-      angle,
-      available: c.burst.travelLeft + 1e-9 >= distance,
-      burst: { pos: to, distance },
-      shots: [],
-    };
-  }
-  const shots = w.projectiles
-    .filter((q) => q.guidance === c && !q.apertureTransit && q.rangeLeft > 0 && q.lifetime > 0)
-    .map((q) => {
-      const a = angle + (q.spreadOffset ?? 0),
-        pos = {
-          x: wrapCoord(to.x + Math.cos(a) * (p.radius + 4), w.arena.w),
-          y: wrapCoord(to.y + Math.sin(a) * (p.radius + 4), w.arena.h),
-        };
-      return { q, pos, distance: dist(q.pos, pos) };
-    });
-  if (!shots.length) return undefined;
+
+const ORIGIN_DURATION = 4;
+const ORIGIN_TETHER = 600;
+export function aimPoint(p: Player): Vec2 {
+  return p.aimPoint ?? { x: p.pos.x + p.aim.x * 400, y: p.pos.y + p.aim.y * 400 };
+}
+function originLive(w: World, p: Player): boolean {
+  const o = p.phaseOrigin;
+  return (
+    !!o &&
+    !w.finished &&
+    w.scene === null &&
+    p.state === 'alive' &&
+    p.hp > 0 &&
+    o.remaining > 0 &&
+    o.epoch === (p.castEpoch ?? 0) &&
+    abilityForSlot(p, o.slot) === o.source &&
+    guideRelay(o.source) &&
+    dist(p.pos, o.pos) <= ORIGIN_TETHER
+  );
+}
+export function armPhaseOrigin(w: World, p: Player, ab: PlayerAbilityDef, from: Vec2): void {
+  if (!guideRelay(ab) || dist(from, p.pos) < 0.001) return;
+  delete p.phaseOrigin;
+  if (ab.guidanceOriginFresh === false) return;
+  const source = abilityForSlot(p, ab.slot);
+  if (!source) return;
+  p.phaseOrigin = {
+    pos: { ...from },
+    remaining: ORIGIN_DURATION,
+    source,
+    slot: ab.slot,
+    epoch: p.castEpoch ?? 0,
+  };
+  w.events.push({ t: 'phaseOrigin', from: { ...from }, to: { ...p.pos } });
+}
+export function takeGuidanceOrigin(w: World, p: Player, ab: PlayerAbilityDef): Vec2 | undefined {
+  if (!(guidedSpell(ab) || guidedBurst(ab)) || !originLive(w, p)) return undefined;
+  const pos = { ...p.phaseOrigin!.pos };
+  delete p.phaseOrigin;
+  const direction = sub(aimPoint(p), pos),
+    length = Math.hypot(direction.x, direction.y);
+  ab.flowAim = length > 0.001 ? { x: direction.x / length, y: direction.y / length } : { ...p.aim };
+  return pos;
+}
+export function tryDiscardOrigin(w: World, p: Player, slot: ExtSlot, fresh: boolean): boolean {
+  if (!originLive(w, p) || p.phaseOrigin!.slot !== slot || (p.cooldowns[slot] ?? 0) <= 0)
+    return false;
+  if (fresh) delete p.phaseOrigin;
+  return true;
+}
+export function originView(w: World, p: Player) {
+  if (!originLive(w, p)) return undefined;
   return {
-    c,
-    angle,
-    available: shots.every((s) => s.q.rangeLeft + 1e-9 >= s.distance),
-    shots,
-    burst: undefined,
+    pos: { ...p.phaseOrigin!.pos },
+    target: aimPoint(p),
+    remaining: p.phaseOrigin!.remaining,
+    slot: p.phaseOrigin!.slot,
   };
 }
-export function relayGuidance(w: World, p: Player, ab: PlayerAbilityDef, from: Vec2): void {
-  if (!guideRelay(ab) || ab.guidanceRelayFresh === false || dist(from, p.pos) < 0.001) return;
-  const plan = relayPlan(w, p, p.pos, ab.flowAim ?? p.aim);
-  if (!plan?.available) return;
-  w.events.push({
-    t: 'spellRelay',
-    from: { ...(plan.c.burst?.pos ?? plan.shots[0].q.pos) },
-    to: { ...p.pos },
-  });
-  plan.c.relayed = true;
-  plan.c.angle = plan.angle;
-  if (plan.burst) {
-    plan.c.burst!.pos = { ...plan.burst.pos };
-    plan.c.burst!.travelLeft = Math.max(0, plan.c.burst!.travelLeft - plan.burst.distance);
-  }
-  for (const { q, pos, distance } of plan.shots) {
-    const speed = Math.hypot(q.vel.x, q.vel.y),
-      angle = plan.angle + (q.spreadOffset ?? 0);
-    q.pos = pos;
-    q.rangeLeft = Math.max(0, q.rangeLeft - distance);
-    q.vel = { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed };
-  }
-}
-export function relayViews(w: World, p: Player) {
-  const out: Partial<Record<ExtSlot, { available: boolean }>> = {};
-  for (const slot of ['a1', 'a2', 'a3', 'sub1', 'sub2'] as ExtSlot[]) {
-    const ab = abilityForSlot(p, slot);
-    if (!ab || !guideRelay(ab)) continue;
-    const plan = relayPlan(w, p, blinkArrival(w, p, boundedAbility(ab, w.arena)), p.aim);
-    if (plan) out[slot] = { available: plan.available };
-  }
-  return out;
+function steeringAngle(p: Player, c: GuidanceCast): number {
+  const d = c.origin ? sub(aimPoint(p), c.origin) : p.aim;
+  return Math.hypot(d.x, d.y) > 0.001 ? Math.atan2(d.y, d.x) : c.angle;
 }

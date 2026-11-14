@@ -305,8 +305,8 @@ export class Fx {
           });
           break;
         }
-        case 'spellRelay': {
-          this.spawnFloater(e.to, 'RELAY', 0xffdc89);
+        case 'phaseOrigin': {
+          this.spawnFloater(e.from, 'CAST ORIGIN', 0xffdc89);
           for (const pos of [e.from, e.to])
             this.spawnBurst(pos, {
               startR: 8,

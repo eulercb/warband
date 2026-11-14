@@ -26,7 +26,7 @@ export function pushHud(state: RenderState, source: InputSource): void {
     palmSweep: lp?.palmSweep,
     wardingSlots: lp?.wardingSlots,
     guidedBursts: lp?.guidedBursts,
-    guidanceRelay: lp?.guidanceRelay,
+    guidanceOrigin: lp?.guidanceOrigin,
     fieldTransplants: lp?.fieldTransplants,
     shadowReprise: lp?.shadowReprise,
     infernalAperture: lp?.infernalAperture,

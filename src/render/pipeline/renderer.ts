@@ -688,6 +688,32 @@ export class Renderer {
     for (const z of state.groundZones) {
       drawZone(g, z, this.camera.worldToScreen(z.pos), this.camera.scale);
     }
+    for (const p of state.players) {
+      const o = p.guidanceOrigin;
+      if (!o) continue;
+      const at = this.camera.worldToScreen(o.pos),
+        delta = sub(o.target, o.pos),
+        target = { x: at.x + delta.x * this.camera.scale, y: at.y + delta.y * this.camera.scale };
+      const angle = Math.atan2(target.y - at.y, target.x - at.x);
+      drawGuidance(g, at, angle, (o.remaining / 4) * 1.25, this.camera.scale, 24);
+      g.circle(target.x, target.y, 7).stroke({ color: 0xffdc89, width: 2 });
+      g.moveTo(at.x, at.y)
+        .lineTo(target.x, target.y)
+        .stroke({ color: 0xffdc89, width: 1, alpha: 0.3 });
+      const edge = {
+        x: Math.max(16, Math.min(this.app.screen.width - 16, at.x)),
+        y: Math.max(115, Math.min(this.app.screen.height - 145, at.y)),
+      };
+      if (edge.x !== at.x || edge.y !== at.y)
+        drawGuidance(
+          g,
+          edge,
+          Math.atan2(at.y - edge.y, at.x - edge.x),
+          (o.remaining / 4) * 1.25,
+          0.6,
+          10,
+        );
+    }
     for (const b of state.guidedBursts ?? [])
       drawGuidedBurst(
         g,
