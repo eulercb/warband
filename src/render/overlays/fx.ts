@@ -305,6 +305,10 @@ export class Fx {
           });
           break;
         }
+        case 'spellGuidance': {
+          this.spawnFloater(e.pos, 'STEER SPELL', 0xffdc89);
+          break;
+        }
         case 'silenceBreak': {
           this.spawnFloater(e.pos, 'SILENCE BROKEN', 0x8fd3ff);
           this.spawnBurst(e.pos, {

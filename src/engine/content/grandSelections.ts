@@ -1,4 +1,5 @@
 /** Versioned earned bank and per-class selections. Never mutate normal upgrade history. */
+import { guidedSpell } from './guidanceRules';
 import type { AbilitySlot, ClassId } from '../core/types';
 import { CLASS_IDS } from './classes';
 import {
@@ -65,6 +66,16 @@ export function grandEligible(id: string, classId: ClassId, ctx: GrandContext): 
     .filter((sid) => subclassOfSkill(sid)?.classId === classId)
     .slice(0, 2);
   const committed = bound.length ? subclassOfSkill(bound[0])?.id : undefined;
+  if (id === 'so_wild_g_b') {
+    const mods = [...ctx.history, id];
+    if (
+      ![
+        ...Object.values(previewAbilityTable(classId, mods)),
+        ...bound.map((sid) => previewSubAbility(sid, mods)),
+      ].some((ab) => ab && guidedSpell(ab))
+    )
+      return false;
+  }
   if (id === 'dr_land_g_b') {
     const mods = [...ctx.history, id];
     const candidates = [

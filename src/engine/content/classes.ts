@@ -1,3 +1,4 @@
+import { GUIDANCE_TEXT, guidedSpell } from './guidanceRules';
 import { poisonAllocation, poisonAllocationDescription } from './delayedRules';
 import { returningShotFits, returningShotDescription } from './returningRules';
 import { shadowCommitKind, shadowCommitDescription } from './shadowRules';
@@ -199,6 +200,8 @@ export interface PlayerAbilityDef {
   whisperRefrain?: { duration: number; radius: number; fraction: number; charges: number };
   /** Blink reclaims one field and can break silence for conditional recharge. */
   dispelField?: boolean;
+  guidedShot?: boolean;
+  guidanceCast?: import('../core/types').GuidanceCast;
   /** Extra damage against currently slowed, rooted or stunned enemies. */
   controlDamageBonus?: number;
   /** Seconds of one-use spell surge granted by a utility ability. */
@@ -1513,6 +1516,7 @@ export function describeAbility(
       `departure anchor ${r.lifetime}s, later ${r.prepared ? 'prepared ' : ''}direct hit unlocks ${r.returnWindow}s return; press this skill again within ${def.kind === 'blink' ? (def.range ?? r.range) : r.range}u`,
     );
   }
+  if (guidedSpell(def)) parts.push(GUIDANCE_TEXT);
   if (def.dispelField && def.kind === 'blink')
     parts.push(
       'dispel one active hostile field you are in (silencing threats first), otherwise centered within 110u of arrival; works while silenced and clears silence, adding 2s recharge only on a silence break',

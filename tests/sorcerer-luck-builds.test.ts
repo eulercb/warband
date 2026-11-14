@@ -79,7 +79,11 @@ it.each(['so_wild_g_a', 'so_wild_g_b'])('Bend Luck has a distinct payoff from %s
   if (identity === 'so_wild_g_a') {
     damageBoss(w, p, w.boss!, 10, { direct: true, pilot: { cast: { spent: false } } });
     expect(w.boss!.buffs.find((b) => b.kind === 'damageDealt')!.mult).toBe(0.75);
-  } else expect(p.hp).toBe(p.maxHp - 15);
+  } else {
+    expect(p.hp).toBe(p.maxHp - 40);
+    expect(p.abilities!.a1.guidedShot).toBe(true);
+    expect(p.subAbilities!.sub1!.fortune).toBeDefined();
+  }
 });
 it('missing Fortune in a same-kind forged Bend receives the honest generic fallback', () => {
   const entry = structuredClone(getSubSkill('so_wild_bend')!);

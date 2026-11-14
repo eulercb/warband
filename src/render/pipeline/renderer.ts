@@ -1,3 +1,4 @@
+import { drawGuidance } from './guidanceVisuals';
 import { drawDispelTarget } from './wardingVisuals';
 import { drawFieldTransplant } from './transplantVisuals';
 import { drawReturningShot } from './returningVisuals';
@@ -702,6 +703,15 @@ export class Renderer {
     if (localId == null) return;
     const p = state.players.find((pl) => pl.id === localId);
     if (!p || p.state !== 'alive') return;
+    if (p.guidance)
+      drawGuidance(
+        g,
+        this.camera.worldToScreen(p.pos),
+        p.guidance.angle,
+        p.guidance.remaining,
+        this.camera.scale,
+        PLAYER_RADIUS + 20,
+      );
     for (const field of p.dispelFields ?? []) {
       const at = this.camera.worldToScreen(field.pos);
       drawDispelTarget(g, at, field.radius, this.camera.scale);
@@ -868,6 +878,14 @@ export class Renderer {
     const g = this.projectilesLayer;
     g.clear();
     for (const pr of state.projectiles) {
+      if (pr.guidance)
+        drawGuidance(
+          g,
+          this.camera.worldToScreen(pr.pos),
+          pr.guidance.angle,
+          pr.guidance.remaining,
+          this.camera.scale,
+        );
       if (pr.returnPhase) {
         drawReturningShot(g, pr, this.camera.worldToScreen(pr.pos), this.camera.scale);
         continue;
@@ -907,8 +925,10 @@ export class Renderer {
     const loot = state.loot ?? [];
     const vortex = state.vortex ?? null;
     const stations = state.stations ?? [];
+    const guided = state.players.find((p) => p.id === state.localPlayerId && p.guidance);
     this.ensureLabels(
-      state.players.length +
+      (guided ? 1 : 0) +
+        state.players.length +
         state.bosses.length +
         totems.length +
         loot.length +
@@ -1011,6 +1031,23 @@ export class Renderer {
         s.y - st.radius * scale - 22 - staggerOffset(stationIdx++, LABEL_STAGGER),
       );
       t.alpha = st.selected ? 1 : st.active ? 1 : 0.7;
+    }
+
+    if (guided?.guidance) {
+      const t = this.labels[i++],
+        at = this.camera.worldToScreen(guided.pos);
+      t.visible = true;
+      const name =
+        guided.guidance.name.length > 24
+          ? `${guided.guidance.name.slice(0, 23)}…`
+          : guided.guidance.name;
+      t.text = `Steering ${name} · ${guided.guidance.remaining.toFixed(1)}s`;
+      const halfWidth = t.width / 2 + 8;
+      t.position.set(
+        Math.max(halfWidth, Math.min(this.app.screen.width - halfWidth, at.x)),
+        Math.max(112, Math.min(this.app.screen.height - 140, at.y + PLAYER_RADIUS * scale + 24)),
+      );
+      t.alpha = 1;
     }
 
     // item 78: a final declutter pass — fade any visible label sliding into the top

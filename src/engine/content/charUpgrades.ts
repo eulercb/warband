@@ -1,3 +1,4 @@
+import { GUIDANCE_TEXT } from './guidanceRules';
 import { returningShotFits, RETURNING_DAMAGE_TEXT } from './returningRules';
 import { boundedAbility, ordinaryRecharge } from './abilityLimits';
 import { scaleAbsorption } from '../combat/absorption';
@@ -3277,20 +3278,13 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'so_wild_g_b',
     'Chaos Crossing',
     '🌀',
-    'Mirror Image gains +15% movement speed; Arcane Phase reaches 50u farther and grants 3s hard-control resistance. Bend Luck heals 25, Wild Ward grants allies 25% movement, and Wild strikes slow foes 25% for 2s',
+    'Projectile specials follow your live aim for up to 1.25s after launch, turning at up to 180°/s. Only the latest compatible cast is steered; fans keep their spread',
     (a) => {
-      casterGrand('selfBuff', (ab) => addN(ab, 'buffMoveMult', 0.15), ['buffMoveMult'])(a.a2);
-      casterGrand('blink', (ab) => {
-        addN(ab, 'range', 50);
-        ab.steadfastDuration = Math.max(ab.steadfastDuration ?? 0, 3);
-      })(a.a3);
+      for (const ab of [a.a1, a.a2, a.a3])
+        if (ab.kind === 'projectile' && ab.damage > 0 && !ab.returningShot) ab.guidedShot = true;
     },
     (ab) => {
-      if (ab.kind === 'blink' || ab.fortune) addN(ab, 'healOnUse', 25);
-      else if (ab.kind === 'groundZone' && ab.zoneTickHeal)
-        ab.zoneAllyMoveMult = Math.max(ab.zoneAllyMoveMult ?? 1, 1.25);
-      else if (isStrike(ab) && ab.damage > 0) slowRider(ab, 0.75, 2);
-      else amplify(ab, 0.2, 0.1);
+      if (ab.kind === 'projectile' && ab.damage > 0 && !ab.returningShot) ab.guidedShot = true;
     },
   ),
 
@@ -6557,39 +6551,41 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       ...base,
       name: blend(fused.name),
       desc:
-        base.id === 'mo_openhand_g_a'
-          ? 'Reforged Perfect Harmony: existing Flow preparation lasts 2s longer; direct specials gain 25% damage'
-          : base.id === 'mo_openhand_g_b'
-            ? 'Reforged Flowing Water: burst specials can spend Flow; Flow-consuming specials carry you up to 180u over 0.4s; cones/bursts travel with you, shots and fields launch once. Buffer one preparer or spender during movement'
-            : base.id === 'dr_land_g_b'
-              ? 'Reforged Eternal Season: retained field components can be transplanted once during their original recharge; no lifetime or tick reset; nonfields gain no transplant'
-              : base.id === 'rg_beastmaster_g_b'
-                ? 'Pack Tactics requires your own active Beast Master passive: a newly pressed direct ability designates a quarry within 600u for a 6s hunt that continues if you move away, with a 16-damage lead wolf and two 4-damage flankers every 2.5s. Held basics can start an idle hunt. Copying a skill does not grant a wolf'
-                : base.id === 'rg_hunter_g_b'
-                  ? `Reforged Relentless Hunt: plain projectile specials return toward your current position, with ${RETURNING_DAMAGE_TEXT}; when no starting special fits, a compatible basic receives the return`
-                  : base.id === 'mo_shadow_g_b'
-                    ? 'Reforged Silent Death: cone and burst specials leave a shadow to deliver 110% strike damage after 0.6s at the cast point; you can move and act meanwhile'
-                    : base.id === 'bb_totem_g_b'
-                      ? 'Reforged relay: burst specials strike at your previous prepared point within 360u, then leave the current cast point for next time. First burst is local; preparation persists between recharges'
-                      : base.id === 'kn_battlemaster_g_a' || base.id === 'kn_battlemaster_g_b'
-                        ? base.id === 'kn_battlemaster_g_a'
-                          ? 'Reforged steering: direct special hits immediately steer every foe hit 80u in the movement direction held when pressed; standing still pushes away. Once per foe per cast; 6s shared foe recovery'
-                          : 'Reforged footwork: press a defensive special while moving to step up to 180u in that direction. Standing still holds position. No immunity; movement once per 6s, requires a new press'
-                        : base.id === 'kn_champion_g_a'
-                          ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'
-                          : base.id === 'wa_great_old_one_g_a'
-                            ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
-                            : base.id === 'wa_great_old_one_g_b'
-                              ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
-                              : base.id === 'wa_fiend_g_a'
-                                ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
-                                : base.id === 'ro_assassin_g_a'
-                                  ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
-                                  : swapDescName(
-                                      base.desc,
-                                      canonSubclassName(base.subclassId),
-                                      fused.name,
-                                    ),
+        base.id === 'so_wild_g_b'
+          ? `Reforged Chaos Crossing: ${GUIDANCE_TEXT}; requires a retained positive-damage projectile special, excludes returning shots`
+          : base.id === 'mo_openhand_g_a'
+            ? 'Reforged Perfect Harmony: existing Flow preparation lasts 2s longer; direct specials gain 25% damage'
+            : base.id === 'mo_openhand_g_b'
+              ? 'Reforged Flowing Water: burst specials can spend Flow; Flow-consuming specials carry you up to 180u over 0.4s; cones/bursts travel with you, shots and fields launch once. Buffer one preparer or spender during movement'
+              : base.id === 'dr_land_g_b'
+                ? 'Reforged Eternal Season: retained field components can be transplanted once during their original recharge; no lifetime or tick reset; nonfields gain no transplant'
+                : base.id === 'rg_beastmaster_g_b'
+                  ? 'Pack Tactics requires your own active Beast Master passive: a newly pressed direct ability designates a quarry within 600u for a 6s hunt that continues if you move away, with a 16-damage lead wolf and two 4-damage flankers every 2.5s. Held basics can start an idle hunt. Copying a skill does not grant a wolf'
+                  : base.id === 'rg_hunter_g_b'
+                    ? `Reforged Relentless Hunt: plain projectile specials return toward your current position, with ${RETURNING_DAMAGE_TEXT}; when no starting special fits, a compatible basic receives the return`
+                    : base.id === 'mo_shadow_g_b'
+                      ? 'Reforged Silent Death: cone and burst specials leave a shadow to deliver 110% strike damage after 0.6s at the cast point; you can move and act meanwhile'
+                      : base.id === 'bb_totem_g_b'
+                        ? 'Reforged relay: burst specials strike at your previous prepared point within 360u, then leave the current cast point for next time. First burst is local; preparation persists between recharges'
+                        : base.id === 'kn_battlemaster_g_a' || base.id === 'kn_battlemaster_g_b'
+                          ? base.id === 'kn_battlemaster_g_a'
+                            ? 'Reforged steering: direct special hits immediately steer every foe hit 80u in the movement direction held when pressed; standing still pushes away. Once per foe per cast; 6s shared foe recovery'
+                            : 'Reforged footwork: press a defensive special while moving to step up to 180u in that direction. Standing still holds position. No immunity; movement once per 6s, requires a new press'
+                          : base.id === 'kn_champion_g_a'
+                            ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'
+                            : base.id === 'wa_great_old_one_g_a'
+                              ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
+                              : base.id === 'wa_great_old_one_g_b'
+                                ? 'Reforged Thought Break: a direct spell can break one boss wind-up or channel, without Surge preparation or bonus; 8s shared target recovery. If the starting special cannot hit directly, the basic carries this action instead'
+                                : base.id === 'wa_fiend_g_a'
+                                  ? `${getClass('warlock').abilities.a3.name} opens an adjusting firing conduit with temporary cover along your aim; press it again for one aimed ember. See the skill preview for duration, reach and damage`
+                                  : base.id === 'ro_assassin_g_a'
+                                    ? `${getClass('rogue').abilities.a2.name} leaves a 6s departure anchor. A later direct hit unlocks a 2s return: press the same skill again. Prepared executions grow stronger`
+                                    : swapDescName(
+                                        base.desc,
+                                        canonSubclassName(base.subclassId),
+                                        fused.name,
+                                      ),
     };
   }
 

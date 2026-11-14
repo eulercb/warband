@@ -1,3 +1,4 @@
+import { launchGuidance } from './guidance';
 import { blinkArrival, dispelArrivalField } from './warding';
 import { registerTransplant } from './fieldTransplant';
 import { SHADOW_COMMIT_DAMAGE } from '../content/shadowRules';
@@ -496,6 +497,7 @@ export function resolvePlayerAbility(
   }
   const aimAngle = angleOf(ab.flowAim ?? ab.palmSweepCast?.aim ?? p.aim);
   const color = CLASS_COLORS[p.classId] ?? 0xffffff;
+  ab.guidanceCast = launchGuidance(world, p, ab, slot, ab.flowAim ?? p.aim);
 
   world.events.push({
     t: 'cast',
@@ -1405,6 +1407,7 @@ function spawnPlayerProjectile(
 ): void {
   const origin = vadd(p.pos, vscale(dir, p.radius + 4));
   const proj: Projectile = {
+    guidance: o.returningSource?.guidanceCast,
     id: world.allocId(),
     kind,
     pos: origin,

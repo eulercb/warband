@@ -11890,7 +11890,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Mirror Image gains +15% movement speed; Arcane Phase reaches 50u farther and grants 3s hard-control resistance. Bend Luck heals 25, Wild Ward grants allies 25% movement, and Wild strikes slow foes 25% for 2s",
+      "description": "Projectile specials follow your live aim for up to 1.25s after launch, turning at up to 180°/s. Only the latest compatible cast is steered; fans keep their spread",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -11900,72 +11900,34 @@
           "subSkills": ["so_wild_surge"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
-            { "path": "abilities.a3.range", "before": 260, "after": 310 },
-            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
+            { "path": "abilities.a1.guidedShot", "before": null, "after": true },
+            { "path": "subAbilities.sub1.guidedShot", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
-            { "path": "abilities.a3.range", "before": 260, "after": 310 },
-            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
+            { "path": "abilities.a1.guidedShot", "before": null, "after": true },
+            { "path": "subAbilities.sub1.guidedShot", "before": null, "after": true }
           ]
         },
         {
           "classId": "sorcerer",
           "subSkills": ["so_wild_tides"],
           "prefix": [],
-          "once": [
-            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
-            { "path": "abilities.a3.range", "before": 260, "after": 310 },
-            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
-          ],
-          "atCap": [
-            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
-            { "path": "abilities.a3.range", "before": 260, "after": 310 },
-            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.slowDuration", "before": null, "after": 2 },
-            { "path": "subAbilities.sub1.slowMult", "before": null, "after": 0.75 }
-          ]
+          "once": [{ "path": "abilities.a1.guidedShot", "before": null, "after": true }],
+          "atCap": [{ "path": "abilities.a1.guidedShot", "before": null, "after": true }]
         },
         {
           "classId": "sorcerer",
           "subSkills": ["so_wild_bend"],
           "prefix": [],
-          "once": [
-            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
-            { "path": "abilities.a3.range", "before": 260, "after": 310 },
-            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 25 }
-          ],
-          "atCap": [
-            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
-            { "path": "abilities.a3.range", "before": 260, "after": 310 },
-            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 25 }
-          ]
+          "once": [{ "path": "abilities.a1.guidedShot", "before": null, "after": true }],
+          "atCap": [{ "path": "abilities.a1.guidedShot", "before": null, "after": true }]
         },
         {
           "classId": "sorcerer",
           "subSkills": ["so_wild_font"],
           "prefix": [],
-          "once": [
-            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
-            { "path": "abilities.a3.range", "before": 260, "after": 310 },
-            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.25 }
-          ],
-          "atCap": [
-            { "path": "abilities.a2.buffMoveMult", "before": 1.15, "after": 1.2999999999999998 },
-            { "path": "abilities.a3.range", "before": 260, "after": 310 },
-            { "path": "abilities.a3.steadfastDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.zoneAllyMoveMult", "before": null, "after": 1.25 }
-          ]
+          "once": [{ "path": "abilities.a1.guidedShot", "before": null, "after": true }],
+          "atCap": [{ "path": "abilities.a1.guidedShot", "before": null, "after": true }]
         }
       ]
     },

@@ -320,6 +320,7 @@ export function stepApertureProjectile(
       if (p.rangeLeft < gap - 1e-9 || p.lifetime < gap / speed - 1e-9) return false;
       p.rangeLeft = Math.max(0, p.rangeLeft - gap);
       const angle = Math.atan2(a.direction.y, a.direction.x) + (p.spreadOffset ?? 0);
+      delete p.guidance;
       p.apertureTransit = {
         remaining: gap / speed,
         exit,

@@ -1,3 +1,4 @@
+import { GUIDANCE_TEXT } from './guidanceRules';
 import { poisonAllocation, poisonAllocationDescription } from './delayedRules';
 import { returningShotFits, returningShotDescription } from './returningRules';
 import { shadowCommitKind, shadowCommitDescription } from './shadowRules';
@@ -148,6 +149,7 @@ export type EffectComponent =
   | { kind: 'forethought'; requiresCurse?: boolean }
   | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
   | { kind: 'fortune'; fortune: NonNullable<PlayerAbilityDef['fortune']> }
+  | { kind: 'guidedShot' }
   | { kind: 'dispelField' }
   | { kind: 'whisperRefrain'; refrain: NonNullable<PlayerAbilityDef['whisperRefrain']> }
   | { kind: 'infernalAperture'; aperture: NonNullable<PlayerAbilityDef['infernalAperture']> }
@@ -436,6 +438,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   )
     effects.push({ kind: 'ancestralRelay', range: def.ancestralRelay.range });
   if (def.shadowReprise) effects.push({ kind: 'shadowReprise', reprise: { ...def.shadowReprise } });
+  if (def.guidedShot && kind === 'projectile' && def.damage > 0 && !def.returningShot)
+    effects.push({ kind: 'guidedShot' });
   if (def.dispelField && def.kind === 'blink') effects.push({ kind: 'dispelField' });
   if (def.whisperRefrain && def.kind === 'blink')
     effects.push({ kind: 'whisperRefrain', refrain: { ...def.whisperRefrain } });
@@ -517,6 +521,14 @@ export function recompose(
     comp.effects.some((e) => e.kind === 'dispelField')
   )
     comp = { ...comp, effects: comp.effects.filter((e) => e.kind !== 'dispelField') };
+  if (
+    comp.effects.some((e) => e.kind === 'guidedShot') &&
+    (comp.delivery.kind !== 'projectile' ||
+      meta.slot === 'basic' ||
+      !comp.effects.some((e) => e.kind === 'damage' && e.amount > 0) ||
+      comp.effects.some((e) => e.kind === 'returningShot'))
+  )
+    comp = { ...comp, effects: comp.effects.filter((e) => e.kind !== 'guidedShot') };
   if (comp.effects.some((e) => e.kind === 'returningShot')) {
     const fits = returningShotFits(
       comp.delivery.kind,
@@ -749,6 +761,9 @@ export function recompose(
       case 'shadowReprise':
         def.shadowReprise = { ...e.reprise };
         break;
+      case 'guidedShot':
+        def.guidedShot = true;
+        break;
       case 'dispelField':
         def.dispelField = true;
         break;
@@ -962,6 +977,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       return (
         ((((e.reprise.prepared ? 30 : 40) * e.reprise.lifetime) / 6) * e.reprise.returnWindow) / 2
       );
+    case 'guidedShot':
+      return 24;
     case 'dispelField':
       return 56; // one endpoint field plus conditional silence escape; no pending attacks
     case 'whisperRefrain':
@@ -1265,6 +1282,8 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
       return `burst at your ancestor within ${n(e.range)}u, then leave it at your cast position; first burst establishes it, no expiry`;
     case 'shadowReprise':
       return `departure anchor ${s(e.reprise.lifetime)}, later ${e.reprise.prepared ? 'prepared ' : ''}direct hit unlocks ${s(e.reprise.returnWindow)} return; press this skill again within ${delivery === 'blink' ? 'blink range' : `${n(e.reprise.range)}u`}`;
+    case 'guidedShot':
+      return GUIDANCE_TEXT;
     case 'dispelField':
       return 'dispel one active hostile field you are in (silencing threats first), otherwise centered within 110u of arrival; works while silenced and clears silence, adding 2s recharge only on a silence break';
     case 'whisperRefrain':
@@ -1673,6 +1692,8 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return kind === 'pbaoe';
     case 'shadowReprise':
       return true; // slotAllowsEffect excludes basic attacks
+    case 'guidedShot':
+      return kind === 'projectile';
     case 'dispelField':
     case 'whisperRefrain':
       return kind === 'blink';
@@ -2300,6 +2321,7 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
           returnWindow: e.reprise.returnWindow * Math.sqrt(f),
         },
       };
+    case 'guidedShot':
     case 'dispelField':
       return e;
     case 'whisperRefrain':
@@ -2397,6 +2419,13 @@ function capComponents(comp: AbilityComponents): AbilityComponents {
   return {
     delivery,
     effects: comp.effects
+      .filter(
+        (e) =>
+          e.kind !== 'guidedShot' ||
+          (delivery.kind === 'projectile' &&
+            comp.effects.some((x) => x.kind === 'damage' && x.amount > 0) &&
+            !comp.effects.some((x) => x.kind === 'returningShot')),
+      )
       .filter(
         (e) => !['dispelField', 'whisperRefrain'].includes(e.kind) || delivery.kind === 'blink',
       )
@@ -2502,6 +2531,7 @@ function addBoonComponents(
         'mirrorImages',
         'prepareCrit',
         'fortune',
+        'guidedShot',
         'dispelField',
         'whisperRefrain',
         'returningShot',
@@ -2734,6 +2764,7 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
       return def.ancestralRelay ? { ...e, range: def.ancestralRelay.range } : e;
     case 'shadowReprise':
       return def.shadowReprise ? { ...e, reprise: { ...def.shadowReprise } } : e;
+    case 'guidedShot':
     case 'dispelField':
       return e;
     case 'whisperRefrain':
@@ -2989,6 +3020,7 @@ function capEffect(e: EffectComponent): EffectComponent {
           prepared: e.reprise.prepared,
         },
       };
+    case 'guidedShot':
     case 'dispelField':
       return e;
     case 'whisperRefrain':
