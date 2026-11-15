@@ -28,7 +28,7 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Light/Life purpose review and Endless Radiance reflection](LIGHT_LIFE_PURPOSE_REVIEW.md).
+Current delivery: [Reflection playtest follow-up](REFLECTION_PLAYTEST_FOLLOWUP.md).
 The owner merged/tested #175 and accepted Grand Warding's expanded field/silence
 escape for now. Its counterspell candidate remains a separate deferred option.
 Land transplantation and the Hunter/Beast Master follow-ups remain accepted.
@@ -37,10 +37,15 @@ The owner merged/tested #178 and accepted Phase departure casting. Tides and
 cast-wide Fortune from #177 remain accepted for now. The caster follow-up is
 complete pending new evidence, rather than a claim of equal identity power.
 
+The owner merged/tested #179 and liked reflection’s idea. Its stray drawing line,
+short return budgets and absorption-cap gate need correction. This follow-up
+adds a faceted mirror marker, a fresh bounded return leg and reflection readiness
+on capped-shield casts. The changes await owner live acceptance.
+
 Twenty-one of 24 subclasses have now been inspected. The Light/Life review found
 four useful but mostly numerical packages. Dawnbreaker is retained as growth;
-Endless Radiance now has a bounded projectile-reflection action pending owner
-live testing. Both Life identity purpose findings remain open. Inspection,
+Endless Radiance has a projectile-reflection action with its playtest follow-up
+pending acceptance. Both Life identity purpose findings remain open. Inspection,
 implementation and acceptance remain separate states; this does not complete
 the support identity work.
 
@@ -48,7 +53,7 @@ the support identity work.
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test Endless Radiance reflection; next development is the Life identity purpose follow-up.                                                                              |
+| Next                         | Live-test the reflection fixes; next development is the Life identity purpose follow-up.                                                                                     |
 | Following                    | Review Devotion, Vengeance and Valor after the Life follow-up.                                                                                                               |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                |

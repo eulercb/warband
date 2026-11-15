@@ -70,6 +70,14 @@ steering; forwarding the player's unit aim creates misleading parallel shots
 after sideways escapes. A ready escape always takes priority over a cooldown
 recast/cancel action. Test retreat-first use with real pointer/stick controls.
 
+Owner feedback, 2026-11-14: an eligible reflection cast arms/refreshes one 4s
+ward even at capped absorption; protection gains and passive rewards still require
+a real barrier increase. Reflection starts a new bounded 900u return leg with
+enough lifetime for that travel, rather than inheriting a nearly exhausted
+incoming budget. Preserve captured damage and borrowed-hit provenance. Give
+independent graphics paths explicit starts; an arc can otherwise connect to the
+previous/default point and draw a spurious line toward the screen origin.
+
 Owner follow-up: Fortune belongs to the whole spending cast, including its fan,
 pierces and direct explosion recipients, once per living foe. Preserve the shared
 cast snapshot after readiness is consumed; never spend a later preparation on the

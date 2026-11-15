@@ -7,7 +7,9 @@ const browser = await chromium.launch({
 });
 try {
   for (const width of [1280, 320])
-    for (const mode of ['blessing', 'warding', 'ally', 'forge']) {
+    for (const mode of ['blessing', 'warding', 'ally', 'forge', 'capped', 'spent'].filter(
+      (mode) => !process.env.SMOKE_REFLECTION_MODE || process.env.SMOKE_REFLECTION_MODE === mode,
+    )) {
       const page = await browser.newPage({
         viewport: { width, height: width === 320 ? 568 : 800 },
         isMobile: width === 320,
@@ -44,7 +46,8 @@ try {
           const { reflectiveWard } = await import('/src/engine/content/reflectionRules.ts');
           const { getMonster } = await import('/src/engine/content/monsters.ts');
           const { resolveBossAbility } = await import('/src/engine/combat/abilities.ts');
-          const { absorptionAmount } = await import('/src/engine/combat/absorption.ts');
+          const { absorptionAmount, grantAbsorption } =
+            await import('/src/engine/combat/absorption.ts');
           const { SnapshotInterpolator } = await import('/src/render/pipeline/interpolate.ts');
           const { Renderer } = await import('/src/render/pipeline/renderer.ts');
           useStore.getState().setActiveChaosForge(false);
@@ -109,6 +112,7 @@ try {
           }
           const target = mode === 'ally' ? ally : p,
             slot = mode === 'warding' ? 'sub1' : 'a3';
+          if (mode === 'capped') grantAbsorption(target, 10000, 8);
           const keyboard = new KeyboardMouse(document.querySelector('#world'));
           const renderer = await Renderer.create(document.querySelector('#world'), w.arena);
           const host = Object.create(Host.prototype);
@@ -168,6 +172,14 @@ try {
             });
             const q = w.projectiles.find((q) => q.side === 'boss');
             if (!q) throw Error('No real hostile projectile');
+            if (mode === 'spent') {
+              q.rangeLeft =
+                Math.hypot(q.pos.x - target.pos.x, q.pos.y - target.pos.y) -
+                target.radius -
+                q.hitRadius +
+                6;
+              q.lifetime = q.rangeLeft / Math.hypot(q.vel.x, q.vel.y) + 0.01;
+            }
             return q;
           }
           window.reflect = {
@@ -241,6 +253,8 @@ try {
           throw Error('Halo did not spend');
         if (!window.reflectRemote.projectiles.some((p) => p.id === q.id && p.reflected))
           throw Error('Returned shot not replicated');
+        if (q.rangeLeft !== 900 || q.lifetime < 900 / Math.hypot(q.vel.x, q.vel.y))
+          throw Error('Return budget did not refresh');
         g.hpBoss = g.b.hp;
       });
       await page.screenshot({

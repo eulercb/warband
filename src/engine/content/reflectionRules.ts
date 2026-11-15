@@ -1,6 +1,6 @@
 import type { PlayerAbilityDef } from './classes';
 export const REFLECTION_TEXT =
-  'a real barrier gain grants one 4s reflection; the first hostile projectile reaching its recipient reverses direction; no beams, waves, melee or fields';
+  'grant or refresh one 4s projectile reflection, including at full absorption; the returned shot gets 900u of travel and enough lifetime to use it; no beams, waves, melee or fields';
 export function reflectiveWard(ab: Omit<PlayerAbilityDef, 'slot'> & { slot?: string }): boolean {
   return (
     ['selfBuff', 'buffAlly'].includes(ab.kind) &&

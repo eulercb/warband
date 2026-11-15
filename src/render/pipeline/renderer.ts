@@ -1,3 +1,4 @@
+import { drawReflectionWard } from './reflectionVisuals';
 import { drawGuidance, drawGuidedBurst } from './guidanceVisuals';
 import { drawDispelTarget } from './wardingVisuals';
 import { drawFieldTransplant } from './transplantVisuals';
@@ -689,18 +690,13 @@ export class Renderer {
       drawZone(g, z, this.camera.worldToScreen(z.pos), this.camera.scale);
     }
     for (const p of state.players) {
-      if (p.reflectionWard) {
-        const at = this.camera.worldToScreen(p.pos),
-          r = (PLAYER_RADIUS + 12) * this.camera.scale;
-        g.circle(at.x, at.y, r).stroke({ color: 0xffe690, width: 3, alpha: 0.75 });
-        g.arc(
-          at.x,
-          at.y,
-          r + 4,
-          -Math.PI / 2,
-          -Math.PI / 2 + Math.PI * 2 * Math.min(1, p.reflectionWard.remaining / 4),
-        ).stroke({ color: 0xffffff, width: 2 });
-      }
+      if (p.reflectionWard)
+        drawReflectionWard(
+          g,
+          this.camera.worldToScreen(p.pos),
+          p.reflectionWard.remaining,
+          this.camera.scale,
+        );
       const o = p.guidanceOrigin;
       if (!o) continue;
       const at = this.camera.worldToScreen(o.pos),

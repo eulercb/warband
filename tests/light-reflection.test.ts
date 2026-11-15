@@ -99,7 +99,7 @@ it.each(picks)('each first pick %s has a full-health Blessing reflection route',
   expect(q.vel.x).toBe(500);
   expect(q.reflected).toBe(true);
   expect(q.slowMult).toBeUndefined();
-  expect(q.rangeLeft).toBeCloseTo(850);
+  expect(q.rangeLeft).toBeCloseTo(900);
   expect(q.lifetime).toBeCloseTo(2.9);
   expect(reflectionView(w, p)).toBeUndefined();
   expect(w.serialize().projectiles.find((s) => s.id === id)?.reflected).toBe(true);
@@ -120,20 +120,27 @@ it('reflects on the actual weakest ally, without redirecting boss aim or moving 
   expect(q.side).toBe('player');
   expect(ally.pos).toEqual(pos);
 });
-it('a cap/equal barrier cannot rearm or refresh a halo; Warding and Blessing do not stack charges', () => {
+it('eligible casts refresh one halo even at capped absorption, without generating protection rewards', () => {
   const { w, p } = setup('cl_light_warding');
+  grantAbsorption(p, 1000, 8);
+  const shield = absorptionAmount(p.buffs);
   step(w, 'a3');
-  const r = p.reflectionWard;
+  expect(reflectionView(w, p)).toBeDefined();
+  expect(absorptionAmount(p.buffs)).toBe(shield);
+  expect(p.buffs.some((b) => b.kind === 'radiantCharge')).toBe(false);
+  step(w, undefined, 0.5);
+  const old = p.reflectionWard;
   step(w, 'sub1');
-  expect(p.reflectionWard).toBe(r);
+  expect(p.reflectionWard).not.toBe(old);
+  expect(p.reflectionWard!.remaining).toBeGreaterThan(3.9);
   shot(w);
   step(w, undefined, 0.1);
   expect(reflectionView(w, p)).toBeUndefined();
-  grantAbsorption(p, 1000, 8);
   p.cooldowns.a3 = 0;
   step(w);
   step(w, 'a3');
-  expect(reflectionView(w, p)).toBeUndefined();
+  expect(reflectionView(w, p)).toBeDefined();
+  expect(absorptionAmount(p.buffs)).toBe(shield);
 });
 it.each(['cover', 'body', 'projection'])(
   'earlier %s contact wins and preserves a later halo',
@@ -259,7 +266,7 @@ it('retained Forge reflection has a fixed price, fits positive barriers and work
   p.cooldowns.a3 = 0;
   step(w, 'a3');
   expect(reflectionView(w, p)).toBeDefined();
-  expect(describeAbility(made)).toContain('one 4s reflection');
+  expect(describeAbility(made)).toContain('one 4s projectile reflection');
   expect(refreshComponents(made).effects.some((e) => e.kind === 'reflectWard')).toBe(true);
   for (const invalid of [
     { ...comp, delivery: { kind: 'projectile' as const } },
@@ -313,7 +320,7 @@ it('a disconnected reflector cannot deal ownerless borrowed damage', () => {
 it('Forge identity offers state the actual ally-blessing condition for reflection', () => {
   setForgeSeed(31);
   expect(getCharUpgrade('cl_light_g_b')!.desc).toContain('third-slot ally damage blessing');
-  expect(getCharUpgrade('cl_light_g_b')!.desc).toContain('real barrier gain');
+  expect(getCharUpgrade('cl_light_g_b')!.desc).toContain('full absorption');
 });
 
 it('earning the identity on an existing composed blessing adds the paid component during refresh', () => {
@@ -327,4 +334,71 @@ it('earning the identity on an existing composed blessing adds the paid componen
   expect(p.abilities!.a3.components!.effects.some((e) => e.kind === 'reflectWard')).toBe(true);
   step(w, 'a3');
   expect(reflectionView(w, p)).toBeDefined();
+});
+
+it.each(['lifetime', 'range', 'both'])(
+  'a nearly spent incoming %s receives a useful fresh return leg',
+  (mode) => {
+    const { w, p, b } = setup();
+    b.pos = { x: 1000, y: 400 };
+    step(w, 'a3');
+    const q = shot(w, {
+      pos: { x: 529, y: 400 },
+      lifetime: mode === 'range' ? 3 : 0.011,
+      rangeLeft: mode === 'lifetime' ? 900 : 6,
+    });
+    step(w);
+    expect(q.reflected).toBe(true);
+    expect(q.rangeLeft).toBe(900);
+    expect(q.lifetime).toBeGreaterThanOrEqual(900 / 500);
+    const hp = b.hp;
+    for (let i = 0; i < 200 && w.projectiles.includes(q); i++) step(w);
+    expect(b.hp).toBe(hp - 20);
+    expect(p.reflectionWard).toBeUndefined();
+  },
+);
+it('a missed return expires at its finite 900u travel cap', () => {
+  const { w, b } = setup();
+  b.pos = { x: 1000, y: 700 };
+  step(w, 'a3');
+  const q = shot(w, { pos: { x: 529, y: 400 }, lifetime: 0.011, rangeLeft: 6 });
+  step(w);
+  const start = { ...q.pos },
+    hp = b.hp;
+  for (let i = 0; i < 220 && w.projectiles.includes(q); i++) step(w);
+  expect(w.projectiles.includes(q)).toBe(false);
+  expect(q.pos.x - start.x).toBeCloseTo(900);
+  expect(b.hp).toBe(hp);
+});
+it('a second caster replaces one capped recipient halo with the newest source, without stacking', () => {
+  const { w, p, ally } = setup();
+  ally.pos = { x: 520, y: 430 };
+  ally.hp = 20;
+  grantAbsorption(ally, 1000, 8);
+  step(w, 'a3');
+  expect(ally.reflectionWard?.ownerId).toBe(p.id);
+  ally.abilities!.a3 = { ...p.abilities!.a3 };
+  ally.cooldowns.a3 = 0;
+  w.step(
+    0.01,
+    new Map([
+      [
+        'b',
+        {
+          seq: w.tick,
+          move: zero,
+          aim: right,
+          buttons: { basic: false, a1: false, a2: false, a3: true, revive: false },
+        },
+      ],
+    ]),
+  );
+  expect(ally.reflectionWard?.ownerId).toBe(ally.id);
+  expect(reflectionView(w, ally)?.remaining).toBeGreaterThan(3.9);
+  p.hp = 0;
+  expect(reflectionView(w, ally)).toBeDefined();
+  const q = shot(w, { pos: { x: 549, y: 430 } });
+  step(w);
+  expect(q.reflected).toBe(true);
+  expect(reflectionView(w, ally)).toBeUndefined();
 });

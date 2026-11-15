@@ -1,5 +1,10 @@
 # Light/Life purpose review: protect a recipient, return a shot
 
+Historical #179 delivery, merged and tested. The owner liked reflection’s idea
+and requested more reliable activation/returns and clearer visuals. See the
+superseding [playtest follow-up](REFLECTION_PLAYTEST_FOLLOWUP.md) for the current
+cap, refresh, travel and marker rules.
+
 The owner merged/tested #178 and accepted Phase departure casting. This begins
 the planned support identity review. One bounded GPT-6.1 Sol high reviewer
 compared Light/Life’s actual starting kits, passives, all first picks, ordinary,

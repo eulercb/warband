@@ -2634,7 +2634,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'cl_light_g_b',
     'Endless Radiance',
     '🌟',
-    'Blessing adds 35 absorption for 4s to its lowest-health recipient. A real barrier gain from Blessing or Warding Flare grants one 4s projectile reflection; Smite delays wind-ups 30% for 3s',
+    'Blessing adds 35 absorption for 4s to its lowest-health recipient. Blessing and Warding Flare grant or refresh one 4s projectile reflection, even at full absorption; returned shots get 900u travel; Smite delays wind-ups 30% for 3s',
     (a) => {
       casterGrand(
         'buffAlly',
@@ -6557,7 +6557,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       name: blend(fused.name),
       desc:
         base.id === 'cl_light_g_b'
-          ? 'Reforged Endless Radiance: a third-slot ally damage blessing adds 35 absorption for 4s and one projectile reflection on a real barrier gain. Light barrier wards gain the same 4s reflection; direct basics delay wind-ups 30% for 3s'
+          ? 'Reforged Endless Radiance: a third-slot ally damage blessing adds 35 absorption for 4s and one 4s projectile reflection, even at full absorption. Light barrier wards grant or refresh the same halo; returned shots get 900u travel; direct basics delay wind-ups 30% for 3s'
           : base.id === 'so_wild_g_b'
             ? `Reforged Chaos Crossing: ${GUIDANCE_TEXT}; compatible bursts become steerable nuclei (+15% damage, recast to detonate); a retained Blink leaves a 4s departure origin for the next guided special`
             : base.id === 'mo_openhand_g_a'
