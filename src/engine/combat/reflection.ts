@@ -28,8 +28,13 @@ export function reflectionView(w: World, target: Player) {
     return undefined;
   return { remaining: r.remaining };
 }
-export function armReflection(w: World, owner: Player, target: Player, ab: PlayerAbilityDef): void {
-  if (!reflectiveWard(ab) || reflectionView(w, target)) return;
+export function armReflection(
+  _w: World,
+  owner: Player,
+  target: Player,
+  ab: PlayerAbilityDef,
+): void {
+  if (!reflectiveWard(ab)) return;
   const source = abilityForSlot(owner, ab.slot);
   if (!source) return;
   target.reflectionWard = {
@@ -63,7 +68,8 @@ export function reflectContact(w: World, p: Player, shot: Projectile): boolean {
   if (!canReflect(w, p, shot)) return false;
   const ownerId = p.reflectionWard!.ownerId;
   delete p.reflectionWard;
-  // Keep the same vehicle and its actual remaining budgets; discard hostile/direct riders.
+  // A new bounded return leg must work even when the incoming leg is nearly spent.
+  const speed = Math.hypot(shot.vel.x, shot.vel.y);
   const returned: Projectile = {
     id: shot.id,
     kind: shot.kind,
@@ -74,8 +80,8 @@ export function reflectContact(w: World, p: Player, shot: Projectile): boolean {
     damage: shot.damage,
     hitRadius: shot.hitRadius,
     impactRadius: shot.impactRadius,
-    rangeLeft: shot.rangeLeft,
-    lifetime: shot.lifetime,
+    rangeLeft: 900,
+    lifetime: Math.max(shot.lifetime, 900 / speed + 0.1),
     reflected: true,
   };
   for (const key of Object.keys(shot)) delete (shot as unknown as Record<string, unknown>)[key];

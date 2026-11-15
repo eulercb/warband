@@ -9066,7 +9066,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Blessing adds 35 absorption for 4s to its lowest-health recipient. A real barrier gain from Blessing or Warding Flare grants one 4s projectile reflection; Smite delays wind-ups 30% for 3s",
+      "description": "Blessing adds 35 absorption for 4s to its lowest-health recipient. Blessing and Warding Flare grant or refresh one 4s projectile reflection, even at full absorption; returned shots get 900u travel; Smite delays wind-ups 30% for 3s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,

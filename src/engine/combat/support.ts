@@ -112,8 +112,8 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
         ),
         ab.absorption.duration,
       );
-      if (gained <= 0) continue;
       armReflection(world, p, ally, ab);
+      if (gained <= 0) continue;
       onSubclassProtection(p, gained);
       supportCue(world, p, ally, 'absorb');
       // Cosmetic incoming links identify the marks supplying the barrier, without
