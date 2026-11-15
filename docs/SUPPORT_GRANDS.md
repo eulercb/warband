@@ -1,5 +1,9 @@
 # Cleric, Paladin and Bard: authored upgrade builds
 
+Light/Life identity findings are superseded by [the purpose review](LIGHT_LIFE_PURPOSE_REVIEW.md).
+Endless Radiance now uses recipient-bound reflection; the remaining original
+tables below describe the authored baseline, not new purpose acceptance.
+
 Whispers is superseded by [the perception delivery](WHISPERS_DELIVERY.md). The
 original cohort notes below preserve the prior release evidence.
 

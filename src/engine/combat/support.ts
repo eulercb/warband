@@ -1,3 +1,4 @@
+import { armReflection } from './reflection';
 import { spendSecret } from './whispers';
 import {
   onSubclassFinisher,
@@ -112,6 +113,7 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
         ab.absorption.duration,
       );
       if (gained <= 0) continue;
+      armReflection(world, p, ally, ab);
       onSubclassProtection(p, gained);
       supportCue(world, p, ally, 'absorb');
       // Cosmetic incoming links identify the marks supplying the barrier, without

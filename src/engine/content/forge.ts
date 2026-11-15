@@ -1,3 +1,4 @@
+import { REFLECTION_TEXT } from './reflectionRules';
 import {
   GUIDANCE_TEXT,
   guidedBurstFits,
@@ -156,6 +157,7 @@ export type EffectComponent =
   | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
   | { kind: 'fortune'; fortune: NonNullable<PlayerAbilityDef['fortune']> }
   | { kind: 'guidedBurst' }
+  | { kind: 'reflectWard' }
   | { kind: 'guideRelay' }
   | { kind: 'guidedShot' }
   | { kind: 'dispelField' }
@@ -447,6 +449,12 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     effects.push({ kind: 'ancestralRelay', range: def.ancestralRelay.range });
   if (def.shadowReprise) effects.push({ kind: 'shadowReprise', reprise: { ...def.shadowReprise } });
   if (def.guidedBurst && guidedBurstFits(def)) effects.push({ kind: 'guidedBurst' });
+  if (
+    def.reflectWard &&
+    ['selfBuff', 'buffAlly'].includes(def.kind) &&
+    (def.absorption?.amount ?? 0) > 0
+  )
+    effects.push({ kind: 'reflectWard' });
   if (def.guideRelay && kind === 'blink') effects.push({ kind: 'guideRelay' });
   if (def.guidedShot && kind === 'projectile' && def.damage > 0 && !def.returningShot)
     effects.push({ kind: 'guidedShot' });
@@ -526,6 +534,11 @@ export function recompose(
   comp: AbilityComponents,
   meta: { slot: PlayerAbilityDef['slot']; name: string; cooldown: number },
 ): PlayerAbilityDef {
+  if (
+    comp.effects.some((e) => e.kind === 'reflectWard') &&
+    (meta.slot === 'basic' || !reflectionComponentsFit(comp))
+  )
+    comp = { ...comp, effects: comp.effects.filter((e) => e.kind !== 'reflectWard') };
   if (
     comp.effects.some((e) => e.kind === 'guidedBurst') &&
     (meta.slot === 'basic' || !burstComponentsFit(comp))
@@ -784,6 +797,9 @@ export function recompose(
       case 'guidedBurst':
         def.guidedBurst = true;
         break;
+      case 'reflectWard':
+        def.reflectWard = true;
+        break;
       case 'guideRelay':
         def.guideRelay = true;
         break;
@@ -1011,6 +1027,7 @@ function effectValue(e: EffectComponent, fan: number): number {
       );
     case 'guidedBurst':
       return 32;
+    case 'reflectWard':
     case 'guideRelay':
       return 32;
     case 'guidedShot':
@@ -1320,6 +1337,8 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
       return `departure anchor ${s(e.reprise.lifetime)}, later ${e.reprise.prepared ? 'prepared ' : ''}direct hit unlocks ${s(e.reprise.returnWindow)} return; press this skill again within ${delivery === 'blink' ? 'blink range' : `${n(e.reprise.range)}u`}`;
     case 'guidedBurst':
       return GUIDED_BURST_TEXT;
+    case 'reflectWard':
+      return REFLECTION_TEXT;
     case 'guideRelay':
       return GUIDE_RELAY_TEXT;
     case 'guidedShot':
@@ -1734,6 +1753,8 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return true; // slotAllowsEffect excludes basic attacks
     case 'guidedBurst':
       return kind === 'pbaoe';
+    case 'reflectWard':
+      return kind === 'selfBuff' || kind === 'buffAlly';
     case 'guideRelay':
       return kind === 'blink';
     case 'guidedShot':
@@ -2367,6 +2388,7 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
         },
       };
     case 'guidedBurst':
+    case 'reflectWard':
     case 'guideRelay':
     case 'guidedShot':
     case 'dispelField':
@@ -2459,6 +2481,12 @@ const roundCd = (x: number, slot: AbilitySlot): number =>
 
 // --- Caps + quantization (identity-true ceilings, clean numbers) ------------
 
+function reflectionComponentsFit(comp: AbilityComponents): boolean {
+  return (
+    ['selfBuff', 'buffAlly'].includes(comp.delivery.kind) &&
+    comp.effects.some((e) => e.kind === 'absorption' && e.grant.amount > 0)
+  );
+}
 function burstComponentsFit(comp: AbilityComponents): boolean {
   return (
     comp.delivery.kind === 'pbaoe' &&
@@ -2484,6 +2512,7 @@ function capComponents(comp: AbilityComponents): AbilityComponents {
   return {
     delivery,
     effects: comp.effects
+      .filter((e) => e.kind !== 'reflectWard' || reflectionComponentsFit(comp))
       .filter((e) => e.kind !== 'guidedBurst' || burstComponentsFit(comp))
       .filter((e) => e.kind !== 'guideRelay' || delivery.kind === 'blink')
       .filter(
@@ -2599,6 +2628,7 @@ function addBoonComponents(
         'prepareCrit',
         'fortune',
         'guidedBurst',
+        'reflectWard',
         'guideRelay',
         'guidedShot',
         'dispelField',
@@ -2834,6 +2864,7 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
     case 'shadowReprise':
       return def.shadowReprise ? { ...e, reprise: { ...def.shadowReprise } } : e;
     case 'guidedBurst':
+    case 'reflectWard':
     case 'guideRelay':
     case 'guidedShot':
     case 'dispelField':
@@ -3092,6 +3123,7 @@ function capEffect(e: EffectComponent): EffectComponent {
         },
       };
     case 'guidedBurst':
+    case 'reflectWard':
     case 'guideRelay':
     case 'guidedShot':
     case 'dispelField':

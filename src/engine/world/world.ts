@@ -1,4 +1,10 @@
 import {
+  advanceReflection,
+  reflectContact,
+  reflectionView,
+  resolveReflected,
+} from '../combat/reflection';
+import {
   advanceGuidance,
   steerProjectile,
   guidanceView,
@@ -1772,6 +1778,7 @@ export class World {
   // -------------------------------------------------------------------------
 
   private updateProjectiles(dt: number): void {
+    advanceReflection(this, dt);
     advanceGuidance(this, dt);
     const keep: Projectile[] = [];
     for (const proj of this.projectiles) {
@@ -1825,6 +1832,7 @@ export class World {
   }
 
   private resolvePlayerProjectile(proj: Projectile): boolean {
+    if (proj.reflected) return resolveReflected(this, proj);
     const owner = this.players.find((p) => p.id === proj.ownerId) ?? null;
     // find first collision (any boss, else an add)
     let hitBoss: Boss | null = null;
@@ -2405,7 +2413,8 @@ export class World {
   }
 
   /** A selected hostile body contact retains the existing damage and rider behavior. */
-  resolveHostileContact(proj: Projectile, p: Player): void {
+  resolveHostileContact(proj: Projectile, p: Player): boolean {
+    if (reflectContact(this, p, proj)) return true;
     const incomingSpeed = Math.hypot(proj.vel.x, proj.vel.y) || 1;
     damagePlayer(this, p, proj.damage, {
       x: p.pos.x - (proj.vel.x / incomingSpeed) * 20,
@@ -2415,14 +2424,14 @@ export class World {
     if (proj.slowMult != null && proj.slowMult < 1) {
       applyBuff(p, makeBuff('moveSpeed', proj.slowMult, proj.slowDuration ?? 2, 'bossSlow'));
     }
+    return false;
   }
 
   private resolveBossProjectile(proj: Projectile): boolean {
     for (const p of this.players) {
       if (p.state !== 'alive') continue;
       if (dist(proj.pos, p.pos) <= proj.hitRadius + p.radius) {
-        this.resolveHostileContact(proj, p);
-        return true;
+        return !this.resolveHostileContact(proj, p);
       }
     }
     return false;
@@ -4197,6 +4206,7 @@ export class World {
       ...(Object.keys(infernalClaimTargets).length ? { infernalClaimTargets } : {}),
       waveCover: this.waveCoverView(p),
       maneuver: maneuverView(this, p),
+      reflectionWard: reflectionView(this, p),
       guidance: guidanceView(this, p),
       guidedBursts: burstControls(this, p),
       guidanceOrigin: originView(this, p),
@@ -4322,6 +4332,7 @@ export class World {
           vel: { ...p.vel },
           color: p.color,
           guidance: guidedProjectileView(this, p),
+          reflected: p.reflected,
           returnPhase: p.returningShot?.phase,
           returnTurn: (p.returningShot?.turnFlash ?? 0) > 0 || undefined,
         })),

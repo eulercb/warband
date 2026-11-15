@@ -305,6 +305,19 @@ export class Fx {
           });
           break;
         }
+        case 'reflection': {
+          this.spawnFloater(e.pos, 'REFLECT', 0xffe690);
+          this.spawnBurst(e.pos, {
+            startR: 12,
+            endR: 40,
+            ttl: 0.3,
+            color: 0xffe690,
+            alpha0: 0.8,
+            filled: false,
+            lineWidth: 3,
+          });
+          break;
+        }
         case 'phaseOrigin': {
           this.spawnFloater(e.from, 'CAST ORIGIN', 0xffdc89);
           for (const pos of [e.from, e.to])

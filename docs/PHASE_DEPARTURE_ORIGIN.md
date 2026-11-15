@@ -1,5 +1,8 @@
 # Chaos Crossing: escape first, cast from departure
 
+Merged and tested in #178; the owner accepted this replacement and authorized
+the Light/Life support review. This document preserves the delivery evidence.
+
 The owner merged and tested #177. Most changes felt good; Tides and cast-wide
 Fortune stay accepted for now. Phase's live-shot relay failed the actual combat
 sequence: projectiles expired before a useful opportunity, and teleporting in

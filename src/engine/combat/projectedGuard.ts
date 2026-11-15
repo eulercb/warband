@@ -1,3 +1,4 @@
+import { canReflect } from './reflection';
 /** Swept projected-shield contact, ordered against bodies and cover on the same shot path. */
 import type { Buff, Player, Projectile, Vec2 } from '../core/types';
 import type { World } from '../world/world';
@@ -61,6 +62,10 @@ export function sweepProjectedGuard(w: World, shot: Projectile, from: Vec2): boo
   let hit: Contact | undefined;
   for (const p of w.players) {
     if (p.state !== 'alive' || p.hp <= 0) continue;
+    if (canReflect(w, p, shot)) {
+      const t = circleTime(sub(from, p.pos), step, p.radius + shot.hitRadius);
+      if (t !== undefined && (!hit || t < hit.t)) hit = { t, kind: 'body', player: p };
+    }
     const guard = p.buffs.find(
       (b) =>
         b.kind === 'frontGuard' &&
@@ -99,7 +104,7 @@ export function sweepProjectedGuard(w: World, shot: Projectile, from: Vec2): boo
   }
   const contact = wrapPos({ x: from.x + step.x * hit.t, y: from.y + step.y * hit.t });
   shot.pos = contact;
-  if (hit.kind === 'body') w.resolveHostileContact(shot, hit.player);
+  if (hit.kind === 'body') return !w.resolveHostileContact(shot, hit.player);
   else if (hit.kind === 'shield') {
     // Interception is a physical guarded contact even when the owner has i-frames.
     consumeFrontGuard(hit.player, hit.guard, 1.3);

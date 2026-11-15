@@ -689,6 +689,18 @@ export class Renderer {
       drawZone(g, z, this.camera.worldToScreen(z.pos), this.camera.scale);
     }
     for (const p of state.players) {
+      if (p.reflectionWard) {
+        const at = this.camera.worldToScreen(p.pos),
+          r = (PLAYER_RADIUS + 12) * this.camera.scale;
+        g.circle(at.x, at.y, r).stroke({ color: 0xffe690, width: 3, alpha: 0.75 });
+        g.arc(
+          at.x,
+          at.y,
+          r + 4,
+          -Math.PI / 2,
+          -Math.PI / 2 + Math.PI * 2 * Math.min(1, p.reflectionWard.remaining / 4),
+        ).stroke({ color: 0xffffff, width: 2 });
+      }
       const o = p.guidanceOrigin;
       if (!o) continue;
       const at = this.camera.worldToScreen(o.pos),
@@ -915,6 +927,9 @@ export class Renderer {
     const g = this.projectilesLayer;
     g.clear();
     for (const pr of state.projectiles) {
+      const at = this.camera.worldToScreen(pr.pos);
+      if (pr.reflected)
+        g.circle(at.x, at.y, 12 * this.camera.scale).stroke({ color: 0xffe690, width: 3 });
       if (pr.guidance)
         drawGuidance(
           g,
@@ -964,7 +979,8 @@ export class Renderer {
     const stations = state.stations ?? [];
     const guided = state.players.find((p) => p.id === state.localPlayerId && p.guidance);
     this.ensureLabels(
-      (guided ? 1 : 0) +
+      state.players.filter((p) => p.reflectionWard).length +
+        (guided ? 1 : 0) +
         state.players.length +
         state.bosses.length +
         totems.length +
@@ -1087,6 +1103,18 @@ export class Renderer {
       t.alpha = 1;
     }
 
+    for (const p of state.players)
+      if (p.reflectionWard) {
+        const t = this.labels[i++],
+          at = this.camera.worldToScreen(p.pos);
+        t.visible = true;
+        t.text = `Reflect 1 · ${p.reflectionWard.remaining.toFixed(1)}s`;
+        t.position.set(
+          Math.max(t.width / 2 + 8, Math.min(this.app.screen.width - t.width / 2 - 8, at.x)),
+          Math.max(125, Math.min(this.app.screen.height - 145, at.y + PLAYER_RADIUS * scale + 58)),
+        );
+        t.alpha = 1;
+      }
     // item 78: a final declutter pass — fade any visible label sliding into the top
     // HUD band (boss bar / HP readout) so world text thins out under the HUD
     // instead of colliding with it.
