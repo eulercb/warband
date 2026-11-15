@@ -1,4 +1,13 @@
 import {
+  claimFonts,
+  advanceFonts,
+  fontAvailable,
+  fontForTarget,
+  fontCanSaveWipe,
+  fontRecoveryView,
+  fontRescueViews,
+} from '../combat/revivalFont';
+import {
   advanceReflection,
   reflectContact,
   reflectionView,
@@ -596,6 +605,8 @@ export class World {
   /** Hardcore run: deadlier corruption cadence + limited revives (see item 11). */
   hardcore = false;
   /** Revives remaining this fight (hardcore only; Infinity otherwise). */
+  fontSpent = new Set<number>();
+  fontRescues: import('../core/types').FontRescue[] = [];
   reviveBudget = Infinity;
   /**
    * Hardcore kill-DEADLINE (item 11): the `elapsed` second at which the band
@@ -612,6 +623,9 @@ export class World {
   /** Deadline warning marks already announced (seconds-remaining) — each fires once. */
   private deadlineWarned = new Set<number>();
   /** Closing-chasm escalation once the deadline passes (items 21/27), or null. */
+  get deadlineActive(): boolean {
+    return this.deadlineChasm !== null;
+  }
   private deadlineChasm: { center: Vec2; radius: number; pulse: number } | null = null;
 
   tauntTargetId: EntityId | null = null;
@@ -1274,6 +1288,7 @@ export class World {
     this.auraClock = updatePaladinAuras(this, dt, this.auraClock);
     maintainFieldTransplants(this);
     this.updateRevive(dt, inputs);
+    advanceFonts(this, dt);
     dissolveOverlappedBulwarks(this);
     this.updateProjectiles(dt);
     this.updateZones(dt);
@@ -1647,6 +1662,7 @@ export class World {
     p.shadowCommitEpoch = (p.shadowCommitEpoch ?? 0) + 1;
     p.transplantEpoch = (p.transplantEpoch ?? 0) + 1;
     p.castEpoch = (p.castEpoch ?? 0) + 1;
+    p.fontEpoch = (p.fontEpoch ?? 0) + 1;
     delete p.guidance;
     delete p.fieldTransplants;
     p.companionEpoch = (p.companionEpoch ?? 0) + 1;
@@ -1733,7 +1749,14 @@ export class World {
   private updateRevive(dt: number, inputs: Map<string, InputCommand>): void {
     // Hardcore: once the fight's revive stock is spent, a downed hero can no
     // longer be brought back — they're out for the rest of this boss.
-    if (this.reviveBudget <= 0) return;
+    if (this.reviveBudget <= 0) {
+      for (const p of this.players)
+        if (p.state === 'downed') {
+          p.reviveProgress = 0;
+          p.reviverId = null;
+        }
+      return;
+    }
     for (const d of this.players) {
       if (d.state !== 'downed') continue;
       // item 10: count EVERY ally reviving this hero (not just the first), so more
@@ -1750,12 +1773,19 @@ export class World {
           if (!reviver) reviver = p;
         }
       }
+      const font = fontForTarget(this, d);
+      const manualSpeed = reviverCount > 0 ? coReviveSpeed(reviverCount) : 0;
+      if (font && !reviver) reviver = this.players.find((p) => p.id === font.ownerId) ?? null;
       if (reviver) {
         // Each extra concurrent reviver speeds the fill (diminishing returns, floored
         // so it can never be instant — see coReviveSpeed / REVIVE_MIN_TIME).
-        d.reviveProgress += dt * coReviveSpeed(reviverCount);
+        d.reviveProgress +=
+          dt * manualSpeed +
+          (font
+            ? Math.min(dt, font.remaining) * (coReviveSpeed(reviverCount + 1) - manualSpeed)
+            : 0);
         d.reviverId = reviver.id;
-        if (d.reviveProgress >= REVIVE_TIME) {
+        if (d.reviveProgress + 1e-8 >= REVIVE_TIME) {
           d.state = 'alive';
           d.hp = d.maxHp * REVIVE_HP_FRAC;
           d.reviveProgress = 0;
@@ -3900,8 +3930,9 @@ export class World {
     // a few seconds, downing/killing everyone (which the wipe check below then ends
     // as a defeat). anyBossAlive is referenced there; kept local for readability.
     void anyBossAlive;
+    claimFonts(this);
     const anyAlive = this.players.some((p) => p.state === 'alive');
-    if (!anyAlive && this.players.length > 0) {
+    if (!anyAlive && this.players.length > 0 && !fontCanSaveWipe(this)) {
       this.finished = true;
       this.outcome = 'defeat';
       this.endMs = this.elapsed * 1000;
@@ -4206,6 +4237,7 @@ export class World {
       ...(Object.keys(infernalClaimTargets).length ? { infernalClaimTargets } : {}),
       waveCover: this.waveCoverView(p),
       maneuver: maneuverView(this, p),
+      fontRecovery: fontRecoveryView(this, p),
       reflectionWard: reflectionView(this, p),
       guidance: guidanceView(this, p),
       guidedBursts: burstControls(this, p),
@@ -4321,6 +4353,7 @@ export class World {
         maxHp: a.maxHp,
         buffs: a.buffs.map(buffView),
       })),
+      fontRescues: fontRescueViews(this),
       guidedBursts: burstViews(this),
       projectiles: this.projectiles
         .filter((p) => !p.apertureTransit)
@@ -4338,6 +4371,7 @@ export class World {
         })),
       apparitions: apparitionViews(this),
       groundZones: this.groundZones.map((z) => ({
+        revivalFont: fontAvailable(this, z) || undefined,
         supportKinds: zoneSupportKinds(z),
         side: z.side,
         curseStyle: z.side === 'player' && z.curseBonus ? (z.curseStyle ?? 'hex') : undefined,

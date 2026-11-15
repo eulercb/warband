@@ -512,7 +512,22 @@ export interface PalmSweepView {
   slot: ExtSlot;
   origin: Vec2;
 }
+export interface FontSource {
+  source: import('../content/classes').PlayerAbilityDef;
+  slot: ExtSlot;
+  ownerClass: ClassId;
+  epoch: number;
+}
+export interface FontRescue {
+  ownerId: EntityId;
+  targetId: EntityId;
+  source: FontSource;
+  pos: Vec2;
+  radius: number;
+  remaining: number;
+}
 export interface Player {
+  fontEpoch?: number;
   reflectionWard?: {
     remaining: number;
     ownerId: EntityId;
@@ -1354,6 +1369,7 @@ export interface PendingStrike {
 }
 
 export interface GroundZone {
+  revivalFont?: FontSource;
   whisperCast?: WhisperCast;
   zonePoison?: { share: number; onExit: boolean; damageMult?: number };
   zoneFollow?: number;
@@ -1549,6 +1565,7 @@ export type GameEvent =
   | { t: 'revive'; id: EntityId; pos: Vec2 }
   | { t: 'downed'; id: EntityId; pos: Vec2 }
   | { t: 'dodge'; id: EntityId; pos: Vec2 }
+  | { t: 'fontRescue'; pos: Vec2 }
   | { t: 'reflection'; pos: Vec2 }
   | { t: 'phaseOrigin'; from: Vec2; to: Vec2 }
   | { t: 'spellGuidance'; pos: Vec2 }
@@ -1636,6 +1653,7 @@ export interface ShadowCommitCast {
 }
 
 export interface PlayerView {
+  fontRecovery?: { progress: number };
   reflectionWard?: { remaining: number };
   shadowCommits?: ShadowCommitView[];
   ancestralRelay?: AncestralView;
@@ -1790,6 +1808,7 @@ export interface ProjectileView {
 }
 
 export interface ZoneView {
+  revivalFont?: boolean;
   side?: Side;
   curseStyle?: CurseStyle;
   /** Actual friendly payloads, for color-independent ground markers. */
@@ -1811,7 +1830,14 @@ export interface ZoneView {
 }
 
 /** The over-the-wire fight snapshot (host -> clients). */
+export interface FontRescueView {
+  ownerId: EntityId;
+  targetId: EntityId;
+  pos: Vec2;
+  radius: number;
+}
 export interface Snapshot {
+  fontRescues?: FontRescueView[];
   tick: number;
   players: PlayerView[];
   /** Every living-or-dying boss in the arena (twin encounters ship several). */
@@ -1842,6 +1868,7 @@ export interface Snapshot {
  * `Snapshot` with local context.
  */
 export interface RenderState {
+  fontRescues?: FontRescueView[];
   tick: number;
   players: PlayerView[];
   bosses: BossView[];

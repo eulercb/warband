@@ -64,7 +64,8 @@
     "smoke:warding": "node scripts/smoke-warding.mjs",
     "smoke:guidance": "node scripts/smoke-guidance.mjs",
     "smoke:crossing-followup": "node scripts/smoke-crossing-followup.mjs",
-    "smoke:light-reflection": "node scripts/smoke-light-reflection.mjs"
+    "smoke:light-reflection": "node scripts/smoke-light-reflection.mjs",
+    "smoke:life-font": "node scripts/smoke-life-font.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

@@ -101,6 +101,15 @@ describe('Chaos Forge char-upgrade synthesis', () => {
           ).toBe(false);
           continue;
         }
+        if (up.id === 'cl_life_g_a' && after === before) {
+          expect(
+            Object.entries(previewAbilityTable(cid, [])).some(
+              ([slot, ab]) =>
+                slot !== 'basic' && ab.kind === 'groundZone' && (ab.zoneTickHeal ?? 0) > 0,
+            ),
+          ).toBe(false);
+          continue;
+        }
         if (up.id === 'dr_land_g_b' && after === before) {
           // A field-only identity has no numeric fallback on a kit without fields.
           expect(

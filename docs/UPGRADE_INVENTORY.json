@@ -9188,7 +9188,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Effective Heal leaves a 90u grove for 3s, healing 4/tick; Sanctuary grants 20% mitigation. Life heals grant 20% movement for 3s, fields grant 20% mitigation, wards heal you 20, and direct strikes leech 15%",
+      "description": "Sanctuary and Blessed Bloom share one rescue attempt per owner per encounter. A downed ally inside consumes the field for a normal 3s revive channel, using normal revive stock. Can rescue you; the body must stay inside",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -9198,94 +9198,34 @@
           "subSkills": ["cl_life_bloom"],
           "prefix": [],
           "once": [
-            {
-              "path": "abilities.a1.recoveryZone",
-              "before": null,
-              "after": { "radius": 90, "duration": 3, "tickHeal": 4 }
-            },
-            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.8 },
-            { "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }
+            { "path": "abilities.a2.revivalFont", "before": null, "after": true },
+            { "path": "subAbilities.sub1.revivalFont", "before": null, "after": true }
           ],
           "atCap": [
-            {
-              "path": "abilities.a1.recoveryZone",
-              "before": null,
-              "after": { "radius": 90, "duration": 3, "tickHeal": 4 }
-            },
-            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.8 },
-            { "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }
+            { "path": "abilities.a2.revivalFont", "before": null, "after": true },
+            { "path": "subAbilities.sub1.revivalFont", "before": null, "after": true }
           ]
         },
         {
           "classId": "cleric",
           "subSkills": ["cl_life_mend"],
           "prefix": [],
-          "once": [
-            {
-              "path": "abilities.a1.recoveryZone",
-              "before": null,
-              "after": { "radius": 90, "duration": 3, "tickHeal": 4 }
-            },
-            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.8 },
-            { "path": "subAbilities.sub1.buffDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.buffMoveMult", "before": null, "after": 1.2 }
-          ],
-          "atCap": [
-            {
-              "path": "abilities.a1.recoveryZone",
-              "before": null,
-              "after": { "radius": 90, "duration": 3, "tickHeal": 4 }
-            },
-            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.8 },
-            { "path": "subAbilities.sub1.buffDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.buffMoveMult", "before": null, "after": 1.2 }
-          ]
+          "once": [{ "path": "abilities.a2.revivalFont", "before": null, "after": true }],
+          "atCap": [{ "path": "abilities.a2.revivalFont", "before": null, "after": true }]
         },
         {
           "classId": "cleric",
           "subSkills": ["cl_life_preserve"],
           "prefix": [],
-          "once": [
-            {
-              "path": "abilities.a1.recoveryZone",
-              "before": null,
-              "after": { "radius": 90, "duration": 3, "tickHeal": 4 }
-            },
-            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.8 },
-            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 20 }
-          ],
-          "atCap": [
-            {
-              "path": "abilities.a1.recoveryZone",
-              "before": null,
-              "after": { "radius": 90, "duration": 3, "tickHeal": 4 }
-            },
-            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.8 },
-            { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 20 }
-          ]
+          "once": [{ "path": "abilities.a2.revivalFont", "before": null, "after": true }],
+          "atCap": [{ "path": "abilities.a2.revivalFont", "before": null, "after": true }]
         },
         {
           "classId": "cleric",
           "subSkills": ["cl_life_smite"],
           "prefix": [],
-          "once": [
-            {
-              "path": "abilities.a1.recoveryZone",
-              "before": null,
-              "after": { "radius": 90, "duration": 3, "tickHeal": 4 }
-            },
-            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.8 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.15 }
-          ],
-          "atCap": [
-            {
-              "path": "abilities.a1.recoveryZone",
-              "before": null,
-              "after": { "radius": 90, "duration": 3, "tickHeal": 4 }
-            },
-            { "path": "abilities.a2.zoneAllyDefMult", "before": null, "after": 0.8 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.15 }
-          ]
+          "once": [{ "path": "abilities.a2.revivalFont", "before": null, "after": true }],
+          "atCap": [{ "path": "abilities.a2.revivalFont", "before": null, "after": true }]
         }
       ]
     },

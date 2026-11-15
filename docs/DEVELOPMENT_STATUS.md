@@ -28,37 +28,27 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Reflection playtest follow-up](REFLECTION_PLAYTEST_FOLLOWUP.md).
-The owner merged/tested #175 and accepted Grand Warding's expanded field/silence
-escape for now. Its counterspell candidate remains a separate deferred option.
-Land transplantation and the Hunter/Beast Master follow-ups remain accepted.
+Current delivery: [Life rescue font](LIFE_RESCUE_FONT.md).
+Grand Warding escape, Land transplantation, Hunter/Beast Master and Chaos
+Crossing departure casting remain accepted. The owner merged/tested #180 and
+accepted reflection readiness, return travel and the distinct mirror marker.
 
-The owner merged/tested #178 and accepted Phase departure casting. Tides and
-cast-wide Fortune from #177 remain accepted for now. The caster follow-up is
-complete pending new evidence, rather than a claim of equal identity power.
-
-The owner merged/tested #179 and liked reflection’s idea. Its stray drawing line,
-short return budgets and absorption-cap gate need correction. This follow-up
-adds a faceted mirror marker, a fresh bounded return leg and reflection readiness
-on capped-shield casts. The changes await owner live acceptance.
-
-Twenty-one of 24 subclasses have now been inspected. The Light/Life review found
-four useful but mostly numerical packages. Dawnbreaker is retained as growth;
-Endless Radiance has a projectile-reflection action with its playtest follow-up
-pending acceptance. Both Life identity purpose findings remain open. Inspection,
-implementation and acceptance remain separate states; this does not complete
-the support identity work.
+Twenty-one of 24 subclasses have been inspected. Light A is retained growth;
+Light B reflection is accepted. Life A now prepares one field rescue per owner
+per encounter, using normal revive stock, and awaits owner live acceptance.
+Life B (Ceaseless Mending) remains useful growth with its purpose finding open.
+Inspection, implementation and acceptance remain separate states.
 
 ## Next development work, in order
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test the reflection fixes; next development is the Life identity purpose follow-up.                                                                                     |
+| Next                         | Live-test Font of Life; next development is Ceaseless Mending’s purpose follow-up.                                                                                           |
 | Following                    | Review Devotion, Vengeance and Valor after the Life follow-up.                                                                                                               |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                |
 | Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing departure casting accepted. Evoker stays retained.                                                                  |
-| Remaining support identities | Light inspected (B reflection pending; A retained growth); Life purpose open; Devotion, Vengeance and Valor unreviewed. Whispers accepted.                                   |
+| Remaining support identities | Light B accepted, A retained growth; Life A implemented pending acceptance, B purpose open; Devotion, Vengeance and Valor unreviewed. Whispers accepted.                     |
 | Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                                                |
 | Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                               |
 

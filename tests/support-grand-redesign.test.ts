@@ -118,7 +118,19 @@ describe('authored support builds', () => {
                 ],
               });
               const p = w.players[0];
-              expect(p.grandLoadout!.classes[classId]!.equipped).toHaveLength(4);
+              const bank = p.grandLoadout!.classes[classId]!;
+              expect(bank.bank).toHaveLength(4);
+              if (bank.equipped.length === 3) {
+                expect(identity.id).toBe('cl_life_g_a');
+                expect(bank.bank).toContain(identity.id);
+                expect(bank.equipped).not.toContain(identity.id);
+                expect(
+                  [...Object.values(p.abilities!), p.subAbilities!.sub1!].some(
+                    (ab) =>
+                      ab.slot !== 'basic' && ab.kind === 'groundZone' && (ab.zoneTickHeal ?? 0) > 0,
+                  ),
+                ).toBe(false);
+              } else expect(bank.equipped).toHaveLength(4);
               if (seed !== null)
                 expect(getCharUpgrade(`${first.id}_g`)!.desc).toContain(
                   getSubSkill(first.id)!.name,

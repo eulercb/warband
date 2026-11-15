@@ -1,5 +1,7 @@
 # Reflection: reliable preparation, useful returns, a distinct mirror
 
+Accepted: the owner merged and tested #180. The following records that delivery.
+
 The owner merged/tested #179 and liked the reflection idea. Three issues prevent
 acceptance: an arena line towards the screen corner, reflected shots disappearing
 near the end of their incoming budget, and capped absorption preventing reflection
