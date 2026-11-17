@@ -158,7 +158,7 @@ export type EffectComponent =
   | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
   | { kind: 'fortune'; fortune: NonNullable<PlayerAbilityDef['fortune']> }
   | { kind: 'guidedBurst' }
-  | { kind: 'revivalFont' }
+  | { kind: 'revivalFont'; family: import('../core/types').FontFamily }
   | { kind: 'reflectWard' }
   | { kind: 'guideRelay' }
   | { kind: 'guidedShot' }
@@ -458,7 +458,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   )
     effects.push({ kind: 'reflectWard' });
   if (def.revivalFont && kind === 'groundZone' && (def.zoneTickHeal ?? 0) > 0)
-    effects.push({ kind: 'revivalFont' });
+    effects.push({ kind: 'revivalFont', family: def.revivalFont });
   if (def.guideRelay && kind === 'blink') effects.push({ kind: 'guideRelay' });
   if (def.guidedShot && kind === 'projectile' && def.damage > 0 && !def.returningShot)
     effects.push({ kind: 'guidedShot' });
@@ -500,6 +500,7 @@ function uniqueMentalContracts(effects: EffectComponent[]): EffectComponent[] {
   const seen = new Set<string>();
   return effects.filter((e) => {
     if (
+      e.kind !== 'revivalFont' &&
       e.kind !== 'thoughtBreak' &&
       e.kind !== 'forethought' &&
       e.kind !== 'maneuver' &&
@@ -611,7 +612,7 @@ export function recompose(
   if (comp.effects.some((e) => e.kind === 'shadowCommit'))
     comp = { ...comp, delivery: { ...comp.delivery, castTime: 0 } };
   if (
-    ['forethought', 'thoughtBreak', 'maneuver'].some(
+    ['forethought', 'thoughtBreak', 'maneuver', 'revivalFont'].some(
       (kind) => comp.effects.filter((e) => e.kind === kind).length > 1,
     ) ||
     comp.effects.some(
@@ -807,7 +808,7 @@ export function recompose(
         def.guidedBurst = true;
         break;
       case 'revivalFont':
-        def.revivalFont = true;
+        def.revivalFont = e.family;
         break;
       case 'reflectWard':
         def.reflectWard = true;
@@ -1352,7 +1353,7 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
     case 'guidedBurst':
       return GUIDED_BURST_TEXT;
     case 'revivalFont':
-      return FONT_TEXT;
+      return FONT_TEXT(e.family);
     case 'reflectWard':
       return REFLECTION_TEXT;
     case 'guideRelay':

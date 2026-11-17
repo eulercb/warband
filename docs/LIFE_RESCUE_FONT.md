@@ -1,5 +1,10 @@
 # Font of Life: prepare a place for recovery
 
+Historical #181 delivery, merged and tested. The owner liked the revive idea
+and requested separate skill charges, stock independence and group Sanctuary.
+See [Life rescue follow-up](LIFE_RESCUE_FOLLOWUP.md) for the current rules;
+shared-stock and owner-wide single-charge rules below are superseded.
+
 Reflection reliability (#180) was merged, tested and accepted. This delivery
 implements Life A's purpose follow-up; owner live acceptance remains pending.
 Ceaseless Mending (Life B) remains useful growth with its purpose finding open.

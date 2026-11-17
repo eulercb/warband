@@ -512,7 +512,9 @@ export interface PalmSweepView {
   slot: ExtSlot;
   origin: Vec2;
 }
+export type FontFamily = 'sanctuary' | 'bloom';
 export interface FontSource {
+  family: FontFamily;
   source: import('../content/classes').PlayerAbilityDef;
   slot: ExtSlot;
   ownerClass: ClassId;
@@ -1808,7 +1810,7 @@ export interface ProjectileView {
 }
 
 export interface ZoneView {
-  revivalFont?: boolean;
+  revivalFont?: FontFamily;
   side?: Side;
   curseStyle?: CurseStyle;
   /** Actual friendly payloads, for color-independent ground markers. */

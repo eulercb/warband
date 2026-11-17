@@ -78,6 +78,14 @@ incoming budget. Preserve captured damage and borrowed-hit provenance. Give
 independent graphics paths explicit starts; an arc can otherwise connect to the
 previous/default point and draw a spurious line toward the screen origin.
 
+Owner feedback: Font rescues do not require or spend shared manual revive stock.
+Sanctuary has one area-rescue attempt per owner/encounter; Blessed Bloom has its
+own single-ally attempt. Capture the cohort when consuming the field, excluding
+already rescued bodies and later entrants. Copies/Forge retain the original
+rescue family across slots/classes and share its charge, not a fresh copy budget.
+A valid Font channel completes free even with manual help or zero stock; manual
+stock exhaustion must not skip other Font recoveries in that update.
+
 Owner follow-up: Fortune belongs to the whole spending cast, including its fan,
 pierces and direct explosion recipients, once per living foe. Preserve the shared
 cast snapshot after readiness is consumed; never spend a later preparation on the

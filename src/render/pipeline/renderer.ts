@@ -1123,7 +1123,7 @@ export class Renderer {
         const t = this.labels[i++],
           at = this.camera.worldToScreen(z.pos);
         t.visible = true;
-        t.text = 'Rescue font · 1';
+        t.text = `Rescue font · ${z.revivalFont === 'sanctuary' ? 'all' : 'one'} · 1`;
         t.alpha = 1;
         t.position.set(
           Math.max(t.width / 2 + 8, Math.min(this.app.screen.width - t.width / 2 - 8, at.x)),
