@@ -1,3 +1,4 @@
+import { REFUGE_TEXT, refugeField } from './refugeRules';
 import { FONT_TEXT, revivalFont } from './fontRules';
 import { REFLECTION_TEXT, reflectiveWard } from './reflectionRules';
 import {
@@ -210,6 +211,7 @@ export interface PlayerAbilityDef {
   whisperRefrain?: { duration: number; radius: number; fraction: number; charges: number };
   /** Blink reclaims one field and can break silence for conditional recharge. */
   dispelField?: boolean;
+  refuge?: boolean;
   revivalFont?: import('../core/types').FontFamily;
   reflectWard?: boolean;
   guidedShot?: boolean;
@@ -1532,6 +1534,7 @@ export function describeAbility(
       `departure anchor ${r.lifetime}s, later ${r.prepared ? 'prepared ' : ''}direct hit unlocks ${r.returnWindow}s return; press this skill again within ${def.kind === 'blink' ? (def.range ?? r.range) : r.range}u`,
     );
   }
+  if (refugeField(def)) parts.push(REFUGE_TEXT);
   if (revivalFont(def)) parts.push(FONT_TEXT(def.revivalFont!));
   if (reflectiveWard(def)) parts.push(REFLECTION_TEXT);
   if (guidedSpell(def)) parts.push(GUIDANCE_TEXT);

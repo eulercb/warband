@@ -1,9 +1,9 @@
 # Light/Life purpose review: protect a recipient, return a shot
 
-Current update: reflection fixes (#180) are accepted. See
-[Life rescue font](LIFE_RESCUE_FONT.md) for the implemented Life A redesign,
-pending owner acceptance. Life B remains purpose-open; findings below record the
-historical review baseline.
+Current update: reflection and Life A's independent field rescues are accepted.
+[Ceaseless Mending living refuge](CEASELESS_LIVING_REFUGE.md) implements Life B's
+purpose follow-up, pending owner acceptance. Open Life findings below describe
+the historical baseline.
 
 Historical #179 delivery, merged and tested. The owner liked reflection’s idea
 and requested more reliable activation/returns and clearer visuals. See the

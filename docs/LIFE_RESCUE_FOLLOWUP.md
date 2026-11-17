@@ -1,5 +1,9 @@
 # Font of Life: independent skill charges and group Sanctuary
 
+Accepted: the owner merged and tested #182. The stock-free, independent rescue
+rules below remain current. Ceaseless Mending's separate purpose follow-up is now
+[living refuge](CEASELESS_LIVING_REFUGE.md); its implementation awaits acceptance.
+
 The owner merged/tested #181 and liked the revival idea. This follow-up removes
 its dependency on shared revive stock and gives the two skills separate charges.
 The original [delivery note](LIFE_RESCUE_FONT.md) records the historical rules.

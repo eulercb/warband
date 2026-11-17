@@ -101,11 +101,14 @@ describe('Chaos Forge char-upgrade synthesis', () => {
           ).toBe(false);
           continue;
         }
-        if (up.id === 'cl_life_g_a' && after === before) {
+        if (['cl_life_g_a', 'cl_life_g_b'].includes(up.id) && after === before) {
           expect(
             Object.entries(previewAbilityTable(cid, [])).some(
               ([slot, ab]) =>
-                slot !== 'basic' && ab.kind === 'groundZone' && (ab.zoneTickHeal ?? 0) > 0,
+                slot !== 'basic' &&
+                ab.kind === 'groundZone' &&
+                (ab.zoneTickHeal ?? 0) > 0 &&
+                (up.id === 'cl_life_g_a' || !ab.zoneFollow),
             ),
           ).toBe(false);
           continue;

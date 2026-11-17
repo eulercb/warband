@@ -513,6 +513,19 @@ export interface PalmSweepView {
   origin: Vec2;
 }
 export type FontFamily = 'sanctuary' | 'bloom';
+export interface RefugeSource {
+  source: import('../content/classes').PlayerAbilityDef;
+  slot: ExtSlot;
+  ownerClass: ClassId;
+  epoch: number;
+  remaining: number;
+}
+export interface RefugeView {
+  id: EntityId;
+  pos: Vec2;
+  radius: number;
+  remaining: number;
+}
 export interface FontSource {
   family: FontFamily;
   source: import('../content/classes').PlayerAbilityDef;
@@ -1371,6 +1384,7 @@ export interface PendingStrike {
 }
 
 export interface GroundZone {
+  refuge?: RefugeSource;
   revivalFont?: FontSource;
   whisperCast?: WhisperCast;
   zonePoison?: { share: number; onExit: boolean; damageMult?: number };
@@ -1839,6 +1853,7 @@ export interface FontRescueView {
   radius: number;
 }
 export interface Snapshot {
+  refuges?: RefugeView[];
   fontRescues?: FontRescueView[];
   tick: number;
   players: PlayerView[];
@@ -1870,6 +1885,7 @@ export interface Snapshot {
  * `Snapshot` with local context.
  */
 export interface RenderState {
+  refuges?: RefugeView[];
   fontRescues?: FontRescueView[];
   tick: number;
   players: PlayerView[];

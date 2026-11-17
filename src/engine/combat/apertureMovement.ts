@@ -1,3 +1,4 @@
+import { clipRefugeStep } from './refuge';
 /** Local detours for temporary cover, not a replacement for arena navigation. */
 import type { Vec2 } from '../core/types';
 import type { World } from '../world/world';
@@ -11,6 +12,46 @@ interface Body {
 }
 const routes = new WeakMap<Body, { owner: number; side: number; last: Vec2; stalled: number }>();
 export function clipBulwarkStep(
+  w: World,
+  body: { pos: Vec2; radius: number },
+  to: Vec2,
+): { pos: Vec2; stopped: boolean } {
+  const solid = clipSolidStep(w, body, to),
+    delta = sub(solid.pos, body.pos),
+    refuge = clipRefugeStep(
+      w,
+      body,
+      solid.stopped ? { x: body.pos.x + delta.x, y: body.pos.y + delta.y } : to,
+    );
+  return { pos: refuge.pos, stopped: solid.stopped || refuge.stopped };
+}
+export function walkAroundBulwarks(w: World, body: Body, desired: Vec2, dt: number): Vec2 {
+  const wrapped = walkAroundCover(w, body, desired, dt),
+    direction = sub(wrapped, body.pos),
+    to = { x: body.pos.x + direction.x, y: body.pos.y + direction.y },
+    clipped = clipRefugeStep(w, body, to);
+  if (!clipped.stopped) return wrapped;
+  const delta = sub(to, body.pos),
+    length = Math.hypot(delta.x, delta.y),
+    angle = Math.atan2(delta.y, delta.x);
+  for (const sign of [1, -1])
+    for (const turn of [Math.PI / 4, Math.PI / 2]) {
+      const candidate = {
+        x: body.pos.x + Math.cos(angle + sign * turn) * length,
+        y: body.pos.y + Math.sin(angle + sign * turn) * length,
+      };
+      if (
+        [...w.obstacles, ...apertureBulwarks(w)].some(
+          (c) => circleEntry(body.pos, candidate, c.pos, c.radius + body.radius) !== null,
+        )
+      )
+        continue;
+      const moved = clipRefugeStep(w, body, candidate);
+      if (!moved.stopped) return moved.pos;
+    }
+  return clipped.pos;
+}
+function clipSolidStep(
   w: World,
   body: { pos: Vec2; radius: number },
   to: Vec2,
@@ -33,7 +74,7 @@ export function clipBulwarkStep(
     stopped,
   };
 }
-export function walkAroundBulwarks(w: World, body: Body, desired: Vec2, dt: number): Vec2 {
+function walkAroundCover(w: World, body: Body, desired: Vec2, dt: number): Vec2 {
   if (body.charm) return wrapPos(desired);
   const covers = apertureBulwarks(w);
   const hit = covers.find(

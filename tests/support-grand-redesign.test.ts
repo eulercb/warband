@@ -121,13 +121,19 @@ describe('authored support builds', () => {
               const bank = p.grandLoadout!.classes[classId]!;
               expect(bank.bank).toHaveLength(4);
               if (bank.equipped.length === 3) {
-                expect(identity.id).toBe('cl_life_g_a');
+                expect(['cl_life_g_a', 'cl_life_g_b']).toContain(identity.id);
                 expect(bank.bank).toContain(identity.id);
                 expect(bank.equipped).not.toContain(identity.id);
                 expect(
-                  [...Object.values(p.abilities!), p.subAbilities!.sub1!].some(
+                  [
+                    ...Object.values(p.abilities!),
+                    ...(identity.id === 'cl_life_g_a' ? [p.subAbilities!.sub1!] : []),
+                  ].some(
                     (ab) =>
-                      ab.slot !== 'basic' && ab.kind === 'groundZone' && (ab.zoneTickHeal ?? 0) > 0,
+                      ab.slot !== 'basic' &&
+                      ab.kind === 'groundZone' &&
+                      (ab.zoneTickHeal ?? 0) > 0 &&
+                      (identity.id === 'cl_life_g_a' || !ab.zoneFollow),
                   ),
                 ).toBe(false);
               } else expect(bank.equipped).toHaveLength(4);

@@ -293,7 +293,15 @@ it('Forge grand eligibility requires an actual healing-ground receiver and retai
         (ab) => ab.slot !== 'basic' && ab.kind === 'groundZone' && (ab.zoneTickHeal ?? 0) > 0,
       );
       expect(grandEligible('cl_life_g_a', 'cleric', ctx)).toBe(possible);
-      expect(grandEligible('cl_life_g_b', 'cleric', ctx)).toBe(true);
+      expect(grandEligible('cl_life_g_b', 'cleric', ctx)).toBe(
+        Object.values(getClass('cleric').abilities).some(
+          (ab) =>
+            ab.slot !== 'basic' &&
+            ab.kind === 'groundZone' &&
+            (ab.zoneTickHeal ?? 0) > 0 &&
+            !ab.zoneFollow,
+        ),
+      );
     }
 });
 

@@ -1,3 +1,4 @@
+import { reserveRefuge, registerRefuge } from './refuge';
 import { reserveFont } from './revivalFont';
 import { launchGuidance, launchGuidedBurst, armPhaseOrigin, takeGuidanceOrigin } from './guidance';
 import { blinkArrival, dispelArrivalField } from './warding';
@@ -1019,6 +1020,7 @@ function spawnComposedZone(
   castAim: Vec2 = p.aim,
   transplant?: import('../core/types').FieldTransplantCast,
   font?: import('../core/types').FontSource,
+  refuge?: import('../core/types').RefugeSource,
 ): void {
   range = Math.min(range, Math.min(world.arena.w, world.arena.h) * 0.4);
   const centered = z.zoneKind === 'sanctuary' || z.zoneKind === 'consecration';
@@ -1035,6 +1037,7 @@ function spawnComposedZone(
     damagePerTick: z.tickDamage ?? 0,
     fieldTransplantCast: z.zoneTransplant ? transplant : undefined,
     revivalFont: font,
+    refuge,
     whisperCast: cast,
     zonePoison: z.zonePoison,
     zoneFollow: z.zoneFollow,
@@ -1217,6 +1220,7 @@ function resolveComposedAbility(
           ab.flowAim ?? ab.palmSweepCast?.aim ?? p.aim,
           ab.fieldTransplantCast,
           reserveFont(world, p, ab),
+          reserveRefuge(world, p, ab),
         );
       buffSelf();
       break;
@@ -1341,6 +1345,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
     damagePerTick: dmgPerTick,
     fieldTransplantCast: ab.fieldTransplantCast,
     revivalFont: reserveFont(world, p, ab),
+    refuge: reserveRefuge(world, p, ab),
     whisperCast: ab.whisperCast,
     zonePoison: ab.zonePoison,
     zoneFollow: ab.zoneFollow,
@@ -1501,6 +1506,7 @@ function emitSkillArea(
 }
 
 export interface SpawnZoneOpts {
+  refuge?: import('../core/types').RefugeSource;
   revivalFont?: import('../core/types').FontSource;
   fieldTransplantCast?: import('../core/types').FieldTransplantCast;
   whisperCast?: import('../core/types').WhisperCast;
@@ -1548,6 +1554,7 @@ export interface SpawnZoneOpts {
 export function spawnZone(world: World, o: SpawnZoneOpts): void {
   const zone: GroundZone = {
     revivalFont: o.revivalFont,
+    refuge: o.refuge,
     id: world.allocId(),
     whisperCast: o.whisperCast,
     recovery: o.recovery,
@@ -1594,6 +1601,7 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     };
   }
   world.groundZones.push(zone);
+  registerRefuge(world, zone);
   registerTransplant(world, zone, o.fieldTransplantCast);
 }
 

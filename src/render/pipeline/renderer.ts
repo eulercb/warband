@@ -1,3 +1,4 @@
+import { drawRefuge } from './refugeVisuals';
 import { drawFont, drawFontFootprint } from './fontVisuals';
 import { drawReflectionWard } from './reflectionVisuals';
 import { drawGuidance, drawGuidedBurst } from './guidanceVisuals';
@@ -693,6 +694,8 @@ export class Renderer {
       drawZone(g, z, this.camera.worldToScreen(z.pos), this.camera.scale);
       if (z.revivalFont) drawFont(g, this.camera.worldToScreen(z.pos), this.camera.scale, false);
     }
+    for (const r of state.refuges ?? [])
+      drawRefuge(g, this.camera.worldToScreen(r.pos), r.radius, this.camera.scale);
     for (const p of state.players) {
       if (p.fontRecovery) drawFont(g, this.camera.worldToScreen(p.pos), this.camera.scale, true);
       if (p.reflectionWard)
@@ -980,7 +983,8 @@ export class Renderer {
     const stations = state.stations ?? [];
     const guided = state.players.find((p) => p.id === state.localPlayerId && p.guidance);
     this.ensureLabels(
-      state.players.filter((p) => p.fontRecovery).length +
+      (state.refuges?.length ?? 0) +
+        state.players.filter((p) => p.fontRecovery).length +
         state.groundZones.filter((z) => z.revivalFont).length +
         state.players.filter((p) => p.reflectionWard).length +
         (guided ? 1 : 0) +
@@ -1142,6 +1146,17 @@ export class Renderer {
           Math.max(125, Math.min(this.app.screen.height - 145, at.y + PLAYER_RADIUS * scale + 58)),
         );
       }
+    for (const r of state.refuges ?? []) {
+      const t = this.labels[i++],
+        at = this.camera.worldToScreen(r.pos);
+      t.visible = true;
+      t.alpha = 1;
+      t.text = `Refuge · ${r.remaining.toFixed(1)}s`;
+      t.position.set(
+        Math.max(t.width / 2 + 8, Math.min(this.app.screen.width - t.width / 2 - 8, at.x)),
+        Math.max(125, Math.min(this.app.screen.height - 145, at.y + r.radius * scale - 20)),
+      );
+    }
     // item 78: a final declutter pass — fade any visible label sliding into the top
     // HUD band (boss bar / HP readout) so world text thins out under the HUD
     // instead of colliding with it.

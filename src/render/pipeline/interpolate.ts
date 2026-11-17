@@ -148,6 +148,7 @@ export class SnapshotInterpolator {
       adds,
       projectiles,
       groundZones,
+      refuges: carry.refuges?.map((r) => ({ ...r, pos: { ...r.pos } })),
       fontRescues: carry.fontRescues?.map((r) => ({ ...r, pos: { ...r.pos } })),
       guidedBursts: carry.guidedBursts?.map((b) => ({
         ...b,
