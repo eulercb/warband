@@ -2,8 +2,8 @@
 
 Current execution status is tracked in [Development status](DEVELOPMENT_STATUS.md).
 The owner accepted reflection's playtest fixes (#180). The
-[Life rescue font](LIFE_RESCUE_FONT.md) implements Life A's purpose follow-up,
-pending live acceptance. Light A remains growth, Light B is accepted, and Life B
+[Life rescue follow-up](LIFE_RESCUE_FOLLOWUP.md) adjusts Life A after #181 playtesting: independent, stock-free skill charges
+and group Sanctuary, pending live acceptance. Light A remains growth, Light B is accepted, and Life B
 remains purpose-open. Twenty-one subclasses are inspected. Next development is
 Ceaseless Mending, followed by Devotion/Vengeance/Valor.
 

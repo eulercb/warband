@@ -605,7 +605,7 @@ export class World {
   /** Hardcore run: deadlier corruption cadence + limited revives (see item 11). */
   hardcore = false;
   /** Revives remaining this fight (hardcore only; Infinity otherwise). */
-  fontSpent = new Set<number>();
+  fontSpent = new Set<string>();
   fontRescues: import('../core/types').FontRescue[] = [];
   reviveBudget = Infinity;
   /**
@@ -1747,16 +1747,6 @@ export class World {
   }
 
   private updateRevive(dt: number, inputs: Map<string, InputCommand>): void {
-    // Hardcore: once the fight's revive stock is spent, a downed hero can no
-    // longer be brought back — they're out for the rest of this boss.
-    if (this.reviveBudget <= 0) {
-      for (const p of this.players)
-        if (p.state === 'downed') {
-          p.reviveProgress = 0;
-          p.reviverId = null;
-        }
-      return;
-    }
     for (const d of this.players) {
       if (d.state !== 'downed') continue;
       // item 10: count EVERY ally reviving this hero (not just the first), so more
@@ -1774,6 +1764,11 @@ export class World {
         }
       }
       const font = fontForTarget(this, d);
+      if (!font && this.reviveBudget <= 0) {
+        d.reviveProgress = 0;
+        d.reviverId = null;
+        continue;
+      }
       const manualSpeed = reviverCount > 0 ? coReviveSpeed(reviverCount) : 0;
       if (font && !reviver) reviver = this.players.find((p) => p.id === font.ownerId) ?? null;
       if (reviver) {
@@ -1792,9 +1787,8 @@ export class World {
           d.reviverId = null;
           d.downedTimer = 0;
           reviver.stats.revives += 1;
-          this.reviveBudget -= 1; // hardcore: spend from the fight's revive stock
+          if (!font) this.reviveBudget -= 1; // font charges are independent of manual stock
           this.events.push({ t: 'revive', id: d.id, pos: { ...d.pos } });
-          if (this.reviveBudget <= 0) return; // stock spent — no more this fight
         }
       } else {
         d.reviveProgress = 0;
@@ -4371,7 +4365,7 @@ export class World {
         })),
       apparitions: apparitionViews(this),
       groundZones: this.groundZones.map((z) => ({
-        revivalFont: fontAvailable(this, z) || undefined,
+        revivalFont: fontAvailable(this, z) ? z.revivalFont!.family : undefined,
         supportKinds: zoneSupportKinds(z),
         side: z.side,
         curseStyle: z.side === 'player' && z.curseBonus ? (z.curseStyle ?? 'hex') : undefined,

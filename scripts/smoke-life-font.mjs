@@ -59,19 +59,22 @@ try {
               extraClasses: ['mage'],
             },
           ];
-          if (mode === 'party') players.push({ peerId: 'b', name: 'Companion', classId: 'knight' });
+          if (mode === 'party') {
+            players.push({ peerId: 'b', name: 'Companion', classId: 'knight' });
+            players.push({ peerId: 'c', name: 'Companion 2', classId: 'ranger' });
+          }
           const w = new World({ seed: 31, monsterId: 'troll', players });
           w.scene = null;
           w.obstacles = [];
           w.terrain = [];
-          w.reviveBudget = 1;
+          w.reviveBudget = 0;
           const p = w.players[0],
             b = w.boss,
             target = mode === 'party' ? w.players[1] : p;
           p.pos = { x: 500, y: 400 };
           p.aim = { x: 1, y: 0 };
           p.critChance = 0;
-          if (target !== p) target.pos = { x: 530, y: 400 };
+          if (target !== p) for (const ally of w.players.slice(1)) ally.pos = { x: 530, y: 400 };
           b.pos = { x: 800, y: 400 };
           b.moveSpeed = 0;
           b.decisionTimer = 1000;
@@ -218,7 +221,10 @@ try {
         g.step();
         if (g.target.state !== 'downed' || g.w.finished)
           throw Error('Font did not preserve a genuine downed recovery window');
-        if (g.w.groundZones.includes(g.zone) || !g.w.fontSpent.has(g.p.id))
+        if (
+          g.w.groundZones.includes(g.zone) ||
+          !g.w.fontSpent.has(`${g.p.id}:${mode === 'bloom' ? 'bloom' : 'sanctuary'}`)
+        )
           throw Error('Font did not consume territory and encounter attempt');
         if (
           !window.fontRemote.fontRescues?.length ||
@@ -230,6 +236,8 @@ try {
           throw Error('No noninstant channel');
         if (!g.renderer.labels.some((t) => t.visible && t.text.startsWith('Font rescue')))
           throw Error('No recovery progress label');
+        if (mode === 'party' && g.w.fontRescues.length !== 2)
+          throw Error('Sanctuary did not capture both fallen companions');
         if (mode === 'party' && g.p.state !== 'alive')
           throw Error('Caster could not remain active away from the body');
       }, mode);
@@ -247,6 +255,7 @@ try {
           window.fontRemote.fontRescues?.length
         )
           throw Error('Stock/claim cleanup failed');
+        if (g.w.players.some((p) => p.state !== 'alive')) throw Error('Group recovery incomplete');
         if (g.w.finished) throw Error('Recovered run still finished');
       });
       assert.deepEqual(errors, []);

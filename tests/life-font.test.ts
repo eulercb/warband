@@ -4,6 +4,7 @@ import { resolveBossAbility } from '../src/engine/combat/abilities';
 import { getMonster } from '../src/engine/content/monsters';
 import {
   fontAvailable,
+  fontKey,
   fontRecoveryView,
   reserveFont,
   fontCanSaveWipe,
@@ -93,13 +94,13 @@ it.each(picks)('every first pick %s can prepare a solo rescue at full health', (
   step(w, 'a2');
   const z = w.groundZones[0];
   expect(fontAvailable(w, z)).toBe(true);
-  expect(w.serialize().groundZones[0].revivalFont).toBe(true);
+  expect(w.serialize().groundZones[0].revivalFont).toBe('sanctuary');
   expect(p.hp).toBe(hp);
   down(w, p);
   step(w);
   expect(p.state).toBe('downed');
   expect(w.finished).toBe(false);
-  expect(w.fontSpent.has(p.id)).toBe(true);
+  expect(w.fontSpent.has(fontKey(p.id, 'sanctuary'))).toBe(true);
   expect(w.groundZones.includes(z)).toBe(false);
   expect(fontRecoveryView(w, p)).toBeDefined();
   for (let i = 0; i < 280; i++) step(w);
@@ -128,40 +129,42 @@ it('without the identity the same solo downing ends the encounter', () => {
   step(w);
   expect(w.outcome).toBe('defeat');
 });
-it('Sanctuary and Bloom share one attempt across fields and class swaps', () => {
+it('Sanctuary and Bloom have independent charges that class swaps do not reset', () => {
   const { w, p } = setup();
   step(w, 'a2');
-  step(w, 'sub1');
-  expect(w.groundZones).toHaveLength(2);
   down(w, p);
   step(w);
-  expect(w.fontRescues).toHaveLength(1);
   finishRescue(w, p);
+  expect(w.fontSpent.has(fontKey(p.id, 'sanctuary'))).toBe(true);
+  expect(w.fontSpent.has(fontKey(p.id, 'bloom'))).toBe(false);
   w.setActiveClass(p, 'mage');
   w.setActiveClass(p, 'cleric');
   p.cooldowns.a2 = 0;
   step(w, 'a2');
-  expect(w.groundZones.every((z) => !fontAvailable(w, z))).toBe(true);
+  expect(fontAvailable(w, w.groundZones[0])).toBe(false);
+  step(w, 'sub1');
+  expect(
+    fontAvailable(
+      w,
+      w.groundZones.find((z) => z.revivalFont?.family === 'bloom')!,
+    ),
+  ).toBe(true);
   down(w, p);
   step(w);
-  expect(w.outcome).toBe('defeat');
+  finishRescue(w, p);
+  expect(p.state).toBe('alive');
+  expect(w.fontSpent.size).toBe(2);
 });
-it('shared revive stock is spent once on completion, never bypassed at zero', () => {
+it.each([0, 1])('font revives work with %i shared stock and never spend it', (stock) => {
   const { w, p } = setup();
-  w.reviveBudget = 1;
+  w.reviveBudget = stock;
   step(w, 'a2');
   down(w, p);
   step(w);
-  expect(w.reviveBudget).toBe(1);
+  expect(w.finished).toBe(false);
   finishRescue(w, p);
-  expect(w.reviveBudget).toBe(0);
-  const other = setup();
-  other.w.reviveBudget = 0;
-  step(other.w, 'a2');
-  down(other.w, other.p);
-  step(other.w);
-  expect(other.w.fontSpent.size).toBe(0);
-  expect(other.w.outcome).toBe('defeat');
+  expect(p.state).toBe('alive');
+  expect(w.reviveBudget).toBe(stock);
 });
 it('a nearby manual reviver helps through the existing bounded co-revive rate', () => {
   const { w, p } = setup(picks[1], ['cl_life_g_a'], 2),
@@ -180,7 +183,7 @@ it('a nearby manual reviver helps through the existing bounded co-revive rate', 
   expect(elapsed).toBeLessThan(1.8);
   expect(p.state).toBe('alive');
 });
-it.each(['leave', 'class', 'source', 'disconnect', 'stock', 'death'])(
+it.each(['leave', 'class', 'source', 'disconnect', 'death'])(
   'pending rescue cancels on %s and does not refund the attempt',
   (mode) => {
     const { w, p } = setup(picks[1], ['cl_life_g_a'], 2),
@@ -194,11 +197,10 @@ it.each(['leave', 'class', 'source', 'disconnect', 'stock', 'death'])(
     if (mode === 'class') w.setActiveClass(p, 'mage');
     if (mode === 'source') p.abilities!.a2 = { ...p.abilities!.a2 };
     if (mode === 'disconnect') w.removePlayerByPeer(p.peerId);
-    if (mode === 'stock') w.reviveBudget = 0;
     if (mode === 'death') p.state = 'dead';
     step(w);
     expect(w.fontRescues).toHaveLength(0);
-    expect(w.fontSpent.has(p.id)).toBe(true);
+    expect(w.fontSpent.has(fontKey(p.id, 'sanctuary'))).toBe(true);
   },
 );
 it('a target too near bleedout cannot postpone an otherwise inevitable solo wipe', () => {
@@ -217,7 +219,7 @@ it('normal Phoenix recovery takes precedence and leaves the font charge unused',
   down(w, p);
   step(w);
   expect(p.state).toBe('alive');
-  expect(w.fontSpent.has(p.id)).toBe(false);
+  expect(w.fontSpent.has(fontKey(p.id, 'sanctuary'))).toBe(false);
 });
 it('copied and actually synthesized fonts keep the priced encounter limit without Life passive', () => {
   const { w, p } = setup();
@@ -254,7 +256,7 @@ it('copied and actually synthesized fonts keep the priced encounter limit withou
   step(w);
   finishRescue(w, p);
   expect(p.state).toBe('alive');
-  expect(describeAbility(made)).toContain('one rescue attempt');
+  expect(describeAbility(made)).toContain('one area rescue attempt');
   expect(refreshComponents(made).effects.some((e) => e.kind === 'revivalFont')).toBe(true);
   for (const invalid of [
     { ...comp, delivery: { kind: 'projectile' as const } },
@@ -295,22 +297,22 @@ it('Forge grand eligibility requires an actual healing-ground receiver and retai
     }
 });
 
-it('one remaining revive stock cannot be claimed by two simultaneous fonts', () => {
+it('two owners can rescue independently with no shared stock', () => {
   const { w, p } = setup(picks[0], ['cl_life_g_a'], 2),
     ally = w.players[1];
   ally.pos = { x: 900, y: 700 };
-  w.reviveBudget = 1;
+  w.reviveBudget = 0;
   step(w, 'a2');
   step(w, 'a2', 0.01, false, '1');
   down(w, p);
   down(w, ally);
   step(w);
-  expect(w.fontRescues).toHaveLength(1);
-  expect(w.fontSpent.size).toBe(1);
+  expect(w.fontRescues).toHaveLength(2);
+  expect(w.fontSpent.size).toBe(2);
   expect(w.finished).toBe(false);
   for (let i = 0; i < 310; i++) step(w);
   expect(w.reviveBudget).toBe(0);
-  expect(w.players.filter((p) => p.state === 'alive')).toHaveLength(1);
+  expect(w.players.filter((p) => p.state === 'alive')).toHaveLength(2);
 });
 it('an expired or outside field offers no solo wipe protection', () => {
   for (const mode of ['outside', 'expired']) {
@@ -362,7 +364,7 @@ it('a valid existing manual channel can finish with font help without a second r
   ally.pos = { x: 520, y: 400 };
   for (let i = 0; i < 180 && p.state === 'downed'; i++) step(w, undefined, 0.01, true, '1');
   expect(p.state).toBe('alive');
-  expect(w.reviveBudget).toBe(0);
+  expect(w.reviveBudget).toBe(1);
   expect(ally.stats.revives).toBe(1);
 });
 it('heals and their recovery groves are not free font carriers', () => {
@@ -426,8 +428,8 @@ it('publishes a claimed footprint and progress, then removes both after recovery
 it('the oldest downed body gets the only available rescue, with stable ID ties', () => {
   for (const tied of [false, true]) {
     const { w, p } = setup(picks[0], ['cl_life_g_a'], 4);
+    step(w, 'sub1');
     w.players[3].pos = { x: 900, y: 700 };
-    step(w, 'a2');
     for (const target of w.players.slice(0, 3)) {
       target.state = 'downed';
       target.hp = 0;
@@ -471,4 +473,120 @@ it('a stale claimed rescue cannot hold defeat open after its body leaves', () =>
   expect(fontCanSaveWipe(w)).toBe(true);
   p.pos = { x: 900, y: 700 };
   expect(fontCanSaveWipe(w)).toBe(false);
+});
+
+function fallen(p: Player) {
+  p.state = 'downed';
+  p.hp = 0;
+  p.downedTimer = 10;
+  p.reviveProgress = 0;
+}
+it('Sanctuary captures a whole party at zero stock, including its downed caster', () => {
+  const { w, p } = setup(picks[0], ['cl_life_g_a'], 4);
+  w.reviveBudget = 0;
+  step(w, 'a2');
+  for (const target of w.players) fallen(target);
+  step(w);
+  expect(w.fontRescues).toHaveLength(4);
+  expect(new Set(w.fontRescues.map((r) => r.targetId)).size).toBe(4);
+  expect(w.fontSpent.size).toBe(1);
+  expect(w.finished).toBe(false);
+  finishRescue(w, p);
+  expect(w.players.every((p) => p.state === 'alive')).toBe(true);
+  expect(w.reviveBudget).toBe(0);
+});
+it('Bloom captures one body and leaves Sanctuary available for the others', () => {
+  const { w, p } = setup(picks[0], ['cl_life_g_a'], 3);
+  step(w, 'sub1');
+  fallen(w.players[1]);
+  fallen(w.players[2]);
+  step(w);
+  expect(w.fontRescues).toHaveLength(1);
+  expect(w.fontSpent.has(fontKey(p.id, 'bloom'))).toBe(true);
+  step(w, 'a2');
+  expect(w.fontRescues).toHaveLength(2);
+  expect(w.fontSpent.size).toBe(2);
+  finishRescue(w, w.players[1]);
+  finishRescue(w, w.players[2]);
+  expect(w.players.every((p) => p.state === 'alive')).toBe(true);
+});
+it('overlapping fonts do not waste a second charge on already captured bodies or accept late entrants', () => {
+  const { w, p } = setup(picks[0], ['cl_life_g_a'], 3);
+  step(w, 'a2');
+  step(w, 'sub1');
+  fallen(w.players[1]);
+  step(w);
+  expect(w.fontRescues).toHaveLength(1);
+  expect(w.fontSpent.size).toBe(1);
+  expect(w.groundZones).toHaveLength(1);
+  fallen(w.players[2]);
+  step(w);
+  expect(w.fontRescues).toHaveLength(2);
+  expect(w.fontSpent.has(fontKey(p.id, 'bloom'))).toBe(true);
+});
+it('a consumed Sanctuary never captures a late entrant', () => {
+  const { w } = setup(picks[1], ['cl_life_g_a'], 3);
+  step(w, 'a2');
+  fallen(w.players[1]);
+  step(w);
+  fallen(w.players[2]);
+  step(w);
+  expect(w.fontRescues.map((r) => r.targetId)).toEqual([w.players[1].id]);
+});
+it('manual assistance at zero stock speeds the font without spending stock', () => {
+  const { w, p } = setup(picks[1], ['cl_life_g_a'], 2);
+  w.reviveBudget = 0;
+  step(w, 'a2');
+  fallen(p);
+  step(w);
+  for (let i = 0; i < 175; i++) step(w, undefined, 0.01, true, '1');
+  expect(p.state).toBe('alive');
+  expect(w.reviveBudget).toBe(0);
+});
+it('exhausting manual stock does not skip a later font completion in the same update', () => {
+  const { w } = setup(picks[1], ['cl_life_g_a'], 4);
+  w.players[0].pos = { x: 850, y: 700 };
+  step(w, 'a2', 0.01, false, '1');
+  fallen(w.players[0]);
+  fallen(w.players[1]);
+  step(w);
+  expect(w.fontRescues.map((r) => r.targetId)).toEqual([w.players[1].id]);
+  w.players[2].pos = { x: 855, y: 700 };
+  w.players[0].reviveProgress = 2.99;
+  w.players[1].reviveProgress = 2.99;
+  w.reviveBudget = 1;
+  step(w, undefined, 0.02, true, '2');
+  expect(w.players[0].state).toBe('alive');
+  expect(w.players[1].state).toBe('alive');
+  expect(w.reviveBudget).toBe(0);
+});
+it('copied Bloom retains its single-body profile outside its original slot and class', () => {
+  const { w, p } = setup(picks[0], ['cl_life_g_a'], 3);
+  const bloom = { ...previewSubAbility('cl_life_bloom', ['cl_life_g_a'])!, slot: 'a2' as const };
+  const roundtrip = recompose(decompose(bloom), { slot: 'a2', name: 'Copied Bloom', cooldown: 12 });
+  expect(roundtrip.revivalFont).toBe('bloom');
+  expect(describeAbility(roundtrip)).toContain('one single-ally rescue attempt');
+  w.setActiveClass(p, 'mage');
+  p.abilities!.a2 = roundtrip;
+  p.cooldowns.a2 = 0;
+  step(w, 'a2');
+  fallen(w.players[1]);
+  fallen(w.players[2]);
+  step(w);
+  expect(w.fontRescues).toHaveLength(1);
+  expect(w.fontSpent.has(fontKey(p.id, 'bloom'))).toBe(true);
+  finishRescue(w, w.players[1]);
+  p.abilities!.a1 = { ...roundtrip, slot: 'a1' };
+  step(w, 'a1');
+  expect(w.groundZones.every((z) => !fontAvailable(w, z))).toBe(true);
+});
+it('mixed Forge donors retain exactly one deterministic paid rescue profile', () => {
+  const { p } = setup();
+  const comp = decompose(p.abilities!.a2);
+  const mixed = recompose(
+    { ...comp, effects: [...comp.effects, { kind: 'revivalFont', family: 'bloom' }] },
+    { slot: 'a2', name: 'Mixed', cooldown: 14 },
+  );
+  expect(mixed.components!.effects.filter((e) => e.kind === 'revivalFont')).toHaveLength(1);
+  expect(mixed.revivalFont).toBe('sanctuary');
 });

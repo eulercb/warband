@@ -2656,13 +2656,13 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'cl_life_g_a',
     'Font of Life',
     '💚',
-    'Sanctuary and Blessed Bloom share one rescue attempt per owner per encounter. A downed ally inside consumes the field for a normal 3s revive channel, using normal revive stock. Can rescue you; the body must stay inside',
+    'Sanctuary rescues all downed allies inside; Blessed Bloom rescues one. Each has one separate attempt per encounter, without shared revive stock. The field is consumed for a 3s revive channel; can rescue you, and bodies must stay inside',
     (a) => {
       for (const ab of [a.a1, a.a2, a.a3])
-        if (ab.kind === 'groundZone' && (ab.zoneTickHeal ?? 0) > 0) ab.revivalFont = true;
+        if (ab.kind === 'groundZone' && (ab.zoneTickHeal ?? 0) > 0) ab.revivalFont ??= 'sanctuary';
     },
     (ab) => {
-      if (ab.kind === 'groundZone' && (ab.zoneTickHeal ?? 0) > 0) ab.revivalFont = true;
+      if (ab.kind === 'groundZone' && (ab.zoneTickHeal ?? 0) > 0) ab.revivalFont ??= 'bloom';
     },
   ),
   pilotIdentity(
@@ -6544,7 +6544,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       name: blend(fused.name),
       desc:
         base.id === 'cl_life_g_a'
-          ? 'Reforged Font of Life: retained healing-ground fields share one rescue attempt per owner per encounter; a downed ally consumes the field for a normal 3s revive channel using normal revive stock, including your own rescue'
+          ? 'Reforged Font of Life: base healing fields carry an area rescue, subclass healing fields a single-ally rescue. Each rescue family has one attempt per owner per encounter, without shared revive stock; consumes the field for a 3s channel, including your own rescue'
           : base.id === 'cl_light_g_b'
             ? 'Reforged Endless Radiance: a third-slot ally damage blessing adds 35 absorption for 4s and one 4s projectile reflection, even at full absorption. Light barrier wards grant or refresh the same halo; returned shots get 900u travel; direct basics delay wind-ups 30% for 3s'
             : base.id === 'so_wild_g_b'

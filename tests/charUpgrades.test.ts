@@ -2315,7 +2315,7 @@ describe('subclass grands transform the bound sub-abilities (item 17)', () => {
     const before = JSON.stringify(makePlayer('cleric').abilities);
     const p = apply('cleric', ['cl_life_g_a']); // no subAbilities on this hero
     expect(JSON.stringify(p.abilities)).not.toBe(before);
-    expect(p.abilities!.a2.revivalFont).toBe(true);
+    expect(p.abilities!.a2.revivalFont).toBe('sanctuary');
     expect(p.abilities!.a1.recoveryZone).toBeUndefined();
   });
 

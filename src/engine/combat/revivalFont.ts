@@ -1,4 +1,4 @@
-/** One owner-wide field rescue; downing the preparer does not erase the prepared aid. */
+/** Independent owner-wide Sanctuary/Bloom rescues; downing the preparer does not erase the prepared aid. */
 import type { World } from '../world/world';
 import type { Player, GroundZone, FontSource, FontRescue } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
@@ -12,7 +12,6 @@ function sourceLive(w: World, ownerId: number, s: FontSource): boolean {
     !w.finished &&
     w.scene === null &&
     !w.deadlineActive &&
-    w.reviveBudget > 0 &&
     !!p &&
     p.state !== 'dead' &&
     p.classId === s.ownerClass &&
@@ -21,11 +20,20 @@ function sourceLive(w: World, ownerId: number, s: FontSource): boolean {
     revivalFont(s.source)
   );
 }
+export function fontKey(ownerId: number, family: FontSource['family']): string {
+  return `${ownerId}:${family}`;
+}
 export function reserveFont(w: World, p: Player, ab: PlayerAbilityDef): FontSource | undefined {
-  if (!revivalFont(ab) || w.fontSpent.has(p.id)) return undefined;
+  if (!revivalFont(ab) || w.fontSpent.has(fontKey(p.id, ab.revivalFont!))) return undefined;
   const source = abilityForSlot(p, ab.slot);
   if (!source) return undefined;
-  return { source, slot: ab.slot, ownerClass: p.classId, epoch: p.fontEpoch ?? 0 };
+  return {
+    family: ab.revivalFont!,
+    source,
+    slot: ab.slot,
+    ownerClass: p.classId,
+    epoch: p.fontEpoch ?? 0,
+  };
 }
 export function fontAvailable(w: World, z: GroundZone): boolean {
   return (
@@ -34,8 +42,7 @@ export function fontAvailable(w: World, z: GroundZone): boolean {
     z.healPerTick > 0 &&
     z.remaining > 0 &&
     (z.armRemaining ?? 0) <= 0 &&
-    !w.fontSpent.has(z.ownerId) &&
-    w.fontRescues.filter((r) => rescueLive(w, r)).length < w.reviveBudget &&
+    !w.fontSpent.has(fontKey(z.ownerId, z.revivalFont.family)) &&
     sourceLive(w, z.ownerId, z.revivalFont)
   );
 }
@@ -58,7 +65,7 @@ export function claimFonts(w: World): void {
   const used = new Set<number>();
   for (const z of w.groundZones) {
     if (!fontAvailable(w, z)) continue;
-    const target = w.players
+    const targets = w.players
       .filter(
         (p) =>
           p.state === 'downed' &&
@@ -66,19 +73,21 @@ export function claimFonts(w: World): void {
           dist(p.pos, z.pos) <= z.radius + p.radius &&
           !w.fontRescues.some((r) => r.targetId === p.id),
       )
-      .sort((a, b) => a.downedTimer - b.downedTimer || a.id - b.id)[0];
-    if (!target) continue;
-    w.fontSpent.add(z.ownerId);
+      .sort((a, b) => a.downedTimer - b.downedTimer || a.id - b.id);
+    if (!targets.length) continue;
+    w.fontSpent.add(fontKey(z.ownerId, z.revivalFont!.family));
     used.add(z.id);
-    w.fontRescues.push({
-      ownerId: z.ownerId,
-      targetId: target.id,
-      source: z.revivalFont!,
-      pos: { ...z.pos },
-      radius: z.radius,
-      remaining: REVIVE_TIME,
-    });
-    w.events.push({ t: 'fontRescue', pos: { ...target.pos } });
+    for (const target of z.revivalFont!.family === 'sanctuary' ? targets : targets.slice(0, 1)) {
+      w.fontRescues.push({
+        ownerId: z.ownerId,
+        targetId: target.id,
+        source: z.revivalFont!,
+        pos: { ...z.pos },
+        radius: z.radius,
+        remaining: REVIVE_TIME,
+      });
+      w.events.push({ t: 'fontRescue', pos: { ...target.pos } });
+    }
   }
   if (used.size) w.groundZones = w.groundZones.filter((z) => !used.has(z.id));
 }

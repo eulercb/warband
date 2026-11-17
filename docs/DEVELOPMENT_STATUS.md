@@ -28,14 +28,15 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Life rescue font](LIFE_RESCUE_FONT.md).
+Current delivery: [Life rescue follow-up](LIFE_RESCUE_FOLLOWUP.md).
 Grand Warding escape, Land transplantation, Hunter/Beast Master and Chaos
 Crossing departure casting remain accepted. The owner merged/tested #180 and
 accepted reflection readiness, return travel and the distinct mirror marker.
 
 Twenty-one of 24 subclasses have been inspected. Light A is retained growth;
-Light B reflection is accepted. Life A now prepares one field rescue per owner
-per encounter, using normal revive stock, and awaits owner live acceptance.
+Light B reflection is accepted. The owner merged/tested #181 and liked Life A’s revival idea. Its follow-up
+gives Sanctuary an area rescue and Bloom a single-ally rescue, each with its own
+encounter charge and no shared-stock cost or gate. These changes await live acceptance.
 Life B (Ceaseless Mending) remains useful growth with its purpose finding open.
 Inspection, implementation and acceptance remain separate states.
 
@@ -43,7 +44,7 @@ Inspection, implementation and acceptance remain separate states.
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test Font of Life; next development is Ceaseless Mending’s purpose follow-up.                                                                                           |
+| Next                         | Live-test independent Font rescues; next development is Ceaseless Mending’s purpose follow-up.                                                                               |
 | Following                    | Review Devotion, Vengeance and Valor after the Life follow-up.                                                                                                               |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                |
