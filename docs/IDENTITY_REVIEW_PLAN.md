@@ -1,11 +1,11 @@
 # Identity review before whole-system tuning
 
 Current execution status is tracked in [Development status](DEVELOPMENT_STATUS.md).
-The owner accepted Chaos Crossing departure casting (#178). The
-[Light/Life purpose review](LIGHT_LIFE_PURPOSE_REVIEW.md) now records 21 inspected
-subclasses: Light B reflection is implemented pending live acceptance, Light A
-is retained growth, and both Life purpose findings remain open. The next
-development step is the Life follow-up, before Devotion/Vengeance/Valor.
+The owner accepted reflection's playtest fixes (#180). The
+[Life rescue font](LIFE_RESCUE_FONT.md) implements Life A's purpose follow-up,
+pending live acceptance. Light A remains growth, Light B is accepted, and Life B
+remains purpose-open. Twenty-one subclasses are inspected. Next development is
+Ceaseless Mending, followed by Devotion/Vengeance/Valor.
 
 Calibration is complete: Moon/Evoker retained and Whispers reworked/accepted in
 owner live testing. The [Rogue/Warlock review](ROGUE_WARLOCK_IDENTITY_REVIEW.md)

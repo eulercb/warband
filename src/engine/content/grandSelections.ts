@@ -1,3 +1,4 @@
+import { revivalFont } from './fontRules';
 /** Versioned earned bank and per-class selections. Never mutate normal upgrade history. */
 import { guidedSpell, guidedBurst } from './guidanceRules';
 import type { AbilitySlot, ClassId } from '../core/types';
@@ -66,6 +67,16 @@ export function grandEligible(id: string, classId: ClassId, ctx: GrandContext): 
     .filter((sid) => subclassOfSkill(sid)?.classId === classId)
     .slice(0, 2);
   const committed = bound.length ? subclassOfSkill(bound[0])?.id : undefined;
+  if (id === 'cl_life_g_a') {
+    const mods = [...ctx.history, id];
+    if (
+      ![
+        ...Object.values(previewAbilityTable(classId, mods)),
+        ...bound.map((sid) => previewSubAbility(sid, mods)),
+      ].some((ab) => ab && revivalFont(ab))
+    )
+      return false;
+  }
   if (id === 'so_wild_g_b') {
     const mods = [...ctx.history, id];
     if (

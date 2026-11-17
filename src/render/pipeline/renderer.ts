@@ -1,3 +1,4 @@
+import { drawFont, drawFontFootprint } from './fontVisuals';
 import { drawReflectionWard } from './reflectionVisuals';
 import { drawGuidance, drawGuidedBurst } from './guidanceVisuals';
 import { drawDispelTarget } from './wardingVisuals';
@@ -686,10 +687,14 @@ export class Renderer {
   private drawZones(state: RenderState): void {
     const g = this.zonesLayer;
     g.clear();
+    for (const rescue of state.fontRescues ?? [])
+      drawFontFootprint(g, this.camera.worldToScreen(rescue.pos), rescue.radius, this.camera.scale);
     for (const z of state.groundZones) {
       drawZone(g, z, this.camera.worldToScreen(z.pos), this.camera.scale);
+      if (z.revivalFont) drawFont(g, this.camera.worldToScreen(z.pos), this.camera.scale, false);
     }
     for (const p of state.players) {
+      if (p.fontRecovery) drawFont(g, this.camera.worldToScreen(p.pos), this.camera.scale, true);
       if (p.reflectionWard)
         drawReflectionWard(
           g,
@@ -975,7 +980,9 @@ export class Renderer {
     const stations = state.stations ?? [];
     const guided = state.players.find((p) => p.id === state.localPlayerId && p.guidance);
     this.ensureLabels(
-      state.players.filter((p) => p.reflectionWard).length +
+      state.players.filter((p) => p.fontRecovery).length +
+        state.groundZones.filter((z) => z.revivalFont).length +
+        state.players.filter((p) => p.reflectionWard).length +
         (guided ? 1 : 0) +
         state.players.length +
         state.bosses.length +
@@ -1110,6 +1117,30 @@ export class Renderer {
           Math.max(125, Math.min(this.app.screen.height - 145, at.y + PLAYER_RADIUS * scale + 58)),
         );
         t.alpha = 1;
+      }
+    for (const z of state.groundZones)
+      if (z.revivalFont) {
+        const t = this.labels[i++],
+          at = this.camera.worldToScreen(z.pos);
+        t.visible = true;
+        t.text = 'Rescue font · 1';
+        t.alpha = 1;
+        t.position.set(
+          Math.max(t.width / 2 + 8, Math.min(this.app.screen.width - t.width / 2 - 8, at.x)),
+          Math.max(125, Math.min(this.app.screen.height - 145, at.y - z.radius * scale - 10)),
+        );
+      }
+    for (const p of state.players)
+      if (p.fontRecovery) {
+        const t = this.labels[i++],
+          at = this.camera.worldToScreen(p.pos);
+        t.visible = true;
+        t.text = `Font rescue · ${Math.round(p.fontRecovery.progress * 100)}%`;
+        t.alpha = 1;
+        t.position.set(
+          Math.max(t.width / 2 + 8, Math.min(this.app.screen.width - t.width / 2 - 8, at.x)),
+          Math.max(125, Math.min(this.app.screen.height - 145, at.y + PLAYER_RADIUS * scale + 58)),
+        );
       }
     // item 78: a final declutter pass — fade any visible label sliding into the top
     // HUD band (boss bar / HP readout) so world text thins out under the HUD

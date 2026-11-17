@@ -1,5 +1,10 @@
 # Light/Life purpose review: protect a recipient, return a shot
 
+Current update: reflection fixes (#180) are accepted. See
+[Life rescue font](LIFE_RESCUE_FONT.md) for the implemented Life A redesign,
+pending owner acceptance. Life B remains purpose-open; findings below record the
+historical review baseline.
+
 Historical #179 delivery, merged and tested. The owner liked reflection’s idea
 and requested more reliable activation/returns and clearer visuals. See the
 superseding [playtest follow-up](REFLECTION_PLAYTEST_FOLLOWUP.md) for the current

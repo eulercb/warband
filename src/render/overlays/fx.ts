@@ -305,6 +305,10 @@ export class Fx {
           });
           break;
         }
+        case 'fontRescue': {
+          this.spawnFloater(e.pos, 'FONT RESCUE', 0x9dffcf);
+          break;
+        }
         case 'reflection': {
           this.spawnFloater(e.pos, 'REFLECT', 0xffe690);
           this.spawnBurst(e.pos, {

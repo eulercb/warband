@@ -148,6 +148,7 @@ export class SnapshotInterpolator {
       adds,
       projectiles,
       groundZones,
+      fontRescues: carry.fontRescues?.map((r) => ({ ...r, pos: { ...r.pos } })),
       guidedBursts: carry.guidedBursts?.map((b) => ({
         ...b,
         pos: this.lerpVec(from?.guidedBursts?.find((old) => old.id === b.id)?.pos, b.pos, t),
