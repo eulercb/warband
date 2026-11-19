@@ -112,6 +112,7 @@ import {
   makeBuff,
   buffMult,
   isRooted,
+  hasBuff,
 } from './combat';
 import { forceTopThreat } from './threat';
 import { addCount, zoneCount } from '../content/scaling';
@@ -270,6 +271,112 @@ function startGlide(
   p.glide = { dir: d, remaining: range, leap: ab.leap === true, ab };
 }
 
+const PURSUIT_RANGE = 180;
+const PURSUIT_SPEED = 450;
+const PURSUIT_RECOVERY = 6;
+
+export function vengeancePursuit(world: World, p: Player, original = abilityForSlot(p, 'basic')) {
+  if (
+    world.scene !== null ||
+    world.finished ||
+    p.state !== 'alive' ||
+    p.hp <= 0 ||
+    p.classId !== 'paladin' ||
+    !p.charUpgradeIds?.includes('pa_vengeance_g_b') ||
+    original?.kind !== 'meleeCone' ||
+    original.components ||
+    original.castTime ||
+    (p.cooldowns.basic ?? 0) > 0 ||
+    (p.vengeancePursuitReadyAt ?? 0) > world.elapsed ||
+    p.glide ||
+    p.shove ||
+    p.castTimer > 0 ||
+    isRooted(p) ||
+    hasBuff(p, 'stun')
+  )
+    return;
+  const ab = boundedAbility(original, world.arena);
+  const reach = ab.range ?? 70;
+  const aim = angleOf(p.aim);
+  const foes = [...world.aliveBosses(), ...world.adds.filter(hostileAdd)];
+  if (
+    foes.some((foe) =>
+      pointInCone(
+        foe.pos,
+        p.pos,
+        aim,
+        reach,
+        ((ab.halfAngleDeg ?? 45) * Math.PI) / 180,
+        foe.radius,
+      ),
+    )
+  )
+    return;
+  const target = foes
+    .filter((foe) =>
+      pointInCone(foe.pos, p.pos, aim, reach + PURSUIT_RANGE, Math.PI / 12, foe.radius),
+    )
+    .sort((a, b) => dist(a.pos, p.pos) - dist(b.pos, p.pos) || a.id - b.id)[0];
+  if (!target) return;
+  const delta = sub(target.pos, p.pos);
+  const distance = dist(target.pos, p.pos);
+  const travel = distance - reach - target.radius + 4;
+  if (travel > PURSUIT_RANGE) return;
+  const dir = normalize(delta);
+  const end = vadd(p.pos, vscale(dir, travel));
+  return { target, dir, end, blocked: !!firstObstacleStop(world, p.pos, end, p.radius, false) };
+}
+
+export function startVengeancePursuit(
+  world: World,
+  p: Player,
+  ab: PlayerAbilityDef,
+  candidate: NonNullable<ReturnType<typeof vengeancePursuit>>,
+): void {
+  p.vengeancePursuitReadyAt = world.elapsed + PURSUIT_RECOVERY;
+  p.glide = {
+    dir: candidate.dir,
+    remaining: PURSUIT_RANGE,
+    leap: false,
+    ab,
+    maneuverClass: p.classId,
+    vengeancePursuit: { targetId: candidate.target.id, epoch: p.castEpoch ?? 0 },
+  };
+}
+
+function stepVengeancePursuit(world: World, p: Player, dt: number): void {
+  const glide = p.glide!;
+  const pursuit = glide.vengeancePursuit!;
+  const foe =
+    world.aliveBosses().find((b) => b.id === pursuit.targetId) ??
+    world.adds.find((a) => a.id === pursuit.targetId && hostileAdd(a));
+  if (!foe || (p.castEpoch ?? 0) !== pursuit.epoch || world.finished || world.scene !== null) {
+    p.glide = null;
+    return;
+  }
+  const reach = boundedAbility(glide.ab, world.arena).range ?? 70;
+  const gap = dist(foe.pos, p.pos) - reach - foe.radius;
+  if (gap > 0) {
+    const desired = angleOf(sub(foe.pos, p.pos));
+    const current = angleOf(glide.dir);
+    const turn = Math.atan2(Math.sin(desired - current), Math.cos(desired - current));
+    glide.dir = fromAngle(current + clamp(turn, -4 * dt, 4 * dt));
+    const distance = Math.min(gap + 4, PURSUIT_SPEED * dt, glide.remaining);
+    const next = vadd(p.pos, vscale(glide.dir, distance));
+    if (firstObstacleStop(world, p.pos, next, p.radius, false)) {
+      p.glide = null;
+      return;
+    }
+    p.pos = clampToArena(world, next, p.radius);
+    glide.remaining -= distance;
+    if (dist(foe.pos, p.pos) > reach + foe.radius && glide.remaining > 1e-6) return;
+  }
+  p.glide = null;
+  const aim = normalize(sub(foe.pos, p.pos));
+  if (dist(foe.pos, p.pos) <= reach + foe.radius)
+    resolvePlayerAbility(world, p, 'basic', { x: 0, y: 0 }, { ...glide.ab, flowAim: aim });
+}
+
 /**
  * Advance a hero's in-progress dash glide by one tick (item 2). Moves along the locked
  * direction at `GLIDE_SPEED`, stopping flush at the first blocking obstacle per the
@@ -307,6 +414,10 @@ export function stepPlayerGlide(world: World, p: Player, dt: number): void {
   if (p.state !== 'alive') {
     p.glide = null;
     delete p.flowQueue;
+    return;
+  }
+  if (g.vengeancePursuit) {
+    stepVengeancePursuit(world, p, dt);
     return;
   }
   const step = Math.min((g.speed ?? GLIDE_SPEED) * dt, g.remaining);

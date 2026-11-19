@@ -2926,22 +2926,14 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'pa_vengeance_g_b',
     'Relentless Vengeance',
     '⚡',
-    'Divine Shield grants 25% movement for 3s; Holy Strike leeches 15%. Direct Vengeance strikes leech 20%, Charge grants 20% movement for 3s, and Hunter’s Vow heals you 25',
+    'Fresh native Holy Strike presses pursue an aimed foe just outside melee range, then swing if in reach. Cover stops the run. Pursuit recovers in 6s. Holy Strike leeches 15%; direct Vengeance strikes leech 20%, and Hunter’s Vow heals you 25',
     (a) => {
-      casterGrand(
-        'selfBuff',
-        (ab) => {
-          ab.buffMoveMult = Math.max(ab.buffMoveMult ?? 1, 1.25);
-          ab.buffDuration = Math.max(ab.buffDuration ?? 0, 3);
-        },
-        ['iframes', 'paladinAura'],
-      )(a.a3);
       if (isStrike(a.basic) && a.basic.damage > 0) lifeRider(a.basic, 0.15);
       else amplify(a.basic, 0.2, 0.1);
     },
     (ab) => {
       if (isStrike(ab) && ab.damage > 0) lifeRider(ab, 0.2);
-      else if (ab.kind === 'dash' && ab.landingDamage) supportHealBoon(ab, 'buffMoveMult', 1.2, 3);
+      else if (ab.kind === 'dash') return;
       else if (ab.kind === 'selfBuff') addN(ab, 'healOnUse', 25);
       else amplify(ab, 0.2, 0.1);
     },
@@ -6514,6 +6506,13 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
   if (base.subclassId) {
     const fused = getSubclass(base.subclassId);
     if (!fused) return base;
+    if (base.id === 'pa_vengeance_g_b') {
+      return {
+        ...base,
+        name: blend(fused.name),
+        desc: 'Compatible basic strikes leech 15%; direct Vengeance strikes leech 20%. Hunter’s Vow heals you 25. Holy Strike pursuit is available in native kits.',
+      };
+    }
     if (base.id === 'mg_abjurer_g_a') {
       const receiver = getClass('mage').abilities.a3;
       return {

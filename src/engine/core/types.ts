@@ -735,6 +735,8 @@ export interface Player {
    */
   shove?: Shove | null;
 
+  vengeancePursuitReadyAt?: number;
+
   /**
    * item 2 — an in-progress dash / roll / charge / leap GLIDE. A dash-nature mover
    * no longer teleports: the host advances the hero along `dir` at a fixed speed over
@@ -744,6 +746,7 @@ export interface Player {
    * Absent/null when not mid-dash. Teleports (blink) move instantly and never set it.
    */
   glide?: {
+    vengeancePursuit?: { targetId: number; epoch: number };
     palmSweep?: { cast: PalmSweepCast; hitIds: number[]; origin: Vec2 };
     speed?: number;
     maneuverClass?: ClassId;
@@ -1669,6 +1672,7 @@ export interface ShadowCommitCast {
 }
 
 export interface PlayerView {
+  vengeancePursuit?: { target: Vec2; end: Vec2; blocked: boolean };
   fontRecovery?: { progress: number };
   reflectionWard?: { remaining: number };
   shadowCommits?: ShadowCommitView[];

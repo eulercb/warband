@@ -85,7 +85,24 @@ If a legal Forge build retains a compatible melee basic and the behavior
 is portable, give it a priced component and preserve the same selection and
 recovery rules. Otherwise leave the identity banked for incompatible kits.
 
-This document records a design decision. It contains no playable prototype or
-gameplay change. Next build and try the Holy Strike pursuit prototype. Then
-continue with Unyielding Faith, Battle Rhapsody, broader tuning and the visual
-milestone.
+## Playable prototype
+
+The native Relentless Vengeance grand now enables this behavior in a playable
+build. It uses up to 180u of travel and 0.4s, with a six-second recovery from
+commitment. The target and path appear while a fresh attack can pursue. A red
+path means cover blocks the run. An in-range foe takes priority for the normal
+attack even if another foe is farther along the same aim line.
+
+The prototype removes the added Shield and Charge haste from this identity.
+It keeps the leech and Hunter's Vow healing during the trial. A failed acquisition
+falls back to a normal basic swing. A committed run can end without a hit if
+interrupted, blocked by cover or left behind. Landing uses normal Holy Strike
+damage and melee hooks. The host validates the move and the client draws its
+preview. Composed attacks keep their existing strike benefits during the native
+trial. Forge pursuit is a separate compatibility and pricing decision.
+
+Try lining up a mobile boss after dodging, deliberately swinging away, holding
+autofire outside reach, and approaching around a pillar. Try the same fights
+with Avenging Charge bound and compare reasons to use each. Next development is
+to act on pursuit playtest feedback and resolve Unyielding Faith, then Battle
+Rhapsody, broader tuning and the visual milestone.

@@ -10418,7 +10418,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Divine Shield grants 25% movement for 3s; Holy Strike leeches 15%. Direct Vengeance strikes leech 20%, Charge grants 20% movement for 3s, and Hunter’s Vow heals you 25",
+      "description": "Fresh native Holy Strike presses pursue an aimed foe just outside melee range, then swing if in reach. Cover stops the run. Pursuit recovers in 6s. Holy Strike leeches 15%; direct Vengeance strikes leech 20%, and Hunter’s Vow heals you 25",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -10428,14 +10428,10 @@
           "subSkills": ["pa_vengeance_hunt"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
             { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.15 },
             { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 25 }
           ],
           "atCap": [
-            { "path": "abilities.a3.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
             { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.15 },
             { "path": "subAbilities.sub1.healOnUse", "before": null, "after": 25 }
           ]
@@ -10445,14 +10441,10 @@
           "subSkills": ["pa_vengeance_shackle"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
             { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.15 },
             { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
           ],
           "atCap": [
-            { "path": "abilities.a3.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
             { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.15 },
             { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
           ]
@@ -10461,34 +10453,18 @@
           "classId": "paladin",
           "subSkills": ["pa_vengeance_charge"],
           "prefix": [],
-          "once": [
-            { "path": "abilities.a3.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
-            { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.15 },
-            { "path": "subAbilities.sub1.buffDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.buffMoveMult", "before": null, "after": 1.2 }
-          ],
-          "atCap": [
-            { "path": "abilities.a3.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
-            { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.15 },
-            { "path": "subAbilities.sub1.buffDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.buffMoveMult", "before": null, "after": 1.2 }
-          ]
+          "once": [{ "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.15 }],
+          "atCap": [{ "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.15 }]
         },
         {
           "classId": "paladin",
           "subSkills": ["pa_vengeance_smite"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a3.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
             { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.15 },
             { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
           ],
           "atCap": [
-            { "path": "abilities.a3.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a3.buffMoveMult", "before": null, "after": 1.25 },
             { "path": "abilities.basic.lifestealFrac", "before": null, "after": 0.15 },
             { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
           ]
