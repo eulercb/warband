@@ -73,7 +73,9 @@ For the default solo Ballad opener, use Dissonant Whispers' 2s slow, then
 aim Mockery. Mockery's effective 1.1s basic recharge exceeds its 1s base slow,
 so repeated same-distance Mockery hits alone do not sustain this window.
 
-## First prototype: Relentless Vengeance
+## Superseded proposal: Relentless Vengeance
+
+The owner reviewed this proposal after #185. See the [revised approach decision](RELENTLESS_VENGEANCE_APPROACH.md) for the current prototype direction.
 
 One bounded Sol 6.2 High review recommends testing a quarry-bound follow-up.
 Cast Divine Shield, land the first positive melee hit during its Bulwark aura,

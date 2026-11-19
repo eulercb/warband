@@ -4,7 +4,7 @@ Current execution status is tracked in [Development status](DEVELOPMENT_STATUS.m
 The owner accepted [Living Refuge expulsion](REFUGE_EXPULSION.md) (#184).
 The [final support purpose review](FINAL_SUPPORT_PURPOSE_REVIEW.md) completes
 first inspection of 24 subclasses. Its three open B findings are tracked
-separately from implementation and live acceptance. Relentless Vengeance is
+separately from implementation and live acceptance. [Relentless Vengeance pursuit](RELENTLESS_VENGEANCE_APPROACH.md) is
 the first prototype, then the remaining support gaps and whole-system tuning.
 
 Calibration is complete: Moon/Evoker retained and Whispers reworked/accepted in

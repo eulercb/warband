@@ -28,7 +28,9 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Devotion, Vengeance and Valor purpose review](FINAL_SUPPORT_PURPOSE_REVIEW.md).
+Current design decision: [Relentless Vengeance approach](RELENTLESS_VENGEANCE_APPROACH.md).
+See the [Devotion, Vengeance and Valor purpose review](FINAL_SUPPORT_PURPOSE_REVIEW.md)
+for the full cohort findings.
 Grand Warding escape, Land transplantation, Hunter/Beast Master and Chaos
 Crossing departure casting remain accepted. The owner merged/tested #180 and
 accepted reflection readiness, return travel and the distinct mirror marker.
@@ -43,7 +45,7 @@ prototype work. Inspection does not establish live acceptance or equal power.
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Prototype Relentless Vengeance against the solo and party cases in the support review.                                                                                       |
+| Next                         | Build and test the Holy Strike pursuit prototype with mouse and stick.                                                                                                       |
 | Following                    | Resolve Unyielding Faith and Battle Rhapsody purpose gaps, then run whole-system comparisons.                                                                                |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                |
