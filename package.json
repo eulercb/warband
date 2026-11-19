@@ -67,7 +67,8 @@
     "smoke:light-reflection": "node scripts/smoke-light-reflection.mjs",
     "smoke:life-font": "node scripts/smoke-life-font.mjs",
     "smoke:living-refuge": "node scripts/smoke-living-refuge.mjs",
-    "smoke:vengeance-pursuit": "node scripts/smoke-vengeance-pursuit.mjs"
+    "smoke:vengeance-pursuit": "node scripts/smoke-vengeance-pursuit.mjs",
+    "smoke:unyielding-faith": "node scripts/smoke-unyielding-faith.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",

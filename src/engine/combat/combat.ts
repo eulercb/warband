@@ -1,3 +1,4 @@
+import { payFaithWound } from './unyieldingFaith';
 import { rescueStrikeMultiplier } from './support';
 import { luckExposureMultiplier, onFortunateHit } from './sorcererLuck';
 import { onMoonDirectHit } from './moonForm';
@@ -59,6 +60,7 @@ export interface EventSink {
     effective: number,
     cast?: WhisperCast,
   ) => void;
+  deferPlayerDamage?: (target: Player, damage: number) => number;
   onPlayerDamaged?: (target: Player) => void;
   onForethought?: (
     source: Player,
@@ -640,7 +642,8 @@ export function damagePlayer(sink: EventSink, target: Player, base: number, orig
       pos: { ...target.pos },
       kind: 'protect',
     });
-  const dmg = blocked ? 0 : absorbDamage(target, mirrorDamage(target, origin, incoming));
+  const resolved = blocked ? 0 : absorbDamage(target, mirrorDamage(target, origin, incoming));
+  const dmg = sink.deferPlayerDamage?.(target, resolved) ?? resolved;
   target.hp -= dmg;
   if (dmg > 0)
     sink.events.push({
@@ -670,7 +673,7 @@ export function healPlayer(
   amount: number,
 ): number {
   if (target.state !== 'alive') return 0;
-  const effective = Math.min(amount, target.maxHp - target.hp);
+  const effective = Math.min(payFaithWound(target, amount), target.maxHp - target.hp);
   if (effective <= 0) return 0;
   target.hp += effective;
   if (source) {

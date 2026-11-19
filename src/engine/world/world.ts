@@ -1,3 +1,4 @@
+import { advanceFaithWound, deferFaithDamage, payFaithWound } from '../combat/unyieldingFaith';
 import { tickRefuges, refugeViews, clipRefugeStep, expelRefugeOccupants } from '../combat/refuge';
 import {
   claimFonts,
@@ -1067,10 +1068,10 @@ export class World {
   /** Quaff a carried healing vial (item 21): heal a chunk of max HP, one charge. */
   private tryUsePotion(p: Player): void {
     if ((p.potions ?? 0) <= 0) return;
-    if (p.hp >= p.maxHp) return; // don't waste a vial at full health
+    if (p.hp >= p.maxHp && !p.faithWound) return;
     p.potions = (p.potions ?? 0) - 1;
     const before = p.hp;
-    p.hp = Math.min(p.maxHp, p.hp + p.maxHp * EPHEMERAL_POTION_HEAL);
+    p.hp = Math.min(p.maxHp, p.hp + payFaithWound(p, p.maxHp * EPHEMERAL_POTION_HEAL));
     const healed = p.hp - before;
     p.stats.healingDone += healed;
     this.events.push({ t: 'heal', pos: { ...p.pos }, amount: healed, targetId: p.id });
@@ -1278,6 +1279,9 @@ export class World {
     }
 
     tickVenoms(this, dt);
+    let faithDowned = false;
+    for (const p of this.players) if (advanceFaithWound(this, p, dt)) faithDowned = true;
+    if (faithDowned) this.checkDownedTransitions();
     this.tickTimers(dt);
     maintainMoonForms(this);
     tickWhispers(this, dt);
@@ -1351,7 +1355,7 @@ export class World {
       tickStunDr(p, dt);
       // Passive regeneration (Renewal upgrade) — only while up and fighting.
       if (p.regenPerSec > 0 && p.state === 'alive' && p.hp > 0) {
-        p.hp = Math.min(p.maxHp, p.hp + p.regenPerSec * dt);
+        p.hp = Math.min(p.maxHp, p.hp + payFaithWound(p, p.regenPerSec * dt));
       }
       for (const locks of Object.values(p.rechargeLocks ?? {}))
         for (const slot of Object.keys(locks) as ExtSlot[])
@@ -2372,6 +2376,10 @@ export class World {
   }
 
   /** Consume a counterburst before resolving damage, so it cannot recurse. */
+  deferPlayerDamage(target: Player, damage: number): number {
+    return deferFaithDamage(this, target, damage);
+  }
+
   onPlayerDamaged(target: Player): void {
     this.releaseRebuke(target, target.pos);
   }
@@ -2601,7 +2609,7 @@ export class World {
         if (p.state !== 'alive') continue;
         if (dist(z.pos, p.pos) <= z.radius + p.radius) {
           // heal via combat.healPlayer for stats/threat
-          const missing = Math.max(0, p.maxHp - p.hp);
+          const missing = Math.max(0, p.maxHp - p.hp) + (p.faithWound?.amount ?? 0);
           this.healViaZone(owner, p, z.healPerTick);
           if (z.overflowShield && owner?.state === 'alive')
             grantAbsorption(p, Math.max(0, z.healPerTick - missing), OVERFLOW_SECONDS, true);
@@ -2640,7 +2648,7 @@ export class World {
   }
 
   private healViaZone(owner: Player | null, target: Player, amount: number): void {
-    const effective = Math.min(amount, target.maxHp - target.hp);
+    const effective = Math.min(payFaithWound(target, amount), target.maxHp - target.hp);
     if (effective <= 0) return;
     target.hp += effective;
     if (owner) {
@@ -3843,6 +3851,7 @@ export class World {
   private checkDownedTransitions(): void {
     for (const p of this.players) {
       if (p.state === 'alive' && p.hp <= 0) {
+        delete p.faithWound;
         p.buffs = p.buffs.filter((b) => b.kind !== 'absorption');
         // Phoenix charm (item 21): spend a self-revive to spring straight back up
         // with a short invulnerability window instead of falling. Fires once per
@@ -4236,9 +4245,11 @@ export class World {
               kind: p.paladinAura.kind,
               radius: p.paladinAura.radius,
               remaining: p.paladinAura.remaining,
+              faithReady: p.paladinAura.faithReady,
             },
           }
         : {}),
+      ...(p.faithWound && { faithWound: { ...p.faithWound } }),
       name: p.name,
       classId: p.classId,
       pos: { ...p.pos },

@@ -174,8 +174,10 @@ export function healSupportAlly(
   if (ab.cleanseOnHeal) cleanseMovement(target);
   const rescue = target.hp <= target.maxHp * 0.35;
   const requested = amount * (rescue ? 1 + (ab.rescueHealBonus ?? 0) : 1);
+  const due = target.faithWound?.amount ?? 0;
   const effective = healPlayer(world, p, target, requested);
-  onSubclassOverheal(world, p, target, Math.max(0, requested - effective));
+  const paid = due - (target.faithWound?.amount ?? 0);
+  onSubclassOverheal(world, p, target, Math.max(0, requested - effective - paid));
   if (effective <= 0) return 0;
   supportCue(world, p, target, 'heal');
   if (ab.kind === 'heal') {

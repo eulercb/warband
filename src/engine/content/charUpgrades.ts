@@ -2875,24 +2875,15 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'pa_devotion_g_b',
     'Unyielding Faith',
     '🛡️',
-    'Divine Shield weakens foes within 180u by 20% for 4s and readies a counter after your next melee connection; effective Lay on Hands grants 20% movement for 3s. Devotion strikes delay wind-ups 30%, utilities ward other allies 15% within 180u for 4s, and Bless cleanses',
+    'Divine Shield and Aura of Protection each defer half of the first HP hit to you or an ally in Bulwark, capped at 25% of their max HP. One hit per aura. Healing pays it first; unpaid damage comes due in 3s',
     (a) => {
-      casterGrand(
-        'selfBuff',
-        (ab) => {
-          ab.warCry = { radius: 180, duration: 4 };
-        },
-        ['iframes', 'paladinAura'],
-      )(a.a3);
-      casterGrand('heal', (ab) => supportHealBoon(ab, 'buffMoveMult', 1.2, 3), ['paladinAura'])(
-        a.a2,
-      );
+      for (const ab of [a.a1, a.a2, a.a3])
+        if (ab.paladinAura?.kind === 'bulwark')
+          ab.paladinAura = { ...ab.paladinAura, unyielding: true };
     },
     (ab) => {
-      if (isStrike(ab) && ab.damage > 0) casterSuppression(ab);
-      else if (ab.kind === 'selfBuff') supportSharedWard(ab);
-      else if (ab.kind === 'heal') ab.cleanseOnHeal = true;
-      else amplify(ab, 0.2, 0.1);
+      if (ab.paladinAura?.kind === 'bulwark')
+        ab.paladinAura = { ...ab.paladinAura, unyielding: true };
     },
   ),
   pilotIdentity(
@@ -6506,6 +6497,13 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
   if (base.subclassId) {
     const fused = getSubclass(base.subclassId);
     if (!fused) return base;
+    if (base.id === 'pa_devotion_g_b') {
+      return {
+        ...base,
+        name: blend(fused.name),
+        desc: 'Retained Bulwark auras defer half of the first HP hit to you or an ally inside, capped at 25% of their max HP. Healing pays it first; unpaid damage comes due in 3s',
+      };
+    }
     if (base.id === 'pa_vengeance_g_b') {
       return {
         ...base,

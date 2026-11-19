@@ -1020,7 +1020,10 @@ function effectValue(e: EffectComponent, fan: number): number {
     case 'pierce':
       return e.count * 15;
     case 'paladinAura':
-      return e.aura.duration * (e.aura.kind === 'renewal' ? 10 : 6);
+      return (
+        e.aura.duration * (e.aura.kind === 'renewal' ? 10 : 6) +
+        (e.aura.kind === 'bulwark' && e.aura.unyielding ? 32 : 0)
+      );
     case 'absorption':
       return (
         (absorptionMaximum(e.grant) +
