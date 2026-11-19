@@ -9242,7 +9242,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Sanctuary creates a refuge for up to 4s and 180u: grounded enemies cannot enter. Allies, flyers and attacks cross freely; enemies already inside can leave. One refuge per owner",
+      "description": "Sanctuary creates a refuge for up to 4s and 180u: pushes enemies out and blocks entry, including flyers. Allies and attacks cross freely. A damaging refuge adds one field tick of damage per expelled foe that the field can hit",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,

@@ -2664,7 +2664,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'cl_life_g_b',
     'Ceaseless Mending',
     '✨',
-    'Sanctuary creates a refuge for up to 4s and 180u: grounded enemies cannot enter. Allies, flyers and attacks cross freely; enemies already inside can leave. One refuge per owner',
+    'Sanctuary creates a refuge for up to 4s and 180u: pushes enemies out and blocks entry, including flyers. Allies and attacks cross freely. A damaging refuge adds one field tick of damage per expelled foe that the field can hit',
     (a) => {
       for (const ab of [a.a1, a.a2, a.a3])
         if (ab.kind === 'groundZone' && (ab.zoneTickHeal ?? 0) > 0 && !ab.zoneFollow)
@@ -6529,7 +6529,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       name: blend(fused.name),
       desc:
         base.id === 'cl_life_g_b'
-          ? 'Reforged Ceaseless Mending: stationary base healing fields create a refuge for up to 4s and 180u; grounded enemies cannot enter, allies, flyers and attacks cross freely. One refuge per owner'
+          ? 'Reforged Ceaseless Mending: stationary base healing fields create a refuge for up to 4s and 180u; pushes enemies out and blocks entry, including flyers. Allies and attacks cross freely. A damaging refuge adds one field tick per expelled foe it can hit'
           : base.id === 'cl_life_g_a'
             ? 'Reforged Font of Life: base healing fields carry an area rescue, subclass healing fields a single-ally rescue. Each rescue family has one attempt per owner per encounter, without shared revive stock; consumes the field for a 3s channel, including your own rescue'
             : base.id === 'cl_light_g_b'

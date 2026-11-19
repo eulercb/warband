@@ -233,6 +233,20 @@ try {
         if (!window.refugeRemote.refuges?.length)
           throw Error('Refuge expired before encounter proof');
         g.b.moveSpeed = 0;
+        if (g.w.players.length === 1) {
+          g.b.pos = { x: g.center.x + 70, y: g.center.y };
+          g.b.buffs.push({ kind: 'root', mult: 0, remaining: 2, source: 'fixture' });
+          g.b.buffs.push({ kind: 'flight', mult: 0, remaining: 2, source: 'fixture' });
+          g.step();
+          const traveled = g.b.pos.x - g.center.x;
+          if (traveled <= 70 || traveled >= g.radius + g.b.radius)
+            throw Error('Refuge did not start a timed ejection');
+          for (let i = 0; i < 40; i++) g.step();
+          if (g.b.pos.x - g.center.x < g.radius + g.b.radius)
+            throw Error('Rooted flyer was not expelled');
+          g.b.pos.x -= 3;
+        }
+
         const health = () =>
           g.p.hp +
           g.p.buffs.reduce(

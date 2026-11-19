@@ -1,5 +1,8 @@
 # Ceaseless Mending: living refuge
 
+The owner merged and tested #183. See [Living Refuge expulsion](REFUGE_EXPULSION.md)
+for the current flight, displacement and damage rules.
+
 The owner merged/tested #182 and accepted independent, stock-free Sanctuary and
 Bloom rescues. Those Font of Life rules remain the accepted baseline. This
 separate Life B delivery implements a new purpose for Ceaseless Mending; live

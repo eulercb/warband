@@ -1,4 +1,4 @@
-import { tickRefuges, refugeViews, clipRefugeStep } from '../combat/refuge';
+import { tickRefuges, refugeViews, clipRefugeStep, expelRefugeOccupants } from '../combat/refuge';
 import {
   claimFonts,
   advanceFonts,
@@ -1298,6 +1298,7 @@ export class World {
     this.updatePendingStrikes(dt);
     this.updateTerrain(dt);
     this.checkDownedTransitions();
+    expelRefugeOccupants(this);
     tickManeuvers(this, dt);
     this.updateBosses(dt);
     // Boss-vs-boss synergy (twin/N-boss packs): a telegraphed bond that empowers

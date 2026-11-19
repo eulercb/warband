@@ -1,6 +1,6 @@
 import type { PlayerAbilityDef } from './classes';
 export const REFUGE_TEXT =
-  'a refuge for up to 4s and 180u; grounded enemies cannot enter; allies, flyers and attacks cross freely; enemies already inside can leave; one refuge per owner';
+  'a refuge for up to 4s and 180u; repels enemies inside and blocks entry, including flyers; allies and attacks cross freely; one refuge per owner';
 export function refugeField(ab: Omit<PlayerAbilityDef, 'slot'> & { slot?: string }): boolean {
   return (
     ab.slot !== 'basic' &&
