@@ -1,3 +1,4 @@
+import { refugeField } from './refugeRules';
 import { revivalFont } from './fontRules';
 /** Versioned earned bank and per-class selections. Never mutate normal upgrade history. */
 import { guidedSpell, guidedBurst } from './guidanceRules';
@@ -67,6 +68,11 @@ export function grandEligible(id: string, classId: ClassId, ctx: GrandContext): 
     .filter((sid) => subclassOfSkill(sid)?.classId === classId)
     .slice(0, 2);
   const committed = bound.length ? subclassOfSkill(bound[0])?.id : undefined;
+  if (
+    id === 'cl_life_g_b' &&
+    !Object.values(previewAbilityTable(classId, [...ctx.history, id])).some((ab) => refugeField(ab))
+  )
+    return false;
   if (id === 'cl_life_g_a') {
     const mods = [...ctx.history, id];
     if (

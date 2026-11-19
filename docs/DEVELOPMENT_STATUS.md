@@ -28,28 +28,28 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Life rescue follow-up](LIFE_RESCUE_FOLLOWUP.md).
+Current delivery: [Ceaseless Mending living refuge](CEASELESS_LIVING_REFUGE.md).
 Grand Warding escape, Land transplantation, Hunter/Beast Master and Chaos
 Crossing departure casting remain accepted. The owner merged/tested #180 and
 accepted reflection readiness, return travel and the distinct mirror marker.
 
 Twenty-one of 24 subclasses have been inspected. Light A is retained growth;
-Light B reflection is accepted. The owner merged/tested #181 and liked Life A’s revival idea. Its follow-up
-gives Sanctuary an area rescue and Bloom a single-ally rescue, each with its own
-encounter charge and no shared-stock cost or gate. These changes await live acceptance.
-Life B (Ceaseless Mending) remains useful growth with its purpose finding open.
-Inspection, implementation and acceptance remain separate states.
+Light B reflection is accepted. The owner merged/tested #182 and accepted Life A's
+independent, stock-free Sanctuary/Bloom rescues. Life B now makes Sanctuary a
+bounded refuge against grounded bodily entry and awaits owner live acceptance.
+This implements the previously open Life B purpose finding; inspection,
+implementation and live acceptance remain separate states.
 
 ## Next development work, in order
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test independent Font rescues; next development is Ceaseless Mending’s purpose follow-up.                                                                               |
-| Following                    | Review Devotion, Vengeance and Valor after the Life follow-up.                                                                                                               |
+| Next                         | Live-test Ceaseless Mending; next development is the Devotion/Vengeance/Valor purpose review.                                                                                |
+| Following                    | Proceed to whole-system comparisons after remaining support identities.                                                                                                      |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                |
 | Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing departure casting accepted. Evoker stays retained.                                                                  |
-| Remaining support identities | Light B accepted, A retained growth; Life A implemented pending acceptance, B purpose open; Devotion, Vengeance and Valor unreviewed. Whispers accepted.                     |
+| Remaining support identities | Light B accepted, A retained growth; Life A accepted, Life B refuge implemented pending acceptance; Devotion, Vengeance and Valor unreviewed. Whispers accepted.             |
 | Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                                                |
 | Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                               |
 

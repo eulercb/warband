@@ -1,3 +1,4 @@
+import { tickRefuges, refugeViews, clipRefugeStep } from '../combat/refuge';
 import {
   claimFonts,
   advanceFonts,
@@ -1279,6 +1280,7 @@ export class World {
     tickShadowCommits(this, dt);
     tickAncestralRelay(this);
     tickInfernalApertures(this, dt);
+    tickRefuges(this, dt);
     maintainFieldTransplants(this);
     this.maintainCloseBursts();
     this.applyInputs(dt, inputs);
@@ -3736,6 +3738,7 @@ export class World {
   // -------------------------------------------------------------------------
 
   private separateAndClamp(): void {
+    const before = new Map([...this.aliveBosses(), ...this.adds].map((e) => [e, { ...e.pos }]));
     const movers: Array<Player | Add> = [
       ...this.players.filter((p) => p.state !== 'dead'),
       ...this.adds,
@@ -3764,6 +3767,7 @@ export class World {
         for (const b of bosses) this.pushOutOfObstacles(b);
       }
     }
+    for (const [body, from] of before) body.pos = clipRefugeStep(this, body, body.pos, from).pos;
     // Wrap around the torus instead of clamping to walls: an entity that walks
     // off one edge reappears on the opposite edge (infinite scrolling arena).
     for (const p of this.players) p.pos = wrapPos(p.pos);
@@ -4347,6 +4351,7 @@ export class World {
         maxHp: a.maxHp,
         buffs: a.buffs.map(buffView),
       })),
+      refuges: refugeViews(this),
       fontRescues: fontRescueViews(this),
       guidedBursts: burstViews(this),
       projectiles: this.projectiles

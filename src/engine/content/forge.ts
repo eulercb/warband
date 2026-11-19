@@ -1,3 +1,4 @@
+import { REFUGE_TEXT } from './refugeRules';
 import { FONT_TEXT } from './fontRules';
 import { REFLECTION_TEXT } from './reflectionRules';
 import {
@@ -158,6 +159,7 @@ export type EffectComponent =
   | { kind: 'surgeStrike'; rider?: PlayerAbilityDef['surgeRider'] }
   | { kind: 'fortune'; fortune: NonNullable<PlayerAbilityDef['fortune']> }
   | { kind: 'guidedBurst' }
+  | { kind: 'refuge' }
   | { kind: 'revivalFont'; family: import('../core/types').FontFamily }
   | { kind: 'reflectWard' }
   | { kind: 'guideRelay' }
@@ -457,6 +459,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
     (def.absorption?.amount ?? 0) > 0
   )
     effects.push({ kind: 'reflectWard' });
+  if (def.refuge && kind === 'groundZone' && (def.zoneTickHeal ?? 0) > 0 && !def.zoneFollow)
+    effects.push({ kind: 'refuge' });
   if (def.revivalFont && kind === 'groundZone' && (def.zoneTickHeal ?? 0) > 0)
     effects.push({ kind: 'revivalFont', family: def.revivalFont });
   if (def.guideRelay && kind === 'blink') effects.push({ kind: 'guideRelay' });
@@ -500,6 +504,7 @@ function uniqueMentalContracts(effects: EffectComponent[]): EffectComponent[] {
   const seen = new Set<string>();
   return effects.filter((e) => {
     if (
+      e.kind !== 'refuge' &&
       e.kind !== 'revivalFont' &&
       e.kind !== 'thoughtBreak' &&
       e.kind !== 'forethought' &&
@@ -539,6 +544,11 @@ export function recompose(
   comp: AbilityComponents,
   meta: { slot: PlayerAbilityDef['slot']; name: string; cooldown: number },
 ): PlayerAbilityDef {
+  if (
+    comp.effects.some((e) => e.kind === 'refuge') &&
+    (meta.slot === 'basic' || !refugeComponentsFit(comp))
+  )
+    comp = { ...comp, effects: comp.effects.filter((e) => e.kind !== 'refuge') };
   if (
     comp.effects.some((e) => e.kind === 'revivalFont') &&
     (meta.slot === 'basic' || !fontComponentsFit(comp))
@@ -612,7 +622,7 @@ export function recompose(
   if (comp.effects.some((e) => e.kind === 'shadowCommit'))
     comp = { ...comp, delivery: { ...comp.delivery, castTime: 0 } };
   if (
-    ['forethought', 'thoughtBreak', 'maneuver', 'revivalFont'].some(
+    ['forethought', 'thoughtBreak', 'maneuver', 'revivalFont', 'refuge'].some(
       (kind) => comp.effects.filter((e) => e.kind === kind).length > 1,
     ) ||
     comp.effects.some(
@@ -806,6 +816,9 @@ export function recompose(
         break;
       case 'guidedBurst':
         def.guidedBurst = true;
+        break;
+      case 'refuge':
+        def.refuge = true;
         break;
       case 'revivalFont':
         def.revivalFont = e.family;
@@ -1040,6 +1053,8 @@ function effectValue(e: EffectComponent, fan: number): number {
       );
     case 'guidedBurst':
       return 32;
+    case 'refuge':
+      return 40;
     case 'revivalFont':
       return 48;
     case 'reflectWard':
@@ -1352,6 +1367,8 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
       return `departure anchor ${s(e.reprise.lifetime)}, later ${e.reprise.prepared ? 'prepared ' : ''}direct hit unlocks ${s(e.reprise.returnWindow)} return; press this skill again within ${delivery === 'blink' ? 'blink range' : `${n(e.reprise.range)}u`}`;
     case 'guidedBurst':
       return GUIDED_BURST_TEXT;
+    case 'refuge':
+      return REFUGE_TEXT;
     case 'revivalFont':
       return FONT_TEXT(e.family);
     case 'reflectWard':
@@ -1770,6 +1787,7 @@ function effectFitsDelivery(kind: DeliveryKind, e: EffectComponent): boolean {
       return true; // slotAllowsEffect excludes basic attacks
     case 'guidedBurst':
       return kind === 'pbaoe';
+    case 'refuge':
     case 'revivalFont':
       return kind === 'groundZone';
     case 'reflectWard':
@@ -2407,6 +2425,7 @@ function scaleEffect(e: EffectComponent, f: number): EffectComponent {
         },
       };
     case 'guidedBurst':
+    case 'refuge':
     case 'revivalFont':
     case 'reflectWard':
     case 'guideRelay':
@@ -2501,6 +2520,11 @@ const roundCd = (x: number, slot: AbilitySlot): number =>
 
 // --- Caps + quantization (identity-true ceilings, clean numbers) ------------
 
+function refugeComponentsFit(comp: AbilityComponents): boolean {
+  return (
+    fontComponentsFit(comp) && !comp.effects.some((e) => e.kind === 'zone' && !!e.zone.zoneFollow)
+  );
+}
 function fontComponentsFit(comp: AbilityComponents): boolean {
   return (
     comp.delivery.kind === 'groundZone' &&
@@ -2539,6 +2563,7 @@ function capComponents(comp: AbilityComponents): AbilityComponents {
     delivery,
     effects: comp.effects
       .filter((e) => e.kind !== 'revivalFont' || fontComponentsFit(comp))
+      .filter((e) => e.kind !== 'refuge' || refugeComponentsFit(comp))
       .filter((e) => e.kind !== 'reflectWard' || reflectionComponentsFit(comp))
       .filter((e) => e.kind !== 'guidedBurst' || burstComponentsFit(comp))
       .filter((e) => e.kind !== 'guideRelay' || delivery.kind === 'blink')
@@ -2655,6 +2680,7 @@ function addBoonComponents(
         'prepareCrit',
         'fortune',
         'guidedBurst',
+        'refuge',
         'revivalFont',
         'reflectWard',
         'guideRelay',
@@ -2892,6 +2918,7 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
     case 'shadowReprise':
       return def.shadowReprise ? { ...e, reprise: { ...def.shadowReprise } } : e;
     case 'guidedBurst':
+    case 'refuge':
     case 'revivalFont':
     case 'reflectWard':
     case 'guideRelay':
@@ -3152,6 +3179,7 @@ function capEffect(e: EffectComponent): EffectComponent {
         },
       };
     case 'guidedBurst':
+    case 'refuge':
     case 'revivalFont':
     case 'reflectWard':
     case 'guideRelay':
