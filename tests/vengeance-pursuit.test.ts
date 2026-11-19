@@ -96,7 +96,7 @@ it('retreat can defeat the swing and a root can interrupt the run', () => {
   first.b.pos.x = 1000;
   for (let i = 0; i < 45; i++) first.step();
   expect(first.b.hp).toBe(10000);
-  expect(first.p.pos.x).toBeLessThanOrEqual(680.01);
+  expect(first.p.pos.x).toBeLessThanOrEqual(720.01);
   const second = setup();
   second.step(true);
   applyBuff(second.p, makeBuff('root', 0, 2, 'test'));
@@ -175,7 +175,7 @@ it('switching class cancels the reserved strike and keeps pursuit recovery on re
 
 it('a target beyond the walkable pursuit distance leaves the basic swing available', () => {
   const { p, b, step } = setup();
-  b.pos.x = p.pos.x + p.abilities!.basic.range! + b.radius + 179;
+  b.pos.x = p.pos.x + p.abilities!.basic.range! + b.radius + 219;
   step(true);
   expect(p.vengeancePursuitReadyAt).toBeUndefined();
 });
@@ -197,5 +197,18 @@ it('uses standard melee geometry when an eligible native strike omits optional g
   step(true);
   expect(p.glide?.vengeancePursuit).toBeDefined();
   for (let i = 0; i < 45; i++) step();
+  expect(b.hp).toBeLessThan(10000);
+});
+
+it('closes a 210u melee gap in under 0.3 seconds', () => {
+  const { p, b, step } = setup();
+  b.pos.x = p.pos.x + p.abilities!.basic.range! + b.radius + 210;
+  const start = p.pos.x;
+  step(true);
+  expect(p.glide?.vengeancePursuit).toBeDefined();
+  expect(b.hp).toBe(10000);
+  for (let i = 1; i < 28; i++) step();
+  expect(p.glide).toBeNull();
+  expect(p.pos.x - start).toBeGreaterThanOrEqual(210);
   expect(b.hp).toBeLessThan(10000);
 });

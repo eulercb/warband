@@ -38,14 +38,14 @@ accepted reflection readiness, return travel and the distinct mirror marker.
 All 24 subclasses have completed the first purpose inspection. Light reflection,
 both Life identities and the Refuge expulsion follow-up (#184) have been
 playtested. The final support review provisionally retains the A choices for
-Devotion, Vengeance and Valor. Relentless Vengeance has a playable native prototype awaiting owner feedback. Unyielding Faith and Battle Rhapsody remain open. Inspection does not establish live acceptance or equal power.
+Devotion, Vengeance and Valor. The owner merged and tested Relentless Vengeance (#187) and liked the gap closer. Its follow-up extends and speeds up the run. Unyielding Faith and Battle Rhapsody remain open. Inspection does not establish live acceptance or equal power.
 
 ## Next development work, in order
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Playtest Holy Strike pursuit. Next development is any needed pursuit refinement and Unyielding Faith.                                                                        |
-| Following                    | Resolve Unyielding Faith and Battle Rhapsody purpose gaps, then run whole-system comparisons.                                                                                |
+| Next                         | Playtest the longer, faster Holy Strike pursuit. The next development task is Unyielding Faith.                                                                              |
+| Following                    | Resolve Battle Rhapsody’s purpose gap, then run whole-system comparisons.                                                                                                    |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                |
 | Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing departure casting accepted. Evoker stays retained.                                                                  |

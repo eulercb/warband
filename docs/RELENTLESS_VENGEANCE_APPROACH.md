@@ -88,8 +88,11 @@ recovery rules. Otherwise leave the identity banked for incompatible kits.
 ## Playable prototype
 
 The native Relentless Vengeance grand now enables this behavior in a playable
-build. It uses up to 180u of travel and 0.4s, with a six-second recovery from
-commitment. The target and path appear while a fresh attack can pursue. A red
+build. The owner merged and tested #187 and liked the approach. The follow-up
+increases maximum travel from 180u to 220u and speed from 450u/s to 800u/s.
+A full run takes about 0.28s, down from 0.40s. Recovery is six seconds from
+commitment. Avenging Charge can still travel 250u in a free direction and has
+its own landing burst and optional ally-crossing protection. The target and path appear while a fresh attack can pursue. A red
 path means cover blocks the run. An in-range foe takes priority for the normal
 attack even if another foe is farther along the same aim line.
 
@@ -104,5 +107,5 @@ trial. Forge pursuit is a separate compatibility and pricing decision.
 Try lining up a mobile boss after dodging, deliberately swinging away, holding
 autofire outside reach, and approaching around a pillar. Try the same fights
 with Avenging Charge bound and compare reasons to use each. Next development is
-to act on pursuit playtest feedback and resolve Unyielding Faith, then Battle
+Unyielding Faith after the focused pursuit tuning, then Battle
 Rhapsody, broader tuning and the visual milestone.

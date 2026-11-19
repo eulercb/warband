@@ -2926,7 +2926,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'pa_vengeance_g_b',
     'Relentless Vengeance',
     '⚡',
-    'Fresh native Holy Strike presses pursue an aimed foe just outside melee range, then swing if in reach. Cover stops the run. Pursuit recovers in 6s. Holy Strike leeches 15%; direct Vengeance strikes leech 20%, and Hunter’s Vow heals you 25',
+    'Fresh native Holy Strike presses run up to 220u toward an aimed foe outside melee range, then swing if in reach. Cover stops the run. Pursuit recovers in 6s. Holy Strike leeches 15%; direct Vengeance strikes leech 20%, and Hunter’s Vow heals you 25',
     (a) => {
       if (isStrike(a.basic) && a.basic.damage > 0) lifeRider(a.basic, 0.15);
       else amplify(a.basic, 0.2, 0.1);

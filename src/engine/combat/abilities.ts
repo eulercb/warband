@@ -271,8 +271,8 @@ function startGlide(
   p.glide = { dir: d, remaining: range, leap: ab.leap === true, ab };
 }
 
-const PURSUIT_RANGE = 180;
-const PURSUIT_SPEED = 450;
+const PURSUIT_RANGE = 220;
+const PURSUIT_SPEED = 800;
 const PURSUIT_RECOVERY = 6;
 
 export function vengeancePursuit(world: World, p: Player, original = abilityForSlot(p, 'basic')) {
