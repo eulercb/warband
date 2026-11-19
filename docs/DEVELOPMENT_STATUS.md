@@ -28,15 +28,15 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Ceaseless Mending living refuge](CEASELESS_LIVING_REFUGE.md).
+Current delivery: [Living Refuge expulsion](REFUGE_EXPULSION.md).
 Grand Warding escape, Land transplantation, Hunter/Beast Master and Chaos
 Crossing departure casting remain accepted. The owner merged/tested #180 and
 accepted reflection readiness, return travel and the distinct mirror marker.
 
 Twenty-one of 24 subclasses have been inspected. Light A is retained growth;
 Light B reflection is accepted. The owner merged/tested #182 and accepted Life A's
-independent, stock-free Sanctuary/Bloom rescues. Life B now makes Sanctuary a
-bounded refuge against grounded bodily entry and awaits owner live acceptance.
+independent, stock-free Sanctuary/Bloom rescues. The owner liked Life B in #183. Its follow-up blocks flying
+enemies and ejects occupants. The follow-up awaits live acceptance.
 This implements the previously open Life B purpose finding; inspection,
 implementation and live acceptance remain separate states.
 
@@ -53,7 +53,7 @@ implementation and live acceptance remain separate states.
 | Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                                                |
 | Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                               |
 
-Use one bounded Sol 6.1 high design review where substantial planning is needed.
+Use one bounded Sol 6.2 high design review where substantial planning is needed.
 Proceed with a mature authorized plan; surface unresolved material gameplay
 choices instead of guessing. Retain sound simple designs and revise the order
 when evidence warrants it. Do not force a new mechanic into every slot or count

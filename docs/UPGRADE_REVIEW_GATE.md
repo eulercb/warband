@@ -4,7 +4,7 @@ Apply this review to every class cohort before implementation and again against
 the resolved runtime kit before delivery. The Rogue/Warlock follow-up showed why
 functional fields and complete slots alone do not establish build diversity.
 
-For substantial planning/design, use one bounded GPT-6.1 Sol high reviewer by
+For substantial planning/design, use one bounded GPT-6.2 Sol high reviewer by
 default, without asking the owner to repeat the request. No subdelegation or
 parallel model comparisons; skip routine fixes. When the owner has authorized
 the direction and review resolves material choices, proceed through implementation

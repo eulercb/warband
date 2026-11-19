@@ -145,19 +145,18 @@ it('inside bodies are admitted, can leave, and are excluded only on re-entry', (
   b.pos = clipRefugeStep(w, b, { x: 800, y: 400 }).pos;
   expect(clipRefugeStep(w, b, { x: 500, y: 400 }).stopped).toBe(true);
 });
-it('allies, static flyers and temporary flight bypass entry; landing inside never ejects', () => {
+it('allies can enter while static and temporary flyers stop at entry', () => {
   const { w, p, b } = field();
   p.pos = { x: 850, y: 400 };
   expect(clipRefugeStep(w, p, { x: 500, y: 400 }).stopped).toBe(false);
   b.pos = { x: 850, y: 400 };
   applyBuff(b, makeBuff('flight', 0, 1, 'test'));
-  expect(refugeHostile(w, b)).toBe(false);
-  b.pos = clipRefugeStep(w, b, { x: 500, y: 400 }).pos;
+  expect(refugeHostile(w, b)).toBe(true);
+  expect(clipRefugeStep(w, b, { x: 500, y: 400 }).stopped).toBe(true);
   b.buffs = [];
-  expect(clipRefugeStep(w, b, { x: 550, y: 400 }).stopped).toBe(false);
   b.monsterId = 'beholder';
   b.pos = { x: 850, y: 400 };
-  expect(clipRefugeStep(w, b, { x: 500, y: 400 }).stopped).toBe(false);
+  expect(clipRefugeStep(w, b, { x: 500, y: 400 }).stopped).toBe(true);
 });
 it('only hostile grounded adds are excluded, not converted followers or unrelated bodies', () => {
   const { w, b } = field();
@@ -165,7 +164,7 @@ it('only hostile grounded adds are excluded, not converted followers or unrelate
   w.adds.push(add);
   expect(clipRefugeStep(w, add, { x: 500, y: 400 }).stopped).toBe(true);
   applyBuff(add, makeBuff('flight', 0, 1, 'test'));
-  expect(refugeHostile(w, add)).toBe(false);
+  expect(refugeHostile(w, add)).toBe(true);
   add.buffs = [];
   add.charm = { ownerId: w.players[0].id, remaining: 1 } as Add['charm'];
   expect(refugeHostile(w, add)).toBe(false);
@@ -300,7 +299,7 @@ it('copies and actual Forge synthesis retain one paid refuge without Life passiv
   expect(refugeViews(w)).toHaveLength(1);
   b.pos = { x: 1000, y: 400 };
   expect(clipRefugeStep(w, b, { x: 500, y: 400 }).stopped).toBe(true);
-  expect(describeAbility(made)).toContain('grounded enemies cannot enter');
+  expect(describeAbility(made)).toContain('blocks entry, including flyers');
   expect(refreshComponents(made).effects.some((e) => e.kind === 'refuge')).toBe(true);
   const invalid = [
     { ...comp, delivery: { kind: 'projectile' as const } },
@@ -397,4 +396,76 @@ it('losing the refuge payload itself invalidates an otherwise unchanged source',
   const { w, p, z } = field();
   delete p.abilities!.a2.refuge;
   expect(refugeLive(w, z)).toBe(false);
+});
+
+it('expels a rooted flying occupant over multiple updates without taking away flight', () => {
+  const { w, p, b } = setup();
+  b.pos = { x: 570, y: 400 };
+  applyBuff(b, makeBuff('root', 0, 2, 'test'));
+  applyBuff(b, makeBuff('flight', 0, 2, 'test'));
+  step(w, 'a2');
+  expect(b.pos.x).toBeGreaterThan(570);
+  expect(dist(b.pos, p.pos)).toBeLessThan(140 + b.radius);
+  expect(b.buffs.some((buff) => buff.kind === 'root')).toBe(false);
+  for (let i = 0; i < 45; i++) step(w);
+  expect(dist(b.pos, p.pos)).toBeGreaterThanOrEqual(140 + b.radius);
+  expect(b.buffs.some((buff) => buff.kind === 'flight')).toBe(true);
+});
+it('Bastion deals one compensation tick per expelled foe per field, even after a second landing', () => {
+  const { w, b } = setup(picks[0], ['cl_life_g_b', 'cl_gk_a2_b']);
+  b.pos = { x: 570, y: 400 };
+  const hp = b.hp;
+  step(w, 'a2');
+  const first = hp - b.hp;
+  expect(first).toBeCloseTo(w.groundZones[0].damagePerTick);
+  for (let i = 0; i < 40; i++) step(w);
+  b.pos = { x: 570, y: 400 };
+  b.shove = null;
+  step(w);
+  expect(hp - b.hp).toBeCloseTo(first);
+  expect(b.shove).toBeTruthy();
+});
+
+it('a pillar deflects expulsion along a clear route once forced-movement immunity ends', () => {
+  const { w, b } = field();
+  b.pos = { x: 570, y: 400 };
+  w.obstacles.push({ id: 700, pos: { x: 690, y: 400 }, radius: 28, kind: 'pillar', variant: 0 });
+  applyBuff(b, makeBuff('root', 0, 2, 'test'));
+  applyBuff(b, makeBuff('steadfast', 0, 1, 'test'));
+  step(w);
+  expect(b.shove).toBeFalsy();
+  b.buffs = b.buffs.filter((buff) => buff.kind !== 'steadfast');
+  step(w);
+  expect(b.shove?.vy).not.toBe(0);
+  expect(b.buffs.some((buff) => buff.kind === 'root')).toBe(false);
+});
+
+it.each([false, true])('Bastion compensation honors air targeting (airborne=%s)', (airborne) => {
+  const { w, b, z } = field();
+  z.damagePerTick = 12;
+  z.airborne = airborne;
+  b.pos = { x: 570, y: 400 };
+  applyBuff(b, makeBuff('flight', 0, 2, 'test'));
+  const hp = b.hp;
+  step(w);
+  expect(b.shove).toBeTruthy();
+  expect(hp - b.hp).toBeCloseTo(airborne ? 12 : 0);
+});
+
+it('damaging refuge compensates for an expelled hostile add', () => {
+  const { w, b, z } = field();
+  z.damagePerTick = 12;
+  const add = {
+    ...b,
+    id: 997,
+    hp: 100,
+    maxHp: 100,
+    pos: { x: 570, y: 400 },
+    buffs: [],
+  } as unknown as Add;
+  delete (add as unknown as { monsterId?: string }).monsterId;
+  w.adds.push(add);
+  step(w);
+  expect(add.shove).toBeTruthy();
+  expect(add.hp).toBeCloseTo(88);
 });
