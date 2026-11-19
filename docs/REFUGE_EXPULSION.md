@@ -1,5 +1,8 @@
 # Living Refuge expulsion
 
+The owner merged and tested #184 and moved on to the
+[final support purpose review](FINAL_SUPPORT_PURPOSE_REVIEW.md).
+
 After playtesting #183, the owner asked for Sanctuary to work against flying
 enemies and to create room even when cast under a boss. The living refuge now
 blocks hostile entry during travel, including flight. If an enemy starts inside,
