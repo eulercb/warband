@@ -67,7 +67,12 @@ import {
   invalidateManeuvers,
 } from '../combat/battleManeuvers';
 import { sweepProjectedGuard, blockBossPulse } from '../combat/projectedGuard';
-import { firstObstacleStop, bossChargeTarget } from '../combat/abilities';
+import {
+  firstObstacleStop,
+  bossChargeTarget,
+  vengeancePursuit,
+  startVengeancePursuit,
+} from '../combat/abilities';
 import {
   armForethought,
   closeForethought,
@@ -1569,6 +1574,7 @@ export class World {
     )
       return;
 
+    const pursuit = fresh && slot === 'basic' ? vengeancePursuit(this, p, original) : undefined;
     const ab = {
       ...consumeMartialFinishers(p, consumeSpellSurge(p, consumeEvocation(p, original), this)),
     };
@@ -1602,7 +1608,8 @@ export class World {
     } else {
       // Commit before instant effects: refunds earned by this cast must not be overwritten.
       p.cooldowns[slot] = nextCd;
-      resolvePlayerAbility(this, p, slot, moveDir, ab);
+      if (pursuit && !pursuit.blocked) startVengeancePursuit(this, p, ab, pursuit);
+      else resolvePlayerAbility(this, p, slot, moveDir, ab);
     }
   }
 
@@ -1673,7 +1680,7 @@ export class World {
     delete p.shadowCommits;
     delete p.flowQueue;
     delete p.lastFlowSlot;
-    if (p.glide?.palmSweep) p.glide = null;
+    if (p.glide?.palmSweep || p.glide?.vengeancePursuit) p.glide = null;
     delete p.infernalAperture;
     this.projectiles = this.projectiles.filter(
       (shot) => shot.ownerId !== p.id || (!shot.apertureTransit && !shot.returningShot),
@@ -4187,8 +4194,16 @@ export class World {
     // item 2 — a knockback/pull now advances the authoritative `pos` over a few ticks
     // (world.stepShoves), so the slide replicates through the snapshot pipeline like
     // any other movement; no separate render offset is needed here.
+    const pursuit = vengeancePursuit(this, p);
     return {
       id: p.id,
+      ...(pursuit && {
+        vengeancePursuit: {
+          target: { ...pursuit.target.pos },
+          end: pursuit.end,
+          blocked: pursuit.blocked,
+        },
+      }),
       peerId: p.peerId,
       ...(this.scene === null && inMoonForm(p) ? { form: 'moonBear' as const } : {}),
       ...(p.spiritCompanion &&

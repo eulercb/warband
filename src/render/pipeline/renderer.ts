@@ -250,6 +250,18 @@ export class Renderer {
       );
     }
     const localManeuver = state.players.find((p) => p.id === state.localPlayerId);
+    const pursuit = localManeuver?.vengeancePursuit;
+    if (localManeuver && pursuit) {
+      const from = this.camera.worldToScreen(localManeuver.pos);
+      const end = this.camera.worldToScreen(pursuit.end);
+      const target = this.camera.worldToScreen(pursuit.target);
+      const color = pursuit.blocked ? 0xfd8a77 : 0xffd782;
+      this.enemyStatusLayer
+        .moveTo(from.x, from.y)
+        .lineTo(end.x, end.y)
+        .stroke({ color, width: 2, alpha: 0.65 });
+      this.enemyStatusLayer.circle(target.x, target.y, 19).stroke({ color, width: 2, alpha: 0.9 });
+    }
     const prepared = localManeuver?.maneuver;
     if (localManeuver && prepared?.phase === 'ready') {
       const target =

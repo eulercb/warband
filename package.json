@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Warband \u2014 a browser-hosted, peer-to-peer co-op boss fight. Host in your tab, share a link, fell one great monster together.",
+  "description": "Warband — a browser-hosted, peer-to-peer co-op boss fight. Host in your tab, share a link, fell one great monster together.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -66,7 +66,8 @@
     "smoke:crossing-followup": "node scripts/smoke-crossing-followup.mjs",
     "smoke:light-reflection": "node scripts/smoke-light-reflection.mjs",
     "smoke:life-font": "node scripts/smoke-life-font.mjs",
-    "smoke:living-refuge": "node scripts/smoke-living-refuge.mjs"
+    "smoke:living-refuge": "node scripts/smoke-living-refuge.mjs",
+    "smoke:vengeance-pursuit": "node scripts/smoke-vengeance-pursuit.mjs"
   },
   "dependencies": {
     "@trystero-p2p/torrent": "0.25.2",
