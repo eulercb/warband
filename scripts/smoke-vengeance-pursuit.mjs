@@ -61,7 +61,7 @@ try {
           b = w.boss;
         p.pos = { x: 500, y: 400 };
         p.aim = { x: 0, y: -1 };
-        b.pos = { x: 730, y: 400 };
+        b.pos = { x: p.pos.x + p.abilities.basic.range + b.radius + 210, y: p.pos.y };
         b.moveSpeed = 0;
         b.decisionTimer = 1000;
         b.hp = b.maxHp = 10000;
@@ -146,8 +146,8 @@ try {
     await page.mouse.up();
     await page.evaluate(() => {
       const { p, b, step } = window.probe;
-      for (let i = 0; i < 45; i++) step();
-      if (p.glide || p.pos.x <= 550 || b.hp >= 10000 || p.cooldowns.a3 !== 0)
+      for (let i = 0; i < 27; i++) step();
+      if (p.glide || p.pos.x < 710 || b.hp >= 10000 || p.cooldowns.a3 !== 0)
         throw Error('Pursuit landing did not resolve Holy Strike');
     });
     assert.deepEqual(errors, []);

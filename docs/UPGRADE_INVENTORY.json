@@ -10418,7 +10418,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Fresh native Holy Strike presses pursue an aimed foe just outside melee range, then swing if in reach. Cover stops the run. Pursuit recovers in 6s. Holy Strike leeches 15%; direct Vengeance strikes leech 20%, and Hunter’s Vow heals you 25",
+      "description": "Fresh native Holy Strike presses run up to 220u toward an aimed foe outside melee range, then swing if in reach. Cover stops the run. Pursuit recovers in 6s. Holy Strike leeches 15%; direct Vengeance strikes leech 20%, and Hunter’s Vow heals you 25",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
