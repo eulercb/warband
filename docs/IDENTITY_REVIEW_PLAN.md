@@ -1,11 +1,11 @@
 # Identity review before whole-system tuning
 
 Current execution status is tracked in [Development status](DEVELOPMENT_STATUS.md).
-The owner accepted reflection (#180) and Life's independent field rescues (#182).
-[Ceaseless Mending living refuge](CEASELESS_LIVING_REFUGE.md) implements Life B's
-previously open purpose finding, pending live acceptance. Twenty-one subclasses
-are inspected. Next development is Devotion/Vengeance/Valor, then whole-system
-comparisons, tuning, acquisition/grafts and the dedicated visual milestone.
+The owner accepted [Living Refuge expulsion](REFUGE_EXPULSION.md) (#184).
+The [final support purpose review](FINAL_SUPPORT_PURPOSE_REVIEW.md) completes
+first inspection of 24 subclasses. Its three open B findings are tracked
+separately from implementation and live acceptance. Relentless Vengeance is
+the first prototype, then the remaining support gaps and whole-system tuning.
 
 Calibration is complete: Moon/Evoker retained and Whispers reworked/accepted in
 owner live testing. The [Rogue/Warlock review](ROGUE_WARLOCK_IDENTITY_REVIEW.md)

@@ -28,28 +28,27 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Living Refuge expulsion](REFUGE_EXPULSION.md).
+Current delivery: [Devotion, Vengeance and Valor purpose review](FINAL_SUPPORT_PURPOSE_REVIEW.md).
 Grand Warding escape, Land transplantation, Hunter/Beast Master and Chaos
 Crossing departure casting remain accepted. The owner merged/tested #180 and
 accepted reflection readiness, return travel and the distinct mirror marker.
 
-Twenty-one of 24 subclasses have been inspected. Light A is retained growth;
-Light B reflection is accepted. The owner merged/tested #182 and accepted Life A's
-independent, stock-free Sanctuary/Bloom rescues. The owner liked Life B in #183. Its follow-up blocks flying
-enemies and ejects occupants. The follow-up awaits live acceptance.
-This implements the previously open Life B purpose finding; inspection,
-implementation and live acceptance remain separate states.
+All 24 subclasses have completed the first purpose inspection. Light reflection,
+both Life identities and the Refuge expulsion follow-up (#184) have been
+playtested. The final support review provisionally retains the A choices for
+Devotion, Vengeance and Valor. Their B identity findings remain open for
+prototype work. Inspection does not establish live acceptance or equal power.
 
 ## Next development work, in order
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Live-test Ceaseless Mending; next development is the Devotion/Vengeance/Valor purpose review.                                                                                |
-| Following                    | Proceed to whole-system comparisons after remaining support identities.                                                                                                      |
+| Next                         | Prototype Relentless Vengeance against the solo and party cases in the support review.                                                                                       |
+| Following                    | Resolve Unyielding Faith and Battle Rhapsody purpose gaps, then run whole-system comparisons.                                                                                |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                |
 | Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing departure casting accepted. Evoker stays retained.                                                                  |
-| Remaining support identities | Light B accepted, A retained growth; Life A accepted, Life B refuge implemented pending acceptance; Devotion, Vengeance and Valor unreviewed. Whispers accepted.             |
+| Remaining support identities | Light and Life follow-ups accepted. Devotion, Vengeance and Valor inspected, with their B choices open. Whispers accepted.                                                   |
 | Whole-system tuning          | Fixed-encounter power comparisons, ordinary-upgrade value, realistic reward acquisition and graft alternatives/compatibility.                                                |
 | Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                               |
 
