@@ -90,6 +90,14 @@ function describe(
         good: true,
         label: `Frontal guard: ${Math.round(mult)} damage blocks, aim within 120°; ground hazards and control bypass it`,
       };
+    case 'rallyPassage':
+      return {
+        glyph: '⇥',
+        color: 0xe0caff,
+        good: true,
+        label:
+          'Rally Passage: move through bosses and hostile summons; attacks and cover still apply',
+      };
     case 'steadfast':
       return {
         glyph: '⚓',

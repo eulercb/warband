@@ -327,37 +327,23 @@ export function onSubclassSurge(p: Player, sink?: EventSink): void {
   spendCooldown(p, id);
 }
 
-export function reserveRallyingChorus(p: Player): boolean {
-  const id = 'valor_rallying_chorus';
-  if (p.subclassPassiveId !== id || !offCooldown(p, id)) return false;
-  spendCooldown(p, id, 8);
-  return true;
-}
-
-export function grantRallyingGuard(world: World, p: Player, ally: Player): void {
-  if (ally.buffs.some((b) => b.kind === 'frontGuard' && b.remaining > 0 && b.mult > 0)) return;
-  putBuff(ally, {
-    kind: 'frontGuard',
-    mult: 1,
-    remaining: 3,
-    source: PREFIX + 'valor_rallying_chorus:' + p.id,
-  });
-  world.events.push({
-    t: 'support',
-    kind: 'protect',
-    sourceId: p.id,
-    targetId: ally.id,
-    from: { ...p.pos },
-    pos: { ...ally.pos },
-  });
-}
-
 /** Called only after a real two-verse chorus, never ordinary Inspiration spam. */
 export function onSubclassChorus(world: World, p: Player, range: number): void {
-  if (!reserveRallyingChorus(p)) return;
+  const id = p.subclassPassiveId;
+  if (id !== 'valor_rallying_chorus' || !offCooldown(p, id)) return;
+  spendCooldown(p, id, 8);
   for (const ally of world.players) {
     if (ally.state !== 'alive' || ally.hp <= 0 || dist(p.pos, ally.pos) > range) continue;
-    grantRallyingGuard(world, p, ally);
+    if (ally.buffs.some((b) => b.kind === 'frontGuard' && b.remaining > 0 && b.mult > 0)) continue;
+    putBuff(ally, { kind: 'frontGuard', mult: 1, remaining: 3, source: PREFIX + id + ':' + p.id });
+    world.events.push({
+      t: 'support',
+      sourceId: p.id,
+      targetId: ally.id,
+      from: { ...p.pos },
+      pos: { ...ally.pos },
+      kind: 'protect',
+    });
   }
 }
 

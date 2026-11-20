@@ -394,7 +394,7 @@ describe('<PauseMenu>', () => {
     expect(guide.textContent).toContain(
       'Battle Rhapsody can prepare Harmony at full health after Discord',
     );
-    expect(guide.textContent).toContain('through an aimed rally');
+    expect(guide.textContent).toContain('an aimed rally that lets allies pass through foes');
   });
 
   it('labels owned-skill rows with pad glyphs on a controller (item 6)', () => {

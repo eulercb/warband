@@ -3,8 +3,6 @@ import { spendSecret } from './whispers';
 import {
   onSubclassFinisher,
   onSubclassChorus,
-  reserveRallyingChorus,
-  grantRallyingGuard,
   onSubclassHeal,
   onSubclassProtection,
   onSubclassOverheal,
@@ -165,14 +163,10 @@ export function spendSupportChorus(world: World, p: Player, ab: PlayerAbilityDef
       damagePerTick: 0,
       healPerTick: 0,
       rally: {
-        guard: reserveRallyingChorus(p),
-        cleanse: !!ab.cleanseOnHeal,
         visitors: [],
         epoch: p.castEpoch ?? 0,
       },
     });
-    // The ordinary ability resolves normally. The bonus chorus goes to field visitors.
-    return false;
   }
   onSubclassChorus(world, p, ab.range ?? 420);
   // This chorus spends its verses on a departure afterimage, not a group rally.
@@ -386,9 +380,7 @@ export function visitRhapsodyRallies(world: World): void {
       )
         continue;
       rally.visitors.push(ally.id);
-      if (rally.cleanse) cleanseMovement(ally);
-      applyBuff(ally, makeBuff('moveSpeed', 1.15, 3, 'chorusMove'));
-      if (rally.guard) grantRallyingGuard(world, owner, ally);
+      applyBuff(ally, makeBuff('rallyPassage', 0, 2, 'rallyPassage'));
     }
   }
 }

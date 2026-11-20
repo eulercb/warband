@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { World } from '../src/engine/world/world';
 import { resolvePlayerAbility } from '../src/engine/combat/abilities';
-import { applyBuff, makeBuff } from '../src/engine/combat/combat';
+import { applyBuff, damagePlayer, makeBuff } from '../src/engine/combat/combat';
 import {
   decompose,
   recompose,
@@ -9,7 +9,7 @@ import {
   synthesizeAbility,
 } from '../src/engine/content/forge';
 import { describeAbility } from '../src/engine/content/classes';
-import type { ExtSlot } from '../src/engine/core/types';
+import type { ExtSlot, InputCommand } from '../src/engine/core/types';
 
 function setup(pick = 'ba_valor_blade', party = false, mods = ['ba_valor_g_b']) {
   const w = new World({
@@ -50,36 +50,42 @@ it.each(['blade', 'inspire', 'bolster', 'shatter'])(
     const rally = w.groundZones.find((z) => z.rally)!;
     expect(rally.pos).toEqual({ x: 700, y: 400 });
     expect(w.serialize().groundZones[0].rally).toBe(true);
-    expect(p.buffs.some((b) => b.kind === 'frontGuard')).toBe(false);
+    expect(p.buffs.some((b) => b.kind === 'frontGuard')).toBe(true);
+    expect(p.buffs.some((b) => b.kind === 'rallyPassage')).toBe(false);
     expect(p.buffs.some((b) => b.kind === 'discord' || b.kind === 'harmony')).toBe(false);
     p.pos = { ...rally.pos };
     w.step(0.01, new Map());
-    expect(p.buffs.find((b) => b.kind === 'frontGuard')?.mult).toBe(1);
-    expect(p.buffs.some((b) => b.source === 'chorusMove')).toBe(true);
-    p.buffs = p.buffs.filter((b) => b.kind !== 'frontGuard');
+    expect(p.buffs.find((b) => b.kind === 'rallyPassage')?.remaining).toBe(2);
+    p.buffs = p.buffs.filter((b) => b.kind !== 'rallyPassage');
     w.step(0.01, new Map());
-    expect(p.buffs.some((b) => b.kind === 'frontGuard')).toBe(false);
+    expect(p.buffs.some((b) => b.kind === 'rallyPassage')).toBe(false);
   },
 );
 
-it('Bolster lets allies visit independently, cleansing movement ailments and preserving a stronger guard', () => {
-  const { w, p, ally, cast } = setup('ba_valor_bolster', true);
-  cast('a3');
-  cast('a2');
-  cast('sub1');
-  const z = w.groundZones.find((z) => z.rally)!;
-  expect(ally.buffs.some((b) => b.kind === 'frontGuard')).toBe(false);
-  applyBuff(ally, makeBuff('root', 0, 2, 'test'));
-  applyBuff(ally, makeBuff('frontGuard', 2, 4, 'test'));
-  ally.pos = { ...z.pos };
-  w.step(0.01, new Map());
-  expect(ally.buffs.some((b) => b.kind === 'root')).toBe(false);
-  expect(ally.buffs.find((b) => b.kind === 'frontGuard')?.mult).toBe(2);
-  expect(z.rally!.visitors).toEqual([ally.id]);
-  expect(p.buffs.some((b) => b.kind === 'frontGuard')).toBe(false);
-});
+it.each(['blade', 'inspire', 'bolster'])(
+  'a complete %s chorus buffs in-range allies immediately',
+  (pick) => {
+    const { w, p, ally, cast } = setup('ba_valor_' + pick, true);
+    applyBuff(ally, makeBuff('root', 0, 2, 'testRoot'));
+    applyBuff(ally, makeBuff('frontGuard', 2, 4, 'test'));
+    cast('a3');
+    cast('a2');
+    cast(pick === 'blade' ? 'a1' : 'sub1');
+    expect(ally.buffs.some((b) => b.source === 'chorusMove')).toBe(true);
+    expect(ally.buffs.some((b) => b.kind === 'root')).toBe(pick !== 'bolster');
+    expect(ally.buffs.some((b) => b.kind === 'damageDealt')).toBe(pick !== 'bolster');
+    expect(ally.buffs.find((b) => b.kind === 'frontGuard')?.mult).toBe(2);
+    expect(p.buffs.some((b) => b.kind === 'frontGuard')).toBe(true);
+    expect(ally.buffs.some((b) => b.kind === 'rallyPassage')).toBe(false);
+    const z = w.groundZones.find((z) => z.rally)!;
+    ally.pos = { ...z.pos };
+    w.step(0.01, new Map());
+    expect(ally.buffs.some((b) => b.kind === 'rallyPassage')).toBe(true);
+    expect(z.rally!.visitors).toEqual([ally.id]);
+  },
+);
 
-it('Battle Hymn replaces the old rally and a new rally within passive recovery gives speed only', () => {
+it('Battle Hymn replaces the old rally even while the passive recovers', () => {
   const { w, p, cast } = setup('ba_valor_inspire');
   cast('a3');
   cast('a2');
@@ -92,7 +98,6 @@ it('Battle Hymn replaces the old rally and a new rally within passive recovery g
   const zones = w.groundZones.filter((z) => z.rally);
   expect(zones).toHaveLength(1);
   expect(zones[0]).not.toBe(old);
-  expect(zones[0].rally!.guard).toBe(false);
   expect(zones[0].pos).toEqual({ x: 500, y: 600 });
   p.castEpoch = (p.castEpoch ?? 0) + 1;
   w.step(0.02, new Map());
@@ -174,5 +179,64 @@ it('a copy outside Valor gives movement on entry without a passive block', () =>
   p.pos = { ...z.pos };
   w.step(0.01, new Map());
   expect(p.buffs.some((b) => b.kind === 'frontGuard')).toBe(false);
-  expect(p.buffs.some((b) => b.source === 'chorusMove')).toBe(true);
+  expect(p.buffs.some((b) => b.kind === 'rallyPassage')).toBe(true);
+});
+
+it('lets real walking cross a boss and hostile summon while still blocking cover', () => {
+  const { w, p, cast } = setup();
+  const boss = w.boss!;
+  boss.pos = { x: 730, y: 400 };
+  boss.radius = 45;
+  const add = {
+    id: w.allocId(),
+    pos: { x: 820, y: 400 },
+    radius: 19,
+    hp: 100,
+    maxHp: 100,
+    moveSpeed: 0,
+    attackCd: 1000,
+    targetId: null,
+    buffs: [],
+  };
+  w.adds.push(add);
+  const input: InputCommand = {
+    seq: 1,
+    move: { x: 1, y: 0 },
+    aim: { x: 1, y: 0 },
+    buttons: { basic: false, a1: false, a2: false, a3: false, revive: false },
+  };
+  const walk = (frames: number) => {
+    for (let i = 0; i < frames; i++) w.step(1 / 60, new Map([['a', input]]));
+  };
+  const wall = { id: w.allocId(), pos: { x: 920, y: 400 }, radius: 27 };
+  w.obstacles.push(wall);
+  walk(75);
+  expect(p.pos.x).toBeLessThan(boss.pos.x);
+  expect(p.buffs.some((b) => b.kind === 'rallyPassage')).toBe(false);
+
+  p.pos = { x: 500, y: 400 };
+  cast('a3');
+  cast('a2');
+  cast('a1');
+  walk(100);
+  expect(p.pos.x).toBeGreaterThan(add.pos.x);
+  expect(add.pos.x).toBe(820);
+  expect(p.pos.x).toBeCloseTo(wall.pos.x - wall.radius - p.radius);
+  expect(p.buffs.some((b) => b.kind === 'rallyPassage')).toBe(true);
+  expect(damagePlayer(w, p, 10)).toBeGreaterThan(0);
+  walk(90);
+  expect(p.buffs.some((b) => b.kind === 'rallyPassage')).toBe(false);
+  p.pos = { x: boss.pos.x - boss.radius - p.radius, y: boss.pos.y };
+  walk(30);
+  expect(p.pos.x).toBeCloseTo(boss.pos.x - boss.radius - p.radius);
+});
+
+it('does not grant chorus buffs outside casting range', () => {
+  const { w, ally, cast } = setup('ba_valor_blade', true);
+  ally.pos = { x: 975, y: 400 };
+  cast('a3');
+  cast('a2');
+  cast('a1');
+  expect(ally.buffs).toEqual([]);
+  expect(w.groundZones.some((z) => z.rally)).toBe(true);
 });

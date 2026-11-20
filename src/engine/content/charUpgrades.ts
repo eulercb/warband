@@ -3015,7 +3015,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'ba_valor_g_b',
     'Battle Rhapsody',
     '🥁',
-    'With Discord ready, Healing Word can prepare Harmony at full health. Spend both verses to place a 95u rally 200u ahead for 4s. Allies who enter gain 15% movement for 3s and can receive Rallying Chorus',
+    'With Discord ready, Healing Word can prepare Harmony at full health. A two-verse chorus buffs allies in range and places a 95u rally 200u ahead for 4s. Each ally who enters can move through foes for 2s',
     (a) => {
       for (const ab of [a.a1, a.a2, a.a3])
         if (ab.bardSong === 'harmony' || ab.bardSong === 'chorus') ab.rhapsody = true;
@@ -6491,7 +6491,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
       return {
         ...base,
         name: blend(fused.name),
-        desc: 'Retained Harmony heals prepare a verse at full health while Discord is ready. Retained choruses place a rally 200u ahead for 4s. Enter for movement and eligible Rallying Chorus protection',
+        desc: 'Retained Harmony heals prepare a verse at full health while Discord is ready. Retained choruses also place a rally 200u ahead for 4s. Enter to move through foes for 2s',
       };
     }
     if (base.id === 'pa_devotion_g_b') {

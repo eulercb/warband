@@ -203,6 +203,7 @@ export type BuffKind =
   | 'flow' // next marked special is instant and wider/longer
   | 'harmony' // effective healing verse, readied for a Bard chorus
   | 'discord' // disruptive special verse, readied for a Bard chorus
+  | 'rallyPassage' // pass through hostile bodies after entering a Valor rally
   | 'forethoughtRecovery' // shared quiet interval after a boss read
   | 'thoughtBreakRecovery' // global boss recovery from committed-action cancellation
   | 'spellSurge' // one enhanced special spell
@@ -1389,7 +1390,7 @@ export interface PendingStrike {
 }
 
 export interface GroundZone {
-  rally?: { guard: boolean; cleanse: boolean; visitors: number[]; epoch: number };
+  rally?: { visitors: number[]; epoch: number };
   refuge?: RefugeSource;
   revivalFont?: FontSource;
   whisperCast?: WhisperCast;

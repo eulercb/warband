@@ -25,6 +25,9 @@ Owner-approved Battlemaster steering starts during active attacks and applies on
 per enemy per cast. Do not restore the old one-foe or wait-until-action-finishes gate.
 Keep body-bound attacks distinct from placed ground targets, with moving telegraphs
 matching hit geometry and ongoing attack timers.
+Owner feedback on Battle Rhapsody: preserve the ordinary two-verse party buffs
+on cast. An optional pickup should reward the detour with an additional
+capability and leave the caster’s existing positioning decision intact.
 Check actual targeting semantics before promising a safe area or fixed aim. Do not add
 complexity to every skill or discard functioning simple skills merely for novelty.
 
