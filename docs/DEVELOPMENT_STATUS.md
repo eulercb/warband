@@ -28,7 +28,7 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [fixed-encounter balance pilot](FIXED_ENCOUNTER_PILOT.md) for Valor and Devotion.
+Current delivery: [encounter balance follow-through](ENCOUNTER_BALANCE_FOLLOWTHROUGH.md), building on the [fixed-encounter pilot](FIXED_ENCOUNTER_PILOT.md).
 See the [Devotion, Vengeance and Valor purpose review](FINAL_SUPPORT_PURPOSE_REVIEW.md)
 for the full cohort findings.
 Grand Warding escape, Land transplantation, Hunter/Beast Master and Chaos
@@ -44,13 +44,13 @@ Devotion, Vengeance and Valor. The owner merged and tested Relentless Vengeance 
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Extend the fixed-encounter comparison to Vengeance against grounded and intermittently airborne bosses.                                                                      |
-| Following                    | Compare ordinary upgrade value, then realistic reward acquisition and graft alternatives.                                                                                    |
+| Next                         | Measure ordinary rank acquisition and opportunity cost through actual reward choices. Add a Vengeance re-entry fixture with deliberate disengagement.                        |
+| Following                    | Compare graft acquisition, alternatives and compatibility, then start the visual prototype.                                                                                  |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                |
 | Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing departure casting accepted. Evoker stays retained.                                                                  |
 | Remaining support identities | Light and Life follow-ups accepted. Devotion B and Vengeance B accepted for now. Valor B accepted for now. Whispers accepted.                                                |
-| Whole-system tuning          | First 84 fixed-encounter runs complete. Continue with melee pursuit, then ordinary upgrades, acquisition and grafts.                                                         |
+| Whole-system tuning          | First expanded 552-scenario balance comparison complete. Radiant Strike and direct lifesteal corrected. Acquisition and grafts are next.                                     |
 | Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                               |
 
 Use one bounded Sol 6.2 high design review where substantial planning is needed.

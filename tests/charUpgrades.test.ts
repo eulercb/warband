@@ -543,6 +543,13 @@ describe('paladin upgrades', () => {
     expect(a.basic.damage).toBe(29);
     expect(a.basic.freeze!).toBeCloseTo(0.4, 5);
     expect(a.basic.lifestealFrac!).toBeCloseTo(0.1, 5);
+    const repeated = apply(
+      'paladin',
+      Array.from({ length: 5 }, () => 'pa_radiant'),
+    ).abilities!.basic;
+    expect(repeated.freeze).toBeCloseTo(0.4);
+    expect(repeated.damage).toBe(53);
+    expect(repeated.lifestealFrac).toBeCloseTo(0.5);
   });
   it('pa_zeal speeds move + cooldowns (player-only)', () => {
     const p = apply('paladin', ['pa_zeal']);
