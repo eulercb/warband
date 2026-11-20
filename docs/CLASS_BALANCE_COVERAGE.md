@@ -9,11 +9,11 @@ playtests remain useful evidence for their individual mechanics.
 | ----------------- | --------- | -------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Support           | Bard      | Valor, Whispers            | Valor measured with Bolster and Blade Flourish. Whispers measured with Psychic Blade.                   |
 | Support           | Paladin   | Devotion, Vengeance        | Both measured. Vengeance also has a deliberate re-entry test.                                           |
-| Support           | Cleric    | Light, Life                | Pending.                                                                                                |
+| Support           | Cleric    | Light, Life                | Both measured as lead and in selected trios.                                                            |
 | Nature            | Ranger    | Hunter, Beast Master       | Both measured. Hunter has a firing-lane sensitivity run.                                                |
-| Nature            | Druid     | Moon, Land                 | Pending.                                                                                                |
+| Nature            | Druid     | Moon, Land                 | Both measured as lead. Land includes healing, field control and a graft comparison.                     |
 | Martial           | Knight    | Champion, Battlemaster     | Both measured as lead. Battlemaster covers Volley and Rally. Knight remains a partner in other cohorts. |
-| Martial           | Barbarian | Berserker, Totem           | Pending.                                                                                                |
+| Martial           | Barbarian | Berserker, Totem           | Both measured as lead, with two first picks each.                                                       |
 | Martial           | Monk      | Open Hand, Shadow          | Pending.                                                                                                |
 | Caster            | Mage      | Evoker, Abjurer            | Pending.                                                                                                |
 | Caster            | Sorcerer  | Draconic, Wild Magic       | Pending.                                                                                                |
@@ -40,6 +40,6 @@ batch. Keep policies reproducible and vary the controller when outcomes
 depend on a positioning or timing assumption.
 
 The representative support and nature cohorts are measured. Next is
-**Barbarian**, then Monk, casters, and Rogue/Warlock. Track
+**Monk** to finish the martial cohort, then casters and Rogue/Warlock. Track
 acquisition and graft work alongside cohorts. The [development
 roadmap](DEVELOPMENT_STATUS.md) records the visual and encounter milestones.

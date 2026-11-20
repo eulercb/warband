@@ -2697,7 +2697,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'bb_berserker_g_b',
     'Blood Frenzy',
     '🩸',
-    'Rage and Frenzy let walking earn Momentum instead of melee hits for 6s; Whirlwind slows foes to 75% for 2s, basics gain +15% damage against controlled foes, and direct Berserker strikes gain +25%',
+    'Rage and Frenzy let walking earn Momentum instead of melee hits for 6s. Whirlwind slows foes to 75% move speed for 2s. Against controlled foes, basics gain +15% damage and direct Berserker strikes gain +25%',
     (a) => {
       a.a1.wolfHunt = Math.max(a.a1.wolfHunt ?? 0, 6);
       slowRider(a.a3, 0.75, 2);

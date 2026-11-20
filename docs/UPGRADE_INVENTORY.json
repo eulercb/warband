@@ -9388,7 +9388,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Rage and Frenzy let walking earn Momentum instead of melee hits for 6s; Whirlwind slows foes to 75% for 2s, basics gain +15% damage against controlled foes, and direct Berserker strikes gain +25%",
+      "description": "Rage and Frenzy let walking earn Momentum instead of melee hits for 6s. Whirlwind slows foes to 75% move speed for 2s. Against controlled foes, basics gain +15% damage and direct Berserker strikes gain +25%",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
