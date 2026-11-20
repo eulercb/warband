@@ -185,7 +185,12 @@ export interface PlayerAbilityDef {
   /** Preserve pre-buff adaptive difficulty credit while retaining real combat values. */
   balanceDamageScale?: number;
   balanceZoneHealScale?: number;
-  paladinAura?: { kind: 'bulwark' | 'pursuit' | 'renewal'; radius: number; duration: number };
+  paladinAura?: {
+    kind: 'bulwark' | 'pursuit' | 'renewal';
+    radius: number;
+    duration: number;
+    unyielding?: boolean;
+  };
   absorption?: AbsorptionGrant;
   overflowShield?: boolean;
   rescueHealBonus?: number;

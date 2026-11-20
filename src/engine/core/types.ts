@@ -630,7 +630,9 @@ export interface Player {
     spent: number[];
     /** Host-only, one Vengeance extension per aura activation. */
     passiveExtended?: boolean;
+    faithReady?: boolean;
   };
+  faithWound?: { amount: number; remaining: number };
   pos: Vec2;
   aim: Vec2; // unit vector
   hp: number;
@@ -1672,6 +1674,7 @@ export interface ShadowCommitCast {
 }
 
 export interface PlayerView {
+  faithWound?: { amount: number; remaining: number };
   vengeancePursuit?: { target: Vec2; end: Vec2; blocked: boolean };
   fontRecovery?: { progress: number };
   reflectionWard?: { remaining: number };
@@ -1722,7 +1725,12 @@ export interface PlayerView {
   peerId: string;
   name: string;
   classId: ClassId;
-  paladinAura?: { kind: 'bulwark' | 'pursuit' | 'renewal'; radius: number; remaining: number };
+  paladinAura?: {
+    kind: 'bulwark' | 'pursuit' | 'renewal';
+    radius: number;
+    remaining: number;
+    faithReady?: boolean;
+  };
   pos: Vec2;
   aim: Vec2;
   hp: number;

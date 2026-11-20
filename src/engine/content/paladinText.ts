@@ -6,5 +6,9 @@ export function auraText(a: NonNullable<PlayerAbilityDef['paladinAura']>): strin
       : a.kind === 'pursuit'
         ? '18% move speed and one +25% melee hit per ally per activation'
         : '10 HP/s recovery after an effective heal';
-  return `${a.kind} aura — follows you for ${a.duration}s within ${a.radius}u; ${effect}; one active aura, strongest equivalent wins`;
+  const faith =
+    a.kind === 'bulwark' && a.unyielding
+      ? '; once per aura, defer 50% of the first HP hit (up to 25% max HP) for 3s; healing pays it first'
+      : '';
+  return `${a.kind} aura — follows you for ${a.duration}s within ${a.radius}u; ${effect}${faith}; one active aura, strongest equivalent wins`;
 }

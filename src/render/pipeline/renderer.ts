@@ -997,6 +997,7 @@ export class Renderer {
     this.ensureLabels(
       (state.refuges?.length ?? 0) +
         state.players.filter((p) => p.fontRecovery).length +
+        state.players.filter((p) => p.faithWound || p.paladinAura?.faithReady).length +
         state.groundZones.filter((z) => z.revivalFont).length +
         state.players.filter((p) => p.reflectionWard).length +
         (guided ? 1 : 0) +
@@ -1158,6 +1159,20 @@ export class Renderer {
           Math.max(125, Math.min(this.app.screen.height - 145, at.y + PLAYER_RADIUS * scale + 58)),
         );
       }
+    for (const p of state.players) {
+      if (!p.faithWound && !p.paladinAura?.faithReady) continue;
+      const t = this.labels[i++];
+      const at = this.camera.worldToScreen(p.pos);
+      t.visible = true;
+      t.alpha = 1;
+      t.text = p.faithWound
+        ? `Due ${Math.ceil(p.faithWound.amount)} HP · ${p.faithWound.remaining.toFixed(1)}s`
+        : 'Faith · 1';
+      t.position.set(
+        Math.max(t.width / 2 + 8, Math.min(this.app.screen.width - t.width / 2 - 8, at.x)),
+        Math.max(125, Math.min(this.app.screen.height - 145, at.y + PLAYER_RADIUS * scale + 38)),
+      );
+    }
     for (const r of state.refuges ?? []) {
       const t = this.labels[i++],
         at = this.camera.worldToScreen(r.pos);

@@ -14,6 +14,7 @@ export function armPaladinAura(world: World, p: Player, ab: PlayerAbilityDef): v
     classId: p.classId,
     remaining: a.duration,
     spent: [],
+    ...(a.kind === 'bulwark' && a.unyielding && { faithReady: true }),
   };
   onSubclassAura(world, p, a.radius);
   updatePaladinAuras(world, 0, 0);

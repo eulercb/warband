@@ -73,6 +73,15 @@ export function grandEligible(id: string, classId: ClassId, ctx: GrandContext): 
     !Object.values(previewAbilityTable(classId, [...ctx.history, id])).some((ab) => refugeField(ab))
   )
     return false;
+  if (id === 'pa_devotion_g_b') {
+    const mods = [...ctx.history, id];
+    const kit = [
+      ...Object.values(previewAbilityTable(classId, mods)),
+      ...bound.map((sid) => previewSubAbility(sid, mods)),
+    ];
+    if (!kit.some((ab) => ab?.paladinAura?.kind === 'bulwark' && ab.paladinAura.unyielding))
+      return false;
+  }
   if (id === 'cl_life_g_a') {
     const mods = [...ctx.history, id];
     if (

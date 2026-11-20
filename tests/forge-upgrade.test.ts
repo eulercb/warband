@@ -113,6 +113,14 @@ describe('Chaos Forge char-upgrade synthesis', () => {
           ).toBe(false);
           continue;
         }
+        if (up.id === 'pa_devotion_g_b' && after === before) {
+          expect(
+            Object.values(previewAbilityTable(cid, [])).some(
+              (ab) => ab.paladinAura?.kind === 'bulwark',
+            ),
+          ).toBe(false);
+          continue;
+        }
         if (up.id === 'dr_land_g_b' && after === before) {
           // A field-only identity has no numeric fallback on a kit without fields.
           expect(
