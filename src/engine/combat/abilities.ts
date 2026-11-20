@@ -1617,6 +1617,7 @@ function emitSkillArea(
 }
 
 export interface SpawnZoneOpts {
+  rally?: GroundZone['rally'];
   refuge?: import('../core/types').RefugeSource;
   revivalFont?: import('../core/types').FontSource;
   fieldTransplantCast?: import('../core/types').FieldTransplantCast;
@@ -1666,6 +1667,7 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
   const zone: GroundZone = {
     revivalFont: o.revivalFont,
     refuge: o.refuge,
+    rally: o.rally,
     id: world.allocId(),
     whisperCast: o.whisperCast,
     recovery: o.recovery,
@@ -1699,6 +1701,7 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
   };
   const owner = o.side === 'player' && world.players.find((p) => p.id === o.ownerId);
   if (
+    !o.rally &&
     owner &&
     owner.state === 'alive' &&
     owner.hp > 0 &&

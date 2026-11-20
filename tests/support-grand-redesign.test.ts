@@ -121,22 +121,34 @@ describe('authored support builds', () => {
               const bank = p.grandLoadout!.classes[classId]!;
               expect(bank.bank).toHaveLength(4);
               if (bank.equipped.length === 3) {
-                expect(['cl_life_g_a', 'cl_life_g_b', 'pa_devotion_g_b']).toContain(identity.id);
+                expect(['cl_life_g_a', 'cl_life_g_b', 'pa_devotion_g_b', 'ba_valor_g_b']).toContain(
+                  identity.id,
+                );
                 expect(bank.bank).toContain(identity.id);
                 expect(bank.equipped).not.toContain(identity.id);
-                expect(
-                  [
-                    ...Object.values(p.abilities!),
-                    ...(identity.id !== 'cl_life_g_b' ? [p.subAbilities!.sub1!] : []),
-                  ].some((ab) =>
-                    identity.id === 'pa_devotion_g_b'
-                      ? ab.paladinAura?.kind === 'bulwark'
-                      : ab.slot !== 'basic' &&
-                        ab.kind === 'groundZone' &&
-                        (ab.zoneTickHeal ?? 0) > 0 &&
-                        (identity.id === 'cl_life_g_a' || !ab.zoneFollow),
-                  ),
-                ).toBe(false);
+                if (identity.id === 'ba_valor_g_b') {
+                  const parts = [...Object.values(p.abilities!), p.subAbilities!.sub1!].map(
+                    (ab) => ab.bardSong,
+                  );
+                  expect(
+                    ['harmony', 'discord', 'chorus'].every((part) =>
+                      parts.includes(part as (typeof parts)[number]),
+                    ),
+                  ).toBe(false);
+                } else
+                  expect(
+                    [
+                      ...Object.values(p.abilities!),
+                      ...(identity.id !== 'cl_life_g_b' ? [p.subAbilities!.sub1!] : []),
+                    ].some((ab) =>
+                      identity.id === 'pa_devotion_g_b'
+                        ? ab.paladinAura?.kind === 'bulwark'
+                        : ab.slot !== 'basic' &&
+                          ab.kind === 'groundZone' &&
+                          (ab.zoneTickHeal ?? 0) > 0 &&
+                          (identity.id === 'cl_life_g_a' || !ab.zoneFollow),
+                    ),
+                  ).toBe(false);
               } else expect(bank.equipped).toHaveLength(4);
               if (seed !== null)
                 expect(getCharUpgrade(`${first.id}_g`)!.desc).toContain(

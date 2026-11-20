@@ -41,6 +41,27 @@ import '../hud.css';
 
 const SLOT_ORDER: AbilitySlot[] = ['basic', 'a1', 'a2', 'a3'];
 
+function FaithStatus({
+  wound,
+  protectedByFaith,
+  hp,
+}: {
+  wound?: { amount: number; remaining: number };
+  protectedByFaith?: boolean;
+  hp: number;
+}) {
+  if (wound)
+    return (
+      <div className={`hud-faith-warning${wound.amount >= hp ? ' lethal' : ''}`} role="status">
+        <strong>
+          {Math.ceil(wound.amount)} damage due in {wound.remaining.toFixed(1)}s
+        </strong>
+        {wound.amount >= hp && <span>Heal now</span>}
+      </div>
+    );
+  return protectedByFaith ? <div className="hud-faith-ready">Faith ready</div> : null;
+}
+
 function pct(v: number, max: number): number {
   if (max <= 0) return 0;
   return Math.max(0, Math.min(100, (v / max) * 100));
@@ -456,6 +477,9 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
               <div className="hud-teammate-effects">
                 <BuffChips buffs={t.buffs} />
               </div>
+              {!t.isLocal && (
+                <FaithStatus wound={t.faithWound} protectedByFaith={t.faithProtected} hp={t.hp} />
+              )}
               <div className="hud-healthbar hud-teammate-hp">
                 <AbsorptionBar buffs={t.buffs} maxHp={t.maxHp} />
                 <div
@@ -549,6 +573,7 @@ export default function HUD({ onPause }: { onPause?: () => void } = {}) {
           </div>
         )}
         <div className={`hud-selfhp cls-${hud.classId ?? 'knight'}`}>
+          <FaithStatus wound={hud.faithWound} protectedByFaith={hud.faithProtected} hp={hud.hp} />
           <div className="hud-self-row">
             <BuffChips buffs={hud.buffs} />
             {passive && (

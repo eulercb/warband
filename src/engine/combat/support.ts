@@ -3,6 +3,8 @@ import { spendSecret } from './whispers';
 import {
   onSubclassFinisher,
   onSubclassChorus,
+  reserveRallyingChorus,
+  grantRallyingGuard,
   onSubclassHeal,
   onSubclassProtection,
   onSubclassOverheal,
@@ -18,7 +20,7 @@ import { getClass, resolvedFrontGuard } from '../content/classes';
 import type { Player, Vec2 } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
 import type { World } from '../world/world';
-import { dist, pointInSegment, sub } from '../core/torus';
+import { dist, pointInSegment, sub, wrapPos } from '../core/torus';
 import { applyBuff, makeBuff, healPlayer, damageBoss, damageAdd } from './combat';
 import { spawnZone } from './abilities';
 
@@ -151,6 +153,27 @@ export function spendSupportChorus(world: World, p: Player, ab: PlayerAbilityDef
     p.buffs.some((b) => b.kind === kind && b.remaining > 0);
   if (!ready('harmony') || !ready('discord')) return false;
   p.buffs = p.buffs.filter((b) => b.kind !== 'harmony' && b.kind !== 'discord');
+  if (ab.rhapsody && world.scene === null) {
+    world.groundZones = world.groundZones.filter((z) => !z.rally || z.ownerId !== p.id);
+    spawnZone(world, {
+      kind: 'sanctuary',
+      pos: wrapPos({ x: p.pos.x + 200 * p.aim.x, y: p.pos.y + 200 * p.aim.y }),
+      radius: 95,
+      duration: 4,
+      side: 'player',
+      ownerId: p.id,
+      damagePerTick: 0,
+      healPerTick: 0,
+      rally: {
+        guard: reserveRallyingChorus(p),
+        cleanse: !!ab.cleanseOnHeal,
+        visitors: [],
+        epoch: p.castEpoch ?? 0,
+      },
+    });
+    // The ordinary ability resolves normally. The bonus chorus goes to field visitors.
+    return false;
+  }
   onSubclassChorus(world, p, ab.range ?? 420);
   // This chorus spends its verses on a departure afterimage, not a group rally.
   if (ab.kind === 'blink' && ab.whisperRefrain) return true;
@@ -178,7 +201,18 @@ export function healSupportAlly(
   const effective = healPlayer(world, p, target, requested);
   const paid = due - (target.faithWound?.amount ?? 0);
   onSubclassOverheal(world, p, target, Math.max(0, requested - effective - paid));
-  if (effective <= 0) return 0;
+  if (effective <= 0) {
+    if (
+      world.scene === null &&
+      ab.rhapsody &&
+      ab.bardSong === 'harmony' &&
+      target.state === 'alive' &&
+      target.hp === target.maxHp &&
+      p.buffs.some((b) => b.kind === 'discord' && b.remaining > 0)
+    )
+      applyBuff(p, makeBuff('harmony', 0, 8, 'bardHarmony'));
+    return 0;
+  }
   supportCue(world, p, target, 'heal');
   if (ab.kind === 'heal') {
     const boons = ab.components
@@ -327,4 +361,34 @@ export function rescueStrikeMultiplier(p: Player, direct?: boolean): number {
   if (!ready) return 1;
   p.buffs.splice(p.buffs.indexOf(ready), 1);
   return ready.mult;
+}
+
+export function visitRhapsodyRallies(world: World): void {
+  for (const z of world.groundZones) {
+    const rally = z.rally;
+    if (!rally || z.remaining <= 0) continue;
+    const owner = world.players.find((p) => p.id === z.ownerId);
+    if (
+      !owner ||
+      owner.state !== 'alive' ||
+      owner.hp <= 0 ||
+      (owner.castEpoch ?? 0) !== rally.epoch
+    ) {
+      z.remaining = 0;
+      continue;
+    }
+    for (const ally of world.players) {
+      if (
+        ally.state !== 'alive' ||
+        ally.hp <= 0 ||
+        rally.visitors.includes(ally.id) ||
+        dist(ally.pos, z.pos) > z.radius + ally.radius
+      )
+        continue;
+      rally.visitors.push(ally.id);
+      if (rally.cleanse) cleanseMovement(ally);
+      applyBuff(ally, makeBuff('moveSpeed', 1.15, 3, 'chorusMove'));
+      if (rally.guard) grantRallyingGuard(world, owner, ally);
+    }
+  }
 }

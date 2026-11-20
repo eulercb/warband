@@ -1389,6 +1389,7 @@ export interface PendingStrike {
 }
 
 export interface GroundZone {
+  rally?: { guard: boolean; cleanse: boolean; visitors: number[]; epoch: number };
   refuge?: RefugeSource;
   revivalFont?: FontSource;
   whisperCast?: WhisperCast;
@@ -1674,6 +1675,7 @@ export interface ShadowCommitCast {
 }
 
 export interface PlayerView {
+  faithProtected?: boolean;
   faithWound?: { amount: number; remaining: number };
   vengeancePursuit?: { target: Vec2; end: Vec2; blocked: boolean };
   fontRecovery?: { progress: number };
@@ -1729,7 +1731,6 @@ export interface PlayerView {
     kind: 'bulwark' | 'pursuit' | 'renewal';
     radius: number;
     remaining: number;
-    faithReady?: boolean;
   };
   pos: Vec2;
   aim: Vec2;
@@ -1836,6 +1837,7 @@ export interface ProjectileView {
 }
 
 export interface ZoneView {
+  rally?: boolean;
   revivalFont?: FontFamily;
   side?: Side;
   curseStyle?: CurseStyle;

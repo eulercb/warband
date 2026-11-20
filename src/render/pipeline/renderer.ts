@@ -242,6 +242,19 @@ export class Renderer {
     this.drawProjectiles(state); // geometry for flag-off projectiles
     this.enemyStatusLayer.clear();
     for (const player of state.players) {
+      if (!player.faithWound) continue;
+      const at = this.camera.worldToScreen(player.pos);
+      const radius = Math.max(18, 32 * this.camera.scale);
+      const color = player.faithWound.amount >= player.hp ? 0xff665c : 0xffca70;
+      const angle = -Math.PI / 2;
+      const end = angle + 2 * Math.PI * Math.min(1, player.faithWound.remaining / 3);
+      this.enemyStatusLayer.circle(at.x, at.y, radius).stroke({ color, width: 2, alpha: 0.38 });
+      this.enemyStatusLayer
+        .moveTo(at.x, at.y - radius)
+        .arc(at.x, at.y, radius, angle, end)
+        .stroke({ color, width: 4, alpha: 0.95 });
+    }
+    for (const player of state.players) {
       drawProjectedShield(
         this.enemyStatusLayer,
         player,
@@ -703,7 +716,19 @@ export class Renderer {
     for (const rescue of state.fontRescues ?? [])
       drawFontFootprint(g, this.camera.worldToScreen(rescue.pos), rescue.radius, this.camera.scale);
     for (const z of state.groundZones) {
-      drawZone(g, z, this.camera.worldToScreen(z.pos), this.camera.scale);
+      if (z.rally) {
+        const at = this.camera.worldToScreen(z.pos);
+        const r = z.radius * this.camera.scale;
+        g.circle(at.x, at.y, r)
+          .fill({ color: 0x7553ca, alpha: 0.2 })
+          .stroke({ color: 0xe0caff, width: 3 });
+        g.moveTo(at.x - r * 0.25, at.y)
+          .lineTo(at.x + r * 0.25, at.y)
+          .stroke({ color: 0xe0caff, width: 2 });
+        g.moveTo(at.x, at.y - r * 0.25)
+          .lineTo(at.x, at.y + r * 0.25)
+          .stroke({ color: 0xe0caff, width: 2 });
+      } else drawZone(g, z, this.camera.worldToScreen(z.pos), this.camera.scale);
       if (z.revivalFont) drawFont(g, this.camera.worldToScreen(z.pos), this.camera.scale, false);
     }
     for (const r of state.refuges ?? [])
@@ -997,8 +1022,8 @@ export class Renderer {
     this.ensureLabels(
       (state.refuges?.length ?? 0) +
         state.players.filter((p) => p.fontRecovery).length +
-        state.players.filter((p) => p.faithWound || p.paladinAura?.faithReady).length +
-        state.groundZones.filter((z) => z.revivalFont).length +
+        state.players.filter((p) => p.faithWound || p.faithProtected).length +
+        state.groundZones.filter((z) => z.revivalFont || z.rally).length +
         state.players.filter((p) => p.reflectionWard).length +
         (guided ? 1 : 0) +
         state.players.length +
@@ -1136,11 +1161,13 @@ export class Renderer {
         t.alpha = 1;
       }
     for (const z of state.groundZones)
-      if (z.revivalFont) {
+      if (z.revivalFont || z.rally) {
         const t = this.labels[i++],
           at = this.camera.worldToScreen(z.pos);
         t.visible = true;
-        t.text = `Rescue font · ${z.revivalFont === 'sanctuary' ? 'all' : 'one'} · 1`;
+        t.text = z.rally
+          ? `Rally · ${z.remaining.toFixed(1)}s`
+          : `Rescue font · ${z.revivalFont === 'sanctuary' ? 'all' : 'one'} · 1`;
         t.alpha = 1;
         t.position.set(
           Math.max(t.width / 2 + 8, Math.min(this.app.screen.width - t.width / 2 - 8, at.x)),
@@ -1160,14 +1187,14 @@ export class Renderer {
         );
       }
     for (const p of state.players) {
-      if (!p.faithWound && !p.paladinAura?.faithReady) continue;
+      if (!p.faithWound && !p.faithProtected) continue;
       const t = this.labels[i++];
       const at = this.camera.worldToScreen(p.pos);
       t.visible = true;
       t.alpha = 1;
       t.text = p.faithWound
         ? `Due ${Math.ceil(p.faithWound.amount)} HP · ${p.faithWound.remaining.toFixed(1)}s`
-        : 'Faith · 1';
+        : 'Faith ready';
       t.position.set(
         Math.max(t.width / 2 + 8, Math.min(this.app.screen.width - t.width / 2 - 8, at.x)),
         Math.max(125, Math.min(this.app.screen.height - 145, at.y + PLAYER_RADIUS * scale + 38)),

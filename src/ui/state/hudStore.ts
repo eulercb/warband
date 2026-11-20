@@ -16,6 +16,8 @@ import type {
 import type { InputSource } from '../../input/input';
 
 export interface HudTeammate {
+  faithWound?: PlayerView['faithWound'];
+  faithProtected?: boolean;
   id: number;
   name: string;
   classId: ClassId;
@@ -58,6 +60,8 @@ export interface HudBanner {
 }
 
 export interface HudState {
+  faithWound?: PlayerView['faithWound'];
+  faithProtected?: boolean;
   active: boolean;
   classId: ClassId | null;
   hp: number;

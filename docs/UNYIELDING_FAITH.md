@@ -5,9 +5,8 @@ delivery addresses the next open support finding, Devotion's Unyielding Faith.
 
 ## How it plays
 
-Divine Shield and Aura of Protection start a Bulwark with one shared
-Unyielding Faith charge per activation. The first hit that reaches the HP of a
-living hero inside the aura puts half of that damage on a three-second timer,
+Divine Shield and Aura of Protection start a Bulwark that protects every eligible hero. The first qualifying hit
+for each living hero inside the aura puts half of its HP damage on a three-second timer,
 capped at 25% of the recipient's maximum HP. The rest applies immediately.
 Divine Shield's invulnerability, frontal blocks and absorption resolve first.
 A hit that costs no HP leaves the charge ready.
@@ -18,8 +17,10 @@ Any unpaid amount comes out of HP when the timer expires. It already passed the
 original defenses and does not trigger another block, immunity check or
 retaliation. Players can see the ready charge or the pending amount and timer.
 
-The charge covers whoever takes the first qualifying hit. Position to include
-the intended ally, or use it alone to buy time after the immunity window ends.
+One ally’s hit leaves everyone else’s protection available. Stay in Bulwark to
+catch your own first hit, or use it alone after the immunity window ends. The HUD
+shows the pending damage and countdown and warns when it would be lethal. A bright
+countdown ring marks the recipient in the arena.
 The wound stays on its recipient after leaving or replacing the aura, and
 downing clears it before any revival. One recipient cannot stack pending
 wounds. Overlapping ready auras choose one source in player ID order.
@@ -44,10 +45,9 @@ and regeneration pay the pending wound. Repayment cannot also fund overflow
 absorption or count as HP restored.
 
 The bounded Sol 6.2 High review supported this approach over automatically
-transferring damage or moving an ally. The initial implementation deliberately
-uses one charge per aura, shared by all recipients. This limits simultaneous
-party protection and lets live testing show whether the first-hit routing
-works well in crowded fights.
+transferring damage or moving an ally. The owner merged and tested #189, liked deferral, and asked for independent
+protection and clearer feedback in crowded fights. This follow-up gives each
+ally one charge from each activation and keeps the existing damage cap.
 
 The Bulwark effect carries a rigid 32-value Forge premium. Native and reworked
 readouts show the retained behavior, and the synthesis test casts a real
@@ -58,9 +58,8 @@ until it can use it.
 
 Try letting Shield's invulnerability absorb the opening hit, then take a
 follow-up inside Bulwark. Compare using Lay on Hands immediately with saving
-it until a wound appears. In co-op, try positioning for someone else to take
-the first qualifying hit. A party hit and an overlapping second aura also have
+it until a wound appears. In co-op, try taking a group hit, then check that everyone has an independent countdown. A party hit and an overlapping second aura also have
 focused engine cases.
 
-Next development is **Battle Rhapsody**, after any follow-up identified here.
+This follow-up is bundled with [Battle Rhapsody](BATTLE_RHAPSODY.md).
 Whole-system tuning, acquisition and grafts, and the visual milestone follow.

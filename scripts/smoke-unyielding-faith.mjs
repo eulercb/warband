@@ -146,7 +146,7 @@ try {
       const { p, step, strike, renderer } = window.probe;
       if (
         !p.paladinAura?.faithReady ||
-        !renderer.labels.some((t) => t.visible && t.text === 'Faith · 1')
+        !renderer.labels.some((t) => t.visible && t.text === 'Faith ready')
       )
         throw Error('Missing prepared aura');
       strike();
@@ -154,7 +154,7 @@ try {
         throw Error('Immune hit spent Faith');
       for (let i = 0; i < 130; i++) step();
       strike();
-      if (!p.faithWound || p.hp >= p.maxHp || p.paladinAura.faithReady)
+      if (!p.faithWound || p.hp >= p.maxHp || !p.paladinAura.spent.includes(p.id))
         throw Error('No deferred HP damage');
       if (
         !window.faithRemote.players[0].faithWound ||
@@ -163,6 +163,7 @@ try {
         throw Error('No replicated wound countdown');
       for (let i = 0; i < 55; i++) step();
     });
+    await page.locator('.hud-selfhp .hud-faith-warning').waitFor({ state: 'visible' });
     await page.screenshot({
       path: `${process.env.SHOT_DIR || '/tmp'}/unyielding-faith-${width}.png`,
     });

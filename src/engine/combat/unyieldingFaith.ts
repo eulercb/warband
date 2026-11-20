@@ -2,9 +2,16 @@ import type { Player } from '../core/types';
 import type { World } from '../world/world';
 import { dist } from '../core/torus';
 
-export function deferFaithDamage(world: World, target: Player, damage: number): number {
-  if (world.scene !== null || world.finished || damage <= 0 || target.faithWound) return damage;
-  const owner = world.players
+export function faithProtector(world: World, target: Player): Player | undefined {
+  if (
+    world.scene !== null ||
+    world.finished ||
+    target.state !== 'alive' ||
+    target.hp <= 0 ||
+    target.faithWound
+  )
+    return;
+  return world.players
     .filter(
       (p) =>
         p.state === 'alive' &&
@@ -12,11 +19,16 @@ export function deferFaithDamage(world: World, target: Player, damage: number): 
         p.paladinAura?.faithReady &&
         p.paladinAura.remaining > 0 &&
         p.paladinAura.classId === p.classId &&
+        !p.paladinAura.spent.includes(target.id) &&
         dist(p.pos, target.pos) <= p.paladinAura.radius,
     )
     .sort((a, b) => a.id - b.id)[0];
+}
+export function deferFaithDamage(world: World, target: Player, damage: number): number {
+  if (damage <= 0) return damage;
+  const owner = faithProtector(world, target);
   if (!owner) return damage;
-  owner.paladinAura!.faithReady = false;
+  owner.paladinAura!.spent.push(target.id);
   const amount = Math.min(damage * 0.5, target.maxHp * 0.25);
   target.faithWound = { amount, remaining: 3 };
   world.events.push({

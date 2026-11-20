@@ -1153,3 +1153,28 @@ it('shows guided detonation during recharge, queued input and origin cancellatio
   );
   expect(button.textContent).toContain('Stunned');
 });
+
+it('shows when Faith is ready and escalates a pending wound when it becomes lethal', () => {
+  useHudStore.getState().set({ hp: 40, maxHp: 100, faithProtected: true });
+  const { container } = render(<HUD />);
+  const panel = container.querySelector('.hud-selfhp')!;
+  expect(panel.querySelector('.hud-faith-ready')?.textContent).toBe('Faith ready');
+  expect(panel.querySelector('.hud-faith-warning')).toBeNull();
+
+  act(() =>
+    useHudStore.getState().set({
+      faithProtected: false,
+      faithWound: { amount: 23, remaining: 2.5 },
+    }),
+  );
+  expect(panel.querySelector('.hud-faith-warning')?.textContent).toBe('23 damage due in 2.5s');
+  expect(panel.querySelector('.hud-faith-warning.lethal')).toBeNull();
+  expect(panel.querySelector('.hud-faith-ready')).toBeNull();
+
+  act(() => useHudStore.getState().set({ hp: 23 }));
+  expect(panel.querySelector('.hud-faith-warning.lethal')?.textContent).toContain('Heal now');
+
+  act(() => useHudStore.getState().set({ faithWound: undefined }));
+  expect(panel.querySelector('.hud-faith-warning')).toBeNull();
+  expect(panel.querySelector('.hud-faith-ready')).toBeNull();
+});

@@ -391,7 +391,10 @@ describe('<PauseMenu>', () => {
     expect(guide.textContent).toContain('Neither changes your stats alone');
     expect(guide.textContent).toContain('Inspiration or Battle Hymn');
     expect(guide.textContent).toContain('15% move speed');
-    expect(guide.textContent).toContain('full-health target gives no Harmony');
+    expect(guide.textContent).toContain(
+      'Battle Rhapsody can prepare Harmony at full health after Discord',
+    );
+    expect(guide.textContent).toContain('through an aimed rally');
   });
 
   it('labels owned-skill rows with pad glyphs on a controller (item 6)', () => {
