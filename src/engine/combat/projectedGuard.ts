@@ -1,8 +1,9 @@
 import { canReflect } from './reflection';
 /** Swept projected-shield contact, ordered against bodies and cover on the same shot path. */
-import type { Buff, Player, Projectile, Vec2 } from '../core/types';
+import type { Boss, BossAction, Buff, Player, Projectile, Vec2 } from '../core/types';
 import type { World } from '../world/world';
-import { sub, wrapPos } from '../core/torus';
+import type { BossAbilityDef } from '../content/monsters';
+import { dist, pointInCircle, pointInCone, sub, wrapPos } from '../core/torus';
 import { apertureBulwarks } from './infernalAperture';
 import { consumeFrontGuard } from './defense';
 import { onGuardedDamage } from './martial';
@@ -119,6 +120,35 @@ export function sweepProjectedGuard(w: World, shot: Projectile, from: Vec2): boo
     });
   }
   return true;
+}
+
+export function bossPulseTargets(
+  players: readonly Player[],
+  boss: Boss,
+  ab: BossAbilityDef,
+  action: BossAction,
+): Player[] {
+  switch (ab.shape) {
+    case 'cone':
+      return players.filter((p) =>
+        pointInCone(
+          p.pos,
+          boss.pos,
+          action.aimAngle,
+          ab.range ?? 300,
+          ((ab.halfAngleDeg ?? 30) * Math.PI) / 180,
+          p.radius,
+        ),
+      );
+    case 'pbaoe':
+      return players.filter((p) => pointInCircle(p.pos, boss.pos, ab.radius ?? 160, p.radius));
+    case 'beam':
+      return players.filter(
+        (p) => p.id === action.targetId && dist(boss.pos, p.pos) <= (ab.range ?? 500),
+      );
+    default:
+      return [];
+  }
 }
 
 /** One emitted pulse: snapshot every recipient before spending any shared block. */

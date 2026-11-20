@@ -20,7 +20,7 @@ import {
   nativeRelayIdentity,
 } from './ancestralRelay';
 import { maneuverCast, onManeuverCast } from './battleManeuvers';
-import { blockBossPulse } from './projectedGuard';
+import { blockBossPulse, bossPulseTargets } from './projectedGuard';
 import { resolvedForethought } from '../content/classes';
 import { clipBulwarkStep } from './apertureMovement';
 import { whisperCast, spendSecret, hostileAdd } from './whispers';
@@ -1902,11 +1902,7 @@ export function resolveBossAbility(
 
   switch (ab.shape) {
     case 'cone': {
-      const range = ab.range ?? 300;
-      const half = ((ab.halfAngleDeg ?? 30) * Math.PI) / 180;
-      const targets = alivePlayers.filter((p) =>
-        pointInCone(p.pos, boss.pos, action.aimAngle, range, half, p.radius),
-      );
+      const targets = bossPulseTargets(alivePlayers, boss, ab, action);
       const covered = blockBossPulse(world, boss.pos, targets);
       for (const p of targets) {
         if (!covered.has(p)) {
@@ -1933,8 +1929,7 @@ export function resolveBossAbility(
     }
 
     case 'pbaoe': {
-      const radius = ab.radius ?? 160;
-      const targets = alivePlayers.filter((p) => pointInCircle(p.pos, boss.pos, radius, p.radius));
+      const targets = bossPulseTargets(alivePlayers, boss, ab, action);
       const covered = blockBossPulse(world, boss.pos, targets);
       for (const p of targets) {
         if (!covered.has(p)) {

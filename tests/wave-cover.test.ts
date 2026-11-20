@@ -303,6 +303,24 @@ describe('cover and silence presentation contracts', () => {
       expect(view().waveCover).toEqual([]);
     },
   );
+  it('previews the same shared frontal charge that Fire Breath actually spends', () => {
+    const { w, p, ally, other, b } = setup();
+    p.aim = { x: Math.cos((43 * Math.PI) / 180), y: Math.sin((43 * Math.PI) / 180) };
+    ally.pos = { x: 450, y: 450 };
+    other.pos = { x: 450, y: 100 };
+    expect(blockBossPulse(w, b.pos, [p], false).has(p)).toBe(false);
+    const players = w.serialize().players;
+    expect(players.find((v) => v.id === p.id)?.waveCover).toEqual([b.id]);
+    expect(players.find((v) => v.id === ally.id)?.waveCover).toEqual([b.id]);
+    expect(players.find((v) => v.id === other.id)?.waveCover).toEqual([]);
+    expect(guard(p)?.mult).toBe(1);
+    const before = [p.hp, ally.hp];
+    const breath = MONSTERS.dragon.abilities.find((ability) => ability.id === 'fireBreath')!;
+    resolveBossAbility(w, b, breath, b.action);
+    expect([p.hp, ally.hp]).toEqual(before);
+    expect(guard(p)).toBeUndefined();
+  });
+
   it('draws independent covered and silenced markers, ignores expired silence and downed silence', () => {
     const { w, p } = setup();
     const view = w.toRenderState(p.id).players[0],
