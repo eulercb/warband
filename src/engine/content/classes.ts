@@ -203,6 +203,7 @@ export interface PlayerAbilityDef {
   zoneAllyMoveMult?: number;
   balanceZoneDamageScale?: number;
   /** Two timed verses empower a subsequent group rally; basics never contribute. */
+  rhapsody?: boolean;
   bardSong?: 'harmony' | 'discord' | 'chorus';
   /** Priced perception payload; copies retain the behavior, not subclass secrets. */
   apparition?: { mode: 'charm'; duration: number };
@@ -1386,7 +1387,7 @@ export function describeAbility(
   }
   if (def.zoneAllyDefMult)
     parts.push(`allies inside take ${n((1 - def.zoneAllyDefMult) * 100)}% less damage`);
-  if (def.bardSong && !def.whisperRefrain) parts.push(bardSongText(def.bardSong));
+  if (def.bardSong && !def.whisperRefrain) parts.push(bardSongText(def.bardSong, def.rhapsody));
 
   if (def.parryOnHit)
     parts.push(

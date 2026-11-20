@@ -8,7 +8,7 @@ export function auraText(a: NonNullable<PlayerAbilityDef['paladinAura']>): strin
         : '10 HP/s recovery after an effective heal';
   const faith =
     a.kind === 'bulwark' && a.unyielding
-      ? '; once per aura, defer 50% of the first HP hit (up to 25% max HP) for 3s; healing pays it first'
+      ? '; once per hero per aura, defer 50% of their first HP hit (up to 25% max HP) for 3s; healing pays it first'
       : '';
   return `${a.kind} aura — follows you for ${a.duration}s within ${a.radius}u; ${effect}${faith}; one active aura, strongest equivalent wins`;
 }

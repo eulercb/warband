@@ -10190,7 +10190,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Divine Shield and Aura of Protection each defer half of the first HP hit to you or an ally in Bulwark, capped at 25% of their max HP. One hit per aura. Healing pays it first; unpaid damage comes due in 3s",
+      "description": "Divine Shield and Aura of Protection each defer half of every ally’s first HP hit in Bulwark, including yours, capped at 25% of the recipient’s max HP. Healing pays it first; unpaid damage comes due in 3s",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -10772,7 +10772,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Dissonant Whispers delays wind-ups 30% for 3s; effective Healing Word grants 20% movement for 3s. Direct Valor strikes leech 20%; utilities ward other allies 15% within 180u for 4s",
+      "description": "With Discord ready, Healing Word can prepare Harmony at full health. Spend both verses to place a 95u rally 200u ahead for 4s. Allies who enter gain 15% movement for 3s and can receive Rallying Chorus",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -10782,18 +10782,12 @@
           "subSkills": ["ba_valor_blade"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
+            { "path": "abilities.a1.rhapsody", "before": null, "after": true },
+            { "path": "abilities.a2.rhapsody", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "abilities.a2.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
+            { "path": "abilities.a1.rhapsody", "before": null, "after": true },
+            { "path": "abilities.a2.rhapsody", "before": null, "after": true }
           ]
         },
         {
@@ -10801,26 +10795,14 @@
           "subSkills": ["ba_valor_inspire"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            {
-              "path": "subAbilities.sub1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            }
+            { "path": "abilities.a1.rhapsody", "before": null, "after": true },
+            { "path": "abilities.a2.rhapsody", "before": null, "after": true },
+            { "path": "subAbilities.sub1.rhapsody", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "abilities.a2.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            {
-              "path": "subAbilities.sub1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            }
+            { "path": "abilities.a1.rhapsody", "before": null, "after": true },
+            { "path": "abilities.a2.rhapsody", "before": null, "after": true },
+            { "path": "subAbilities.sub1.rhapsody", "before": null, "after": true }
           ]
         },
         {
@@ -10828,26 +10810,14 @@
           "subSkills": ["ba_valor_bolster"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            {
-              "path": "subAbilities.sub1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            }
+            { "path": "abilities.a1.rhapsody", "before": null, "after": true },
+            { "path": "abilities.a2.rhapsody", "before": null, "after": true },
+            { "path": "subAbilities.sub1.rhapsody", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "abilities.a2.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            {
-              "path": "subAbilities.sub1.allyWard",
-              "before": null,
-              "after": { "range": 180, "mult": 0.85, "duration": 4 }
-            }
+            { "path": "abilities.a1.rhapsody", "before": null, "after": true },
+            { "path": "abilities.a2.rhapsody", "before": null, "after": true },
+            { "path": "subAbilities.sub1.rhapsody", "before": null, "after": true }
           ]
         },
         {
@@ -10855,18 +10825,12 @@
           "subSkills": ["ba_valor_shatter"],
           "prefix": [],
           "once": [
-            { "path": "abilities.a2.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
+            { "path": "abilities.a1.rhapsody", "before": null, "after": true },
+            { "path": "abilities.a2.rhapsody", "before": null, "after": true }
           ],
           "atCap": [
-            { "path": "abilities.a2.buffDuration", "before": null, "after": 3 },
-            { "path": "abilities.a2.buffMoveMult", "before": null, "after": 1.2 },
-            { "path": "abilities.a3.castSlow", "before": null, "after": 1.3 },
-            { "path": "abilities.a3.castSlowDuration", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.lifestealFrac", "before": null, "after": 0.2 }
+            { "path": "abilities.a1.rhapsody", "before": null, "after": true },
+            { "path": "abilities.a2.rhapsody", "before": null, "after": true }
           ]
         }
       ]

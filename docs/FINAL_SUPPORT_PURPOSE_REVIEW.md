@@ -1,6 +1,6 @@
 # Devotion, Vengeance and Valor purpose review
 
-The findings below record the pre-redesign kits. See [Unyielding Faith](UNYIELDING_FAITH.md) for the current Devotion implementation.
+The findings below record the pre-redesign kits. See [Unyielding Faith](UNYIELDING_FAITH.md) for the current Devotion implementation and [Battle Rhapsody](BATTLE_RHAPSODY.md) for the Valor rally.
 
 The owner merged and tested #184. Living Refuge's flyer exclusion, ejection and
 Bastion compensation are the accepted Life baseline. This completes the first

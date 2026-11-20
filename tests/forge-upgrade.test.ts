@@ -113,6 +113,14 @@ describe('Chaos Forge char-upgrade synthesis', () => {
           ).toBe(false);
           continue;
         }
+        if (up.id === 'ba_valor_g_b' && after === before) {
+          expect(
+            Object.values(previewAbilityTable(cid, [])).some(
+              (ab) => ab.bardSong === 'chorus' || ab.bardSong === 'harmony',
+            ),
+          ).toBe(false);
+          continue;
+        }
         if (up.id === 'pa_devotion_g_b' && after === before) {
           expect(
             Object.values(previewAbilityTable(cid, [])).some(

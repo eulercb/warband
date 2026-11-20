@@ -28,7 +28,7 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Unyielding Faith](UNYIELDING_FAITH.md).
+Current delivery: [Faith follow-up](UNYIELDING_FAITH.md) and [Battle Rhapsody](BATTLE_RHAPSODY.md).
 See the [Devotion, Vengeance and Valor purpose review](FINAL_SUPPORT_PURPOSE_REVIEW.md)
 for the full cohort findings.
 Grand Warding escape, Land transplantation, Hunter/Beast Master and Chaos
@@ -38,14 +38,14 @@ accepted reflection readiness, return travel and the distinct mirror marker.
 All 24 subclasses have completed the first purpose inspection. Light reflection,
 both Life identities and the Refuge expulsion follow-up (#184) have been
 playtested. The final support review provisionally retains the A choices for
-Devotion, Vengeance and Valor. The owner merged and tested Relentless Vengeance and its pursuit tuning (#188). Unyielding Faith is implemented and awaits live feedback. Battle Rhapsody remains open. Inspection does not establish live acceptance or equal power.
+Devotion, Vengeance and Valor. The owner merged and tested Relentless Vengeance and its pursuit tuning (#188). The owner liked Unyielding Faith in #189 and requested independent ally protection and clearer cues. The follow-up and Battle Rhapsody await live feedback. Inspection does not establish live acceptance or equal power.
 
 ## Next development work, in order
 
 | Stage                        | Concrete work                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Playtest Unyielding Faith. The next development task is Battle Rhapsody.                                                                                                     |
-| Following                    | Run whole-system comparisons after the remaining support identity.                                                                                                           |
+| Next                         | Playtest Faith and Battle Rhapsody. Next development is fixed-encounter whole-system comparisons.                                                                            |
+| Following                    | Review ordinary upgrade value, acquisition and grafts after the first encounter comparisons.                                                                                 |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth. |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                |
 | Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing departure casting accepted. Evoker stays retained.                                                                  |

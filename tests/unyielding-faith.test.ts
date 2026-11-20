@@ -66,7 +66,7 @@ it.each(['smite', 'sanctuary', 'bless', 'aura'])(
   (pick) => {
     const { w, p, step, wait } = setup('pa_devotion_' + pick);
     step('a3');
-    expect(w.serialize().players[0].paladinAura?.faithReady).toBe(true);
+    expect(w.serialize().players[0].faithProtected).toBe(true);
     expect(damagePlayer(w, p, 100)).toBe(0);
     expect(p.faithWound).toBeUndefined();
     wait(1.3);
@@ -79,7 +79,7 @@ it.each(['smite', 'sanctuary', 'bless', 'aura'])(
     expect(p.paladinAura?.kind).toBe('renewal');
   },
 );
-it('a single aura charge is shared, and only an in-range HP hit can claim it', () => {
+it('every ally has a charge and only an in-range HP hit can claim it', () => {
   const { w, p, ally, step } = setup('pa_devotion_aura', true);
   step('a3');
   ally.pos = { x: 850, y: 400 };
@@ -93,8 +93,12 @@ it('a single aura charge is shared, and only an in-range HP hit can claim it', (
   expect(p.paladinAura?.faithReady).toBe(true);
   expect(damagePlayer(w, ally, 150)).toBeGreaterThan(0);
   expect(ally.faithWound?.amount).toBeCloseTo(ally.maxHp * 0.25);
-  expect(p.paladinAura?.faithReady).toBe(false);
+  expect(p.paladinAura?.spent).toContain(ally.id);
   expect(damagePlayer(w, ally, 10)).toBeCloseTo(8.5);
+  p.buffs = p.buffs.filter((b) => b.kind !== 'invuln');
+  expect(damagePlayer(w, p, 40)).toBeCloseTo(17);
+  expect(p.faithWound?.amount).toBeCloseTo(17);
+  expect(p.paladinAura?.spent).toEqual([ally.id, p.id]);
 });
 it('small heals pay the wound before restoring HP and settlement bypasses a later shield', () => {
   const { w, p, ally, step, wait } = setup('pa_devotion_aura', true);
@@ -169,7 +173,7 @@ it('overlapping Bulwarks preserve the second charge while the recipient owes dam
   resolvePlayerAbility(w, ally, 'a3', { x: 0, y: 0 });
   ally.buffs = ally.buffs.filter((b) => b.kind !== 'invuln');
   damagePlayer(w, ally, 40);
-  expect(p.paladinAura?.faithReady).toBe(false);
+  expect(p.paladinAura?.spent).toContain(ally.id);
   expect(ally.paladinAura?.faithReady).toBe(true);
   const wound = ally.faithWound;
   damagePlayer(w, ally, 20);
@@ -177,7 +181,7 @@ it('overlapping Bulwarks preserve the second charge while the recipient owes dam
   expect(ally.paladinAura?.faithReady).toBe(true);
   healPlayer(w, ally, ally, 50);
   damagePlayer(w, ally, 20);
-  expect(ally.paladinAura?.faithReady).toBe(false);
+  expect(ally.paladinAura?.spent).toContain(ally.id);
 });
 
 it('Consecration repays a pending wound before restoring health', () => {

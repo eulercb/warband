@@ -146,7 +146,7 @@ export type EffectComponent =
   | { kind: 'rescueHeal'; bonus: number }
   | { kind: 'recovery'; grove: NonNullable<PlayerAbilityDef['recoveryZone']> }
   | { kind: 'allyWard'; ward: { range: number; mult: number; duration: number } }
-  | { kind: 'bardSong'; part: 'harmony' | 'discord' | 'chorus' }
+  | { kind: 'bardSong'; part: 'harmony' | 'discord' | 'chorus'; rhapsody?: boolean }
   | { kind: 'controlDamage'; bonus: number }
   | { kind: 'prepareSurge'; duration: number }
   | { kind: 'maneuver'; mode: 'push' | 'step'; distance: number }
@@ -489,7 +489,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   if (def.rescueHealBonus) effects.push({ kind: 'rescueHeal', bonus: def.rescueHealBonus });
   if (def.recoveryZone) effects.push({ kind: 'recovery', grove: { ...def.recoveryZone } });
   if (def.allyWard) effects.push({ kind: 'allyWard', ward: { ...def.allyWard } });
-  if (def.bardSong && !def.whisperRefrain) effects.push({ kind: 'bardSong', part: def.bardSong });
+  if (def.bardSong && !def.whisperRefrain)
+    effects.push({ kind: 'bardSong', part: def.bardSong, ...(def.rhapsody && { rhapsody: true }) });
   const contract = skillContract(def);
   if (Object.keys(contract).length) effects.push({ kind: 'skillContract', contract });
   return { delivery, effects };
@@ -785,6 +786,7 @@ export function recompose(
         break;
       case 'bardSong':
         def.bardSong = e.part;
+        if (e.rhapsody) def.rhapsody = true;
         break;
       case 'controlDamage':
         def.controlDamageBonus = e.bonus;
@@ -1039,7 +1041,7 @@ function effectValue(e: EffectComponent, fan: number): number {
     case 'allyWard':
       return (1 - e.ward.mult) * e.ward.duration * 24;
     case 'bardSong':
-      return e.part === 'chorus' ? 15 : 8;
+      return (e.part === 'chorus' ? 15 : 8) + (e.rhapsody ? 10 : 0);
     case 'infernalAperture':
       return (54 * e.aperture.duration) / 6 + e.aperture.emberDamage;
     case 'returningShot':
@@ -1355,7 +1357,7 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
     case 'allyWard':
       return `other allies within ${n(e.ward.range)}u take ${pct((1 - e.ward.mult) * 100)} less damage for ${s(e.ward.duration)}`;
     case 'bardSong':
-      return bardSongText(e.part);
+      return bardSongText(e.part, e.rhapsody);
     case 'infernalAperture':
       return `fixed firing conduit ${s(e.aperture.duration)}, entrance ${n(e.aperture.reach / 4)}u / exit ${n(e.aperture.reach)}u along aim; nearby mouths adjust around cover; creates 96u-wide temporary cover when space permits, blocking shots and hostile approach; aim through entrance, press again for one ${n(e.aperture.emberDamage)}-damage ember`;
     case 'returningShot':
@@ -2902,7 +2904,7 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
     case 'allyWard':
       return def.allyWard ? { ...e, ward: { ...def.allyWard } } : e;
     case 'bardSong':
-      return e;
+      return def.rhapsody ? { ...e, rhapsody: true } : e;
     case 'controlDamage':
       return def.controlDamageBonus != null ? { ...e, bonus: def.controlDamageBonus } : e;
     case 'prepareSurge':

@@ -221,7 +221,7 @@ jobs:
               smoke:martial smoke:martial-grands
           - group: defense
             smokes: >-
-              smoke:projected-guard smoke:absorption smoke:auras smoke:light-reflection smoke:life-font smoke:living-refuge smoke:unyielding-faith
+              smoke:projected-guard smoke:absorption smoke:auras smoke:light-reflection smoke:life-font smoke:living-refuge smoke:unyielding-faith smoke:battle-rhapsody
           - group: movement-and-nature
             smokes: >-
               smoke:battle-maneuvers smoke:ancestral-relay smoke:palm-sweep smoke:vengeance-pursuit

@@ -2319,13 +2319,6 @@ function supportHealBoon(
   else ab[field] = Math.max(ab[field] ?? 1, value);
   ab.buffDuration = Math.max(ab.buffDuration ?? 0, duration);
 }
-function supportSharedWard(ab: PlayerAbilityDef): void {
-  ab.allyWard = {
-    range: Math.max(ab.allyWard?.range ?? 0, 180),
-    mult: Math.min(ab.allyWard?.mult ?? 1, 0.85),
-    duration: Math.max(ab.allyWard?.duration ?? 0, 4),
-  };
-}
 
 /** Each receiving special carries its complete, standalone positioning action. */
 function battleManeuver(ab: PlayerAbilityDef, mode: 'push' | 'step', distance: number): void {
@@ -2875,7 +2868,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'pa_devotion_g_b',
     'Unyielding Faith',
     '🛡️',
-    'Divine Shield and Aura of Protection each defer half of the first HP hit to you or an ally in Bulwark, capped at 25% of their max HP. One hit per aura. Healing pays it first; unpaid damage comes due in 3s',
+    'Divine Shield and Aura of Protection each defer half of every ally’s first HP hit in Bulwark, including yours, capped at 25% of the recipient’s max HP. Healing pays it first; unpaid damage comes due in 3s',
     (a) => {
       for (const ab of [a.a1, a.a2, a.a3])
         if (ab.paladinAura?.kind === 'bulwark')
@@ -3022,16 +3015,13 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'ba_valor_g_b',
     'Battle Rhapsody',
     '🥁',
-    'Dissonant Whispers delays wind-ups 30% for 3s; effective Healing Word grants 20% movement for 3s. Direct Valor strikes leech 20%; utilities ward other allies 15% within 180u for 4s',
+    'With Discord ready, Healing Word can prepare Harmony at full health. Spend both verses to place a 95u rally 200u ahead for 4s. Allies who enter gain 15% movement for 3s and can receive Rallying Chorus',
     (a) => {
-      if (isStrike(a.a3) && a.a3.damage > 0) casterSuppression(a.a3);
-      else amplify(a.a3, 0.2, 0.1);
-      casterGrand('heal', (ab) => supportHealBoon(ab, 'buffMoveMult', 1.2, 3), ['bardSong'])(a.a2);
+      for (const ab of [a.a1, a.a2, a.a3])
+        if (ab.bardSong === 'harmony' || ab.bardSong === 'chorus') ab.rhapsody = true;
     },
     (ab) => {
-      if (isStrike(ab) && ab.damage > 0) lifeRider(ab, 0.2);
-      else if (ab.kind === 'selfBuff') supportSharedWard(ab);
-      else amplify(ab, 0.2, 0.1);
+      if (ab.bardSong === 'chorus') ab.rhapsody = true;
     },
   ),
   pilotIdentity(
@@ -6497,11 +6487,18 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
   if (base.subclassId) {
     const fused = getSubclass(base.subclassId);
     if (!fused) return base;
+    if (base.id === 'ba_valor_g_b') {
+      return {
+        ...base,
+        name: blend(fused.name),
+        desc: 'Retained Harmony heals prepare a verse at full health while Discord is ready. Retained choruses place a rally 200u ahead for 4s. Enter for movement and eligible Rallying Chorus protection',
+      };
+    }
     if (base.id === 'pa_devotion_g_b') {
       return {
         ...base,
         name: blend(fused.name),
-        desc: 'Retained Bulwark auras defer half of the first HP hit to you or an ally inside, capped at 25% of their max HP. Healing pays it first; unpaid damage comes due in 3s',
+        desc: 'Retained Bulwark auras defer half of each hero’s first HP hit inside, capped at 25% of their max HP. Healing pays it first; unpaid damage comes due in 3s',
       };
     }
     if (base.id === 'pa_vengeance_g_b') {

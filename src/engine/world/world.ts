@@ -1,4 +1,10 @@
-import { advanceFaithWound, deferFaithDamage, payFaithWound } from '../combat/unyieldingFaith';
+import { visitRhapsodyRallies } from '../combat/support';
+import {
+  advanceFaithWound,
+  deferFaithDamage,
+  faithProtector,
+  payFaithWound,
+} from '../combat/unyieldingFaith';
 import { tickRefuges, refugeViews, clipRefugeStep, expelRefugeOccupants } from '../combat/refuge';
 import {
   claimFonts,
@@ -1301,6 +1307,7 @@ export class World {
     this.updateRevive(dt, inputs);
     advanceFonts(this, dt);
     dissolveOverlappedBulwarks(this);
+    visitRhapsodyRallies(this);
     this.updateProjectiles(dt);
     this.updateZones(dt);
     updateCompanions(this, dt);
@@ -4245,10 +4252,10 @@ export class World {
               kind: p.paladinAura.kind,
               radius: p.paladinAura.radius,
               remaining: p.paladinAura.remaining,
-              faithReady: p.paladinAura.faithReady,
             },
           }
         : {}),
+      faithProtected: !!faithProtector(this, p),
       ...(p.faithWound && { faithWound: { ...p.faithWound } }),
       name: p.name,
       classId: p.classId,
@@ -4397,6 +4404,7 @@ export class World {
         })),
       apparitions: apparitionViews(this),
       groundZones: this.groundZones.map((z) => ({
+        rally: !!z.rally,
         revivalFont: fontAvailable(this, z) ? z.revivalFont!.family : undefined,
         supportKinds: zoneSupportKinds(z),
         side: z.side,
