@@ -823,7 +823,7 @@
       "category": "class-boon",
       "classId": "ranger",
       "exclude": [],
-      "maxStacks": 5,
+      "maxStacks": 1,
       "subSkillId": null,
       "subclassId": null,
       "skillSlot": null,

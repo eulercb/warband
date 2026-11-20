@@ -37,6 +37,21 @@ const builds = [
     ordinary: ['pa_radiant', 'subup_pa_vengeance_hunt'],
     identities: ['pa_vengeance_g_a', 'pa_vengeance_g_b'],
   },
+  {
+    label: 'Hunter',
+    classId: 'ranger',
+    pick: 'rg_hunter_mark',
+    bosses: ['troll', 'dragon', 'lich'],
+    ordinary: ['rg_volley'],
+    identities: ['rg_hunter_g_a', 'rg_hunter_g_b'],
+  },
+  {
+    label: 'Beast Master',
+    classId: 'ranger',
+    pick: 'rg_beast_snare',
+    bosses: ['troll', 'dragon', 'lich'],
+    identities: ['rg_beastmaster_g_a', 'rg_beastmaster_g_b'],
+  },
 ];
 
 const server = await createServer({
@@ -53,7 +68,7 @@ try {
   const { vengeancePursuit } = await server.ssrLoadModule('/src/engine/combat/abilities.ts');
   const { getCharUpgrade } = await server.ssrLoadModule('/src/engine/content/charUpgrades.ts');
 
-  function command(world, player, seekRally) {
+  function command(world, player, seekRally, holdLane) {
     const boss = world.boss;
     const aim = normalize(sub(boss.pos, player.pos));
     const distance = dist(boss.pos, player.pos);
@@ -62,8 +77,15 @@ try {
     const whisperReach = (player.abilities.a3.radius ?? 150) + boss.radius;
     const subSkill = player.subAbilities?.sub1;
     const meleeValor = ranged && subSkill?.kind === 'meleeCone';
-    const spacing = ranged && !meleeValor ? whisperReach - 25 : boss.radius + player.radius + 8;
-    let move = distance > spacing + 20 ? aim : tangent;
+    const archer = player.classId === 'ranger';
+    const spacing = archer
+      ? player.spiritCompanion
+        ? 120
+        : 230
+      : ranged && !meleeValor
+        ? whisperReach - 25
+        : boss.radius + player.radius + 8;
+    let move = distance > spacing + 20 ? aim : holdLane ? { x: 0, y: 0 } : tangent;
     if (distance < spacing - 15) move = { x: -aim.x, y: -aim.y };
     // Use the same movement policy for either identity. The optional rally and
     // active hazards change what routes are available in the live encounter.
@@ -128,10 +150,17 @@ try {
               ],
               ['a1', distance < 210],
             ]
-          : [
-              ['a2', incoming],
-              ['a1', distance < spacing + 25],
-            ];
+          : archer
+            ? [
+                ['a3', Boolean(danger)],
+                ['a2', distance < (player.abilities.a2.range ?? 500)],
+                ['sub1', distance < (subSkill.range ?? 400)],
+                ['a1', distance < 400],
+              ]
+            : [
+                ['a2', incoming],
+                ['a1', distance < spacing + 25],
+              ];
     const pursuit = player.prevButtons.basic && vengeancePursuit(world, { ...player, aim });
     const slot = choices.find(([key, wanted]) => wanted && ready(key))?.[0] ?? 'basic';
     const releaseForPursuit = slot === 'basic' && pursuit && !pursuit.blocked;
@@ -153,7 +182,17 @@ try {
     };
   }
 
-  function fight(build, identity, monsterId, seed, partySize, seekRally, ordinary, ranks) {
+  function fight(
+    build,
+    identity,
+    monsterId,
+    seed,
+    partySize,
+    seekRally,
+    ordinary,
+    ranks,
+    holdLane,
+  ) {
     const history = Array(ranks).fill(ordinary);
     const context = { classes: [build.classId], history, subSkills: [build.pick] };
     if (!build.identities.every((id) => grandEarnable(id, build.classId, context)))
@@ -201,6 +240,9 @@ try {
       faithDiscarded: 0,
       pursuitStarts: 0,
       pursuitSwings: 0,
+      packHunts: 0,
+      returningTurns: 0,
+      returningHits: 0,
       casts: {},
     }));
     const wounds = world.players.map(() => []);
@@ -221,17 +263,45 @@ try {
       const prior = world.players.map((p) => ({
         pursuitReadyAt: p.vengeancePursuitReadyAt,
         pursuing: Boolean(p.glide?.vengeancePursuit),
+        hunt: p.spiritCompanion?.hunt,
       }));
       const priorRallies = world.groundZones.filter((z) => z.rally);
-      world.step(dt, new Map(world.players.map((p) => [p.peerId, command(world, p, seekRally)])));
+      const priorShots = new Map(
+        world.projectiles
+          .filter((shot) => shot.returningShot)
+          .map((shot) => [
+            shot,
+            { phase: shot.returningShot.phase, hits: shot.returningShot.hitsLeft },
+          ]),
+      );
+      world.step(
+        dt,
+        new Map(
+          world.players.map((p) => [
+            p.peerId,
+            command(world, p, seekRally, holdLane && p.peerId === 'lead'),
+          ]),
+        ),
+      );
       // Retain expired field references for the last tick on which players could collect them.
       if (world.boss.buffs.some((b) => b.kind === 'stun')) bossStunSeconds += dt;
       bossCasts += world.events.filter(
         (event) => event.t === 'cast' && event.side === 'boss',
       ).length;
+      const currentShots = world.projectiles.filter((shot) => shot.returningShot);
+      for (const shot of new Set([...priorShots.keys(), ...currentShots])) {
+        const returning = shot.returningShot;
+        if (returning.phase !== 'back') continue;
+        const metric = effects[world.players.findIndex((p) => p.id === shot.ownerId)];
+        const previous = priorShots.get(shot);
+        if (previous?.phase !== 'back') metric.returningTurns++;
+        metric.returningHits +=
+          (previous?.phase === 'back' ? previous.hits : returning.hitsPerLeg) - returning.hitsLeft;
+      }
       const rallies = new Set([...priorRallies, ...world.groundZones.filter((z) => z.rally)]);
       world.players.forEach((p, i) => {
         const now = effects[i];
+        if (p.spiritCompanion?.hunt && p.spiritCompanion.hunt !== prior[i].hunt) now.packHunts++;
         for (const z of rallies) {
           const key = `${z.id}:${p.id}`;
           if (z.rally.visitors.includes(p.id) && !recordedPickups.has(key)) {
@@ -290,6 +360,7 @@ try {
       ordinary,
       ranks,
       seekRally,
+      holdLane,
       identity: identity ?? null,
       name: identity ? getCharUpgrade(identity).name : 'No identity',
       monsterId,
@@ -317,10 +388,12 @@ try {
     for (const boss of build.bosses) {
       for (const seed of seeds) {
         for (const party of [1, 2]) {
-          const run = (identity, seekRally = true, ordinary = null, ranks = 0) =>
-            fight(build, identity, boss, seed, party, seekRally, ordinary, ranks);
+          const run = (identity, seekRally = true, ordinary = null, ranks = 0, holdLane = false) =>
+            fight(build, identity, boss, seed, party, seekRally, ordinary, ranks, holdLane);
           const matched = [null, ...build.identities].map((id) => run(id));
           if (build.classId === 'bard') matched.push(run(build.identities[1], false));
+          if (build.pick === 'rg_hunter_mark')
+            matched.push(...[null, ...build.identities].map((id) => run(id, true, null, 0, true)));
           // Ordinary comparisons use the same identity at ranks 0, 1 and 3.
           for (const upgrade of build.ordinary ?? []) {
             const ranksToTry = upgrade === 'pa_radiant' ? [1, 3, 5] : [1, 3];

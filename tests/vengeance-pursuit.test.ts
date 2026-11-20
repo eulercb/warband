@@ -3,7 +3,7 @@ import { World } from '../src/engine/world/world';
 import { decompose, recompose } from '../src/engine/content/forge';
 import { applyBuff, makeBuff } from '../src/engine/combat/combat';
 
-function setup(pick = 'pa_vengeance_hunt') {
+function setup(pick = 'pa_vengeance_hunt', identity = 'pa_vengeance_g_b') {
   const w = new World({
     seed: 31,
     monsterId: 'troll',
@@ -14,7 +14,7 @@ function setup(pick = 'pa_vengeance_hunt') {
         classId: 'paladin',
         subSkills: [pick],
         extraClasses: ['mage'],
-        charUpgrades: ['pa_vengeance_g_b'],
+        charUpgrades: identity ? [identity] : [],
       },
     ],
   });
@@ -28,7 +28,7 @@ function setup(pick = 'pa_vengeance_hunt') {
   b.moveSpeed = 0;
   b.decisionTimer = 1000;
   b.hp = b.maxHp = 10000;
-  function step(basic = false, autofire = false, aim = { x: 1, y: 0 }) {
+  function step(basic = false, autofire = false, aim = { x: 1, y: 0 }, move = { x: 0, y: 0 }) {
     w.step(
       0.01,
       new Map([
@@ -36,7 +36,7 @@ function setup(pick = 'pa_vengeance_hunt') {
           'a',
           {
             seq: w.tick,
-            move: { x: 0, y: 0 },
+            move,
             aim,
             buttons: { basic, a1: false, a2: false, a3: false, revive: false },
             autofire,
@@ -212,3 +212,29 @@ it('closes a 210u melee gap in under 0.3 seconds', () => {
   expect(p.pos.x - start).toBeGreaterThanOrEqual(210);
   expect(b.hp).toBeLessThan(10000);
 });
+
+it.each(['', 'pa_vengeance_g_a', 'pa_vengeance_g_b'])(
+  'fresh Holy Strike on re-entry after walking out of melee, identity %s',
+  (identity) => {
+    const { p, b, step } = setup('pa_vengeance_hunt', identity);
+    const aim = { x: 1, y: 0 };
+    b.pos.x = 610;
+    step(true);
+    expect(b.hp).toBeLessThan(10000);
+    for (let i = 0; i < 80; i++) step(false, false, aim, { x: -1, y: 0 });
+    while (p.cooldowns.basic > 0) step();
+    const retreatX = p.pos.x;
+    const health = b.hp;
+    expect(retreatX).toBeLessThan(375);
+
+    step(true, false, aim);
+    for (let i = 0; i < 35; i++) step();
+    if (identity === 'pa_vengeance_g_b') {
+      expect(p.pos.x).toBeGreaterThan(retreatX + 100);
+      expect(b.hp).toBeLessThan(health);
+    } else {
+      expect(p.pos.x).toBe(retreatX);
+      expect(b.hp).toBe(health);
+    }
+  },
+);
