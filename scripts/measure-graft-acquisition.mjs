@@ -72,13 +72,15 @@ try {
       acquisition.push({ priority: priority[0], ...totals, firstClaimAt });
     }
 
-    const lifecycle = {
+    const cycleCount = 3;
+    const lifecycle = Array.from({ length: cycleCount }, (_, cycle) => ({
+      stops: (cycle + 1) * stops,
       upgradeSeen: 0,
       reclaimSeenWhileInstalled: 0,
       improved: 0,
       reclaimed: 0,
       reseated: 0,
-    };
+    }));
     for (let seed = 1; seed <= trials; seed++) {
       const generic = [];
       const owned = [native, graft];
@@ -88,8 +90,9 @@ try {
       let reseated = false;
       let upgradeSeen = false;
       let reclaimSeen = false;
-      for (let stop = 0; stop < stops; stop++) {
-        const offers = draw(classId, seed, 1, stop, generic, owned);
+      for (let visit = 0; visit < stops * cycleCount; visit++) {
+        const cycle = Math.floor(visit / stops);
+        const offers = draw(classId, seed, 1 + cycle, visit % stops, generic, owned);
         const upgrade = offers.find((id) => expectedUpgrade.includes(id));
         if (upgrade) upgradeSeen = true;
         if (offers.includes(restore)) reclaimSeen = true;
@@ -109,12 +112,15 @@ try {
           assert.deepEqual(previewAbilityTable(classId, owned)[slot], upgradedAbility);
           reseated = true;
         }
+        if ((visit + 1) % stops === 0) {
+          const totals = lifecycle[cycle];
+          if (upgradeSeen) totals.upgradeSeen++;
+          if (reclaimSeen) totals.reclaimSeenWhileInstalled++;
+          if (improved) totals.improved++;
+          if (reclaimed) totals.reclaimed++;
+          if (reseated) totals.reseated++;
+        }
       }
-      if (upgradeSeen) lifecycle.upgradeSeen++;
-      if (reclaimSeen) lifecycle.reclaimSeenWhileInstalled++;
-      if (improved) lifecycle.improved++;
-      if (reclaimed) lifecycle.reclaimed++;
-      if (reseated) lifecycle.reseated++;
     }
     rows.push({ classId, graft, native, slot, expectedUpgrade, acquisition, lifecycle });
   }

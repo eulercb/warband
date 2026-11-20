@@ -73,7 +73,7 @@ import {
   maneuverView,
   invalidateManeuvers,
 } from '../combat/battleManeuvers';
-import { sweepProjectedGuard, blockBossPulse } from '../combat/projectedGuard';
+import { sweepProjectedGuard, blockBossPulse, bossPulseTargets } from '../combat/projectedGuard';
 import {
   firstObstacleStop,
   bossChargeTarget,
@@ -282,15 +282,7 @@ import {
 // Toroidal (wrap-around) geometry — drop-in replacements for the Euclidean
 // sub/dist/distSq/pointInSegment so combat measures the shortest path on the
 // torus. `wrapPos` canonicalises positions after they move (see §infinite-map).
-import {
-  sub,
-  dist,
-  distSq,
-  pointInCone,
-  pointInCircle,
-  pointInSegment,
-  wrapPos,
-} from '../core/torus';
+import { sub, dist, distSq, pointInSegment, wrapPos } from '../core/torus';
 import { getClass, cloneAbilities, slowAttackCooldowns } from '../content/classes';
 import type { PlayerAbilityDef } from '../content/classes';
 import { applyUpgrades } from '../content/upgrades';
@@ -4173,37 +4165,26 @@ export class World {
     }
   }
 
-  private waveCoverView(p: Player): number[] {
-    if (this.scene !== null || p.state !== 'alive' || p.hp <= 0) return [];
-    return this.bosses
-      .filter((b) => {
-        const a = b.action;
-        if (b.hp <= 0 || (a.kind !== 'windup' && a.kind !== 'channel') || !a.abilityId)
-          return false;
-        const raw = abilityById(this.defOf(b), a.abilityId);
-        if (!raw) return false;
-        const ab = this.affixAbility(b, raw);
-        const threatened =
-          ab.shape === 'cone'
-            ? pointInCone(
-                p.pos,
-                b.pos,
-                a.aimAngle,
-                ab.range ?? 300,
-                ((ab.halfAngleDeg ?? 30) * Math.PI) / 180,
-                p.radius,
-              )
-            : ab.shape === 'pbaoe'
-              ? pointInCircle(p.pos, b.pos, ab.radius ?? 160, p.radius)
-              : ab.shape === 'beam' &&
-                a.targetId === p.id &&
-                dist(b.pos, p.pos) <= (ab.range ?? 500);
-        return threatened && blockBossPulse(this, b.pos, [p], false).has(p);
-      })
-      .map((b) => b.id);
+  private waveCoverByPlayer(): Map<Player, number[]> {
+    const cover = new Map<Player, number[]>();
+    if (this.scene !== null) return cover;
+    const alive = this.players.filter((p) => p.state === 'alive' && p.hp > 0);
+    for (const b of this.bosses) {
+      const a = b.action;
+      if (b.hp <= 0 || (a.kind !== 'windup' && a.kind !== 'channel') || !a.abilityId) continue;
+      const raw = abilityById(this.defOf(b), a.abilityId);
+      if (!raw) continue;
+      const targets = bossPulseTargets(alive, b, this.affixAbility(b, raw), a);
+      for (const p of blockBossPulse(this, b.pos, targets, false)) {
+        const threats = cover.get(p);
+        if (threats) threats.push(b.id);
+        else cover.set(p, [b.id]);
+      }
+    }
+    return cover;
   }
 
-  private playerView(p: Player): PlayerView {
+  private playerView(p: Player, waveCover: number[]): PlayerView {
     const infernalClaimTargets: NonNullable<PlayerView['infernalClaimTargets']> = {};
     for (const slot of [...SLOTS, ...SUB_SLOTS]) {
       const ab = abilityForSlot(p, slot);
@@ -4270,7 +4251,7 @@ export class World {
       state: p.state,
       cooldowns: { ...p.cooldowns },
       ...(Object.keys(infernalClaimTargets).length ? { infernalClaimTargets } : {}),
-      waveCover: this.waveCoverView(p),
+      waveCover,
       maneuver: maneuverView(this, p),
       fontRecovery: fontRecoveryView(this, p),
       reflectionWard: reflectionView(this, p),
@@ -4370,10 +4351,11 @@ export class World {
   }
 
   serialize(): Snapshot {
+    const waveCover = this.waveCoverByPlayer();
     return {
       tick: this.tick,
       seed: this.seed,
-      players: this.players.map((p) => this.playerView(p)),
+      players: this.players.map((p) => this.playerView(p, waveCover.get(p) ?? [])),
       bosses: this.bosses.map((b) => this.bossView(b)),
       adds: this.adds.map((a) => ({
         id: a.id,

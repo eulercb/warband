@@ -3,6 +3,8 @@
 This batch adds 264 matched Druid fights to the all-class matrix, for
 1,554 fights across five lead classes and ten subclasses. It also adds
 a seeded benchmark for receiving a graft and progressing it once owned.
+The [longer graft comparison](KNIGHT_AND_LONG_GRAFT_BALANCE.md) extends
+the installed-graft results beyond the original four-stop window.
 
 ## Druid as lead
 

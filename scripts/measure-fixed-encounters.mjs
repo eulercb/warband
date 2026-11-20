@@ -94,6 +94,31 @@ const builds = [
     bosses: ['troll', 'dragon'],
     identities: ['dr_land_g_a', 'dr_land_g_b'],
   },
+  {
+    label: 'Champion',
+    classId: 'knight',
+    pick: 'kn_champion_rally',
+    ordinaryIdentity: 0,
+    ordinary: ['kn_bulwark'],
+    bosses: ['dragon', 'lich'],
+    identities: ['kn_champion_g_a', 'kn_champion_g_b'],
+  },
+  {
+    label: 'Battlemaster',
+    classId: 'knight',
+    pick: 'kn_battle_precision',
+    ordinaryIdentity: 0,
+    ordinary: ['kn_concuss'],
+    bosses: ['dragon', 'lich'],
+    identities: ['kn_battlemaster_g_a', 'kn_battlemaster_g_b'],
+  },
+  {
+    label: 'Battlemaster',
+    classId: 'knight',
+    pick: 'kn_battle_rally',
+    bosses: ['dragon', 'lich'],
+    identities: ['kn_battlemaster_g_a', 'kn_battlemaster_g_b'],
+  },
 ];
 
 const thirdSlots = [
@@ -156,6 +181,7 @@ try {
     const subSkill = player.subAbilities?.sub1;
     const meleeValor = ranged && subSkill?.kind === 'meleeCone';
     const archer = player.classId === 'ranger';
+    const knightLead = player.classId === 'knight' && player.peerId === 'lead';
     const cleric = player.classId === 'cleric';
     const druid = player.classId === 'druid';
     const moon = player.subclassPassiveId === 'moon_aspect';
@@ -206,6 +232,10 @@ try {
     )
       move = distance < (entangle.range ?? 400) ? { x: -aim.x, y: -aim.y } : aim;
     if (danger) move = normalize(sub(player.pos, danger.pos));
+    // For a frontline Knight, cross the attack lane before shielding; aim still
+    // faces the threat. This also gives fresh utility presses a real step vector.
+    if (knightLead && boss.action.kind === 'windup' && boss.action.remaining < 0.65 && !danger)
+      move = tangent;
     const fallen = world.players.find((ally) => ally.state === 'downed');
     if (fallen && !danger)
       move =
@@ -340,10 +370,32 @@ try {
                     ['sub1', distance < (subSkill.range ?? 400)],
                     ['a1', distance < 400],
                   ]
-                : [
-                    ['a2', incoming],
-                    ['a1', distance < spacing + 25],
-                  ];
+                : knightLead
+                  ? [
+                      [
+                        'a2',
+                        player.abilities.a2.kind === 'heal'
+                          ? needsHeal
+                          : incoming ||
+                            world.projectiles.some(
+                              (shot) => shot.side === 'boss' && dist(shot.pos, player.pos) < 145,
+                            ),
+                      ],
+                      ['a1', incoming && distance < 190],
+                      [
+                        'sub1',
+                        subSkill.kind === 'heal'
+                          ? needsHeal
+                          : subSkill.healOnUse
+                            ? player.hp < player.maxHp * 0.68
+                            : distance < 220,
+                      ],
+                      ['a3', distance <= (player.abilities.a3.range ?? 60) + boss.radius],
+                    ]
+                  : [
+                      ['a2', incoming],
+                      ['a1', distance < spacing + 25],
+                    ];
     const pursuit = player.prevButtons.basic && vengeancePursuit(world, { ...player, aim });
     const slot = transplant
       ? transplant.slot
@@ -402,7 +454,18 @@ try {
             },
           },
         },
-        ...(partySize >= 2 ? [{ peerId: 'ally', name: 'Knight', classId: 'knight' }] : []),
+        ...(partySize >= 2
+          ? [
+              build.classId === 'knight'
+                ? {
+                    peerId: 'ally',
+                    name: 'Ranger',
+                    classId: 'ranger',
+                    subSkills: ['rg_hunter_mark'],
+                  }
+                : { peerId: 'ally', name: 'Knight', classId: 'knight' },
+            ]
+          : []),
         ...(third
           ? [
               {
@@ -449,6 +512,13 @@ try {
       healingReceived: 0,
       moonSeconds: 0,
       transplants: 0,
+      projectedGuardChargesSpent: 0,
+      projectedShotInterceptions: 0,
+      challengeConnections: 0,
+      defensiveSteps: 0,
+      steeredBosses: 0,
+      steeredDuringAction: 0,
+      steeredAdds: 0,
       casts: {},
     }));
     const wounds = world.players.map(() => []);
@@ -462,6 +532,20 @@ try {
         wounds[world.players.indexOf(target)].push({ wound, initial: wound.amount });
       return immediate;
     };
+    if (build.classId === 'knight') {
+      const resolveManeuver = world.onManeuverHit.bind(world);
+      world.onManeuverHit = (source, target, effective, cast) => {
+        const alreadySteered = cast.steeredTargets?.has(target.id);
+        const inAction = ['windup', 'channel'].includes(target.action?.kind);
+        resolveManeuver(source, target, effective, cast);
+        if (!alreadySteered && cast.steeredTargets?.has(target.id)) {
+          const metric = effects[world.players.indexOf(source)];
+          if ('monsterId' in target) metric.steeredBosses++;
+          else metric.steeredAdds++;
+          if (inAction) metric.steeredDuringAction++;
+        }
+      };
+    }
     const recordedPickups = new Set();
     let bossStunSeconds = 0;
     let bossCasts = 0;
@@ -476,6 +560,9 @@ try {
         pursuitReadyAt: p.vengeancePursuitReadyAt,
         pursuing: Boolean(p.glide?.vengeancePursuit),
         hunt: p.spiritCompanion?.hunt,
+        stepping: p.glide?.ab.name === 'Maneuver step',
+        challenge: p.buffs.find((buff) => buff.kind === 'challengeReady' && buff.remaining > dt),
+        projection: p.buffs.filter((buff) => buff.projectedGuard).map((buff) => [buff, buff.mult]),
         transplantOptions: Object.values(p.fieldTransplants ?? {}).filter((cast) => !cast.used),
       }));
       const priorRallies = world.groundZones.filter((z) => z.rally);
@@ -533,6 +620,11 @@ try {
       const rallies = new Set([...priorRallies, ...world.groundZones.filter((z) => z.rally)]);
       world.players.forEach((p, i) => {
         const now = effects[i];
+        if (prior[i].challenge && !p.buffs.includes(prior[i].challenge) && p.state === 'alive')
+          now.challengeConnections++;
+        if (!prior[i].stepping && p.glide?.ab.name === 'Maneuver step') now.defensiveSteps++;
+        for (const [buff, charges] of prior[i].projection)
+          now.projectedGuardChargesSpent += Math.max(0, charges - buff.mult);
         if (inMoonForm(p)) now.moonSeconds += dt;
         now.transplants += prior[i].transplantOptions.filter((cast) => cast.used).length;
         if (p.spiritCompanion?.hunt && p.spiritCompanion.hunt !== prior[i].hunt) now.packHunts++;
@@ -547,6 +639,15 @@ try {
         if (pursuitStarted) now.pursuitStarts++;
         const pursuitEnded = (pursuitStarted || prior[i].pursuing) && !p.glide?.vengeancePursuit;
         for (const event of world.events) {
+          if (
+            event.t === 'support' &&
+            event.kind === 'protect' &&
+            event.sourceId === p.id &&
+            event.targetId === p.id &&
+            dist(event.from, event.pos) > 1 &&
+            p.charUpgradeIds?.includes('kn_champion_g_a')
+          )
+            now.projectedShotInterceptions++;
           if (event.t === 'hit' && event.targetId === p.id) now.damageTaken += event.amount;
           if (event.t === 'downed' && event.id === p.id) now.downed++;
           if (event.t === 'heal' && event.targetId === p.id) now.healingReceived += event.amount;
@@ -637,6 +738,8 @@ try {
             fight(build, identity, boss, seed, party, seekRally, ordinary, ranks, holdLane);
           const matched = [null, ...build.identities].map((id) => run(id));
           if (build.pick.startsWith('ba_valor_')) matched.push(run(build.identities[1], false));
+          if (build.pick === 'kn_champion_rally')
+            matched.push(run(build.identities[0], true, 'hy_fieldmedic', 1));
           if (build.pick === 'dr_land_wall')
             matched.push(
               ...['dr_grasp', 'hy_inspire'].map((id) => run(build.identities[1], true, id, 1)),
@@ -647,7 +750,9 @@ try {
           for (const upgrade of build.ordinary ?? []) {
             const ranksToTry = upgrade === 'pa_radiant' ? [1, 3, 5] : [1, 3];
             for (const ranks of ranksToTry)
-              matched.push(run(build.identities[1], true, upgrade, ranks));
+              matched.push(
+                run(build.identities[build.ordinaryIdentity ?? 1], true, upgrade, ranks),
+              );
           }
           for (const { start, ...result } of matched) {
             assert.equal(

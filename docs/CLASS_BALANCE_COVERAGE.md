@@ -5,20 +5,20 @@ Bard and Paladin pilot established the method. Ranger is the first new
 class to enter the expanded comparisons. Earlier authored reviews and
 playtests remain useful evidence for their individual mechanics.
 
-| Cohort            | Class     | Subclasses                 | Fixed encounters                                                                      |
-| ----------------- | --------- | -------------------------- | ------------------------------------------------------------------------------------- |
-| Support           | Bard      | Valor, Whispers            | Valor measured with Bolster and Blade Flourish. Whispers measured with Psychic Blade. |
-| Support           | Paladin   | Devotion, Vengeance        | Both measured. Vengeance also has a deliberate re-entry test.                         |
-| Support           | Cleric    | Light, Life                | Pending.                                                                              |
-| Nature            | Ranger    | Hunter, Beast Master       | Both measured. Hunter has a firing-lane sensitivity run.                              |
-| Nature            | Druid     | Moon, Land                 | Pending.                                                                              |
-| Martial           | Knight    | Champion, Battlemaster     | Pending as the lead class. Knight is a partner in the existing duo fixtures.          |
-| Martial           | Barbarian | Berserker, Totem           | Pending.                                                                              |
-| Martial           | Monk      | Open Hand, Shadow          | Pending.                                                                              |
-| Caster            | Mage      | Evoker, Abjurer            | Pending.                                                                              |
-| Caster            | Sorcerer  | Draconic, Wild Magic       | Pending.                                                                              |
-| Rogue and Warlock | Rogue     | Assassin, Arcane Trickster | Fixed encounters pending. Assassin has an older outgoing-pressure pilot.              |
-| Rogue and Warlock | Warlock   | Fiend, Great Old One       | Fixed encounters pending. Fiend has an older outgoing-pressure pilot.                 |
+| Cohort            | Class     | Subclasses                 | Fixed encounters                                                                                        |
+| ----------------- | --------- | -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Support           | Bard      | Valor, Whispers            | Valor measured with Bolster and Blade Flourish. Whispers measured with Psychic Blade.                   |
+| Support           | Paladin   | Devotion, Vengeance        | Both measured. Vengeance also has a deliberate re-entry test.                                           |
+| Support           | Cleric    | Light, Life                | Pending.                                                                                                |
+| Nature            | Ranger    | Hunter, Beast Master       | Both measured. Hunter has a firing-lane sensitivity run.                                                |
+| Nature            | Druid     | Moon, Land                 | Pending.                                                                                                |
+| Martial           | Knight    | Champion, Battlemaster     | Both measured as lead. Battlemaster covers Volley and Rally. Knight remains a partner in other cohorts. |
+| Martial           | Barbarian | Berserker, Totem           | Pending.                                                                                                |
+| Martial           | Monk      | Open Hand, Shadow          | Pending.                                                                                                |
+| Caster            | Mage      | Evoker, Abjurer            | Pending.                                                                                                |
+| Caster            | Sorcerer  | Draconic, Wild Magic       | Pending.                                                                                                |
+| Rogue and Warlock | Rogue     | Assassin, Arcane Trickster | Fixed encounters pending. Assassin has an older outgoing-pressure pilot.                                |
+| Rogue and Warlock | Warlock   | Fiend, Great Old One       | Fixed encounters pending. Fiend has an older outgoing-pressure pilot.                                   |
 
 Each subclass gets a representative fixed-encounter comparison with no
 identity and both identities using native inputs. Check all 96 first-skill
@@ -40,6 +40,6 @@ batch. Keep policies reproducible and vary the controller when outcomes
 depend on a positioning or timing assumption.
 
 The representative support and nature cohorts are measured. Next is
-**Knight**, then the other martial classes, casters, and Rogue/Warlock. Track
+**Barbarian**, then Monk, casters, and Rogue/Warlock. Track
 acquisition and graft work alongside cohorts. The [development
 roadmap](DEVELOPMENT_STATUS.md) records the visual and encounter milestones.
