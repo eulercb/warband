@@ -1,5 +1,7 @@
 # Fixed-encounter balance pilot
 
+See the [expanded follow-through](ENCOUNTER_BALANCE_FOLLOWTHROUGH.md) for the current runner, larger sample and applied fixes. The results below record the original pilot.
+
 This is the first comparison on the accepted Battle Rhapsody baseline from
 #192. It covers Valor with Bolster and Devotion with Aura of Protection.
 Each build enters with no identity, identity A, or identity B. Valor also
@@ -8,7 +10,7 @@ No gameplay values changed in this delivery.
 
 ## Reproducing the run
 
-From the repository root with dependencies installed:
+From the repository root at the original pilot merge (`f30ee90`) with dependencies installed:
 
 ```sh
 node scripts/measure-fixed-encounters.mjs > fixed-encounters.json

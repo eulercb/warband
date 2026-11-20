@@ -150,6 +150,13 @@ not only a long-running development server. Initialize the actual renderer after
 UI/network imports; a React-only mount does not exercise lazy Pixi chunks. Keep
 registry readers on private caches and verify dependency versions stay stable.
 
+For balance batches, check that the controller actually exercises the mechanic,
+measure the relevant events alongside outcomes, and rerun matched cases after a
+confirmed fix. Apply clear fixes without a separate checkpoint. Leave weak or
+policy-dependent findings in the delivery notes with a concrete discriminating
+test. Bundle adjacent, verifiable work into larger batches and size it so the
+implementation and local validation can finish within the available session.
+
 At each delivery, name the next development step after live playtesting and the
 following roadmap stages. Record accepted player feedback and distinguish review
 completed, mechanics implemented and identities accepted; do not count unresolved

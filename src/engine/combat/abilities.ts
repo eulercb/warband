@@ -922,7 +922,10 @@ function resolveConeAt(
     if (contact) {
       hitIds?.push(b.id);
       // item 5: a directional cone strike can crit AND backstab (rear arc).
-      dealt += damageBoss(world, p, b, ab.damage, world.meleeHit(p, b, ab, contact));
+      dealt += Math.min(
+        b.hp,
+        damageBoss(world, p, b, ab.damage, world.meleeHit(p, b, ab, contact)),
+      );
       applyStrikeRiders(world, contact, b, ab);
     }
   }
@@ -931,12 +934,15 @@ function resolveConeAt(
     const contact = sweptConeContact(from, origin, a.pos, aimAngle, range, half, a.radius);
     if (contact) {
       hitIds?.push(a.id);
-      dealt += damageAdd(
-        world,
-        p,
-        a,
-        ab.damage * controlledSpellMultiplier(a, ab.controlDamageBonus),
-        world.critRoll(p, ab),
+      dealt += Math.min(
+        a.hp,
+        damageAdd(
+          world,
+          p,
+          a,
+          ab.damage * controlledSpellMultiplier(a, ab.controlDamageBonus),
+          world.critRoll(p, ab),
+        ),
       );
       applyStrikeRiders(world, contact, a, ab);
     }
@@ -971,12 +977,15 @@ export function resolveBurstAt(
     if (contact) {
       hitIds?.push(b.id);
       // item 5: a point-blank burst can crit (omnidirectional → no backstab).
-      dealt += damageBoss(
-        world,
-        p,
-        b,
-        ab.damage * controlledSpellMultiplier(b, ab.controlDamageBonus),
-        world.critRoll(p, ab),
+      dealt += Math.min(
+        b.hp,
+        damageBoss(
+          world,
+          p,
+          b,
+          ab.damage * controlledSpellMultiplier(b, ab.controlDamageBonus),
+          world.critRoll(p, ab),
+        ),
       );
       applyStrikeRiders(world, contact, b, ab);
     }
@@ -986,12 +995,15 @@ export function resolveBurstAt(
     const contact = palmContact(from, origin, a.pos, radius + a.radius);
     if (contact) {
       hitIds?.push(a.id);
-      dealt += damageAdd(
-        world,
-        p,
-        a,
-        ab.damage * controlledSpellMultiplier(a, ab.controlDamageBonus),
-        world.critRoll(p, ab),
+      dealt += Math.min(
+        a.hp,
+        damageAdd(
+          world,
+          p,
+          a,
+          ab.damage * controlledSpellMultiplier(a, ab.controlDamageBonus),
+          world.critRoll(p, ab),
+        ),
       );
       applyStrikeRiders(world, contact, a, ab);
     }

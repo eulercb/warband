@@ -1914,18 +1914,20 @@ export class World {
       for (const b of this.aliveBosses()) {
         if (dist(center, b.pos) <= proj.impactRadius + b.radius) {
           // item 5: ranged impacts can crit (per target); no backstab on a shot.
-          this.applyProjDamageBoss(
-            owner,
-            proj.damage * controlledSpellMultiplier(b, proj.controlDamageBonus),
-            b,
-            owner
-              ? this.critRoll(
-                  owner,
-                  hasBuff(b, 'invuln') ? { ...proj, consumesPrecision: false } : proj,
-                )
-              : undefined,
+          dealt += Math.min(
+            b.hp,
+            this.applyProjDamageBoss(
+              owner,
+              proj.damage * controlledSpellMultiplier(b, proj.controlDamageBonus),
+              b,
+              owner
+                ? this.critRoll(
+                    owner,
+                    hasBuff(b, 'invuln') ? { ...proj, consumesPrecision: false } : proj,
+                  )
+                : undefined,
+            ),
           );
-          dealt += proj.damage;
           this.applyProjRiders(b, proj);
         }
       }
@@ -1933,15 +1935,17 @@ export class World {
         if (!hostileAdd(a)) continue;
         if (dist(center, a.pos) <= proj.impactRadius + a.radius) {
           if (owner)
-            damageAdd(
-              this,
-              owner,
-              a,
-              proj.damage * controlledSpellMultiplier(a, proj.controlDamageBonus),
-              this.critRoll(owner, proj),
+            dealt += Math.min(
+              a.hp,
+              damageAdd(
+                this,
+                owner,
+                a,
+                proj.damage * controlledSpellMultiplier(a, proj.controlDamageBonus),
+                this.critRoll(owner, proj),
+              ),
             );
           else a.hp -= proj.damage * controlledSpellMultiplier(a, proj.controlDamageBonus);
-          dealt += proj.damage;
           this.applyProjRiders(a, proj);
         }
       }
@@ -1962,30 +1966,34 @@ export class World {
         },
       });
     } else if (hitBoss) {
-      this.applyProjDamageBoss(
-        owner,
-        proj.damage * controlledSpellMultiplier(hitBoss, proj.controlDamageBonus),
-        hitBoss,
-        owner
-          ? this.critRoll(
-              owner,
-              hasBuff(hitBoss, 'invuln') ? { ...proj, consumesPrecision: false } : proj,
-            )
-          : undefined,
+      dealt += Math.min(
+        hitBoss.hp,
+        this.applyProjDamageBoss(
+          owner,
+          proj.damage * controlledSpellMultiplier(hitBoss, proj.controlDamageBonus),
+          hitBoss,
+          owner
+            ? this.critRoll(
+                owner,
+                hasBuff(hitBoss, 'invuln') ? { ...proj, consumesPrecision: false } : proj,
+              )
+            : undefined,
+        ),
       );
-      dealt += proj.damage;
       this.applyProjRiders(hitBoss, proj);
     } else if (hitAdd) {
       if (owner)
-        damageAdd(
-          this,
-          owner,
-          hitAdd,
-          proj.damage * controlledSpellMultiplier(hitAdd, proj.controlDamageBonus),
-          this.critRoll(owner, proj),
+        dealt += Math.min(
+          hitAdd.hp,
+          damageAdd(
+            this,
+            owner,
+            hitAdd,
+            proj.damage * controlledSpellMultiplier(hitAdd, proj.controlDamageBonus),
+            this.critRoll(owner, proj),
+          ),
         );
       else hitAdd.hp -= proj.damage * controlledSpellMultiplier(hitAdd, proj.controlDamageBonus);
-      dealt += proj.damage;
       this.applyProjRiders(hitAdd, proj);
     }
     // Vampiric shots feed their archer (melee lifesteal lives in abilities.ts).
@@ -2442,11 +2450,11 @@ export class World {
     base: number,
     boss?: Boss | null,
     mods?: HitMods,
-  ): void {
+  ): number {
     const target = boss ?? this.boss;
-    if (!target) return;
+    if (!target) return 0;
     if (owner) {
-      damageBoss(this, owner, target, base, mods);
+      return damageBoss(this, owner, target, base, mods);
     } else {
       // Ownerless (disconnected caster): still honor the boss's mitigation buffs.
       const dealt = base * buffMult(target, 'damageTaken');
@@ -2458,6 +2466,7 @@ export class World {
         targetId: target.id,
         side: 'boss',
       });
+      return dealt;
     }
   }
 

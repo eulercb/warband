@@ -594,7 +594,7 @@ const PALADIN: CharUpgradeDef[] = [
     'pa_hallowed',
     'Hallowed Ground',
     '⛪',
-    'Consecration scorches for 13 and mends 13 per tick (+5 each), covers 172u (+22), lasts 6.5s',
+    'Consecration gains +5 damage and healing per tick, +22u radius and +1.5s duration',
     ({ abilities: a }) => {
       addN(a.a1, 'zoneTickDamage', 5);
       addN(a.a1, 'zoneTickHeal', 5);
@@ -630,7 +630,7 @@ const PALADIN: CharUpgradeDef[] = [
     'pa_mercy',
     'Merciful Hands',
     '💛',
-    'Lay on Hands restores 122 HP (+32)',
+    'Lay on Hands restores 32 more HP',
     ({ abilities: a }) => {
       addN(a.a2, 'damage', 32);
       mul(a.a2, 'cooldown', 0.85);
@@ -641,10 +641,10 @@ const PALADIN: CharUpgradeDef[] = [
     'pa_radiant',
     'Radiant Strike',
     '🌟',
-    'Holy Strike hits for 29 (+6), dazes (0.4s), and heals you 10% of the damage dealt',
+    'Holy Strike gains +6 damage and +10% of damage dealt as healing per rank. The first rank adds a 0.4s daze',
     ({ abilities: a }) => {
       addN(a.basic, 'damage', 6);
-      addN(a.basic, 'freeze', 0.4);
+      a.basic.freeze = Math.max(a.basic.freeze ?? 0, 0.4);
       addN(a.basic, 'lifestealFrac', 0.1);
     },
   ),
@@ -732,7 +732,7 @@ const BARD: CharUpgradeDef[] = [
     'ba_cutting',
     'Cutting Words',
     '🎭',
-    'Vicious Mockery hits for 21 (+6) and chills the target to 60% move speed for 2s',
+    'Vicious Mockery gains +6 damage and +1s slow duration. The first rank slows targets to at most 60% move speed',
     ({ abilities: a }) => {
       addN(a.basic, 'damage', 6);
       a.basic.slowMult = Math.min(a.basic.slowMult ?? 1, 0.6);
@@ -744,7 +744,7 @@ const BARD: CharUpgradeDef[] = [
     'ba_anthem',
     'Rousing Anthem',
     '🎺',
-    'Inspiration grants +35% damage and 23% damage reduction for 8s (+2)',
+    'Inspiration gains an additional 15% damage bonus and +2s duration. Allies take 10% less damage on top of its usual protection',
     ({ abilities: a }) => {
       addN(a.a1, 'buffDamageMult', 0.15);
       mul(a.a1, 'buffDefMult', 0.9);
@@ -756,7 +756,7 @@ const BARD: CharUpgradeDef[] = [
     'ba_song',
     'Song of Rest',
     '🎶',
-    'Healing Word restores 74 HP (+24)',
+    'Healing Word restores 24 more HP',
     ({ abilities: a }) => {
       addN(a.a2, 'damage', 24);
       mul(a.a2, 'cooldown', 0.85);
@@ -767,7 +767,7 @@ const BARD: CharUpgradeDef[] = [
     'ba_thunder',
     'Thunderous Chord',
     '⚡',
-    'Dissonant Whispers widens to 175u (+25), hits for 32 (+10), and slows to 35%',
+    'Dissonant Whispers gains +25u radius and +10 damage. Each rank reduces the target’s remaining move speed by 30%',
     ({ abilities: a }) => {
       addN(a.a3, 'radius', 25);
       addN(a.a3, 'damage', 10);
@@ -5059,7 +5059,7 @@ const SUPPORT_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef)
     },
   },
   ba_valor_bolster: {
-    desc: 'Increase Bolster movement bonus by +2% and rally duration by 0.2s, up to 8s; recharge improves by 4%',
+    desc: 'Increase Bolster’s movement bonus by +2% and its duration by 0.2s, up to 8s; recharge improves by 4%',
     tune: (ab) => {
       addN(ab, 'buffMoveMult', 0.02);
       ab.buffDuration = Math.max(ab.buffDuration!, Math.min(8, ab.buffDuration! + 0.2));
