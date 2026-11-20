@@ -306,8 +306,9 @@ describe('Rogue and Warlock authored grands', () => {
     expect(after.prepareCrit).toBeGreaterThan(before.prepareCrit ?? 0);
   });
 
-  it('keeps every individual grand useful when Forge changes the skill delivery', () => {
-    for (const seed of [7, 31, 4242]) {
+  it.each([7, 31, 4242])(
+    'keeps every individual grand useful when Forge seed %s changes the skill delivery',
+    (seed) => {
       setForgeSeed(seed);
       for (const grand of PILOT_SUB_SKILL_GRANDS) {
         const skill = grand.subSkillId!;
@@ -317,8 +318,8 @@ describe('Rogue and Warlock authored grands', () => {
         expect(Number.isFinite(after.cooldown)).toBe(true);
         expect(after.components, `${grand.id}@${seed}`).toBeDefined();
       }
-    }
-  });
+    },
+  );
 
   it('Soul Bastion still grants a real defense when Forge replaces its barrier payload', () => {
     setForgeSeed(7);

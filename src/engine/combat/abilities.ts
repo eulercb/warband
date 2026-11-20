@@ -2122,11 +2122,14 @@ export function beamTick(world: World, boss: Boss, ab: BossAbilityDef, action: B
   if (!target) return 0;
   if (dist(boss.pos, target.pos) > (ab.range ?? 500)) return 0; // out-ranged: broken
   if (blockBossPulse(world, boss.pos, [target]).has(target)) return 0;
-  const dealt = damagePlayer(
-    world,
-    target,
-    ab.damage * world.bossDamageScalar() * (boss.dmgScale ?? 1) * buffMult(boss, 'damageDealt'),
-    boss.pos,
+  const dealt = Math.min(
+    Math.max(0, target.hp),
+    damagePlayer(
+      world,
+      target,
+      ab.damage * world.bossDamageScalar() * (boss.dmgScale ?? 1) * buffMult(boss, 'damageDealt'),
+      boss.pos,
+    ),
   );
   if (ab.healSelf) healBoss(boss, dealt);
   return dealt;

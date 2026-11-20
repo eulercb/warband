@@ -268,6 +268,43 @@ describe('world: downed / revive / wipe', () => {
   });
 });
 
+it('healing fields count self healing without drawing threat, and ally healing does draw it', () => {
+  const w = new World({
+    monsterId: 'troll',
+    seed: 1,
+    players: [
+      { peerId: 'a', name: 'Cleric', classId: 'cleric' },
+      { peerId: 'b', name: 'Knight', classId: 'knight' },
+    ],
+  });
+  w.terrain = [];
+  w.obstacles = [];
+  w.boss!.decisionTimer = 100;
+  w.boss!.moveSpeed = 0;
+  const [cleric, knight] = w.players;
+  cleric.pos = { x: 450, y: 400 };
+  knight.pos = { x: 750, y: 400 };
+  cleric.hp -= 20;
+  spawnZone(w, {
+    kind: 'sanctuary',
+    pos: { ...cleric.pos },
+    radius: 140,
+    side: 'player',
+    ownerId: cleric.id,
+    damagePerTick: 0,
+    healPerTick: 14,
+    duration: 4,
+  });
+  w.step(0.5, new Map());
+  expect(cleric.stats.healingDone).toBe(14);
+  expect(cleric.threat).toBe(0);
+  knight.pos = { x: 480, y: 400 };
+  knight.hp -= 20;
+  w.step(0.5, new Map());
+  expect(cleric.stats.healingDone).toBe(34);
+  expect(cleric.threat).toBeGreaterThan(0);
+});
+
 describe('world: root immobilises the boss (item 9)', () => {
   it('a true-root entangle zone gives the boss a root buff and stops it walking', () => {
     const w = new World({
