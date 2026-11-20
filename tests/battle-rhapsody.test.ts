@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { World } from '../src/engine/world/world';
-import { resolvePlayerAbility } from '../src/engine/combat/abilities';
+import { resolvePlayerAbility, spawnZone } from '../src/engine/combat/abilities';
 import { applyBuff, damagePlayer, makeBuff } from '../src/engine/combat/combat';
 import {
   decompose,
@@ -55,7 +55,7 @@ it.each(['blade', 'inspire', 'bolster', 'shatter'])(
     expect(p.buffs.some((b) => b.kind === 'discord' || b.kind === 'harmony')).toBe(false);
     p.pos = { ...rally.pos };
     w.step(0.01, new Map());
-    expect(p.buffs.find((b) => b.kind === 'rallyPassage')?.remaining).toBe(2);
+    expect(p.buffs.find((b) => b.kind === 'rallyPassage')?.remaining).toBe(3);
     p.buffs = p.buffs.filter((b) => b.kind !== 'rallyPassage');
     w.step(0.01, new Map());
     expect(p.buffs.some((b) => b.kind === 'rallyPassage')).toBe(false);
@@ -121,7 +121,7 @@ it('the rally modifier is priced and survives a real Forge cast', () => {
     ...comp,
     effects: comp.effects.map((e) => (e.kind === 'bardSong' ? { ...e, rhapsody: false } : e)),
   };
-  expect(componentValue(comp) - componentValue(plain)).toBeCloseTo(10);
+  expect(componentValue(comp) - componentValue(plain)).toBeCloseTo(30);
   expect(describeAbility(recompose(comp, { slot: 'a1', name: 'Rally', cooldown: 12 }))).toContain(
     'place a rally',
   );
@@ -169,7 +169,7 @@ it('downed allies cannot collect a rally and unfinished verses leave it unplaced
   expect(w.groundZones).not.toContain(z);
 });
 
-it('a copy outside Valor gives movement on entry without a passive block', () => {
+it('a copy outside Valor gives flight and passage on entry without a passive block', () => {
   const { w, p, cast } = setup();
   delete p.subclassPassiveId;
   cast('a3');
@@ -179,6 +179,7 @@ it('a copy outside Valor gives movement on entry without a passive block', () =>
   p.pos = { ...z.pos };
   w.step(0.01, new Map());
   expect(p.buffs.some((b) => b.kind === 'frontGuard')).toBe(false);
+  expect(p.buffs.some((b) => b.kind === 'flight')).toBe(true);
   expect(p.buffs.some((b) => b.kind === 'rallyPassage')).toBe(true);
 });
 
@@ -210,24 +211,40 @@ it('lets real walking cross a boss and hostile summon while still blocking cover
   };
   const wall = { id: w.allocId(), pos: { x: 920, y: 400 }, radius: 27 };
   w.obstacles.push(wall);
+  spawnZone(w, {
+    kind: 'voidZone',
+    pos: { ...boss.pos },
+    radius: 92,
+    side: 'boss',
+    ownerId: boss.id,
+    damagePerTick: 15,
+    healPerTick: 0,
+    duration: 15,
+  });
   walk(75);
+  expect(p.hp).toBeLessThan(p.maxHp);
   expect(p.pos.x).toBeLessThan(boss.pos.x);
   expect(p.buffs.some((b) => b.kind === 'rallyPassage')).toBe(false);
 
   p.pos = { x: 500, y: 400 };
+  p.hp = p.maxHp;
   cast('a3');
   cast('a2');
   cast('a1');
   walk(100);
   expect(p.pos.x).toBeGreaterThan(add.pos.x);
   expect(add.pos.x).toBe(820);
+  expect(p.hp).toBe(p.maxHp);
   expect(p.pos.x).toBeCloseTo(wall.pos.x - wall.radius - p.radius);
   expect(p.buffs.some((b) => b.kind === 'rallyPassage')).toBe(true);
   expect(damagePlayer(w, p, 10)).toBeGreaterThan(0);
-  walk(90);
+  walk(130);
   expect(p.buffs.some((b) => b.kind === 'rallyPassage')).toBe(false);
+  expect(p.buffs.some((b) => b.kind === 'flight')).toBe(false);
   p.pos = { x: boss.pos.x - boss.radius - p.radius, y: boss.pos.y };
-  walk(30);
+  const landedHp = p.hp;
+  walk(31);
+  expect(p.hp).toBeLessThan(landedHp);
   expect(p.pos.x).toBeCloseTo(boss.pos.x - boss.radius - p.radius);
 });
 
@@ -239,4 +256,53 @@ it('does not grant chorus buffs outside casting range', () => {
   cast('a1');
   expect(ally.buffs).toEqual([]);
   expect(w.groundZones.some((z) => z.rally)).toBe(true);
+});
+
+it('airborne hazards still hit and friendly ground healing still reaches the lifted ally', () => {
+  const { w, p, ally, cast } = setup('ba_valor_blade', true);
+  cast('a3');
+  cast('a2');
+  cast('a1');
+  ally.pos = { ...w.groundZones.find((z) => z.rally)!.pos };
+  applyBuff(ally, makeBuff('flight', 0, 6, 'flight'));
+  const zone = { pos: ally.pos, radius: 30, duration: 2 };
+  spawnZone(w, {
+    ...zone,
+    kind: 'rainOfArrows',
+    side: 'boss',
+    ownerId: 0,
+    damagePerTick: 20,
+    healPerTick: 0,
+  });
+  w.step(0.5, new Map());
+  const damaged = ally.hp;
+  expect(damaged).toBeLessThan(ally.maxHp);
+  expect(ally.buffs.find((b) => b.source === 'flight')?.remaining).toBe(5.5);
+  expect(ally.buffs.find((b) => b.source === 'rallyFlight')?.remaining).toBe(3);
+
+  spawnZone(w, {
+    ...zone,
+    kind: 'sanctuary',
+    side: 'player',
+    ownerId: p.id,
+    damagePerTick: 0,
+    healPerTick: 50,
+  });
+  w.step(0.5, new Map());
+  expect(ally.hp).toBeGreaterThan(damaged);
+
+  // An extended flight can outlast Passage and a fresh pickup keeps that time.
+  ally.buffs.find((b) => b.source === 'rallyFlight')!.remaining = 5;
+  cast('a3');
+  cast('a2');
+  cast('a1');
+  w.step(0.5, new Map());
+  expect(ally.buffs.find((b) => b.source === 'rallyFlight')?.remaining).toBe(4.5);
+  expect(ally.buffs.find((b) => b.kind === 'rallyPassage')?.remaining).toBe(3);
+
+  ally.hp = 0;
+  w.step(0.01, new Map());
+  expect(ally.buffs.some((b) => b.source === 'rallyFlight' || b.kind === 'rallyPassage')).toBe(
+    false,
+  );
 });

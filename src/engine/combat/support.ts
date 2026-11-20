@@ -22,6 +22,8 @@ import { dist, pointInSegment, sub, wrapPos } from '../core/torus';
 import { applyBuff, makeBuff, healPlayer, damageBoss, damageAdd } from './combat';
 import { spawnZone } from './abilities';
 
+const RALLY_PASSAGE_SECONDS = 3;
+
 export function nearbySupportAllies(world: World, p: Player, range: number): Player[] {
   return world.players.filter((a) => a.state === 'alive' && dist(p.pos, a.pos) <= range);
 }
@@ -380,7 +382,13 @@ export function visitRhapsodyRallies(world: World): void {
       )
         continue;
       rally.visitors.push(ally.id);
-      applyBuff(ally, makeBuff('rallyPassage', 0, 2, 'rallyPassage'));
+      applyBuff(ally, makeBuff('rallyPassage', 0, RALLY_PASSAGE_SECONDS, 'rallyPassage'));
+      const remainingFlight = ally.buffs.find((b) => b.source === 'rallyFlight')?.remaining ?? 0;
+      applyBuff(
+        ally,
+        makeBuff('flight', 0, Math.max(remainingFlight, RALLY_PASSAGE_SECONDS), 'rallyFlight'),
+      );
+      supportCue(world, owner, ally, 'haste');
     }
   }
 }

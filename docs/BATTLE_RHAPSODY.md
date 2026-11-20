@@ -1,8 +1,8 @@
 # Battle Rhapsody
 
-The owner merged and tested #190. Unyielding Faith is accepted for now.
-The aimed rally was worth keeping, but routing ordinary chorus effects through
-it made allies move just to recover buffs they previously received on cast.
+The owner merged and tested #191 and liked the restored chorus and Rally
+Passage. The crossing still felt weak when a damaging pool covered the boss.
+The rally now gives flight alongside body passage.
 
 ## The chorus and the rally
 
@@ -13,14 +13,20 @@ its frontal block when ready, and Bolster still cleanses the chorus
 recipients. Normal range, buff durations and passive recovery apply.
 
 The same cast places a 95u rally 200u in the aim direction for four seconds.
-Each living ally who touches it gains two seconds of **Rally Passage**, even
-after leaving the field. You can move through living bosses and hostile
-summons during that window. Terrain, totems and other allies remain solid.
-Damage, slows, stuns, roots and forced movement still work. The rally is
-labeled in the arena, and the passage status has its own arrow icon.
+Each living ally who touches it gains three seconds of **Rally Passage**
+and normal flight, even after leaving the field. The two effects let you
+cross living bosses and hostile summons and pass over ground pools, snares
+and damaging terrain. Friendly heals still reach you. Terrain obstacles,
+totems and other allies remain solid. Direct hits, aerial hazards and
+telegraphed impacts can still land, and existing control still applies.
+The arena label shows both effects, and the airborne and passage status
+icons show their timers.
+
 Each ally can collect the field once. A new rally replaces that Bard's old
-one, and downing or a class change ends the uncollected field. Overlapping
-pickups refresh the passage timer without adding their durations.
+one, and downing or changing class ends the caster's uncollected field.
+Downing removes the collected rally effects from the recipient. Overlapping
+pickups refresh the rally timers. An existing longer flight keeps its
+remaining time.
 
 In solo play, aim at the boss's flank, step into the rally and cross its body
 to reach another angle. Against a locked frontal telegraph, approach from the
@@ -28,8 +34,8 @@ side so the route can take you behind it without walking down the attack
 line. In co-op, stay in chorus range for the buffs, then decide independently
 whether crossing the boss or a pack of summons is worth the detour. The rally
 does not move the enemy or change a committed attack. The bounded Sol 6.2
-High review favored body passage over another control ward because it opens
-a route for every kit and works against a lone boss.
+High review favored ordinary flight for the crossing so the same rules
+apply against ground and aerial hazards.
 
 At full HP, cast Dissonant Whispers, then Healing Word with Discord ready to
 prepare Harmony. This does not award restored HP or trigger effective-heal
@@ -37,18 +43,18 @@ rewards. The ordinary effective-heal route and both verse timers still work.
 All four first picks can spend with Inspiration. Battle Hymn and Bolster add
 spenders, while Blade Flourish and Shatter add Discord routes.
 
-A retained Harmony or chorus component still has a rigid 10-value Forge
-premium for its respective behavior. The Forge identity requires a retained
-chorus and access to both verses. Frontal blocks from Rallying Chorus still
-require the native passive.
+The retained Harmony component keeps its 10-value Forge premium. The
+chorus premium is now 30 for the combined flight and body passage, which
+requires both verses and entry. The Forge identity still requires a retained
+chorus and access to both verses. Rallying Chorus blocks still require the
+native passive.
 
 ## Playtest and next step
 
-In co-op, cast a full chorus with an ally in range but outside the rally.
-Check that the buffs arrive immediately, then compare a normal approach with
-crossing a boss or summon through the rally. In solo, try crossing a boss
-while it is winding up a frontal attack and verify that crossing the body
-still leaves you exposed to any damaging area you actually enter.
+In co-op, verify the full chorus arrives immediately outside the rally.
+In solo, cross a boss standing in a damaging pool and land outside it.
+Try the route again under aerial attacks or a committed impact. The timing
+still matters because those attacks can hit while you are airborne.
 
 Fixed-encounter whole-system comparisons follow this playtest, using the
 accepted behavior as the baseline. Ordinary upgrade value, acquisition,

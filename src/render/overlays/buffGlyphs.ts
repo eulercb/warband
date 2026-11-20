@@ -96,7 +96,7 @@ function describe(
         color: 0xe0caff,
         good: true,
         label:
-          'Rally Passage: move through bosses and hostile summons; attacks and cover still apply',
+          'Rally Passage: fly over ground hazards and move through hostile bodies; attacks and cover still apply',
       };
     case 'steadfast':
       return {

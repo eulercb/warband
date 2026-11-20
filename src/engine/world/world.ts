@@ -3867,7 +3867,9 @@ export class World {
     for (const p of this.players) {
       if (p.state === 'alive' && p.hp <= 0) {
         delete p.faithWound;
-        p.buffs = p.buffs.filter((b) => b.kind !== 'absorption' && b.kind !== 'rallyPassage');
+        p.buffs = p.buffs.filter(
+          (b) => b.kind !== 'absorption' && b.kind !== 'rallyPassage' && b.source !== 'rallyFlight',
+        );
         // Phoenix charm (item 21): spend a self-revive to spring straight back up
         // with a short invulnerability window instead of falling. Fires once per
         // charge, before the normal downed transition.
