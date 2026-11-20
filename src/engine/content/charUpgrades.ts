@@ -290,19 +290,22 @@ const RANGER: CharUpgradeDef[] = [
       addN(a.a1, 'damage', 4);
     },
   ),
-  u(
-    'ranger',
-    'rg_frost',
-    'Frost Arrows',
-    '❄️',
-    'Arrow and Multishot chill the target to 60% move speed for 1.5s',
-    ({ abilities: a }) => {
-      for (const ab of [a.basic, a.a1]) {
-        ab.slowMult = Math.min(ab.slowMult ?? 1, 0.6);
-        ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.5);
-      }
-    },
-  ),
+  {
+    ...u(
+      'ranger',
+      'rg_frost',
+      'Frost Arrows',
+      '❄️',
+      'Arrow and Multishot chill the target to 60% move speed for 1.5s',
+      ({ abilities: a }) => {
+        for (const ab of [a.basic, a.a1]) {
+          ab.slowMult = Math.min(ab.slowMult ?? 1, 0.6);
+          ab.slowDuration = Math.max(ab.slowDuration ?? 0, 1.5);
+        }
+      },
+    ),
+    maxStacks: 1,
+  },
   u(
     'ranger',
     'rg_volley',

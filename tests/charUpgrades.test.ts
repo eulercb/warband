@@ -368,6 +368,10 @@ describe('ranger upgrades', () => {
       expect(ab.slowMult!).toBeCloseTo(0.6, 5);
       expect(ab.slowDuration!).toBeCloseTo(1.5, 5);
     }
+    expect(charUpgradeAtMax('rg_frost', ['rg_frost'])).toBe(true);
+    expect(rollCharChoices('ranger', 100, () => 0.9)).toContain('rg_frost');
+    expect(rollCharChoices('ranger', 100, () => 0.9, ['rg_frost'])).not.toContain('rg_frost');
+    expect(apply('ranger', ['rg_frost', 'rg_frost']).abilities).toEqual(a);
   });
   it('rg_volley fans two extra Multishot arrows', () => {
     const a = apply('ranger', ['rg_volley']).abilities!;
