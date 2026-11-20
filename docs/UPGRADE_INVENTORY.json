@@ -10772,7 +10772,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "With Discord ready, Healing Word can prepare Harmony at full health. A two-verse chorus buffs allies in range and places a 95u rally 200u ahead for 4s. Each ally who enters can move through foes for 2s",
+      "description": "With Discord ready, Healing Word can prepare Harmony at full health. A two-verse chorus buffs allies in range and places a 95u rally 200u ahead for 4s. Each ally who enters gains 3s of flight and passage through foes",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,

@@ -38,7 +38,7 @@ accepted reflection readiness, return travel and the distinct mirror marker.
 All 24 subclasses have completed the first purpose inspection. Light reflection,
 both Life identities and the Refuge expulsion follow-up (#184) have been
 playtested. The final support review provisionally retains the A choices for
-Devotion, Vengeance and Valor. The owner merged and tested Relentless Vengeance and its pursuit tuning (#188). The owner liked Unyielding Faith in #189 and requested independent ally protection and clearer cues. The owner merged and tested #190 and accepted the [Faith follow-up](UNYIELDING_FAITH.md) for now. The Battle Rhapsody follow-up restores the ordinary chorus and adds optional body passage. That revision awaits live feedback. Inspection does not establish live acceptance or equal power.
+Devotion, Vengeance and Valor. The owner merged and tested Relentless Vengeance and its pursuit tuning (#188). The owner liked Unyielding Faith in #189 and requested independent ally protection and clearer cues. The owner merged and tested #190 and accepted the [Faith follow-up](UNYIELDING_FAITH.md) for now. The owner merged and tested #191, liked the restored chorus and body passage, and found it weak when a ground hazard covered the crossing. The new rally grants flight with passage and awaits live feedback. Inspection does not establish live acceptance or equal power.
 
 ## Next development work, in order
 

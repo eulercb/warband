@@ -1166,7 +1166,7 @@ export class Renderer {
           at = this.camera.worldToScreen(z.pos);
         t.visible = true;
         t.text = z.rally
-          ? `Rally · Pass through foes · ${z.remaining.toFixed(1)}s`
+          ? `Rally · Flight + Passage · ${z.remaining.toFixed(1)}s`
           : `Rescue font · ${z.revivalFont === 'sanctuary' ? 'all' : 'one'} · 1`;
         t.alpha = 1;
         t.position.set(

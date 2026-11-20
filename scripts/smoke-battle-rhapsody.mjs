@@ -37,6 +37,7 @@ try {
         const { pushHud } = await import('/src/ui/state/hudBridge.ts');
         const { Host } = await import('/src/net/session/host.ts');
         const { World } = await import('/src/engine/world/world.ts');
+        const { spawnZone } = await import('/src/engine/combat/abilities.ts');
         const { KeyboardMouse } = await import('/src/input/keyboard.ts');
         const { sampleTouch } = await import('/src/input/touch.ts');
         const { Renderer } = await import('/src/render/pipeline/renderer.ts');
@@ -107,7 +108,7 @@ try {
           );
           publish();
         }
-        window.probe = { w, p, step, renderer };
+        window.probe = { w, p, step, renderer, spawnZone };
         publish();
       },
       { width },
@@ -134,16 +135,26 @@ try {
     await cast('a2', 'e');
     await cast('a1', 'q');
     await page.evaluate(() => {
-      const { w, p, renderer } = window.probe;
+      const { w, p, renderer, spawnZone } = window.probe;
       if (
         !w.groundZones.some((z) => z.rally) ||
         !window.rallyRemote.groundZones.some((z) => z.rally) ||
-        !renderer.labels.some((t) => t.visible && t.text.startsWith('Rally ·')) ||
+        !renderer.labels.some((t) => t.visible && t.text.startsWith('Rally · Flight + Passage')) ||
         !p.buffs.some((b) => b.kind === 'frontGuard') ||
         p.buffs.some((b) => b.kind === 'rallyPassage')
       )
         throw Error('Missing immediate chorus guard, missing rally, or early passage');
       w.boss.pos = { x: p.pos.x + 180, y: p.pos.y };
+      spawnZone(w, {
+        kind: 'voidZone',
+        pos: w.boss.pos,
+        radius: 90,
+        duration: 8,
+        side: 'boss',
+        ownerId: w.boss.id,
+        damagePerTick: 30,
+        healPerTick: 0,
+      });
     });
     if (width === 320) {
       const box = await page.locator('.wb-touch-stick-left').boundingBox();
@@ -154,8 +165,15 @@ try {
     await page.evaluate(() => {
       const { w, p, step } = window.probe;
       for (let i = 0; i < 100; i++) step();
-      if (p.pos.x <= w.boss.pos.x || !p.buffs.some((b) => b.kind === 'rallyPassage'))
-        throw Error('Visiting the rally did not grant its effects');
+      if (
+        p.pos.x <= w.boss.pos.x ||
+        p.hp !== p.maxHp ||
+        !p.buffs.some((b) => b.kind === 'rallyPassage') ||
+        !window.rallyRemote.players
+          .find((hero) => hero.id === p.id)
+          ?.buffs.some((b) => b.kind === 'flight')
+      )
+        throw Error('Passage and flight did not carry the Bard unharmed through the boss and pool');
     });
     if (width === 320) await page.mouse.up();
     else await page.keyboard.up('d');

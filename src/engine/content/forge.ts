@@ -1041,7 +1041,8 @@ function effectValue(e: EffectComponent, fan: number): number {
     case 'allyWard':
       return (1 - e.ward.mult) * e.ward.duration * 24;
     case 'bardSong':
-      return (e.part === 'chorus' ? 15 : 8) + (e.rhapsody ? 10 : 0);
+      // The chorus premium includes a flight window gated by verses and rally entry.
+      return e.part === 'chorus' ? 15 + (e.rhapsody ? 30 : 0) : 8 + (e.rhapsody ? 10 : 0);
     case 'infernalAperture':
       return (54 * e.aperture.duration) / 6 + e.aperture.emberDamage;
     case 'returningShot':
