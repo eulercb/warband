@@ -139,9 +139,11 @@ try {
         !w.groundZones.some((z) => z.rally) ||
         !window.rallyRemote.groundZones.some((z) => z.rally) ||
         !renderer.labels.some((t) => t.visible && t.text.startsWith('Rally ·')) ||
-        p.buffs.some((b) => b.kind === 'frontGuard')
+        !p.buffs.some((b) => b.kind === 'frontGuard') ||
+        p.buffs.some((b) => b.kind === 'rallyPassage')
       )
-        throw Error('No aimed rally or an early guard');
+        throw Error('Missing immediate chorus guard, missing rally, or early passage');
+      w.boss.pos = { x: p.pos.x + 180, y: p.pos.y };
     });
     if (width === 320) {
       const box = await page.locator('.wb-touch-stick-left').boundingBox();
@@ -150,12 +152,9 @@ try {
       await page.mouse.move(box.x + box.width / 2 + 90, box.y + box.height / 2);
     } else await page.keyboard.down('d');
     await page.evaluate(() => {
-      const { p, step } = window.probe;
+      const { w, p, step } = window.probe;
       for (let i = 0; i < 100; i++) step();
-      if (
-        !p.buffs.some((b) => b.kind === 'frontGuard') ||
-        !p.buffs.some((b) => b.source === 'chorusMove')
-      )
+      if (p.pos.x <= w.boss.pos.x || !p.buffs.some((b) => b.kind === 'rallyPassage'))
         throw Error('Visiting the rally did not grant its effects');
     });
     if (width === 320) await page.mouse.up();

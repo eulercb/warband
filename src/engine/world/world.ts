@@ -3767,14 +3767,22 @@ export class World {
       ...this.adds,
     ];
     const bosses = this.aliveBosses();
+    const passage = new Set<Player | Add>(
+      this.players.filter((p) => p.state === 'alive' && hasBuff(p, 'rallyPassage')),
+    );
+    const hostileAdds = new Set<Player | Add>(this.adds.filter(hostileAdd));
     for (let iter = 0; iter < SEPARATION_ITERATIONS; iter++) {
       for (let i = 0; i < movers.length; i++) {
         for (let j = i + 1; j < movers.length; j++) {
-          this.separatePair(movers[i], movers[j]);
+          const a = movers[i],
+            b = movers[j];
+          // Players precede adds in movers. Passage only bypasses hostile bodies.
+          if (passage.has(a) && hostileAdds.has(b)) continue;
+          this.separatePair(a, b);
         }
       }
       for (const b of bosses) {
-        for (const m of movers) this.pushOutOfBoss(m, b);
+        for (const m of movers) if (!passage.has(m)) this.pushOutOfBoss(m, b);
       }
       // Twin bosses shove each other apart too, so a duo can't merge into one
       // unreadable blob of hitboxes.
@@ -3859,7 +3867,7 @@ export class World {
     for (const p of this.players) {
       if (p.state === 'alive' && p.hp <= 0) {
         delete p.faithWound;
-        p.buffs = p.buffs.filter((b) => b.kind !== 'absorption');
+        p.buffs = p.buffs.filter((b) => b.kind !== 'absorption' && b.kind !== 'rallyPassage');
         // Phoenix charm (item 21): spend a self-revive to spring straight back up
         // with a short invulnerability window instead of falling. Fires once per
         // charge, before the normal downed transition.
