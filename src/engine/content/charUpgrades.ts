@@ -5745,8 +5745,8 @@ function replayCharUpgrades(player: Player, ids: readonly string[]): Record<Abil
     if (graftup) {
       const boon = CHAR_UPGRADES[graftup.boonId]; // parseGraftup guarantees it exists
       const key = occupant[graftup.slot];
-      // An invalid/stale synthetic pick must not tune a reclaimed native skill.
-      if (key === graftup.slot || !CHAR_UPGRADES[key]?.graftSource) continue;
+      // Multiclass replay can have a different occupant in the same slot.
+      if (!graftBoonFits(CHAR_UPGRADES[key]?.graftSource, boon)) continue;
       const target = registry.get(key)!;
       // Point every proxy slot at the graft def so the (single-slot) source boon
       // lands on it regardless of which slot it natively targets.
@@ -6258,6 +6258,16 @@ const BOON_SLOTS: Record<string, AbilitySlot[]> = (() => {
   return map;
 })();
 
+function graftBoonFits(source: CharUpgradeDef['graftSource'], boon: CharUpgradeDef): boolean {
+  const touched = BOON_SLOTS[boon.id];
+  return (
+    !!source &&
+    boon.classId === source.classId &&
+    touched?.length === 1 &&
+    touched[0] === source.slot
+  );
+}
+
 /** Which SkillKey sits in each slot after a hero's owned upgrades are replayed. */
 export function occupancyAfter(
   classId: ClassId,
@@ -6298,8 +6308,7 @@ export function reofferCandidates(classId: ClassId, owned: readonly string[]): s
     const src = CHAR_UPGRADES[key]?.graftSource;
     if (!src) continue;
     for (const b of CHAR_UPGRADES_BY_CLASS[src.classId] ?? []) {
-      const touched = BOON_SLOTS[b.id] ?? [];
-      if (touched.length !== 1 || touched[0] !== src.slot) continue;
+      if (!graftBoonFits(src, b)) continue;
       const gid = `${GRAFTUP_PREFIX}${slot}:${b.id}`;
       if (!charUpgradeAtMax(gid, owned)) out.push(gid);
     }
