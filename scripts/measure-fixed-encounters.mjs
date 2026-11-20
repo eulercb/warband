@@ -73,6 +73,27 @@ const builds = [
     bosses: ['troll', 'lich'],
     identities: ['cl_life_g_a', 'cl_life_g_b'],
   },
+  {
+    label: 'Moon',
+    classId: 'druid',
+    pick: 'dr_moon_maul',
+    bosses: ['troll', 'dragon'],
+    identities: ['dr_moon_g_a', 'dr_moon_g_b'],
+  },
+  {
+    label: 'Land',
+    classId: 'druid',
+    pick: 'dr_land_spring',
+    bosses: ['troll', 'dragon'],
+    identities: ['dr_land_g_a', 'dr_land_g_b'],
+  },
+  {
+    label: 'Land',
+    classId: 'druid',
+    pick: 'dr_land_wall',
+    bosses: ['troll', 'dragon'],
+    identities: ['dr_land_g_a', 'dr_land_g_b'],
+  },
 ];
 
 const thirdSlots = [
@@ -118,6 +139,11 @@ try {
   const { sub, dist } = await server.ssrLoadModule('/src/engine/core/torus.ts');
   const { zoneReachesAir, isFlying } = await server.ssrLoadModule('/src/engine/combat/combat.ts');
   const { vengeancePursuit } = await server.ssrLoadModule('/src/engine/combat/abilities.ts');
+  const { fieldTransplantViews } = await server.ssrLoadModule(
+    '/src/engine/combat/fieldTransplant.ts',
+  );
+  const { boundedAbility } = await server.ssrLoadModule('/src/engine/content/abilityLimits.ts');
+  const { inMoonForm } = await server.ssrLoadModule('/src/engine/combat/moonForm.ts');
   const { getCharUpgrade } = await server.ssrLoadModule('/src/engine/content/charUpgrades.ts');
 
   function command(world, player, seekRally, holdLane, triage) {
@@ -132,19 +158,27 @@ try {
     const archer = player.classId === 'ranger';
     const cleric = player.classId === 'cleric';
     const druid = player.classId === 'druid';
+    const moon = player.subclassPassiveId === 'moon_aspect';
+    const entangle = druid ? boundedAbility(player.abilities.a1, world.arena) : null;
+    const wall =
+      druid && subSkill?.zoneKind === 'entangle' ? boundedAbility(subSkill, world.arena) : null;
+    const fieldAligned = (ab) =>
+      Math.abs((ab.range ?? 500) - distance) <= Math.max(45, (ab.radius ?? 125) - 45);
     const healer = cleric || druid;
     const whispers =
       player.subclassPassiveId === 'whispers_echoed_refrain' ||
       player.subSkillIds?.includes('ba_whispers_wound');
-    const spacing = archer
-      ? player.spiritCompanion
-        ? 120
-        : 230
-      : healer
-        ? 235
-        : ranged && !meleeValor
-          ? whisperReach - 25
-          : boss.radius + player.radius + 8;
+    const spacing = moon
+      ? boss.radius + player.radius + 25
+      : archer
+        ? player.spiritCompanion
+          ? 120
+          : 230
+        : healer
+          ? 235
+          : ranged && !meleeValor
+            ? whisperReach - 25
+            : boss.radius + player.radius + 8;
     let move = distance > spacing + 20 ? aim : holdLane ? { x: 0, y: 0 } : tangent;
     if (distance < spacing - 15) move = { x: -aim.x, y: -aim.y };
     // Use the same movement policy for either identity. The optional rally and
@@ -161,6 +195,16 @@ try {
         (!isFlying(player) || zoneReachesAir(z)) &&
         dist(z.pos, player.pos) < z.radius + player.radius + 15,
     );
+    if (
+      druid &&
+      !moon &&
+      player.peerId === 'lead' &&
+      !danger &&
+      entangle.kind === 'groundZone' &&
+      player.cooldowns.a1 < 1 &&
+      !fieldAligned(entangle)
+    )
+      move = distance < (entangle.range ?? 400) ? { x: -aim.x, y: -aim.y } : aim;
     if (danger) move = normalize(sub(player.pos, danger.pos));
     const fallen = world.players.find((ally) => ally.state === 'downed');
     if (fallen && !danger)
@@ -203,6 +247,22 @@ try {
       move = normalize(sub(fieldTarget.pos, player.pos));
     const fieldCast =
       field && fieldTarget && dist(fieldTarget.pos, player.pos) <= (field[1].radius ?? 140);
+    const transplant =
+      druid &&
+      !moon &&
+      !danger &&
+      !fallen &&
+      fieldTransplantViews(world, { ...player, aim }).find((view) => {
+        const zone = world.groundZones.find((z) => z.id === view.zoneId);
+        const target = zone.damagePerTick > 0 ? boss : hurt[0];
+        return (
+          !view.blocked &&
+          view.remaining >= 0.6 &&
+          target &&
+          dist(target.pos, view.from) > zone.radius + target.radius &&
+          dist(target.pos, view.to) < zone.radius + target.radius
+        );
+      });
     const verse = (kind) => player.buffs.some((b) => b.kind === kind);
     const incoming =
       (boss.action.kind === 'windup' && boss.action.remaining < 0.6) ||
@@ -259,7 +319,18 @@ try {
               ? [
                   ['a2', healInRange(player.abilities.a2)],
                   [field?.[0], Boolean(fieldCast)],
-                  ['a1', distance > (player.abilities.a1.range ?? 460) - 110 && distance < 520],
+                  [
+                    'a1',
+                    entangle.kind === 'buffAlly' ||
+                      (entangle.kind === 'groundZone' && fieldAligned(entangle)),
+                  ],
+                  [
+                    'sub1',
+                    Boolean(wall && fieldAligned(wall)) ||
+                      (moon &&
+                        subSkill?.kind === 'meleeCone' &&
+                        distance < (subSkill.range ?? 80) + boss.radius),
+                  ],
                   ['a3', distance < (player.abilities.a3.radius ?? 155) + boss.radius],
                 ]
               : archer
@@ -274,7 +345,10 @@ try {
                     ['a1', distance < spacing + 25],
                   ];
     const pursuit = player.prevButtons.basic && vengeancePursuit(world, { ...player, aim });
-    const slot = choices.find(([key, wanted]) => wanted && ready(key))?.[0] ?? 'basic';
+    const slot = transplant
+      ? transplant.slot
+      : (choices.find(([key, wanted]) => wanted && ready(key))?.[0] ?? 'basic');
+    const releaseForTransplant = Boolean(transplant && player.prevButtons[slot]);
     const releaseForPursuit = slot === 'basic' && pursuit && !pursuit.blocked;
     const revive = Boolean(fallen) && !danger && !(fieldCast && field[1].revivalFont);
     const approachFont = Boolean(fallen && field && field[1].revivalFont && !fieldCast);
@@ -290,7 +364,7 @@ try {
         a2: false,
         a3: false,
         revive,
-        [slot]: !revive && !releaseForPursuit && !approachFont,
+        [slot]: !revive && !releaseForPursuit && !releaseForTransplant && !approachFont,
       },
     };
   }
@@ -373,6 +447,8 @@ try {
       fearSeconds: 0,
       quarrySeconds: 0,
       healingReceived: 0,
+      moonSeconds: 0,
+      transplants: 0,
       casts: {},
     }));
     const wounds = world.players.map(() => []);
@@ -400,6 +476,7 @@ try {
         pursuitReadyAt: p.vengeancePursuitReadyAt,
         pursuing: Boolean(p.glide?.vengeancePursuit),
         hunt: p.spiritCompanion?.hunt,
+        transplantOptions: Object.values(p.fieldTransplants ?? {}).filter((cast) => !cast.used),
       }));
       const priorRallies = world.groundZones.filter((z) => z.rally);
       const priorShots = new Map(
@@ -456,6 +533,8 @@ try {
       const rallies = new Set([...priorRallies, ...world.groundZones.filter((z) => z.rally)]);
       world.players.forEach((p, i) => {
         const now = effects[i];
+        if (inMoonForm(p)) now.moonSeconds += dt;
+        now.transplants += prior[i].transplantOptions.filter((cast) => cast.used).length;
         if (p.spiritCompanion?.hunt && p.spiritCompanion.hunt !== prior[i].hunt) now.packHunts++;
         for (const z of rallies) {
           const key = `${z.id}:${p.id}`;
@@ -540,6 +619,7 @@ try {
         fearSeconds: round(effects[i].fearSeconds),
         quarrySeconds: round(effects[i].quarrySeconds),
         healingReceived: round(effects[i].healingReceived),
+        moonSeconds: round(effects[i].moonSeconds),
         damageDealt: round(p.stats.damageDealt),
         healingDone: round(p.stats.healingDone),
         revives: p.stats.revives,
@@ -557,6 +637,10 @@ try {
             fight(build, identity, boss, seed, party, seekRally, ordinary, ranks, holdLane);
           const matched = [null, ...build.identities].map((id) => run(id));
           if (build.pick.startsWith('ba_valor_')) matched.push(run(build.identities[1], false));
+          if (build.pick === 'dr_land_wall')
+            matched.push(
+              ...['dr_grasp', 'hy_inspire'].map((id) => run(build.identities[1], true, id, 1)),
+            );
           if (build.pick === 'rg_hunter_mark')
             matched.push(...[null, ...build.identities].map((id) => run(id, true, null, 0, true)));
           // Ordinary comparisons use the same identity at ranks 0, 1 and 3.

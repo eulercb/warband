@@ -39,7 +39,7 @@ slots. Apply confirmed fixes and rerun matched comparisons in the same
 batch. Keep policies reproducible and vary the controller when outcomes
 depend on a positioning or timing assumption.
 
-The representative support cohort is measured. Next is **Druid as lead**,
-then martial classes, casters, and Rogue/Warlock. Track
+The representative support and nature cohorts are measured. Next is
+**Knight**, then the other martial classes, casters, and Rogue/Warlock. Track
 acquisition and graft work alongside cohorts. The [development
 roadmap](DEVELOPMENT_STATUS.md) records the visual and encounter milestones.

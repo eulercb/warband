@@ -1,4 +1,5 @@
 import { activeSubclassPassive } from '../src/engine/content/subclasses';
+import { World } from '../src/engine/world/world';
 import { packTactics } from '../src/engine/combat/companions';
 import { describe, it, expect } from 'vitest';
 import {
@@ -1437,6 +1438,38 @@ describe('skill-keyed progression: grafted-skill upgrades (graftup)', () => {
     ]).abilities!;
     expect(a.a2.damage).toBe(102);
     expect(a.a2.castTime!).toBeCloseTo(0.42, 5); // 0.7 * 0.6
+  });
+
+  it('keeps a donor boon on the matching graft in shared multiclass history', () => {
+    const picks = ['hy_pyromancer', 'hy_fieldmedic'];
+    const boon = 'graftup:a2:cl_greaterheal';
+    expect(reofferCandidates('knight', picks)).toContain(boon);
+    expect(reofferCandidates('cleric', picks)).not.toContain(boon);
+
+    const knight = previewAbilityTable('knight', picks).a2;
+    const cleric = previewAbilityTable('cleric', picks).a2;
+    expect(previewAbilityTable('knight', [...picks, boon]).a2.damage).toBeGreaterThan(
+      knight.damage,
+    );
+    expect(previewAbilityTable('cleric', [...picks, boon]).a2).toEqual(cleric);
+    const world = new World({
+      monsterId: 'troll',
+      seed: 31,
+      players: [
+        {
+          peerId: 'hero',
+          name: 'Knight',
+          classId: 'knight',
+          extraClasses: ['cleric'],
+          charUpgrades: [...picks, boon],
+        },
+      ],
+    });
+    const hero = world.players[0];
+    expect(hero.abilities!.a2.damage).toBeGreaterThan(knight.damage);
+    world.setActiveClass(hero, 'cleric');
+    expect(hero.abilities!.a2.damage).toBe(cleric.damage);
+    expect(hero.abilities!.a2.name).toBe(cleric.name);
   });
 
   it('a graftup on a non-graft slot is harmless (applies to whatever is there)', () => {
