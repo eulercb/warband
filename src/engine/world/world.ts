@@ -2626,7 +2626,7 @@ export class World {
         if (dist(z.pos, p.pos) <= z.radius + p.radius) {
           // heal via combat.healPlayer for stats/threat
           const missing = Math.max(0, p.maxHp - p.hp) + (p.faithWound?.amount ?? 0);
-          this.healViaZone(owner, p, z.healPerTick);
+          healPlayer(this, owner, p, z.healPerTick);
           if (z.overflowShield && owner?.state === 'alive')
             grantAbsorption(p, Math.max(0, z.healPerTick - missing), OVERFLOW_SECONDS, true);
         }
@@ -2661,22 +2661,6 @@ export class World {
         target,
         makeBuff('damageDealt', DREAD_DAMAGE_MULT, duration, `curseWeakness:${owner.id}:${z.id}`),
       );
-  }
-
-  private healViaZone(owner: Player | null, target: Player, amount: number): void {
-    const effective = Math.min(payFaithWound(target, amount), target.maxHp - target.hp);
-    if (effective <= 0) return;
-    target.hp += effective;
-    if (owner) {
-      owner.stats.healingDone += effective;
-      owner.threat += effective * 0.5 * getClass(owner.classId).threatMult;
-    }
-    this.events.push({
-      t: 'heal',
-      pos: { ...target.pos },
-      amount: effective,
-      targetId: target.id,
-    });
   }
 
   // -------------------------------------------------------------------------

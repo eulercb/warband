@@ -1901,6 +1901,21 @@ describe('beamTick', () => {
     expect(boss.hp - bHp).toBeCloseTo(15, 6);
   });
 
+  it('heals only for remaining HP on a lethal drain tick', () => {
+    const w = mkWorld('knight', 'lich');
+    const boss = w.boss!;
+    const p = w.players[0];
+    boss.healScale = 1;
+    boss.pos = { x: 800, y: 400 };
+    boss.hp = boss.maxHp - 100;
+    p.pos = { x: 800, y: 450 };
+    p.hp = 1;
+    const before = boss.hp;
+    expect(beamTick(w, boss, bossAb('lich', 'lifeDrain'), mkAction({ targetId: p.id }))).toBe(1);
+    expect(p.hp).toBeLessThanOrEqual(0);
+    expect(boss.hp - before).toBeCloseTo(1, 6);
+  });
+
   it('does nothing when the target is out of range', () => {
     const w = mkWorld('knight', 'lich');
     const boss = w.boss!;

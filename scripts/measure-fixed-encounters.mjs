@@ -52,6 +52,58 @@ const builds = [
     bosses: ['troll', 'dragon', 'lich'],
     identities: ['rg_beastmaster_g_a', 'rg_beastmaster_g_b'],
   },
+  {
+    label: 'Whispers',
+    classId: 'bard',
+    pick: 'ba_whispers_wound',
+    bosses: ['troll', 'lich'],
+    identities: ['ba_whispers_g_a', 'ba_whispers_g_b'],
+  },
+  {
+    label: 'Light',
+    classId: 'cleric',
+    pick: 'cl_light_beam',
+    bosses: ['troll', 'lich'],
+    identities: ['cl_light_g_a', 'cl_light_g_b'],
+  },
+  {
+    label: 'Life',
+    classId: 'cleric',
+    pick: 'cl_life_bloom',
+    bosses: ['troll', 'lich'],
+    identities: ['cl_life_g_a', 'cl_life_g_b'],
+  },
+];
+
+const thirdSlots = [
+  { name: 'Hunter damage', classId: 'ranger', skills: ['rg_hunter_mark'] },
+  {
+    name: 'Whispers utility',
+    classId: 'bard',
+    skills: ['ba_whispers_wound'],
+    identity: 'ba_whispers_g_b',
+  },
+  { name: 'Light offense', classId: 'cleric', skills: ['cl_light_beam'], identity: 'cl_light_g_a' },
+  {
+    name: 'Life protection',
+    classId: 'cleric',
+    skills: ['cl_life_preserve'],
+    identity: 'cl_life_g_b',
+  },
+  {
+    name: 'Life triage',
+    classId: 'cleric',
+    skills: ['cl_life_bloom', 'cl_life_mend'],
+    identity: 'cl_life_g_a',
+    triage: true,
+  },
+  {
+    name: 'Life same kit, conservative',
+    classId: 'cleric',
+    skills: ['cl_life_bloom', 'cl_life_mend'],
+    identity: 'cl_life_g_a',
+  },
+  { name: 'Druid recovery', classId: 'druid', skills: ['dr_land_spring'], triage: true },
 ];
 
 const server = await createServer({
@@ -68,7 +120,7 @@ try {
   const { vengeancePursuit } = await server.ssrLoadModule('/src/engine/combat/abilities.ts');
   const { getCharUpgrade } = await server.ssrLoadModule('/src/engine/content/charUpgrades.ts');
 
-  function command(world, player, seekRally, holdLane) {
+  function command(world, player, seekRally, holdLane, triage) {
     const boss = world.boss;
     const aim = normalize(sub(boss.pos, player.pos));
     const distance = dist(boss.pos, player.pos);
@@ -78,13 +130,21 @@ try {
     const subSkill = player.subAbilities?.sub1;
     const meleeValor = ranged && subSkill?.kind === 'meleeCone';
     const archer = player.classId === 'ranger';
+    const cleric = player.classId === 'cleric';
+    const druid = player.classId === 'druid';
+    const healer = cleric || druid;
+    const whispers =
+      player.subclassPassiveId === 'whispers_echoed_refrain' ||
+      player.subSkillIds?.includes('ba_whispers_wound');
     const spacing = archer
       ? player.spiritCompanion
         ? 120
         : 230
-      : ranged && !meleeValor
-        ? whisperReach - 25
-        : boss.radius + player.radius + 8;
+      : healer
+        ? 235
+        : ranged && !meleeValor
+          ? whisperReach - 25
+          : boss.radius + player.radius + 8;
     let move = distance > spacing + 20 ? aim : holdLane ? { x: 0, y: 0 } : tangent;
     if (distance < spacing - 15) move = { x: -aim.x, y: -aim.y };
     // Use the same movement policy for either identity. The optional rally and
@@ -114,6 +174,35 @@ try {
         dist(player.pos, ally.pos) <= (player.abilities.a2.range ?? 420) &&
         (ally.hp < ally.maxHp * 0.83 || ally.faithWound),
     );
+    const hurt = world.players
+      .filter((ally) => ally.state === 'alive' && ally.hp < ally.maxHp * (triage ? 0.88 : 0.7))
+      .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
+    const healInRange = (ab) =>
+      hurt.some((ally) => dist(player.pos, ally.pos) <= (ab.range ?? 400));
+    const fields = cleric
+      ? [
+          ['a2', player.abilities.a2],
+          ['sub1', subSkill],
+        ]
+      : [['sub1', subSkill]];
+    const field = fields.find(
+      ([, ab]) =>
+        ab?.zoneTickHeal &&
+        (player.cooldowns[ab.slot] ?? 0) <= dt + 1e-6 &&
+        (hurt.length || (fallen && ab.revivalFont)),
+    );
+    const fieldTarget = fallen && field?.[1].revivalFont ? fallen : hurt[0];
+    if (
+      healer &&
+      field &&
+      fieldTarget !== player &&
+      fieldTarget &&
+      !danger &&
+      dist(fieldTarget.pos, player.pos) > (field[1].radius ?? 140) - 12
+    )
+      move = normalize(sub(fieldTarget.pos, player.pos));
+    const fieldCast =
+      field && fieldTarget && dist(fieldTarget.pos, player.pos) <= (field[1].radius ?? 140);
     const verse = (kind) => player.buffs.some((b) => b.kind === kind);
     const incoming =
       (boss.action.kind === 'windup' && boss.action.remaining < 0.6) ||
@@ -129,7 +218,9 @@ try {
               'sub1',
               meleeValor
                 ? distance <= (subSkill.range ?? 70) + boss.radius
-                : verse('harmony') && verse('discord'),
+                : whispers
+                  ? Boolean(player.whisperSecret) || !verse('discord')
+                  : verse('harmony') && verse('discord'),
             ],
             ['a1', verse('harmony') && verse('discord')],
             [
@@ -150,21 +241,43 @@ try {
               ],
               ['a1', distance < 210],
             ]
-          : archer
+          : cleric
             ? [
-                ['a3', Boolean(danger)],
-                ['a2', distance < (player.abilities.a2.range ?? 500)],
-                ['sub1', distance < (subSkill.range ?? 400)],
-                ['a1', distance < 400],
+                [field?.[0], Boolean(fieldCast && fallen && field[1].revivalFont)],
+                [
+                  'sub2',
+                  player.subAbilities?.sub2?.kind === 'heal' &&
+                    healInRange(player.subAbilities.sub2),
+                ],
+                ['a1', healInRange(player.abilities.a1)],
+                [field?.[0], Boolean(fieldCast)],
+                ['sub1', Boolean(subSkill?.absorption && incoming)],
+                ['a3', distance < 320],
+                ['sub1', subSkill?.kind === 'projectile' && distance < 395],
               ]
-            : [
-                ['a2', incoming],
-                ['a1', distance < spacing + 25],
-              ];
+            : druid
+              ? [
+                  ['a2', healInRange(player.abilities.a2)],
+                  [field?.[0], Boolean(fieldCast)],
+                  ['a1', distance > (player.abilities.a1.range ?? 460) - 110 && distance < 520],
+                  ['a3', distance < (player.abilities.a3.radius ?? 155) + boss.radius],
+                ]
+              : archer
+                ? [
+                    ['a3', Boolean(danger)],
+                    ['a2', distance < (player.abilities.a2.range ?? 500)],
+                    ['sub1', distance < (subSkill.range ?? 400)],
+                    ['a1', distance < 400],
+                  ]
+                : [
+                    ['a2', incoming],
+                    ['a1', distance < spacing + 25],
+                  ];
     const pursuit = player.prevButtons.basic && vengeancePursuit(world, { ...player, aim });
     const slot = choices.find(([key, wanted]) => wanted && ready(key))?.[0] ?? 'basic';
     const releaseForPursuit = slot === 'basic' && pursuit && !pursuit.blocked;
-    const revive = Boolean(fallen) && !danger;
+    const revive = Boolean(fallen) && !danger && !(fieldCast && field[1].revivalFont);
+    const approachFont = Boolean(fallen && field && field[1].revivalFont && !fieldCast);
     return {
       seq: world.tick,
       aim,
@@ -177,7 +290,7 @@ try {
         a2: false,
         a3: false,
         revive,
-        [slot]: !revive && !releaseForPursuit,
+        [slot]: !revive && !releaseForPursuit && !approachFont,
       },
     };
   }
@@ -192,6 +305,7 @@ try {
     ordinary,
     ranks,
     holdLane,
+    third,
   ) {
     const history = Array(ranks).fill(ordinary);
     const context = { classes: [build.classId], history, subSkills: [build.pick] };
@@ -214,13 +328,26 @@ try {
             },
           },
         },
-        ...(partySize === 2 ? [{ peerId: 'ally', name: 'Knight', classId: 'knight' }] : []),
+        ...(partySize >= 2 ? [{ peerId: 'ally', name: 'Knight', classId: 'knight' }] : []),
+        ...(third
+          ? [
+              {
+                peerId: 'third',
+                name: third.name,
+                classId: third.classId,
+                subSkills: third.skills,
+                charUpgrades: third.identity ? [third.identity] : [],
+              },
+            ]
+          : []),
       ],
     });
     const lead = world.players[0];
     const equipped = build.identities.filter((id) => lead.charUpgradeIds?.includes(id));
     if (equipped.length !== Number(Boolean(identity)) || (identity && equipped[0] !== identity))
       throw new Error(`Unexpected active identity for ${build.label}: ${equipped}`);
+    if (third?.identity && !world.players[2].charUpgradeIds.includes(third.identity))
+      throw new Error(`Third slot identity did not equip: ${third.identity}`);
     const bossStartHp = world.boss.maxHp;
     const start = JSON.stringify({
       boss: [world.boss.pos, bossStartHp, world.scaling.bossDamageMult],
@@ -243,6 +370,9 @@ try {
       packHunts: 0,
       returningTurns: 0,
       returningHits: 0,
+      fearSeconds: 0,
+      quarrySeconds: 0,
+      healingReceived: 0,
       casts: {},
     }));
     const wounds = world.players.map(() => []);
@@ -259,7 +389,13 @@ try {
     const recordedPickups = new Set();
     let bossStunSeconds = 0;
     let bossCasts = 0;
+    let reflections = 0;
+    let quarryCasts = 0;
+    let fontStarts = 0;
+    let refugeSeconds = 0;
+    let addDeaths = 0;
     for (let tick = 0; tick < duration / dt && !world.finished; tick++) {
+      const priorAction = world.boss.action;
       const prior = world.players.map((p) => ({
         pursuitReadyAt: p.vengeancePursuitReadyAt,
         pursuing: Boolean(p.glide?.vengeancePursuit),
@@ -279,7 +415,13 @@ try {
         new Map(
           world.players.map((p) => [
             p.peerId,
-            command(world, p, seekRally, holdLane && p.peerId === 'lead'),
+            command(
+              world,
+              p,
+              seekRally,
+              holdLane && p.peerId === 'lead',
+              p.peerId === 'third' && third?.triage,
+            ),
           ]),
         ),
       );
@@ -288,6 +430,19 @@ try {
       bossCasts += world.events.filter(
         (event) => event.t === 'cast' && event.side === 'boss',
       ).length;
+      reflections += world.events.filter((event) => event.t === 'reflection').length;
+      fontStarts += world.events.filter((event) => event.t === 'fontRescue').length;
+      if (world.boss.action !== priorAction && world.boss.action.illusionPos) quarryCasts++;
+      if (world.groundZones.some((z) => z.refuge)) refugeSeconds += dt;
+      addDeaths += world.events.filter(
+        (event) => event.t === 'death' && event.kind === 'add',
+      ).length;
+      for (const enemy of [...world.bosses, ...world.adds]) {
+        if (!enemy.perception) continue;
+        const metric = effects[world.players.findIndex((p) => p.id === enemy.perception.ownerId)];
+        if (enemy.perception.mode === 'lure') metric.quarrySeconds += dt;
+        else if (enemy.perception.active) metric.fearSeconds += dt;
+      }
       const currentShots = world.projectiles.filter((shot) => shot.returningShot);
       for (const shot of new Set([...priorShots.keys(), ...currentShots])) {
         const returning = shot.returningShot;
@@ -315,6 +470,7 @@ try {
         for (const event of world.events) {
           if (event.t === 'hit' && event.targetId === p.id) now.damageTaken += event.amount;
           if (event.t === 'downed' && event.id === p.id) now.downed++;
+          if (event.t === 'heal' && event.targetId === p.id) now.healingReceived += event.amount;
           if (
             event.t === 'cast' &&
             event.sourceId === p.id &&
@@ -366,6 +522,12 @@ try {
       monsterId,
       seed,
       partySize,
+      thirdSlot: third?.name ?? null,
+      reflections,
+      quarryCasts,
+      fontStarts,
+      refugeSeconds: round(refugeSeconds),
+      addDeaths,
       outcome: world.outcome ?? 'timeout',
       seconds: round(world.elapsed),
       bossStartHp: round(bossStartHp),
@@ -375,6 +537,9 @@ try {
       players: world.players.map((p, i) => ({
         ...effects[i],
         damageTaken: round(effects[i].damageTaken),
+        fearSeconds: round(effects[i].fearSeconds),
+        quarrySeconds: round(effects[i].quarrySeconds),
+        healingReceived: round(effects[i].healingReceived),
         damageDealt: round(p.stats.damageDealt),
         healingDone: round(p.stats.healingDone),
         revives: p.stats.revives,
@@ -391,7 +556,7 @@ try {
           const run = (identity, seekRally = true, ordinary = null, ranks = 0, holdLane = false) =>
             fight(build, identity, boss, seed, party, seekRally, ordinary, ranks, holdLane);
           const matched = [null, ...build.identities].map((id) => run(id));
-          if (build.classId === 'bard') matched.push(run(build.identities[1], false));
+          if (build.pick.startsWith('ba_valor_')) matched.push(run(build.identities[1], false));
           if (build.pick === 'rg_hunter_mark')
             matched.push(...[null, ...build.identities].map((id) => run(id, true, null, 0, true)));
           // Ordinary comparisons use the same identity at ranks 0, 1 and 3.
@@ -409,6 +574,26 @@ try {
             fights.push(result);
           }
         }
+      }
+    }
+  }
+  for (const [pick, boss] of [
+    ['rg_hunter_mark', 'lich'],
+    ['rg_beast_snare', 'lich'],
+    ['pa_devotion_aura', 'beholder'],
+  ]) {
+    const build = builds.find((candidate) => candidate.pick === pick);
+    for (const seed of seeds) {
+      const matched = thirdSlots.map((third) =>
+        fight(build, build.identities[1], boss, seed, 3, true, null, 0, false, third),
+      );
+      for (const { start, ...result } of matched) {
+        assert.equal(
+          start,
+          matched[0].start,
+          'Matched trios must start with the same arena and scaling',
+        );
+        fights.push(result);
       }
     }
   }

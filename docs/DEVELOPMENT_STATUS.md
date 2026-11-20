@@ -28,7 +28,7 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery: [Ranger and reward balance](RANGER_AND_REWARD_BALANCE.md), building on the [encounter balance follow-through](ENCOUNTER_BALANCE_FOLLOWTHROUGH.md). See the [all-class balance coverage plan](CLASS_BALANCE_COVERAGE.md) for all 12 classes and 24 subclasses.
+Current delivery: [healer party comparisons](HEALER_PARTY_COMPARISONS.md), building on [Ranger and reward balance](RANGER_AND_REWARD_BALANCE.md). See the [all-class balance coverage plan](CLASS_BALANCE_COVERAGE.md) for all 12 classes and 24 subclasses.
 See the [Devotion, Vengeance and Valor purpose review](FINAL_SUPPORT_PURPOSE_REVIEW.md)
 for the full cohort findings.
 Grand Warding escape, Land transplantation, Hunter/Beast Master and Chaos
@@ -44,13 +44,13 @@ Devotion, Vengeance and Valor. The owner merged and tested Relentless Vengeance 
 
 | Stage                        | Concrete work                                                                                                                                                                       |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Measure Whispers and both Cleric subclasses to complete support coverage. Extend acquisition evidence toward grafts.                                                                |
+| Next                         | Compare Druid Moon and Land as lead. Extend acquisition evidence toward grafts.                                                                                                     |
 | Following                    | Continue all-class balance and graft comparisons, then start the visual prototype.                                                                                                  |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth.        |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                       |
 | Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing departure casting accepted. Evoker stays retained.                                                                         |
 | Remaining support identities | Light and Life follow-ups accepted. Devotion B and Vengeance B accepted for now. Valor B accepted for now. Whispers accepted.                                                       |
-| Whole-system tuning          | 948 fixed encounters now cover three classes and five subclasses. Continue through the remaining cohorts and test graft acquisition.                                                |
+| Whole-system tuning          | 1,290 fixed encounters now cover four lead classes and eight subclasses, with Druid recovery also tested in trios. Continue remaining class cohorts and graft acquisition.          |
 | Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                                      |
 | Boss and encounter revamp    | After the visual production pass, audit the roster, prototype a boss, and test multi-boss and modifier interactions. See [boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). |
 
