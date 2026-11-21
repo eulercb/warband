@@ -15,7 +15,7 @@ playtests remain useful evidence for their individual mechanics.
 | Martial           | Knight    | Champion, Battlemaster     | Both measured as lead. Battlemaster covers Volley and Rally. Knight remains a partner in other cohorts. |
 | Martial           | Barbarian | Berserker, Totem           | Both measured as lead, with two first picks each.                                                       |
 | Martial           | Monk      | Open Hand, Shadow          | Both measured as lead, with two first picks each and Lich trio comparisons.                             |
-| Caster            | Mage      | Evoker, Abjurer            | Pending.                                                                                                |
+| Caster            | Mage      | Evoker, Abjurer            | Both measured as lead, with two first picks each and Lich or Beholder trios.                            |
 | Caster            | Sorcerer  | Draconic, Wild Magic       | Pending.                                                                                                |
 | Rogue and Warlock | Rogue     | Assassin, Arcane Trickster | Fixed encounters pending. Assassin has an older outgoing-pressure pilot.                                |
 | Rogue and Warlock | Warlock   | Fiend, Great Old One       | Fixed encounters pending. Fiend has an older outgoing-pressure pilot.                                   |
@@ -40,6 +40,6 @@ batch. Keep policies reproducible and vary the controller when outcomes
 depend on a positioning or timing assumption.
 
 The representative support, nature and martial cohorts are measured.
-Next are Mage, Sorcerer, then Rogue and Warlock. Track
+Mage starts the caster cohort. Next are Sorcerer, then Rogue and Warlock. Track
 acquisition and graft work alongside cohorts. The [development
 roadmap](DEVELOPMENT_STATUS.md) records the visual and encounter milestones.
