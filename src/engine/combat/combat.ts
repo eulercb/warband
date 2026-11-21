@@ -46,7 +46,13 @@ import {
 } from '../core/constants';
 
 /** Minimal structural sink so combat needn't import the World. */
+export interface CombatObserver {
+  damage?: (source: Player, target: Boss | Add, effective: number) => void;
+  beamDrain?: (boss: Boss, target: Player, removed: number, restored: number) => void;
+}
+
 export interface EventSink {
+  combatObserver?: CombatObserver;
   onManeuverHit?: (
     p: Player,
     foe: Boss | Add,
@@ -452,6 +458,7 @@ export function damageBoss(
   boss.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(boss.hp, 0));
   source.stats.damageDealt += effective;
+  sink.combatObserver?.damage?.(source, boss, effective);
   // Record recently-soaked damage so a `barbed` affix can scale its thorn burst
   // to how hard the band is hitting (decays each tick in world.tickBossAffixes).
   boss.recentDamageTaken = (boss.recentDamageTaken ?? 0) + effective;
@@ -554,6 +561,7 @@ export function damageAdd(
   add.hp -= outgoing;
   const effective = Math.max(0, before - Math.max(add.hp, 0));
   source.stats.damageDealt += effective;
+  sink.combatObserver?.damage?.(source, add, effective);
   sink.events.push({
     t: 'hit',
     pos: { x: add.pos.x, y: add.pos.y },
@@ -603,6 +611,7 @@ export function damageEcho(
   const effective = Math.min(target.hp, amount);
   target.hp -= effective;
   source.stats.damageDealt += effective;
+  sink.combatObserver?.damage?.(source, target, effective);
   if ('recentDamageTaken' in target)
     target.recentDamageTaken = (target.recentDamageTaken ?? 0) + effective;
   addDamageThreat(source, effective);

@@ -2127,7 +2127,11 @@ export function beamTick(world: World, boss: Boss, ab: BossAbilityDef, action: B
       boss.pos,
     ),
   );
-  if (ab.healSelf) healBoss(boss, dealt);
+  if (ab.healSelf) {
+    const before = boss.hp;
+    healBoss(boss, dealt);
+    world.combatObserver?.beamDrain?.(boss, target, dealt, boss.hp - before);
+  }
   return dealt;
 }
 

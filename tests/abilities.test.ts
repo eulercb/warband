@@ -1865,6 +1865,44 @@ describe('boss beam channel', () => {
     expect(action.channelAccum).toBe(0);
   });
 
+  it.each([
+    { distance: 50, overcharged: false, ticks: 4 },
+    { distance: 540, overcharged: false, ticks: 0 },
+    { distance: 540, overcharged: true, ticks: 4 },
+  ])(
+    'drains $ticks times at 20 Hz with distance $distance and overcharge $overcharged',
+    ({ distance, overcharged, ticks }) => {
+      const w = mkWorld('knight', 'lich');
+      const boss = w.boss!;
+      const player = w.players[0];
+      w.obstacles = [];
+      w.terrain = [];
+      if (overcharged) boss.affixes = ['overcharged'];
+      boss.pos = { x: 300, y: 400 };
+      player.pos = { x: 300 + distance, y: 400 };
+      boss.hp = boss.maxHp - 100;
+      boss.healScale = 0.5;
+      boss.action = mkAction({
+        kind: 'channel',
+        abilityId: 'lifeDrain',
+        remaining: 2,
+        targetId: player.id,
+      });
+      const observed: { removed: number; restored: number }[] = [];
+      w.combatObserver = {
+        beamDrain: (_boss, _target, removed, restored) => observed.push({ removed, restored }),
+      };
+
+      for (let frame = 0; frame < Math.round(2 / SIM_DT); frame++) w.step(SIM_DT, new Map());
+
+      expect(observed).toHaveLength(ticks);
+      for (const { removed, restored } of observed) {
+        expect(removed).toBeGreaterThan(0);
+        expect(restored).toBeCloseTo(removed * 0.5, 6);
+      }
+    },
+  );
+
   it('defaults the channel duration to 2s when the ability omits it', () => {
     const w = mkWorld('knight', 'lich');
     const boss = w.boss!;
