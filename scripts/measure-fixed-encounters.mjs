@@ -339,6 +339,23 @@ const thirdSlots = [
   { name: 'Druid recovery', classId: 'druid', skills: ['dr_land_spring'], triage: true },
 ];
 
+const rosterMode = process.argv.includes('--roster-power');
+const rangerMode = process.argv.includes('--ranger-spacing');
+assert.ok(!(rosterMode && rangerMode), 'Choose one supplemental comparison');
+const rosterProfiles = [
+  ['support', 'ba_valor_bolster', 1, 'ba_anthem'],
+  ['support', 'pa_devotion_aura', 1, 'pa_mercy'],
+  ['support', 'cl_life_bloom', 0, 'subup_cl_life_bloom'],
+  ['support', 'dr_land_spring', 1, 'subup_dr_land_spring'],
+  ['frontline', 'kn_champion_rally', 0, 'kn_bulwark'],
+  ['frontline', 'bb_berserker_frenzy', 1, 'bb_bloodthirst'],
+  ['frontline', 'mo_openhand_wave', 1, 'subup_mo_openhand_wave'],
+  ['frontline', 'ro_assassin_strike', 0, 'subup_ro_assassin_strike'],
+  ['ranged', 'rg_hunter_mark', 0, 'rg_volley'],
+  ['ranged', 'mg_evoker_lightning', 1, 'subup_mg_evoker_lightning'],
+  ['ranged', 'so_wild_surge', 1, 'subup_so_wild_surge'],
+  ['ranged', 'wa_fiend_hurl', 0, 'wa_hex'],
+];
 const classFilter = process.argv.find((arg) => arg.startsWith('--class='))?.slice(8);
 const selectedBuilds = classFilter
   ? builds.filter((build) => build.classId === classFilter)
@@ -366,7 +383,30 @@ try {
   const { FLOW_AREA, flowConeEffects } = await server.ssrLoadModule(
     '/src/engine/content/martialRules.ts',
   );
-  const { getCharUpgrade } = await server.ssrLoadModule('/src/engine/content/charUpgrades.ts');
+  const { getCharUpgrade, rollCharChoices } = await server.ssrLoadModule(
+    '/src/engine/content/charUpgrades.ts',
+  );
+  const { RUN_LENGTH } = await server.ssrLoadModule('/src/engine/core/constants.ts');
+  const { Rng, mixSeed } = await server.ssrLoadModule('/src/engine/core/math.ts');
+  const { CLASS_IDS } = await server.ssrLoadModule('/src/engine/content/classes.ts');
+  const { rollUpgradeChoices } = await server.ssrLoadModule('/src/engine/content/upgrades.ts');
+
+  function drawRosterRewards(build, seed, target, stops) {
+    const generic = [];
+    const history = [];
+    for (let stop = 0; stop < stops; stop++) {
+      const rewardSeed = mixSeed(seed, 2, stop, 0x2ec0);
+      const rng = new Rng(mixSeed(rewardSeed, CLASS_IDS.indexOf(build.classId) + 1));
+      const random = () => rng.next();
+      const [stat] = rollUpgradeChoices(3, random, generic);
+      if (stat) generic.push(stat);
+      const offers = rollCharChoices(build.classId, 4, random, history, [], [build.pick]);
+      const boon =
+        offers.find((id) => id === target) ?? offers.find((id) => !getCharUpgrade(id)?.replaces);
+      if (boon) history.push(boon);
+    }
+    return { stops, generic, history, target };
+  }
 
   const { blinkArrival, carriesDispel, wardingTarget } = await server.ssrLoadModule(
     '/src/engine/combat/warding.ts',
@@ -383,7 +423,16 @@ try {
   const { castTimeFactor } = await server.ssrLoadModule('/src/engine/combat/combat.ts');
   const { forethoughtView } = await server.ssrLoadModule('/src/engine/combat/forethought.ts');
 
-  function command(world, player, seekRally, holdLane, triage, withdraw, useForecast) {
+  function command(
+    world,
+    player,
+    seekRally,
+    holdLane,
+    triage,
+    withdraw,
+    useForecast,
+    rangerPolicy,
+  ) {
     const boss = world.boss;
     const aim = normalize(sub(boss.pos, player.pos));
     const distance = dist(boss.pos, player.pos);
@@ -460,33 +509,58 @@ try {
         : warlockSkill.kind === 'pbaoe' && !warlockSkill.infernalClaim
           ? warlockSkill.radius + boss.radius - 25
           : 325);
-    const spacing = warlock
-      ? warlockSpacing
-      : rogue
-        ? rogueField && player.cooldowns.sub1 < 1 && !world.bossFlying(boss)
-          ? rogueField.range - rogueField.radius * 0.35
-          : rogueMelee - 20
-        : sorcerer
-          ? closeSorcery
-            ? sorcererReach - 25
-            : 285
-          : mage
-            ? mageField && player.cooldowns.sub1 < 1
-              ? mageField.range - mageField.radius * 0.35
-              : mageBurst || player.cooldowns.a2 < 1
-                ? novaReach - 25
-                : 260
-            : moon
-              ? boss.radius + player.radius + 25
-              : archer
-                ? player.spiritCompanion
-                  ? 120
-                  : 230
-                : healer
-                  ? 235
-                  : ranged && !meleeValor
-                    ? whisperReach - 25
-                    : boss.radius + player.radius + 8;
+    const rangerSnare =
+      rangerPolicy?.alignFields &&
+      subSkill.kind === 'groundZone' &&
+      !world.bossFlying(boss) &&
+      boundedAbility(subSkill, world.arena);
+    const rangerRain =
+      rangerPolicy?.alignFields && boundedAbility(player.abilities.a2, world.arena);
+    const rainReaches =
+      rangerRain &&
+      (!world.bossFlying(boss) ||
+        zoneReachesAir({
+          kind: rangerRain.zoneKind ?? 'rainOfArrows',
+          airborne: rangerRain.airborne,
+        }));
+    const rangerField =
+      rangerSnare && player.cooldowns.sub1 < 1
+        ? rangerSnare
+        : rainReaches && player.cooldowns.a2 < 1
+          ? rangerRain
+          : null;
+    const rangerSpacing = rangerField
+      ? rangerField.range - rangerField.radius * 0.35
+      : rangerPolicy?.spacing;
+    const spacing =
+      rangerSpacing ??
+      (warlock
+        ? warlockSpacing
+        : rogue
+          ? rogueField && player.cooldowns.sub1 < 1 && !world.bossFlying(boss)
+            ? rogueField.range - rogueField.radius * 0.35
+            : rogueMelee - 20
+          : sorcerer
+            ? closeSorcery
+              ? sorcererReach - 25
+              : 285
+            : mage
+              ? mageField && player.cooldowns.sub1 < 1
+                ? mageField.range - mageField.radius * 0.35
+                : mageBurst || player.cooldowns.a2 < 1
+                  ? novaReach - 25
+                  : 260
+              : moon
+                ? boss.radius + player.radius + 25
+                : archer
+                  ? player.spiritCompanion
+                    ? 120
+                    : 230
+                  : healer
+                    ? 235
+                    : ranged && !meleeValor
+                      ? whisperReach - 25
+                      : boss.radius + player.radius + 8);
     let move = distance > spacing + 20 ? aim : holdLane ? { x: 0, y: 0 } : tangent;
     if (distance < spacing - 15) move = { x: -aim.x, y: -aim.y };
     // Use the same movement policy for either identity. The optional rally and
@@ -652,8 +726,18 @@ try {
               : archer
                 ? [
                     ['a3', Boolean(danger)],
-                    ['a2', distance < (player.abilities.a2.range ?? 500)],
-                    ['sub1', distance < (subSkill.range ?? 400)],
+                    [
+                      'a2',
+                      rangerPolicy?.alignFields
+                        ? Boolean(rainReaches && fieldAligned(rangerRain))
+                        : distance < (player.abilities.a2.range ?? 500),
+                    ],
+                    [
+                      'sub1',
+                      rangerPolicy?.alignFields && subSkill.kind === 'groundZone'
+                        ? Boolean(rangerSnare && fieldAligned(rangerSnare))
+                        : distance < (subSkill.range ?? 400),
+                    ],
                     ['a1', distance < 400],
                   ]
                 : barbarian
@@ -958,8 +1042,9 @@ try {
     third,
     withdraw = true,
     useForecast = true,
+    { rewards, rangerPolicy } = {},
   ) {
-    const history = Array(ranks).fill(ordinary);
+    const history = rewards?.history ?? Array(ranks).fill(ordinary);
     const context = { classes: [build.classId], history, subSkills: [build.pick] };
     if (!build.identities.every((id) => grandEarnable(id, build.classId, context)))
       throw new Error(`Ineligible comparison for ${build.label}`);
@@ -973,6 +1058,7 @@ try {
           classId: build.classId,
           subSkills: [build.pick],
           charUpgrades: history,
+          upgrades: rewards?.generic,
           grandLoadout: {
             version: 1,
             classes: {
@@ -982,14 +1068,22 @@ try {
         },
         ...(partySize >= 2
           ? [
-              build.classId === 'knight'
+              rewards
                 ? {
                     peerId: 'ally',
-                    name: 'Ranger',
-                    classId: 'ranger',
-                    subSkills: ['rg_hunter_mark'],
+                    name: 'Life triage',
+                    classId: 'cleric',
+                    subSkills: ['cl_life_bloom', 'cl_life_mend'],
+                    charUpgrades: ['cl_life_g_a'],
                   }
-                : { peerId: 'ally', name: 'Knight', classId: 'knight' },
+                : build.classId === 'knight'
+                  ? {
+                      peerId: 'ally',
+                      name: 'Ranger',
+                      classId: 'ranger',
+                      subSkills: ['rg_hunter_mark'],
+                    }
+                  : { peerId: 'ally', name: 'Knight', classId: 'knight' },
             ]
           : []),
         ...(third
@@ -1138,6 +1232,8 @@ try {
             forecastResponseSeconds: 0,
           }
         : null;
+    let snareContactSeconds = 0;
+    let rainContactSeconds = 0;
     for (let tick = 0; tick < duration / dt && !world.finished; tick++) {
       const priorAction = world.boss.action;
       const warlockLead = warlockEffects && world.players[0];
@@ -1210,12 +1306,27 @@ try {
             p,
             seekRally,
             holdLane && p.peerId === 'lead',
-            p.peerId === 'third' && third?.triage,
+            (p.peerId === 'third' && third?.triage) || Boolean(rewards && p.peerId === 'ally'),
             withdraw,
             useForecast,
+            p.peerId === 'lead' ? rangerPolicy : undefined,
           ),
         ]),
       );
+      if (rangerPolicy) {
+        const flying = world.bossFlying(world.boss);
+        for (const zone of world.groundZones) {
+          if (
+            zone.ownerId !== lead.id ||
+            (zone.armRemaining ?? 0) > 0 ||
+            (flying && !zoneReachesAir(zone)) ||
+            dist(zone.pos, world.boss.pos) > zone.radius + world.boss.radius
+          )
+            continue;
+          if (zone.kind === 'entangle') snareContactSeconds += dt;
+          if (zone.kind === 'rainOfArrows') rainContactSeconds += dt;
+        }
+      }
       if (warlockEffects && inputs.get('lead').avoidForecast) {
         warlockEffects.forecastResponseSeconds += dt;
       }
@@ -1523,6 +1634,12 @@ try {
       ...(mageEffects && {
         mageEffects: { ...mageEffects, bindContactSeconds: round(mageEffects.bindContactSeconds) },
       }),
+      ...(rewards && { rewards }),
+      ...(rangerPolicy && {
+        rangerPolicy,
+        snareContactSeconds: round(snareContactSeconds),
+        rainContactSeconds: round(rainContactSeconds),
+      }),
       outcome: world.outcome ?? 'timeout',
       seconds: round(world.elapsed),
       bossStartHp: round(bossStartHp),
@@ -1545,107 +1662,201 @@ try {
   }
 
   const fights = [];
-  for (const build of selectedBuilds) {
-    for (const boss of build.bosses) {
-      for (const seed of seeds) {
-        for (const party of [1, 2]) {
-          const run = (identity, seekRally = true, ordinary = null, ranks = 0, holdLane = false) =>
-            fight(build, identity, boss, seed, party, seekRally, ordinary, ranks, holdLane);
-          const matched = [null, ...build.identities].map((id) => run(id));
-          if (build.pick.startsWith('ba_valor_')) matched.push(run(build.identities[1], false));
-          if (build.pick === 'kn_champion_rally')
-            matched.push(run(build.identities[0], true, 'hy_fieldmedic', 1));
-          if (build.pick === 'dr_land_wall')
-            matched.push(
-              ...['dr_grasp', 'hy_inspire'].map((id) => run(build.identities[1], true, id, 1)),
-            );
-          if (build.pick === 'ro_assassin_strike')
-            matched.push(
-              fight(
+  if (rosterMode) {
+    const startingEncounters = new Map();
+    for (const [role, pick, index, target] of rosterProfiles) {
+      const build = selectedBuilds.find((candidate) => candidate.pick === pick);
+      if (!build) continue;
+      assert.ok(getCharUpgrade(target), target);
+      for (const monsterId of ['troll', 'dragon', 'lich']) {
+        for (const seed of seeds) {
+          for (const partySize of [1, 2]) {
+            for (const stops of [0, RUN_LENGTH - 1]) {
+              const rewards = drawRosterRewards(build, seed, target, stops);
+              const { start, ...result } = fight(
                 build,
-                build.identities[0],
-                boss,
+                build.identities[index],
+                monsterId,
                 seed,
-                party,
-                true,
-                null,
-                0,
-                false,
-                undefined,
-                false,
-              ),
-            );
-          if (build.pick === 'wa_goo_blast')
-            matched.push(
-              fight(
-                build,
-                build.identities[0],
-                boss,
-                seed,
-                party,
+                partySize,
                 true,
                 null,
                 0,
                 false,
                 undefined,
                 true,
-                false,
-              ),
-            );
-          if (build.pick === 'rg_hunter_mark')
-            matched.push(...[null, ...build.identities].map((id) => run(id, true, null, 0, true)));
-          // Ordinary comparisons use the same identity at ranks 0, 1 and 3.
-          for (const upgrade of build.ordinary ?? []) {
-            const ranksToTry = upgrade === 'pa_radiant' ? [1, 3, 5] : [1, 3];
-            for (const ranks of ranksToTry)
-              matched.push(
-                run(build.identities[build.ordinaryIdentity ?? 1], true, upgrade, ranks),
+                true,
+                { rewards },
               );
-          }
-          for (const { start, ...result } of matched) {
-            assert.equal(
-              start,
-              matched[0].start,
-              'Matched variants must begin in the same encounter',
-            );
-            fights.push(result);
+              const key = `${monsterId}/${seed}/${partySize}`;
+              if (!startingEncounters.has(key)) startingEncounters.set(key, start);
+              assert.equal(
+                start,
+                startingEncounters.get(key),
+                `Mismatched roster encounter ${key}`,
+              );
+              fights.push({ ...result, role });
+            }
           }
         }
       }
     }
-  }
-  for (const [pick, boss, routes, identityIndex = 1] of [
-    ['rg_hunter_mark', 'lich'],
-    ['rg_beast_snare', 'lich'],
-    ['pa_devotion_aura', 'beholder'],
-    ['bb_berserker_chain', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
-    ['bb_totem_quake', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
-    ['mo_openhand_wind', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
-    ['mo_shadow_strike', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
-    ['mg_evoker_sculpt', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
-    ['mg_abjurer_bind', 'beholder', ['Hunter damage', 'Whispers utility', 'Life protection'], 0],
-    ['so_draconic_wing', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection'], 0],
-    ['so_wild_surge', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
-    ['ro_assassin_poison', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
-    ['ro_trickster_snare', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
-    ['wa_fiend_rebuke', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection'], 0],
-    ['wa_goo_blast', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
-  ]) {
-    const build = selectedBuilds.find((candidate) => candidate.pick === pick);
-    if (!build) continue;
-    for (const seed of seeds) {
-      const matched = thirdSlots
-        .filter((third) => !routes || routes.includes(third.name))
-        .map((third) =>
-          fight(build, build.identities[identityIndex], boss, seed, 3, true, null, 0, false, third),
-        );
-      for (const { start, ...result } of matched) {
-        assert.equal(
-          start,
-          matched[0].start,
-          'Matched trios must start with the same arena and scaling',
-        );
-        fights.push(result);
+  } else if (rangerMode) {
+    for (const build of selectedBuilds.filter(({ pick }) =>
+      ['rg_hunter_mark', 'rg_beast_snare'].includes(pick),
+    )) {
+      const policies = [120, 230].flatMap((spacing) =>
+        [false, true].map((alignFields) => ({ spacing, alignFields })),
+      );
+      for (const monsterId of ['troll', 'dragon', 'lich']) {
+        for (const seed of seeds) {
+          for (const partySize of [1, 2]) {
+            const matched = policies.map((rangerPolicy) =>
+              fight(
+                build,
+                build.identities[1],
+                monsterId,
+                seed,
+                partySize,
+                true,
+                null,
+                0,
+                false,
+                undefined,
+                true,
+                true,
+                { rangerPolicy },
+              ),
+            );
+            for (const { start, ...result } of matched) {
+              assert.equal(start, matched[0].start, 'Mismatched Ranger encounter');
+              fights.push(result);
+            }
+          }
+        }
+      }
+    }
+  } else {
+    for (const build of selectedBuilds) {
+      for (const boss of build.bosses) {
+        for (const seed of seeds) {
+          for (const party of [1, 2]) {
+            const run = (
+              identity,
+              seekRally = true,
+              ordinary = null,
+              ranks = 0,
+              holdLane = false,
+            ) => fight(build, identity, boss, seed, party, seekRally, ordinary, ranks, holdLane);
+            const matched = [null, ...build.identities].map((id) => run(id));
+            if (build.pick.startsWith('ba_valor_')) matched.push(run(build.identities[1], false));
+            if (build.pick === 'kn_champion_rally')
+              matched.push(run(build.identities[0], true, 'hy_fieldmedic', 1));
+            if (build.pick === 'dr_land_wall')
+              matched.push(
+                ...['dr_grasp', 'hy_inspire'].map((id) => run(build.identities[1], true, id, 1)),
+              );
+            if (build.pick === 'ro_assassin_strike')
+              matched.push(
+                fight(
+                  build,
+                  build.identities[0],
+                  boss,
+                  seed,
+                  party,
+                  true,
+                  null,
+                  0,
+                  false,
+                  undefined,
+                  false,
+                ),
+              );
+            if (build.pick === 'wa_goo_blast')
+              matched.push(
+                fight(
+                  build,
+                  build.identities[0],
+                  boss,
+                  seed,
+                  party,
+                  true,
+                  null,
+                  0,
+                  false,
+                  undefined,
+                  true,
+                  false,
+                ),
+              );
+            if (build.pick === 'rg_hunter_mark')
+              matched.push(
+                ...[null, ...build.identities].map((id) => run(id, true, null, 0, true)),
+              );
+            // Ordinary comparisons use the same identity at ranks 0, 1 and 3.
+            for (const upgrade of build.ordinary ?? []) {
+              const ranksToTry = upgrade === 'pa_radiant' ? [1, 3, 5] : [1, 3];
+              for (const ranks of ranksToTry)
+                matched.push(
+                  run(build.identities[build.ordinaryIdentity ?? 1], true, upgrade, ranks),
+                );
+            }
+            for (const { start, ...result } of matched) {
+              assert.equal(
+                start,
+                matched[0].start,
+                'Matched variants must begin in the same encounter',
+              );
+              fights.push(result);
+            }
+          }
+        }
+      }
+    }
+    for (const [pick, boss, routes, identityIndex = 1] of [
+      ['rg_hunter_mark', 'lich'],
+      ['rg_beast_snare', 'lich'],
+      ['pa_devotion_aura', 'beholder'],
+      ['bb_berserker_chain', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+      ['bb_totem_quake', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+      ['mo_openhand_wind', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+      ['mo_shadow_strike', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+      ['mg_evoker_sculpt', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+      ['mg_abjurer_bind', 'beholder', ['Hunter damage', 'Whispers utility', 'Life protection'], 0],
+      ['so_draconic_wing', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection'], 0],
+      ['so_wild_surge', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+      ['ro_assassin_poison', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+      ['ro_trickster_snare', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+      ['wa_fiend_rebuke', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection'], 0],
+      ['wa_goo_blast', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+    ]) {
+      const build = selectedBuilds.find((candidate) => candidate.pick === pick);
+      if (!build) continue;
+      for (const seed of seeds) {
+        const matched = thirdSlots
+          .filter((third) => !routes || routes.includes(third.name))
+          .map((third) =>
+            fight(
+              build,
+              build.identities[identityIndex],
+              boss,
+              seed,
+              3,
+              true,
+              null,
+              0,
+              false,
+              third,
+            ),
+          );
+        for (const { start, ...result } of matched) {
+          assert.equal(
+            start,
+            matched[0].start,
+            'Matched trios must start with the same arena and scaling',
+          );
+          fights.push(result);
+        }
       }
     }
   }
