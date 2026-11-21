@@ -119,6 +119,36 @@ const builds = [
     bosses: ['dragon', 'lich'],
     identities: ['kn_battlemaster_g_a', 'kn_battlemaster_g_b'],
   },
+  {
+    label: 'Berserker',
+    classId: 'barbarian',
+    pick: 'bb_berserker_frenzy',
+    bosses: ['troll', 'dragon'],
+    ordinary: ['bb_bloodthirst'],
+    identities: ['bb_berserker_g_a', 'bb_berserker_g_b'],
+  },
+  {
+    label: 'Berserker',
+    classId: 'barbarian',
+    pick: 'bb_berserker_chain',
+    bosses: ['dragon', 'lich'],
+    identities: ['bb_berserker_g_a', 'bb_berserker_g_b'],
+  },
+  {
+    label: 'Totem',
+    classId: 'barbarian',
+    pick: 'bb_totem_wolf',
+    bosses: ['troll', 'dragon'],
+    identities: ['bb_totem_g_a', 'bb_totem_g_b'],
+  },
+  {
+    label: 'Totem',
+    classId: 'barbarian',
+    pick: 'bb_totem_quake',
+    bosses: ['dragon', 'lich'],
+    ordinary: ['subup_bb_totem_quake'],
+    identities: ['bb_totem_g_a', 'bb_totem_g_b'],
+  },
 ];
 
 const thirdSlots = [
@@ -169,6 +199,7 @@ try {
   );
   const { boundedAbility } = await server.ssrLoadModule('/src/engine/content/abilityLimits.ts');
   const { inMoonForm } = await server.ssrLoadModule('/src/engine/combat/moonForm.ts');
+  const { ancestralRelayView } = await server.ssrLoadModule('/src/engine/combat/ancestralRelay.ts');
   const { getCharUpgrade } = await server.ssrLoadModule('/src/engine/content/charUpgrades.ts');
 
   function command(world, player, seekRally, holdLane, triage) {
@@ -181,6 +212,14 @@ try {
     const subSkill = player.subAbilities?.sub1;
     const meleeValor = ranged && subSkill?.kind === 'meleeCone';
     const archer = player.classId === 'ranger';
+    const barbarian = player.classId === 'barbarian';
+    const momentum = player.buffs.find((b) => b.kind === 'momentum')?.mult ?? 0;
+    const rhythm = player.buffs.some((b) => b.kind === 'rageRhythm');
+    const earth =
+      barbarian && subSkill?.kind === 'groundZone' ? boundedAbility(subSkill, world.arena) : null;
+    const relay = barbarian ? ancestralRelayView(world, player) : null;
+    const burstOrigin = relay?.remote ? relay.origin : player.pos;
+    const burstReach = (player.abilities.a3.radius ?? 135) + boss.radius + momentum * 10;
     const knightLead = player.classId === 'knight' && player.peerId === 'lead';
     const cleric = player.classId === 'cleric';
     const druid = player.classId === 'druid';
@@ -231,6 +270,8 @@ try {
       !fieldAligned(entangle)
     )
       move = distance < (entangle.range ?? 400) ? { x: -aim.x, y: -aim.y } : aim;
+    if (earth && rhythm && player.cooldowns.sub1 < 0.5 && momentum > 0 && !fieldAligned(earth))
+      move = distance < (earth.range ?? 380) ? { x: -aim.x, y: -aim.y } : aim;
     if (danger) move = normalize(sub(player.pos, danger.pos));
     // For a frontline Knight, cross the attack lane before shielding; aim still
     // faces the threat. This also gives fresh utility presses a real step vector.
@@ -370,32 +411,51 @@ try {
                     ['sub1', distance < (subSkill.range ?? 400)],
                     ['a1', distance < 400],
                   ]
-                : knightLead
+                : barbarian
                   ? [
-                      [
-                        'a2',
-                        player.abilities.a2.kind === 'heal'
-                          ? needsHeal
-                          : incoming ||
-                            world.projectiles.some(
-                              (shot) => shot.side === 'boss' && dist(shot.pos, player.pos) < 145,
-                            ),
-                      ],
-                      ['a1', incoming && distance < 190],
+                      ['a2', Boolean(danger)],
+                      ['sub1', !rhythm && Boolean(subSkill.momentumWindow || subSkill.wolfHunt)],
+                      ['a1', !rhythm && distance < 310],
+                      ['sub1', Boolean(earth && fieldAligned(earth) && (momentum > 0 || !rhythm))],
                       [
                         'sub1',
-                        subSkill.kind === 'heal'
-                          ? needsHeal
-                          : subSkill.healOnUse
-                            ? player.hp < player.maxHp * 0.68
-                            : distance < 220,
+                        Boolean(
+                          subSkill.pull &&
+                          distance < (subSkill.range ?? 220) + boss.radius &&
+                          (momentum >= 2 || distance > 155 || !rhythm),
+                        ),
                       ],
-                      ['a3', distance <= (player.abilities.a3.range ?? 60) + boss.radius],
+                      [
+                        'a3',
+                        dist(burstOrigin, boss.pos) <= burstReach && (momentum >= 2 || !rhythm),
+                      ],
                     ]
-                  : [
-                      ['a2', incoming],
-                      ['a1', distance < spacing + 25],
-                    ];
+                  : knightLead
+                    ? [
+                        [
+                          'a2',
+                          player.abilities.a2.kind === 'heal'
+                            ? needsHeal
+                            : incoming ||
+                              world.projectiles.some(
+                                (shot) => shot.side === 'boss' && dist(shot.pos, player.pos) < 145,
+                              ),
+                        ],
+                        ['a1', incoming && distance < 190],
+                        [
+                          'sub1',
+                          subSkill.kind === 'heal'
+                            ? needsHeal
+                            : subSkill.healOnUse
+                              ? player.hp < player.maxHp * 0.68
+                              : distance < 220,
+                        ],
+                        ['a3', distance <= (player.abilities.a3.range ?? 60) + boss.radius],
+                      ]
+                    : [
+                        ['a2', incoming],
+                        ['a1', distance < spacing + 25],
+                      ];
     const pursuit = player.prevButtons.basic && vengeancePursuit(world, { ...player, aim });
     const slot = transplant
       ? transplant.slot
@@ -518,6 +578,9 @@ try {
       defensiveSteps: 0,
       steeredBosses: 0,
       steeredDuringAction: 0,
+      walkMomentumGains: 0,
+      momentumSpent: 0,
+      remoteRelays: 0,
       steeredAdds: 0,
       casts: {},
     }));
@@ -561,6 +624,9 @@ try {
         pursuing: Boolean(p.glide?.vengeancePursuit),
         hunt: p.spiritCompanion?.hunt,
         stepping: p.glide?.ab.name === 'Maneuver step',
+        momentum: p.buffs.find((b) => b.kind === 'momentum'),
+        relay: p.castAbility?.ancestralCast,
+        walkingRage: p.buffs.some((b) => b.kind === 'wolfHunt'),
         challenge: p.buffs.find((buff) => buff.kind === 'challengeReady' && buff.remaining > dt),
         projection: p.buffs.filter((buff) => buff.projectedGuard).map((buff) => [buff, buff.mult]),
         transplantOptions: Object.values(p.fieldTransplants ?? {}).filter((cast) => !cast.used),
@@ -620,6 +686,25 @@ try {
       const rallies = new Set([...priorRallies, ...world.groundZones.filter((z) => z.rally)]);
       world.players.forEach((p, i) => {
         const now = effects[i];
+        if (p.classId === 'barbarian') {
+          const old = prior[i];
+          const current = p.buffs.find((b) => b.kind === 'momentum');
+          if (old.walkingRage && (current?.mult ?? 0) > (old.momentum?.mult ?? 0))
+            now.walkMomentumGains++;
+          if (old.relay?.remote && old.relay.spent) now.remoteRelays++;
+          if (old.momentum && !p.buffs.includes(old.momentum) && p.state === 'alive') {
+            const spent =
+              p.castAbility?.momentumUsed ||
+              world.events.some(
+                (event) =>
+                  event.t === 'cast' &&
+                  event.sourceId === p.id &&
+                  (event.slot === 'a3' ||
+                    (event.slot === 'sub1' && p.subAbilities?.sub1?.spendsMomentum)),
+              );
+            if (spent) now.momentumSpent += old.momentum.mult;
+          }
+        }
         if (prior[i].challenge && !p.buffs.includes(prior[i].challenge) && p.state === 'alive')
           now.challengeConnections++;
         if (!prior[i].stepping && p.glide?.ab.name === 'Maneuver step') now.defensiveSteps++;
@@ -766,16 +851,20 @@ try {
       }
     }
   }
-  for (const [pick, boss] of [
+  for (const [pick, boss, routes] of [
     ['rg_hunter_mark', 'lich'],
     ['rg_beast_snare', 'lich'],
     ['pa_devotion_aura', 'beholder'],
+    ['bb_berserker_chain', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+    ['bb_totem_quake', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
   ]) {
     const build = builds.find((candidate) => candidate.pick === pick);
     for (const seed of seeds) {
-      const matched = thirdSlots.map((third) =>
-        fight(build, build.identities[1], boss, seed, 3, true, null, 0, false, third),
-      );
+      const matched = thirdSlots
+        .filter((third) => !routes || routes.includes(third.name))
+        .map((third) =>
+          fight(build, build.identities[1], boss, seed, 3, true, null, 0, false, third),
+        );
       for (const { start, ...result } of matched) {
         assert.equal(
           start,
