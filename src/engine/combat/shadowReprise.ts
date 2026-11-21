@@ -90,6 +90,9 @@ export function onShadowRepriseHit(
     effective <= 0 ||
     !pilot ||
     r.cast === pilot.cast ||
+    (pilot.cast.sequence !== undefined &&
+      r.cast.sequence !== undefined &&
+      pilot.cast.sequence <= r.cast.sequence) ||
     r.armedTick !== undefined ||
     (r.prepared && !prepared)
   )

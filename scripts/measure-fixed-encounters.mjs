@@ -242,6 +242,38 @@ const builds = [
     bosses: ['dragon', 'beholder'],
     identities: ['so_wild_g_a', 'so_wild_g_b'],
   },
+  {
+    label: 'Assassin',
+    classId: 'rogue',
+    pick: 'ro_assassin_strike',
+    bosses: ['troll', 'dragon'],
+    ordinary: ['subup_ro_assassin_strike'],
+    ordinaryIdentity: 0,
+    identities: ['ro_assassin_g_a', 'ro_assassin_g_b'],
+  },
+  {
+    label: 'Assassin',
+    classId: 'rogue',
+    pick: 'ro_assassin_poison',
+    bosses: ['dragon', 'lich'],
+    identities: ['ro_assassin_g_a', 'ro_assassin_g_b'],
+  },
+  {
+    label: 'Arcane Trickster',
+    classId: 'rogue',
+    pick: 'ro_trickster_bolt',
+    bosses: ['dragon', 'beholder'],
+    ordinary: ['subup_ro_trickster_bolt'],
+    ordinaryIdentity: 0,
+    identities: ['ro_trickster_g_a', 'ro_trickster_g_b'],
+  },
+  {
+    label: 'Arcane Trickster',
+    classId: 'rogue',
+    pick: 'ro_trickster_snare',
+    bosses: ['troll', 'lich'],
+    identities: ['ro_trickster_g_a', 'ro_trickster_g_b'],
+  },
 ];
 
 const thirdSlots = [
@@ -312,13 +344,16 @@ try {
   const { GUIDED_BURST_RANGE } = await server.ssrLoadModule('/src/engine/content/guidanceRules.ts');
   const { originView } = await server.ssrLoadModule('/src/engine/combat/guidance.ts');
 
-  function command(world, player, seekRally, holdLane, triage) {
+  const { shadowRepriseView } = await server.ssrLoadModule('/src/engine/combat/shadowReprise.ts');
+
+  function command(world, player, seekRally, holdLane, triage, withdraw) {
     const boss = world.boss;
     const aim = normalize(sub(boss.pos, player.pos));
     const distance = dist(boss.pos, player.pos);
     const tangent = { x: -aim.y, y: aim.x };
     const ranged = player.classId === 'bard';
     const mage = player.classId === 'mage';
+    const rogue = player.classId === 'rogue';
     const sorcerer = player.classId === 'sorcerer';
     const whisperReach = (player.abilities.a3.radius ?? 150) + boss.radius;
     const subSkill = player.subAbilities?.sub1;
@@ -370,27 +405,37 @@ try {
     const rangedBurst = sorcery?.guidedBurst;
     const sorcererReach = sorcery?.range ?? sorcery?.radius ?? 0;
     const closeSorcery = sorcery && !rangedBurst && ['meleeCone', 'pbaoe'].includes(sorcery.kind);
-    const spacing = sorcerer
-      ? closeSorcery
-        ? sorcererReach - 25
-        : 285
-      : mage
-        ? mageField && player.cooldowns.sub1 < 1
-          ? mageField.range - mageField.radius * 0.35
-          : mageBurst || player.cooldowns.a2 < 1
-            ? novaReach - 25
-            : 260
-        : moon
-          ? boss.radius + player.radius + 25
-          : archer
-            ? player.spiritCompanion
-              ? 120
-              : 230
-            : healer
-              ? 235
-              : ranged && !meleeValor
-                ? whisperReach - 25
-                : boss.radius + player.radius + 8;
+    const rogueField =
+      rogue && subSkill?.kind === 'groundZone' && boundedAbility(subSkill, world.arena);
+    const rogueBlink = rogue && boundedAbility(player.abilities.a2, world.arena);
+    const rogueMelee = rogue
+      ? boundedAbility(player.abilities.basic, world.arena).range + boss.radius
+      : 0;
+    const spacing = rogue
+      ? rogueField && player.cooldowns.sub1 < 1 && !world.bossFlying(boss)
+        ? rogueField.range - rogueField.radius * 0.35
+        : rogueMelee - 20
+      : sorcerer
+        ? closeSorcery
+          ? sorcererReach - 25
+          : 285
+        : mage
+          ? mageField && player.cooldowns.sub1 < 1
+            ? mageField.range - mageField.radius * 0.35
+            : mageBurst || player.cooldowns.a2 < 1
+              ? novaReach - 25
+              : 260
+          : moon
+            ? boss.radius + player.radius + 25
+            : archer
+              ? player.spiritCompanion
+                ? 120
+                : 230
+              : healer
+                ? 235
+                : ranged && !meleeValor
+                  ? whisperReach - 25
+                  : boss.radius + player.radius + 8;
     let move = distance > spacing + 20 ? aim : holdLane ? { x: 0, y: 0 } : tangent;
     if (distance < spacing - 15) move = { x: -aim.x, y: -aim.y };
     // Use the same movement policy for either identity. The optional rally and
@@ -694,6 +739,34 @@ try {
               : closeSorcery && distance < sorcererReach + boss.radius),
       ],
     ];
+    const reprise = rogue && shadowRepriseView(world, player);
+    const returnNow =
+      withdraw &&
+      reprise?.armed &&
+      !reprise.blocked &&
+      (incoming || player.hp < player.maxHp * 0.55) &&
+      !world.groundZones.some(
+        (zone) =>
+          zone.side === 'boss' &&
+          (zone.armRemaining ?? 0) <= 0 &&
+          (zone.damagePerTick > 0 || zone.silence > 0) &&
+          dist(zone.pos, reprise.anchor) <= zone.radius + player.radius,
+      );
+    const rogueAim = danger ? normalize(sub(player.pos, danger.pos)) : aim;
+    const stepIntoReach =
+      rogueBlink &&
+      distance > rogueMelee &&
+      dist(blinkArrival(world, { ...player, aim }, rogueBlink), boss.pos) <= rogueMelee - 10;
+    const precision = rogue && player.buffs.some((buff) => buff.kind === 'precision');
+    const rogueChoices = rogue && [
+      ['a2', !reprise && (Boolean(danger) || (stepIntoReach && !precision))],
+      ['sub1', Boolean(rogueField && !world.bossFlying(boss) && fieldAligned(rogueField))],
+      ['sub1', Boolean(subSkill.venomCoating && distance <= rogueMelee + 25)],
+      ['a3', !world.bossFlying(boss) && fieldAligned(player.abilities.a3)],
+      ['sub1', subSkill.kind === 'meleeCone' && distance <= subSkill.range + boss.radius],
+      ['a1', distance <= player.abilities.a1.range + boss.radius],
+      ['sub1', subSkill.kind === 'projectile' && distance < 375],
+    ];
     const pursuit = player.prevButtons.basic && vengeancePursuit(world, { ...player, aim });
     const nextOnGlide =
       monk &&
@@ -706,29 +779,33 @@ try {
         return ab?.palmSweep && (player.cooldowns[slot] ?? 0) < 0.4 && !player.prevButtons[slot];
       });
     const slot =
+      (returnNow && reprise.slot) ||
       (detonate && guided.slot) ||
       nextOnGlide ||
       (transplant
         ? transplant.slot
-        : ((sorcererChoices || mageChoices || choices).find(
+        : ((rogueChoices || sorcererChoices || mageChoices || choices).find(
             ([key, wanted]) => wanted && ready(key),
           )?.[0] ?? 'basic'));
     const releaseForTransplant = Boolean(transplant && player.prevButtons[slot]);
     const releaseForPursuit = slot === 'basic' && pursuit && !pursuit.blocked;
-    const releaseForSorcery = sorcerer && slot !== 'basic' && player.prevButtons[slot];
+    const releaseForFreshPress =
+      (sorcerer || rogue) && slot !== 'basic' && player.prevButtons[slot];
     const steerBurst = liveBurst && !guided.origin && ['basic', guided.slot].includes(slot);
     const revive = Boolean(fallen) && !danger && !(fieldCast && field[1].revivalFont);
     const approachFont = Boolean(fallen && field && field[1].revivalFont && !fieldCast);
     return {
       seq: world.tick,
       aim:
-        (mage || sorcerer) && slot === 'a3'
-          ? blinkAim
-          : steerBurst
-            ? normalize(sub(boss.pos, liveBurst.pos))
-            : aim,
+        rogue && slot === 'a2'
+          ? rogueAim
+          : (mage || sorcerer) && slot === 'a3'
+            ? blinkAim
+            : steerBurst
+              ? normalize(sub(boss.pos, liveBurst.pos))
+              : aim,
       aimPoint: boss.pos,
-      move: warding && slot === 'a3' ? { x: 0, y: 0 } : move,
+      move: (warding && slot === 'a3') || returnNow ? { x: 0, y: 0 } : move,
       autofire: true,
       buttons: {
         basic: false,
@@ -740,7 +817,7 @@ try {
           !revive &&
           !releaseForPursuit &&
           !releaseForTransplant &&
-          !releaseForSorcery &&
+          !releaseForFreshPress &&
           !approachFont,
       },
     };
@@ -757,6 +834,7 @@ try {
     ranks,
     holdLane,
     third,
+    withdraw = true,
   ) {
     const history = Array(ranks).fill(ordinary);
     const context = { classes: [build.classId], history, subSkills: [build.pick] };
@@ -913,8 +991,30 @@ try {
             manualBursts: 0,
           }
         : null;
+    const rogueEffects =
+      build.classId === 'rogue'
+        ? {
+            repriseAnchors: 0,
+            repriseArmed: 0,
+            repriseReturns: 0,
+            spellbladeSpends: 0,
+            poisonApplications: 0,
+            snareContactSeconds: 0,
+          }
+        : null;
     for (let tick = 0; tick < duration / dt && !world.finished; tick++) {
       const priorAction = world.boss.action;
+      const rogueLead = rogueEffects && world.players[0];
+      const oldReprise = rogueLead && rogueLead.shadowReprise;
+      const repriseWasArmed = oldReprise?.armedTick !== undefined;
+      const hadSpellblade =
+        rogueLead &&
+        rogueLead.buffs.some((buff) => buff.kind === 'spellblade' && buff.remaining > dt);
+      const oldCoatings =
+        rogueLead &&
+        [world.boss, ...world.adds].flatMap((enemy) =>
+          enemy.buffs.filter((buff) => buff.venom?.ownerId === rogueLead.id && !buff.venom.field),
+        );
       const caster = sorcererEffects && world.players[0];
       const priorSurge =
         caster && caster.buffs.find((buff) => buff.kind === 'spellSurge' && buff.remaining > dt);
@@ -965,6 +1065,7 @@ try {
               seekRally,
               holdLane && p.peerId === 'lead',
               p.peerId === 'third' && third?.triage,
+              withdraw,
             ),
           ]),
         ),
@@ -1020,6 +1121,47 @@ try {
           )
             sorcererEffects.groundHazardOverflightSeconds += dt;
         }
+      }
+      if (rogueEffects) {
+        const reprise = rogueLead.shadowReprise;
+        if (reprise && reprise !== oldReprise) rogueEffects.repriseAnchors++;
+        if (reprise?.armedTick !== undefined && !repriseWasArmed) rogueEffects.repriseArmed++;
+        if (
+          repriseWasArmed &&
+          !reprise &&
+          world.events.some(
+            (event) =>
+              event.t === 'blink' &&
+              event.id === rogueLead.id &&
+              dist(event.to, oldReprise.anchor) < 1e-6,
+          )
+        )
+          rogueEffects.repriseReturns++;
+        if (
+          hadSpellblade &&
+          rogueLead.state === 'alive' &&
+          !rogueLead.buffs.some((buff) => buff.kind === 'spellblade')
+        )
+          rogueEffects.spellbladeSpends++;
+        for (const enemy of [world.boss, ...world.adds]) {
+          rogueEffects.poisonApplications += enemy.buffs.filter(
+            (buff) =>
+              buff.venom?.ownerId === rogueLead.id &&
+              !buff.venom.field &&
+              !oldCoatings.includes(buff),
+          ).length;
+        }
+        if (
+          !world.bossFlying(world.boss) &&
+          world.groundZones.some(
+            (zone) =>
+              zone.ownerId === rogueLead.id &&
+              zone.roots &&
+              (zone.armRemaining ?? 0) <= 0 &&
+              dist(zone.pos, world.boss.pos) <= zone.radius + world.boss.radius,
+          )
+        )
+          rogueEffects.snareContactSeconds += dt;
       }
       if (mageEffects) {
         const lead = world.players[0];
@@ -1195,6 +1337,13 @@ try {
           groundHazardOverflightSeconds: round(sorcererEffects.groundHazardOverflightSeconds),
         },
       }),
+      ...(rogueEffects && {
+        rogueEffects: {
+          ...rogueEffects,
+          withdraw,
+          snareContactSeconds: round(rogueEffects.snareContactSeconds),
+        },
+      }),
       ...(mageEffects && {
         mageEffects: { ...mageEffects, bindContactSeconds: round(mageEffects.bindContactSeconds) },
       }),
@@ -1234,6 +1383,22 @@ try {
             matched.push(
               ...['dr_grasp', 'hy_inspire'].map((id) => run(build.identities[1], true, id, 1)),
             );
+          if (build.pick === 'ro_assassin_strike')
+            matched.push(
+              fight(
+                build,
+                build.identities[0],
+                boss,
+                seed,
+                party,
+                true,
+                null,
+                0,
+                false,
+                undefined,
+                false,
+              ),
+            );
           if (build.pick === 'rg_hunter_mark')
             matched.push(...[null, ...build.identities].map((id) => run(id, true, null, 0, true)));
           // Ordinary comparisons use the same identity at ranks 0, 1 and 3.
@@ -1268,6 +1433,8 @@ try {
     ['mg_abjurer_bind', 'beholder', ['Hunter damage', 'Whispers utility', 'Life protection'], 0],
     ['so_draconic_wing', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection'], 0],
     ['so_wild_surge', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+    ['ro_assassin_poison', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+    ['ro_trickster_snare', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
   ]) {
     const build = selectedBuilds.find((candidate) => candidate.pick === pick);
     if (!build) continue;

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { World } from '../src/engine/world/world';
+import { SIM_DT } from '../src/engine/core/constants';
 import { resolvePlayerAbility, spawnZone } from '../src/engine/combat/abilities';
 import {
   applyBuff,
@@ -403,6 +404,21 @@ describe('zone ownership and contact boundaries', () => {
     applyFieldPoison(w, p, a, 10);
     expect(a.buffs.some((b) => b.kind === 'venom')).toBe(false);
   });
+  it('delivers both field poison ticks at the normal simulation step', () => {
+    const { w, p, boss } = setup();
+    boss.decisionTimer = 100;
+    boss.moveSpeed = 0;
+    const hp = boss.hp;
+    applyFieldPoison(w, p, boss, 18);
+    const ticksPerSecond = Math.round(1 / SIM_DT);
+    for (let tick = 1; tick <= 2 * ticksPerSecond; tick++) {
+      w.step(SIM_DT, new Map());
+      expect(boss.hp).toBe(hp - Math.floor(tick / ticksPerSecond) * 18);
+    }
+    for (let tick = 0; tick < ticksPerSecond; tick++) w.step(SIM_DT, new Map());
+    expect(boss.hp).toBe(hp - 36);
+  });
+
   it('stronger field refresh preserves phase; dead/zero/room/absent owners do not create poison', () => {
     const { w, p, boss } = setup();
     applyFieldPoison(w, p, boss, 10);

@@ -17,7 +17,7 @@ playtests remain useful evidence for their individual mechanics.
 | Martial           | Monk      | Open Hand, Shadow          | Both measured as lead, with two first picks each and Lich trio comparisons.                             |
 | Caster            | Mage      | Evoker, Abjurer            | Both measured as lead, with two first picks each and Lich or Beholder trios.                            |
 | Caster            | Sorcerer  | Draconic, Wild Magic       | Both measured as lead, with two first picks each and Lich trio comparisons.                             |
-| Rogue and Warlock | Rogue     | Assassin, Arcane Trickster | Fixed encounters pending. Assassin has an older outgoing-pressure pilot.                                |
+| Rogue and Warlock | Rogue     | Assassin, Arcane Trickster | Both measured as lead, with two first picks each and Lich trio comparisons.                             |
 | Rogue and Warlock | Warlock   | Fiend, Great Old One       | Fixed encounters pending. Fiend has an older outgoing-pressure pilot.                                   |
 
 Each subclass gets a representative fixed-encounter comparison with no
@@ -40,6 +40,6 @@ batch. Keep policies reproducible and vary the controller when outcomes
 depend on a positioning or timing assumption.
 
 The representative support, nature, martial and caster cohorts are measured.
-Next are Rogue and Warlock. Track
+Rogue is measured. Warlock is the remaining lead class. Track
 acquisition and graft work alongside cohorts. The [development
 roadmap](DEVELOPMENT_STATUS.md) records the visual and encounter milestones.

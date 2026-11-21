@@ -116,8 +116,10 @@ export function tickVenoms(world: World, dt: number): void {
         continue;
       }
       state.accum += Math.min(dt, buff.remaining);
-      while (state.accum >= 1 && state.ticks < 8 && target.hp > 0) {
-        state.accum -= 1;
+      // Repeated fixed steps can leave an exact second infinitesimally
+      // below the threshold on the last frame of the poison.
+      while (state.accum >= 1 - 1e-9 && state.ticks < 8 && target.hp > 0) {
+        state.accum = Math.max(0, state.accum - 1);
         state.ticks++;
         if (world.bosses.includes(target as Boss))
           damageBoss(world, owner, target as Boss, buff.mult);
