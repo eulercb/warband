@@ -179,6 +179,37 @@ const builds = [
     bosses: ['dragon', 'lich'],
     identities: ['mo_shadow_g_a', 'mo_shadow_g_b'],
   },
+  {
+    label: 'Evoker',
+    classId: 'mage',
+    pick: 'mg_evoker_lightning',
+    bosses: ['troll', 'dragon'],
+    ordinary: ['subup_mg_evoker_lightning'],
+    identities: ['mg_evoker_g_a', 'mg_evoker_g_b'],
+  },
+  {
+    label: 'Evoker',
+    classId: 'mage',
+    pick: 'mg_evoker_sculpt',
+    bosses: ['dragon', 'lich'],
+    identities: ['mg_evoker_g_a', 'mg_evoker_g_b'],
+  },
+  {
+    label: 'Abjurer',
+    classId: 'mage',
+    pick: 'mg_abjurer_bind',
+    bosses: ['dragon', 'beholder'],
+    ordinary: ['subup_mg_abjurer_bind'],
+    ordinaryIdentity: 0,
+    identities: ['mg_abjurer_g_a', 'mg_abjurer_g_b'],
+  },
+  {
+    label: 'Abjurer',
+    classId: 'mage',
+    pick: 'mg_abjurer_mend',
+    bosses: ['beholder', 'lich'],
+    identities: ['mg_abjurer_g_a', 'mg_abjurer_g_b'],
+  },
 ];
 
 const thirdSlots = [
@@ -241,12 +272,18 @@ try {
   );
   const { getCharUpgrade } = await server.ssrLoadModule('/src/engine/content/charUpgrades.ts');
 
+  const { blinkArrival, carriesDispel, wardingTarget } = await server.ssrLoadModule(
+    '/src/engine/combat/warding.ts',
+  );
+  const { isBurstControl } = await server.ssrLoadModule('/src/engine/core/control.ts');
+
   function command(world, player, seekRally, holdLane, triage) {
     const boss = world.boss;
     const aim = normalize(sub(boss.pos, player.pos));
     const distance = dist(boss.pos, player.pos);
     const tangent = { x: -aim.y, y: aim.x };
     const ranged = player.classId === 'bard';
+    const mage = player.classId === 'mage';
     const whisperReach = (player.abilities.a3.radius ?? 150) + boss.radius;
     const subSkill = player.subAbilities?.sub1;
     const meleeValor = ranged && subSkill?.kind === 'meleeCone';
@@ -286,17 +323,29 @@ try {
     const whispers =
       player.subclassPassiveId === 'whispers_echoed_refrain' ||
       player.subSkillIds?.includes('ba_whispers_wound');
-    const spacing = moon
-      ? boss.radius + player.radius + 25
-      : archer
-        ? player.spiritCompanion
-          ? 120
-          : 230
-        : healer
-          ? 235
-          : ranged && !meleeValor
-            ? whisperReach - 25
-            : boss.radius + player.radius + 8;
+    const mageField =
+      mage && subSkill?.kind === 'groundZone' && boundedAbility(subSkill, world.arena);
+    const mageBurst = mage && subSkill?.kind === 'pbaoe' && boundedAbility(subSkill, world.arena);
+    const novaReach = mage
+      ? boundedAbility(player.abilities.a2, world.arena).radius + boss.radius
+      : 0;
+    const spacing = mage
+      ? mageField && player.cooldowns.sub1 < 1
+        ? mageField.range - mageField.radius * 0.35
+        : mageBurst || player.cooldowns.a2 < 1
+          ? novaReach - 25
+          : 260
+      : moon
+        ? boss.radius + player.radius + 25
+        : archer
+          ? player.spiritCompanion
+            ? 120
+            : 230
+          : healer
+            ? 235
+            : ranged && !meleeValor
+              ? whisperReach - 25
+              : boss.radius + player.radius + 8;
     let move = distance > spacing + 20 ? aim : holdLane ? { x: 0, y: 0 } : tangent;
     if (distance < spacing - 15) move = { x: -aim.x, y: -aim.y };
     // Use the same movement policy for either identity. The optional rally and
@@ -537,6 +586,38 @@ try {
                           ['a2', incoming],
                           ['a1', distance < spacing + 25],
                         ];
+    const blink = mage && boundedAbility(player.abilities.a3, world.arena);
+    const silenced = mage && player.buffs.some((b) => b.kind === 'silence');
+    const blinkAim = danger ? move : tangent;
+    const warding = blink && carriesDispel(blink) && ready('a3');
+    const reclaim =
+      warding &&
+      wardingTarget(
+        world,
+        player,
+        player.pos,
+        blinkArrival(world, { ...player, aim: blinkAim }, blink),
+      );
+    const controlled = mage && boss.buffs.some(isBurstControl);
+    const evocation = mage && player.buffs.some((b) => b.kind === 'evocation');
+    const mageChoices = mage && [
+      ['a3', Boolean(warding && (silenced || reclaim)) || (!silenced && Boolean(danger))],
+      ['sub1', subSkill.kind === 'heal' && healInRange(subSkill)],
+      ['a2', distance <= novaReach && !controlled && !evocation],
+      ['sub1', mageField && fieldAligned(mageField)],
+      [
+        'a1',
+        distance < 400 &&
+          (controlled || evocation || player.cooldowns.a2 > 1 || distance > novaReach),
+      ],
+      [
+        'sub1',
+        mageBurst
+          ? distance <= mageBurst.radius + boss.radius
+          : subSkill.kind === 'projectile' && distance < 400,
+      ],
+      ['a2', distance <= novaReach],
+    ];
     const pursuit = player.prevButtons.basic && vengeancePursuit(world, { ...player, aim });
     const nextOnGlide =
       monk &&
@@ -552,16 +633,16 @@ try {
       nextOnGlide ||
       (transplant
         ? transplant.slot
-        : (choices.find(([key, wanted]) => wanted && ready(key))?.[0] ?? 'basic'));
+        : ((mageChoices || choices).find(([key, wanted]) => wanted && ready(key))?.[0] ?? 'basic'));
     const releaseForTransplant = Boolean(transplant && player.prevButtons[slot]);
     const releaseForPursuit = slot === 'basic' && pursuit && !pursuit.blocked;
     const revive = Boolean(fallen) && !danger && !(fieldCast && field[1].revivalFont);
     const approachFont = Boolean(fallen && field && field[1].revivalFont && !fieldCast);
     return {
       seq: world.tick,
-      aim,
+      aim: mage && slot === 'a3' ? blinkAim : aim,
       aimPoint: boss.pos,
-      move,
+      move: warding && slot === 'a3' ? { x: 0, y: 0 } : move,
       autofire: true,
       buttons: {
         basic: false,
@@ -714,8 +795,25 @@ try {
     let fontStarts = 0;
     let refugeSeconds = 0;
     let addDeaths = 0;
+    const mageEffects =
+      build.classId === 'mage'
+        ? {
+            fieldDispels: 0,
+            silenceBreaks: 0,
+            cadenceTriggers: 0,
+            cadenceSpends: 0,
+            bindingWardTriggers: 0,
+            bindContactSeconds: 0,
+            suppressedWindups: 0,
+          }
+        : null;
     for (let tick = 0; tick < duration / dt && !world.finished; tick++) {
       const priorAction = world.boss.action;
+      const priorEvocation =
+        mageEffects &&
+        world.players[0].buffs.find((buff) => buff.kind === 'evocation' && buff.remaining > dt);
+      const priorBinding =
+        mageEffects && world.players[0].subclassPassiveCooldowns?.abjurer_binding_ward;
       const prior = world.players.map((p) => ({
         pursuitReadyAt: p.vengeancePursuitReadyAt,
         pursuing: Boolean(p.glide?.vengeancePursuit),
@@ -768,6 +866,37 @@ try {
       addDeaths += world.events.filter(
         (event) => event.t === 'death' && event.kind === 'add',
       ).length;
+      if (mageEffects) {
+        const lead = world.players[0];
+        if (priorEvocation && lead.state === 'alive' && !lead.buffs.includes(priorEvocation))
+          mageEffects.cadenceSpends++;
+        if ((lead.subclassPassiveCooldowns?.abjurer_binding_ward ?? 0) > (priorBinding ?? 0))
+          mageEffects.bindingWardTriggers++;
+        if (
+          world.boss.action !== priorAction &&
+          world.boss.action.kind === 'windup' &&
+          world.boss.buffs.some((buff) => buff.kind === 'castSlow')
+        )
+          mageEffects.suppressedWindups++;
+        mageEffects.fieldDispels += world.events.filter((e) => e.t === 'fieldDispel').length;
+        mageEffects.silenceBreaks += world.events.filter((e) => e.t === 'silenceBreak').length;
+        for (const event of world.events) {
+          if (event.t !== 'support' || event.sourceId !== lead.id || event.targetId !== lead.id)
+            continue;
+          if (event.kind === 'empower') mageEffects.cadenceTriggers++;
+        }
+        if (
+          world.groundZones.some(
+            (z) =>
+              z.ownerId === lead.id &&
+              z.roots &&
+              (z.armRemaining ?? 0) <= 0 &&
+              dist(z.pos, world.boss.pos) <= z.radius + world.boss.radius &&
+              (!world.bossFlying(world.boss) || zoneReachesAir(z)),
+          )
+        )
+          mageEffects.bindContactSeconds += dt;
+      }
       for (const enemy of [...world.bosses, ...world.adds]) {
         if (!enemy.perception) continue;
         const metric = effects[world.players.findIndex((p) => p.id === enemy.perception.ownerId)];
@@ -904,6 +1033,9 @@ try {
       fontStarts,
       refugeSeconds: round(refugeSeconds),
       addDeaths,
+      ...(mageEffects && {
+        mageEffects: { ...mageEffects, bindContactSeconds: round(mageEffects.bindContactSeconds) },
+      }),
       outcome: world.outcome ?? 'timeout',
       seconds: round(world.elapsed),
       bossStartHp: round(bossStartHp),
@@ -962,7 +1094,7 @@ try {
       }
     }
   }
-  for (const [pick, boss, routes] of [
+  for (const [pick, boss, routes, identityIndex = 1] of [
     ['rg_hunter_mark', 'lich'],
     ['rg_beast_snare', 'lich'],
     ['pa_devotion_aura', 'beholder'],
@@ -970,6 +1102,8 @@ try {
     ['bb_totem_quake', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
     ['mo_openhand_wind', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
     ['mo_shadow_strike', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+    ['mg_evoker_sculpt', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+    ['mg_abjurer_bind', 'beholder', ['Hunter damage', 'Whispers utility', 'Life protection'], 0],
   ]) {
     const build = selectedBuilds.find((candidate) => candidate.pick === pick);
     if (!build) continue;
@@ -977,7 +1111,7 @@ try {
       const matched = thirdSlots
         .filter((third) => !routes || routes.includes(third.name))
         .map((third) =>
-          fight(build, build.identities[1], boss, seed, 3, true, null, 0, false, third),
+          fight(build, build.identities[identityIndex], boss, seed, 3, true, null, 0, false, third),
         );
       for (const { start, ...result } of matched) {
         assert.equal(
