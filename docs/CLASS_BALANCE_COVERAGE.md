@@ -18,7 +18,7 @@ playtests remain useful evidence for their individual mechanics.
 | Caster            | Mage      | Evoker, Abjurer            | Both measured as lead, with two first picks each and Lich or Beholder trios.                            |
 | Caster            | Sorcerer  | Draconic, Wild Magic       | Both measured as lead, with two first picks each and Lich trio comparisons.                             |
 | Rogue and Warlock | Rogue     | Assassin, Arcane Trickster | Both measured as lead, with two first picks each and Lich trio comparisons.                             |
-| Rogue and Warlock | Warlock   | Fiend, Great Old One       | Fixed encounters pending. Fiend has an older outgoing-pressure pilot.                                   |
+| Rogue and Warlock | Warlock   | Fiend, Great Old One       | Both measured as lead, with two first picks each, Lich trios and a foresight policy comparison.         |
 
 Each subclass gets a representative fixed-encounter comparison with no
 identity and both identities using native inputs. Check all 96 first-skill
@@ -39,7 +39,7 @@ slots. Apply confirmed fixes and rerun matched comparisons in the same
 batch. Keep policies reproducible and vary the controller when outcomes
 depend on a positioning or timing assumption.
 
-The representative support, nature, martial and caster cohorts are measured.
-Rogue is measured. Warlock is the remaining lead class. Track
-acquisition and graft work alongside cohorts. The [development
-roadmap](DEVELOPMENT_STATUS.md) records the visual and encounter milestones.
+All twelve classes and twenty-four subclasses now have representative
+encounter results. Start the whole-roster power and progression pass, then
+review usefulness and reward choices. The [development roadmap](DEVELOPMENT_STATUS.md)
+records acquisition, graft, visual and encounter milestones.

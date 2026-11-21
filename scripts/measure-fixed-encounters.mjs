@@ -274,6 +274,38 @@ const builds = [
     bosses: ['troll', 'lich'],
     identities: ['ro_trickster_g_a', 'ro_trickster_g_b'],
   },
+  {
+    label: 'Fiend',
+    classId: 'warlock',
+    pick: 'wa_fiend_hurl',
+    bosses: ['dragon', 'beholder'],
+    ordinary: ['wa_hex'],
+    ordinaryIdentity: 0,
+    identities: ['wa_fiend_g_a', 'wa_fiend_g_b'],
+  },
+  {
+    label: 'Fiend',
+    classId: 'warlock',
+    pick: 'wa_fiend_rebuke',
+    bosses: ['troll', 'lich'],
+    identities: ['wa_fiend_g_a', 'wa_fiend_g_b'],
+  },
+  {
+    label: 'Great Old One',
+    classId: 'warlock',
+    pick: 'wa_goo_blast',
+    bosses: ['dragon', 'lich'],
+    ordinary: ['subup_wa_goo_blast'],
+    ordinaryIdentity: 1,
+    identities: ['wa_great_old_one_g_a', 'wa_great_old_one_g_b'],
+  },
+  {
+    label: 'Great Old One',
+    classId: 'warlock',
+    pick: 'wa_goo_tentacle',
+    bosses: ['troll', 'beholder'],
+    identities: ['wa_great_old_one_g_a', 'wa_great_old_one_g_b'],
+  },
 ];
 
 const thirdSlots = [
@@ -346,13 +378,19 @@ try {
 
   const { shadowRepriseView } = await server.ssrLoadModule('/src/engine/combat/shadowReprise.ts');
 
-  function command(world, player, seekRally, holdLane, triage, withdraw) {
+  const { findInfernalClaimTarget } = await server.ssrLoadModule('/src/engine/combat/abilities.ts');
+
+  const { castTimeFactor } = await server.ssrLoadModule('/src/engine/combat/combat.ts');
+  const { forethoughtView } = await server.ssrLoadModule('/src/engine/combat/forethought.ts');
+
+  function command(world, player, seekRally, holdLane, triage, withdraw, useForecast) {
     const boss = world.boss;
     const aim = normalize(sub(boss.pos, player.pos));
     const distance = dist(boss.pos, player.pos);
     const tangent = { x: -aim.y, y: aim.x };
     const ranged = player.classId === 'bard';
     const mage = player.classId === 'mage';
+    const warlock = player.classId === 'warlock';
     const rogue = player.classId === 'rogue';
     const sorcerer = player.classId === 'sorcerer';
     const whisperReach = (player.abilities.a3.radius ?? 150) + boss.radius;
@@ -411,31 +449,44 @@ try {
     const rogueMelee = rogue
       ? boundedAbility(player.abilities.basic, world.arena).range + boss.radius
       : 0;
-    const spacing = rogue
-      ? rogueField && player.cooldowns.sub1 < 1 && !world.bossFlying(boss)
-        ? rogueField.range - rogueField.radius * 0.35
-        : rogueMelee - 20
-      : sorcerer
-        ? closeSorcery
-          ? sorcererReach - 25
-          : 285
-        : mage
-          ? mageField && player.cooldowns.sub1 < 1
-            ? mageField.range - mageField.radius * 0.35
-            : mageBurst || player.cooldowns.a2 < 1
-              ? novaReach - 25
-              : 260
-          : moon
-            ? boss.radius + player.radius + 25
-            : archer
-              ? player.spiritCompanion
-                ? 120
-                : 230
-              : healer
-                ? 235
-                : ranged && !meleeValor
-                  ? whisperReach - 25
-                  : boss.radius + player.radius + 8;
+    const hex = warlock && boundedAbility(player.abilities.a1, world.arena);
+    const rebuke = warlock && boundedAbility(player.abilities.a2, world.arena);
+    const warlockSkill = warlock && boundedAbility(subSkill, world.arena);
+    const portal = warlock && player.infernalAperture;
+    const warlockSpacing =
+      warlock &&
+      (player.cooldowns.a1 < 1
+        ? hex.range - hex.radius * 0.35
+        : warlockSkill.kind === 'pbaoe' && !warlockSkill.infernalClaim
+          ? warlockSkill.radius + boss.radius - 25
+          : 325);
+    const spacing = warlock
+      ? warlockSpacing
+      : rogue
+        ? rogueField && player.cooldowns.sub1 < 1 && !world.bossFlying(boss)
+          ? rogueField.range - rogueField.radius * 0.35
+          : rogueMelee - 20
+        : sorcerer
+          ? closeSorcery
+            ? sorcererReach - 25
+            : 285
+          : mage
+            ? mageField && player.cooldowns.sub1 < 1
+              ? mageField.range - mageField.radius * 0.35
+              : mageBurst || player.cooldowns.a2 < 1
+                ? novaReach - 25
+                : 260
+            : moon
+              ? boss.radius + player.radius + 25
+              : archer
+                ? player.spiritCompanion
+                  ? 120
+                  : 230
+                : healer
+                  ? 235
+                  : ranged && !meleeValor
+                    ? whisperReach - 25
+                    : boss.radius + player.radius + 8;
     let move = distance > spacing + 20 ? aim : holdLane ? { x: 0, y: 0 } : tangent;
     if (distance < spacing - 15) move = { x: -aim.x, y: -aim.y };
     // Use the same movement policy for either identity. The optional rally and
@@ -767,6 +818,65 @@ try {
       ['a1', distance <= player.abilities.a1.range + boss.radius],
       ['sub1', subSkill.kind === 'projectile' && distance < 375],
     ];
+    const portalAim =
+      portal && portal.conduitReady !== false && normalize(sub(portal.entry, player.pos));
+    const portalOpportunity =
+      portalAim &&
+      dist(player.pos, portal.entry) > player.radius + 8 &&
+      dist(player.pos, portal.entry) < 135 &&
+      portalAim.x * portal.direction.x + portalAim.y * portal.direction.y > 0.6;
+    const exitAim = portalOpportunity && normalize(sub(boss.pos, portal.exit));
+    const usePortal =
+      exitAim && exitAim.x * portal.direction.x + exitAim.y * portal.direction.y > 0.94;
+    const warlockSurge = warlock && player.buffs.some((b) => b.kind === 'spellSurge');
+    const canBreak =
+      warlockSurge &&
+      !boss.buffs.some((b) => b.kind === 'thoughtBreakRecovery') &&
+      (boss.action.kind === 'windup' || boss.action.kind === 'channel');
+    const breakTime =
+      canBreak &&
+      boss.action.remaining * (boss.action.kind === 'windup' ? castTimeFactor(boss) : 1);
+    const inRebuke = warlock && distance <= rebuke.radius + boss.radius;
+    const warlockChoices = warlock && [
+      [
+        'a3',
+        !portal &&
+          (player.abilities.a3.infernalAperture
+            ? distance > 320 && distance < 550
+            : player.abilities.a3.prepareSurge
+              ? !warlockSurge
+              : true),
+      ],
+      ['a1', fieldAligned(hex)],
+      [
+        'sub1',
+        warlockSkill.kind === 'projectile' &&
+          distance < 490 &&
+          (!warlockSkill.consumesSurge ||
+            !warlockSurge ||
+            breakTime > distance / (warlockSkill.projSpeed ?? 660) + dt),
+      ],
+      [
+        'sub1',
+        warlockSkill.infernalClaim
+          ? Boolean(findInfernalClaimTarget(world, { ...player, aim }, warlockSkill))
+          : warlockSkill.kind === 'pbaoe' &&
+            distance <= warlockSkill.radius + boss.radius &&
+            (!warlockSkill.consumesSurge || !warlockSurge || canBreak),
+      ],
+      ['a2', inRebuke && (!rebuke.consumesSurge || !warlockSurge || canBreak)],
+    ];
+    const preview = warlock && useForecast && forethoughtView(world, boss)?.preview;
+    const forecastShape = preview?.mode === 'fixed' && preview.shape;
+    const avoidForecast =
+      !danger &&
+      !fallen &&
+      forecastShape?.kind === 'circle' &&
+      dist(player.pos, forecastShape.target) < forecastShape.radius + player.radius + 15;
+    if (avoidForecast) {
+      const away = sub(player.pos, forecastShape.target);
+      move = Math.hypot(away.x, away.y) > 1 ? normalize(away) : tangent;
+    }
     const pursuit = player.prevButtons.basic && vengeancePursuit(world, { ...player, aim });
     const nextOnGlide =
       monk &&
@@ -779,33 +889,45 @@ try {
         return ab?.palmSweep && (player.cooldowns[slot] ?? 0) < 0.4 && !player.prevButtons[slot];
       });
     const slot =
+      (portal?.emberReady && usePortal && portal.slot) ||
       (returnNow && reprise.slot) ||
       (detonate && guided.slot) ||
       nextOnGlide ||
       (transplant
         ? transplant.slot
-        : ((rogueChoices || sorcererChoices || mageChoices || choices).find(
+        : ((warlockChoices || rogueChoices || sorcererChoices || mageChoices || choices).find(
             ([key, wanted]) => wanted && ready(key),
           )?.[0] ?? 'basic'));
     const releaseForTransplant = Boolean(transplant && player.prevButtons[slot]);
     const releaseForPursuit = slot === 'basic' && pursuit && !pursuit.blocked;
     const releaseForFreshPress =
-      (sorcerer || rogue) && slot !== 'basic' && player.prevButtons[slot];
+      (sorcerer || rogue || warlock) && slot !== 'basic' && player.prevButtons[slot];
     const steerBurst = liveBurst && !guided.origin && ['basic', guided.slot].includes(slot);
     const revive = Boolean(fallen) && !danger && !(fieldCast && field[1].revivalFont);
     const approachFont = Boolean(fallen && field && field[1].revivalFont && !fieldCast);
     return {
+      ...(warlock && { avoidForecast }),
       seq: world.tick,
       aim:
-        rogue && slot === 'a2'
-          ? rogueAim
-          : (mage || sorcerer) && slot === 'a3'
-            ? blinkAim
-            : steerBurst
-              ? normalize(sub(boss.pos, liveBurst.pos))
-              : aim,
+        usePortal &&
+        (slot === 'basic' ||
+          (slot === 'a3' && portal.emberReady) ||
+          (slot === 'sub1' && warlockSkill.kind === 'projectile'))
+          ? portalAim
+          : rogue && slot === 'a2'
+            ? rogueAim
+            : (mage || sorcerer) && slot === 'a3'
+              ? blinkAim
+              : steerBurst
+                ? normalize(sub(boss.pos, liveBurst.pos))
+                : aim,
       aimPoint: boss.pos,
-      move: (warding && slot === 'a3') || returnNow ? { x: 0, y: 0 } : move,
+      move:
+        (warding && slot === 'a3') ||
+        returnNow ||
+        (usePortal && !danger && !fallen && !avoidForecast)
+          ? { x: 0, y: 0 }
+          : move,
       autofire: true,
       buttons: {
         basic: false,
@@ -835,6 +957,7 @@ try {
     holdLane,
     third,
     withdraw = true,
+    useForecast = true,
   ) {
     const history = Array(ranks).fill(ordinary);
     const context = { classes: [build.classId], history, subSkills: [build.pick] };
@@ -1002,8 +1125,33 @@ try {
             snareContactSeconds: 0,
           }
         : null;
+    const warlockEffects =
+      build.classId === 'warlock'
+        ? {
+            apertures: 0,
+            bulwarks: 0,
+            embers: 0,
+            transits: 0,
+            firstReveals: 0,
+            secondReveals: 0,
+            thoughtBreaks: 0,
+            forecastResponseSeconds: 0,
+          }
+        : null;
     for (let tick = 0; tick < duration / dt && !world.finished; tick++) {
       const priorAction = world.boss.action;
+      const warlockLead = warlockEffects && world.players[0];
+      const oldPortal = warlockLead && warlockLead.infernalAperture;
+      const oldEmber = oldPortal?.emberReady;
+      const priorTransits =
+        warlockLead &&
+        new Set(
+          world.projectiles.filter(
+            (shot) => shot.ownerId === warlockLead.id && shot.apertureTransit,
+          ),
+        );
+      const hadBreak =
+        warlockLead && world.boss.buffs.some((buff) => buff.kind === 'thoughtBreakRecovery');
       const rogueLead = rogueEffects && world.players[0];
       const oldReprise = rogueLead && rogueLead.shadowReprise;
       const repriseWasArmed = oldReprise?.armedTick !== undefined;
@@ -1054,22 +1202,24 @@ try {
             { phase: shot.returningShot.phase, hits: shot.returningShot.hitsLeft },
           ]),
       );
-      world.step(
-        dt,
-        new Map(
-          world.players.map((p) => [
-            p.peerId,
-            command(
-              world,
-              p,
-              seekRally,
-              holdLane && p.peerId === 'lead',
-              p.peerId === 'third' && third?.triage,
-              withdraw,
-            ),
-          ]),
-        ),
+      const inputs = new Map(
+        world.players.map((p) => [
+          p.peerId,
+          command(
+            world,
+            p,
+            seekRally,
+            holdLane && p.peerId === 'lead',
+            p.peerId === 'third' && third?.triage,
+            withdraw,
+            useForecast,
+          ),
+        ]),
       );
+      if (warlockEffects && inputs.get('lead').avoidForecast) {
+        warlockEffects.forecastResponseSeconds += dt;
+      }
+      world.step(dt, inputs);
       // Retain expired field references for the last tick on which players could collect them.
       if (world.boss.buffs.some((b) => b.kind === 'stun')) bossStunSeconds += dt;
       bossCasts += world.events.filter(
@@ -1121,6 +1271,25 @@ try {
           )
             sorcererEffects.groundHazardOverflightSeconds += dt;
         }
+      }
+      if (warlockEffects) {
+        const portal = warlockLead.infernalAperture;
+        if (portal && portal !== oldPortal) {
+          warlockEffects.apertures++;
+          if (portal.bulwark) warlockEffects.bulwarks++;
+        }
+        if (oldEmber && portal === oldPortal && !portal.emberReady) warlockEffects.embers++;
+        for (const shot of world.projectiles) {
+          if (shot.ownerId === warlockLead.id && shot.apertureTransit && !priorTransits?.has(shot))
+            warlockEffects.transits++;
+        }
+        if (world.boss.action !== priorAction) {
+          const reveal = world.boss.action.forethoughtRead;
+          if (reveal?.index === 1) warlockEffects.firstReveals++;
+          if (reveal?.index === 2) warlockEffects.secondReveals++;
+        }
+        if (!hadBreak && world.boss.buffs.some((buff) => buff.kind === 'thoughtBreakRecovery'))
+          warlockEffects.thoughtBreaks++;
       }
       if (rogueEffects) {
         const reprise = rogueLead.shadowReprise;
@@ -1337,6 +1506,13 @@ try {
           groundHazardOverflightSeconds: round(sorcererEffects.groundHazardOverflightSeconds),
         },
       }),
+      ...(warlockEffects && {
+        warlockEffects: {
+          ...warlockEffects,
+          useForecast,
+          forecastResponseSeconds: round(warlockEffects.forecastResponseSeconds),
+        },
+      }),
       ...(rogueEffects && {
         rogueEffects: {
           ...rogueEffects,
@@ -1399,6 +1575,23 @@ try {
                 false,
               ),
             );
+          if (build.pick === 'wa_goo_blast')
+            matched.push(
+              fight(
+                build,
+                build.identities[0],
+                boss,
+                seed,
+                party,
+                true,
+                null,
+                0,
+                false,
+                undefined,
+                true,
+                false,
+              ),
+            );
           if (build.pick === 'rg_hunter_mark')
             matched.push(...[null, ...build.identities].map((id) => run(id, true, null, 0, true)));
           // Ordinary comparisons use the same identity at ranks 0, 1 and 3.
@@ -1435,6 +1628,8 @@ try {
     ['so_wild_surge', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
     ['ro_assassin_poison', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
     ['ro_trickster_snare', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+    ['wa_fiend_rebuke', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection'], 0],
+    ['wa_goo_blast', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
   ]) {
     const build = selectedBuilds.find((candidate) => candidate.pick === pick);
     if (!build) continue;

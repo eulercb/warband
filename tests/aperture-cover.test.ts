@@ -347,6 +347,22 @@ describe('Safe fire and actual hostile movement', () => {
       expect(p.infernalAperture!.bulwark).toBeDefined();
     }
   });
+  it.each([false, true])('keeps cover at legal near-contact distance, rooted=%s', (rooted) => {
+    const { w, p, b } = setup();
+    open(w, p);
+    const bulwark = p.infernalAperture!.bulwark!;
+    const start = { x: bulwark.pos.x + bulwark.radius + b.radius + 0.1, y: bulwark.pos.y };
+    b.pos = { ...start };
+    if (rooted) applyBuff(b, makeBuff('root', 0, 2, 'test'));
+
+    tick(w);
+
+    expect(p.infernalAperture!.bulwark).toBe(bulwark);
+    expect(dist(b.pos, bulwark.pos)).toBeGreaterThan(bulwark.radius + b.radius);
+    if (rooted) expect(b.pos).toEqual(start);
+    else expect(b.pos.y).not.toBe(start.y);
+  });
+
   it('forced hostile movement sweeps to contact, but player shoves cross freely', () => {
     const { w, p, b } = setup();
     open(w, p);
