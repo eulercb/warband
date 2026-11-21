@@ -105,6 +105,7 @@ export function grandEligible(id: string, classId: ClassId, ctx: GrandContext): 
     )
       return false;
   }
+  if (id === 'wa_fiend_g_a' && occupancyAfter(classId, ctx.history).a3 !== 'a3') return false;
   if (id === 'so_wild_g_b') {
     const mods = [...ctx.history, id];
     if (

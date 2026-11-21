@@ -219,15 +219,16 @@ const KNIGHT: CharUpgradeDef[] = [
     'kn_bulwark',
     'Impenetrable',
     '🛡️',
-    'Shield Wall gains one frontal damage block (cap 4) and 1.5s duration; each block readies a melee counter',
+    'Shield Wall gains one frontal block (cap 4) and 1.5s duration (cap 8s). Once both cap, improve recharge by 10% per pick',
     ({ abilities: a }) => {
-      if (a.a2.frontGuard)
+      const guard = a.a2.frontGuard;
+      if (guard && (guard.charges < 4 || guard.duration < 8)) {
         a.a2.frontGuard = {
-          ...a.a2.frontGuard,
-          charges: Math.min(4, a.a2.frontGuard.charges + 1),
-          duration: Math.min(8, a.a2.frontGuard.duration + 1.5),
+          ...guard,
+          charges: Math.min(4, guard.charges + 1),
+          duration: Math.min(8, guard.duration + 1.5),
         };
-      else mul(a.a2, 'cooldown', 0.9); // A forged replacement without directional guard gets real tempo.
+      } else mul(a.a2, 'cooldown', 0.9);
     },
   ),
   u(
@@ -5472,7 +5473,7 @@ export const GRAFT_GRANDS: CharUpgradeDef[] = [
     'hy_hexbrand_g_b',
     'Lingering Curse',
     '🕸️',
-    'Your grafted Hex clings 4s longer, snares harder (slow to 50%) and recurses 40% faster',
+    'Your grafted Hex lasts 4s longer and slows foes to 50% speed. Longer fields can raise the recharge floor',
     (ab) => {
       addN(ab, 'zoneDuration', 4);
       setMin(ab, 'slowMult', 0.5);
@@ -5511,7 +5512,7 @@ export const GRAFT_GRANDS: CharUpgradeDef[] = [
     'hy_inspire_g_a',
     'Rousing Chorus',
     '🎺',
-    'Your grafted Anthem swells its rally to +45% damage, lasts 4s longer and recharges 30% faster',
+    'Your grafted Anthem grants +45% damage and lasts 4s longer. Longer buffs can raise the recharge floor',
     (ab) => {
       addN(ab, 'buffDamageMult', 0.25);
       addN(ab, 'buffDuration', 4);
@@ -6685,15 +6686,17 @@ export function describeCharOffer(
   }
   const def = getCharUpgrade(id); // Forge run → the boon re-presented for its fused skill
   if (!def) return null;
-  const replaced = def.replaces ? current[def.replaces]?.name : null;
-  let desc = replaced ? `${def.desc}. Replaces ${replaced}.` : def.desc;
+  const after = previewAbilityTable(classId, [...ownedChar, id]);
+  let desc = def.desc;
+  if (def.replaces) {
+    const before = current[def.replaces];
+    const replacement = after[def.replaces];
+    desc = `Replaces ${before.name} with ${replacement.name}. ${describeAbility(replacement, afterMods)}`;
+  }
   if (def.grand) desc = `GRAND — ${desc}`;
-  // Current-stats preview (item 4): if this boon retunes ability numbers, append
-  // the affected ability's resolved effect line AFTER stacking it on the hero's
-  // CURRENT kit — so a repeat pick shows real values ("Arrow → 3× 30 dmg · 0.5s
-  // cooldown") instead of a fixed "+5 damage". Grafts already name what they swap.
+  // Resolve ordinary changes against the current kit so repeat picks show the
+  // real post-pick stats. Graft cards already show their full replacement above.
   if (!def.replaces) {
-    const after = previewAbilityTable(classId, [...ownedChar, id]);
     const slotPreview = SLOTS.filter((s) => JSON.stringify(current[s]) !== JSON.stringify(after[s]))
       .map((s) => `${after[s].name}: ${describeAbility(after[s], afterMods)}`)
       .join(' · ');

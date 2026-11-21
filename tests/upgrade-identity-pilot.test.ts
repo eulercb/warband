@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { World } from '../src/engine/world/world';
 import { SIM_DT } from '../src/engine/core/constants';
+import { effectiveRecharge } from '../src/engine/content/abilityLimits';
 import { resolvePlayerAbility, spawnZone } from '../src/engine/combat/abilities';
 import {
   applyBuff,
@@ -404,6 +405,20 @@ describe('zone ownership and contact boundaries', () => {
     applyFieldPoison(w, p, a, 10);
     expect(a.buffs.some((b) => b.kind === 'venom')).toBe(false);
   });
+  it('gives Impenetrable recharge once both Shield Wall guard bonuses cap', () => {
+    const at = (rank: number) =>
+      previewAbilityTable('knight', Array<string>(rank).fill('kn_bulwark')).a2;
+    const capped = at(3);
+    expect(capped.frontGuard).toMatchObject({ charges: 4, duration: 8 });
+    expect(effectiveRecharge(capped)).toBe(16);
+    for (const rank of [4, 5]) {
+      const wall = at(rank);
+      expect(wall.frontGuard).toEqual(capped.frontGuard);
+      expect(effectiveRecharge(wall)).toBeCloseTo(16 * 0.9 ** (rank - 3));
+      expect(effectiveRecharge(wall, 0.1)).toBeGreaterThanOrEqual(wall.frontGuard!.duration);
+    }
+  });
+
   it('delivers all 19 ticks of a 9.5-second Hex at the normal simulation step', () => {
     const { w, p, boss } = setup('warlock', ['wa_hex', 'wa_hex', 'wa_hex'], ['wa_fiend_hurl']);
     resolvePlayerAbility(w, p, 'a1', ZERO);

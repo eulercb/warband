@@ -632,7 +632,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Shield Wall gains one frontal damage block (cap 4) and 1.5s duration; each block readies a melee counter",
+      "description": "Shield Wall gains one frontal block (cap 4) and 1.5s duration (cap 8s). Once both cap, improve recharge by 10% per pick",
       "disposition": "adjust",
       "rationale": "Review live field changes and wording; prefer a useful timing, coverage or resource decision.",
       "pilotPriority": false,
@@ -646,6 +646,7 @@
             { "path": "abilities.a2.frontGuard.duration", "before": 4, "after": 5.5 }
           ],
           "atCap": [
+            { "path": "abilities.a2.cooldown", "before": 16, "after": 12.96 },
             { "path": "abilities.a2.frontGuard.charges", "before": 2, "after": 4 },
             { "path": "abilities.a2.frontGuard.duration", "before": 4, "after": 8 }
           ]
@@ -17088,7 +17089,7 @@
       "graftId": "hy_hexbrand",
       "graftSource": null,
       "replaces": null,
-      "description": "Your grafted Hex clings 4s longer, snares harder (slow to 50%) and recurses 40% faster",
+      "description": "Your grafted Hex lasts 4s longer and slows foes to 50% speed. Longer fields can raise the recharge floor",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -17514,7 +17515,7 @@
       "graftId": "hy_inspire",
       "graftSource": null,
       "replaces": null,
-      "description": "Your grafted Anthem swells its rally to +45% damage, lasts 4s longer and recharges 30% faster",
+      "description": "Your grafted Anthem grants +45% damage and lasts 4s longer. Longer buffs can raise the recharge floor",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
