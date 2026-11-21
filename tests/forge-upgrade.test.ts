@@ -17,7 +17,7 @@ import {
   previewSubAbility,
   applySubSkillUpgrades,
 } from '../src/engine/content/charUpgrades';
-import { CLASS_IDS, type PlayerAbilityDef } from '../src/engine/content/classes';
+import { CLASS_IDS, describeAbility, type PlayerAbilityDef } from '../src/engine/content/classes';
 import { getSubSkill, getSubclass } from '../src/engine/content/subclasses';
 import type { Player, AbilitySlot, ClassId } from '../src/engine/core/types';
 
@@ -27,6 +27,23 @@ afterEach(() => {
 });
 
 describe('Chaos Forge char-upgrade synthesis', () => {
+  it.each(['native', 'procedural', 'forge'])(
+    'shows the resolved %s graft in the reward offer',
+    (mode) => {
+      if (mode === 'procedural') setProceduralSeed(1);
+      if (mode === 'forge') setForgeSeed(1);
+
+      for (const id of ['hy_pyromancer', 'hy_fieldmedic']) {
+        const current = previewAbilityTable('knight', []).a2;
+        const replacement = previewAbilityTable('knight', [id]).a2;
+        const offer = describeCharOffer('knight', [], id)!;
+        expect(offer.desc).toBe(
+          `Replaces ${current.name} with ${replacement.name}. ${describeAbility(replacement)}`,
+        );
+      }
+    },
+  );
+
   it('getCharUpgrade is byte-identical to the canonical def when Forge is off', () => {
     expect(getCharUpgrade('kn_bulwark')).toBe(CHAR_UPGRADES['kn_bulwark']);
     expect(getCharUpgrade('not_a_real_boon')).toBeUndefined();

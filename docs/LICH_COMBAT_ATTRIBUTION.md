@@ -87,23 +87,7 @@ Keep the corrected cadence and current damage values. The comparisons
 support selective retreats and add targeting, and favor keeping damage and
 uptime separate when reviewing the usefulness of individual upgrades.
 
-The [power and progression pass](The zero- and four-draw conditions use the same leads and reward histories as
-the previous pass. Each row contains 72 cases. Damage and healing are median
-party totals in HP.
-
-| Party    | Draws | Clears | Wipes | Timeouts | Lich damage | Add damage | Drain restored |
-| -------- | ----: | -----: | ----: | -------: | ----------: | ---------: | -------------: |
-| Solo     |     0 |      1 |    62 |        9 |         514 |        119 |             22 |
-| Solo     |     4 |     17 |    40 |       15 |       1,209 |        192 |             42 |
-| Life duo |     0 |     37 |     7 |       28 |       3,078 |        491 |             71 |
-| Life duo |     4 |     48 |     3 |       21 |       3,075 |        451 |             49 |
-
-Accumulated drain healing exceeded the final HP remaining in only five of the
-73 roster timeouts. That arithmetic gives an upper bound if all damage and
-movement stayed fixed. It does not model how alternate positioning changes
-the fight. The two-Life duo timed out in all six advanced runs, while
-Champion's advanced solo timed out six times with no downing. The remaining
-constraint was sustained damage to the boss._POWER_AND_PROGRESSION.md) covers
-the earlier shared encounters and reward policy. Next is the usefulness
-and reward-choice pass, including identity decisions, ordinary ranks and
-grafts. Use the same corrected combat version before comparing results.
+The [power and progression pass](ROSTER_POWER_AND_PROGRESSION.md) covers
+the earlier shared encounters and reward policy. The [reward-choice pass](REWARD_CHOICE_USEFULNESS.md)
+compares identity decisions, ordinary ranks and grafts on the corrected
+combat version.

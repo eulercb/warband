@@ -36,6 +36,26 @@ afterEach(() => {
   delete CHAR_UPGRADES.testGrand;
 });
 describe('versioned grand selection and ownership', () => {
+  it.each(['hy_shadowpact', 'hy_windstep'])(
+    'keeps Aperture banked while %s replaces Blessing',
+    (graft) => {
+      const ctx: GrandContext = {
+        classes: ['warlock'],
+        history: [],
+        subSkills: ['wa_fiend_hurl'],
+      };
+      const request = { classId: 'warlock', id: 'wa_fiend_g_a', action: 'earn' } as const;
+      const earned = changeGrand(emptyGrandLoadout(), ctx, request, true)!;
+      const replaced = { ...ctx, history: [graft] };
+      expect(changeGrand(emptyGrandLoadout(), replaced, request, true)).toBeNull();
+      const banked = normalizeGrandLoadout(earned, replaced);
+      expect(banked.classes.warlock).toEqual({ bank: [request.id], equipped: [] });
+      const reclaimed = { ...ctx, history: [graft, 'restore:a3'] };
+      expect(
+        changeGrand(banked, reclaimed, { ...request, action: 'equip' })?.classes.warlock,
+      ).toEqual({ bank: [request.id], equipped: [request.id] });
+    },
+  );
   it('banks new alternatives but never silently evicts an equipped choice', () => {
     const before = earned();
     const state = changeGrand(
