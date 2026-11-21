@@ -108,6 +108,23 @@ describe('martial authored builds', () => {
     },
   );
 
+  it('preserves Shadow precision on an immune Quivering Palm and spends it on a live hit', () => {
+    const { w, p } = setup('monk', ['mo_shadow_g_a'], ['mo_shadow_dart']);
+    const boss = w.boss!;
+    resolvePlayerAbility(w, p, 'a2', zero);
+    const ready = () => p.buffs.find((b) => b.kind === 'precision');
+    const precision = ready();
+    expect(precision).toBeDefined();
+    applyBuff(boss, makeBuff('invuln', 0, 2, 'test'));
+    resolvePlayerAbility(w, p, 'a3', zero);
+    expect(boss.hp).toBe(10000);
+    expect(ready()).toBe(precision);
+    boss.buffs = boss.buffs.filter((b) => b.kind !== 'invuln');
+    resolvePlayerAbility(w, p, 'a3', zero);
+    expect(ready()).toBeUndefined();
+    expect(10000 - boss.hp).toBeGreaterThan(p.abilities!.a3.damage);
+  });
+
   it('all martial Honed profiles stay usable through five ranks on native and actual Forge kits', () => {
     for (const seed of [null, 7, 29]) {
       setForgeSeed(seed);

@@ -984,7 +984,7 @@ export function resolveBurstAt(
           p,
           b,
           ab.damage * controlledSpellMultiplier(b, ab.controlDamageBonus),
-          world.critRoll(p, ab),
+          world.critRoll(p, hasBuff(b, 'invuln') ? { ...ab, consumesPrecision: false } : ab),
         ),
       );
       applyStrikeRiders(world, contact, b, ab);
