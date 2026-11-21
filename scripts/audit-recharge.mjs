@@ -114,7 +114,9 @@ try {
   const output = await format(JSON.stringify(result), { parser: 'json', printWidth: 100 });
   if (process.argv.includes('--check')) {
     if (readFileSync('docs/RECHARGE_AUDIT.json', 'utf8') !== output)
-      throw new Error('Stale recharge audit');
+      throw new Error(
+        'Stale docs/RECHARGE_AUDIT.json. Run node scripts/audit-recharge.mjs and commit the refreshed snapshot.',
+      );
   } else writeFileSync('docs/RECHARGE_AUDIT.json', output);
   console.log(
     JSON.stringify({
