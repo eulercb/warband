@@ -148,6 +148,8 @@ describe('versioned grand selection and ownership', () => {
       subSkills: ['bb_totem_quake'],
     };
     expect(grandEligible('bb_totem_g_b', 'barbarian', ctx)).toBe(false);
+    const withWolfSpirit = { ...ctx, subSkills: [...ctx.subSkills, 'bb_totem_wolf'] };
+    expect(grandEligible('bb_totem_g_b', 'barbarian', withWolfSpirit)).toBe(true);
   });
 
   it('requires the matching ally buff axis for each Anthem grand', () => {

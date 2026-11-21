@@ -222,12 +222,13 @@ export function GrandManager({
     const grand = CHAR_UPGRADES[id];
     if (!grand.graftId || forgeSeed() === null) return grand.desc;
     if (!eligible) return 'Requires a compatible grafted ability.';
-    return (
-      describeCharOffer(classId, context.history, id, context.subSkills, generic)?.desc.replace(
-        /^GRAND — /,
-        '',
-      ) ?? grand.desc
-    );
+    return describeCharOffer(
+      classId,
+      context.history,
+      id,
+      context.subSkills,
+      generic,
+    )!.desc.replace(/^GRAND — /, '');
   }
 
   function renderGrand(id: string) {
