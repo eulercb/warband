@@ -342,7 +342,8 @@ const thirdSlots = [
 const rosterMode = process.argv.includes('--roster-power');
 const rangerMode = process.argv.includes('--ranger-spacing');
 const lichMode = process.argv.includes('--lich-attribution');
-const choiceMode = process.argv.includes('--reward-choice');
+const roleTuning = process.argv.includes('--role-tuning');
+const choiceMode = roleTuning || process.argv.includes('--reward-choice');
 assert.ok(
   [rosterMode, rangerMode, lichMode, choiceMode].filter(Boolean).length <= 1,
   'Choose one supplemental comparison',
@@ -397,7 +398,7 @@ try {
   const { getCharUpgrade, rollCharChoices } = await server.ssrLoadModule(
     '/src/engine/content/charUpgrades.ts',
   );
-  const { RUN_LENGTH } = await server.ssrLoadModule('/src/engine/core/constants.ts');
+  const { RUN_LENGTH, MAX_PLAYERS } = await server.ssrLoadModule('/src/engine/core/constants.ts');
   const { Rng, mixSeed } = await server.ssrLoadModule('/src/engine/core/math.ts');
   const { CLASS_IDS } = await server.ssrLoadModule('/src/engine/content/classes.ts');
   const { rollUpgradeChoices } = await server.ssrLoadModule('/src/engine/content/upgrades.ts');
@@ -503,7 +504,8 @@ try {
     const relay = barbarian ? ancestralRelayView(world, player) : null;
     const burstOrigin = relay?.remote ? relay.origin : player.pos;
     const burstReach = (player.abilities.a3.radius ?? 135) + boss.radius + momentum * 10;
-    const knightLead = player.classId === 'knight' && player.peerId === 'lead';
+    const knightLead =
+      player.classId === 'knight' && (player.peerId === 'lead' || player.peerId === 'tank');
     const cleric = player.classId === 'cleric';
     const druid = player.classId === 'druid';
     const moon = player.subclassPassiveId === 'moon_aspect';
@@ -1094,7 +1096,7 @@ try {
     third,
     withdraw = true,
     useForecast = true,
-    { rewards, rangerPolicy, clearAdds = false, retreatDrain = false } = {},
+    { rewards, rangerPolicy, clearAdds = false, retreatDrain = false, extraParty = [] } = {},
   ) {
     const history = rewards?.history ?? Array(ranks).fill(ordinary);
     const context = { classes: [build.classId], history, subSkills: [build.pick] };
@@ -1149,8 +1151,10 @@ try {
               },
             ]
           : []),
+        ...extraParty,
       ],
     });
+    assert.equal(world.players.length, partySize);
     const lead = world.players[0];
     const equipped = build.identities.filter((id) => lead.charUpgradeIds?.includes(id));
     if (equipped.length !== Number(Boolean(identity)) || (identity && equipped[0] !== identity))
@@ -1784,6 +1788,7 @@ try {
     for (const [pick, native, alternative, bosses] of choiceProfiles) {
       const build = selectedBuilds.find((candidate) => candidate.pick === pick);
       if (!build) continue;
+      if (roleTuning && !['kn_champion_rally', 'dr_land_wall'].includes(pick)) continue;
       const contests = [];
       for (let seed = 1; seed <= scanSize; seed++) {
         const offer = firstContestedOffer(build, seed, native, alternative);
@@ -1794,7 +1799,28 @@ try {
       for (const [index, seed] of seeds.entries()) {
         const offer = contests[index];
         for (const boss of bosses) {
-          for (const partySize of [1, 2]) {
+          for (let partySize = 1; partySize <= (roleTuning ? MAX_PLAYERS : 2); partySize++) {
+            const extraParty = [
+              {
+                peerId: 'damage',
+                name: 'Hunter',
+                classId: 'ranger',
+                subSkills: ['rg_hunter_mark'],
+              },
+              pick === 'kn_champion_rally'
+                ? {
+                    peerId: 'burst',
+                    name: 'Evoker',
+                    classId: 'mage',
+                    subSkills: ['mg_evoker_lightning'],
+                  }
+                : {
+                    peerId: 'tank',
+                    name: 'Knight',
+                    classId: 'knight',
+                    subSkills: ['kn_champion_rally'],
+                  },
+            ].slice(0, Math.max(0, partySize - 2));
             const matched = [];
             for (const rebukePass of pick === 'wa_fiend_hurl' ? [false, true] : [false]) {
               for (const identity of build.identities) {
@@ -1819,7 +1845,7 @@ try {
                       undefined,
                       true,
                       true,
-                      { rewards },
+                      { rewards, extraParty },
                     ),
                   );
                 }

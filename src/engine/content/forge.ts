@@ -1315,7 +1315,7 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
     case 'mirrorImages':
       return `${n(e.count)} mirror images for ${s(e.duration)}; each reduces one direct hit by 60%, then breaks; ground damage bypasses`;
     case 'frontGuard':
-      return `block ${n(e.charges)} frontal damage hits for ${s(e.duration)}; aim within 120°; hazards and control bypass${e.projection ? `; project a ${n(e.projection.halfWidth * 2)}u shield ${n(e.projection.reach)}u ahead; intercept hostile shots and ready a +30% melee counter` : ''}${e.counter ? '; each block readies a +30% melee counter, no stacking' : ''}`;
+      return `block ${n(e.charges)} frontal damage hits for ${s(e.duration)}; aim within 120°; hazards and control bypass${e.projection ? `; project a ${n(e.projection.halfWidth * 2)}u shield ${n(e.projection.reach)}u ahead; intercept hostile shots` : ''}${e.counter || e.projection ? `; successful blocks ready a +${pct((Math.max(e.counter ?? 1, e.projection ? 1.3 : 1) - 1) * 100)} melee counter, no stacking` : ''}`;
     case 'steadfast':
       return `resist roots, stuns and forced movement for ${s(e.duration)} (slows still apply)`;
     case 'cleanse':

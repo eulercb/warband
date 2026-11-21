@@ -124,7 +124,7 @@ describe('Unbroken Champion projected shield', () => {
       expect(p.hp).toBe(p.maxHp);
       expect(ally.hp).toBe(ally.maxHp);
       expect(p.buffs.some((x) => x.kind === 'moveSpeed' && x.mult < 1)).toBe(false);
-      expect(p.buffs.find((x) => x.kind === 'counter')?.mult).toBe(1.3);
+      expect(p.buffs.find((x) => x.kind === 'counter')?.mult).toBe(1.5);
       expect(w.events.some((e) => e.t === 'hit' && e.side === 'player')).toBe(false);
       const hp = b.hp;
       use(w, p, 'basic');
@@ -338,6 +338,13 @@ describe('Unbroken Champion projected shield', () => {
         expect(after.lifestealFrac).toBe(before.lifestealFrac);
       }
   });
+  it('shows the default interception counter for a projection without an explicit multiplier', () => {
+    const native = previewAbilityTable('knight', [A]).a2;
+    delete native.frontGuard!.counter;
+    const composed = recompose(decompose(native), native);
+    expect(describeAbility(native)).toContain('+30% melee counter');
+    expect(describeAbility(composed)).toContain('+30% melee counter');
+  });
   it('copies a self-contained projected shield without a Champion passive', () => {
     const native = previewAbilityTable('knight', [A]).a2;
     const copy = recompose(decompose(native), { slot: 'a2', name: 'Copied shield', cooldown: 16 });
@@ -353,7 +360,7 @@ describe('Unbroken Champion projected shield', () => {
     shot(w);
     step(w);
     expect(guard(p)?.mult).toBe(1);
-    expect(p.buffs.find((x) => x.kind === 'counter')?.mult).toBe(1.3);
+    expect(p.buffs.find((x) => x.kind === 'counter')?.mult).toBe(1.5);
     expect(describeAbility(copy)).toContain('intercept');
     const comp = decompose(copy),
       without = {

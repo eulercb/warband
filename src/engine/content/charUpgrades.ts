@@ -1103,9 +1103,12 @@ const HYBRID: CharUpgradeDef[] = [
       'hy_inspire',
       'Borrowed Anthem',
       '🎶',
-      'Graft the Bard’s Inspiration: rally an ally within 420u to +20% damage and 15% less damage taken for 6s (12s cooldown)',
+      'Graft the Bard’s Inspiration: rally an ally within 420u to +30% damage and 15% less damage taken for 6s (12s cooldown)',
       ({ abilities: a }) => {
-        graft(a, 'a1', 'bard', 'a1');
+        graft(a, 'a1', 'bard', 'a1', (ab) => {
+          if (ab.kind === 'buffAlly' && ab.buffDamageMult != null)
+            ab.buffDamageMult = Math.max(ab.buffDamageMult, 1.3);
+        });
       },
     ),
     exclude: ['bard', 'cleric', 'paladin'], // already carry an ally-empowering tool
@@ -2386,7 +2389,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'kn_champion_g_a',
     'Unbroken Champion',
     '⚔️',
-    'Taunt and Shield Wall project a 120u-wide shield 60u ahead, sharing their frontal-block charges. Aim to block hostile shots, waves and beam ticks for allies behind you and ready a melee counter; resist hard control for 4s. Second Wind resists control for 3s',
+    'Taunt and Shield Wall project a 120u-wide shield 60u ahead, sharing their frontal-block charges. Aim to block hostile shots, waves and beam ticks for allies behind you and ready a +50% melee counter; resist hard control for 4s. Second Wind resists control for 3s',
     (a) => {
       for (const [ab, charges] of [
         [a.a1, 1],
@@ -2398,6 +2401,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
           duration: 4,
           ...ab.frontGuard,
           projection: { reach: 60, halfWidth: 60 },
+          counter: Math.max(ab.frontGuard?.counter ?? 0, 1.5),
         };
       }
     },
@@ -5575,7 +5579,7 @@ export const GRAFT_GRANDS: CharUpgradeDef[] = [
     'hy_inspire_g_a',
     'Rousing Chorus',
     '🎺',
-    'Your grafted Anthem grants +45% damage and lasts 4s longer. Longer buffs can raise the recharge floor',
+    'Your grafted Anthem grants +55% damage and lasts 4s longer. Longer buffs can raise the recharge floor',
     (ab) => {
       addN(ab, 'buffDamageMult', 0.25);
       addN(ab, 'buffDuration', 4);
@@ -6626,7 +6630,7 @@ function forgeCharUpgrade(seed: number, base: CharUpgradeDef): CharUpgradeDef {
                                   ? 'Reforged steering: direct special hits immediately steer every foe hit 80u in the movement direction held when pressed; standing still pushes away. Once per foe per cast; 6s shared foe recovery'
                                   : 'Reforged footwork: press a defensive special while moving to step up to 180u in that direction. Standing still holds position. No immunity; movement once per 6s, requires a new press'
                                 : base.id === 'kn_champion_g_a'
-                                  ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a melee counter; gain 4s control resistance'
+                                  ? 'Reforged projected shield: your first and second starting specials project frontal blocks over 120u, 60u ahead. Missing guards gain 1/2 blocks for 4s. Block hostile shots, waves and beam ticks to ready a +50% melee counter; gain 4s control resistance'
                                   : base.id === 'wa_great_old_one_g_a'
                                     ? 'Reforged Forethought: a direct hit reveals two consecutive boss moves, one at a time, without a curse. After the second: 8s shared Mind closed recovery. A utility starting special gives the read to your basic'
                                     : base.id === 'wa_great_old_one_g_b'

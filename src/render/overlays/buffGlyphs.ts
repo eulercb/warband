@@ -117,7 +117,7 @@ function describe(
         glyph: '⚔️',
         color: 0xffd36b,
         good: true,
-        label: 'Counter ready: next connecting melee hit deals +30% damage',
+        label: `Counter ready: next connecting melee hit deals +${Math.round((mult - 1) * 100)}% damage`,
       };
     case 'moonRest':
       return {
