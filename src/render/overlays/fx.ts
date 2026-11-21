@@ -819,6 +819,7 @@ export class Fx {
     // Deep-copy the geometry (events are transient / reused).
     a.area = {
       kind: area.kind,
+      style: area.style,
       reach: area.reach,
       origin: { x: area.origin.x, y: area.origin.y },
       angle: area.angle,
@@ -877,6 +878,22 @@ export class Fx {
       const ny = ux;
       const L = area.range * s;
       const hw = Math.max(2, area.radius * s);
+      if (area.style === 'lightning') {
+        linePoly(g, o.x, o.y, ux, uy, nx, ny, L, hw).fill({ color, alpha: 0.15 * fade });
+        for (const layer of [
+          { width: 7, color },
+          { width: 2.5, color: 0xeafaff },
+        ]) {
+          g.moveTo(o.x, o.y);
+          for (let i = 1; i < 9; i++) {
+            const along = (L * i) / 9;
+            const across = Math.sin(i * 2.4 + Math.floor(t * 4)) * hw * 0.7;
+            g.lineTo(o.x + ux * along + nx * across, o.y + uy * along + ny * across);
+          }
+          g.lineTo(o.x + ux * L, o.y + uy * L).stroke({ ...layer, alpha: fade });
+        }
+        return;
+      }
       linePoly(g, o.x, o.y, ux, uy, nx, ny, L, hw).fill({ color, alpha: fillAlpha });
       linePoly(g, o.x, o.y, ux, uy, nx, ny, L, hw).stroke({ width: 2, color, alpha: strokeAlpha });
     }

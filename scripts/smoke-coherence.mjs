@@ -33,6 +33,7 @@ try {
       'poison',
       'eruption',
       'evokerNova',
+      'lightning',
       'relay',
       'rescue',
       'wind',
@@ -63,7 +64,8 @@ try {
         let world,
           owner,
           boss,
-          frame = 0;
+          frame = 0,
+          firstFrameFx = 0;
         const renderer = await Renderer.create(document.querySelector('#fixture'), {
           w: ARENA_W,
           h: ARENA_H,
@@ -83,6 +85,7 @@ try {
           poison: ['rogue', 'ro_assassin_poison'],
           eruption: ['druid', 'dr_land_spike'],
           evokerNova: ['mage', 'mg_evoker_lightning'],
+          lightning: ['mage', 'mg_evoker_lightning'],
           relay: ['cleric', 'cl_life_mend'],
           rescue: ['cleric', 'cl_light_flash'],
           wind: ['monk', 'mo_openhand_wind'],
@@ -166,6 +169,21 @@ try {
                 shot.pos = { ...boss.pos };
                 world.resolvePlayerProjectile(shot);
               }
+            } else if (name === 'lightning') {
+              world.step(
+                0,
+                new Map([
+                  [
+                    owner.peerId,
+                    {
+                      seq: 1,
+                      move: { x: 0, y: 0 },
+                      aim: owner.aim,
+                      buttons: { sub1: true },
+                    },
+                  ],
+                ]),
+              );
             } else if (name === 'ready' || name === 'bramble') {
               resolvePlayerAbility(world, owner, 'sub1', { x: 0, y: 0 });
               if (name === 'bramble') resolvePlayerAbility(world, owner, 'basic', { x: 0, y: 0 });
@@ -193,6 +211,8 @@ try {
           probe() {
             return {
               frame,
+              firstFrameFx,
+              projectiles: world.projectiles.length,
               allyHp: world.players[1]?.hp,
               allyRescue: world.players[1]?.buffs.some((b) => b.kind === 'rescueStrike'),
               allyGuard: world.players[1]?.buffs.find((b) => b.kind === 'frontGuard')?.mult,
@@ -225,9 +245,10 @@ try {
         window.coherence.mode(mode);
         const render = () => {
           renderer.render({ ...world.serialize(), localPlayerId: owner.id, arena: world.arena });
+          if (frame === 0) firstFrameFx = renderer.fxLayer.context.instructions.length;
           world.events = [];
           frame++;
-          requestAnimationFrame(render);
+          if (mode !== 'lightning' || frame < 3) requestAnimationFrame(render);
         };
         render();
       }, mode);
@@ -270,6 +291,11 @@ try {
       if (mode === 'evokerNova') {
         assert.equal(p.evoc, true);
         assert.equal(p.a2, 16);
+      }
+      if (mode === 'lightning') {
+        assert.ok(p.bossHp < 10000);
+        assert.equal(p.projectiles, 0);
+        assert.ok(p.firstFrameFx >= 3, 'first render drew the lightning flash');
       }
       if (mode === 'ready') {
         assert.equal(p.ready, true);

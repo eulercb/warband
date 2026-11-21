@@ -1,8 +1,8 @@
 # Boss and encounter revamp
 
-This milestone follows the visual revamp, including its production pass.
-It builds on the completed player kits and on the visual language for
-shapes, motion, impacts, danger zones and combat states. This plan covers
+Encounter production follows the shared visual pilot. Each encounter slice
+designs its mechanics and visual presentation together, using the shared
+language for shapes, motion, impacts, danger zones and combat states. This plan covers
 bosses, summons and encounter rules as parts of the same fight.
 
 1. **Audit the roster by player decisions.** Record how players read attacks,
@@ -26,6 +26,8 @@ bosses, summons and encounter rules as parts of the same fight.
    runs to check whether revisions improve fight variety and fairness before
    extending them to the rest of the roster.
 
-The [development roadmap](DEVELOPMENT_STATUS.md) places this work after
-the visual milestone. The current balance pass uses existing encounters
-as stable comparisons.
+Prototype with readable effects and representative silhouettes first. Finish
+boss models, summons, arena art and attack effects once phases, safe routes
+and hit geometry hold up in playtesting. Test multi-boss and modifier overlap
+before rolling the treatment out in cohorts. Resume whole-game tuning once the
+revised fights provide stable targets. See the [development roadmap](DEVELOPMENT_STATUS.md).

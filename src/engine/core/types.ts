@@ -1532,6 +1532,7 @@ export interface SkillArea {
   /** Search reach, not an area-wide application. Draw an unfilled, subdued outline. */
   reach?: boolean;
   kind: SkillAreaKind;
+  style?: 'lightning';
   origin: Vec2; // cone/line emanation point, or circle center
   angle: number; // radians — cone/line facing (unused for circle)
   range: number; // cone range / line length

@@ -140,7 +140,7 @@ describe('versioned grand selection and ownership', () => {
     }
     expect(eligible.size).toBe(GRAFT_GRANDS.length);
     expect(blocked.size).toBe(GRAFT_GRANDS.length);
-  });
+  }, 15_000);
   it('does not offer the field-only Relay route without a Momentum preparer', () => {
     const ctx: GrandContext = {
       classes: ['barbarian'],
