@@ -28,7 +28,7 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery is the [Mage encounter comparison](MAGE_ENCOUNTER_BALANCE.md), following [Monk](MONK_ENCOUNTER_BALANCE.md), [Barbarian](BARBARIAN_ENCOUNTER_BALANCE.md) and [Knight and longer graft histories](KNIGHT_AND_LONG_GRAFT_BALANCE.md). See the [all-class balance coverage plan](CLASS_BALANCE_COVERAGE.md) for all 12 classes and 24 subclasses.
+Current delivery is the [Sorcerer encounter comparison](SORCERER_ENCOUNTER_BALANCE.md), following [Mage](MAGE_ENCOUNTER_BALANCE.md) and [Monk](MONK_ENCOUNTER_BALANCE.md). See the [all-class balance coverage plan](CLASS_BALANCE_COVERAGE.md) for all 12 classes and 24 subclasses.
 See the [Devotion, Vengeance and Valor purpose review](FINAL_SUPPORT_PURPOSE_REVIEW.md)
 for the full cohort findings.
 Grand Warding escape, Land transplantation, Hunter/Beast Master and Chaos
@@ -62,13 +62,13 @@ set for another targeted balance check.
 
 | Stage                        | Concrete work                                                                                                                                                                       |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Compare Sorcerer Draconic and Wild Magic, including Surge, flight, and Chaos Crossing across multiple first picks.                                                                  |
-| Following                    | Compare Rogue and Warlock. Run whole-roster power and usefulness passes before starting the visual prototype.                                                                       |
+| Next                         | Compare Rogue Assassin and Arcane Trickster, then Warlock Fiend and Great Old One.                                                                                                  |
+| Following                    | Run whole-roster power and usefulness passes before starting the visual prototype.                                                                                                  |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth.        |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                       |
 | Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing departure casting accepted. Evoker stays retained.                                                                         |
 | Remaining support identities | Light and Life follow-ups accepted. Devotion B and Vengeance B accepted for now. Valor B accepted for now. Whispers accepted.                                                       |
-| Whole-system tuning          | 3,150 fixed encounters cover nine lead classes and eighteen subclasses. Mage is the first measured caster class.                                                                    |
+| Whole-system tuning          | 3,570 fixed encounters cover ten lead classes and twenty subclasses. The representative caster cohort is complete.                                                                  |
 | Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                                      |
 | Boss and encounter revamp    | After the visual production pass, audit the roster, prototype a boss, and test multi-boss and modifier interactions. See [boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). |
 

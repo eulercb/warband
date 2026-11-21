@@ -16,7 +16,7 @@ playtests remain useful evidence for their individual mechanics.
 | Martial           | Barbarian | Berserker, Totem           | Both measured as lead, with two first picks each.                                                       |
 | Martial           | Monk      | Open Hand, Shadow          | Both measured as lead, with two first picks each and Lich trio comparisons.                             |
 | Caster            | Mage      | Evoker, Abjurer            | Both measured as lead, with two first picks each and Lich or Beholder trios.                            |
-| Caster            | Sorcerer  | Draconic, Wild Magic       | Pending.                                                                                                |
+| Caster            | Sorcerer  | Draconic, Wild Magic       | Both measured as lead, with two first picks each and Lich trio comparisons.                             |
 | Rogue and Warlock | Rogue     | Assassin, Arcane Trickster | Fixed encounters pending. Assassin has an older outgoing-pressure pilot.                                |
 | Rogue and Warlock | Warlock   | Fiend, Great Old One       | Fixed encounters pending. Fiend has an older outgoing-pressure pilot.                                   |
 
@@ -39,7 +39,7 @@ slots. Apply confirmed fixes and rerun matched comparisons in the same
 batch. Keep policies reproducible and vary the controller when outcomes
 depend on a positioning or timing assumption.
 
-The representative support, nature and martial cohorts are measured.
-Mage starts the caster cohort. Next are Sorcerer, then Rogue and Warlock. Track
+The representative support, nature, martial and caster cohorts are measured.
+Next are Rogue and Warlock. Track
 acquisition and graft work alongside cohorts. The [development
 roadmap](DEVELOPMENT_STATUS.md) records the visual and encounter milestones.

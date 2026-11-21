@@ -210,6 +210,38 @@ const builds = [
     bosses: ['beholder', 'lich'],
     identities: ['mg_abjurer_g_a', 'mg_abjurer_g_b'],
   },
+  {
+    label: 'Draconic Bloodline',
+    classId: 'sorcerer',
+    pick: 'so_draconic_breath',
+    bosses: ['troll', 'dragon'],
+    ordinary: ['subup_so_draconic_breath'],
+    ordinaryIdentity: 0,
+    identities: ['so_draconic_g_a', 'so_draconic_g_b'],
+  },
+  {
+    label: 'Draconic Bloodline',
+    classId: 'sorcerer',
+    pick: 'so_draconic_wing',
+    bosses: ['dragon', 'lich'],
+    identities: ['so_draconic_g_a', 'so_draconic_g_b'],
+  },
+  {
+    label: 'Wild Magic',
+    classId: 'sorcerer',
+    pick: 'so_wild_surge',
+    bosses: ['troll', 'lich'],
+    ordinary: ['subup_so_wild_surge'],
+    ordinaryIdentity: 1,
+    identities: ['so_wild_g_a', 'so_wild_g_b'],
+  },
+  {
+    label: 'Wild Magic',
+    classId: 'sorcerer',
+    pick: 'so_wild_tides',
+    bosses: ['dragon', 'beholder'],
+    identities: ['so_wild_g_a', 'so_wild_g_b'],
+  },
 ];
 
 const thirdSlots = [
@@ -277,6 +309,9 @@ try {
   );
   const { isBurstControl } = await server.ssrLoadModule('/src/engine/core/control.ts');
 
+  const { GUIDED_BURST_RANGE } = await server.ssrLoadModule('/src/engine/content/guidanceRules.ts');
+  const { originView } = await server.ssrLoadModule('/src/engine/combat/guidance.ts');
+
   function command(world, player, seekRally, holdLane, triage) {
     const boss = world.boss;
     const aim = normalize(sub(boss.pos, player.pos));
@@ -284,6 +319,7 @@ try {
     const tangent = { x: -aim.y, y: aim.x };
     const ranged = player.classId === 'bard';
     const mage = player.classId === 'mage';
+    const sorcerer = player.classId === 'sorcerer';
     const whisperReach = (player.abilities.a3.radius ?? 150) + boss.radius;
     const subSkill = player.subAbilities?.sub1;
     const meleeValor = ranged && subSkill?.kind === 'meleeCone';
@@ -329,23 +365,32 @@ try {
     const novaReach = mage
       ? boundedAbility(player.abilities.a2, world.arena).radius + boss.radius
       : 0;
-    const spacing = mage
-      ? mageField && player.cooldowns.sub1 < 1
-        ? mageField.range - mageField.radius * 0.35
-        : mageBurst || player.cooldowns.a2 < 1
-          ? novaReach - 25
-          : 260
-      : moon
-        ? boss.radius + player.radius + 25
-        : archer
-          ? player.spiritCompanion
-            ? 120
-            : 230
-          : healer
-            ? 235
-            : ranged && !meleeValor
-              ? whisperReach - 25
-              : boss.radius + player.radius + 8;
+    const phaseOrigin = sorcerer && originView(world, player);
+    const sorcery = sorcerer && boundedAbility(subSkill, world.arena);
+    const rangedBurst = sorcery?.guidedBurst;
+    const sorcererReach = sorcery?.range ?? sorcery?.radius ?? 0;
+    const closeSorcery = sorcery && !rangedBurst && ['meleeCone', 'pbaoe'].includes(sorcery.kind);
+    const spacing = sorcerer
+      ? closeSorcery
+        ? sorcererReach - 25
+        : 285
+      : mage
+        ? mageField && player.cooldowns.sub1 < 1
+          ? mageField.range - mageField.radius * 0.35
+          : mageBurst || player.cooldowns.a2 < 1
+            ? novaReach - 25
+            : 260
+        : moon
+          ? boss.radius + player.radius + 25
+          : archer
+            ? player.spiritCompanion
+              ? 120
+              : 230
+            : healer
+              ? 235
+              : ranged && !meleeValor
+                ? whisperReach - 25
+                : boss.radius + player.radius + 8;
     let move = distance > spacing + 20 ? aim : holdLane ? { x: 0, y: 0 } : tangent;
     if (distance < spacing - 15) move = { x: -aim.x, y: -aim.y };
     // Use the same movement policy for either identity. The optional rally and
@@ -618,6 +663,37 @@ try {
       ],
       ['a2', distance <= novaReach],
     ];
+    const surge = sorcerer && player.buffs.some((b) => b.kind === 'spellSurge');
+    const guided = sorcerer && player.guidance;
+    const liveBurst = guided?.burst;
+    const detonate =
+      liveBurst &&
+      !liveBurst.requested &&
+      dist(liveBurst.pos, boss.pos) <= (liveBurst.payload.radius ?? 150) + boss.radius - 25;
+    const sorcererChoices = sorcerer && [
+      [
+        'a3',
+        Boolean(danger) ||
+          (!phaseOrigin &&
+            !guided &&
+            !surge &&
+            ready('a1') &&
+            Boolean(player.abilities.a3.guideRelay)),
+      ],
+      ['sub1', Boolean(sorcery.grantsFlight && (danger || !isFlying(player)))],
+      ['a2', !surge && !guided],
+      ['a1', !liveBurst && dist(phaseOrigin?.pos ?? player.pos, boss.pos) < 420],
+      [
+        'sub1',
+        !guided &&
+          (sorcery.kind === 'projectile'
+            ? distance < 350
+            : rangedBurst
+              ? dist(phaseOrigin?.pos ?? player.pos, boss.pos) <
+                GUIDED_BURST_RANGE + (sorcery.radius ?? 150)
+              : closeSorcery && distance < sorcererReach + boss.radius),
+      ],
+    ];
     const pursuit = player.prevButtons.basic && vengeancePursuit(world, { ...player, aim });
     const nextOnGlide =
       monk &&
@@ -630,17 +706,27 @@ try {
         return ab?.palmSweep && (player.cooldowns[slot] ?? 0) < 0.4 && !player.prevButtons[slot];
       });
     const slot =
+      (detonate && guided.slot) ||
       nextOnGlide ||
       (transplant
         ? transplant.slot
-        : ((mageChoices || choices).find(([key, wanted]) => wanted && ready(key))?.[0] ?? 'basic'));
+        : ((sorcererChoices || mageChoices || choices).find(
+            ([key, wanted]) => wanted && ready(key),
+          )?.[0] ?? 'basic'));
     const releaseForTransplant = Boolean(transplant && player.prevButtons[slot]);
     const releaseForPursuit = slot === 'basic' && pursuit && !pursuit.blocked;
+    const releaseForSorcery = sorcerer && slot !== 'basic' && player.prevButtons[slot];
+    const steerBurst = liveBurst && !guided.origin && ['basic', guided.slot].includes(slot);
     const revive = Boolean(fallen) && !danger && !(fieldCast && field[1].revivalFont);
     const approachFont = Boolean(fallen && field && field[1].revivalFont && !fieldCast);
     return {
       seq: world.tick,
-      aim: mage && slot === 'a3' ? blinkAim : aim,
+      aim:
+        (mage || sorcerer) && slot === 'a3'
+          ? blinkAim
+          : steerBurst
+            ? normalize(sub(boss.pos, liveBurst.pos))
+            : aim,
       aimPoint: boss.pos,
       move: warding && slot === 'a3' ? { x: 0, y: 0 } : move,
       autofire: true,
@@ -650,7 +736,12 @@ try {
         a2: false,
         a3: false,
         revive,
-        [slot]: !revive && !releaseForPursuit && !releaseForTransplant && !approachFont,
+        [slot]:
+          !revive &&
+          !releaseForPursuit &&
+          !releaseForTransplant &&
+          !releaseForSorcery &&
+          !approachFont,
       },
     };
   }
@@ -807,8 +898,32 @@ try {
             suppressedWindups: 0,
           }
         : null;
+    const sorcererEffects =
+      build.classId === 'sorcerer'
+        ? {
+            surgeSpends: 0,
+            ascents: 0,
+            weaveTriggers: 0,
+            flightSeconds: 0,
+            groundHazardOverflightSeconds: 0,
+            departureOrigins: 0,
+            remoteCasts: 0,
+            guidedProjectiles: 0,
+            guidedBursts: 0,
+            manualBursts: 0,
+          }
+        : null;
     for (let tick = 0; tick < duration / dt && !world.finished; tick++) {
       const priorAction = world.boss.action;
+      const caster = sorcererEffects && world.players[0];
+      const priorSurge =
+        caster && caster.buffs.find((buff) => buff.kind === 'spellSurge' && buff.remaining > dt);
+      const priorGuidance = caster && caster.guidance;
+      const priorBurst = priorGuidance?.burst;
+      const requestedBurst = priorBurst?.requested;
+      const priorAscent = caster && caster.subclassPassiveCooldowns?.draconic_surge_ascent;
+      const priorWeave = caster && caster.subclassPassiveCooldowns?.wild_spell_weave;
+
       const priorEvocation =
         mageEffects &&
         world.players[0].buffs.find((buff) => buff.kind === 'evocation' && buff.remaining > dt);
@@ -866,6 +981,46 @@ try {
       addDeaths += world.events.filter(
         (event) => event.t === 'death' && event.kind === 'add',
       ).length;
+      if (sorcererEffects) {
+        sorcererEffects.departureOrigins += world.events.filter(
+          (e) => e.t === 'phaseOrigin',
+        ).length;
+        if ((caster.subclassPassiveCooldowns?.draconic_surge_ascent ?? 0) > (priorAscent ?? 0))
+          sorcererEffects.ascents++;
+        if ((caster.subclassPassiveCooldowns?.wild_spell_weave ?? 0) > (priorWeave ?? 0))
+          sorcererEffects.weaveTriggers++;
+        if (
+          priorSurge &&
+          caster.state === 'alive' &&
+          !caster.buffs.some((buff) => buff.kind === 'spellSurge')
+        )
+          sorcererEffects.surgeSpends++;
+        if (priorBurst?.requested && !requestedBurst) sorcererEffects.manualBursts++;
+        if (caster.guidance && caster.guidance !== priorGuidance) {
+          if (caster.guidance.origin) sorcererEffects.remoteCasts++;
+          if (caster.guidance.burst) sorcererEffects.guidedBursts++;
+          else sorcererEffects.guidedProjectiles++;
+        }
+        if (isFlying(caster)) {
+          sorcererEffects.flightSeconds += dt;
+          if (
+            world.terrain.some(
+              (patch) =>
+                (patch.damagePerTick > 0 || patch.slowMult < 1) &&
+                dist(patch.pos, caster.pos) <= patch.radius + caster.radius,
+            ) ||
+            world.groundZones.some(
+              (z) =>
+                z.side === 'boss' &&
+                (z.damagePerTick > 0 || z.slowMult < 1 || (z.silence ?? 0) > 0) &&
+                (z.armRemaining ?? 0) <= 0 &&
+                !zoneReachesAir(z) &&
+                dist(z.pos, caster.pos) <= z.radius + caster.radius,
+            )
+          )
+            sorcererEffects.groundHazardOverflightSeconds += dt;
+        }
+      }
       if (mageEffects) {
         const lead = world.players[0];
         if (priorEvocation && lead.state === 'alive' && !lead.buffs.includes(priorEvocation))
@@ -1033,6 +1188,13 @@ try {
       fontStarts,
       refugeSeconds: round(refugeSeconds),
       addDeaths,
+      ...(sorcererEffects && {
+        sorcererEffects: {
+          ...sorcererEffects,
+          flightSeconds: round(sorcererEffects.flightSeconds),
+          groundHazardOverflightSeconds: round(sorcererEffects.groundHazardOverflightSeconds),
+        },
+      }),
       ...(mageEffects && {
         mageEffects: { ...mageEffects, bindContactSeconds: round(mageEffects.bindContactSeconds) },
       }),
@@ -1104,6 +1266,8 @@ try {
     ['mo_shadow_strike', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
     ['mg_evoker_sculpt', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
     ['mg_abjurer_bind', 'beholder', ['Hunter damage', 'Whispers utility', 'Life protection'], 0],
+    ['so_draconic_wing', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection'], 0],
+    ['so_wild_surge', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
   ]) {
     const build = selectedBuilds.find((candidate) => candidate.pick === pick);
     if (!build) continue;
