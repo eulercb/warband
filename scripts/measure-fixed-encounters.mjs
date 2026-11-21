@@ -149,6 +149,36 @@ const builds = [
     ordinary: ['subup_bb_totem_quake'],
     identities: ['bb_totem_g_a', 'bb_totem_g_b'],
   },
+  {
+    label: 'Open Hand',
+    classId: 'monk',
+    pick: 'mo_openhand_wave',
+    bosses: ['troll', 'dragon'],
+    ordinary: ['subup_mo_openhand_wave'],
+    identities: ['mo_openhand_g_a', 'mo_openhand_g_b'],
+  },
+  {
+    label: 'Open Hand',
+    classId: 'monk',
+    pick: 'mo_openhand_wind',
+    bosses: ['dragon', 'lich'],
+    identities: ['mo_openhand_g_a', 'mo_openhand_g_b'],
+  },
+  {
+    label: 'Shadow',
+    classId: 'monk',
+    pick: 'mo_shadow_dart',
+    bosses: ['troll', 'dragon'],
+    ordinary: ['subup_mo_shadow_dart'],
+    identities: ['mo_shadow_g_a', 'mo_shadow_g_b'],
+  },
+  {
+    label: 'Shadow',
+    classId: 'monk',
+    pick: 'mo_shadow_strike',
+    bosses: ['dragon', 'lich'],
+    identities: ['mo_shadow_g_a', 'mo_shadow_g_b'],
+  },
 ];
 
 const thirdSlots = [
@@ -182,6 +212,12 @@ const thirdSlots = [
   { name: 'Druid recovery', classId: 'druid', skills: ['dr_land_spring'], triage: true },
 ];
 
+const classFilter = process.argv.find((arg) => arg.startsWith('--class='))?.slice(8);
+const selectedBuilds = classFilter
+  ? builds.filter((build) => build.classId === classFilter)
+  : builds;
+if (!selectedBuilds.length) throw new Error(`No encounter profiles for ${classFilter}`);
+
 const server = await createServer({
   logLevel: 'silent',
   server: { middlewareMode: true, hmr: false },
@@ -200,6 +236,9 @@ try {
   const { boundedAbility } = await server.ssrLoadModule('/src/engine/content/abilityLimits.ts');
   const { inMoonForm } = await server.ssrLoadModule('/src/engine/combat/moonForm.ts');
   const { ancestralRelayView } = await server.ssrLoadModule('/src/engine/combat/ancestralRelay.ts');
+  const { FLOW_AREA, flowConeEffects } = await server.ssrLoadModule(
+    '/src/engine/content/martialRules.ts',
+  );
   const { getCharUpgrade } = await server.ssrLoadModule('/src/engine/content/charUpgrades.ts');
 
   function command(world, player, seekRally, holdLane, triage) {
@@ -213,6 +252,20 @@ try {
     const meleeValor = ranged && subSkill?.kind === 'meleeCone';
     const archer = player.classId === 'ranger';
     const barbarian = player.classId === 'barbarian';
+    const monk = player.classId === 'monk';
+    const flow = monk && player.buffs.some((b) => b.kind === 'flow');
+    const flowWind = monk && subSkill?.kind === 'dash' && subSkill.prepareFlow;
+    function monkReach(ab) {
+      const resolved = !flow
+        ? ab
+        : ab.kind === 'meleeCone'
+          ? { ...ab, ...flowConeEffects(ab) }
+          : { ...ab, radius: (ab.radius ?? 130) + FLOW_AREA };
+      const bounded = boundedAbility(resolved, world.arena);
+      return (
+        (bounded.kind === 'pbaoe' ? (bounded.radius ?? 130) : (bounded.range ?? 70)) + boss.radius
+      );
+    }
     const momentum = player.buffs.find((b) => b.kind === 'momentum')?.mult ?? 0;
     const rhythm = player.buffs.some((b) => b.kind === 'rageRhythm');
     const earth =
@@ -273,6 +326,8 @@ try {
     if (earth && rhythm && player.cooldowns.sub1 < 0.5 && momentum > 0 && !fieldAligned(earth))
       move = distance < (earth.range ?? 380) ? { x: -aim.x, y: -aim.y } : aim;
     if (danger) move = normalize(sub(player.pos, danger.pos));
+    const gapCloser = monk && distance > 200 && distance < 340 && !flow && !danger;
+    if (gapCloser) move = aim;
     // For a frontline Knight, cross the attack lane before shielding; aim still
     // faces the threat. This also gives fresh utility presses a real step vector.
     if (knightLead && boss.action.kind === 'windup' && boss.action.remaining < 0.65 && !danger)
@@ -430,36 +485,74 @@ try {
                         dist(burstOrigin, boss.pos) <= burstReach && (momentum >= 2 || !rhythm),
                       ],
                     ]
-                  : knightLead
+                  : monk
                     ? [
                         [
-                          'a2',
-                          player.abilities.a2.kind === 'heal'
-                            ? needsHeal
-                            : incoming ||
-                              world.projectiles.some(
-                                (shot) => shot.side === 'boss' && dist(shot.pos, player.pos) < 145,
-                              ),
+                          'sub1',
+                          Boolean(
+                            flowWind &&
+                            !flow &&
+                            (danger || gapCloser || player.hp < player.maxHp * 0.7),
+                          ),
                         ],
-                        ['a1', incoming && distance < 190],
+                        [
+                          'a2',
+                          Boolean(
+                            danger || gapCloser || (!flow && player.hp < player.maxHp * 0.72),
+                          ),
+                        ],
                         [
                           'sub1',
-                          subSkill.kind === 'heal'
-                            ? needsHeal
-                            : subSkill.healOnUse
-                              ? player.hp < player.maxHp * 0.68
-                              : distance < 220,
+                          subSkill.kind === 'projectile'
+                            ? distance < 400 && (flow || distance > 150)
+                            : subSkill.kind === 'meleeCone' && distance <= monkReach(subSkill),
                         ],
-                        ['a3', distance <= (player.abilities.a3.range ?? 60) + boss.radius],
+                        ['a3', distance <= monkReach(player.abilities.a3)],
+                        ['a1', distance <= monkReach(player.abilities.a1)],
                       ]
-                    : [
-                        ['a2', incoming],
-                        ['a1', distance < spacing + 25],
-                      ];
+                    : knightLead
+                      ? [
+                          [
+                            'a2',
+                            player.abilities.a2.kind === 'heal'
+                              ? needsHeal
+                              : incoming ||
+                                world.projectiles.some(
+                                  (shot) =>
+                                    shot.side === 'boss' && dist(shot.pos, player.pos) < 145,
+                                ),
+                          ],
+                          ['a1', incoming && distance < 190],
+                          [
+                            'sub1',
+                            subSkill.kind === 'heal'
+                              ? needsHeal
+                              : subSkill.healOnUse
+                                ? player.hp < player.maxHp * 0.68
+                                : distance < 220,
+                          ],
+                          ['a3', distance <= (player.abilities.a3.range ?? 60) + boss.radius],
+                        ]
+                      : [
+                          ['a2', incoming],
+                          ['a1', distance < spacing + 25],
+                        ];
     const pursuit = player.prevButtons.basic && vengeancePursuit(world, { ...player, aim });
-    const slot = transplant
-      ? transplant.slot
-      : (choices.find(([key, wanted]) => wanted && ready(key))?.[0] ?? 'basic');
+    const nextOnGlide =
+      monk &&
+      flow &&
+      player.glide &&
+      !player.flowQueue &&
+      (player.glide.palmSweep || player.glide.ab.prepareFlow) &&
+      ['sub1', 'a3', 'a1'].find((slot) => {
+        const ab = slot === 'sub1' ? subSkill : player.abilities[slot];
+        return ab?.palmSweep && (player.cooldowns[slot] ?? 0) < 0.4 && !player.prevButtons[slot];
+      });
+    const slot =
+      nextOnGlide ||
+      (transplant
+        ? transplant.slot
+        : (choices.find(([key, wanted]) => wanted && ready(key))?.[0] ?? 'basic'));
     const releaseForTransplant = Boolean(transplant && player.prevButtons[slot]);
     const releaseForPursuit = slot === 'basic' && pursuit && !pursuit.blocked;
     const revive = Boolean(fallen) && !danger && !(fieldCast && field[1].revivalFont);
@@ -581,6 +674,10 @@ try {
       walkMomentumGains: 0,
       momentumSpent: 0,
       remoteRelays: 0,
+      flowSpent: 0,
+      palmSweeps: 0,
+      queuedFlow: 0,
+      shadowCommits: 0,
       steeredAdds: 0,
       casts: {},
     }));
@@ -624,6 +721,10 @@ try {
         pursuing: Boolean(p.glide?.vengeancePursuit),
         hunt: p.spiritCompanion?.hunt,
         stepping: p.glide?.ab.name === 'Maneuver step',
+        flow: p.classId === 'monk' && p.buffs.find((b) => b.kind === 'flow' && b.remaining > dt),
+        sweep: p.glide?.palmSweep,
+        queued: p.flowQueue,
+        shadowCasts: p.shadowCommits?.slice(),
         momentum: p.buffs.find((b) => b.kind === 'momentum'),
         relay: p.castAbility?.ancestralCast,
         walkingRage: p.buffs.some((b) => b.kind === 'wolfHunt'),
@@ -686,6 +787,16 @@ try {
       const rallies = new Set([...priorRallies, ...world.groundZones.filter((z) => z.rally)]);
       world.players.forEach((p, i) => {
         const now = effects[i];
+        if (p.classId === 'monk') {
+          const old = prior[i];
+          if (old.flow && !p.buffs.some((b) => b.kind === 'flow') && p.state === 'alive')
+            now.flowSpent++;
+          if (p.glide?.palmSweep && p.glide.palmSweep !== old.sweep) now.palmSweeps++;
+          if (p.flowQueue && p.flowQueue !== old.queued) now.queuedFlow++;
+          now.shadowCommits += (p.shadowCommits ?? []).filter(
+            (cast) => !old.shadowCasts?.includes(cast),
+          ).length;
+        }
         if (p.classId === 'barbarian') {
           const old = prior[i];
           const current = p.buffs.find((b) => b.kind === 'momentum');
@@ -815,7 +926,7 @@ try {
   }
 
   const fights = [];
-  for (const build of builds) {
+  for (const build of selectedBuilds) {
     for (const boss of build.bosses) {
       for (const seed of seeds) {
         for (const party of [1, 2]) {
@@ -857,8 +968,11 @@ try {
     ['pa_devotion_aura', 'beholder'],
     ['bb_berserker_chain', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
     ['bb_totem_quake', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+    ['mo_openhand_wind', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
+    ['mo_shadow_strike', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
   ]) {
-    const build = builds.find((candidate) => candidate.pick === pick);
+    const build = selectedBuilds.find((candidate) => candidate.pick === pick);
+    if (!build) continue;
     for (const seed of seeds) {
       const matched = thirdSlots
         .filter((third) => !routes || routes.includes(third.name))
