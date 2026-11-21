@@ -41,6 +41,7 @@ depend on a positioning or timing assumption.
 
 All twelve classes and twenty-four subclasses now have representative
 encounter results. The [first power and progression pass](ROSTER_POWER_AND_PROGRESSION.md)
-adds common encounters and realistic reward histories. Continue with Lich
-combat attribution, then review usefulness and reward choices. The [development roadmap](DEVELOPMENT_STATUS.md)
+adds common encounters and realistic reward histories. [Lich combat attribution](LICH_COMBAT_ATTRIBUTION.md)
+separates boss pressure, adds, drain healing and downtime. Next is the review
+of usefulness and reward choices. The [development roadmap](DEVELOPMENT_STATUS.md)
 records acquisition, graft, visual and encounter milestones.

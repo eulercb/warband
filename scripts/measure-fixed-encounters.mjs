@@ -341,7 +341,11 @@ const thirdSlots = [
 
 const rosterMode = process.argv.includes('--roster-power');
 const rangerMode = process.argv.includes('--ranger-spacing');
-assert.ok(!(rosterMode && rangerMode), 'Choose one supplemental comparison');
+const lichMode = process.argv.includes('--lich-attribution');
+assert.ok(
+  [rosterMode, rangerMode, lichMode].filter(Boolean).length <= 1,
+  'Choose one supplemental comparison',
+);
 const rosterProfiles = [
   ['support', 'ba_valor_bolster', 1, 'ba_anthem'],
   ['support', 'pa_devotion_aura', 1, 'pa_mercy'],
@@ -432,6 +436,8 @@ try {
     withdraw,
     useForecast,
     rangerPolicy,
+    clearAdds,
+    retreatDrain,
   ) {
     const boss = world.boss;
     const aim = normalize(sub(boss.pos, player.pos));
@@ -989,14 +995,29 @@ try {
     const steerBurst = liveBurst && !guided.origin && ['basic', guided.slot].includes(slot);
     const revive = Boolean(fallen) && !danger && !(fieldCast && field[1].revivalFont);
     const approachFont = Boolean(fallen && field && field[1].revivalFont && !fieldCast);
+    const retreatingDrain =
+      retreatDrain &&
+      player.state === 'alive' &&
+      !danger &&
+      !fallen &&
+      boss.action.abilityId === 'lifeDrain' &&
+      boss.action.targetId === player.id &&
+      ['windup', 'channel'].includes(boss.action.kind);
+    if (retreatingDrain) move = { x: -aim.x, y: -aim.y };
+    const addTarget =
+      clearAdds &&
+      ['basic', 'a1', 'sub1'].includes(slot) &&
+      world.adds.find((add) => add.hp > 0 && !add.charm && dist(player.pos, add.pos) <= 225);
     return {
       ...(warlock && { avoidForecast }),
+      ...(retreatingDrain && { retreatingDrain }),
       seq: world.tick,
-      aim:
-        usePortal &&
-        (slot === 'basic' ||
-          (slot === 'a3' && portal.emberReady) ||
-          (slot === 'sub1' && warlockSkill.kind === 'projectile'))
+      aim: addTarget
+        ? normalize(sub(addTarget.pos, player.pos))
+        : usePortal &&
+            (slot === 'basic' ||
+              (slot === 'a3' && portal.emberReady) ||
+              (slot === 'sub1' && warlockSkill.kind === 'projectile'))
           ? portalAim
           : rogue && slot === 'a2'
             ? rogueAim
@@ -1005,7 +1026,7 @@ try {
               : steerBurst
                 ? normalize(sub(boss.pos, liveBurst.pos))
                 : aim,
-      aimPoint: boss.pos,
+      aimPoint: addTarget ? addTarget.pos : boss.pos,
       move:
         (warding && slot === 'a3') ||
         returnNow ||
@@ -1042,7 +1063,7 @@ try {
     third,
     withdraw = true,
     useForecast = true,
-    { rewards, rangerPolicy } = {},
+    { rewards, rangerPolicy, clearAdds = false, retreatDrain = false } = {},
   ) {
     const history = rewards?.history ?? Array(ranks).fill(ordinary);
     const context = { classes: [build.classId], history, subSkills: [build.pick] };
@@ -1112,6 +1133,35 @@ try {
       obstacles: world.obstacles,
       terrain: world.terrain,
     });
+    const attribution = lichMode && {
+      beamContacts: 0,
+      drainHpRemoved: 0,
+      drainHpRestored: 0,
+      players: world.players.map(() => ({
+        bossDamage: 0,
+        addDamage: 0,
+        downedSeconds: 0,
+        deadSeconds: 0,
+        retreatSeconds: 0,
+      })),
+    };
+    if (attribution) {
+      const playerMetrics = new Map(world.players.map((p, i) => [p.id, attribution.players[i]]));
+      world.combatObserver = {
+        damage(source, target, effective) {
+          const metric = playerMetrics.get(source.id);
+          if (!metric) return;
+          if (target === world.boss) metric.bossDamage += effective;
+          else metric.addDamage += effective;
+        },
+        beamDrain(boss, target, removed, restored) {
+          if (boss !== world.boss || !playerMetrics.has(target.id)) return;
+          if (removed > 0) attribution.beamContacts++;
+          attribution.drainHpRemoved += removed;
+          attribution.drainHpRestored += restored;
+        },
+      };
+    }
     const effects = world.players.map(() => ({
       damageTaken: 0,
       downed: 0,
@@ -1310,6 +1360,8 @@ try {
             withdraw,
             useForecast,
             p.peerId === 'lead' ? rangerPolicy : undefined,
+            clearAdds && p.peerId === 'third',
+            retreatDrain,
           ),
         ]),
       );
@@ -1331,6 +1383,13 @@ try {
         warlockEffects.forecastResponseSeconds += dt;
       }
       world.step(dt, inputs);
+      if (attribution) {
+        world.players.forEach((p, i) => {
+          if (p.state === 'downed') attribution.players[i].downedSeconds += dt;
+          if (p.state === 'dead') attribution.players[i].deadSeconds += dt;
+          if (inputs.get(p.peerId).retreatingDrain) attribution.players[i].retreatSeconds += dt;
+        });
+      }
       // Retain expired field references for the last tick on which players could collect them.
       if (world.boss.buffs.some((b) => b.kind === 'stun')) bossStunSeconds += dt;
       bossCasts += world.events.filter(
@@ -1566,6 +1625,19 @@ try {
       });
     }
     const round = (n) => Math.round(n * 100) / 100;
+    if (attribution) {
+      world.players.forEach((p, i) => {
+        const { bossDamage, addDamage } = attribution.players[i];
+        assert.ok(Math.abs(bossDamage + addDamage - p.stats.damageDealt) < 1e-6);
+      });
+      const bossDamage = attribution.players.reduce((sum, p) => sum + p.bossDamage, 0);
+      assert.ok(
+        Math.abs(
+          bossStartHp + attribution.drainHpRestored - Math.max(world.boss.hp, 0) - bossDamage,
+        ) < 1e-6,
+        'Unattributed Lich HP change',
+      );
+    }
     for (const [i, entries] of wounds.entries()) {
       const metric = effects[i];
       metric.faithWounds = entries.length;
@@ -1635,6 +1707,18 @@ try {
         mageEffects: { ...mageEffects, bindContactSeconds: round(mageEffects.bindContactSeconds) },
       }),
       ...(rewards && { rewards }),
+      ...(attribution && {
+        clearAdds,
+        retreatDrain,
+        attribution: {
+          beamContacts: attribution.beamContacts,
+          drainHpRemoved: round(attribution.drainHpRemoved),
+          drainHpRestored: round(attribution.drainHpRestored),
+          players: attribution.players.map((p) =>
+            Object.fromEntries(Object.entries(p).map(([key, value]) => [key, round(value)])),
+          ),
+        },
+      }),
       ...(rangerPolicy && {
         rangerPolicy,
         snareContactSeconds: round(snareContactSeconds),
@@ -1662,40 +1746,51 @@ try {
   }
 
   const fights = [];
-  if (rosterMode) {
+  if (rosterMode || lichMode) {
     const startingEncounters = new Map();
     for (const [role, pick, index, target] of rosterProfiles) {
       const build = selectedBuilds.find((candidate) => candidate.pick === pick);
       if (!build) continue;
       assert.ok(getCharUpgrade(target), target);
-      for (const monsterId of ['troll', 'dragon', 'lich']) {
+      for (const monsterId of lichMode ? ['lich'] : ['troll', 'dragon', 'lich']) {
         for (const seed of seeds) {
           for (const partySize of [1, 2]) {
             for (const stops of [0, RUN_LENGTH - 1]) {
               const rewards = drawRosterRewards(build, seed, target, stops);
-              const { start, ...result } = fight(
-                build,
-                build.identities[index],
-                monsterId,
-                seed,
-                partySize,
-                true,
-                null,
-                0,
-                false,
-                undefined,
-                true,
-                true,
-                { rewards },
-              );
-              const key = `${monsterId}/${seed}/${partySize}`;
-              if (!startingEncounters.has(key)) startingEncounters.set(key, start);
-              assert.equal(
-                start,
-                startingEncounters.get(key),
-                `Mismatched roster encounter ${key}`,
-              );
-              fights.push({ ...result, role });
+              const retestDrain =
+                lichMode &&
+                stops === RUN_LENGTH - 1 &&
+                [
+                  'cl_life_bloom',
+                  'kn_champion_rally',
+                  'bb_berserker_frenzy',
+                  'wa_fiend_hurl',
+                ].includes(pick);
+              for (const retreatDrain of retestDrain ? [false, true] : [false]) {
+                const { start, ...result } = fight(
+                  build,
+                  build.identities[index],
+                  monsterId,
+                  seed,
+                  partySize,
+                  true,
+                  null,
+                  0,
+                  false,
+                  undefined,
+                  true,
+                  true,
+                  { rewards, retreatDrain },
+                );
+                const key = `${monsterId}/${seed}/${partySize}`;
+                if (!startingEncounters.has(key)) startingEncounters.set(key, start);
+                assert.equal(
+                  start,
+                  startingEncounters.get(key),
+                  `Mismatched roster encounter ${key}`,
+                );
+                fights.push({ ...result, role });
+              }
             }
           }
         }
@@ -1813,6 +1908,8 @@ try {
         }
       }
     }
+  }
+  if (!rosterMode && !rangerMode) {
     for (const [pick, boss, routes, identityIndex = 1] of [
       ['rg_hunter_mark', 'lich'],
       ['rg_beast_snare', 'lich'],
@@ -1831,10 +1928,15 @@ try {
       ['wa_goo_blast', 'lich', ['Hunter damage', 'Whispers utility', 'Life protection']],
     ]) {
       const build = selectedBuilds.find((candidate) => candidate.pick === pick);
-      if (!build) continue;
+      if (!build || (lichMode && boss !== 'lich')) continue;
       for (const seed of seeds) {
         const matched = thirdSlots
           .filter((third) => !routes || routes.includes(third.name))
+          .filter(
+            (third) =>
+              !lichMode ||
+              ['Hunter damage', 'Whispers utility', 'Life protection'].includes(third.name),
+          )
           .map((third) =>
             fight(
               build,
@@ -1847,6 +1949,24 @@ try {
               0,
               false,
               third,
+            ),
+          );
+        if (lichMode)
+          matched.push(
+            fight(
+              build,
+              build.identities[identityIndex],
+              boss,
+              seed,
+              3,
+              true,
+              null,
+              0,
+              false,
+              thirdSlots.find((third) => third.name === 'Hunter damage'),
+              true,
+              true,
+              { clearAdds: true },
             ),
           );
         for (const { start, ...result } of matched) {

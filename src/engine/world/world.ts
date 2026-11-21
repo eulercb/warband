@@ -350,6 +350,7 @@ import {
   zoneReachesAir,
   BOSS_INVULN_SOURCE,
   type HitMods,
+  type CombatObserver,
 } from '../combat/combat';
 import { decayThreat, nthThreatTarget } from '../combat/threat';
 import {
@@ -558,6 +559,8 @@ interface BossBond {
 }
 
 export class World {
+  /** Optional host-side combat instrumentation. */
+  combatObserver?: CombatObserver;
   players: Player[] = [];
   /** Every boss in the arena. Solo fights have one; twin encounters have two. */
   bosses: Boss[] = [];
@@ -2939,11 +2942,12 @@ export class World {
         break;
       }
       case 'channel': {
+        boss.action.channelAccum += Math.min(dt, Math.max(0, boss.action.remaining));
         boss.action.remaining -= dt;
-        boss.action.channelAccum += dt;
-        const ab = boss.action.abilityId ? abilityById(def, boss.action.abilityId) : undefined;
-        while (boss.action.channelAccum >= ZONE_TICK_INTERVAL && ab) {
-          boss.action.channelAccum -= ZONE_TICK_INTERVAL;
+        const raw = boss.action.abilityId ? abilityById(def, boss.action.abilityId) : undefined;
+        const ab = raw && this.affixAbility(boss, raw);
+        while (boss.action.channelAccum >= ZONE_TICK_INTERVAL - 1e-9 && ab) {
+          boss.action.channelAccum = Math.max(0, boss.action.channelAccum - ZONE_TICK_INTERVAL);
           this.applyVampiric(boss, beamTick(this, boss, ab, boss.action));
         }
         if (boss.action.remaining <= 0) {
