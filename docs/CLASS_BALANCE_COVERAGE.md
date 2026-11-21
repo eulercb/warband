@@ -40,6 +40,7 @@ batch. Keep policies reproducible and vary the controller when outcomes
 depend on a positioning or timing assumption.
 
 All twelve classes and twenty-four subclasses now have representative
-encounter results. Start the whole-roster power and progression pass, then
-review usefulness and reward choices. The [development roadmap](DEVELOPMENT_STATUS.md)
+encounter results. The [first power and progression pass](ROSTER_POWER_AND_PROGRESSION.md)
+adds common encounters and realistic reward histories. Continue with Lich
+combat attribution, then review usefulness and reward choices. The [development roadmap](DEVELOPMENT_STATUS.md)
 records acquisition, graft, visual and encounter milestones.

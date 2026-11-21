@@ -28,7 +28,7 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery is the [Warlock encounter comparison](WARLOCK_ENCOUNTER_BALANCE.md), following [Rogue](ROGUE_ENCOUNTER_BALANCE.md) and [Sorcerer](SORCERER_ENCOUNTER_BALANCE.md). See the [all-class balance coverage plan](CLASS_BALANCE_COVERAGE.md) for all 12 classes and 24 subclasses.
+Current delivery is the [whole-roster power and progression comparison](ROSTER_POWER_AND_PROGRESSION.md), following the [Warlock encounter comparison](WARLOCK_ENCOUNTER_BALANCE.md). See the [all-class balance coverage plan](CLASS_BALANCE_COVERAGE.md) for all 12 classes and 24 subclasses.
 See the [Devotion, Vengeance and Valor purpose review](FINAL_SUPPORT_PURPOSE_REVIEW.md)
 for the full cohort findings.
 Grand Warding escape, Land transplantation, Hunter/Beast Master and Chaos
@@ -62,13 +62,13 @@ set for another targeted balance check.
 
 | Stage                        | Concrete work                                                                                                                                                                       |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Start the whole-roster power and progression pass with matched role groups on the corrected field-timing baseline.                                                                  |
+| Next                         | Continue power and progression with Lich boss versus add damage, recovery uptime and Life Drain healing. Retest the most sensitive roles with matched alternatives.                 |
 | Following                    | Review usefulness and choice across identities, ranks and grafts before starting the visual prototype.                                                                              |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth.        |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                       |
 | Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing departure casting accepted. Evoker stays retained.                                                                         |
 | Remaining support identities | Light and Life follow-ups accepted. Devotion B and Vengeance B accepted for now. Valor B accepted for now. Whispers accepted.                                                       |
-| Whole-system tuning          | 4,458 fixed encounters cover all twelve lead classes and twenty-four subclasses. Representative coverage is complete.                                                               |
+| Whole-system tuning          | 4,458 fixed encounters cover all twelve classes and twenty-four subclasses. Separate roster and Ranger comparisons add 864 and 288 controlled fights.                               |
 | Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                                      |
 | Boss and encounter revamp    | After the visual production pass, audit the roster, prototype a boss, and test multi-boss and modifier interactions. See [boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). |
 
