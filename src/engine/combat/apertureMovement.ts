@@ -76,6 +76,9 @@ function clipSolidStep(
 }
 function walkAroundCover(w: World, body: Body, desired: Vec2, dt: number): Vec2 {
   if (body.charm) return wrapPos(desired);
+  const delta = sub(desired, body.pos),
+    length = Math.hypot(delta.x, delta.y);
+  if (length <= 1e-6) return wrapPos(desired);
   const covers = apertureBulwarks(w);
   const hit = covers.find(
     (c) => circleEntry(body.pos, desired, c.pos, c.radius + body.radius + 2) !== null,
@@ -89,9 +92,7 @@ function walkAroundCover(w: World, body: Body, desired: Vec2, dt: number): Vec2 
   const stalled = same && dist(body.pos, previous.last) < 0.1 ? previous.stalled + dt : 0;
   const side = same ? previous.side : body.id % 2 === 0 ? 1 : -1;
   routes.set(body, { owner: hit.ownerId, side, last: { ...body.pos }, stalled });
-  const delta = sub(desired, body.pos),
-    length = Math.hypot(delta.x, delta.y),
-    angle = Math.atan2(delta.y, delta.x);
+  const angle = Math.atan2(delta.y, delta.x);
   if (stalled < 0.35)
     for (const sign of [side, -side])
       for (const turn of [Math.PI / 4, (Math.PI * 3) / 8, Math.PI / 2, (Math.PI * 5) / 8]) {
@@ -100,9 +101,12 @@ function walkAroundCover(w: World, body: Body, desired: Vec2, dt: number): Vec2 
           y: body.pos.y + Math.sin(angle + sign * turn) * length,
         };
         if (
-          [...w.obstacles, ...covers].some(
-            (c) => circleEntry(body.pos, candidate, c.pos, c.radius + body.radius + 1) !== null,
-          )
+          [...w.obstacles, ...covers].some((c) => {
+            const contact = c.radius + body.radius;
+            // A body already in the clearance margin can still step away from it.
+            const radius = dist(body.pos, c.pos) > contact + 1 ? contact + 1 : contact;
+            return circleEntry(body.pos, candidate, c.pos, radius) !== null;
+          })
         )
           continue;
         routes.set(body, { owner: hit.ownerId, side: sign, last: { ...body.pos }, stalled });

@@ -11806,7 +11806,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Blessing also grants 20 protection for 6s; direct spells drain health and Resilience siphons more from one cursed foe",
+      "description": "Blessing also grants 20 protection for 6s; direct spells drain health and Resilience siphons 10 more from each cursed foe it hits",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,

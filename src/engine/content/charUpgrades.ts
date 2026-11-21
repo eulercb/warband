@@ -3259,7 +3259,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'wa_fiend_g_b',
     'Infernal Pact',
     '😈',
-    'Blessing also grants 20 protection for 6s; direct spells drain health and Resilience siphons more from one cursed foe',
+    'Blessing also grants 20 protection for 6s; direct spells drain health and Resilience siphons 10 more from each cursed foe it hits',
     (a) => {
       a.a3.absorption = { amount: 20, balanceAmount: 0, duration: 6, target: 'self' };
       addN(a.basic, 'lifestealFrac', 0.1);

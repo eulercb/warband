@@ -2505,10 +2505,11 @@ export class World {
         z.armRemaining = 0; // armed this tick — fall through to a normal live tick
       }
       updateUpgradeZone(this, z, dt);
+      z.tickAccum += Math.min(dt, Math.max(0, z.remaining));
       z.remaining -= dt;
-      z.tickAccum += dt;
-      while (z.tickAccum >= ZONE_TICK_INTERVAL) {
-        z.tickAccum -= ZONE_TICK_INTERVAL;
+      // Ten 20 Hz steps can land just below the half-second threshold.
+      while (z.tickAccum >= ZONE_TICK_INTERVAL - 1e-9) {
+        z.tickAccum = Math.max(0, z.tickAccum - ZONE_TICK_INTERVAL);
         this.applyZoneTick(z);
       }
       if (z.remaining > 0) keep.push(z);

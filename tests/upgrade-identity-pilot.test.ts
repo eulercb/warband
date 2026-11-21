@@ -404,6 +404,24 @@ describe('zone ownership and contact boundaries', () => {
     applyFieldPoison(w, p, a, 10);
     expect(a.buffs.some((b) => b.kind === 'venom')).toBe(false);
   });
+  it('delivers all 19 ticks of a 9.5-second Hex at the normal simulation step', () => {
+    const { w, p, boss } = setup('warlock', ['wa_hex', 'wa_hex', 'wa_hex'], ['wa_fiend_hurl']);
+    resolvePlayerAbility(w, p, 'a1', ZERO);
+    const zone = w.groundZones[0];
+    expect(zone.duration).toBe(9.5);
+    boss.pos = { ...zone.pos };
+
+    let ticks = 0;
+    for (let step = 0; step < 12 / SIM_DT; step++) {
+      const before = boss.hp;
+      w.step(SIM_DT, new Map());
+      if (boss.hp < before) ticks++;
+    }
+
+    expect(w.groundZones).not.toContain(zone);
+    expect(ticks).toBe(19);
+  });
+
   it('delivers both field poison ticks at the normal simulation step', () => {
     const { w, p, boss } = setup();
     boss.decisionTimer = 100;
