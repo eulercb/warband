@@ -186,7 +186,8 @@ try {
     assert.equal(await guide.count(), 0);
     await page.waitForFunction(() => window.rewardState().myEphemeral.potions > 2);
 
-    assert.equal(await page.locator('.wb-reward-inspect').count(), 1);
+    const shopInspector = page.locator('.wb-reward-inspect-shop');
+    await shopInspector.waitFor({ state: 'visible' });
     await page.getByRole('button', { name: 'Room guide', exact: true }).tap();
     await guide.waitFor();
     await checkTouchTargets();
@@ -194,7 +195,7 @@ try {
     for (let i = 0; i < 3; i++)
       await page.getByRole('button', { name: 'Next tip', exact: true }).tap();
     await page.getByRole('button', { name: 'Done', exact: true }).tap();
-    assert.equal(await page.locator('.wb-reward-inspect').count(), 1);
+    await shopInspector.waitFor({ state: 'visible' });
     if (viewport.width === 390) {
       for (const kind of ['generic', 'char']) {
         console.log(`reward ${viewport.width}: walking to ${kind}`);

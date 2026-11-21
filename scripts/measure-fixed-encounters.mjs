@@ -342,8 +342,9 @@ const thirdSlots = [
 const rosterMode = process.argv.includes('--roster-power');
 const rangerMode = process.argv.includes('--ranger-spacing');
 const lichMode = process.argv.includes('--lich-attribution');
+const choiceMode = process.argv.includes('--reward-choice');
 assert.ok(
-  [rosterMode, rangerMode, lichMode].filter(Boolean).length <= 1,
+  [rosterMode, rangerMode, lichMode, choiceMode].filter(Boolean).length <= 1,
   'Choose one supplemental comparison',
 );
 const rosterProfiles = [
@@ -359,6 +360,12 @@ const rosterProfiles = [
   ['ranged', 'mg_evoker_lightning', 1, 'subup_mg_evoker_lightning'],
   ['ranged', 'so_wild_surge', 1, 'subup_so_wild_surge'],
   ['ranged', 'wa_fiend_hurl', 0, 'wa_hex'],
+];
+const choiceProfiles = [
+  ['kn_champion_rally', 'kn_bulwark', 'hy_fieldmedic', ['dragon', 'lich']],
+  ['dr_land_wall', 'dr_grasp', 'hy_inspire', ['troll', 'lich']],
+  ['rg_hunter_mark', 'rg_volley', 'rg_barbed', ['dragon', 'lich']],
+  ['wa_fiend_hurl', 'wa_hex', 'wa_rebuke', ['dragon', 'lich']],
 ];
 const classFilter = process.argv.find((arg) => arg.startsWith('--class='))?.slice(8);
 const selectedBuilds = classFilter
@@ -395,16 +402,37 @@ try {
   const { CLASS_IDS } = await server.ssrLoadModule('/src/engine/content/classes.ts');
   const { rollUpgradeChoices } = await server.ssrLoadModule('/src/engine/content/upgrades.ts');
 
+  function rewardOffers(build, seed, cycle, stop, generic, history) {
+    const rewardSeed = mixSeed(seed, cycle, stop, 0x2ec0);
+    const rng = new Rng(mixSeed(rewardSeed, CLASS_IDS.indexOf(build.classId) + 1));
+    const random = () => rng.next();
+    const [stat] = rollUpgradeChoices(3, random, generic);
+    const boons = rollCharChoices(build.classId, 4, random, history, [], [build.pick]);
+    return { stat, boons };
+  }
+
+  function firstContestedOffer(build, seed, native, alternative) {
+    const generic = [];
+    const history = [];
+    for (let stop = 0; stop < RUN_LENGTH - 1; stop++) {
+      const { stat, boons } = rewardOffers(build, seed, 0, stop, generic, history);
+      if (stat) generic.push(stat);
+      if (boons.includes(native) && boons.includes(alternative)) {
+        return { seed, stop: stop + 1, generic, history, boons };
+      }
+      const priorPick =
+        boons.find((id) => id === native) ??
+        boons.find((id) => id !== alternative && !getCharUpgrade(id)?.replaces);
+      if (priorPick) history.push(priorPick);
+    }
+  }
+
   function drawRosterRewards(build, seed, target, stops) {
     const generic = [];
     const history = [];
     for (let stop = 0; stop < stops; stop++) {
-      const rewardSeed = mixSeed(seed, 2, stop, 0x2ec0);
-      const rng = new Rng(mixSeed(rewardSeed, CLASS_IDS.indexOf(build.classId) + 1));
-      const random = () => rng.next();
-      const [stat] = rollUpgradeChoices(3, random, generic);
+      const { stat, boons: offers } = rewardOffers(build, seed, 2, stop, generic, history);
       if (stat) generic.push(stat);
-      const offers = rollCharChoices(build.classId, 4, random, history, [], [build.pick]);
       const boon =
         offers.find((id) => id === target) ?? offers.find((id) => !getCharUpgrade(id)?.replaces);
       if (boon) history.push(boon);
@@ -438,6 +466,7 @@ try {
     rangerPolicy,
     clearAdds,
     retreatDrain,
+    rebukePass,
   ) {
     const boss = world.boss;
     const aim = normalize(sub(boss.pos, player.pos));
@@ -514,7 +543,9 @@ try {
         ? hex.range - hex.radius * 0.35
         : warlockSkill.kind === 'pbaoe' && !warlockSkill.infernalClaim
           ? warlockSkill.radius + boss.radius - 25
-          : 325);
+          : rebukePass && player.cooldowns.a2 < 1
+            ? rebuke.radius + boss.radius - 30
+            : 325);
     const rangerSnare =
       rangerPolicy?.alignFields &&
       subSkill.kind === 'groundZone' &&
@@ -1362,6 +1393,7 @@ try {
             p.peerId === 'lead' ? rangerPolicy : undefined,
             clearAdds && p.peerId === 'third',
             retreatDrain,
+            Boolean(rewards?.rebukePass && p.peerId === 'lead'),
           ),
         ]),
       );
@@ -1746,7 +1778,62 @@ try {
   }
 
   const fights = [];
-  if (rosterMode || lichMode) {
+  const offerWindows = [];
+  if (choiceMode) {
+    const scanSize = 512;
+    for (const [pick, native, alternative, bosses] of choiceProfiles) {
+      const build = selectedBuilds.find((candidate) => candidate.pick === pick);
+      if (!build) continue;
+      const contests = [];
+      for (let seed = 1; seed <= scanSize; seed++) {
+        const offer = firstContestedOffer(build, seed, native, alternative);
+        if (offer) contests.push(offer);
+      }
+      assert.ok(contests.length >= seeds.length, `Too few shared offers for ${pick}`);
+      offerWindows.push({ pick, native, alternative, scanSize, contests: contests.length });
+      for (const [index, seed] of seeds.entries()) {
+        const offer = contests[index];
+        for (const boss of bosses) {
+          for (const partySize of [1, 2]) {
+            const matched = [];
+            for (const rebukePass of pick === 'wa_fiend_hurl' ? [false, true] : [false]) {
+              for (const identity of build.identities) {
+                for (const claim of [native, alternative]) {
+                  const rewards = {
+                    ...offer,
+                    claim,
+                    rebukePass,
+                    history: [...offer.history, claim],
+                  };
+                  matched.push(
+                    fight(
+                      build,
+                      identity,
+                      boss,
+                      seed,
+                      partySize,
+                      true,
+                      null,
+                      0,
+                      false,
+                      undefined,
+                      true,
+                      true,
+                      { rewards },
+                    ),
+                  );
+                }
+              }
+            }
+            for (const { start, ...result } of matched) {
+              assert.equal(start, matched[0].start, 'Mismatched reward-choice encounter');
+              fights.push(result);
+            }
+          }
+        }
+      }
+    }
+  } else if (rosterMode || lichMode) {
     const startingEncounters = new Map();
     for (const [role, pick, index, target] of rosterProfiles) {
       const build = selectedBuilds.find((candidate) => candidate.pick === pick);
@@ -1909,7 +1996,7 @@ try {
       }
     }
   }
-  if (!rosterMode && !rangerMode) {
+  if (!rosterMode && !rangerMode && !choiceMode) {
     for (const [pick, boss, routes, identityIndex = 1] of [
       ['rg_hunter_mark', 'lich'],
       ['rg_beast_snare', 'lich'],
@@ -1980,7 +2067,9 @@ try {
       }
     }
   }
-  console.log(JSON.stringify({ hz: 1 / dt, duration, fights }, null, 2));
+  console.log(
+    JSON.stringify({ hz: 1 / dt, duration, ...(choiceMode && { offerWindows }), fights }, null, 2),
+  );
 } finally {
   await server.close();
 }
