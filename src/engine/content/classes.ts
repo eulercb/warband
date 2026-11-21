@@ -25,7 +25,12 @@ import type { AbsorptionGrant } from '../combat/absorption';
 import { flowPayoff, momentumPayoff, flowPreparation, momentumPreparation } from './martialRules';
 import { bardSongText } from './bardText';
 import type { ClassId, AbilitySlot, ExtSlot, ZoneKind, CloseBurst, Vec2 } from '../core/types';
-import { PLAYER_RADIUS, CLASS_COLORS, ATTACK_CD_SCALE } from '../core/constants';
+import {
+  PLAYER_RADIUS,
+  CLASS_COLORS,
+  ATTACK_CD_SCALE,
+  PROJECTILE_MAX_RANGE,
+} from '../core/constants';
 import { procVariant, classVariant } from './procgen';
 import { describeComposed, forgeVariant, synthesizeClass, type Donor } from './forge';
 
@@ -60,6 +65,8 @@ export interface PlayerAbilityDef {
   radius?: number; // pbaoe / zone radius / impact radius
   halfAngleDeg?: number; // cone half-angle
   projSpeed?: number;
+  /** Half-width of an instantaneous lightning strike. */
+  lightningWidth?: number;
   projCount?: number;
   spreadDeg?: number;
   castTime?: number; // rooted cast before firing (Fireball)
@@ -1432,7 +1439,7 @@ export function describeAbility(
   if (def.spendsMomentum) parts.push(momentumPayoff(def.kind));
   if (def.prepareFlow) parts.push(flowPreparation(def.kind, s(def.prepareFlow)));
   if (def.consumesFlow) parts.push(flowPayoff(def.kind, (def.castTime ?? 0) * castMul, def));
-  if (def.pierce)
+  if (def.pierce && !def.lightningWidth)
     parts.push(
       def.impactRadius
         ? 'blast ends at its first impact'
@@ -1440,6 +1447,10 @@ export function describeAbility(
     );
 
   // --- Shape / reach ---
+  if (def.lightningWidth)
+    parts.push(
+      `instant lightning, ${n(def.maxRange ?? PROJECTILE_MAX_RANGE)}u reach, ${n(def.lightningWidth * 2)}u wide, stopped by cover`,
+    );
   if (def.impactRadius) parts.push(`${n(def.impactRadius)}u blast`);
   else if (def.radius) parts.push(`${n(def.radius)}u radius`);
   if (def.kind === 'meleeCone' && def.range) {

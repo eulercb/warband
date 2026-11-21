@@ -13077,7 +13077,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Lightning Bolt pierces three additional foes and travels 150u/s faster",
+      "description": "Widen the lightning strike by 20u",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -13086,14 +13086,8 @@
           "classId": "mage",
           "subSkills": ["mg_evoker_lightning"],
           "prefix": [],
-          "once": [
-            { "path": "subAbilities.sub1.pierce", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.projSpeed", "before": 820, "after": 970 }
-          ],
-          "atCap": [
-            { "path": "subAbilities.sub1.pierce", "before": null, "after": 3 },
-            { "path": "subAbilities.sub1.projSpeed", "before": 820, "after": 970 }
-          ]
+          "once": [{ "path": "subAbilities.sub1.lightningWidth", "before": 14, "after": 24 }],
+          "atCap": [{ "path": "subAbilities.sub1.lightningWidth", "before": 14, "after": 24 }]
         }
       ]
     },

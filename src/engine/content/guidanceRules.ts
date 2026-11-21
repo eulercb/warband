@@ -6,6 +6,7 @@ export const GUIDANCE_TEXT =
 export function guidedSpell(ab: Omit<PlayerAbilityDef, 'slot'> & { slot?: string }): boolean {
   return (
     ab.kind === 'projectile' &&
+    !ab.lightningWidth &&
     ab.slot !== 'basic' &&
     ab.damage > 0 &&
     !ab.returningShot &&

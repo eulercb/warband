@@ -112,3 +112,34 @@ describe('Fx: fight-start and party-wipe transitions (item)', () => {
     expect(instructionCount(settled)).toBe(0);
   });
 });
+
+it('draws the lightning strike across its area and clears it after fading', () => {
+  const fx = new Fx(new Container());
+  const camera = new Camera(1600, 1000);
+  const g = new Graphics();
+  fx.processEvents(
+    [
+      {
+        t: 'skillArea',
+        sourceId: 1,
+        side: 'player',
+        color: 0x75aaff,
+        area: {
+          kind: 'line',
+          style: 'lightning',
+          origin: { x: 450, y: 500 },
+          angle: 0,
+          range: 500,
+          radius: 14,
+          halfAngle: 0,
+        },
+      },
+    ],
+    camera,
+  );
+  fx.draw(g, camera);
+  expect(instructionCount(g)).toBe(3);
+  for (let frame = 0; frame < 40; frame++) fx.update(16);
+  fx.draw(g, camera);
+  expect(instructionCount(g)).toBe(0);
+});

@@ -74,6 +74,8 @@ export interface Delivery {
   radius?: number;
   halfAngleDeg?: number;
   projSpeed?: number;
+  /** Half-width of an instantaneous lightning strike. */
+  lightningWidth?: number;
   /** Projectile fan size — a SEPARABLE facet (Multishot's "3" is droppable). */
   projCount?: number;
   spreadDeg?: number;
@@ -281,6 +283,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   const delivery: Delivery = { kind };
   if (def.range != null) delivery.range = def.range;
   if (def.halfAngleDeg != null) delivery.halfAngleDeg = def.halfAngleDeg;
+  if (def.lightningWidth != null) delivery.lightningWidth = def.lightningWidth;
   if (def.projSpeed != null) delivery.projSpeed = def.projSpeed;
   if (def.projCount != null) delivery.projCount = def.projCount;
   if (def.spreadDeg != null) delivery.spreadDeg = def.spreadDeg;
@@ -577,18 +580,21 @@ export function recompose(
     comp = { ...comp, effects: comp.effects.filter((e) => e.kind !== 'dispelField') };
   if (
     comp.effects.some((e) => e.kind === 'guidedShot') &&
-    (comp.delivery.kind !== 'projectile' ||
+    (comp.delivery.lightningWidth ||
+      comp.delivery.kind !== 'projectile' ||
       meta.slot === 'basic' ||
       !comp.effects.some((e) => e.kind === 'damage' && e.amount > 0) ||
       comp.effects.some((e) => e.kind === 'returningShot'))
   )
     comp = { ...comp, effects: comp.effects.filter((e) => e.kind !== 'guidedShot') };
   if (comp.effects.some((e) => e.kind === 'returningShot')) {
-    const fits = returningShotFits(
-      comp.delivery.kind,
-      comp.delivery.impactRadius,
-      comp.effects.some((e) => e.kind === 'zone'),
-    );
+    const fits =
+      !comp.delivery.lightningWidth &&
+      returningShotFits(
+        comp.delivery.kind,
+        comp.delivery.impactRadius,
+        comp.effects.some((e) => e.kind === 'zone'),
+      );
     let kept = false;
     comp = {
       ...comp,
@@ -656,6 +662,7 @@ export function recompose(
   if (d.range != null) def.range = d.range;
   if (d.radius != null) def.radius = d.radius;
   if (d.halfAngleDeg != null) def.halfAngleDeg = d.halfAngleDeg;
+  if (d.lightningWidth != null) def.lightningWidth = d.lightningWidth;
   if (d.projSpeed != null) def.projSpeed = d.projSpeed;
   if (d.projCount != null) def.projCount = d.projCount;
   if (d.spreadDeg != null) def.spreadDeg = d.spreadDeg;
@@ -938,6 +945,7 @@ export function recompose(
 export function componentValue(comp: AbilityComponents): number {
   const fan = Math.max(1, comp.delivery.projCount ?? 1);
   let v = comp.delivery.kind === 'selfBuff' ? (comp.delivery.iframes ?? 0) * 30 : 0;
+  v += (comp.delivery.lightningWidth ?? 0) * fan;
   if (comp.delivery.swap && comp.delivery.kind === 'blink') v += 30;
   for (const e of comp.effects) {
     v +=
@@ -1228,7 +1236,11 @@ function deliveryPhrase(d: Delivery): string {
       return d.halfAngleDeg ? `${n(d.halfAngleDeg * 2)}° cleave` : 'cleave';
     case 'projectile': {
       const fan = d.projCount ?? 1;
-      const shot = fan > 1 ? `${fan}× shot` : 'single shot';
+      const shot = d.lightningWidth
+        ? `instant lightning (${n(d.lightningWidth * 2)}u wide), stopped by cover`
+        : fan > 1
+          ? `${fan}× shot`
+          : 'single shot';
       return (d.impactRadius ?? 0) > 0 ? `${shot}, ${n(d.impactRadius!)}u blast` : shot;
     }
     case 'groundZone':
@@ -1942,6 +1954,7 @@ export function synthesizeAbility(
   for (let i = 0; i < extra; i++) {
     const options = pool.filter(
       (x) =>
+        (!delivery.lightningWidth || !['guidedShot', 'returningShot'].includes(x.effect.kind)) &&
         effectFitsDelivery(delivery.kind, x.effect) &&
         slotAllowsEffect(slot, x.effect) &&
         !usedSources.has(x.donor.name) &&
@@ -2572,6 +2585,7 @@ function capComponents(comp: AbilityComponents): AbilityComponents {
       .filter((e) => e.kind !== 'revivalFont' || fontComponentsFit(comp))
       .filter((e) => e.kind !== 'refuge' || refugeComponentsFit(comp))
       .filter((e) => e.kind !== 'reflectWard' || reflectionComponentsFit(comp))
+      .filter((e) => !delivery.lightningWidth || !['guidedShot', 'returningShot'].includes(e.kind))
       .filter((e) => e.kind !== 'guidedBurst' || burstComponentsFit(comp))
       .filter((e) => e.kind !== 'guideRelay' || delivery.kind === 'blink')
       .filter(

@@ -1598,6 +1598,11 @@ function spawnPlayerProjectile(
     lifesteal: o.lifesteal,
     onImpact: o.onImpact,
   };
+  if (o.returningSource?.lightningWidth) {
+    proj.hitRadius = o.returningSource.lightningWidth;
+    world.resolveLightning(proj, dir);
+    return;
+  }
   if (o.returningSource) armReturningShot(p, proj, o.returningSource);
   world.projectiles.push(proj);
   world.events.push({ t: 'projectile', kind, pos: { ...origin } });

@@ -373,8 +373,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'mg_evoker_lightning',
           'Lightning Bolt',
           '⚡',
-          'A fast bolt for 40, +20% damage against controlled foes',
-          proj('Lightning Bolt', 5, 40, { projSpeed: 820, controlDamageBonus: 0.2 }),
+          'An instant 820u strike through foes, stopped by cover; +20% damage against controlled foes',
+          proj('Lightning Bolt', 5, 40, { lightningWidth: 14, controlDamageBonus: 0.2 }),
         ),
         sk(
           'mg_evoker_cone',

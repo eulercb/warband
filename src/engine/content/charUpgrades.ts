@@ -3242,13 +3242,15 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'Steer your latest projectile special. Tides becomes a steerable burst (+15% damage): press again to detonate, or burst after 1.25s. A fresh Arcane Phase leaves a 4s departure origin for your next guided special; press Phase again to cast from yourself',
     (a) => {
       for (const ab of [a.a1, a.a2, a.a3]) {
-        if (ab.kind === 'projectile' && ab.damage > 0 && !ab.returningShot) ab.guidedShot = true;
+        if (ab.kind === 'projectile' && ab.damage > 0 && !ab.returningShot && !ab.lightningWidth)
+          ab.guidedShot = true;
         else if (guidedBurstFits(ab)) ab.guidedBurst = true;
       }
       if (a.a3.kind === 'blink') a.a3.guideRelay = true;
     },
     (ab) => {
-      if (ab.kind === 'projectile' && ab.damage > 0 && !ab.returningShot) ab.guidedShot = true;
+      if (ab.kind === 'projectile' && ab.damage > 0 && !ab.returningShot && !ab.lightningWidth)
+        ab.guidedShot = true;
       else if (guidedBurstFits(ab)) ab.guidedBurst = true;
     },
   ),
@@ -3624,16 +3626,8 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mg_evoker_lightning',
     'Conducting Lance',
     '⚡',
-    'Lightning Bolt pierces three additional foes and travels 150u/s faster',
-    casterGrand(
-      'projectile',
-      (ab) => {
-        addN(ab, 'pierce', 3);
-        addN(ab, 'projSpeed', 150);
-      },
-      [],
-      true,
-    ),
+    'Widen the lightning strike by 20u',
+    casterGrand('projectile', (ab) => addN(ab, 'lightningWidth', 10), ['lightningWidth']),
   ),
   gsk(
     'mg_evoker_cone',

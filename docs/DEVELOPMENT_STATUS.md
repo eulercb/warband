@@ -28,7 +28,7 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery is [Champion and Borrowed Anthem tuning](ROLE_TUNING.md), building on [Lich attribution](LICH_COMBAT_ATTRIBUTION.md) and the [reward-choice comparison](REWARD_CHOICE_USEFULNESS.md). See the [class balance coverage plan](CLASS_BALANCE_COVERAGE.md).
+The first numerical batch is [Champion and Borrowed Anthem tuning](ROLE_TUNING.md), building on [Lich attribution](LICH_COMBAT_ATTRIBUTION.md) and the [reward-choice comparison](REWARD_CHOICE_USEFULNESS.md). See the [class balance coverage plan](CLASS_BALANCE_COVERAGE.md).
 See the [Devotion, Vengeance and Valor purpose review](FINAL_SUPPORT_PURPOSE_REVIEW.md)
 for the full cohort findings.
 Grand Warding escape, Land transplantation, Hunter/Beast Master and Chaos
@@ -42,9 +42,8 @@ Devotion, Vengeance and Valor. The owner merged and tested Relentless Vengeance 
 
 ## Next development work, in order
 
-The class comparisons are the coverage stage. They validate individual
-mechanics and fix clear defects as we find them. Once all classes have
-representative results, run two further passes on the same version:
+The class comparisons validated individual mechanics and fixed clear defects.
+The remaining tuning uses two kinds of comparison on the same encounter version:
 
 1. **Power and progression.** Compare damage, survival, recovery and
    utility for builds doing comparable jobs, across solo and party sizes,
@@ -56,27 +55,19 @@ representative results, run two further passes on the same version:
    alternatives. Adjust timing, coverage, cost or numbers as the evidence
    warrants, then verify with live playtests and the full comparison set.
 
-The coverage and diagnostic passes are complete. Tuning remains open.
-Use solo through four-player checks, judging DPS, healing and tanking by
-their intended contributions. Keep solo more demanding while preserving
-meaningful failure risk for full parties. Close the balance milestone only
-after the strongest outstanding cases have a verified adjustment or an
-explicit retain decision and harder group scenarios have been reviewed.
-These passes precede the visual milestone. Once the boss and encounter
-revamp changes what fights ask of players, use the established comparison
-set for another targeted balance check.
+Coverage and diagnostic comparisons are complete. The first numerical batch
+adjusted Champion counters and Borrowed Anthem. Remaining tuning is deferred
+until the revised fights are available. It includes role and reward outliers,
+harder three- and four-player cases, and explicit adjust or retain decisions.
+The [class balance coverage plan](CLASS_BALANCE_COVERAGE.md) preserves the
+comparison method and evidence.
 
-| Stage                        | Concrete work                                                                                                                                                                       |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Calibrate harder three- and four-player cases, then tune the remaining role and reward outliers.                                                                                    |
-| Following                    | Verify the final tuning decisions and live playtesting before the visual prototype.                                                                                                 |
-| Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth.        |
-| Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                       |
-| Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing departure casting accepted. Evoker stays retained.                                                                         |
-| Remaining support identities | Light and Life follow-ups accepted. Devotion B and Vengeance B accepted for now. Valor B accepted for now. Whispers accepted.                                                       |
-| Whole-system tuning          | 4,458 coverage fights across all subclasses. The first tuning batch adds 384 matched cases from solo through four players. Tuning remains open.                                     |
-| Visual milestone             | Representative hero/form, boss, arena and attack/heal/barrier/control prototype on desktop and phone, then the broader visual production pass.                                      |
-| Boss and encounter revamp    | After the visual production pass, audit the roster, prototype a boss, and test multi-boss and modifier interactions. See [boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). |
+| Order                  | Development work                                                                                                                                                                              |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Now                    | [Visual and ability pilot](VISUAL_REVAMP.md). Use Lightning Bolt to test whether aim, hit geometry and the effect read as one action.                                                         |
+| Next                   | Test a representative player/form, summon, and attack, heal, barrier and control effects on desktop and phone. Expand verified treatments across stable player kits and shared arena systems. |
+| Then                   | [Boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). Pair encounter mechanics, terrain and boss/arena art in playtestable slices.                                                       |
+| After encounter revamp | Resume role, progression and reward tuning on the revised fights. Compare solo through four players, with meaningful challenge at every size.                                                 |
 
 Use one bounded Sol 6.2 high design review where substantial planning is needed.
 Proceed with a mature authorized plan; surface unresolved material gameplay

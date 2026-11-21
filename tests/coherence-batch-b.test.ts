@@ -497,3 +497,88 @@ describe('additional poison and control boundaries', () => {
     expect(w.critRoll(p, { slowMult: 0.5, slowDuration: 0 }).controlOnHit).toBeUndefined();
   });
 });
+
+describe('Lightning Bolt delivery', () => {
+  it.each(['native', 'forge'] as const)(
+    'strikes several aligned foes at once with %s delivery',
+    (source) => {
+      const { w, p, boss } = setup('mg_evoker_lightning');
+      const def = p.subAbilities!.sub1!;
+      if (source === 'forge') {
+        const forged = synthesizeAbility(71, 'lightning', 'a1', [
+          { name: def.name, classId: 'mage', className: 'Mage', slot: 'a1', def },
+        ]);
+        p.subAbilities!.sub1 = { ...forged.def, slot: 'sub1' };
+        expect(describeAbility(p.subAbilities!.sub1)).toContain('instant lightning');
+      }
+      const nearby = add(w, 650);
+      const farther = add(w, 800);
+      const offAxis = add(w, 800);
+      offAxis.pos.y += 45;
+      cast(w, p);
+      expect(w.projectiles).toHaveLength(0);
+      expect(nearby.hp).toBeLessThan(1000);
+      expect(farther.hp).toBeLessThan(1000);
+      expect(boss.hp).toBeLessThan(10000);
+      expect(offAxis.hp).toBe(1000);
+      const flash = w.events.find((e) => e.t === 'skillArea');
+      expect(flash?.area).toMatchObject({ style: 'lightning', radius: 14, range: 820 });
+    },
+  );
+
+  it('drops flight riders from a lightning delivery when synthesizing', () => {
+    const { p } = setup('mg_evoker_lightning');
+    const lightning = p.subAbilities!.sub1!;
+    const donor = { ...p.abilities!.a1, guidedShot: true };
+    const result = synthesizeAbility(17, 'guided-lightning', 'a1', [
+      { name: lightning.name, classId: 'mage', className: 'Mage', slot: 'a1', def: lightning },
+      { name: donor.name, classId: 'mage', className: 'Mage', slot: 'a2', def: donor },
+    ]).def;
+    expect(result.lightningWidth).toBe(14);
+    expect(result.components!.effects.some((e) => e.kind === 'guidedShot')).toBe(false);
+
+    const components = decompose(lightning);
+    const guided = decompose(donor).effects.find((e) => e.kind === 'guidedShot')!;
+    const def = recompose({ ...components, effects: [...components.effects, guided] }, lightning);
+    expect(def.guidedShot).toBeUndefined();
+  });
+
+  it('retains a forged blast at the first contact without striking distant foes', () => {
+    const { w, p, boss } = setup('mg_evoker_lightning');
+    const def = p.subAbilities!.sub1!;
+    const components = decompose(def);
+    components.delivery.impactRadius = 34;
+    p.subAbilities!.sub1 = recompose(components, def);
+    const beyond = add(w, 800);
+    cast(w, p);
+    expect(boss.hp).toBeLessThan(10000);
+    expect(beyond.hp).toBe(1000);
+    const blast = w.events.find((e) => e.t === 'skillArea' && e.area.kind === 'circle');
+    expect(blast).toHaveProperty('area.radius', 34);
+  });
+
+  it('Conducting Lance widens the path that applies damage', () => {
+    const { w, p } = setup('mg_evoker_lightning');
+    applySubclassGrands(p, ['mg_evoker_lightning_g']);
+    expect(describeAbility(p.subAbilities!.sub1!)).toContain('48u wide');
+    const edge = add(w, 780);
+    edge.pos.y += 32;
+    cast(w, p);
+    expect(edge.hp).toBeLessThan(1000);
+  });
+
+  it('closes the damage path and flash at the first obstacle', () => {
+    const { w, p, boss } = setup('mg_evoker_lightning');
+    w.obstacles.push({ id: w.allocId(), pos: { x: 770, y: 400 }, radius: 24 });
+    const behind = add(w, 830);
+    const tied = add(w, 770);
+    tied.radius = 24;
+    cast(w, p);
+    expect(boss.hp).toBeLessThan(10000);
+    expect(behind.hp).toBe(1000);
+    expect(tied.hp).toBe(1000);
+    const flash = w.events.find((e) => e.t === 'skillArea');
+    expect(flash?.area.style).toBe('lightning');
+    expect(flash?.area.range).toBeCloseTo(770 - 24 - 14 - (600 + p.radius + 4));
+  });
+});

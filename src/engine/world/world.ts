@@ -113,6 +113,7 @@ import {
   stepApertureProjectile,
   apertureView,
   apertureBulwarks,
+  circleEntry,
   dissolveOverlappedBulwarks,
 } from '../combat/infernalAperture';
 import { onWhisperRefrainHit, ownsWhisperRefrain } from '../combat/whisperRefrain';
@@ -1871,9 +1872,46 @@ export class World {
     return false;
   }
 
+  resolveLightning(proj: Projectile, dir: Vec2): void {
+    const origin = proj.pos;
+    const end = vadd(origin, vscale(dir, proj.rangeLeft));
+    const entry = (body: { pos: Vec2; radius: number }) =>
+      circleEntry(origin, end, body.pos, body.radius + proj.hitRadius) ?? Infinity;
+    const cover = [...this.obstacles, ...apertureBulwarks(this)].map(entry);
+    const blocked = Math.min(...cover);
+    let stop = Math.min(1, blocked);
+    const contacts = [
+      ...this.aliveBosses().map((boss) => ({ boss, add: null, time: entry(boss) })),
+      ...this.adds.filter(hostileAdd).map((add) => ({ boss: null, add, time: entry(add) })),
+    ].sort((a, b) => a.time - b.time);
+    for (const { boss, add, time } of contacts) {
+      if (time > stop || time >= blocked) break;
+      proj.pos = wrapPos(vadd(origin, vscale(dir, time * proj.rangeLeft)));
+      this.applyPlayerProjectileHit(proj, boss, add);
+      if (proj.impactRadius > 0 || proj.onImpact) {
+        stop = time;
+        break;
+      }
+    }
+    this.events.push({
+      t: 'skillArea',
+      sourceId: proj.ownerId,
+      side: 'player',
+      color: 0x75aaff,
+      area: {
+        kind: 'line',
+        style: 'lightning',
+        origin,
+        angle: Math.atan2(dir.y, dir.x),
+        range: stop * proj.rangeLeft,
+        radius: proj.hitRadius,
+        halfAngle: 0,
+      },
+    });
+  }
+
   private resolvePlayerProjectile(proj: Projectile): boolean {
     if (proj.reflected) return resolveReflected(this, proj);
-    const owner = this.players.find((p) => p.id === proj.ownerId) ?? null;
     // find first collision (any boss, else an add)
     let hitBoss: Boss | null = null;
     for (const b of this.aliveBosses()) {
@@ -1895,6 +1933,15 @@ export class World {
     }
     if (!hitBoss && !hitAdd) return false;
 
+    return this.applyPlayerProjectileHit(proj, hitBoss, hitAdd);
+  }
+
+  private applyPlayerProjectileHit(
+    proj: Projectile,
+    hitBoss: Boss | null,
+    hitAdd: Add | null,
+  ): boolean {
+    const owner = this.players.find((p) => p.id === proj.ownerId) ?? null;
     const body = (hitBoss ?? hitAdd)!;
     const before = body.hp;
     if (proj.returningShot && proj.returningShot.hitsLeft <= 0) {
