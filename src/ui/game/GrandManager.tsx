@@ -2,7 +2,12 @@ import { describeGrandTransition } from './grandPreview';
 import type { UpgradeId } from '../../engine/content/upgrades';
 import { memo, useState } from 'react';
 import { CLASSES } from '../../engine/content/classes';
-import { CHAR_UPGRADES, canonicalGrandId } from '../../engine/content/charUpgrades';
+import {
+  CHAR_UPGRADES,
+  canonicalGrandId,
+  describeCharOffer,
+} from '../../engine/content/charUpgrades';
+import { forgeSeed } from '../../engine/content/forge';
 import {
   changeGrand,
   grandCategory,
@@ -145,7 +150,7 @@ export function GrandManager({
                 <summary tabIndex={0}>Selected grand details &amp; preview</summary>
                 {offerDetails ? (
                   <p>
-                    {pick.desc} ·{' '}
+                    {grandDescription(pick.id, true)} ·{' '}
                     {unlockEquips
                       ? describeGrandTransition(classId, context, state, unlockState!, generic)
                       : 'Unlocking this keeps your current build unchanged; select an outgoing grand before equipping it.'}
@@ -213,6 +218,18 @@ export function GrandManager({
     </section>
   );
 
+  function grandDescription(id: string, eligible: boolean): string {
+    const grand = CHAR_UPGRADES[id];
+    if (!grand.graftId || forgeSeed() === null) return grand.desc;
+    if (!eligible) return 'Requires a compatible grafted ability.';
+    return (
+      describeCharOffer(classId, context.history, id, context.subSkills, generic)?.desc.replace(
+        /^GRAND — /,
+        '',
+      ) ?? grand.desc
+    );
+  }
+
   function renderGrand(id: string) {
     const d = CHAR_UPGRADES[id],
       equipped = selected.equipped.includes(id);
@@ -244,7 +261,7 @@ export function GrandManager({
         </summary>
         {expanded[id] ? (
           <div className="wb-grand-row-detail">
-            <p>{d.desc}</p>
+            <p>{grandDescription(id, eligible)}</p>
             {!eligible ? (
               <p>Requires its matching equipped skill/subclass. Your earned option is retained.</p>
             ) : equipped ? (

@@ -87,9 +87,6 @@ rates.
   explain the duration and recovery tradeoff. Their former flat
   recharge promises ignored the effect-duration floor.
 
-**Next** is a focused graft-grand and identity compatibility pass. A Field Medic healing
-zone can receive a grand that adds direct-heal magnitude, and a Hex
-composed as an ally buff can receive a grand for a damaging field.
-Check the actual effects before each is offered, and verify Ancestral Relay
-and Grand Tactician when the native receivers are replaced. Then start the visual
-prototype, followed by the visual production and boss encounter revamps.
+The [graft compatibility follow-up](GRAFT_GRAND_COMPATIBILITY.md) checks
+Forge graft grands and identities against their actual receiving skills.
+The visual prototype follows that pass.

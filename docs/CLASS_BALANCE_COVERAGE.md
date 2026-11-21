@@ -43,5 +43,5 @@ All twelve classes and twenty-four subclasses now have representative
 encounter results. The [first power and progression pass](ROSTER_POWER_AND_PROGRESSION.md)
 adds common encounters and realistic reward histories. [Lich combat attribution](LICH_COMBAT_ATTRIBUTION.md)
 separates boss pressure, adds, drain healing and downtime. The [reward-choice pass](REWARD_CHOICE_USEFULNESS.md) compares competing
-boons under both identities. Finish with Forge graft-grand eligibility. The [development roadmap](DEVELOPMENT_STATUS.md)
+boons under both identities. The [graft compatibility pass](GRAFT_GRAND_COMPATIBILITY.md) closes the current usefulness review. The [development roadmap](DEVELOPMENT_STATUS.md)
 records acquisition, graft, visual and encounter milestones.
