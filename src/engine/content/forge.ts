@@ -1200,7 +1200,8 @@ export function describeComposed(comp: AbilityComponents, cooldown: number): str
     parts.push(
       'arrival foes return to departure; departure foes scatter outward; moved foes slowed 35% for 2s; roots resist relocation',
     );
-  if (d.kind === 'selfBuff' && d.iframes) parts.push(`${s(d.iframes)} damage immunity`);
+  if ((d.kind === 'selfBuff' || d.kind === 'blink' || d.kind === 'dash') && d.iframes)
+    parts.push(`${s(d.iframes)} damage immunity`);
 
   // Omit a suppressed generation mode rather than advertising incompatible triggers.
   for (const e of comp.effects) {

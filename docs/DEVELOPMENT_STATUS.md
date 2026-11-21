@@ -28,7 +28,7 @@ name the next development task beyond playtesting.
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
-Current delivery is the [reward-choice comparison](REWARD_CHOICE_USEFULNESS.md), following [Lich combat attribution](LICH_COMBAT_ATTRIBUTION.md). See the [all-class balance coverage plan](CLASS_BALANCE_COVERAGE.md) for all 12 classes and 24 subclasses.
+Current delivery is [graft grand and identity compatibility](GRAFT_GRAND_COMPATIBILITY.md), following the [reward-choice comparison](REWARD_CHOICE_USEFULNESS.md). See the [all-class balance coverage plan](CLASS_BALANCE_COVERAGE.md) for all 12 classes and 24 subclasses.
 See the [Devotion, Vengeance and Valor purpose review](FINAL_SUPPORT_PURPOSE_REVIEW.md)
 for the full cohort findings.
 Grand Warding escape, Land transplantation, Hunter/Beast Master and Chaos
@@ -62,8 +62,8 @@ set for another targeted balance check.
 
 | Stage                        | Concrete work                                                                                                                                                                       |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Next                         | Finish the usefulness pass by checking graft-grand eligibility and real payoff on Forge replacement kits.                                                                           |
-| Following                    | Start the representative visual prototype, then the broader visual production pass and boss encounter revamp.                                                                       |
+| Next                         | Prototype readable player and boss silhouettes, one arena and distinct ability effects on desktop and phone.                                                                        |
+| Following                    | Expand the verified visual treatment across the roster and arenas, then begin the boss and encounter revamp.                                                                        |
 | Martial identities           | Six inspected; Champion A and Battlemaster pair implemented. Totem accepted; Open Hand B accepted, A retained as support; Shadow B accepted, A retained as precision growth.        |
 | Remaining nature identities  | Hunter / Beast Master merged and tested; Land B accepted for now. A routes retained as growth; Moon retained.                                                                       |
 | Remaining caster identities  | Three inspected; Grand Warding escape accepted; Crossing departure casting accepted. Evoker stays retained.                                                                         |

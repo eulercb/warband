@@ -2329,7 +2329,7 @@ function battleManeuver(ab: PlayerAbilityDef, mode: 'push' | 'step', distance: n
   if (ab.slot === 'basic') return;
   if (
     mode === 'push'
-      ? !isStrike(ab) || ab.damage <= 0
+      ? !isStrike(ab) || ab.damage <= 0 || ab.infernalClaim
       : !['selfBuff', 'taunt', 'heal', 'buffAlly'].includes(ab.kind)
   )
     return;
@@ -2740,6 +2740,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
         if (
           ab.slot !== 'basic' &&
           ab.kind === 'pbaoe' &&
+          ab.damage > 0 &&
           !ab.infernalClaim &&
           !ab.palmSweep &&
           !ab.shadowCommit
@@ -2747,7 +2748,13 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
           ab.ancestralRelay = { range: 360 };
     },
     (ab) => {
-      if (ab.kind === 'pbaoe' && !ab.infernalClaim && !ab.palmSweep && !ab.shadowCommit)
+      if (
+        ab.kind === 'pbaoe' &&
+        ab.damage > 0 &&
+        !ab.infernalClaim &&
+        !ab.palmSweep &&
+        !ab.shadowCommit
+      )
         ab.ancestralRelay = { range: 360 };
     },
   ),
@@ -5330,6 +5337,59 @@ export const SUB_SKILL_UPGRADES: CharUpgradeDef[] = ALL_SUBCLASSES.flatMap((sub)
 // heal pours harder or faster.
 // ---------------------------------------------------------------------------
 
+/** The delivery must execute the payload the graft grand modifies. */
+export function graftGrandReceiver(
+  graftId: string,
+  grandId: string,
+  ab: PlayerAbilityDef,
+): boolean {
+  const effects = ab.components?.effects;
+  switch (graftId) {
+    case 'hy_pyromancer':
+      return (
+        ab.kind === 'projectile' &&
+        ab.damage > 0 &&
+        (ab.impactRadius ?? 0) > 0 &&
+        (!effects || effects.some((effect) => effect.kind === 'damage'))
+      );
+    case 'hy_shadowpact':
+      return ab.kind === 'blink';
+    case 'hy_warhowl':
+      return (
+        ab.kind === 'selfBuff' &&
+        (!effects || effects.some((effect) => effect.kind === 'buff' && effect.target === 'self'))
+      );
+    case 'hy_fieldmedic':
+      return (
+        (ab.kind === 'heal' || (ab.kind === 'buffAlly' && !!effects)) &&
+        ab.damage > 0 &&
+        (!effects || effects.some((effect) => effect.kind === 'heal'))
+      );
+    case 'hy_hexbrand':
+      return (
+        (ab.kind === 'groundZone' || (ab.kind === 'projectile' && !!effects)) &&
+        (ab.zoneTickDamage ?? 0) > 0 &&
+        (!effects ||
+          effects.some((effect) => effect.kind === 'zone' && (effect.zone.tickDamage ?? 0) > 0))
+      );
+    case 'hy_windstep':
+      return ab.kind === 'dash';
+    case 'hy_inspire':
+      return (
+        ab.kind === 'buffAlly' &&
+        (!effects ||
+          effects.some(
+            (effect) =>
+              effect.kind === 'buff' &&
+              effect.target === 'allies' &&
+              (grandId === 'hy_inspire_g_a' ? effect.dmgMult != null : effect.defMult != null),
+          ))
+      );
+    default:
+      return false;
+  }
+}
+
 /** Graft-grand builder — a grand welded to a skill-replacing graft (forces grand +
  *  maxStacks 1, classId 'any'). `tune` mutates whatever grafted skill sits in the
  *  slot that graft replaced; the replay hands it that skill via the standard path. */
@@ -5351,7 +5411,10 @@ function gg(
     desc,
     grand: true,
     maxStacks: 1,
-    apply: ({ abilities }) => tune(abilities[slot]),
+    apply: ({ abilities }) => {
+      const ab = abilities[slot];
+      if (graftGrandReceiver(graftId, id, ab)) tune(ab);
+    },
   };
 }
 
@@ -6692,6 +6755,11 @@ export function describeCharOffer(
     const before = current[def.replaces];
     const replacement = after[def.replaces];
     desc = `Replaces ${before.name} with ${replacement.name}. ${describeAbility(replacement, afterMods)}`;
+  }
+  const graftSlot = def.graftId && CHAR_UPGRADES[def.graftId]?.replaces;
+  if (graftSlot && current[graftSlot].components) {
+    const replacement = after[graftSlot];
+    desc = `Improves your grafted ${replacement.name}`;
   }
   if (def.grand) desc = `GRAND — ${desc}`;
   // Resolve ordinary changes against the current kit so repeat picks show the

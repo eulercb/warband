@@ -1,3 +1,4 @@
+import { setForgeSeed } from '../src/engine/content/forge';
 import { CLASS_IDS } from '../src/engine/content/classes';
 import { subclassesFor } from '../src/engine/content/subclasses';
 import { heroPowerRatio } from '../src/engine/content/balance';
@@ -5,6 +6,9 @@ import { previewGrandStats } from '../src/engine/content/grandStats';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   CHAR_UPGRADES,
+  GRAFT_GRANDS,
+  previewAbilityTable,
+  describeCharOffer,
   previewSubAbility,
   canonicalGrandId,
 } from '../src/engine/content/charUpgrades';
@@ -33,6 +37,7 @@ function earned(ids = base, ctx = context) {
   return state;
 }
 afterEach(() => {
+  setForgeSeed(null);
   delete CHAR_UPGRADES.testGrand;
 });
 describe('versioned grand selection and ownership', () => {
@@ -54,6 +59,121 @@ describe('versioned grand selection and ownership', () => {
       expect(
         changeGrand(banked, reclaimed, { ...request, action: 'equip' })?.classes.warlock,
       ).toEqual({ bank: [request.id], equipped: [request.id] });
+    },
+  );
+  it('allows all native graft grands while their receivers occupy the slot', () => {
+    for (const grand of GRAFT_GRANDS) {
+      const graft = CHAR_UPGRADES[grand.graftId!];
+      const ctx: GrandContext = { classes: ['knight'], history: [graft.id], subSkills: [] };
+      expect(grandEligible(grand.id, 'knight', ctx), grand.id).toBe(true);
+      const slot = graft.replaces!;
+      expect(previewAbilityTable('knight', [graft.id, grand.id])[slot]).not.toEqual(
+        previewAbilityTable('knight', [graft.id])[slot],
+      );
+    }
+  });
+  it.each([
+    ['hy_fieldmedic', 'hy_fieldmedic_g_a', 'groundZone'],
+    ['hy_hexbrand', 'hy_hexbrand_g_a', 'buffAlly'],
+  ])('rejects %s grands on an incompatible Forge delivery', (graft, id, kind) => {
+    const ctx: GrandContext = { classes: ['knight'], history: [graft], subSkills: [] };
+    const request = { classId: 'knight', id, action: 'earn' } as const;
+    const earned = changeGrand(emptyGrandLoadout(), ctx, request, true)!;
+    setForgeSeed(1);
+    const slot = CHAR_UPGRADES[graft].replaces!;
+    const before = previewAbilityTable('knight', [graft])[slot];
+    expect(before.kind).toBe(kind);
+    expect(previewAbilityTable('knight', [graft, id])[slot]).toEqual(before);
+    expect(changeGrand(emptyGrandLoadout(), ctx, request, true)).toBeNull();
+    const banked = normalizeGrandLoadout(earned, ctx);
+    expect(banked.classes.knight).toEqual({ bank: [id], equipped: [] });
+    setForgeSeed(null);
+    expect(changeGrand(banked, ctx, { ...request, action: 'equip' })).not.toBeNull();
+  });
+  it.each([
+    ['hy_fieldmedic', 'hy_fieldmedic_g_a', 5, 'damage'],
+    ['hy_hexbrand', 'hy_hexbrand_g_a', 3, 'zoneTickDamage'],
+    ['hy_hexbrand', 'hy_hexbrand_g_a', 4, 'zoneTickDamage'],
+    ['hy_fieldmedic', 'hy_fieldmedic_g_a', 27, 'damage'],
+    ['hy_shadowpact', 'hy_shadowpact_g_a', 7, 'iframes'],
+    ['hy_windstep', 'hy_windstep_g_b', 19, 'healOnUse'],
+    ['hy_warhowl', 'hy_warhowl_g_a', 11, 'buffDuration'],
+  ] as const)(
+    'keeps %s eligible when Forge seed %s retains the payload',
+    (graft, id, seed, field) => {
+      setForgeSeed(seed);
+      const ctx: GrandContext = { classes: ['knight'], history: [graft], subSkills: [] };
+      const slot = CHAR_UPGRADES[graft].replaces!;
+      expect(grandEligible(id, 'knight', ctx)).toBe(true);
+      const before = previewAbilityTable('knight', [graft])[slot];
+      const after = previewAbilityTable('knight', [graft, id])[slot];
+      expect(after[field] ?? 0).toBeGreaterThan(before[field] ?? 0);
+    },
+  );
+
+  it('shows the extra immunity on a compatible Forge movement grand', () => {
+    setForgeSeed(7);
+    const { desc } = describeCharOffer('knight', ['hy_shadowpact'], 'hy_shadowpact_g_a')!;
+    expect(desc).toContain('Now →');
+    expect(desc).toContain('damage immunity');
+    expect(desc).not.toContain('65%');
+  });
+
+  it('finds both compatible and incompatible real Forge receivers for all graft grands', () => {
+    const eligible = new Set<string>();
+    const blocked = new Set<string>();
+    for (let seed = 0; seed < 40; seed++) {
+      setForgeSeed(seed);
+      for (const { id, graftId } of GRAFT_GRANDS) {
+        const ctx: GrandContext = { classes: ['knight'], history: [graftId!], subSkills: [] };
+        const slot = CHAR_UPGRADES[graftId!].replaces!;
+        const before = previewAbilityTable('knight', [graftId!])[slot];
+        const after = previewAbilityTable('knight', [graftId!, id])[slot];
+        if (grandEligible(id, 'knight', ctx)) {
+          eligible.add(id);
+          expect(after, `Forge seed ${seed}, ${id}`).not.toEqual(before);
+        } else {
+          blocked.add(id);
+          expect(after, `Forge seed ${seed}, ${id}`).toEqual(before);
+        }
+      }
+    }
+    expect(eligible.size).toBe(GRAFT_GRANDS.length);
+    expect(blocked.size).toBe(GRAFT_GRANDS.length);
+  });
+  it('does not offer the field-only Relay route without a Momentum preparer', () => {
+    const ctx: GrandContext = {
+      classes: ['barbarian'],
+      history: ['hy_shadowpact', 'hy_inspire'],
+      subSkills: ['bb_totem_quake'],
+    };
+    expect(grandEligible('bb_totem_g_b', 'barbarian', ctx)).toBe(false);
+    const withWolfSpirit = { ...ctx, subSkills: [...ctx.subSkills, 'bb_totem_wolf'] };
+    expect(grandEligible('bb_totem_g_b', 'barbarian', withWolfSpirit)).toBe(true);
+  });
+
+  it('requires the matching ally buff axis for each Anthem grand', () => {
+    setForgeSeed(1);
+    const ctx: GrandContext = { classes: ['knight'], history: ['hy_inspire'], subSkills: [] };
+    expect(grandEligible('hy_inspire_g_a', 'knight', ctx)).toBe(false);
+    expect(grandEligible('hy_inspire_g_b', 'knight', ctx)).toBe(true);
+  });
+  it.each([
+    ['barbarian', 'bb_totem_g_b', 'bb_totem_bear', 'bb_totem_quake'],
+    ['knight', 'kn_battlemaster_g_a', 'kn_battle_rally', 'kn_battle_precision'],
+  ] as const)(
+    'guards the %s identity without a receiver and accepts a compatible first pick',
+    (classId, id, missing, compatible) => {
+      const replaced: GrandContext = {
+        classes: [classId],
+        history: ['hy_shadowpact'],
+        subSkills: [missing],
+      };
+      expect(grandEligible(id, classId, replaced)).toBe(false);
+      expect(grandEligible(id, classId, { ...replaced, subSkills: [compatible] })).toBe(true);
+      expect(
+        grandEligible(id, classId, { ...replaced, history: [...replaced.history, 'restore:a3'] }),
+      ).toBe(true);
     },
   );
   it('banks new alternatives but never silently evicts an equipped choice', () => {

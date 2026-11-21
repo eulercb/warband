@@ -3,11 +3,12 @@ import { revivalFont } from './fontRules';
 /** Versioned earned bank and per-class selections. Never mutate normal upgrade history. */
 import { guidedSpell, guidedBurst } from './guidanceRules';
 import type { AbilitySlot, ClassId } from '../core/types';
-import { CLASS_IDS } from './classes';
+import { CLASS_IDS, resolvedAncestralRelay, resolvedManeuver } from './classes';
 import {
   CHAR_UPGRADES,
   canonicalGrandId,
   occupancyAfter,
+  graftGrandReceiver,
   upgradeAllowedFor,
   previewAbilityTable,
   previewSubAbility,
@@ -116,6 +117,29 @@ export function grandEligible(id: string, classId: ClassId, ctx: GrandContext): 
     )
       return false;
   }
+  if (id === 'bb_totem_g_b' || id === 'kn_battlemaster_g_a') {
+    const mods = [...ctx.history, id];
+    const kit = [
+      ...Object.values(previewAbilityTable(classId, mods)),
+      ...bound.map((sid) => previewSubAbility(sid, mods)),
+    ].filter((ab) => ab !== null);
+    if (id === 'kn_battlemaster_g_a') {
+      if (!kit.some((ab) => resolvedManeuver(ab)?.mode === 'push')) return false;
+    } else if (!kit.some(resolvedAncestralRelay)) {
+      const canBuildMomentum = kit.some(
+        (ab) => ab.kind === 'selfBuff' && (ab.momentumWindow || ab.wolfHunt),
+      );
+      const canPlaceShelter = kit.some((ab) => {
+        if (ab.kind !== 'groundZone' || !ab.spendsMomentum || !(ab.range && ab.range > 0))
+          return false;
+        const zone = ab.components?.effects.find((effect) => effect.kind === 'zone');
+        if (ab.components && !zone) return false;
+        const kind = zone?.zone.zoneKind ?? ab.zoneKind;
+        return kind !== 'sanctuary' && kind !== 'consecration';
+      });
+      if (!canBuildMomentum || !canPlaceShelter) return false;
+    }
+  }
   if (id === 'dr_land_g_b') {
     const mods = [...ctx.history, id];
     const candidates = [
@@ -143,6 +167,18 @@ export function grandEligible(id: string, classId: ClassId, ctx: GrandContext): 
   if (slot) {
     const occupant = occupancyAfter(classId, ctx.history)[slot];
     if (occupant !== (d.graftId ?? slot)) return false;
+    if (
+      d.graftId &&
+      !graftGrandReceiver(
+        d.graftId,
+        id,
+        previewAbilityTable(
+          classId,
+          ctx.history.filter((entry) => canonicalGrandId(entry) !== id),
+        )[slot],
+      )
+    )
+      return false;
   }
   return true;
 }

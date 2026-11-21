@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
+import { setForgeSeed } from '../src/engine/content/forge';
 import { GrandManager } from '../src/ui/game/GrandManager';
 import {
   changeGrand,
@@ -14,7 +15,10 @@ import {
 import type { ClassId } from '../src/engine/core/types';
 import { CHAR_UPGRADES, canonicalGrandId } from '../src/engine/content/charUpgrades';
 vi.mock('../src/ui/state/session', () => ({ chooseGrand: vi.fn() }));
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setForgeSeed(null);
+});
 const context: GrandContext = {
   classes: ['knight', 'mage'],
   history: [],
@@ -114,6 +118,31 @@ describe('earned bank and explicit replacements', () => {
     openDisclosure(/Living Cataclysm · Banked/);
     expect(screen.getByText(/Requires its matching equipped skill/)).toBeTruthy();
     expect(screen.queryByLabelText('New grand')).toBeNull();
+  });
+  it('shows the resolved Forge skill payoff in an unlock preview', () => {
+    setForgeSeed(7);
+    render(<Harness ctx={{ ...context, history: ['hy_shadowpact'] }} />);
+    fireEvent.change(screen.getByLabelText('New grand'), {
+      target: { value: 'hy_shadowpact_g_a' },
+    });
+    openDisclosure('Selected grand details & preview');
+    const preview = screen.getByText(/Improves your grafted/);
+    expect(preview.textContent).toContain('damage immunity');
+    expect(preview.textContent).not.toContain('65%');
+  });
+  it('retains the incompatible Forge option in the earned bank', () => {
+    setForgeSeed(1);
+    const id = 'hy_fieldmedic_g_a';
+    const start: GrandLoadout = {
+      version: 1,
+      classes: { knight: { bank: [id], equipped: [id] } },
+    };
+    render(<Harness start={start} ctx={{ ...context, history: ['hy_fieldmedic'] }} />);
+    expect(screen.queryByRole('option', { name: /Battlefield Surgeon/ })).toBeNull();
+    openDisclosure(/^Earned bank/);
+    openDisclosure(/Battlefield Surgeon · Banked/);
+    expect(screen.getByText('Requires a compatible grafted ability.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Equip Battlefield Surgeon' })).toBeNull();
   });
   it('has a non-blocking fallback after every eligible option is earned', () => {
     const bank = Object.keys(CHAR_UPGRADES).filter((id) => grandEarnable(id, 'knight', context));
