@@ -669,7 +669,7 @@ describe('hybrid grafts replace a slot with a foreign ability', () => {
     const a = apply('knight', ['hy_inspire']).abilities!;
     expect(a.a1.name).toBe('Inspiration');
     expect(a.a1.kind).toBe('buffAlly');
-    expect(a.a1.buffDamageMult!).toBeCloseTo(1.2, 5);
+    expect(a.a1.buffDamageMult!).toBeCloseTo(1.3, 5);
     expect(a.a1.range).toBe(420);
     expect(a.a1.slot).toBe('a1');
   });
@@ -706,7 +706,7 @@ describe('the expansion graft-grands transform their grafted skill (item 66)', (
 
   it('hy_inspire grands deepen the grafted ally-buff', () => {
     const chorus = apply('knight', ['hy_inspire', 'hy_inspire_g_a']).abilities!.a1;
-    expect(chorus.buffDamageMult!).toBeCloseTo(1.45, 5); // 1.2 + 0.25
+    expect(chorus.buffDamageMult!).toBeCloseTo(1.55, 5); // 1.3 + 0.25
     expect(chorus.buffDuration).toBe(10); // 6 + 4
     expect(chorus.cooldown).toBeCloseTo(8.4, 5); // 12 * 0.7
     const hymn = apply('knight', ['hy_inspire', 'hy_inspire_g_b']).abilities!.a1;

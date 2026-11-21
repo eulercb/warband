@@ -1621,10 +1621,14 @@ export function describeAbility(
     );
   if (def.frontGuard?.projection)
     parts.push(
-      `project ${n(def.frontGuard.projection.halfWidth * 2)}u shield ${n(def.frontGuard.projection.reach)}u ahead; hostile-shot interception spends a frontal block and readies a +30% melee counter`,
+      `project ${n(def.frontGuard.projection.halfWidth * 2)}u shield ${n(def.frontGuard.projection.reach)}u ahead; hostile-shot interception spends a frontal block`,
     );
-  if (def.frontGuard?.counter)
-    parts.push('each successful frontal block readies a +30% melee counter; counters do not stack');
+  if (def.frontGuard?.counter || def.frontGuard?.projection) {
+    const counter = Math.max(def.frontGuard.counter ?? 1, def.frontGuard.projection ? 1.3 : 1);
+    parts.push(
+      `each successful frontal block readies a +${n((counter - 1) * 100)}% melee counter; counters do not stack`,
+    );
+  }
   if (def.rebukeCurseBonus)
     parts.push(
       `counterburst applies a searing curse +${n(def.rebukeCurseBonus * 100)}% owner dmg for 4s`,
