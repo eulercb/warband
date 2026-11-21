@@ -584,6 +584,7 @@ export function resolvePlayerAbility(
     // Every delivery owns a distinct token, including composed landing strikes.
     pilotCast: {
       spent: false,
+      sequence: (p.directCastSequence = (p.directCastSequence ?? 0) + 1),
       ownerId: p.id,
       ownerClass: p.classId,
       epoch: p.castEpoch ?? 0,

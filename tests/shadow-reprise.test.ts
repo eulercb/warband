@@ -144,6 +144,25 @@ describe('Shadow Reprise combat contract', () => {
       expect(p.cooldowns.a2).toBeGreaterThan(0);
     },
   );
+  it('an airborne throw from before Shadowstep cannot earn the return', () => {
+    const { w, p, boss } = setup('ro_assassin_throw');
+    boss.pos.x = 880;
+
+    step(w, { sub1: true });
+    step(w, { a2: true });
+    expect(p.shadowReprise).toBeDefined();
+
+    const hp = boss.hp;
+    for (let tick = 0; tick < 12 && boss.hp === hp; tick++) step(w);
+    expect(boss.hp).toBeLessThan(hp);
+    expect(shadowRepriseView(w, p)?.armed).toBe(false);
+
+    boss.pos.x = p.pos.x + 45;
+    applyBuff(p, makeBuff('precision', 1, 4, 'test'));
+    step(w, { a1: true });
+    expect(shadowRepriseView(w, p)?.armed).toBe(true);
+  });
+
   it('a press before the hit cannot be buffered into a later return', () => {
     const { w, p } = setup();
     step(w, { a2: true });

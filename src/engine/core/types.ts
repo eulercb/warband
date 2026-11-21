@@ -585,6 +585,7 @@ export interface Player {
     source: import('../content/classes').PlayerAbilityDef;
     setupCast: NonNullable<import('../content/classes').PlayerAbilityDef['pilotCast']>;
   };
+  directCastSequence?: number;
   /** Host-only: exact equipped source and cast provenance never enter snapshots. */
   shadowReprise?: {
     anchor: Vec2;
@@ -976,6 +977,7 @@ export interface ProjectileImpact {
 /** Shared by every direct contact from one cast; never serialized. */
 export interface DirectCastToken {
   spent: boolean;
+  sequence?: number;
   utilitySpent?: boolean;
   echoSpent?: boolean;
   ownerId?: EntityId;
