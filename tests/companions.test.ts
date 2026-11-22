@@ -455,6 +455,30 @@ describe('replication and graphics', () => {
     circle.mockClear();
     drawCompanion(g, { ...pet, attacking: true, bondReady: true }, ZERO, 2);
     expect(circle.mock.calls.length).toBe(ordinaryCircles + 2);
+    g.clear();
+    const gait = (facing: number) => () => ({
+      pos: ZERO,
+      now: 130,
+      facing,
+      speed: 520,
+      phase: 1,
+      stride: 0.9,
+    });
+    drawCompanion(g, pet, ZERO, 2, 1, gait(-Math.PI / 2));
+    const rear = g.context.instructions.length;
+    g.clear();
+    drawCompanion(
+      g,
+      pet,
+      ZERO,
+      2,
+      1,
+      gait(Math.PI),
+      0,
+      () => ({ started: 100, angle: Math.PI }),
+      130,
+    );
+    expect(g.context.instructions.length).toBeGreaterThan(rear);
     g.destroy();
   });
 });

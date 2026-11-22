@@ -23,23 +23,27 @@ export const PACK_BOND = 'beast_pack_bond';
 export const COMPANION_RANGE = 600;
 const WARD_SOURCE = 'subclass:packBond';
 const active = (p: Player) => p.subclassPassiveId === PACK_BOND && p.state === 'alive' && p.hp > 0;
+// Stable offsets keep idle spirits out of the player's path and off the aim reticle.
 function home(p: Player): Vec2 {
-  return wrapPos({
-    x: p.pos.x - p.aim.x * 36 - p.aim.y * 26,
-    y: p.pos.y - p.aim.y * 36 + p.aim.x * 26,
-  });
+  return wrapPos({ x: p.pos.x - 36, y: p.pos.y + 20 });
 }
-function flankerHome(p: Player, i: number): Vec2 {
-  const side = i === 0 ? -50 : 50;
+function flankOffset(i: number): Vec2 {
+  return { x: -19, y: i === 0 ? -40 : 26 };
+}
+function besideLead(pet: Vec2, i: number): Vec2 {
+  const offset = flankOffset(i);
+  return wrapPos({ x: pet.x + offset.x, y: pet.y + offset.y });
+}
+function station(target: Boss | Add, angle: number, gap: number): Vec2 {
   return wrapPos({
-    x: p.pos.x - p.aim.x * 70 - p.aim.y * side,
-    y: p.pos.y - p.aim.y * 70 + p.aim.x * side,
+    x: target.pos.x + Math.cos(angle) * (target.radius + gap),
+    y: target.pos.y + Math.sin(angle) * (target.radius + gap),
   });
 }
 function ensure(p: Player): SpiritCompanion {
   const pet = (p.spiritCompanion ??= { pos: home(p), facing: Math.atan2(p.aim.y, p.aim.x) });
   if (packTactics(p))
-    pet.flankers ??= [0, 1].map((i) => ({ pos: flankerHome(p, i), facing: pet.facing }));
+    pet.flankers ??= [0, 1].map((i) => ({ pos: besideLead(pet.pos, i), facing: pet.facing }));
   else delete pet.flankers;
   return pet;
 }
@@ -177,7 +181,15 @@ export function commandCompanion(
       delete pet.order;
       for (const wolf of pet.flankers ?? []) delete wolf.order;
     }
-    pet.hunt = { targetId: target.id, kind, remaining: COMPANION_HUNT_TIME, cast: command };
+    const approach = sub(pet.pos, target.pos);
+    pet.hunt = {
+      targetId: target.id,
+      kind,
+      remaining: COMPANION_HUNT_TIME,
+      approach:
+        pet.hunt?.targetId === target.id ? pet.hunt.approach : Math.atan2(approach.y, approach.x),
+      cast: command,
+    };
     return;
   }
   scheduleBite(p, pet, target, kind);
@@ -190,13 +202,33 @@ export function prepareCompanionWard(p: Player, target: Player, effective: numbe
   p.buffs = p.buffs.filter((b) => b.source !== WARD_SOURCE);
   p.buffs.push({ kind: 'packBond', mult: 1, remaining: 6, source: WARD_SOURCE });
 }
-function move(pet: CompanionBody, to: Vec2, distance: number): void {
+function move(pet: CompanionBody, to: Vec2, distance: number, slack = 0): void {
   const d = sub(to, pet.pos);
   const length = Math.hypot(d.x, d.y);
-  if (length < 0.001) return;
+  if (length <= slack + 0.001 || distance <= 0) return;
   pet.facing = Math.atan2(d.y, d.x);
-  const f = Math.min(1, distance / length);
+  const f = Math.min(distance, length - slack) / length;
   pet.pos = wrapPos({ x: pet.pos.x + d.x * f, y: pet.pos.y + d.y * f });
+}
+function faceQuarry(wolf: CompanionBody, target: Boss | Add): void {
+  const toward = sub(target.pos, wolf.pos);
+  if (Math.hypot(toward.x, toward.y) > 0.001) wolf.facing = Math.atan2(toward.y, toward.x);
+}
+function biteCue(
+  world: World,
+  p: Player,
+  target: Boss | Add,
+  wolf: CompanionBody,
+  slot: number,
+): void {
+  faceQuarry(wolf, target);
+  world.events.push({
+    t: 'animalStrike',
+    sourceId: p.id,
+    animal: 'wolf',
+    slot,
+    angle: wolf.facing,
+  });
 }
 function protect(world: World, p: Player, pet: SpiritCompanion): void {
   if (pet.wardTargetId == null) return;
@@ -227,29 +259,16 @@ function tickFlankers(
     for (const [i, wolf] of (pet.flankers ?? []).entries()) {
       delete wolf.order;
       // Follow the lead's chosen torus route instead of selecting a separate owner image.
-      const offset = sub(flankerHome(p, i), home(p));
-      move(
-        wolf,
-        wrapPos({ x: pet.pos.x + offset.x, y: pet.pos.y + offset.y }),
-        Math.max(600, p.moveSpeed * 1.75) * dt,
-      );
+      move(wolf, besideLead(pet.pos, i), Math.max(600, p.moveSpeed * 1.75) * dt, 8);
     }
     return;
   }
-  const toward = sub(p.pos, quarry.pos),
-    angle = Math.atan2(toward.y, toward.x);
+  const approach = pet.hunt!.approach;
   for (const [i, wolf] of (pet.flankers ?? []).entries()) {
-    const side = angle + ((i === 0 ? 1 : -1) * Math.PI * 2) / 3;
-    const station = wrapPos({
-      x: quarry.pos.x + Math.cos(side) * (quarry.radius + 12),
-      y: quarry.pos.y + Math.sin(side) * (quarry.radius + 12),
-    });
-    move(wolf, station, wolf.order ? 1800 * dt : 600 * dt);
-    // Face inward once stationed, so both silhouettes visibly flank their quarry.
-    if (dist(wolf.pos, station) < 1) {
-      const aim = sub(quarry.pos, wolf.pos);
-      wolf.facing = Math.atan2(aim.y, aim.x);
-    }
+    const side = approach + ((i === 0 ? 1 : -1) * Math.PI * 2) / 3;
+    const perch = station(quarry, side, wolf.order ? 11 : 26);
+    move(wolf, perch, (wolf.order ? 1800 : 600) * dt);
+    if (dist(wolf.pos, perch) < 1) faceQuarry(wolf, quarry);
     const order = wolf.order;
     if (!order) continue;
     order.remaining -= dt;
@@ -260,6 +279,7 @@ function tickFlankers(
     }
     if (order.windup > 0 || dist(wolf.pos, quarry.pos) > quarry.radius + 18) continue;
     delete wolf.order;
+    biteCue(world, p, quarry, wolf, i + 1);
     const amount = 4 * (quarry.buffs.some(isBurstControl) ? 1.25 : 1);
     if (pet.hunt?.kind === 'boss') damageBoss(world, p, quarry as Boss, amount);
     else damageAdd(world, p, quarry as Add, amount);
@@ -306,9 +326,14 @@ export function updateCompanions(world: World, dt: number): void {
         delete pet.order;
       else {
         // Spirits can cross cover and reach flyers, but never shove or tank attacks.
-        move(pet, target.pos, 1800 * dt);
+        const d = sub(pet.pos, target.pos);
+        const approach = pet.hunt?.approach ?? Math.atan2(d.y, d.x);
+        const perch = station(target, approach, 11);
+        move(pet, perch, 1800 * dt);
+        if (dist(pet.pos, perch) < 1) faceQuarry(pet, target);
         if (order.windup <= 0 && dist(pet.pos, target.pos) <= target.radius + 18) {
           delete pet.order; // clear before damage callbacks; this strike cannot command itself
+          biteCue(world, p, target, pet, 0);
           const controlBonus = p.charUpgradeIds?.includes('rg_beastmaster_g_a') ? 1.5 : 1.25;
           const base = 16 * (target.buffs.some(isBurstControl) ? controlBonus : 1);
           const before = target.hp;
@@ -321,21 +346,14 @@ export function updateCompanions(world: World, dt: number): void {
     tickFlankers(world, p, pet, quarry, dt);
     if (!pet.order) {
       if (quarry) {
-        const d = sub(p.pos, quarry.pos),
-          length = Math.hypot(d.x, d.y) || 1;
-        move(
-          pet,
-          wrapPos({
-            x: quarry.pos.x + (d.x / length) * (quarry.radius + 32),
-            y: quarry.pos.y + (d.y / length) * (quarry.radius + 32),
-          }),
-          600 * dt,
-        );
+        const perch = station(quarry, pet.hunt!.approach, 32);
+        move(pet, perch, 600 * dt);
+        if (dist(pet.pos, perch) < 1) faceQuarry(pet, quarry);
         continue;
       }
       const rest = home(p);
       if (!packTactics(p) && dist(pet.pos, rest) > COMPANION_RANGE) pet.pos = rest;
-      else move(pet, rest, Math.max(420, p.moveSpeed * 1.5) * dt);
+      else move(pet, rest, Math.max(420, p.moveSpeed * 1.5) * dt, 9);
     }
   }
 }

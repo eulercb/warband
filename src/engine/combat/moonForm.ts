@@ -84,6 +84,7 @@ export function onMoonAbility(world: World, p: Player, ab: PlayerAbilityDef): vo
   const range = p.charUpgradeIds?.includes('dr_moon_g_b') ? 125 : MOON_CLAW_RANGE;
   const angle = Math.atan2(p.aim.y, p.aim.x),
     half = (Math.PI * 55) / 180;
+  world.events.push({ t: 'animalStrike', sourceId: p.id, animal: 'bear', slot: 0, angle });
   world.events.push({
     t: 'skillArea',
     sourceId: p.id,

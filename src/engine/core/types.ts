@@ -389,6 +389,7 @@ export interface CompanionHunt {
   targetId: EntityId;
   kind: 'boss' | 'add';
   remaining: number;
+  approach: number;
   cast: CompanionCommandCast;
 }
 export interface CompanionBody {
@@ -1603,6 +1604,7 @@ export type GameEvent =
   | { t: 'spellGuidance'; pos: Vec2 }
   | { t: 'silenceBreak'; pos: Vec2 }
   | { t: 'fieldDispel'; pos: Vec2; radius: number }
+  | { t: 'animalStrike'; sourceId: EntityId; animal: 'bear' | 'wolf'; slot: number; angle: number }
   | { t: 'blink'; id: EntityId; from: Vec2; to: Vec2; presentation?: 'mage' }
   | { t: 'telegraph'; pos: Vec2; shape: TelegraphKind }
   | { t: 'enrage'; id: EntityId; pos: Vec2 }

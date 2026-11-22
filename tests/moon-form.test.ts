@@ -189,6 +189,9 @@ describe('bear basics: one aimed supplemental swipe, normal Thornlash retained',
       expect(boss.hp).toBe(9986);
       expect(p.hp).toBeCloseTo(p.maxHp - 15.8);
       expect(JSON.stringify(p.abilities!.basic)).toBe(original);
+      expect(w.events.filter((e) => e.t === 'animalStrike')).toEqual([
+        { t: 'animalStrike', sourceId: p.id, animal: 'bear', slot: 0, angle: 0 },
+      ]);
       expect(w.events.filter((e) => e.t === 'skillArea' && e.area.kind === 'cone')).toHaveLength(1);
       expect(
         w.events
@@ -431,8 +434,15 @@ describe('lifecycle, controls and replicated form', () => {
     drawMoonBear(g, p, ZERO, 0.3);
     expect(g.context.instructions.length).toBeGreaterThan(0);
     g.clear();
-    drawMoonBear(g, p, ZERO, 2, 2);
-    expect(g.context.instructions.length).toBeGreaterThan(0);
+    drawMoonBear(g, { ...p, aim: { x: 0, y: 1 } }, ZERO, 2, 2);
+    const front = g.context.instructions.length;
+    g.clear();
+    drawMoonBear(g, { ...p, aim: { x: 0, y: -1 } }, ZERO, 2, 2);
+    expect(g.context.instructions.length).toBeLessThan(front);
+    g.clear();
+    const motion = { pos: ZERO, now: 2000, facing: -Math.PI, speed: 220, phase: 1, stride: 0.8 };
+    drawMoonBear(g, p, ZERO, 2, 2, motion, { started: 1970, angle: -Math.PI });
+    expect(g.context.instructions.length).toBeGreaterThan(front);
     g.destroy();
   });
 });

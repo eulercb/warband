@@ -14,7 +14,11 @@ import { describe, it, expect } from 'vitest';
 import { Container, Graphics } from 'pixi.js';
 import { Fx } from '../src/render/overlays/fx';
 import { drawBlinkEndpoint } from '../src/render/overlays/blinkVisual';
-import { advanceAnimalMotion, animalPaw } from '../src/render/pipeline/animalMotion';
+import {
+  advanceAnimalMotion,
+  blendAnimalFacing,
+  strikeProgress,
+} from '../src/render/pipeline/animalMotion';
 import { drawSkeleton } from '../src/render/pipeline/skeletonVisual';
 import { drawElementalBurst } from '../src/render/overlays/elementalBurst';
 import type { PlayerView } from '../src/engine/core/types';
@@ -307,12 +311,19 @@ it.each(['fireball', 'frostNova'] as const)(
   },
 );
 
-it('tracks animal strides across the arena seam and resets after a teleport or render gap', () => {
-  const initial = advanceAnimalMotion(undefined, { x: 1598, y: 100 }, 0);
-  const next = advanceAnimalMotion(initial, { x: 3, y: 100 }, 24);
-  expect(animalPaw(undefined, 0, 48)).toBe(0);
-  expect(next.distance).toBe(5);
-  expect(animalPaw(next, Math.PI, 48)).toBeCloseTo(-animalPaw(next, 0, 48));
-  expect(advanceAnimalMotion(next, { x: 320, y: 100 }, 40).distance).toBe(0);
-  expect(advanceAnimalMotion(next, { x: 4, y: 100 }, 300).stride).toBe(0);
+it('smooths animal gait and heading across the arena seam and resets after a discontinuity', () => {
+  const initial = advanceAnimalMotion(undefined, { x: 1598, y: 100 }, 0, Math.PI - 0.1);
+  const next = advanceAnimalMotion(initial, { x: 3, y: 100 }, 24, -Math.PI + 0.1);
+  expect(next.speed).toBeGreaterThan(0);
+  expect(next.speed).toBeLessThan(210);
+  expect(next.phase).toBeGreaterThan(0);
+  expect(next.facing).toBeGreaterThan(initial.facing);
+  expect(blendAnimalFacing(initial.facing, -Math.PI + 0.1, 0.5)).toBeCloseTo(Math.PI);
+  expect(advanceAnimalMotion(next, { x: 320, y: 100 }, 40, 0).phase).toBe(0);
+  expect(advanceAnimalMotion(next, { x: 4, y: 100 }, 300, 0).stride).toBe(0);
+  expect(strikeProgress(undefined, 0, 400)).toBe(1);
+  const strike = { angle: Math.PI, started: 100 };
+  expect(strikeProgress(strike, 90, 400)).toBe(0);
+  expect(strikeProgress(strike, 300, 400)).toBe(0.5);
+  expect(strikeProgress(strike, 601, 400)).toBe(1);
 });
