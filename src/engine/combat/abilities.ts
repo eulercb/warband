@@ -2037,7 +2037,12 @@ export function resolveBossAbility(
           ADD_RADIUS,
         );
         const minion: Add = {
-          appearance: ab.id === 'summonSkeletons' ? 'skeleton' : undefined,
+          ...(ab.id === 'summonSkeletons'
+            ? {
+                appearance: 'skeleton' as const,
+                skeletonMotion: { distance: 0, swing: 0, facing: 1, moving: false },
+              }
+            : {}),
           id: world.allocId(),
           pos,
           hp,

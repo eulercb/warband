@@ -892,6 +892,7 @@ export interface Boss {
 
 export interface Add {
   appearance?: 'skeleton';
+  skeletonMotion?: { distance: number; swing: number; facing: number; moving: boolean };
   maneuverMotion?: ManeuverMotion;
   maneuverRecovery?: number;
   perception?: EnemyPerception;
@@ -1812,6 +1813,7 @@ export interface BossView {
 
 export interface AddView {
   appearance?: 'skeleton';
+  skeletonMotion?: { distance: number; swing: number; facing: number; moving: boolean };
   maneuver?: { ownerId: EntityId; dir: Vec2; remaining: number; phase: 'queued' | 'travel' };
   id: EntityId;
   pos: Vec2;

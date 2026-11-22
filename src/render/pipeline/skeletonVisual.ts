@@ -1,5 +1,5 @@
 import type { Graphics } from 'pixi.js';
-import type { Vec2 } from '../../engine/core/types';
+import type { AddView, Vec2 } from '../../engine/core/types';
 
 /** Offset shoulders, skull and weapon around planted feet during the hit pulse. */
 export function drawSkeleton(
@@ -8,11 +8,17 @@ export function drawSkeleton(
   radius: number,
   flash: number,
   breath: number,
+  motion?: AddView['skeletonMotion'],
 ): void {
   const { x, y } = screen;
-  const recoil = flash * flash;
-  const headX = x + radius * recoil * 0.37;
-  const headY = y - radius * (0.72 + recoil * 0.29 + breath * 0.06);
+  const face = motion?.facing ?? 1;
+  const phase = (motion?.distance ?? 0) / 4;
+  const step = Number(motion?.moving ?? false) * Math.sin(phase);
+  const slash = 1 - (motion?.swing ?? 0) / 0.28;
+  const attack = (1 - slash) ** 2;
+  const recoil = flash * (1 - attack * 0.35);
+  const headX = x + radius * face * (0.19 + attack * 0.18 - recoil * 0.62);
+  const headY = y - radius * (0.9 + recoil * 0.51 + Math.abs(step) * 0.14 + breath * 0.05);
   const ivory = flash > 0.3 ? 0xfff5d8 : 0xcfba91;
   const bone = (ax: number, ay: number, bx: number, by: number, width: number): void => {
     g.moveTo(x + ax * radius, y + ay * radius)
@@ -22,11 +28,19 @@ export function drawSkeleton(
       .lineTo(x + bx * radius, y + by * radius)
       .stroke({ color: ivory, width: Math.max(1, width * radius), cap: 'round' });
   };
-  bone(-0.26, 0.31, -0.42, 0.94, 0.16);
-  bone(0.24, 0.33, 0.48, 0.88, 0.16);
+  for (const side of [-1, 1]) {
+    const stride = step * side;
+    const foot = side * 0.4 + stride * 0.44 * face;
+    const lift = Math.max(0, stride) * 0.48;
+    bone(side * 0.24, 0.27, foot * 0.7, 0.55 - lift * 0.4, 0.17);
+    bone(foot * 0.7, 0.55 - lift * 0.4, foot, 0.94 - lift, 0.16);
+  }
   bone(-0.45, -0.15 - recoil * 0.18, -0.74, 0.37, 0.17);
-  bone(0.48, -0.21, 0.76 + recoil * 0.19, 0.45, 0.16);
-  bone(0.79 + recoil * 0.1, 0.43, 1.3 + recoil * 0.16, -0.28, 0.21);
+  const handX = face * (0.66 + attack * 0.54 - recoil * 0.24);
+  const handY = 0.34 - attack * 0.63 - recoil * 0.28;
+  const blade = -1.04 + attack * 1.6;
+  bone(face * 0.43, -0.21, handX, handY, 0.16);
+  bone(handX, handY, handX + face * Math.cos(blade) * 0.9, handY + Math.sin(blade) * 0.9, 0.21);
   bone(0, -0.35, 0, 0.39, 0.19);
   for (let i = 0; i < 3; i++) {
     const width = 0.43 - i * 0.08;

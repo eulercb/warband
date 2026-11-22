@@ -2834,3 +2834,33 @@ describe('world-branches: player projectile strikes an add', () => {
     expect(add.hp).toBe(35);
   });
 });
+
+it('advances skeleton gait on travel and starts the swing only on its real melee attack', () => {
+  const w = solo({ monsterId: 'lich' });
+  w.scene = null;
+  w.obstacles = [];
+  w.terrain = [];
+  const player = w.players[0];
+  player.pos = { x: 700, y: 500 };
+  const a = mkAdd(w, {
+    appearance: 'skeleton',
+    pos: { x: 800, y: 500 },
+    skeletonMotion: { distance: 0, swing: 0, facing: 1, moving: false },
+  });
+  w.adds = [a];
+  w.step(DT, new Map());
+  expect(w.serialize().adds[0].skeletonMotion).toMatchObject({
+    facing: -1,
+    moving: true,
+    swing: 0,
+  });
+  expect(a.skeletonMotion!.distance).toBeGreaterThan(0);
+
+  a.pos = { x: 680, y: 500 };
+  const before = player.hp;
+  w.step(DT, new Map());
+  expect(player.hp).toBeLessThan(before);
+  expect(a.skeletonMotion).toMatchObject({ facing: 1, moving: false, swing: 0.28 });
+  w.step(DT, new Map());
+  expect(a.skeletonMotion!.swing).toBeLessThan(0.28);
+});

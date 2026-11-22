@@ -98,3 +98,31 @@ pass does not have to maintain two evolving presentations.
 After this playtest, move to a representative alternate form and a player
 companion, then compare healing, barrier and control readability alongside
 the new character silhouettes.
+
+## Motion and perspective pilot
+
+The skeleton preview revealed the limits of judging a still silhouette. The
+raised skull, knees and weapon keep the simulation's existing ground anchor.
+Foot motion follows actual travel, the normal melee attack starts a sword
+animation, and a stronger hit pose pulls the skull and weapon away while the
+feet hold their place. Combat timing and ground geometry remain the same.
+
+Keep the arena camera and aiming projection for this comparison. Try a
+three-quarter drawing style on individual actors first, with visible height
+and a planted floor shadow. A global tilt would require coordinated changes
+to pointer aiming, telegraphs, obstacle edges and wrapped-world rendering.
+Consider it only if the actor treatment proves insufficient.
+
+Regular Ranger Arrow and Multishot use the arrow artwork. Returning Shot has
+its own directional marker. Mage Fireball uses the flame artwork, while its
+basic Arcane Bolt is a different projectile. The additive trails on ordinary
+arrows and fireballs are smaller so the projectile silhouettes can show.
+
+After this playtest, compare a larger three-quarter Mage or alternate-form
+silhouette beside the skeleton. Use stills at native zoom and moving footage
+to check stance, actual hits, and telegraphs in a fight before rolling a style
+out to the roster.
+
+Actual game renders from the motion fixture: [desktop](images/skeleton-motion-desktop.png)
+and [phone](images/skeleton-motion-phone.png). The struck skeleton is above
+and left of the Mage. The second skeleton is beside the Mage in its melee pose.
