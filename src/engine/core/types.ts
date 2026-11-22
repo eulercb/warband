@@ -1535,7 +1535,7 @@ export interface SkillArea {
   /** Search reach, not an area-wide application. Draw an unfilled, subdued outline. */
   reach?: boolean;
   kind: SkillAreaKind;
-  style?: 'lightning' | 'frostNova' | 'fireball';
+  style?: 'lightning' | 'frostNova' | 'fireball' | 'blinkDepart' | 'blinkArrive';
   contacts?: { id: EntityId; pos: Vec2; radius: number }[];
   stoppedByCover?: boolean;
   origin: Vec2; // cone/line emanation point, or circle center
@@ -1603,7 +1603,7 @@ export type GameEvent =
   | { t: 'spellGuidance'; pos: Vec2 }
   | { t: 'silenceBreak'; pos: Vec2 }
   | { t: 'fieldDispel'; pos: Vec2; radius: number }
-  | { t: 'blink'; id: EntityId; from: Vec2; to: Vec2 }
+  | { t: 'blink'; id: EntityId; from: Vec2; to: Vec2; presentation?: 'mage' }
   | { t: 'telegraph'; pos: Vec2; shape: TelegraphKind }
   | { t: 'enrage'; id: EntityId; pos: Vec2 }
   | { t: 'projectile'; kind: ProjectileKind; pos: Vec2 }

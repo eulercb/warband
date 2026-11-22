@@ -112,11 +112,21 @@ material unresolved player-experience choices.
 The owner authorizes one bounded GPT-6.2 Sol high review by default for substantial
 design, planning or class-identity reviews; do not ask them to request it again.
 Skip delegation for routine fixes, formatting and straightforward implementation.
-Respect quota: use one reviewer at a time, no subdelegation or model-comparison
-fan-out; reuse a reviewer only for a concrete unresolved issue. The owner prefers
-GPT-6.2 Sol high for difficult planning; GPT-6.1 Terra medium/high can be considered
-where appropriate. Never select GPT-6 Sol (Sol 6); avoid GPT-6 Astra because of
-cost. Present a short checkpoint only for unresolved material gameplay choices.
+Respect quota: use one reviewer at a time and no subdelegation. GPT-6.2 Sol
+high is the default for difficult planning. A bounded GPT-6.2 Astra high review
+is authorized when a difficult visual or animation problem benefits from a
+second approach. Use both only when the comparison can inform a decision.
+Never select GPT-6 Sol (Sol 6). GPT-6.1 Terra medium/high can be considered
+where appropriate. Present a short checkpoint only for unresolved material
+gameplay choices.
+
+Treat feedback followed by “go on” as direction to investigate the cause,
+compare practical options, choose a scoped batch, implement it, and verify it.
+The owner does not need to restate this workflow. Explain the choice and its
+limits in the delivery. For visual deliveries, include a few actual in-game
+captures when they help show the result. For a rendered design comparison, use
+matched camera, viewport, inputs and effect age wherever practical.
+
 When the review supports a coherent plan and remaining choices are routine, the
 owner authorizes proceeding to implementation, validation and a reviewable result.
 

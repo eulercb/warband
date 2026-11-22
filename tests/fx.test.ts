@@ -13,6 +13,7 @@
 import { describe, it, expect } from 'vitest';
 import { Container, Graphics } from 'pixi.js';
 import { Fx } from '../src/render/overlays/fx';
+import { drawBlinkEndpoint } from '../src/render/overlays/blinkVisual';
 import { drawSkeleton } from '../src/render/pipeline/skeletonVisual';
 import { drawElementalBurst } from '../src/render/overlays/elementalBurst';
 import type { PlayerView } from '../src/engine/core/types';
@@ -224,3 +225,19 @@ it.each([false, true])('draws bounded elemental layers, ice=%s', (ice) => {
     expect(bounds.maxY).toBeLessThanOrEqual(141);
   }
 });
+
+it.each(['shutter', 'tiles'] as const)(
+  'draws %s Blink at two separate local endpoints',
+  (variant) => {
+    const g = new Graphics();
+    drawBlinkEndpoint(g, { x: 100, y: 100 }, 1, 0.05, false, variant);
+    const departure = { ...g.getLocalBounds() };
+    g.clear();
+    drawBlinkEndpoint(g, { x: 320, y: 100 }, 1, 0.05, true, variant);
+    const arrival = g.getLocalBounds();
+    expect(instructionCount(g)).toBeGreaterThan(5);
+    expect(departure.maxX).toBeLessThan(130);
+    expect(arrival.minX).toBeGreaterThan(290);
+    expect(arrival.maxY - arrival.minY).not.toBe(departure.maxY - departure.minY);
+  },
+);

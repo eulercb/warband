@@ -574,6 +574,13 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
     g.poly([...at(-12), ...at(-21, 3.5), ...at(-19), ...at(-21, -3.5)]).fill({ color });
     return;
   }
+  if (pr.kind === 'shadowBolt') {
+    g.poly([...at(9), ...at(-2, -7), ...at(-19, -3), ...at(-10, 0), ...at(-18, 5), ...at(-1, 6)])
+      .fill({ color: 0x322348 })
+      .stroke({ color, width: Math.max(1.15, 1.5 * scale), alpha: 0.88 });
+    g.poly([...at(8), ...at(-5, -3), ...at(0), ...at(-5, 3)]).fill({ color: 0xe7cdf4 });
+    return;
+  }
   if (pr.kind === 'fireball') {
     g.poly([...at(7), ...at(1, 6), ...at(-7, 4), ...at(-22, -1), ...at(-8, -5), ...at(2, -6)]).fill(
       { color: 0xef5a28, alpha: 0.78 },

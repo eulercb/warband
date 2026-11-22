@@ -124,6 +124,7 @@ export class Particles {
           this.burst(e.pos, 14, { color: 0x66ff88, spd: 50, up: 70, ttl: 0.8, s0: 3, s1: 1 });
           break;
         case 'blink':
+          if (e.presentation === 'mage') break;
           this.burst(e.from, 10, { color: 0x9c5cf0, spd: 70, ttl: 0.4, s0: 3, s1: 1 });
           this.burst(e.to, 10, { color: 0x9c5cf0, spd: 70, ttl: 0.4, s0: 3, s1: 1 });
           break;
@@ -169,10 +170,10 @@ export class Particles {
     this.burst(pos, 1, {
       color: tint ?? TRAIL_COLORS[kind] ?? 0xffffff,
       spd: 18,
-      ttl: 0.16,
-      s0: 1.4,
+      ttl: 0.2,
+      s0: 2.7,
       s1: 0.4,
-      a0: 0.58,
+      a0: 0.67,
     });
   }
 

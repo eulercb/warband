@@ -85,6 +85,8 @@ export class CreatureRig {
 
   private elementalAge = 1;
   private elementalPose: 'fireball' | 'frostNova' = 'fireball';
+  private nextBipedLeg = 0;
+  private blinkAge = 1;
   private lightningAge = 1;
   private lightningAngle = 0;
   private recoilAge = 1;
@@ -208,12 +210,41 @@ export class CreatureRig {
   triggerElemental(style: 'fireball' | 'frostNova'): void {
     this.attackAge = -1;
     this.elementalAge = 0;
+    this.blinkAge = 1;
+    this.lightningAge = 1;
     this.elementalPose = style;
+  }
+
+  triggerBlink(mage: boolean): void {
+    this.seeded = false;
+    if (mage) {
+      this.attackAge = -1;
+      this.blinkAge = 0;
+      this.lightningAge = 1;
+      this.elementalAge = 1;
+    }
+  }
+
+  /** Keep planted feet in the same world positions when the camera pans or zooms. */
+  reprojectFeet(oldGround: Vec2, newGround: Vec2, ratio: number): void {
+    const project = (p: Vec2): Vec2 => ({
+      x: newGround.x + (p.x - oldGround.x) * ratio,
+      y: newGround.y + (p.y - oldGround.y) * ratio,
+    });
+    this.lastPos = project(this.lastPos);
+    this.vel = { x: this.vel.x * ratio, y: this.vel.y * ratio };
+    for (const leg of this.legs) {
+      leg.foot = project(leg.foot);
+      leg.from = project(leg.from);
+      leg.to = project(leg.to);
+    }
   }
 
   triggerLightning(angle: number): void {
     this.attackAge = -1;
     this.lightningAge = 0;
+    this.blinkAge = 1;
+    this.elementalAge = 1;
     this.lightningAngle = angle;
   }
 
@@ -238,6 +269,7 @@ export class CreatureRig {
     const dt = clamp(dtMs, 1, 100) / 1000;
     const R = this.baseRadius * scale;
     this.lightningAge += dt;
+    this.blinkAge += dt;
     this.elementalAge += dt;
     this.recoilAge += dt;
     const poseFacing = this.lightningAge < 0.13 ? this.lightningAngle : facing;
@@ -352,10 +384,15 @@ export class CreatureRig {
       stepDuration: lg.gait.stepDuration * (ctx.enraged ? 0.7 : 1),
       overstep: lg.gait.overstep * R,
       maxConcurrent: lg.gait.maxConcurrent,
+      firstLeg: lg.count === 2 ? this.nextBipedLeg : 0,
       partnerOf: (i) => (i + stride) % lg.count,
       jitter: (i) => this.jitterVals[i],
     };
     updateGait(this.legs, this.legHomes, moveDir, dt, params);
+    if (lg.count === 2) {
+      const active = this.legs.findIndex((leg) => leg.stepping);
+      if (active >= 0) this.nextBipedLeg = 1 - active;
+    }
   }
 
   private seedChain(R: number): void {
@@ -399,7 +436,7 @@ export class CreatureRig {
 
     this.drawBodyParts(R, bodyScale, downed, ctx);
 
-    if (this.spec.arms) this.drawArms(R, ctx, downed, timeSec);
+    if (this.spec.arms) this.drawArms(R, ctx, downed);
     if (this.spec.weapon && !downed) this.drawWeapon(R, ctx, timeSec);
     if (this.spec.decor) this.drawDecor(R, ctx);
     if (this.spec.garment === 'mage' && !downed) {
@@ -578,7 +615,7 @@ export class CreatureRig {
     }
   }
 
-  private drawArms(R: number, ctx: RigDriveCtx, downed: boolean, timeSec: number): void {
+  private drawArms(R: number, ctx: RigDriveCtx, downed: boolean): void {
     const arms = this.spec.arms!;
     const color = this.limbColor(darken(ctx.color, 0.25), ctx, !this.lit);
     const center = this.origin;
@@ -598,18 +635,23 @@ export class CreatureRig {
         if (arm.side === 1) hand = grip;
         else {
           const travel = clamp(Math.hypot(this.vel.x, this.vel.y) / 125, 0, 1);
-          const sweep = Math.sin(timeSec * 12) * travel * 0.29;
+          const lead = this.legs.findIndex((leg) => leg.stepping);
+          const sweep =
+            lead < 0
+              ? 0
+              : Math.sin(Math.PI * this.legs[lead].t) * (lead === 0 ? -1 : 1) * travel * 0.29;
           const release = Math.max(0, 1 - this.elementalAge / 0.32);
           const lightning = Math.max(0, 1 - this.lightningAge / 0.24);
+          const fold = Math.max(0, 1 - this.blinkAge / 0.28);
           const opening = this.elementalPose === 'frostNova' ? release * 0.69 : release * 0.31;
           hand = this.bodyPoint(
             {
               x: 0.27 + sweep + lightning * 0.73 + (ctx.castT ?? 0) * 0.57,
-              y: -0.94 - opening + lightning * 0.25,
+              y: -0.94 - opening + lightning * 0.25 + fold * 0.58,
             },
             R,
           );
-          hand.y -= R * (0.49 + opening * 0.57 + (ctx.castT ?? 0) * 0.43);
+          hand.y -= R * (0.49 + opening * 0.57 + (ctx.castT ?? 0) * 0.43 + fold * 0.52);
         }
       }
       const bendRef = arm.bendOutward
@@ -872,7 +914,9 @@ export class CreatureRig {
       const nova = this.elementalPose === 'frostNova';
       point.x += R * beat * (nova ? -this.sin * 1.25 : this.cos * 0.6);
       point.y += R * beat * (nova ? this.cos * 0.55 : this.sin * 0.32);
-      point.y -= R * (0.82 + (ctx.castT ?? 0) * 0.22);
+      const fold = Math.max(0, 1 - this.blinkAge / 0.22);
+      point.x -= this.cos * R * fold * 0.57;
+      point.y -= R * (0.82 + (ctx.castT ?? 0) * 0.22 + fold * 0.28);
     }
     return point;
   }

@@ -187,3 +187,40 @@ healing and barriers in motion.
 
 In-game examples: [Frost Nova on desktop](images/mage-material-nova-desktop.png)
 and [Fireball on phone](images/mage-material-fireball-phone.png).
+
+## Blink comparison, gait and projectile readability
+
+The owner liked the independent arms and the material-shaped range cues.
+The shared particle size correction went too far in playtesting. The new
+baseline restores a modest short trail across projectiles and retains
+world-space particle sizing. The Lich's shared hostile-bolt art also has a
+brighter tip and a high-contrast forked silhouette. The shared trail sets
+visibility; individual body shapes identify delivery. Future effects can
+override the baseline when their own motion or contrast requires it.
+
+The Mage pulls the free palm inward, braces the staff and settles after the
+actual Blink. Two separately rendered variants use the same cast, camera and
+animation age. Sol 6.2 High's [shutter](images/mage-blink-shutter.png) contracts
+a doorway at departure and opens one at arrival. The Astra 6.2 High-inspired
+[facets](images/mage-blink-tiles.png) refit the iris concept into four pieces
+that gather at departure and fan from the destination. The shutter is active
+during play because the closing/opening contrast makes direction easier to
+read in this setup. The alternate remains available to renderer comparisons.
+Both are local endpoint cues. The movement, dispel and protection rules are
+unchanged.
+
+The gait investigation reproduced a biped that could lift the first foot
+continually while the second stayed planted. The rig now gives the opposite
+foot priority when both qualify. It also reprojects planted feet through
+camera movement, resets the rig on teleport, and ties the Mage's free wrist
+to the active footstep. This pass retains the visible bend and lift of the gait.
+Remote client interpolation remains a separate presentation check for a
+future multiplayer visual pass.
+
+The Mage is a representative pilot, covering a raised humanoid body, walking
+and hand gestures, a basic projectile visibility check, traveling impact,
+area control, instant line and mobility. A full Mage pass later covers every
+remaining subclass, upgrade, graft and stance with the production standards
+learned here. After Blink playtesting, prototype a contrasting player, then
+an alternate form and small companion with support effects. Boss and arena
+production continues alongside the encounter revamp, with balance afterwards.

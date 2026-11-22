@@ -780,7 +780,13 @@ export function resolvePlayerAbility(
       if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
       mobilitySpeed(world, p, ab);
       spendSecret(world, p, ab.whisperCast, from);
-      world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
+      world.events.push({
+        t: 'blink',
+        id: p.id,
+        from,
+        to: { ...p.pos },
+        ...(p.classId === 'mage' && { presentation: 'mage' as const }),
+      });
       armWhisperRefrain(world, p, ab, slot, from);
       break;
     }
@@ -1370,7 +1376,13 @@ function resolveComposedAbility(
         prepareMartialFlow(p, ab);
         if (ab.prepareCrit) applyBuff(p, makeBuff('precision', 1, ab.prepareCrit, 'preparedCrit'));
         spendSecret(world, p, ab.whisperCast!, from);
-        world.events.push({ t: 'blink', id: p.id, from, to: { ...p.pos } });
+        world.events.push({
+          t: 'blink',
+          id: p.id,
+          from,
+          to: { ...p.pos },
+          ...(p.classId === 'mage' && { presentation: 'mage' as const }),
+        });
         armWhisperRefrain(world, p, ab, ab.slot, from);
       } else {
         let dir = moveDir;

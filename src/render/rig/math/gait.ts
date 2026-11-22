@@ -22,6 +22,7 @@ export interface GaitParams {
   stepDistance: number; // trigger threshold (screen units)
   stepDuration: number; // seconds per step
   overstep: number; // plant this far ahead along moveDir (screen units)
+  firstLeg?: number; // biped whose next lift has priority
   maxConcurrent: number; // e.g. 3 for a spider, 1 for a biped
   partnerOf: (i: number) => number; // antiphase partner index
   jitter: (i: number) => number; // per-leg threshold multiplier (seed by id)
@@ -47,7 +48,8 @@ export function updateGait(
   let stepping = 0;
   for (const l of legs) if (l.stepping) stepping++;
 
-  for (let i = 0; i < legs.length; i++) {
+  for (let offset = 0; offset < legs.length; offset++) {
+    const i = ((p.firstLeg ?? 0) + offset) % legs.length;
     const l = legs[i];
     if (l.stepping) {
       l.t += dt / p.stepDuration;
