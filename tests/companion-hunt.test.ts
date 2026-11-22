@@ -95,6 +95,26 @@ describe('Pack Tactics chosen quarry', () => {
     advance(4);
     expect(b.hp).toBe(9928);
   });
+  it('keeps idle and quarry positions independent of owner aim and circles', () => {
+    const { w, p, b, command, advance } = setup();
+    advance(0.1);
+    const pet = p.spiritCompanion!;
+    const positions = () => [pet, ...pet.flankers!].map((wolf) => ({ ...wolf.pos }));
+    const idle = positions();
+    p.aim = { x: -1, y: 0 };
+    advance(0.1);
+    expect(positions()).toEqual(idle);
+
+    command();
+    advance(0.8);
+    const onQuarry = positions();
+    p.pos = { x: b.pos.x + 150, y: b.pos.y + 100 };
+    advance(0.1);
+    expect(positions()).toEqual(onQuarry);
+    const cues = w.events.filter((e) => e.t === 'animalStrike');
+    expect(cues.map((e) => e.slot)).toEqual([0, 1, 2]);
+    expect(cues.every((e) => e.animal === 'wolf' && e.sourceId === p.id)).toBe(true);
+  });
   it('renewing the same quarry preserves a pending bite rather than restarting its windup', () => {
     const { p, command, advance, b } = setup();
     command();

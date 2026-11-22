@@ -1,4 +1,4 @@
-import { advanceAnimalMotion, type AnimalMotion } from './animalMotion';
+import { advanceAnimalMotion, type AnimalMotion, type AnimalStrike } from './animalMotion';
 import { playerVisualHeadroom } from '../rig/mageGarment';
 import { drawRefuge } from './refugeVisuals';
 import { drawFont, drawFontFootprint } from './fontVisuals';
@@ -112,6 +112,7 @@ export class Renderer {
   private readonly particles: Particles;
   private readonly lights: LightManager;
   private readonly labels: Text[] = [];
+  private animalStrikes = new Map<string, AnimalStrike>();
   private animalMotion = new Map<string, AnimalMotion>();
 
   private lastRenderMs = 0;
@@ -224,6 +225,15 @@ export class Renderer {
 
     // Spawn floaters / bursts / flashes + shake, and feed the same event stream
     // to the sprite attack triggers and the particle emitter, BEFORE drawing.
+    for (const [key, strike] of this.animalStrikes)
+      if (now - strike.started >= 420) this.animalStrikes.delete(key);
+    for (const e of state.events) {
+      if (e.t === 'animalStrike')
+        this.animalStrikes.set(`${e.sourceId}:${e.animal}:${e.slot}`, {
+          angle: e.angle,
+          started: now,
+        });
+    }
     this.fx.processEvents(state.events, this.camera);
     this.sprites.ingestEvents(state.events, now);
     this.rigs.ingestEvents(state.events);
@@ -925,8 +935,8 @@ export class Renderer {
 
     const previousAnimals = this.animalMotion;
     this.animalMotion = new Map();
-    const track = (key: string, pos: Vec2): AnimalMotion => {
-      const motion = advanceAnimalMotion(previousAnimals.get(key), pos, nowMs);
+    const track = (key: string, pos: Vec2, facing: number): AnimalMotion => {
+      const motion = advanceAnimalMotion(previousAnimals.get(key), pos, nowMs, facing);
       this.animalMotion.set(key, motion);
       return motion;
     };
@@ -959,7 +969,8 @@ export class Renderer {
           this.camera.worldToScreen(p.pos),
           scale,
           timeSec,
-          track(`${p.id}:bear`, p.pos),
+          track(`${p.id}:bear`, p.pos, Math.atan2(p.aim.y, p.aim.x)),
+          this.animalStrikes.get(`${p.id}:bear:0`),
         );
 
       if (p.state === 'alive' && p.spiritCompanion)
@@ -969,7 +980,10 @@ export class Renderer {
           this.camera.worldToScreen(p.spiritCompanion.pos),
           scale,
           1,
-          (slot, position) => track(`${p.id}:wolf:${slot}`, position),
+          (slot, position, facing) => track(`${p.id}:wolf:${slot}`, position, facing),
+          0,
+          (slot) => this.animalStrikes.get(`${p.id}:wolf:${slot}`),
+          nowMs,
         );
       if (p.form || SPRITE_FLAGS.player || playerUsesRig(p)) {
         drawPlayerOverlay(

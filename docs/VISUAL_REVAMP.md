@@ -294,3 +294,30 @@ shots at native phone size and under party overlap.
 In-game captures from the browser smoke tests:
 [Moon Bear claw on desktop](images/moon-bear-claw-desktop.png) and
 [Beast Master wolf with Nature’s Bond ready on phone](images/beast-wolf-bond-phone.png).
+
+## Animal locomotion and attack follow-through
+
+The playtest accepted the stationary replant, longer Mage releases and extended
+Lightning fade. Carry the same stance correction and readable release/recovery
+timing into the roster work.
+
+Idle wolves now have stable follow offsets with a small movement tolerance.
+Pack Tactics takes its flank positions from the lead wolf's approach to the
+quarry; they follow the quarry as it moves and stay put when the owner circles.
+The lead and flankers still share the return route. Slow movement uses short
+alternating steps, while a faster run blends into a longer bound with a capped
+cadence and smoothed turning. The head and torso keep their volume nose-on and
+from behind. Each wolf shows a short jaw snap and recovery on its own bite.
+
+Moon Bear carries more of its weight through its shoulders and hips. Paw lift,
+body roll and step length change together. The rear view hides the eyes and
+muzzle, and the side view keeps the near eye. The visible forepaw sweeps and
+settles on a Moon claw. The claw actually fires with the basic cast, so the pose
+starts at that moment and follows through while the ordinary Thornlash travels.
+There is no added gameplay delay for the claw or bite.
+
+This follow-up was kept to the two animal issues to fit the available session.
+Astra 6.2 High remains next for the first basic-attack cohort.
+
+Browser captures: [Moon Bear claw on desktop](images/moon-bear-swipe-desktop.png)
+and [wolf bite on phone](images/beast-wolf-attack-phone.png).
