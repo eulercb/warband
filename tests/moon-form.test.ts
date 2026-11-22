@@ -440,8 +440,16 @@ describe('lifecycle, controls and replicated form', () => {
     drawMoonBear(g, { ...p, aim: { x: 0, y: -1 } }, ZERO, 2, 2);
     expect(g.context.instructions.length).toBeLessThan(front);
     g.clear();
-    const motion = { pos: ZERO, now: 2000, facing: -Math.PI, speed: 220, phase: 1, stride: 0.8 };
-    drawMoonBear(g, p, ZERO, 2, 2, motion, { started: 1970, angle: -Math.PI });
+    const motion = {
+      pos: ZERO,
+      now: 2000,
+      facing: -Math.PI,
+      travel: Math.PI / 2,
+      speed: 220,
+      phase: 1,
+      stride: 0.8,
+    };
+    drawMoonBear(g, p, ZERO, 2, 2, motion, { started: 1830, angle: -Math.PI });
     expect(g.context.instructions.length).toBeGreaterThan(front);
     g.destroy();
   });

@@ -1,6 +1,7 @@
 /** A small spirit-wolf silhouette, separate from hero/bot bodies and enemy status rings. */
 import { sub } from '../../engine/core/torus';
 import {
+  animalFoot,
   blendAnimalFacing,
   strikeProgress,
   type AnimalMotion,
@@ -99,12 +100,16 @@ export function drawCompanion(
     for (const fore of [-0.62, 0.47]) {
       const lead = fore > 0;
       const offset = (lead ? Math.PI : 0) + (side < 0 ? Math.PI * (1 - 0.78 * bound) : 0);
-      const step = Math.cos(phase + offset) * weight;
-      const lift = Math.max(0, Math.sin(phase + offset)) * weight;
+      const step = animalFoot(
+        phase + offset,
+        motion?.travel ?? facing,
+        facing,
+        weight * (0.22 + bound * 0.35),
+      );
       const foot = at(
-        fore + step * (0.22 + bound * 0.35) + (lead ? snap * 0.36 : 0),
-        side * 0.39,
-        lift * (0.2 + bound * 0.15) + (lead ? snap * 0.26 : 0),
+        fore + step.x + (lead ? snap * 0.36 : 0),
+        side * 0.39 + step.y,
+        step.lift * weight * (0.2 + bound * 0.15) + (lead ? snap * 0.26 : 0),
       );
       g.moveTo(...at(fore, side * 0.27, 0.59 + bob))
         .lineTo(...foot)

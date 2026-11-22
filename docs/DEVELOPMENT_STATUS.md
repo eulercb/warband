@@ -69,12 +69,12 @@ harder three- and four-player cases, and explicit adjust or retain decisions.
 The [class balance coverage plan](CLASS_BALANCE_COVERAGE.md) preserves the
 comparison method and evidence.
 
-| Order                  | Development work                                                                                                                                                                       |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Now                    | [Visual and ability pilot](VISUAL_REVAMP.md). Playtest the Bear and wolf gait, directional silhouettes, and attack poses. The stationary pivot and longer Mage recovery were accepted. |
-| Next                   | Start the basic-attack visual pass with contrasting projectile and melee roles. Astra 6.2 High is next in the reviewer rotation.                                                       |
-| Then                   | [Boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). Pair encounter mechanics, terrain and boss/arena art in playtestable slices.                                                |
-| After encounter revamp | Resume role, progression and reward tuning on the revised fights. Compare solo through four players, with meaningful challenge at every size.                                          |
+| Order                  | Development work                                                                                                                                     |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Now                    | [Visual and ability pilot](VISUAL_REVAMP.md). Playtest the travel-aligned animal gait, two-beat Moon Bear basic, Knight Cleave and Mage Arcane Bolt. |
+| Next                   | Continue the basic-attack visuals with Paladin and Rogue. Sol 6.2 High follows this cohort’s Astra 6.2 High review.                                  |
+| Then                   | [Boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). Pair encounter mechanics, terrain and boss/arena art in playtestable slices.              |
+| After encounter revamp | Resume role, progression and reward tuning on the revised fights. Compare solo through four players, with meaningful challenge at every size.        |
 
 Use one bounded Sol 6.2 high design review where substantial planning is needed.
 Proceed with a mature authorized plan; surface unresolved material gameplay

@@ -96,6 +96,7 @@ export class CreatureRig {
   private lightningAngle = 0;
   private recoilAge = 1;
   private recoilAngle = 0;
+  private cleaveFacing: number | undefined;
   private attackAge = -1; // < 0 = no active attack swing
 
   constructor(
@@ -208,7 +209,13 @@ export class CreatureRig {
   }
 
   /** Trigger a one-shot weapon swing (humanoid attack), consumed at draw time. */
+  triggerCleave(angle: number): void {
+    this.triggerAttack();
+    this.cleaveFacing = angle;
+  }
+
   triggerAttack(): void {
+    this.cleaveFacing = undefined;
     this.attackAge = 0;
   }
 
@@ -755,8 +762,8 @@ export class CreatureRig {
             Math.cos(this.aimFacing + Math.PI * 0.57),
           ) *
             activeStaff
-        : this.spec.garment === 'knight' && this.attackAge >= 0
-          ? this.aimFacing
+        : this.spec.garment === 'knight'
+          ? this.knightSwordAngle()
           : this.facing;
     const fx = Math.cos(staffAngle);
     const fy = Math.sin(staffAngle);
@@ -961,6 +968,13 @@ export class CreatureRig {
 
   // --- pose helpers ----------------------------------------------------------
 
+  private knightSwordAngle(): number {
+    if (this.attackAge < 0) return this.facing + 1.05;
+    if (this.cleaveFacing === undefined) return this.aimFacing;
+    const sweep = clamp(this.attackAge / ATTACK_DUR, 0, 1);
+    return this.cleaveFacing - 1.25 + 2.3 * sweep;
+  }
+
   private gripPoint(R: number, ctx: RigDriveCtx, downed: boolean): Vec2 {
     const w = this.spec.weapon;
     let dist = 1.5;
@@ -976,10 +990,12 @@ export class CreatureRig {
     }
     if (!downed) dist += 0.85 * releasePose(this.lightningAge);
     const forward =
-      this.spec.garment &&
-      (this.attackAge >= 0 || activeRelease(this.lightningAge, this.elementalAge))
-        ? this.aimFacing
-        : this.facing;
+      this.spec.garment === 'knight' && !downed
+        ? this.knightSwordAngle()
+        : this.spec.garment &&
+            (this.attackAge >= 0 || activeRelease(this.lightningAge, this.elementalAge))
+          ? this.aimFacing
+          : this.facing;
     const point = {
       x: this.origin.x + Math.cos(forward) * dist * R,
       y: this.origin.y + Math.sin(forward) * dist * R,

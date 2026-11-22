@@ -321,3 +321,33 @@ Astra 6.2 High remains next for the first basic-attack cohort.
 
 Browser captures: [Moon Bear claw on desktop](images/moon-bear-swipe-desktop.png)
 and [wolf bite on phone](images/beast-wolf-attack-phone.png).
+
+## Basic-attack pilot: Cleave and Arcane Bolt
+
+Astra 6.2 High reviewed this cohort. Cleave uses the live hit geometry for a
+soft sector and a steel edge that sweeps across it. The Knight carries the
+sword off to one side at rest and rotates sword and hand through the Cleave
+while the shield stays on its own arm. The same effect reads the expanded
+range and full circle of the grand. Arcane Bolt uses a violet crystal with
+a bright facet and two short wakes, including on each bolt in Arcane Barrage.
+The silhouette follows the authored basic and its ordinary upgrades.
+
+For Moon Bear and the wolves, the paw cycle now uses wrapped travel direction
+independently of the body's facing. Lifted paws advance along travel, and
+planted paws move back relative to the moving body. This also covers a bear
+walking sideways with aim held on a boss and a wolf retreating after its bite.
+
+The bear's basic now has two overlapping beats. One forepaw releases
+Thornlash with a brief green cue. The opposite paw then crosses the chest
+with three near-body claw trails. Thornlash and the claw retain their
+original combat timing. This pilot covers the basic pair. Other skills get
+their own bear poses in the production animation pass.
+
+The next basic-attack cohort should compare Paladin sword work with Rogue
+dagger work, then extend the visual separation to the Monk and hybrid melee
+kits. Sol 6.2 High is next in the review rotation.
+
+In-game captures:
+[Knight full-circle Cleave on phone](images/knight-cleave-grand-phone.png),
+[Mage Arcane Barrage on phone](images/mage-arcane-barrage-phone.png), and
+[Moon Bear claw follow-through](images/moon-bear-follow-through.png).

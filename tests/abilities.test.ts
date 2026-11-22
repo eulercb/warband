@@ -134,7 +134,11 @@ describe('player meleeCone', () => {
     expect(
       w.events.some((e) => e.t === 'cast' && e.ability === 'Cleave' && e.slot === 'basic'),
     ).toBe(true);
-    expect(w.events.some((e) => e.t === 'skillArea' && e.area.kind === 'cone')).toBe(true);
+    expect(
+      w.events.some(
+        (e) => e.t === 'skillArea' && e.area.kind === 'cone' && e.area.style === 'cleave',
+      ),
+    ).toBe(true);
     expect(w.events.some((e) => e.t === 'hit' && e.targetId === boss.id)).toBe(true);
   });
 
@@ -277,6 +281,7 @@ describe('player projectile', () => {
     resolvePlayerAbility(w, p, 'basic', ZERO);
     const proj = w.projectiles[0];
     expect(proj.kind).toBe('arcaneBolt');
+    expect(w.toRenderState(p.id).projectiles[0].presentation).toBe('arcaneBolt');
     expect(proj.damage).toBeCloseTo(16, 6);
     expect(Math.hypot(proj.vel.x, proj.vel.y)).toBeCloseTo(620, 3);
   });

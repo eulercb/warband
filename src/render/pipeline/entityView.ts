@@ -565,6 +565,19 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
     x + (dx * along - dy * across) * scale,
     y + (dy * along + dx * across) * scale,
   ];
+  if (pr.presentation === 'arcaneBolt') {
+    // A cut crystal and a split wake separate it from the fireball and arrows.
+    g.poly([...at(-6, -2), ...at(-24, -5.5), ...at(-14, -0.9)]).fill({
+      color: 0xa980ff,
+      alpha: 0.69,
+    });
+    g.poly([...at(-6, 2), ...at(-24, 5.5), ...at(-14, 0.9)]).fill({ color: 0xa980ff, alpha: 0.69 });
+    g.poly([...at(10), ...at(0, -5), ...at(-11), ...at(0, 5)])
+      .fill({ color: 0xab7cff })
+      .stroke({ color: 0x623aa7, width: Math.max(0.8, 1.2 * scale) });
+    g.poly([...at(9), ...at(0, -3.8), ...at(-5), ...at(0, 1.1)]).fill({ color: 0xf2ddff });
+    return;
+  }
   if (pr.kind === 'arrow') {
     const [tailX, tailY] = at(-19);
     g.moveTo(tailX, tailY)

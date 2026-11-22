@@ -55,6 +55,7 @@ export interface PlayerAbilityDef {
   flowUsed?: boolean;
   name: string;
   visualStyle?: 'frostNova' | 'fireball';
+  basicPresentation?: 'cleave' | 'arcaneBolt';
   kind: AbilityKind;
   rechargeBase?: number;
   ordinaryRecharge?: number;
@@ -475,6 +476,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       basic: {
         slot: 'basic',
         name: 'Cleave',
+        basicPresentation: 'cleave',
         kind: 'meleeCone',
         cooldown: 0.7,
         damage: 22,
@@ -588,6 +590,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       basic: {
         slot: 'basic',
         name: 'Arcane Bolt',
+        basicPresentation: 'arcaneBolt',
         kind: 'projectile',
         cooldown: 0.45,
         damage: 16,

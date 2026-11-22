@@ -460,6 +460,7 @@ describe('replication and graphics', () => {
       pos: ZERO,
       now: 130,
       facing,
+      travel: facing,
       speed: 520,
       phase: 1,
       stride: 0.9,
