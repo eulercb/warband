@@ -3,6 +3,16 @@ import type { Vec2 } from '../../engine/core/types';
 
 export type BlinkVariant = 'shutter' | 'tiles';
 
+export const BLINK_DEPART_TTL = 0.34;
+export const BLINK_ARRIVE_TTL = 0.43;
+
+function endpointFade(age: number, arrival: boolean): number {
+  return Math.max(
+    0,
+    1 - Math.max(0, age - 0.07) / ((arrival ? BLINK_ARRIVE_TTL : BLINK_DEPART_TTL) - 0.07),
+  );
+}
+
 /** Separate endpoint artwork. The actual relocation happens before either animation. */
 export function drawBlinkEndpoint(
   g: Graphics,
@@ -17,7 +27,7 @@ export function drawBlinkEndpoint(
 }
 
 function drawShutter(g: Graphics, { x, y }: Vec2, s: number, age: number, arrival: boolean): void {
-  const fade = Math.max(0, 1 - age / (arrival ? 0.23 : 0.18));
+  const fade = endpointFade(age, arrival);
   const open = arrival ? Math.min(1, age / 0.065) : Math.max(0, 1 - age / 0.08);
   const breadth = (2 + open * 11) * s;
   g.moveTo(x, y + 4 * s)
@@ -42,7 +52,7 @@ function drawShutter(g: Graphics, { x, y }: Vec2, s: number, age: number, arriva
 }
 
 function drawTiles(g: Graphics, { x, y }: Vec2, s: number, age: number, arrival: boolean): void {
-  const fade = Math.max(0, 1 - age / (arrival ? 0.28 : 0.19));
+  const fade = endpointFade(age, arrival);
   const spread = arrival ? Math.min(1, age / 0.1) : Math.max(0.05, 1 - age / 0.12);
   const anchorY = y - (9 + (arrival ? age * 25 : 0)) * s;
   for (let i = 0; i < 4; i++) {

@@ -1,4 +1,9 @@
-import { drawBlinkEndpoint, type BlinkVariant } from './blinkVisual';
+import {
+  BLINK_ARRIVE_TTL,
+  BLINK_DEPART_TTL,
+  drawBlinkEndpoint,
+  type BlinkVariant,
+} from './blinkVisual';
 import { drawElementalBurst } from './elementalBurst';
 import { sub as torusSub } from '../../engine/core/torus';
 import { drawSupportSymbol, SUPPORT_COLORS } from '../pipeline/supportVisuals';
@@ -38,6 +43,21 @@ const FLOATER_RISE_PX = 42; // total rise over its life
 
 const HIT_FLASH_TIME = 0.16; // s
 const AREA_FLASH_TTL = 0.45; // s — how long an ability's area cue lingers
+
+function areaFlashTtl(style: SkillArea['style']): number {
+  switch (style) {
+    case 'blinkDepart':
+      return BLINK_DEPART_TTL;
+    case 'blinkArrive':
+      return BLINK_ARRIVE_TTL;
+    case 'fireball':
+      return 0.63;
+    case 'frostNova':
+      return 0.68;
+    default:
+      return AREA_FLASH_TTL;
+  }
+}
 
 /** A boss cast shakes the camera when its telegraph is a heavy impact shape AND
  * it hits hard enough (item 63). Data-driven off the cast event's shape/damage so
@@ -697,7 +717,7 @@ export class Fx {
     for (const a of this.areaFlashes) {
       if (!a.active) continue;
       a.age += dt;
-      if (a.age >= AREA_FLASH_TTL) a.active = false;
+      if (a.age >= areaFlashTtl(a.area.style)) a.active = false;
     }
   }
 
@@ -865,7 +885,7 @@ export class Fx {
 
   /** Draw one ability area cue (cone / circle / line) fading over its life. */
   private drawAreaFlash(g: Graphics, a: AreaFlash, camera: Camera): void {
-    const t = clamp(a.age / AREA_FLASH_TTL, 0, 1);
+    const t = clamp(a.age / areaFlashTtl(a.area.style), 0, 1);
     const fade = 1 - t; // linear fade-out
     const fillAlpha = 0.28 * fade;
     const strokeAlpha = 0.8 * fade;

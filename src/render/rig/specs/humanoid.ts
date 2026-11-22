@@ -154,6 +154,7 @@ function setTint(spec: RigSpec, id: string, tint: number): void {
 function dressHero(spec: RigSpec, classId: ClassId): void {
   switch (classId) {
     case 'knight': {
+      spec.garment = 'knight';
       setTint(spec, 'torso', 0x505c6b); // steel cuirass
       setTint(spec, 'head', 0x8d97a8); // steel helm
       spec.parts.push(

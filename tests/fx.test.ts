@@ -17,6 +17,8 @@ import { drawBlinkEndpoint } from '../src/render/overlays/blinkVisual';
 import { drawSkeleton } from '../src/render/pipeline/skeletonVisual';
 import { drawElementalBurst } from '../src/render/overlays/elementalBurst';
 import type { PlayerView } from '../src/engine/core/types';
+import { drawKnightArmor, drawKnightShield } from '../src/render/rig/knightArmor';
+import { heroStance } from '../src/render/rig/math/heroStance';
 import { drawMageGarment, playerVisualHeadroom } from '../src/render/rig/mageGarment';
 import { Camera } from '../src/render/pipeline/camera';
 import type { GameEvent } from '../src/engine/core/types';
@@ -204,10 +206,11 @@ it('lifts alternating feet and changes the sword silhouette on an authored attac
 
 it.each([
   ['mage', 'alive', undefined, 37.44],
+  ['knight', 'alive', undefined, 40.8],
   ['mage', 'downed', undefined, 16],
   ['mage', 'alive', 'moonBear', 16],
   ['ranger', 'alive', undefined, 16],
-] as const)('reserves headroom for the raised Mage only', (classId, state, form, expected) => {
+] as const)('reserves headroom for the raised heroes', (classId, state, form, expected) => {
   const p = { classId, state, form } as PlayerView;
   expect(playerVisualHeadroom(p, 16)).toBeCloseTo(expected);
 });
@@ -239,5 +242,62 @@ it.each(['shutter', 'tiles'] as const)(
     expect(departure.maxX).toBeLessThan(130);
     expect(arrival.minX).toBeGreaterThan(290);
     expect(arrival.maxY - arrival.minY).not.toBe(departure.maxY - departure.minY);
+  },
+);
+
+it('keeps the torso near travel while aim points across the circle', () => {
+  let facing = 0;
+  for (let i = 0; i < 30; i++) facing = heroStance(facing, Math.PI * 0.8, 0, true, 1 / 60);
+  expect(facing).toBeCloseTo(0.64);
+  expect(heroStance(facing, Math.PI * 0.8, 0, false, 1 / 60)).toBeGreaterThan(facing);
+  expect(heroStance(-Math.PI + 0.05, Math.PI - 0.05, 0, false, 1 / 60)).toBeCloseTo(
+    -Math.PI - 0.05,
+  );
+});
+
+it('draws a raised Knight silhouette and opens the shield on guard', () => {
+  const g = new Graphics();
+  drawKnightArmor(g, (x, y, h) => ({ x: 100 + x * 16, y: 100 + y * 8 - h * 16 }), 16);
+  expect(g.getLocalBounds().minY).toBeLessThan(67);
+  g.clear();
+  drawKnightShield(g, { x: 100, y: 100 }, 16, 0);
+  const idle = g.getLocalBounds().width;
+  g.clear();
+  drawKnightShield(g, { x: 100, y: 100 }, 16, 1);
+  expect(g.getLocalBounds().width).toBeGreaterThan(idle * 2);
+});
+
+it.each(['fireball', 'frostNova'] as const)(
+  'keeps %s readable past the old area lifetime and then retires it',
+  (style) => {
+    const fx = new Fx(new Container());
+    const g = new Graphics();
+    const camera = new Camera(1600, 1000);
+    fx.processEvents(
+      [
+        {
+          t: 'skillArea',
+          sourceId: 1,
+          side: 'player',
+          color: 0xffffff,
+          area: {
+            kind: 'circle',
+            style,
+            origin: { x: 800, y: 500 },
+            angle: 0,
+            range: 0,
+            radius: 110,
+            halfAngle: 0,
+          },
+        },
+      ],
+      camera,
+    );
+    for (let i = 0; i < 28; i++) fx.update(17);
+    fx.draw(g, camera);
+    expect(instructionCount(g)).toBeGreaterThan(20);
+    for (let i = 0; i < 14; i++) fx.update(17);
+    fx.draw(g, camera);
+    expect(instructionCount(g)).toBe(0);
   },
 );

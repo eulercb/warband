@@ -171,9 +171,9 @@ export class Particles {
       color: tint ?? TRAIL_COLORS[kind] ?? 0xffffff,
       spd: 18,
       ttl: 0.2,
-      s0: 2.7,
-      s1: 0.4,
-      a0: 0.67,
+      s0: 3.35,
+      s1: 0.55,
+      a0: 0.75,
     });
   }
 

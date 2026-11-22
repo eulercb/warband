@@ -23,6 +23,8 @@
  */
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import { drawMageGarment } from './mageGarment';
+import { drawKnightArmor, drawKnightShield } from './knightArmor';
+import { heroStance } from './math/heroStance';
 import type { EntityId } from '../../engine/core/types';
 import type { Vec2 } from './math/vec';
 import { vperp } from './math/vec';
@@ -86,6 +88,9 @@ export class CreatureRig {
   private elementalAge = 1;
   private elementalPose: 'fireball' | 'frostNova' = 'fireball';
   private nextBipedLeg = 0;
+  private aimFacing = 0;
+  private stanceFacing = 0;
+  private shieldBrace = 0;
   private blinkAge = 1;
   private lightningAge = 1;
   private lightningAngle = 0;
@@ -272,7 +277,9 @@ export class CreatureRig {
     this.blinkAge += dt;
     this.elementalAge += dt;
     this.recoilAge += dt;
-    const poseFacing = this.lightningAge < 0.13 ? this.lightningAngle : facing;
+    this.shieldBrace += (Number(ctx.guarding ?? false) - this.shieldBrace) * Math.min(1, dt * 16);
+    this.aimFacing = this.lightningAge < 0.19 ? this.lightningAngle : facing;
+    const poseFacing = this.aimFacing;
     this.facing = poseFacing;
     this.cos = Math.cos(poseFacing);
     this.sin = Math.sin(poseFacing);
@@ -289,6 +296,7 @@ export class CreatureRig {
       this.origin = { x: pos.x, y: pos.y };
       this.lastPos = { x: pos.x, y: pos.y };
       this.vel = { x: 0, y: 0 };
+      this.stanceFacing = this.aimFacing;
       this.seedFeet(R);
       this.seedChain(R);
       this.seeded = true;
@@ -308,6 +316,19 @@ export class CreatureRig {
     const moveDir: Vec2 = moving
       ? { x: this.vel.x / speed, y: this.vel.y / speed }
       : { x: 0, y: 0 };
+
+    if (this.spec.garment && ctx.state === 'alive' && ctx.cheer == null) {
+      this.stanceFacing = heroStance(
+        this.stanceFacing,
+        this.aimFacing,
+        Math.atan2(moveDir.y, moveDir.x),
+        speed > 12 * scale,
+        dt,
+      );
+      this.facing = this.stanceFacing;
+      this.cos = Math.cos(this.facing);
+      this.sin = Math.sin(this.facing);
+    }
 
     if (this.attackAge >= 0) {
       this.attackAge += dt;
@@ -334,7 +355,11 @@ export class CreatureRig {
 
   private legAngleAround(moving: boolean): number {
     if (this.spec.legs?.around === 'velocity') {
-      return moving ? Math.atan2(this.vel.y, this.vel.x) : this.facing;
+      return moving
+        ? Math.atan2(this.vel.y, this.vel.x)
+        : this.spec.garment
+          ? this.legAround
+          : this.facing;
     }
     return this.facing;
   }
@@ -344,14 +369,14 @@ export class CreatureRig {
     const anchor = this.bodyPoint(this.partLocal(lg.anchorPart), R);
     for (let i = 0; i < lg.count; i++) {
       const ang = around + (lg.baseAngleDeg(i) * Math.PI) / 180;
-      const d = lg.homeDist(i) * R;
+      const d = lg.homeDist(i) * R * (this.spec.garment ? 0.64 : 1);
       this.legHomes[i] = { x: anchor.x + Math.cos(ang) * d, y: anchor.y + Math.sin(ang) * d };
     }
   }
 
   private seedFeet(R: number): void {
     if (!this.spec.legs) return;
-    this.legAround = this.legAngleAround(false);
+    this.legAround = this.facing;
     this.computeHomes(R, this.legAround);
     for (let i = 0; i < this.legs.length; i++) this.legs[i] = makeLeg(this.legHomes[i]);
   }
@@ -379,10 +404,15 @@ export class CreatureRig {
     this.legAround = this.legAngleAround(moving);
     this.computeHomes(R, this.legAround);
     const stride = lg.gait.partnerStride;
+    const raised = Boolean(this.spec.garment);
+    const speed = Math.hypot(this.vel.x, this.vel.y);
+    const stepDuration = raised
+      ? clamp((R * 0.92) / Math.max(1, speed), 0.08, 0.14)
+      : lg.gait.stepDuration;
     const params: GaitParams = {
-      stepDistance: lg.gait.stepDistance * R,
-      stepDuration: lg.gait.stepDuration * (ctx.enraged ? 0.7 : 1),
-      overstep: lg.gait.overstep * R,
+      stepDistance: lg.gait.stepDistance * R * (raised ? 0.65 : 1),
+      stepDuration: stepDuration * (ctx.enraged ? 0.7 : 1),
+      overstep: raised ? Math.min(R, speed * stepDuration * 0.82) : lg.gait.overstep * R,
       maxConcurrent: lg.gait.maxConcurrent,
       firstLeg: lg.count === 2 ? this.nextBipedLeg : 0,
       partnerOf: (i) => (i + stride) % lg.count,
@@ -438,7 +468,17 @@ export class CreatureRig {
 
     if (this.spec.arms) this.drawArms(R, ctx, downed);
     if (this.spec.weapon && !downed) this.drawWeapon(R, ctx, timeSec);
-    if (this.spec.decor) this.drawDecor(R, ctx);
+    if (this.spec.decor && this.spec.garment !== 'knight') this.drawDecor(R, ctx);
+    if (this.spec.garment === 'knight' && !downed) {
+      drawKnightArmor(
+        this.gDecor,
+        (x, y, height) => {
+          const point = this.bodyPoint({ x, y }, R);
+          return { x: point.x, y: this.origin.y + (point.y - this.origin.y) * 0.53 - height * R };
+        },
+        R,
+      );
+    }
     if (this.spec.garment === 'mage' && !downed) {
       const lateralSpeed = -this.vel.x * this.sin + this.vel.y * this.cos;
       const drift = clamp(-lateralSpeed / 300, -0.24, 0.24) + Math.sin(timeSec * 4) * 0.07;
@@ -451,7 +491,11 @@ export class CreatureRig {
         },
         R,
         drift,
-        Math.max(0, 1 - this.lightningAge / 0.34, 1 - this.elementalAge / 0.36),
+        Math.max(
+          releasePose(this.lightningAge),
+          releasePose(this.elementalAge),
+          releasePose(this.blinkAge),
+        ),
       );
     }
   }
@@ -459,8 +503,8 @@ export class CreatureRig {
   private drawBodyParts(R: number, bodyScale: number, downed: boolean, ctx: RigDriveCtx): void {
     for (const part of this.spec.parts) {
       const p = this.bodyPoint(this.effLocal(part), R);
-      if (this.spec.garment === 'mage' && !downed) {
-        p.y -= R * (part.id === 'head' ? 1.46 : 0.64);
+      if (this.spec.garment && !downed) {
+        p.y -= R * (part.id === 'head' || part.parent === 'head' ? 1.46 : 0.64);
       }
       const rx = part.rx * R * bodyScale;
       const ry = part.ry * R * bodyScale * (downed ? 0.72 : 1);
@@ -521,6 +565,7 @@ export class CreatureRig {
       if (!leg.stepping && !downed) footShadow(this.gGround, planted.x, planted.y, wTip * 1.6);
 
       const bendRef = lg.bendOutward ? anchor : bipedRef;
+      if (this.spec.garment && !downed) shoulder.y -= 0.48 * R;
       const knee = solveTwoBone(shoulder, foot, lg.l1 * R, lg.l2 * R, bendRef);
       if (this.lit) {
         // Quad-strip along shoulder → knee → foot, half-widths tapering root → tip.
@@ -530,7 +575,7 @@ export class CreatureRig {
       } else {
         drawLimb(this.gBehind, shoulder, knee, foot, wRoot, wTip, legColor);
       }
-      if (this.spec.garment === 'mage' && !downed) {
+      if (this.spec.garment && !downed) {
         this.gBehind
           .ellipse(foot.x, foot.y, R * 0.17, R * 0.12)
           .fill({ color: 0x393044 })
@@ -624,7 +669,7 @@ export class CreatureRig {
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
       const shoulder = this.bodyPoint(arm.shoulderLocal, R);
-      if (mage) shoulder.y -= 0.78 * R;
+      if (this.spec.garment && !downed) shoulder.y -= 0.78 * R;
       let hand = downed
         ? this.bodyPoint({ x: -0.2, y: arm.side * 1.3 }, R)
         : {
@@ -640,13 +685,19 @@ export class CreatureRig {
             lead < 0
               ? 0
               : Math.sin(Math.PI * this.legs[lead].t) * (lead === 0 ? -1 : 1) * travel * 0.29;
-          const release = Math.max(0, 1 - this.elementalAge / 0.32);
-          const lightning = Math.max(0, 1 - this.lightningAge / 0.24);
-          const fold = Math.max(0, 1 - this.blinkAge / 0.28);
-          const opening = this.elementalPose === 'frostNova' ? release * 0.69 : release * 0.31;
+          const release = releasePose(this.elementalAge);
+          const lightning = releasePose(this.lightningAge);
+          const fold = releasePose(this.blinkAge);
+          const opening = this.elementalPose === 'frostNova' ? release * 0.94 : release * 0.38;
           hand = this.bodyPoint(
             {
-              x: 0.27 + sweep + lightning * 0.73 + (ctx.castT ?? 0) * 0.57,
+              x:
+                0.27 +
+                sweep +
+                lightning * 1.03 +
+                (ctx.castT ?? 0) * 0.57 +
+                (this.elementalPose === 'fireball' ? release * 0.61 : 0) -
+                fold * 0.36,
               y: -0.94 - opening + lightning * 0.25 + fold * 0.58,
             },
             R,
@@ -654,10 +705,23 @@ export class CreatureRig {
           hand.y -= R * (0.49 + opening * 0.57 + (ctx.castT ?? 0) * 0.43 + fold * 0.52);
         }
       }
+      if (this.spec.garment === 'knight' && !downed) {
+        hand = arm.side === -1 ? this.knightShieldAnchor(R) : grip;
+      }
+      const reachScale = this.spec.garment && !downed ? 1.14 : 1;
+      if (this.spec.garment && !downed) {
+        hand = clampToReach(hand, shoulder, (arm.l1 + arm.l2) * R * reachScale * 0.98);
+      }
       const bendRef = arm.bendOutward
         ? center
         : { x: center.x + this.cos * 6 * R, y: center.y + this.sin * 6 * R };
-      const elbow = solveTwoBone(shoulder, hand, arm.l1 * R, arm.l2 * R, bendRef);
+      const elbow = solveTwoBone(
+        shoulder,
+        hand,
+        arm.l1 * R * reachScale,
+        arm.l2 * R * reachScale,
+        bendRef,
+      );
       const wRoot = arm.width * R * (mage ? 1.6 : 1);
       const wTip = arm.width * R * 0.8;
       if (this.lit) {
@@ -679,19 +743,22 @@ export class CreatureRig {
     const grip = this.gripPoint(R, ctx, false);
     const g = this.gFront;
     const activeStaff = Math.max(
-      Math.max(0, 1 - this.lightningAge / 0.25),
-      Math.max(0, 1 - this.elementalAge / 0.28),
+      releasePose(this.lightningAge),
+      releasePose(this.elementalAge),
       ctx.castT ?? 0,
+      this.attackAge >= 0 ? Math.max(0, 1 - this.attackAge / 0.23) : 0,
     );
     const staffAngle =
       this.spec.garment === 'mage'
         ? -Math.PI * 0.57 +
           Math.atan2(
-            Math.sin(this.facing + Math.PI * 0.57),
-            Math.cos(this.facing + Math.PI * 0.57),
+            Math.sin(this.aimFacing + Math.PI * 0.57),
+            Math.cos(this.aimFacing + Math.PI * 0.57),
           ) *
             activeStaff
-        : this.facing;
+        : this.spec.garment === 'knight' && this.attackAge >= 0
+          ? this.aimFacing
+          : this.facing;
     const fx = Math.cos(staffAngle);
     const fy = Math.sin(staffAngle);
     const perp = { x: -fy, y: fx };
@@ -813,6 +880,10 @@ export class CreatureRig {
     // Off-hand shield (paladin / knight): a small rounded kite plate to the side/back.
     if (w.offhand === 'shield') {
       const c = this.bodyPoint({ x: -0.1, y: -0.85 }, R);
+      if (this.spec.garment === 'knight') {
+        drawKnightShield(g, this.knightShieldAnchor(R), R, this.shieldBrace);
+        return;
+      }
       g.roundRect(c.x - 0.34 * R, c.y - 0.44 * R, 0.68 * R, 0.88 * R, 0.18 * R).fill({
         color: w.color,
       });
@@ -904,21 +975,48 @@ export class CreatureRig {
         dist *= 1 - 0.3 * cast + 0.35 * swing;
       }
     }
-    if (!downed) dist += 0.85 * Math.max(0, 1 - this.lightningAge / 0.22) ** 2;
+    if (!downed) dist += 0.85 * releasePose(this.lightningAge);
+    const forward =
+      this.spec.garment &&
+      (this.attackAge >= 0 || activeRelease(this.lightningAge, this.elementalAge))
+        ? this.aimFacing
+        : this.facing;
     const point = {
-      x: this.origin.x + this.cos * dist * R,
-      y: this.origin.y + this.sin * dist * R,
+      x: this.origin.x + Math.cos(forward) * dist * R,
+      y: this.origin.y + Math.sin(forward) * dist * R,
     };
+    if (this.spec.garment === 'knight' && !downed) point.y -= R * 0.65;
     if (this.spec.garment === 'mage' && !downed) {
-      const beat = Math.max(0, 1 - this.elementalAge / 0.32) ** 2;
+      const beat = releasePose(this.elementalAge);
       const nova = this.elementalPose === 'frostNova';
       point.x += R * beat * (nova ? -this.sin * 1.25 : this.cos * 0.6);
       point.y += R * beat * (nova ? this.cos * 0.55 : this.sin * 0.32);
-      const fold = Math.max(0, 1 - this.blinkAge / 0.22);
+      const fold = releasePose(this.blinkAge);
       point.x -= this.cos * R * fold * 0.57;
       point.y -= R * (0.82 + (ctx.castT ?? 0) * 0.22 + fold * 0.28);
     }
-    return point;
+    return this.spec.garment && !downed ? this.fitRaisedHand(point, 1, R) : point;
+  }
+
+  private fitRaisedHand(point: Vec2, side: 1 | -1, radius: number): Vec2 {
+    const arm = this.spec.arms!.find((arm) => arm.side === side)!;
+    const shoulder = this.bodyPoint(arm.shoulderLocal, radius);
+    shoulder.y -= 0.78 * radius;
+    return clampToReach(point, shoulder, (arm.l1 + arm.l2) * radius * 1.14 * 0.98);
+  }
+
+  private knightShieldAnchor(r: number): Vec2 {
+    const side = this.bodyPoint({ x: 0.17, y: -1.15 }, r);
+    const x = this.origin.x + Math.cos(this.aimFacing) * r * 0.88;
+    const y = this.origin.y + Math.sin(this.aimFacing) * r * 0.88;
+    return this.fitRaisedHand(
+      {
+        x: side.x + (x - side.x) * this.shieldBrace,
+        y: side.y + (y - side.y) * this.shieldBrace - r * 0.57,
+      },
+      -1,
+      r,
+    );
   }
 
   /** Biped knee bias: bend toward the travel direction (none when idle). */
@@ -1008,4 +1106,13 @@ function clampToReach(p: Vec2, origin: Vec2, maxDist: number): Vec2 {
   if (d <= maxDist || d < 1e-6) return { x: p.x, y: p.y };
   const s = maxDist / d;
   return { x: origin.x + dx * s, y: origin.y + dy * s };
+}
+
+function releasePose(age: number): number {
+  const fade = clamp((age - 0.1) / 0.43, 0, 1);
+  return 1 - fade * fade * (3 - 2 * fade);
+}
+
+function activeRelease(lightning: number, elemental: number): boolean {
+  return Math.min(lightning, elemental) < 0.53;
 }

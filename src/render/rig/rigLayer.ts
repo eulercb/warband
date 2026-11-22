@@ -193,6 +193,7 @@ export class RigLayer {
         flash: this.fx.flashAmount(p.id),
         enraged: false,
         state: p.state,
+        guarding: p.buffs.some((b) => b.kind === 'frontGuard' && b.remaining > 0 && b.mult > 0),
         // A charged cast drives the cast pose. Sub slots have no dedicated pose, so they
         // fall back to the a1 cast pose; the cast bar over the head carries the progress.
         castSlot: p.castSlot === 'sub1' || p.castSlot === 'sub2' ? 'a1' : p.castSlot,

@@ -224,3 +224,37 @@ remaining subclass, upgrade, graft and stance with the production standards
 learned here. After Blink playtesting, prototype a contrasting player, then
 an alternate form and small companion with support effects. Boss and arena
 production continues alongside the encounter revamp, with balance afterwards.
+
+## Knight and animation timing
+
+**Review model for this batch** — Astra 6.2 High. Sol 6.2 High follows on the
+next substantial visual batch. Each delivery uses one reviewer during this
+trial, with the implemented result documented for comparison.
+
+The live walk exposed a wider issue than step alternation. The Mage's stance
+now follows travel with a bounded turn toward aim. Weapon releases and the
+Knight's raised shield can follow the full aim separately. Feet start closer
+under raised actors and their forward plant adapts to walking speed. The
+upright hip, alternating feet and small knee lift keep the gait animated.
+Hand targets stay within arm reach. The raised design currently applies to
+Mage and Knight, leaving other silhouettes available as references.
+
+Knight uses a steel visor, broad pauldrons, a blue chest panel and a breastplate.
+An actual front guard widens the kite shield and lifts it toward the defended
+direction. The narrow resting shield leaves the sword arm readable. The
+existing guard cone and block rules still describe the mechanics.
+
+The Mage release poses hold for about 100 ms before easing through a short
+recovery. Fireball has a longer reach with the throwing hand, Nova opens the
+hand farther to the side and Blink draws it to the chest. Fireball's visual
+tail ends at 630 ms and Nova's at 680 ms. Blink's departure and arrival fade
+by 340 and 430 ms. The lighter late frames aim to preserve recognition
+without leaving extra full-strength footprints. All effects start on their
+original gameplay frame. Shared projectile trails gained a small size and
+opacity increase, with no change to the Lich bolt's readable body.
+
+In-game examples: [Knight strafing with Shield Wall](images/knight-shield-stride-desktop.png)
+and [Mage at 357 ms after Frost Nova](images/mage-nova-recovery-phone.png).
+The renderer fixture confirmed both feet lifted during the Knight strafe while
+the guard continued to face north. Next, compare Moon Bear and the Beast
+Master wolf as contrasting recipients of healing and barrier effects.
