@@ -1,3 +1,4 @@
+import { drawMeleeReach, isBladeArea } from './meleeVisual';
 import {
   BLINK_ARRIVE_TTL,
   BLINK_DEPART_TTL,
@@ -53,7 +54,11 @@ function areaFlashTtl(style: SkillArea['style']): number {
     case 'lightning':
       return 0.62;
     case 'cleave':
-      return 0.32;
+    case 'daggerSlash':
+    case 'holyStrike':
+      return 0.58;
+    case 'moonClaw':
+      return 0.68;
     case 'fireball':
       return 0.63;
     case 'frostNova':
@@ -918,28 +923,8 @@ export class Fx {
       const R = area.range * s;
       const a0 = area.angle - area.halfAngle;
       const a1 = area.angle + area.halfAngle;
-      if (area.style === 'cleave') {
-        g.moveTo(o.x, o.y)
-          .arc(o.x, o.y, R, a0, a1)
-          .lineTo(o.x, o.y)
-          .fill({ color: 0xcfe6ff, alpha: fade * 0.16 });
-        // A steel highlight travels across the strike footprint after the impact.
-        const sweep = Math.min(1, t * 1.75);
-        const tip = a0 + (a1 - a0) * sweep;
-        const start = Math.max(a0, tip - (a1 - a0) * 0.46);
-        const end = Math.min(a1, tip + (a1 - a0) * 0.16);
-        const inner = R * 0.87;
-        const at = (angle: number, radius: number) =>
-          [o.x + Math.cos(angle) * radius, o.y + Math.sin(angle) * radius] as const;
-        g.moveTo(...at(start, inner))
-          .arc(o.x, o.y, inner, start, end)
-          .lineTo(...at(end, R))
-          .arc(o.x, o.y, R, end, start, true)
-          .closePath()
-          .fill({ color: 0xa3c8ed, alpha: fade * 0.73 });
-        g.moveTo(...at(start, R))
-          .arc(o.x, o.y, R, start, end)
-          .stroke({ color: 0xf4faff, width: Math.max(1.2, s * 2.3), alpha: fade, cap: 'round' });
+      if (isBladeArea(area.style) || area.style === 'moonClaw') {
+        drawMeleeReach(g, o, R, { ...area, style: area.style }, a.age, areaFlashTtl(area.style));
         return;
       }
       g.moveTo(o.x, o.y)

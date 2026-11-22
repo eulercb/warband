@@ -860,7 +860,7 @@ export class Renderer {
     }
 
     const ab = getClass(p.classId).abilities.basic;
-    if (ab.kind !== 'meleeCone') return;
+    if (ab.kind !== 'meleeCone' || ab.basicPresentation) return;
     const s = this.camera.scale;
     const scr = this.camera.worldToScreen(p.pos);
     const ang = Math.atan2(p.aim.y, p.aim.x);

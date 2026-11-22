@@ -92,6 +92,7 @@ export function onMoonAbility(world: World, p: Player, ab: PlayerAbilityDef): vo
     color: 0xd8c7ff,
     area: {
       kind: 'cone',
+      style: 'moonClaw',
       origin: { ...p.pos },
       angle,
       range,

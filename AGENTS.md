@@ -182,3 +182,10 @@ same verified URLs in both places, not plain repository paths. Prefer immutable
 commit permalinks for delivery notes and unmerged plans so links survive branch
 deletion; a living roadmap may link to main once merged. Carry this documentation
 handoff forward without asking the owner to repeat the preference.
+
+For each visual production batch, apply the pilot acceptance criteria in
+`docs/VISUAL_REVAMP.md`. Check the complete pose, attack delivery, hit geometry
+and readable recovery, including linked grands with a changed shape or payoff.
+Use authored effects to show friendly hit reach without generic outline strokes.
+Check actual casts at desktop and phone sizes. Separate simultaneous motions as
+needed and record any deliberate combat-timing change.

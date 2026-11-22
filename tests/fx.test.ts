@@ -339,45 +339,49 @@ it('pushes planted paws against travel while the lifted paws reach along travel'
   const liftLater = animalFoot(Math.PI * 0.75, Math.PI / 2, 0, 1);
   expect(lift.lift).toBeGreaterThan(0);
   expect(liftLater.y).toBeGreaterThan(lift.y);
-  expect(moonBasicPose(0)).toMatchObject({ cast: 1, sweep: 0 });
-  expect(moonBasicPose(0.45)).toMatchObject({ cast: 0, sweep: 1 });
+  expect(moonBasicPose(0.15)).toMatchObject({ cast: 1, sweep: 0 });
+  expect(moonBasicPose(0.5)).toMatchObject({ cast: 0, sweep: 1 });
   expect(moonBasicPose(1)).toMatchObject({ cast: 0, sweep: 0 });
 });
 
-it.each([Math.PI / 4, Math.PI])(
-  'draws and retires Knight Cleave with half-angle %s',
-  (halfAngle) => {
-    const fx = new Fx(new Container());
-    const camera = new Camera(1600, 1000);
-    const graphics = new Graphics();
-    fx.processEvents(
-      [
-        {
-          t: 'skillArea',
-          side: 'player',
-          sourceId: 1,
-          color: 0xffffff,
-          area: {
-            kind: 'cone',
-            style: 'cleave',
-            origin: { x: 500, y: 500 },
-            angle: 0,
-            range: 70,
-            radius: 0,
-            halfAngle,
-          },
+it.each([
+  ['cleave', Math.PI / 4],
+  ['cleave', Math.PI],
+  ['daggerSlash', Math.PI / 4],
+  ['daggerSlash', Math.PI],
+  ['holyStrike', Math.PI / 4],
+  ['moonClaw', Math.PI / 4],
+] as const)('draws and retires the authored %s effect with half-angle %s', (style, halfAngle) => {
+  const fx = new Fx(new Container());
+  const camera = new Camera(1600, 1000);
+  const graphics = new Graphics();
+  fx.processEvents(
+    [
+      {
+        t: 'skillArea',
+        side: 'player',
+        sourceId: 1,
+        color: 0xffffff,
+        area: {
+          kind: 'cone',
+          style,
+          origin: { x: 500, y: 500 },
+          angle: 0,
+          range: 70,
+          radius: 0,
+          halfAngle,
         },
-      ],
-      camera,
-    );
-    fx.draw(graphics, camera);
-    expect(instructionCount(graphics)).toBeGreaterThanOrEqual(3);
-    fx.update(180);
-    fx.draw(graphics, camera);
-    expect(instructionCount(graphics)).toBeGreaterThanOrEqual(3);
-    fx.update(150);
-    fx.draw(graphics, camera);
-    expect(instructionCount(graphics)).toBe(0);
-    graphics.destroy();
-  },
-);
+      },
+    ],
+    camera,
+  );
+  fx.draw(graphics, camera);
+  expect(instructionCount(graphics)).toBeGreaterThanOrEqual(3);
+  fx.update(180);
+  fx.draw(graphics, camera);
+  expect(instructionCount(graphics)).toBeGreaterThanOrEqual(3);
+  fx.update(510);
+  fx.draw(graphics, camera);
+  expect(instructionCount(graphics)).toBe(0);
+  graphics.destroy();
+});

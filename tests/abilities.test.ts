@@ -142,6 +142,21 @@ describe('player meleeCone', () => {
     expect(w.events.some((e) => e.t === 'hit' && e.targetId === boss.id)).toBe(true);
   });
 
+  it.each([true, false])(
+    'Radiant Riposte shows protection only on positive contact (hit=%s)',
+    (hit) => {
+      const w = mkWorld('paladin');
+      const p = w.players[0];
+      p.pos = { x: 800, y: 500 };
+      p.aim = { ...UP };
+      w.boss!.pos = { x: 800, y: hit ? 450 : 700 };
+      p.abilities!.basic.parryOnHit = 0.35;
+      resolvePlayerAbility(w, p, 'basic', ZERO);
+      expect(w.events.some((e) => e.t === 'skillArea' && e.area.style === 'holyStrike')).toBe(true);
+      expect(w.events.some((e) => e.t === 'support' && e.kind === 'protect')).toBe(hit);
+      expect(p.buffs.some((b) => b.source === 'parryDef')).toBe(hit);
+    },
+  );
   it('misses a boss out of range (cast + skillArea still fire, no hit)', () => {
     const w = mkWorld('knight');
     const p = w.players[0];
