@@ -2010,7 +2010,7 @@ export class World {
           kind: 'circle',
           style: proj.impactStyle,
           origin: { ...center },
-          angle: 0,
+          angle: Math.atan2(proj.vel.y, proj.vel.x),
           range: 0,
           radius: proj.impactRadius,
           halfAngle: 0,

@@ -151,3 +151,39 @@ body for evaluating healing and barrier cues amid movement and attack effects.
 
 In-game examples at native viewport sizes: [Frost Nova on desktop](images/mage-nova-desktop.png)
 and [Fireball impact on phone](images/mage-fireball-phone.png).
+
+## Material effects and independent Mage arms
+
+The owner accepted the three-quarter Mage as the direction for other players.
+The current batch keeps the existing ground anchor and gives the Mage a
+separate staff hand and free hand. The staff rests upright between casts.
+The free hand gathers during the charge, opens during Nova, and extends for
+Lightning. Sleeves, visible hands and small gait-driven boots fill out the
+limbs while retaining their bend and timing.
+
+The soft-dot particle texture has a 16px radius. The pool previously applied
+world-space emission sizes as raw sprite scale, multiplying the visible glow.
+The renderer now sizes the texture in world units. The generic cast flash is
+also smaller and dimmer. This applies across the shared particle pool and
+keeps Arcane Bolt and the other projectile silhouettes visible.
+
+Fireball uses curved orange tongues, embers and a fading smoky underside.
+Frost Nova sends out forked blue and white rime facets. Separate pieces of
+scorch and rime touch the resolved radius on the hit frame. The material cues
+replace the continuous effect outlines for these two friendly spells. The
+actual hit geometry and the boss telegraph language stay intact.
+
+Two independent design reviews used the same brief. Sol 6.2 High supplied
+concrete timing, overlapping flame tongues, and widening forked rime. Astra
+6.2 High proposed making the burst lean with projectile travel, reading frost
+as ground fractures, and testing the result in grayscale with a debug radius
+visible only during verification. The shipped prototype combines these ideas.
+The experiment compares proposals and one implementation. Separate rendered
+implementations would be needed to compare the models’ finished visual quality.
+
+After this playtest, bring the three-quarter approach to a contrasting player
+silhouette, then use a large alternate form and small companion to check
+healing and barriers in motion.
+
+In-game examples: [Frost Nova on desktop](images/mage-material-nova-desktop.png)
+and [Fireball on phone](images/mage-material-fireball-phone.png).
