@@ -170,7 +170,8 @@ export class Particles {
       color: tint ?? TRAIL_COLORS[kind] ?? 0xffffff,
       spd: 18,
       ttl: 0.25,
-      s0: 2,
+      // The drawn shaft/flame should read ahead of its additive trail.
+      s0: kind === 'arrow' || kind === 'fireball' ? 0.62 : 2,
       s1: 0.4,
     });
   }

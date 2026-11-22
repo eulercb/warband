@@ -3744,6 +3744,11 @@ export class World {
       tickBuffs(a, dt);
       tickStunDr(a, dt);
       a.attackCd = Math.max(0, a.attackCd - dt);
+      const motion = a.skeletonMotion;
+      if (motion) {
+        motion.swing = Math.max(0, motion.swing - dt);
+        motion.moving = false;
+      }
 
       // Frozen / stunned adds hold still and can't attack (Frost Nova's Deep
       // Freeze, Shield Bash, Holy Wrath… now bite minions too, not just the boss).
@@ -3789,10 +3794,21 @@ export class World {
           if (!a.shove) {
             const dir = normalize(sub(target.pos, a.pos));
             const speed = a.moveSpeed * buffMult(a, 'moveSpeed');
+            const from = a.pos;
             a.pos = walkAroundBulwarks(this, a, vadd(a.pos, vscale(dir, speed * dt)), dt);
+            if (motion) {
+              const traveled = dist(from, a.pos);
+              motion.distance += traveled;
+              motion.moving = traveled > 0;
+              motion.facing = dir.x < 0 ? -1 : 1;
+            }
           }
         } else if (a.attackCd <= 0) {
           damagePlayer(this, target, ADD_DAMAGE * buffMult(a, 'damageDealt'), a.pos);
+          if (motion) {
+            motion.facing = sub(target.pos, a.pos).x < 0 ? -1 : 1;
+            motion.swing = 0.28;
+          }
           a.attackCd = ADD_ATTACK_CD;
         }
       }
@@ -4420,6 +4436,7 @@ export class World {
       adds: this.adds.map((a) => ({
         id: a.id,
         appearance: a.appearance,
+        skeletonMotion: a.skeletonMotion && { ...a.skeletonMotion },
         maneuver: a.maneuverMotion && {
           ownerId: a.maneuverMotion.ownerId,
           dir: { ...a.maneuverMotion.dir },

@@ -181,3 +181,19 @@ it('changes the skeleton silhouette on hit at phone scale and settles at the sam
   expect(struck.minY).toBeLessThan(idle.minY);
   expect(struck.maxY).toBe(idle.maxY);
 });
+
+it('lifts alternating feet and changes the sword silhouette on an authored attack frame', () => {
+  const g = new Graphics();
+  const anchor = { x: 100, y: 100 };
+  drawSkeleton(g, anchor, 12, 0, 0);
+  const idle = { ...g.getLocalBounds() };
+  g.clear();
+  drawSkeleton(g, anchor, 12, 0, 0, { distance: Math.PI * 2, moving: true, swing: 0, facing: 1 });
+  expect(g.getLocalBounds().minY).toBeLessThan(idle.minY);
+  g.clear();
+  drawSkeleton(g, anchor, 12, 0, 0, { distance: 0, moving: false, swing: 0.18, facing: -1 });
+  const strike = { ...g.getLocalBounds() };
+  g.clear();
+  drawSkeleton(g, anchor, 12, 0, 0, { distance: 0, moving: false, swing: 0.08, facing: -1 });
+  expect(g.getLocalBounds().minX).toBeGreaterThan(strike.minX);
+});

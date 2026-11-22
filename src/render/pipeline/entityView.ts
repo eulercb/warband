@@ -512,7 +512,7 @@ export function drawAdd(
 
   g.ellipse(x, y + r * 0.5, r * 0.9, r * 0.35).fill({ color: 0x000000, alpha: 0.2 });
   if (a.appearance === 'skeleton') {
-    drawSkeleton(g, screen, r, flash, Math.sin(timeSec * 6 + a.id));
+    drawSkeleton(g, screen, r, flash, Math.sin(timeSec * 6 + a.id), a.skeletonMotion);
   } else {
     g.circle(x, y, r).fill({ color: 0xbfc4cc });
     g.circle(x, y, r).stroke({ width: 1.5, color: 0x3a3f47, alpha: 0.85 });
