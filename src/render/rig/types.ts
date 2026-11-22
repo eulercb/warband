@@ -136,7 +136,7 @@ export interface WeaponSpec {
 export interface RigSpec {
   id: RigId;
   parts: BodyPartSpec[];
-  garment?: 'mage';
+  garment?: 'mage' | 'knight';
   legs?: LegGroupSpec;
   spine?: SpineSpec;
   tentacles?: TentacleSpec[];
@@ -161,6 +161,7 @@ export interface RigDriveCtx {
   telegraphT?: number; // 0..1 windup progress (from the telegraph fill)
   // Player
   state?: PlayerState;
+  guarding?: boolean;
   castSlot?: AbilitySlot | null;
   castT?: number; // 0..1 rooted-cast progress
   aim?: Vec2; // aim unit vector (humanoid torso/arms)

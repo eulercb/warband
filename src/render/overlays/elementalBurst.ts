@@ -22,8 +22,8 @@ export function drawElementalBurst(
 }
 
 function drawRime(g: Graphics, at: RadialPoint, radius: number, time: number): void {
-  const fade = (1 - time) ** 1.65;
-  const spread = 0.43 + 0.57 * Math.min(1, time * 5.5);
+  const fade = (1 - time) ** 1.55;
+  const spread = 0.43 + 0.57 * Math.min(1, time * 7.8);
 
   for (let i = 0; i < 12; i++) {
     const a = (i * Math.PI) / 6;
@@ -76,7 +76,7 @@ function drawCombustion(
   heading: number,
 ): void {
   const fade = (1 - time) ** 1.5;
-  const push = 0.29 + 0.57 * Math.min(1, time * 2.9);
+  const push = 0.29 + 0.57 * Math.min(1, time * 4.1);
   for (let i = 0; i < 9; i++) {
     const a = heading + (i * 2 * Math.PI) / 9 + Math.sin(i * 2.31) * 0.12;
     g.poly([
@@ -98,7 +98,7 @@ function drawCombustion(
     g.moveTo(...root)
       .quadraticCurveTo(...at(a + 0.31, push * 0.49), ...flame)
       .quadraticCurveTo(...at(a - 0.15, push * 0.48), ...root)
-      .fill({ color: 0xffc166, alpha: fade ** 2 * 0.87 });
+      .fill({ color: 0xffc166, alpha: fade ** 3 * 0.87 });
 
     g.moveTo(...at(a - 0.15, 0.31 + 0.52 * time))
       .lineTo(...at(a - 0.12, 0.42 + 0.54 * time))

@@ -116,6 +116,9 @@ Respect quota: use one reviewer at a time and no subdelegation. GPT-6.2 Sol
 high is the default for difficult planning. A bounded GPT-6.2 Astra high review
 is authorized when a difficult visual or animation problem benefits from a
 second approach. Use both only when the comparison can inform a decision.
+During the current visual review trial, alternate one GPT-6.2 Astra high or
+GPT-6.2 Sol high reviewer per substantial visual batch for a few deliveries.
+Name the reviewer in the handoff and record the next one in the roadmap.
 Never select GPT-6 Sol (Sol 6). GPT-6.1 Terra medium/high can be considered
 where appropriate. Present a short checkpoint only for unresolved material
 gameplay choices.
