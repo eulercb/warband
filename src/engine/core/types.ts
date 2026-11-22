@@ -1533,6 +1533,8 @@ export interface SkillArea {
   reach?: boolean;
   kind: SkillAreaKind;
   style?: 'lightning';
+  contacts?: { id: EntityId; pos: Vec2; radius: number }[];
+  stoppedByCover?: boolean;
   origin: Vec2; // cone/line emanation point, or circle center
   angle: number; // radians — cone/line facing (unused for circle)
   range: number; // cone range / line length

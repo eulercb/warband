@@ -522,7 +522,15 @@ describe('Lightning Bolt delivery', () => {
       expect(boss.hp).toBeLessThan(10000);
       expect(offAxis.hp).toBe(1000);
       const flash = w.events.find((e) => e.t === 'skillArea');
-      expect(flash?.area).toMatchObject({ style: 'lightning', radius: 14, range: 820 });
+      expect(flash?.area).toMatchObject({
+        style: 'lightning',
+        radius: 14,
+        range: 820,
+        stoppedByCover: false,
+      });
+      expect(new Set(flash?.area.contacts?.map((c) => c.id))).toEqual(
+        new Set([nearby.id, boss.id, farther.id]),
+      );
     },
   );
 
@@ -567,6 +575,14 @@ describe('Lightning Bolt delivery', () => {
     expect(edge.hp).toBeLessThan(1000);
   });
 
+  it('does not mark an invulnerable boss as a damaged contact', () => {
+    const { w, p, boss } = setup('mg_evoker_lightning');
+    applyBuff(boss, makeBuff('invuln', 0, 2, 'fixture'));
+    cast(w, p);
+    expect(boss.hp).toBe(10000);
+    expect(w.events.find((e) => e.t === 'skillArea')?.area.contacts).toEqual([]);
+  });
+
   it('closes the damage path and flash at the first obstacle', () => {
     const { w, p, boss } = setup('mg_evoker_lightning');
     w.obstacles.push({ id: w.allocId(), pos: { x: 770, y: 400 }, radius: 24 });
@@ -578,7 +594,8 @@ describe('Lightning Bolt delivery', () => {
     expect(behind.hp).toBe(1000);
     expect(tied.hp).toBe(1000);
     const flash = w.events.find((e) => e.t === 'skillArea');
-    expect(flash?.area.style).toBe('lightning');
+    expect(flash?.area.stoppedByCover).toBe(true);
+    expect(flash?.area.contacts?.map((c) => c.id)).toEqual([boss.id]);
     expect(flash?.area.range).toBeCloseTo(770 - 24 - 14 - (600 + p.radius + 4));
   });
 });

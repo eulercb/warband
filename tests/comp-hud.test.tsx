@@ -34,6 +34,7 @@ vi.mock('../src/engine/content/charUpgrades', async (importOriginal) => {
 
 import HUD from '../src/ui/game/HUD';
 import Controls from '../src/ui/screens/Controls';
+import { rightStick } from '../src/input/gamepadLayout';
 import { useHudStore } from '../src/ui/state/hudStore';
 import type { HudBoss, HudTeammate } from '../src/ui/state/hudStore';
 import { useStore } from '../src/ui/state/store';
@@ -784,6 +785,58 @@ describe('<Controls>', () => {
     render(<Controls />);
     fireEvent.keyDown(window, { code: 'Escape' });
     expect(closeControlsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('can calibrate vertical aim from actual stick movement even with a standard mapping flag', () => {
+    const pad = {
+      id: 'Axis calibration test',
+      index: 0,
+      mapping: 'standard',
+      connected: true,
+      axes: [0, 0, 0, -1, 0, 0],
+      buttons: [],
+    } as unknown as Gamepad;
+    const axes = pad.axes as number[];
+    let available = false;
+    navigator.getGamepads = () => (available ? [pad] : []);
+    const callbacks: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => callbacks.push(cb));
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    const frame = () =>
+      act(() => {
+        for (const cb of callbacks.splice(0)) cb(0);
+      });
+
+    const { container } = render(<Controls />);
+    controllerSection(container);
+    fireEvent.click(screen.getByText('Calibrate vertical aim'));
+    expect(screen.queryByRole('status')).toBeNull();
+    available = true;
+
+    fireEvent.click(screen.getByText('Calibrate vertical aim'));
+    expect(screen.getByRole('status').textContent).toContain('right stick straight down');
+    fireEvent.keyDown(window, { code: 'KeyQ' });
+    fireEvent.keyDown(window, { code: 'Escape' });
+    expect(screen.queryByRole('status')).toBeNull();
+    callbacks.length = 0;
+
+    fireEvent.click(screen.getByText('Calibrate vertical aim'));
+    fireEvent.click(screen.getByText('Cancel calibration'));
+    callbacks.length = 0;
+    fireEvent.click(screen.getByText('Calibrate vertical aim'));
+    available = false;
+    frame();
+    available = true;
+    axes[4] = 0.3;
+    frame();
+    expect(screen.getByRole('status')).toBeTruthy();
+    axes[4] = -0.9;
+    frame();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(rightStick(pad)[1]).toBe(0.9);
+    axes[4] = 1;
+    expect(rightStick(pad)[1]).toBe(-1);
+    expect(localStorage.getItem(`warband.pad.aim-y:${pad.id}`)).toBe('4:-1');
   });
 
   it('capturing a controller button commits the newly pressed pad button', () => {

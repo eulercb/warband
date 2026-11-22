@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { sampleGamepad, rumble, rawGamepadAim } from '../src/input/gamepad';
-import { padMenuPressed } from '../src/input/gamepadLayout';
+import { calibrateAimDown, padMenuPressed } from '../src/input/gamepadLayout';
 
 // ---------------------------------------------------------------------------
 // Fakes. The module reads the browser Gamepad API off the global `navigator`
@@ -479,4 +479,19 @@ describe('8BitDo SN30 Pro raw browser layout', () => {
     ).toBe(-1);
     expect(readPad({ ...raw([0, 0, 0, -1, 0, 1]), id: 'Generic pad' }).state.aim.y).toBe(-1);
   });
+});
+
+it('loads saved aim from browser storage and ignores malformed values', () => {
+  const axes = [0, 0, 0, -1, 0.8, 0];
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => (key.endsWith('Saved pad') ? '4:1' : 'bad'),
+  });
+  expect(readPad(makePad({ id: 'Saved pad', axes })).state.aim.y).toBe(1);
+  expect(readPad(makePad({ id: 'Corrupt saved pad', axes })).state.aim.y).toBe(-1);
+  expect(
+    calibrateAimDown(
+      makePad({ id: 'Unavailable storage', axes }) as unknown as Gamepad,
+      [0, 0, 0, -1, 0, 0],
+    ),
+  ).toBe(true);
 });

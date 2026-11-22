@@ -1880,6 +1880,7 @@ export class World {
     const cover = [...this.obstacles, ...apertureBulwarks(this)].map(entry);
     const blocked = Math.min(...cover);
     let stop = Math.min(1, blocked);
+    const struck: NonNullable<import('../core/types').SkillArea['contacts']> = [];
     const contacts = [
       ...this.aliveBosses().map((boss) => ({ boss, add: null, time: entry(boss) })),
       ...this.adds.filter(hostileAdd).map((add) => ({ boss: null, add, time: entry(add) })),
@@ -1887,7 +1888,12 @@ export class World {
     for (const { boss, add, time } of contacts) {
       if (time > stop || time >= blocked) break;
       proj.pos = wrapPos(vadd(origin, vscale(dir, time * proj.rangeLeft)));
+      const recipient = boss ?? add;
+      const before = recipient.hp;
       this.applyPlayerProjectileHit(proj, boss, add);
+      if (recipient.hp < before) {
+        struck.push({ id: recipient.id, pos: { ...recipient.pos }, radius: recipient.radius });
+      }
       if (proj.impactRadius > 0 || proj.onImpact) {
         stop = time;
         break;
@@ -1901,6 +1907,8 @@ export class World {
       area: {
         kind: 'line',
         style: 'lightning',
+        contacts: struck,
+        stoppedByCover: stop === blocked,
         origin,
         angle: Math.atan2(dir.y, dir.x),
         range: stop * proj.rangeLeft,

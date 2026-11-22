@@ -20,8 +20,60 @@ function rawSn30Pro(pad: Gamepad): boolean {
   );
 }
 
+interface AimAxis {
+  index: number;
+  sign: number;
+}
+
+const aimAxes = new Map<string, AimAxis | null>();
+
+function aimAxisKey(id: string): string {
+  return `warband.pad.aim-y:${id}`;
+}
+
+function savedAimAxis(id: string): AimAxis | null {
+  if (!aimAxes.has(id)) {
+    let axis = null;
+    try {
+      const raw = localStorage.getItem(aimAxisKey(id));
+      if (raw && /^\d+:[-]?1$/.test(raw)) {
+        const [index, sign] = raw.split(':').map(Number);
+        axis = { index, sign };
+      }
+    } catch {
+      // Keep session-only calibration when storage is unavailable.
+    }
+    aimAxes.set(id, axis);
+  }
+  return aimAxes.get(id)!;
+}
+
+/** Capture the axis with the largest motion from a centered stick. */
+export function calibrateAimDown(pad: Gamepad, neutral: readonly number[]): boolean {
+  let index = -1;
+  let change = 0;
+  for (const [i, center] of neutral.entries()) {
+    const delta = pad.axes[i] - center;
+    if (Math.abs(delta) > Math.abs(change)) {
+      index = i;
+      change = delta;
+    }
+  }
+  if (Math.abs(change) < 0.65) return false;
+  const sign = Math.sign(change);
+  aimAxes.set(pad.id, { index, sign });
+  try {
+    localStorage.setItem(aimAxisKey(pad.id), `${index}:${sign}`);
+  } catch {
+    // The current session still has the captured axis.
+  }
+  return true;
+}
+
 export function rightStick(pad: Gamepad): readonly [number, number] {
-  return [pad.axes[2] ?? 0, pad.axes[rawSn30Pro(pad) ? 5 : 3] ?? 0];
+  const axis = savedAimAxis(pad.id);
+  const index = axis?.index ?? (rawSn30Pro(pad) ? 5 : 3);
+  return [pad.axes[2] ?? 0, (pad.axes[index] ?? 0) * (axis?.sign ?? 1)];
 }
 
 export function padButtonPressed(pad: Gamepad, index: number): boolean {
