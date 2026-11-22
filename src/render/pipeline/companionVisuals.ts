@@ -1,5 +1,6 @@
 /** A small spirit-wolf silhouette, separate from hero/bot bodies and enemy status rings. */
 import { sub } from '../../engine/core/torus';
+import { animalPaw, type AnimalMotion } from './animalMotion';
 import type { Graphics } from 'pixi.js';
 import type { SpiritCompanionView, Vec2 } from '../../engine/core/types';
 export function drawCompanion(
@@ -8,8 +9,10 @@ export function drawCompanion(
   screen: Vec2,
   scale: number,
   sizeScale = 1,
+  stride?: (slot: number, pos: Vec2) => AnimalMotion,
+  slot = 0,
 ): void {
-  for (const wolf of pet.flankers ?? []) {
+  for (const [i, wolf] of (pet.flankers ?? []).entries()) {
     const d = sub(wolf.pos, pet.pos);
     drawCompanion(
       g,
@@ -17,6 +20,8 @@ export function drawCompanion(
       { x: screen.x + d.x * scale, y: screen.y + d.y * scale },
       scale,
       0.65,
+      stride,
+      i + 1,
     );
   }
   if (pet.quarry) {
@@ -43,67 +48,93 @@ export function drawCompanion(
     });
   }
   const size = Math.max(7, 14 * scale) * sizeScale;
-  const c = Math.cos(pet.facing),
-    s = Math.sin(pet.facing);
-  const point = (x: number, y: number) => ({
-    x: screen.x + (x * c - y * s) * size,
-    y: screen.y + (x * s + y * c) * size,
-  });
-  const poly = (coords: number[]) =>
-    coords.reduce<number[]>((out, _, i) => {
-      if (i % 2 === 0) {
-        const p = point(coords[i], coords[i + 1]);
-        out.push(p.x, p.y);
-      }
-      return out;
-    }, []);
+  const c = Math.cos(pet.facing);
+  const s = Math.sin(pet.facing);
+  const motion = stride?.(slot, pet.pos);
+  const lean = pet.attacking ? 0.13 : 0;
+  const at = (x: number, y: number, h = 0): [number, number] => [
+    screen.x + (x * c - y * s) * size,
+    screen.y + ((x * s + y * c) * 0.66 - h) * size,
+  ];
+  const poly = (points: readonly (readonly [number, number, number])[], color: number) =>
+    g
+      .poly(points.flatMap(([x, y, h]) => at(x, y, h)))
+      .fill({ color })
+      .stroke({ color: 0x183c4b, width: Math.max(0.75, size * 0.08) });
   const color = pet.bondReady ? 0xffdc79 : 0x7ae7ce;
-  g.ellipse(screen.x, screen.y + size * 0.5, size * 1.25, size * 0.65).fill({
+  g.ellipse(screen.x, screen.y + size * 0.22, size * 1.15, size * 0.45).fill({
     color: 0x071d22,
-    alpha: 0.35,
+    alpha: 0.45,
   });
-  // Four paws, a tapered tail and a separate muzzle distinguish it from an arrow marker.
-  for (const [x, y] of [
-    [-0.65, -0.52],
-    [-0.65, 0.52],
-    [0.25, -0.5],
-    [0.25, 0.5],
-  ]) {
-    g.poly(poly([x - 0.15, y - 0.18, x + 0.2, y - 0.18, x + 0.25, y + 0.18, x - 0.15, y + 0.18]))
-      .fill({ color, alpha: 0.8 })
-      .stroke({ color: 0xd9fff4, width: 1, alpha: 0.65 });
+  for (const [i, side] of [-1, 1].entries()) {
+    for (const [j, fore] of [-0.59, 0.44].entries()) {
+      const step = animalPaw(motion, (i + j) * Math.PI, 37);
+      const foot = at(fore + step * 0.31, side * 0.4, Math.max(0, step) * 0.25);
+      g.moveTo(...at(fore, side * 0.25, 0.53))
+        .lineTo(...foot)
+        .stroke({
+          color: side < 0 ? 0x3b807f : 0x93d9cd,
+          width: Math.max(1, size * 0.17),
+          cap: 'round',
+        });
+    }
   }
-  g.poly(poly([-0.8, -0.25, -1.45, -0.48, -1.7, -0.12, -1.15, 0.12, -0.8, 0.25])).fill({
-    color,
-    alpha: 0.65,
-  });
-  g.poly(
-    poly([
-      -0.95, -0.3, -0.6, -0.47, 0.3, -0.38, 0.68, -0.28, 0.68, 0.28, 0.3, 0.38, -0.6, 0.47, -0.95,
-      0.3,
-    ]),
-  )
-    .fill({ color, alpha: 0.85 })
-    .stroke({ color: 0xd9fff4, width: 1, alpha: 0.8 });
-  // Ears point backward from the head; the nose points forward.
-  g.poly(
-    poly([
-      0.35, -0.28, 0.24, -0.7, 0.75, -0.38, 1.02, -0.22, 1.4, -0.1, 1.4, 0.1, 1.02, 0.22, 0.75,
-      0.38, 0.24, 0.7, 0.35, 0.28,
-    ]),
-  )
-    .fill({ color: 0xcaffed, alpha: 0.9 })
-    .stroke({ color, width: 1.2, alpha: 0.9 });
-  for (const y of [-0.2, 0.2]) {
-    const eye = point(0.88, y);
-    g.circle(eye.x, eye.y, Math.max(0.8, scale * 1.2)).fill({ color: 0x092d34 });
-  }
-  const nose = point(1.4, 0);
-  g.circle(nose.x, nose.y, Math.max(1, scale * 1.7)).fill({ color: 0x092d34 });
+  poly(
+    [
+      [-0.65, -0.08, 0.6],
+      [-1.09, -0.35, 0.9],
+      [-1.7, -0.22, 0.58],
+      [-1.05, 0.08, 0.42],
+    ],
+    0x3d7d80,
+  );
+  poly(
+    [
+      [-0.93, -0.34, 0.58],
+      [-0.54, -0.41, 0.88],
+      [0.45, -0.36, 0.93],
+      [0.7, 0.09, 0.73],
+      [0.36, 0.41, 0.5],
+      [-0.47, 0.34, 0.48],
+    ],
+    0x488d91,
+  );
+  poly(
+    [
+      [-0.56, -0.29, 0.89],
+      [0.56, -0.34, 0.98],
+      [0.62, 0.15, 0.85],
+      [-0.58, 0.14, 0.76],
+    ],
+    0x84beb9,
+  );
+  poly(
+    [
+      [0.41, -0.3, 0.82],
+      [0.47, -0.34, 1.43],
+      [0.76, -0.12, 1.06],
+      [0.83, 0.24, 1.38],
+      [1.02, 0.31, 0.94],
+      [1.48 + lean, 0.05, 0.64],
+      [0.94, 0.29, 0.66],
+    ],
+    0xa7d7cf,
+  );
+  poly(
+    [
+      [0.78, -0.16, 0.87],
+      [1.12, -0.12, 0.73],
+      [1.48 + lean, 0.05, 0.64],
+      [1.11, 0.24, 0.61],
+    ],
+    0x37636f,
+  );
+  for (const side of [-1, 1])
+    g.circle(...at(0.97, side * 0.15, 0.94), Math.max(0.75, scale * 1.2)).fill({ color: 0xffe0a0 });
+  g.circle(...at(1.46 + lean, 0.05, 0.67), Math.max(1, scale * 1.7)).fill({ color: 0x112d36 });
   if (pet.attacking)
     g.circle(screen.x, screen.y, size * 1.65).stroke({ color, width: 2, alpha: 0.7 });
   if (pet.bondReady) {
-    const badge = point(-0.25, 0);
-    g.circle(badge.x, badge.y, size * 0.25).fill({ color: 0xffffff, alpha: 0.9 });
+    g.circle(...at(-0.25, 0, 0.95), size * 0.22).fill({ color: 0xffffff, alpha: 0.9 });
   }
 }

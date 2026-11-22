@@ -129,7 +129,7 @@ export class Balloons {
         const s = camera.worldToScreen(p.pos);
         x = s.x;
         worldY = s.y;
-        radius = playerVisualHeadroom(p, PLAYER_RADIUS);
+        radius = playerVisualHeadroom(p, p.form === 'moonBear' ? 25 : PLAYER_RADIUS);
       } else {
         const add = state.adds.find((ad) => ad.id === a.sourceId);
         if (add) {

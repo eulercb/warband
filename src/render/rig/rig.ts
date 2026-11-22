@@ -355,11 +355,7 @@ export class CreatureRig {
 
   private legAngleAround(moving: boolean): number {
     if (this.spec.legs?.around === 'velocity') {
-      return moving
-        ? Math.atan2(this.vel.y, this.vel.x)
-        : this.spec.garment
-          ? this.legAround
-          : this.facing;
+      return moving ? Math.atan2(this.vel.y, this.vel.x) : this.facing;
     }
     return this.facing;
   }
@@ -401,16 +397,19 @@ export class CreatureRig {
     ctx: RigDriveCtx,
   ): void {
     const lg = this.spec.legs!;
+    const pivot = Boolean(this.spec.garment) && !moving;
     this.legAround = this.legAngleAround(moving);
     this.computeHomes(R, this.legAround);
     const stride = lg.gait.partnerStride;
     const raised = Boolean(this.spec.garment);
     const speed = Math.hypot(this.vel.x, this.vel.y);
-    const stepDuration = raised
-      ? clamp((R * 0.92) / Math.max(1, speed), 0.08, 0.14)
-      : lg.gait.stepDuration;
+    const stepDuration = pivot
+      ? 0.1
+      : raised
+        ? clamp((R * 0.92) / Math.max(1, speed), 0.08, 0.14)
+        : lg.gait.stepDuration;
     const params: GaitParams = {
-      stepDistance: lg.gait.stepDistance * R * (raised ? 0.65 : 1),
+      stepDistance: R * (pivot ? 0.31 : lg.gait.stepDistance * (raised ? 0.65 : 1)),
       stepDuration: stepDuration * (ctx.enraged ? 0.7 : 1),
       overstep: raised ? Math.min(R, speed * stepDuration * 0.82) : lg.gait.overstep * R,
       maxConcurrent: lg.gait.maxConcurrent,
@@ -688,17 +687,17 @@ export class CreatureRig {
           const release = releasePose(this.elementalAge);
           const lightning = releasePose(this.lightningAge);
           const fold = releasePose(this.blinkAge);
-          const opening = this.elementalPose === 'frostNova' ? release * 0.94 : release * 0.38;
+          const opening = this.elementalPose === 'frostNova' ? release * 1.08 : release * 0.45;
           hand = this.bodyPoint(
             {
               x:
                 0.27 +
                 sweep +
-                lightning * 1.03 +
+                lightning * 1.21 +
                 (ctx.castT ?? 0) * 0.57 +
-                (this.elementalPose === 'fireball' ? release * 0.61 : 0) -
+                (this.elementalPose === 'fireball' ? release * 0.73 : 0) -
                 fold * 0.36,
-              y: -0.94 - opening + lightning * 0.25 + fold * 0.58,
+              y: -0.94 - opening + lightning * 0.25 + fold * 0.7,
             },
             R,
           );
@@ -1114,5 +1113,5 @@ function releasePose(age: number): number {
 }
 
 function activeRelease(lightning: number, elemental: number): boolean {
-  return Math.min(lightning, elemental) < 0.53;
+  return Math.min(lightning, elemental) < 0.625;
 }
