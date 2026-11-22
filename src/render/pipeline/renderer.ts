@@ -1,3 +1,4 @@
+import { advanceAnimalMotion, type AnimalMotion } from './animalMotion';
 import { playerVisualHeadroom } from '../rig/mageGarment';
 import { drawRefuge } from './refugeVisuals';
 import { drawFont, drawFontFootprint } from './fontVisuals';
@@ -111,6 +112,7 @@ export class Renderer {
   private readonly particles: Particles;
   private readonly lights: LightManager;
   private readonly labels: Text[] = [];
+  private animalMotion = new Map<string, AnimalMotion>();
 
   private lastRenderMs = 0;
 
@@ -921,6 +923,13 @@ export class Renderer {
     const scale = this.camera.scale;
     const timeSec = nowMs / 1000;
 
+    const previousAnimals = this.animalMotion;
+    this.animalMotion = new Map();
+    const track = (key: string, pos: Vec2): AnimalMotion => {
+      const motion = advanceAnimalMotion(previousAnimals.get(key), pos, nowMs);
+      this.animalMotion.set(key, motion);
+      return motion;
+    };
     for (const a of state.adds) {
       if (SPRITE_FLAGS.add || addUsesRig(a)) {
         drawAddOverlay(g, a, this.camera.worldToScreen(a.pos), scale, timeSec);
@@ -944,13 +953,23 @@ export class Renderer {
               timeSec,
             );
       if (p.form === 'moonBear' && p.state === 'alive')
-        drawMoonBear(g, p, this.camera.worldToScreen(p.pos), scale, timeSec);
+        drawMoonBear(
+          g,
+          p,
+          this.camera.worldToScreen(p.pos),
+          scale,
+          timeSec,
+          track(`${p.id}:bear`, p.pos),
+        );
+
       if (p.state === 'alive' && p.spiritCompanion)
         drawCompanion(
           g,
           p.spiritCompanion,
           this.camera.worldToScreen(p.spiritCompanion.pos),
           scale,
+          1,
+          (slot, position) => track(`${p.id}:wolf:${slot}`, position),
         );
       if (p.form || SPRITE_FLAGS.player || playerUsesRig(p)) {
         drawPlayerOverlay(

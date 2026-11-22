@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest';
 import { Container, Graphics } from 'pixi.js';
 import { Fx } from '../src/render/overlays/fx';
 import { drawBlinkEndpoint } from '../src/render/overlays/blinkVisual';
+import { advanceAnimalMotion, animalPaw } from '../src/render/pipeline/animalMotion';
 import { drawSkeleton } from '../src/render/pipeline/skeletonVisual';
 import { drawElementalBurst } from '../src/render/overlays/elementalBurst';
 import type { PlayerView } from '../src/engine/core/types';
@@ -150,7 +151,10 @@ it('draws the lightning strike across its area and clears it after fading', () =
   expect(instructionCount(g)).toBe(14);
   for (let frame = 0; frame < 18; frame++) fx.update(16);
   fx.draw(g, camera);
-  expect(instructionCount(g)).toBe(8);
+  expect(instructionCount(g)).toBe(9);
+  for (let frame = 0; frame < 12; frame++) fx.update(16);
+  fx.draw(g, camera);
+  expect(instructionCount(g)).toBe(9);
   for (let frame = 0; frame < 40; frame++) fx.update(16);
   fx.draw(g, camera);
   expect(instructionCount(g)).toBe(0);
@@ -208,7 +212,8 @@ it.each([
   ['mage', 'alive', undefined, 37.44],
   ['knight', 'alive', undefined, 40.8],
   ['mage', 'downed', undefined, 16],
-  ['mage', 'alive', 'moonBear', 16],
+  ['mage', 'alive', 'moonBear', 25.92],
+  ['druid', 'downed', 'moonBear', 16],
   ['ranger', 'alive', undefined, 16],
 ] as const)('reserves headroom for the raised heroes', (classId, state, form, expected) => {
   const p = { classId, state, form } as PlayerView;
@@ -301,3 +306,13 @@ it.each(['fireball', 'frostNova'] as const)(
     expect(instructionCount(g)).toBe(0);
   },
 );
+
+it('tracks animal strides across the arena seam and resets after a teleport or render gap', () => {
+  const initial = advanceAnimalMotion(undefined, { x: 1598, y: 100 }, 0);
+  const next = advanceAnimalMotion(initial, { x: 3, y: 100 }, 24);
+  expect(animalPaw(undefined, 0, 48)).toBe(0);
+  expect(next.distance).toBe(5);
+  expect(animalPaw(next, Math.PI, 48)).toBeCloseTo(-animalPaw(next, 0, 48));
+  expect(advanceAnimalMotion(next, { x: 320, y: 100 }, 40).distance).toBe(0);
+  expect(advanceAnimalMotion(next, { x: 4, y: 100 }, 300).stride).toBe(0);
+});

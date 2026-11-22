@@ -50,6 +50,8 @@ function areaFlashTtl(style: SkillArea['style']): number {
       return BLINK_DEPART_TTL;
     case 'blinkArrive':
       return BLINK_ARRIVE_TTL;
+    case 'lightning':
+      return 0.62;
     case 'fireball':
       return 0.63;
     case 'frostNova':
@@ -951,31 +953,38 @@ export class Fx {
   ): void {
     const { age, area, color } = effect;
     const flash = Math.max(0, 1 - age / 0.22);
-    const residue = Math.max(0, 1 - age / AREA_FLASH_TTL);
+    const residue = Math.max(0, 1 - age / areaFlashTtl(area.style));
+    const trace = Math.max(0, 1 - age / 0.51);
     const at = (along: number, across: number): Vec2 => ({
       x: origin.x + x * along - y * across,
       y: origin.y + y * along + x * across,
     });
     const segments = Math.max(2, Math.min(24, Math.ceil(length / 32)));
     const end = at(length, 0);
-    if (flash > 0) {
+    if (trace > 0) {
       const arc = (offset: number): Graphics => {
         g.moveTo(origin.x, origin.y);
         for (let i = 1; i < segments; i++) {
           const p = at(
             (length * i) / segments,
-            Math.sin(i * 2.37 + (Math.floor(age * 48) + offset) * 1.13) * halfWidth * 0.8,
+            Math.sin(i * 2.37 + (Math.floor(Math.min(age, 0.2) * 48) + offset) * 1.13) *
+              halfWidth *
+              0.8,
           );
           g.lineTo(p.x, p.y);
         }
         return g.lineTo(end.x, end.y);
       };
-      arc(0).stroke({ width: 12, color, alpha: flash * 0.22 });
-      arc(0).stroke({ width: 4, color: 0x87bfff, alpha: flash * 0.85 });
-      arc(0).stroke({ width: 1.6, color: 0xf1fbff, alpha: flash });
-      arc(2).stroke({ width: 1, color: 0xc2a9ff, alpha: flash * 0.75 });
-      g.circle(origin.x, origin.y, 4 + 8 * flash).fill({ color, alpha: flash * 0.6 });
-      g.circle(origin.x, origin.y, 2 + 3 * flash).fill({ color: 0xeaffff, alpha: flash });
+      if (flash > 0) {
+        arc(0).stroke({ width: 12, color, alpha: flash * 0.22 });
+        arc(0).stroke({ width: 4, color: 0x87bfff, alpha: flash * 0.85 });
+        arc(0).stroke({ width: 1.6, color: 0xf1fbff, alpha: flash });
+        arc(2).stroke({ width: 1, color: 0xc2a9ff, alpha: flash * 0.75 });
+        g.circle(origin.x, origin.y, 4 + 8 * flash).fill({ color, alpha: flash * 0.6 });
+        g.circle(origin.x, origin.y, 2 + 3 * flash).fill({ color: 0xeaffff, alpha: flash });
+      } else {
+        arc(0).stroke({ width: 1.5, color: 0xa2c1f3, alpha: trace * 0.52 });
+      }
     }
 
     const spark = (p: Vec2, radius: number, count: number): void => {

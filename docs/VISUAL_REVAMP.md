@@ -258,3 +258,39 @@ and [Mage at 357 ms after Frost Nova](images/mage-nova-recovery-phone.png).
 The renderer fixture confirmed both feet lifted during the Knight strafe while
 the guard continued to face north. Next, compare Moon Bear and the Beast
 Master wolf as contrasting recipients of healing and barrier effects.
+
+## Moon Bear, Beast Master wolf and stationary turning
+
+**Review model** — Sol 6.2 High. Astra 6.2 High is next in the one-model
+rotation.
+
+Moon Bear has a raised shoulder mass, broad paws, rounded ears and an ivory
+muzzle. The wolf trades that bulk for a tapered tail, pointed muzzle and
+raised ears. Paws cycle with actual ground travel, using short heavy steps
+on the bear and a faster trot on the wolf. Each pack member keeps its own
+trot through wrapped movement. The bear's HP and label clear the raised
+body. The existing claw healing stays on the bear. Nature's Bond shows
+readiness on the wolf and transfers the barrier to the linked ally when
+the bite lands.
+
+A stationary raised hero now turns its foot targets with its smoothed
+stance. Short alternating replants catch up with a large aim change while
+small movements can stay planted. The travel gait remains as playtested.
+Mage cast poses have a slightly longer peak, broader hand movements and
+a longer recovery. Lightning keeps the fast bright flash and adds a
+faint trace through 510 ms with contact sparks through 620 ms. Actual
+cast, hit and movement timing is unchanged.
+
+Mage, Knight, Moon Bear and Beast Master wolf are examples for the art and
+motion system. This pass does not finish the humanoid Ranger or Druid
+rosters. The production pass should give every damaging basic a recognizable
+delivery, pose and impact. Include different projectile shapes and travel
+effects, a distinct Knight and Paladin sword treatment, close rogue dagger
+cuts, monk strikes, and subclass or hybrid melee such as Ranger, Bard and
+Warlock routes. Revisit the Knight's sword carry and other weapon idle,
+movement and release poses as those attacks are authored. Test basic
+shots at native phone size and under party overlap.
+
+In-game captures from the browser smoke tests:
+[Moon Bear claw on desktop](images/moon-bear-claw-desktop.png) and
+[Beast Master wolf with Nature’s Bond ready on phone](images/beast-wolf-bond-phone.png).
