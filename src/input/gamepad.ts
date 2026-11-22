@@ -18,6 +18,7 @@
 import type { InputState, Vec2 } from '../engine/core/types';
 import { DEAD_ZONE, AIM_DEAD_ZONE } from '../engine/core/constants';
 import { getBindings } from './bindings';
+import { connectedGamepads, padButtonPressed, rightStick } from './gamepadLayout';
 
 /**
  * Apply a radial dead-zone to a raw stick vector. Returns a vector whose
@@ -35,18 +36,6 @@ function applyDeadzone(x: number, y: number, dz: number = DEAD_ZONE): Vec2 {
   return { x: (x / mag) * scaled, y: (y / mag) * scaled };
 }
 
-/** First connected pad, or null if none is present. */
-function firstConnectedPad(): Gamepad | null {
-  const nav = navigator as Navigator & {
-    getGamepads?: () => (Gamepad | null)[];
-  };
-  const pads = nav.getGamepads?.() ?? [];
-  for (const pad of pads) {
-    if (pad && pad.connected) return pad;
-  }
-  return null;
-}
-
 /**
  * Sample the active gamepad. Returns null when no pad is connected so the
  * InputManager can fall back to keyboard/mouse.
@@ -56,14 +45,13 @@ function firstConnectedPad(): Gamepad | null {
  * InputManager uses it to implement "last-used device wins".
  */
 export function sampleGamepad(): { state: InputState; connected: boolean; active: boolean } | null {
-  const pad = firstConnectedPad();
+  const pad = connectedGamepads()[0];
   if (!pad) return null;
 
   const axes = pad.axes;
   const rawLx = axes[0] ?? 0;
   const rawLy = axes[1] ?? 0;
-  const rawRx = axes[2] ?? 0;
-  const rawRy = axes[3] ?? 0;
+  const [rawRx, rawRy] = rightStick(pad);
 
   // Movement: dead-zoned left stick, magnitude clamped to 1.
   const moveVec = applyDeadzone(rawLx, rawLy);
@@ -82,7 +70,7 @@ export function sampleGamepad(): { state: InputState; connected: boolean; active
   const aimLen = Math.hypot(aimVec.x, aimVec.y);
   const aim: Vec2 = aimLen > 0 ? { x: aimVec.x / aimLen, y: aimVec.y / aimLen } : { x: 0, y: 0 };
 
-  const pressed = (i: number): boolean => pad.buttons[i]?.pressed === true;
+  const pressed = (i: number): boolean => padButtonPressed(pad, i);
   const anyPressed = (indices: number[]): boolean => indices.some(pressed);
   // Action buttons are player-configurable; sticks stay fixed (left=move,
   // right=aim). See input/bindings.ts.
@@ -122,9 +110,9 @@ export function sampleGamepad(): { state: InputState; connected: boolean; active
  * "centred = no selection" is detectable while choosing a class to swap to.
  */
 export function rawGamepadAim(): Vec2 {
-  const pad = firstConnectedPad();
+  const pad = connectedGamepads()[0];
   if (!pad) return { x: 0, y: 0 };
-  return applyDeadzone(pad.axes[2] ?? 0, pad.axes[3] ?? 0);
+  return applyDeadzone(...rightStick(pad));
 }
 
 /**
@@ -135,7 +123,7 @@ export function rawGamepadAim(): Vec2 {
  */
 export function rumble(intensity = 0.5, durationMs = 120): void {
   try {
-    const pad = firstConnectedPad();
+    const pad = connectedGamepads()[0];
     if (!pad) return;
 
     const actuator = (

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { sampleGamepad, rumble, rawGamepadAim } from '../src/input/gamepad';
+import { padMenuPressed } from '../src/input/gamepadLayout';
 
 // ---------------------------------------------------------------------------
 // Fakes. The module reads the browser Gamepad API off the global `navigator`
@@ -413,5 +414,69 @@ describe('rumble haptics', () => {
   it('is a no-op (no throw) when the pad has no vibration actuator', () => {
     stubPads([makePad()]);
     expect(() => rumble(0.5, 100)).not.toThrow();
+  });
+});
+
+describe('8BitDo SN30 Pro raw browser layout', () => {
+  const id = '8BitDo SN30 Pro (Vendor: 2dc8 Product: 2100)';
+  const raw = (axes: number[], pressed: number[] = []) =>
+    makePad({ id, mapping: '', axes, buttons: padWithButtons(pressed, 15).buttons });
+
+  it('ignores idle and moved triggers for aiming and reads the full right stick', () => {
+    const idle = readPad(raw([0, 0, 0, -1, -1, 0]));
+    expect(idle.active).toBe(false);
+    expect(idle.state.aim).toEqual({ x: 0, y: 0 });
+    const trigger = readPad(raw([0, 0, 0, 1, -1, 0], [8]));
+    expect(trigger.state.buttons.sub1).toBe(true);
+    expect(trigger.state.aim).toEqual({ x: 0, y: 0 });
+    expect(rawGamepadAim()).toEqual({ x: 0, y: 0 });
+    expect(readPad(raw([0, 0, 0, -1, -1, 1])).state.aim).toEqual({ x: 0, y: 1 });
+    expect(readPad(raw([0, 0, 0, -1, -1, -1])).state.aim).toEqual({ x: 0, y: -1 });
+    const diagonal = readPad(raw([0, 0, -1, -1, -1, 1])).state.aim;
+    expect(diagonal.x).toBeCloseTo(-Math.SQRT1_2);
+    expect(diagonal.y).toBeCloseTo(Math.SQRT1_2);
+    expect(rawGamepadAim().y).toBeCloseTo(Math.SQRT1_2);
+  });
+
+  it.each([
+    [1, 'basic'],
+    [0, 'a1'],
+    [4, 'a2'],
+    [3, 'a3'],
+    [6, 'revive'],
+    [7, 'revive'],
+    [8, 'sub1'],
+    [9, 'sub2'],
+    [10, 'swap'],
+    [13, 'item'],
+  ] as const)('maps raw button %i to %s', (index, action) => {
+    const { state } = readPad(raw([0, 0, 0, -1, -1, 0], [index]));
+    expect(
+      Object.keys(state.buttons).filter((key) => state.buttons[key as keyof typeof state.buttons]),
+    ).toEqual([action]);
+  });
+
+  it('reads Start without treating a subclass trigger as pause', () => {
+    stubPads([raw([0, 0, 0, -1, -1, 0], [9])]);
+    expect(padMenuPressed()).toBe(false);
+    stubPads([raw([0, 0, 0, -1, -1, 0], [11])]);
+    expect(padMenuPressed()).toBe(true);
+  });
+
+  it('trusts standard mapping even when the controller ID matches', () => {
+    const { state } = readPad(
+      makePad({ id, axes: [0, 0, 0, -1, 0, 1], buttons: padWithButtons([2]).buttons }),
+    );
+    expect(state.aim).toEqual({ x: 0, y: -1 });
+    expect(state.buttons.a2).toBe(true);
+  });
+
+  it('uses the name for raw IDs without product metadata and preserves other layouts', () => {
+    expect(readPad({ ...raw([0, 0, 0, -1, 0, 1]), id: '8BitDo SN30 Pro' }).state.aim.y).toBe(1);
+    expect(
+      readPad({ ...raw([0, 0, 0, -1, 0, 1]), id: '8BitDo SN30 Pro (Vendor: 2dc8 Product: 6001)' })
+        .state.aim.y,
+    ).toBe(-1);
+    expect(readPad({ ...raw([0, 0, 0, -1, 0, 1]), id: 'Generic pad' }).state.aim.y).toBe(-1);
   });
 });

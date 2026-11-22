@@ -3,6 +3,7 @@
  * and gamepad buttons for movement and abilities; bindings persist locally (see
  * input/bindings.ts). Reachable from the main menu and the in-fight pause menu.
  */
+import { connectedGamepads, padButtonPressed } from '../../input/gamepadLayout';
 import { useEffect, useRef, useState } from 'react';
 import MechanicsReference from '../game/MechanicsReference';
 import { closeControls, playUiSound } from '../state/session';
@@ -26,16 +27,10 @@ type Capture = { mode: 'key'; action: KeyAction } | { mode: 'pad'; action: Butto
 /** Snapshot of currently-pressed gamepad button indices (any connected pad). */
 function pressedPadButtons(): Set<number> {
   const out = new Set<number>();
-  try {
-    const nav = navigator as Navigator & { getGamepads?: () => (Gamepad | null)[] };
-    for (const pad of nav.getGamepads?.() ?? []) {
-      if (!pad || !pad.connected) continue;
-      pad.buttons.forEach((b, i) => {
-        if (b?.pressed) out.add(i);
-      });
+  for (const pad of connectedGamepads()) {
+    for (let i = 0; i < pad.buttons.length; i++) {
+      if (i !== 9 && padButtonPressed(pad, i)) out.add(i);
     }
-  } catch {
-    /* no gamepad API */
   }
   return out;
 }

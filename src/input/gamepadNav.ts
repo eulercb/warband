@@ -8,6 +8,7 @@
  * stacked overlay (Controls over the pause menu) gets the input, not the screen
  * beneath it. Screens subscribe via `useGamepadMenu`.
  */
+import { connectedGamepads, padButtonPressed } from './gamepadLayout';
 export type NavDir = 'up' | 'down' | 'left' | 'right';
 
 export interface NavHandler {
@@ -34,27 +35,14 @@ const dirNextFire: Record<NavDir, number> = { up: 0, down: 0, left: 0, right: 0 
 let confirmPrev = false;
 let backPrev = false;
 
-function pads(): (Gamepad | null)[] {
-  try {
-    const nav = navigator as Navigator & { getGamepads?: () => (Gamepad | null)[] };
-    return nav.getGamepads?.() ?? [];
-  } catch {
-    return [];
-  }
-}
-
 function anyPressed(index: number): boolean {
-  for (const p of pads()) {
-    if (p && p.connected && p.buttons[index]?.pressed) return true;
-  }
-  return false;
+  return connectedGamepads().some((pad) => padButtonPressed(pad, index));
 }
 
 /** True if any pad expresses `dir` via d-pad button or the left stick. */
 function dirActive(dir: NavDir): boolean {
   if (anyPressed(DPAD[dir])) return true;
-  for (const p of pads()) {
-    if (!p || !p.connected) continue;
+  for (const p of connectedGamepads()) {
     const ax = p.axes[0] ?? 0;
     const ay = p.axes[1] ?? 0;
     if (dir === 'left' && ax < -AXIS_THRESHOLD) return true;

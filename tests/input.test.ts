@@ -363,3 +363,77 @@ it('preserves mouse pointer distance through source sanitization for remote orig
   expect(state.pointerDistance).toBe(500);
   expect(state.aim).toEqual({ x: 0.6, y: 0.8 });
 });
+
+describe('InputManager: switching with a connected pad', () => {
+  it('lets fresh keyboard and mouse input take over from a held stick, then hands back on new pad intent', () => {
+    const now = vi.spyOn(performance, 'now');
+    now.mockReturnValue(1000);
+    setGamepads([makeGamepad({ axes: [0.8, 0, 0, 0] })]);
+    manager.sample(ORIGIN);
+    expect(manager.activeSource).toBe('gamepad');
+
+    now.mockReturnValue(1010);
+    keyDown('KeyW');
+    expect(manager.sample(ORIGIN).move.y).toBe(-1);
+    expect(manager.activeSource).toBe('keyboard');
+
+    now.mockReturnValue(1020);
+    setGamepads([makeGamepad({ axes: [0.81, 0, 0, 0] })]);
+    expect(manager.sample(ORIGIN).move.y).toBe(-1);
+    expect(manager.activeSource).toBe('keyboard');
+
+    now.mockReturnValue(1030);
+    setGamepads([makeGamepad({ axes: [0.8, 0, 0, 0], pressed: [3] })]);
+    expect(manager.sample(ORIGIN).buttons.a3).toBe(true);
+    expect(manager.activeSource).toBe('gamepad');
+
+    now.mockReturnValue(1040);
+    mouseMove(0, 100);
+    expect(manager.sample(ORIGIN).aim.y).toBe(1);
+    expect(manager.activeSource).toBe('keyboard');
+
+    now.mockReturnValue(1050);
+    setGamepads([makeGamepad({ axes: [0.8, 0, -1, 0], pressed: [3] })]);
+    expect(manager.sample(ORIGIN).aim.x).toBe(-1);
+    expect(manager.activeSource).toBe('gamepad');
+
+    now.mockReturnValue(1060);
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', repeat: true }));
+    expect(manager.sample(ORIGIN).aim.x).toBe(-1);
+    expect(manager.activeSource).toBe('gamepad');
+  });
+
+  it('clears controller intent on disconnection and recognizes it again on reconnect', () => {
+    const now = vi.spyOn(performance, 'now');
+    now.mockReturnValue(1000);
+    const held = makeGamepad({ pressed: [0] });
+    setGamepads([held]);
+    expect(manager.sample(ORIGIN).buttons.basic).toBe(true);
+
+    now.mockReturnValue(1010);
+    setGamepads([]);
+    expect(manager.sample(ORIGIN).buttons.basic).toBe(false);
+    expect(manager.activeSource).toBe('keyboard');
+
+    now.mockReturnValue(1020);
+    setGamepads([held]);
+    expect(manager.sample(ORIGIN).buttons.basic).toBe(true);
+    expect(manager.activeSource).toBe('gamepad');
+  });
+});
+
+it('does not let a pad motion sampled with a fresh key turn into a delayed takeover', () => {
+  const now = vi.spyOn(performance, 'now');
+  now.mockReturnValue(1000);
+  keyDown('KeyD');
+  setGamepads([makeGamepad({ axes: [-1, 0, 0, 0] })]);
+  expect(manager.sample(ORIGIN).move.x).toBe(1);
+
+  now.mockReturnValue(1010);
+  expect(manager.sample(ORIGIN).move.x).toBe(1);
+
+  now.mockReturnValue(1020);
+  setGamepads([makeGamepad({ axes: [1, 0, 0, 0] })]);
+  manager.sample(ORIGIN);
+  expect(manager.activeSource).toBe('gamepad');
+});

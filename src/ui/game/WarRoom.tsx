@@ -9,6 +9,7 @@
  * for pointer / keyboard / screen-reader players. Networking is unchanged — the
  * host portal calls the same hostGame() the Create Room button did.
  */
+import { padMenuPressed } from '../../input/gamepadLayout';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { hostGame, playUiSound } from '../state/session';
@@ -31,21 +32,6 @@ import { InputManager } from '../../input/input';
 import { ARENA_W, ARENA_H, RUN_LENGTH } from '../../engine/core/constants';
 import { MONSTERS } from '../../engine/content/monsters';
 import type { MonsterId } from '../../engine/core/types';
-
-/** Gamepad "Options / Start" button index (standard mapping). */
-const PAD_MENU_BUTTON = 9;
-
-function padMenuPressed(): boolean {
-  try {
-    const nav = navigator as Navigator & { getGamepads?: () => (Gamepad | null)[] };
-    for (const pad of nav.getGamepads?.() ?? []) {
-      if (pad && pad.connected && pad.buttons[PAD_MENU_BUTTON]?.pressed) return true;
-    }
-  } catch {
-    /* no gamepad API — ignore */
-  }
-  return false;
-}
 
 export default function WarRoom() {
   const monsterId = useStore((s) => s.monsterId);
