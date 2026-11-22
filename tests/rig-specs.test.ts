@@ -1012,13 +1012,10 @@ describe('buildHumanoidSpec — per-class field dress', () => {
     expect(spec.weapon?.kind).toBe('bow');
   });
 
-  it('gives the mage a wide-brim hat, a robe trim and an orb-staff', () => {
+  it('selects the authored Mage garment and staff', () => {
     const spec = buildHumanoidSpec('mage');
-    expect(spec.parts.map((p) => p.id)).toEqual(['torso', 'head', 'hatBrim', 'hatCrown']);
-    expect(spec.parts.find((p) => p.id === 'hatBrim')?.parent).toBe('head');
-    // Gold hat band (on the crown) + a robe trim ring.
-    expect(spec.decor?.map((d) => d.kind)).toEqual(['ring', 'ring']);
-    expect(spec.decor?.[0].anchorPart).toBe('hatCrown');
+    expect(spec.parts.map((p) => p.id)).toEqual(['torso', 'head']);
+    expect(spec.garment).toBe('mage');
     expect(spec.weapon?.kind).toBe('staff');
   });
 

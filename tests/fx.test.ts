@@ -13,6 +13,8 @@
 import { describe, it, expect } from 'vitest';
 import { Container, Graphics } from 'pixi.js';
 import { Fx } from '../src/render/overlays/fx';
+import { drawSkeleton } from '../src/render/pipeline/skeletonVisual';
+import { drawMageGarment } from '../src/render/rig/mageGarment';
 import { Camera } from '../src/render/pipeline/camera';
 import type { GameEvent } from '../src/engine/core/types';
 
@@ -147,4 +149,35 @@ it('draws the lightning strike across its area and clears it after fading', () =
   for (let frame = 0; frame < 40; frame++) fx.update(16);
   fx.draw(g, camera);
   expect(instructionCount(g)).toBe(0);
+});
+
+it('keeps the Mage garment ordered around the body and bends its trailing cloth', () => {
+  const behind = new Graphics();
+  const front = new Graphics();
+  const at = (forward: number, lateral: number) => ({
+    x: 200 + forward * 16,
+    y: 200 + lateral * 16,
+  });
+  drawMageGarment(behind, front, at, 16, 0, 0);
+  const resting = { ...behind.getLocalBounds() };
+  expect(instructionCount(behind)).toBe(8);
+  expect(instructionCount(front)).toBe(8);
+  behind.clear();
+  front.clear();
+  drawMageGarment(behind, front, at, 16, 0.24, 0.9);
+  expect(behind.getLocalBounds().maxY).toBeGreaterThan(resting.maxY);
+  expect(instructionCount(front)).toBe(8);
+});
+
+it('changes the skeleton silhouette on hit at phone scale and settles at the same anchor', () => {
+  const g = new Graphics();
+  const anchor = { x: 100, y: 100 };
+  drawSkeleton(g, anchor, 8, 0, 0);
+  const idle = { ...g.getLocalBounds() };
+  expect(instructionCount(g)).toBeGreaterThan(20);
+  g.clear();
+  drawSkeleton(g, anchor, 8, 1, 0);
+  const struck = g.getLocalBounds();
+  expect(struck.minY).toBeLessThan(idle.minY);
+  expect(struck.maxY).toBe(idle.maxY);
 });

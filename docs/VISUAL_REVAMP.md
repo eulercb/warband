@@ -74,3 +74,27 @@ a predicted position. The aimed line rewards lining up enemies and reading
 cover, so it remains the visual baseline after the owner's playtest. Next, use
 the release-and-impact approach on a representative player/form and summon and
 contrast a traveling projectile with this instant cast.
+
+## Mage and Lich skeleton pilot
+
+The Mage has a collared mantle, split cloth panels that trail lateral motion,
+and a crystalline staff tip. The lightning release moves the existing
+articulated grip while the cloth follows the motion. The Lich's actual summons
+have skulls, rib cages and weapons, and a damage pulse shifts the skull and
+weapon while the feet stay planted. Other add types retain their current
+presentation. Arrows have shafts, fletching and arrowheads. Fireballs have a
+bright center and a tapered flame. Both retain their existing combat geometry.
+
+The owner accepted the controller handoff and found vertical calibration
+helpful. The remaining SN30 Pro button translation is deferred for a future
+controls review with actual browser reports from the affected setup.
+
+Preserve the pre-art-slice presentation at `4ebdbee` as the reference for a
+future classic-look option. A renderer-only preset later could preserve new
+combat rules while restoring prototype bodies and effects. Build it once the
+new visual language settles, so it has a clear baseline and the current art
+pass does not have to maintain two evolving presentations.
+
+After this playtest, move to a representative alternate form and a player
+companion, then compare healing, barrier and control readability alongside
+the new character silhouettes.

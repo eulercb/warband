@@ -26,11 +26,12 @@ name the next development task beyond playtesting.
 
 ## Current delivery
 
-The owner playtested the Lightning Bolt pilot and accepted the instant line for
-now. The [release and impact follow-up](VISUAL_REVAMP.md) adds a pose,
-contact feedback and cover effects. Keyboard/controller handoff was accepted,
-and the [controller follow-up](CONTROLLER_INPUT.md) adds calibration for the
-SN30 Pro setup that still misread vertical aim.
+The owner accepted Lightning Bolt’s instant line and release effects as the
+visual baseline. The [Mage and Lich skeleton pilot](VISUAL_REVAMP.md) adds
+character silhouettes and hit reactions, with arrows and fireballs as a travel
+comparison. Keyboard/controller handoff works in the owner’s test and aim
+calibration helped. The remaining SN30 Pro button translation is deferred for
+the [controller review](CONTROLLER_INPUT.md).
 
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
@@ -68,12 +69,12 @@ harder three- and four-player cases, and explicit adjust or retain decisions.
 The [class balance coverage plan](CLASS_BALANCE_COVERAGE.md) preserves the
 comparison method and evidence.
 
-| Order                  | Development work                                                                                                                                                                              |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Now                    | [Visual and ability pilot](VISUAL_REVAMP.md). Playtest Lightning Bolt’s directional release, contact recoil and cover feedback.                                                               |
-| Next                   | Test a representative player/form, summon, and attack, heal, barrier and control effects on desktop and phone. Expand verified treatments across stable player kits and shared arena systems. |
-| Then                   | [Boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). Pair encounter mechanics, terrain and boss/arena art in playtestable slices.                                                       |
-| After encounter revamp | Resume role, progression and reward tuning on the revised fights. Compare solo through four players, with meaningful challenge at every size.                                                 |
+| Order                  | Development work                                                                                                                              |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Now                    | [Visual and ability pilot](VISUAL_REVAMP.md). Playtest the Mage, Lich skeletons, and distinct arrow and fireball visuals.                     |
+| Next                   | Test an alternate form, a player companion, and healing, barrier and control effects on desktop and phone.                                    |
+| Then                   | [Boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). Pair encounter mechanics, terrain and boss/arena art in playtestable slices.       |
+| After encounter revamp | Resume role, progression and reward tuning on the revised fights. Compare solo through four players, with meaningful challenge at every size. |
 
 Use one bounded Sol 6.2 high design review where substantial planning is needed.
 Proceed with a mature authorized plan; surface unresolved material gameplay

@@ -1,3 +1,4 @@
+import { drawSkeleton } from './skeletonVisual';
 import { drawDefenseState } from './defenseVisuals';
 import { CURSE_COLORS, drawCurseSigil } from './curseVisuals';
 import { drawAuraField, drawBubble, drawSupportSymbol, supportStateKind } from './supportVisuals';
@@ -510,11 +511,15 @@ export function drawAdd(
   drawBuffGlows(g, x, y, r, a.buffs, timeSec);
 
   g.ellipse(x, y + r * 0.5, r * 0.9, r * 0.35).fill({ color: 0x000000, alpha: 0.2 });
-  g.circle(x, y, r).fill({ color: 0xbfc4cc });
-  g.circle(x, y, r).stroke({ width: 1.5, color: 0x3a3f47, alpha: 0.85 });
+  if (a.appearance === 'skeleton') {
+    drawSkeleton(g, screen, r, flash, Math.sin(timeSec * 6 + a.id));
+  } else {
+    g.circle(x, y, r).fill({ color: 0xbfc4cc });
+    g.circle(x, y, r).stroke({ width: 1.5, color: 0x3a3f47, alpha: 0.85 });
 
-  if (flash > 0) {
-    g.circle(x, y, r).fill({ color: 0xffffff, alpha: clamp(flash, 0, 1) * 0.7 });
+    if (flash > 0) {
+      g.circle(x, y, r).fill({ color: 0xffffff, alpha: clamp(flash, 0, 1) * 0.7 });
+    }
   }
 
   const hpFrac = clamp(a.hp / a.maxHp, 0, 1);
@@ -547,6 +552,28 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
   const speed = Math.hypot(pr.vel.x, pr.vel.y) || 1;
   const dx = pr.vel.x / speed;
   const dy = pr.vel.y / speed;
+  const at = (along: number, across = 0): number[] => [
+    x + (dx * along - dy * across) * scale,
+    y + (dy * along + dx * across) * scale,
+  ];
+  if (pr.kind === 'arrow') {
+    const [tailX, tailY] = at(-19);
+    g.moveTo(tailX, tailY)
+      .lineTo(x, y)
+      .stroke({ color: 0xe9d2a7, width: Math.max(1.4, 1.8 * scale) });
+    g.poly([...at(5), ...at(-4, -3.2), ...at(-2), ...at(-4, 3.2)]).fill({ color: 0xdeebeb });
+    g.poly([...at(-12), ...at(-21, 3.5), ...at(-19), ...at(-21, -3.5)]).fill({ color });
+    return;
+  }
+  if (pr.kind === 'fireball') {
+    g.poly([...at(7), ...at(1, 6), ...at(-7, 4), ...at(-22, -1), ...at(-8, -5), ...at(2, -6)]).fill(
+      { color: 0xef5a28, alpha: 0.78 },
+    );
+    g.poly([...at(5), ...at(-1, 4), ...at(-14), ...at(-1, -4)]).fill({ color: 0xffba48 });
+    g.circle(x, y, Math.max(2, 3.1 * scale)).fill({ color: 0xffe3a8 });
+    return;
+  }
+
   const trail = Math.max(10, 16 * scale);
 
   // Short motion trail behind the head.

@@ -22,6 +22,7 @@
  *   sprites/meshes(head) → decor.
  */
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
+import { drawMageGarment } from './mageGarment';
 import type { EntityId } from '../../engine/core/types';
 import type { Vec2 } from './math/vec';
 import { vperp } from './math/vec';
@@ -392,6 +393,18 @@ export class CreatureRig {
     if (this.spec.arms) this.drawArms(R, ctx, downed);
     if (this.spec.weapon && !downed) this.drawWeapon(R, ctx, timeSec);
     if (this.spec.decor) this.drawDecor(R, ctx);
+    if (this.spec.garment === 'mage' && !downed) {
+      const lateralSpeed = -this.vel.x * this.sin + this.vel.y * this.cos;
+      const drift = clamp(-lateralSpeed / 300, -0.24, 0.24) + Math.sin(timeSec * 4) * 0.07;
+      drawMageGarment(
+        this.gBehind,
+        this.gDecor,
+        (x, y) => this.bodyPoint({ x, y }, R),
+        R,
+        drift,
+        Math.max(0, 1 - this.lightningAge / 0.22),
+      );
+    }
   }
 
   private drawBodyParts(R: number, bodyScale: number, downed: boolean, ctx: RigDriveCtx): void {
@@ -662,6 +675,19 @@ export class CreatureRig {
         g.moveTo(grip.x, grip.y)
           .lineTo(tip.x, tip.y)
           .stroke({ width: 0.11 * R, color: 0x6b4a2a, cap: 'round' });
+        if (this.spec.garment === 'mage') {
+          const base = at(w.length - 0.3);
+          const edgeA = at(w.length, -0.22);
+          const edgeB = at(w.length, 0.22);
+          const crown = at(w.length + 0.35);
+          g.poly([base.x, base.y, edgeA.x, edgeA.y, crown.x, crown.y, edgeB.x, edgeB.y])
+            .fill({ color: 0x7855b6 })
+            .stroke({ width: Math.max(1, 0.06 * R), color: 0xf1d69b });
+          g.moveTo(base.x, base.y)
+            .lineTo(crown.x, crown.y)
+            .stroke({ width: Math.max(1, 0.08 * R), color: 0xd9f5ff });
+          break;
+        }
         // Arcane orb: a soft additive glow pulsing ~2.2s, swelling as a cast charges.
         const pulse = 1 + 0.16 * Math.sin(timeSec * ((2 * Math.PI) / 2.2));
         const glow = 0.22 * R * (1 + 0.4 * swing) * pulse;

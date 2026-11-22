@@ -56,7 +56,7 @@ try {
         const { Renderer } = await import('/src/render/pipeline/renderer.ts');
         const { ARENA_W, ARENA_H } = await import('/src/engine/core/constants.ts');
         const { World } = await import('/src/engine/world/world.ts');
-        const { resolvePlayerAbility, stepPlayerGlide } =
+        const { resolveBossAbility, resolvePlayerAbility, stepPlayerGlide } =
           await import('/src/engine/combat/abilities.ts');
         const { applyBuff, makeBuff, damageBoss, damagePlayer } =
           await import('/src/engine/combat/combat.ts');
@@ -67,7 +67,9 @@ try {
           frame = 0,
           firstFrameFx = 0,
           lightningPose = false,
-          lightningRecoil = false;
+          lightningRecoil = false,
+          mageGarment = false,
+          summonFeedback = false;
         const renderer = await Renderer.create(document.querySelector('#fixture'), {
           w: ARENA_W,
           h: ARENA_H,
@@ -172,6 +174,11 @@ try {
                 world.resolvePlayerProjectile(shot);
               }
             } else if (name === 'lightning') {
+              const summon = world.defOf(boss).abilities.find((a) => a.id === 'summonSkeletons');
+              resolveBossAbility(world, boss, summon, { aimAngle: 0 });
+              world.adds[0].pos = { x: 800, y: 529 };
+              world.adds[1].pos = { x: 860, y: 563 };
+              for (const add of world.adds) add.attackCd = 10;
               renderer.render({
                 ...world.serialize(),
                 localPlayerId: owner.id,
@@ -222,6 +229,8 @@ try {
               firstFrameFx,
               lightningPose,
               lightningRecoil,
+              mageGarment,
+              summonFeedback,
               projectiles: world.projectiles.length,
               allyHp: world.players[1]?.hp,
               allyRescue: world.players[1]?.buffs.some((b) => b.kind === 'rescueStrike'),
@@ -259,6 +268,13 @@ try {
             firstFrameFx = renderer.fxLayer.context.instructions.length;
             lightningPose = renderer.rigs.nodes.get(owner.id)?.rig.lightningAge < 0.22;
             lightningRecoil = renderer.rigs.nodes.get(boss.id)?.rig.recoilAge < 0.18;
+            mageGarment =
+              renderer.rigs.nodes.get(owner.id)?.rig.gDecor.context.instructions.length >= 8;
+            summonFeedback =
+              world.serialize().adds[0]?.appearance === 'skeleton' &&
+              renderer.entitiesLayer.context.instructions.length >= 20 &&
+              renderer.fx.flashAmount(world.adds[0].id) > 0 &&
+              renderer.fx.flashAmount(world.adds[1].id) === 0;
           }
           world.events = [];
           frame++;
@@ -312,6 +328,8 @@ try {
         assert.ok(p.firstFrameFx >= 11, 'first render drew the strike and contact sparks');
         assert.equal(p.lightningPose, true, 'caster played the lightning release');
         assert.equal(p.lightningRecoil, true, 'contact drove a visual recoil');
+        assert.equal(p.mageGarment, true, 'Mage drew the authored garment');
+        assert.equal(p.summonFeedback, true, 'only the contacted skeleton received a hit pulse');
       }
       if (mode === 'ready') {
         assert.equal(p.ready, true);
