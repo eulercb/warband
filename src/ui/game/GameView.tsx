@@ -7,6 +7,7 @@
  * opens a local overlay; the host additionally freezes the shared sim while it
  * is open. Input is neutralised while the menu is open so nobody keeps acting.
  */
+import { padMenuPressed } from '../../input/gamepadLayout';
 import { useEffect, useRef } from 'react';
 import { useStore } from '../state/store';
 import { hudSet, useHudStore } from '../state/hudStore';
@@ -26,9 +27,6 @@ import { touchSwapAim } from '../../input/touch';
 import { ARENA_W, ARENA_H } from '../../engine/core/constants';
 import { getMonster } from '../../engine/content/monsters';
 import type { ClassId, InputCommand, InputState, Vec2 } from '../../engine/core/types';
-
-/** Gamepad "Options / Start" button index (standard mapping) for the menu toggle. */
-const PAD_MENU_BUTTON = 9;
 
 /** How far (px) the cursor must sit from screen-centre to select a radial slot. */
 const MOUSE_RADIAL_DEADZONE_PX = 44;
@@ -284,18 +282,4 @@ export default function GameView() {
       ) : null}
     </div>
   );
-}
-
-/** Is the gamepad's Options/Start button currently pressed on any pad? */
-function padMenuPressed(): boolean {
-  try {
-    const nav = navigator as Navigator & { getGamepads?: () => (Gamepad | null)[] };
-    const pads = nav.getGamepads?.() ?? [];
-    for (const pad of pads) {
-      if (pad && pad.connected && pad.buttons[PAD_MENU_BUTTON]?.pressed) return true;
-    }
-  } catch {
-    /* no gamepad API — ignore */
-  }
-  return false;
 }

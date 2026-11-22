@@ -14,6 +14,7 @@
 import type { InputState, Vec2 } from '../engine/core/types';
 import { sampleGamepad } from './gamepad';
 import { KeyboardMouse } from './keyboard';
+import { BUTTON_ACTIONS } from './bindings';
 import { sampleTouch, touchEngaged, touchLastActivityMs } from './touch';
 
 export type InputSource = 'keyboard' | 'gamepad' | 'touch';
@@ -31,6 +32,8 @@ export class InputManager {
   /** Shared reticle direction persisted across devices; defaults to "up". */
   private lastAim: Vec2 = { x: 0, y: -1 };
   private lastGamepadActiveMs = 0;
+  private lastKeyboardActivityMs = 0;
+  private previousPadState?: InputState;
 
   constructor(target: HTMLElement) {
     this.keyboard = new KeyboardMouse(target);
@@ -43,36 +46,38 @@ export class InputManager {
   sample(localScreenPos: Vec2): InputState {
     const now = performance.now();
     const gp = sampleGamepad();
-    if (gp && gp.active) {
-      this.lastGamepadActiveMs = now;
-    }
-
     const kbActivityMs = this.keyboard.lastActivityMs;
+    const keyboardChanged = kbActivityMs > this.lastKeyboardActivityMs;
+    this.lastKeyboardActivityMs = kbActivityMs;
 
-    // "Last-used device wins":
-    //  - An actively-used gamepad always takes priority immediately.
-    //  - An idle-but-connected gamepad keeps control only while it was the more
-    //    recently used device AND within the sticky window; otherwise the
-    //    keyboard/mouse reclaims it.
-    //  - A pad that has never been active (ts 0) never wins.
-    let useGamepad = false;
-    if (gp) {
-      if (gp.active) {
-        useGamepad = true;
-      } else if (this.lastGamepadActiveMs > 0) {
-        const gamepadFresher = this.lastGamepadActiveMs >= kbActivityMs;
-        const gamepadRecent = now - this.lastGamepadActiveMs <= GAMEPAD_STICKY_MS;
-        useGamepad = gamepadFresher && gamepadRecent;
-      }
+    // A held button or a stationary stick can sustain control, but only a new
+    // press or a stick movement can take it back from another device.
+    if (gp?.active && newPadIntent(gp.state, this.previousPadState)) {
+      this.previousPadState = gp.state;
+      if (!keyboardChanged) this.lastGamepadActiveMs = now;
+    } else if (gp && this.previousPadState) {
+      // Keep the last meaningful stick positions for slow, deliberate changes.
+      // Releases update the baseline so the same direction can be used again.
+      this.previousPadState.buttons = gp.state.buttons;
+      if (!hasDirection(gp.state.move)) this.previousPadState.move = gp.state.move;
+      if (!hasDirection(gp.state.aim)) this.previousPadState.aim = gp.state.aim;
+    }
+    if (!gp) {
+      this.previousPadState = undefined;
+      this.lastGamepadActiveMs = 0;
     }
 
-    // The on-screen touch overlay wins whenever it is engaged (a stick moved or a
-    // button held) or was the most-recently-used source within the sticky window,
-    // so a phone player keeps control without the idle keyboard reclaiming it.
+    const useGamepad =
+      gp !== null &&
+      this.lastGamepadActiveMs > 0 &&
+      this.lastGamepadActiveMs > kbActivityMs &&
+      (now - this.lastGamepadActiveMs <= GAMEPAD_STICKY_MS ||
+        (this.activeSource === 'gamepad' && gp.active));
+
     const touchMs = touchLastActivityMs();
     const otherMs = Math.max(useGamepad ? this.lastGamepadActiveMs : 0, kbActivityMs);
     const useTouch =
-      touchEngaged() || (touchMs > 0 && touchMs >= otherMs && now - touchMs <= GAMEPAD_STICKY_MS);
+      touchMs >= otherMs && (touchEngaged() || (touchMs > 0 && now - touchMs <= GAMEPAD_STICKY_MS));
 
     let state: InputState;
     if (useTouch) {
@@ -80,6 +85,7 @@ export class InputManager {
       state = sampleTouch();
     } else if (useGamepad && gp) {
       this.activeSource = 'gamepad';
+      if (gp.active) this.lastGamepadActiveMs = now;
       state = gp.state;
     } else {
       this.activeSource = 'keyboard';
@@ -145,4 +151,23 @@ export class InputManager {
 /** Coerce a non-finite number (NaN/Infinity) to 0. */
 function safe(n: number): number {
   return Number.isFinite(n) ? n : 0;
+}
+
+function hasDirection(vector: Vec2): boolean {
+  return vector.x !== 0 || vector.y !== 0;
+}
+
+function stickChanged(next: Vec2, previous: Vec2): boolean {
+  if (!hasDirection(next)) return false;
+  if (!hasDirection(previous)) return true;
+  return Math.hypot(next.x - previous.x, next.y - previous.y) >= 0.18;
+}
+
+function newPadIntent(state: InputState, previous: InputState | undefined): boolean {
+  if (!previous) return true;
+  return (
+    stickChanged(state.move, previous.move) ||
+    stickChanged(state.aim, previous.aim) ||
+    BUTTON_ACTIONS.some((button) => state.buttons[button] && !previous.buttons[button])
+  );
 }

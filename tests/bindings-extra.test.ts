@@ -67,6 +67,7 @@ describe('detectPadGlyphs', () => {
       ['Xbox 360 Controller (XInput STANDARD GAMEPAD)', 'xbox'],
       ['045e-Microsoft controller', 'xbox'],
       ['Pro Controller (Nintendo Switch)', 'nintendo'],
+      ['8BitDo SN30 Pro (Vendor: 2dc8 Product: 2100)', 'nintendo'],
       ['Joy-Con (L)', 'nintendo'],
       ['DualSense Wireless Controller', 'playstation'],
       ['054c-PlayStation', 'playstation'],

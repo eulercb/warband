@@ -1,3 +1,4 @@
+import { padMenuPressed } from '../../input/gamepadLayout';
 import { grandHistory } from '../../engine/content/grandSelections';
 import GrandPanel from './GrandManager';
 import MechanicsReference from './MechanicsReference';
@@ -878,21 +879,4 @@ function RewardPauseOverlay({ onResume }: { onResume: () => void }) {
       </div>
     </div>
   );
-}
-
-/** Gamepad "Options / Start" button index (standard mapping). */
-const PAD_MENU_BUTTON = 9;
-
-/** Is the gamepad's Options/Start button currently pressed on any pad? */
-function padMenuPressed(): boolean {
-  try {
-    const nav = navigator as Navigator & { getGamepads?: () => (Gamepad | null)[] };
-    const pads = nav.getGamepads?.() ?? [];
-    for (const pad of pads) {
-      if (pad && pad.connected && pad.buttons[PAD_MENU_BUTTON]?.pressed) return true;
-    }
-  } catch {
-    /* no gamepad API — ignore */
-  }
-  return false;
 }

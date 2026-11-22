@@ -8,6 +8,7 @@
  * non-reactive read used by the hot input path.
  */
 import { create } from 'zustand';
+import { connectedGamepads, isSn30Pro } from './gamepadLayout';
 
 /** Directional movement actions (keyboard only; pads use the left stick). */
 export type MoveAction = 'up' | 'down' | 'left' | 'right';
@@ -336,20 +337,14 @@ const PAD_GLYPHS: Record<PadGlyphs, Record<number, string>> = {
 
 /** Sniff the first connected pad's id string for its family (PlayStation-default). */
 export function detectPadGlyphs(): PadGlyphs {
-  try {
-    const nav = navigator as Navigator & { getGamepads?: () => (Gamepad | null)[] };
-    for (const pad of nav.getGamepads?.() ?? []) {
-      if (!pad || !pad.connected) continue;
-      const id = pad.id.toLowerCase();
-      if (/xbox|xinput|x-input|045e|microsoft/.test(id)) return 'xbox';
-      if (/switch|joy-?con|pro controller|057e|nintendo/.test(id)) return 'nintendo';
-      if (/054c|dualsense|dualshock|playstation|wireless controller/.test(id)) return 'playstation';
-      return 'letters'; // recognised a pad but not its family → safe A/B/X/Y
-    }
-  } catch {
-    /* no gamepad API */
-  }
-  return 'playstation';
+  const pad = connectedGamepads()[0];
+  if (!pad) return 'playstation';
+  const id = pad.id.toLowerCase();
+  if (isSn30Pro(id)) return 'nintendo';
+  if (/xbox|xinput|x-input|045e|microsoft/.test(id)) return 'xbox';
+  if (/switch|joy-?con|pro controller|057e|nintendo/.test(id)) return 'nintendo';
+  if (/054c|dualsense|dualshock|playstation|wireless controller/.test(id)) return 'playstation';
+  return 'letters';
 }
 
 /** The concrete glyph set to draw right now, honouring the user's `padScheme`. */

@@ -1,5 +1,5 @@
 /**
- * Warband — Keyboard + mouse input (fallback used when no gamepad is in play).
+ * Warband — Keyboard and mouse input.
  *
  * Produces a unified `InputState`. Buttons are HELD state only; the HOST does
  * edge detection per sim tick — never here.
@@ -61,15 +61,13 @@ export class KeyboardMouse {
         return;
       }
       if (!isBoundCode(e.code)) return;
+      if (!this.held.has(e.code)) this.lastActivityMs = performance.now();
       this.held.add(e.code);
-      this.lastActivityMs = performance.now();
       e.preventDefault(); // stop Space/Arrows from scrolling the page
     };
 
     this.onKeyUp = (e) => {
-      if (this.held.delete(e.code)) {
-        this.lastActivityMs = performance.now();
-      }
+      this.held.delete(e.code);
     };
 
     this.onFocusIn = (e) => {
@@ -94,7 +92,6 @@ export class KeyboardMouse {
 
     this.onMouseUp = (e) => {
       if (e.button === 0) this.mouseLeftDown = false;
-      this.lastActivityMs = performance.now();
     };
 
     this.onContextMenu = (e) => {
