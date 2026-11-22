@@ -25,7 +25,8 @@ import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import { drawMageGarment } from './mageGarment';
 import { drawKnightArmor, drawKnightShield } from './knightArmor';
 import { heroStance } from './math/heroStance';
-import type { EntityId } from '../../engine/core/types';
+import { bladeSweepSeconds } from '../overlays/meleeVisual';
+import type { BladeAreaStyle, EntityId } from '../../engine/core/types';
 import type { Vec2 } from './math/vec';
 import { vperp } from './math/vec';
 import { solveTwoBone } from './math/ik';
@@ -96,7 +97,7 @@ export class CreatureRig {
   private lightningAngle = 0;
   private recoilAge = 1;
   private recoilAngle = 0;
-  private cleaveFacing: number | undefined;
+  private blade?: { style: BladeAreaStyle; angle: number; halfAngle: number };
   private attackAge = -1; // < 0 = no active attack swing
 
   constructor(
@@ -209,13 +210,13 @@ export class CreatureRig {
   }
 
   /** Trigger a one-shot weapon swing (humanoid attack), consumed at draw time. */
-  triggerCleave(angle: number): void {
+  triggerBlade(style: BladeAreaStyle, angle: number, halfAngle: number): void {
     this.triggerAttack();
-    this.cleaveFacing = angle;
+    this.blade = { style, angle, halfAngle };
   }
 
   triggerAttack(): void {
-    this.cleaveFacing = undefined;
+    this.blade = undefined;
     this.attackAge = 0;
   }
 
@@ -339,7 +340,13 @@ export class CreatureRig {
 
     if (this.attackAge >= 0) {
       this.attackAge += dt;
-      if (this.attackAge > ATTACK_DUR) this.attackAge = -1;
+      if (
+        this.attackAge >
+        (this.blade ? bladeSweepSeconds(this.blade.style, this.blade.halfAngle) + 0.11 : ATTACK_DUR)
+      ) {
+        this.attackAge = -1;
+        this.blade = undefined;
+      }
     }
 
     const downed = ctx.state === 'downed';
@@ -351,7 +358,16 @@ export class CreatureRig {
     }
     if (this.spec.spine) this.updateSpine(R);
 
+    const stance = this.facing;
+    if (this.fullTurn && !downed) {
+      this.facing = this.bladeAngle();
+      this.cos = Math.cos(this.facing);
+      this.sin = Math.sin(this.facing);
+    }
     this.draw(R, timeSec, ctx, downed);
+    this.facing = stance;
+    this.cos = Math.cos(stance);
+    this.sin = Math.sin(stance);
   }
 
   destroy(): void {
@@ -541,7 +557,7 @@ export class CreatureRig {
   private drawLegs(R: number, windupT: number, ctx: RigDriveCtx, downed: boolean): void {
     const lg = this.spec.legs!;
     const anchor = this.bodyPoint(this.partLocal(lg.anchorPart), R);
-    const around = this.legAround;
+    const around = this.fullTurn && !downed ? this.facing : this.legAround;
     // Lit: the hit-flash rides the shader, so keep it out of the stroke/albedo colour.
     const legColor = this.limbColor(darken(ctx.color, 0.35), ctx, !this.lit);
     const wRoot = lg.legWidthRoot * R;
@@ -560,13 +576,16 @@ export class CreatureRig {
       // can lag arbitrarily far behind; without this the two-bone solve draws a
       // fully-extended straight limb that reads as a leg "stretching forever".
       const maxReach = (lg.l1 + lg.l2) * R * 0.98;
-      const planted = clampToReach(leg.foot, shoulder, maxReach);
+      const spin = this.fullTurn && !downed;
+      const pivot = spin ? this.bodyPoint({ x: 0.13, y: (i === 0 ? -1 : 1) * 0.88 }, R) : leg.foot;
+      const planted = clampToReach(pivot, shoulder, maxReach);
       // Front-leg raise telegraph: legs pointing forward lift during a windup.
       const forwardness = Math.cos(baseAng);
       const raise =
         windupT > 0 && forwardness > 0.2 ? windupT * forwardness * lg.liftHeight * R : 0;
       const lift = leg.stepping ? Math.sin(Math.PI * leg.t) * lg.liftHeight * R : 0;
-      const foot = { x: planted.x, y: planted.y - lift - raise };
+      const step = spin && i === 1 ? Math.sin(Math.PI * this.bladePhase()) * R * 0.37 : 0;
+      const foot = { x: planted.x, y: planted.y - lift - raise - step };
 
       if (!leg.stepping && !downed) footShadow(this.gGround, planted.x, planted.y, wTip * 1.6);
 
@@ -713,6 +732,10 @@ export class CreatureRig {
       }
       if (this.spec.garment === 'knight' && !downed) {
         hand = arm.side === -1 ? this.knightShieldAnchor(R) : grip;
+      } else if (this.blade?.style === 'daggerSlash' && !downed) {
+        hand = arm.side === -1 ? this.daggerOffhand(R) : grip;
+      } else if (this.blade?.style === 'holyStrike' && !downed) {
+        hand = arm.side === -1 ? this.paladinShieldAnchor(R) : grip;
       }
       const reachScale = this.spec.garment && !downed ? 1.14 : 1;
       if (this.spec.garment && !downed) {
@@ -762,9 +785,13 @@ export class CreatureRig {
             Math.cos(this.aimFacing + Math.PI * 0.57),
           ) *
             activeStaff
-        : this.spec.garment === 'knight'
-          ? this.knightSwordAngle()
-          : this.facing;
+        : this.blade
+          ? this.bladeAngle()
+          : this.spec.garment === 'knight'
+            ? this.attackAge >= 0
+              ? this.aimFacing
+              : this.facing + 1.05
+            : this.facing;
     const fx = Math.cos(staffAngle);
     const fy = Math.sin(staffAngle);
     const perp = { x: -fy, y: fx };
@@ -822,8 +849,15 @@ export class CreatureRig {
           .stroke({ width: 0.13 * R, color: metal, cap: 'round' });
         g.circle(grip.x, grip.y, 0.1 * R).fill({ color: w.color });
         if (w.offhand === 'dagger') {
-          const o = at(w.length * 0.85, -0.5);
-          const ob = at(0, -0.5);
+          const ob = this.blade?.style === 'daggerSlash' ? this.daggerOffhand(R) : at(0, -0.5);
+          const offAngle = staffAngle - (this.fullTurn ? Math.PI : 0.72);
+          const o =
+            this.blade?.style === 'daggerSlash'
+              ? {
+                  x: ob.x + Math.cos(offAngle) * w.length * R,
+                  y: ob.y + Math.sin(offAngle) * w.length * R,
+                }
+              : at(w.length * 0.85, -0.5);
           g.moveTo(ob.x, ob.y)
             .lineTo(o.x, o.y)
             .stroke({ width: 0.11 * R, color: metal, cap: 'round' });
@@ -885,7 +919,7 @@ export class CreatureRig {
 
     // Off-hand shield (paladin / knight): a small rounded kite plate to the side/back.
     if (w.offhand === 'shield') {
-      const c = this.bodyPoint({ x: -0.1, y: -0.85 }, R);
+      const c = this.paladinShieldAnchor(R);
       if (this.spec.garment === 'knight') {
         drawKnightShield(g, this.knightShieldAnchor(R), R, this.shieldBrace);
         return;
@@ -968,11 +1002,44 @@ export class CreatureRig {
 
   // --- pose helpers ----------------------------------------------------------
 
-  private knightSwordAngle(): number {
-    if (this.attackAge < 0) return this.facing + 1.05;
-    if (this.cleaveFacing === undefined) return this.aimFacing;
-    const sweep = clamp(this.attackAge / ATTACK_DUR, 0, 1);
-    return this.cleaveFacing - 1.25 + 2.3 * sweep;
+  private get fullTurn(): boolean {
+    return !!this.blade && this.blade.halfAngle >= Math.PI;
+  }
+
+  private bladePhase(): number {
+    if (!this.blade) return 0;
+    return clamp(this.attackAge / bladeSweepSeconds(this.blade.style, this.blade.halfAngle), 0, 1);
+  }
+
+  private bladeAngle(): number {
+    if (!this.blade) return this.facing;
+    const { angle, halfAngle } = this.blade;
+    const phase = this.bladePhase();
+    // Start facing out on the grand and return to the original stance after a full turn.
+    if (this.fullTurn) return angle + Math.PI * 2 * phase;
+    const slash = angle + halfAngle * (2 * phase - 1);
+    const recovery = clamp(
+      (this.attackAge - bladeSweepSeconds(this.blade.style, halfAngle)) / 0.11,
+      0,
+      1,
+    );
+    const rest = this.facing + (this.blade.style === 'cleave' ? 1.05 : 0);
+    const delta = rest - slash;
+    return slash + Math.atan2(Math.sin(delta), Math.cos(delta)) * recovery;
+  }
+
+  private paladinShieldAnchor(R: number): Vec2 {
+    const brace = this.blade?.style === 'holyStrike' ? Math.sin(Math.PI * this.bladePhase()) : 0;
+    return this.bodyPoint({ x: -0.1 + brace * 0.75, y: -0.85 }, R);
+  }
+
+  private daggerOffhand(R: number): Vec2 {
+    const angle = this.bladeAngle() - (this.fullTurn ? Math.PI : 0.72);
+    const spread = 0.9 + Math.sin(Math.PI * this.bladePhase()) * 0.48;
+    return {
+      x: this.origin.x + Math.cos(angle) * spread * R,
+      y: this.origin.y + Math.sin(angle) * spread * R,
+    };
   }
 
   private gripPoint(R: number, ctx: RigDriveCtx, downed: boolean): Vec2 {
@@ -990,16 +1057,23 @@ export class CreatureRig {
     }
     if (!downed) dist += 0.85 * releasePose(this.lightningAge);
     const forward =
-      this.spec.garment === 'knight' && !downed
-        ? this.knightSwordAngle()
-        : this.spec.garment &&
-            (this.attackAge >= 0 || activeRelease(this.lightningAge, this.elementalAge))
-          ? this.aimFacing
-          : this.facing;
+      this.blade && !downed
+        ? this.bladeAngle()
+        : this.spec.garment === 'knight' && !downed
+          ? this.attackAge >= 0
+            ? this.aimFacing
+            : this.facing + 1.05
+          : this.spec.garment &&
+              (this.attackAge >= 0 || activeRelease(this.lightningAge, this.elementalAge))
+            ? this.aimFacing
+            : this.facing;
     const point = {
       x: this.origin.x + Math.cos(forward) * dist * R,
       y: this.origin.y + Math.sin(forward) * dist * R,
     };
+    if (!downed && this.blade?.style === 'holyStrike')
+      point.y -= R * 0.98 * (1 - this.bladePhase());
+    if (!downed && this.blade?.style === 'daggerSlash') point.y += R * 0.15;
     if (this.spec.garment === 'knight' && !downed) point.y -= R * 0.65;
     if (this.spec.garment === 'mage' && !downed) {
       const beat = releasePose(this.elementalAge);

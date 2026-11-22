@@ -31,7 +31,7 @@ export function drawMoonBear(
   const phase = motion?.phase ?? 0;
   const stride = (motion?.stride ?? 0) * (1 - swipe * 0.65);
   const bob = Math.cos(phase * 2) * stride * 0.095 + Math.sin(time * 3) * 0.025;
-  const rock = Math.sin(phase) * stride * 0.11;
+  const rock = Math.sin(phase) * stride * 0.11 - cast * 0.18;
   const at = (x: number, y: number, h = 0): [number, number] => [
     screen.x + (x * c - y * s) * r,
     screen.y + ((x * s + y * c) * 0.63 - h) * r,
@@ -54,11 +54,11 @@ export function drawMoonBear(
     const reach = swings ? swipe : 0;
     const launch = lead && !swings ? cast : 0;
     const foot = at(
-      fore + step.x + reach * (0.65 + Math.sin(swing * Math.PI) * 0.62) + launch * 0.57,
-      side * (0.51 + reach * (0.89 - swing * 2.15)) + step.y,
-      step.lift * stride * 0.24 + reach * 0.46 + launch * 0.32,
+      fore + step.x + reach * (0.65 + Math.sin(swing * Math.PI) * 0.62) + launch * 0.93,
+      side * (0.51 + reach * (0.89 - swing * 2.15) + launch * 0.36) + step.y,
+      step.lift * stride * 0.24 + reach * 0.46 + launch * 0.72,
     );
-    const shoulder = at(fore, side * 0.36 + rock, 0.54 + bob + reach * 0.22);
+    const shoulder = at(fore, side * 0.36 + rock, 0.54 + bob + reach * 0.22 + launch * 0.24);
     g.moveTo(...shoulder)
       .lineTo(...foot)
       .stroke({

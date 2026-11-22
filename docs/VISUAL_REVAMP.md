@@ -351,3 +351,54 @@ In-game captures:
 [Knight full-circle Cleave on phone](images/knight-cleave-grand-phone.png),
 [Mage Arcane Barrage on phone](images/mage-arcane-barrage-phone.png), and
 [Moon Bear claw follow-through](images/moon-bear-follow-through.png).
+
+## Melee basics and linked grand follow-through
+
+Sol 6.2 High reviewed this batch. The Moon basic now gives Thornlash a
+visible foreleg lift, extension and return. The opposite paw then makes
+the accepted claw sweep with the same near-body claw trails. An immediate
+soft contact flash marks the existing hit, and layered lunar ribbons
+follow through across the resolved cone. The sequencing is visual.
+Thornlash, the claw and its healing still resolve at their original times.
+
+Cleave reads through a fading steel blade sweep across the actual sector,
+without a stroked area border or the old always-on basic aim cone. Whirlwind of Steel drives a full turn of the
+Knight's torso, shield, feet and sword while the effect travels around the
+full resolved radius. The ordinary cut sweeps for 320 ms before recovery,
+with the area effect fading through 580 ms. The grand spends 470 ms on the
+full turn. This applies the Mage pilot's separation of a readable peak and
+gradual recovery to a melee stroke.
+
+Holy Strike leads with an elevated sword hand and cuts down behind its
+separately braced shield. The broader ivory and gold shape distinguishes
+it from Cleave. Radiant Riposte shows protection when positive contact
+actually arms it. Slash uses short independent dagger motions and two
+tapered violet bands. Whirling Blades pivots the Rogue through a full turn
+with the daggers spread. Arcane Bolt remains at its current dart and split
+wake for now. Its cast and impact treatment can be addressed in the
+projectile delivery pass.
+
+### Acceptance criteria from the pilot
+
+- Review the caster pose, launch or swing, contact, and recovery together.
+  Give a pose enough displacement and time to read at normal speed.
+- Convey the actual hit geometry through the effect. Use a subtle contact
+  fill and moving material where useful. Avoid generic stroked boundaries
+  for friendly strikes with authored effects.
+- Check linked upgrades that change geometry or grant a visible payoff.
+  Full-circle attacks need a full-turn pose; on-hit payoffs need a miss
+  case. Test the actual resolved range and aim at both normal and phone scale.
+- Separate overlapping release poses when needed. Keep effective hit
+  timing visible and preserve combat timing unless a mechanical change is
+  part of the delivery. Capture live game frames and check motion and
+  recovery in addition to the representative stills.
+
+Next is Monk and a bounded batch of hybrid melee basics. Astra 6.2 High is
+next in the reviewer rotation.
+
+In-game captures:
+[Thornlash paw release](images/moon-bear-thornlash-paw.png),
+[claw reach](images/moon-bear-claw-reach.png),
+[Whirlwind of Steel](images/knight-whirlwind-turn-phone.png),
+[Holy Strike with Radiant Riposte](images/paladin-holy-strike-phone.png), and
+[Whirling Blades](images/rogue-whirling-blades-phone.png).

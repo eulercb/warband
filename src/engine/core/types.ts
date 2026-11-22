@@ -1531,13 +1531,22 @@ export interface InputCommand {
  * event so the renderer can flash the exact region an ability just affected
  * (the Knight's cleave cone, the Cleric's heal range, etc.). Purely cosmetic.
  */
+export type BladeAreaStyle = 'cleave' | 'holyStrike' | 'daggerSlash';
+
 export type SkillAreaKind = 'cone' | 'circle' | 'line';
 
 export interface SkillArea {
   /** Search reach, not an area-wide application. Draw an unfilled, subdued outline. */
   reach?: boolean;
   kind: SkillAreaKind;
-  style?: 'lightning' | 'frostNova' | 'fireball' | 'blinkDepart' | 'blinkArrive' | 'cleave';
+  style?:
+    | BladeAreaStyle
+    | 'moonClaw'
+    | 'lightning'
+    | 'frostNova'
+    | 'fireball'
+    | 'blinkDepart'
+    | 'blinkArrive';
   contacts?: { id: EntityId; pos: Vec2; radius: number }[];
   stoppedByCover?: boolean;
   origin: Vec2; // cone/line emanation point, or circle center
