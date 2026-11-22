@@ -1,3 +1,4 @@
+import { damagePlayer } from '../src/engine/combat/combat';
 import { describe, it, expect } from 'vitest';
 import {
   resolvePlayerAbility,
@@ -150,11 +151,14 @@ describe('player meleeCone', () => {
       p.pos = { x: 800, y: 500 };
       p.aim = { ...UP };
       w.boss!.pos = { x: 800, y: hit ? 450 : 700 };
-      p.abilities!.basic.parryOnHit = 0.35;
+      p.abilities!.basic.parryOnHit = 2;
       resolvePlayerAbility(w, p, 'basic', ZERO);
       expect(w.events.some((e) => e.t === 'skillArea' && e.area.style === 'holyStrike')).toBe(true);
+      expect(p.buffs.some((b) => b.kind === 'radiantParry')).toBe(hit);
+      expect(damagePlayer(w, p, 10)).toBeCloseTo(hit ? 6 : 10);
       expect(w.events.some((e) => e.t === 'support' && e.kind === 'protect')).toBe(hit);
-      expect(p.buffs.some((b) => b.source === 'parryDef')).toBe(hit);
+      expect(p.buffs.some((b) => b.kind === 'radiantParry')).toBe(false);
+      expect(damagePlayer(w, p, 10)).toBeCloseTo(10);
     },
   );
   it('misses a boss out of range (cast + skillArea still fire, no hit)', () => {

@@ -1,3 +1,4 @@
+import { MOON_CLAW_DELAY, resolveMoonClaws } from '../src/engine/combat/moonForm';
 import { afterEach, describe, expect, it } from 'vitest';
 import { World } from '../src/engine/world/world';
 import { resolvePlayerAbility } from '../src/engine/combat/abilities';
@@ -272,6 +273,9 @@ describe('Ranger/Druid authored builds', () => {
         const before = target.hp;
         w.events = [];
         resolvePlayerAbility(w, p, 'basic', zero);
+        expect(target.hp).toBe(before);
+        w.elapsed += MOON_CLAW_DELAY;
+        resolveMoonClaws(w);
         expect(before - target.hp).toBe(identity === 'dr_moon_g_b' ? 14 : 0);
         const cue = w.events.find((e) => e.t === 'skillArea');
         expect(cue && cue.t === 'skillArea' && cue.area.range).toBe(

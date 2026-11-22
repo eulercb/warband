@@ -1727,9 +1727,9 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'pa_gk_basic_a',
     'Radiant Riposte',
     '🌟',
-    'A connecting Holy Strike readies a +30% melee counter and a 0.35s parry; +12 damage',
+    'A connecting Holy Strike readies a +30% melee counter and reduces the next hit by 40% within 2s; +12 damage',
     casterGrand('meleeCone', (ab) => {
-      ab.parryOnHit = Math.max(ab.parryOnHit ?? 0, 0.35);
+      ab.parryOnHit = Math.max(ab.parryOnHit ?? 0, 2);
       addN(ab, 'damage', 12);
     }),
   ),

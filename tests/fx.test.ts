@@ -24,6 +24,8 @@ import {
 import { drawSkeleton } from '../src/render/pipeline/skeletonVisual';
 import { drawElementalBurst } from '../src/render/overlays/elementalBurst';
 import type { PlayerView } from '../src/engine/core/types';
+import { drawMeleeGarment, drawSunShield } from '../src/render/rig/meleeGarments';
+import { drawDefenseState } from '../src/render/pipeline/defenseVisuals';
 import { drawKnightArmor, drawKnightShield } from '../src/render/rig/knightArmor';
 import { heroStance } from '../src/render/rig/math/heroStance';
 import { drawMageGarment, playerVisualHeadroom } from '../src/render/rig/mageGarment';
@@ -217,6 +219,8 @@ it('lifts alternating feet and changes the sword silhouette on an authored attac
 it.each([
   ['mage', 'alive', undefined, 37.44],
   ['knight', 'alive', undefined, 40.8],
+  ['rogue', 'alive', undefined, 37.44],
+  ['paladin', 'alive', undefined, 37.44],
   ['mage', 'downed', undefined, 16],
   ['mage', 'alive', 'moonBear', 25.92],
   ['druid', 'downed', 'moonBear', 16],
@@ -339,9 +343,9 @@ it('pushes planted paws against travel while the lifted paws reach along travel'
   const liftLater = animalFoot(Math.PI * 0.75, Math.PI / 2, 0, 1);
   expect(lift.lift).toBeGreaterThan(0);
   expect(liftLater.y).toBeGreaterThan(lift.y);
-  expect(moonBasicPose(0.15)).toMatchObject({ cast: 1, sweep: 0 });
-  expect(moonBasicPose(0.5)).toMatchObject({ cast: 0, sweep: 1 });
-  expect(moonBasicPose(1)).toMatchObject({ cast: 0, sweep: 0 });
+  expect(moonBasicPose(100, Infinity)).toMatchObject({ cast: 1, sweep: 0 });
+  expect(moonBasicPose(340, 120)).toMatchObject({ cast: 0, sweep: 1 });
+  expect(moonBasicPose(700, 480)).toMatchObject({ cast: 0, sweep: 0 });
 });
 
 it.each([
@@ -384,4 +388,34 @@ it.each([
   fx.draw(graphics, camera);
   expect(instructionCount(graphics)).toBe(0);
   graphics.destroy();
+});
+
+it('draws both melee silhouettes and the live Radiant Riposte badge', () => {
+  const behind = new Graphics();
+  const front = new Graphics();
+  const at = (x: number, y: number, h: number) => ({ x: 100 + x * 14, y: 100 + y * 8 - h * 14 });
+  for (const style of ['paladin', 'rogue'] as const) {
+    drawMeleeGarment(behind, front, at, 14, style, 0.1);
+    expect(instructionCount(behind)).toBeGreaterThan(0);
+    expect(instructionCount(front)).toBeGreaterThan(0);
+    behind.clear();
+    front.clear();
+  }
+  drawSunShield(front, { x: 100, y: 100 }, 14);
+  expect(instructionCount(front)).toBeGreaterThan(8);
+  front.clear();
+  drawDefenseState(
+    front,
+    {
+      aim: { x: 1, y: 0 },
+      state: 'alive',
+      buffs: [{ kind: 'radiantParry', remaining: 1, mult: 0.6 }],
+    } as PlayerView,
+    100,
+    100,
+    12,
+  );
+  expect(instructionCount(front)).toBe(4);
+  behind.destroy();
+  front.destroy();
 });

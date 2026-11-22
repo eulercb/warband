@@ -89,7 +89,16 @@ export function onParryHit(p: Player, ab: PlayerAbilityDef, dealt: number): void
   }
   if (!ab.parryOnHit) return;
   put(p, { kind: 'counter', mult: 1.3, remaining: 4, source: 'martialCounter' });
-  put(p, { kind: 'damageTaken', mult: 0.6, remaining: ab.parryOnHit, source: 'parryDef' });
+  const kind = ab.basicPresentation === 'holyStrike' ? 'radiantParry' : 'damageTaken';
+  put(p, { kind, mult: 0.6, remaining: ab.parryOnHit, source: 'parryDef' });
+}
+
+export function spendRadiantParry(p: Player, incoming: number): number {
+  if (incoming <= 0) return incoming;
+  const parry = ready(p, 'radiantParry');
+  if (!parry) return incoming;
+  p.buffs.splice(p.buffs.indexOf(parry), 1);
+  return incoming * parry.mult;
 }
 /** Voluntary blood cost bypasses wards, causes no hit procs, and cannot kill. */
 export function tickBloodPrice(p: Player, dt: number): void {

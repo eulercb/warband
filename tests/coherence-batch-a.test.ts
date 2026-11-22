@@ -1,3 +1,4 @@
+import { MOON_CLAW_DELAY, resolveMoonClaws } from '../src/engine/combat/moonForm';
 import { afterEach, describe, expect, it } from 'vitest';
 import { World } from '../src/engine/world/world';
 import { resolvePlayerAbility } from '../src/engine/combat/abilities';
@@ -113,6 +114,8 @@ describe('Moon growth and independent Primal Roar follow-through', () => {
       resolvePlayerAbility(w, p, 'a2', ZERO);
       p.hp = 1; // base heal is not the measured effect
       resolvePlayerAbility(w, p, 'basic', ZERO);
+      w.elapsed += MOON_CLAW_DELAY;
+      resolveMoonClaws(w);
       expect(p.hp).toBeCloseTo(1 + Math.max(4, maxHp * 0.03));
       damageBoss(w, p, boss, 1, { direct: true });
       expect(p.hp).toBeCloseTo(1 + Math.max(4, maxHp * 0.03));
@@ -128,6 +131,8 @@ describe('Moon growth and independent Primal Roar follow-through', () => {
       expect(p.buffs.some((b) => b.kind === 'brambleReady')).toBe(true);
       expect(buffMult(p, 'moveSpeed')).toBe(1.2); // form speed, not duplicate Roar speed
       resolvePlayerAbility(w, p, 'basic', ZERO);
+      w.elapsed += MOON_CLAW_DELAY;
+      resolveMoonClaws(w);
       expect(boss.hp).toBeCloseTo(10000 - (14 + 24) * 1.3);
       expect(a.hp).toBeCloseTo(1000 - (14 + 24) * 1.3);
       expect(far.hp).toBe(1000);
@@ -138,6 +143,8 @@ describe('Moon growth and independent Primal Roar follow-through', () => {
       expect(p.buffs.some((b) => b.kind === 'brambleReady')).toBe(false);
       expect(w.events.filter((e) => e.t === 'skillArea' && e.color === 0x89c96a)).toHaveLength(1);
       resolvePlayerAbility(w, p, 'basic', ZERO);
+      w.elapsed += MOON_CLAW_DELAY;
+      resolveMoonClaws(w);
       expect(w.events.filter((e) => e.t === 'skillArea' && e.color === 0x89c96a)).toHaveLength(1);
     },
   );

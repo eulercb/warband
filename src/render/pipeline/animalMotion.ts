@@ -70,14 +70,11 @@ export function animalFoot(phase: number, travel: number, facing: number, reach:
 
 export const MOON_BASIC_POSE_MS = 680;
 
-export function moonBasicPose(progress: number) {
-  const ramp = (from: number, to: number) =>
-    Math.max(0, Math.min(1, (progress - from) / (to - from)));
-  const cast = ramp(0, 0.12) * (1 - ramp(0.17, 0.31));
-  const followThrough = (progress * MOON_BASIC_POSE_MS - 150) / 520;
-  const swing = Math.max(0, Math.min(1, (followThrough - 0.16) / 0.34));
-  const sweep =
-    Math.max(0, Math.min(1, (followThrough - 0.12) / 0.16)) *
-    (1 - Math.max(0, Math.min(1, (followThrough - 0.53) / 0.41)));
+export function moonBasicPose(castAge: number, swipeAge: number) {
+  const ramp = (value: number, from: number, to: number) =>
+    Math.max(0, Math.min(1, (value - from) / (to - from)));
+  const cast = ramp(castAge, 0, 82) * (1 - ramp(castAge, 116, 211));
+  const swing = ramp(swipeAge, 14, 192);
+  const sweep = 1 - ramp(swipeAge, 205, 420);
   return { cast, swing, sweep };
 }

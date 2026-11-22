@@ -957,22 +957,6 @@ function resolveConeAt(
     }
   }
   onParryHit(p, ab, dealt);
-  if (
-    ab.basicPresentation === 'holyStrike' &&
-    ab.parryOnHit &&
-    dealt > 0 &&
-    p.state === 'alive' &&
-    p.hp > 0
-  ) {
-    world.events.push({
-      t: 'support',
-      sourceId: p.id,
-      targetId: p.id,
-      from: { ...p.pos },
-      pos: { ...p.pos },
-      kind: 'protect',
-    });
-  }
   lifesteal(world, p, ab, dealt);
 }
 

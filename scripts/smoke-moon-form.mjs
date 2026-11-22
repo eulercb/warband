@@ -33,7 +33,8 @@ try {
       const { Renderer } = await import('/src/render/pipeline/renderer.ts');
       const { World } = await import('/src/engine/world/world.ts');
       const { resolvePlayerAbility } = await import('/src/engine/combat/abilities.ts');
-      const { maintainMoonForms } = await import('/src/engine/combat/moonForm.ts');
+      const { maintainMoonForms, resolveMoonClaws, MOON_CLAW_DELAY } =
+        await import('/src/engine/combat/moonForm.ts');
       const { tickBuffs } = await import('/src/engine/combat/combat.ts');
       const { tickSubclassPassives, setSubclassPassive } =
         await import('/src/engine/combat/subclassPassives.ts');
@@ -77,6 +78,13 @@ try {
           if (mode === 'claw') {
             owner.hp -= 20;
             resolvePlayerAbility(world, owner, 'basic', { x: 0, y: 0 });
+            if (
+              boss.hp !== 10000 ||
+              world.events.some((e) => e.t === 'skillArea' && e.area.style === 'moonClaw')
+            )
+              throw new Error('Claw damage or area appeared before the swipe');
+            world.elapsed += MOON_CLAW_DELAY;
+            resolveMoonClaws(world);
           }
           if (mode === 'rest' || mode === 'ready') {
             tickBuffs(owner, 6);

@@ -23,6 +23,7 @@
  */
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import { drawMageGarment } from './mageGarment';
+import { drawMeleeGarment, drawSunShield } from './meleeGarments';
 import { drawKnightArmor, drawKnightShield } from './knightArmor';
 import { heroStance } from './math/heroStance';
 import { bladeSweepSeconds } from '../overlays/meleeVisual';
@@ -501,6 +502,23 @@ export class CreatureRig {
         R,
       );
     }
+    if ((this.spec.garment === 'paladin' || this.spec.garment === 'rogue') && !downed) {
+      const heightScale = this.spec.garment === 'rogue' ? 0.85 : 1;
+      drawMeleeGarment(
+        this.gBehind,
+        this.gDecor,
+        (x, y, h) => {
+          const point = this.bodyPoint({ x, y }, R);
+          return {
+            x: point.x,
+            y: this.origin.y + (point.y - this.origin.y) * 0.53 - h * R * heightScale,
+          };
+        },
+        R,
+        this.spec.garment,
+        clamp((-this.vel.x * this.sin + this.vel.y * this.cos) / 220, -0.28, 0.28),
+      );
+    }
     if (this.spec.garment === 'mage' && !downed) {
       const lateralSpeed = -this.vel.x * this.sin + this.vel.y * this.cos;
       const drift = clamp(-lateralSpeed / 300, -0.24, 0.24) + Math.sin(timeSec * 4) * 0.07;
@@ -732,9 +750,15 @@ export class CreatureRig {
       }
       if (this.spec.garment === 'knight' && !downed) {
         hand = arm.side === -1 ? this.knightShieldAnchor(R) : grip;
-      } else if (this.blade?.style === 'daggerSlash' && !downed) {
+      } else if (
+        (this.spec.garment === 'rogue' || this.blade?.style === 'daggerSlash') &&
+        !downed
+      ) {
         hand = arm.side === -1 ? this.daggerOffhand(R) : grip;
-      } else if (this.blade?.style === 'holyStrike' && !downed) {
+      } else if (
+        (this.spec.garment === 'paladin' || this.blade?.style === 'holyStrike') &&
+        !downed
+      ) {
         hand = arm.side === -1 ? this.paladinShieldAnchor(R) : grip;
       }
       const reachScale = this.spec.garment && !downed ? 1.14 : 1;
@@ -791,7 +815,9 @@ export class CreatureRig {
             ? this.attackAge >= 0
               ? this.aimFacing
               : this.facing + 1.05
-            : this.facing;
+            : this.spec.garment === 'rogue' && this.attackAge < 0
+              ? this.facing + 0.64
+              : this.facing;
     const fx = Math.cos(staffAngle);
     const fy = Math.sin(staffAngle);
     const perp = { x: -fy, y: fx };
@@ -849,10 +875,13 @@ export class CreatureRig {
           .stroke({ width: 0.13 * R, color: metal, cap: 'round' });
         g.circle(grip.x, grip.y, 0.1 * R).fill({ color: w.color });
         if (w.offhand === 'dagger') {
-          const ob = this.blade?.style === 'daggerSlash' ? this.daggerOffhand(R) : at(0, -0.5);
-          const offAngle = staffAngle - (this.fullTurn ? Math.PI : 0.72);
+          const ob =
+            this.spec.garment === 'rogue' || this.blade?.style === 'daggerSlash'
+              ? this.daggerOffhand(R)
+              : at(0, -0.5);
+          const offAngle = this.daggerOffhandAngle();
           const o =
-            this.blade?.style === 'daggerSlash'
+            this.spec.garment === 'rogue' || this.blade?.style === 'daggerSlash'
               ? {
                   x: ob.x + Math.cos(offAngle) * w.length * R,
                   y: ob.y + Math.sin(offAngle) * w.length * R,
@@ -920,6 +949,10 @@ export class CreatureRig {
     // Off-hand shield (paladin / knight): a small rounded kite plate to the side/back.
     if (w.offhand === 'shield') {
       const c = this.paladinShieldAnchor(R);
+      if (this.spec.garment === 'paladin') {
+        drawSunShield(g, c, R);
+        return;
+      }
       if (this.spec.garment === 'knight') {
         drawKnightShield(g, this.knightShieldAnchor(R), R, this.shieldBrace);
         return;
@@ -1030,16 +1063,28 @@ export class CreatureRig {
 
   private paladinShieldAnchor(R: number): Vec2 {
     const brace = this.blade?.style === 'holyStrike' ? Math.sin(Math.PI * this.bladePhase()) : 0;
-    return this.bodyPoint({ x: -0.1 + brace * 0.75, y: -0.85 }, R);
+    const point = this.bodyPoint({ x: -0.1 + brace * 0.75, y: -0.85 }, R);
+    if (this.spec.garment === 'paladin') {
+      point.y -= R * 0.66;
+      return this.fitRaisedHand(point, -1, R);
+    }
+    return point;
+  }
+
+  private daggerOffhandAngle(): number {
+    return this.blade ? this.bladeAngle() - (this.fullTurn ? Math.PI : 0.72) : this.facing - 0.82;
   }
 
   private daggerOffhand(R: number): Vec2 {
-    const angle = this.bladeAngle() - (this.fullTurn ? Math.PI : 0.72);
+    const angle = this.daggerOffhandAngle();
     const spread = 0.9 + Math.sin(Math.PI * this.bladePhase()) * 0.48;
-    return {
+    const point = {
       x: this.origin.x + Math.cos(angle) * spread * R,
       y: this.origin.y + Math.sin(angle) * spread * R,
     };
+    if (this.spec.garment !== 'rogue') return point;
+    point.y -= R * 0.5;
+    return this.fitRaisedHand(point, -1, R);
   }
 
   private gripPoint(R: number, ctx: RigDriveCtx, downed: boolean): Vec2 {
@@ -1063,16 +1108,19 @@ export class CreatureRig {
           ? this.attackAge >= 0
             ? this.aimFacing
             : this.facing + 1.05
-          : this.spec.garment &&
-              (this.attackAge >= 0 || activeRelease(this.lightningAge, this.elementalAge))
-            ? this.aimFacing
-            : this.facing;
+          : !downed && this.spec.garment === 'rogue' && this.attackAge < 0
+            ? this.facing + 0.64
+            : this.spec.garment &&
+                (this.attackAge >= 0 || activeRelease(this.lightningAge, this.elementalAge))
+              ? this.aimFacing
+              : this.facing;
     const point = {
       x: this.origin.x + Math.cos(forward) * dist * R,
       y: this.origin.y + Math.sin(forward) * dist * R,
     };
-    if (!downed && this.blade?.style === 'holyStrike')
-      point.y -= R * 0.98 * (1 - this.bladePhase());
+    if (!downed && this.spec.garment === 'paladin')
+      point.y -= R * (this.blade ? 0.64 + 0.8 * (1 - this.bladePhase()) : 0.94);
+    if (!downed && this.spec.garment === 'rogue') point.y -= R * 0.48;
     if (!downed && this.blade?.style === 'daggerSlash') point.y += R * 0.15;
     if (this.spec.garment === 'knight' && !downed) point.y -= R * 0.65;
     if (this.spec.garment === 'mage' && !downed) {

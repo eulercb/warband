@@ -402,3 +402,42 @@ In-game captures:
 [Whirlwind of Steel](images/knight-whirlwind-turn-phone.png),
 [Holy Strike with Radiant Riposte](images/paladin-holy-strike-phone.png), and
 [Whirling Blades](images/rogue-whirling-blades-phone.png).
+
+## Character rigs before ability production
+
+Astra 6.2 High reviewed the new order. An attack-only preview cannot show how
+a shield braces, where a blade starts or whether the weapon silhouettes differ.
+Establish each class's body, equipment, idle carry, locomotion, aim turns and
+downed pose first. Use its existing basic and one linked grand to verify how
+the body reads during combat. Finish the class's other attacks and hybrid
+deliveries against that accepted rig.
+
+The Paladin has a raised gold helm, ivory split tabard, red cloth and a sun
+shield on its own arm. The Rogue has a lower hood, short asymmetrical cape and
+independent dagger holds at rest and during attacks. Whirling Blades now puts
+its trails on opposite sides, aligned with the rotating dagger hands.
+
+Moon Bear releases Thornlash as before. After 220 ms, the server resolves the
+claw from the bear's current position using the aim and reach captured on cast.
+The paw, area and damage all start on that later beat. Leaving the form before
+impact cancels the pending swipe. Radiant Riposte now arms one timed charge on
+positive Holy Strike contact. It reduces the next incoming hit that reaches
+its defenses by 40% within 2s and retains the separate melee counter. The
+shield badge shows readiness and remaining time, and a protection flash shows
+consumption. This revision applies to Radiant Riposte.
+
+The remaining rig cohorts are Monk and Barbarian, Ranger and Bard, Cleric and
+base-form Druid, then Sorcerer and Warlock. Mage, Knight and Moon Bear remain
+references. Finish remaining gameplay effects against these silhouettes before
+moving into the paired boss/arena encounter slices. Sol 6.2 High reviews the
+next rig cohort.
+
+**Impact alignment criterion.** For every new or revised gameplay effect, verify
+when the host applies it, when the active animation reaches the impact pose and
+when the effect first shows damage/coverage. A delayed follow-up must deliver
+on its own visual beat. Use an earlier cue only for deliberate preparation or
+telegraphing, and visually distinguish it from a resolved hit.
+
+In-game captures: [Paladin with Riposte ready](images/paladin-raised-riposte-phone.png),
+[Rogue Whirling Blades](images/rogue-raised-whirling-phone.png), and
+[Moon Claw impact](images/moon-claw-timed-impact.png).

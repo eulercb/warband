@@ -1406,7 +1406,7 @@ export function describeAbility(
 
   if (def.parryOnHit)
     parts.push(
-      `connecting hit readies next melee counter +30% for 4s; parry takes 40% less damage for ${s(def.parryOnHit)}`,
+      `connecting hit readies next melee counter +30% for 4s; ${def.basicPresentation === 'holyStrike' ? `next hit deals 40% less damage within ${s(def.parryOnHit)}` : `parry takes 40% less damage for ${s(def.parryOnHit)}`}`,
     );
   if (def.bloodRage)
     parts.push(

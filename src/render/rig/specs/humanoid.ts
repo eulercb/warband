@@ -169,6 +169,16 @@ function dressHero(spec: RigSpec, classId: ClassId): void {
       ];
       break;
     }
+    case 'paladin':
+      spec.garment = 'paladin';
+      setTint(spec, 'torso', 0xb58851);
+      setTint(spec, 'head', 0xae824d);
+      break;
+    case 'rogue':
+      spec.garment = 'rogue';
+      setTint(spec, 'torso', 0x443747);
+      setTint(spec, 'head', 0x46354b);
+      break;
     case 'ranger': {
       setTint(spec, 'torso', 0x3e6430); // dark cloak
       setTint(spec, 'head', 0xd9b38c); // skin, peeking under the hood

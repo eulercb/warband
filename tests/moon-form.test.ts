@@ -12,6 +12,8 @@ import {
 import {
   inMoonForm,
   maintainMoonForms,
+  MOON_CLAW_DELAY,
+  resolveMoonClaws,
   MOON_ASPECT,
   onMoonDirectHit,
 } from '../src/engine/combat/moonForm';
@@ -172,6 +174,11 @@ describe('Moon identity, all loadouts and original ability preservation', () => 
   });
 });
 
+function finishClaw(w: World): void {
+  w.elapsed += MOON_CLAW_DELAY;
+  resolveMoonClaws(w);
+}
+
 describe('bear basics: one aimed supplemental swipe, normal Thornlash retained', () => {
   it.each([false, true])(
     'native/composed basic keeps its own projectile and adds one claw (composed=%s)',
@@ -186,11 +193,19 @@ describe('bear basics: one aimed supplemental swipe, normal Thornlash retained',
       const original = JSON.stringify(p.abilities!.basic);
       resolvePlayerAbility(w, p, 'basic', ZERO);
       expect(w.projectiles).toHaveLength(3);
+      expect(boss.hp).toBe(10000);
+      w.elapsed += MOON_CLAW_DELAY - 0.01;
+      resolveMoonClaws(w);
+      expect(w.events.some((e) => e.t === 'skillArea' && e.area.style === 'moonClaw')).toBe(false);
+      expect(boss.hp).toBe(10000);
+      w.elapsed += 0.01;
+      resolveMoonClaws(w);
       expect(boss.hp).toBe(9986);
       expect(p.hp).toBeCloseTo(p.maxHp - 15.8);
       expect(JSON.stringify(p.abilities!.basic)).toBe(original);
       expect(w.events.filter((e) => e.t === 'animalStrike')).toEqual([
         { t: 'animalStrike', sourceId: p.id, animal: 'bear', slot: 0, angle: 0 },
+        { t: 'animalStrike', sourceId: p.id, animal: 'bear', slot: 1, angle: 0 },
       ]);
       expect(w.events.filter((e) => e.t === 'skillArea' && e.area.kind === 'cone')).toHaveLength(1);
       expect(
@@ -201,6 +216,21 @@ describe('bear basics: one aimed supplemental swipe, normal Thornlash retained',
       ).toBe(true);
     },
   );
+  it('rechecks the impact position with captured aim and discards claws when the form ends', () => {
+    const { w, p, boss } = setup();
+    activate(w);
+    boss.pos.x = 920;
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    p.pos.x += 200;
+    p.aim.x = -1;
+    finishClaw(w);
+    expect(boss.hp).toBe(9986);
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    p.buffs = [];
+    finishClaw(w);
+    expect(p.moonClaws).toBeUndefined();
+    expect(boss.hp).toBe(9986);
+  });
   it('hits each living enemy in the aimed cone, not allies, rear, distant or dead foes', () => {
     const { w, p, ally, boss } = setup();
     activate(w);
@@ -210,6 +240,7 @@ describe('bear basics: one aimed supplemental swipe, normal Thornlash retained',
       dead = add(w);
     dead.hp = 0;
     resolvePlayerAbility(w, p, 'basic', ZERO);
+    finishClaw(w);
     expect(boss.hp).toBe(9986);
     expect(near.hp).toBe(986);
     expect(rear.hp).toBe(1000);
@@ -224,11 +255,13 @@ describe('bear basics: one aimed supplemental swipe, normal Thornlash retained',
     p.hp -= 20;
     boss.pos.x = 1050;
     resolvePlayerAbility(w, p, 'basic', ZERO);
+    finishClaw(w);
     expect(p.hp).toBe(p.maxHp - 20);
     expect(w.projectiles).toHaveLength(1);
     boss.pos.x = 700;
     boss.buffs.push({ kind: 'invuln', mult: 0, remaining: 3, source: 'test' });
     resolvePlayerAbility(w, p, 'basic', ZERO);
+    finishClaw(w);
     expect(p.hp).toBe(p.maxHp - 20);
     expect(p.subclassPassiveCooldowns?.moon_mend).toBeUndefined();
   });
@@ -242,6 +275,7 @@ describe('bear basics: one aimed supplemental swipe, normal Thornlash retained',
     boss.buffs.push({ kind: 'damageTaken', mult: 0.5, remaining: 3, source: 'test' });
     p.buffs.push({ kind: 'counter', mult: 1.3, remaining: 4, source: 'counterTest' });
     resolvePlayerAbility(w, p, 'basic', ZERO);
+    finishClaw(w);
     expect(boss.hp).toBe(9986);
     expect(p.buffs.some((b) => b.kind === 'counter')).toBe(true);
   });
@@ -250,9 +284,11 @@ describe('bear basics: one aimed supplemental swipe, normal Thornlash retained',
     activate(w);
     p.aim = { x: -1, y: 0 };
     resolvePlayerAbility(w, p, 'basic', ZERO);
+    finishClaw(w);
     expect(boss.hp).toBe(10000);
     p.aim = { x: 1, y: 0 };
     resolvePlayerAbility(w, p, 'basic', ZERO);
+    finishClaw(w);
     expect(boss.hp).toBe(9986);
   });
 });
@@ -264,11 +300,13 @@ describe('bounded natural mending and subclass interactions', () => {
     add(w);
     add(w);
     resolvePlayerAbility(w, p, 'basic', ZERO);
+    finishClaw(w);
     expect(p.subclassPassiveCooldowns?.moon_mend).toBeUndefined();
     p.hp -= 20;
     onMoonDirectHit(w, p, boss, 0, true);
     expect(p.subclassPassiveCooldowns?.moon_mend).toBeUndefined();
     resolvePlayerAbility(w, p, 'basic', ZERO);
+    finishClaw(w);
     expect(p.hp).toBeCloseTo(p.maxHp - 15.8);
     damageBoss(w, p, boss, 1, { direct: true });
     expect(p.hp).toBeCloseTo(p.maxHp - 15.8);
@@ -391,7 +429,9 @@ describe('lifecycle, controls and replicated form', () => {
     expect(swipes).toBe(1);
     step();
     step('basic');
-    expect(w.events.some((e) => e.t === 'skillArea' && e.area.kind === 'cone')).toBe(true);
+    expect(w.events.some((e) => e.t === 'skillArea' && e.area.style === 'moonClaw')).toBe(false);
+    for (let i = 0; i < 5; i++) step();
+    expect(w.events.some((e) => e.t === 'skillArea' && e.area.style === 'moonClaw')).toBe(true);
     for (let i = 0; i < 100; i++) step();
     expect(w.serialize().players[0].form).toBeUndefined();
   });

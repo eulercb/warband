@@ -976,6 +976,7 @@ export class Renderer {
           timeSec,
           track(`${p.id}:bear`, p.pos, Math.atan2(p.aim.y, p.aim.x)),
           this.animalStrikes.get(`${p.id}:bear:0`),
+          this.animalStrikes.get(`${p.id}:bear:1`),
         );
 
       if (p.state === 'alive' && p.spiritCompanion)

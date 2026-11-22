@@ -136,7 +136,7 @@ export interface WeaponSpec {
 export interface RigSpec {
   id: RigId;
   parts: BodyPartSpec[];
-  garment?: 'mage' | 'knight';
+  garment?: 'mage' | 'knight' | 'paladin' | 'rogue';
   legs?: LegGroupSpec;
   spine?: SpineSpec;
   tentacles?: TentacleSpec[];

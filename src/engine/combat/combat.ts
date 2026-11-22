@@ -12,7 +12,13 @@ import { absorbDamage } from './absorption';
  * Pure functions operating on entities + an event sink. No world import (to
  * keep this decoupled and trivially unit-testable).
  */
-import { martialHitMultiplier, onMartialHit, onGuardedDamage, bloodHitHealing } from './martial';
+import {
+  martialHitMultiplier,
+  onMartialHit,
+  onGuardedDamage,
+  bloodHitHealing,
+  spendRadiantParry,
+} from './martial';
 import type {
   Player,
   WhisperCast,
@@ -642,7 +648,9 @@ export function damagePlayer(sink: EventSink, target: Player, base: number, orig
     buffMult(target, 'auraBulwark') *
     target.damageTakenMult;
   const blocked = blockFromFront(target, origin, incoming);
-  if (blocked)
+  const exposed = blocked ? 0 : mirrorDamage(target, origin, incoming);
+  const guarded = spendRadiantParry(target, exposed);
+  if (blocked || guarded < exposed)
     sink.events.push({
       t: 'support',
       sourceId: target.id,
@@ -651,7 +659,7 @@ export function damagePlayer(sink: EventSink, target: Player, base: number, orig
       pos: { ...target.pos },
       kind: 'protect',
     });
-  const resolved = blocked ? 0 : absorbDamage(target, mirrorDamage(target, origin, incoming));
+  const resolved = absorbDamage(target, guarded);
   const dmg = sink.deferPlayerDamage?.(target, resolved) ?? resolved;
   target.hp -= dmg;
   if (dmg > 0)
