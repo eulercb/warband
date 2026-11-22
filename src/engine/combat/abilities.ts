@@ -917,6 +917,7 @@ function resolveConeAt(
   if (!hitIds)
     emitSkillArea(world, p.id, CLASS_COLORS[p.classId] ?? 0xffffff, {
       kind: 'cone',
+      ...(ab.basicPresentation === 'cleave' ? { style: 'cleave' as const } : {}),
       origin: { ...origin },
       angle: aimAngle,
       range,
@@ -1569,6 +1570,9 @@ function spawnPlayerProjectile(
 ): void {
   const origin = vadd(o.returningSource?.guidanceOrigin ?? p.pos, vscale(dir, p.radius + 4));
   const proj: Projectile = {
+    ...(kind !== 'fireball' && o.returningSource?.basicPresentation === 'arcaneBolt'
+      ? { presentation: 'arcaneBolt' as const }
+      : {}),
     impactStyle: o.returningSource?.visualStyle === 'fireball' ? 'fireball' : undefined,
     guidance: o.returningSource?.guidanceCast,
     id: world.allocId(),

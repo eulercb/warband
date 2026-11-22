@@ -95,6 +95,8 @@ export class RigLayer {
           this.nodes.get(hit.id)?.rig.triggerLightningRecoil(e.area.angle);
         }
       }
+      if (e.t === 'skillArea' && e.area.style === 'cleave')
+        this.nodes.get(e.sourceId)?.rig.triggerCleave(e.area.angle);
       if (e.t === 'blink') this.nodes.get(e.id)?.rig.triggerBlink(e.presentation === 'mage');
       if (e.t !== 'cast') continue;
       const rig = this.nodes.get(e.sourceId)?.rig;

@@ -1,4 +1,9 @@
-import { advanceAnimalMotion, type AnimalMotion, type AnimalStrike } from './animalMotion';
+import {
+  MOON_BASIC_POSE_MS,
+  advanceAnimalMotion,
+  type AnimalMotion,
+  type AnimalStrike,
+} from './animalMotion';
 import { playerVisualHeadroom } from '../rig/mageGarment';
 import { drawRefuge } from './refugeVisuals';
 import { drawFont, drawFontFootprint } from './fontVisuals';
@@ -226,7 +231,7 @@ export class Renderer {
     // Spawn floaters / bursts / flashes + shake, and feed the same event stream
     // to the sprite attack triggers and the particle emitter, BEFORE drawing.
     for (const [key, strike] of this.animalStrikes)
-      if (now - strike.started >= 420) this.animalStrikes.delete(key);
+      if (now - strike.started >= MOON_BASIC_POSE_MS) this.animalStrikes.delete(key);
     for (const e of state.events) {
       if (e.t === 'animalStrike')
         this.animalStrikes.set(`${e.sourceId}:${e.animal}:${e.slot}`, {
@@ -1017,7 +1022,7 @@ export class Renderer {
         drawReturningShot(g, pr, this.camera.worldToScreen(pr.pos), this.camera.scale);
         continue;
       }
-      if (SPRITE_FLAGS.projectile) continue;
+      if (SPRITE_FLAGS.projectile && !pr.presentation) continue;
       drawProjectile(g, pr, this.camera.worldToScreen(pr.pos), this.camera.scale);
     }
   }

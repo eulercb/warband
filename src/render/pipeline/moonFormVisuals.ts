@@ -1,7 +1,10 @@
 import type { Graphics } from 'pixi.js';
 import type { PlayerView, Vec2 } from '../../engine/core/types';
 import {
+  animalFoot,
   blendAnimalFacing,
+  MOON_BASIC_POSE_MS,
+  moonBasicPose,
   strikeProgress,
   type AnimalMotion,
   type AnimalStrike,
@@ -17,10 +20,12 @@ export function drawMoonBear(
   strike?: AnimalStrike,
 ): void {
   const r = Math.max(11, 24 * scale);
-  const progress = strikeProgress(strike, time * 1000, 420);
-  const swipe = progress < 1 ? Math.pow(1 - progress, 0.65) : 0;
+  const progress = strikeProgress(strike, time * 1000, MOON_BASIC_POSE_MS);
+  const { cast, swing, sweep: swipe } = moonBasicPose(progress);
   const aim = motion?.facing ?? Math.atan2(p.aim.y, p.aim.x);
-  const facing = strike ? blendAnimalFacing(aim, strike.angle, Math.min(1, swipe * 2.5)) : aim;
+  const facing = strike
+    ? blendAnimalFacing(aim, strike.angle, Math.min(1, Math.max(cast, swipe) * 2.5))
+    : aim;
   const c = Math.cos(facing);
   const s = Math.sin(facing);
   const phase = motion?.phase ?? 0;
@@ -44,16 +49,16 @@ export function drawMoonBear(
   const leg = (fore: number, side: number) => {
     const lead = fore > 0;
     const pawPhase = phase + (side > 0 ? Math.PI : 0) + (lead ? Math.PI * 0.66 : 0);
-    const step = Math.cos(pawPhase) * stride;
-    const lift = Math.max(0, Math.sin(pawPhase)) * stride;
+    const step = animalFoot(pawPhase, motion?.travel ?? facing, facing, stride * 0.34);
     const swings = lead && side === (c >= 0 ? 1 : -1);
     const reach = swings ? swipe : 0;
+    const launch = lead && !swings ? cast : 0;
     const foot = at(
-      fore + step * 0.34 + reach * 0.78,
-      side * (0.51 + reach * (0.85 - progress * 1.45)),
-      lift * 0.24 + reach * 0.56,
+      fore + step.x + reach * (0.65 + Math.sin(swing * Math.PI) * 0.62) + launch * 0.57,
+      side * (0.51 + reach * (0.89 - swing * 2.15)) + step.y,
+      step.lift * stride * 0.24 + reach * 0.46 + launch * 0.32,
     );
-    const shoulder = at(fore, side * 0.36 + rock, 0.54 + bob);
+    const shoulder = at(fore, side * 0.36 + rock, 0.54 + bob + reach * 0.22);
     g.moveTo(...shoulder)
       .lineTo(...foot)
       .stroke({
@@ -64,10 +69,8 @@ export function drawMoonBear(
     g.ellipse(...foot, r * (0.22 + reach * 0.08), r * 0.15)
       .fill({ color: 0xa799bb })
       .stroke({ color: outline, width: Math.max(1, r * 0.05) });
-    if (reach > 0.15)
-      g.moveTo(foot[0] - r * 0.1, foot[1] + r * 0.03)
-        .lineTo(foot[0] + r * 0.11, foot[1] + r * 0.06)
-        .stroke({ color: 0xffe4ae, width: r * 0.105, alpha: reach, cap: 'round' });
+    if (launch > 0.06)
+      g.circle(...foot, r * (0.14 + launch * 0.13)).fill({ color: 0xb7ea8d, alpha: launch * 0.6 });
   };
   const far = c >= 0 ? -1 : 1;
   leg(-0.65, far);
@@ -97,7 +100,26 @@ export function drawMoonBear(
   body(0.09, rock * 0.4, 0.76 + bob, 0.77, 0.58, 0x79698c);
   body(0.42, rock, 0.82 + bob + rock, 0.62, 0.48, 0x9282a8);
   if (s >= -0.45) head();
-  if (swipe > 0.15) leg(0.55, -far);
+  if (cast > 0.06) leg(0.55, far);
+  if (swipe > 0.03) {
+    leg(0.55, -far);
+    // A short set of near-body claw ribbons follows the paw across the chest.
+    for (let i = 0; i < 3; i++) {
+      const reach = 1.3 + i * 0.13;
+      const y = -far * (0.86 - swing * 1.68);
+      g.moveTo(...at(reach - 0.12, y + far * 0.69, 0.83 - i * 0.08))
+        .quadraticCurveTo(
+          ...at(reach + 0.28, y + far * 0.31, 0.67 - i * 0.08),
+          ...at(reach, y, 0.49 - i * 0.08),
+        )
+        .stroke({
+          color: 0xe7d4ff,
+          alpha: swipe * (0.92 - i * 0.16),
+          width: r * 0.075,
+          cap: 'round',
+        });
+    }
+  }
 
   const [mx, my] = at(-0.27, 0, 1.0 + bob);
   g.moveTo(mx + Math.cos(0.45) * r * 0.28, my + Math.sin(0.45) * r * 0.28)

@@ -4463,6 +4463,7 @@ export class World {
           color: p.color,
           guidance: guidedProjectileView(this, p),
           reflected: p.reflected,
+          ...(p.presentation ? { presentation: p.presentation } : {}),
           returnPhase: p.returningShot?.phase,
           returnTurn: (p.returningShot?.turnFlash ?? 0) > 0 || undefined,
         })),

@@ -1019,6 +1019,7 @@ export interface GuidanceCast {
 }
 export interface Projectile {
   impactStyle?: 'fireball';
+  presentation?: 'arcaneBolt';
   reflected?: boolean;
   guidance?: GuidanceCast;
   aimPoint?: Vec2;
@@ -1536,7 +1537,7 @@ export interface SkillArea {
   /** Search reach, not an area-wide application. Draw an unfilled, subdued outline. */
   reach?: boolean;
   kind: SkillAreaKind;
-  style?: 'lightning' | 'frostNova' | 'fireball' | 'blinkDepart' | 'blinkArrive';
+  style?: 'lightning' | 'frostNova' | 'fireball' | 'blinkDepart' | 'blinkArrive' | 'cleave';
   contacts?: { id: EntityId; pos: Vec2; radius: number }[];
   stoppedByCover?: boolean;
   origin: Vec2; // cone/line emanation point, or circle center
@@ -1837,6 +1838,7 @@ export interface GuidedBurstView {
   guided: boolean;
 }
 export interface ProjectileView {
+  presentation?: Projectile['presentation'];
   reflected?: boolean;
   guidance?: { remaining: number; angle: number };
   returnPhase?: 'out' | 'back';
