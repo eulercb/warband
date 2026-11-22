@@ -1659,6 +1659,7 @@ describe('boss summon', () => {
     const ab = bossAb('lich', 'summonSkeletons');
     resolveBossAbility(w, boss, ab, mkAction());
     expect(w.adds).toHaveLength(2); // addCount(1) = 2
+    expect(w.serialize().adds.map((a) => a.appearance)).toEqual(['skeleton', 'skeleton']);
     for (const a of w.adds) {
       expect(a.hp).toBe(ADD_HP);
       expect(a.maxHp).toBe(ADD_HP);

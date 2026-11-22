@@ -4419,6 +4419,7 @@ export class World {
       bosses: this.bosses.map((b) => this.bossView(b)),
       adds: this.adds.map((a) => ({
         id: a.id,
+        appearance: a.appearance,
         maneuver: a.maneuverMotion && {
           ownerId: a.maneuverMotion.ownerId,
           dir: { ...a.maneuverMotion.dir },

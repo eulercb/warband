@@ -89,16 +89,26 @@ export class Particles {
 
   /** Emit particles for a frame's events. Call alongside `Fx.processEvents`. */
   processEvents(events: GameEvent[]): void {
+    // Lightning has its own origin flare and directional contact sparks.
+    // Skip the overlapping generic additive clouds so its silhouettes stay readable.
+    const lightningSources = new Set<number>();
+    const lightningContacts = new Set<number>();
+    for (const event of events) {
+      if (event.t !== 'skillArea' || event.area.style !== 'lightning') continue;
+      lightningSources.add(event.sourceId);
+      for (const contact of event.area.contacts ?? []) lightningContacts.add(contact.id);
+    }
     for (const e of events) {
       switch (e.t) {
         case 'cast':
           if (e.side === 'boss') {
             this.burst(e.pos, 20, { color: 0xff8a3d, spd: 60, up: 30, ttl: 0.6, s0: 4, s1: 1 });
-          } else {
+          } else if (!lightningSources.has(e.sourceId)) {
             this.ring(e.pos, 12, { color: 0x8fd3ff, spd: 90, ttl: 0.4, s0: 3, s1: 1 });
           }
           break;
         case 'hit':
+          if (lightningContacts.has(e.targetId)) break;
           this.burst(e.pos, 8, {
             color: e.side === 'player' ? 0xff5a5a : 0xffe066,
             spd: 120,

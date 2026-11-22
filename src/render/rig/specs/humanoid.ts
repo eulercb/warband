@@ -181,17 +181,9 @@ function dressHero(spec: RigSpec, classId: ClassId): void {
       break;
     }
     case 'mage': {
-      setTint(spec, 'torso', 0x4a2d7e); // robe
-      setTint(spec, 'head', 0xd9b38c); // skin (mostly hidden by the hat)
-      spec.parts.push(
-        part('hatBrim', 'head', { x: 0, y: 0 }, 0.62, 0.6, 'front', 0x2c1a4d),
-        part('hatCrown', 'head', { x: 0.06, y: 0 }, 0.34, 0.34, 'front', 0x40276e),
-      );
-      spec.decor = [
-        ring('hatCrown', { x: 0, y: 0 }, 0.32, 0xc99a2e, 0.09), // gold hat band
-        ring('torso', { x: 0, y: 0 }, 0.66, 0x9c5cf0, 0.06), // robe trim
-      ];
-      // Orb pulse rides the staff weapon (drawWeapon), so no extra part is needed.
+      setTint(spec, 'torso', 0x32264b);
+      setTint(spec, 'head', 0x413052);
+      spec.garment = 'mage';
       break;
     }
     case 'cleric': {

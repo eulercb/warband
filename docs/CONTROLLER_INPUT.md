@@ -32,3 +32,7 @@ button still fires the wrong ability, click the relevant action in the same pane
 and press the intended button. A browser that does not expose a usable axis or
 button needs device-level investigation. Keyboard and mouse remain usable with
 the controller connected.
+
+Owner playtesting confirmed that calibration helped vertical aim, while raw
+button translation still mismatched face buttons and triggers. Revisit this in
+the deeper controller pass with the browser's actual button and axis reports.
