@@ -216,10 +216,10 @@ export class Fx {
           const color = e.side === 'player' ? 0x8fd3ff : 0xff8a3d;
           this.spawnBurst(e.pos, {
             startR: 2,
-            endR: 30,
+            endR: 21,
             ttl: 0.3,
             color,
-            alpha0: 0.5,
+            alpha0: 0.23,
             filled: true,
           });
           if (e.side === 'boss' && isHeavyBossCast(e.shape, e.damage)) camera.addShake(8);
@@ -854,7 +854,7 @@ export class Fx {
       const c = camera.worldToScreen(area.origin);
       const R = area.radius * s;
       if (area.style === 'fireball' || area.style === 'frostNova') {
-        drawElementalBurst(g, c, R, t, area.style === 'frostNova');
+        drawElementalBurst(g, c, R, t, area.style === 'frostNova', area.angle);
         return;
       }
       if (!area.reach) g.circle(c.x, c.y, R).fill({ color, alpha: fillAlpha });

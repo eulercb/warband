@@ -399,7 +399,7 @@ export class CreatureRig {
 
     this.drawBodyParts(R, bodyScale, downed, ctx);
 
-    if (this.spec.arms) this.drawArms(R, ctx, downed);
+    if (this.spec.arms) this.drawArms(R, ctx, downed, timeSec);
     if (this.spec.weapon && !downed) this.drawWeapon(R, ctx, timeSec);
     if (this.spec.decor) this.drawDecor(R, ctx);
     if (this.spec.garment === 'mage' && !downed) {
@@ -493,6 +493,12 @@ export class CreatureRig {
       } else {
         drawLimb(this.gBehind, shoulder, knee, foot, wRoot, wTip, legColor);
       }
+      if (this.spec.garment === 'mage' && !downed) {
+        this.gBehind
+          .ellipse(foot.x, foot.y, R * 0.17, R * 0.12)
+          .fill({ color: 0x393044 })
+          .stroke({ color: 0xaa865f, width: Math.max(0.7, R * 0.04) });
+      }
     }
   }
 
@@ -572,26 +578,45 @@ export class CreatureRig {
     }
   }
 
-  private drawArms(R: number, ctx: RigDriveCtx, downed: boolean): void {
+  private drawArms(R: number, ctx: RigDriveCtx, downed: boolean, timeSec: number): void {
     const arms = this.spec.arms!;
     const color = this.limbColor(darken(ctx.color, 0.25), ctx, !this.lit);
     const center = this.origin;
+    const mage = this.spec.garment === 'mage' && !downed;
     const grip = this.gripPoint(R, ctx, downed);
     for (let i = 0; i < arms.length; i++) {
       const arm = arms[i];
       const shoulder = this.bodyPoint(arm.shoulderLocal, R);
-      if (this.spec.garment === 'mage' && !downed) shoulder.y -= 0.78 * R;
-      const hand = downed
+      if (mage) shoulder.y -= 0.78 * R;
+      let hand = downed
         ? this.bodyPoint({ x: -0.2, y: arm.side * 1.3 }, R)
         : {
             x: grip.x + this.cos * arm.side * 0.12 * R,
             y: grip.y + this.sin * arm.side * 0.12 * R,
           };
+      if (mage) {
+        if (arm.side === 1) hand = grip;
+        else {
+          const travel = clamp(Math.hypot(this.vel.x, this.vel.y) / 125, 0, 1);
+          const sweep = Math.sin(timeSec * 12) * travel * 0.29;
+          const release = Math.max(0, 1 - this.elementalAge / 0.32);
+          const lightning = Math.max(0, 1 - this.lightningAge / 0.24);
+          const opening = this.elementalPose === 'frostNova' ? release * 0.69 : release * 0.31;
+          hand = this.bodyPoint(
+            {
+              x: 0.27 + sweep + lightning * 0.73 + (ctx.castT ?? 0) * 0.57,
+              y: -0.94 - opening + lightning * 0.25,
+            },
+            R,
+          );
+          hand.y -= R * (0.49 + opening * 0.57 + (ctx.castT ?? 0) * 0.43);
+        }
+      }
       const bendRef = arm.bendOutward
         ? center
         : { x: center.x + this.cos * 6 * R, y: center.y + this.sin * 6 * R };
       const elbow = solveTwoBone(shoulder, hand, arm.l1 * R, arm.l2 * R, bendRef);
-      const wRoot = arm.width * R;
+      const wRoot = arm.width * R * (mage ? 1.6 : 1);
       const wTip = arm.width * R * 0.8;
       if (this.lit) {
         const m = this.armMeshes[i];
@@ -600,6 +625,10 @@ export class CreatureRig {
       } else {
         drawLimb(this.gFront, shoulder, elbow, hand, wRoot, wTip, color);
       }
+      if (mage) {
+        this.gFront.circle(hand.x, hand.y, 0.13 * R).fill({ color: 0xe0b994 });
+        this.gFront.circle(elbow.x, elbow.y, 0.095 * R).fill({ color: 0x8b719b });
+      }
     }
   }
 
@@ -607,8 +636,22 @@ export class CreatureRig {
     const w = this.spec.weapon!;
     const grip = this.gripPoint(R, ctx, false);
     const g = this.gFront;
-    const fx = this.cos;
-    const fy = this.sin;
+    const activeStaff = Math.max(
+      Math.max(0, 1 - this.lightningAge / 0.25),
+      Math.max(0, 1 - this.elementalAge / 0.28),
+      ctx.castT ?? 0,
+    );
+    const staffAngle =
+      this.spec.garment === 'mage'
+        ? -Math.PI * 0.57 +
+          Math.atan2(
+            Math.sin(this.facing + Math.PI * 0.57),
+            Math.cos(this.facing + Math.PI * 0.57),
+          ) *
+            activeStaff
+        : this.facing;
+    const fx = Math.cos(staffAngle);
+    const fy = Math.sin(staffAngle);
     const perp = { x: -fy, y: fx };
     const metal = 0xcdd2da;
     const swing =

@@ -169,10 +169,10 @@ export class Particles {
     this.burst(pos, 1, {
       color: tint ?? TRAIL_COLORS[kind] ?? 0xffffff,
       spd: 18,
-      ttl: 0.25,
-      // The drawn shaft/flame should read ahead of its additive trail.
-      s0: kind === 'arrow' || kind === 'fireball' ? 0.36 : 2,
+      ttl: 0.16,
+      s0: 1.4,
       s1: 0.4,
+      a0: 0.58,
     });
   }
 
@@ -203,7 +203,8 @@ export class Particles {
       p.sprite.tint = p.color;
       p.sprite.alpha = p.a0 * (1 - t);
       const sc = (p.s0 + (p.s1 - p.s0) * t) * camera.scale;
-      p.sprite.scale.set(sc);
+      // The texture has a 16px radius; emission sizes are world-space radii.
+      p.sprite.scale.set(sc / DOT_RADIUS);
     }
   }
 
@@ -253,9 +254,11 @@ export class Particles {
 }
 
 /** Soft radial dot → RenderTexture. No image asset. */
+const DOT_RADIUS = 16;
+
 function makeDotTexture(renderer: PixiRenderer): Texture {
   const g = new Graphics();
-  const R = 16;
+  const R = DOT_RADIUS;
   for (let i = R; i > 0; i--) {
     const a = (i / R) ** 2; // soft falloff toward the rim
     g.circle(R, R, i).fill({ color: 0xffffff, alpha: 0.06 * a });

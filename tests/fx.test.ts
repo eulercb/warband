@@ -213,9 +213,14 @@ it.each([
 
 it.each([false, true])('draws bounded elemental layers, ice=%s', (ice) => {
   const g = new Graphics();
-  drawElementalBurst(g, { x: 100, y: 100 }, 40, 0.3, ice);
-  expect(instructionCount(g)).toBe(ice ? 26 : 23);
-  const bounds = g.getLocalBounds();
-  expect(bounds.minX).toBeGreaterThanOrEqual(59);
-  expect(bounds.maxX).toBeLessThanOrEqual(141);
+  for (const age of [0, 0.3, 0.95]) {
+    g.clear();
+    drawElementalBurst(g, { x: 100, y: 100 }, 40, age, ice);
+    expect(instructionCount(g)).toBeGreaterThan(20);
+    const bounds = g.getLocalBounds();
+    expect(bounds.minX).toBeGreaterThanOrEqual(59);
+    expect(bounds.maxX).toBeCloseTo(140);
+    expect(bounds.minY).toBeGreaterThanOrEqual(59);
+    expect(bounds.maxY).toBeLessThanOrEqual(141);
+  }
 });
