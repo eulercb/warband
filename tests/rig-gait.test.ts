@@ -115,3 +115,37 @@ describe('updateGait', () => {
     expect(legs[0].foot.y).toBeCloseTo(home.y, 6);
   });
 });
+
+it('lets both feet take turns under sustained biped travel', () => {
+  const homes = [
+    { x: 0, y: -12 },
+    { x: 0, y: 12 },
+  ];
+  const legs = homes.map(makeLeg);
+  const lifts = [0, 0];
+  let firstLeg = 0;
+  for (let i = 0; i < 180; i++) {
+    const wasStepping = legs.map((leg) => leg.stepping);
+    for (const home of homes) home.x += 200 / 60;
+    updateGait(
+      legs,
+      homes,
+      { x: 1, y: 0 },
+      1 / 60,
+      params({
+        stepDistance: 12.8,
+        stepDuration: 0.14,
+        overstep: 8,
+        maxConcurrent: 1,
+        firstLeg,
+      }),
+    );
+    const active = legs.findIndex((leg) => leg.stepping);
+    if (active >= 0 && !wasStepping[active]) {
+      lifts[active]++;
+      firstLeg = 1 - active;
+    }
+  }
+  expect(Math.min(...lifts)).toBeGreaterThan(4);
+  expect(Math.abs(lifts[0] - lifts[1])).toBeLessThanOrEqual(1);
+});

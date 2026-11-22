@@ -853,7 +853,12 @@ describe('player blink', () => {
     resolvePlayerAbility(w, p, 'a3', ZERO); // Blink range 250, iframes 0.2 (item 56)
     expect(p.pos.x).toBeCloseTo(650, 4);
     expect(p.pos.y).toBeCloseTo(500, 4);
-    expect(w.events.some((e) => e.t === 'blink' && e.id === p.id)).toBe(true);
+    expect(w.events.find((e) => e.t === 'blink')).toMatchObject({
+      id: p.id,
+      presentation: 'mage',
+      from: { x: 400, y: 500 },
+      to: { x: 650, y: 500 },
+    });
     // item 56: Blink now grants brief i-frames like every other escape.
     const inv = p.buffs.find((b) => b.kind === 'invuln' && b.source === 'dash');
     expect(inv!.remaining).toBeCloseTo(0.2, 6);

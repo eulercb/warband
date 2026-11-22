@@ -15,6 +15,7 @@ import type {
   GameEvent,
   PlayerView,
   Telegraph,
+  Vec2,
 } from '../../engine/core/types';
 import type { Camera } from '../pipeline/camera';
 import type { Fx } from '../overlays/fx';
@@ -34,6 +35,7 @@ interface Node {
   rig: CreatureRig;
   spec: RigSpec;
   baseRadius: number;
+  ground?: { world: Vec2; screen: Vec2; scale: number };
 }
 
 export class RigLayer {
@@ -93,6 +95,7 @@ export class RigLayer {
           this.nodes.get(hit.id)?.rig.triggerLightningRecoil(e.area.angle);
         }
       }
+      if (e.t === 'blink') this.nodes.get(e.id)?.rig.triggerBlink(e.presentation === 'mage');
       if (e.t !== 'cast') continue;
       const rig = this.nodes.get(e.sourceId)?.rig;
       if (e.visualStyle) rig?.triggerElemental(e.visualStyle);
@@ -168,6 +171,14 @@ export class RigLayer {
       if (!spec) continue;
       const node = this.ensure(p.id, spec, PLAYER_RADIUS);
       const scr = camera.worldToScreen(p.pos);
+      if (node.ground) {
+        node.rig.reprojectFeet(
+          node.ground.screen,
+          camera.worldToScreen(node.ground.world),
+          scale / node.ground.scale,
+        );
+      }
+      node.ground = { world: { ...p.pos }, screen: scr, scale };
       // item 7 — a flying hero (Dragon Wings & co.) lifts off the ground too.
       const flying = p.state === 'alive' && (p.buffs?.some((bf) => bf.kind === 'flight') ?? false);
       const bodyScr = flying ? { x: scr.x, y: scr.y - PLAYER_RADIUS * scale * 0.45 } : scr;

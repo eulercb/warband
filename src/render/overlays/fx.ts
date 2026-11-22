@@ -1,3 +1,4 @@
+import { drawBlinkEndpoint, type BlinkVariant } from './blinkVisual';
 import { drawElementalBurst } from './elementalBurst';
 import { sub as torusSub } from '../../engine/core/torus';
 import { drawSupportSymbol, SUPPORT_COLORS } from '../pipeline/supportVisuals';
@@ -96,6 +97,8 @@ interface SupportFlash {
 }
 
 export class Fx {
+  // The alternate is available to the visual comparison fixture.
+  blinkVariant: BlinkVariant = 'shutter';
   private supportFlashes: SupportFlash[] = [];
   private readonly floaters: Floater[] = [];
   private readonly bursts: Burst[] = [];
@@ -368,6 +371,25 @@ export class Fx {
           break;
         }
         case 'blink': {
+          if (e.presentation === 'mage') {
+            const travel = torusSub(e.to, e.from);
+            const endpoint = (pos: Vec2, style: 'blinkDepart' | 'blinkArrive') =>
+              this.spawnAreaFlash(
+                {
+                  kind: 'circle',
+                  style,
+                  origin: { ...pos },
+                  angle: 0,
+                  range: 0,
+                  radius: 0,
+                  halfAngle: 0,
+                },
+                0xb999f1,
+              );
+            if (Math.hypot(travel.x, travel.y) > 8) endpoint(e.from, 'blinkDepart');
+            endpoint(e.to, 'blinkArrive');
+            break;
+          }
           const puff = {
             startR: 6,
             endR: 40,
@@ -852,6 +874,10 @@ export class Fx {
 
     if (area.kind === 'circle') {
       const c = camera.worldToScreen(area.origin);
+      if (area.style === 'blinkDepart' || area.style === 'blinkArrive') {
+        drawBlinkEndpoint(g, c, s, a.age, area.style === 'blinkArrive', this.blinkVariant);
+        return;
+      }
       const R = area.radius * s;
       if (area.style === 'fireball' || area.style === 'frostNova') {
         drawElementalBurst(g, c, R, t, area.style === 'frostNova', area.angle);
