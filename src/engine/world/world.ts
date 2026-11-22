@@ -2008,6 +2008,7 @@ export class World {
         color: PROJECTILE_IMPACT_COLOR[proj.kind] ?? 0xff8a3d,
         area: {
           kind: 'circle',
+          style: proj.impactStyle,
           origin: { ...center },
           angle: 0,
           range: 0,

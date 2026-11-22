@@ -599,3 +599,27 @@ describe('Lightning Bolt delivery', () => {
     expect(flash?.area.range).toBeCloseTo(770 - 24 - 14 - (600 + p.radius + 4));
   });
 });
+
+it.each([false, true])(
+  'keeps Fireball and Frost Nova presentation on the resolved area, composed=%s',
+  (composed) => {
+    const { w, p } = setup('mg_evoker_lightning');
+    if (composed) {
+      p.abilities!.a1 = recompose(decompose(p.abilities!.a1), p.abilities!.a1);
+      p.abilities!.a2 = recompose(decompose(p.abilities!.a2), p.abilities!.a2);
+    }
+    resolvePlayerAbility(w, p, 'a1', ZERO);
+    expect(w.events.some((e) => e.t === 'skillArea')).toBe(false);
+    shot(w);
+    expect(w.events.find((e) => e.t === 'skillArea')?.area).toMatchObject({
+      style: 'fireball',
+      radius: 110,
+    });
+    w.events = [];
+    resolvePlayerAbility(w, p, 'a2', ZERO);
+    expect(w.events.find((e) => e.t === 'skillArea')?.area).toMatchObject({
+      style: 'frostNova',
+      radius: 150,
+    });
+  },
+);

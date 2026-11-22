@@ -1017,6 +1017,7 @@ export interface GuidanceCast {
   activeTick: number;
 }
 export interface Projectile {
+  impactStyle?: 'fireball';
   reflected?: boolean;
   guidance?: GuidanceCast;
   aimPoint?: Vec2;
@@ -1534,7 +1535,7 @@ export interface SkillArea {
   /** Search reach, not an area-wide application. Draw an unfilled, subdued outline. */
   reach?: boolean;
   kind: SkillAreaKind;
-  style?: 'lightning';
+  style?: 'lightning' | 'frostNova' | 'fireball';
   contacts?: { id: EntityId; pos: Vec2; radius: number }[];
   stoppedByCover?: boolean;
   origin: Vec2; // cone/line emanation point, or circle center
@@ -1570,6 +1571,7 @@ export type GameEvent =
   | {
       t: 'cast';
       ability: string;
+      visualStyle?: 'frostNova' | 'fireball';
       sourceId: EntityId;
       pos: Vec2;
       side: Side;

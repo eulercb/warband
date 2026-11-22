@@ -1,7 +1,13 @@
 import type { Graphics } from 'pixi.js';
 import type { Vec2 } from './math/vec';
+import type { PlayerView } from '../../engine/core/types';
 
-type BodyPoint = (forward: number, lateral: number) => Vec2;
+/** Clearance for the standing Mage hood, in world units. */
+export function playerVisualHeadroom(p: PlayerView, baseline: number): number {
+  return p.classId === 'mage' && !p.form && p.state === 'alive' ? baseline * 2.34 : baseline;
+}
+
+type BodyPoint = (forward: number, lateral: number, height?: number) => Vec2;
 
 /** A split silhouette with broad cloth panels and readable trim at arena scale. */
 export function drawMageGarment(
@@ -14,13 +20,13 @@ export function drawMageGarment(
 ): void {
   const panel = (
     g: Graphics,
-    points: readonly (readonly [number, number])[],
+    points: readonly (readonly [number, number, number?])[],
     fill: number,
     trim: number,
   ) => {
     const polygon = g.poly(
-      points.flatMap(([x, y]) => {
-        const point = at(x, y);
+      points.flatMap(([x, y, height]) => {
+        const point = at(x, y, height);
         return [point.x, point.y];
       }),
     );
@@ -31,11 +37,11 @@ export function drawMageGarment(
     panel(
       behind,
       [
-        [0.28, side * 0.73],
-        [-0.65, side * 0.96],
-        [-1.67 - release * 0.15, side * 0.78 + drift],
-        [-1.87, side * 0.26 + drift],
-        [-0.56, side * 0.15],
+        [0.28, side * 0.73, 0.96],
+        [-0.65, side * 0.96, 0.63],
+        [-1.67 - release * 0.82, side * (0.78 + release * 0.35) + drift, 0.09],
+        [-1.87 - release * 0.55, side * 0.26 + drift, 0.12],
+        [-0.56, side * 0.15, 0.47],
       ],
       side < 0 ? 0x29264f : 0x403669,
       0x191a32,
@@ -43,8 +49,8 @@ export function drawMageGarment(
     panel(
       behind,
       [
-        [-0.55, side * 0.77],
-        [-1.56, side * 0.73 + drift],
+        [-0.55, side * 0.77, 0.7],
+        [-1.56 - release * 0.62, side * 0.73 + drift, 0.14],
         [-1.64, side * 0.58 + drift],
       ],
       0x9c7a5f,
@@ -55,48 +61,48 @@ export function drawMageGarment(
   panel(
     front,
     [
-      [0.47, -0.51],
-      [0.22, -0.98],
-      [-0.41, -0.7],
-      [-0.62, 0],
-      [-0.41, 0.7],
-      [0.22, 0.98],
-      [0.47, 0.51],
-      [-0.06, 0],
+      [0.38, -0.64, 1.13],
+      [0.18, -1.04, 0.93],
+      [-0.45, -0.65, 0.17],
+      [-0.55, 0.54, 0.16],
+      [0.18, 1.04, 0.91],
+      [0.38, 0.57, 1.13],
+      [0.3, 0, 0.75],
     ],
-    0x625183,
-    0xc6a379,
+    0x605481,
+    0xe2ba84,
   );
   panel(
     front,
     [
-      [0.69, -0.47],
-      [0.94, -0.24],
-      [0.96, 0.24],
-      [0.69, 0.47],
-      [0.15, 0],
+      [0.25, -0.47, 1.09],
+      [0.63, -0.47, 1.65],
+      [0.14, 0, 2.18],
+      [0.63, 0.47, 1.65],
+      [0.25, 0.47, 1.09],
     ],
-    0x302741,
-    0x9b7eae,
+    0x352b50,
+    0xb699c7,
   );
   panel(
     front,
     [
-      [0.88, -0.22],
-      [1.04, -0.15],
-      [1.04, 0.15],
-      [0.88, 0.22],
+      [0.67, -0.29, 1.56],
+      [0.83, -0.21, 1.24],
+      [0.92, 0, 1.17],
+      [0.83, 0.21, 1.24],
+      [0.67, 0.29, 1.56],
     ],
-    0xe1b893,
-    0x5b3d44,
+    0xe0b994,
+    0x655063,
   );
   panel(
     front,
     [
-      [0.02, 0],
-      [-0.13, 0.13],
-      [-0.29, 0],
-      [-0.13, -0.13],
+      [0.46, 0, 0.86],
+      [0.47, 0.14, 0.66],
+      [0.52, 0, 0.51],
+      [0.47, -0.14, 0.66],
     ],
     0xa3e2e1,
     0x362d52,

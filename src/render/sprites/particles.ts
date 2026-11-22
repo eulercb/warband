@@ -103,7 +103,7 @@ export class Particles {
         case 'cast':
           if (e.side === 'boss') {
             this.burst(e.pos, 20, { color: 0xff8a3d, spd: 60, up: 30, ttl: 0.6, s0: 4, s1: 1 });
-          } else if (!lightningSources.has(e.sourceId)) {
+          } else if (!e.visualStyle && !lightningSources.has(e.sourceId)) {
             this.ring(e.pos, 12, { color: 0x8fd3ff, spd: 90, ttl: 0.4, s0: 3, s1: 1 });
           }
           break;
@@ -171,7 +171,7 @@ export class Particles {
       spd: 18,
       ttl: 0.25,
       // The drawn shaft/flame should read ahead of its additive trail.
-      s0: kind === 'arrow' || kind === 'fireball' ? 0.62 : 2,
+      s0: kind === 'arrow' || kind === 'fireball' ? 0.36 : 2,
       s1: 0.4,
     });
   }

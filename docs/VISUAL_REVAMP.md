@@ -126,3 +126,28 @@ out to the roster.
 Actual game renders from the motion fixture: [desktop](images/skeleton-motion-desktop.png)
 and [phone](images/skeleton-motion-phone.png). The struck skeleton is above
 and left of the Mage. The second skeleton is beside the Mage in its melee pose.
+
+## Raised Mage and elemental contrast
+
+The Mage’s hood and shoulders now sit above the existing floor anchor. The robe
+has a broader collar and a larger trailing motion on release. The pose pulls
+the staff up during a charge, follows the casting direction on Fireball
+release, sweeps across the body for Nova, and snaps forward for Lightning Bolt.
+Nameplates and bars clear the taller hood. Aim, feet and hit placement still
+use the same world coordinates.
+
+Fireball is a traveling shot that blooms on combat impact. It layers a warm
+core, expanding lobes and embers over the resolved blast. The Frost Nova cue
+starts at the Mage and spreads rapidly as an angular ice front with small
+shards. The boundary shows the actual hit radius from the first frame, while
+the interior animates for readability. The ice art depicts the burst and the
+existing slow. Freeze remains an upgrade/status distinction. Arrow and
+Fireball trails are thinner so the bodies remain visible in flight.
+
+Frost Nova brings the area-control visual comparison forward into the Mage
+batch. The next character comparison is a larger alternate form and a
+persistent player companion. That gives us a large body and a small allied
+body for evaluating healing and barrier cues amid movement and attack effects.
+
+In-game examples at native viewport sizes: [Frost Nova on desktop](images/mage-nova-desktop.png)
+and [Fireball impact on phone](images/mage-fireball-phone.png).

@@ -54,6 +54,7 @@ export interface PlayerAbilityDef {
   momentumUsed?: number;
   flowUsed?: boolean;
   name: string;
+  visualStyle?: 'frostNova' | 'fireball';
   kind: AbilityKind;
   rechargeBase?: number;
   ordinaryRecharge?: number;
@@ -596,6 +597,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Fireball',
+        visualStyle: 'fireball',
         controlDamageBonus: 0.25,
         kind: 'projectile',
         cooldown: 7,
@@ -611,6 +613,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a2: {
         slot: 'a2',
         name: 'Frost Nova',
+        visualStyle: 'frostNova',
         kind: 'pbaoe',
         cooldown: 10,
         damage: 20,

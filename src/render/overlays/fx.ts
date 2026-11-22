@@ -1,3 +1,4 @@
+import { drawElementalBurst } from './elementalBurst';
 import { sub as torusSub } from '../../engine/core/torus';
 import { drawSupportSymbol, SUPPORT_COLORS } from '../pipeline/supportVisuals';
 /**
@@ -852,6 +853,10 @@ export class Fx {
     if (area.kind === 'circle') {
       const c = camera.worldToScreen(area.origin);
       const R = area.radius * s;
+      if (area.style === 'fireball' || area.style === 'frostNova') {
+        drawElementalBurst(g, c, R, t, area.style === 'frostNova');
+        return;
+      }
       if (!area.reach) g.circle(c.x, c.y, R).fill({ color, alpha: fillAlpha });
       g.circle(c.x, c.y, R).stroke({
         width: area.reach ? 1 : 2,
