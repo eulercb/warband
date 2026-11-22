@@ -20,3 +20,15 @@ each face button, both subclass triggers once unlocked, and Start. Switch back
 to the mouse with a controller input still held and check that the HUD follows
 the device in use. The automated tests reproduce the browser input reports;
 physical pairing modes and browser mappings can differ.
+
+## If the SN30 Pro still aims with a trigger
+
+The first layout fix passed with a simulated product-2100 report. On the owner's
+controller the symptoms persisted, so the exact browser axis layout remains
+unconfirmed. In **Controls → Controller**, center the sticks and click
+**Calibrate vertical aim**, then push only the right stick straight down. This
+records the axis and its direction for that browser-reported device. If a face
+button still fires the wrong ability, click the relevant action in the same panel
+and press the intended button. A browser that does not expose a usable axis or
+button needs device-level investigation. Keyboard and mouse remain usable with
+the controller connected.

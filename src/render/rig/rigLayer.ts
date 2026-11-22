@@ -87,6 +87,12 @@ export class RigLayer {
           ttl: 0.06,
         });
       }
+      if (e.t === 'skillArea' && e.area.style === 'lightning') {
+        this.nodes.get(e.sourceId)?.rig.triggerLightning(e.area.angle);
+        for (const hit of e.area.contacts ?? []) {
+          this.nodes.get(hit.id)?.rig.triggerLightningRecoil(e.area.angle);
+        }
+      }
       if (e.t !== 'cast') continue;
       this.nodes.get(e.sourceId)?.rig.triggerAttack();
     }

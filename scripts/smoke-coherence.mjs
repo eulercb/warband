@@ -65,7 +65,9 @@ try {
           owner,
           boss,
           frame = 0,
-          firstFrameFx = 0;
+          firstFrameFx = 0,
+          lightningPose = false,
+          lightningRecoil = false;
         const renderer = await Renderer.create(document.querySelector('#fixture'), {
           w: ARENA_W,
           h: ARENA_H,
@@ -170,6 +172,12 @@ try {
                 world.resolvePlayerProjectile(shot);
               }
             } else if (name === 'lightning') {
+              renderer.render({
+                ...world.serialize(),
+                localPlayerId: owner.id,
+                arena: world.arena,
+              });
+              world.events = [];
               world.step(
                 0,
                 new Map([
@@ -212,6 +220,8 @@ try {
             return {
               frame,
               firstFrameFx,
+              lightningPose,
+              lightningRecoil,
               projectiles: world.projectiles.length,
               allyHp: world.players[1]?.hp,
               allyRescue: world.players[1]?.buffs.some((b) => b.kind === 'rescueStrike'),
@@ -245,7 +255,11 @@ try {
         window.coherence.mode(mode);
         const render = () => {
           renderer.render({ ...world.serialize(), localPlayerId: owner.id, arena: world.arena });
-          if (frame === 0) firstFrameFx = renderer.fxLayer.context.instructions.length;
+          if (frame === 0) {
+            firstFrameFx = renderer.fxLayer.context.instructions.length;
+            lightningPose = renderer.rigs.nodes.get(owner.id)?.rig.lightningAge < 0.22;
+            lightningRecoil = renderer.rigs.nodes.get(boss.id)?.rig.recoilAge < 0.18;
+          }
           world.events = [];
           frame++;
           if (mode !== 'lightning' || frame < 3) requestAnimationFrame(render);
@@ -295,7 +309,9 @@ try {
       if (mode === 'lightning') {
         assert.ok(p.bossHp < 10000);
         assert.equal(p.projectiles, 0);
-        assert.ok(p.firstFrameFx >= 3, 'first render drew the lightning flash');
+        assert.ok(p.firstFrameFx >= 11, 'first render drew the strike and contact sparks');
+        assert.equal(p.lightningPose, true, 'caster played the lightning release');
+        assert.equal(p.lightningRecoil, true, 'contact drove a visual recoil');
       }
       if (mode === 'ready') {
         assert.equal(p.ready, true);

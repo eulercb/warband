@@ -26,6 +26,12 @@ name the next development task beyond playtesting.
 
 ## Current delivery
 
+The owner playtested the Lightning Bolt pilot and accepted the instant line for
+now. The [release and impact follow-up](VISUAL_REVAMP.md) adds a pose,
+contact feedback and cover effects. Keyboard/controller handoff was accepted,
+and the [controller follow-up](CONTROLLER_INPUT.md) adds calibration for the
+SN30 Pro setup that still misread vertical aim.
+
 [Martial purpose review](MARTIAL_PURPOSE_REVIEW.md) and
 [Champion projected shield](CHAMPION_PROJECTED_GUARD.md).
 The first numerical batch is [Champion and Borrowed Anthem tuning](ROLE_TUNING.md), building on [Lich attribution](LICH_COMBAT_ATTRIBUTION.md) and the [reward-choice comparison](REWARD_CHOICE_USEFULNESS.md). See the [class balance coverage plan](CLASS_BALANCE_COVERAGE.md).
@@ -64,7 +70,7 @@ comparison method and evidence.
 
 | Order                  | Development work                                                                                                                                                                              |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Now                    | [Visual and ability pilot](VISUAL_REVAMP.md). Use Lightning Bolt to test whether aim, hit geometry and the effect read as one action.                                                         |
+| Now                    | [Visual and ability pilot](VISUAL_REVAMP.md). Playtest Lightning Bolt’s directional release, contact recoil and cover feedback.                                                               |
 | Next                   | Test a representative player/form, summon, and attack, heal, barrier and control effects on desktop and phone. Expand verified treatments across stable player kits and shared arena systems. |
 | Then                   | [Boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). Pair encounter mechanics, terrain and boss/arena art in playtestable slices.                                                       |
 | After encounter revamp | Resume role, progression and reward tuning on the revised fights. Compare solo through four players, with meaningful challenge at every size.                                                 |

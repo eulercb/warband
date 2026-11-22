@@ -53,3 +53,24 @@ The timing and ability to pass through multiple targets are intentional
 power changes. Revisit their value with the redesigned encounters. A fork
 or sky strike would add a different targeting decision and can be evaluated
 on a skill or upgrade that needs it.
+
+## Lightning release and impact
+
+The initial prototype proved that the hit and the visible line used the same
+path. Its simple double-stroke flash and generic cast/impact cues were a scope
+choice. Pixi already supports animated rigs, layered geometry, lighting, pooled
+particles and authored sprites. The production work is building distinct poses,
+silhouettes, timing and effects that hold up on a phone and during overlapping
+party effects.
+
+The follow-up adds a directional casting snap, a bright core with a secondary
+arc, local contact sparks and short cosmetic recoil on rigged targets. Cover
+now gives a small endpoint spatter. The release and visible contacts come from
+the resolved strike. Damage, hit timing, movement and boss actions stay the same.
+
+A fork was considered for a later variant focused on choosing a lead target and
+routing damage through a group. A sky strike would instead reward placement on
+a predicted position. The aimed line rewards lining up enemies and reading
+cover, so it remains the visual baseline after the owner's playtest. Next, use
+the release-and-impact approach on a representative player/form and summon and
+contrast a traveling projectile with this instant cast.

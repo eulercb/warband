@@ -82,6 +82,10 @@ export class CreatureRig {
   private legAround = 0;
   private seeded = false;
 
+  private lightningAge = 1;
+  private lightningAngle = 0;
+  private recoilAge = 1;
+  private recoilAngle = 0;
   private attackAge = -1; // < 0 = no active attack swing
 
   constructor(
@@ -198,6 +202,17 @@ export class CreatureRig {
     this.attackAge = 0;
   }
 
+  triggerLightning(angle: number): void {
+    this.attackAge = -1;
+    this.lightningAge = 0;
+    this.lightningAngle = angle;
+  }
+
+  triggerLightningRecoil(angle: number): void {
+    this.recoilAge = 0;
+    this.recoilAngle = angle;
+  }
+
   /**
    * Advance + repaint one frame. `pos` / `facing` are the entity's smoothed screen
    * position and primary orientation (aim for a humanoid, facing for a creature);
@@ -213,9 +228,17 @@ export class CreatureRig {
   ): void {
     const dt = clamp(dtMs, 1, 100) / 1000;
     const R = this.baseRadius * scale;
-    this.facing = facing;
-    this.cos = Math.cos(facing);
-    this.sin = Math.sin(facing);
+    this.lightningAge += dt;
+    this.recoilAge += dt;
+    const poseFacing = this.lightningAge < 0.13 ? this.lightningAngle : facing;
+    this.facing = poseFacing;
+    this.cos = Math.cos(poseFacing);
+    this.sin = Math.sin(poseFacing);
+    const recoil = Math.min(7, R * 0.12) * Math.max(0, 1 - this.recoilAge / 0.18) ** 2;
+    this.view.position.set(
+      recoil * Math.cos(this.recoilAngle),
+      recoil * Math.sin(this.recoilAngle),
+    );
 
     // Screen-space velocity (EMA), with a teleport guard that re-seeds feet so a
     // blink doesn't stretch a limb across the arena for one frame.
@@ -754,6 +777,7 @@ export class CreatureRig {
         dist *= 1 - 0.3 * cast + 0.35 * swing;
       }
     }
+    if (!downed) dist += 0.85 * Math.max(0, 1 - this.lightningAge / 0.22) ** 2;
     return { x: this.origin.x + this.cos * dist * R, y: this.origin.y + this.sin * dist * R };
   }
 

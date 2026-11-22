@@ -820,6 +820,8 @@ export class Fx {
     a.area = {
       kind: area.kind,
       style: area.style,
+      contacts: area.contacts?.map((hit) => ({ ...hit, pos: { ...hit.pos } })),
+      stoppedByCover: area.stoppedByCover,
       reach: area.reach,
       origin: { x: area.origin.x, y: area.origin.y },
       angle: area.angle,
@@ -879,24 +881,67 @@ export class Fx {
       const L = area.range * s;
       const hw = Math.max(2, area.radius * s);
       if (area.style === 'lightning') {
-        linePoly(g, o.x, o.y, ux, uy, nx, ny, L, hw).fill({ color, alpha: 0.15 * fade });
-        for (const layer of [
-          { width: 7, color },
-          { width: 2.5, color: 0xeafaff },
-        ]) {
-          g.moveTo(o.x, o.y);
-          for (let i = 1; i < 9; i++) {
-            const along = (L * i) / 9;
-            const across = Math.sin(i * 2.4 + Math.floor(t * 4)) * hw * 0.7;
-            g.lineTo(o.x + ux * along + nx * across, o.y + uy * along + ny * across);
-          }
-          g.lineTo(o.x + ux * L, o.y + uy * L).stroke({ ...layer, alpha: fade });
-        }
+        this.drawLightning(g, a, camera, o, ux, uy, L, hw);
         return;
       }
       linePoly(g, o.x, o.y, ux, uy, nx, ny, L, hw).fill({ color, alpha: fillAlpha });
       linePoly(g, o.x, o.y, ux, uy, nx, ny, L, hw).stroke({ width: 2, color, alpha: strokeAlpha });
     }
+  }
+  private drawLightning(
+    g: Graphics,
+    effect: AreaFlash,
+    camera: Camera,
+    origin: Vec2,
+    x: number,
+    y: number,
+    length: number,
+    halfWidth: number,
+  ): void {
+    const { age, area, color } = effect;
+    const flash = Math.max(0, 1 - age / 0.22);
+    const residue = Math.max(0, 1 - age / AREA_FLASH_TTL);
+    const at = (along: number, across: number): Vec2 => ({
+      x: origin.x + x * along - y * across,
+      y: origin.y + y * along + x * across,
+    });
+    const segments = Math.max(2, Math.min(24, Math.ceil(length / 32)));
+    const end = at(length, 0);
+    if (flash > 0) {
+      const arc = (offset: number): Graphics => {
+        g.moveTo(origin.x, origin.y);
+        for (let i = 1; i < segments; i++) {
+          const p = at(
+            (length * i) / segments,
+            Math.sin(i * 2.37 + (Math.floor(age * 48) + offset) * 1.13) * halfWidth * 0.8,
+          );
+          g.lineTo(p.x, p.y);
+        }
+        return g.lineTo(end.x, end.y);
+      };
+      arc(0).stroke({ width: 12, color, alpha: flash * 0.22 });
+      arc(0).stroke({ width: 4, color: 0x87bfff, alpha: flash * 0.85 });
+      arc(0).stroke({ width: 1.6, color: 0xf1fbff, alpha: flash });
+      arc(2).stroke({ width: 1, color: 0xc2a9ff, alpha: flash * 0.75 });
+      g.circle(origin.x, origin.y, 4 + 8 * flash).fill({ color, alpha: flash * 0.6 });
+      g.circle(origin.x, origin.y, 2 + 3 * flash).fill({ color: 0xeaffff, alpha: flash });
+    }
+
+    const spark = (p: Vec2, radius: number, count: number): void => {
+      for (let i = 0; i < count; i++) {
+        const angle = area.angle + (i - (count - 1) / 2) * 0.55;
+        const distance = radius * 0.7 + (1 - residue) * (12 + i * 3);
+        const dx = Math.cos(angle);
+        const dy = Math.sin(angle);
+        g.moveTo(p.x + dx * distance, p.y + dy * distance)
+          .lineTo(p.x + dx * (distance + 4 + 9 * residue), p.y + dy * (distance + 4 + 9 * residue))
+          .stroke({ width: 1.5, color: i % 2 === 0 ? 0xdffaff : color, alpha: residue ** 2 });
+      }
+    };
+    for (const hit of area.contacts ?? []) {
+      spark(camera.worldToScreen(hit.pos), hit.radius * camera.scale, 5);
+    }
+    if (area.stoppedByCover) spark(end, 2, 3);
   }
 }
 

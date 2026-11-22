@@ -127,6 +127,8 @@ it('draws the lightning strike across its area and clears it after fading', () =
         area: {
           kind: 'line',
           style: 'lightning',
+          contacts: [{ id: 2, pos: { x: 700, y: 500 }, radius: 26 }],
+          stoppedByCover: true,
           origin: { x: 450, y: 500 },
           angle: 0,
           range: 500,
@@ -138,7 +140,10 @@ it('draws the lightning strike across its area and clears it after fading', () =
     camera,
   );
   fx.draw(g, camera);
-  expect(instructionCount(g)).toBe(3);
+  expect(instructionCount(g)).toBe(14);
+  for (let frame = 0; frame < 18; frame++) fx.update(16);
+  fx.draw(g, camera);
+  expect(instructionCount(g)).toBe(8);
   for (let frame = 0; frame < 40; frame++) fx.update(16);
   fx.draw(g, camera);
   expect(instructionCount(g)).toBe(0);

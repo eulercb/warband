@@ -3,7 +3,7 @@
  * and gamepad buttons for movement and abilities; bindings persist locally (see
  * input/bindings.ts). Reachable from the main menu and the in-fight pause menu.
  */
-import { connectedGamepads, padButtonPressed } from '../../input/gamepadLayout';
+import { calibrateAimDown, connectedGamepads, padButtonPressed } from '../../input/gamepadLayout';
 import { useEffect, useRef, useState } from 'react';
 import MechanicsReference from '../game/MechanicsReference';
 import { closeControls, playUiSound } from '../state/session';
@@ -22,7 +22,11 @@ import {
   type ButtonAction,
 } from '../../input/bindings';
 
-type Capture = { mode: 'key'; action: KeyAction } | { mode: 'pad'; action: ButtonAction } | null;
+type Capture =
+  | { mode: 'key'; action: KeyAction }
+  | { mode: 'pad'; action: ButtonAction }
+  | { mode: 'aimY' }
+  | null;
 
 /** Snapshot of currently-pressed gamepad button indices (any connected pad). */
 function pressedPadButtons(): Set<number> {
@@ -90,6 +94,31 @@ export default function Controls() {
     raf = requestAnimationFrame(poll);
     return () => cancelAnimationFrame(raf);
   }, [capture, setPad]);
+
+  useEffect(() => {
+    if (capture?.mode !== 'aimY') return;
+    const pad = connectedGamepads()[0];
+    if (!pad) return;
+    const neutral = [...pad.axes];
+    let raf = 0;
+    const poll = (): void => {
+      const current = connectedGamepads().find((p) => p.id === pad.id && p.index === pad.index);
+      if (current && calibrateAimDown(current, neutral)) {
+        setCapture(null);
+        return;
+      }
+      raf = requestAnimationFrame(poll);
+    };
+    raf = requestAnimationFrame(poll);
+    const cancel = (event: KeyboardEvent): void => {
+      if (event.code === 'Escape') setCapture(null);
+    };
+    window.addEventListener('keydown', cancel);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('keydown', cancel);
+    };
+  }, [capture]);
 
   const onClose = (): void => {
     playUiSound('uiClick');
@@ -200,6 +229,19 @@ export default function Controls() {
                 ))}
               </div>
             </div>
+            <button
+              type="button"
+              className="wb-btn"
+              onClick={() => {
+                if (capture?.mode === 'aimY') setCapture(null);
+                else if (connectedGamepads().length > 0) setCapture({ mode: 'aimY' });
+              }}
+            >
+              {capture?.mode === 'aimY' ? 'Cancel calibration' : 'Calibrate vertical aim'}
+            </button>
+            {capture?.mode === 'aimY' ? (
+              <p role="status">Push only the right stick straight down.</p>
+            ) : null}
             <p className="wb-controls-note">
               Left stick moves, right stick aims. Rebind the action buttons below.
             </p>
