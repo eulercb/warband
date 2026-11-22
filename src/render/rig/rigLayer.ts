@@ -94,7 +94,9 @@ export class RigLayer {
         }
       }
       if (e.t !== 'cast') continue;
-      this.nodes.get(e.sourceId)?.rig.triggerAttack();
+      const rig = this.nodes.get(e.sourceId)?.rig;
+      if (e.visualStyle) rig?.triggerElemental(e.visualStyle);
+      else rig?.triggerAttack();
     }
   }
 

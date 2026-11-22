@@ -288,6 +288,7 @@ describe('player projectile', () => {
     resolvePlayerAbility(w, p, 'a1', ZERO); // Fireball: dmg 80, speed 480, impactRadius 110
     const proj = w.projectiles[0];
     expect(proj.kind).toBe('fireball');
+    expect(proj.impactStyle).toBe('fireball');
     expect(proj.damage).toBeCloseTo(80, 6);
     expect(proj.impactRadius).toBe(110);
     expect(proj.hitRadius).toBe(10);
@@ -527,7 +528,11 @@ describe('player pbaoe', () => {
     const slow = boss.buffs.find((b) => b.kind === 'moveSpeed' && b.source === 'slow');
     expect(slow!.mult).toBeCloseTo(0.6, 6);
     expect(slow!.remaining).toBeCloseTo(3, 6);
-    expect(w.events.some((e) => e.t === 'skillArea' && e.area.kind === 'circle')).toBe(true);
+    expect(w.events.find((e) => e.t === 'skillArea')?.area).toMatchObject({
+      kind: 'circle',
+      style: 'frostNova',
+      radius: 150,
+    });
   });
 
   it('Whirlwind deals point-blank damage to a boss in range', () => {

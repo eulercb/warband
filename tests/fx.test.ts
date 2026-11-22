@@ -14,7 +14,9 @@ import { describe, it, expect } from 'vitest';
 import { Container, Graphics } from 'pixi.js';
 import { Fx } from '../src/render/overlays/fx';
 import { drawSkeleton } from '../src/render/pipeline/skeletonVisual';
-import { drawMageGarment } from '../src/render/rig/mageGarment';
+import { drawElementalBurst } from '../src/render/overlays/elementalBurst';
+import type { PlayerView } from '../src/engine/core/types';
+import { drawMageGarment, playerVisualHeadroom } from '../src/render/rig/mageGarment';
 import { Camera } from '../src/render/pipeline/camera';
 import type { GameEvent } from '../src/engine/core/types';
 
@@ -154,14 +156,15 @@ it('draws the lightning strike across its area and clears it after fading', () =
 it('keeps the Mage garment ordered around the body and bends its trailing cloth', () => {
   const behind = new Graphics();
   const front = new Graphics();
-  const at = (forward: number, lateral: number) => ({
+  const at = (forward: number, lateral: number, height = 0) => ({
     x: 200 + forward * 16,
-    y: 200 + lateral * 16,
+    y: 200 + lateral * 16 - height * 16,
   });
   drawMageGarment(behind, front, at, 16, 0, 0);
   const resting = { ...behind.getLocalBounds() };
   expect(instructionCount(behind)).toBe(8);
   expect(instructionCount(front)).toBe(8);
+  expect(front.getLocalBounds().minY).toBeLessThan(170);
   behind.clear();
   front.clear();
   drawMageGarment(behind, front, at, 16, 0.24, 0.9);
@@ -196,4 +199,23 @@ it('lifts alternating feet and changes the sword silhouette on an authored attac
   g.clear();
   drawSkeleton(g, anchor, 12, 0, 0, { distance: 0, moving: false, swing: 0.08, facing: -1 });
   expect(g.getLocalBounds().minX).toBeGreaterThan(strike.minX);
+});
+
+it.each([
+  ['mage', 'alive', undefined, 37.44],
+  ['mage', 'downed', undefined, 16],
+  ['mage', 'alive', 'moonBear', 16],
+  ['ranger', 'alive', undefined, 16],
+] as const)('reserves headroom for the raised Mage only', (classId, state, form, expected) => {
+  const p = { classId, state, form } as PlayerView;
+  expect(playerVisualHeadroom(p, 16)).toBeCloseTo(expected);
+});
+
+it.each([false, true])('draws bounded elemental layers, ice=%s', (ice) => {
+  const g = new Graphics();
+  drawElementalBurst(g, { x: 100, y: 100 }, 40, 0.3, ice);
+  expect(instructionCount(g)).toBe(ice ? 26 : 23);
+  const bounds = g.getLocalBounds();
+  expect(bounds.minX).toBeGreaterThanOrEqual(59);
+  expect(bounds.maxX).toBeLessThanOrEqual(141);
 });

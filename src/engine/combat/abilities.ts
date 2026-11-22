@@ -132,7 +132,7 @@ import {
   SHOVE_MAX_TIME,
   SHOVE_MIN,
 } from '../core/constants';
-import type { SkillAreaKind, Shove } from '../core/types';
+import type { SkillArea, Shove } from '../core/types';
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -624,6 +624,7 @@ export function resolvePlayerAbility(
   world.events.push({
     t: 'cast',
     ability: ab.name,
+    visualStyle: ab.visualStyle,
     sourceId: p.id,
     pos: { ...p.pos },
     side: 'player',
@@ -965,6 +966,7 @@ export function resolveBurstAt(
   if (!hitIds)
     emitSkillArea(world, p.id, CLASS_COLORS[p.classId] ?? 0xffffff, {
       kind: 'circle',
+      style: ab.visualStyle,
       origin: { ...origin },
       angle: 0,
       range: 0,
@@ -1555,6 +1557,7 @@ function spawnPlayerProjectile(
 ): void {
   const origin = vadd(o.returningSource?.guidanceOrigin ?? p.pos, vscale(dir, p.radius + 4));
   const proj: Projectile = {
+    impactStyle: o.returningSource?.visualStyle === 'fireball' ? 'fireball' : undefined,
     guidance: o.returningSource?.guidanceCast,
     id: world.allocId(),
     kind,
@@ -1618,19 +1621,7 @@ function applySlow(
 
 /** Push a one-shot `skillArea` event so the renderer can flash an ability's
  * effect region (cone / circle / line). Cosmetic — purely for readability. */
-function emitSkillArea(
-  world: World,
-  sourceId: number,
-  color: number,
-  area: {
-    kind: SkillAreaKind;
-    origin: Vec2;
-    angle: number;
-    range: number;
-    radius: number;
-    halfAngle: number;
-  },
-): void {
+function emitSkillArea(world: World, sourceId: number, color: number, area: SkillArea): void {
   world.events.push({ t: 'skillArea', sourceId, side: 'player', color, area });
 }
 

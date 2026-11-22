@@ -1,3 +1,4 @@
+import { playerVisualHeadroom } from '../rig/mageGarment';
 import { drawRefuge } from './refugeVisuals';
 import { drawFont, drawFontFootprint } from './fontVisuals';
 import { drawReflectionWard } from './reflectionVisuals';
@@ -1050,7 +1051,10 @@ export class Renderer {
         p.state === 'alive' ? buffLabel(p.buffs.filter((b) => b.kind !== 'silence')) : '';
       t.text = badges ? `${p.name}\n${badges}` : p.name;
       const s = this.camera.worldToScreen(p.pos);
-      t.position.set(s.x, s.y - (p.form === 'moonBear' ? 25 : PLAYER_RADIUS) * scale - 12);
+      t.position.set(
+        s.x,
+        s.y - playerVisualHeadroom(p, p.form === 'moonBear' ? 25 : PLAYER_RADIUS) * scale - 14,
+      );
       t.alpha = p.state === 'dead' ? 0.4 : 1;
     }
 

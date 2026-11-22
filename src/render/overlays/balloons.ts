@@ -1,3 +1,4 @@
+import { playerVisualHeadroom } from '../rig/mageGarment';
 /**
  * Warband — speech balloons.
  *
@@ -128,7 +129,7 @@ export class Balloons {
         const s = camera.worldToScreen(p.pos);
         x = s.x;
         worldY = s.y;
-        radius = PLAYER_RADIUS;
+        radius = playerVisualHeadroom(p, PLAYER_RADIUS);
       } else {
         const add = state.adds.find((ad) => ad.id === a.sourceId);
         if (add) {

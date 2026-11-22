@@ -71,8 +71,8 @@ comparison method and evidence.
 
 | Order                  | Development work                                                                                                                              |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Now                    | [Visual and ability pilot](VISUAL_REVAMP.md). Playtest Lich skeleton gait, melee motion and recoil with the existing camera.                  |
-| Next                   | Compare a three-quarter Mage or alternate form against the skeleton before extending the treatment to companions and support effects.         |
+| Now                    | [Visual and ability pilot](VISUAL_REVAMP.md). Playtest the raised Mage with Fireball detonation and Frost Nova beside Lightning Bolt.         |
+| Next                   | Use an alternate form and a persistent companion to compare healing, barrier and control cues at different body sizes.                        |
 | Then                   | [Boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). Pair encounter mechanics, terrain and boss/arena art in playtestable slices.       |
 | After encounter revamp | Resume role, progression and reward tuning on the revised fights. Compare solo through four players, with meaningful challenge at every size. |
 

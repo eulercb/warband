@@ -50,7 +50,8 @@
             "a2.ordinaryRecharge",
             "a2.projCount",
             "a2.projSpeed",
-            "a2.rechargeBase"
+            "a2.rechargeBase",
+            "a2.visualStyle"
           ],
           "reseatPreserves": true
         },
@@ -72,7 +73,8 @@
             "a2.name",
             "a2.projCount",
             "a2.projSpeed",
-            "a2.rechargeBase"
+            "a2.rechargeBase",
+            "a2.visualStyle"
           ],
           "reseatPreserves": true
         },
@@ -93,7 +95,8 @@
             "a2.name",
             "a2.projCount",
             "a2.projSpeed",
-            "a2.rechargeBase"
+            "a2.rechargeBase",
+            "a2.visualStyle"
           ],
           "reseatPreserves": true
         },
@@ -116,7 +119,8 @@
             "a2.name",
             "a2.projCount",
             "a2.projSpeed",
-            "a2.rechargeBase"
+            "a2.rechargeBase",
+            "a2.visualStyle"
           ],
           "reseatPreserves": true
         }
@@ -2716,7 +2720,8 @@
             { "path": "abilities.a2.kind", "before": "selfBuff", "after": "projectile" },
             { "path": "abilities.a2.name", "before": "Shield Wall", "after": "Fireball" },
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
-            { "path": "abilities.a2.projSpeed", "before": null, "after": 480 }
+            { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ],
           "atCap": [
             { "path": "abilities.a2.castTime", "before": null, "after": 0.7 },
@@ -2732,7 +2737,8 @@
             { "path": "abilities.a2.kind", "before": "selfBuff", "after": "projectile" },
             { "path": "abilities.a2.name", "before": "Shield Wall", "after": "Fireball" },
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
-            { "path": "abilities.a2.projSpeed", "before": null, "after": 480 }
+            { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ]
         },
         {
@@ -2753,6 +2759,7 @@
             { "path": "abilities.a2.range", "before": 400, "after": null },
             { "path": "abilities.a2.slowDuration", "before": 0.8, "after": null },
             { "path": "abilities.a2.slowMult", "before": 0.75, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" },
             { "path": "abilities.a2.zoneDuration", "before": 3, "after": null },
             { "path": "abilities.a2.zoneKind", "before": "rainOfArrows", "after": null },
             { "path": "abilities.a2.zoneTickDamage", "before": 12, "after": null }
@@ -2771,6 +2778,7 @@
             { "path": "abilities.a2.range", "before": 400, "after": null },
             { "path": "abilities.a2.slowDuration", "before": 0.8, "after": null },
             { "path": "abilities.a2.slowMult", "before": 0.75, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" },
             { "path": "abilities.a2.zoneDuration", "before": 3, "after": null },
             { "path": "abilities.a2.zoneKind", "before": "rainOfArrows", "after": null },
             { "path": "abilities.a2.zoneTickDamage", "before": 12, "after": null }
@@ -2796,6 +2804,7 @@
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
             { "path": "abilities.a2.radius", "before": 140, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" },
             { "path": "abilities.a2.zoneDuration", "before": 4, "after": null },
             { "path": "abilities.a2.zoneKind", "before": "sanctuary", "after": null },
             { "path": "abilities.a2.zoneTickHeal", "before": 14, "after": null }
@@ -2816,6 +2825,7 @@
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
             { "path": "abilities.a2.radius", "before": 140, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" },
             { "path": "abilities.a2.zoneDuration", "before": 4, "after": null },
             { "path": "abilities.a2.zoneKind", "before": "sanctuary", "after": null },
             { "path": "abilities.a2.zoneTickHeal", "before": 14, "after": null }
@@ -2839,7 +2849,8 @@
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
             { "path": "abilities.a2.radius", "before": 120, "after": null },
-            { "path": "abilities.a2.range", "before": 270, "after": null }
+            { "path": "abilities.a2.range", "before": 270, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ],
           "atCap": [
             { "path": "abilities.a2.castTime", "before": null, "after": 0.7 },
@@ -2855,7 +2866,8 @@
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
             { "path": "abilities.a2.radius", "before": 120, "after": null },
-            { "path": "abilities.a2.range", "before": 270, "after": null }
+            { "path": "abilities.a2.range", "before": 270, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ]
         },
         {
@@ -2874,7 +2886,8 @@
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": null },
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
-            { "path": "abilities.a2.range", "before": 240, "after": null }
+            { "path": "abilities.a2.range", "before": 240, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ],
           "atCap": [
             { "path": "abilities.a2.castTime", "before": null, "after": 0.7 },
@@ -2888,7 +2901,8 @@
             { "path": "abilities.a2.prepareCrit", "before": 4, "after": null },
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
-            { "path": "abilities.a2.range", "before": 240, "after": null }
+            { "path": "abilities.a2.range", "before": 240, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ]
         },
         {
@@ -2910,7 +2924,8 @@
             },
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
-            { "path": "abilities.a2.range", "before": 360, "after": null }
+            { "path": "abilities.a2.range", "before": 360, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ],
           "atCap": [
             { "path": "abilities.a2.castTime", "before": null, "after": 0.7 },
@@ -2927,7 +2942,8 @@
             },
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
-            { "path": "abilities.a2.range", "before": 360, "after": null }
+            { "path": "abilities.a2.range", "before": 360, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ]
         },
         {
@@ -2949,7 +2965,8 @@
               "path": "abilities.a2.recoveryZone",
               "before": { "radius": 95, "duration": 3, "tickHeal": 4 },
               "after": null
-            }
+            },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ],
           "atCap": [
             { "path": "abilities.a2.castTime", "before": null, "after": 0.7 },
@@ -2966,7 +2983,8 @@
               "path": "abilities.a2.recoveryZone",
               "before": { "radius": 95, "duration": 3, "tickHeal": 4 },
               "after": null
-            }
+            },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ]
         },
         {
@@ -2984,7 +3002,8 @@
             { "path": "abilities.a2.name", "before": "Healing Word", "after": "Fireball" },
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
-            { "path": "abilities.a2.range", "before": 420, "after": null }
+            { "path": "abilities.a2.range", "before": 420, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ],
           "atCap": [
             { "path": "abilities.a2.bardSong", "before": "harmony", "after": null },
@@ -2997,7 +3016,8 @@
             { "path": "abilities.a2.name", "before": "Healing Word", "after": "Fireball" },
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
-            { "path": "abilities.a2.range", "before": 420, "after": null }
+            { "path": "abilities.a2.range", "before": 420, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ]
         },
         {
@@ -3017,7 +3037,8 @@
             { "path": "abilities.a2.prepareFlow", "before": 4, "after": null },
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
-            { "path": "abilities.a2.range", "before": 250, "after": null }
+            { "path": "abilities.a2.range", "before": 250, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ],
           "atCap": [
             { "path": "abilities.a2.castTime", "before": null, "after": 0.7 },
@@ -3032,7 +3053,8 @@
             { "path": "abilities.a2.prepareFlow", "before": 4, "after": null },
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
-            { "path": "abilities.a2.range", "before": 250, "after": null }
+            { "path": "abilities.a2.range", "before": 250, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ]
         },
         {
@@ -3051,7 +3073,8 @@
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
             { "path": "abilities.a2.radius", "before": 140, "after": null },
-            { "path": "abilities.a2.rebukeDuration", "before": 3, "after": null }
+            { "path": "abilities.a2.rebukeDuration", "before": 3, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ],
           "atCap": [
             { "path": "abilities.a2.castTime", "before": null, "after": 0.7 },
@@ -3065,7 +3088,8 @@
             { "path": "abilities.a2.projCount", "before": null, "after": 1 },
             { "path": "abilities.a2.projSpeed", "before": null, "after": 480 },
             { "path": "abilities.a2.radius", "before": 140, "after": null },
-            { "path": "abilities.a2.rebukeDuration", "before": 3, "after": null }
+            { "path": "abilities.a2.rebukeDuration", "before": 3, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": null, "after": "fireball" }
           ]
         }
       ]
@@ -3439,7 +3463,8 @@
             { "path": "abilities.a1.momentumWindow", "before": null, "after": 6 },
             { "path": "abilities.a1.name", "before": "Fireball", "after": "Rage" },
             { "path": "abilities.a1.projCount", "before": 1, "after": null },
-            { "path": "abilities.a1.projSpeed", "before": 480, "after": null }
+            { "path": "abilities.a1.projSpeed", "before": 480, "after": null },
+            { "path": "abilities.a1.visualStyle", "before": "fireball", "after": null }
           ],
           "atCap": [
             { "path": "abilities.a1.buffDamageMult", "before": null, "after": 1.35 },
@@ -3453,7 +3478,8 @@
             { "path": "abilities.a1.momentumWindow", "before": null, "after": 6 },
             { "path": "abilities.a1.name", "before": "Fireball", "after": "Rage" },
             { "path": "abilities.a1.projCount", "before": 1, "after": null },
-            { "path": "abilities.a1.projSpeed", "before": 480, "after": null }
+            { "path": "abilities.a1.projSpeed", "before": 480, "after": null },
+            { "path": "abilities.a1.visualStyle", "before": "fireball", "after": null }
           ]
         },
         {
@@ -3838,7 +3864,8 @@
             { "path": "abilities.a2.range", "before": null, "after": 400 },
             { "path": "abilities.a2.rescueHealBonus", "before": null, "after": 0.3 },
             { "path": "abilities.a2.slowDuration", "before": 3, "after": null },
-            { "path": "abilities.a2.slowMult", "before": 0.6, "after": null }
+            { "path": "abilities.a2.slowMult", "before": 0.6, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": "frostNova", "after": null }
           ],
           "atCap": [
             { "path": "abilities.a2.balanceDamageScale", "before": null, "after": 0.8 },
@@ -3850,7 +3877,8 @@
             { "path": "abilities.a2.range", "before": null, "after": 400 },
             { "path": "abilities.a2.rescueHealBonus", "before": null, "after": 0.3 },
             { "path": "abilities.a2.slowDuration", "before": 3, "after": null },
-            { "path": "abilities.a2.slowMult", "before": 0.6, "after": null }
+            { "path": "abilities.a2.slowMult", "before": 0.6, "after": null },
+            { "path": "abilities.a2.visualStyle", "before": "frostNova", "after": null }
           ]
         },
         {
@@ -4711,7 +4739,8 @@
             { "path": "abilities.a1.name", "before": "Fireball", "after": "Inspiration" },
             { "path": "abilities.a1.projCount", "before": 1, "after": null },
             { "path": "abilities.a1.projSpeed", "before": 480, "after": null },
-            { "path": "abilities.a1.range", "before": null, "after": 420 }
+            { "path": "abilities.a1.range", "before": null, "after": 420 },
+            { "path": "abilities.a1.visualStyle", "before": "fireball", "after": null }
           ],
           "atCap": [
             { "path": "abilities.a1.bardSong", "before": null, "after": "chorus" },
@@ -4727,7 +4756,8 @@
             { "path": "abilities.a1.name", "before": "Fireball", "after": "Inspiration" },
             { "path": "abilities.a1.projCount", "before": 1, "after": null },
             { "path": "abilities.a1.projSpeed", "before": 480, "after": null },
-            { "path": "abilities.a1.range", "before": null, "after": 420 }
+            { "path": "abilities.a1.range", "before": null, "after": 420 },
+            { "path": "abilities.a1.visualStyle", "before": "fireball", "after": null }
           ]
         },
         {

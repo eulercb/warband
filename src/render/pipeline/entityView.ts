@@ -1,3 +1,4 @@
+import { playerVisualHeadroom } from '../rig/mageGarment';
 import { drawSkeleton } from './skeletonVisual';
 import { drawDefenseState } from './defenseVisuals';
 import { CURSE_COLORS, drawCurseSigil } from './curseVisuals';
@@ -358,7 +359,15 @@ export function drawPlayerOverlay(
   drawCastRing(g, x, y, r, p);
 
   const hpFrac = clamp(p.hp / p.maxHp, 0, 1);
-  drawBar(g, x, y - r - 9, Math.max(22, r * 2), 4, hpFrac, downed ? 0x9a9a9a : hpColor(hpFrac));
+  drawBar(
+    g,
+    x,
+    y - playerVisualHeadroom(p, r) - 9,
+    Math.max(22, r * 2),
+    4,
+    hpFrac,
+    downed ? 0x9a9a9a : hpColor(hpFrac),
+  );
 }
 
 /**

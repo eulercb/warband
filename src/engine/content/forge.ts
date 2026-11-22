@@ -68,6 +68,7 @@ export type DeliveryKind = AbilityKind;
 
 export interface Delivery {
   kind: DeliveryKind;
+  visualStyle?: PlayerAbilityDef['visualStyle'];
   /** Cone reach / dash-blink distance / ground-target or auto-target search radius. */
   range?: number;
   /** pbaoe / landing radius (zone radius lives on the zone effect). */
@@ -281,6 +282,7 @@ const ALLY_DELIVERIES = new Set<DeliveryKind>(['buffAlly', 'heal']);
 export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponents {
   const kind = def.kind;
   const delivery: Delivery = { kind };
+  if (def.visualStyle) delivery.visualStyle = def.visualStyle;
   if (def.range != null) delivery.range = def.range;
   if (def.halfAngleDeg != null) delivery.halfAngleDeg = def.halfAngleDeg;
   if (def.lightningWidth != null) delivery.lightningWidth = def.lightningWidth;
@@ -659,6 +661,7 @@ export function recompose(
     damage: 0,
     components: comp,
   };
+  if (d.visualStyle) def.visualStyle = d.visualStyle;
   if (d.range != null) def.range = d.range;
   if (d.radius != null) def.radius = d.radius;
   if (d.halfAngleDeg != null) def.halfAngleDeg = d.halfAngleDeg;
