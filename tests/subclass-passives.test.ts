@@ -1,3 +1,5 @@
+import { SECOND_DAGGER_DELAY } from '../src/engine/content/daggerRules';
+import { advanceDaggerAttacks } from '../src/engine/combat/abilities';
 import { describe, expect, it } from 'vitest';
 import { absorptionAmount } from '../src/engine/combat/absorption';
 import { World } from '../src/engine/world/world';
@@ -143,12 +145,18 @@ describe('Trickster: Spellblade', () => {
     expect(p.buffs.some((b) => b.kind === 'spellblade')).toBe(true);
     p.aim = { x: -1, y: 0 };
     resolvePlayerAbility(w, p, 'basic', ZERO);
+    w.elapsed += SECOND_DAGGER_DELAY;
+    advanceDaggerAttacks(w);
     expect(p.buffs.some((b) => b.kind === 'spellblade')).toBe(true);
     p.aim = { x: 1, y: 0 };
     resolvePlayerAbility(w, p, 'basic', ZERO);
-    expect(w.boss!.hp).toBeCloseTo(978.4);
+    w.elapsed += SECOND_DAGGER_DELAY;
+    advanceDaggerAttacks(w);
+    expect(w.boss!.hp).toBeCloseTo(977.824);
     resolvePlayerAbility(w, p, 'basic', ZERO);
-    expect(w.boss!.hp).toBeCloseTo(960.4);
+    w.elapsed += SECOND_DAGGER_DELAY;
+    advanceDaggerAttacks(w);
+    expect(w.boss!.hp).toBeCloseTo(957.664);
   });
   it('uses subclass magic, preserves readiness on an invulnerable boss and respects the proc cooldown', () => {
     const w = world('rogue', ['ro_trickster_bolt']);
@@ -170,6 +178,8 @@ describe('Trickster: Spellblade', () => {
     const w = world('rogue', ['ro_trickster_step']);
     const p = w.players[0];
     resolvePlayerAbility(w, p, 'basic', ZERO);
+    w.elapsed += SECOND_DAGGER_DELAY;
+    advanceDaggerAttacks(w);
     resolvePlayerAbility(w, p, 'a1', ZERO);
     resolvePlayerAbility(w, p, 'sub2', ZERO);
     expect(p.buffs.some((b) => b.kind === 'spellblade')).toBe(false);
@@ -191,7 +201,9 @@ describe('Trickster: Spellblade', () => {
     damageAdd(w, p, a, 10);
     expect(p.buffs.some((b) => b.kind === 'spellblade')).toBe(true);
     resolvePlayerAbility(w, p, 'basic', ZERO);
-    expect(a.hp).toBeCloseTo(968.4);
+    w.elapsed += SECOND_DAGGER_DELAY;
+    advanceDaggerAttacks(w);
+    expect(a.hp).toBeCloseTo(967.824);
   });
 });
 

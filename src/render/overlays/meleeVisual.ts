@@ -1,3 +1,4 @@
+import { WHIRLING_BLADES_SECONDS } from '../../engine/content/daggerRules';
 import type { Graphics } from 'pixi.js';
 import type { BladeAreaStyle, SkillArea, Vec2 } from '../../engine/core/types';
 
@@ -8,7 +9,7 @@ export function isBladeArea(style: SkillArea['style']): style is BladeAreaStyle 
 }
 
 export function bladeSweepSeconds(style: BladeAreaStyle, halfAngle: number): number {
-  if (halfAngle >= Math.PI) return style === 'daggerSlash' ? 0.39 : 0.47;
+  if (halfAngle >= Math.PI) return style === 'daggerSlash' ? WHIRLING_BLADES_SECONDS : 0.47;
   if (style === 'daggerSlash') return 0.21;
   return style === 'holyStrike' ? 0.28 : 0.32;
 }
@@ -35,7 +36,8 @@ export function drawMeleeReach(
   const span = 2 * halfAngle;
   const end = start + span;
   const fade = Math.pow(Math.max(0, 1 - age / life), 1.2);
-  const sweepTime = style === 'moonClaw' ? 0.19 : bladeSweepSeconds(style, halfAngle);
+  const sweepTime =
+    area.daggerDuration ?? (style === 'moonClaw' ? 0.19 : bladeSweepSeconds(style, halfAngle));
   const sweep = Math.min(1, age / sweepTime);
 
   const at = (angle: number, radius: number): [number, number] => [
@@ -43,11 +45,13 @@ export function drawMeleeReach(
     origin.y + Math.sin(angle) * radius,
   ];
   // The whole reach lights on contact. No radial edges or permanent stroke.
-  for (const [size, alpha] of [
-    [1, 0.065],
-    [0.94, 0.04],
-    [0.84, 0.035],
-  ]) {
+  for (const [size, alpha] of style === 'daggerSlash' && fullCircle
+    ? []
+    : [
+        [1, 0.065],
+        [0.94, 0.04],
+        [0.84, 0.035],
+      ]) {
     g.moveTo(origin.x, origin.y)
       .arc(origin.x, origin.y, r * size, start, end)
       .closePath()
@@ -55,6 +59,13 @@ export function drawMeleeReach(
   }
 
   material.ribbons.forEach((lower, index) => {
+    if (
+      style === 'daggerSlash' &&
+      !fullCircle &&
+      area.daggerHand !== undefined &&
+      index !== area.daggerHand
+    )
+      return;
     const pairedTurn = style === 'daggerSlash' && fullCircle;
     const tip = start + span * sweep;
     const offset = index * Math.PI;

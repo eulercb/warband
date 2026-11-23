@@ -77,7 +77,7 @@ export function drawDefenseState(
         .stroke({ color: 0xfffcdf, width: 3, alpha: 0.95 });
     }
   }
-  const parry = p.buffs.find((buff) => buff.kind === 'radiantParry');
+  const parry = p.buffs.find((buff) => buff.kind === 'parryReady');
   if (parry) {
     const h = Math.max(6, r * 0.65);
     const px = x - r - h * 1.1;

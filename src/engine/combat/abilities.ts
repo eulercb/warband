@@ -1,3 +1,8 @@
+import {
+  DAGGER_DAMAGE_SHARE,
+  SECOND_DAGGER_DELAY,
+  WHIRLING_BLADES_SECONDS,
+} from '../content/daggerRules';
 import { reserveRefuge, registerRefuge } from './refuge';
 import { reserveFont } from './revivalFont';
 import { launchGuidance, launchGuidedBurst, armPhaseOrigin, takeGuidanceOrigin } from './guidance';
@@ -670,7 +675,14 @@ export function resolvePlayerAbility(
     case 'meleeCone': {
       if (!commitShadow(world, p, ab, ab.slot, p.pos, ab.flowAim ?? p.aim)) {
         const moving = startPalmSweep(world, p, ab);
-        resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
+        if (
+          !moving &&
+          p.classId === 'rogue' &&
+          ab.slot === 'basic' &&
+          ab.basicPresentation === 'daggerSlash'
+        )
+          beginDaggerAttack(world, p, ab);
+        else resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
       }
       break;
     }
@@ -902,6 +914,110 @@ export function releaseShadowCommit(
   else resolveBurstAt(world, p, cast, origin);
 }
 
+export interface DaggerFollowThrough {
+  owner: Player;
+  ab: PlayerAbilityDef & { range: number; halfAngleDeg: number };
+  angle: number;
+  started: number;
+  covered: number;
+  dealt: number;
+  duration: number;
+  previousPos: Vec2;
+  hits: [number[], number[]];
+}
+
+function emitDaggerArea(
+  world: World,
+  p: Player,
+  ab: DaggerFollowThrough['ab'],
+  angle: number,
+  hand: 0 | 1,
+  duration?: number,
+): void {
+  emitSkillArea(world, p.id, CLASS_COLORS[p.classId], {
+    kind: 'cone',
+    style: 'daggerSlash',
+    origin: { ...p.pos },
+    angle,
+    range: ab.range,
+    radius: 0,
+    halfAngle: (ab.halfAngleDeg * Math.PI) / 180,
+    daggerHand: hand,
+    daggerDuration: duration,
+  });
+}
+
+function beginDaggerAttack(world: World, p: Player, ab: PlayerAbilityDef): void {
+  const angle = angleOf(p.aim);
+  const payload = {
+    ...ab,
+    range: ab.range ?? 62,
+    halfAngleDeg: ab.halfAngleDeg ?? 42,
+    damage: ab.damage * DAGGER_DAMAGE_SHARE,
+  };
+  const spin = payload.halfAngleDeg >= 180;
+  const follow: DaggerFollowThrough = {
+    owner: p,
+    ab: payload,
+    angle,
+    started: world.elapsed,
+    covered: 0,
+    dealt: 0,
+    duration: Math.min(WHIRLING_BLADES_SECONDS, p.cooldowns.basic || WHIRLING_BLADES_SECONDS),
+    previousPos: { ...p.pos },
+    hits: [[], []],
+  };
+  world.daggerFollowThrough.push(follow);
+  emitDaggerArea(world, p, payload, angle, 0, spin ? follow.duration : undefined);
+  if (!spin) follow.dealt = resolveConeAt(world, p, payload, p.pos, follow.hits[0], p.pos, angle);
+}
+
+export function advanceDaggerAttacks(world: World): void {
+  world.daggerFollowThrough = world.daggerFollowThrough.filter((cast) => {
+    const { owner, ab, angle, started, hits } = cast;
+    if (
+      world.finished ||
+      world.scene !== null ||
+      !world.players.includes(owner) ||
+      owner.state !== 'alive' ||
+      owner.hp <= 0 ||
+      owner.classId !== 'rogue'
+    )
+      return false;
+    const age = world.elapsed - started;
+    if (ab.halfAngleDeg < 180) {
+      if (age < SECOND_DAGGER_DELAY - 1e-9) return true;
+      const aim = angleOf(owner.aim);
+      emitDaggerArea(world, owner, ab, aim, 1);
+      const dealt =
+        cast.dealt + resolveConeAt(world, owner, ab, owner.pos, hits[1], owner.pos, aim);
+      onParryHit(owner, ab, dealt);
+      return false;
+    }
+    const covered = Math.min(1, age / cast.duration) * Math.PI * 2;
+    const travel = covered - cast.covered;
+    if (travel <= 0) return true;
+    const band = { ...ab, halfAngleDeg: (travel * 90) / Math.PI };
+    for (const hand of [0, 1] as const) {
+      const heading = angle + cast.covered + travel / 2 + hand * Math.PI;
+      cast.dealt += resolveConeAt(
+        world,
+        owner,
+        band,
+        owner.pos,
+        hits[hand],
+        cast.previousPos,
+        heading,
+      );
+    }
+    cast.covered = covered;
+    cast.previousPos = { ...owner.pos };
+    if (covered < Math.PI * 2) return true;
+    onParryHit(owner, ab, cast.dealt);
+    return false;
+  });
+}
+
 /** Carry the aimed sector; each target is contacted once across the travelled path. */
 function resolveConeAt(
   world: World,
@@ -910,10 +1026,11 @@ function resolveConeAt(
   origin: Vec2,
   hitIds?: number[],
   from: Vec2 = origin,
-): void {
+  forcedAim?: number,
+): number {
   const range = ab.range ?? 70,
     half = ((ab.halfAngleDeg ?? 45) * Math.PI) / 180,
-    aimAngle = angleOf(ab.palmSweepCast?.aim ?? ab.flowAim ?? p.aim);
+    aimAngle = forcedAim ?? angleOf(ab.palmSweepCast?.aim ?? ab.flowAim ?? p.aim);
   if (!hitIds)
     emitSkillArea(world, p.id, CLASS_COLORS[p.classId] ?? 0xffffff, {
       kind: 'cone',
@@ -956,8 +1073,9 @@ function resolveConeAt(
       applyStrikeRiders(world, contact, a, ab);
     }
   }
-  onParryHit(p, ab, dealt);
+  if (forcedAim === undefined) onParryHit(p, ab, dealt);
   lifesteal(world, p, ab, dealt);
+  return dealt;
 }
 
 /** One contact per foe; moving bursts test the entire actual travelled segment. */
@@ -1257,7 +1375,14 @@ function resolveComposedAbility(
     case 'meleeCone': {
       if (!commitShadow(world, p, ab, ab.slot, p.pos, ab.flowAim ?? p.aim)) {
         const moving = startPalmSweep(world, p, ab);
-        resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
+        if (
+          !moving &&
+          p.classId === 'rogue' &&
+          ab.slot === 'basic' &&
+          ab.basicPresentation === 'daggerSlash'
+        )
+          beginDaggerAttack(world, p, ab);
+        else resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
       }
       buffSelf();
       buffAllies(FORGE_RALLY_RANGE);

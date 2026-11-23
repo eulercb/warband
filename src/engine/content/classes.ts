@@ -1,3 +1,4 @@
+import { DAGGER_DAMAGE_SHARE } from './daggerRules';
 import { REFUGE_TEXT, refugeField } from './refugeRules';
 import { FONT_TEXT, revivalFont } from './fontRules';
 import { REFLECTION_TEXT, reflectiveWard } from './reflectionRules';
@@ -1369,7 +1370,13 @@ export function describeAbility(
   } else if (def.damage > 0) {
     const count = def.projCount ?? 1;
     const dmg = def.damage * dmgMul * (guidedBurst(def) ? GUIDED_BURST_PREMIUM : 1);
-    parts.push(count > 1 ? `${count}× ${n(dmg)} dmg` : `${n(dmg)} dmg`);
+    parts.push(
+      def.kind === 'meleeCone' && def.basicPresentation === 'daggerSlash'
+        ? `${n(dmg * DAGGER_DAMAGE_SHARE)} dmg per dagger (two cuts)`
+        : count > 1
+          ? `${count}× ${n(dmg)} dmg`
+          : `${n(dmg)} dmg`,
+    );
   }
   if (def.landingDamage) parts.push(`${n(def.landingDamage * dmgMul)} landing dmg`);
   if (def.zoneTickDamage)
@@ -1406,7 +1413,7 @@ export function describeAbility(
 
   if (def.parryOnHit)
     parts.push(
-      `connecting hit readies next melee counter +30% for 4s; ${def.basicPresentation === 'holyStrike' ? `next hit deals 40% less damage within ${s(def.parryOnHit)}` : `parry takes 40% less damage for ${s(def.parryOnHit)}`}`,
+      `connecting hit readies next melee counter +30% for 4s; prepares a parry for ${s(def.parryOnHit)} (40% less damage on the next incoming hit)`,
     );
   if (def.bloodRage)
     parts.push(

@@ -574,7 +574,7 @@ const ROGUE: CharUpgradeDef[] = [
     'ro_flurry',
     'Flurry',
     '⚡',
-    'Slash strikes 11% faster and hits for 23 (+5)',
+    'Slash strikes 11% faster and adds +5 damage to the base shared by both cuts',
     ({ abilities: a }) => {
       mul(a.basic, 'cooldown', 0.89);
       addN(a.basic, 'damage', 5);
@@ -1686,7 +1686,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'ro_gk_basic_b',
     'Whirling Blades',
     '🌀',
-    'Slash sweeps a full 360° circle: +3 damage, +25u reach',
+    'Both daggers sweep a full circle, hitting as they pass: +3 base damage, +25u reach',
     (ab) => {
       ab.halfAngleDeg = 180;
       addN(ab, 'damage', 3);
@@ -1727,7 +1727,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'pa_gk_basic_a',
     'Radiant Riposte',
     '🌟',
-    'A connecting Holy Strike readies a +30% melee counter and reduces the next hit by 40% within 2s; +12 damage',
+    'A connecting Holy Strike prepares a parry for 2s and readies a +30% melee counter; +12 damage',
     casterGrand('meleeCone', (ab) => {
       ab.parryOnHit = Math.max(ab.parryOnHit ?? 0, 2);
       addN(ab, 'damage', 12);
@@ -4147,10 +4147,10 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'rg_beast_bite',
     'Defiant Bite',
     '🦷',
-    'Savage Bite gains +8 damage and a connecting hit grants 0.6s frontal parry; misses grant no parry',
+    'Savage Bite gains +8 damage and prepares a parry for 2s on a connecting hit',
     natureGrand('meleeCone', (ab) => {
       addN(ab, 'damage', 8);
-      ab.parryOnHit = Math.max(ab.parryOnHit ?? 0, 0.6);
+      ab.parryOnHit = Math.max(ab.parryOnHit ?? 0, 2);
     }),
   ),
   gsk(
@@ -4442,10 +4442,10 @@ const MARTIAL_HONED: Record<string, { desc: string; tune: (ab: PlayerAbilityDef)
     },
   },
   kn_champion_riposte: {
-    desc: 'Increase damage by 8% and connecting parry by 0.1s, up to 1.2s; recharge improves by 4%',
+    desc: 'Increase damage by 8% and parry window by 0.1s, up to 2.5s; recharge improves by 4%',
     tune: (ab) => {
       mul(ab, 'damage', 1.08);
-      ab.parryOnHit = Math.min(1.2, ab.parryOnHit! + 0.1);
+      ab.parryOnHit = Math.min(2.5, ab.parryOnHit! + 0.1);
     },
   },
   kn_battle_trip: {

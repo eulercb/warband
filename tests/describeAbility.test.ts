@@ -136,7 +136,7 @@ describe('describeAbility (crit lean, item 13)', () => {
   it("the Rogue's base kit reads its signature crit on Slash + Backstab", () => {
     // Slash carries only a crit-CHANCE lean (no sharper multiplier).
     expect(describeAbility(CLASSES.rogue.abilities.basic)).toBe(
-      '18 dmg · 62u reach · 84° arc · +12% crit · 0.42s cooldown',
+      '10 dmg per dagger (two cuts) · 62u reach · 84° arc · +12% crit · 0.42s cooldown',
     );
     // Backstab — the flagship crit strike — leans both chance AND multiplier.
     expect(describeAbility(CLASSES.rogue.abilities.a1)).toBe(

@@ -441,3 +441,36 @@ telegraphing, and visually distinguish it from a resolved hit.
 In-game captures: [Paladin with Riposte ready](images/paladin-raised-riposte-phone.png),
 [Rogue Whirling Blades](images/rogue-raised-whirling-phone.png), and
 [Moon Claw impact](images/moon-claw-timed-impact.png).
+
+## Monk and Barbarian rigs, shared parry and dual daggers
+
+Sol 6.2 High reviewed this batch. Monk has a wrapped, empty-hand guard and
+an open-fist contact pose. Barbarian has a raised pelt silhouette and an
+independently posed axe hand. Their existing basic attacks verify the raised
+bodies. The rest of each ability set stays in the ability production pass.
+
+The delayed Moon Claw uses the bear's live aim and position at impact.
+All authored parry sources share one charge and one visible countdown:
+Paladin's Radiant Riposte, Knight Champion's Riposte (including Honed), and
+Ranger's Defiant Bite. Each starts with a 2s window and reduces the next
+eligible incoming hit by 40%. Honed Riposte adds 0.1s per rank up to 2.5s.
+Forge carries the same one-hit behavior and still scales the window.
+
+Rogue Slash hits once per dagger. The first cut resolves on cast and the
+off-hand follows 120ms later using live aim. Each uses 56% of the resolved
+base damage, for 112% if both land. Ordinary bonuses apply to the base
+before the split, and lifesteal follows damage actually dealt. Whirling
+Blades tests the arc passed by each opposing dagger as the Rogue rotates.
+A foe can be hit once per dagger. The rig, trail and host use the same
+rotation duration, shortened if necessary to fit recharge.
+
+When authoring the Rogue's remaining abilities, choose which hand leads each
+move. Weight committed strikes toward the main dagger and consider the
+off hand for throws or trickier actions. Verify attached hands at rest and
+through release so the two weapons remain distinctive.
+
+Ranger and Bard are the next rig cohort. Astra 6.2 High is next in rotation.
+
+In-game captures: [Monk wraps and stance](images/monk-wrapped-guard.png),
+[Barbarian pelt and axe](images/barbarian-raised-axe-phone.png),
+[Rogue Whirling Blades](images/rogue-contact-arcs-phone.png).

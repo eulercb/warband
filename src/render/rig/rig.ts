@@ -98,7 +98,13 @@ export class CreatureRig {
   private lightningAngle = 0;
   private recoilAge = 1;
   private recoilAngle = 0;
-  private blade?: { style: BladeAreaStyle; angle: number; halfAngle: number };
+  private blade?: {
+    style: BladeAreaStyle;
+    angle: number;
+    halfAngle: number;
+    daggerHand?: 0 | 1;
+    duration?: number;
+  };
   private attackAge = -1; // < 0 = no active attack swing
 
   constructor(
@@ -211,12 +217,19 @@ export class CreatureRig {
   }
 
   /** Trigger a one-shot weapon swing (humanoid attack), consumed at draw time. */
-  triggerBlade(style: BladeAreaStyle, angle: number, halfAngle: number): void {
-    this.triggerAttack();
-    this.blade = { style, angle, halfAngle };
+  triggerBlade(
+    style: BladeAreaStyle,
+    angle: number,
+    halfAngle: number,
+    daggerHand?: 0 | 1,
+    duration?: number,
+  ): void {
+    this.attackAge = 0;
+    this.blade = { style, angle, halfAngle, daggerHand, duration };
   }
 
   triggerAttack(): void {
+    if (this.blade?.duration && this.attackAge >= 0 && this.attackAge < this.blade.duration) return;
     this.blade = undefined;
     this.attackAge = 0;
   }
@@ -343,7 +356,10 @@ export class CreatureRig {
       this.attackAge += dt;
       if (
         this.attackAge >
-        (this.blade ? bladeSweepSeconds(this.blade.style, this.blade.halfAngle) + 0.11 : ATTACK_DUR)
+        (this.blade
+          ? (this.blade.duration ?? bladeSweepSeconds(this.blade.style, this.blade.halfAngle)) +
+            0.11
+          : ATTACK_DUR)
       ) {
         this.attackAge = -1;
         this.blade = undefined;
@@ -502,7 +518,12 @@ export class CreatureRig {
         R,
       );
     }
-    if ((this.spec.garment === 'paladin' || this.spec.garment === 'rogue') && !downed) {
+    if (
+      this.spec.garment &&
+      this.spec.garment !== 'mage' &&
+      this.spec.garment !== 'knight' &&
+      !downed
+    ) {
       const heightScale = this.spec.garment === 'rogue' ? 0.85 : 1;
       drawMeleeGarment(
         this.gBehind,
@@ -761,6 +782,17 @@ export class CreatureRig {
       ) {
         hand = arm.side === -1 ? this.paladinShieldAnchor(R) : grip;
       }
+      if (!downed && this.spec.garment === 'monk') {
+        const strike =
+          arm.side === 1 && this.attackAge >= 0
+            ? Math.sin(Math.PI * clamp(this.attackAge / ATTACK_DUR, 0, 1))
+            : 0;
+        hand = this.bodyPoint({ x: 0.65 + strike * 1.25, y: arm.side * (0.53 - strike * 0.3) }, R);
+        hand.y -= R * (0.85 + strike * 0.14);
+      } else if (!downed && this.spec.garment === 'barbarian') {
+        hand = arm.side === 1 ? grip : this.bodyPoint({ x: 0.22, y: -0.83 }, R);
+        if (arm.side === -1) hand.y -= R * 0.65;
+      }
       const reachScale = this.spec.garment && !downed ? 1.14 : 1;
       if (this.spec.garment && !downed) {
         hand = clampToReach(hand, shoulder, (arm.l1 + arm.l2) * R * reachScale * 0.98);
@@ -784,6 +816,11 @@ export class CreatureRig {
       } else {
         drawLimb(this.gFront, shoulder, elbow, hand, wRoot, wTip, color);
       }
+      if (this.spec.garment === 'monk' && !downed)
+        this.gFront
+          .circle(hand.x, hand.y, 0.2 * R)
+          .fill({ color: 0xe0cbb1 })
+          .stroke({ color: 0x7c6078, width: Math.max(0.8, R * 0.07) });
       if (mage) {
         this.gFront.circle(hand.x, hand.y, 0.13 * R).fill({ color: 0xe0b994 });
         this.gFront.circle(elbow.x, elbow.y, 0.095 * R).fill({ color: 0x8b719b });
@@ -810,7 +847,9 @@ export class CreatureRig {
           ) *
             activeStaff
         : this.blade
-          ? this.bladeAngle()
+          ? this.blade.daggerHand === 1 && !this.fullTurn
+            ? this.facing + 0.64
+            : this.bladeAngle()
           : this.spec.garment === 'knight'
             ? this.attackAge >= 0
               ? this.aimFacing
@@ -1041,7 +1080,12 @@ export class CreatureRig {
 
   private bladePhase(): number {
     if (!this.blade) return 0;
-    return clamp(this.attackAge / bladeSweepSeconds(this.blade.style, this.blade.halfAngle), 0, 1);
+    return clamp(
+      this.attackAge /
+        (this.blade.duration ?? bladeSweepSeconds(this.blade.style, this.blade.halfAngle)),
+      0,
+      1,
+    );
   }
 
   private bladeAngle(): number {
@@ -1072,7 +1116,10 @@ export class CreatureRig {
   }
 
   private daggerOffhandAngle(): number {
-    return this.blade ? this.bladeAngle() - (this.fullTurn ? Math.PI : 0.72) : this.facing - 0.82;
+    if (!this.blade) return this.facing - 0.82;
+    if (this.fullTurn) return this.bladeAngle() - Math.PI;
+    if (this.blade.daggerHand === 1) return this.bladeAngle();
+    return this.facing - 0.82;
   }
 
   private daggerOffhand(R: number): Vec2 {
@@ -1103,7 +1150,9 @@ export class CreatureRig {
     if (!downed) dist += 0.85 * releasePose(this.lightningAge);
     const forward =
       this.blade && !downed
-        ? this.bladeAngle()
+        ? this.blade.daggerHand === 1 && !this.fullTurn
+          ? this.facing + 0.64
+          : this.bladeAngle()
         : this.spec.garment === 'knight' && !downed
           ? this.attackAge >= 0
             ? this.aimFacing
@@ -1121,6 +1170,7 @@ export class CreatureRig {
     if (!downed && this.spec.garment === 'paladin')
       point.y -= R * (this.blade ? 0.64 + 0.8 * (1 - this.bladePhase()) : 0.94);
     if (!downed && this.spec.garment === 'rogue') point.y -= R * 0.48;
+    if (!downed && this.spec.garment === 'barbarian') point.y -= R * 0.72;
     if (!downed && this.blade?.style === 'daggerSlash') point.y += R * 0.15;
     if (this.spec.garment === 'knight' && !downed) point.y -= R * 0.65;
     if (this.spec.garment === 'mage' && !downed) {

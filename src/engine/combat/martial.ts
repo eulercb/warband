@@ -89,13 +89,12 @@ export function onParryHit(p: Player, ab: PlayerAbilityDef, dealt: number): void
   }
   if (!ab.parryOnHit) return;
   put(p, { kind: 'counter', mult: 1.3, remaining: 4, source: 'martialCounter' });
-  const kind = ab.basicPresentation === 'holyStrike' ? 'radiantParry' : 'damageTaken';
-  put(p, { kind, mult: 0.6, remaining: ab.parryOnHit, source: 'parryDef' });
+  put(p, { kind: 'parryReady', mult: 0.6, remaining: ab.parryOnHit, source: 'parryDef' });
 }
 
-export function spendRadiantParry(p: Player, incoming: number): number {
+export function spendParry(p: Player, incoming: number): number {
   if (incoming <= 0) return incoming;
-  const parry = ready(p, 'radiantParry');
+  const parry = ready(p, 'parryReady');
   if (!parry) return incoming;
   p.buffs.splice(p.buffs.indexOf(parry), 1);
   return incoming * parry.mult;

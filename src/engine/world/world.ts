@@ -1,3 +1,4 @@
+import { advanceDaggerAttacks, type DaggerFollowThrough } from '../combat/abilities';
 import { visitRhapsodyRallies } from '../combat/support';
 import {
   advanceFaithWound,
@@ -571,6 +572,7 @@ export class World {
   groundZones: GroundZone[] = [];
   /** Telegraphed delayed strikes not tied to a boss (corruption rain / vents). */
   pendingStrikes: PendingStrike[] = [];
+  daggerFollowThrough: DaggerFollowThrough[] = [];
   terrain: TerrainPatch[] = [];
   obstacles: Obstacle[] = [];
   /** Playground interaction pillars (practice worlds only; block movement). */
@@ -1305,6 +1307,7 @@ export class World {
     dissolveOverlappedBulwarks(this);
     visitRhapsodyRallies(this);
     resolveMoonClaws(this);
+    advanceDaggerAttacks(this);
     this.updateProjectiles(dt);
     this.updateZones(dt);
     updateCompanions(this, dt);

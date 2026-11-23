@@ -1320,7 +1320,7 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
     case 'castSlow':
       return `+${pct((e.mult - 1) * 100)} enemy wind-up for ${s(e.duration)}`;
     case 'parry':
-      return `connecting hit readies next melee counter +30% for 4s; parry takes 40% less damage for ${s(e.duration)}`;
+      return `connecting hit readies next melee counter +30% for 4s; prepares a parry for ${s(e.duration)} (40% less damage on the next incoming hit)`;
     case 'bloodRage':
       return `blood rage ${s(e.duration)} — pay 2% max HP/s (cannot kill you); heal 20% of effective direct damage`;
     case 'wolfHunt':
@@ -3086,7 +3086,7 @@ function capEffect(e: EffectComponent): EffectComponent {
         duration: clamp(round1(e.duration), 1, 5),
       };
     case 'parry':
-      return { ...e, duration: clamp(round05(e.duration), 0.3, 1.2) };
+      return { ...e, duration: clamp(round05(e.duration), 0.3, 2.5) };
     case 'bloodRage':
     case 'wolfHunt':
       return { ...e, duration: clamp(round1(e.duration), 2, 8) };

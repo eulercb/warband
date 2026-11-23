@@ -110,6 +110,7 @@ interface Burst {
 
 /** A short-lived cue that flashes a player/boss ability's effect area. */
 interface AreaFlash {
+  sourceId?: number;
   active: boolean;
   area: SkillArea;
   color: number;
@@ -258,7 +259,7 @@ export class Fx {
           break;
         }
         case 'skillArea': {
-          this.spawnAreaFlash(e.area, e.color);
+          this.spawnAreaFlash(e.area, e.color, e.sourceId);
           break;
         }
         case 'spawn': {
@@ -731,7 +732,7 @@ export class Fx {
   }
 
   /** Render bursts to `g` and position/fade the pooled damage-number `Text`. */
-  draw(g: Graphics, camera: Camera): void {
+  draw(g: Graphics, camera: Camera, players?: readonly { id: number; pos: Vec2 }[]): void {
     // PixiJS Graphics is retained-mode: every circle/fill below APPENDS geometry.
     // Clear first so we fully redraw the live bursts each frame — otherwise every
     // frame's circles pile up forever and each attack leaves a permanent ring on
@@ -765,7 +766,8 @@ export class Fx {
     // Ability area cues (under the bursts): flash the region an ability hit.
     for (const a of this.areaFlashes) {
       if (!a.active) continue;
-      this.drawAreaFlash(g, a, camera);
+      const movingOrigin = players?.find((p) => p.id === a.sourceId)?.pos;
+      this.drawAreaFlash(g, a, camera, movingOrigin);
     }
 
     // Bursts.
@@ -863,14 +865,17 @@ export class Fx {
     return oldest;
   }
 
-  private spawnAreaFlash(area: SkillArea, color: number): void {
+  private spawnAreaFlash(area: SkillArea, color: number, sourceId?: number): void {
     const a = this.acquireAreaFlash();
     a.active = true;
     a.age = 0;
     a.color = color;
+    a.sourceId = area.style === 'daggerSlash' && area.halfAngle >= Math.PI ? sourceId : undefined;
     // Deep-copy the geometry (events are transient / reused).
     a.area = {
       kind: area.kind,
+      daggerHand: area.daggerHand,
+      daggerDuration: area.daggerDuration,
       style: area.style,
       contacts: area.contacts?.map((hit) => ({ ...hit, pos: { ...hit.pos } })),
       stoppedByCover: area.stoppedByCover,
@@ -893,7 +898,7 @@ export class Fx {
   }
 
   /** Draw one ability area cue (cone / circle / line) fading over its life. */
-  private drawAreaFlash(g: Graphics, a: AreaFlash, camera: Camera): void {
+  private drawAreaFlash(g: Graphics, a: AreaFlash, camera: Camera, movingOrigin?: Vec2): void {
     const t = clamp(a.age / areaFlashTtl(a.area.style), 0, 1);
     const fade = 1 - t; // linear fade-out
     const fillAlpha = 0.28 * fade;
@@ -919,7 +924,7 @@ export class Fx {
         alpha: area.reach ? 0.2 * fade : strokeAlpha,
       });
     } else if (area.kind === 'cone') {
-      const o = camera.worldToScreen(area.origin);
+      const o = camera.worldToScreen(movingOrigin ?? area.origin);
       const R = area.range * s;
       const a0 = area.angle - area.halfAngle;
       const a1 = area.angle + area.halfAngle;

@@ -1607,7 +1607,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Slash strikes 11% faster and hits for 23 (+5)",
+      "description": "Slash strikes 11% faster and adds +5 damage to the base shared by both cuts",
       "disposition": "adjust",
       "rationale": "Review live field changes and wording; prefer a useful timing, coverage or resource decision.",
       "pilotPriority": false,
@@ -6813,7 +6813,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Slash sweeps a full 360° circle: +3 damage, +25u reach",
+      "description": "Both daggers sweep a full circle, hitting as they pass: +3 base damage, +25u reach",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -6920,7 +6920,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "A connecting Holy Strike readies a +30% melee counter and reduces the next hit by 40% within 2s; +12 damage",
+      "description": "A connecting Holy Strike prepares a parry for 2s and readies a +30% melee counter; +12 damage",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -14754,7 +14754,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Savage Bite gains +8 damage and a connecting hit grants 0.6s frontal parry; misses grant no parry",
+      "description": "Savage Bite gains +8 damage and prepares a parry for 2s on a connecting hit",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -14765,11 +14765,11 @@
           "prefix": [],
           "once": [
             { "path": "subAbilities.sub1.damage", "before": 44, "after": 52 },
-            { "path": "subAbilities.sub1.parryOnHit", "before": null, "after": 0.6 }
+            { "path": "subAbilities.sub1.parryOnHit", "before": null, "after": 2 }
           ],
           "atCap": [
             { "path": "subAbilities.sub1.damage", "before": 44, "after": 52 },
-            { "path": "subAbilities.sub1.parryOnHit", "before": null, "after": 0.6 }
+            { "path": "subAbilities.sub1.parryOnHit", "before": null, "after": 2 }
           ]
         }
       ]
@@ -17992,7 +17992,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Increase damage by 8% and connecting parry by 0.1s, up to 1.2s; recharge improves by 4% (stacks to 5).",
+      "description": "Increase damage by 8% and parry window by 0.1s, up to 2.5s; recharge improves by 4% (stacks to 5).",
       "disposition": "retain",
       "rationale": "Keep clear role-aware numeric fallback; advanced routes belong in separate decisions.",
       "pilotPriority": false,
@@ -18003,11 +18003,11 @@
           "prefix": [],
           "once": [
             { "path": "subAbilities.sub1.damage", "before": 46, "after": 49.68000000000001 },
-            { "path": "subAbilities.sub1.parryOnHit", "before": 0.75, "after": 0.85 }
+            { "path": "subAbilities.sub1.parryOnHit", "before": 2, "after": 2.1 }
           ],
           "atCap": [
             { "path": "subAbilities.sub1.damage", "before": 46, "after": 67.58909153280003 },
-            { "path": "subAbilities.sub1.parryOnHit", "before": 0.75, "after": 1.2 }
+            { "path": "subAbilities.sub1.parryOnHit", "before": 2, "after": 2.5 }
           ]
         }
       ]
