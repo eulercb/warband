@@ -189,3 +189,10 @@ and readable recovery, including linked grands with a changed shape or payoff.
 Use authored effects to show friendly hit reach without generic outline strokes.
 Check actual casts at desktop and phone sizes. Separate simultaneous motions as
 needed and record any deliberate combat-timing change.
+
+For the character visual revamp, establish a class's silhouette, hand and prop
+anchors, locomotion, turn and downed poses before producing its full skill
+animation set. Verify a real basic and linked grand with the production rig.
+At each actual impact, align authoritative gameplay delivery, the contact pose,
+and the visible reach or hit effect. Use a separate clearly identifiable
+telegraph when advance notice is part of the mechanic.

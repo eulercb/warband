@@ -73,7 +73,9 @@ try {
   );
 
   if (process.argv.includes('--probe')) {
-    const { onMoonAbility } = await server.ssrLoadModule('/src/engine/combat/moonForm.ts');
+    const { onMoonAbility, resolveMoonClaws } = await server.ssrLoadModule(
+      '/src/engine/combat/moonForm.ts',
+    );
     const { tickBuffs } = await server.ssrLoadModule('/src/engine/combat/combat.ts');
     const { tickSubclassPassives } = await server.ssrLoadModule(
       '/src/engine/combat/subclassPassives.ts',
@@ -99,6 +101,8 @@ try {
           if (tick % 8 === 0) onMoonAbility(w, p, p.abilities.basic);
           tickBuffs(p, 0.125);
           tickSubclassPassives(p, 0.125);
+          w.elapsed += 0.125;
+          resolveMoonClaws(w);
         }
         const clawDamage = 10000 - boss.hp,
           mend = p.hp - 1;

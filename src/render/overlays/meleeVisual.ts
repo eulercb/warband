@@ -35,9 +35,8 @@ export function drawMeleeReach(
   const span = 2 * halfAngle;
   const end = start + span;
   const fade = Math.pow(Math.max(0, 1 - age / life), 1.2);
-  const bladeAge = style === 'moonClaw' ? Math.max(0, age - 0.22) : age;
   const sweepTime = style === 'moonClaw' ? 0.19 : bladeSweepSeconds(style, halfAngle);
-  const sweep = Math.min(1, bladeAge / sweepTime);
+  const sweep = Math.min(1, age / sweepTime);
 
   const at = (angle: number, radius: number): [number, number] => [
     origin.x + Math.cos(angle) * radius,
@@ -56,19 +55,26 @@ export function drawMeleeReach(
   }
 
   material.ribbons.forEach((lower, index) => {
-    const to = Math.min(end, start + span * (sweep + 0.16 - index * 0.035));
-    const from = Math.max(start, to - span * (fullCircle ? 0.23 : 0.48));
+    const pairedTurn = style === 'daggerSlash' && fullCircle;
+    const tip = start + span * sweep;
+    const offset = index * Math.PI;
+    const trailTo = pairedTurn
+      ? tip + offset + 0.15
+      : Math.min(end, tip + span * (0.16 - index * 0.035));
+    const trailFrom = pairedTurn
+      ? tip + offset - 0.78
+      : Math.max(start, trailTo - span * (fullCircle ? 0.23 : 0.48));
     const upper = index === material.ribbons.length - 1 ? 1 : lower + 0.13;
     const inner = r * lower;
     const outer = r * upper;
-    const middle = (from + to) * 0.5;
-    const crest = (to - from) * 0.17;
+    const middle = (trailFrom + trailTo) * 0.5;
+    const crest = (trailTo - trailFrom) * 0.17;
     // Pinch both ends into the band so the edge reads as a moving blade or claw.
-    g.moveTo(...at(from, (inner + outer) * 0.5))
-      .quadraticCurveTo(...at(from, outer), ...at(middle - crest, outer))
+    g.moveTo(...at(trailFrom, (inner + outer) * 0.5))
+      .quadraticCurveTo(...at(trailFrom, outer), ...at(middle - crest, outer))
       .arc(origin.x, origin.y, outer, middle - crest, middle + crest)
-      .quadraticCurveTo(...at(to, outer), ...at(to, (inner + outer) * 0.5))
-      .quadraticCurveTo(...at(middle, inner * 0.94), ...at(from, (inner + outer) * 0.5))
+      .quadraticCurveTo(...at(trailTo, outer), ...at(trailTo, (inner + outer) * 0.5))
+      .quadraticCurveTo(...at(middle, inner * 0.94), ...at(trailFrom, (inner + outer) * 0.5))
       .closePath()
       .fill({ color: material.light, alpha: fade * (style === 'moonClaw' ? 0.53 : 0.84) });
   });

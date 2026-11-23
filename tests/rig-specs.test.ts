@@ -942,16 +942,18 @@ describe('buildHumanoidSpec', () => {
     expect(spec.weapon).toEqual(WEAPON_EXPECT[classId]);
   });
 
-  it('shares the biped chassis across undressed classes (only the weapon differs)', () => {
-    // The four core classes carry per-class dress now, but the expansion classes
-    // still share ONE plain biped body — only the weapon differs between them.
+  it('shares the biped chassis across undressed classes', () => {
     const barbarian = buildHumanoidSpec('barbarian');
-    const rogue = buildHumanoidSpec('rogue');
-    expect(barbarian.parts).toEqual(rogue.parts);
-    expect(barbarian.arms).toEqual(rogue.arms);
-    expect(barbarian.legs?.gait).toEqual(rogue.legs?.gait);
-    expect(barbarian.idle).toEqual(rogue.idle);
-    expect(barbarian.weapon).not.toEqual(rogue.weapon);
+    const druid = buildHumanoidSpec('druid');
+    expect(barbarian.parts).toEqual(druid.parts);
+    expect(barbarian.arms).toEqual(druid.arms);
+    expect(barbarian.legs?.gait).toEqual(druid.legs?.gait);
+    expect(barbarian.idle).toEqual(druid.idle);
+    expect(barbarian.weapon).not.toEqual(druid.weapon);
+  });
+
+  it.each(['paladin', 'rogue'] as const)('selects the raised %s garment', (classId) => {
+    expect(buildHumanoidSpec(classId).garment).toBe(classId);
   });
 
   it('keeps the shared legs / arms / idle intact under a dressed class', () => {

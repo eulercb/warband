@@ -6920,7 +6920,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "A connecting Holy Strike readies a +30% melee counter and a 0.35s parry; +12 damage",
+      "description": "A connecting Holy Strike readies a +30% melee counter and reduces the next hit by 40% within 2s; +12 damage",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -6931,11 +6931,11 @@
           "prefix": [],
           "once": [
             { "path": "abilities.basic.damage", "before": 23, "after": 35 },
-            { "path": "abilities.basic.parryOnHit", "before": null, "after": 0.35 }
+            { "path": "abilities.basic.parryOnHit", "before": null, "after": 2 }
           ],
           "atCap": [
             { "path": "abilities.basic.damage", "before": 23, "after": 35 },
-            { "path": "abilities.basic.parryOnHit", "before": null, "after": 0.35 }
+            { "path": "abilities.basic.parryOnHit", "before": null, "after": 2 }
           ]
         }
       ]

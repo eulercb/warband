@@ -60,6 +60,8 @@ try {
           await import('/src/engine/combat/abilities.ts');
         const { applyBuff, makeBuff, damageBoss, damagePlayer } =
           await import('/src/engine/combat/combat.ts');
+        const { MOON_CLAW_DELAY, resolveMoonClaws } =
+          await import('/src/engine/combat/moonForm.ts');
         const { absorptionAmount } = await import('/src/engine/combat/absorption.ts');
         let world,
           owner,
@@ -201,7 +203,22 @@ try {
               );
             } else if (name === 'ready' || name === 'bramble') {
               resolvePlayerAbility(world, owner, 'sub1', { x: 0, y: 0 });
-              if (name === 'bramble') resolvePlayerAbility(world, owner, 'basic', { x: 0, y: 0 });
+              if (name === 'bramble') {
+                resolvePlayerAbility(world, owner, 'basic', { x: 0, y: 0 });
+                // Advance only the pending strike so Thornlash's projectile cannot spend Roar first.
+                world.elapsed += MOON_CLAW_DELAY / 2;
+                resolveMoonClaws(world);
+                if (
+                  !owner.buffs.some((b) => b.kind === 'brambleReady') ||
+                  boss.buffs.some((b) => b.source === 'brambleSlow') ||
+                  boss.hp !== 10000
+                )
+                  throw new Error('Primal Roar spent before the scheduled Moon Claw');
+                world.elapsed += MOON_CLAW_DELAY / 2;
+                resolveMoonClaws(world);
+                if (!world.events.some((e) => e.t === 'skillArea' && e.area.style === 'moonClaw'))
+                  throw new Error('Scheduled Moon Claw did not resolve');
+              }
             } else if (name === 'fiend') {
               applyBuff(boss, makeBuff('curse', 1.15, 6, `curse:${owner.id}:searing`));
               damageBoss(world, owner, boss, 10);

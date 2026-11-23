@@ -77,6 +77,30 @@ export function drawDefenseState(
         .stroke({ color: 0xfffcdf, width: 3, alpha: 0.95 });
     }
   }
+  const parry = p.buffs.find((buff) => buff.kind === 'radiantParry');
+  if (parry) {
+    const h = Math.max(6, r * 0.65);
+    const px = x - r - h * 1.1;
+    const py = y + h * 0.85;
+    g.poly([
+      px - h,
+      py - h,
+      px + h,
+      py - h,
+      px + h * 0.8,
+      py + h * 0.4,
+      px,
+      py + h,
+      px - h * 0.8,
+      py + h * 0.4,
+    ])
+      .fill({ color: 0x68471e, alpha: 0.96 })
+      .stroke({ color: 0xffe3a0, width: Math.max(1.35, h * 0.21) });
+    g.circle(px, py - h * 0.16, h * 0.33).fill({ color: 0xffcb69 });
+    g.moveTo(px - h, py + h * 1.45)
+      .lineTo(px - h + 2 * h * Math.min(1, parry.remaining / 2), py + h * 1.45)
+      .stroke({ color: 0xffe3a0, width: Math.max(1.2, h * 0.21) });
+  }
   const images = p.buffs.find((b) => b.kind === 'mirrorImages' && b.remaining > 0 && b.mult > 0);
   if (images) {
     const count = Math.min(5, Math.ceil(images.mult));

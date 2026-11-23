@@ -3,9 +3,7 @@ import type { PlayerView, Vec2 } from '../../engine/core/types';
 import {
   animalFoot,
   blendAnimalFacing,
-  MOON_BASIC_POSE_MS,
   moonBasicPose,
-  strikeProgress,
   type AnimalMotion,
   type AnimalStrike,
 } from './animalMotion';
@@ -18,13 +16,15 @@ export function drawMoonBear(
   time = 0,
   motion?: AnimalMotion,
   strike?: AnimalStrike,
+  swipeStrike?: AnimalStrike,
 ): void {
   const r = Math.max(11, 24 * scale);
-  const progress = strikeProgress(strike, time * 1000, MOON_BASIC_POSE_MS);
-  const { cast, swing, sweep: swipe } = moonBasicPose(progress);
+  const elapsed = (beat?: AnimalStrike) => (beat ? time * 1000 - beat.started : Infinity);
+  const { cast, swing, sweep: swipe } = moonBasicPose(elapsed(strike), elapsed(swipeStrike));
+  const beat = cast > 0 ? strike : swipeStrike;
   const aim = motion?.facing ?? Math.atan2(p.aim.y, p.aim.x);
-  const facing = strike
-    ? blendAnimalFacing(aim, strike.angle, Math.min(1, Math.max(cast, swipe) * 2.5))
+  const facing = beat
+    ? blendAnimalFacing(aim, beat.angle, Math.min(1, Math.max(cast, swipe) * 2.5))
     : aim;
   const c = Math.cos(facing);
   const s = Math.sin(facing);

@@ -131,7 +131,7 @@ import {
   updateUpgradeZone,
   onUpgradeZoneDamage,
 } from '../combat/skillRetouches';
-import { maintainMoonForms, inMoonForm } from '../combat/moonForm';
+import { maintainMoonForms, inMoonForm, resolveMoonClaws } from '../combat/moonForm';
 import { updateCompanions, PACK_BOND } from '../combat/companions';
 import { curseDuration, DREAD_DAMAGE_MULT } from '../core/curses';
 import { buffView } from '../core/buffView';
@@ -1304,6 +1304,7 @@ export class World {
     advanceFonts(this, dt);
     dissolveOverlappedBulwarks(this);
     visitRhapsodyRallies(this);
+    resolveMoonClaws(this);
     this.updateProjectiles(dt);
     this.updateZones(dt);
     updateCompanions(this, dt);

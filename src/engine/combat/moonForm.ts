@@ -5,6 +5,7 @@ import type { World } from '../world/world';
 import { dist, pointInCone } from '../core/torus';
 import { damageBoss, damageAdd, healPlayer, type EventSink } from './combat';
 export const MOON_ASPECT = 'moon_aspect';
+export const MOON_CLAW_DELAY = 0.22;
 export const MOON_CLAW_DAMAGE = 14;
 export const MOON_CLAW_RANGE = 95;
 const PREFIX = 'subclass:moon:';
@@ -82,9 +83,29 @@ export function onMoonAbility(world: World, p: Player, ab: PlayerAbilityDef): vo
   }
   if (!inMoonForm(p)) return;
   const range = p.charUpgradeIds?.includes('dr_moon_g_b') ? 125 : MOON_CLAW_RANGE;
-  const angle = Math.atan2(p.aim.y, p.aim.x),
-    half = (Math.PI * 55) / 180;
+  const angle = Math.atan2(p.aim.y, p.aim.x);
+  (p.moonClaws ??= []).push({ at: world.elapsed + MOON_CLAW_DELAY, angle, range });
   world.events.push({ t: 'animalStrike', sourceId: p.id, animal: 'bear', slot: 0, angle });
+}
+
+export function resolveMoonClaws(world: World): void {
+  for (const p of world.players) {
+    const queue = p.moonClaws;
+    if (!queue) continue;
+    if (world.scene === null && !world.finished && inMoonForm(p)) {
+      while (queue[0] && queue[0].at <= world.elapsed + 1e-9) {
+        const { angle, range } = queue.shift()!;
+        resolveMoonClaw(world, p, angle, range);
+      }
+      if (queue.length) continue;
+    }
+    delete p.moonClaws;
+  }
+}
+
+function resolveMoonClaw(world: World, p: Player, angle: number, range: number): void {
+  const half = (Math.PI * 55) / 180;
+  world.events.push({ t: 'animalStrike', sourceId: p.id, animal: 'bear', slot: 1, angle });
   world.events.push({
     t: 'skillArea',
     sourceId: p.id,
@@ -125,6 +146,7 @@ export function maintainMoonForms(world: World): void {
       p.subclassPassiveId === MOON_ASPECT &&
       p.state === 'alive' &&
       p.hp > 0;
+    if (p.moonClaws && !inMoonForm(p)) delete p.moonClaws;
     if (!eligible) p.buffs = p.buffs.filter((b) => !b.source.startsWith(PREFIX));
     else if (!inMoonForm(p)) {
       p.buffs = p.buffs.filter((b) => !b.source.startsWith(PREFIX));
