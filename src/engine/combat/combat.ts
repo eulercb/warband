@@ -17,7 +17,7 @@ import {
   onMartialHit,
   onGuardedDamage,
   bloodHitHealing,
-  spendRadiantParry,
+  spendParry,
 } from './martial';
 import type {
   Player,
@@ -649,7 +649,7 @@ export function damagePlayer(sink: EventSink, target: Player, base: number, orig
     target.damageTakenMult;
   const blocked = blockFromFront(target, origin, incoming);
   const exposed = blocked ? 0 : mirrorDamage(target, origin, incoming);
-  const guarded = spendRadiantParry(target, exposed);
+  const guarded = spendParry(target, exposed);
   if (blocked || guarded < exposed)
     sink.events.push({
       t: 'support',

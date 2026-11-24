@@ -8,7 +8,7 @@ export function drawMeleeGarment(
   front: Graphics,
   at: Point,
   radius: number,
-  style: 'paladin' | 'rogue',
+  style: 'paladin' | 'rogue' | 'monk' | 'barbarian',
   sway: number,
 ): void {
   const plate = (g: Graphics, points: [number, number, number][], color: number, edge: number) =>
@@ -21,6 +21,125 @@ export function drawMeleeGarment(
       )
       .fill({ color })
       .stroke({ color: edge, width: Math.max(0.8, radius * 0.065) });
+
+  if (style === 'monk') {
+    const edge = 0x3f3456;
+    for (const side of [-1, 1]) {
+      plate(
+        behind,
+        [
+          [-0.16, side * 0.55, 1.16],
+          [-0.63, side * 0.43 + sway, 0.41],
+          [-0.44, side * 0.09, 0.28],
+          [0.08, side * 0.18, 1.09],
+        ],
+        0x4f5777,
+        edge,
+      );
+    }
+    plate(
+      front,
+      [
+        [0.28, -0.63, 1.16],
+        [0.41, 0.65, 1.05],
+        [0.29, 0.39, 0.52],
+        [0.32, -0.33, 0.51],
+      ],
+      0xb6a7c8,
+      edge,
+    );
+    plate(
+      front,
+      [
+        [0.37, -0.37, 1.13],
+        [0.48, -0.24, 1.15],
+        [0.47, 0.48, 0.66],
+        [0.33, 0.36, 0.59],
+      ],
+      0xe9d6ad,
+      edge,
+    );
+    plate(
+      front,
+      [
+        [0.48, -0.41, 0.64],
+        [0.48, 0.43, 0.64],
+        [0.46, 0.34, 0.47],
+        [0.43, -0.3, 0.49],
+      ],
+      0x6b536e,
+      edge,
+    );
+    const head = at(0.51, 0, 1.74);
+    front
+      .ellipse(head.x, head.y, radius * 0.38, radius * 0.4)
+      .fill({ color: 0xd7a079 })
+      .stroke({ color: edge, width: Math.max(0.8, radius * 0.065) });
+    return;
+  }
+  if (style === 'barbarian') {
+    const edge = 0x492b26;
+    plate(
+      behind,
+      [
+        [-0.29, -0.95, 1.34],
+        [-0.87, -0.82 + sway, 0.46],
+        [-0.89, 0.78 + sway, 0.37],
+        [-0.03, 0.91, 1.35],
+      ],
+      0x63382e,
+      edge,
+    );
+    plate(
+      front,
+      [
+        [0.28, -1.03, 1.2],
+        [-0.22, -0.88, 1.44],
+        [0.25, -0.22, 1.53],
+        [0.5, 0.59, 1.06],
+        [0.45, 0.41, 0.87],
+        [0.38, -0.42, 1.04],
+      ],
+      0xa57851,
+      edge,
+    );
+    plate(
+      front,
+      [
+        [0.34, -0.6, 0.59],
+        [0.39, 0.58, 0.61],
+        [0.32, 0.49, 0.22],
+        [0.26, -0.54, 0.18],
+      ],
+      0x754637,
+      edge,
+    );
+    plate(
+      front,
+      [
+        [0.49, -0.46, 1.61],
+        [0.45, -0.35, 2.08],
+        [0.51, 0.27, 2.11],
+        [0.68, 0.44, 1.66],
+        [0.68, 0.16, 1.38],
+        [0.68, -0.2, 1.4],
+      ],
+      0xd39067,
+      edge,
+    );
+    plate(
+      front,
+      [
+        [0.62, -0.34, 1.62],
+        [0.66, 0.28, 1.65],
+        [0.65, 0.14, 1.32],
+        [0.62, -0.17, 1.29],
+      ],
+      0x6d3830,
+      edge,
+    );
+    return;
+  }
 
   if (style === 'paladin') {
     const edge = 0x674b2d;

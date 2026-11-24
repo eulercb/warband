@@ -398,7 +398,7 @@ export class Renderer {
     }
 
     this.fx.update(dtMs);
-    this.fx.draw(this.fxLayer, this.camera);
+    this.fx.draw(this.fxLayer, this.camera, state.players);
     this.balloons.update(state, this.camera, dtMs);
 
     // Live-projectile particle trails, then advance + draw the particle pool.

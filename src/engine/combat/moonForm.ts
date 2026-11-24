@@ -84,7 +84,7 @@ export function onMoonAbility(world: World, p: Player, ab: PlayerAbilityDef): vo
   if (!inMoonForm(p)) return;
   const range = p.charUpgradeIds?.includes('dr_moon_g_b') ? 125 : MOON_CLAW_RANGE;
   const angle = Math.atan2(p.aim.y, p.aim.x);
-  (p.moonClaws ??= []).push({ at: world.elapsed + MOON_CLAW_DELAY, angle, range });
+  (p.moonClaws ??= []).push({ at: world.elapsed + MOON_CLAW_DELAY, range });
   world.events.push({ t: 'animalStrike', sourceId: p.id, animal: 'bear', slot: 0, angle });
 }
 
@@ -94,8 +94,8 @@ export function resolveMoonClaws(world: World): void {
     if (!queue) continue;
     if (world.scene === null && !world.finished && inMoonForm(p)) {
       while (queue[0] && queue[0].at <= world.elapsed + 1e-9) {
-        const { angle, range } = queue.shift()!;
-        resolveMoonClaw(world, p, angle, range);
+        const { range } = queue.shift()!;
+        resolveMoonClaw(world, p, Math.atan2(p.aim.y, p.aim.x), range);
       }
       if (queue.length) continue;
     }

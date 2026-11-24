@@ -8,7 +8,9 @@ export function playerVisualHeadroom(p: PlayerView, baseline: number): number {
   return (p.classId === 'mage' ||
     p.classId === 'knight' ||
     p.classId === 'paladin' ||
-    p.classId === 'rogue') &&
+    p.classId === 'rogue' ||
+    p.classId === 'monk' ||
+    p.classId === 'barbarian') &&
     !p.form &&
     p.state === 'alive'
     ? baseline * (p.classId === 'knight' ? 2.55 : 2.34)

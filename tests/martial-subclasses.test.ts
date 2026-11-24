@@ -46,7 +46,7 @@ describe('subclass martial identities', () => {
     p.subAbilities = { sub1: { ...ab, slot: 'sub1' } };
     resolvePlayerAbility(w, p, 'sub1', { x: 0, y: 0 });
     expect(p.buffs.find((b) => b.kind === 'counter')?.mult).toBe(1.3);
-    expect(p.buffs.find((b) => b.source === 'parryDef')?.remaining).toBe(0.75);
+    expect(p.buffs.find((b) => b.kind === 'parryReady')?.remaining).toBe(2);
     p.buffs = [];
     w.boss!.pos.x = 1000;
     resolvePlayerAbility(w, p, 'sub1', { x: 0, y: 0 });

@@ -1,0 +1,3 @@
+export const SECOND_DAGGER_DELAY = 0.12;
+export const WHIRLING_BLADES_SECONDS = 0.39;
+export const DAGGER_DAMAGE_SHARE = 0.56;

@@ -850,7 +850,7 @@ describe('buildHarpySpec', () => {
 // Humanoid (per-class biped + boss variant)
 // ---------------------------------------------------------------------------
 
-const WEAPON_EXPECT: Record<ClassId, WeaponSpec> = {
+const WEAPON_EXPECT: Record<ClassId, WeaponSpec | undefined> = {
   knight: {
     kind: 'sword',
     length: 2.0,
@@ -879,13 +879,7 @@ const WEAPON_EXPECT: Record<ClassId, WeaponSpec> = {
   druid: { kind: 'staff', length: 1.7, color: 0x6b8f3a, style: 'melee' },
   cleric: { kind: 'mace', length: 1.3, color: 0xf2c14e, style: 'melee', accent: 0xc99a2e },
   bard: { kind: 'dagger', length: 1.1, color: CLASS_COLORS.bard, style: 'ranged' },
-  monk: {
-    kind: 'dagger',
-    length: 0.8,
-    color: CLASS_COLORS.monk,
-    style: 'melee',
-    offhand: 'dagger',
-  },
+  monk: undefined,
   sorcerer: { kind: 'staff', length: 1.7, color: CLASS_COLORS.sorcerer, style: 'ranged' },
   warlock: { kind: 'staff', length: 1.6, color: CLASS_COLORS.warlock, style: 'ranged' },
 };
@@ -943,18 +937,21 @@ describe('buildHumanoidSpec', () => {
   });
 
   it('shares the biped chassis across undressed classes', () => {
-    const barbarian = buildHumanoidSpec('barbarian');
+    const warlock = buildHumanoidSpec('warlock');
     const druid = buildHumanoidSpec('druid');
-    expect(barbarian.parts).toEqual(druid.parts);
-    expect(barbarian.arms).toEqual(druid.arms);
-    expect(barbarian.legs?.gait).toEqual(druid.legs?.gait);
-    expect(barbarian.idle).toEqual(druid.idle);
-    expect(barbarian.weapon).not.toEqual(druid.weapon);
+    expect(warlock.parts).toEqual(druid.parts);
+    expect(warlock.arms).toEqual(druid.arms);
+    expect(warlock.legs?.gait).toEqual(druid.legs?.gait);
+    expect(warlock.idle).toEqual(druid.idle);
+    expect(warlock.weapon).not.toEqual(druid.weapon);
   });
 
-  it.each(['paladin', 'rogue'] as const)('selects the raised %s garment', (classId) => {
-    expect(buildHumanoidSpec(classId).garment).toBe(classId);
-  });
+  it.each(['paladin', 'rogue', 'monk', 'barbarian'] as const)(
+    'selects the raised %s garment',
+    (classId) => {
+      expect(buildHumanoidSpec(classId).garment).toBe(classId);
+    },
+  );
 
   it('keeps the shared legs / arms / idle intact under a dressed class', () => {
     // Dress only adds parts / decor / tints + weapon trim — the gait, arms and idle

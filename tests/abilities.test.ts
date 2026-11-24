@@ -2,6 +2,7 @@ import { damagePlayer } from '../src/engine/combat/combat';
 import { describe, it, expect } from 'vitest';
 import {
   resolvePlayerAbility,
+  advanceDaggerAttacks,
   resolveBossAbility,
   beamTick,
   withLength,
@@ -154,10 +155,10 @@ describe('player meleeCone', () => {
       p.abilities!.basic.parryOnHit = 2;
       resolvePlayerAbility(w, p, 'basic', ZERO);
       expect(w.events.some((e) => e.t === 'skillArea' && e.area.style === 'holyStrike')).toBe(true);
-      expect(p.buffs.some((b) => b.kind === 'radiantParry')).toBe(hit);
+      expect(p.buffs.some((b) => b.kind === 'parryReady')).toBe(hit);
       expect(damagePlayer(w, p, 10)).toBeCloseTo(hit ? 6 : 10);
       expect(w.events.some((e) => e.t === 'support' && e.kind === 'protect')).toBe(hit);
-      expect(p.buffs.some((b) => b.kind === 'radiantParry')).toBe(false);
+      expect(p.buffs.some((b) => b.kind === 'parryReady')).toBe(false);
       expect(damagePlayer(w, p, 10)).toBeCloseTo(10);
     },
   );
@@ -2417,5 +2418,86 @@ describe('ability crit lean (item 13)', () => {
     expect(hit?.crit).toBe(true);
     expect(hit?.backstab).toBeFalsy();
     expect(before - boss.hp).toBeCloseTo(50 * 2.0, 5); // damage 50 × (1.5 + 0.5)
+  });
+});
+
+describe('Rogue dagger delivery', () => {
+  function daggerFixture() {
+    const w = mkWorld('rogue');
+    const p = w.players[0];
+    const boss = w.boss!;
+    p.pos = { x: 800, y: 500 };
+    p.aim = { x: 1, y: 0 };
+    p.critChance = 0;
+    tableOf(p).basic.critChanceBonus = 0;
+    boss.pos = { x: 850, y: 500 };
+    boss.facing = Math.PI;
+    boss.radius = 5;
+    return { w, p, boss, start: boss.hp };
+  }
+
+  it('delivers two separate cuts with the second following live aim', () => {
+    const { w, p, boss, start } = daggerFixture();
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    expect(start - boss.hp).toBeCloseTo(10.08);
+    p.aim = { x: -1, y: 0 };
+    boss.pos.x = 750;
+    boss.facing = 0;
+    w.elapsed += 0.1;
+    advanceDaggerAttacks(w);
+    expect(start - boss.hp).toBeCloseTo(10.08);
+    w.elapsed += 0.02;
+    advanceDaggerAttacks(w);
+    expect(start - boss.hp).toBeCloseTo(20.16);
+    const hands = w.events.flatMap((e) =>
+      e.t === 'skillArea' && e.area.style === 'daggerSlash' ? [e.area.daggerHand] : [],
+    );
+    expect(hands).toEqual([0, 1]);
+    expect(w.daggerFollowThrough).toHaveLength(0);
+  });
+
+  it('hits through passing arcs once per hand and completes at the recharge-adjusted rotation time', () => {
+    const { w, p, boss, start } = daggerFixture();
+    p.cooldowns.basic = 0.3;
+    tableOf(p).basic.halfAngleDeg = 180;
+    boss.pos = { x: 800, y: 550 };
+    boss.facing = -Math.PI / 2;
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    advanceDaggerAttacks(w);
+    expect(boss.hp).toBe(start);
+    w.elapsed += 0.04;
+    advanceDaggerAttacks(w);
+    expect(boss.hp).toBe(start);
+    w.elapsed += 0.04;
+    advanceDaggerAttacks(w);
+    expect(start - boss.hp).toBeCloseTo(10.08);
+    w.elapsed += 0.22;
+    advanceDaggerAttacks(w);
+    expect(start - boss.hp).toBeCloseTo(20.16);
+    expect(w.daggerFollowThrough).toHaveLength(0);
+  });
+
+  it('uses the same fallback geometry for hit tests and both blade cues', () => {
+    const { w, p, boss, start } = daggerFixture();
+    tableOf(p).basic.range = undefined;
+    tableOf(p).basic.halfAngleDeg = undefined;
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    w.elapsed += 0.12;
+    advanceDaggerAttacks(w);
+    expect(start - boss.hp).toBeCloseTo(20.16);
+    const cues = w.events.flatMap((e) => (e.t === 'skillArea' ? [e.area] : []));
+    expect(cues.map((area) => [area.range, area.halfAngle])).toEqual([
+      [62, (Math.PI * 42) / 180],
+      [62, (Math.PI * 42) / 180],
+    ]);
+  });
+
+  it('cancels a pending cut if the Rogue goes down before it lands', () => {
+    const { w, p } = daggerFixture();
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    p.state = 'downed';
+    w.elapsed += 0.12;
+    advanceDaggerAttacks(w);
+    expect(w.daggerFollowThrough).toHaveLength(0);
   });
 });

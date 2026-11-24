@@ -97,7 +97,15 @@ export class RigLayer {
         }
       }
       if (e.t === 'skillArea' && isBladeArea(e.area.style))
-        this.nodes.get(e.sourceId)?.rig.triggerBlade(e.area.style, e.area.angle, e.area.halfAngle);
+        this.nodes
+          .get(e.sourceId)
+          ?.rig.triggerBlade(
+            e.area.style,
+            e.area.angle,
+            e.area.halfAngle,
+            e.area.daggerHand,
+            e.area.daggerDuration,
+          );
       if (e.t === 'blink') this.nodes.get(e.id)?.rig.triggerBlink(e.presentation === 'mage');
       if (e.t !== 'cast') continue;
       const rig = this.nodes.get(e.sourceId)?.rig;

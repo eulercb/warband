@@ -380,10 +380,14 @@ it.each([
     camera,
   );
   fx.draw(graphics, camera);
-  expect(instructionCount(graphics)).toBeGreaterThanOrEqual(3);
+  expect(instructionCount(graphics)).toBeGreaterThanOrEqual(
+    style === 'daggerSlash' && halfAngle === Math.PI ? 2 : 3,
+  );
   fx.update(180);
   fx.draw(graphics, camera);
-  expect(instructionCount(graphics)).toBeGreaterThanOrEqual(3);
+  expect(instructionCount(graphics)).toBeGreaterThanOrEqual(
+    style === 'daggerSlash' && halfAngle === Math.PI ? 2 : 3,
+  );
   fx.update(510);
   fx.draw(graphics, camera);
   expect(instructionCount(graphics)).toBe(0);
@@ -394,7 +398,7 @@ it('draws both melee silhouettes and the live Radiant Riposte badge', () => {
   const behind = new Graphics();
   const front = new Graphics();
   const at = (x: number, y: number, h: number) => ({ x: 100 + x * 14, y: 100 + y * 8 - h * 14 });
-  for (const style of ['paladin', 'rogue'] as const) {
+  for (const style of ['paladin', 'rogue', 'monk', 'barbarian'] as const) {
     drawMeleeGarment(behind, front, at, 14, style, 0.1);
     expect(instructionCount(behind)).toBeGreaterThan(0);
     expect(instructionCount(front)).toBeGreaterThan(0);
@@ -409,7 +413,7 @@ it('draws both melee silhouettes and the live Radiant Riposte badge', () => {
     {
       aim: { x: 1, y: 0 },
       state: 'alive',
-      buffs: [{ kind: 'radiantParry', remaining: 1, mult: 0.6 }],
+      buffs: [{ kind: 'parryReady', remaining: 1, mult: 0.6 }],
     } as PlayerView,
     100,
     100,
@@ -418,4 +422,36 @@ it('draws both melee silhouettes and the live Radiant Riposte badge', () => {
   expect(instructionCount(front)).toBe(4);
   behind.destroy();
   front.destroy();
+});
+
+it('renders one dagger ribbon for each independent cut', () => {
+  const g = new Graphics();
+  const camera = new Camera(1600, 1000);
+  for (const daggerHand of [0, 1] as const) {
+    const fx = new Fx(new Container());
+    fx.processEvents(
+      [
+        {
+          t: 'skillArea',
+          side: 'player',
+          sourceId: 1,
+          color: 0xffffff,
+          area: {
+            kind: 'cone',
+            style: 'daggerSlash',
+            origin: { x: 500, y: 500 },
+            angle: 0,
+            range: 62,
+            radius: 0,
+            halfAngle: 0.73,
+            daggerHand,
+          },
+        },
+      ],
+      camera,
+    );
+    fx.draw(g, camera);
+    expect(instructionCount(g)).toBe(4);
+  }
+  g.destroy();
 });

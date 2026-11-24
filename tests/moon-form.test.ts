@@ -216,15 +216,22 @@ describe('bear basics: one aimed supplemental swipe, normal Thornlash retained',
       ).toBe(true);
     },
   );
-  it('rechecks the impact position with captured aim and discards claws when the form ends', () => {
+  it('rechecks the impact position with current aim and discards claws when the form ends', () => {
     const { w, p, boss } = setup();
     activate(w);
-    boss.pos.x = 920;
+    boss.pos.x = 690;
     resolvePlayerAbility(w, p, 'basic', ZERO);
     p.pos.x += 200;
     p.aim.x = -1;
     finishClaw(w);
     expect(boss.hp).toBe(9986);
+    expect(w.events).toContainEqual({
+      t: 'animalStrike',
+      sourceId: p.id,
+      animal: 'bear',
+      slot: 1,
+      angle: Math.PI,
+    });
     resolvePlayerAbility(w, p, 'basic', ZERO);
     p.buffs = [];
     finishClaw(w);

@@ -232,7 +232,7 @@ export type BuffKind =
   | 'venomReady' // prepared single-target poison
   | 'venom' // target-bound poison; owner and tick state remain host-only
   | 'brambleReady' // next positive nearby direct hit or Moon claw releases a burst
-  | 'radiantParry' // one incoming damage reduction, consumed on contact
+  | 'parryReady' // one incoming damage reduction, consumed on contact
   | 'rebuke'; // one counterburst; mult = damage, payload host-only
 
 export interface Buff {
@@ -696,7 +696,7 @@ export interface Player {
   /** Active authored passive and per-passive host cooldowns (persist across swaps). */
   subclassPassiveId?: string;
   subclassPassiveCooldowns?: Record<string, number>;
-  moonClaws?: { at: number; angle: number; range: number }[];
+  moonClaws?: { at: number; range: number }[];
   /**
    * The hero's chosen character-upgrade ids (item 17), stashed host-side at spawn so
    * the subclass grands among them can be re-applied to the bound sub-abilities on
@@ -1551,6 +1551,8 @@ export interface SkillArea {
     | 'blinkArrive';
   contacts?: { id: EntityId; pos: Vec2; radius: number }[];
   stoppedByCover?: boolean;
+  daggerHand?: 0 | 1;
+  daggerDuration?: number;
   origin: Vec2; // cone/line emanation point, or circle center
   angle: number; // radians — cone/line facing (unused for circle)
   range: number; // cone range / line length
