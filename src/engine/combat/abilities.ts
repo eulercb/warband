@@ -111,6 +111,7 @@ import {
   pointInCone,
   pointInSegment,
   wrapCoord,
+  wrapPos,
   nearestCopy,
 } from '../core/torus';
 import {
@@ -444,13 +445,16 @@ export function stepPlayerGlide(world: World, p: Player, dt: number): void {
   p.pos = clampToArena(world, next, p.radius);
   if (!g.supportedAlly) g.supportedAlly = guardCrossedAlly(world, p, g.ab, from, p.pos);
   if (g.palmSweep) {
-    if (g.ab.kind === 'pbaoe') resolveBurstAt(world, p, g.ab, p.pos, g.palmSweep.hitIds, from);
+    if (g.palmSweep.barrage)
+      advanceGlidingBarrage(world, p, g.ab, g.palmSweep.barrage, from, p.pos);
+    else if (g.ab.kind === 'pbaoe') resolveBurstAt(world, p, g.ab, p.pos, g.palmSweep.hitIds, from);
     else if (g.ab.kind === 'meleeCone')
       resolveConeAt(world, p, g.ab, p.pos, g.palmSweep.hitIds, from);
   }
   g.remaining -= step;
   if (ended || g.remaining <= 1e-6) {
     if (!g.palmSweep) applyDashLanding(world, p, g.ab);
+    if (g.palmSweep?.barrage) finishBarrage(world, g.ab, g.palmSweep.barrage.force);
     p.glide = null;
   }
 }
@@ -921,6 +925,20 @@ function resolveMeleeDelivery(
   moving: boolean,
 ): void {
   const style = ab.basicPresentation;
+  if (ab.flurryBarrage) {
+    if (moving) {
+      const glide = p.glide!;
+      glide.palmSweep!.barrage = {
+        length: glide.remaining,
+        travelled: 0,
+        beat: -1,
+        hits: [],
+        force: new Map(),
+      };
+      advanceGlidingBarrage(world, p, ab, glide.palmSweep!.barrage, p.pos, p.pos);
+    } else beginMeleeSequence(world, p, ab, 'monkPalm');
+    return;
+  }
   if (
     !moving &&
     ab.slot === 'basic' &&
@@ -933,8 +951,65 @@ function resolveMeleeDelivery(
   resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
 }
 
+export interface GlidingBarrage {
+  length: number;
+  travelled: number;
+  beat: number;
+  hits: number[];
+  force: Map<Boss | Add, Vec2>;
+}
+
+function finishBarrage(world: World, ab: PlayerAbilityDef, force: GlidingBarrage['force']): void {
+  for (const [target, origin] of force) {
+    if (target.hp > 0) applyForcedMove(world, origin, target, ab);
+  }
+}
+
+function advanceGlidingBarrage(
+  world: World,
+  p: Player,
+  ab: PlayerAbilityDef,
+  barrage: GlidingBarrage,
+  from: Vec2,
+  to: Vec2,
+): void {
+  const delta = sub(to, from);
+  const distance = Math.hypot(delta.x, delta.y);
+  const start = barrage.travelled;
+  const end = Math.min(barrage.length, start + distance);
+  const phaseLength = barrage.length / 3;
+  const angle = angleOf(p.glide!.palmSweep!.cast.aim);
+  const strike = {
+    ...ab,
+    damage: ab.damage / 3,
+    range: ab.range ?? 70,
+    halfAngleDeg: ab.halfAngleDeg ?? 45,
+  };
+  const at = (travelled: number) =>
+    distance > 0 ? wrapPos(vadd(from, vscale(delta, (travelled - start) / distance))) : from;
+  let cursor = start;
+  do {
+    const beat = Math.min(2, Math.floor((cursor + 1e-8) / phaseLength));
+    const origin = at(cursor);
+    if (beat !== barrage.beat) {
+      barrage.beat = beat;
+      barrage.hits = [];
+      const hand = p.monkLeadHand ?? 0;
+      p.monkLeadHand = hand === 0 ? 1 : 0;
+      emitSequenceArea(world, p, strike, angle, hand, 'monkPalm', undefined, origin);
+    }
+    const boundary = beat === 2 ? end : Math.min(end, (beat + 1) * phaseLength);
+    resolveConeAt(world, p, strike, at(boundary), barrage.hits, origin, angle, barrage.force);
+    cursor = boundary;
+  } while (cursor < end);
+  barrage.travelled = end;
+}
+
 export interface MeleeSequence {
   owner: Player;
+  ownerClass: Player['classId'];
+  epoch: number | undefined;
+  force?: Map<Boss | Add, Vec2>;
   style: 'daggerSlash' | 'monkPalm';
   beat: number;
   lead: 0 | 1;
@@ -957,11 +1032,12 @@ function emitSequenceArea(
   hand: 0 | 1,
   style: MeleeSequence['style'],
   duration?: number,
+  origin = p.pos,
 ): void {
   emitSkillArea(world, p.id, CLASS_COLORS[p.classId], {
     kind: ab.flurryLaneHalfWidth ? 'line' : 'cone',
     style,
-    origin: { ...p.pos },
+    origin: { ...origin },
     angle,
     range: ab.range,
     radius: ab.flurryLaneHalfWidth ?? 0,
@@ -977,12 +1053,18 @@ function beginMeleeSequence(
   ab: PlayerAbilityDef,
   style: MeleeSequence['style'],
 ): void {
-  const angle = angleOf(p.aim);
+  const angle = angleOf(ab.flowAim ?? p.aim);
   const monk = style === 'monkPalm';
   const halfAngleDeg = ab.halfAngleDeg ?? 42;
   const spin = !monk && halfAngleDeg >= 180;
   const focused = !!ab.flurryLaneHalfWidth;
-  const share = monk ? (focused ? FOCUSED_FLURRY_SHARE : FLURRY_SHARE) : DAGGER_DAMAGE_SHARE;
+  const share = ab.flurryBarrage
+    ? 1 / 3
+    : monk
+      ? focused
+        ? FOCUSED_FLURRY_SHARE
+        : FLURRY_SHARE
+      : DAGGER_DAMAGE_SHARE;
   const lead = monk ? (p.monkLeadHand ?? 0) : 0;
   if (monk) p.monkLeadHand = lead === 0 ? 1 : 0;
   const payload = {
@@ -997,6 +1079,9 @@ function beginMeleeSequence(
   };
   const follow: MeleeSequence = {
     owner: p,
+    ownerClass: p.classId,
+    epoch: p.castEpoch,
+    force: ab.flurryBarrage ? new Map() : undefined,
     style,
     beat: 1,
     lead,
@@ -1014,7 +1099,17 @@ function beginMeleeSequence(
   };
   world.meleeSequences.push(follow);
   emitSequenceArea(world, p, payload, angle, lead, style, spin ? follow.duration : undefined);
-  if (!spin) follow.dealt = resolveConeAt(world, p, payload, p.pos, follow.hits[0], p.pos, angle);
+  if (!spin)
+    follow.dealt = resolveConeAt(
+      world,
+      p,
+      payload,
+      p.pos,
+      follow.hits[0],
+      p.pos,
+      angle,
+      follow.force,
+    );
 }
 
 export function advanceMeleeSequences(world: World): void {
@@ -1032,24 +1127,34 @@ export function advanceMeleeSequences(world: World): void {
       !world.players.includes(owner) ||
       owner.state !== 'alive' ||
       owner.hp <= 0 ||
-      owner.classId !== (cast.style === 'monkPalm' ? 'monk' : 'rogue')
+      owner.classId !== cast.ownerClass ||
+      owner.castEpoch !== cast.epoch
     )
       return false;
     const age = world.elapsed - started;
     if (cast.style === 'monkPalm' || ab.halfAngleDeg < 180) {
       const monk = cast.style === 'monkPalm';
-      const count = monk ? (ab.flurryLaneHalfWidth ? FOCUSED_FLURRY_STRIKES : FLURRY_STRIKES) : 2;
-      const interval = monk
-        ? Math.min(FLURRY_INTERVAL, cast.duration / (count - 0.5))
-        : SECOND_DAGGER_DELAY;
+      const count = ab.flurryBarrage
+        ? 3
+        : monk
+          ? ab.flurryLaneHalfWidth
+            ? FOCUSED_FLURRY_STRIKES
+            : FLURRY_STRIKES
+          : 2;
+      const interval = ab.flurryBarrage
+        ? FLURRY_INTERVAL
+        : monk
+          ? Math.min(FLURRY_INTERVAL, cast.duration / (count - 0.5))
+          : SECOND_DAGGER_DELAY;
       while (cast.beat < count && age >= cast.beat * interval - 1e-9) {
         const hand = ((cast.lead + cast.beat) % 2) as 0 | 1;
-        const aim = angleOf(owner.aim);
+        const aim = ab.flurryBarrage ? angle : angleOf(owner.aim);
         emitSequenceArea(world, owner, ab, aim, hand, cast.style);
-        cast.dealt += resolveConeAt(world, owner, ab, owner.pos, [], owner.pos, aim);
+        cast.dealt += resolveConeAt(world, owner, ab, owner.pos, [], owner.pos, aim, cast.force);
         cast.beat++;
       }
       if (cast.beat < count) return true;
+      if (cast.force) finishBarrage(world, ab, cast.force);
       onParryHit(owner, ab, cast.dealt);
       return false;
     }
@@ -1086,6 +1191,7 @@ function resolveConeAt(
   hitIds?: number[],
   from: Vec2 = origin,
   forcedAim?: number,
+  deferredForce?: Map<Boss | Add, Vec2>,
 ): number {
   const range = ab.range ?? 70,
     half = ((ab.halfAngleDeg ?? 45) * Math.PI) / 180,
@@ -1100,6 +1206,7 @@ function resolveConeAt(
       radius: 0,
       halfAngle: half,
     });
+  const riders = deferredForce ? { ...ab, knockback: undefined, pull: undefined } : ab;
   const halfWidth = ab.flurryLaneHalfWidth;
   const contactAt = (target: Vec2, radius: number): Vec2 | null => {
     if (!halfWidth) return sweptConeContact(from, origin, target, aimAngle, range, half, radius);
@@ -1121,7 +1228,8 @@ function resolveConeAt(
         b.hp,
         damageBoss(world, p, b, ab.damage, world.meleeHit(p, b, ab, contact)),
       );
-      applyStrikeRiders(world, contact, b, ab);
+      if (deferredForce) deferredForce.set(b, contact);
+      applyStrikeRiders(world, contact, b, riders);
     }
   }
   for (const a of world.adds) {
@@ -1139,7 +1247,8 @@ function resolveConeAt(
           world.critRoll(p, ab),
         ),
       );
-      applyStrikeRiders(world, contact, a, ab);
+      if (deferredForce) deferredForce.set(a, contact);
+      applyStrikeRiders(world, contact, a, riders);
     }
   }
   if (forcedAim === undefined) onParryHit(p, ab, dealt);

@@ -15,11 +15,11 @@ export function isBladeArea(style: SkillArea['style']): style is BladeAreaStyle 
 }
 
 export function bladeSweepSeconds(style: BladeAreaStyle, halfAngle: number): number {
-  if (halfAngle >= Math.PI) return style === 'daggerSlash' ? WHIRLING_BLADES_SECONDS : 0.47;
+  if (halfAngle >= Math.PI) return style === 'daggerSlash' ? WHIRLING_BLADES_SECONDS : 0.32;
   if (style === 'daggerSlash') return 0.21;
   if (style === 'monkPalm') return 0.11;
-  if (style === 'axeSwing') return 0.52;
-  return style === 'holyStrike' ? 0.28 : 0.32;
+  if (style === 'axeSwing') return 0.18;
+  return style === 'holyStrike' ? 0.16 : 0.18;
 }
 
 const MATERIAL = {

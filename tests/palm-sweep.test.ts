@@ -1,7 +1,11 @@
 import { afterEach, describe, it, expect } from 'vitest';
 import { Graphics } from 'pixi.js';
 import { World } from '../src/engine/world/world';
-import { resolvePlayerAbility, stepPlayerGlide } from '../src/engine/combat/abilities';
+import {
+  advanceMeleeSequences,
+  resolvePlayerAbility,
+  stepPlayerGlide,
+} from '../src/engine/combat/abilities';
 import {
   palmContact,
   sweptConeContact,
@@ -472,13 +476,41 @@ function input(
   );
 }
 describe('Flowing Water whole-kit chain', () => {
-  it.each(['a1', 'a3', 'sub1'] as const)(
+  it('alternates all three Barrage contacts, then pushes once at the end of the glide', () => {
+    const { w, p, b } = setup(skills[0], ['mo_openhand_g_b', 'mo_openhand_flurry_g']);
+    expect(p.subAbilities!.sub1!.knockback).toBe(120);
+    b.pos = { x: 630, y: 400 };
+    resolvePlayerAbility(w, p, 'sub1', right);
+    const initial = b.hp;
+    stepPlayerGlide(w, p, 0.29);
+    expect(b.hp).toBeLessThan(initial);
+    expect(b.shove).toBeUndefined();
+    stepPlayerGlide(w, p, 0.2);
+    expect(b.shove).toBeDefined();
+    expect(Math.abs(b.shove!.vx) * b.shove!.remaining).toBeCloseTo(120);
+    expect(p.glide).toBeNull();
+  });
+
+  it('keeps three stationary strikes after Forge recomposition', () => {
+    const { w, p, b } = setup(skills[0], []);
+    const source = p.subAbilities!.sub1!;
+    const rebuilt = recompose(decompose(source), source);
+    expect(rebuilt.flurryBarrage).toBe(true);
+    p.subAbilities!.sub1 = rebuilt;
+    b.pos = { x: 545, y: 400 };
+    resolvePlayerAbility(w, p, 'sub1', right);
+    const first = b.hp;
+    expect(first).toBeLessThan(10000);
+    w.elapsed += 0.25;
+    advanceMeleeSequences(w);
+    expect(b.hp).toBeCloseTo(10000 - 3 * (10000 - first));
+    expect(w.meleeSequences).toHaveLength(0);
+  });
+  it.each(['a1', 'a3'] as const)(
     'carries %s without requiring preparation and hits each foe once',
     (slot) => {
       const { w, p, b } = setup();
-      expect(
-        resolvedPalmSweep(slot === 'sub1' ? p.subAbilities!.sub1! : p.abilities![slot]),
-      ).toBeDefined();
+      expect(resolvedPalmSweep(p.abilities![slot])).toBeDefined();
       resolvePlayerAbility(w, p, slot, right);
       expect(p.glide?.palmSweep).toBeDefined();
       const hp = b.hp;

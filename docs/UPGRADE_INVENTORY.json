@@ -14225,7 +14225,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Flurry Barrage gains +12 damage and +15u reach, and pushes struck foes back 120u",
+      "description": "Flurry Barrage gains +12 damage and +15u reach, and pushes struck foes back 120u after the last strike",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,

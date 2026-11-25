@@ -68,6 +68,7 @@ import { hashStr, bossAbilityVariant, MONSTER_EPITHETS } from './procgen';
 export type DeliveryKind = AbilityKind;
 
 export interface Delivery {
+  flurryBarrage?: boolean;
   kind: DeliveryKind;
   visualStyle?: PlayerAbilityDef['visualStyle'];
   /** Cone reach / dash-blink distance / ground-target or auto-target search radius. */
@@ -283,6 +284,7 @@ const ALLY_DELIVERIES = new Set<DeliveryKind>(['buffAlly', 'heal']);
 export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponents {
   const kind = def.kind;
   const delivery: Delivery = { kind };
+  if (def.flurryBarrage) delivery.flurryBarrage = true;
   if (def.visualStyle) delivery.visualStyle = def.visualStyle;
   if (def.range != null) delivery.range = def.range;
   if (def.halfAngleDeg != null) delivery.halfAngleDeg = def.halfAngleDeg;
@@ -674,6 +676,7 @@ export function recompose(
     (meta.basicPresentation === 'monkPalm' || meta.basicPresentation === 'axeSwing')
   )
     def.basicPresentation = meta.basicPresentation;
+  if (d.kind === 'meleeCone' && d.flurryBarrage) def.flurryBarrage = true;
   if (def.basicPresentation === 'monkPalm' && meta.flurryLaneHalfWidth)
     def.flurryLaneHalfWidth = meta.flurryLaneHalfWidth;
   if (d.visualStyle) def.visualStyle = d.visualStyle;
@@ -1242,11 +1245,13 @@ export function describeComposed(
   for (const e of comp.effects) {
     const effect = fittedSurgePiercing(comp, e);
     const phrase =
-      presentation === 'monkPalm' && effect.kind === 'damage'
-        ? flurryDamageText(effect.amount, !!laneHalfWidth, n)
-        : presentation === 'monkPalm' && effect.kind === 'flowExtend'
-          ? `land all contacts to extend existing Flow by ${s(effect.seconds)}, up to 1s total per preparation`
-          : effectPhrase(effect, comp);
+      d.flurryBarrage && effect.kind === 'damage'
+        ? `3× ${n(effect.amount / 3)} dmg`
+        : presentation === 'monkPalm' && effect.kind === 'damage'
+          ? flurryDamageText(effect.amount, !!laneHalfWidth, n)
+          : presentation === 'monkPalm' && effect.kind === 'flowExtend'
+            ? `land all contacts to extend existing Flow by ${s(effect.seconds)}, up to 1s total per preparation`
+            : effectPhrase(effect, comp);
     if (phrase) parts.push(phrase);
     if (e.kind === 'surgeStrike' && (d.castTime ?? 0) > 0) parts.push('surge halves wind-up');
   }

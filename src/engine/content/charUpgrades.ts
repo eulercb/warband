@@ -4000,7 +4000,7 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mo_openhand_flurry',
     'Parting Barrage',
     '👊',
-    'Flurry Barrage gains +12 damage and +15u reach, and pushes struck foes back 120u',
+    'Flurry Barrage gains +12 damage and +15u reach, and pushes struck foes back 120u after the last strike',
     (ab) => {
       addN(ab, 'damage', 12);
       addN(ab, 'range', 15);

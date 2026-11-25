@@ -755,7 +755,12 @@ export interface Player {
    */
   glide?: {
     vengeancePursuit?: { targetId: number; epoch: number };
-    palmSweep?: { cast: PalmSweepCast; hitIds: number[]; origin: Vec2 };
+    palmSweep?: {
+      cast: PalmSweepCast;
+      hitIds: number[];
+      origin: Vec2;
+      barrage?: import('../combat/abilities').GlidingBarrage;
+    };
     speed?: number;
     maneuverClass?: ClassId;
     /** Unit travel direction (locked at dash start). */

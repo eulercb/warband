@@ -587,3 +587,22 @@ like-for-like post-batch reading.
 
 In-game captures: [Sorcerer staff at rest](images/sorcerer-staff-clearance-phone.png)
 and [Focused Flurry with Cleaving Fury](images/focused-flurry-cleaving-fury-phone.png).
+
+### Weapon preparation and Flurry Barrage
+
+Cleave, Holy Strike and Reckless Swing now show a brief gathering motion followed by
+a quicker sweep and a longer return. The Barbarian uses preparation
+to bring the free hand onto the haft. The grip begins from the resting pose
+and the sweep uses the resolved ability's angle. These basics still deal
+damage on input, so the short visual preparation can follow the hit. Relentless Vengeance
+keeps its immediate pursuit on a fresh basic press with a valid quarry.
+The Sorcerer's resting staff is sorted using the projected depth of the
+grip, so it crosses in front when near the camera and behind when farther away.
+
+Flurry Barrage alternates three palms and divides its existing total damage
+among them. Flowing Water uses the same three strikes across the actual
+glide, retaining the captured attack aim even when the Monk travels another
+way. Parting Barrage pushes each struck foe once, after the sequence.
+The patch began at 73% of the five-hour allowance and 52% weekly.
+
+[Flurry Barrage and Reckless Swing on phone](images/flurry-barrage-and-axe-phone.png).
