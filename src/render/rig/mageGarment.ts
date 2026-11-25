@@ -5,16 +5,8 @@ import type { PlayerView } from '../../engine/core/types';
 /** Clearance for the standing Mage hood, in world units. */
 export function playerVisualHeadroom(p: PlayerView, baseline: number): number {
   if (p.form === 'moonBear' && p.state === 'alive') return baseline * 1.62;
-  return (p.classId === 'mage' ||
-    p.classId === 'knight' ||
-    p.classId === 'paladin' ||
-    p.classId === 'rogue' ||
-    p.classId === 'monk' ||
-    p.classId === 'barbarian') &&
-    !p.form &&
-    p.state === 'alive'
-    ? baseline * (p.classId === 'knight' ? 2.55 : 2.34)
-    : baseline;
+  if (p.form || p.state !== 'alive') return baseline;
+  return baseline * (p.classId === 'knight' || p.classId === 'bard' ? 2.55 : 2.34);
 }
 
 type BodyPoint = (forward: number, lateral: number, height?: number) => Vec2;

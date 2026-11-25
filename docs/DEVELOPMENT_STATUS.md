@@ -69,12 +69,12 @@ harder three- and four-player cases, and explicit adjust or retain decisions.
 The [class balance coverage plan](CLASS_BALANCE_COVERAGE.md) preserves the
 comparison method and evidence.
 
-| Order                  | Development work                                                                                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Now                    | [Character rigs and visual revamp](VISUAL_REVAMP.md). Playtest Monk and Barbarian silhouettes, two-handed dagger delivery, shared parry, and Moon Claw aim.  |
-| Next                   | Establish Ranger and Bard rigs with Astra 6.2 High, then Cleric and base Druid, then Sorcerer and Warlock. Finish ability visuals against the accepted rigs. |
-| Then                   | [Boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). Pair encounter mechanics, terrain and boss/arena art in playtestable slices.                      |
-| After encounter revamp | Resume role, progression and reward tuning on the revised fights. Compare solo through four players, with meaningful challenge at every size.                |
+| Order                  | Development work                                                                                                                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Now                    | [Character rigs and visual revamp](VISUAL_REVAMP.md). Playtest all six remaining rigs and the refined Monk, Barbarian and Paladin carry poses.                                                         |
+| Next                   | Begin full ability production against the raised roster. Start with Monk and Barbarian contact and recovery, including their linked grands, then continue the class basic/special and projectile work. |
+| Then                   | [Boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). Pair encounter mechanics, terrain and boss/arena art in playtestable slices.                                                                |
+| After encounter revamp | Resume role, progression and reward tuning on the revised fights. Compare solo through four players, with meaningful challenge at every size.                                                          |
 
 Use one bounded Sol 6.2 high design review where substantial planning is needed.
 Proceed with a mature authorized plan; surface unresolved material gameplay

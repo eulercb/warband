@@ -11,6 +11,7 @@
  * body's orientation. Per-frame mutable state (planted feet, step phases, chain
  * points, smoothed velocity) lives on the `CreatureRig` instance, never here.
  */
+import type { RosterGarment } from './rosterGarments';
 import type { Vec2 } from './math/vec';
 import type { GaitParams } from './math/gait';
 import type { BossActionKind, PlayerState, AbilitySlot } from '../../engine/core/types';
@@ -136,7 +137,7 @@ export interface WeaponSpec {
 export interface RigSpec {
   id: RigId;
   parts: BodyPartSpec[];
-  garment?: 'mage' | 'knight' | 'paladin' | 'rogue' | 'monk' | 'barbarian';
+  garment?: 'mage' | 'knight' | 'paladin' | 'rogue' | 'monk' | 'barbarian' | RosterGarment;
   legs?: LegGroupSpec;
   spine?: SpineSpec;
   tentacles?: TentacleSpec[];

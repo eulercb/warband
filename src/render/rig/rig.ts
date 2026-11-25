@@ -23,6 +23,8 @@
  */
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import { drawMageGarment } from './mageGarment';
+import { drawRosterGarment } from './rosterGarments';
+import { drawBardLute, drawGreatAxe, drawStaffCrown } from './heroGear';
 import { drawMeleeGarment, drawSunShield } from './meleeGarments';
 import { drawKnightArmor, drawKnightShield } from './knightArmor';
 import { heroStance } from './math/heroStance';
@@ -507,7 +509,8 @@ export class CreatureRig {
 
     if (this.spec.arms) this.drawArms(R, ctx, downed);
     if (this.spec.weapon && !downed) this.drawWeapon(R, ctx, timeSec);
-    if (this.spec.decor && this.spec.garment !== 'knight') this.drawDecor(R, ctx);
+    if (this.spec.decor && this.spec.garment !== 'knight' && this.spec.garment !== 'cleric')
+      this.drawDecor(R, ctx);
     if (this.spec.garment === 'knight' && !downed) {
       drawKnightArmor(
         this.gDecor,
@@ -518,27 +521,27 @@ export class CreatureRig {
         R,
       );
     }
-    if (
-      this.spec.garment &&
-      this.spec.garment !== 'mage' &&
-      this.spec.garment !== 'knight' &&
-      !downed
-    ) {
-      const heightScale = this.spec.garment === 'rogue' ? 0.85 : 1;
-      drawMeleeGarment(
-        this.gBehind,
-        this.gDecor,
-        (x, y, h) => {
-          const point = this.bodyPoint({ x, y }, R);
-          return {
-            x: point.x,
-            y: this.origin.y + (point.y - this.origin.y) * 0.53 - h * R * heightScale,
-          };
-        },
-        R,
-        this.spec.garment,
-        clamp((-this.vel.x * this.sin + this.vel.y * this.cos) / 220, -0.28, 0.28),
-      );
+    const garment = this.spec.garment;
+    if (garment && garment !== 'mage' && garment !== 'knight') {
+      const heightScale = downed ? 0.28 : garment === 'rogue' ? 0.85 : 1;
+      const project = (x: number, y: number, h: number) => {
+        const point = this.bodyPoint({ x, y }, R);
+        return {
+          x: point.x,
+          y: this.origin.y + (point.y - this.origin.y) * 0.53 - h * R * heightScale,
+        };
+      };
+      const sway = clamp((-this.vel.x * this.sin + this.vel.y * this.cos) / 220, -0.28, 0.28);
+      if (
+        garment === 'paladin' ||
+        garment === 'rogue' ||
+        garment === 'monk' ||
+        garment === 'barbarian'
+      )
+        drawMeleeGarment(this.gBehind, this.gDecor, project, R, garment, sway);
+      else drawRosterGarment(this.gBehind, this.gDecor, project, R, garment, sway);
+      if (garment === 'bard' && !downed)
+        drawBardLute(this.gDecor, this.bardHand(-1, R), this.bardHand(1, R), R);
     }
     if (this.spec.garment === 'mage' && !downed) {
       const lateralSpeed = -this.vel.x * this.sin + this.vel.y * this.cos;
@@ -787,11 +790,37 @@ export class CreatureRig {
           arm.side === 1 && this.attackAge >= 0
             ? Math.sin(Math.PI * clamp(this.attackAge / ATTACK_DUR, 0, 1))
             : 0;
-        hand = this.bodyPoint({ x: 0.65 + strike * 1.25, y: arm.side * (0.53 - strike * 0.3) }, R);
-        hand.y -= R * (0.85 + strike * 0.14);
+        hand = this.bodyPoint(
+          { x: (arm.side === 1 ? 0.83 : 0.38) + strike * 1.25, y: arm.side * (0.6 - strike * 0.3) },
+          R,
+        );
+        hand.y -= R * ((arm.side === 1 ? 0.75 : 1.18) + strike * 0.14);
       } else if (!downed && this.spec.garment === 'barbarian') {
         hand = arm.side === 1 ? grip : this.bodyPoint({ x: 0.22, y: -0.83 }, R);
         if (arm.side === -1) hand.y -= R * 0.65;
+      }
+      if (!downed && this.spec.garment === 'ranger') hand = this.rangerHand(arm.side, R);
+      else if (!downed && this.spec.garment === 'bard') hand = this.bardHand(arm.side, R);
+      else if (
+        !downed &&
+        this.spec.garment &&
+        ['cleric', 'druid', 'sorcerer', 'warlock'].includes(this.spec.garment)
+      ) {
+        const cast =
+          this.attackAge >= 0 ? Math.sin(Math.PI * clamp(this.attackAge / ATTACK_DUR, 0, 1)) : 0;
+        const sorcerer = this.spec.garment === 'sorcerer';
+        const warlock = this.spec.garment === 'warlock';
+        hand =
+          arm.side === 1
+            ? grip
+            : this.bodyPoint(
+                {
+                  x: 0.38 + cast * (warlock ? 0.24 : 0.65),
+                  y: -0.77 - (sorcerer ? cast * 0.52 : 0),
+                },
+                R,
+              );
+        if (arm.side === -1) hand.y -= R * (0.67 + cast * (sorcerer ? 0.65 : 0.26));
       }
       const reachScale = this.spec.garment && !downed ? 1.14 : 1;
       if (this.spec.garment && !downed) {
@@ -816,11 +845,19 @@ export class CreatureRig {
       } else {
         drawLimb(this.gFront, shoulder, elbow, hand, wRoot, wTip, color);
       }
-      if (this.spec.garment === 'monk' && !downed)
+      if (this.spec.garment === 'monk' && !downed) {
+        const wrapX = hand.x + (elbow.x - hand.x) * 0.3;
+        const wrapY = hand.y + (elbow.y - hand.y) * 0.3;
         this.gFront
-          .circle(hand.x, hand.y, 0.2 * R)
-          .fill({ color: 0xe0cbb1 })
-          .stroke({ color: 0x7c6078, width: Math.max(0.8, R * 0.07) });
+          .moveTo(wrapX, wrapY)
+          .lineTo(hand.x, hand.y)
+          .stroke({ color: 0x735b68, width: 0.4 * R, cap: 'round' });
+        this.gFront
+          .moveTo(wrapX, wrapY)
+          .lineTo(hand.x, hand.y)
+          .stroke({ color: 0xd7c5a6, width: 0.3 * R, cap: 'round' });
+        this.gFront.circle(hand.x, hand.y, 0.19 * R).fill({ color: 0xe8d9ba });
+      }
       if (mage) {
         this.gFront.circle(hand.x, hand.y, 0.13 * R).fill({ color: 0xe0b994 });
         this.gFront.circle(elbow.x, elbow.y, 0.095 * R).fill({ color: 0x8b719b });
@@ -830,7 +867,9 @@ export class CreatureRig {
 
   private drawWeapon(R: number, ctx: RigDriveCtx, timeSec: number): void {
     const w = this.spec.weapon!;
-    const grip = this.gripPoint(R, ctx, false);
+    const garment = this.spec.garment;
+    if (garment === 'bard') return;
+    const grip = garment === 'ranger' ? this.rangerHand(1, R) : this.gripPoint(R, ctx, false);
     const g = this.gFront;
     const activeStaff = Math.max(
       releasePose(this.lightningAge),
@@ -857,8 +896,23 @@ export class CreatureRig {
             : this.spec.garment === 'rogue' && this.attackAge < 0
               ? this.facing + 0.64
               : this.facing;
-    const fx = Math.cos(staffAngle);
-    const fy = Math.sin(staffAngle);
+    const turningWeapon =
+      garment === 'barbarian' ||
+      garment === 'paladin' ||
+      garment === 'cleric' ||
+      garment === 'druid' ||
+      garment === 'sorcerer' ||
+      garment === 'warlock';
+    const active = this.attackAge >= 0 ? Math.max(0, 1 - this.attackAge / ATTACK_DUR) : 0;
+    const lowered = garment === 'barbarian' || garment === 'paladin';
+    const rest = lowered ? this.facing + 1.36 : garment === 'sorcerer' ? -0.94 : -Math.PI * 0.43;
+    const delta = staffAngle - rest;
+    const angle =
+      turningWeapon && !this.blade
+        ? rest + Math.atan2(Math.sin(delta), Math.cos(delta)) * active
+        : staffAngle;
+    const fx = Math.cos(angle);
+    const fy = Math.sin(angle);
     const perp = { x: -fy, y: fx };
     const metal = 0xcdd2da;
     const swing =
@@ -884,6 +938,10 @@ export class CreatureRig {
         break;
       }
       case 'axe': {
+        if (garment === 'barbarian') {
+          drawGreatAxe(g, at, R);
+          break;
+        }
         const haft = at(w.length);
         g.moveTo(grip.x, grip.y)
           .lineTo(haft.x, haft.y)
@@ -933,17 +991,20 @@ export class CreatureRig {
         break;
       }
       case 'bow': {
-        const top = at(0, 0.9);
-        const bot = at(0, -0.9);
-        const belly = at(0.5 + swing * 0.2);
+        const top = at(-0.61, 1.15);
+        const bot = at(-0.61, -1.15);
+        const belly = at(0.61);
         g.moveTo(top.x, top.y)
           .quadraticCurveTo(belly.x, belly.y, bot.x, bot.y)
-          .stroke({ width: 0.09 * R, color: w.color });
-        const nock = at(-0.15 - swing * 0.35);
+          .stroke({ width: 0.17 * R, color: 0x5a382d, cap: 'round' });
+        g.moveTo(top.x, top.y)
+          .quadraticCurveTo(belly.x, belly.y, bot.x, bot.y)
+          .stroke({ width: 0.075 * R, color: 0xd1a067, cap: 'round' });
+        const nock = garment === 'ranger' ? this.rangerHand(-1, R) : at(-0.15 - swing * 0.35);
         g.moveTo(top.x, top.y)
           .lineTo(nock.x, nock.y)
           .lineTo(bot.x, bot.y)
-          .stroke({ width: 0.04 * R, color: metal });
+          .stroke({ width: Math.max(0.8, 0.045 * R), color: metal });
         break;
       }
       case 'staff': {
@@ -962,6 +1023,10 @@ export class CreatureRig {
           g.moveTo(base.x, base.y)
             .lineTo(crown.x, crown.y)
             .stroke({ width: Math.max(1, 0.08 * R), color: 0xd9f5ff });
+          break;
+        }
+        if (garment === 'druid' || garment === 'sorcerer' || garment === 'warlock') {
+          drawStaffCrown(g, at, w.length, R, garment);
           break;
         }
         // Arcane orb: a soft additive glow pulsing ~2.2s, swelling as a cast charges.
@@ -1100,7 +1165,9 @@ export class CreatureRig {
       0,
       1,
     );
-    const rest = this.facing + (this.blade.style === 'cleave' ? 1.05 : 0);
+    const rest =
+      this.facing +
+      (this.blade.style === 'cleave' ? 1.05 : this.blade.style === 'holyStrike' ? 1.36 : 0);
     const delta = rest - slash;
     return slash + Math.atan2(Math.sin(delta), Math.cos(delta)) * recovery;
   }
@@ -1132,6 +1199,25 @@ export class CreatureRig {
     if (this.spec.garment !== 'rogue') return point;
     point.y -= R * 0.5;
     return this.fitRaisedHand(point, -1, R);
+  }
+
+  private rangerHand(side: -1 | 1, r: number): Vec2 {
+    const draw =
+      this.attackAge >= 0 ? Math.sin(Math.PI * clamp(this.attackAge / ATTACK_DUR, 0, 1)) : 0;
+    const point = this.bodyPoint(
+      side === 1
+        ? { x: 0.88 + draw * 0.48, y: 0.7 - draw * 0.44 }
+        : { x: 0.24 - draw * 0.45, y: -0.52 },
+      r,
+    );
+    point.y -= r * (0.52 + draw * 0.39);
+    return this.fitRaisedHand(point, side, r);
+  }
+
+  private bardHand(side: -1 | 1, r: number): Vec2 {
+    const point = this.bodyPoint({ x: side === -1 ? 0.76 : 0.5, y: side * 0.52 }, r);
+    point.y -= r * (side === -1 ? 1.18 : 0.58);
+    return this.fitRaisedHand(point, side, r);
   }
 
   private gripPoint(R: number, ctx: RigDriveCtx, downed: boolean): Vec2 {
@@ -1167,6 +1253,22 @@ export class CreatureRig {
       x: this.origin.x + Math.cos(forward) * dist * R,
       y: this.origin.y + Math.sin(forward) * dist * R,
     };
+    if (
+      !downed &&
+      !this.blade &&
+      this.attackAge < 0 &&
+      (this.spec.garment === 'paladin' || this.spec.garment === 'barbarian')
+    ) {
+      const carry = this.bodyPoint({ x: 0.06, y: 1.08 }, R);
+      point.x = carry.x;
+      point.y = carry.y;
+    }
+    if (
+      !downed &&
+      this.spec.garment &&
+      ['cleric', 'druid', 'sorcerer', 'warlock'].includes(this.spec.garment)
+    )
+      point.y -= R * 0.78;
     if (!downed && this.spec.garment === 'paladin')
       point.y -= R * (this.blade ? 0.64 + 0.8 * (1 - this.bladePhase()) : 0.94);
     if (!downed && this.spec.garment === 'rogue') point.y -= R * 0.48;

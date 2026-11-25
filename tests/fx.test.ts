@@ -26,6 +26,8 @@ import { drawElementalBurst } from '../src/render/overlays/elementalBurst';
 import type { PlayerView } from '../src/engine/core/types';
 import { drawMeleeGarment, drawSunShield } from '../src/render/rig/meleeGarments';
 import { drawDefenseState } from '../src/render/pipeline/defenseVisuals';
+import { drawRosterGarment } from '../src/render/rig/rosterGarments';
+import { drawBardLute, drawGreatAxe, drawStaffCrown } from '../src/render/rig/heroGear';
 import { drawKnightArmor, drawKnightShield } from '../src/render/rig/knightArmor';
 import { heroStance } from '../src/render/rig/math/heroStance';
 import { drawMageGarment, playerVisualHeadroom } from '../src/render/rig/mageGarment';
@@ -224,7 +226,7 @@ it.each([
   ['mage', 'downed', undefined, 16],
   ['mage', 'alive', 'moonBear', 25.92],
   ['druid', 'downed', 'moonBear', 16],
-  ['ranger', 'alive', undefined, 16],
+  ['ranger', 'alive', undefined, 37.44],
 ] as const)('reserves headroom for the raised heroes', (classId, state, form, expected) => {
   const p = { classId, state, form } as PlayerView;
   expect(playerVisualHeadroom(p, 16)).toBeCloseTo(expected);
@@ -454,4 +456,34 @@ it('renders one dagger ribbon for each independent cut', () => {
     expect(instructionCount(g)).toBe(4);
   }
   g.destroy();
+});
+
+it('draws the new roster layers and signature props at arena scale', () => {
+  const behind = new Graphics();
+  const front = new Graphics();
+  const at = (x: number, y: number, h: number) => ({ x: 100 + x * 11, y: 100 + y * 6 - h * 11 });
+  for (const style of ['ranger', 'bard', 'cleric', 'druid', 'sorcerer', 'warlock'] as const) {
+    drawRosterGarment(behind, front, at, 11, style, 0.16);
+    expect(instructionCount(behind)).toBeGreaterThanOrEqual(2);
+    expect(instructionCount(front)).toBeGreaterThanOrEqual(8);
+    behind.clear();
+    front.clear();
+  }
+
+  const gear = (x: number, y = 0) => at(x, y, 0);
+  drawGreatAxe(front, gear, 11);
+  expect(instructionCount(front)).toBeGreaterThan(8);
+  front.clear();
+  drawBardLute(front, at(0, 0, 2), at(0, 1, 1), 11, false);
+  const instrument = instructionCount(front);
+  front.clear();
+  drawBardLute(front, at(0, 0, 2), at(0, 1, 1), 11);
+  expect(instructionCount(front)).toBe(instrument + 1);
+  for (const style of ['druid', 'sorcerer', 'warlock'] as const) {
+    front.clear();
+    drawStaffCrown(front, gear, 1.6, 11, style);
+    expect(instructionCount(front)).toBeGreaterThanOrEqual(3);
+  }
+  behind.destroy();
+  front.destroy();
 });

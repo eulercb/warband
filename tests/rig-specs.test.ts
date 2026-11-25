@@ -936,7 +936,7 @@ describe('buildHumanoidSpec', () => {
     expect(spec.weapon).toEqual(WEAPON_EXPECT[classId]);
   });
 
-  it('shares the biped chassis across undressed classes', () => {
+  it('shares the biped chassis across wardrobe variants', () => {
     const warlock = buildHumanoidSpec('warlock');
     const druid = buildHumanoidSpec('druid');
     expect(warlock.parts).toEqual(druid.parts);
@@ -946,12 +946,9 @@ describe('buildHumanoidSpec', () => {
     expect(warlock.weapon).not.toEqual(druid.weapon);
   });
 
-  it.each(['paladin', 'rogue', 'monk', 'barbarian'] as const)(
-    'selects the raised %s garment',
-    (classId) => {
-      expect(buildHumanoidSpec(classId).garment).toBe(classId);
-    },
-  );
+  it.each(ALL_CLASS_IDS)('selects the raised %s garment', (classId) => {
+    expect(buildHumanoidSpec(classId).garment).toBe(classId);
+  });
 
   it('keeps the shared legs / arms / idle intact under a dressed class', () => {
     // Dress only adds parts / decor / tints + weapon trim — the gait, arms and idle
@@ -1030,7 +1027,7 @@ describe('buildHumanoidSpec — per-class field dress', () => {
     expect(spec.weapon?.accent).toBe(0xc99a2e); // gold mace band
   });
 
-  it('leaves the expansion classes on the plain biped (no dress)', () => {
+  it('layers expansion garments on the shared biped parts', () => {
     for (const id of ['barbarian', 'rogue', 'paladin', 'druid'] as ClassId[]) {
       const spec = buildHumanoidSpec(id);
       expect(spec.parts.map((p) => p.id)).toEqual(['torso', 'head']);

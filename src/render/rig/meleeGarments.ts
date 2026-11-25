@@ -70,6 +70,28 @@ export function drawMeleeGarment(
       0x6b536e,
       edge,
     );
+    plate(
+      front,
+      [
+        [0.51, -0.36, 0.59],
+        [0.49, -0.15, 0.59],
+        [0.38, -0.27 + sway, 0.12],
+        [0.46, -0.48 + sway, 0.2],
+      ],
+      0x5f7785,
+      edge,
+    );
+    plate(
+      behind,
+      [
+        [-0.28, 0.21, 0.87],
+        [-0.22, 0.47, 0.81],
+        [-0.89, 0.79 + sway, 0.24],
+        [-0.65, 0.29 + sway, 0.36],
+      ],
+      0x9f778a,
+      edge,
+    );
     const head = at(0.51, 0, 1.74);
     front
       .ellipse(head.x, head.y, radius * 0.38, radius * 0.4)
@@ -138,6 +160,37 @@ export function drawMeleeGarment(
       0x6d3830,
       edge,
     );
+    plate(
+      front,
+      [
+        [0.11, -1.13, 1.26],
+        [0.43, -0.82, 1.57],
+        [0.65, -0.43, 1.36],
+        [0.48, -0.22, 1.04],
+        [0.38, -0.44, 1.11],
+        [0.3, -0.56, 0.91],
+        [0.22, -0.73, 1.05],
+        [0.07, -0.92, 0.91],
+      ],
+      0xd5a16a,
+      edge,
+    );
+    plate(
+      front,
+      [
+        [0.44, -0.67, 0.63],
+        [0.58, 0.62, 0.63],
+        [0.53, 0.54, 0.48],
+        [0.4, -0.59, 0.48],
+      ],
+      0xab6a46,
+      edge,
+    );
+    const clasp = at(0.63, 0.13, 0.58);
+    front
+      .circle(clasp.x, clasp.y, radius * 0.15)
+      .fill({ color: 0xd7b77d })
+      .stroke({ color: edge, width: Math.max(0.75, radius * 0.06) });
     return;
   }
 
