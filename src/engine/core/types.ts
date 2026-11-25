@@ -696,6 +696,7 @@ export interface Player {
   /** Active authored passive and per-passive host cooldowns (persist across swaps). */
   subclassPassiveId?: string;
   subclassPassiveCooldowns?: Record<string, number>;
+  monkLeadHand?: 0 | 1;
   moonClaws?: { at: number; range: number }[];
   /**
    * The hero's chosen character-upgrade ids (item 17), stashed host-side at spawn so
@@ -1533,7 +1534,7 @@ export interface InputCommand {
  * event so the renderer can flash the exact region an ability just affected
  * (the Knight's cleave cone, the Cleric's heal range, etc.). Purely cosmetic.
  */
-export type BladeAreaStyle = 'cleave' | 'holyStrike' | 'daggerSlash';
+export type BladeAreaStyle = 'cleave' | 'holyStrike' | 'daggerSlash' | 'monkPalm' | 'axeSwing';
 
 export type SkillAreaKind = 'cone' | 'circle' | 'line';
 

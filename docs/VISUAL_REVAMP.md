@@ -521,3 +521,40 @@ In-game phone captures:
 [Cleric and Druid](images/roster-cleric-druid-phone.png),
 [Sorcerer and Warlock](images/roster-sorcerer-warlock-phone.png), and
 [Monk, Barbarian and Paladin](images/roster-monk-barbarian-paladin-phone.png).
+
+## Caster carry and the first martial basics
+
+Mage, Cleric, Druid, Sorcerer and Warlock hold their prop at the side while
+idle. Both the grip and the free hand move into the cast and recover over
+several frames. The prop stays tied to its solved wrist. Ranger rests the draw
+hand and reaches for the line on release. Bard keeps both hands on the lute.
+
+The ability production queue begins with basics and their linked grands.
+Flurry of Blows lands three alternating palms over 150ms, with the starting
+hand alternating across casts. Individual contacts use live aim and each
+deals 36% of the resolved base. Whirling Fists uses two opposite passing arcs,
+one contact per hand and target at 54% each. The full basic remains 108% when
+all contacts land. Flow extension is apportioned among the contacts so the
+cast has the former extension budget, and a delayed palm cannot extend a
+newly prepared Flow buff. These are provisional tuning values.
+
+Reckless Swing and Cleaving Fury use a two-handed axe contact and an authored
+fading edge across the actual 110° or 180° sector. Both keep their existing
+single damage hit. Barbarian returns to the one-handed carry.
+
+Next is Flurry Barrage and Parting Barrage, including the Flowing Water
+travel path, followed by the outstanding basics in class groups and then
+their remaining specials and linked upgrades. Sol 6.2 High reviewed delivery,
+Forge handling and test scope for this batch.
+
+For session sizing, log the reported quota at the start, review count,
+mechanical changes, and validation scope in the handoff. Compare usage with
+the next reported meter only if the same window is still running and other
+work is accounted for. This batch started at 71% of the five-hour quota and
+64% of the weekly quota, using one bounded review for the two basics and
+their grands, plus carry refinements. Local test minutes measure wall time.
+
+In-game phone captures: [caster side carry](images/caster-side-carry-phone.png),
+[the same group in release](images/caster-release-phone.png),
+[Sorcerer, Warlock and Ranger at rest](images/sorcerer-warlock-ranger-carry-phone.png),
+and [Whirling Fists with Cleaving Fury](images/monk-barbarian-grands-phone.png).

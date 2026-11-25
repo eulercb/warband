@@ -53,6 +53,9 @@ function areaFlashTtl(style: SkillArea['style']): number {
       return BLINK_ARRIVE_TTL;
     case 'lightning':
       return 0.62;
+    case 'monkPalm':
+      return 0.27;
+    case 'axeSwing':
     case 'cleave':
     case 'daggerSlash':
     case 'holyStrike':
@@ -870,7 +873,10 @@ export class Fx {
     a.active = true;
     a.age = 0;
     a.color = color;
-    a.sourceId = area.style === 'daggerSlash' && area.halfAngle >= Math.PI ? sourceId : undefined;
+    a.sourceId =
+      (area.style === 'daggerSlash' || area.style === 'monkPalm') && area.halfAngle >= Math.PI
+        ? sourceId
+        : undefined;
     // Deep-copy the geometry (events are transient / reused).
     a.area = {
       kind: area.kind,

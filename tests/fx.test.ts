@@ -356,6 +356,9 @@ it.each([
   ['daggerSlash', Math.PI / 4],
   ['daggerSlash', Math.PI],
   ['holyStrike', Math.PI / 4],
+  ['monkPalm', Math.PI / 4],
+  ['monkPalm', Math.PI],
+  ['axeSwing', Math.PI / 2],
   ['moonClaw', Math.PI / 4],
 ] as const)('draws and retires the authored %s effect with half-angle %s', (style, halfAngle) => {
   const fx = new Fx(new Container());
@@ -383,14 +386,14 @@ it.each([
   );
   fx.draw(graphics, camera);
   expect(instructionCount(graphics)).toBeGreaterThanOrEqual(
-    style === 'daggerSlash' && halfAngle === Math.PI ? 2 : 3,
+    (style === 'daggerSlash' || style === 'monkPalm') && halfAngle === Math.PI ? 2 : 3,
   );
-  fx.update(180);
+  fx.update(150);
   fx.draw(graphics, camera);
   expect(instructionCount(graphics)).toBeGreaterThanOrEqual(
-    style === 'daggerSlash' && halfAngle === Math.PI ? 2 : 3,
+    (style === 'daggerSlash' || style === 'monkPalm') && halfAngle === Math.PI ? 2 : 3,
   );
-  fx.update(510);
+  fx.update(550);
   fx.draw(graphics, camera);
   expect(instructionCount(graphics)).toBe(0);
   graphics.destroy();

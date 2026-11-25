@@ -1,3 +1,4 @@
+import { flurryDamageText } from './flurryRules';
 import { REFUGE_TEXT } from './refugeRules';
 import { FONT_TEXT } from './fontRules';
 import { REFLECTION_TEXT } from './reflectionRules';
@@ -548,7 +549,12 @@ function uniqueMentalContracts(effects: EffectComponent[]): EffectComponent[] {
  */
 export function recompose(
   comp: AbilityComponents,
-  meta: { slot: PlayerAbilityDef['slot']; name: string; cooldown: number },
+  meta: {
+    slot: PlayerAbilityDef['slot'];
+    name: string;
+    cooldown: number;
+    basicPresentation?: PlayerAbilityDef['basicPresentation'];
+  },
 ): PlayerAbilityDef {
   if (
     comp.effects.some((e) => e.kind === 'refuge') &&
@@ -661,6 +667,12 @@ export function recompose(
     damage: 0,
     components: comp,
   };
+  if (
+    meta.slot === 'basic' &&
+    d.kind === 'meleeCone' &&
+    (meta.basicPresentation === 'monkPalm' || meta.basicPresentation === 'axeSwing')
+  )
+    def.basicPresentation = meta.basicPresentation;
   if (d.visualStyle) def.visualStyle = d.visualStyle;
   if (d.range != null) def.range = d.range;
   if (d.radius != null) def.radius = d.radius;
@@ -1201,7 +1213,11 @@ const pct = (v: number): string => `${Math.round(v)}%`;
  * by describeAbility when a synthesized ability carries `.components`; canonical
  * abilities keep the authored flat-field walk untouched.
  */
-export function describeComposed(comp: AbilityComponents, cooldown: number): string {
+export function describeComposed(
+  comp: AbilityComponents,
+  cooldown: number,
+  presentation?: PlayerAbilityDef['basicPresentation'],
+): string {
   const parts: string[] = [];
   const d = comp.delivery;
 
@@ -1217,7 +1233,12 @@ export function describeComposed(comp: AbilityComponents, cooldown: number): str
   // Omit a suppressed generation mode rather than advertising incompatible triggers.
   for (const e of comp.effects) {
     const effect = fittedSurgePiercing(comp, e);
-    const phrase = effectPhrase(effect, comp);
+    const phrase =
+      presentation === 'monkPalm' && effect.kind === 'damage'
+        ? flurryDamageText(effect.amount, (d.halfAngleDeg ?? 0) >= 180, n)
+        : presentation === 'monkPalm' && effect.kind === 'flowExtend'
+          ? `land all contacts to extend existing Flow by ${s(effect.seconds)}, up to 1s total per preparation`
+          : effectPhrase(effect, comp);
     if (phrase) parts.push(phrase);
     if (e.kind === 'surgeStrike' && (d.castTime ?? 0) > 0) parts.push('surge halves wind-up');
   }

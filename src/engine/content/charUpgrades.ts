@@ -798,7 +798,7 @@ const MONK: CharUpgradeDef[] = [
     'mo_flurry',
     'Empty Body',
     '👊',
-    'Flurry of Blows strikes 10% faster and hits for 20 (+5)',
+    'Flurry of Blows strikes 10% faster and adds +5 base damage before splitting into palms',
     ({ abilities: a }) => {
       mul(a.basic, 'cooldown', 0.9);
       addN(a.basic, 'damage', 5);
@@ -1905,7 +1905,7 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'mo_gk_basic_b',
     'Whirling Fists',
     '🌀',
-    'Flurry of Blows sweeps a full circle with +8 damage and +15u reach',
+    'Two fists sweep a full circle, hitting as they pass; +8 base damage and +15u reach',
     (ab) => {
       ab.halfAngleDeg = 180;
       addN(ab, 'damage', 8);

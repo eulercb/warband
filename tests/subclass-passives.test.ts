@@ -1,5 +1,5 @@
 import { SECOND_DAGGER_DELAY } from '../src/engine/content/daggerRules';
-import { advanceDaggerAttacks } from '../src/engine/combat/abilities';
+import { advanceMeleeSequences } from '../src/engine/combat/abilities';
 import { describe, expect, it } from 'vitest';
 import { absorptionAmount } from '../src/engine/combat/absorption';
 import { World } from '../src/engine/world/world';
@@ -146,16 +146,16 @@ describe('Trickster: Spellblade', () => {
     p.aim = { x: -1, y: 0 };
     resolvePlayerAbility(w, p, 'basic', ZERO);
     w.elapsed += SECOND_DAGGER_DELAY;
-    advanceDaggerAttacks(w);
+    advanceMeleeSequences(w);
     expect(p.buffs.some((b) => b.kind === 'spellblade')).toBe(true);
     p.aim = { x: 1, y: 0 };
     resolvePlayerAbility(w, p, 'basic', ZERO);
     w.elapsed += SECOND_DAGGER_DELAY;
-    advanceDaggerAttacks(w);
+    advanceMeleeSequences(w);
     expect(w.boss!.hp).toBeCloseTo(977.824);
     resolvePlayerAbility(w, p, 'basic', ZERO);
     w.elapsed += SECOND_DAGGER_DELAY;
-    advanceDaggerAttacks(w);
+    advanceMeleeSequences(w);
     expect(w.boss!.hp).toBeCloseTo(957.664);
   });
   it('uses subclass magic, preserves readiness on an invulnerable boss and respects the proc cooldown', () => {
@@ -179,7 +179,7 @@ describe('Trickster: Spellblade', () => {
     const p = w.players[0];
     resolvePlayerAbility(w, p, 'basic', ZERO);
     w.elapsed += SECOND_DAGGER_DELAY;
-    advanceDaggerAttacks(w);
+    advanceMeleeSequences(w);
     resolvePlayerAbility(w, p, 'a1', ZERO);
     resolvePlayerAbility(w, p, 'sub2', ZERO);
     expect(p.buffs.some((b) => b.kind === 'spellblade')).toBe(false);
@@ -202,7 +202,7 @@ describe('Trickster: Spellblade', () => {
     expect(p.buffs.some((b) => b.kind === 'spellblade')).toBe(true);
     resolvePlayerAbility(w, p, 'basic', ZERO);
     w.elapsed += SECOND_DAGGER_DELAY;
-    advanceDaggerAttacks(w);
+    advanceMeleeSequences(w);
     expect(a.hp).toBeCloseTo(967.824);
   });
 });
