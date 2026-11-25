@@ -58,6 +58,7 @@ export interface PlayerAbilityDef {
   name: string;
   visualStyle?: 'frostNova' | 'fireball';
   flurryLaneHalfWidth?: number;
+  flurryBarrage?: boolean;
   basicPresentation?: import('../core/types').BladeAreaStyle | 'arcaneBolt';
   kind: AbilityKind;
   rechargeBase?: number;
@@ -1381,13 +1382,15 @@ export function describeAbility(
     const count = def.projCount ?? 1;
     const dmg = def.damage * dmgMul * (guidedBurst(def) ? GUIDED_BURST_PREMIUM : 1);
     parts.push(
-      def.kind === 'meleeCone' && def.basicPresentation === 'daggerSlash'
-        ? `${n(dmg * DAGGER_DAMAGE_SHARE)} dmg per dagger (two cuts)`
-        : def.kind === 'meleeCone' && def.basicPresentation === 'monkPalm'
-          ? flurryDamageText(dmg, !!def.flurryLaneHalfWidth, n)
-          : count > 1
-            ? `${count}× ${n(dmg)} dmg`
-            : `${n(dmg)} dmg`,
+      def.flurryBarrage
+        ? `3× ${n(dmg / 3)} dmg`
+        : def.kind === 'meleeCone' && def.basicPresentation === 'daggerSlash'
+          ? `${n(dmg * DAGGER_DAMAGE_SHARE)} dmg per dagger (two cuts)`
+          : def.kind === 'meleeCone' && def.basicPresentation === 'monkPalm'
+            ? flurryDamageText(dmg, !!def.flurryLaneHalfWidth, n)
+            : count > 1
+              ? `${count}× ${n(dmg)} dmg`
+              : `${n(dmg)} dmg`,
     );
   }
   if (def.landingDamage) parts.push(`${n(def.landingDamage * dmgMul)} landing dmg`);

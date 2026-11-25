@@ -1069,8 +1069,8 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'mo_openhand_flurry',
           'Flurry Barrage',
           '👊',
-          'A rapid strike for 40',
-          melee('Flurry Barrage', 4, 40, { range: 64, consumesFlow: true }),
+          'Three alternating palm strikes',
+          melee('Flurry Barrage', 4, 40, { range: 64, consumesFlow: true, flurryBarrage: true }),
         ),
         sk(
           'mo_openhand_wave',
