@@ -252,9 +252,8 @@ it('prepares Holy Strike during pursuit even when the cone uses its default widt
   p.abilities!.basic = { ...p.abilities!.basic, halfAngleDeg: undefined };
   step(true);
   step();
-  expect(w.serialize().players[0].weaponWindup).toMatchObject({
-    style: 'holyStrike',
-    halfAngle: Math.PI / 4,
-    progress: expect.any(Number),
-  });
+  const preparation = w.serialize().players[0].weaponWindup;
+  expect(preparation).toMatchObject({ style: 'holyStrike', halfAngle: Math.PI / 4 });
+  expect(preparation?.progress).toBeGreaterThan(0);
+  expect(preparation?.progress).toBeLessThan(1);
 });
