@@ -43,6 +43,8 @@ describe('skill-area cues', () => {
     boss.pos = { x: 800, y: 350 };
     w.step(DT, new Map([['k', inp({ aim: { x: 0, y: -1 }, buttons: buttons({ basic: true }) })]]));
 
+    expect(w.events.some((event) => event.t === 'skillArea')).toBe(false);
+    w.step(0.1, new Map());
     const area = w.events.find((e) => e.t === 'skillArea');
     expect(area).toBeTruthy();
     if (area && area.t === 'skillArea') {

@@ -128,6 +128,7 @@ describe('Unbroken Champion projected shield', () => {
       expect(w.events.some((e) => e.t === 'hit' && e.side === 'player')).toBe(false);
       const hp = b.hp;
       use(w, p, 'basic');
+      w.step(0.1, new Map());
       expect(b.hp).toBeLessThan(hp);
       expect(p.buffs.some((x) => x.kind === 'counter')).toBe(false);
     },

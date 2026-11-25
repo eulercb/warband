@@ -606,3 +606,31 @@ way. Parting Barrage pushes each struck foe once, after the sequence.
 The patch began at 73% of the five-hour allowance and 52% weekly.
 
 [Flurry Barrage and Reckless Swing on phone](images/flurry-barrage-and-axe-phone.png).
+
+### Weapon contact and hybrid melee
+
+The owner accepted Sorcerer staff layering and Flurry Barrage in #228 and
+flagged that Cleave, Holy Strike and Reckless Swing damaged enemies while still
+preparing. The host now reserves the swing when input is accepted, captures its
+aim, and resolves against live positions when the preparation ends. The release
+tick starts the rig sweep and its reach effect. The Knight and Paladin use a
+75ms preparation and the Barbarian uses 120ms, rounded up to the next host tick.
+Walking remains available during preparation. Relentless Vengeance raises the
+weapon during travel and keeps the hit on arrival.
+
+Sol 6.2 High reviewed input, reload and contact ordering. The implementation
+keeps preparation out of the spell cast timer and uses one host release for
+damage, the area cue and on-hit riders. The visual check now includes the
+last preparation frame and first contact frame, using ordinary input.
+
+Valor's Blade Flourish uses a free-hand short blade while the other hand carries
+the lute. Sweeping Flourish retains its push on contact. Beast Master's Savage
+Bite reads as two closing jaws; Defiant Bite prepares its parry on a connecting
+bite. These are visual and timing updates to existing skills. Their upgrades
+and identities continue to use the receiving skill's actual payoff and geometry.
+The Warlock has no native melee basic to convert in this batch.
+
+The patch started at 55% of the five-hour allowance and 49% weekly. The next
+cohort is the remaining ranged and caster basics.
+
+[Blade Flourish and Savage Bite on phone](images/hybrid-melee-contact-phone.png).

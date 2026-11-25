@@ -671,9 +671,14 @@ export function recompose(
     components: comp,
   };
   if (
-    meta.slot === 'basic' &&
     d.kind === 'meleeCone' &&
-    (meta.basicPresentation === 'monkPalm' || meta.basicPresentation === 'axeSwing')
+    (meta.basicPresentation === 'bardFlourish' ||
+      meta.basicPresentation === 'savageBite' ||
+      (meta.slot === 'basic' &&
+        (meta.basicPresentation === 'monkPalm' ||
+          meta.basicPresentation === 'axeSwing' ||
+          meta.basicPresentation === 'cleave' ||
+          meta.basicPresentation === 'holyStrike')))
   )
     def.basicPresentation = meta.basicPresentation;
   if (d.kind === 'meleeCone' && d.flurryBarrage) def.flurryBarrage = true;

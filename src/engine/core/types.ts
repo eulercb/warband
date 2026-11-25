@@ -608,6 +608,7 @@ export interface Player {
   companionEpoch?: number;
   transplantEpoch?: number;
   castEpoch?: number;
+  weaponWindup?: import('../combat/abilities').PendingWeaponSwing;
   guidance?: GuidanceCast;
   aimPoint?: Vec2;
   phaseOrigin?: {
@@ -754,7 +755,7 @@ export interface Player {
    * Absent/null when not mid-dash. Teleports (blink) move instantly and never set it.
    */
   glide?: {
-    vengeancePursuit?: { targetId: number; epoch: number };
+    vengeancePursuit?: { targetId: number; epoch: number; started: number };
     palmSweep?: {
       cast: PalmSweepCast;
       hitIds: number[];
@@ -1539,7 +1540,15 @@ export interface InputCommand {
  * event so the renderer can flash the exact region an ability just affected
  * (the Knight's cleave cone, the Cleric's heal range, etc.). Purely cosmetic.
  */
-export type BladeAreaStyle = 'cleave' | 'holyStrike' | 'daggerSlash' | 'monkPalm' | 'axeSwing';
+export type BladeAreaStyle =
+  'cleave' | 'holyStrike' | 'daggerSlash' | 'monkPalm' | 'axeSwing' | 'bardFlourish' | 'savageBite';
+
+export interface WeaponWindupView {
+  style: BladeAreaStyle;
+  angle: number;
+  halfAngle: number;
+  progress: number;
+}
 
 export type SkillAreaKind = 'cone' | 'circle' | 'line';
 
@@ -1707,6 +1716,7 @@ export interface ShadowCommitCast {
 }
 
 export interface PlayerView {
+  weaponWindup?: WeaponWindupView;
   faithProtected?: boolean;
   faithWound?: { amount: number; remaining: number };
   vengeancePursuit?: { target: Vec2; end: Vec2; blocked: boolean };

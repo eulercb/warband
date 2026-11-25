@@ -70,6 +70,8 @@ it('an in-range swing takes priority and holding autofire never launches pursuit
   const { p, b, step } = setup();
   b.pos.x = 610;
   step(true, true);
+  expect(b.hp).toBe(10000);
+  for (let i = 0; i < 8; i++) step();
   expect(b.hp).toBeLessThan(10000);
   b.pos.x = 730;
   for (let i = 0; i < 250; i++) step(true, true);
@@ -220,6 +222,8 @@ it.each(['', 'pa_vengeance_g_a', 'pa_vengeance_g_b'])(
     const aim = { x: 1, y: 0 };
     b.pos.x = 610;
     step(true);
+    expect(b.hp).toBe(10000);
+    for (let i = 0; i < 8; i++) step();
     expect(b.hp).toBeLessThan(10000);
     for (let i = 0; i < 80; i++) step(false, false, aim, { x: -1, y: 0 });
     while (p.cooldowns.basic > 0) step();

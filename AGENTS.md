@@ -199,3 +199,10 @@ animation set. Verify a real basic and linked grand with the production rig.
 At each actual impact, align authoritative gameplay delivery, the contact pose,
 and the visible reach or hit effect. Use a separate clearly identifiable
 telegraph when advance notice is part of the mechanic.
+
+Treat damage before the visible swing or hit as a delivery defect. Check three
+moments on every authored attack: preparation without contact, the first
+damage tick with its matching pose and effect, and recovery. For changed
+timings, use normal input and record health and the visual cue on both sides
+of the release. Test the resolved grand and retained Forge delivery when they
+change reach, timing or riders. Flag any deliberate exception in playtest notes.

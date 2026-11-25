@@ -1,3 +1,5 @@
+import { weaponWindup } from '../../engine/content/weaponTiming';
+import type { WeaponWindupView } from '../../engine/core/types';
 /**
  * Warband — a single articulated rig instance.
  *
@@ -100,6 +102,7 @@ export class CreatureRig {
   private lightningAngle = 0;
   private recoilAge = 1;
   private recoilAngle = 0;
+  private preparingWeapon = false;
   private blade?: {
     style: BladeAreaStyle;
     angle: number;
@@ -229,7 +232,8 @@ export class CreatureRig {
     daggerHand?: 0 | 1,
     duration?: number,
   ): void {
-    this.attackAge = 0;
+    this.preparingWeapon = false;
+    this.attackAge = weaponWindup(style);
     this.blade = { style, angle, halfAngle, daggerHand, duration };
     if (style === 'monkPalm' && daggerHand !== undefined) {
       this.palmAges[daggerHand] = 0;
@@ -237,9 +241,22 @@ export class CreatureRig {
     }
   }
 
+  presentWeaponWindup(pose: WeaponWindupView | undefined, dt: number): void {
+    if (pose) {
+      const age = this.preparingWeapon ? this.attackAge + dt : 0;
+      this.preparingWeapon = true;
+      this.blade = pose;
+      const duration = weaponWindup(pose.style);
+      this.attackAge = Math.min(duration, Math.max(age, duration * pose.progress));
+    } else if (this.preparingWeapon) {
+      this.preparingWeapon = false;
+      this.attackAge = -1;
+      this.blade = undefined;
+    }
+  }
+
   private get weaponPreparation(): number {
-    if (this.blade?.style === 'axeSwing') return 0.12;
-    return this.blade?.style === 'cleave' || this.blade?.style === 'holyStrike' ? 0.075 : 0;
+    return weaponWindup(this.blade?.style);
   }
 
   private get weaponSetup(): number {
@@ -258,6 +275,7 @@ export class CreatureRig {
   }
 
   triggerAttack(): void {
+    if (this.preparingWeapon) return;
     if (this.blade?.duration && this.attackAge >= 0 && this.attackAge < this.blade.duration) return;
     this.blade = undefined;
     this.attackAge = 0;
@@ -346,6 +364,14 @@ export class CreatureRig {
     this.facing = poseFacing;
     this.cos = Math.cos(poseFacing);
     this.sin = Math.sin(poseFacing);
+    const bite =
+      this.blade?.style === 'savageBite'
+        ? (this.preparingWeapon ? -0.13 * this.weaponSetup : 0.33 * (1 - this.bladePhase())) * R
+        : 0;
+    this.view.pivot.set(
+      -bite * Math.cos(this.blade?.angle ?? 0),
+      -bite * Math.sin(this.blade?.angle ?? 0),
+    );
     const recoil = Math.min(7, R * 0.12) * Math.max(0, 1 - this.recoilAge / 0.18) ** 2;
     this.view.position.set(
       recoil * Math.cos(this.recoilAngle),
@@ -393,7 +419,7 @@ export class CreatureRig {
       this.sin = Math.sin(this.facing);
     }
 
-    if (this.attackAge >= 0) {
+    if (this.attackAge >= 0 && !this.preparingWeapon) {
       this.attackAge += dt;
       if (
         this.attackAge >
@@ -418,7 +444,7 @@ export class CreatureRig {
     if (this.spec.spine) this.updateSpine(R);
 
     const stance = this.facing;
-    if (this.fullTurn && !downed) {
+    if (this.fullTurn && !downed && !this.preparingWeapon) {
       this.facing = this.bladeAngle();
       this.cos = Math.cos(this.facing);
       this.sin = Math.sin(this.facing);
@@ -580,8 +606,10 @@ export class CreatureRig {
       )
         drawMeleeGarment(this.gBehind, this.gDecor, project, R, garment, sway);
       else drawRosterGarment(this.gBehind, this.gDecor, project, R, garment, sway);
-      if (garment === 'bard' && !downed)
-        drawBardLute(this.gDecor, this.bardHand(-1, R), this.bardHand(1, R), R);
+      if (garment === 'bard' && !downed) {
+        drawBardLute(this.gDecor, this.bardHand(-1, R), this.bardHand(1, R, true), R);
+        if (this.blade?.style === 'bardFlourish') this.drawFlourishBlade(R);
+      }
     }
     if (this.spec.garment === 'mage' && !downed) {
       const lateralSpeed = -this.vel.x * this.sin + this.vel.y * this.cos;
@@ -1321,9 +1349,30 @@ export class CreatureRig {
     return this.fitRaisedHand(point, side, r);
   }
 
-  private bardHand(side: -1 | 1, r: number): Vec2 {
+  private drawFlourishBlade(r: number): void {
+    const hand = this.bardHand(1, r);
+    const angle = this.bladeAngle();
+    const x = Math.cos(angle) * r;
+    const y = Math.sin(angle) * r;
+    this.gFront
+      .moveTo(hand.x, hand.y)
+      .lineTo(hand.x + x * 1.62, hand.y + y * 1.62)
+      .stroke({ color: 0xffe3ad, width: r * 0.19, cap: 'round' });
+    this.gFront
+      .moveTo(hand.x - y * 0.24, hand.y + x * 0.24)
+      .lineTo(hand.x + y * 0.24, hand.y - x * 0.24)
+      .stroke({ color: 0xb67740, width: r * 0.14, cap: 'round' });
+  }
+
+  private bardHand(side: -1 | 1, r: number, lute = false): Vec2 {
     const point = this.bodyPoint({ x: side === -1 ? 0.76 : 0.5, y: side * 0.52 }, r);
     point.y -= r * (side === -1 ? 1.18 : 0.58);
+    if (side === 1 && !lute && this.blade?.style === 'bardFlourish') {
+      const angle = this.bladeAngle();
+      const weight = this.weaponSetup * (1 - this.bladePhase() * 0.32);
+      point.x += Math.cos(angle) * r * weight;
+      point.y += Math.sin(angle) * r * weight - r * weight * 0.28;
+    }
     return this.fitRaisedHand(point, side, r);
   }
 

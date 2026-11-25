@@ -69,12 +69,12 @@ harder three- and four-player cases, and explicit adjust or retain decisions.
 The [class balance coverage plan](CLASS_BALANCE_COVERAGE.md) preserves the
 comparison method and evidence.
 
-| Order                  | Development work                                                                                                                                                                    |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Now                    | [Character rigs and visual revamp](VISUAL_REVAMP.md). Playtest Flurry and Parting Barrage, the three weapon swings, and the Sorcerer staff depth.                                   |
-| Next                   | Continue the remaining basic attacks in bounded class groups, starting with the hybrid melee attacks. Then revamp specials and linked upgrades before the arena and encounter work. |
-| Then                   | [Boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). Pair encounter mechanics, terrain and boss/arena art in playtestable slices.                                             |
-| After encounter revamp | Resume role, progression and reward tuning on the revised fights. Compare solo through four players, with meaningful challenge at every size.                                       |
+| Order                  | Development work                                                                                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Now                    | [Character rigs and visual revamp](VISUAL_REVAMP.md). Playtest weapon preparation and contact, and the Valor and Beast Master melee treatments. |
+| Next                   | Revamp the remaining ranged and caster basics in bounded groups. Then revamp specials and linked upgrades before the arena and encounter work.  |
+| Then                   | [Boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). Pair encounter mechanics, terrain and boss/arena art in playtestable slices.         |
+| After encounter revamp | Resume role, progression and reward tuning on the revised fights. Compare solo through four players, with meaningful challenge at every size.   |
 
 Use one bounded Sol 6.2 high design review where substantial planning is needed.
 Proceed with a mature authorized plan; surface unresolved material gameplay

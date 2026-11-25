@@ -1945,6 +1945,7 @@ describe('world-branches: silenced casters', () => {
     boss.pos = { x: 800, y: 400 };
     p.prevButtons = buttons();
     w.step(DT, new Map([['a', inp({ aim: { x: 0, y: -1 }, buttons: buttons({ basic: true }) })]]));
+    w.step(0.1, new Map());
     expect(boss.hp).toBeLessThan(before);
   });
 });
