@@ -18,7 +18,7 @@ export function bladeSweepSeconds(style: BladeAreaStyle, halfAngle: number): num
   if (halfAngle >= Math.PI) return style === 'daggerSlash' ? WHIRLING_BLADES_SECONDS : 0.47;
   if (style === 'daggerSlash') return 0.21;
   if (style === 'monkPalm') return 0.11;
-  if (style === 'axeSwing') return 0.41;
+  if (style === 'axeSwing') return 0.52;
   return style === 'holyStrike' ? 0.28 : 0.32;
 }
 
@@ -77,7 +77,7 @@ export function drawMeleeReach(
       index !== area.daggerHand
     )
       return;
-    const tip = style === 'axeSwing' ? area.angle + halfAngle * sweep : start + span * sweep;
+    const tip = start + span * sweep;
     const offset = index * Math.PI;
     const trailTo = pairedTurn
       ? tip + offset + 0.15

@@ -1,3 +1,4 @@
+import { FOCUSED_FLURRY_HALF_WIDTH } from './flurryRules';
 import { GUIDANCE_TEXT, guidedBurstFits } from './guidanceRules';
 import { returningShotFits, RETURNING_DAMAGE_TEXT } from './returningRules';
 import { boundedAbility, ordinaryRecharge } from './abilityLimits';
@@ -1903,13 +1904,15 @@ export const SKILL_GRANDS: CharUpgradeDef[] = [
     'monk',
     'basic',
     'mo_gk_basic_b',
-    'Whirling Fists',
-    '🌀',
-    'Two fists sweep a full circle, hitting as they pass; +8 base damage and +15u reach',
+    'Focused Flurry',
+    '👊',
+    'Five alternating palms in a 42u-wide lane; +42u reach and +8 base damage',
     (ab) => {
-      ab.halfAngleDeg = 180;
+      ab.flurryLaneHalfWidth = FOCUSED_FLURRY_HALF_WIDTH;
+      delete ab.halfAngleDeg;
       addN(ab, 'damage', 8);
-      addN(ab, 'range', 15);
+      addN(ab, 'range', 42);
+      addN(ab, 'cooldown', 0.12);
     },
   ),
   gk(

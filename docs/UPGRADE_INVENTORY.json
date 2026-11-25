@@ -7343,7 +7343,7 @@
     },
     {
       "id": "mo_gk_basic_b",
-      "name": "Whirling Fists",
+      "name": "Focused Flurry",
       "category": "skill-grand",
       "classId": "monk",
       "exclude": [],
@@ -7354,7 +7354,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Two fists sweep a full circle, hitting as they pass; +8 base damage and +15u reach",
+      "description": "Five alternating palms in a 42u-wide lane; +42u reach and +8 base damage",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -7364,14 +7364,18 @@
           "subSkills": [],
           "prefix": [],
           "once": [
+            { "path": "abilities.basic.cooldown", "before": 0.8, "after": 1.04 },
             { "path": "abilities.basic.damage", "before": 15, "after": 23 },
-            { "path": "abilities.basic.halfAngleDeg", "before": 40, "after": 180 },
-            { "path": "abilities.basic.range", "before": 66, "after": 81 }
+            { "path": "abilities.basic.flurryLaneHalfWidth", "before": null, "after": 21 },
+            { "path": "abilities.basic.halfAngleDeg", "before": 40, "after": null },
+            { "path": "abilities.basic.range", "before": 66, "after": 108 }
           ],
           "atCap": [
+            { "path": "abilities.basic.cooldown", "before": 0.8, "after": 1.04 },
             { "path": "abilities.basic.damage", "before": 15, "after": 23 },
-            { "path": "abilities.basic.halfAngleDeg", "before": 40, "after": 180 },
-            { "path": "abilities.basic.range", "before": 66, "after": 81 }
+            { "path": "abilities.basic.flurryLaneHalfWidth", "before": null, "after": 21 },
+            { "path": "abilities.basic.halfAngleDeg", "before": 40, "after": null },
+            { "path": "abilities.basic.range", "before": 66, "after": 108 }
           ]
         }
       ]

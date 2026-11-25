@@ -2,7 +2,8 @@ import {
   FLURRY_INTERVAL,
   FLURRY_SHARE,
   FLURRY_STRIKES,
-  WHIRLING_FIST_SHARE,
+  FOCUSED_FLURRY_SHARE,
+  FOCUSED_FLURRY_STRIKES,
 } from '../content/flurryRules';
 import {
   DAGGER_DAMAGE_SHARE,
@@ -958,13 +959,13 @@ function emitSequenceArea(
   duration?: number,
 ): void {
   emitSkillArea(world, p.id, CLASS_COLORS[p.classId], {
-    kind: 'cone',
+    kind: ab.flurryLaneHalfWidth ? 'line' : 'cone',
     style,
     origin: { ...p.pos },
     angle,
     range: ab.range,
-    radius: 0,
-    halfAngle: (ab.halfAngleDeg * Math.PI) / 180,
+    radius: ab.flurryLaneHalfWidth ?? 0,
+    halfAngle: ab.flurryLaneHalfWidth ? 0 : (ab.halfAngleDeg * Math.PI) / 180,
     daggerHand: hand,
     daggerDuration: duration,
   });
@@ -979,8 +980,9 @@ function beginMeleeSequence(
   const angle = angleOf(p.aim);
   const monk = style === 'monkPalm';
   const halfAngleDeg = ab.halfAngleDeg ?? 42;
-  const spin = halfAngleDeg >= 180;
-  const share = monk ? (spin ? WHIRLING_FIST_SHARE : FLURRY_SHARE) : DAGGER_DAMAGE_SHARE;
+  const spin = !monk && halfAngleDeg >= 180;
+  const focused = !!ab.flurryLaneHalfWidth;
+  const share = monk ? (focused ? FOCUSED_FLURRY_SHARE : FLURRY_SHARE) : DAGGER_DAMAGE_SHARE;
   const lead = monk ? (p.monkLeadHand ?? 0) : 0;
   if (monk) p.monkLeadHand = lead === 0 ? 1 : 0;
   const payload = {
@@ -990,7 +992,7 @@ function beginMeleeSequence(
     damage: ab.damage * share,
     flowExtendOnHit:
       monk && ab.flowExtendOnHit
-        ? ab.flowExtendOnHit / (spin ? 2 : FLURRY_STRIKES)
+        ? ab.flowExtendOnHit / (focused ? FOCUSED_FLURRY_STRIKES : FLURRY_STRIKES)
         : ab.flowExtendOnHit,
   };
   const follow: MeleeSequence = {
@@ -1004,7 +1006,9 @@ function beginMeleeSequence(
     started: world.elapsed,
     covered: 0,
     dealt: 0,
-    duration: Math.min(WHIRLING_BLADES_SECONDS, p.cooldowns.basic || WHIRLING_BLADES_SECONDS),
+    duration: monk
+      ? p.cooldowns.basic || FLURRY_INTERVAL * FOCUSED_FLURRY_STRIKES
+      : Math.min(WHIRLING_BLADES_SECONDS, p.cooldowns.basic || WHIRLING_BLADES_SECONDS),
     previousPos: { ...p.pos },
     hits: [[], []],
   };
@@ -1032,10 +1036,12 @@ export function advanceMeleeSequences(world: World): void {
     )
       return false;
     const age = world.elapsed - started;
-    if (ab.halfAngleDeg < 180) {
+    if (cast.style === 'monkPalm' || ab.halfAngleDeg < 180) {
       const monk = cast.style === 'monkPalm';
-      const interval = monk ? FLURRY_INTERVAL : SECOND_DAGGER_DELAY;
-      const count = monk ? FLURRY_STRIKES : 2;
+      const count = monk ? (ab.flurryLaneHalfWidth ? FOCUSED_FLURRY_STRIKES : FLURRY_STRIKES) : 2;
+      const interval = monk
+        ? Math.min(FLURRY_INTERVAL, cast.duration / (count - 0.5))
+        : SECOND_DAGGER_DELAY;
       while (cast.beat < count && age >= cast.beat * interval - 1e-9) {
         const hand = ((cast.lead + cast.beat) % 2) as 0 | 1;
         const aim = angleOf(owner.aim);
@@ -1094,10 +1100,20 @@ function resolveConeAt(
       radius: 0,
       halfAngle: half,
     });
+  const halfWidth = ab.flurryLaneHalfWidth;
+  const contactAt = (target: Vec2, radius: number): Vec2 | null => {
+    if (!halfWidth) return sweptConeContact(from, origin, target, aimAngle, range, half, radius);
+    const delta = sub(target, origin);
+    const x = delta.x * Math.cos(aimAngle) + delta.y * Math.sin(aimAngle);
+    const y = -delta.x * Math.sin(aimAngle) + delta.y * Math.cos(aimAngle);
+    const outsideAlong = x - Math.max(0, Math.min(range, x));
+    const outsideAcross = Math.max(0, Math.abs(y) - halfWidth);
+    return outsideAlong ** 2 + outsideAcross ** 2 <= radius ** 2 ? origin : null;
+  };
   let dealt = 0;
   for (const b of world.bosses) {
     if (b.hp <= 0 || hitIds?.includes(b.id)) continue;
-    const contact = sweptConeContact(from, origin, b.pos, aimAngle, range, half, b.radius);
+    const contact = contactAt(b.pos, b.radius);
     if (contact) {
       hitIds?.push(b.id);
       // item 5: a directional cone strike can crit AND backstab (rear arc).
@@ -1110,7 +1126,7 @@ function resolveConeAt(
   }
   for (const a of world.adds) {
     if (!hostileAdd(a) || hitIds?.includes(a.id)) continue;
-    const contact = sweptConeContact(from, origin, a.pos, aimAngle, range, half, a.radius);
+    const contact = contactAt(a.pos, a.radius);
     if (contact) {
       hitIds?.push(a.id);
       dealt += Math.min(

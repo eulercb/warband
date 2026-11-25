@@ -490,3 +490,32 @@ it('draws the new roster layers and signature props at arena scale', () => {
   behind.destroy();
   front.destroy();
 });
+
+it('draws the Focused Flurry lane with a moving palm front', () => {
+  const fx = new Fx(new Container());
+  const camera = new Camera(1600, 1000);
+  const g = new Graphics();
+  fx.processEvents(
+    [
+      {
+        t: 'skillArea',
+        side: 'player',
+        sourceId: 1,
+        color: 0xffffff,
+        area: {
+          kind: 'line',
+          style: 'monkPalm',
+          origin: { x: 500, y: 500 },
+          angle: 0,
+          range: 108,
+          radius: 21,
+          halfAngle: 0,
+        },
+      },
+    ],
+    camera,
+  );
+  fx.draw(g, camera);
+  expect(instructionCount(g)).toBe(2);
+  g.destroy();
+});

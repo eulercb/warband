@@ -108,6 +108,8 @@ export class CreatureRig {
     duration?: number;
   };
   private carryBlend = 0;
+  private palmAges = [1, 1];
+  private palmAngles = [0, 0];
   private attackAge = -1; // < 0 = no active attack swing
 
   constructor(
@@ -229,6 +231,10 @@ export class CreatureRig {
   ): void {
     this.attackAge = 0;
     this.blade = { style, angle, halfAngle, daggerHand, duration };
+    if (style === 'monkPalm' && daggerHand !== undefined) {
+      this.palmAges[daggerHand] = 0;
+      this.palmAngles[daggerHand] = angle;
+    }
   }
 
   triggerAttack(): void {
@@ -298,6 +304,8 @@ export class CreatureRig {
   ): void {
     const dt = clamp(dtMs, 1, 100) / 1000;
     const R = this.baseRadius * scale;
+    this.palmAges[0] += dt;
+    this.palmAges[1] += dt;
     this.lightningAge += dt;
     this.blinkAge += dt;
     this.elementalAge += dt;
@@ -804,30 +812,40 @@ export class CreatureRig {
         hand = arm.side === -1 ? this.paladinShieldAnchor(R) : grip;
       }
       if (!downed && this.spec.garment === 'monk') {
+        const index = arm.side === 1 ? 0 : 1;
+        const recovery = clamp((this.palmAges[index] - 0.035) / 0.17, 0, 1);
         const strike =
-          (this.fullTurn || arm.side === (this.blade?.daggerHand === 1 ? -1 : 1)) &&
-          this.attackAge >= 0
-            ? this.fullTurn
-              ? 0.8
-              : Math.max(0, 1 - this.attackAge / 0.16)
-            : 0;
+          this.blade?.style === 'monkPalm'
+            ? 1 - recovery * recovery * (3 - 2 * recovery)
+            : arm.side === 1 && this.attackAge >= 0
+              ? Math.max(0, 1 - this.attackAge / 0.16)
+              : 0;
         hand = this.bodyPoint(
           { x: (arm.side === 1 ? 0.83 : 0.38) + strike * 1.25, y: arm.side * (0.6 - strike * 0.3) },
           R,
         );
         if (this.blade?.style === 'monkPalm' && !this.fullTurn) {
-          hand.x += (Math.cos(this.blade.angle) - this.cos) * R * strike * 1.25;
-          hand.y += (Math.sin(this.blade.angle) - this.sin) * R * strike * 1.25;
+          hand.x += (Math.cos(this.palmAngles[index]) - this.cos) * R * strike * 1.25;
+          hand.y += (Math.sin(this.palmAngles[index]) - this.sin) * R * strike * 1.25;
         }
         hand.y -= R * ((arm.side === 1 ? 0.75 : 1.18) + strike * 0.14);
       } else if (!downed && this.spec.garment === 'barbarian') {
         const angle = this.bladeAngle();
         if (arm.side === 1) hand = grip;
-        else if (this.blade?.style === 'axeSwing') {
-          hand = { x: grip.x - Math.cos(angle) * R * 0.62, y: grip.y - Math.sin(angle) * R * 0.62 };
-        } else {
+        else {
           hand = this.bodyPoint({ x: 0.22, y: -0.83 }, R);
           hand.y -= R * 0.65;
+          if (this.blade?.style === 'axeSwing') {
+            const reach = clamp(this.attackAge / 0.12, 0, 1);
+            const drop = clamp(
+              (this.attackAge - bladeSweepSeconds('axeSwing', this.blade.halfAngle) + 0.09) / 0.2,
+              0,
+              1,
+            );
+            const brace = reach * reach * (3 - 2 * reach) * (1 - drop * drop * (3 - 2 * drop));
+            hand.x += (grip.x - Math.cos(angle) * R * 0.62 - hand.x) * brace;
+            hand.y += (grip.y - Math.sin(angle) * R * 0.62 - hand.y) * brace;
+          }
         }
       }
       if (!downed && this.spec.garment === 'ranger') hand = this.rangerHand(arm.side, R);
@@ -901,7 +919,9 @@ export class CreatureRig {
     const garment = this.spec.garment;
     if (garment === 'bard') return;
     const grip = garment === 'ranger' ? this.rangerHand(1, R) : this.gripPoint(R, ctx, false);
-    const g = this.gFront;
+    // A low carry can cross the projected chest during a turn. Let the
+    // outfit occlude the resting staff until the casting hand brings it clear.
+    const g = garment === 'sorcerer' && this.carryBlend < 0.2 ? this.gBehind : this.gFront;
     const activeStaff = Math.max(
       releasePose(this.lightningAge),
       releasePose(this.elementalAge),
@@ -940,7 +960,11 @@ export class CreatureRig {
         ? Math.max(0, 1 - this.attackAge / ATTACK_DUR)
         : 0;
     const lowered = garment === 'barbarian' || garment === 'paladin';
-    const rest = lowered ? this.facing + 1.36 : garment === 'sorcerer' ? -0.94 : -Math.PI * 0.43;
+    const rest = lowered
+      ? this.facing + 1.36
+      : garment === 'sorcerer'
+        ? -Math.PI / 2 - this.sin * 0.24
+        : -Math.PI * 0.43;
     const delta = staffAngle - rest;
     const angle =
       turningWeapon && !this.blade
@@ -1199,7 +1223,7 @@ export class CreatureRig {
     const phase = this.bladePhase();
     // Start facing out on the grand and return to the original stance after a full turn.
     if (this.fullTurn) return angle + Math.PI * 2 * phase;
-    const slash = angle + halfAngle * (this.blade.style === 'axeSwing' ? phase : 2 * phase - 1);
+    const slash = angle + halfAngle * (2 * phase - 1);
     const recovery = clamp(
       (this.attackAge - bladeSweepSeconds(this.blade.style, halfAngle)) / 0.11,
       0,
@@ -1207,7 +1231,11 @@ export class CreatureRig {
     );
     const rest =
       this.facing +
-      (this.blade.style === 'cleave' ? 1.05 : this.blade.style === 'holyStrike' ? 1.36 : 0);
+      (this.blade.style === 'cleave'
+        ? 1.05
+        : this.blade.style === 'holyStrike' || this.blade.style === 'axeSwing'
+          ? 1.36
+          : 0);
     const delta = rest - slash;
     return slash + Math.atan2(Math.sin(delta), Math.cos(delta)) * recovery;
   }
@@ -1333,6 +1361,10 @@ export class CreatureRig {
     if (!downed && this.casterCarry) {
       const carry = this.bodyPoint({ x: -0.03, y: 0.94 }, R);
       carry.y -= R * 0.56;
+      if (this.spec.garment === 'sorcerer') {
+        carry.x += -this.sin * R * 0.17;
+        carry.y += R * 0.13;
+      }
       if (this.spec.garment !== 'mage') point.y -= R * 0.78;
       point.x = carry.x + (point.x - carry.x) * this.carryBlend;
       point.y = carry.y + (point.y - carry.y) * this.carryBlend;

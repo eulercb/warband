@@ -558,3 +558,32 @@ In-game phone captures: [caster side carry](images/caster-side-carry-phone.png),
 [the same group in release](images/caster-release-phone.png),
 [Sorcerer, Warlock and Ranger at rest](images/sorcerer-warlock-ranger-carry-phone.png),
 and [Whirling Fists with Cleaving Fury](images/monk-barbarian-grands-phone.png).
+
+## Focused Flurry and martial follow-through
+
+The Monk's basic contacts are 105ms apart at baseline. Each hand gets its
+own hold and eased recovery so an incoming contact does not snap the other
+arm back to guard. Recharge can compress the interval evenly.
+
+Focused Flurry replaces Whirling Fists in the same skill-grand slot. It
+lands five alternating palms in a finite rectangle, 42u wide with 108u
+baseline reach. Each beat follows live aim. Its total damage when all
+five land matches the preceding grand, and its base recovery is 120ms
+longer to give the longer sequence room. The host tests the same lane the
+effect shows, accounting for the target's radius.
+
+The Barbarian's free hand eases onto the haft and releases after the sweep.
+The axe and its fading edge rotate across the full resolved sector, including
+Cleaving Fury's wider fan. Gameplay retains the single hit on release.
+Sorcerer carries the resting staff more upright and leans its crown away
+from the body as the carrier turns.
+
+Flurry Barrage remains next. Sol 6.2 High found that its Flowing Water
+version would lose most of its hit path if it reused the basic's timing
+unchanged. The next pass needs to distribute the strikes across the full
+glide and verify Parting Barrage's force resolves once per foe. This batch
+began at 40% of the five-hour allowance and 59% weekly. The reset prevents a
+like-for-like post-batch reading.
+
+In-game captures: [Sorcerer staff at rest](images/sorcerer-staff-clearance-phone.png)
+and [Focused Flurry with Cleaving Fury](images/focused-flurry-cleaving-fury-phone.png).

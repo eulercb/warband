@@ -955,6 +955,23 @@ export class Fx {
       const ny = ux;
       const L = area.range * s;
       const hw = Math.max(2, area.radius * s);
+      if (area.style === 'monkPalm') {
+        linePoly(g, o.x, o.y, ux, uy, nx, ny, L, hw).fill({ color: 0x79b9a8, alpha: fade * 0.14 });
+        const at = (d: number, width: number) => [
+          o.x + ux * d + nx * width,
+          o.y + uy * d + ny * width,
+        ];
+        const wave = L * (0.48 + 0.52 * Math.min(1, a.age / 0.11));
+        g.poly([
+          ...at(wave, 0),
+          ...at(wave - L * 0.22, -hw),
+          ...at(wave - L * 0.36, -hw * 0.56),
+          ...at(wave - L * 0.14, 0),
+          ...at(wave - L * 0.36, hw * 0.56),
+          ...at(wave - L * 0.22, hw),
+        ]).fill({ color: 0xbdf6de, alpha: fade * 0.83 });
+        return;
+      }
       if (area.style === 'lightning') {
         this.drawLightning(g, a, camera, o, ux, uy, L, hw);
         return;
