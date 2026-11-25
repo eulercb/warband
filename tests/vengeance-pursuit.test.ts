@@ -56,6 +56,10 @@ it.each(['hunt', 'shackle', 'charge', 'smite'])(
     expect(w.serialize().players[0].vengeancePursuit?.blocked).toBe(false);
     step(true);
     expect(p.glide?.vengeancePursuit?.targetId).toBe(b.id);
+    expect(w.serialize().players[0].weaponWindup).toMatchObject({
+      style: 'holyStrike',
+      progress: 0,
+    });
     expect(b.hp).toBe(10000);
     for (let i = 0; i < 45; i++) step();
     expect(p.pos.x).toBeGreaterThan(550);
@@ -242,3 +246,15 @@ it.each(['', 'pa_vengeance_g_a', 'pa_vengeance_g_b'])(
     }
   },
 );
+
+it('prepares Holy Strike during pursuit even when the cone uses its default width', () => {
+  const { w, p, step } = setup();
+  p.abilities!.basic = { ...p.abilities!.basic, halfAngleDeg: undefined };
+  step(true);
+  step();
+  expect(w.serialize().players[0].weaponWindup).toMatchObject({
+    style: 'holyStrike',
+    halfAngle: Math.PI / 4,
+    progress: expect.any(Number),
+  });
+});

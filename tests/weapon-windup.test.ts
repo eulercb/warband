@@ -1,3 +1,4 @@
+import { decompose, recompose } from '../src/engine/content/forge';
 import { expect, it } from 'vitest';
 import { World } from '../src/engine/world/world';
 import { applyBuff, makeBuff } from '../src/engine/combat/combat';
@@ -102,3 +103,16 @@ it.each(['swap', 'stun', 'shove', 'down', 'silence', 'move'] as const)(
     expect(world.events.some((event) => event.t === 'skillArea')).toBe(change === 'move');
   },
 );
+
+it('recomposes the authored hybrid cone and uses the same host preparation', () => {
+  const { world, player, boss, step } = encounter('bard', 'ba_valor_blade', 'ba_valor_blade_g');
+  const source = { ...player.subAbilities!.sub1!, halfAngleDeg: undefined };
+  player.subAbilities!.sub1 = recompose(decompose(source), source);
+  step(false, true);
+  expect(world.serialize().players[0].weaponWindup?.halfAngle).toBe(Math.PI / 4);
+  expect(boss.hp).toBe(10000);
+  step(false, false);
+  step(false, false);
+  expect(boss.hp).toBeLessThan(10000);
+  expect(boss.shove?.vx).toBeGreaterThan(0);
+});

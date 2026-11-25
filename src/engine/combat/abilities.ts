@@ -344,7 +344,6 @@ export function vengeancePursuit(world: World, p: Player, original = abilityForS
 export interface PendingWeaponSwing {
   ability: PlayerAbilityDef;
   move: Vec2;
-  epoch: number | undefined;
   started: number;
   duration: number;
   pose: Omit<import('../core/types').WeaponWindupView, 'progress'>;
@@ -371,7 +370,6 @@ export function queueWeaponSwing(
   p.weaponWindup = {
     ability: { ...ab, flowAim: aim },
     move: { ...move },
-    epoch: p.castEpoch,
     started: world.elapsed,
     duration,
     pose: { style, angle: angleOf(aim), halfAngle: ((ab.halfAngleDeg ?? 45) * Math.PI) / 180 },
@@ -383,7 +381,6 @@ export function advanceWeaponSwing(world: World, p: Player): void {
   const pending = p.weaponWindup;
   if (!pending) return;
   if (
-    p.castEpoch !== pending.epoch ||
     p.state !== 'alive' ||
     p.hp <= 0 ||
     p.shove ||
