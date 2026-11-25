@@ -57,6 +57,7 @@ export interface PlayerAbilityDef {
   flowUsed?: boolean;
   name: string;
   visualStyle?: 'frostNova' | 'fireball';
+  flurryLaneHalfWidth?: number;
   basicPresentation?: import('../core/types').BladeAreaStyle | 'arcaneBolt';
   kind: AbilityKind;
   rechargeBase?: number;
@@ -1356,7 +1357,13 @@ export function describeAbility(
   // recombined component list (there is no author to write copy for a fused
   // skill). Canonical/variance content carries no components and keeps the
   // authored flat-field walk below, so its cards are byte-for-byte unchanged.
-  if (def.components) return describeComposed(def.components, effCooldown, def.basicPresentation);
+  if (def.components)
+    return describeComposed(
+      def.components,
+      effCooldown,
+      def.basicPresentation,
+      def.flurryLaneHalfWidth,
+    );
   const n = (v: number): string => `${Math.round(v)}`;
   // Up to two decimals (trailing zeros drop naturally), so a 0.25s i-frame or a
   // 1.1s cooldown both read exactly, matching the reward cards' precision.
@@ -1377,7 +1384,7 @@ export function describeAbility(
       def.kind === 'meleeCone' && def.basicPresentation === 'daggerSlash'
         ? `${n(dmg * DAGGER_DAMAGE_SHARE)} dmg per dagger (two cuts)`
         : def.kind === 'meleeCone' && def.basicPresentation === 'monkPalm'
-          ? flurryDamageText(dmg, (def.halfAngleDeg ?? 0) >= 180, n)
+          ? flurryDamageText(dmg, !!def.flurryLaneHalfWidth, n)
           : count > 1
             ? `${count}× ${n(dmg)} dmg`
             : `${n(dmg)} dmg`,
@@ -1477,7 +1484,8 @@ export function describeAbility(
   else if (def.radius) parts.push(`${n(def.radius)}u radius`);
   if (def.kind === 'meleeCone' && def.range) {
     parts.push(`${n(def.range)}u reach`);
-    if (def.halfAngleDeg) parts.push(`${n(def.halfAngleDeg * 2)}° arc`);
+    if (def.flurryLaneHalfWidth) parts.push(`${n(def.flurryLaneHalfWidth * 2)}u wide lane`);
+    else if (def.halfAngleDeg) parts.push(`${n(def.halfAngleDeg * 2)}° arc`);
   } else if ((def.kind === 'dash' || def.kind === 'blink') && def.range) {
     parts.push(`${n(def.range)}u ${def.kind === 'blink' ? 'blink' : 'dash'}`);
   }

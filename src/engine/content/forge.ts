@@ -554,6 +554,7 @@ export function recompose(
     name: string;
     cooldown: number;
     basicPresentation?: PlayerAbilityDef['basicPresentation'];
+    flurryLaneHalfWidth?: number;
   },
 ): PlayerAbilityDef {
   if (
@@ -673,6 +674,8 @@ export function recompose(
     (meta.basicPresentation === 'monkPalm' || meta.basicPresentation === 'axeSwing')
   )
     def.basicPresentation = meta.basicPresentation;
+  if (def.basicPresentation === 'monkPalm' && meta.flurryLaneHalfWidth)
+    def.flurryLaneHalfWidth = meta.flurryLaneHalfWidth;
   if (d.visualStyle) def.visualStyle = d.visualStyle;
   if (d.range != null) def.range = d.range;
   if (d.radius != null) def.radius = d.radius;
@@ -1217,12 +1220,17 @@ export function describeComposed(
   comp: AbilityComponents,
   cooldown: number,
   presentation?: PlayerAbilityDef['basicPresentation'],
+  laneHalfWidth?: number,
 ): string {
   const parts: string[] = [];
   const d = comp.delivery;
 
   // Lead with the delivery vehicle so the fusion reads as one coherent ability.
-  parts.push(deliveryPhrase(d));
+  parts.push(
+    laneHalfWidth
+      ? `${n(d.range ?? 70)}u reach · ${n(laneHalfWidth * 2)}u wide lane`
+      : deliveryPhrase(d),
+  );
   if (d.swap && d.kind === 'blink')
     parts.push(
       'arrival foes return to departure; departure foes scatter outward; moved foes slowed 35% for 2s; roots resist relocation',
@@ -1235,7 +1243,7 @@ export function describeComposed(
     const effect = fittedSurgePiercing(comp, e);
     const phrase =
       presentation === 'monkPalm' && effect.kind === 'damage'
-        ? flurryDamageText(effect.amount, (d.halfAngleDeg ?? 0) >= 180, n)
+        ? flurryDamageText(effect.amount, !!laneHalfWidth, n)
         : presentation === 'monkPalm' && effect.kind === 'flowExtend'
           ? `land all contacts to extend existing Flow by ${s(effect.seconds)}, up to 1s total per preparation`
           : effectPhrase(effect, comp);

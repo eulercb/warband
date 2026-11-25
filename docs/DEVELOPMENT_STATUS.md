@@ -71,7 +71,7 @@ comparison method and evidence.
 
 | Order                  | Development work                                                                                                                                                                                       |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Now                    | [Character rigs and visual revamp](VISUAL_REVAMP.md). Playtest caster carry, Flurry of Blows and Whirling Fists, and Reckless Swing and Cleaving Fury.                                                 |
+| Now                    | [Character rigs and visual revamp](VISUAL_REVAMP.md). Playtest Focused Flurry, spaced Monk contacts, the slower axe grip and sweep, and the Sorcerer staff carry.                                      |
 | Next                   | Finish Flurry Barrage and Parting Barrage with the Flowing Water delivery. Then work through the remaining basic attacks in bounded class groups before filling in their specials and linked upgrades. |
 | Then                   | [Boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). Pair encounter mechanics, terrain and boss/arena art in playtestable slices.                                                                |
 | After encounter revamp | Resume role, progression and reward tuning on the revised fights. Compare solo through four players, with meaningful challenge at every size.                                                          |

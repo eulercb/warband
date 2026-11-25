@@ -2527,10 +2527,10 @@ describe('Monk palm basics', () => {
     const old = p.buffs.find((b) => b.kind === 'flow')!;
     expect(old.flowExtended).toBeCloseTo(0.25 / 3);
     p.buffs = [{ kind: 'flow', remaining: 2, mult: 0, source: 'renewed' }];
-    w.elapsed += 0.075;
+    w.elapsed += 0.105;
     advanceMeleeSequences(w);
     expect(start - boss.hp).toBeCloseTo(10.8);
-    w.elapsed += 0.075;
+    w.elapsed += 0.105;
     advanceMeleeSequences(w);
     expect(start - boss.hp).toBeCloseTo(16.2);
     expect(p.buffs[0].remaining).toBe(2);
@@ -2547,27 +2547,43 @@ describe('Monk palm basics', () => {
     const { w, p } = setup();
     p.buffs = [{ kind: 'flow', remaining: 2, mult: 0, source: 'test' }];
     resolvePlayerAbility(w, p, 'basic', ZERO);
-    w.elapsed += 0.15;
+    w.elapsed += 0.21;
     advanceMeleeSequences(w);
     expect(p.buffs[0].remaining).toBeCloseTo(2.25);
     expect(p.buffs[0].flowExtended).toBeCloseTo(0.25);
   });
 
-  it('delivers both Whirling Fists through the passing arcs', () => {
-    const { w, p, boss, start } = setup();
-    tableOf(p).basic.halfAngleDeg = 180;
-    tableOf(p).basic.damage = 23;
-    boss.pos = { x: 800, y: 550 };
-    boss.facing = -Math.PI / 2;
-    p.cooldowns.basic = 0.3;
-    expect(describeAbility(tableOf(p).basic)).toContain('two passing fists');
-    resolvePlayerAbility(w, p, 'basic', ZERO);
-    expect(boss.hp).toBe(start);
-    w.elapsed += 0.08;
-    advanceMeleeSequences(w);
-    expect(start - boss.hp).toBeCloseTo(12.42);
-    w.elapsed += 0.22;
-    advanceMeleeSequences(w);
-    expect(start - boss.hp).toBeCloseTo(24.84);
-  });
+  it.each([false, true])(
+    'delivers five Focused Flurry contacts only inside the forward lane (composed=%s)',
+    (composed) => {
+      const { w, p, boss, start } = setup();
+      tableOf(p).basic.flurryLaneHalfWidth = 21;
+      tableOf(p).basic.range = 108;
+      tableOf(p).basic.damage = 23;
+      if (composed) tableOf(p).basic = recompose(decompose(tableOf(p).basic), tableOf(p).basic);
+      expect(describeAbility(tableOf(p).basic)).toContain('5 alternating palms');
+      expect(describeAbility(tableOf(p).basic)).toContain('42u wide lane');
+      boss.pos = { x: 904, y: 500 };
+      resolvePlayerAbility(w, p, 'basic', ZERO);
+      expect(start - boss.hp).toBeCloseTo(4.968);
+      w.elapsed += 0.1;
+      advanceMeleeSequences(w);
+      expect(start - boss.hp).toBeCloseTo(4.968);
+      w.elapsed += 0.32;
+      advanceMeleeSequences(w);
+      expect(start - boss.hp).toBeCloseTo(24.84);
+      const areas = w.events.flatMap((e) => (e.t === 'skillArea' ? [e.area] : []));
+      expect(areas.map((e) => e.daggerHand)).toEqual([0, 1, 0, 1, 0]);
+      expect(areas.every((e) => e.kind === 'line' && e.range === 108 && e.radius === 21)).toBe(
+        true,
+      );
+
+      boss.pos = { x: 850, y: 533 };
+      const before = boss.hp;
+      resolvePlayerAbility(w, p, 'basic', ZERO);
+      w.elapsed += 0.42;
+      advanceMeleeSequences(w);
+      expect(boss.hp).toBe(before);
+    },
+  );
 });
