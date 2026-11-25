@@ -1,4 +1,10 @@
 import {
+  FLURRY_INTERVAL,
+  FLURRY_SHARE,
+  FLURRY_STRIKES,
+  WHIRLING_FIST_SHARE,
+} from '../content/flurryRules';
+import {
   DAGGER_DAMAGE_SHARE,
   SECOND_DAGGER_DELAY,
   WHIRLING_BLADES_SECONDS,
@@ -675,14 +681,7 @@ export function resolvePlayerAbility(
     case 'meleeCone': {
       if (!commitShadow(world, p, ab, ab.slot, p.pos, ab.flowAim ?? p.aim)) {
         const moving = startPalmSweep(world, p, ab);
-        if (
-          !moving &&
-          p.classId === 'rogue' &&
-          ab.slot === 'basic' &&
-          ab.basicPresentation === 'daggerSlash'
-        )
-          beginDaggerAttack(world, p, ab);
-        else resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
+        resolveMeleeDelivery(world, p, ab, moving);
       }
       break;
     }
@@ -914,8 +913,31 @@ export function releaseShadowCommit(
   else resolveBurstAt(world, p, cast, origin);
 }
 
-export interface DaggerFollowThrough {
+function resolveMeleeDelivery(
+  world: World,
+  p: Player,
+  ab: PlayerAbilityDef,
+  moving: boolean,
+): void {
+  const style = ab.basicPresentation;
+  if (
+    !moving &&
+    ab.slot === 'basic' &&
+    ((p.classId === 'rogue' && style === 'daggerSlash') ||
+      (p.classId === 'monk' && style === 'monkPalm'))
+  ) {
+    beginMeleeSequence(world, p, ab, style);
+    return;
+  }
+  resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
+}
+
+export interface MeleeSequence {
   owner: Player;
+  style: 'daggerSlash' | 'monkPalm';
+  beat: number;
+  lead: 0 | 1;
+  flow?: import('../core/types').Buff;
   ab: PlayerAbilityDef & { range: number; halfAngleDeg: number };
   angle: number;
   started: number;
@@ -926,17 +948,18 @@ export interface DaggerFollowThrough {
   hits: [number[], number[]];
 }
 
-function emitDaggerArea(
+function emitSequenceArea(
   world: World,
   p: Player,
-  ab: DaggerFollowThrough['ab'],
+  ab: MeleeSequence['ab'],
   angle: number,
   hand: 0 | 1,
+  style: MeleeSequence['style'],
   duration?: number,
 ): void {
   emitSkillArea(world, p.id, CLASS_COLORS[p.classId], {
     kind: 'cone',
-    style: 'daggerSlash',
+    style,
     origin: { ...p.pos },
     angle,
     range: ab.range,
@@ -947,17 +970,35 @@ function emitDaggerArea(
   });
 }
 
-function beginDaggerAttack(world: World, p: Player, ab: PlayerAbilityDef): void {
+function beginMeleeSequence(
+  world: World,
+  p: Player,
+  ab: PlayerAbilityDef,
+  style: MeleeSequence['style'],
+): void {
   const angle = angleOf(p.aim);
+  const monk = style === 'monkPalm';
+  const halfAngleDeg = ab.halfAngleDeg ?? 42;
+  const spin = halfAngleDeg >= 180;
+  const share = monk ? (spin ? WHIRLING_FIST_SHARE : FLURRY_SHARE) : DAGGER_DAMAGE_SHARE;
+  const lead = monk ? (p.monkLeadHand ?? 0) : 0;
+  if (monk) p.monkLeadHand = lead === 0 ? 1 : 0;
   const payload = {
     ...ab,
     range: ab.range ?? 62,
-    halfAngleDeg: ab.halfAngleDeg ?? 42,
-    damage: ab.damage * DAGGER_DAMAGE_SHARE,
+    halfAngleDeg,
+    damage: ab.damage * share,
+    flowExtendOnHit:
+      monk && ab.flowExtendOnHit
+        ? ab.flowExtendOnHit / (spin ? 2 : FLURRY_STRIKES)
+        : ab.flowExtendOnHit,
   };
-  const spin = payload.halfAngleDeg >= 180;
-  const follow: DaggerFollowThrough = {
+  const follow: MeleeSequence = {
     owner: p,
+    style,
+    beat: 1,
+    lead,
+    flow: monk ? p.buffs.find((buff) => buff.kind === 'flow' && buff.remaining > 0) : undefined,
     ab: payload,
     angle,
     started: world.elapsed,
@@ -967,31 +1008,43 @@ function beginDaggerAttack(world: World, p: Player, ab: PlayerAbilityDef): void 
     previousPos: { ...p.pos },
     hits: [[], []],
   };
-  world.daggerFollowThrough.push(follow);
-  emitDaggerArea(world, p, payload, angle, 0, spin ? follow.duration : undefined);
+  world.meleeSequences.push(follow);
+  emitSequenceArea(world, p, payload, angle, lead, style, spin ? follow.duration : undefined);
   if (!spin) follow.dealt = resolveConeAt(world, p, payload, p.pos, follow.hits[0], p.pos, angle);
 }
 
-export function advanceDaggerAttacks(world: World): void {
-  world.daggerFollowThrough = world.daggerFollowThrough.filter((cast) => {
-    const { owner, ab, angle, started, hits } = cast;
+export function advanceMeleeSequences(world: World): void {
+  world.meleeSequences = world.meleeSequences.filter((cast) => {
+    const { owner, angle, started, hits } = cast;
+    const ab =
+      cast.style === 'monkPalm' &&
+      cast.ab.flowExtendOnHit &&
+      (!cast.flow || !owner.buffs.includes(cast.flow))
+        ? { ...cast.ab, flowExtendOnHit: undefined }
+        : cast.ab;
     if (
       world.finished ||
       world.scene !== null ||
       !world.players.includes(owner) ||
       owner.state !== 'alive' ||
       owner.hp <= 0 ||
-      owner.classId !== 'rogue'
+      owner.classId !== (cast.style === 'monkPalm' ? 'monk' : 'rogue')
     )
       return false;
     const age = world.elapsed - started;
     if (ab.halfAngleDeg < 180) {
-      if (age < SECOND_DAGGER_DELAY - 1e-9) return true;
-      const aim = angleOf(owner.aim);
-      emitDaggerArea(world, owner, ab, aim, 1);
-      const dealt =
-        cast.dealt + resolveConeAt(world, owner, ab, owner.pos, hits[1], owner.pos, aim);
-      onParryHit(owner, ab, dealt);
+      const monk = cast.style === 'monkPalm';
+      const interval = monk ? FLURRY_INTERVAL : SECOND_DAGGER_DELAY;
+      const count = monk ? FLURRY_STRIKES : 2;
+      while (cast.beat < count && age >= cast.beat * interval - 1e-9) {
+        const hand = ((cast.lead + cast.beat) % 2) as 0 | 1;
+        const aim = angleOf(owner.aim);
+        emitSequenceArea(world, owner, ab, aim, hand, cast.style);
+        cast.dealt += resolveConeAt(world, owner, ab, owner.pos, [], owner.pos, aim);
+        cast.beat++;
+      }
+      if (cast.beat < count) return true;
+      onParryHit(owner, ab, cast.dealt);
       return false;
     }
     const covered = Math.min(1, age / cast.duration) * Math.PI * 2;
@@ -1375,14 +1428,7 @@ function resolveComposedAbility(
     case 'meleeCone': {
       if (!commitShadow(world, p, ab, ab.slot, p.pos, ab.flowAim ?? p.aim)) {
         const moving = startPalmSweep(world, p, ab);
-        if (
-          !moving &&
-          p.classId === 'rogue' &&
-          ab.slot === 'basic' &&
-          ab.basicPresentation === 'daggerSlash'
-        )
-          beginDaggerAttack(world, p, ab);
-        else resolveConeAt(world, p, ab, p.pos, moving ? p.glide!.palmSweep!.hitIds : undefined);
+        resolveMeleeDelivery(world, p, ab, moving);
       }
       buffSelf();
       buffAllies(FORGE_RALLY_RANGE);

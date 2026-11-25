@@ -71,8 +71,8 @@ comparison method and evidence.
 
 | Order                  | Development work                                                                                                                                                                                       |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Now                    | [Character rigs and visual revamp](VISUAL_REVAMP.md). Playtest all six remaining rigs and the refined Monk, Barbarian and Paladin carry poses.                                                         |
-| Next                   | Begin full ability production against the raised roster. Start with Monk and Barbarian contact and recovery, including their linked grands, then continue the class basic/special and projectile work. |
+| Now                    | [Character rigs and visual revamp](VISUAL_REVAMP.md). Playtest caster carry, Flurry of Blows and Whirling Fists, and Reckless Swing and Cleaving Fury.                                                 |
+| Next                   | Finish Flurry Barrage and Parting Barrage with the Flowing Water delivery. Then work through the remaining basic attacks in bounded class groups before filling in their specials and linked upgrades. |
 | Then                   | [Boss and encounter revamp](BOSS_AND_ENCOUNTER_REVAMP.md). Pair encounter mechanics, terrain and boss/arena art in playtestable slices.                                                                |
 | After encounter revamp | Resume role, progression and reward tuning on the revised fights. Compare solo through four players, with meaningful challenge at every size.                                                          |
 

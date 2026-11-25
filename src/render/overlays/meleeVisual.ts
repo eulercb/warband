@@ -5,12 +5,20 @@ import type { BladeAreaStyle, SkillArea, Vec2 } from '../../engine/core/types';
 type MeleeStyle = BladeAreaStyle | 'moonClaw';
 
 export function isBladeArea(style: SkillArea['style']): style is BladeAreaStyle {
-  return style === 'cleave' || style === 'holyStrike' || style === 'daggerSlash';
+  return (
+    style === 'cleave' ||
+    style === 'holyStrike' ||
+    style === 'daggerSlash' ||
+    style === 'monkPalm' ||
+    style === 'axeSwing'
+  );
 }
 
 export function bladeSweepSeconds(style: BladeAreaStyle, halfAngle: number): number {
   if (halfAngle >= Math.PI) return style === 'daggerSlash' ? WHIRLING_BLADES_SECONDS : 0.47;
   if (style === 'daggerSlash') return 0.21;
+  if (style === 'monkPalm') return 0.11;
+  if (style === 'axeSwing') return 0.41;
   return style === 'holyStrike' ? 0.28 : 0.32;
 }
 
@@ -18,6 +26,8 @@ const MATERIAL = {
   cleave: { body: 0x7aabdb, light: 0xebf7ff, ribbons: [0.71] },
   holyStrike: { body: 0xdf963f, light: 0xffefad, ribbons: [0.42, 0.76] },
   daggerSlash: { body: 0x764e9a, light: 0xe9bdff, ribbons: [0.72, 0.87] },
+  monkPalm: { body: 0x79b9a8, light: 0xbdf6de, ribbons: [0.76, 0.9] },
+  axeSwing: { body: 0xbb6d46, light: 0xffd8ac, ribbons: [0.55, 0.77] },
   moonClaw: { body: 0xa985d7, light: 0xf0d7ff, ribbons: [0.57, 0.72, 0.85] },
 };
 
@@ -45,7 +55,8 @@ export function drawMeleeReach(
     origin.y + Math.sin(angle) * radius,
   ];
   // The whole reach lights on contact. No radial edges or permanent stroke.
-  for (const [size, alpha] of style === 'daggerSlash' && fullCircle
+  const pairedTurn = (style === 'daggerSlash' || style === 'monkPalm') && fullCircle;
+  for (const [size, alpha] of pairedTurn
     ? []
     : [
         [1, 0.065],
@@ -60,14 +71,13 @@ export function drawMeleeReach(
 
   material.ribbons.forEach((lower, index) => {
     if (
-      style === 'daggerSlash' &&
+      (style === 'daggerSlash' || style === 'monkPalm') &&
       !fullCircle &&
       area.daggerHand !== undefined &&
       index !== area.daggerHand
     )
       return;
-    const pairedTurn = style === 'daggerSlash' && fullCircle;
-    const tip = start + span * sweep;
+    const tip = style === 'axeSwing' ? area.angle + halfAngle * sweep : start + span * sweep;
     const offset = index * Math.PI;
     const trailTo = pairedTurn
       ? tip + offset + 0.15

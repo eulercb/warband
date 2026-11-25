@@ -1,8 +1,9 @@
+import { decompose, recompose } from '../src/engine/content/forge';
 import { damagePlayer } from '../src/engine/combat/combat';
 import { describe, it, expect } from 'vitest';
 import {
   resolvePlayerAbility,
-  advanceDaggerAttacks,
+  advanceMeleeSequences,
   resolveBossAbility,
   beamTick,
   withLength,
@@ -2444,16 +2445,16 @@ describe('Rogue dagger delivery', () => {
     boss.pos.x = 750;
     boss.facing = 0;
     w.elapsed += 0.1;
-    advanceDaggerAttacks(w);
+    advanceMeleeSequences(w);
     expect(start - boss.hp).toBeCloseTo(10.08);
     w.elapsed += 0.02;
-    advanceDaggerAttacks(w);
+    advanceMeleeSequences(w);
     expect(start - boss.hp).toBeCloseTo(20.16);
     const hands = w.events.flatMap((e) =>
       e.t === 'skillArea' && e.area.style === 'daggerSlash' ? [e.area.daggerHand] : [],
     );
     expect(hands).toEqual([0, 1]);
-    expect(w.daggerFollowThrough).toHaveLength(0);
+    expect(w.meleeSequences).toHaveLength(0);
   });
 
   it('hits through passing arcs once per hand and completes at the recharge-adjusted rotation time', () => {
@@ -2463,18 +2464,18 @@ describe('Rogue dagger delivery', () => {
     boss.pos = { x: 800, y: 550 };
     boss.facing = -Math.PI / 2;
     resolvePlayerAbility(w, p, 'basic', ZERO);
-    advanceDaggerAttacks(w);
+    advanceMeleeSequences(w);
     expect(boss.hp).toBe(start);
     w.elapsed += 0.04;
-    advanceDaggerAttacks(w);
+    advanceMeleeSequences(w);
     expect(boss.hp).toBe(start);
     w.elapsed += 0.04;
-    advanceDaggerAttacks(w);
+    advanceMeleeSequences(w);
     expect(start - boss.hp).toBeCloseTo(10.08);
     w.elapsed += 0.22;
-    advanceDaggerAttacks(w);
+    advanceMeleeSequences(w);
     expect(start - boss.hp).toBeCloseTo(20.16);
-    expect(w.daggerFollowThrough).toHaveLength(0);
+    expect(w.meleeSequences).toHaveLength(0);
   });
 
   it('uses the same fallback geometry for hit tests and both blade cues', () => {
@@ -2483,7 +2484,7 @@ describe('Rogue dagger delivery', () => {
     tableOf(p).basic.halfAngleDeg = undefined;
     resolvePlayerAbility(w, p, 'basic', ZERO);
     w.elapsed += 0.12;
-    advanceDaggerAttacks(w);
+    advanceMeleeSequences(w);
     expect(start - boss.hp).toBeCloseTo(20.16);
     const cues = w.events.flatMap((e) => (e.t === 'skillArea' ? [e.area] : []));
     expect(cues.map((area) => [area.range, area.halfAngle])).toEqual([
@@ -2497,7 +2498,76 @@ describe('Rogue dagger delivery', () => {
     resolvePlayerAbility(w, p, 'basic', ZERO);
     p.state = 'downed';
     w.elapsed += 0.12;
-    advanceDaggerAttacks(w);
-    expect(w.daggerFollowThrough).toHaveLength(0);
+    advanceMeleeSequences(w);
+    expect(w.meleeSequences).toHaveLength(0);
+  });
+});
+
+describe('Monk palm basics', () => {
+  const setup = () => {
+    const w = mkWorld('monk');
+    const p = w.players[0];
+    const boss = w.boss!;
+    p.pos = { x: 800, y: 500 };
+    p.aim = { x: 1, y: 0 };
+    p.critChance = 0;
+    boss.pos = { x: 850, y: 500 };
+    boss.facing = Math.PI;
+    boss.radius = 5;
+    return { w, p, boss, start: boss.hp };
+  };
+
+  it.each([false, true])('emits and lands three alternating palms (composed=%s)', (composed) => {
+    const { w, p, boss, start } = setup();
+    if (composed) tableOf(p).basic = recompose(decompose(tableOf(p).basic), tableOf(p).basic);
+    expect(describeAbility(tableOf(p).basic)).toContain('3 alternating palms');
+    p.buffs.push({ kind: 'flow', remaining: 2, mult: 0, source: 'before' });
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    expect(start - boss.hp).toBeCloseTo(5.4);
+    const old = p.buffs.find((b) => b.kind === 'flow')!;
+    expect(old.flowExtended).toBeCloseTo(0.25 / 3);
+    p.buffs = [{ kind: 'flow', remaining: 2, mult: 0, source: 'renewed' }];
+    w.elapsed += 0.075;
+    advanceMeleeSequences(w);
+    expect(start - boss.hp).toBeCloseTo(10.8);
+    w.elapsed += 0.075;
+    advanceMeleeSequences(w);
+    expect(start - boss.hp).toBeCloseTo(16.2);
+    expect(p.buffs[0].remaining).toBe(2);
+    const hands = () =>
+      w.events.flatMap((e) =>
+        e.t === 'skillArea' && e.area.style === 'monkPalm' ? [e.area.daggerHand] : [],
+      );
+    expect(hands()).toEqual([0, 1, 0]);
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    expect(hands().at(-1)).toBe(1);
+  });
+
+  it('preserves one basic worth of Flow extension when all palms land on the same preparation', () => {
+    const { w, p } = setup();
+    p.buffs = [{ kind: 'flow', remaining: 2, mult: 0, source: 'test' }];
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    w.elapsed += 0.15;
+    advanceMeleeSequences(w);
+    expect(p.buffs[0].remaining).toBeCloseTo(2.25);
+    expect(p.buffs[0].flowExtended).toBeCloseTo(0.25);
+  });
+
+  it('delivers both Whirling Fists through the passing arcs', () => {
+    const { w, p, boss, start } = setup();
+    tableOf(p).basic.halfAngleDeg = 180;
+    tableOf(p).basic.damage = 23;
+    boss.pos = { x: 800, y: 550 };
+    boss.facing = -Math.PI / 2;
+    p.cooldowns.basic = 0.3;
+    expect(describeAbility(tableOf(p).basic)).toContain('two passing fists');
+    resolvePlayerAbility(w, p, 'basic', ZERO);
+    expect(boss.hp).toBe(start);
+    w.elapsed += 0.08;
+    advanceMeleeSequences(w);
+    expect(start - boss.hp).toBeCloseTo(12.42);
+    w.elapsed += 0.22;
+    advanceMeleeSequences(w);
+    expect(start - boss.hp).toBeCloseTo(24.84);
   });
 });

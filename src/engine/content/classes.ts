@@ -1,3 +1,4 @@
+import { flurryDamageText } from './flurryRules';
 import { DAGGER_DAMAGE_SHARE } from './daggerRules';
 import { REFUGE_TEXT, refugeField } from './refugeRules';
 import { FONT_TEXT, revivalFont } from './fontRules';
@@ -716,6 +717,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       basic: {
         slot: 'basic',
         name: 'Reckless Swing',
+        basicPresentation: 'axeSwing',
         kind: 'meleeCone',
         cooldown: 0.65,
         damage: 26,
@@ -1021,6 +1023,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       basic: {
         slot: 'basic',
         name: 'Flurry of Blows',
+        basicPresentation: 'monkPalm',
         flowExtendOnHit: 0.25,
         kind: 'meleeCone',
         cooldown: 0.4,
@@ -1353,7 +1356,7 @@ export function describeAbility(
   // recombined component list (there is no author to write copy for a fused
   // skill). Canonical/variance content carries no components and keeps the
   // authored flat-field walk below, so its cards are byte-for-byte unchanged.
-  if (def.components) return describeComposed(def.components, effCooldown);
+  if (def.components) return describeComposed(def.components, effCooldown, def.basicPresentation);
   const n = (v: number): string => `${Math.round(v)}`;
   // Up to two decimals (trailing zeros drop naturally), so a 0.25s i-frame or a
   // 1.1s cooldown both read exactly, matching the reward cards' precision.
@@ -1373,9 +1376,11 @@ export function describeAbility(
     parts.push(
       def.kind === 'meleeCone' && def.basicPresentation === 'daggerSlash'
         ? `${n(dmg * DAGGER_DAMAGE_SHARE)} dmg per dagger (two cuts)`
-        : count > 1
-          ? `${count}× ${n(dmg)} dmg`
-          : `${n(dmg)} dmg`,
+        : def.kind === 'meleeCone' && def.basicPresentation === 'monkPalm'
+          ? flurryDamageText(dmg, (def.halfAngleDeg ?? 0) >= 180, n)
+          : count > 1
+            ? `${count}× ${n(dmg)} dmg`
+            : `${n(dmg)} dmg`,
     );
   }
   if (def.landingDamage) parts.push(`${n(def.landingDamage * dmgMul)} landing dmg`);
@@ -1425,7 +1430,9 @@ export function describeAbility(
     );
   if (def.flowExtendOnHit)
     parts.push(
-      `connecting hits extend existing Flow by ${s(def.flowExtendOnHit)}, up to 1s total per preparation`,
+      def.basicPresentation === 'monkPalm'
+        ? `land all contacts to extend existing Flow by ${s(def.flowExtendOnHit)}, up to 1s total per preparation`
+        : `connecting hits extend existing Flow by ${s(def.flowExtendOnHit)}, up to 1s total per preparation`,
     );
   if (def.mirrorImages)
     parts.push(
