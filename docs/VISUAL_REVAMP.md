@@ -474,3 +474,50 @@ Ranger and Bard are the next rig cohort. Astra 6.2 High is next in rotation.
 In-game captures: [Monk wraps and stance](images/monk-wrapped-guard.png),
 [Barbarian pelt and axe](images/barbarian-raised-axe-phone.png),
 [Rogue Whirling Blades](images/rogue-contact-arcs-phone.png).
+
+## Raised roster completed and weapon carry refinements
+
+The six remaining classes now use the raised hero gait and footing rules.
+Ranger has a short green mantle, shoulder quiver and separate bow and draw
+hands. Bard carries a lute under a feathered cap. Cleric uses a pale vestment,
+a lifted halo and a compact mace. Base Druid has a leaf mantle and forked
+staff, with Moon Bear still taking over during the transformation. Sorcerer
+has a high collar, crystal staff and open release hand. Warlock has a low
+cowl, a crooked eye staff and a closer free hand. Each keeps identifiable
+cloth or headwear in its collapsed pose.
+
+Monk's earlier silhouette relied on an oval head and small same-height
+hands. The refined rig adds substantial forearm wraps, a staggered guard
+and split cloth. Barbarian's previous axe head was a small triangle. The
+new player axe has a broad bearded blade, socket, wrapped haft and bright
+edge. Paladin and Barbarian carry off to the side between attacks. Their
+hands and props use the same grips throughout release and recovery.
+
+In ability production, plan alternating Monk hands across attacks. Review
+Flurry of Blows and Flurry Barrage as actual alternating multi-strikes with
+each gameplay hit aligned to contact. Review two-handed axe grips on
+Barbarian's stronger swings and keep the quieter one-handed carry at rest.
+This rig pass keeps the gameplay behavior of those skills.
+
+### Model selection after the trial
+
+Astra 6.2 High reviewed Ranger/Bard, the Monk and Barbarian refinements,
+and Sorcerer/Warlock. It was useful for silhouette contrast, larger
+signature props, and spotting cloth obscuring hands. Sol 6.2 High reviewed
+Cleric/Druid and found pose, launch origin, raised halo, and transformation
+test dependencies. The earlier matched Blink trial favored Sol's shutter
+for clear direction, so the visual choice depends on the specific problem.
+The six rigs here were reviewed by cohort, so these results do not rank
+the models on matched designs.
+
+End the fixed rotation. Use Sol High for planning, implementation review
+and mechanics/animation timing. Use Astra High for hard silhouette or
+motion design decisions with native-size in-game captures. One bounded
+review at a time is the default. A matched comparison is useful when a
+specific art decision remains open after review.
+
+In-game phone captures:
+[Ranger and Bard](images/roster-ranger-bard-phone.png),
+[Cleric and Druid](images/roster-cleric-druid-phone.png),
+[Sorcerer and Warlock](images/roster-sorcerer-warlock-phone.png), and
+[Monk, Barbarian and Paladin](images/roster-monk-barbarian-paladin-phone.png).

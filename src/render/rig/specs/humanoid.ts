@@ -191,6 +191,7 @@ function dressHero(spec: RigSpec, classId: ClassId): void {
       setTint(spec, 'head', 0x46354b);
       break;
     case 'ranger': {
+      spec.garment = 'ranger';
       setTint(spec, 'torso', 0x3e6430); // dark cloak
       setTint(spec, 'head', 0xd9b38c); // skin, peeking under the hood
       spec.parts.push(
@@ -209,6 +210,7 @@ function dressHero(spec: RigSpec, classId: ClassId): void {
       break;
     }
     case 'cleric': {
+      spec.garment = 'cleric';
       setTint(spec, 'torso', 0xdecfa6); // cream vestment
       setTint(spec, 'head', 0xd9b38c); // skin
       spec.decor = [
@@ -225,6 +227,12 @@ function dressHero(spec: RigSpec, classId: ClassId): void {
       ];
       break;
     }
+    case 'bard':
+    case 'druid':
+    case 'sorcerer':
+    case 'warlock':
+      spec.garment = classId;
+      break;
     default:
       break; // expansion classes keep the plain biped
   }
