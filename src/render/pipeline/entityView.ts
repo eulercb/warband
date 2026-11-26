@@ -561,7 +561,7 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
   const speed = Math.hypot(pr.vel.x, pr.vel.y) || 1;
   const dx = pr.vel.x / speed;
   const dy = pr.vel.y / speed;
-  const at = (along: number, across = 0): number[] => [
+  const at = (along: number, across = 0): [number, number] => [
     x + (dx * along - dy * across) * scale,
     y + (dy * along + dx * across) * scale,
   ];
@@ -586,6 +586,61 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
     g.poly([...at(5), ...at(-4, -3.2), ...at(-2), ...at(-4, 3.2)]).fill({ color: 0xdeebeb });
     g.poly([...at(-12), ...at(-21, 3.5), ...at(-19), ...at(-21, -3.5)]).fill({ color });
     return;
+  }
+  if (pr.side === 'player') {
+    // Authored silhouettes and directional wakes for the caster bolt families.
+    const stroke = Math.max(1.1, 1.7 * scale);
+    const path = (points: number[][], tint: number, alpha = 1) => {
+      const [start, ...rest] = points;
+      g.moveTo(start[0], start[1]);
+      for (const point of rest) g.lineTo(point[0], point[1]);
+      g.stroke({ color: tint, width: stroke, alpha, cap: 'round' });
+    };
+    if (pr.kind === 'smite') {
+      g.poly([...at(10), ...at(0, 4), ...at(-10), ...at(0, -4)]).fill({ color: 0xffe8a5 });
+      path([at(-22), at(8)], 0xffedbb, 0.66);
+      path([at(1, -7), at(1, 7)], 0xffffff);
+      return;
+    }
+    if (pr.kind === 'thorn') {
+      path([at(-21, 3), at(-13, -2), at(-6, 1), at(8)], 0x7ea758);
+      g.poly([...at(9), ...at(-5, -5), ...at(-1), ...at(-8, 5)]).fill({ color: 0xd6e296 });
+      g.poly([...at(-5, 1), ...at(-13, 6), ...at(-10)]).fill({ color: 0x8eb26d });
+      return;
+    }
+    if (pr.kind === 'sonic') {
+      for (const [front, width] of [
+        [9, 7],
+        [0, 5],
+        [-9, 3],
+      ]) {
+        g.moveTo(...at(front - 5, -width))
+          .quadraticCurveTo(...at(front + 10), ...at(front - 5, width))
+          .stroke({ color: front > 0 ? 0xffe0b0 : color, width: stroke, alpha: 0.52 + width / 18 });
+      }
+      return;
+    }
+    if (pr.kind === 'chaos') {
+      path([at(-20, -5), at(-13, 5), at(-5, -5), at(5, 4), at(9)], 0xfc92ff, 0.77);
+      path([at(-20, 4), at(-10, -4), at(-2, 4), at(9)], 0x81eafe, 0.8);
+      g.poly([...at(10), ...at(1, -4), ...at(-2, 3)]).fill({ color: 0xffeaff });
+      return;
+    }
+    if (pr.kind === 'eldritch') {
+      g.poly([
+        ...at(-22, -5),
+        ...at(-7, -4),
+        ...at(7, -6),
+        ...at(11),
+        ...at(7, 6),
+        ...at(-7, 4),
+        ...at(-22, 5),
+      ])
+        .fill({ color: 0x28213d })
+        .stroke({ color: 0x9275af, width: stroke });
+      g.poly([...at(8), ...at(1, -3), ...at(-9), ...at(1, 3)]).fill({ color: 0x8cdbbb });
+      return;
+    }
   }
   if (pr.kind === 'shadowBolt') {
     g.poly([...at(9), ...at(-2, -7), ...at(-19, -3), ...at(-10, 0), ...at(-18, 5), ...at(-1, 6)])

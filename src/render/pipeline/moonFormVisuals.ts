@@ -17,6 +17,7 @@ export function drawMoonBear(
   motion?: AnimalMotion,
   strike?: AnimalStrike,
   swipeStrike?: AnimalStrike,
+  cheer?: number,
 ): void {
   const r = Math.max(11, 24 * scale);
   const elapsed = (beat?: AnimalStrike) => (beat ? time * 1000 - beat.started : Infinity);
@@ -30,11 +31,12 @@ export function drawMoonBear(
   const s = Math.sin(facing);
   const phase = motion?.phase ?? 0;
   const stride = (motion?.stride ?? 0) * (1 - swipe * 0.65);
+  const rear = cheer == null ? 0 : Math.pow((1 - Math.cos(cheer * 4)) / 2, 2);
   const bob = Math.cos(phase * 2) * stride * 0.095 + Math.sin(time * 3) * 0.025;
   const rock = Math.sin(phase) * stride * 0.11 - cast * 0.18;
   const at = (x: number, y: number, h = 0): [number, number] => [
     screen.x + (x * c - y * s) * r,
-    screen.y + ((x * s + y * c) * 0.63 - h) * r,
+    screen.y + ((x * s + y * c) * 0.63 - h - Math.max(0, x + 0.65) * rear * 0.65) * r,
   ];
   const outline = 0x27243e;
   const body = (x: number, y: number, h: number, rx: number, ry: number, color: number) =>
@@ -56,7 +58,7 @@ export function drawMoonBear(
     const foot = at(
       fore + step.x + reach * (0.65 + Math.sin(swing * Math.PI) * 0.62) + launch * 0.93,
       side * (0.51 + reach * (0.89 - swing * 2.15) + launch * 0.36) + step.y,
-      step.lift * stride * 0.24 + reach * 0.46 + launch * 0.72,
+      step.lift * stride * 0.24 + reach * 0.46 + launch * 0.72 + (lead ? rear * 0.65 : 0),
     );
     const shoulder = at(fore, side * 0.36 + rock, 0.54 + bob + reach * 0.22 + launch * 0.24);
     g.moveTo(...shoulder)
@@ -88,6 +90,7 @@ export function drawMoonBear(
     const front = Math.max(0, s);
     const profile = Math.abs(c);
     if (front + profile > 0.32) {
+      if (rear > 0.12) body(1.19, 0, 0.48 + rise, 0.23, 0.1 + rear * 0.08, 0x35283c);
       body(1.19, 0, 0.67 + rise, 0.18 + front * 0.13, 0.15, 0xd3c5df);
       g.circle(...at(1.35, 0, 0.7 + rise), r * 0.085).fill({ color: 0x231b31 });
       g.circle(...at(1.02, -far * 0.23, 0.91 + rise), r * 0.059).fill({ color: 0xffe6a3 });

@@ -117,6 +117,8 @@ export class Renderer {
   private readonly particles: Particles;
   private readonly lights: LightManager;
   private readonly labels: Text[] = [];
+  private rangerBites = new Map<number, AnimalStrike>();
+  private wolfForms = new Set<number>();
   private animalStrikes = new Map<string, AnimalStrike>();
   private animalMotion = new Map<string, AnimalMotion>();
 
@@ -233,6 +235,9 @@ export class Renderer {
     for (const [key, strike] of this.animalStrikes)
       if (now - strike.started >= MOON_BASIC_POSE_MS) this.animalStrikes.delete(key);
     for (const e of state.events) {
+      if (e.t === 'fightStart') this.rangerBites.clear();
+      if (e.t === 'skillArea' && e.area.style === 'savageBite')
+        this.rangerBites.set(e.sourceId, { angle: e.area.angle, started: now });
       if (e.t === 'animalStrike')
         this.animalStrikes.set(`${e.sourceId}:${e.animal}:${e.slot}`, {
           angle: e.angle,
@@ -242,6 +247,18 @@ export class Renderer {
     this.fx.processEvents(state.events, this.camera);
     this.sprites.ingestEvents(state.events, now);
     this.rigs.ingestEvents(state.events);
+    const won = this.rigs.celebrationTime(now) !== undefined;
+    this.wolfForms.clear();
+    for (const p of state.players) {
+      if (p.state !== 'alive' || p.classId !== 'ranger') {
+        this.rangerBites.delete(p.id);
+        continue;
+      }
+      const bite = this.rangerBites.get(p.id);
+      if (bite && now - bite.started >= 580 && !won) this.rangerBites.delete(p.id);
+      if (this.rangerBites.has(p.id) || (!won && p.weaponWindup?.style === 'savageBite'))
+        this.wolfForms.add(p.id);
+    }
     this.particles.processEvents(state.events);
     this.balloons.ingest(state.events);
 
@@ -254,7 +271,7 @@ export class Renderer {
     this.drawAimPreview(state);
     this.drawEntities(state, now); // geometry for flag-off, non-rig actors
     this.sprites.update(state, this.camera, now, dtMs); // sprites for flag-on actors
-    this.rigs.update(state, this.camera, now, dtMs); // articulated rigs for rig-opted actors
+    this.rigs.update(state, this.camera, now, dtMs, this.wolfForms); // articulated rigs for rig-opted actors
     this.updateLights(dtMs); // cull + project the shared light set (after rig glows settle)
     this.drawOverlays(state, now); // vector bars/rings for sprite- and rig-driven actors
     this.drawProjectiles(state); // geometry for flag-off projectiles
@@ -917,7 +934,7 @@ export class Renderer {
     }
     if (!SPRITE_FLAGS.player) {
       for (const p of state.players) {
-        if (p.form || playerUsesRig(p)) continue; // rig draws the body (dead → geometry ghost here)
+        if (p.form || playerUsesRig(p) || this.wolfForms.has(p.id)) continue; // rig draws the body (dead → geometry ghost here)
         drawPlayer(
           g,
           p,
@@ -938,6 +955,7 @@ export class Renderer {
     const scale = this.camera.scale;
     const timeSec = nowMs / 1000;
 
+    const cheer = this.rigs.celebrationTime(nowMs);
     const previousAnimals = this.animalMotion;
     this.animalMotion = new Map();
     const track = (key: string, pos: Vec2, facing: number): AnimalMotion => {
@@ -967,6 +985,26 @@ export class Renderer {
               p.id === state.localPlayerId,
               timeSec,
             );
+      if (this.wolfForms.has(p.id)) {
+        const bite = this.rangerBites.get(p.id);
+        const aim = bite?.angle ?? p.weaponWindup?.angle ?? Math.atan2(p.aim.y, p.aim.x);
+        drawCompanion(
+          g,
+          { pos: p.pos, facing: aim, attacking: false, bondReady: false },
+          this.camera.worldToScreen(p.pos),
+          scale,
+          1.68,
+          (_, pos, facing) => track(`${p.id}:biteWolf`, pos, facing),
+          0,
+          () => bite,
+          nowMs,
+          {
+            hero: true,
+            cheer: bite && nowMs - bite.started >= 580 ? cheer : undefined,
+            preparing: bite ? undefined : p.weaponWindup?.progress,
+          },
+        );
+      }
       if (p.form === 'moonBear' && p.state === 'alive')
         drawMoonBear(
           g,
@@ -977,6 +1015,7 @@ export class Renderer {
           track(`${p.id}:bear`, p.pos, Math.atan2(p.aim.y, p.aim.x)),
           this.animalStrikes.get(`${p.id}:bear:0`),
           this.animalStrikes.get(`${p.id}:bear:1`),
+          cheer,
         );
 
       if (p.state === 'alive' && p.spiritCompanion)
@@ -990,6 +1029,7 @@ export class Renderer {
           0,
           (slot) => this.animalStrikes.get(`${p.id}:wolf:${slot}`),
           nowMs,
+          { cheer },
         );
       if (p.form || SPRITE_FLAGS.player || playerUsesRig(p)) {
         drawPlayerOverlay(

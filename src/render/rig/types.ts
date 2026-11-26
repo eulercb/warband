@@ -166,7 +166,6 @@ export interface RigDriveCtx {
   castSlot?: AbilitySlot | null;
   castT?: number; // 0..1 rooted-cast progress
   aim?: Vec2; // aim unit vector (humanoid torso/arms)
-  /** Seconds since the fight was WON — drives the procedural victory dance
-   * (body hops, weapon pumps). Absent/undefined = not celebrating. */
-  cheer?: number;
+  /** Authored victory pose; absent during ordinary play. */
+  cheer?: import('./celebration').CelebrationPose;
 }
