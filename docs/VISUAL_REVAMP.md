@@ -634,3 +634,45 @@ The patch started at 55% of the five-hour allowance and 49% weekly. The next
 cohort is the remaining ranged and caster basics.
 
 [Blade Flourish and Savage Bite on phone](images/hybrid-melee-contact-phone.png).
+
+### Bard draw, wolf bite, victory and caster projectiles
+
+The owner accepted the three synchronized weapon swings in #229. Relentless
+Vengeance is the Paladin's **Vengeance identity grand**. Equip it in the grand
+panel between fights, then aim at a foe outside Holy Strike reach and make a
+fresh basic press. The pursuit has a six-second recovery and needs a clear path.
+See [Relentless Vengeance approach](RELENTLESS_VENGEANCE_APPROACH.md).
+
+The Valor Bard carries a sheathed blade alongside the lute. Blade Flourish,
+an equipped subclass skill, brings the free hand to the hilt, follows the
+existing contact arc, then returns the blade during recovery. Its skill grand,
+Sweeping Flourish, pushes foes on contact.
+
+The Beast Master Ranger's Savage Bite appears as a wolf during preparation,
+lunges and snaps at contact, then holds the visible form through a 580ms
+recovery. Defiant Bite is the skill grand and retains its parry on contact.
+The form is a presentation of the same hero. It gives no combat movement,
+protection or pet command. A wolf that delivers the winning bite can howl in
+that form after recovery. The Druid's Moon Bear rears, and the Ranger's spirit
+wolves, including Pack Tactics flankers, stagger their howls and tail motions.
+
+Living heroes now have class-specific victory rhythms and equipment gestures
+instead of using the same repeated attack clip. Bard strums; Paladin salutes
+with the weapon; Monk alternates hands; Cleric raises both hands. Sol 6.2 High
+reviewed the victory lifecycle and the transition from Bite's contact to its
+recovery. The shared clock starts on the victory event, including on a peer
+whose interpolated boss pose has yet to fall.
+
+The ranged basic batch adds a crossed ray for Cleric Smite, a bent thorn for
+Druid Thornlash, sound fronts for Bard Vicious Mockery, a paired zigzag for
+Sorcerer Chaos Bolt, and a dark taper with a bright core for Warlock Eldritch
+Blast. These marks follow the existing friendly projectile families and cover
+other friendly skills that send the same bolt family. Range, hit timing and
+delivery stayed as authored. Mage Arcane Bolt and Ranger arrows already have
+their own silhouettes.
+
+This batch started at 97% of the five-hour allowance and 46% weekly. The next
+batch starts the special-ability passes and their linked upgrades.
+
+Phone captures: [Blade Flourish and wolf bite](images/bard-wolf-bite-phone.png)
+and [victory with the wolf Ranger, spirit wolf, and Moon Bear](images/animal-victory-phone.png).

@@ -1,3 +1,4 @@
+import { celebrationPose } from './celebration';
 import { isBladeArea } from '../overlays/meleeVisual';
 /**
  * Warband — retained rig layer.
@@ -61,15 +62,14 @@ export class RigLayer {
 
   /** ms timestamp the current victory celebration started at, or null. */
   private victoryAtMs: number | null = null;
-  private lastBrandishMs = 0;
 
   /** Trigger a weapon/attack swing on the caster's rig for each cast event;
    * a `victory` event starts the whole band's procedural victory dance. */
   ingestEvents(events: GameEvent[]): void {
     for (const e of events) {
+      if (e.t === 'fightStart') this.victoryAtMs = null;
       if (e.t === 'victory') {
         this.victoryAtMs = performance.now();
-        this.lastBrandishMs = 0;
       }
       // Hit-flash light (§7.1): a brief bright pop at each impact. The single
       // largest perceived-quality jump — every hit briefly lights its surroundings.
@@ -114,8 +114,18 @@ export class RigLayer {
     }
   }
 
+  celebrationTime(nowMs: number): number | undefined {
+    return this.victoryAtMs == null ? undefined : Math.max(0, nowMs - this.victoryAtMs) / 1000;
+  }
+
   /** Reconcile + drive one frame. Call after `ingestEvents`, before the overlay pass. */
-  update(state: RenderState, camera: Camera, nowMs: number, dtMs: number): void {
+  update(
+    state: RenderState,
+    camera: Camera,
+    nowMs: number,
+    dtMs: number,
+    wolfForms?: ReadonlySet<EntityId>,
+  ): void {
     this.seen.clear();
     const scale = camera.scale;
     const timeSec = nowMs / 1000;
@@ -158,22 +168,7 @@ export class RigLayer {
       this.seen.add(b.id);
     }
 
-    // Victory dance: once the fight is won, every living hero hops, twirls and
-    // pumps their weapon until the result screen takes over. A fresh fight
-    // (any boss back at hp > 0) clears the celebration.
-    let cheer: number | undefined;
-    let brandishNow = false;
-    if (this.victoryAtMs != null) {
-      if (state.bosses.some((b) => b.hp > 0)) {
-        this.victoryAtMs = null;
-      } else {
-        cheer = (nowMs - this.victoryAtMs) / 1000;
-        if (nowMs - this.lastBrandishMs > 460) {
-          this.lastBrandishMs = nowMs;
-          brandishNow = true; // living HEROES pump their weapons (not corpses)
-        }
-      }
-    }
+    const cheer = this.celebrationTime(nowMs);
 
     // Players.
     for (const p of state.players) {
@@ -193,13 +188,11 @@ export class RigLayer {
       // item 7 — a flying hero (Dragon Wings & co.) lifts off the ground too.
       const flying = p.state === 'alive' && (p.buffs?.some((bf) => bf.kind === 'flight') ?? false);
       const bodyScr = flying ? { x: scr.x, y: scr.y - PLAYER_RADIUS * scale * 0.45 } : scr;
-      const celebrate = cheer != null && p.state === 'alive';
-      if (celebrate && brandishNow) node.rig.triggerAttack();
-      // Twirl during the dance: spin the facing a full turn per second-ish.
-      const facing = celebrate
-        ? Math.atan2(p.aim.y, p.aim.x) + Math.sin((cheer ?? 0) * 2.6) * 2.4
-        : Math.atan2(p.aim.y, p.aim.x);
-      node.rig.presentWeaponWindup(p.weaponWindup, dtMs / 1000);
+      const pose =
+        cheer != null && p.state === 'alive' ? celebrationPose(p.classId, cheer) : undefined;
+      const facing = Math.atan2(p.aim.y, p.aim.x) + (pose?.turn ?? 0);
+      node.rig.view.visible = !wolfForms?.has(p.id);
+      node.rig.presentWeaponWindup(cheer == null ? p.weaponWindup : undefined, dtMs / 1000);
       node.rig.update(bodyScr, facing, scale, dtMs, timeSec, {
         color: CLASS_COLORS[p.classId] ?? 0xffffff,
         flash: this.fx.flashAmount(p.id),
@@ -211,7 +204,7 @@ export class RigLayer {
         castSlot: p.castSlot === 'sub1' || p.castSlot === 'sub2' ? 'a1' : p.castSlot,
         castT: castProgress(p),
         aim: p.aim,
-        cheer: celebrate ? cheer : undefined,
+        cheer: pose,
       });
       node.rig.view.zIndex = Z_BIAS.player + scr.y;
       this.seen.add(p.id);

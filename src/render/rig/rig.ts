@@ -1,3 +1,4 @@
+import type { CelebrationPose } from './celebration';
 import { weaponWindup } from '../../engine/content/weaponTiming';
 import type { WeaponWindupView } from '../../engine/core/types';
 /**
@@ -102,6 +103,7 @@ export class CreatureRig {
   private lightningAngle = 0;
   private recoilAge = 1;
   private recoilAngle = 0;
+  private cheerPose?: CelebrationPose;
   private preparingWeapon = false;
   private blade?: {
     style: BladeAreaStyle;
@@ -267,6 +269,7 @@ export class CreatureRig {
   }
 
   private get weaponRecovery(): number {
+    if (this.blade?.style === 'bardFlourish') return 0.3;
     return this.blade?.style === 'axeSwing' ||
       this.blade?.style === 'cleave' ||
       this.blade?.style === 'holyStrike'
@@ -342,6 +345,7 @@ export class CreatureRig {
   ): void {
     const dt = clamp(dtMs, 1, 100) / 1000;
     const R = this.baseRadius * scale;
+    this.cheerPose = ctx.cheer;
     this.palmAges[0] += dt;
     this.palmAges[1] += dt;
     this.lightningAge += dt;
@@ -375,7 +379,7 @@ export class CreatureRig {
     const recoil = Math.min(7, R * 0.12) * Math.max(0, 1 - this.recoilAge / 0.18) ** 2;
     this.view.position.set(
       recoil * Math.cos(this.recoilAngle),
-      recoil * Math.sin(this.recoilAngle),
+      recoil * Math.sin(this.recoilAngle) - R * (ctx.cheer?.lift ?? 0),
     );
 
     // Screen-space velocity (EMA), with a teleport guard that re-seeds feet so a
@@ -558,10 +562,7 @@ export class CreatureRig {
     const breathe = this.spec.idle
       ? 1 + this.spec.idle.breatheAmp * Math.sin(timeSec * this.spec.idle.breatheFreq)
       : 1;
-    // Victory dance: rhythmic full-body hops while the cheer is live. In the
-    // top-down view a scale pulse reads as jumping for joy.
-    const cheerPulse = ctx.cheer != null ? Math.abs(Math.sin(ctx.cheer * 5.5)) : 0;
-    const bodyScale = (downed ? 1 : breathe) * (1 + 0.14 * windupT) * (1 + 0.13 * cheerPulse);
+    const bodyScale = (downed ? 1 : breathe) * (1 + 0.14 * windupT);
 
     const anchorLocal = this.spec.legs ? this.partLocal(this.spec.legs.anchorPart) : { x: 0, y: 0 };
     const shadowAt = this.bodyPoint(anchorLocal, R);
@@ -608,7 +609,7 @@ export class CreatureRig {
       else drawRosterGarment(this.gBehind, this.gDecor, project, R, garment, sway);
       if (garment === 'bard' && !downed) {
         drawBardLute(this.gDecor, this.bardHand(-1, R), this.bardHand(1, R, true), R);
-        if (this.blade?.style === 'bardFlourish') this.drawFlourishBlade(R);
+        this.drawFlourishBlade(R);
       }
     }
     if (this.spec.garment === 'mage' && !downed) {
@@ -919,6 +920,12 @@ export class CreatureRig {
               );
         if (arm.side === -1) hand.y -= R * (0.29 + cast * (sorcerer ? 1.03 : 0.64));
       }
+      if (
+        ctx.cheer &&
+        !downed &&
+        (this.spec.garment === 'monk' || (arm.side === -1 && this.casterCarry))
+      )
+        hand.y -= R * (arm.side === -1 ? ctx.cheer.left : ctx.cheer.right);
       const reachScale = this.spec.garment && !downed ? 1.14 : 1;
       if (this.spec.garment && !downed) {
         hand = clampToReach(hand, shoulder, (arm.l1 + arm.l2) * R * reachScale * 0.98);
@@ -1350,18 +1357,43 @@ export class CreatureRig {
   }
 
   private drawFlourishBlade(r: number): void {
-    const hand = this.bardHand(1, r);
-    const angle = this.bladeAngle();
+    const sheath = this.bardSheath(r);
+    const sheathAngle = this.facing + 2.4;
+    const active = this.blade?.style === 'bardFlourish';
+    const draw = active ? this.bardBladeDraw() : 0;
+    const hand = active ? this.bardHand(1, r) : sheath;
+    const angle = active ? this.bladeAngle() : sheathAngle;
     const x = Math.cos(angle) * r;
     const y = Math.sin(angle) * r;
+    this.gDecor
+      .moveTo(sheath.x, sheath.y)
+      .lineTo(
+        sheath.x + Math.cos(sheathAngle) * r * 1.31,
+        sheath.y + Math.sin(sheathAngle) * r * 1.31,
+      )
+      .stroke({ color: 0x493852, width: r * 0.3, cap: 'round' });
+    const length = 0.17 + draw * 1.45;
     this.gFront
       .moveTo(hand.x, hand.y)
-      .lineTo(hand.x + x * 1.62, hand.y + y * 1.62)
-      .stroke({ color: 0xffe3ad, width: r * 0.19, cap: 'round' });
+      .lineTo(hand.x + x * length, hand.y + y * length)
+      .stroke({ color: draw > 0.1 ? 0xffe3ad : 0xb67740, width: r * 0.19, cap: 'round' });
     this.gFront
       .moveTo(hand.x - y * 0.24, hand.y + x * 0.24)
       .lineTo(hand.x + y * 0.24, hand.y - x * 0.24)
       .stroke({ color: 0xb67740, width: r * 0.14, cap: 'round' });
+  }
+
+  private bardSheath(r: number): Vec2 {
+    const at = this.bodyPoint({ x: -0.05, y: 0.91 }, r);
+    at.y -= r * 0.44;
+    return at;
+  }
+
+  private bardBladeDraw(): number {
+    if (this.preparingWeapon) return clamp((this.weaponSetup - 0.28) / 0.72, 0, 1);
+    const recovery = (this.attackAge - this.weaponPreparation - 0.18) / this.weaponRecovery;
+    const t = clamp(recovery, 0, 1);
+    return 1 - t * t * (3 - 2 * t);
   }
 
   private bardHand(side: -1 | 1, r: number, lute = false): Vec2 {
@@ -1369,11 +1401,25 @@ export class CreatureRig {
     point.y -= r * (side === -1 ? 1.18 : 0.58);
     if (side === 1 && !lute && this.blade?.style === 'bardFlourish') {
       const angle = this.bladeAngle();
-      const weight = this.weaponSetup * (1 - this.bladePhase() * 0.32);
-      point.x += Math.cos(angle) * r * weight;
-      point.y += Math.sin(angle) * r * weight - r * weight * 0.28;
+      const draw = this.bardBladeDraw();
+      const sheath = this.bardSheath(r);
+      const approach = this.preparingWeapon ? this.weaponSetup : Math.min(1, draw * 5);
+      const grip = this.fitRaisedHand(
+        {
+          x: sheath.x + (point.x + Math.cos(angle) * r - sheath.x) * draw,
+          y: sheath.y + (point.y + Math.sin(angle) * r - r * 0.28 - sheath.y) * draw,
+        },
+        side,
+        r,
+      );
+      point.x += (grip.x - point.x) * approach;
+      point.y += (grip.y - point.y) * approach;
     }
-    return this.fitRaisedHand(point, side, r);
+    if (side === 1 && !lute && this.cheerPose) {
+      point.x += this.cos * r * this.cheerPose.right * 3;
+      point.y += this.sin * r * this.cheerPose.right * 3;
+    }
+    return this.fitRaisedHand(point, side, r, !lute);
   }
 
   private gripPoint(R: number, ctx: RigDriveCtx, downed: boolean): Vec2 {
@@ -1472,11 +1518,17 @@ export class CreatureRig {
     return this.spec.garment && !downed ? this.fitRaisedHand(point, 1, R) : point;
   }
 
-  private fitRaisedHand(point: Vec2, side: 1 | -1, radius: number): Vec2 {
+  private fitRaisedHand(point: Vec2, side: 1 | -1, radius: number, animate = true): Vec2 {
     const arm = this.spec.arms!.find((arm) => arm.side === side)!;
     const shoulder = this.bodyPoint(arm.shoulderLocal, radius);
     shoulder.y -= 0.78 * radius;
-    return clampToReach(point, shoulder, (arm.l1 + arm.l2) * radius * 1.14 * 0.98);
+    const lift =
+      animate && this.cheerPose ? (side === -1 ? this.cheerPose.left : this.cheerPose.right) : 0;
+    return clampToReach(
+      { x: point.x, y: point.y - radius * lift },
+      shoulder,
+      (arm.l1 + arm.l2) * radius * 1.14 * 0.98,
+    );
   }
 
   private knightShieldAnchor(r: number): Vec2 {

@@ -480,6 +480,23 @@ describe('replication and graphics', () => {
       130,
     );
     expect(g.context.instructions.length).toBeGreaterThan(rear);
+    const hunted = {
+      ...pet,
+      attacking: true,
+      bondReady: true,
+      quarry: { targetId: 1, pos: ZERO, radius: 16, remaining: 1, duration: 2 },
+      flankers: [{ pos: { x: 20, y: 10 }, facing: 0, attacking: true }],
+    };
+    circle.mockClear();
+    drawCompanion(g, hunted, ZERO, 1, 1, undefined, 0, undefined, 0, { cheer: 0.65 });
+    expect(circle.mock.calls.some(([, , radius]) => radius === 28)).toBe(false);
+    drawCompanion(g, pet, ZERO, 1, 1.68, undefined, 0, undefined, 0, {
+      hero: true,
+      preparing: 0.7,
+    });
+    drawCompanion(g, pet, ZERO, 1, 1.68, undefined, 0, () => ({ started: 10, angle: 0 }), 100, {
+      hero: true,
+    });
     g.destroy();
   });
 });

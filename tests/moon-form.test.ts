@@ -498,6 +498,19 @@ describe('lifecycle, controls and replicated form', () => {
     };
     drawMoonBear(g, p, ZERO, 2, 2, motion, { started: 1830, angle: -Math.PI });
     expect(g.context.instructions.length).toBeGreaterThan(front);
+    g.clear();
+    drawMoonBear(
+      g,
+      { ...p, aim: { x: 1, y: 0 } },
+      ZERO,
+      2,
+      2,
+      undefined,
+      undefined,
+      undefined,
+      0.7,
+    );
+    expect(g.context.instructions.length).toBeGreaterThan(front);
     g.destroy();
   });
 });

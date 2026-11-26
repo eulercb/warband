@@ -206,3 +206,7 @@ damage tick with its matching pose and effect, and recovery. For changed
 timings, use normal input and record health and the visual cue on both sides
 of the release. Test the resolved grand and retained Forge delivery when they
 change reach, timing or riders. Flag any deliberate exception in playtest notes.
+
+When reporting a named mechanic for playtesting, identify the class, subclass
+when applicable, and whether it is a basic, special, passive, skill grand or
+identity grand. State how to equip or trigger it when that is easy to miss.
