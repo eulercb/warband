@@ -758,3 +758,51 @@ Bear form. Arena and encounter work follows the class-special passes.
 Normal-zoom phone captures: [Bard strum in two aim directions](images/bard-strum-motion-phone.gif),
 [Rain of Arrows with the Lich's labels and target marks](images/arrow-rain-readability-phone.png),
 and [Detonating Roll at touchdown](images/detonating-roll-phone.png).
+
+### Druid starting kit and upgrade coverage
+
+The owner accepted the Ranger readability update in #232. This Druid slice
+covers the four starting slots and their starting-skill grands:
+
+| Starting skill    | Visual delivery                                                                                                                                                     | Grand and actual payoff                                                                                                                                            |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Thornlash (basic) | The narrow thorn still launches with the existing caster gesture or Moon paw. Moon Aspect's delayed claw remains a separate beat.                                   | Bramble Spear sends a longer, forked shaft on its piercing path.                                                                                                   |
+| Entangle          | The caster plants with the staff and Moon Bear scrapes with a front paw. A seed crosses to the arming destination and rooted shoots grow across the live footprint. | Ancient Grove adds taller gold leaves while the field carries allied mitigation.                                                                                   |
+| Regrowth          | The caster cups a hand and Moon Bear dips its head and braces. Petals grow at the actual recovery grove recipient.                                                  | Wild Bloom gives a separate petal flash to the ally who actually gained absorption, including at full health. The flash does not add a recovery grove on overheal. |
+| Cyclone           | The caster circles an arm and Moon Bear braces and rolls its shoulders. Wind follows the resolved footprint at contact.                                             | Tempest swirls inward with the forced movement from its hit.                                                                                                       |
+
+Sol 6.2 High reviewed the native and composed kits, including actual support
+recipient, arming, and hit timing. The cast and field work uses resolved delivery
+and payloads and does not change damage, healing, cooldown or targeting rules.
+Recovery groves and compatible Druid-owned thorn and healing fields share the
+new ground art. Existing curse and support marks stay visible on those fields.
+
+Normal-zoom phone captures: [Ancient Grove](images/ancient-grove-phone.png),
+[Regrowth and Wild Bloom](images/wild-bloom-phone.png), and
+[Moon Bear Tempest](images/moon-tempest-phone.png).
+
+#### What counts as a finished class pass
+
+Check every starting basic and its grand, every starting special and its
+grand, every subclass skill and individual grand, the subclass passive and
+both identity grands. Then check ordinary or Honed upgrades that change
+visible behavior. Record whether the existing cue covers the resolved
+effect, whether it needs an authored variant, or where it is scheduled.
+Readouts alone do not finish a row.
+
+| Review area                         | Examples and what to verify                                                                                                                                                                                                              |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Projectile geometry and travel      | Ranger Volley changes count and spread. Druid Splintering Thorns can coexist with Bramble Spear. Check the actual resolved count and material distinctly.                                                                                |
+| Control on contact                  | Mage Deep Freeze changes Frost Nova's target effect. Druid Winter Gale adds a freeze to Gust. Sorcerer Extinction adds freeze and wider impact to Meteor. Verify a landed freeze and an immune target.                                   |
+| Displacement and altered footprints | Mage Polar Vortex pulls inward. Monk's Quivering Palm upgrade adds a stun and radius. Gust pushes along its resolved fan. Verify the visible footprint and the actual recipient movement.                                                |
+| Defensive and healing outcomes      | Wild Bloom uses actual barrier gained. Shared Renewal should show the actual secondary recipient. Sheltering Spring and Pack Shelter should show when protection is active and who receives it.                                          |
+| Delayed, moving and recast delivery | Wandering Briar moves only after its first qualifying hit. Eternal Season moves the existing field once and preserves cadence. Primal Roar prepares a later bramble burst. Verify the release and direction at the actual gameplay beat. |
+
+The next Druid slice covers **Circle of the Moon** skills Dire Maul, Feral
+Pounce, Primal Roar and Frenzied Regen, and **Circle of the Land** skills
+Erupting Earth, Wall of Thorns, Gust and Healing Spring. Review their grands
+and identity interactions through the same checklist. Continue that coverage
+for all twelve classes before the arena and encounter pass.
+
+This batch began at 77% of the five-hour allowance and 26% weekly. The
+previous batch crossed a five-hour reset, so it has no exact rolling cost reading.

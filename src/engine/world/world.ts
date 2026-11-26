@@ -4498,6 +4498,8 @@ export class World {
         })),
       apparitions: apparitionViews(this),
       groundZones: this.groundZones.map((z) => ({
+        natureArt: z.natureArt,
+        natureCanopy: (!!z.natureArt && (z.allyBuff?.defMult ?? 1) < 1) || undefined,
         rally: !!z.rally,
         revivalFont: fontAvailable(this, z) ? z.revivalFont!.family : undefined,
         supportKinds: zoneSupportKinds(z),

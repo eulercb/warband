@@ -511,6 +511,19 @@ describe('lifecycle, controls and replicated form', () => {
       0.7,
     );
     expect(g.context.instructions.length).toBeGreaterThan(front);
+    for (const gesture of ['plant', 'mend', 'wind'] as const) {
+      g.clear();
+      drawMoonBear(g, p, ZERO, 2, 2, undefined, undefined, undefined, undefined, {
+        gesture,
+        strength: 0.83,
+      });
+      expect(g.context.instructions.length).toBeGreaterThan(front);
+    }
+    g.clear();
+    drawMoonBear(g, p, ZERO, 2, 2, undefined, undefined, undefined, undefined, {
+      gesture: 'wind',
+      strength: 0.1,
+    });
     g.destroy();
   });
 });

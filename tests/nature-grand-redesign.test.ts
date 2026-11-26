@@ -303,3 +303,38 @@ describe('Ranger/Druid authored builds', () => {
     }
   });
 });
+
+it('carries Druid field, contact and projectile art from the actual starting kit grants', () => {
+  const starts = (grand?: string) => setup('druid', grand ? [grand] : [], ['dr_moon_regen']);
+
+  const grove = starts('dr_gk_a1_b');
+  resolvePlayerAbility(grove.w, grove.p, 'a1', zero);
+  expect(grove.w.serialize().groundZones[0]).toMatchObject({
+    natureArt: 'vines',
+    natureCanopy: true,
+  });
+  expect(grove.w.events.some((e) => e.t === 'cast' && e.druidGesture === 'plant')).toBe(true);
+
+  const regrowth = starts('dr_gk_a2_a');
+  resolvePlayerAbility(regrowth.w, regrowth.p, 'a2', zero);
+  const bloom = regrowth.w.events.find((e) => e.t === 'skillArea' && e.area.style === 'druidBloom');
+  expect(bloom).toMatchObject({ area: { origin: regrowth.p.pos } });
+  regrowth.p.hp -= 25;
+  resolvePlayerAbility(regrowth.w, regrowth.p, 'a2', zero);
+  expect(regrowth.w.serialize().groundZones[0]?.natureArt).toBe('grove');
+
+  for (const grand of [undefined, 'dr_gk_a3_a']) {
+    const wind = starts(grand);
+    resolvePlayerAbility(wind.w, wind.p, 'a3', zero);
+    expect(
+      wind.w.events.some(
+        (e) => e.t === 'skillArea' && e.area.style === (grand ? 'druidTempest' : 'druidCyclone'),
+      ),
+    ).toBe(true);
+    expect(wind.w.boss!.hp).toBeLessThan(10000);
+  }
+
+  const spear = starts('dr_gk_basic_b');
+  resolvePlayerAbility(spear.w, spear.p, 'basic', zero);
+  expect(spear.w.serialize().projectiles[0]?.presentation).toBe('brambleSpear');
+});

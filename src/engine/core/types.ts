@@ -1028,7 +1028,7 @@ export interface GuidanceCast {
 }
 export interface Projectile {
   impactStyle?: 'fireball';
-  presentation?: 'arcaneBolt' | 'frostArrow' | 'railshot';
+  presentation?: 'arcaneBolt' | 'frostArrow' | 'railshot' | 'brambleSpear';
   reflected?: boolean;
   guidance?: GuidanceCast;
   aimPoint?: Vec2;
@@ -1406,6 +1406,7 @@ export interface PendingStrike {
 }
 
 export interface GroundZone {
+  natureArt?: 'vines' | 'grove';
   rally?: { visitors: number[]; epoch: number };
   refuge?: RefugeSource;
   revivalFont?: FontSource;
@@ -1550,6 +1551,8 @@ export interface WeaponWindupView {
   progress: number;
 }
 
+export type DruidGesture = 'plant' | 'mend' | 'wind';
+
 export type SkillAreaKind = 'cone' | 'circle' | 'line';
 
 export interface SkillArea {
@@ -1563,6 +1566,9 @@ export interface SkillArea {
     | 'frostNova'
     | 'fireball'
     | 'rollBurst'
+    | 'druidCyclone'
+    | 'druidTempest'
+    | 'druidBloom'
     | 'blinkDepart'
     | 'blinkArrive';
   contacts?: { id: EntityId; pos: Vec2; radius: number }[];
@@ -1604,6 +1610,7 @@ export type GameEvent =
       ability: string;
       visualStyle?: 'frostNova' | 'fireball';
       rangedRelease?: 'projectile' | 'arrowRain';
+      druidGesture?: DruidGesture;
       sourceId: EntityId;
       pos: Vec2;
       side: Side;
@@ -1887,6 +1894,8 @@ export interface ProjectileView {
 }
 
 export interface ZoneView {
+  natureArt?: GroundZone['natureArt'];
+  natureCanopy?: boolean;
   rally?: boolean;
   revivalFont?: FontFamily;
   side?: Side;
