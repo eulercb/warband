@@ -65,6 +65,7 @@ function areaFlashTtl(style: SkillArea['style']): number {
     case 'fireball':
       return 0.63;
     case 'frostNova':
+    case 'rollBurst':
       return 0.68;
     default:
       return AREA_FLASH_TTL;
@@ -919,6 +920,32 @@ export class Fx {
         return;
       }
       const R = area.radius * s;
+      if (area.style === 'rollBurst') {
+        const fronts = Math.min(1, 0.57 + t * 1.55);
+        for (let i = 0; i < 18; i++) {
+          const angle = i * 2.399963 + area.origin.x * 0.07;
+          const outer = R * (0.62 + (i % 5) * 0.083) * fronts;
+          const x = c.x + Math.cos(angle) * outer;
+          const y = c.y + Math.sin(angle) * outer;
+          const size = Math.max(2.5, R * (0.035 + (i % 3) * 0.012)) * (1 - t * 0.5);
+          g.poly([x - size, y, x + size * 0.24, y - size * 1.35, x + size, y + size * 0.55]).fill({
+            color: i % 3 === 0 ? 0xffd58b : 0xb68156,
+            alpha: fade,
+          });
+        }
+        if (t < 0.65) {
+          const core = (1 - t / 0.65) * R * 0.18;
+          g.poly([
+            c.x - core,
+            c.y + core * 0.35,
+            c.x,
+            c.y - core * 1.6,
+            c.x + core,
+            c.y + core * 0.35,
+          ]).fill({ color: 0xffe4a0, alpha: fade });
+        }
+        return;
+      }
       if (area.style === 'fireball' || area.style === 'frostNova') {
         drawElementalBurst(g, c, R, t, area.style === 'frostNova', area.angle);
         return;

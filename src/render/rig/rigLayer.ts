@@ -204,6 +204,8 @@ export class RigLayer {
         castSlot: p.castSlot === 'sub1' || p.castSlot === 'sub2' ? 'a1' : p.castSlot,
         castT: castProgress(p),
         drawingProjectile: p.drawingProjectile,
+        drawProjectileCount: p.drawProjectileCount,
+        rangerRoll: p.rangerRoll,
         aim: p.aim,
         cheer: pose,
       });

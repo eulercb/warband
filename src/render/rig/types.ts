@@ -165,6 +165,8 @@ export interface RigDriveCtx {
   guarding?: boolean;
   castSlot?: AbilitySlot | null;
   drawingProjectile?: boolean;
+  drawProjectileCount?: number;
+  rangerRoll?: import('../../engine/core/types').PlayerView['rangerRoll'];
   castT?: number; // 0..1 rooted-cast progress
   aim?: Vec2; // aim unit vector (humanoid torso/arms)
   /** Authored victory pose; absent during ordinary play. */

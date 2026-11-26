@@ -715,3 +715,46 @@ upgrades before the arena and encounter work.
 Phone captures: [Vicious Mockery release](images/bard-strum-phone.png),
 [Frostvolley fan](images/frostvolley-phone.png), and
 [Pursuing Rain](images/arrow-rain-phone.png).
+
+### Ranged readability at gameplay zoom and Ranger Roll
+
+The owner could see the projectiles in #231 but had trouble seeing the cast
+gestures. In the phone capture, the character was about 17 CSS pixels wide.
+The muted Rain of Arrows fill was much larger than its thin falling strokes.
+A wrist coordinate changing in a browser probe did not establish that anyone
+could see the animation in a fight.
+
+Astra 6.2 High reviewed the phone capture and the Ranger rig. The revision
+puts more movement into the silhouette and uses hand and weapon effects
+sparingly so animation cues are visible near labels. The Bard's strumming
+hand travels farther across the lute. Cleric, Druid, Sorcerer and Warlock
+add a cross flare, paired leaf strokes, a forked spark or an angular wake
+respectively. Ranger Multishot visibly draws a nocked fan based on the resolved projectile
+count, capped at five visible shafts to keep the pose readable. Ordinary ranged basics keep their existing
+release cadence. References informed staging and contrast, without using
+their artwork. [Riot's gameplay clarity notes](https://www.leagueoflegends.com/en-us/news/dev/clarity-in-league/)
+and [Adobe's guide to key poses](https://www.adobe.com/creativecloud/animation/discover/animation-key-poses.html).
+
+**Ranger Arrow** is the basic attack. Its starting-skill grand, **Railshot**,
+has a long bodkin, broad vanes and a narrow attached wake. This still
+represents a traveling projectile. Piercing, speed and reach are unchanged.
+
+**Ranger Rain of Arrows** is the second starting special. Three rising
+arrows guide the eye from the bow toward five ground pips that hint at the
+footprint. The live field has no painted disc. Visible shafts, broadheads,
+feathers and dirt chips show the incoming volleys and contact. Existing
+arming, damage-tick and **Pursuing Rain** follow rules govern the effect.
+
+**Ranger Roll** is the third starting special. The body tucks and rotates
+during the actual glide, with a dust trail. Its starting-skill grand,
+**Detonating Roll**, throws up earth and an amber flash at the same
+touchdown that deals damage, including a touchdown stopped early by
+cover. The native roll has no landing blast.
+
+The patch began at 78% of the five-hour allowance and 32% weekly. Next
+are Druid specials and linked upgrades, including those cast in Moon
+Bear form. Arena and encounter work follows the class-special passes.
+
+Normal-zoom phone captures: [Bard strum in two aim directions](images/bard-strum-motion-phone.gif),
+[Rain of Arrows with the Lich's labels and target marks](images/arrow-rain-readability-phone.png),
+and [Detonating Roll at touchdown](images/detonating-roll-phone.png).

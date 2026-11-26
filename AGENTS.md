@@ -210,3 +210,10 @@ change reach, timing or riders. Flag any deliberate exception in playtest notes.
 When reporting a named mechanic for playtesting, identify the class, subclass
 when applicable, and whether it is a basic, special, passive, skill grand or
 identity grand. State how to equip or trigger it when that is easy to miss.
+
+For changes meant to improve visual readability, compare rest, anticipation,
+contact and recovery at normal gameplay zoom before delivery. Include phone
+and desktop, crowded labels, and at least a side and a near-vertical aim when
+the effect rotates. Check the silhouette and contrast in the rendered frame,
+not only internal wrist displacement, event receipt or a zoomed crop. Show
+matched in-game frames or a brief clip when motion is the subject of feedback.

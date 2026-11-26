@@ -1,3 +1,4 @@
+import { sub as torusSub } from '../../engine/core/torus';
 import { ZONE_TICK_INTERVAL } from '../../engine/core/constants';
 import { playerVisualHeadroom } from '../rig/mageGarment';
 import { drawSkeleton } from './skeletonVisual';
@@ -579,6 +580,22 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
     g.poly([...at(9), ...at(0, -3.8), ...at(-5), ...at(0, 1.1)]).fill({ color: 0xf2ddff });
     return;
   }
+  if (pr.presentation === 'railshot') {
+    g.poly([...at(-52, -2), ...at(-11, -3), ...at(2), ...at(-12, 3)]).fill({
+      color: 0xe3ae63,
+      alpha: 0.52,
+    });
+    g.poly([...at(15), ...at(-3, -4), ...at(-7), ...at(-3, 4)]).fill({ color: 0xfff1ba });
+    g.moveTo(...at(-29))
+      .lineTo(...at(5))
+      .stroke({ width: Math.max(2, scale * 2.8), color: 0xa9926c });
+    for (const side of [-1, 1]) {
+      g.poly([...at(-18), ...at(-31, side * 5.7), ...at(-36, side * 4), ...at(-29)]).fill({
+        color: 0xd9e9e6,
+      });
+    }
+    return;
+  }
   if (pr.kind === 'arrow') {
     const [tailX, tailY] = at(-19);
     g.moveTo(tailX, tailY)
@@ -679,7 +696,69 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
 // Ground zones
 // ---------------------------------------------------------------------------
 
-/** Each seeded path ends within the live footprint, independent of camera and follow motion. */
+/** Draw the point, shaft and split fletching at a readable screen size. */
+function rainArrow(
+  g: Graphics,
+  x: number,
+  y: number,
+  angle: number,
+  length: number,
+  alpha: number,
+  amber = false,
+): void {
+  const c = Math.cos(angle),
+    s = Math.sin(angle);
+  const at = (forward: number, side = 0): [number, number] => [
+    x + (c * forward - s * side) * length,
+    y + (s * forward + c * side) * length,
+  ];
+  g.moveTo(...at(-1))
+    .lineTo(x, y)
+    .stroke({ width: 3.2, color: 0x392a25, alpha, cap: 'round' });
+  g.moveTo(...at(-0.94))
+    .lineTo(...at(-0.16))
+    .stroke({ width: 1.55, color: 0xd6a877, alpha });
+  g.poly([...at(0.08), ...at(-0.25, -0.142), ...at(-0.21), ...at(-0.25, 0.142)]).fill({
+    color: amber ? 0xffcf7c : 0xffecd0,
+    alpha,
+  });
+  for (const side of [-1, 1])
+    g.poly([...at(-0.68), ...at(-1.11, side * 0.18), ...at(-0.99), ...at(-0.79)]).fill({
+      color: amber ? 0xffcc6e : 0xb8e3d6,
+      alpha,
+    });
+}
+
+function drawRainApproach(
+  g: Graphics,
+  z: ZoneView,
+  x: number,
+  y: number,
+  r: number,
+  scale: number,
+): void {
+  const travel = clamp(1 - (z.armRemaining ?? 0) / (z.armTotal ?? 1), 0, 1);
+  const delta = torusSub(z.armFrom!, z.pos);
+  const fromX = x + delta.x * scale;
+  const fromY = y + delta.y * scale - 10 * scale;
+  const arcHeight = Math.max(36, Math.min(105, Math.hypot(delta.x, delta.y) * scale * 0.44));
+  const aim = Math.atan2(y - fromY, x - fromX);
+  for (const wing of [-1, 0, 1]) {
+    const t = clamp(travel + wing * 0.055, 0, 1);
+    const rise = Math.sin(t * Math.PI) * arcHeight;
+    const px = fromX + (x - fromX) * t - Math.sin(aim) * wing * 6;
+    const py = fromY + (y - fromY) * t - rise + Math.cos(aim) * wing * 6;
+    const angle = Math.atan2(y - fromY - Math.cos(t * Math.PI) * arcHeight * Math.PI, x - fromX);
+    rainArrow(g, px, py, angle, Math.max(14, 22 * scale), 0.93, true);
+  }
+  for (let i = 0; i < 5; i++) {
+    const angle = aim + i * Math.PI * 0.4;
+    const px = x + Math.cos(angle) * r * 0.81;
+    const py = y + Math.sin(angle) * r * 0.81;
+    g.ellipse(px, py, 3 + travel * 3, 2.5).fill({ color: 0xffdbae, alpha: 0.48 + travel * 0.34 });
+  }
+}
+
 function drawArrowRain(
   g: Graphics,
   z: ZoneView,
@@ -690,30 +769,29 @@ function drawArrowRain(
   time: number,
 ): void {
   const elapsed = z.duration - z.remaining;
-  const tick =
+  const impact =
     elapsed < ZONE_TICK_INTERVAL - 1e-5
       ? 0
-      : 1 - Math.min(1, ((elapsed + 1e-5) % ZONE_TICK_INTERVAL) / 0.16);
-  for (let i = 0; i < 22; i++) {
-    const angle = (i + (z.id % 11)) * 2.399963;
-    const radius = Math.sqrt((i + 0.5) / 22) * r;
-    const px = x + Math.cos(angle) * radius;
-    const py = y + Math.sin(angle) * radius;
-    const phase = (time * 2.4 + i * 0.618034) % 1;
-    if (phase < 0.72) {
-      const height = (1 - phase / 0.72) * r * 0.76;
-      g.moveTo(px - height * 0.38 - r * 0.077, py - height - r * 0.19)
-        .lineTo(px - height * 0.38, py - height)
-        .stroke({ color: 0xd0edaa, alpha: fade * 0.74, width: Math.max(1, r * 0.016) });
-    } else {
-      const settle = tick * (1 - (phase - 0.72) / 0.28);
-      g.moveTo(px - r * 0.024, py - r * 0.075)
-        .lineTo(px, py)
-        .stroke({ color: 0xf4dc9f, alpha: fade * settle * 0.9, width: Math.max(1, r * 0.017) });
-      g.ellipse(px, py, r * 0.046 * (2 - settle), r * 0.018).fill({
-        color: 0xc9df90,
-        alpha: fade * settle * 0.64,
-      });
+      : 1 - Math.min(1, ((elapsed + 1e-5) % ZONE_TICK_INTERVAL) / 0.18);
+  for (let i = 0; i < 12; i++) {
+    const theta = (i + (z.id % 11)) * 2.399963;
+    const radius = Math.sqrt((i + 0.5) / 12) * r;
+    const px = x + Math.cos(theta) * radius;
+    const py = y + Math.sin(theta) * radius;
+    const phase = (time * 2.5 + i * 0.618034) % 1;
+    const length = Math.max(13, Math.min(20, r * 0.28));
+    if (phase < 0.65) {
+      const height = (1 - phase / 0.65) * r * 0.86;
+      rainArrow(g, px - height * 0.33, py - height, 1.25, length, fade * 0.93);
+    } else if (impact > 0) {
+      rainArrow(g, px, py, 1.29, length * 0.68, fade * impact * 0.83);
+      for (const side of [-1, 1]) {
+        const cx = px + side * (3 + (1 - impact) * 7);
+        g.poly([cx - 2, py - 1, cx, py - 4, cx + 3, py + 1]).fill({
+          color: 0xc5a678,
+          alpha: fade * impact * 0.82,
+        });
+      }
     }
   }
 }
@@ -735,7 +813,8 @@ export function drawZone(
   // travelling from the caster + a filling target ring) instead of the live zone,
   // so players read where it will land before it bites.
   if ((z.armRemaining ?? 0) > 0 && z.armTotal && z.armFrom) {
-    drawZoneArming(g, z, screen, scale, color, r);
+    if (z.kind === 'rainOfArrows' && z.side === 'player') drawRainApproach(g, z, x, y, r, scale);
+    else drawZoneArming(g, z, screen, scale, color, r);
     return;
   }
 
@@ -745,7 +824,6 @@ export function drawZone(
   if (fade <= 0) return;
 
   if (z.kind === 'rainOfArrows' && z.side === 'player') {
-    g.circle(x, y, r).fill({ color, alpha: 0.1 * fade });
     drawArrowRain(g, z, x, y, r, fade, time);
     return;
   }

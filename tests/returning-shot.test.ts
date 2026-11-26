@@ -505,3 +505,45 @@ it('shows Frostvolley only on released freezing arrows, including both returning
   g.destroy();
   expect(p.cooldowns.a1).toBeGreaterThan(0);
 });
+
+it('shows the Railshot grand on its own arrow while keeping ordinary Arrow unchanged', () => {
+  for (const ids of [[], ['rg_gk_basic_b']]) {
+    const { w } = setup(skills[0], ids);
+    input(w, { basic: true });
+    const shot = w.serialize().projectiles[0];
+    expect(shot?.presentation).toBe(ids.length ? 'railshot' : undefined);
+    if (ids.length) {
+      const g = new Graphics();
+      drawReturningShot(g, { ...shot, returnPhase: 'out' }, zero, 1);
+      expect(g.context.instructions.length).toBeGreaterThan(0);
+      g.destroy();
+    }
+  }
+});
+
+it.each([false, true])(
+  'shows Ranger Roll in travel and only its grand on touchdown (%s)',
+  (grand) => {
+    const { w, p, b } = setup(skills[0], grand ? ['rg_gk_a3_b'] : []);
+    b.pos = { x: 845, y: 400 };
+    w.obstacles = [{ id: 999, kind: 'pillar', variant: 0, pos: { x: 760, y: 400 }, radius: 20 }];
+    input(w, { a3: true }, right);
+    expect(w.serialize().players[0].rangerRoll?.remaining).toBeGreaterThan(0);
+    expect(b.hp).toBe(10000);
+    let contact = false;
+    for (let i = 0; i < 40 && p.glide; i++) {
+      input(w);
+      const burst = w.events.find(
+        (event) => event.t === 'skillArea' && event.area.style === 'rollBurst',
+      );
+      if (burst?.t === 'skillArea') {
+        contact = true;
+        expect(burst.area.origin).toEqual(p.pos);
+        expect(p.pos.x).toBeLessThan(760);
+        expect(b.hp).toBeLessThan(10000);
+      }
+    }
+    expect(contact).toBe(grand);
+    expect(w.serialize().players[0].rangerRoll).toBeUndefined();
+  },
+);

@@ -378,15 +378,28 @@ export class CreatureRig {
       this.blade?.style === 'savageBite'
         ? (this.preparingWeapon ? -0.13 * this.weaponSetup : 0.33 * (1 - this.bladePhase())) * R
         : 0;
-    this.view.pivot.set(
-      -bite * Math.cos(this.blade?.angle ?? 0),
-      -bite * Math.sin(this.blade?.angle ?? 0),
-    );
+    const roll = ctx.rangerRoll;
+    const tumble = roll ? clamp(1 - roll.remaining / roll.range, 0, 1) : 0;
+    const crouch = roll ? Math.sin(tumble * Math.PI) : 0;
     const recoil = Math.min(7, R * 0.12) * Math.max(0, 1 - this.recoilAge / 0.18) ** 2;
-    this.view.position.set(
-      recoil * Math.cos(this.recoilAngle),
-      recoil * Math.sin(this.recoilAngle) - R * (ctx.cheer?.lift ?? 0),
+    const release = this.rangedSlot === 'basic' ? this.rangedRelease : 0;
+    const lean = release * R * (this.spec.garment === 'warlock' ? -0.18 : 0.24);
+    this.view.pivot.set(
+      pos.x - bite * Math.cos(this.blade?.angle ?? 0),
+      pos.y - bite * Math.sin(this.blade?.angle ?? 0),
     );
+    this.view.position.set(
+      pos.x + recoil * Math.cos(this.recoilAngle) + lean * this.cos,
+      pos.y +
+        recoil * Math.sin(this.recoilAngle) -
+        R * (ctx.cheer?.lift ?? 0) +
+        lean * this.sin +
+        crouch * R * 0.3,
+    );
+    this.view.rotation = roll
+      ? Math.sin(tumble * Math.PI * 2) * (roll.dir.x >= 0 ? 0.83 : -0.83)
+      : 0;
+    this.view.scale.set(1 + crouch * 0.15, 1 - crouch * 0.42);
 
     // Screen-space velocity (EMA), with a teleport guard that re-seeds feet so a
     // blink doesn't stretch a limb across the arena for one frame.
@@ -577,6 +590,21 @@ export class CreatureRig {
     const shadowAt = this.bodyPoint(anchorLocal, R);
     contactShadow(this.gGround, shadowAt.x, shadowAt.y, R * 1.05, R * 0.5);
 
+    if (ctx.rangerRoll) {
+      const { dir } = ctx.rangerRoll;
+      for (let i = 0; i < 4; i++) {
+        const offset = (i - 1.5) * R * 0.31;
+        const back = R * (0.9 + i * 0.34);
+        this.gGround
+          .ellipse(
+            this.origin.x - dir.x * back - dir.y * offset,
+            this.origin.y - dir.y * back + dir.x * offset,
+            R * (0.27 + i * 0.065),
+            R * 0.16,
+          )
+          .fill({ color: 0xd2ae80, alpha: 0.52 - i * 0.09 });
+      }
+    }
     if (this.spec.tentacles) this.drawTentacles(R, timeSec, ctx);
     if (this.spec.legs) this.drawLegs(R, windupT, ctx, downed);
     if (this.spec.spine) this.drawSpine(R, timeSec, bodyScale, ctx);
@@ -626,12 +654,32 @@ export class CreatureRig {
           this.rangedSlot !== 'basic' || this.attackAge < 0,
         );
         const beat = this.rangedSlot === 'basic' ? this.rangedRelease : 0;
-        for (const offset of [-0.22, 0, 0.22]) {
-          if (beat <= 0) break;
+        if (beat > 0) {
+          const wrist = this.bardHand(1, R);
+          const flare = Math.max(11, R * 1.42);
           this.gDecor
-            .moveTo(strum.x + R * offset, strum.y + R * 0.15)
-            .lineTo(strum.x + R * (offset + 0.32), strum.y - R * (0.48 + beat * 0.18))
-            .stroke({ color: 0xffe4a7, alpha: beat * 0.85, width: Math.max(1, R * 0.06) });
+            .moveTo(strum.x - flare * 0.48, strum.y - flare * 0.67)
+            .quadraticCurveTo(
+              strum.x + flare * 0.71,
+              strum.y - flare * 0.56,
+              wrist.x + flare * 0.28,
+              wrist.y + flare * 0.52,
+            )
+            .stroke({
+              color: 0xffbb73,
+              alpha: beat * 0.9,
+              width: Math.max(2, R * 0.19),
+              cap: 'round',
+            });
+          this.gDecor
+            .moveTo(strum.x - flare * 0.06, strum.y - flare * 0.5)
+            .quadraticCurveTo(
+              strum.x + flare * 0.6,
+              strum.y - flare * 0.42,
+              wrist.x,
+              wrist.y + flare * 0.28,
+            )
+            .stroke({ color: 0xffeacc, alpha: beat, width: Math.max(1.2, R * 0.11), cap: 'round' });
         }
         this.drawFlourishBlade(R);
       }
@@ -948,22 +996,22 @@ export class CreatureRig {
         const beat = this.rangedRelease;
         switch (this.spec.garment) {
           case 'cleric':
-            hand.x += this.cos * R * 0.95 * beat;
-            hand.y += (this.sin * 0.95 - 0.7) * R * beat;
+            hand.x += this.cos * R * 1.7 * beat;
+            hand.y += (this.sin * 1.7 - 1.1) * R * beat;
             break;
           case 'druid':
-            hand.x += (this.cos * 0.75 + this.sin * 0.8) * R * beat;
-            hand.y += (this.sin * 0.75 - this.cos * 0.8 + 0.48) * R * beat;
+            hand.x += (this.cos * 1.05 + this.sin * 1.45) * R * beat;
+            hand.y += (this.sin * 1.05 - this.cos * 1.45 + 0.75) * R * beat;
             break;
           case 'sorcerer':
-            hand.x += (this.cos * 0.46 - this.sin * 0.9) * R * beat;
-            hand.y += (this.sin * 0.46 + this.cos * 0.9 - 0.45) * R * beat;
+            hand.x += (this.cos * 0.68 - this.sin * 1.55) * R * beat;
+            hand.y += (this.sin * 0.68 + this.cos * 1.55 - 0.75) * R * beat;
             break;
           case 'warlock':
             {
-              const curl = 0.94 - Math.min(1, this.attackAge / 0.23) * 1.42;
+              const curl = 1.48 - Math.min(1, this.attackAge / 0.23) * 2.32;
               hand.x += this.cos * R * curl * beat;
-              hand.y += (this.sin * curl - 0.93) * R * beat;
+              hand.y += (this.sin * curl - 1.48) * R * beat;
             }
             break;
         }
@@ -974,10 +1022,13 @@ export class CreatureRig {
         (this.spec.garment === 'monk' || (arm.side === -1 && this.casterCarry))
       )
         hand.y -= R * (arm.side === -1 ? ctx.cheer.left : ctx.cheer.right);
-      const reachScale = this.spec.garment && !downed ? 1.14 : 1;
+      const extension = this.rangedSlot === 'basic' || this.bowDraw > 0 ? 0.3 : 0;
+      const reachScale = this.spec.garment && !downed ? 1.14 + extension : 1;
       if (this.spec.garment && !downed) {
         hand = clampToReach(hand, shoulder, (arm.l1 + arm.l2) * R * reachScale * 0.98);
       }
+      if (arm.side === -1 && this.rangedSlot === 'basic' && !downed)
+        this.drawRangedHandAccent(hand, R);
       const bendRef = arm.bendOutward
         ? center
         : { x: center.x + this.cos * 6 * R, y: center.y + this.sin * 6 * R };
@@ -1014,6 +1065,46 @@ export class CreatureRig {
         this.gFront.circle(hand.x, hand.y, 0.13 * R).fill({ color: 0xe0b994 });
         this.gFront.circle(elbow.x, elbow.y, 0.095 * R).fill({ color: 0x8b719b });
       }
+    }
+  }
+
+  private drawRangedHandAccent(hand: Vec2, radius: number): void {
+    const fade = this.rangedRelease;
+    if (fade < 0.12) return;
+    const r = Math.max(9, radius) * (1.08 - 0.17 * fade);
+    const g = this.gDecor;
+    const width = Math.max(1.4, r * 0.12);
+    const { x, y } = hand;
+    switch (this.spec.garment) {
+      case 'cleric':
+        g.moveTo(x - r * 0.65, y)
+          .lineTo(x + r * 0.65, y)
+          .moveTo(x, y - r * 0.62)
+          .lineTo(x, y + r * 0.48)
+          .stroke({ color: 0xffe6b1, width, alpha: fade * 0.94 });
+        break;
+      case 'druid':
+        for (const side of [-1, 1]) {
+          g.moveTo(x, y)
+            .quadraticCurveTo(x + side * r * 0.83, y - r * 0.07, x + side * r * 0.75, y - r * 0.69)
+            .quadraticCurveTo(x + side * r * 0.25, y - r * 0.65, x, y)
+            .fill({ color: 0xb8e0a0, alpha: fade * 0.9 });
+        }
+        break;
+      case 'sorcerer':
+        g.moveTo(x - r * 0.66, y + r * 0.62)
+          .lineTo(x + r * 0.04, y)
+          .lineTo(x - r * 0.18, y - r * 0.3)
+          .lineTo(x + r * 0.65, y - r * 0.56)
+          .stroke({ color: 0xffb1f2, width, alpha: fade * 0.94 });
+        break;
+      case 'warlock':
+        g.moveTo(x + r * 0.58, y - r * 0.56)
+          .lineTo(x - r * 0.52, y - r * 0.25)
+          .lineTo(x - r * 0.15, y + r * 0.72)
+          .lineTo(x + r * 0.45, y + r * 0.31)
+          .stroke({ color: 0xb5e3cc, width: width * 1.15, alpha: fade * 0.88 });
+        break;
     }
   }
 
@@ -1080,7 +1171,7 @@ export class CreatureRig {
     const angle =
       turningWeapon && !this.blade
         ? rest + Math.atan2(Math.sin(delta), Math.cos(delta)) * active
-        : staffAngle - rainLift * 0.94;
+        : staffAngle - rainLift * 1.42;
     const fx = Math.cos(angle);
     const fy = Math.sin(angle);
     const perp = { x: -fy, y: fx };
@@ -1180,6 +1271,17 @@ export class CreatureRig {
           .lineTo(nock.x, nock.y)
           .lineTo(bot.x, bot.y)
           .stroke({ width: Math.max(0.8, 0.045 * R), color: metal });
+        if (this.bowDraw > 0) {
+          const count = Math.min(5, ctx.drawProjectileCount ?? 1);
+          for (let i = 0; i < count; i++) {
+            const spread = (i - (count - 1) / 2) / Math.max(1, (count - 1) / 2);
+            const tip = at(0.83, spread * 0.56);
+            g.moveTo(nock.x, nock.y)
+              .lineTo(tip.x, tip.y)
+              .stroke({ color: 0xf3e0ad, width: Math.max(1.4, 0.1 * R) });
+            g.circle(tip.x, tip.y, Math.max(1.3, R * 0.12)).fill({ color: 0xfff0cd });
+          }
+        }
         break;
       }
       case 'staff': {
@@ -1404,18 +1506,18 @@ export class CreatureRig {
     const shot = this.rangedSlot === 'basic' || this.rangedSlot === 'a1';
     const release = shot ? this.rangedRelease : 0;
     const rain = this.rangedSlot === 'a2' ? this.rangedRelease : 0;
-    const pull = this.bowDraw + release * 0.42;
+    const pull = this.bowDraw * 1.32 + release * 0.55;
     const reach = this.carryBlend;
     const point = this.bodyPoint(
       side === 1
         ? { x: 0.88 + pull * 0.55 + release * 0.3, y: 0.7 - pull * 0.38 }
-        : { x: -0.18 + reach * 0.42 - pull * 1.03, y: -0.91 + reach * 0.39 + pull * 0.58 },
+        : { x: -0.18 + reach * 0.42 - pull * 1.38, y: -0.91 + reach * 0.39 + pull * 0.58 },
       r,
     );
     point.y -=
       r *
       (side === 1
-        ? 0.52 + pull * 0.36 + rain * 0.92
+        ? 0.52 + pull * 0.36 + rain * 1.35
         : 0.18 + reach * 0.34 + pull * 0.46 + rain * 0.62);
     return this.fitRaisedHand(point, side, r);
   }
@@ -1482,8 +1584,8 @@ export class CreatureRig {
     if (side === 1 && !lute && this.rangedSlot === 'basic' && this.attackAge >= 0) {
       const travel = clamp(this.attackAge / 0.225, 0, 1);
       const sweep = Math.sin((0.22 + travel * 0.78) * Math.PI);
-      point.x += r * (this.cos * 0.48 + this.sin * 0.46) * sweep;
-      point.y += r * (this.sin * 0.48 - this.cos * 0.46 + 0.63) * sweep;
+      point.x += r * (this.cos * 0.77 + this.sin * 0.83) * sweep;
+      point.y += r * (this.sin * 0.77 - this.cos * 0.83 + 0.85) * sweep;
     }
     if (side === 1 && !lute && this.cheerPose) {
       point.x += this.cos * r * this.cheerPose.right * 3;
@@ -1598,7 +1700,10 @@ export class CreatureRig {
     return clampToReach(
       { x: point.x, y: point.y - radius * lift },
       shoulder,
-      (arm.l1 + arm.l2) * radius * 1.14 * 0.98,
+      (arm.l1 + arm.l2) *
+        radius *
+        (this.rangedSlot === 'basic' || this.bowDraw > 0 ? 1.44 : 1.14) *
+        0.98,
     );
   }
 
