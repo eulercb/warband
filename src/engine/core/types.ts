@@ -1028,7 +1028,7 @@ export interface GuidanceCast {
 }
 export interface Projectile {
   impactStyle?: 'fireball';
-  presentation?: 'arcaneBolt' | 'frostArrow';
+  presentation?: 'arcaneBolt' | 'frostArrow' | 'railshot';
   reflected?: boolean;
   guidance?: GuidanceCast;
   aimPoint?: Vec2;
@@ -1562,6 +1562,7 @@ export interface SkillArea {
     | 'lightning'
     | 'frostNova'
     | 'fireball'
+    | 'rollBurst'
     | 'blinkDepart'
     | 'blinkArrive';
   contacts?: { id: EntityId; pos: Vec2; radius: number }[];
@@ -1796,6 +1797,8 @@ export interface PlayerView {
    * accurate progress ring even under Focus; 0 when not casting. */
   castTimerMax: number;
   drawingProjectile?: boolean;
+  drawProjectileCount?: number;
+  rangerRoll?: { dir: Vec2; remaining: number; range: number };
   /** Live participation score (prior bosses + this fight), for HUD / pause menu. */
   score: number;
   /** Chosen subclass-skill ids (so clients render + label the sub1/sub2 buttons). */

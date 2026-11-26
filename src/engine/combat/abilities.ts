@@ -225,6 +225,7 @@ function applyDashLanding(world: World, p: Player, ab: PlayerAbilityDef): void {
   const radius = ab.radius ?? 120;
   emitSkillArea(world, p.id, color, {
     kind: 'circle',
+    style: p.classId === 'ranger' && ab.slot === 'a3' ? 'rollBurst' : undefined,
     origin: { ...p.pos },
     angle: 0,
     range: 0,
@@ -1959,7 +1960,13 @@ function spawnPlayerProjectile(
   const proj: Projectile = {
     ...(kind !== 'fireball' && o.returningSource?.basicPresentation === 'arcaneBolt'
       ? { presentation: 'arcaneBolt' as const }
-      : {}),
+      : kind === 'arrow' &&
+          o.returningSource?.slot === 'basic' &&
+          (o.pierce ?? 0) >= 3 &&
+          p.classId === 'ranger' &&
+          p.charUpgradeIds?.includes('rg_gk_basic_b')
+        ? { presentation: 'railshot' as const }
+        : {}),
     impactStyle: o.returningSource?.visualStyle === 'fireball' ? 'fireball' : undefined,
     guidance: o.returningSource?.guidanceCast,
     id: world.allocId(),

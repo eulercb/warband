@@ -4385,6 +4385,15 @@ export class World {
       castTimer: p.castTimer,
       castTimerMax: p.castTimerMax,
       drawingProjectile: p.castAbility?.kind === 'projectile' || undefined,
+      drawProjectileCount: p.castAbility?.projCount,
+      rangerRoll:
+        p.classId === 'ranger' && p.glide?.ab.slot === 'a3'
+          ? {
+              dir: { ...p.glide.dir },
+              remaining: p.glide.remaining,
+              range: p.glide.ab.range ?? 220,
+            }
+          : undefined,
       weaponWindup: weaponWindupView(this, p),
       score: Math.round(this.playerScore(p)),
       // Only the ACTIVE class's subclass skills cross the wire (item 15): the HUD
