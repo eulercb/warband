@@ -1,3 +1,4 @@
+import { weaponWindup } from '../content/weaponTiming';
 import { advanceMeleeSequences, type MeleeSequence } from '../combat/abilities';
 import { visitRhapsodyRallies } from '../combat/support';
 import {
@@ -357,6 +358,9 @@ import {
 import { decayThreat, nthThreatTarget } from '../combat/threat';
 import {
   resolvePlayerAbility,
+  advanceWeaponSwing,
+  queueWeaponSwing,
+  weaponWindupView,
   findInfernalClaimTarget,
   resolveBossAbility,
   beamTick,
@@ -1296,6 +1300,7 @@ export class World {
     tickRefuges(this, dt);
     maintainFieldTransplants(this);
     this.maintainCloseBursts();
+    for (const p of this.players) advanceWeaponSwing(this, p);
     this.applyInputs(dt, inputs);
     this.stepGlides(dt); // item 2: advance in-progress dash/leap glides host-side
     this.stepShoves(dt); // Hero slides advance here; enemy impulses combine after hits.
@@ -1570,7 +1575,11 @@ export class World {
     if (tryFieldTransplant(this, p, slot, fresh)) return;
     if (tryShadowReturn(this, p, slot, fresh)) return;
     if (tryDiscardOrigin(this, p, slot, fresh)) return;
-    if ((p.cooldowns[slot] ?? 0) > 0) return;
+    if (
+      (p.cooldowns[slot] ?? 0) > 0 ||
+      (p.weaponWindup && weaponWindup(original.basicPresentation))
+    )
+      return;
     if (hasBuff(p, 'silence') && slot !== 'basic' && !carriesDispel(original)) return;
     if (hasBuff(p, 'stun') || p.castTimer > 0) return;
     if (
@@ -1603,6 +1612,7 @@ export class World {
     p.rechargeLocks[p.classId] ??= {};
     p.rechargeLocks[p.classId]![slot] = rechargeFloor(ab, slot, p.castMult);
     if (ab.castTime && ab.castTime > 0) {
+      delete p.weaponWindup;
       p.castTimer = ab.castTime * p.castMult;
       p.castTimerMax = p.castTimer; // full duration, so the render's cast bar is accurate under Focus
       p.castSlot = slot;
@@ -1620,7 +1630,8 @@ export class World {
       // Commit before instant effects: refunds earned by this cast must not be overwritten.
       p.cooldowns[slot] = nextCd;
       if (pursuit && !pursuit.blocked) startVengeancePursuit(this, p, ab, pursuit);
-      else resolvePlayerAbility(this, p, slot, moveDir, ab);
+      else if (!queueWeaponSwing(this, p, ab, moveDir))
+        resolvePlayerAbility(this, p, slot, moveDir, ab);
     }
   }
 
@@ -1683,6 +1694,7 @@ export class World {
     p.shadowCommitEpoch = (p.shadowCommitEpoch ?? 0) + 1;
     p.transplantEpoch = (p.transplantEpoch ?? 0) + 1;
     p.castEpoch = (p.castEpoch ?? 0) + 1;
+    delete p.weaponWindup;
     p.fontEpoch = (p.fontEpoch ?? 0) + 1;
     delete p.guidance;
     delete p.fieldTransplants;
@@ -3948,6 +3960,7 @@ export class World {
         }
         invalidateAncestralRelay(p);
         p.castEpoch = (p.castEpoch ?? 0) + 1;
+        delete p.weaponWindup;
         p.state = 'downed';
         p.hp = 0;
         p.downedTimer = DOWNED_BLEEDOUT;
@@ -4371,6 +4384,7 @@ export class World {
       castSlot: p.castSlot,
       castTimer: p.castTimer,
       castTimerMax: p.castTimerMax,
+      weaponWindup: weaponWindupView(this, p),
       score: Math.round(this.playerScore(p)),
       // Only the ACTIVE class's subclass skills cross the wire (item 15): the HUD
       // binds them to sub1/sub2 by index, so a multiclass hero shows the right two.

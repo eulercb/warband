@@ -136,8 +136,8 @@ matched camera, viewport, inputs and effect age wherever practical.
 When the review supports a coherent plan and remaining choices are routine, the
 owner authorizes proceeding to implementation, validation and a reviewable result.
 
-Run the final TypeScript check after all code and test edits, including lint
-fixes. Passing Vitest or ESLint does not establish TypeScript validity.
+Run ESLint and the TypeScript check after the final code and test edits, including
+coverage follow-ups. Passing Vitest does not establish lint or TypeScript validity.
 
 After pushing a fix, stop once local verification is complete and only GitHub
 checks remain. Do not poll/watch CI or hold the conversation open unless the
@@ -199,3 +199,10 @@ animation set. Verify a real basic and linked grand with the production rig.
 At each actual impact, align authoritative gameplay delivery, the contact pose,
 and the visible reach or hit effect. Use a separate clearly identifiable
 telegraph when advance notice is part of the mechanic.
+
+Treat damage before the visible swing or hit as a delivery defect. Check three
+moments on every authored attack: preparation without contact, the first
+damage tick with its matching pose and effect, and recovery. For changed
+timings, use normal input and record health and the visual cue on both sides
+of the release. Test the resolved grand and retained Forge delivery when they
+change reach, timing or riders. Flag any deliberate exception in playtest notes.

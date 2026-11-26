@@ -565,6 +565,7 @@ describe('hybrid upgrades', () => {
     boss.pos = { x: 800, y: 500 };
     k.pos = { x: 800, y: 560 }; // inside Cleave range
     w.step(DT, new Map([['k', inp({ aim: { x: 0, y: -1 }, buttons: buttons({ basic: true }) })]]));
+    w.step(0.1, new Map());
     expect(boss.buffs.some((b) => b.kind === 'moveSpeed' && b.mult < 1)).toBe(true);
   });
 });

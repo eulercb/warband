@@ -199,6 +199,7 @@ export class RigLayer {
       const facing = celebrate
         ? Math.atan2(p.aim.y, p.aim.x) + Math.sin((cheer ?? 0) * 2.6) * 2.4
         : Math.atan2(p.aim.y, p.aim.x);
+      node.rig.presentWeaponWindup(p.weaponWindup, dtMs / 1000);
       node.rig.update(bodyScr, facing, scale, dtMs, timeSec, {
         color: CLASS_COLORS[p.classId] ?? 0xffffff,
         flash: this.fx.flashAmount(p.id),

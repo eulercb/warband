@@ -56,6 +56,10 @@ it.each(['hunt', 'shackle', 'charge', 'smite'])(
     expect(w.serialize().players[0].vengeancePursuit?.blocked).toBe(false);
     step(true);
     expect(p.glide?.vengeancePursuit?.targetId).toBe(b.id);
+    expect(w.serialize().players[0].weaponWindup).toMatchObject({
+      style: 'holyStrike',
+      progress: 0,
+    });
     expect(b.hp).toBe(10000);
     for (let i = 0; i < 45; i++) step();
     expect(p.pos.x).toBeGreaterThan(550);
@@ -70,6 +74,8 @@ it('an in-range swing takes priority and holding autofire never launches pursuit
   const { p, b, step } = setup();
   b.pos.x = 610;
   step(true, true);
+  expect(b.hp).toBe(10000);
+  for (let i = 0; i < 8; i++) step();
   expect(b.hp).toBeLessThan(10000);
   b.pos.x = 730;
   for (let i = 0; i < 250; i++) step(true, true);
@@ -220,6 +226,8 @@ it.each(['', 'pa_vengeance_g_a', 'pa_vengeance_g_b'])(
     const aim = { x: 1, y: 0 };
     b.pos.x = 610;
     step(true);
+    expect(b.hp).toBe(10000);
+    for (let i = 0; i < 8; i++) step();
     expect(b.hp).toBeLessThan(10000);
     for (let i = 0; i < 80; i++) step(false, false, aim, { x: -1, y: 0 });
     while (p.cooldowns.basic > 0) step();
@@ -238,3 +246,14 @@ it.each(['', 'pa_vengeance_g_a', 'pa_vengeance_g_b'])(
     }
   },
 );
+
+it('prepares Holy Strike during pursuit even when the cone uses its default width', () => {
+  const { w, p, step } = setup();
+  p.abilities!.basic = { ...p.abilities!.basic, halfAngleDeg: undefined };
+  step(true);
+  step();
+  const preparation = w.serialize().players[0].weaponWindup;
+  expect(preparation).toMatchObject({ style: 'holyStrike', halfAngle: Math.PI / 4 });
+  expect(preparation?.progress).toBeGreaterThan(0);
+  expect(preparation?.progress).toBeLessThan(1);
+});

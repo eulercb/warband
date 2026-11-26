@@ -10,14 +10,16 @@ export function isBladeArea(style: SkillArea['style']): style is BladeAreaStyle 
     style === 'holyStrike' ||
     style === 'daggerSlash' ||
     style === 'monkPalm' ||
-    style === 'axeSwing'
+    style === 'axeSwing' ||
+    style === 'bardFlourish' ||
+    style === 'savageBite'
   );
 }
 
 export function bladeSweepSeconds(style: BladeAreaStyle, halfAngle: number): number {
   if (halfAngle >= Math.PI) return style === 'daggerSlash' ? WHIRLING_BLADES_SECONDS : 0.32;
   if (style === 'daggerSlash') return 0.21;
-  if (style === 'monkPalm') return 0.11;
+  if (style === 'monkPalm' || style === 'savageBite') return 0.11;
   if (style === 'axeSwing') return 0.18;
   return style === 'holyStrike' ? 0.16 : 0.18;
 }
@@ -28,6 +30,8 @@ const MATERIAL = {
   daggerSlash: { body: 0x764e9a, light: 0xe9bdff, ribbons: [0.72, 0.87] },
   monkPalm: { body: 0x79b9a8, light: 0xbdf6de, ribbons: [0.76, 0.9] },
   axeSwing: { body: 0xbb6d46, light: 0xffd8ac, ribbons: [0.55, 0.77] },
+  bardFlourish: { body: 0x906640, light: 0xffe2ae, ribbons: [0.67, 0.87] },
+  savageBite: { body: 0x6e9367, light: 0xffecc6, ribbons: [] },
   moonClaw: { body: 0xa985d7, light: 0xf0d7ff, ribbons: [0.57, 0.72, 0.85] },
 };
 
@@ -69,6 +73,29 @@ export function drawMeleeReach(
       .fill({ color: material.body, alpha: fade * alpha });
   }
 
+  if (style === 'savageBite') {
+    // Two jaws close inward from the edges of the actual cone.
+    for (const side of [-1, 1]) {
+      const jaw = area.angle + side * halfAngle * (1 - sweep * 0.8);
+      for (const [radius, size] of [
+        [0.91, 0.2],
+        [0.69, 0.15],
+        [0.46, 0.1],
+      ]) {
+        g.moveTo(...at(jaw + side * 0.1, r * (radius - size / 2)))
+          .quadraticCurveTo(
+            ...at(jaw - side * 0.24, r * radius),
+            ...at(jaw - side * 0.28, r * (radius + size / 2)),
+          )
+          .quadraticCurveTo(
+            ...at(jaw - side * 0.02, r * (radius + size / 2)),
+            ...at(jaw + side * 0.1, r * radius),
+          )
+          .closePath()
+          .fill({ color: material.light, alpha: fade * 0.9 });
+      }
+    }
+  }
   material.ribbons.forEach((lower, index) => {
     if (
       (style === 'daggerSlash' || style === 'monkPalm') &&

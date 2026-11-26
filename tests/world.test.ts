@@ -85,6 +85,8 @@ describe('world: cooldown gating', () => {
 
     pin();
     w.step(DT, new Map([['k', inp({ aim: { x: 0, y: -1 }, buttons: buttons({ basic: true }) })]]));
+    expect(w.serialize().players[0].weaponWindup?.style).toBe('cleave');
+    w.step(0.1, new Map());
     const hpAfterFirst = boss.hp;
     expect(hpAfterFirst).toBeLessThan(2600); // cleave landed
     expect(k.cooldowns.basic).toBeGreaterThan(0);

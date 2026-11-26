@@ -60,6 +60,7 @@ describe('torus: combat across the seam', () => {
     const before = w.boss!.hp;
     // Aim +x (the SHORT way to the boss across the seam) and swing.
     w.step(DT, new Map([['a', inp({ aim: { x: 1, y: 0 }, buttons: buttons({ basic: true }) })]]));
+    w.step(0.1, new Map());
     expect(w.boss!.hp).toBeLessThan(before);
   });
 });
@@ -189,6 +190,8 @@ describe('upgrades apply to a spawned hero', () => {
     plain.step(DT, cmd);
     const buffedBefore = buffed.boss!.hp;
     buffed.step(DT, cmd);
+    plain.step(0.1, new Map());
+    buffed.step(0.1, new Map());
     const plainDmg = plainBefore - plain.boss!.hp;
     const buffedDmg = buffedBefore - buffed.boss!.hp;
     expect(buffedDmg).toBeGreaterThan(plainDmg);

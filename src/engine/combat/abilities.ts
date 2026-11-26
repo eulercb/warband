@@ -1,3 +1,4 @@
+import { weaponWindup } from '../content/weaponTiming';
 import {
   FLURRY_INTERVAL,
   FLURRY_SHARE,
@@ -90,7 +91,7 @@ import type { World } from '../world/world';
 import type { BossAbilityDef } from '../content/monsters';
 import type { PlayerAbilityDef } from '../content/classes';
 import type { AbilityComponents, EffectComponent, ZoneSpec, BuffTarget } from '../content/forge';
-import { getClass } from '../content/classes';
+import { getClass, resolvedPalmSweep, resolvedShadowCommit } from '../content/classes';
 import { personallyCursed } from '../core/curses';
 import { grantAbsorption, healthScaledAbsorption } from './absorption';
 import {
@@ -340,6 +341,86 @@ export function vengeancePursuit(world: World, p: Player, original = abilityForS
   return { target, dir, end, blocked: !!firstObstacleStop(world, p.pos, end, p.radius, false) };
 }
 
+export interface PendingWeaponSwing {
+  ability: PlayerAbilityDef;
+  move: Vec2;
+  started: number;
+  duration: number;
+  pose: Omit<import('../core/types').WeaponWindupView, 'progress'>;
+}
+
+export function queueWeaponSwing(
+  world: World,
+  p: Player,
+  ab: PlayerAbilityDef,
+  move: Vec2,
+): boolean {
+  const style = ab.basicPresentation;
+  const duration = weaponWindup(style);
+  if (
+    !style ||
+    style === 'arcaneBolt' ||
+    !duration ||
+    ab.kind !== 'meleeCone' ||
+    resolvedShadowCommit(ab) ||
+    resolvedPalmSweep(ab)
+  )
+    return false;
+  const aim = { ...(ab.flowAim ?? p.aim) };
+  p.weaponWindup = {
+    ability: { ...ab, flowAim: aim },
+    move: { ...move },
+    started: world.elapsed,
+    duration,
+    pose: { style, angle: angleOf(aim), halfAngle: ((ab.halfAngleDeg ?? 45) * Math.PI) / 180 },
+  };
+  return true;
+}
+
+export function advanceWeaponSwing(world: World, p: Player): void {
+  const pending = p.weaponWindup;
+  if (!pending) return;
+  if (
+    p.state !== 'alive' ||
+    p.hp <= 0 ||
+    p.shove ||
+    p.glide ||
+    hasBuff(p, 'stun') ||
+    world.scene !== null ||
+    (pending.ability.slot !== 'basic' && hasBuff(p, 'silence'))
+  ) {
+    delete p.weaponWindup;
+    return;
+  }
+  if (world.elapsed - pending.started + 1e-9 < pending.duration) return;
+  delete p.weaponWindup;
+  resolvePlayerAbility(world, p, pending.ability.slot, pending.move, pending.ability);
+}
+
+export function weaponWindupView(
+  world: World,
+  p: Player,
+): import('../core/types').WeaponWindupView | undefined {
+  const pending = p.weaponWindup;
+  if (pending)
+    return {
+      ...pending.pose,
+      progress: Math.min(1, (world.elapsed - pending.started) / pending.duration),
+    };
+  const glide = p.glide;
+  if (glide?.vengeancePursuit)
+    return {
+      style: 'holyStrike',
+      angle: angleOf(glide.dir),
+      halfAngle: ((glide.ab.halfAngleDeg ?? 45) * Math.PI) / 180,
+      progress: Math.min(
+        1,
+        (world.elapsed - glide.vengeancePursuit.started) / weaponWindup('holyStrike'),
+      ),
+    };
+  return undefined;
+}
+
 export function startVengeancePursuit(
   world: World,
   p: Player,
@@ -353,7 +434,11 @@ export function startVengeancePursuit(
     leap: false,
     ab,
     maneuverClass: p.classId,
-    vengeancePursuit: { targetId: candidate.target.id, epoch: p.castEpoch ?? 0 },
+    vengeancePursuit: {
+      targetId: candidate.target.id,
+      epoch: p.castEpoch ?? 0,
+      started: world.elapsed,
+    },
   };
 }
 

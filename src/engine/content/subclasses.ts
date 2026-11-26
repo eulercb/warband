@@ -357,7 +357,11 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'Savage Bite',
           '🦷',
           'A vicious close strike for 44',
-          melee('Savage Bite', 6, 44, { range: 64, lifestealFrac: 0.2 }),
+          melee('Savage Bite', 6, 44, {
+            range: 64,
+            lifestealFrac: 0.2,
+            basicPresentation: 'savageBite',
+          }),
         ),
       ],
     },
@@ -973,7 +977,11 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'Blade Flourish',
           '🗡️',
           'A sweeping strike for 42',
-          melee('Blade Flourish', 6, 42, { range: 78, bardSong: 'discord' }),
+          melee('Blade Flourish', 6, 42, {
+            range: 78,
+            bardSong: 'discord',
+            basicPresentation: 'bardFlourish',
+          }),
         ),
         sk(
           'ba_valor_inspire',
