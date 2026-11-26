@@ -1,5 +1,5 @@
 import type { Graphics } from 'pixi.js';
-import type { PlayerView, Vec2 } from '../../engine/core/types';
+import type { DruidGesture, PlayerView, Vec2 } from '../../engine/core/types';
 import {
   animalFoot,
   blendAnimalFacing,
@@ -18,6 +18,7 @@ export function drawMoonBear(
   strike?: AnimalStrike,
   swipeStrike?: AnimalStrike,
   cheer?: number,
+  special?: { gesture: DruidGesture; strength: number },
 ): void {
   const r = Math.max(11, 24 * scale);
   const elapsed = (beat?: AnimalStrike) => (beat ? time * 1000 - beat.started : Infinity);
@@ -32,8 +33,13 @@ export function drawMoonBear(
   const phase = motion?.phase ?? 0;
   const stride = (motion?.stride ?? 0) * (1 - swipe * 0.65);
   const rear = cheer == null ? 0 : Math.pow((1 - Math.cos(cheer * 4)) / 2, 2);
-  const bob = Math.cos(phase * 2) * stride * 0.095 + Math.sin(time * 3) * 0.025;
-  const rock = Math.sin(phase) * stride * 0.11 - cast * 0.18;
+  const power = special?.strength ?? 0;
+  const plant = special?.gesture === 'plant' ? power : 0;
+  const mend = special?.gesture === 'mend' ? power : 0;
+  const wind = special?.gesture === 'wind' ? power : 0;
+  const bob =
+    Math.cos(phase * 2) * stride * 0.095 + Math.sin(time * 3) * 0.025 + wind * 0.22 - mend * 0.12;
+  const rock = Math.sin(phase) * stride * 0.11 - cast * 0.18 + Math.sin(time * 16) * wind * 0.21;
   const at = (x: number, y: number, h = 0): [number, number] => [
     screen.x + (x * c - y * s) * r,
     screen.y + ((x * s + y * c) * 0.63 - h - Math.max(0, x + 0.65) * rear * 0.65) * r,
@@ -54,10 +60,11 @@ export function drawMoonBear(
     const step = animalFoot(pawPhase, motion?.travel ?? facing, facing, stride * 0.34);
     const swings = lead && side === (c >= 0 ? 1 : -1);
     const reach = swings ? swipe : 0;
-    const launch = lead && !swings ? cast : 0;
+    const launch = lead && !swings ? cast + plant * 0.71 : 0;
     const foot = at(
       fore + step.x + reach * (0.65 + Math.sin(swing * Math.PI) * 0.62) + launch * 0.93,
-      side * (0.51 + reach * (0.89 - swing * 2.15) + launch * 0.36) + step.y,
+      side * (0.51 + reach * (0.89 - swing * 2.15) + launch * 0.36 + wind * 0.49 + mend * 0.25) +
+        step.y,
       step.lift * stride * 0.24 + reach * 0.46 + launch * 0.72 + (lead ? rear * 0.65 : 0),
     );
     const shoulder = at(fore, side * 0.36 + rock, 0.54 + bob + reach * 0.22 + launch * 0.24);
@@ -80,7 +87,7 @@ export function drawMoonBear(
   leg(-0.65, -far);
   leg(0.55, -far);
   const head = () => {
-    const rise = bob + rock * 0.45 + swipe * 0.11;
+    const rise = bob + rock * 0.45 + swipe * 0.11 - plant * 0.17 - mend * 0.57;
     for (const side of [far, -far]) {
       body(0.79, side * 0.32, 1.13 + rise, 0.19, 0.19, 0x746484);
       body(0.8, side * 0.33, 1.14 + rise, 0.09, 0.09, 0xaca0be);
@@ -121,6 +128,19 @@ export function drawMoonBear(
           width: r * 0.075,
           cap: 'round',
         });
+    }
+  }
+
+  if (power > 0.12) {
+    const [px, py] = at(plant ? 1.24 : 0.8, 0, wind ? 1.48 : 0.26);
+    for (let i = 0; i < 3; i++) {
+      const theta = (i - 1) * 0.74 + time * (wind ? 8 : 0);
+      const x = px + Math.cos(theta) * r * (1 - power * 0.55);
+      const y = py - r * (0.19 + i * 0.18) + Math.sin(theta) * r * 0.3;
+      g.ellipse(x, y, Math.max(2, r * 0.2), Math.max(1.3, r * 0.105)).fill({
+        color: mend ? 0xffdbb0 : wind ? 0xd4e4c5 : 0xbadc87,
+        alpha: power * 0.95,
+      });
     }
   }
 

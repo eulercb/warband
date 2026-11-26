@@ -733,6 +733,16 @@ export function resolvePlayerAbility(
         : ab.kind === 'groundZone' && ab.zoneKind === 'rainOfArrows'
           ? 'arrowRain'
           : undefined,
+    druidGesture:
+      p.classId !== 'druid'
+        ? undefined
+        : ab.kind === 'groundZone'
+          ? 'plant'
+          : ab.kind === 'heal'
+            ? 'mend'
+            : ab.kind === 'pbaoe' && slot === 'a3'
+              ? 'wind'
+              : undefined,
     sourceId: p.id,
     pos: { ...p.pos },
     side: 'player',
@@ -1361,7 +1371,13 @@ export function resolveBurstAt(
   if (!hitIds)
     emitSkillArea(world, p.id, CLASS_COLORS[p.classId] ?? 0xffffff, {
       kind: 'circle',
-      style: ab.visualStyle,
+      style:
+        ab.visualStyle ??
+        (p.classId === 'druid' && ab.slot === 'a3'
+          ? ab.pull
+            ? 'druidTempest'
+            : 'druidCyclone'
+          : undefined),
       origin: { ...origin },
       angle: 0,
       range: 0,
@@ -1966,7 +1982,12 @@ function spawnPlayerProjectile(
           p.classId === 'ranger' &&
           p.charUpgradeIds?.includes('rg_gk_basic_b')
         ? { presentation: 'railshot' as const }
-        : {}),
+        : kind === 'thorn' &&
+            o.returningSource?.slot === 'basic' &&
+            (o.pierce ?? 0) >= 2 &&
+            p.charUpgradeIds?.includes('dr_gk_basic_b')
+          ? { presentation: 'brambleSpear' as const }
+          : {}),
     impactStyle: o.returningSource?.visualStyle === 'fireball' ? 'fireball' : undefined,
     guidance: o.returningSource?.guidanceCast,
     id: world.allocId(),
@@ -2119,6 +2140,11 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
     color: o.color,
   };
   const owner = o.side === 'player' && world.players.find((p) => p.id === o.ownerId);
+  if (o.recovery) zone.natureArt = 'grove';
+  else if (owner && owner.classId === 'druid') {
+    if (o.kind === 'entangle') zone.natureArt = 'vines';
+    if (o.kind === 'sanctuary') zone.natureArt = 'grove';
+  }
   if (
     !o.rally &&
     owner &&

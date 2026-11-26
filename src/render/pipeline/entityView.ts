@@ -580,6 +580,26 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
     g.poly([...at(9), ...at(0, -3.8), ...at(-5), ...at(0, 1.1)]).fill({ color: 0xf2ddff });
     return;
   }
+  if (pr.presentation === 'brambleSpear') {
+    g.moveTo(...at(-39))
+      .quadraticCurveTo(...at(-24, 6), ...at(-8, -1))
+      .stroke({ color: 0x81a963, alpha: 0.66, width: Math.max(1.8, scale * 3) });
+    g.poly([
+      ...at(14),
+      ...at(1, -5),
+      ...at(-8, -1),
+      ...at(-24, -3),
+      ...at(-18, 0),
+      ...at(-25, 5),
+      ...at(-6, 2),
+      ...at(1, 5),
+    ])
+      .fill({ color: 0xb5c475 })
+      .stroke({ color: 0x365136, width: Math.max(1, scale * 1.5) });
+    for (const side of [-1, 1])
+      g.poly([...at(-6), ...at(-18, side * 7), ...at(-14, side * 2)]).fill({ color: 0xe2e5a1 });
+    return;
+  }
   if (pr.presentation === 'railshot') {
     g.poly([...at(-52, -2), ...at(-11, -3), ...at(2), ...at(-12, 3)]).fill({
       color: 0xe3ae63,
@@ -796,6 +816,73 @@ function drawArrowRain(
   }
 }
 
+function drawNatureField(
+  g: Graphics,
+  z: ZoneView,
+  x: number,
+  y: number,
+  r: number,
+  scale: number,
+  time: number,
+): void {
+  const guarded = z.natureCanopy ?? false;
+  const flowers = z.natureArt === 'grove';
+  const fade = zoneFadeAlpha(z.remaining, z.duration);
+  if (z.armFrom && z.armTotal && (z.armRemaining ?? 0) > 0) {
+    const t = clamp(1 - (z.armRemaining ?? 0) / z.armTotal, 0, 1);
+    const delta = torusSub(z.armFrom, z.pos);
+    const px = x + delta.x * scale * (1 - t);
+    const py = y + delta.y * scale * (1 - t) - Math.sin(t * Math.PI) * 36;
+    g.poly([px - 7, py + 2, px - 3, py - 6, px + 7, py - 3, px + 3, py + 6])
+      .fill({ color: 0xe2b871 })
+      .stroke({ width: 1.25, color: 0x48392c });
+    for (let i = 0; i < 5; i++) {
+      const a = i * Math.PI * 0.4;
+      g.ellipse(x + Math.cos(a) * r * 0.84, y + Math.sin(a) * r * 0.84, 3.8, 2.5).fill({
+        color: 0xc4d497,
+        alpha: 0.55 + t * 0.36,
+      });
+    }
+    return;
+  }
+  if (fade <= 0) return;
+  const growth = Math.min(1, (z.duration - z.remaining) / 0.24);
+  const width = Math.max(1.5, r * 0.033);
+  const petals = flowers ? 9 : 12;
+  for (let i = 0; i < petals; i++) {
+    const a = i * 2.399963 + (z.id % 7) * 0.21;
+    const rad = r * Math.sqrt((i + 0.6) / petals);
+    const px = x + Math.cos(a) * rad;
+    const py = y + Math.sin(a) * rad;
+    const lift = Math.max(7, r * (guarded ? 0.33 : 0.23)) * (0.46 + growth * 0.54);
+    const sway = Math.sin(time * 3.8 + i) * lift * 0.19;
+    const bend = Math.cos(a) * lift * 0.51 + sway;
+    g.ellipse(px, py, lift * 0.52, Math.max(2, lift * 0.14)).fill({
+      color: 0x6a7547,
+      alpha: fade * 0.4,
+    });
+    g.moveTo(px - bend * 0.3, py)
+      .quadraticCurveTo(px - bend * 0.82, py - lift * 0.48, px + bend, py - lift)
+      .stroke({ color: flowers ? 0x95bd7a : 0xa5b575, alpha: fade * 0.9, width, cap: 'round' });
+    if (flowers) {
+      for (const side of [-1, 1])
+        g.ellipse(px + bend + side * lift * 0.18, py - lift, lift * 0.2, lift * 0.14).fill({
+          color: side < 0 ? 0xe1caaa : 0xa9d29a,
+          alpha: fade * 0.91,
+        });
+    } else {
+      g.poly([
+        px + bend,
+        py - lift,
+        px + bend + lift * 0.25,
+        py - lift * 0.57,
+        px - bend * 0.23,
+        py - lift * 0.53,
+      ]).fill({ color: guarded ? 0xe3ce85 : 0xc2d19a, alpha: fade * 0.91 });
+    }
+  }
+}
+
 export function drawZone(
   g: Graphics,
   z: ZoneView,
@@ -808,6 +895,13 @@ export function drawZone(
   const color = z.color ?? (style ? CURSE_COLORS[style] : ZONE_COLORS[z.kind]) ?? 0xffffff;
   const r = z.radius * scale;
   const { x, y } = screen;
+
+  if (z.natureArt) {
+    drawNatureField(g, z, x, y, r, scale, time);
+    if (!(z.armRemaining && z.armRemaining > 0))
+      drawZoneMarks(g, z, x, y, r, zoneFadeAlpha(z.remaining, z.duration));
+    return;
+  }
 
   // item 12 — a ranged AoE ARMS first: draw the incoming telegraph (an indicator
   // travelling from the caster + a filling target ring) instead of the live zone,
@@ -844,6 +938,18 @@ export function drawZone(
       color: z.side === 'boss' ? 0xff7b89 : color,
       alpha: 0.65 * fade,
     });
+  drawZoneMarks(g, z, x, y, r, fade);
+}
+
+function drawZoneMarks(
+  g: Graphics,
+  z: ZoneView,
+  x: number,
+  y: number,
+  r: number,
+  fade: number,
+): void {
+  const style = z.side === 'boss' ? undefined : z.curseStyle;
   if (style) {
     // One large unbacked watermark inside the player's field; never little badges
     // that look attached to an overlapping boss pool or environmental prop.

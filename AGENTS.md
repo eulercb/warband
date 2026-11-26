@@ -217,3 +217,9 @@ and desktop, crowded labels, and at least a side and a near-vertical aim when
 the effect rotates. Check the silhouette and contrast in the rendered frame,
 not only internal wrist displacement, event receipt or a zoomed crop. Show
 matched in-game frames or a brief clip when motion is the subject of feedback.
+
+Before closing a class visual pass, review the basic and each basic grand,
+starting specials, every subclass skill and its grand, relevant passives and
+identity grands, and ordinary upgrades that change combat behavior. Check the
+resolved payload and whether its effect actually applied. Carry open rows in
+the visual roadmap through the next class review and before encounter work.

@@ -1,3 +1,4 @@
+import type { DruidGesture } from '../../engine/core/types';
 import {
   MOON_BASIC_POSE_MS,
   advanceAnimalMotion,
@@ -119,6 +120,7 @@ export class Renderer {
   private readonly labels: Text[] = [];
   private rangerBites = new Map<number, AnimalStrike>();
   private wolfForms = new Set<number>();
+  private druidGestures = new Map<number, { gesture: DruidGesture; started: number }>();
   private animalStrikes = new Map<string, AnimalStrike>();
   private animalMotion = new Map<string, AnimalMotion>();
 
@@ -234,7 +236,12 @@ export class Renderer {
     // to the sprite attack triggers and the particle emitter, BEFORE drawing.
     for (const [key, strike] of this.animalStrikes)
       if (now - strike.started >= MOON_BASIC_POSE_MS) this.animalStrikes.delete(key);
+    for (const [id, pose] of this.druidGestures)
+      if (now - pose.started >= 500) this.druidGestures.delete(id);
     for (const e of state.events) {
+      if (e.t === 'fightStart') this.druidGestures.clear();
+      if (e.t === 'cast' && e.druidGesture)
+        this.druidGestures.set(e.sourceId, { gesture: e.druidGesture, started: now });
       if (e.t === 'fightStart') this.rangerBites.clear();
       if (e.t === 'skillArea' && e.area.style === 'savageBite')
         this.rangerBites.set(e.sourceId, { angle: e.area.angle, started: now });
@@ -1005,7 +1012,8 @@ export class Renderer {
           },
         );
       }
-      if (p.form === 'moonBear' && p.state === 'alive')
+      if (p.form === 'moonBear' && p.state === 'alive') {
+        const pose = this.druidGestures.get(p.id);
         drawMoonBear(
           g,
           p,
@@ -1016,7 +1024,12 @@ export class Renderer {
           this.animalStrikes.get(`${p.id}:bear:0`),
           this.animalStrikes.get(`${p.id}:bear:1`),
           cheer,
+          pose && {
+            gesture: pose.gesture,
+            strength: Math.max(0, 1 - (nowMs - pose.started) / 500),
+          },
         );
+      }
 
       if (p.state === 'alive' && p.spiritCompanion)
         drawCompanion(

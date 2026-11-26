@@ -66,6 +66,9 @@ function areaFlashTtl(style: SkillArea['style']): number {
       return 0.63;
     case 'frostNova':
     case 'rollBurst':
+    case 'druidCyclone':
+    case 'druidTempest':
+    case 'druidBloom':
       return 0.68;
     default:
       return AREA_FLASH_TTL;
@@ -920,6 +923,45 @@ export class Fx {
         return;
       }
       const R = area.radius * s;
+      if (area.style === 'druidBloom') {
+        for (let i = 0; i < 6; i++) {
+          const a = (i * Math.PI) / 3 + t * 0.55;
+          const x = c.x + Math.cos(a) * R * (0.55 + t * 0.38);
+          const y = c.y + Math.sin(a) * R * (0.55 + t * 0.38);
+          const hx = Math.cos(a) * R * 0.52;
+          const hy = Math.sin(a) * R * 0.52;
+          g.moveTo(x, y)
+            .quadraticCurveTo(x + hx - hy, y + hy + hx, x + hx, y + hy)
+            .quadraticCurveTo(x - hy * 0.56, y + hx * 0.56, x, y)
+            .fill({ color: i % 2 === 0 ? 0xf1d6ac : 0xb8da9d, alpha: fade * 0.96 });
+        }
+        return;
+      }
+      if (area.style === 'druidCyclone' || area.style === 'druidTempest') {
+        const pull = area.style === 'druidTempest';
+        for (let i = 0; i < 13; i++) {
+          const angle = i * 2.399963 + t * (pull ? -2.5 : 3.0);
+          const layer = 0.58 + (i % 5) * 0.092;
+          const front = R * layer * (pull ? 1 - t * 0.59 : 0.69 + t * 0.31);
+          const tail = front * (pull ? 1.15 : 0.68);
+          const point = (a: number, r: number): [number, number] => [
+            c.x + Math.cos(a) * r,
+            c.y + Math.sin(a) * r,
+          ];
+          const sweep = pull ? -0.95 : 0.67;
+          g.moveTo(...point(angle - sweep, tail))
+            .quadraticCurveTo(...point(angle - sweep * 0.54, front * 1.11), ...point(angle, front))
+            .quadraticCurveTo(
+              ...point(angle - sweep * 0.29, front * 0.79),
+              ...point(angle - sweep, tail),
+            )
+            .fill({
+              color: i % 3 === 0 ? 0xe9dcb3 : pull ? 0xb2d4c9 : 0xa5c28d,
+              alpha: fade * 0.8,
+            });
+        }
+        return;
+      }
       if (area.style === 'rollBurst') {
         const fronts = Math.min(1, 0.57 + t * 1.55);
         for (let i = 0; i < 18; i++) {

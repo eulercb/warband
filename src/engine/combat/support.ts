@@ -118,6 +118,22 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
       if (gained <= 0) continue;
       onSubclassProtection(p, gained);
       supportCue(world, p, ally, 'absorb');
+      if (p.classId === 'druid' && ab.kind === 'heal' && ab.slot === 'a2')
+        world.events.push({
+          t: 'skillArea',
+          sourceId: p.id,
+          side: 'player',
+          color: 0xc6db9b,
+          area: {
+            style: 'druidBloom',
+            kind: 'circle',
+            origin: { ...ally.pos },
+            angle: 0,
+            range: 0,
+            radius: ally.radius + 9,
+            halfAngle: 0,
+          },
+        });
       // Cosmetic incoming links identify the marks supplying the barrier, without
       // consuming the curse. Bound to the same target cap.
       for (const enemy of marked)
