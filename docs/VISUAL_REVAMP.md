@@ -676,3 +676,42 @@ batch starts the special-ability passes and their linked upgrades.
 
 Phone captures: [Blade Flourish and wolf bite](images/bard-wolf-bite-phone.png)
 and [victory with the wolf Ranger, spirit wolf, and Moon Bear](images/animal-victory-phone.png).
+
+### Ranged release gestures and Ranger volleys
+
+The owner accepted the sheath, wolf form, celebrations and projectile
+silhouettes in #230. Bard **Vicious Mockery** is the basic attack. Its
+free hand now crosses the strings at release, the hand follows through
+and recovers, and brief light strokes mark the string contact. The left
+hand keeps the neck steady, and the instrument body has its own anchor.
+
+Smite (Cleric) pushes an open palm forward. Thornlash (Druid) scoops with
+the free arm and sweeps the staff. Chaos Bolt (Sorcerer) flicks outward
+against a counter-rotation of the staff. Eldritch Blast (Warlock) extends
+the free claw while carrying the staff. Arcane Bolt (Mage) puts more
+weight behind the staff point, and Arrow (Ranger) snaps the string and
+lets the draw hand recoil. These are presentation changes to the basic
+attacks.
+
+**Ranger Multishot** is the first starting special. Its draw follows the
+host's cast bar, and the string lets go on the release event. **Frostvolley**
+is its starting-skill grand. Freezing arrows carry ice facets and returning
+arrows keep their outbound and inbound chevrons. Volley ranks and the
+Hunter identity grand Relentless Hunt continue to use their actual arrow count, spread,
+and return path.
+
+**Ranger Rain of Arrows** is the second starting special. The bow lifts at
+launch, the arm phase still forecasts the destination, and arrows fall
+into the live area with grounded marks keyed to its damage cadence.
+**Pursuing Rain** is its starting-skill grand. The effect follows the
+actual moving zone once a damaging tick acquires a target. The zone can
+still hit flyers. Sol 6.2 High reviewed bow timing, visual anchors and the
+grand cues. All damage, recharge and geometry rules stay as authored.
+
+The batch began at 78% of the five-hour allowance and 43% weekly. Next is
+Ranger Roll and Detonating Roll, then further class specials and linked
+upgrades before the arena and encounter work.
+
+Phone captures: [Vicious Mockery release](images/bard-strum-phone.png),
+[Frostvolley fan](images/frostvolley-phone.png), and
+[Pursuing Rain](images/arrow-rain-phone.png).

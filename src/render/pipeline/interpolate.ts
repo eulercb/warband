@@ -120,7 +120,11 @@ export class SnapshotInterpolator {
     const players = this.lerpPlayers(from, carry, t);
     // Contact events are drained from the latest snapshot, ahead of position interpolation.
     const latest = indexById(this.buffer[this.buffer.length - 1].snap.players);
-    for (const p of players) p.weaponWindup = latest.get(p.id)?.weaponWindup;
+    for (const p of players) {
+      const current = latest.get(p.id);
+      p.weaponWindup = current?.weaponWindup;
+      p.drawingProjectile = current?.drawingProjectile;
+    }
     // Client-side prediction override for the local player.
     if (opts.predictedLocalPos && opts.localPlayerId != null) {
       for (const p of players) {

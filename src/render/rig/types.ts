@@ -164,6 +164,7 @@ export interface RigDriveCtx {
   state?: PlayerState;
   guarding?: boolean;
   castSlot?: AbilitySlot | null;
+  drawingProjectile?: boolean;
   castT?: number; // 0..1 rooted-cast progress
   aim?: Vec2; // aim unit vector (humanoid torso/arms)
   /** Authored victory pose; absent during ordinary play. */

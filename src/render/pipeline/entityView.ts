@@ -1,3 +1,4 @@
+import { ZONE_TICK_INTERVAL } from '../../engine/core/constants';
 import { playerVisualHeadroom } from '../rig/mageGarment';
 import { drawSkeleton } from './skeletonVisual';
 import { drawDefenseState } from './defenseVisuals';
@@ -585,6 +586,10 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
       .stroke({ color: 0xe9d2a7, width: Math.max(1.4, 1.8 * scale) });
     g.poly([...at(5), ...at(-4, -3.2), ...at(-2), ...at(-4, 3.2)]).fill({ color: 0xdeebeb });
     g.poly([...at(-12), ...at(-21, 3.5), ...at(-19), ...at(-21, -3.5)]).fill({ color });
+    if (pr.presentation === 'frostArrow') {
+      g.poly([...at(7), ...at(-3, -5), ...at(-1), ...at(-3, 5)]).fill({ color: 0xb6f1ff });
+      g.poly([...at(-8), ...at(-20, -6), ...at(-17), ...at(-20, 6)]).fill({ color: 0x86d2f2 });
+    }
     return;
   }
   if (pr.side === 'player') {
@@ -674,7 +679,52 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
 // Ground zones
 // ---------------------------------------------------------------------------
 
-export function drawZone(g: Graphics, z: ZoneView, screen: Vec2, scale: number): void {
+/** Each seeded path ends within the live footprint, independent of camera and follow motion. */
+function drawArrowRain(
+  g: Graphics,
+  z: ZoneView,
+  x: number,
+  y: number,
+  r: number,
+  fade: number,
+  time: number,
+): void {
+  const elapsed = z.duration - z.remaining;
+  const tick =
+    elapsed < ZONE_TICK_INTERVAL - 1e-5
+      ? 0
+      : 1 - Math.min(1, ((elapsed + 1e-5) % ZONE_TICK_INTERVAL) / 0.16);
+  for (let i = 0; i < 22; i++) {
+    const angle = (i + (z.id % 11)) * 2.399963;
+    const radius = Math.sqrt((i + 0.5) / 22) * r;
+    const px = x + Math.cos(angle) * radius;
+    const py = y + Math.sin(angle) * radius;
+    const phase = (time * 2.4 + i * 0.618034) % 1;
+    if (phase < 0.72) {
+      const height = (1 - phase / 0.72) * r * 0.76;
+      g.moveTo(px - height * 0.38 - r * 0.077, py - height - r * 0.19)
+        .lineTo(px - height * 0.38, py - height)
+        .stroke({ color: 0xd0edaa, alpha: fade * 0.74, width: Math.max(1, r * 0.016) });
+    } else {
+      const settle = tick * (1 - (phase - 0.72) / 0.28);
+      g.moveTo(px - r * 0.024, py - r * 0.075)
+        .lineTo(px, py)
+        .stroke({ color: 0xf4dc9f, alpha: fade * settle * 0.9, width: Math.max(1, r * 0.017) });
+      g.ellipse(px, py, r * 0.046 * (2 - settle), r * 0.018).fill({
+        color: 0xc9df90,
+        alpha: fade * settle * 0.64,
+      });
+    }
+  }
+}
+
+export function drawZone(
+  g: Graphics,
+  z: ZoneView,
+  screen: Vec2,
+  scale: number,
+  time = z.duration - z.remaining,
+): void {
   // A themed tint override (affix/corruption hazards) wins over the per-kind palette.
   const style = z.side === 'boss' ? undefined : z.curseStyle;
   const color = z.color ?? (style ? CURSE_COLORS[style] : ZONE_COLORS[z.kind]) ?? 0xffffff;
@@ -693,6 +743,12 @@ export function drawZone(g: Graphics, z: ZoneView, screen: Vec2, scale: number):
   // and then disappears after a while rather than popping.
   const fade = zoneFadeAlpha(z.remaining, z.duration);
   if (fade <= 0) return;
+
+  if (z.kind === 'rainOfArrows' && z.side === 'player') {
+    g.circle(x, y, r).fill({ color, alpha: 0.1 * fade });
+    drawArrowRain(g, z, x, y, r, fade, time);
+    return;
+  }
 
   // Gentle alpha pulse driven by the zone's own countdown.
   const pulse = 0.13 + 0.06 * (0.5 + 0.5 * Math.sin(z.remaining * 6));

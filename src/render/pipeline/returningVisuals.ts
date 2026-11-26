@@ -5,7 +5,14 @@ export function drawReturningShot(g: Graphics, p: ProjectileView, s: Vec2, scale
   const length = Math.hypot(p.vel.x, p.vel.y) || 1,
     x = p.vel.x / length,
     y = p.vel.y / length;
-  const color = p.returnPhase === 'back' ? 0x8cf0d1 : 0xf2ce82;
+  const color =
+    p.presentation === 'frostArrow'
+      ? p.returnPhase === 'back'
+        ? 0x87e4ff
+        : 0xc9f4ff
+      : p.returnPhase === 'back'
+        ? 0x8cf0d1
+        : 0xf2ce82;
   const at = (along: number, across: number) => ({
     x: s.x + (along * x - across * y) * scale,
     y: s.y + (along * y + across * x) * scale,

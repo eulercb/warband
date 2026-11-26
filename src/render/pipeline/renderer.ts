@@ -265,7 +265,7 @@ export class Renderer {
     this.drawFloor(state, now);
     this.drawTerrain(state, now);
     this.drawObstacles(state, now);
-    this.drawZones(state);
+    this.drawZones(state, now / 1000);
     this.drawApparitions(state);
     this.drawTelegraph(state);
     this.drawAimPreview(state);
@@ -745,7 +745,7 @@ export class Renderer {
     }
   }
 
-  private drawZones(state: RenderState): void {
+  private drawZones(state: RenderState, time: number): void {
     const g = this.zonesLayer;
     g.clear();
     for (const rescue of state.fontRescues ?? [])
@@ -763,7 +763,7 @@ export class Renderer {
         g.moveTo(at.x, at.y - r * 0.25)
           .lineTo(at.x, at.y + r * 0.25)
           .stroke({ color: 0xe0caff, width: 2 });
-      } else drawZone(g, z, this.camera.worldToScreen(z.pos), this.camera.scale);
+      } else drawZone(g, z, this.camera.worldToScreen(z.pos), this.camera.scale, time);
       if (z.revivalFont) drawFont(g, this.camera.worldToScreen(z.pos), this.camera.scale, false);
     }
     for (const r of state.refuges ?? [])
