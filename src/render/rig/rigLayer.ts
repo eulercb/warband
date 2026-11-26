@@ -110,7 +110,7 @@ export class RigLayer {
       if (e.t !== 'cast') continue;
       const rig = this.nodes.get(e.sourceId)?.rig;
       if (e.visualStyle) rig?.triggerElemental(e.visualStyle);
-      else rig?.triggerAttack();
+      else rig?.triggerAttack(e.rangedRelease ? e.slot : undefined);
     }
   }
 
@@ -203,6 +203,7 @@ export class RigLayer {
         // fall back to the a1 cast pose; the cast bar over the head carries the progress.
         castSlot: p.castSlot === 'sub1' || p.castSlot === 'sub2' ? 'a1' : p.castSlot,
         castT: castProgress(p),
+        drawingProjectile: p.drawingProjectile,
         aim: p.aim,
         cheer: pose,
       });

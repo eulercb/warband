@@ -726,6 +726,12 @@ export function resolvePlayerAbility(
     t: 'cast',
     ability: ab.name,
     visualStyle: ab.visualStyle,
+    rangedRelease:
+      ab.kind === 'projectile'
+        ? 'projectile'
+        : ab.kind === 'groundZone' && ab.zoneKind === 'rainOfArrows'
+          ? 'arrowRain'
+          : undefined,
     sourceId: p.id,
     pos: { ...p.pos },
     side: 'player',

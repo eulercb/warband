@@ -1,6 +1,6 @@
 import type { CelebrationPose } from './celebration';
 import { weaponWindup } from '../../engine/content/weaponTiming';
-import type { WeaponWindupView } from '../../engine/core/types';
+import type { ExtSlot, WeaponWindupView } from '../../engine/core/types';
 /**
  * Warband — a single articulated rig instance.
  *
@@ -52,6 +52,7 @@ const EPS_MOVE = 8;
 const VEL_TAU = 0.09;
 /** Attack-swing envelope duration (s) for event-driven melee/ranged strikes. */
 const ATTACK_DUR = 0.28;
+const RANGED_RELEASE_DURATION = 0.39;
 const ENRAGE_TINT = 0xff3b30;
 
 export class CreatureRig {
@@ -104,6 +105,8 @@ export class CreatureRig {
   private recoilAge = 1;
   private recoilAngle = 0;
   private cheerPose?: CelebrationPose;
+  private rangedSlot?: ExtSlot;
+  private bowDraw = 0;
   private preparingWeapon = false;
   private blade?: {
     style: BladeAreaStyle;
@@ -235,6 +238,7 @@ export class CreatureRig {
     duration?: number,
   ): void {
     this.preparingWeapon = false;
+    this.rangedSlot = undefined;
     this.attackAge = weaponWindup(style);
     this.blade = { style, angle, halfAngle, daggerHand, duration };
     if (style === 'monkPalm' && daggerHand !== undefined) {
@@ -277,10 +281,11 @@ export class CreatureRig {
       : 0.11;
   }
 
-  triggerAttack(): void {
+  triggerAttack(slot?: ExtSlot): void {
     if (this.preparingWeapon) return;
     if (this.blade?.duration && this.attackAge >= 0 && this.attackAge < this.blade.duration) return;
     this.blade = undefined;
+    this.rangedSlot = slot;
     this.attackAge = 0;
   }
 
@@ -346,6 +351,7 @@ export class CreatureRig {
     const dt = clamp(dtMs, 1, 100) / 1000;
     const R = this.baseRadius * scale;
     this.cheerPose = ctx.cheer;
+    this.bowDraw = ctx.drawingProjectile ? (ctx.castT ?? 0) : 0;
     this.palmAges[0] += dt;
     this.palmAges[1] += dt;
     this.lightningAge += dt;
@@ -431,9 +437,12 @@ export class CreatureRig {
           ? (this.blade.duration ?? bladeSweepSeconds(this.blade.style, this.blade.halfAngle)) +
             this.weaponPreparation +
             this.weaponRecovery
-          : ATTACK_DUR)
+          : this.rangedSlot
+            ? RANGED_RELEASE_DURATION
+            : ATTACK_DUR)
       ) {
         this.attackAge = -1;
+        this.rangedSlot = undefined;
         this.blade = undefined;
       }
     }
@@ -608,7 +617,22 @@ export class CreatureRig {
         drawMeleeGarment(this.gBehind, this.gDecor, project, R, garment, sway);
       else drawRosterGarment(this.gBehind, this.gDecor, project, R, garment, sway);
       if (garment === 'bard' && !downed) {
-        drawBardLute(this.gDecor, this.bardHand(-1, R), this.bardHand(1, R, true), R);
+        const strum = this.bardHand(1, R, true);
+        drawBardLute(
+          this.gDecor,
+          this.bardHand(-1, R),
+          strum,
+          R,
+          this.rangedSlot !== 'basic' || this.attackAge < 0,
+        );
+        const beat = this.rangedSlot === 'basic' ? this.rangedRelease : 0;
+        for (const offset of [-0.22, 0, 0.22]) {
+          if (beat <= 0) break;
+          this.gDecor
+            .moveTo(strum.x + R * offset, strum.y + R * 0.15)
+            .lineTo(strum.x + R * (offset + 0.32), strum.y - R * (0.48 + beat * 0.18))
+            .stroke({ color: 0xffe4a7, alpha: beat * 0.85, width: Math.max(1, R * 0.06) });
+        }
         this.drawFlourishBlade(R);
       }
     }
@@ -920,6 +944,30 @@ export class CreatureRig {
               );
         if (arm.side === -1) hand.y -= R * (0.29 + cast * (sorcerer ? 1.03 : 0.64));
       }
+      if (arm.side === -1 && !downed && this.rangedSlot === 'basic') {
+        const beat = this.rangedRelease;
+        switch (this.spec.garment) {
+          case 'cleric':
+            hand.x += this.cos * R * 0.95 * beat;
+            hand.y += (this.sin * 0.95 - 0.7) * R * beat;
+            break;
+          case 'druid':
+            hand.x += (this.cos * 0.75 + this.sin * 0.8) * R * beat;
+            hand.y += (this.sin * 0.75 - this.cos * 0.8 + 0.48) * R * beat;
+            break;
+          case 'sorcerer':
+            hand.x += (this.cos * 0.46 - this.sin * 0.9) * R * beat;
+            hand.y += (this.sin * 0.46 + this.cos * 0.9 - 0.45) * R * beat;
+            break;
+          case 'warlock':
+            {
+              const curl = 0.94 - Math.min(1, this.attackAge / 0.23) * 1.42;
+              hand.x += this.cos * R * curl * beat;
+              hand.y += (this.sin * curl - 0.93) * R * beat;
+            }
+            break;
+        }
+      }
       if (
         ctx.cheer &&
         !downed &&
@@ -1024,11 +1072,15 @@ export class CreatureRig {
       : garment === 'sorcerer'
         ? -Math.PI / 2 - this.sin * 0.24
         : -Math.PI * 0.43;
-    const delta = staffAngle - rest;
+    const beat = this.rangedSlot === 'basic' ? this.rangedRelease : 0;
+    const flourish =
+      garment === 'druid' ? 0.7 : garment === 'sorcerer' ? -0.62 : garment === 'warlock' ? 0.24 : 0;
+    const delta = staffAngle - rest + beat * flourish;
+    const rainLift = garment === 'ranger' && this.rangedSlot === 'a2' ? this.rangedRelease : 0;
     const angle =
       turningWeapon && !this.blade
         ? rest + Math.atan2(Math.sin(delta), Math.cos(delta)) * active
-        : staffAngle;
+        : staffAngle - rainLift * 0.94;
     const fx = Math.cos(angle);
     const fy = Math.sin(angle);
     const perp = { x: -fy, y: fx };
@@ -1119,11 +1171,11 @@ export class CreatureRig {
           .quadraticCurveTo(belly.x, belly.y, bot.x, bot.y)
           .stroke({ width: 0.075 * R, color: 0xd1a067, cap: 'round' });
         const nock =
-          garment === 'ranger' && this.attackAge < 0
-            ? at(-0.61)
-            : garment === 'ranger'
+          garment === 'ranger'
+            ? this.bowDraw > 0
               ? this.rangerHand(-1, R)
-              : at(-0.15 - swing * 0.35);
+              : at(-0.61 - this.rangedRelease * 0.12)
+            : at(-0.15 - swing * 0.35);
         g.moveTo(top.x, top.y)
           .lineTo(nock.x, nock.y)
           .lineTo(bot.x, bot.y)
@@ -1342,17 +1394,29 @@ export class CreatureRig {
     );
   }
 
+  private get rangedRelease(): number {
+    if (this.attackAge < 0) return 0;
+    const t = clamp((this.attackAge - 0.06) / (RANGED_RELEASE_DURATION - 0.06), 0, 1);
+    return 1 - t * t * (3 - 2 * t);
+  }
+
   private rangerHand(side: -1 | 1, r: number): Vec2 {
-    const draw =
-      this.attackAge >= 0 ? Math.sin(Math.PI * clamp(this.attackAge / ATTACK_DUR, 0, 1)) : 0;
+    const shot = this.rangedSlot === 'basic' || this.rangedSlot === 'a1';
+    const release = shot ? this.rangedRelease : 0;
+    const rain = this.rangedSlot === 'a2' ? this.rangedRelease : 0;
+    const pull = this.bowDraw + release * 0.42;
     const reach = this.carryBlend;
     const point = this.bodyPoint(
       side === 1
-        ? { x: 0.88 + draw * 0.48, y: 0.7 - draw * 0.44 }
-        : { x: -0.18 + reach * 0.42 - draw * 0.45, y: -0.91 + reach * 0.39 },
+        ? { x: 0.88 + pull * 0.55 + release * 0.3, y: 0.7 - pull * 0.38 }
+        : { x: -0.18 + reach * 0.42 - pull * 1.03, y: -0.91 + reach * 0.39 + pull * 0.58 },
       r,
     );
-    point.y -= r * (side === 1 ? 0.52 + draw * 0.39 : 0.18 + reach * 0.34 + draw * 0.39);
+    point.y -=
+      r *
+      (side === 1
+        ? 0.52 + pull * 0.36 + rain * 0.92
+        : 0.18 + reach * 0.34 + pull * 0.46 + rain * 0.62);
     return this.fitRaisedHand(point, side, r);
   }
 
@@ -1415,6 +1479,12 @@ export class CreatureRig {
       point.x += (grip.x - point.x) * approach;
       point.y += (grip.y - point.y) * approach;
     }
+    if (side === 1 && !lute && this.rangedSlot === 'basic' && this.attackAge >= 0) {
+      const travel = clamp(this.attackAge / 0.225, 0, 1);
+      const sweep = Math.sin((0.22 + travel * 0.78) * Math.PI);
+      point.x += r * (this.cos * 0.48 + this.sin * 0.46) * sweep;
+      point.y += r * (this.sin * 0.48 - this.cos * 0.46 + 0.63) * sweep;
+    }
     if (side === 1 && !lute && this.cheerPose) {
       point.x += this.cos * r * this.cheerPose.right * 3;
       point.y += this.sin * r * this.cheerPose.right * 3;
@@ -1474,7 +1544,8 @@ export class CreatureRig {
     if (this.spec.garment === 'mage' && !downed) {
       const beat = releasePose(this.elementalAge);
       const nova = this.elementalPose === 'frostNova';
-      point.x += R * beat * (nova ? -this.sin * 1.25 : this.cos * 0.6);
+      const bolt = this.rangedSlot === 'basic' ? this.rangedRelease : 0;
+      point.x += R * (beat * (nova ? -this.sin * 1.25 : this.cos * 0.6) + this.cos * bolt * 0.42);
       point.y += R * beat * (nova ? this.cos * 0.55 : this.sin * 0.32);
       const fold = releasePose(this.blinkAge);
       point.x -= this.cos * R * fold * 0.57;

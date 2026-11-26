@@ -1028,7 +1028,7 @@ export interface GuidanceCast {
 }
 export interface Projectile {
   impactStyle?: 'fireball';
-  presentation?: 'arcaneBolt';
+  presentation?: 'arcaneBolt' | 'frostArrow';
   reflected?: boolean;
   guidance?: GuidanceCast;
   aimPoint?: Vec2;
@@ -1602,6 +1602,7 @@ export type GameEvent =
       t: 'cast';
       ability: string;
       visualStyle?: 'frostNova' | 'fireball';
+      rangedRelease?: 'projectile' | 'arrowRain';
       sourceId: EntityId;
       pos: Vec2;
       side: Side;
@@ -1794,6 +1795,7 @@ export interface PlayerView {
   /** The current cast's full duration (castTime × castMult) so the render can show an
    * accurate progress ring even under Focus; 0 when not casting. */
   castTimerMax: number;
+  drawingProjectile?: boolean;
   /** Live participation score (prior bosses + this fight), for HUD / pause menu. */
   score: number;
   /** Chosen subclass-skill ids (so clients render + label the sub1/sub2 buttons). */

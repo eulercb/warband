@@ -901,3 +901,34 @@ it('interpolates ordinary burst and guided projectile movement', () => {
   expect(rs.guidedBursts![0].pos.x).toBeCloseTo(200);
   expect(rs.projectiles[0].pos.x).toBeCloseTo(200);
 });
+
+it('clears a projectile draw when the release event outruns the interpolated pose', () => {
+  const interp = new SnapshotInterpolator();
+  pushAt(
+    interp,
+    mkSnapshot({ tick: 1, players: [{ ...mkPlayer({ id: 1 }), drawingProjectile: true }] }),
+    1000,
+  );
+  expect(render(interp, 1000).players[0].drawingProjectile).toBe(true);
+  pushAt(
+    interp,
+    mkSnapshot({
+      tick: 2,
+      players: [mkPlayer({ id: 1 })],
+      events: [
+        {
+          t: 'cast',
+          sourceId: 1,
+          ability: 'Multishot',
+          pos: { x: 0, y: 0 },
+          side: 'player',
+          rangedRelease: 'projectile',
+        },
+      ],
+    }),
+    1100,
+  );
+  const release = render(interp, 990);
+  expect(release.events).toHaveLength(1);
+  expect(release.players[0].drawingProjectile).toBeUndefined();
+});

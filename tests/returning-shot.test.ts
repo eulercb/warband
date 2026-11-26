@@ -483,3 +483,25 @@ it('refresh removes an unavailable return component after an explosive upgrade',
   const c = refreshComponents(p.abilities!.a1);
   expect(c.effects.some((e) => e.kind === 'returningShot')).toBe(false);
 });
+
+it('shows Frostvolley only on released freezing arrows, including both returning legs', () => {
+  const { w, p, b } = setup(skills[0], ['rg_hunter_g_b', 'rg_gk_a1_b']);
+  b.pos = { x: 1200, y: 800 };
+  input(w, { a1: true });
+  expect(w.serialize().players[0].drawingProjectile).toBe(true);
+  expect(w.serialize().projectiles).toHaveLength(0);
+  input(w, {}, zero, 0.31);
+  expect(w.serialize().players[0].drawingProjectile).toBeUndefined();
+  expect(w.events.some((event) => event.t === 'cast' && event.rangedRelease === 'projectile')).toBe(
+    true,
+  );
+  const shot = w.serialize().projectiles[0];
+  expect(shot).toMatchObject({ presentation: 'frostArrow', returnPhase: 'out' });
+
+  const g = new Graphics();
+  drawReturningShot(g, shot, zero, 1);
+  drawReturningShot(g, { ...shot, returnPhase: 'back' }, zero, 1);
+  expect(g.context.instructions.length).toBeGreaterThan(0);
+  g.destroy();
+  expect(p.cooldowns.a1).toBeGreaterThan(0);
+});

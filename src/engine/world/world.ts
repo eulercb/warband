@@ -4384,6 +4384,7 @@ export class World {
       castSlot: p.castSlot,
       castTimer: p.castTimer,
       castTimerMax: p.castTimerMax,
+      drawingProjectile: p.castAbility?.kind === 'projectile' || undefined,
       weaponWindup: weaponWindupView(this, p),
       score: Math.round(this.playerScore(p)),
       // Only the ACTIVE class's subclass skills cross the wire (item 15): the HUD
@@ -4481,7 +4482,8 @@ export class World {
           color: p.color,
           guidance: guidedProjectileView(this, p),
           reflected: p.reflected,
-          ...(p.presentation ? { presentation: p.presentation } : {}),
+          presentation:
+            p.presentation ?? (p.kind === 'arrow' && p.freeze ? 'frostArrow' : undefined),
           returnPhase: p.returningShot?.phase,
           returnTurn: (p.returningShot?.turnFlash ?? 0) > 0 || undefined,
         })),
