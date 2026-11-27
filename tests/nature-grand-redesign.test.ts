@@ -509,7 +509,7 @@ describe('Mage starting skill visual delivery', () => {
 
 describe('live frost and subclass visual cues', () => {
   it('keeps ranked Deep Freeze in snapshots after the impact flash and drops it on control cleanse', () => {
-    const { w, p } = setup('mage', Array(3).fill('mg_freeze'));
+    const { w, p } = setup('mage', ['mg_freeze', 'mg_freeze', 'mg_freeze']);
     w.boss!.decisionTimer = 100;
     resolvePlayerAbility(w, p, 'a2', zero);
     w.step(0.8, new Map());
@@ -539,17 +539,8 @@ describe('live frost and subclass visual cues', () => {
     const skill = 'mg_evoker_cone';
     const { w, p } = setup('mage', [`${skill}_g`], [skill]);
     resolvePlayerAbility(w, p, 'sub1', zero);
-    expect(w.events).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          t: 'skillArea',
-          area: expect.objectContaining({
-            style: 'mageCold',
-            crystalline: true,
-          }),
-        }),
-      ]),
-    );
+    const cone = w.events.find((e) => e.t === 'skillArea' && e.area.style === 'mageCold');
+    expect(cone).toMatchObject({ t: 'skillArea', area: { crystalline: true } });
     expect(w.serialize().bosses[0].buffs.some((b) => b.visual === 'ice')).toBe(true);
   });
 
