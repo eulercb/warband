@@ -71,6 +71,7 @@ export interface Delivery {
   flurryBarrage?: boolean;
   kind: DeliveryKind;
   visualStyle?: PlayerAbilityDef['visualStyle'];
+  druidDelivery?: PlayerAbilityDef['druidDelivery'];
   /** Cone reach / dash-blink distance / ground-target or auto-target search radius. */
   range?: number;
   /** pbaoe / landing radius (zone radius lives on the zone effect). */
@@ -286,6 +287,7 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
   const delivery: Delivery = { kind };
   if (def.flurryBarrage) delivery.flurryBarrage = true;
   if (def.visualStyle) delivery.visualStyle = def.visualStyle;
+  if (def.druidDelivery) delivery.druidDelivery = def.druidDelivery;
   if (def.range != null) delivery.range = def.range;
   if (def.halfAngleDeg != null) delivery.halfAngleDeg = def.halfAngleDeg;
   if (def.lightningWidth != null) delivery.lightningWidth = def.lightningWidth;
@@ -685,6 +687,7 @@ export function recompose(
   if (def.basicPresentation === 'monkPalm' && meta.flurryLaneHalfWidth)
     def.flurryLaneHalfWidth = meta.flurryLaneHalfWidth;
   if (d.visualStyle) def.visualStyle = d.visualStyle;
+  if (d.druidDelivery) def.druidDelivery = d.druidDelivery;
   if (d.range != null) def.range = d.range;
   if (d.radius != null) def.radius = d.radius;
   if (d.halfAngleDeg != null) def.halfAngleDeg = d.halfAngleDeg;

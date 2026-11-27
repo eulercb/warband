@@ -580,6 +580,18 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
     g.poly([...at(9), ...at(0, -3.8), ...at(-5), ...at(0, 1.1)]).fill({ color: 0xf2ddff });
     return;
   }
+  if (pr.presentation === 'druidEarth') {
+    g.poly([...at(13), ...at(3, -7), ...at(-13, -4), ...at(-10, 6), ...at(6, 7)])
+      .fill({ color: 0x906744 })
+      .stroke({ color: 0xe2b87f, width: Math.max(1.5, scale * 2.1) });
+    g.poly([...at(8), ...at(-1, -4), ...at(-7, 2), ...at(1, 4)]).fill({ color: 0xd4a66b });
+    for (const side of [-1, 1])
+      g.poly([...at(-16, side * 3), ...at(-25, side * 7), ...at(-21, side)]).fill({
+        color: 0xbc926a,
+        alpha: 0.72,
+      });
+    return;
+  }
   if (pr.presentation === 'brambleSpear') {
     g.moveTo(...at(-39))
       .quadraticCurveTo(...at(-24, 6), ...at(-8, -1))
@@ -827,6 +839,8 @@ function drawNatureField(
 ): void {
   const guarded = z.natureCanopy ?? false;
   const flowers = z.natureArt === 'grove';
+  const briar = z.natureArt === 'briar';
+  const spring = z.natureArt === 'spring';
   const fade = zoneFadeAlpha(z.remaining, z.duration);
   if (z.armFrom && z.armTotal && (z.armRemaining ?? 0) > 0) {
     const t = clamp(1 - (z.armRemaining ?? 0) / z.armTotal, 0, 1);
@@ -846,6 +860,28 @@ function drawNatureField(
     return;
   }
   if (fade <= 0) return;
+  if (spring) {
+    for (let i = 0; i < 10; i++) {
+      const a = i * 2.399963 + time * 0.37;
+      const reach = r * Math.sqrt((i + 0.5) / 10);
+      const px = x + Math.cos(a) * reach;
+      const py = y + Math.sin(a) * reach;
+      const ripple = (time * 1.4 + i * 0.27) % 1;
+      const spread = Math.max(5, r * (0.06 + ripple * 0.09));
+      g.moveTo(px - spread, py)
+        .quadraticCurveTo(px, py + spread * 0.72, px + spread, py - spread * 0.14)
+        .stroke({
+          color: guarded ? 0xe1e1a0 : 0x93dccc,
+          alpha: fade * (0.82 - ripple * 0.56),
+          width: 1.8,
+        });
+      g.ellipse(px, py - ripple * 9, 2.4, 3.6).fill({
+        color: 0xc5f4de,
+        alpha: fade * (1 - ripple),
+      });
+    }
+    return;
+  }
   const growth = Math.min(1, (z.duration - z.remaining) / 0.24);
   const width = Math.max(1.5, r * 0.033);
   const petals = flowers ? 9 : 12;
@@ -854,7 +890,7 @@ function drawNatureField(
     const rad = r * Math.sqrt((i + 0.6) / petals);
     const px = x + Math.cos(a) * rad;
     const py = y + Math.sin(a) * rad;
-    const lift = Math.max(7, r * (guarded ? 0.33 : 0.23)) * (0.46 + growth * 0.54);
+    const lift = Math.max(7, r * (guarded ? 0.33 : briar ? 0.27 : 0.23)) * (0.46 + growth * 0.54);
     const sway = Math.sin(time * 3.8 + i) * lift * 0.19;
     const bend = Math.cos(a) * lift * 0.51 + sway;
     g.ellipse(px, py, lift * 0.52, Math.max(2, lift * 0.14)).fill({
@@ -864,7 +900,26 @@ function drawNatureField(
     g.moveTo(px - bend * 0.3, py)
       .quadraticCurveTo(px - bend * 0.82, py - lift * 0.48, px + bend, py - lift)
       .stroke({ color: flowers ? 0x95bd7a : 0xa5b575, alpha: fade * 0.9, width, cap: 'round' });
-    if (flowers) {
+    if (briar) {
+      const lead = z.natureFollowing ? Math.sin(time * 11 + i) * lift * 0.26 : 0;
+      g.moveTo(px - lift * 0.56, py - lift * 0.15)
+        .quadraticCurveTo(
+          px + bend + lead,
+          py - lift * 0.42,
+          px + lift * 0.6 + lead,
+          py - lift * 0.12,
+        )
+        .stroke({ color: 0xb98764, alpha: fade * 0.95, width });
+      for (const side of [-1, 1])
+        g.poly([
+          px + side * lift * 0.24,
+          py - lift * 0.24,
+          px + side * lift * 0.57,
+          py - lift * 0.78,
+          px + side * lift * 0.45,
+          py - lift * 0.19,
+        ]).fill({ color: 0xd6b47e, alpha: fade * 0.95 });
+    } else if (flowers) {
       for (const side of [-1, 1])
         g.ellipse(px + bend + side * lift * 0.18, py - lift, lift * 0.2, lift * 0.14).fill({
           color: side < 0 ? 0xe1caaa : 0xa9d29a,

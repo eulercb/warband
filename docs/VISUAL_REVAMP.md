@@ -806,3 +806,37 @@ for all twelve classes before the arena and encounter pass.
 
 This batch began at 77% of the five-hour allowance and 26% weekly. The
 previous batch crossed a five-hour reset, so it has no exact rolling cost reading.
+
+### Circle of the Moon and Circle of the Land
+
+The owner accepted the Druid starting kit in #233. This slice uses the bounded
+Sol 6.2 High review from that batch, which covered all eight subclass skills
+and their grand interactions. The effects below use resolved geometry, actual
+recipients and live gameplay state.
+
+| Subclass skill      | Delivery                                                                                                            | Individual skill grand                                                                                                                     |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Moon Dire Maul      | The bear swipes at the hit, with claw bands in the resolved sector.                                                 | Encircling Maul wraps the bands through the actual full-circle footprint.                                                                  |
+| Moon Feral Pounce   | The caster rises during travel. Moon Bear stretches into the leap. Earth breaks at the host's actual landing.       | Unstoppable Pounce shows the protective petal cue on a real absorption grant. The existing hard-control protection status remains visible. |
+| Moon Primal Roar    | The bear rears and roars on activation. Brambles break the ground only when the prepared close-hit payoff releases. | Pack Shelter places the petal ward on the nearby recipients who gained it.                                                                 |
+| Moon Frenzied Regen | The bear lowers its head and braces. The established recovery grove grows from effective healing.                   | Shared Renewal sends petals to the actual wounded ally who received relay healing.                                                         |
+| Land Erupting Earth | An angular stone travels to its real collision and throws up rock shards inside the resolved blast area.            | Staggering Eruption retains the applied enemy wind-up slow cue.                                                                            |
+| Land Wall of Thorns | Ground-hugging thorn branches distinguish it from Entangle's upright roots.                                         | Wandering Briar bends while following an acquired foe and settles when the field anchors.                                                  |
+| Land Gust           | Outward wind blades show its resolved fan.                                                                          | Winter Gale carries icy wind. The target ice cue requires an applied freeze; immunity still uses the resisted cue.                         |
+| Land Healing Spring | Scattered water ripples and droplets cover the actual healing area.                                                 | Sheltering Spring adds gold glints while the field carries protection.                                                                     |
+
+Eternal Season shows a leaf burst where the existing field re-anchors. The
+field keeps its duration, cadence and ownership. Primal Avatar's expanded
+grove and Feral Swiftness's longer Moon claw use their resolved geometry.
+Wrath of the Land's damage bonuses use the established hit readout. The
+batch preserves the existing damage, control and recharge rules.
+
+The next class is Mage, including the planned Deep Freeze review, basic
+grands, and the distinct behavior of each Evoker and Abjurer skill and
+grand. Continue through the remaining class kits before the arena and
+encounter revamp.
+
+This batch started at 51% of the five-hour allowance and 22% weekly.
+
+Normal-zoom phone captures: [Encircling Maul](images/encircling-maul-phone.png),
+[Erupting Earth](images/erupting-earth-phone.png), and [Winter Gale](images/winter-gale-phone.png).

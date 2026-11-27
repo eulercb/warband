@@ -870,14 +870,19 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'Dire Maul',
           '🐻',
           'A ferocious swipe for 46',
-          melee('Dire Maul', 6, 46, { range: 80, lifestealFrac: 0.15 }),
+          melee('Dire Maul', 6, 46, { range: 80, lifestealFrac: 0.15, druidDelivery: 'maul' }),
         ),
         sk(
           'dr_moon_pounce',
           'Feral Pounce',
           '🐆',
           'Leap, landing for 30',
-          dash('Feral Pounce', 6, { landingDamage: 30, radius: 100, leap: true }),
+          dash('Feral Pounce', 6, {
+            landingDamage: 30,
+            radius: 100,
+            leap: true,
+            druidDelivery: 'pounce',
+          }),
         ),
         sk(
           'dr_moon_roar',
@@ -885,6 +890,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           '🦁',
           '+30% damage for 5s; prepare a slowing bramble burst on your next close hit',
           buff('Primal Roar', 12, {
+            druidDelivery: 'roar',
             buffDamageMult: 1.3,
             closeBurst: {
               damage: 24,
@@ -920,6 +926,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           '🌋',
           'Launch an aimed eruption for 38 in 160u; +25% against controlled foes',
           proj('Erupting Earth', 8, 38, {
+            druidDelivery: 'earth',
             projSpeed: 720,
             impactRadius: 160,
             maxRange: 460,
@@ -948,7 +955,12 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           // so it can't rip a rooted foe free — that's the Bull Rush's job) that
           // scatters foes off the Druid. Wind that pushes, differentiating the class.
           'Aim a 260u, 30° half-angle wind cone for 24, slowing and pushing struck foes 90u away',
-          cone('Gust', 8, 24, 260, 30, { slowMult: 0.5, slowDuration: 2, knockback: 90 }),
+          cone('Gust', 8, 24, 260, 30, {
+            slowMult: 0.5,
+            slowDuration: 2,
+            knockback: 90,
+            druidDelivery: 'gust',
+          }),
         ),
         sk(
           'dr_land_spring',

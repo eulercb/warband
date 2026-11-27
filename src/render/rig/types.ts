@@ -166,6 +166,7 @@ export interface RigDriveCtx {
   castSlot?: AbilitySlot | null;
   drawingProjectile?: boolean;
   drawProjectileCount?: number;
+  druidPounce?: import('../../engine/core/types').PlayerView['druidPounce'];
   rangerRoll?: import('../../engine/core/types').PlayerView['rangerRoll'];
   castT?: number; // 0..1 rooted-cast progress
   aim?: Vec2; // aim unit vector (humanoid torso/arms)

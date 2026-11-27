@@ -117,6 +117,7 @@ export function tryFieldTransplant(w: World, p: Player, slot: ExtSlot, fresh: bo
     color: 0x85e6a1,
     area: {
       kind: 'circle',
+      style: z.natureArt ? 'druidTransplant' : undefined,
       origin: { ...z.pos },
       angle: 0,
       range: 0,
