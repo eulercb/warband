@@ -1409,17 +1409,24 @@ export class Fx {
         arc(0).stroke({ width: 1.6, color: 0xf1fbff, alpha: flash });
         arc(2).stroke({ width: 1, color: 0xc2a9ff, alpha: flash * 0.75 });
         const reach = Math.max(0, halfWidth - 14 * camera.scale);
-        for (const side of [-1, 1]) {
-          for (let fork = 1; fork <= 3; fork++) {
-            const start = at(length * (fork * 0.21 - 0.13), 0);
-            const elbow = at(length * (fork * 0.21 - 0.02), side * reach * 1.28);
-            const tip = at(length * (fork * 0.21 + 0.13), side * reach * 2.08);
-            g.moveTo(start.x, start.y)
-              .lineTo(elbow.x, elbow.y)
-              .lineTo(tip.x, tip.y)
-              .stroke({ color: 0xb3d9ff, width: 1.5, alpha: flash * Math.min(0.8, reach / 6) });
+        if (reach > 0)
+          for (const side of [-1, 1]) {
+            for (let fork = 1; fork <= 3; fork++) {
+              const start = at(length * (fork * 0.21 - 0.13), 0);
+              const elbow = at(
+                length * (fork * 0.21 - 0.02),
+                side * Math.min(halfWidth, reach * 1.28),
+              );
+              const tip = at(
+                length * (fork * 0.21 + 0.13),
+                side * Math.min(halfWidth, reach * 2.08),
+              );
+              g.moveTo(start.x, start.y)
+                .lineTo(elbow.x, elbow.y)
+                .lineTo(tip.x, tip.y)
+                .stroke({ color: 0xb3d9ff, width: 1.5, alpha: flash * Math.min(0.8, reach / 6) });
+            }
           }
-        }
         g.circle(origin.x, origin.y, 4 + 8 * flash).fill({ color, alpha: flash * 0.6 });
         g.circle(origin.x, origin.y, 2 + 3 * flash).fill({ color: 0xeaffff, alpha: flash });
       } else {
