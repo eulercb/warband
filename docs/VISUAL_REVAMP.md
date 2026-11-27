@@ -884,3 +884,65 @@ Phone captures from resolved gameplay include
 [Erupting Earth](images/molten-earth-phone.png),
 [Winter Gale](images/winter-gale-clasp-phone.png), and
 [Polar Vortex](images/mage-polar-vortex-phone.png).
+
+### Live freeze, humanoid Moon Druid and Mage subclasses
+
+PR #235 was merged and playtested. Ranked Deep Freeze lasted longer than
+its contact flash. Ice now clasps to the affected boss or summon for the
+actual host-authoritative freeze status. It tracks the target's rendered
+position and clears on expiration, cleanse or death. The small initial
+splinter burst remains a hit cue. This also covers projectile freezes,
+including Forge, without making an ordinary stun look icy.
+
+**Circle of the Moon Druid** casts Dire Maul with the free hand raking
+across the front and the staff arm braced. Feral Pounce reaches into the
+actual leap, with the staff swept back and separate landing impact.
+Primal Roar cups the free hand at the face and raises the staff. To see
+these poses, trigger Moon Aspect with another special, wait for the
+bear form to expire, then cast a subclass skill while the aspect is
+still on cooldown. Swapping the animation does not change the passive.
+
+Sol 6.2 High reviewed the resolved Mage kits. The Evoker pass keeps
+Lightning Bolt's established instant delivery and shows the widened
+Conducting Lance with outer branches. Cone of Cold sends a fan of
+splinters. Crystalline Edge adds broader shards at its expanded reach,
+and actual freezes use the sustained ice. Sculpted Blast gathers both
+hands during its real wind-up and throws outward facets at resolution.
+Sculpted Retort shows readiness on the caster and fractures around the
+actual retaliation point. Arcane Shield uses braced forward hands and a
+fan of force panes. Siphoning Shield uses existing heal feedback for
+effective lifesteal.
+
+The Abjurer's Arcane Ward uses radial panes and Warding Reversal
+throws those panes outward. Otiluke Bind keeps its arming cue before
+raising a suspended cage. Sanctum Prison adds protective inner panels.
+Dimension Door opens and closes directional frames at its actual endpoints
+and shows smaller frames for successfully relocated enemies. Guarded
+Door uses the existing frontal guard cue. Life Transfer sends a
+two-strand link to actual heal or absorption recipients. Rescuing
+Transfer retains its real threshold empowerment cue and ready marker.
+
+The identity review kept the existing effects legible through actual
+outcomes. Arch-Evoker and Binding Dominion still use existing control
+markers and hit feedback, with the actual Frost Nova radius under
+Dominion. Overchannel uses the wind-up slow marker. Grand Warding keeps
+the dispel, silence break, barrier and frontal guard feedback. Existing
+feedback also covers Evocation Cadence readiness and positive Binding
+Ward absorption. This pass changes presentation, including no changes to
+damage, cooldowns, targeting or control.
+
+The owner reported the preceding batch spent 28 percentage points of the
+five-hour allowance and 4 weekly. This batch started at 72% and 10%,
+respectively. The next roster slice is Sorcerer, beginning with starting
+specials, linked grands, and the existing Chaos Crossing and Draconic
+delivery cues. Keep remaining kits ahead of the joint arena and
+encounter work on the roadmap.
+
+Normal-zoom phone captures: [Dire Maul](images/humanoid-moon-maul-phone.gif),
+[Feral Pounce](images/humanoid-moon-pounce-phone.gif),
+[Primal Roar](images/humanoid-moon-roar-phone.gif),
+[Deep Freeze hold](images/deep-freeze-hold-phone.png),
+[Crystalline Edge](images/crystalline-edge-phone.png),
+[Sanctum Prison](images/sanctum-prison-phone.png),
+[Guarded Door](images/guarded-door-phone.png), and
+[Rescuing Transfer](images/rescuing-transfer-phone.png).

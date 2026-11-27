@@ -2,7 +2,12 @@ import { MOON_CLAW_DELAY, resolveMoonClaws } from '../src/engine/combat/moonForm
 import { afterEach, describe, expect, it } from 'vitest';
 import { World } from '../src/engine/world/world';
 import { resolvePlayerAbility } from '../src/engine/combat/abilities';
-import { applyBuff, BOSS_INVULN_SOURCE, makeBuff } from '../src/engine/combat/combat';
+import {
+  applyBuff,
+  BOSS_INVULN_SOURCE,
+  cleanseControl,
+  makeBuff,
+} from '../src/engine/combat/combat';
 import { absorptionAmount } from '../src/engine/combat/absorption';
 import { commandCompanion, updateCompanions } from '../src/engine/combat/companions';
 import { decompose, recompose, setForgeSeed, synthesizeAbility } from '../src/engine/content/forge';
@@ -500,4 +505,83 @@ describe('Mage starting skill visual delivery', () => {
       expect(w.events.find((e) => e.t === 'blink')).toMatchObject({ warded: true, to: p.pos });
     },
   );
+});
+
+describe('live frost and subclass visual cues', () => {
+  it('keeps ranked Deep Freeze in snapshots after the impact flash and drops it on control cleanse', () => {
+    const { w, p } = setup('mage', ['mg_freeze', 'mg_freeze', 'mg_freeze']);
+    w.boss!.decisionTimer = 100;
+    resolvePlayerAbility(w, p, 'a2', zero);
+    w.step(0.8, new Map());
+    expect(w.serialize().bosses[0].buffs).toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: 'stun', visual: 'ice' })]),
+    );
+    cleanseControl(w.boss!);
+    expect(w.serialize().bosses[0].buffs.some((b) => b.visual === 'ice')).toBe(false);
+  });
+
+  it.each(['maul', 'pounce', 'roar'] as const)(
+    'emits the %s gesture from a humanoid Moon Druid',
+    (gesture) => {
+      const { w, p } = setup('druid', [], [`dr_moon_${gesture}`]);
+      resolvePlayerAbility(w, p, 'a2', zero);
+      w.boss!.decisionTimer = 100;
+      for (let i = 0; i < 70; i++) w.step(0.1, new Map());
+      resolvePlayerAbility(w, p, 'sub1', zero);
+      expect(w.serialize().players[0].form).not.toBe('moonBear');
+      expect(w.events).toEqual(
+        expect.arrayContaining([expect.objectContaining({ t: 'cast', druidGesture: gesture })]),
+      );
+    },
+  );
+
+  it('carries the actual Crystalline Edge freeze and resolved cone art', () => {
+    const skill = 'mg_evoker_cone';
+    const { w, p } = setup('mage', [`${skill}_g`], [skill]);
+    resolvePlayerAbility(w, p, 'sub1', zero);
+    const cone = w.events.find((e) => e.t === 'skillArea' && e.area.style === 'mageCold');
+    expect(cone).toMatchObject({ t: 'skillArea', area: { crystalline: true } });
+    expect(w.serialize().bosses[0].buffs.some((b) => b.visual === 'ice')).toBe(true);
+  });
+
+  it('exposes cage art and ally protection through the resolved Sanctum Prison field', () => {
+    const skill = 'mg_abjurer_bind';
+    const { w, p } = setup('mage', [`${skill}_g`], [skill]);
+    resolvePlayerAbility(w, p, 'sub1', zero);
+    expect(w.serialize().groundZones[0]).toMatchObject({
+      mageBind: true,
+      supportKinds: ['protect'],
+    });
+  });
+});
+
+it('shows Sculpted Blast preparation and then the retort only until its actual release', () => {
+  const skill = 'mg_evoker_sculpt';
+  const { w, p } = setup('mage', [`${skill}_g`], [skill]);
+  w.boss!.decisionTimer = 100;
+  w.step(
+    0.05,
+    new Map([
+      [
+        'a',
+        {
+          seq: 0,
+          move: zero,
+          aim: { x: 1, y: 0 },
+          buttons: { basic: false, a1: false, a2: false, a3: false, revive: false, sub1: true },
+        },
+      ],
+    ]),
+  );
+  const preparing = w.serialize().players[0];
+  expect(preparing.sculpting).toBe(true);
+  expect(preparing.buffs.some((b) => b.visual === 'sculptedRetort')).toBe(false);
+  for (let i = 0; i < 16; i++) w.step(0.05, new Map());
+  const armed = w.serialize().players[0];
+  expect(armed.sculpting).toBeUndefined();
+  expect(armed.buffs.some((b) => b.visual === 'sculptedRetort')).toBe(true);
+  resolvePlayerAbility(w, p, 'basic', zero);
+  w.step(0.08, new Map());
+  expect(w.events.some((e) => e.t === 'skillArea' && e.area.style === 'mageRetort')).toBe(true);
+  expect(w.serialize().players[0].buffs.some((b) => b.visual === 'sculptedRetort')).toBe(false);
 });

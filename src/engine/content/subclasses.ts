@@ -385,14 +385,22 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'Cone of Cold',
           '❄️',
           'A freezing 210u cone for 30', // item 3: a cone, not a circle
-          cone('Cone of Cold', 8, 30, 210, 45, { slowMult: 0.5, slowDuration: 2 }),
+          cone('Cone of Cold', 8, 30, 210, 45, {
+            visualStyle: 'mageCold',
+            slowMult: 0.5,
+            slowDuration: 2,
+          }),
         ),
         sk(
           'mg_evoker_sculpt',
           'Sculpted Blast',
           '💥',
           'Charge a 170u detonation for 58, +25% against controlled foes',
-          nova('Sculpted Blast', 11, 58, 170, { castTime: 0.6, controlDamageBonus: 0.25 }),
+          nova('Sculpted Blast', 11, 58, 170, {
+            visualStyle: 'mageSculpt',
+            castTime: 0.6,
+            controlDamageBonus: 0.25,
+          }),
         ),
         sk(
           'mg_evoker_shield',
@@ -400,6 +408,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           '🛡️', // item 4: was a 🔵 placeholder (a shield skill now reads as a shield)
           'Peel with a 180u cone for 28 and 90u knockback; shield yourself for 35 / 4s',
           cone('Arcane Shield', 12, 28, 180, 50, {
+            visualStyle: 'mageShield',
             knockback: 90,
             balanceDamageScale: 0,
             absorption: { amount: 35, balanceAmount: 0, duration: 4, target: 'self' },
@@ -419,6 +428,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           '🛡️',
           'Shield yourself for 50 / 6s; a 150u burst deals 24, +35% to controlled foes, and slows for 3s',
           nova('Arcane Ward', 12, 24, 150, {
+            visualStyle: 'mageWard',
             controlDamageBonus: 0.35,
             balanceDamageScale: 0,
             slowMult: 0.5,
@@ -432,6 +442,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           '🌀',
           'Roots foes in a zone — holds them fast',
           zone('Otiluke Bind', 10, {
+            visualStyle: 'mageBind',
             slowMult: 0.3,
             slowDuration: 1.5,
             zoneTickDamage: 8,
@@ -455,6 +466,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           '💚',
           'Mend an ally for 55 and grant a 20-point, 5s barrier to the lowest-health ally, even at full health',
           heal('Life Transfer', 5, 55, {
+            visualStyle: 'mageTransfer',
             absorption: { amount: 20, balanceAmount: 0, duration: 5, target: 'weakest' },
           }),
         ),

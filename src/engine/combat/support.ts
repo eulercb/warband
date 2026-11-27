@@ -117,7 +117,7 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
       armReflection(world, p, ally, ab);
       if (gained <= 0) continue;
       onSubclassProtection(p, gained);
-      supportCue(world, p, ally, 'absorb');
+      supportCue(world, p, ally, 'absorb', ab.visualStyle === 'mageTransfer');
       if (
         p.classId === 'druid' &&
         ((ab.kind === 'heal' && ab.slot === 'a2') || ab.druidDelivery === 'pounce')
@@ -234,7 +234,7 @@ export function healSupportAlly(
       applyBuff(p, makeBuff('harmony', 0, 8, 'bardHarmony'));
     return 0;
   }
-  supportCue(world, p, target, 'heal');
+  supportCue(world, p, target, 'heal', ab.visualStyle === 'mageTransfer');
   if (ab.kind === 'heal') {
     const boons = ab.components
       ? ab.components.effects.filter((e) => e.kind === 'buff' && e.target === 'allies')

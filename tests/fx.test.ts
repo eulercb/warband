@@ -131,44 +131,50 @@ describe('Fx: fight-start and party-wipe transitions (item)', () => {
   });
 });
 
-it('draws the lightning strike across its area and clears it after fading', () => {
-  const fx = new Fx(new Container());
-  const camera = new Camera(1600, 1000);
-  const g = new Graphics();
-  fx.processEvents(
-    [
-      {
-        t: 'skillArea',
-        sourceId: 1,
-        side: 'player',
-        color: 0x75aaff,
-        area: {
-          kind: 'line',
-          style: 'lightning',
-          contacts: [{ id: 2, pos: { x: 700, y: 500 }, radius: 26 }],
-          stoppedByCover: true,
-          origin: { x: 450, y: 500 },
-          angle: 0,
-          range: 500,
-          radius: 14,
-          halfAngle: 0,
+it.each([
+  [14, 14],
+  [24, 20],
+])(
+  'draws a lightning strike of half-width %i and clears it after fading',
+  (halfWidth, activePaths) => {
+    const fx = new Fx(new Container());
+    const camera = new Camera(1600, 1000);
+    const g = new Graphics();
+    fx.processEvents(
+      [
+        {
+          t: 'skillArea',
+          sourceId: 1,
+          side: 'player',
+          color: 0x75aaff,
+          area: {
+            kind: 'line',
+            style: 'lightning',
+            contacts: [{ id: 2, pos: { x: 700, y: 500 }, radius: 26 }],
+            stoppedByCover: true,
+            origin: { x: 450, y: 500 },
+            angle: 0,
+            range: 500,
+            radius: halfWidth,
+            halfAngle: 0,
+          },
         },
-      },
-    ],
-    camera,
-  );
-  fx.draw(g, camera);
-  expect(instructionCount(g)).toBe(14);
-  for (let frame = 0; frame < 18; frame++) fx.update(16);
-  fx.draw(g, camera);
-  expect(instructionCount(g)).toBe(9);
-  for (let frame = 0; frame < 12; frame++) fx.update(16);
-  fx.draw(g, camera);
-  expect(instructionCount(g)).toBe(9);
-  for (let frame = 0; frame < 40; frame++) fx.update(16);
-  fx.draw(g, camera);
-  expect(instructionCount(g)).toBe(0);
-});
+      ],
+      camera,
+    );
+    fx.draw(g, camera);
+    expect(instructionCount(g)).toBe(activePaths);
+    for (let frame = 0; frame < 18; frame++) fx.update(16);
+    fx.draw(g, camera);
+    expect(instructionCount(g)).toBe(9);
+    for (let frame = 0; frame < 12; frame++) fx.update(16);
+    fx.draw(g, camera);
+    expect(instructionCount(g)).toBe(9);
+    for (let frame = 0; frame < 40; frame++) fx.update(16);
+    fx.draw(g, camera);
+    expect(instructionCount(g)).toBe(0);
+  },
+);
 
 it('keeps the Mage garment ordered around the body and bends its trailing cloth', () => {
   const behind = new Graphics();

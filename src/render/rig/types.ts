@@ -168,6 +168,7 @@ export interface RigDriveCtx {
   drawProjectileCount?: number;
   druidPounce?: import('../../engine/core/types').PlayerView['druidPounce'];
   rangerRoll?: import('../../engine/core/types').PlayerView['rangerRoll'];
+  sculpting?: boolean;
   castT?: number; // 0..1 rooted-cast progress
   aim?: Vec2; // aim unit vector (humanoid torso/arms)
   /** Authored victory pose; absent during ordinary play. */

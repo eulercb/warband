@@ -109,7 +109,9 @@ export class RigLayer {
       if (e.t === 'blink') this.nodes.get(e.id)?.rig.triggerBlink(e.presentation === 'mage');
       if (e.t !== 'cast') continue;
       const rig = this.nodes.get(e.sourceId)?.rig;
-      if (e.visualStyle) rig?.triggerElemental(e.visualStyle);
+      if (e.visualStyle === 'fireball' || e.visualStyle === 'frostNova')
+        rig?.triggerElemental(e.visualStyle);
+      else if (e.visualStyle) rig?.triggerMageGesture(e.visualStyle);
       else if (e.druidGesture) rig?.triggerDruidGesture(e.druidGesture);
       else
         rig?.triggerAttack(
@@ -208,6 +210,7 @@ export class RigLayer {
         // fall back to the a1 cast pose; the cast bar over the head carries the progress.
         castSlot: p.castSlot === 'sub1' || p.castSlot === 'sub2' ? 'a1' : p.castSlot,
         castT: castProgress(p),
+        sculpting: p.sculpting,
         drawingProjectile: p.drawingProjectile,
         drawProjectileCount: p.drawProjectileCount,
         rangerRoll: p.rangerRoll,

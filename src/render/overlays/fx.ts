@@ -47,6 +47,9 @@ const AREA_FLASH_TTL = 0.45; // s — how long an ability's area cue lingers
 
 function areaFlashTtl(style: SkillArea['style']): number {
   switch (style) {
+    case 'doorDepart':
+    case 'doorArrive':
+      return 0.7;
     case 'blinkDepart':
       return BLINK_DEPART_TTL;
     case 'blinkArrive':
@@ -141,6 +144,7 @@ interface SupportFlash {
   pos: Vec2;
   kinds: SupportCueKind[];
   natureRelay?: boolean;
+  mageTransfer?: boolean;
   age: number;
 }
 
@@ -237,6 +241,7 @@ export class Fx {
           if (existing) {
             if (!existing.kinds.includes(e.kind)) existing.kinds.push(e.kind);
             existing.natureRelay ||= e.natureRelay;
+            existing.mageTransfer ||= e.mageTransfer;
           } else {
             if (this.supportFlashes.length >= 32) this.supportFlashes.shift();
             this.supportFlashes.push({
@@ -246,6 +251,7 @@ export class Fx {
               pos: { ...e.pos },
               kinds: [e.kind],
               natureRelay: e.natureRelay,
+              mageTransfer: e.mageTransfer,
               age: 0,
             });
           }
@@ -421,6 +427,37 @@ export class Fx {
           break;
         }
         case 'blink': {
+          if (e.presentation === 'door' || e.presentation === 'doorRelocation') {
+            const travel = torusSub(e.to, e.from);
+            if (Math.hypot(travel.x, travel.y) <= 1) break;
+            const angle = Math.atan2(travel.y, travel.x);
+            const radius = e.presentation === 'door' ? 29 : 20;
+            this.spawnAreaFlash(
+              {
+                kind: 'circle',
+                style: 'doorDepart',
+                origin: e.from,
+                angle,
+                radius,
+                range: 0,
+                halfAngle: 0,
+              },
+              0xc6aeff,
+            );
+            this.spawnAreaFlash(
+              {
+                kind: 'circle',
+                style: 'doorArrive',
+                origin: e.to,
+                angle,
+                radius,
+                range: 0,
+                halfAngle: 0,
+              },
+              0x8ddbf7,
+            );
+            break;
+          }
           if (e.presentation === 'mage') {
             const travel = torusSub(e.to, e.from);
             const endpoint = (pos: Vec2, style: 'blinkDepart' | 'blinkArrive') =>
@@ -786,6 +823,18 @@ export class Fx {
           const y = from.y + (to.y - from.y) * phase - Math.sin(phase * Math.PI) * 20;
           g.ellipse(x, y, 4.5, 2.6).fill({ color: 0xf4e6a8, alpha: fade * 0.92 });
         }
+      } else if (f.mageTransfer) {
+        const lift = Math.min(38, Math.hypot(to.x - from.x, to.y - from.y) * 0.32);
+        const middle = { x: (from.x + to.x) * 0.5, y: (from.y + to.y) * 0.5 - lift };
+        for (const offset of [-4, 4]) {
+          g.moveTo(from.x, from.y - 7)
+            .quadraticCurveTo(middle.x, middle.y + offset, to.x, to.y - 7)
+            .stroke({ color: offset < 0 ? 0xd5fff5 : 0x7fcbe0, width: 2, alpha: fade * 0.82 });
+        }
+        g.poly([to.x, to.y - 26, to.x + 8, to.y - 15, to.x, to.y - 4, to.x - 8, to.y - 15]).fill({
+          color: 0xdbfff4,
+          alpha: fade * 0.7,
+        });
       } else if (f.age < 0.25)
         g.moveTo(from.x, from.y)
           .lineTo(to.x, to.y)
@@ -956,6 +1005,61 @@ export class Fx {
         return;
       }
       const R = area.radius * s;
+      if (area.style === 'doorDepart' || area.style === 'doorArrive') {
+        const arrival = area.style === 'doorArrive';
+        const width = R * (arrival ? 0.36 + t * 0.38 : 0.9 - t * 0.68);
+        const tilt = Math.sin(area.angle) * width * 0.58;
+        g.poly([
+          c.x - width,
+          c.y + R * 0.36 + tilt,
+          c.x - width,
+          c.y - R * 1.22 + tilt,
+          c.x + width,
+          c.y - R * 1.22 - tilt,
+          c.x + width,
+          c.y + R * 0.36 - tilt,
+        ])
+          .fill({ color, alpha: fade * 0.25 })
+          .stroke({ color: 0xe6e7ff, width: Math.max(2, s * 3), alpha: fade * 0.91 });
+        g.moveTo(c.x - width, c.y + R * 0.36 + tilt)
+          .lineTo(c.x + width, c.y + R * 0.36 - tilt)
+          .stroke({ color, width: 4, alpha: fade });
+        return;
+      }
+      if (
+        area.style === 'mageSculpt' ||
+        area.style === 'mageRetort' ||
+        area.style === 'mageWard' ||
+        area.style === 'mageReversal'
+      ) {
+        const force = area.style === 'mageWard' || area.style === 'mageReversal';
+        const reversal = area.style === 'mageReversal';
+        const retort = area.style === 'mageRetort';
+        const bands = retort ? 6 : 10;
+        const reach = R * (0.67 + 0.33 * t);
+        for (let i = 0; i < bands; i++) {
+          const a = (i / bands) * Math.PI * 2 + (force ? 0 : t * 0.35);
+          const dx = Math.cos(a),
+            dy = Math.sin(a);
+          const wing = R * (force ? 0.16 : 0.091) * (1 - t * 0.42);
+          const inner = R * (reversal ? 0.71 : force ? 0.61 : 0.39);
+          const x = c.x + dx * reach,
+            y = c.y + dy * reach;
+          g.poly([
+            c.x + dx * inner,
+            c.y + dy * inner,
+            x - dy * wing,
+            y + dx * wing,
+            x + dx * R * 0.09,
+            y + dy * R * 0.09 - (force ? R * 0.08 : 0),
+            x + dy * wing,
+            y - dx * wing,
+          ])
+            .fill({ color: force ? 0x83c1ea : 0xb98fee, alpha: fade * 0.65 })
+            .stroke({ color: force ? 0xd7f6ff : 0xf7d6fd, width: 1.5, alpha: fade * 0.85 });
+        }
+        return;
+      }
       if (area.style === 'druidRoar' || area.style === 'druidBramble') {
         drawPressureFronts(g, c, R, t, fade, area.style === 'druidRoar', area.angle);
         return;
@@ -965,7 +1069,15 @@ export class Fx {
         return;
       }
       if (area.style === 'druidFrostContact') {
-        drawIceClasp(g, c, Math.max(9, R), t, fade);
+        for (let i = 0; i < 7; i++) {
+          const angle = i * 2.399963;
+          const reach = R * (0.57 + t * 0.61);
+          const x = c.x + Math.cos(angle) * reach;
+          const y = c.y + Math.sin(angle) * reach;
+          g.moveTo(x, y)
+            .lineTo(x + Math.cos(angle) * R * 0.23, y + Math.sin(angle) * R * 0.23)
+            .stroke({ color: 0xd4f4ff, width: 2, alpha: fade });
+        }
         return;
       }
       if (area.style === 'mageBlinkWard') {
@@ -1125,6 +1237,34 @@ export class Fx {
       const R = area.range * s;
       const a0 = area.angle - area.halfAngle;
       const a1 = area.angle + area.halfAngle;
+      if (area.style === 'mageShield' || area.style === 'mageCold') {
+        const shield = area.style === 'mageShield';
+        const shards = shield ? 5 : 13;
+        for (let i = 0; i < shards; i++) {
+          const across = (2 * i) / (shards - 1) - 1;
+          const a = area.angle + across * area.halfAngle;
+          const dx = Math.cos(a),
+            dy = Math.sin(a);
+          const reach = R * (shield ? 0.48 + t * 0.5 : 0.71 + (i % 3) * 0.1 + t * 0.09);
+          const x = o.x + dx * reach,
+            y = o.y + dy * reach;
+          const wing = R * (shield ? 0.105 : area.crystalline ? 0.05 : 0.033);
+          const tail = R * (shield ? 0.25 : 0.42);
+          g.poly([
+            x - dx * tail,
+            y - dy * tail,
+            x - dy * wing,
+            y + dx * wing,
+            x + dx * wing * 0.2,
+            y + dy * wing * 0.2,
+            x + dy * wing,
+            y - dx * wing,
+          ])
+            .fill({ color: shield ? 0x938cf4 : 0x9adcf7, alpha: fade * 0.69 })
+            .stroke({ color: shield ? 0xe1d8ff : 0xe0f7ff, width: 1.5, alpha: fade * 0.83 });
+        }
+        return;
+      }
       if (area.style === 'druidGust' || area.style === 'druidWinterGale') {
         const frost = area.style === 'druidWinterGale';
         for (let i = 0; i < 7; i++) {
@@ -1268,6 +1408,25 @@ export class Fx {
         arc(0).stroke({ width: 4, color: 0x87bfff, alpha: flash * 0.85 });
         arc(0).stroke({ width: 1.6, color: 0xf1fbff, alpha: flash });
         arc(2).stroke({ width: 1, color: 0xc2a9ff, alpha: flash * 0.75 });
+        const reach = Math.max(0, halfWidth - 14 * camera.scale);
+        if (reach > 0)
+          for (const side of [-1, 1]) {
+            for (let fork = 1; fork <= 3; fork++) {
+              const start = at(length * (fork * 0.21 - 0.13), 0);
+              const elbow = at(
+                length * (fork * 0.21 - 0.02),
+                side * Math.min(halfWidth, reach * 1.28),
+              );
+              const tip = at(
+                length * (fork * 0.21 + 0.13),
+                side * Math.min(halfWidth, reach * 2.08),
+              );
+              g.moveTo(start.x, start.y)
+                .lineTo(elbow.x, elbow.y)
+                .lineTo(tip.x, tip.y)
+                .stroke({ color: 0xb3d9ff, width: 1.5, alpha: flash * Math.min(0.8, reach / 6) });
+            }
+          }
         g.circle(origin.x, origin.y, 4 + 8 * flash).fill({ color, alpha: flash * 0.6 });
         g.circle(origin.x, origin.y, 2 + 3 * flash).fill({ color: 0xeaffff, alpha: flash });
       } else {
@@ -1425,7 +1584,7 @@ function drawMoltenRupture(g: Graphics, c: Vec2, r: number, t: number, fade: num
   }
 }
 
-function drawIceClasp(g: Graphics, c: Vec2, r: number, t: number, fade: number): void {
+export function drawIceClasp(g: Graphics, c: Vec2, r: number, t: number, fade: number): void {
   const lock = Math.min(1, t * 4);
   for (const side of [-1, 1]) {
     const x = c.x + side * r * (0.83 - lock * 0.28);
