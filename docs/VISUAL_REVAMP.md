@@ -840,3 +840,47 @@ This batch started at 51% of the five-hour allowance and 22% weekly.
 
 Normal-zoom phone captures: [Encircling Maul](images/encircling-maul-phone.png),
 [Erupting Earth](images/erupting-earth-phone.png), and [Winter Gale](images/winter-gale-phone.png).
+
+### Druid combat motion and Mage starting-skill grands
+
+The owner accepted most of the Druid subclass pass and identified four
+effects that needed stronger motion or more distinct materials. Astra 6.2
+High reviewed the native-size phone frames and compared the shapes and
+poses with the authored gameplay. This patch keeps the gameplay timing
+and balance intact.
+
+- **Circle of the Moon Dire Maul:** The bear loads its shoulder and
+  sweeps with a visibly extended forepaw. **Encircling Maul**, its
+  subclass-skill grand, turns the whole bear through the full swipe.
+  The sweep starts with the existing hit and leaves a short curved trail.
+- **Circle of the Moon Primal Roar:** The initial call sends short
+  pressure waves from the muzzle. The later close-hit payoff emits wider
+  pressure fronts. Both parts use the same acoustic motif at different
+  scales. Feral Pounce keeps its physical landing effect.
+- **Circle of the Land Erupting Earth:** A dark stone carries a glowing
+  fracture. On impact the ground splits along molten seams, throwing
+  embers and lit crust across the actual blast.
+- **Circle of the Land Winter Gale**, Gust's subclass-skill grand:
+  Splinters travel with the wind. Ice facets close around a foe only
+  after a freeze is applied. Immune targets retain the resisted cue.
+
+The **Mage** slice covers the starting-skill grands and Frost Nova's
+ordinary **Deep Freeze** upgrade. **Arcane Barrage** (Arcane Bolt grand)
+opens the Mage's free hand and gives the actual volley split wakes.
+**Supernova** (Fireball grand) adds hot rays on the resolved blast.
+**Polar Vortex** (Frost Nova grand) spirals inward with the pull. Deep
+Freeze is compatible and uses the same target ice facets as Winter Gale
+on a successful freeze. **Displacement Ward** (Blink grand) adds
+converging facets at the protected arrival point.
+
+The existing base Fireball, Frost Nova and Blink presentation remains
+the baseline. This batch began at 100% of the five-hour allowance and
+14% weekly. The next Mage slice is the **Evoker and Abjurer** subclass
+skills, their grands and the two identity choices per subclass.
+
+Phone captures from resolved gameplay include
+[Encircling Maul](images/encircling-maul-motion-phone.gif),
+[Primal Roar](images/primal-roar-pressure-phone.png),
+[Erupting Earth](images/molten-earth-phone.png),
+[Winter Gale](images/winter-gale-clasp-phone.png), and
+[Polar Vortex](images/mage-polar-vortex-phone.png).

@@ -1027,8 +1027,9 @@ export interface GuidanceCast {
   activeTick: number;
 }
 export interface Projectile {
-  impactStyle?: 'fireball' | 'druidEarth';
-  presentation?: 'arcaneBolt' | 'frostArrow' | 'railshot' | 'brambleSpear' | 'druidEarth';
+  impactStyle?: 'fireball' | 'druidEarth' | 'mageSupernova';
+  presentation?:
+    'arcaneBolt' | 'arcaneBarrage' | 'frostArrow' | 'railshot' | 'brambleSpear' | 'druidEarth';
   reflected?: boolean;
   guidance?: GuidanceCast;
   aimPoint?: Vec2;
@@ -1565,6 +1566,9 @@ export interface SkillArea {
     | 'moonClaw'
     | 'lightning'
     | 'frostNova'
+    | 'magePolarVortex'
+    | 'mageSupernova'
+    | 'mageBlinkWard'
     | 'fireball'
     | 'rollBurst'
     | 'druidCyclone'
@@ -1572,6 +1576,7 @@ export interface SkillArea {
     | 'druidBloom'
     | 'druidEarth'
     | 'druidPounce'
+    | 'druidMaul'
     | 'druidGust'
     | 'druidWinterGale'
     | 'druidFrostContact'
@@ -1619,7 +1624,7 @@ export type GameEvent =
       t: 'cast';
       ability: string;
       visualStyle?: 'frostNova' | 'fireball';
-      rangedRelease?: 'projectile' | 'arrowRain';
+      rangedRelease?: 'projectile' | 'arrowRain' | 'arcaneBarrage';
       druidGesture?: DruidGesture;
       sourceId: EntityId;
       pos: Vec2;
@@ -1653,7 +1658,7 @@ export type GameEvent =
   | { t: 'silenceBreak'; pos: Vec2 }
   | { t: 'fieldDispel'; pos: Vec2; radius: number }
   | { t: 'animalStrike'; sourceId: EntityId; animal: 'bear' | 'wolf'; slot: number; angle: number }
-  | { t: 'blink'; id: EntityId; from: Vec2; to: Vec2; presentation?: 'mage' }
+  | { t: 'blink'; id: EntityId; from: Vec2; to: Vec2; presentation?: 'mage'; warded?: boolean }
   | { t: 'telegraph'; pos: Vec2; shape: TelegraphKind }
   | { t: 'enrage'; id: EntityId; pos: Vec2 }
   | { t: 'projectile'; kind: ProjectileKind; pos: Vec2 }

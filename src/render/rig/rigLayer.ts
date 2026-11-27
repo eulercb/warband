@@ -111,7 +111,11 @@ export class RigLayer {
       const rig = this.nodes.get(e.sourceId)?.rig;
       if (e.visualStyle) rig?.triggerElemental(e.visualStyle);
       else if (e.druidGesture) rig?.triggerDruidGesture(e.druidGesture);
-      else rig?.triggerAttack(e.rangedRelease ? e.slot : undefined);
+      else
+        rig?.triggerAttack(
+          e.rangedRelease ? e.slot : undefined,
+          e.rangedRelease === 'arcaneBarrage',
+        );
     }
   }
 

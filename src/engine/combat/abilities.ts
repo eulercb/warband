@@ -612,7 +612,7 @@ function applyStrikeRiders(
   if (ab.stun) applyStun(world, target, ab.stun, 'stun');
   if (ab.freeze) {
     const frozen = applyStun(world, target, ab.freeze, 'freeze');
-    if (frozen > 0 && ab.druidDelivery === 'gust')
+    if (frozen > 0 && (ab.druidDelivery === 'gust' || ab.visualStyle === 'frostNova'))
       emitSkillArea(world, target.id, 0xbbebff, {
         kind: 'circle',
         style: 'druidFrostContact',
@@ -746,7 +746,9 @@ export function resolvePlayerAbility(
     visualStyle: ab.visualStyle,
     rangedRelease:
       ab.kind === 'projectile'
-        ? 'projectile'
+        ? ab.basicPresentation === 'arcaneBolt' && usesArcaneBarrage(p, ab)
+          ? 'arcaneBarrage'
+          : 'projectile'
         : ab.kind === 'groundZone' && ab.zoneKind === 'rainOfArrows'
           ? 'arrowRain'
           : undefined,
@@ -935,7 +937,10 @@ export function resolvePlayerAbility(
         id: p.id,
         from,
         to: { ...p.pos },
-        ...(p.classId === 'mage' && { presentation: 'mage' as const }),
+        ...(p.classId === 'mage' && {
+          presentation: 'mage' as const,
+          warded: !!ab.steadfastDuration && p.charUpgradeIds?.includes('mg_gk_a3_b'),
+        }),
       });
       armWhisperRefrain(world, p, ab, slot, from);
       break;
@@ -1335,7 +1340,7 @@ function resolveConeAt(
       kind: 'cone',
       style:
         ab.druidDelivery === 'maul'
-          ? 'moonClaw'
+          ? 'druidMaul'
           : ab.druidDelivery === 'gust'
             ? ab.freeze
               ? 'druidWinterGale'
@@ -1413,7 +1418,7 @@ export function resolveBurstAt(
     emitSkillArea(world, p.id, CLASS_COLORS[p.classId] ?? 0xffffff, {
       kind: 'circle',
       style:
-        ab.visualStyle ??
+        (ab.visualStyle === 'frostNova' && ab.pull ? 'magePolarVortex' : ab.visualStyle) ??
         (p.classId === 'druid' && ab.slot === 'a3'
           ? ab.pull
             ? 'druidTempest'
@@ -1827,7 +1832,10 @@ function resolveComposedAbility(
           id: p.id,
           from,
           to: { ...p.pos },
-          ...(p.classId === 'mage' && { presentation: 'mage' as const }),
+          ...(p.classId === 'mage' && {
+            presentation: 'mage' as const,
+            warded: !!ab.steadfastDuration && p.charUpgradeIds?.includes('mg_gk_a3_b'),
+          }),
         });
         armWhisperRefrain(world, p, ab, ab.slot, from);
       } else {
@@ -2006,6 +2014,10 @@ interface SpawnProjOpts {
   onImpact?: ProjectileImpact;
 }
 
+function usesArcaneBarrage(p: Player, ab: PlayerAbilityDef): boolean {
+  return (ab.projCount ?? 1) > 1 && !!p.charUpgradeIds?.includes('mg_gk_basic_a');
+}
+
 function spawnPlayerProjectile(
   world: World,
   p: Player,
@@ -2019,7 +2031,11 @@ function spawnPlayerProjectile(
     ...(earth
       ? { presentation: 'druidEarth' as const }
       : kind !== 'fireball' && o.returningSource?.basicPresentation === 'arcaneBolt'
-        ? { presentation: 'arcaneBolt' as const }
+        ? {
+            presentation: usesArcaneBarrage(p, o.returningSource)
+              ? ('arcaneBarrage' as const)
+              : ('arcaneBolt' as const),
+          }
         : kind === 'arrow' &&
             o.returningSource?.slot === 'basic' &&
             (o.pierce ?? 0) >= 3 &&
@@ -2035,7 +2051,9 @@ function spawnPlayerProjectile(
     impactStyle: earth
       ? 'druidEarth'
       : o.returningSource?.visualStyle === 'fireball'
-        ? 'fireball'
+        ? p.charUpgradeIds?.includes('mg_gk_a1_a') && o.castSlow
+          ? 'mageSupernova'
+          : 'fireball'
         : undefined,
     guidance: o.returningSource?.guidanceCast,
     id: world.allocId(),

@@ -362,7 +362,7 @@ describe('Druid subclass visual delivery', () => {
   it('uses the actual full Maul angle and holds the bramble until a qualifying contact', () => {
     const maul = setup('druid', ['dr_moon_maul_g'], ['dr_moon_maul']);
     resolvePlayerAbility(maul.w, maul.p, 'sub1', zero);
-    const swipe = maul.w.events.find((e) => e.t === 'skillArea' && e.area.style === 'moonClaw');
+    const swipe = maul.w.events.find((e) => e.t === 'skillArea' && e.area.style === 'druidMaul');
     expect(swipe).toMatchObject({ area: { halfAngle: Math.PI } });
     const roar = setup('druid', ['dr_moon_roar_g'], ['dr_moon_roar']);
     resolvePlayerAbility(roar.w, roar.p, 'sub1', zero);
@@ -456,4 +456,48 @@ it('paints Pack Shelter and Shared Renewal only at their real recipients', () =>
     from: renewal.druid.pos,
     pos: renewal.ally.pos,
   });
+});
+
+describe('Mage starting skill visual delivery', () => {
+  it('uses the volley projectile and the Supernova contact rather than the base cue', () => {
+    const { w, p } = setup('mage', ['mg_gk_basic_a', 'mg_gk_a1_a']);
+    resolvePlayerAbility(w, p, 'basic', zero);
+    const bolts = w.serialize().projectiles;
+    expect(bolts).toHaveLength(3);
+    expect(bolts.every((bolt) => bolt.presentation === 'arcaneBarrage')).toBe(true);
+    w.projectiles = [];
+    w.boss!.decisionTimer = 100;
+    resolvePlayerAbility(w, p, 'a1', zero);
+    expect(w.projectiles[0].impactStyle).toBe('mageSupernova');
+    w.step(0.08, new Map());
+    expect(w.events.some((e) => e.t === 'skillArea' && e.area.style === 'mageSupernova')).toBe(
+      true,
+    );
+  });
+
+  it.each([false, true])(
+    'shows Polar Vortex and ICE only on the actual Deep Freeze result (immune=%s)',
+    (immune) => {
+      const { w, p } = setup('mage', ['mg_gk_a2_b', 'mg_freeze']);
+      if (immune) applyBuff(w.boss!, makeBuff('invuln', 0, 1, BOSS_INVULN_SOURCE));
+      resolvePlayerAbility(w, p, 'a2', zero);
+      expect(w.events.some((e) => e.t === 'skillArea' && e.area.style === 'magePolarVortex')).toBe(
+        true,
+      );
+      expect(
+        w.events.some((e) => e.t === 'skillArea' && e.area.style === 'druidFrostContact'),
+      ).toBe(!immune);
+    },
+  );
+
+  it.each([false, true])(
+    'marks the native and composed Displacement Ward arrivals (composed=%s)',
+    (composed) => {
+      const { w, p } = setup('mage', ['mg_gk_a3_b']);
+      const blink = p.abilities!.a3;
+      if (composed) p.abilities!.a3 = recompose(decompose(blink), blink);
+      resolvePlayerAbility(w, p, 'a3', zero);
+      expect(w.events.find((e) => e.t === 'blink')).toMatchObject({ warded: true, to: p.pos });
+    },
+  );
 });

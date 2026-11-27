@@ -567,6 +567,16 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
     x + (dx * along - dy * across) * scale,
     y + (dy * along + dx * across) * scale,
   ];
+  if (pr.presentation === 'arcaneBarrage') {
+    for (const side of [-1, 1])
+      g.poly([...at(4), ...at(-10, side * 7), ...at(-33, side * 5), ...at(-13, side * 2)]).fill({
+        color: side < 0 ? 0x80cfff : 0xc691ff,
+        alpha: 0.78,
+      });
+    g.poly([...at(12), ...at(0, -5), ...at(-9), ...at(0, 5)]).fill({ color: 0xb395ff });
+    g.poly([...at(11), ...at(0, -3), ...at(-4), ...at(0, 0.8)]).fill({ color: 0xf4e7ff });
+    return;
+  }
   if (pr.presentation === 'arcaneBolt') {
     // A cut crystal and a split wake separate it from the fireball and arrows.
     g.poly([...at(-6, -2), ...at(-24, -5.5), ...at(-14, -0.9)]).fill({
@@ -582,13 +592,17 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
   }
   if (pr.presentation === 'druidEarth') {
     g.poly([...at(13), ...at(3, -7), ...at(-13, -4), ...at(-10, 6), ...at(6, 7)])
-      .fill({ color: 0x906744 })
-      .stroke({ color: 0xe2b87f, width: Math.max(1.5, scale * 2.1) });
-    g.poly([...at(8), ...at(-1, -4), ...at(-7, 2), ...at(1, 4)]).fill({ color: 0xd4a66b });
+      .fill({ color: 0x3a2b36 })
+      .stroke({ color: 0xf08745, width: Math.max(1.5, scale * 2.1) });
+    g.moveTo(...at(8, -2))
+      .lineTo(...at(2, 1))
+      .lineTo(...at(-4, -2))
+      .lineTo(...at(-10, 3))
+      .stroke({ color: 0xffc070, width: Math.max(1.5, scale * 2.2) });
     for (const side of [-1, 1])
       g.poly([...at(-16, side * 3), ...at(-25, side * 7), ...at(-21, side)]).fill({
-        color: 0xbc926a,
-        alpha: 0.72,
+        color: side < 0 ? 0xf58b43 : 0xffd484,
+        alpha: 0.8,
       });
     return;
   }

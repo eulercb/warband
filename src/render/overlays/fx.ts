@@ -74,6 +74,10 @@ function areaFlashTtl(style: SkillArea['style']): number {
     case 'druidBramble':
     case 'druidTransplant':
     case 'druidRoar':
+    case 'magePolarVortex':
+    case 'mageSupernova':
+    case 'mageBlinkWard':
+    case 'druidMaul':
     case 'druidFrostContact':
       return 0.68;
     default:
@@ -434,6 +438,19 @@ export class Fx {
               );
             if (Math.hypot(travel.x, travel.y) > 8) endpoint(e.from, 'blinkDepart');
             endpoint(e.to, 'blinkArrive');
+            if (e.warded)
+              this.spawnAreaFlash(
+                {
+                  kind: 'circle',
+                  style: 'mageBlinkWard',
+                  origin: { ...e.to },
+                  angle: 0,
+                  range: 0,
+                  radius: 24,
+                  halfAngle: 0,
+                },
+                0xbbd5ff,
+              );
             break;
           }
           const puff = {
@@ -939,47 +956,92 @@ export class Fx {
         return;
       }
       const R = area.radius * s;
-      if (
-        area.style === 'druidEarth' ||
-        area.style === 'druidPounce' ||
-        area.style === 'druidBramble' ||
-        area.style === 'druidTransplant' ||
-        area.style === 'druidRoar' ||
-        area.style === 'druidFrostContact'
-      ) {
-        const frost = area.style === 'druidFrostContact';
-        const leafy = area.style === 'druidBramble' || area.style === 'druidTransplant';
-        const roar = area.style === 'druidRoar';
-        const earth = area.style === 'druidEarth';
-        const count = roar || frost ? 7 : 16;
-        for (let i = 0; i < count; i++) {
-          const a = i * 2.399963 + area.angle;
-          const front = R * (0.61 + (i % 5) * 0.092) * (0.92 + t * 0.08);
-          const x = c.x + Math.cos(a) * front;
-          const y = c.y + Math.sin(a) * front;
-          const h =
-            Math.max(4, R * (0.096 + (i % 3) * 0.045)) * (0.6 + Math.sin(t * Math.PI) * 0.54);
-          if (roar) {
-            g.moveTo(x - h, y + h * 0.55)
-              .quadraticCurveTo(x, y - h * 1.0, x + h, y + h * 0.55)
-              .stroke({ color: 0xe7be8e, width: 2.1, alpha: fade });
-          } else {
-            g.poly([
-              x - h * 0.54,
+      if (area.style === 'druidRoar' || area.style === 'druidBramble') {
+        drawPressureFronts(g, c, R, t, fade, area.style === 'druidRoar', area.angle);
+        return;
+      }
+      if (area.style === 'druidEarth') {
+        drawMoltenRupture(g, c, R, t, fade);
+        return;
+      }
+      if (area.style === 'druidFrostContact') {
+        drawIceClasp(g, c, Math.max(9, R), t, fade);
+        return;
+      }
+      if (area.style === 'mageBlinkWard') {
+        for (const side of [-1, 1]) {
+          const x = c.x + side * R * (1.12 - t * 0.24);
+          g.moveTo(x - side * R * 0.32, c.y - R * 0.8)
+            .lineTo(x, c.y - R * 0.4)
+            .lineTo(x, c.y + R * 0.41)
+            .lineTo(x - side * R * 0.31, c.y + R * 0.66)
+            .stroke({ color: 0xbdd8ff, width: Math.max(2, s * 3), alpha: fade });
+        }
+        return;
+      }
+      if (area.style === 'mageSupernova') {
+        drawElementalBurst(g, c, R, t, false, area.angle);
+        for (let i = 0; i < 10; i++) {
+          const a = (i * Math.PI) / 5;
+          const tip = R * (0.84 + t * 0.12);
+          const inner = R * (0.47 + t * 0.19);
+          const tipX = c.x + Math.cos(a) * tip,
+            tipY = c.y + Math.sin(a) * tip;
+          const ix = c.x + Math.cos(a) * inner,
+            iy = c.y + Math.sin(a) * inner;
+          const arm = R * (0.022 + 0.03 * fade);
+          g.poly([
+            ix - Math.sin(a) * arm,
+            iy + Math.cos(a) * arm,
+            tipX,
+            tipY,
+            ix + Math.sin(a) * arm,
+            iy - Math.cos(a) * arm,
+          ]).fill({ color: i % 2 ? 0xffe3ab : 0xffa566, alpha: fade * 0.85 });
+        }
+        return;
+      }
+      if (area.style === 'magePolarVortex') {
+        for (let i = 0; i < 12; i++) {
+          const a = i * 2.399963 - t * 3.6;
+          const radius = R * (0.68 + (i % 4) * 0.105) * (1 - t * 0.72);
+          const x = c.x + Math.cos(a) * radius,
+            y = c.y + Math.sin(a) * radius;
+          g.moveTo(
+            c.x + Math.cos(a + 0.65) * radius * 1.08,
+            c.y + Math.sin(a + 0.65) * radius * 1.08,
+          )
+            .quadraticCurveTo(
+              x,
               y,
-              x + h * 0.04,
-              y - h * (earth ? 1.8 : 1.24),
-              x + h * 0.66,
-              y - h * 0.12,
-              x + h * 0.34,
-              y + h * 0.36,
-            ])
-              .fill({
-                color: frost ? 0xb6f0ff : leafy ? 0xb6cf86 : i % 3 === 0 ? 0xe0b47c : 0xad8064,
-                alpha: fade,
-              })
-              .stroke({ color: frost ? 0x75b5df : 0x594437, width: 1, alpha: fade * 0.7 });
-          }
+              c.x + Math.cos(a - 0.3) * radius * 0.52,
+              c.y + Math.sin(a - 0.3) * radius * 0.52,
+            )
+            .stroke({
+              color: i % 2 ? 0x92d7f5 : 0xe3f5ff,
+              alpha: fade * 0.86,
+              width: Math.max(2, R * 0.034),
+            });
+        }
+        return;
+      }
+      if (area.style === 'druidPounce' || area.style === 'druidTransplant') {
+        for (let i = 0; i < 12; i++) {
+          const a = i * 2.399963 + area.angle;
+          const front = R * (0.62 + (i % 5) * 0.09) * (0.92 + t * 0.08);
+          const x = c.x + Math.cos(a) * front,
+            y = c.y + Math.sin(a) * front;
+          const h = Math.max(3, R * (0.085 + (i % 3) * 0.036));
+          g.poly([
+            x - h * 0.54,
+            y,
+            x + h * 0.04,
+            y - h,
+            x + h * 0.66,
+            y - h * 0.12,
+            x + h * 0.34,
+            y + h * 0.36,
+          ]).fill({ color: area.style === 'druidTransplant' ? 0xb6cf86 : 0xd8ab7a, alpha: fade });
         }
         return;
       }
@@ -1079,6 +1141,45 @@ export class Fx {
             .quadraticCurveTo(x * 0.88 + tx * 0.12 + wx, y * 0.88 + ty * 0.12 + wy, x, y)
             .quadraticCurveTo(x * 0.84 + tx * 0.16 - wx, y * 0.84 + ty * 0.16 - wy, tx, ty)
             .fill({ color: frost ? 0xb6e4fa : 0xcfe0a6, alpha: fade * 0.86 });
+        }
+        if (frost)
+          for (let i = 0; i < 10; i++) {
+            const angle = area.angle + area.halfAngle * (((i % 5) - 2) / 2);
+            const d = R * (0.25 + (i % 4) * 0.14 + t * 0.19);
+            const x = o.x + Math.cos(angle) * d;
+            const y = o.y + Math.sin(angle) * d;
+            const long = Math.max(4, R * 0.06);
+            const dx = Math.cos(angle) * long,
+              dy = Math.sin(angle) * long;
+            g.poly([
+              x + dx,
+              y + dy,
+              x - dx * 0.4 - dy * 0.38,
+              y - dy * 0.4 + dx * 0.38,
+              x - dx * 0.76,
+              y - dy * 0.76,
+              x - dx * 0.4 + dy * 0.38,
+              y - dy * 0.4 - dx * 0.38,
+            ])
+              .fill({ color: 0xdaf7ff, alpha: fade * 0.91 })
+              .stroke({ color: 0x709fcc, width: 1, alpha: fade });
+          }
+        return;
+      }
+      if (area.style === 'druidMaul') {
+        const span = area.halfAngle * 2;
+        const lead = a0 + span * Math.min(1, a.age / 0.4);
+        for (let i = 0; i < 3; i++) {
+          const radius = R * (0.74 + i * 0.1);
+          const from = Math.max(a0, lead - (0.9 + i * 0.08));
+          const to = Math.min(a1, lead + 0.16);
+          g.moveTo(o.x + Math.cos(from) * radius, o.y + Math.sin(from) * radius)
+            .arc(o.x, o.y, radius, from, to)
+            .stroke({
+              color: i === 2 ? 0xffeeff : 0xcba8e9,
+              width: Math.max(2, R * (0.061 - i * 0.009)),
+              alpha: fade * 0.93,
+            });
         }
         return;
       }
@@ -1232,4 +1333,127 @@ function lerpColor(a: number, b: number, t: number): number {
   const gg = Math.round(ag + (bg - ag) * t);
   const bl = Math.round(ab + (bb - ab) * t);
   return (r << 16) | (gg << 8) | bl;
+}
+
+function drawPressureFronts(
+  g: Graphics,
+  c: Vec2,
+  r: number,
+  t: number,
+  fade: number,
+  mouth: boolean,
+  facing: number,
+): void {
+  // Short directional waves leave the muzzle. The later hit propagates outward.
+  const origin = mouth
+    ? { x: c.x + Math.cos(facing) * r * 0.42, y: c.y + Math.sin(facing) * r * 0.42 - r * 0.4 }
+    : c;
+  const sections = mouth ? 1 : 5;
+  for (let row = 0; row < 3; row++) {
+    const reach = r * Math.max(0.17, (mouth ? 0.44 : 0.68) + t * 0.44 - row * 0.17);
+    for (let i = 0; i < sections; i++) {
+      const a = facing + (i * Math.PI * 2) / sections;
+      const from = a - 0.46;
+      const to = a + 0.46;
+      const x = origin.x + Math.cos(from) * reach;
+      const y = origin.y + Math.sin(from) * reach;
+      g.moveTo(x, y)
+        .arc(origin.x, origin.y, reach, from, to)
+        .stroke({
+          color: row === 0 ? 0xffe6ba : 0xc6b18c,
+          width: Math.max(1.6, r * (0.028 - row * 0.004)),
+          alpha: fade * (0.94 - row * 0.19),
+          cap: 'round',
+        });
+    }
+  }
+}
+
+function drawMoltenRupture(g: Graphics, c: Vec2, r: number, t: number, fade: number): void {
+  for (let i = 0; i < 9; i++) {
+    const a = i * 2.399963;
+    const dx = Math.cos(a);
+    const dy = Math.sin(a);
+    const length = r * (0.78 + (i % 3) * 0.1);
+    const out = ((i % 2) - 0.5) * r * 0.14;
+    const at = (forward: number, side = 0): [number, number] => [
+      c.x + dx * forward - dy * side,
+      c.y + dy * forward + dx * side,
+    ];
+    const points = [at(r * 0.09), at(length * 0.36, out), at(length * 0.58, -out), at(length)];
+    // The dark broken crust stays under a glowing, branching molten seam.
+    for (const [color, width, alpha] of [
+      [0x362430, r * 0.115, 0.96],
+      [0xf06a35, r * 0.064, 0.91],
+      [0xffcc79, r * 0.025, 0.94],
+    ]) {
+      g.moveTo(...points[0])
+        .lineTo(...points[1])
+        .lineTo(...points[2])
+        .lineTo(...points[3])
+        .stroke({ color, width: Math.max(1.2, width), alpha: fade * alpha, cap: 'round' });
+    }
+    g.moveTo(...points[1])
+      .lineTo(...at(length * 0.52, out * 2.4))
+      .lineTo(...at(length * 0.7, out * 2.1))
+      .stroke({ color: 0xff9253, alpha: fade * 0.8, width: Math.max(1.5, r * 0.024) });
+    const [x, base] = at(length * (0.36 + (i % 4) * 0.15));
+    const plume = Math.sin(t * Math.PI) * r;
+    const y = base - plume * (0.14 + (i % 4) * 0.089);
+    const size = Math.max(2.5, r * (0.036 + (i % 3) * 0.022));
+    g.poly([
+      x - size,
+      y,
+      x - size * 0.25,
+      y - size * 1.6,
+      x + size * 0.85,
+      y - size * 0.85,
+      x + size,
+      y + size * 0.38,
+    ]).fill({ color: 0x49313a, alpha: fade });
+    g.poly([x - size, y, x - size * 0.25, y - size * 1.6, x + size * 0.54, y - size * 0.28]).fill({
+      color: 0xfe8249,
+      alpha: fade * 0.94,
+    });
+    for (const spark of [1, 2]) {
+      g.circle(
+        x + out * spark * t,
+        y - size * (spark + 1.2) - plume * 0.15,
+        Math.max(1.4, size * (0.28 - spark * 0.07)),
+      ).fill({ color: spark === 1 ? 0xfff0a4 : 0xff953e, alpha: fade * 0.9 });
+    }
+  }
+}
+
+function drawIceClasp(g: Graphics, c: Vec2, r: number, t: number, fade: number): void {
+  const lock = Math.min(1, t * 4);
+  for (const side of [-1, 1]) {
+    const x = c.x + side * r * (0.83 - lock * 0.28);
+    const y = c.y + r * 0.31;
+    const shoulder = x + side * r * 0.26;
+    const inward = x - side * r * (0.27 + lock * 0.2);
+    g.poly([
+      shoulder,
+      y + r * 0.12,
+      shoulder + side * r * 0.12,
+      y - r * 0.65,
+      inward,
+      y - r * 0.91,
+      inward - side * r * 0.12,
+      y - r * 0.01,
+    ])
+      .fill({ color: 0x7bc4ee, alpha: fade * 0.78 })
+      .stroke({ color: 0xd4f4ff, width: 1.5, alpha: fade });
+    g.poly([
+      shoulder + side * r * 0.12,
+      y - r * 0.65,
+      inward,
+      y - r * 0.91,
+      inward,
+      y - r * 0.42,
+    ]).fill({ color: 0xe4f9ff, alpha: fade * 0.88 });
+    g.moveTo(shoulder, y + r * 0.12)
+      .lineTo(inward, y - r * 0.42)
+      .stroke({ color: 0xb6e6ff, width: 1.3, alpha: fade });
+  }
 }
