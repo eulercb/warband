@@ -2481,6 +2481,7 @@ export class World {
         kind: 'circle',
         origin: { ...center },
         radius: ward.retaliation.radius,
+        style: ward.retaliation.sculpted ? 'mageRetort' : undefined,
         range: 0,
         angle: 0,
         halfAngle: 0,
@@ -4384,6 +4385,7 @@ export class World {
       reviveProgress: p.reviveProgress,
       castSlot: p.castSlot,
       castTimer: p.castTimer,
+      ...(p.castAbility?.visualStyle === 'mageSculpt' && { sculpting: true }),
       castTimerMax: p.castTimerMax,
       drawingProjectile: p.castAbility?.kind === 'projectile' || undefined,
       drawProjectileCount: p.castAbility?.projCount,
@@ -4506,6 +4508,7 @@ export class World {
         })),
       apparitions: apparitionViews(this),
       groundZones: this.groundZones.map((z) => ({
+        mageBind: z.mageBind,
         natureArt: z.natureArt,
         natureFollowing:
           (!!z.natureArt && z.followAcquired && (z.zoneFollow ?? 0) > 0) || undefined,

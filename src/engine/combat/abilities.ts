@@ -612,7 +612,12 @@ function applyStrikeRiders(
   if (ab.stun) applyStun(world, target, ab.stun, 'stun');
   if (ab.freeze) {
     const frozen = applyStun(world, target, ab.freeze, 'freeze');
-    if (frozen > 0 && (ab.druidDelivery === 'gust' || ab.visualStyle === 'frostNova'))
+    if (
+      frozen > 0 &&
+      (ab.druidDelivery === 'gust' ||
+        ab.visualStyle === 'frostNova' ||
+        ab.visualStyle === 'mageCold')
+    )
       emitSkillArea(world, target.id, 0xbbebff, {
         kind: 'circle',
         style: 'druidFrostContact',
@@ -753,7 +758,10 @@ export function resolvePlayerAbility(
           ? 'arrowRain'
           : undefined,
     druidGesture:
-      ab.druidDelivery === 'maul' || ab.druidDelivery === 'earth' || ab.druidDelivery === 'roar'
+      ab.druidDelivery === 'maul' ||
+      ab.druidDelivery === 'earth' ||
+      ab.druidDelivery === 'roar' ||
+      ab.druidDelivery === 'pounce'
         ? ab.druidDelivery
         : ab.druidDelivery === 'gust'
           ? 'wind'
@@ -938,7 +946,10 @@ export function resolvePlayerAbility(
         from,
         to: { ...p.pos },
         ...(p.classId === 'mage' && {
-          presentation: 'mage' as const,
+          presentation:
+            ab.swap && (from.x !== p.pos.x || from.y !== p.pos.y)
+              ? ('door' as const)
+              : ('mage' as const),
           warded: !!ab.steadfastDuration && p.charUpgradeIds?.includes('mg_gk_a3_b'),
         }),
       });
@@ -1339,20 +1350,23 @@ function resolveConeAt(
     emitSkillArea(world, p.id, CLASS_COLORS[p.classId] ?? 0xffffff, {
       kind: 'cone',
       style:
-        ab.druidDelivery === 'maul'
-          ? 'druidMaul'
-          : ab.druidDelivery === 'gust'
-            ? ab.freeze
-              ? 'druidWinterGale'
-              : 'druidGust'
-            : ab.basicPresentation === 'arcaneBolt'
-              ? undefined
-              : ab.basicPresentation,
+        ab.visualStyle === 'mageCold' || ab.visualStyle === 'mageShield'
+          ? ab.visualStyle
+          : ab.druidDelivery === 'maul'
+            ? 'druidMaul'
+            : ab.druidDelivery === 'gust'
+              ? ab.freeze
+                ? 'druidWinterGale'
+                : 'druidGust'
+              : ab.basicPresentation === 'arcaneBolt'
+                ? undefined
+                : ab.basicPresentation,
       origin: { ...origin },
       angle: aimAngle,
       range,
       radius: 0,
       halfAngle: half,
+      ...(ab.visualStyle === 'mageCold' && ab.freeze && { crystalline: true }),
     });
   const riders = deferredForce ? { ...ab, knockback: undefined, pull: undefined } : ab;
   const halfWidth = ab.flurryLaneHalfWidth;
@@ -1418,7 +1432,16 @@ export function resolveBurstAt(
     emitSkillArea(world, p.id, CLASS_COLORS[p.classId] ?? 0xffffff, {
       kind: 'circle',
       style:
-        (ab.visualStyle === 'frostNova' && ab.pull ? 'magePolarVortex' : ab.visualStyle) ??
+        (ab.visualStyle === 'mageWard' && ab.knockback
+          ? 'mageReversal'
+          : ab.visualStyle === 'frostNova' && ab.pull
+            ? 'magePolarVortex'
+            : ab.visualStyle === 'mageSculpt' ||
+                ab.visualStyle === 'mageWard' ||
+                ab.visualStyle === 'frostNova' ||
+                ab.visualStyle === 'fireball'
+              ? ab.visualStyle
+              : undefined) ??
         (p.classId === 'druid' && ab.slot === 'a3'
           ? ab.pull
             ? 'druidTempest'
@@ -1604,6 +1627,7 @@ function spawnComposedZone(
   transplant?: import('../core/types').FieldTransplantCast,
   font?: import('../core/types').FontSource,
   refuge?: import('../core/types').RefugeSource,
+  mageBind?: boolean,
 ): void {
   range = Math.min(range, Math.min(world.arena.w, world.arena.h) * 0.4);
   const centered = z.zoneKind === 'sanctuary' || z.zoneKind === 'consecration';
@@ -1612,6 +1636,7 @@ function spawnComposedZone(
     : clampToArena(world, vadd(p.pos, vscale(castAim, range)), z.radius);
   const arm = centered ? { armTime: 0, armFrom: p.pos } : zoneArm(p.pos, pos); // item 12
   spawnZone(world, {
+    mageBind,
     kind: z.zoneKind,
     pos,
     radius: z.radius,
@@ -1804,6 +1829,7 @@ function resolveComposedAbility(
           ab.fieldTransplantCast,
           reserveFont(world, p, ab),
           reserveRefuge(world, p, ab),
+          ab.visualStyle === 'mageBind' || undefined,
         );
       buffSelf();
       break;
@@ -1833,7 +1859,10 @@ function resolveComposedAbility(
           from,
           to: { ...p.pos },
           ...(p.classId === 'mage' && {
-            presentation: 'mage' as const,
+            presentation:
+              ab.swap && (from.x !== p.pos.x || from.y !== p.pos.y)
+                ? ('door' as const)
+                : ('mage' as const),
             warded: !!ab.steadfastDuration && p.charUpgradeIds?.includes('mg_gk_a3_b'),
           }),
         });
@@ -1897,6 +1926,7 @@ function armRebuke(p: Player, ab: PlayerAbilityDef): void {
     lifesteal: ab.lifestealFrac ?? 0,
     curseBonus: ab.rebukeCurseBonus,
     direct: ab.rebukeDirect,
+    sculpted: ab.visualStyle === 'mageSculpt' || undefined,
     invuln: ab.rebukeInvuln,
   };
   applyBuff(p, buff);
@@ -1929,6 +1959,7 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
   // caster to `pos` while the zone arms, so players read where it will land.
   const arm = centered ? { armTime: 0, armFrom: p.pos } : zoneArm(p.pos, pos);
   spawnZone(world, {
+    mageBind: ab.visualStyle === 'mageBind' || undefined,
     kind,
     pos,
     radius,
@@ -2123,6 +2154,7 @@ function emitSkillArea(world: World, sourceId: number, color: number, area: Skil
 }
 
 export interface SpawnZoneOpts {
+  mageBind?: boolean;
   rally?: GroundZone['rally'];
   refuge?: import('../core/types').RefugeSource;
   revivalFont?: import('../core/types').FontSource;
@@ -2171,6 +2203,7 @@ export interface SpawnZoneOpts {
  * GroundZone construction. */
 export function spawnZone(world: World, o: SpawnZoneOpts): void {
   const zone: GroundZone = {
+    mageBind: o.mageBind,
     revivalFont: o.revivalFont,
     refuge: o.refuge,
     rally: o.rally,

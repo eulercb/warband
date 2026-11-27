@@ -56,7 +56,15 @@ export interface PlayerAbilityDef {
   momentumUsed?: number;
   flowUsed?: boolean;
   name: string;
-  visualStyle?: 'frostNova' | 'fireball';
+  visualStyle?:
+    | 'frostNova'
+    | 'fireball'
+    | 'mageCold'
+    | 'mageSculpt'
+    | 'mageShield'
+    | 'mageWard'
+    | 'mageBind'
+    | 'mageTransfer';
   druidDelivery?: import('../core/types').DruidDelivery;
   flurryLaneHalfWidth?: number;
   flurryBarrage?: boolean;

@@ -13,6 +13,8 @@ export function buffView(b: Buff): BuffView {
       charges: b.mult,
     };
   if (b.kind === 'invuln' && b.source === 'divineGuard') view.visual = 'divineShield';
+  if (b.kind === 'rebuke' && b.retaliation?.sculpted) view.visual = 'sculptedRetort';
+  if (b.kind === 'stun' && b.source === 'freeze') view.visual = 'ice';
   const owner = b.kind === 'curse' ? curseOwner(b.source) : undefined;
   if (b.kind === 'venom' && b.venom) view.ownerId = b.venom.ownerId;
   if (b.kind === 'luckExposure') {

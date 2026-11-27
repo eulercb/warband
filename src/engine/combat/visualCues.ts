@@ -6,6 +6,7 @@ export function supportCue(
   source: Player,
   target: Player,
   kind: SupportCueKind,
+  mageTransfer?: boolean,
 ): void {
   world.events.push({
     t: 'support',
@@ -14,6 +15,7 @@ export function supportCue(
     from: { ...source.pos },
     pos: { ...target.pos },
     kind,
+    ...(mageTransfer && { mageTransfer }),
   });
 }
 export function buffCues(

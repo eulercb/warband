@@ -89,7 +89,13 @@ export function dimensionDoor(
   for (const { enemy, from } of moved) {
     enemy.shove = null;
     applyBuff(enemy, makeBuff('moveSpeed', 0.65, 2, 'dimensionDisorient'));
-    world.events.push({ t: 'blink', id: enemy.id, from, to: { ...enemy.pos } });
+    world.events.push({
+      t: 'blink',
+      id: enemy.id,
+      from,
+      to: { ...enemy.pos },
+      presentation: 'doorRelocation',
+    });
   }
   player.pos = playerLanding;
   player.shove = null;

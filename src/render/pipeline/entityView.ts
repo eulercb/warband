@@ -965,6 +965,41 @@ export function drawZone(
   const r = z.radius * scale;
   const { x, y } = screen;
 
+  if (z.mageBind) {
+    const arming = (z.armRemaining ?? 0) > 0;
+    if (arming) {
+      drawZoneArming(g, z, screen, scale, 0xa994f1, r);
+      return;
+    }
+    const fade = zoneFadeAlpha(z.remaining, z.duration);
+    const protectedFloor = z.supportKinds?.includes('protect');
+    const height = r * 0.36;
+    const color = protectedFloor ? 0xb2d9ff : 0xae9cf4;
+    for (let i = 0; i < 8; i++) {
+      const a = (2 * Math.PI * i) / 8 + Math.PI / 8;
+      const dx = Math.cos(a),
+        dy = Math.sin(a);
+      const px = x + dx * r,
+        py = y + dy * r;
+      const bend = r * 0.18;
+      g.moveTo(px, py)
+        .quadraticCurveTo(px + dx * bend, py - height, px - dx * bend, py - height)
+        .stroke({ color, width: Math.max(2, scale * 4), alpha: fade * 0.8 });
+      if (protectedFloor) {
+        g.poly([
+          x + dx * r * 0.61,
+          y + dy * r * 0.61,
+          px - dy * bend,
+          py + dx * bend,
+          px + dy * bend,
+          py - dx * bend,
+        ]).fill({ color: 0xaad7ee, alpha: fade * 0.37 });
+      }
+    }
+    drawZoneMarks(g, z, x, y, r, fade);
+    return;
+  }
+
   if (z.natureArt) {
     drawNatureField(g, z, x, y, r, scale, time);
     if (!(z.armRemaining && z.armRemaining > 0))

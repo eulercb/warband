@@ -106,6 +106,7 @@ export class CreatureRig {
   private recoilAngle = 0;
   private cheerPose?: CelebrationPose;
   private druidGesture?: DruidGesture;
+  private mageGesture?: import('../../engine/content/classes').PlayerAbilityDef['visualStyle'];
   private rangedSlot?: ExtSlot;
   private arcaneFan = false;
   private bowDraw = 0;
@@ -283,6 +284,13 @@ export class CreatureRig {
       : 0.11;
   }
 
+  triggerMageGesture(
+    style: import('../../engine/content/classes').PlayerAbilityDef['visualStyle'],
+  ): void {
+    this.triggerAttack();
+    this.mageGesture = style;
+  }
+
   triggerDruidGesture(gesture: DruidGesture): void {
     this.triggerAttack();
     this.druidGesture = gesture;
@@ -295,6 +303,7 @@ export class CreatureRig {
     this.rangedSlot = slot;
     this.arcaneFan = arcaneFan;
     this.druidGesture = undefined;
+    this.mageGesture = undefined;
     this.attackAge = 0;
   }
 
@@ -461,13 +470,14 @@ export class CreatureRig {
           ? (this.blade.duration ?? bladeSweepSeconds(this.blade.style, this.blade.halfAngle)) +
             this.weaponPreparation +
             this.weaponRecovery
-          : this.rangedSlot || this.druidGesture
+          : this.rangedSlot || this.druidGesture || this.mageGesture
             ? RANGED_RELEASE_DURATION
             : ATTACK_DUR)
       ) {
         this.attackAge = -1;
         this.rangedSlot = undefined;
         this.druidGesture = undefined;
+        this.mageGesture = undefined;
         this.blade = undefined;
       }
     }
@@ -1004,9 +1014,41 @@ export class CreatureRig {
               );
         if (arm.side === -1) hand.y -= R * (0.29 + cast * (sorcerer ? 1.03 : 0.64));
       }
+      if (ctx.sculpting && !downed) {
+        const compress = (ctx.castT ?? 0) * R;
+        hand.x += (this.cos * 0.63 - this.sin * arm.side * 0.35) * compress;
+        hand.y += (this.sin * 0.63 + this.cos * arm.side * 0.35 - 1.24) * compress;
+      }
+      if (this.mageGesture && !downed) {
+        const beat = this.rangedRelease;
+        if (this.mageGesture === 'mageCold' || this.mageGesture === 'mageShield') {
+          hand.x += (this.cos * 1.5 - this.sin * arm.side * 0.64) * R * beat;
+          hand.y += (this.sin * 1.5 + this.cos * arm.side * 0.64 - 0.95) * R * beat;
+        } else if (arm.side === -1) {
+          const spread = this.mageGesture === 'mageSculpt' ? 1.5 : 0.82;
+          hand.x += (this.cos - this.sin * spread) * R * beat;
+          hand.y += (this.sin + this.cos * spread - 1.14) * R * beat;
+        }
+      }
+      if (arm.side === 1 && this.druidGesture === 'maul' && !downed) {
+        const beat = this.rangedRelease;
+        hand.x -= this.sin * R * beat * 0.74;
+        hand.y += R * beat * (this.cos * 0.74 - 0.5);
+      }
       if (arm.side === -1 && this.druidGesture && !downed) {
         const beat = this.rangedRelease;
-        if (this.druidGesture === 'earth') {
+        if (this.druidGesture === 'maul') {
+          const sweep = clamp(this.attackAge / 0.32, 0, 1) * 2 - 1;
+          hand.x += (this.cos * 1.48 - this.sin * sweep * 1.62) * R * beat;
+          hand.y += (this.sin * 1.48 + this.cos * sweep * 1.62 - 0.78) * R * beat;
+        } else if (this.druidGesture === 'pounce') {
+          const leap = Math.sin((ctx.druidPounce?.progress ?? 0) * Math.PI);
+          hand.x += this.cos * R * (beat * 0.32 + leap * 1.55);
+          hand.y += R * ((this.sin * 1.55 - 0.9) * leap + beat * 0.44);
+        } else if (this.druidGesture === 'roar') {
+          hand.x += (-this.cos * 0.55 + this.sin * 1.25) * R * beat;
+          hand.y += (-this.sin * 0.55 - this.cos * 1.25 - 1.38) * R * beat;
+        } else if (this.druidGesture === 'earth') {
           hand.x += this.cos * R * beat * 1.58;
           hand.y += R * beat * (this.sin * 1.58 - 1.36);
         } else if (this.druidGesture === 'plant') {
@@ -1209,7 +1251,13 @@ export class CreatureRig {
           ? -0.95
           : this.druidGesture === 'wind'
             ? Math.cos(this.attackAge * 12)
-            : 0;
+            : this.druidGesture === 'roar'
+              ? -1.54
+              : this.druidGesture === 'pounce'
+                ? 1.18
+                : this.druidGesture === 'maul'
+                  ? -0.84
+                  : 0;
     const delta = staffAngle - rest + beat * flourish + nature * this.rangedRelease;
     const rainLift = garment === 'ranger' && this.rangedSlot === 'a2' ? this.rangedRelease : 0;
     const angle =

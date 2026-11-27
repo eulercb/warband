@@ -257,6 +257,7 @@ export interface Buff {
     lifesteal: number;
     curseBonus?: number;
     direct?: boolean;
+    sculpted?: boolean;
     invuln?: number;
   };
   closeBurst?: CloseBurst;
@@ -318,7 +319,7 @@ export interface BuffView {
   sustainedSilence?: boolean;
   projectedGuard?: { reach: number; halfWidth: number };
   whisperRefrain?: { anchor: Vec2; radius: number; charges: number };
-  visual?: 'divineShield';
+  visual?: 'divineShield' | 'ice' | 'sculptedRetort';
   /** Optional public curse owner; old snapshots omit it. */
   ownerId?: EntityId;
   kind: BuffKind;
@@ -1407,6 +1408,7 @@ export interface PendingStrike {
 }
 
 export interface GroundZone {
+  mageBind?: boolean;
   natureArt?: 'vines' | 'grove' | 'briar' | 'spring';
   rally?: { visitors: number[]; epoch: number };
   refuge?: RefugeSource;
@@ -1552,7 +1554,7 @@ export interface WeaponWindupView {
   progress: number;
 }
 
-export type DruidGesture = 'plant' | 'mend' | 'wind' | 'maul' | 'roar' | 'earth';
+export type DruidGesture = 'plant' | 'mend' | 'wind' | 'maul' | 'pounce' | 'roar' | 'earth';
 export type DruidDelivery = 'maul' | 'pounce' | 'roar' | 'earth' | 'gust';
 
 export type SkillAreaKind = 'cone' | 'circle' | 'line';
@@ -1569,6 +1571,12 @@ export interface SkillArea {
     | 'magePolarVortex'
     | 'mageSupernova'
     | 'mageBlinkWard'
+    | 'mageCold'
+    | 'mageSculpt'
+    | 'mageRetort'
+    | 'mageShield'
+    | 'mageWard'
+    | 'mageReversal'
     | 'fireball'
     | 'rollBurst'
     | 'druidCyclone'
@@ -1583,10 +1591,13 @@ export interface SkillArea {
     | 'druidBramble'
     | 'druidTransplant'
     | 'druidRoar'
+    | 'doorDepart'
+    | 'doorArrive'
     | 'blinkDepart'
     | 'blinkArrive';
   contacts?: { id: EntityId; pos: Vec2; radius: number }[];
   stoppedByCover?: boolean;
+  crystalline?: boolean;
   daggerHand?: 0 | 1;
   daggerDuration?: number;
   origin: Vec2; // cone/line emanation point, or circle center
@@ -1607,6 +1618,7 @@ export type GameEvent =
       pos: Vec2;
       kind: SupportCueKind;
       natureRelay?: boolean;
+      mageTransfer?: boolean;
     }
   | {
       t: 'hit';
@@ -1623,7 +1635,7 @@ export type GameEvent =
   | {
       t: 'cast';
       ability: string;
-      visualStyle?: 'frostNova' | 'fireball';
+      visualStyle?: import('../content/classes').PlayerAbilityDef['visualStyle'];
       rangedRelease?: 'projectile' | 'arrowRain' | 'arcaneBarrage';
       druidGesture?: DruidGesture;
       sourceId: EntityId;
@@ -1658,7 +1670,14 @@ export type GameEvent =
   | { t: 'silenceBreak'; pos: Vec2 }
   | { t: 'fieldDispel'; pos: Vec2; radius: number }
   | { t: 'animalStrike'; sourceId: EntityId; animal: 'bear' | 'wolf'; slot: number; angle: number }
-  | { t: 'blink'; id: EntityId; from: Vec2; to: Vec2; presentation?: 'mage'; warded?: boolean }
+  | {
+      t: 'blink';
+      id: EntityId;
+      from: Vec2;
+      to: Vec2;
+      presentation?: 'mage' | 'door' | 'doorRelocation';
+      warded?: boolean;
+    }
   | { t: 'telegraph'; pos: Vec2; shape: TelegraphKind }
   | { t: 'enrage'; id: EntityId; pos: Vec2 }
   | { t: 'projectile'; kind: ProjectileKind; pos: Vec2 }
@@ -1815,6 +1834,7 @@ export interface PlayerView {
   reviveProgress: number;
   castSlot: ExtSlot | null;
   castTimer: number;
+  sculpting?: boolean;
   /** The current cast's full duration (castTime × castMult) so the render can show an
    * accurate progress ring even under Focus; 0 when not casting. */
   castTimerMax: number;
@@ -1910,6 +1930,7 @@ export interface ProjectileView {
 }
 
 export interface ZoneView {
+  mageBind?: boolean;
   natureArt?: GroundZone['natureArt'];
   natureCanopy?: boolean;
   natureFollowing?: boolean;

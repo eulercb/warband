@@ -58,7 +58,7 @@ import { themeFor } from '../../engine/world/terrain';
 import { Rng } from '../../engine/core/math';
 import { Camera } from './camera';
 import { topBandFade, staggerOffset, rewardMarker, menuMarker } from './labelLayout';
-import { Fx } from '../overlays/fx';
+import { drawIceClasp, Fx } from '../overlays/fx';
 import { Balloons } from '../overlays/balloons';
 import {
   drawPlayer,
@@ -294,6 +294,33 @@ export class Renderer {
     this.drawOverlays(state, now); // vector bars/rings for sprite- and rig-driven actors
     this.drawProjectiles(state); // geometry for flag-off projectiles
     this.enemyStatusLayer.clear();
+    for (const target of [...state.bosses, ...state.adds]) {
+      if (target.hp <= 0) continue;
+      const freeze = target.buffs.find((buff) => buff.visual === 'ice' && buff.remaining > 0);
+      if (!freeze) continue;
+      const radius = 'monsterId' in target ? getMonster(target.monsterId).radius : ADD_RADIUS;
+      drawIceClasp(
+        this.enemyStatusLayer,
+        this.camera.worldToScreen(target.pos),
+        Math.max(9, radius * this.camera.scale),
+        1,
+        0.78 * Math.min(1, 0.55 + freeze.remaining * 3),
+      );
+    }
+    for (const player of state.players) {
+      if (!player.buffs.some((buff) => buff.visual === 'sculptedRetort' && buff.remaining > 0))
+        continue;
+      const { x, y } = this.camera.worldToScreen(player.pos);
+      const r = Math.max(8, this.camera.scale * 12);
+      const pulse = Math.sin(now / 190) * 2;
+      for (const side of [-1, 1]) {
+        const px = x + side * (r * 1.8 + pulse);
+        this.enemyStatusLayer
+          .poly([px, y - r, px + r * 0.39, y, px, y + r * 0.48, px - r * 0.39, y])
+          .fill({ color: 0xc599ef, alpha: 0.8 })
+          .stroke({ color: 0xffdffc, width: 1.6, alpha: 0.92 });
+      }
+    }
     for (const player of state.players) {
       if (!player.faithWound) continue;
       const at = this.camera.worldToScreen(player.pos);
