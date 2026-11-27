@@ -126,6 +126,7 @@ export class SnapshotInterpolator {
       p.drawingProjectile = current?.drawingProjectile;
       p.drawProjectileCount = current?.drawProjectileCount;
       p.rangerRoll = current?.rangerRoll;
+      p.druidPounce = current?.druidPounce;
     }
     // Client-side prediction override for the local player.
     if (opts.predictedLocalPos && opts.localPlayerId != null) {

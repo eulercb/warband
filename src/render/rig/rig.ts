@@ -388,6 +388,7 @@ export class CreatureRig {
     const roll = ctx.rangerRoll;
     const tumble = roll ? clamp(1 - roll.remaining / roll.range, 0, 1) : 0;
     const crouch = roll ? Math.sin(tumble * Math.PI) : 0;
+    const leap = ctx.druidPounce ? Math.sin(clamp(ctx.druidPounce.progress, 0, 1) * Math.PI) : 0;
     const recoil = Math.min(7, R * 0.12) * Math.max(0, 1 - this.recoilAge / 0.18) ** 2;
     const release = this.rangedSlot === 'basic' ? this.rangedRelease : 0;
     const lean = release * R * (this.spec.garment === 'warlock' ? -0.18 : 0.24);
@@ -401,7 +402,8 @@ export class CreatureRig {
         recoil * Math.sin(this.recoilAngle) -
         R * (ctx.cheer?.lift ?? 0) +
         lean * this.sin +
-        crouch * R * 0.3,
+        crouch * R * 0.3 -
+        leap * R * 1.25,
     );
     this.view.rotation = roll
       ? Math.sin(tumble * Math.PI * 2) * (roll.dir.x >= 0 ? 0.83 : -0.83)
@@ -1002,7 +1004,10 @@ export class CreatureRig {
       }
       if (arm.side === -1 && this.druidGesture && !downed) {
         const beat = this.rangedRelease;
-        if (this.druidGesture === 'plant') {
+        if (this.druidGesture === 'earth') {
+          hand.x += this.cos * R * beat * 1.58;
+          hand.y += R * beat * (this.sin * 1.58 - 1.36);
+        } else if (this.druidGesture === 'plant') {
           hand.x += this.cos * R * beat * 0.92;
           hand.y += R * beat * (1.24 + this.sin * 0.92);
         } else if (this.druidGesture === 'mend') {

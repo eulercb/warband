@@ -511,7 +511,7 @@ describe('lifecycle, controls and replicated form', () => {
       0.7,
     );
     expect(g.context.instructions.length).toBeGreaterThan(front);
-    for (const gesture of ['plant', 'mend', 'wind'] as const) {
+    for (const gesture of ['plant', 'mend', 'wind', 'earth', 'roar', 'maul'] as const) {
       g.clear();
       drawMoonBear(g, p, ZERO, 2, 2, undefined, undefined, undefined, undefined, {
         gesture,
@@ -523,6 +523,12 @@ describe('lifecycle, controls and replicated form', () => {
     drawMoonBear(g, p, ZERO, 2, 2, undefined, undefined, undefined, undefined, {
       gesture: 'wind',
       strength: 0.1,
+    });
+    drawMoonBear(g, { ...p, druidPounce: { angle: Math.PI / 2, progress: 0.5 } }, ZERO, 2, 2);
+    drawMoonBear(g, p, ZERO, 2, 2, undefined, undefined, undefined, undefined, {
+      gesture: 'maul',
+      strength: 0.8,
+      angle: 0,
     });
     g.destroy();
   });

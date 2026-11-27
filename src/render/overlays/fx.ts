@@ -69,6 +69,12 @@ function areaFlashTtl(style: SkillArea['style']): number {
     case 'druidCyclone':
     case 'druidTempest':
     case 'druidBloom':
+    case 'druidEarth':
+    case 'druidPounce':
+    case 'druidBramble':
+    case 'druidTransplant':
+    case 'druidRoar':
+    case 'druidFrostContact':
       return 0.68;
     default:
       return AREA_FLASH_TTL;
@@ -130,6 +136,7 @@ interface SupportFlash {
   from: Vec2;
   pos: Vec2;
   kinds: SupportCueKind[];
+  natureRelay?: boolean;
   age: number;
 }
 
@@ -225,6 +232,7 @@ export class Fx {
           );
           if (existing) {
             if (!existing.kinds.includes(e.kind)) existing.kinds.push(e.kind);
+            existing.natureRelay ||= e.natureRelay;
           } else {
             if (this.supportFlashes.length >= 32) this.supportFlashes.shift();
             this.supportFlashes.push({
@@ -233,6 +241,7 @@ export class Fx {
               from: { ...e.from },
               pos: { ...e.pos },
               kinds: [e.kind],
+              natureRelay: e.natureRelay,
               age: 0,
             });
           }
@@ -753,7 +762,14 @@ export class Fx {
       const from = { x: to.x + offset.x * camera.scale, y: to.y + offset.y * camera.scale };
       const color = SUPPORT_COLORS[f.kinds[0]];
       // Immediate receipt, not a fake projectile that delays a completed effect.
-      if (f.age < 0.25)
+      if (f.natureRelay) {
+        for (let i = 0; i < 6; i++) {
+          const phase = Math.min(1, (i / 5) * 0.82 + f.age);
+          const x = from.x + (to.x - from.x) * phase;
+          const y = from.y + (to.y - from.y) * phase - Math.sin(phase * Math.PI) * 20;
+          g.ellipse(x, y, 4.5, 2.6).fill({ color: 0xf4e6a8, alpha: fade * 0.92 });
+        }
+      } else if (f.age < 0.25)
         g.moveTo(from.x, from.y)
           .lineTo(to.x, to.y)
           .stroke({ color, width: 1.5, alpha: 0.55 * fade });
@@ -923,6 +939,50 @@ export class Fx {
         return;
       }
       const R = area.radius * s;
+      if (
+        area.style === 'druidEarth' ||
+        area.style === 'druidPounce' ||
+        area.style === 'druidBramble' ||
+        area.style === 'druidTransplant' ||
+        area.style === 'druidRoar' ||
+        area.style === 'druidFrostContact'
+      ) {
+        const frost = area.style === 'druidFrostContact';
+        const leafy = area.style === 'druidBramble' || area.style === 'druidTransplant';
+        const roar = area.style === 'druidRoar';
+        const earth = area.style === 'druidEarth';
+        const count = roar || frost ? 7 : 16;
+        for (let i = 0; i < count; i++) {
+          const a = i * 2.399963 + area.angle;
+          const front = R * (0.61 + (i % 5) * 0.092) * (0.92 + t * 0.08);
+          const x = c.x + Math.cos(a) * front;
+          const y = c.y + Math.sin(a) * front;
+          const h =
+            Math.max(4, R * (0.096 + (i % 3) * 0.045)) * (0.6 + Math.sin(t * Math.PI) * 0.54);
+          if (roar) {
+            g.moveTo(x - h, y + h * 0.55)
+              .quadraticCurveTo(x, y - h * 1.0, x + h, y + h * 0.55)
+              .stroke({ color: 0xe7be8e, width: 2.1, alpha: fade });
+          } else {
+            g.poly([
+              x - h * 0.54,
+              y,
+              x + h * 0.04,
+              y - h * (earth ? 1.8 : 1.24),
+              x + h * 0.66,
+              y - h * 0.12,
+              x + h * 0.34,
+              y + h * 0.36,
+            ])
+              .fill({
+                color: frost ? 0xb6f0ff : leafy ? 0xb6cf86 : i % 3 === 0 ? 0xe0b47c : 0xad8064,
+                alpha: fade,
+              })
+              .stroke({ color: frost ? 0x75b5df : 0x594437, width: 1, alpha: fade * 0.7 });
+          }
+        }
+        return;
+      }
       if (area.style === 'druidBloom') {
         for (let i = 0; i < 6; i++) {
           const a = (i * Math.PI) / 3 + t * 0.55;
@@ -1003,6 +1063,25 @@ export class Fx {
       const R = area.range * s;
       const a0 = area.angle - area.halfAngle;
       const a1 = area.angle + area.halfAngle;
+      if (area.style === 'druidGust' || area.style === 'druidWinterGale') {
+        const frost = area.style === 'druidWinterGale';
+        for (let i = 0; i < 7; i++) {
+          const angle = area.angle + area.halfAngle * ((i - 3) / 3);
+          const out = R * (0.92 + t * 0.08) * (0.79 + (i % 3) * 0.1);
+          const x = o.x + Math.cos(angle) * out;
+          const y = o.y + Math.sin(angle) * out;
+          const tail = 0.58 + t * 0.12;
+          const wx = Math.sin(angle) * R * 0.075;
+          const wy = -Math.cos(angle) * R * 0.075;
+          const tx = o.x + (x - o.x) * tail;
+          const ty = o.y + (y - o.y) * tail;
+          g.moveTo(tx, ty)
+            .quadraticCurveTo(x * 0.88 + tx * 0.12 + wx, y * 0.88 + ty * 0.12 + wy, x, y)
+            .quadraticCurveTo(x * 0.84 + tx * 0.16 - wx, y * 0.84 + ty * 0.16 - wy, tx, ty)
+            .fill({ color: frost ? 0xb6e4fa : 0xcfe0a6, alpha: fade * 0.86 });
+        }
+        return;
+      }
       if (isBladeArea(area.style) || area.style === 'moonClaw') {
         drawMeleeReach(g, o, R, { ...area, style: area.style }, a.age, areaFlashTtl(area.style));
         return;

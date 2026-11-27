@@ -2,7 +2,7 @@ import { MOON_CLAW_DELAY, resolveMoonClaws } from '../src/engine/combat/moonForm
 import { afterEach, describe, expect, it } from 'vitest';
 import { World } from '../src/engine/world/world';
 import { resolvePlayerAbility } from '../src/engine/combat/abilities';
-import { applyBuff, makeBuff } from '../src/engine/combat/combat';
+import { applyBuff, BOSS_INVULN_SOURCE, makeBuff } from '../src/engine/combat/combat';
 import { absorptionAmount } from '../src/engine/combat/absorption';
 import { commandCompanion, updateCompanions } from '../src/engine/combat/companions';
 import { decompose, recompose, setForgeSeed, synthesizeAbility } from '../src/engine/content/forge';
@@ -337,4 +337,123 @@ it('carries Druid field, contact and projectile art from the actual starting kit
   const spear = starts('dr_gk_basic_b');
   resolvePlayerAbility(spear.w, spear.p, 'basic', zero);
   expect(spear.w.serialize().projectiles[0]?.presentation).toBe('brambleSpear');
+});
+
+describe('Druid subclass visual delivery', () => {
+  it.each([false, true])(
+    'keeps Winter Gale on the resolved cone and paints ice only on an applied freeze (immune=%s)',
+    (immune) => {
+      const { w, p } = setup('druid', ['dr_land_wind_g'], ['dr_land_wind']);
+      const source = p.subAbilities!.sub1!;
+      p.subAbilities!.sub1 = recompose(decompose(source), source);
+      if (immune) applyBuff(w.boss!, makeBuff('invuln', 0, 1, BOSS_INVULN_SOURCE));
+      resolvePlayerAbility(w, p, 'sub1', zero);
+      expect(
+        w.events.some((event) => event.t === 'skillArea' && event.area.style === 'druidWinterGale'),
+      ).toBe(true);
+      expect(
+        w.events.some(
+          (event) => event.t === 'skillArea' && event.area.style === 'druidFrostContact',
+        ),
+      ).toBe(!immune);
+    },
+  );
+
+  it('uses the actual full Maul angle and holds the bramble until a qualifying contact', () => {
+    const maul = setup('druid', ['dr_moon_maul_g'], ['dr_moon_maul']);
+    resolvePlayerAbility(maul.w, maul.p, 'sub1', zero);
+    const swipe = maul.w.events.find((e) => e.t === 'skillArea' && e.area.style === 'moonClaw');
+    expect(swipe).toMatchObject({ area: { halfAngle: Math.PI } });
+    const roar = setup('druid', ['dr_moon_roar_g'], ['dr_moon_roar']);
+    resolvePlayerAbility(roar.w, roar.p, 'sub1', zero);
+    const has = (style: 'druidRoar' | 'druidBramble') =>
+      roar.w.events.some((e) => e.t === 'skillArea' && e.area.style === style);
+    expect(has('druidRoar')).toBe(true);
+    expect(has('druidBramble')).toBe(false);
+    roar.w.releaseCloseBurst(roar.p, roar.w.boss!, 5);
+    expect(has('druidBramble')).toBe(true);
+  });
+
+  it('distinguishes a launched stone from its impact and a pounce leap from contact', () => {
+    const earth = setup('druid', ['dr_land_spike_g'], ['dr_land_spike']);
+    earth.w.boss!.decisionTimer = 100;
+    resolvePlayerAbility(earth.w, earth.p, 'sub1', zero);
+    expect(earth.w.serialize().projectiles[0]?.presentation).toBe('druidEarth');
+    earth.w.step(0.05, new Map());
+    expect(earth.w.events.some((e) => e.t === 'skillArea' && e.area.style === 'druidEarth')).toBe(
+      true,
+    );
+
+    const pounce = setup('druid', ['dr_moon_pounce_g'], ['dr_moon_pounce']);
+    pounce.w.boss!.pos.x = 820;
+    pounce.w.boss!.decisionTimer = 100;
+    resolvePlayerAbility(pounce.w, pounce.p, 'sub1', { x: 1, y: 0 });
+    expect(pounce.w.serialize().players[0].druidPounce).toMatchObject({ progress: 0, angle: 0 });
+    expect(pounce.w.boss!.hp).toBe(10000);
+    expect(absorptionAmount(pounce.p.buffs)).toBeGreaterThan(0);
+    pounce.w.step(0.18, new Map());
+    expect(pounce.w.serialize().players[0].druidPounce).toBeUndefined();
+    expect(pounce.w.events.some((e) => e.t === 'skillArea' && e.area.style === 'druidPounce')).toBe(
+      true,
+    );
+  });
+
+  it('carries the spring ward and publishes a live briar acquisition separately', () => {
+    const spring = setup('druid', ['dr_land_spring_g'], ['dr_land_spring']);
+    resolvePlayerAbility(spring.w, spring.p, 'sub1', zero);
+    expect(spring.w.serialize().groundZones[0]).toMatchObject({
+      natureArt: 'spring',
+      natureCanopy: true,
+    });
+    const wall = setup('druid', ['dr_land_wall_g'], ['dr_land_wall']);
+    resolvePlayerAbility(wall.w, wall.p, 'sub1', zero);
+    expect(wall.w.serialize().groundZones[0]).toMatchObject({ natureArt: 'briar' });
+    const zone = wall.w.groundZones[0];
+    zone.armRemaining = 0;
+    zone.pos = { ...wall.w.boss!.pos };
+    wall.w.boss!.decisionTimer = 100;
+    wall.w.step(0.55, new Map());
+    expect(wall.w.serialize().groundZones[0]?.natureFollowing).toBe(true);
+  });
+});
+
+it('paints Pack Shelter and Shared Renewal only at their real recipients', () => {
+  const makeParty = (skill: string) => {
+    const w = new World({
+      seed: 31,
+      monsterId: 'lich',
+      players: [
+        {
+          classId: 'druid',
+          peerId: 'd',
+          name: 'Druid',
+          subSkills: [skill],
+          charUpgrades: [`${skill}_g`],
+        },
+        { classId: 'knight', peerId: 'k', name: 'Knight' },
+      ],
+    });
+    w.scene = null;
+    const [druid, ally] = w.players;
+    druid.pos = { x: 600, y: 400 };
+    ally.pos = { x: 700, y: 400 };
+    return { w, druid, ally };
+  };
+  const ward = makeParty('dr_moon_roar');
+  resolvePlayerAbility(ward.w, ward.druid, 'sub1', zero);
+  const bloom = ward.w.events.filter((e) => e.t === 'skillArea' && e.area.style === 'druidBloom');
+  expect(bloom).toHaveLength(1);
+  expect(bloom[0]).toMatchObject({ area: { origin: ward.ally.pos } });
+
+  const renewal = makeParty('dr_moon_regen');
+  resolvePlayerAbility(renewal.w, renewal.druid, 'sub1', zero);
+  expect(renewal.w.events.some((e) => e.t === 'support' && e.natureRelay)).toBe(false);
+  renewal.druid.hp -= 40;
+  renewal.ally.hp -= 35;
+  resolvePlayerAbility(renewal.w, renewal.druid, 'sub1', zero);
+  expect(renewal.w.events.find((e) => e.t === 'support' && e.natureRelay)).toMatchObject({
+    targetId: renewal.ally.id,
+    from: renewal.druid.pos,
+    pos: renewal.ally.pos,
+  });
 });

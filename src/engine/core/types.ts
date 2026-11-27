@@ -1027,8 +1027,8 @@ export interface GuidanceCast {
   activeTick: number;
 }
 export interface Projectile {
-  impactStyle?: 'fireball';
-  presentation?: 'arcaneBolt' | 'frostArrow' | 'railshot' | 'brambleSpear';
+  impactStyle?: 'fireball' | 'druidEarth';
+  presentation?: 'arcaneBolt' | 'frostArrow' | 'railshot' | 'brambleSpear' | 'druidEarth';
   reflected?: boolean;
   guidance?: GuidanceCast;
   aimPoint?: Vec2;
@@ -1406,7 +1406,7 @@ export interface PendingStrike {
 }
 
 export interface GroundZone {
-  natureArt?: 'vines' | 'grove';
+  natureArt?: 'vines' | 'grove' | 'briar' | 'spring';
   rally?: { visitors: number[]; epoch: number };
   refuge?: RefugeSource;
   revivalFont?: FontSource;
@@ -1551,7 +1551,8 @@ export interface WeaponWindupView {
   progress: number;
 }
 
-export type DruidGesture = 'plant' | 'mend' | 'wind';
+export type DruidGesture = 'plant' | 'mend' | 'wind' | 'maul' | 'roar' | 'earth';
+export type DruidDelivery = 'maul' | 'pounce' | 'roar' | 'earth' | 'gust';
 
 export type SkillAreaKind = 'cone' | 'circle' | 'line';
 
@@ -1569,6 +1570,14 @@ export interface SkillArea {
     | 'druidCyclone'
     | 'druidTempest'
     | 'druidBloom'
+    | 'druidEarth'
+    | 'druidPounce'
+    | 'druidGust'
+    | 'druidWinterGale'
+    | 'druidFrostContact'
+    | 'druidBramble'
+    | 'druidTransplant'
+    | 'druidRoar'
     | 'blinkDepart'
     | 'blinkArrive';
   contacts?: { id: EntityId; pos: Vec2; radius: number }[];
@@ -1592,6 +1601,7 @@ export type GameEvent =
       from: Vec2;
       pos: Vec2;
       kind: SupportCueKind;
+      natureRelay?: boolean;
     }
   | {
       t: 'hit';
@@ -1805,6 +1815,7 @@ export interface PlayerView {
   castTimerMax: number;
   drawingProjectile?: boolean;
   drawProjectileCount?: number;
+  druidPounce?: { angle: number; progress: number };
   rangerRoll?: { dir: Vec2; remaining: number; range: number };
   /** Live participation score (prior bosses + this fight), for HUD / pause menu. */
   score: number;
@@ -1896,6 +1907,7 @@ export interface ProjectileView {
 export interface ZoneView {
   natureArt?: GroundZone['natureArt'];
   natureCanopy?: boolean;
+  natureFollowing?: boolean;
   rally?: boolean;
   revivalFont?: FontFamily;
   side?: Side;

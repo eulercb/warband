@@ -118,22 +118,11 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
       if (gained <= 0) continue;
       onSubclassProtection(p, gained);
       supportCue(world, p, ally, 'absorb');
-      if (p.classId === 'druid' && ab.kind === 'heal' && ab.slot === 'a2')
-        world.events.push({
-          t: 'skillArea',
-          sourceId: p.id,
-          side: 'player',
-          color: 0xc6db9b,
-          area: {
-            style: 'druidBloom',
-            kind: 'circle',
-            origin: { ...ally.pos },
-            angle: 0,
-            range: 0,
-            radius: ally.radius + 9,
-            halfAngle: 0,
-          },
-        });
+      if (
+        p.classId === 'druid' &&
+        ((ab.kind === 'heal' && ab.slot === 'a2') || ab.druidDelivery === 'pounce')
+      )
+        natureProtection(world, p, ally);
       // Cosmetic incoming links identify the marks supplying the barrier, without
       // consuming the curse. Bound to the same target cap.
       for (const enemy of marked)
@@ -151,8 +140,10 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
     const ward = ab.allyWard;
     for (const ally of nearbySupportAllies(world, p, ward.range)) {
       // The caster already receives the skill's own stronger ward.
-      if (ally !== p)
+      if (ally !== p) {
         applyBuff(ally, makeBuff('damageTaken', ward.mult, ward.duration, 'sharedWard'));
+        if (ab.druidDelivery === 'roar') natureProtection(world, p, ally);
+      }
     }
   }
   if (ab.bardSong === 'discord') {
@@ -194,6 +185,24 @@ export function spendSupportChorus(world: World, p: Player, ab: PlayerAbilityDef
     applyBuff(ally, makeBuff('moveSpeed', 1.15, ab.buffDuration ?? 6, 'chorusMove'));
   }
   return true;
+}
+
+function natureProtection(world: World, p: Player, ally: Player): void {
+  world.events.push({
+    t: 'skillArea',
+    sourceId: p.id,
+    side: 'player',
+    color: 0xc6db9b,
+    area: {
+      style: 'druidBloom',
+      kind: 'circle',
+      origin: { ...ally.pos },
+      angle: 0,
+      range: 0,
+      radius: ally.radius + 9,
+      halfAngle: 0,
+    },
+  });
 }
 
 /** Only dedicated, effective heals trigger rescue, harmony and recovery territory. */
@@ -294,6 +303,7 @@ export function healSupportAlly(
         from: { ...target.pos },
         pos: { ...other.pos },
         kind: 'heal',
+        natureRelay: p.classId === 'druid' || undefined,
       });
   }
   onSubclassHeal(world, p, target, effective);

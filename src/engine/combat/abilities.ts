@@ -225,7 +225,12 @@ function applyDashLanding(world: World, p: Player, ab: PlayerAbilityDef): void {
   const radius = ab.radius ?? 120;
   emitSkillArea(world, p.id, color, {
     kind: 'circle',
-    style: p.classId === 'ranger' && ab.slot === 'a3' ? 'rollBurst' : undefined,
+    style:
+      ab.druidDelivery === 'pounce'
+        ? 'druidPounce'
+        : p.classId === 'ranger' && ab.slot === 'a3'
+          ? 'rollBurst'
+          : undefined,
     origin: { ...p.pos },
     angle: 0,
     range: 0,
@@ -605,7 +610,19 @@ function applyStrikeRiders(
 ): void {
   if ('charm' in target && target.charm) return;
   if (ab.stun) applyStun(world, target, ab.stun, 'stun');
-  if (ab.freeze) applyStun(world, target, ab.freeze, 'freeze');
+  if (ab.freeze) {
+    const frozen = applyStun(world, target, ab.freeze, 'freeze');
+    if (frozen > 0 && ab.druidDelivery === 'gust')
+      emitSkillArea(world, target.id, 0xbbebff, {
+        kind: 'circle',
+        style: 'druidFrostContact',
+        origin: { ...target.pos },
+        radius: target.radius,
+        range: 0,
+        angle: 0,
+        halfAngle: 0,
+      });
+  }
   if (ab.slowMult != null && ab.slowMult < 1) {
     applySlow(target, ab.slowMult, ab.slowDuration ?? 2);
   }
@@ -734,20 +751,35 @@ export function resolvePlayerAbility(
           ? 'arrowRain'
           : undefined,
     druidGesture:
-      p.classId !== 'druid'
-        ? undefined
-        : ab.kind === 'groundZone'
-          ? 'plant'
-          : ab.kind === 'heal'
-            ? 'mend'
-            : ab.kind === 'pbaoe' && slot === 'a3'
-              ? 'wind'
-              : undefined,
+      ab.druidDelivery === 'maul' || ab.druidDelivery === 'earth' || ab.druidDelivery === 'roar'
+        ? ab.druidDelivery
+        : ab.druidDelivery === 'gust'
+          ? 'wind'
+          : p.classId !== 'druid'
+            ? undefined
+            : ab.kind === 'groundZone'
+              ? 'plant'
+              : ab.kind === 'heal'
+                ? 'mend'
+                : ab.kind === 'pbaoe' && slot === 'a3'
+                  ? 'wind'
+                  : undefined,
     sourceId: p.id,
     pos: { ...p.pos },
     side: 'player',
     slot,
   });
+
+  if (ab.druidDelivery === 'roar' && ab.closeBurst)
+    emitSkillArea(world, p.id, color, {
+      kind: 'circle',
+      style: 'druidRoar',
+      origin: { ...p.pos },
+      angle: aimAngle,
+      range: 0,
+      radius: p.radius + 12,
+      halfAngle: 0,
+    });
 
   // Chaos Forge — a SYNTHESIZED ability carries a recombined component list; walk
   // that instead of the fixed field switch (so a projectile can spawn an
@@ -1301,7 +1333,16 @@ function resolveConeAt(
   if (!hitIds)
     emitSkillArea(world, p.id, CLASS_COLORS[p.classId] ?? 0xffffff, {
       kind: 'cone',
-      style: ab.basicPresentation === 'arcaneBolt' ? undefined : ab.basicPresentation,
+      style:
+        ab.druidDelivery === 'maul'
+          ? 'moonClaw'
+          : ab.druidDelivery === 'gust'
+            ? ab.freeze
+              ? 'druidWinterGale'
+              : 'druidGust'
+            : ab.basicPresentation === 'arcaneBolt'
+              ? undefined
+              : ab.basicPresentation,
       origin: { ...origin },
       angle: aimAngle,
       range,
@@ -1973,22 +2014,29 @@ function spawnPlayerProjectile(
   o: SpawnProjOpts,
 ): void {
   const origin = vadd(o.returningSource?.guidanceOrigin ?? p.pos, vscale(dir, p.radius + 4));
+  const earth = o.returningSource?.druidDelivery === 'earth' && o.impactRadius > 0;
   const proj: Projectile = {
-    ...(kind !== 'fireball' && o.returningSource?.basicPresentation === 'arcaneBolt'
-      ? { presentation: 'arcaneBolt' as const }
-      : kind === 'arrow' &&
-          o.returningSource?.slot === 'basic' &&
-          (o.pierce ?? 0) >= 3 &&
-          p.classId === 'ranger' &&
-          p.charUpgradeIds?.includes('rg_gk_basic_b')
-        ? { presentation: 'railshot' as const }
-        : kind === 'thorn' &&
+    ...(earth
+      ? { presentation: 'druidEarth' as const }
+      : kind !== 'fireball' && o.returningSource?.basicPresentation === 'arcaneBolt'
+        ? { presentation: 'arcaneBolt' as const }
+        : kind === 'arrow' &&
             o.returningSource?.slot === 'basic' &&
-            (o.pierce ?? 0) >= 2 &&
-            p.charUpgradeIds?.includes('dr_gk_basic_b')
-          ? { presentation: 'brambleSpear' as const }
-          : {}),
-    impactStyle: o.returningSource?.visualStyle === 'fireball' ? 'fireball' : undefined,
+            (o.pierce ?? 0) >= 3 &&
+            p.classId === 'ranger' &&
+            p.charUpgradeIds?.includes('rg_gk_basic_b')
+          ? { presentation: 'railshot' as const }
+          : kind === 'thorn' &&
+              o.returningSource?.slot === 'basic' &&
+              (o.pierce ?? 0) >= 2 &&
+              p.charUpgradeIds?.includes('dr_gk_basic_b')
+            ? { presentation: 'brambleSpear' as const }
+            : {}),
+    impactStyle: earth
+      ? 'druidEarth'
+      : o.returningSource?.visualStyle === 'fireball'
+        ? 'fireball'
+        : undefined,
     guidance: o.returningSource?.guidanceCast,
     id: world.allocId(),
     kind,
@@ -2142,8 +2190,8 @@ export function spawnZone(world: World, o: SpawnZoneOpts): void {
   const owner = o.side === 'player' && world.players.find((p) => p.id === o.ownerId);
   if (o.recovery) zone.natureArt = 'grove';
   else if (owner && owner.classId === 'druid') {
-    if (o.kind === 'entangle') zone.natureArt = 'vines';
-    if (o.kind === 'sanctuary') zone.natureArt = 'grove';
+    if (o.kind === 'entangle') zone.natureArt = o.roots ? 'vines' : 'briar';
+    if (o.kind === 'sanctuary') zone.natureArt = 'spring';
   }
   if (
     !o.rally &&

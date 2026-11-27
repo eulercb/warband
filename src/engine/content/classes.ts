@@ -57,6 +57,7 @@ export interface PlayerAbilityDef {
   flowUsed?: boolean;
   name: string;
   visualStyle?: 'frostNova' | 'fireball';
+  druidDelivery?: import('../core/types').DruidDelivery;
   flurryLaneHalfWidth?: number;
   flurryBarrage?: boolean;
   basicPresentation?: import('../core/types').BladeAreaStyle | 'arcaneBolt';

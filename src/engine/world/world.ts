@@ -2440,6 +2440,7 @@ export class World {
       color: 0x89c96a,
       area: {
         kind: 'circle',
+        style: source.classId === 'druid' ? 'druidBramble' : undefined,
         origin: { ...source.pos },
         angle: 0,
         range: 0,
@@ -4386,6 +4387,13 @@ export class World {
       castTimerMax: p.castTimerMax,
       drawingProjectile: p.castAbility?.kind === 'projectile' || undefined,
       drawProjectileCount: p.castAbility?.projCount,
+      druidPounce:
+        p.glide?.ab.druidDelivery === 'pounce'
+          ? {
+              angle: Math.atan2(p.glide.dir.y, p.glide.dir.x),
+              progress: 1 - p.glide.remaining / (p.glide.ab.range ?? 220),
+            }
+          : undefined,
       rangerRoll:
         p.classId === 'ranger' && p.glide?.ab.slot === 'a3'
           ? {
@@ -4499,6 +4507,8 @@ export class World {
       apparitions: apparitionViews(this),
       groundZones: this.groundZones.map((z) => ({
         natureArt: z.natureArt,
+        natureFollowing:
+          (!!z.natureArt && z.followAcquired && (z.zoneFollow ?? 0) > 0) || undefined,
         natureCanopy: (!!z.natureArt && (z.allyBuff?.defMult ?? 1) < 1) || undefined,
         rally: !!z.rally,
         revivalFont: fontAvailable(this, z) ? z.revivalFont!.family : undefined,

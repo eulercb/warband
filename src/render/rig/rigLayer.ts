@@ -207,6 +207,7 @@ export class RigLayer {
         drawingProjectile: p.drawingProjectile,
         drawProjectileCount: p.drawProjectileCount,
         rangerRoll: p.rangerRoll,
+        druidPounce: p.druidPounce,
         aim: p.aim,
         cheer: pose,
       });

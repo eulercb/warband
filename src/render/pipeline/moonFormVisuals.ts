@@ -18,23 +18,28 @@ export function drawMoonBear(
   strike?: AnimalStrike,
   swipeStrike?: AnimalStrike,
   cheer?: number,
-  special?: { gesture: DruidGesture; strength: number },
+  special?: { gesture: DruidGesture; strength: number; angle?: number },
 ): void {
   const r = Math.max(11, 24 * scale);
   const elapsed = (beat?: AnimalStrike) => (beat ? time * 1000 - beat.started : Infinity);
   const { cast, swing, sweep: swipe } = moonBasicPose(elapsed(strike), elapsed(swipeStrike));
   const beat = cast > 0 ? strike : swipeStrike;
   const aim = motion?.facing ?? Math.atan2(p.aim.y, p.aim.x);
-  const facing = beat
-    ? blendAnimalFacing(aim, beat.angle, Math.min(1, Math.max(cast, swipe) * 2.5))
-    : aim;
+  const facing =
+    p.druidPounce?.angle ??
+    special?.angle ??
+    (beat ? blendAnimalFacing(aim, beat.angle, Math.min(1, Math.max(cast, swipe) * 2.5)) : aim);
   const c = Math.cos(facing);
   const s = Math.sin(facing);
   const phase = motion?.phase ?? 0;
   const stride = (motion?.stride ?? 0) * (1 - swipe * 0.65);
-  const rear = cheer == null ? 0 : Math.pow((1 - Math.cos(cheer * 4)) / 2, 2);
+  const roar = special?.gesture === 'roar' ? special.strength : 0;
+  const rear = Math.max(roar, cheer == null ? 0 : Math.pow((1 - Math.cos(cheer * 4)) / 2, 2));
+  const flight = p.druidPounce ? Math.sin(p.druidPounce.progress * Math.PI) : 0;
   const power = special?.strength ?? 0;
-  const plant = special?.gesture === 'plant' ? power : 0;
+  const plant = special?.gesture === 'plant' || special?.gesture === 'earth' ? power : 0;
+  const maul = special?.gesture === 'maul' ? power : 0;
+  const swingPhase = maul > swipe ? 1 - maul : swing;
   const mend = special?.gesture === 'mend' ? power : 0;
   const wind = special?.gesture === 'wind' ? power : 0;
   const bob =
@@ -42,7 +47,8 @@ export function drawMoonBear(
   const rock = Math.sin(phase) * stride * 0.11 - cast * 0.18 + Math.sin(time * 16) * wind * 0.21;
   const at = (x: number, y: number, h = 0): [number, number] => [
     screen.x + (x * c - y * s) * r,
-    screen.y + ((x * s + y * c) * 0.63 - h - Math.max(0, x + 0.65) * rear * 0.65) * r,
+    screen.y +
+      ((x * s + y * c) * 0.63 - h - flight * 1.25 - Math.max(0, x + 0.65) * rear * 0.65) * r,
   ];
   const outline = 0x27243e;
   const body = (x: number, y: number, h: number, rx: number, ry: number, color: number) =>
@@ -59,11 +65,15 @@ export function drawMoonBear(
     const pawPhase = phase + (side > 0 ? Math.PI : 0) + (lead ? Math.PI * 0.66 : 0);
     const step = animalFoot(pawPhase, motion?.travel ?? facing, facing, stride * 0.34);
     const swings = lead && side === (c >= 0 ? 1 : -1);
-    const reach = swings ? swipe : 0;
-    const launch = lead && !swings ? cast + plant * 0.71 : 0;
+    const reach = swings ? Math.max(swipe, maul) : 0;
+    const launch = lead && !swings ? cast + plant * 0.71 + maul * 0.33 : 0;
     const foot = at(
-      fore + step.x + reach * (0.65 + Math.sin(swing * Math.PI) * 0.62) + launch * 0.93,
-      side * (0.51 + reach * (0.89 - swing * 2.15) + launch * 0.36 + wind * 0.49 + mend * 0.25) +
+      fore * (1 + flight * 0.8) +
+        step.x +
+        reach * (0.65 + Math.sin(swingPhase * Math.PI) * 0.62) +
+        launch * 0.93,
+      side *
+        (0.51 + reach * (0.89 - swingPhase * 2.15) + launch * 0.36 + wind * 0.49 + mend * 0.25) +
         step.y,
       step.lift * stride * 0.24 + reach * 0.46 + launch * 0.72 + (lead ? rear * 0.65 : 0),
     );
@@ -111,12 +121,12 @@ export function drawMoonBear(
   body(0.42, rock, 0.82 + bob + rock, 0.62, 0.48, 0x9282a8);
   if (s >= -0.45) head();
   if (cast > 0.06) leg(0.55, far);
-  if (swipe > 0.03) {
+  if (Math.max(swipe, maul) > 0.03) {
     leg(0.55, -far);
     // A short set of near-body claw ribbons follows the paw across the chest.
     for (let i = 0; i < 3; i++) {
       const reach = 1.3 + i * 0.13;
-      const y = -far * (0.86 - swing * 1.68);
+      const y = -far * (0.86 - swingPhase * 1.68);
       g.moveTo(...at(reach - 0.12, y + far * 0.69, 0.83 - i * 0.08))
         .quadraticCurveTo(
           ...at(reach + 0.28, y + far * 0.31, 0.67 - i * 0.08),
@@ -124,7 +134,7 @@ export function drawMoonBear(
         )
         .stroke({
           color: 0xe7d4ff,
-          alpha: swipe * (0.92 - i * 0.16),
+          alpha: Math.max(swipe, maul) * (0.92 - i * 0.16),
           width: r * 0.075,
           cap: 'round',
         });

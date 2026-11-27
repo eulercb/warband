@@ -120,7 +120,10 @@ export class Renderer {
   private readonly labels: Text[] = [];
   private rangerBites = new Map<number, AnimalStrike>();
   private wolfForms = new Set<number>();
-  private druidGestures = new Map<number, { gesture: DruidGesture; started: number }>();
+  private druidGestures = new Map<
+    number,
+    { gesture: DruidGesture; started: number; angle?: number }
+  >();
   private animalStrikes = new Map<string, AnimalStrike>();
   private animalMotion = new Map<string, AnimalMotion>();
 
@@ -243,6 +246,10 @@ export class Renderer {
       if (e.t === 'cast' && e.druidGesture)
         this.druidGestures.set(e.sourceId, { gesture: e.druidGesture, started: now });
       if (e.t === 'fightStart') this.rangerBites.clear();
+      if (e.t === 'skillArea' && e.area.style === 'moonClaw') {
+        const pose = this.druidGestures.get(e.sourceId);
+        if (pose?.gesture === 'maul') pose.angle = e.area.angle;
+      }
       if (e.t === 'skillArea' && e.area.style === 'savageBite')
         this.rangerBites.set(e.sourceId, { angle: e.area.angle, started: now });
       if (e.t === 'animalStrike')
@@ -1026,6 +1033,7 @@ export class Renderer {
           cheer,
           pose && {
             gesture: pose.gesture,
+            angle: pose.angle,
             strength: Math.max(0, 1 - (nowMs - pose.started) / 500),
           },
         );
