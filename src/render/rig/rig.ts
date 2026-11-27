@@ -107,6 +107,7 @@ export class CreatureRig {
   private cheerPose?: CelebrationPose;
   private druidGesture?: DruidGesture;
   private rangedSlot?: ExtSlot;
+  private arcaneFan = false;
   private bowDraw = 0;
   private preparingWeapon = false;
   private blade?: {
@@ -287,11 +288,12 @@ export class CreatureRig {
     this.druidGesture = gesture;
   }
 
-  triggerAttack(slot?: ExtSlot): void {
+  triggerAttack(slot?: ExtSlot, arcaneFan = false): void {
     if (this.preparingWeapon) return;
     if (this.blade?.duration && this.attackAge >= 0 && this.attackAge < this.blade.duration) return;
     this.blade = undefined;
     this.rangedSlot = slot;
+    this.arcaneFan = arcaneFan;
     this.druidGesture = undefined;
     this.attackAge = 0;
   }
@@ -1022,6 +1024,12 @@ export class CreatureRig {
       if (arm.side === -1 && !downed && this.rangedSlot === 'basic') {
         const beat = this.rangedRelease;
         switch (this.spec.garment) {
+          case 'mage':
+            if (this.arcaneFan) {
+              hand.x += (this.cos * 0.61 + this.sin * 1.1) * R * beat;
+              hand.y += (this.sin * 0.61 - this.cos * 1.1 - 0.88) * R * beat;
+            }
+            break;
           case 'cleric':
             hand.x += this.cos * R * 1.7 * beat;
             hand.y += (this.sin * 1.7 - 1.1) * R * beat;

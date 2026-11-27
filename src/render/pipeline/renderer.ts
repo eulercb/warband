@@ -122,7 +122,7 @@ export class Renderer {
   private wolfForms = new Set<number>();
   private druidGestures = new Map<
     number,
-    { gesture: DruidGesture; started: number; angle?: number }
+    { gesture: DruidGesture; started: number; angle?: number; halfAngle?: number }
   >();
   private animalStrikes = new Map<string, AnimalStrike>();
   private animalMotion = new Map<string, AnimalMotion>();
@@ -246,9 +246,13 @@ export class Renderer {
       if (e.t === 'cast' && e.druidGesture)
         this.druidGestures.set(e.sourceId, { gesture: e.druidGesture, started: now });
       if (e.t === 'fightStart') this.rangerBites.clear();
-      if (e.t === 'skillArea' && e.area.style === 'moonClaw') {
-        const pose = this.druidGestures.get(e.sourceId);
-        if (pose?.gesture === 'maul') pose.angle = e.area.angle;
+      if (e.t === 'skillArea' && e.area.style === 'druidMaul') {
+        this.druidGestures.set(e.sourceId, {
+          gesture: 'maul',
+          started: now,
+          angle: e.area.angle,
+          halfAngle: e.area.halfAngle,
+        });
       }
       if (e.t === 'skillArea' && e.area.style === 'savageBite')
         this.rangerBites.set(e.sourceId, { angle: e.area.angle, started: now });
@@ -1034,6 +1038,7 @@ export class Renderer {
           pose && {
             gesture: pose.gesture,
             angle: pose.angle,
+            halfAngle: pose.halfAngle,
             strength: Math.max(0, 1 - (nowMs - pose.started) / 500),
           },
         );
