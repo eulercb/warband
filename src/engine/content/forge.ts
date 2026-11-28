@@ -202,6 +202,8 @@ export type BuffTarget = 'self' | 'allies';
  * a zone becomes the buff the zone refreshes on allies standing inside it.
  */
 export interface ZoneSpec {
+  mageBind?: boolean;
+  prison?: boolean;
   zoneTransplant?: boolean;
   zonePoison?: { share: number; onExit: boolean; damageMult?: number };
   zoneFollow?: number;
@@ -314,6 +316,8 @@ export function decompose(def: Omit<PlayerAbilityDef, 'slot'>): AbilityComponent
       duration: def.zoneDuration ?? 4,
       radius: def.radius ?? 130,
     };
+    if (def.bindCage) zone.mageBind = true;
+    if (def.prison) zone.prison = true;
     zone.zoneTransplant = def.zoneTransplant;
     zone.zonePoison = def.zonePoison;
     zone.zoneFollow = def.zoneFollow;
@@ -928,6 +932,8 @@ export function recompose(
         def.buffDuration = e.duration;
         break;
       case 'zone':
+        def.bindCage = e.zone.mageBind;
+        def.prison = e.zone.prison;
         def.zoneKind = e.zone.zoneKind;
         def.zoneDuration = e.zone.duration;
         def.radius = e.zone.radius;
@@ -1206,6 +1212,8 @@ function zoneValue(z: ZoneSpec): number {
   if (z.curseStyle === 'dread' && z.curseBonus) v += z.duration * 4;
   if (z.castSlow != null && z.castSlow > 1) v += (z.castSlow - 1) * z.duration * 10; // item 9
   if (z.roots) v += z.duration * 14;
+  if (z.mageBind) v += z.duration * 9;
+  if (z.prison) v += z.duration * 4;
   if (z.allyBuff) {
     v += buffValue({ kind: 'buff', target: 'allies', ...z.allyBuff }) * 0.6;
   }
@@ -1525,6 +1533,8 @@ function zonePhrase(z: ZoneSpec): string {
   if (z.overflowShield)
     bits.push('unused healing builds a 6s bubble, capped at 30% max HP across all zones');
   if (z.tickHeal) bits.push(`${n(z.tickHeal)}/tick heal`);
+  if (z.mageBind) bits.push('traps foes inside');
+  if (z.prison) bits.push('trapped foes deal 20% less damage');
   if (z.roots) bits.push('roots');
   else if (z.slowMult != null) bits.push(`slow to ${pct(z.slowMult * 100)}`);
   if (z.castSlow != null && z.castSlow > 1) bits.push(`+${pct((z.castSlow - 1) * 100)} wind-up`);
@@ -3071,6 +3081,7 @@ function patchEffect(e: EffectComponent, def: Omit<PlayerAbilityDef, 'slot'>): E
         z.slowMult = def.slowMult;
         z.slowDuration = def.slowDuration ?? z.slowDuration;
       }
+      if (def.prison) z.prison = true;
       if (def.zoneAllyDefMult != null && z.allyBuff)
         z.allyBuff = { ...z.allyBuff, defMult: def.zoneAllyDefMult };
       if (def.curseBonus != null) z.curseBonus = def.curseBonus;

@@ -3,6 +3,7 @@ import type { World } from '../world/world';
 import type { Player, Vec2 } from '../core/types';
 import { dist, sub, wrapCoord } from '../core/torus';
 import { applyBuff, isRooted, makeBuff } from './combat';
+import { clipBoundDestination } from './otilukeBind';
 import { isSteadfast } from './defense';
 
 export function dimensionDoor(
@@ -75,7 +76,7 @@ export function dimensionDoor(
         );
       },
     );
-    if (!to || dist(to, from) < 1) continue;
+    if (!to || dist(to, from) < 1 || clipBoundDestination(world, enemy, to) !== to) continue;
     enemy.pos = to;
     moved.push({ enemy, from });
   }

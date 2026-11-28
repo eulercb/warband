@@ -717,6 +717,24 @@ export function drawProjectile(g: Graphics, pr: ProjectileView, screen: Vec2, sc
     g.poly([...at(8), ...at(-5, -3), ...at(0), ...at(-5, 3)]).fill({ color: 0xe7cdf4 });
     return;
   }
+  if (pr.presentation === 'sorcererMeteor') {
+    g.poly([...at(11, -2), ...at(4, 8), ...at(-5, 5), ...at(-10, -3), ...at(2, -8)])
+      .fill({ color: 0x392b51 })
+      .stroke({ color: 0xed9d73, width: Math.max(1.3, scale * 2) });
+    g.moveTo(...at(7, -4))
+      .lineTo(...at(2, 0))
+      .lineTo(...at(-4, -1))
+      .lineTo(...at(-5, 4))
+      .stroke({ color: 0xffe0a0, width: 1.6 });
+    for (let i = 0; i < 4; i++) {
+      const [px, py] = at(-12 - i * 5, (i % 2 ? -1 : 1) * (i + 2));
+      g.circle(px, py, Math.max(1, scale * (2.6 - i * 0.4))).fill({
+        color: i % 2 ? 0xbb79ea : 0xffbf7a,
+        alpha: 0.84 - i * 0.14,
+      });
+    }
+    return;
+  }
   if (pr.kind === 'fireball') {
     g.poly([...at(7), ...at(1, 6), ...at(-7, 4), ...at(-22, -1), ...at(-8, -5), ...at(2, -6)]).fill(
       { color: 0xef5a28, alpha: 0.78 },
@@ -972,28 +990,34 @@ export function drawZone(
       return;
     }
     const fade = zoneFadeAlpha(z.remaining, z.duration);
-    const protectedFloor = z.supportKinds?.includes('protect');
     const height = r * 0.36;
-    const color = protectedFloor ? 0xb2d9ff : 0xae9cf4;
+    const color = z.prison ? 0xf3c6ff : 0xae9cf4;
     for (let i = 0; i < 8; i++) {
       const a = (2 * Math.PI * i) / 8 + Math.PI / 8;
+      const next = a + Math.PI / 4;
       const dx = Math.cos(a),
         dy = Math.sin(a);
       const px = x + dx * r,
         py = y + dy * r;
+      const nx = x + Math.cos(next) * r,
+        ny = y + Math.sin(next) * r;
       const bend = r * 0.18;
       g.moveTo(px, py)
         .quadraticCurveTo(px + dx * bend, py - height, px - dx * bend, py - height)
-        .stroke({ color, width: Math.max(2, scale * 4), alpha: fade * 0.8 });
-      if (protectedFloor) {
-        g.poly([
-          x + dx * r * 0.61,
-          y + dy * r * 0.61,
-          px - dy * bend,
-          py + dx * bend,
-          px + dy * bend,
-          py - dx * bend,
-        ]).fill({ color: 0xaad7ee, alpha: fade * 0.37 });
+        .stroke({ color, width: Math.max(2, scale * 4), alpha: fade * 0.86 });
+      g.moveTo(px, py)
+        .quadraticCurveTo(
+          x + Math.cos((a + next) / 2) * r * 1.08,
+          y + Math.sin((a + next) / 2) * r * 1.08,
+          nx,
+          ny,
+        )
+        .stroke({ color, width: Math.max(1.5, scale * 2), alpha: fade * 0.52 });
+      if (z.prison) {
+        g.moveTo(px - dy * bend, py + dx * bend - height * 0.28)
+          .lineTo(px - dx * bend, py - dy * bend - height * 0.55)
+          .lineTo(px + dy * bend, py - dx * bend - height * 0.28)
+          .stroke({ color: 0xf4b5ec, width: Math.max(1.5, scale * 2), alpha: fade * 0.76 });
       }
     }
     drawZoneMarks(g, z, x, y, r, fade);

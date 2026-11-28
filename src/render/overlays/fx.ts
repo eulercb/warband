@@ -79,6 +79,8 @@ function areaFlashTtl(style: SkillArea['style']): number {
     case 'druidRoar':
     case 'magePolarVortex':
     case 'mageSupernova':
+    case 'sorcererMeteor':
+    case 'sorcererExtinction':
     case 'mageBlinkWard':
     case 'druidMaul':
     case 'druidFrostContact':
@@ -1089,6 +1091,46 @@ export class Fx {
             .lineTo(x - side * R * 0.31, c.y + R * 0.66)
             .stroke({ color: 0xbdd8ff, width: Math.max(2, s * 3), alpha: fade });
         }
+        return;
+      }
+      if (area.style === 'sorcererMeteor' || area.style === 'sorcererExtinction') {
+        const freezing = area.style === 'sorcererExtinction';
+        for (let i = 0; i < 15; i++) {
+          const heading = area.angle + i * 2.399963;
+          const dx = Math.cos(heading),
+            dy = Math.sin(heading);
+          const edge = R * (0.74 + (i % 5) * 0.065) * (0.85 + t * 0.15);
+          const lift = R * (0.16 + (i % 3) * 0.15) * Math.sin(Math.PI * t);
+          const px = c.x + edge * dx,
+            py = c.y + edge * dy - lift;
+          const shard = R * (0.075 + (i % 3) * 0.019) * (1 - t * 0.65);
+          const ice = freezing && i % 3 !== 0;
+          const tint = ice ? 0xb5eaff : i % 2 ? 0xf8a77f : 0xc197e0;
+          const depth = ice ? 2.1 : 1.08 + (i % 3) * 0.22;
+          const at = (forward: number, lateral: number): [number, number] => [
+            px + (dx * forward - dy * lateral) * shard,
+            py + (dy * forward + dx * lateral) * shard,
+          ];
+          const tip = at(depth, 0);
+          const base = at(-0.79, 0.74);
+          const side = at(-0.2, -0.76);
+          g.moveTo(...at(-3.4, 0.27))
+            .quadraticCurveTo(...at(-1.8, 0.5), ...base)
+            .stroke({
+              color: ice ? 0xb5eaff : 0xb68186,
+              width: Math.max(1, shard * 0.35),
+              alpha: fade * 0.47,
+            });
+          g.poly([...tip, ...at(0.48, 0.66), ...base, ...at(-1.12, 0.18), ...side])
+            .fill({ color: ice ? 0x5c9ccd : 0x493749, alpha: fade * 0.94 })
+            .stroke({ color: tint, width: 1.1, alpha: fade * 0.8 });
+          g.poly([...tip, ...at(-0.25, 0.19), ...side]).fill({ color: tint, alpha: fade * 0.88 });
+        }
+        const plume = R * (0.29 + t * 0.13);
+        g.ellipse(c.x, c.y - plume * t, plume, plume * 0.7).fill({
+          color: 0x34263c,
+          alpha: fade * fade * 0.48,
+        });
         return;
       }
       if (area.style === 'mageSupernova') {

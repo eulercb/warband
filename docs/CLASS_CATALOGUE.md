@@ -92,14 +92,14 @@ A positive direct hit on a slowed/rooted/stunned foe, or one that applies slow/s
 
 ### Abjurer
 
-A direct hit against a slowed, rooted or stunned foe grants you 10% max-HP absorption (minimum 20) for 5s. Once per 6s; shared barrier cap and strongest-cast rules apply.
+A direct hit against a slowed, rooted or stunned foe grants you 10% max-HP absorption (minimum 20) for 5s. Once per 6s.
 
 | Stable ID           | Ability        | Resolved unupgraded behavior                                                                                                                                                      |
 | ------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| mg_abjurer_ward     | Arcane Ward    | 24 dmg · 50 absorption for 6s to yourself; shared cap 50% max HP, strongest cast wins · 150u radius · slow to 50% for 3s · +35% dmg vs slowed/rooted/stunned foes · 12s cooldown  |
-| mg_abjurer_bind     | Otiluke Bind   | 8/tick dmg · 120u radius · roots · lasts 4s · hits flyers · 10s cooldown                                                                                                          |
+| mg_abjurer_ward     | Arcane Ward    | 24 dmg · 50 absorption for 6s to yourself · 150u radius · slow to 50% for 3s · +35% dmg vs slowed/rooted/stunned foes · 12s cooldown                                              |
+| mg_abjurer_bind     | Otiluke Bind   | 8/tick dmg · traps foes within the cage · 120u radius · slow to 30% for 1.5s · lasts 4s · hits flyers · 10s cooldown                                                              |
 | mg_abjurer_teleport | Dimension Door | 220u radius · 300u blink · arrival foes return to departure; departure foes scatter outward; moved foes slowed 35% for 2s; roots resist relocation · 0.25s i-frames · 6s cooldown |
-| mg_abjurer_mend     | Life Transfer  | Heal 55 · 20 absorption for 5s to lowest-health ally; shared cap 50% max HP, strongest cast wins · 400u range · 5s cooldown                                                       |
+| mg_abjurer_mend     | Life Transfer  | Heal 55 · 20 absorption for 5s to lowest-health ally · 400u range · 5s cooldown                                                                                                   |
 
 ## cleric
 

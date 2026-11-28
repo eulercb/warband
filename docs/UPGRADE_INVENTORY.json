@@ -3702,7 +3702,8 @@
             { "path": "abilities.a1.name", "before": "Meteor", "after": "Rage" },
             { "path": "abilities.a1.projCount", "before": 1, "after": null },
             { "path": "abilities.a1.projSpeed", "before": 460, "after": null },
-            { "path": "abilities.a1.surgeTwin", "before": true, "after": null }
+            { "path": "abilities.a1.surgeTwin", "before": true, "after": null },
+            { "path": "abilities.a1.visualStyle", "before": "sorcererMeteor", "after": null }
           ],
           "atCap": [
             { "path": "abilities.a1.buffDamageMult", "before": null, "after": 1.35 },
@@ -3718,7 +3719,8 @@
             { "path": "abilities.a1.name", "before": "Meteor", "after": "Rage" },
             { "path": "abilities.a1.projCount", "before": 1, "after": null },
             { "path": "abilities.a1.projSpeed", "before": 460, "after": null },
-            { "path": "abilities.a1.surgeTwin", "before": true, "after": null }
+            { "path": "abilities.a1.surgeTwin", "before": true, "after": null },
+            { "path": "abilities.a1.visualStyle", "before": "sorcererMeteor", "after": null }
           ]
         },
         {
@@ -4915,7 +4917,8 @@
             { "path": "abilities.a1.projCount", "before": 1, "after": null },
             { "path": "abilities.a1.projSpeed", "before": 460, "after": null },
             { "path": "abilities.a1.range", "before": null, "after": 420 },
-            { "path": "abilities.a1.surgeTwin", "before": true, "after": null }
+            { "path": "abilities.a1.surgeTwin", "before": true, "after": null },
+            { "path": "abilities.a1.visualStyle", "before": "sorcererMeteor", "after": null }
           ],
           "atCap": [
             { "path": "abilities.a1.bardSong", "before": null, "after": "chorus" },
@@ -4932,7 +4935,8 @@
             { "path": "abilities.a1.projCount", "before": 1, "after": null },
             { "path": "abilities.a1.projSpeed", "before": 460, "after": null },
             { "path": "abilities.a1.range", "before": null, "after": 420 },
-            { "path": "abilities.a1.surgeTwin", "before": true, "after": null }
+            { "path": "abilities.a1.surgeTwin", "before": true, "after": null },
+            { "path": "abilities.a1.visualStyle", "before": "sorcererMeteor", "after": null }
           ]
         },
         {
@@ -13266,7 +13270,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Allies inside Otiluke Bind take 20% less damage and its radius grows by 20u",
+      "description": "Trapped foes deal 20% less damage and the cage gains 20u radius",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,
@@ -13276,12 +13280,12 @@
           "subSkills": ["mg_abjurer_bind"],
           "prefix": [],
           "once": [
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 140 },
-            { "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }
+            { "path": "subAbilities.sub1.prison", "before": null, "after": true },
+            { "path": "subAbilities.sub1.radius", "before": 120, "after": 140 }
           ],
           "atCap": [
-            { "path": "subAbilities.sub1.radius", "before": 120, "after": 140 },
-            { "path": "subAbilities.sub1.zoneAllyDefMult", "before": null, "after": 0.8 }
+            { "path": "subAbilities.sub1.prison", "before": null, "after": true },
+            { "path": "subAbilities.sub1.radius", "before": 120, "after": 140 }
           ]
         }
       ]

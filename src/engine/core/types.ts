@@ -965,6 +965,8 @@ export interface ZoneAllyBuff {
  * stays byte-identical when Forge is off.
  */
 export interface ProjectileImpact {
+  mageBind?: boolean;
+  prison?: boolean;
   fieldTransplantCast?: FieldTransplantCast;
   zonePoison?: { share: number; onExit: boolean; damageMult?: number };
   zoneFollow?: number;
@@ -1028,9 +1030,16 @@ export interface GuidanceCast {
   activeTick: number;
 }
 export interface Projectile {
-  impactStyle?: 'fireball' | 'druidEarth' | 'mageSupernova';
+  impactStyle?:
+    'fireball' | 'druidEarth' | 'mageSupernova' | 'sorcererMeteor' | 'sorcererExtinction';
   presentation?:
-    'arcaneBolt' | 'arcaneBarrage' | 'frostArrow' | 'railshot' | 'brambleSpear' | 'druidEarth';
+    | 'arcaneBolt'
+    | 'arcaneBarrage'
+    | 'frostArrow'
+    | 'railshot'
+    | 'brambleSpear'
+    | 'druidEarth'
+    | 'sorcererMeteor';
   reflected?: boolean;
   guidance?: GuidanceCast;
   aimPoint?: Vec2;
@@ -1408,6 +1417,7 @@ export interface PendingStrike {
 }
 
 export interface GroundZone {
+  prison?: boolean;
   mageBind?: boolean;
   natureArt?: 'vines' | 'grove' | 'briar' | 'spring';
   rally?: { visitors: number[]; epoch: number };
@@ -1570,6 +1580,8 @@ export interface SkillArea {
     | 'frostNova'
     | 'magePolarVortex'
     | 'mageSupernova'
+    | 'sorcererMeteor'
+    | 'sorcererExtinction'
     | 'mageBlinkWard'
     | 'mageCold'
     | 'mageSculpt'
@@ -1930,6 +1942,7 @@ export interface ProjectileView {
 }
 
 export interface ZoneView {
+  prison?: boolean;
   mageBind?: boolean;
   natureArt?: GroundZone['natureArt'];
   natureCanopy?: boolean;

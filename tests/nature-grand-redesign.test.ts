@@ -544,13 +544,14 @@ describe('live frost and subclass visual cues', () => {
     expect(w.serialize().bosses[0].buffs.some((b) => b.visual === 'ice')).toBe(true);
   });
 
-  it('exposes cage art and ally protection through the resolved Sanctum Prison field', () => {
+  it('exposes the cage and its hostile weakness through the resolved Sanctum Prison field', () => {
     const skill = 'mg_abjurer_bind';
     const { w, p } = setup('mage', [`${skill}_g`], [skill]);
     resolvePlayerAbility(w, p, 'sub1', zero);
     expect(w.serialize().groundZones[0]).toMatchObject({
       mageBind: true,
-      supportKinds: ['protect'],
+      prison: true,
+      supportKinds: [],
     });
   });
 });

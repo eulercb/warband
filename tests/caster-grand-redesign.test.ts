@@ -1,11 +1,27 @@
+import {
+  clipBoundDestination,
+  enforceBoundEnemies,
+  prisonDamageFactor,
+  recordBoundEnemies,
+} from '../src/engine/combat/otilukeBind';
+import { dist } from '../src/engine/core/torus';
 import { afterEach, describe, expect, it } from 'vitest';
 import { World } from '../src/engine/world/world';
-import { resolvePlayerAbility } from '../src/engine/combat/abilities';
-import { applyBuff, damageBoss, damagePlayer, makeBuff } from '../src/engine/combat/combat';
+import { resolveBossAbility, resolvePlayerAbility } from '../src/engine/combat/abilities';
+import {
+  applyBuff,
+  BOSS_INVULN_SOURCE,
+  damageBoss,
+  damagePlayer,
+  makeBuff,
+} from '../src/engine/combat/combat';
 import { absorptionAmount } from '../src/engine/combat/absorption';
 import { onSubclassSurge, tickSubclassPassives } from '../src/engine/combat/subclassPassives';
 import {
+  componentValue,
   decompose,
+  describeComposed,
+  refreshComponents,
   recompose,
   setForgeSeed,
   synthesizeAbility,
@@ -31,7 +47,15 @@ import {
   grandSlot,
   normalizeGrandLoadout,
 } from '../src/engine/content/grandSelections';
-import type { ClassId, GroundZone, ExtSlot, Vec2, Player } from '../src/engine/core/types';
+import type {
+  Add,
+  Boss,
+  ClassId,
+  GroundZone,
+  ExtSlot,
+  Vec2,
+  Player,
+} from '../src/engine/core/types';
 
 const zero = { x: 0, y: 0 };
 const classes = ['mage', 'sorcerer'] as const;
@@ -302,7 +326,7 @@ describe('Mage/Sorcerer authored builds', () => {
   );
 
   it.each([false, true])(
-    'Sanctum Prison protects full-health allies while retaining aerial roots and suppression, composed=%s',
+    'Sanctum Prison weakens trapped flyers and retains Binding Dominion suppression, composed=%s',
     (composed) => {
       const { w, p } = setup('mage', ['mg_abjurer_bind_g', 'mg_abjurer_g_b'], ['mg_abjurer_bind']);
       if (composed)
@@ -314,8 +338,9 @@ describe('Mage/Sorcerer authored builds', () => {
       applyBuff(w.boss!, makeBuff('flight', 0, 4, 'test'));
       (w as unknown as { applyZoneTick: (z: GroundZone) => void }).applyZoneTick(zone);
       expect(p.hp).toBe(p.maxHp);
-      expect(p.buffs.some((b) => b.kind === 'damageTaken' && b.mult === 0.8)).toBe(true);
-      expect(w.boss!.buffs.some((b) => b.kind === 'root')).toBe(true);
+      expect(zone).toMatchObject({ mageBind: true, prison: true });
+      expect(p.buffs.some((b) => b.kind === 'damageTaken')).toBe(false);
+      expect(w.boss!.buffs.some((b) => b.kind === 'root')).toBe(false);
       expect(w.boss!.buffs.some((b) => b.kind === 'castSlow' && b.mult === 1.4)).toBe(true);
     },
   );
@@ -506,4 +531,162 @@ describe('Mage/Sorcerer authored builds', () => {
       }
     },
   );
+});
+
+describe('Otiluke cage runtime', () => {
+  const cageSkill = 'mg_abjurer_bind';
+  function castCage(grand = false) {
+    const { w, p } = setup('mage', grand ? [`${cageSkill}_g`] : [], [cageSkill]);
+    w.boss!.decisionTimer = 100;
+    resolvePlayerAbility(w, p, 'sub1', zero);
+    return { w, p, cage: w.groundZones[0], boss: w.boss! };
+  }
+
+  it('allows grounded and flying occupants to move, catches entrants, and releases on expiry', () => {
+    const { w, p, cage, boss } = castCage(true);
+    boss.pos = { x: cage.pos.x - 70, y: cage.pos.y };
+    boss.moveSpeed = 220;
+    applyBuff(boss, makeBuff('flight', 0, 15, 'testFlight'));
+    const add = {
+      id: w.allocId(),
+      pos: { x: cage.pos.x + 12, y: cage.pos.y + cage.radius + 15 },
+      radius: 12,
+      hp: 999,
+      maxHp: 999,
+      buffs: [makeBuff('flight', 0, 15, 'testFlight')],
+      moveSpeed: 160,
+      attackCd: 8,
+      targetId: null,
+    };
+    w.adds.push(add);
+    p.pos = { ...cage.pos };
+    const before = { ...add.pos };
+    expect(prisonDamageFactor(w, boss)).toBe(1);
+    for (let i = 0; i < 15; i++) w.step(0.05, new Map());
+    expect(dist(add.pos, before)).toBeGreaterThan(15);
+    expect(dist(add.pos, cage.pos)).toBeLessThan(cage.radius);
+    expect(prisonDamageFactor(w, add)).toBe(0.8);
+
+    p.pos = { x: cage.pos.x - 675, y: cage.pos.y };
+    const bossBefore = { ...boss.pos };
+    const addBefore = { ...add.pos };
+    for (let i = 0; i < 40; i++) w.step(0.05, new Map());
+    expect(dist(boss.pos, bossBefore)).toBeGreaterThan(5);
+    expect(dist(add.pos, addBefore)).toBeGreaterThan(5);
+    expect(dist(boss.pos, cage.pos)).toBeLessThanOrEqual(cage.radius);
+    expect(dist(add.pos, cage.pos)).toBeLessThanOrEqual(cage.radius);
+    expect(boss.buffs.some((b) => b.kind === 'root')).toBe(false);
+
+    boss.pos = { ...cage.pos };
+    applyBuff(boss, makeBuff('invuln', 0, 10, BOSS_INVULN_SOURCE));
+    expect(prisonDamageFactor(w, boss)).toBe(1);
+    expect(clipBoundDestination(w, boss, p.pos)).toBe(p.pos);
+    cage.remaining = 0.03;
+    for (let i = 0; i < 25; i++) w.step(0.05, new Map());
+    expect(dist(add.pos, cage.pos)).toBeGreaterThan(cage.radius);
+    expect(prisonDamageFactor(w, add)).toBe(1);
+  });
+
+  it('stops forced exits and blocks an escaping boss blink until the cage is gone', () => {
+    const { w, p, cage, boss } = castCage();
+    cage.armRemaining = 0;
+    boss.pos = { ...cage.pos };
+    p.pos = { x: cage.pos.x + 72, y: cage.pos.y };
+    boss.blinkTimer = 0;
+    w.step(0.05, new Map());
+    expect(w.events.some((event) => event.t === 'blink' && event.id === boss.id)).toBe(false);
+    const captured = new Map<Boss | Add, GroundZone>();
+    recordBoundEnemies(w, captured);
+    boss.pos = { x: cage.pos.x + cage.radius + 25, y: cage.pos.y };
+    enforceBoundEnemies(w, captured);
+    expect(dist(boss.pos, cage.pos)).toBeCloseTo(cage.radius, 0);
+    captured.clear();
+    boss.pos = { x: cage.pos.x - cage.radius - 5, y: cage.pos.y };
+    recordBoundEnemies(w, captured);
+    expect(captured.size).toBe(0);
+    cage.remaining = 0;
+    boss.pos = { ...cage.pos };
+    expect(clipBoundDestination(w, boss, p.pos)).toBe(p.pos);
+    w.step(0.05, new Map());
+    expect(w.events.some((event) => event.t === 'blink' && event.id === boss.id)).toBe(true);
+  });
+
+  it('carries the grand into refreshed Forge data, prices it and describes enemy weakness', () => {
+    const { p } = castCage();
+    const native = p.subAbilities!.sub1!;
+    const composed = recompose(decompose(native), native);
+    const base = componentValue(composed.components!);
+    composed.prison = true;
+    const grand = refreshComponents(composed);
+    expect(componentValue(grand)).toBeGreaterThan(base);
+    expect(describeComposed(grand, native.cooldown)).toContain('trapped foes deal 20% less damage');
+  });
+
+  it('clips a charge along its own lane and weakens damage against allies outside the cage', () => {
+    const { w, p, cage, boss } = castCage(true);
+    cage.armRemaining = 0;
+    boss.pos = { x: cage.pos.x, y: cage.pos.y + 48 };
+    const exit = clipBoundDestination(w, boss, { x: cage.pos.x + 300, y: boss.pos.y });
+    expect(exit.y).toBeCloseTo(boss.pos.y);
+    expect(dist(exit, cage.pos)).toBeCloseTo(cage.radius, 0);
+    p.pos = { x: cage.pos.x + cage.radius + 35, y: cage.pos.y };
+    const ability = {
+      id: 'cageTest',
+      name: 'Cage Test',
+      shape: 'pbaoe',
+      radius: 360,
+      damage: 20,
+      cooldown: 2,
+      windup: 0,
+    } as const;
+    const action = {
+      kind: 'windup',
+      abilityId: null,
+      remaining: 0,
+      total: 0,
+      targetId: null,
+      targetPos: null,
+      aimAngle: 0,
+      channelAccum: 0,
+    } as const;
+    const hp = p.hp;
+    resolveBossAbility(w, boss, ability, action);
+    const weakened = hp - p.hp;
+    p.hp = hp;
+    cage.prison = false;
+    resolveBossAbility(w, boss, ability, action);
+    expect(weakened).toBeCloseTo((hp - p.hp) * 0.8);
+  });
+});
+
+it.each([false, true])('renders the actual Meteor impact and freeze outcome, grand=%s', (grand) => {
+  const { w, p } = setup('sorcerer', grand ? ['so_gk_a1_a'] : []);
+  w.boss!.decisionTimer = 100;
+  resolvePlayerAbility(w, p, 'a1', zero);
+  expect(w.serialize().projectiles[0].presentation).toBe('sorcererMeteor');
+  w.step(0.1, new Map());
+  expect(
+    w.events.some(
+      (e) =>
+        e.t === 'skillArea' && e.area.style === (grand ? 'sorcererExtinction' : 'sorcererMeteor'),
+    ),
+  ).toBe(true);
+  expect(w.serialize().bosses[0].buffs.some((b) => b.visual === 'ice')).toBe(grand);
+});
+
+it('retains Sanctum Prison as a Forge projectile impact field', () => {
+  const skill = 'mg_abjurer_bind';
+  const { w, p } = setup('mage', [`${skill}_g`], [skill]);
+  w.boss!.decisionTimer = 100;
+  const original = p.abilities!.a1;
+  const payload = decompose(p.subAbilities!.sub1!).effects.find(
+    (effect) => effect.kind === 'zone',
+  )!;
+  const shot = decompose(original);
+  shot.effects.push(payload);
+  p.abilities!.a1 = recompose(shot, original);
+  resolvePlayerAbility(w, p, 'a1', zero);
+  w.step(0.12, new Map());
+  expect(w.groundZones[0]).toMatchObject({ mageBind: true, prison: true });
+  expect(prisonDamageFactor(w, w.boss!)).toBe(0.8);
 });
