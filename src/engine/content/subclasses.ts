@@ -440,14 +440,14 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'mg_abjurer_bind',
           'Otiluke Bind',
           '🌀',
-          'Roots foes in a zone — holds them fast',
+          'Traps grounded and flying foes in a damaging cage. They can move inside it.',
           zone('Otiluke Bind', 10, {
             visualStyle: 'mageBind',
+            bindCage: true,
             slowMult: 0.3,
             slowDuration: 1.5,
             zoneTickDamage: 8,
             zoneKind: 'entangle',
-            roots: true, // item 3: a true bind — immobilises + locks out blink/charge/teleport
             // item 8 — a floating force cage, not ground plants: it holds a FLYER
             // fast too (airborne override on the ground 'entangle' kind).
             airborne: true,

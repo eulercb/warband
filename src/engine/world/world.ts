@@ -355,6 +355,12 @@ import {
   type HitMods,
   type CombatObserver,
 } from '../combat/combat';
+import {
+  clipBoundDestination,
+  enforceBoundEnemies,
+  prisonDamageFactor,
+  recordBoundEnemies,
+} from '../combat/otilukeBind';
 import { decayThreat, nthThreatTarget } from '../combat/threat';
 import {
   resolvePlayerAbility,
@@ -1301,6 +1307,8 @@ export class World {
     maintainFieldTransplants(this);
     this.maintainCloseBursts();
     for (const p of this.players) advanceWeaponSwing(this, p);
+    const boundEnemies = new Map<Boss | Add, GroundZone>();
+    recordBoundEnemies(this, boundEnemies);
     this.applyInputs(dt, inputs);
     this.stepGlides(dt); // item 2: advance in-progress dash/leap glides host-side
     this.stepShoves(dt); // Hero slides advance here; enemy impulses combine after hits.
@@ -1320,7 +1328,10 @@ export class World {
     this.updateTerrain(dt);
     this.checkDownedTransitions();
     expelRefugeOccupants(this);
+    enforceBoundEnemies(this, boundEnemies);
+    recordBoundEnemies(this, boundEnemies);
     tickManeuvers(this, dt);
+    enforceBoundEnemies(this, boundEnemies);
     this.updateBosses(dt);
     // Boss-vs-boss synergy (twin/N-boss packs): a telegraphed bond that empowers
     // or wards a wounded partner. Inert for a lone boss (guards on pack size).
@@ -1335,6 +1346,7 @@ export class World {
     this.tauntTimer = Math.max(0, this.tauntTimer - dt);
     dissolveOverlappedBulwarks(this);
     this.separateAndClamp();
+    enforceBoundEnemies(this, boundEnemies);
     dissolveOverlappedBulwarks(this);
     for (const [p, walk] of this.huntWalks) {
       if (p.glide || p.shove || this.events.some((e) => e.t === 'blink' && e.id === p.id)) continue;
@@ -2100,6 +2112,8 @@ export class World {
     if (!oi) return;
     spawnZone(this, {
       kind: oi.kind,
+      mageBind: oi.mageBind,
+      prison: oi.prison,
       whisperCast: proj.whisperCast,
       pos: { ...proj.pos },
       radius: oi.radius,
@@ -3053,7 +3067,7 @@ export class World {
     boss.modAuraTimer = (boss.modAuraTimer ?? 0) + dt;
     if (boss.modAuraTimer < MOD_AURA_INTERVAL) return;
     boss.modAuraTimer = 0;
-    const scalar = this.bossDamageScalar() * (boss.dmgScale ?? 1);
+    const scalar = this.bossDamageScalar() * (boss.dmgScale ?? 1) * prisonDamageFactor(this, boss);
     switch (boss.modAura) {
       case 'frost':
         for (const p of this.players) {
@@ -3167,7 +3181,7 @@ export class World {
     const affixes = boss.affixes;
     if (!affixes || affixes.length === 0) return;
     const timers = (boss.affixTimers ??= {});
-    const scalar = this.bossDamageScalar() * (boss.dmgScale ?? 1);
+    const scalar = this.bossDamageScalar() * (boss.dmgScale ?? 1) * prisonDamageFactor(this, boss);
 
     // Accelerating: a haste that ramps with fight time, refreshed each tick.
     if (affixes.includes('accelerating')) {
@@ -3297,7 +3311,10 @@ export class World {
     this.hazardZone(
       center,
       AFFIX_VOLATILE_RADIUS,
-      AFFIX_VOLATILE_TICK * this.bossDamageScalar() * (boss.dmgScale ?? 1),
+      AFFIX_VOLATILE_TICK *
+        this.bossDamageScalar() *
+        (boss.dmgScale ?? 1) *
+        prisonDamageFactor(this, boss),
       AFFIX_VOLATILE_ZONE_DURATION,
       AFFIXES.volatile.color,
     );
@@ -3533,7 +3550,11 @@ export class World {
       // kiter: keep within casting range but don't crowd the target
       if (d > 420) {
         const dir = normalize(sub(target.pos, boss.pos));
-        boss.pos = walkAroundBulwarks(this, boss, vadd(boss.pos, vscale(dir, speed * dt)), dt);
+        boss.pos = clipBoundDestination(
+          this,
+          boss,
+          walkAroundBulwarks(this, boss, vadd(boss.pos, vscale(dir, speed * dt)), dt),
+        );
         boss.facing = angleOf(dir);
       } else {
         boss.facing = angleOf(sub(target.pos, boss.pos));
@@ -3543,7 +3564,11 @@ export class World {
 
     if (d > def.meleeRange * 0.85) {
       const dir = normalize(sub(target.pos, boss.pos));
-      boss.pos = walkAroundBulwarks(this, boss, vadd(boss.pos, vscale(dir, speed * dt)), dt);
+      boss.pos = clipBoundDestination(
+        this,
+        boss,
+        walkAroundBulwarks(this, boss, vadd(boss.pos, vscale(dir, speed * dt)), dt),
+      );
       boss.facing = angleOf(dir);
     } else {
       boss.facing = angleOf(sub(target.pos, boss.pos));
@@ -3580,6 +3605,7 @@ export class World {
       x: boss.pos.x + dir.x * cfg.range,
       y: boss.pos.y + dir.y * cfg.range,
     });
+    if (clipBoundDestination(this, boss, to) !== to) return;
     boss.pos = to;
     boss.shove = null; // item 2: a blink is an instant reposition — drop any in-flight slide
     boss.blinkTimer = cfg.internalCd;
@@ -3814,7 +3840,11 @@ export class World {
             const dir = normalize(sub(target.pos, a.pos));
             const speed = a.moveSpeed * buffMult(a, 'moveSpeed');
             const from = a.pos;
-            a.pos = walkAroundBulwarks(this, a, vadd(a.pos, vscale(dir, speed * dt)), dt);
+            a.pos = clipBoundDestination(
+              this,
+              a,
+              walkAroundBulwarks(this, a, vadd(a.pos, vscale(dir, speed * dt)), dt),
+            );
             if (motion) {
               const traveled = dist(from, a.pos);
               motion.distance += traveled;
@@ -3823,7 +3853,12 @@ export class World {
             }
           }
         } else if (a.attackCd <= 0) {
-          damagePlayer(this, target, ADD_DAMAGE * buffMult(a, 'damageDealt'), a.pos);
+          damagePlayer(
+            this,
+            target,
+            ADD_DAMAGE * buffMult(a, 'damageDealt') * prisonDamageFactor(this, a),
+            a.pos,
+          );
           if (motion) {
             motion.facing = sub(target.pos, a.pos).x < 0 ? -1 : 1;
             motion.swing = 0.28;
@@ -4136,7 +4171,7 @@ export class World {
       case 'line': {
         const chargeEnd = bossChargeTarget(b, a, ab);
         let end = firstObstacleStop(this, b.pos, chargeEnd, b.radius, true) ?? chargeEnd;
-        end = clipBulwarkStep(this, b, end).pos;
+        end = clipBoundDestination(this, b, clipBulwarkStep(this, b, end).pos);
         return {
           ...base,
           mode: 'fixed',
@@ -4509,6 +4544,7 @@ export class World {
       apparitions: apparitionViews(this),
       groundZones: this.groundZones.map((z) => ({
         mageBind: z.mageBind,
+        prison: z.prison,
         natureArt: z.natureArt,
         natureFollowing:
           (!!z.natureArt && z.followAcquired && (z.zoneFollow ?? 0) > 0) || undefined,

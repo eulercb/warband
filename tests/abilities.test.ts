@@ -2274,10 +2274,10 @@ describe('root gates boss mobility (item 9)', () => {
 // ===========================================================================
 describe('root/bind sweep (item 3)', () => {
   it('flags the true roots and keeps intentional snares/thorns as slows', () => {
-    // True roots: Druid Entangle (base), Mage Abjurer Otiluke Bind, Rogue
+    // True roots: Druid Entangle (base), Rogue
     // Trickster Ensnaring Strike — a bind/web holds the target fast.
     expect(getClass('druid').abilities.a1.roots).toBe(true);
-    expect(getSubSkill('mg_abjurer_bind')!.ability.roots).toBe(true);
+    expect(getSubSkill('mg_abjurer_bind')!.ability.roots).toBeUndefined();
     expect(getSubSkill('ro_trickster_snare')!.ability.roots).toBe(true);
     // Documented product call — a "snare"/thorn-barrier/nova-burst stays a soft
     // slow, never a hard root (still slows, never immobilises).
@@ -2290,7 +2290,7 @@ describe('root/bind sweep (item 3)', () => {
 
   it('describeAbility reads a rooting zone as "roots" and a snare as a % slow', () => {
     expect(describeAbility(getClass('druid').abilities.a1)).toContain('roots');
-    expect(describeAbility(getSubSkill('mg_abjurer_bind')!.ability)).toContain('roots');
+    expect(describeAbility(getSubSkill('mg_abjurer_bind')!.ability)).toContain('traps foes');
     const snare = describeAbility(getSubSkill('rg_beast_snare')!.ability);
     expect(snare).toContain('slow to');
     expect(snare).not.toContain('roots');
@@ -2299,10 +2299,7 @@ describe('root/bind sweep (item 3)', () => {
   // Each newly-rooting subclass ability must spawn a TRUE-root zone (roots:true),
   // which the engine's root contract turns into a full immobilise (move + blink +
   // Teleporting affix + charge, all covered generically by the root-buff tests).
-  for (const [name, id] of [
-    ['Otiluke Bind', 'mg_abjurer_bind'],
-    ['Ensnaring Strike', 'ro_trickster_snare'],
-  ] as const) {
+  for (const [name, id] of [['Ensnaring Strike', 'ro_trickster_snare']] as const) {
     it(`${name} spawns a true-root entangle zone`, () => {
       const w = mkWorld('mage');
       const p = w.players[0];

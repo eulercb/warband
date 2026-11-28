@@ -64,7 +64,8 @@ export interface PlayerAbilityDef {
     | 'mageShield'
     | 'mageWard'
     | 'mageBind'
-    | 'mageTransfer';
+    | 'mageTransfer'
+    | 'sorcererMeteor';
   druidDelivery?: import('../core/types').DruidDelivery;
   flurryLaneHalfWidth?: number;
   flurryBarrage?: boolean;
@@ -221,6 +222,8 @@ export interface PlayerAbilityDef {
   /** Share a timed ward with nearby OTHER allies when this utility resolves. */
   allyWard?: { range: number; mult: number; duration: number };
   /** Mitigation refreshed on allies standing in this ground zone. */
+  bindCage?: boolean;
+  prison?: boolean;
   zoneAllyDefMult?: number;
   zoneAllyMoveMult?: number;
   balanceZoneDamageScale?: number;
@@ -1109,6 +1112,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a1: {
         slot: 'a1',
         name: 'Meteor',
+        visualStyle: 'sorcererMeteor',
         consumesSurge: true,
         surgeTwin: true,
         kind: 'projectile',
@@ -1431,6 +1435,8 @@ export function describeAbility(
       `other allies within ${n(w.range)}u take ${n((1 - w.mult) * 100)}% less damage for ${s(w.duration)}`,
     );
   }
+  if (def.bindCage) parts.push('traps foes within the cage');
+  if (def.prison) parts.push('trapped foes deal 20% less damage');
   if (def.zoneAllyDefMult)
     parts.push(`allies inside take ${n((1 - def.zoneAllyDefMult) * 100)}% less damage`);
   if (def.bardSong && !def.whisperRefrain) parts.push(bardSongText(def.bardSong, def.rhapsody));

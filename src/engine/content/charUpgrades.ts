@@ -3686,14 +3686,14 @@ export const PILOT_SUB_SKILL_GRANDS: CharUpgradeDef[] = [
     'mg_abjurer_bind',
     'Sanctum Prison',
     '🌀',
-    'Allies inside Otiluke Bind take 20% less damage and its radius grows by 20u',
+    'Trapped foes deal 20% less damage and the cage gains 20u radius',
     casterGrand(
       'groundZone',
       (ab) => {
-        ab.zoneAllyDefMult = Math.min(ab.zoneAllyDefMult ?? 1, 0.8);
+        ab.prison = true;
         addN(ab, 'radius', 20);
       },
-      ['zoneTickDamage', 'roots', 'airborne'],
+      ['zoneTickDamage', 'airborne', 'bindCage'],
     ),
   ),
   gsk(
@@ -4744,7 +4744,7 @@ function casterRecipeMatches(subSkillId: string, ab: Omit<PlayerAbilityDef, 'slo
   const required: Partial<Record<string, readonly (keyof Omit<PlayerAbilityDef, 'slot'>)[]>> = {
     mg_evoker_shield: ['absorption', 'knockback'],
     mg_abjurer_ward: ['absorption'],
-    mg_abjurer_bind: ['zoneTickDamage', 'roots', 'airborne'],
+    mg_abjurer_bind: ['zoneTickDamage', 'airborne', 'bindCage'],
     mg_abjurer_teleport: ['swap'],
     mg_abjurer_mend: ['absorption'],
     so_draconic_breath: ['consumesSurge'],

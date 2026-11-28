@@ -915,7 +915,7 @@ effective lifesteal.
 
 The Abjurer's Arcane Ward uses radial panes and Warding Reversal
 throws those panes outward. Otiluke Bind keeps its arming cue before
-raising a suspended cage. Sanctum Prison adds protective inner panels.
+raising a suspended cage. The original Sanctum Prison showed protection panels. The containment follow-up below changes the panels and their effect.
 Dimension Door opens and closes directional frames at its actual endpoints
 and shows smaller frames for successfully relocated enemies. Guarded
 Door uses the existing frontal guard cue. Life Transfer sends a
@@ -946,3 +946,42 @@ Normal-zoom phone captures: [Dire Maul](images/humanoid-moon-maul-phone.gif),
 [Sanctum Prison](images/sanctum-prison-phone.png),
 [Guarded Door](images/guarded-door-phone.png), and
 [Rescuing Transfer](images/rescuing-transfer-phone.png).
+
+### Otiluke containment and Sorcerer Meteor
+
+Before this follow-up, Otiluke Bind dealt damage, slowed and reapplied a
+generic root on field ticks. Bosses respected the root in ordinary movement,
+blink and charge. Summon pursuit still moved under the slow because its
+walking loop did not check roots. The cage could hit fliers in both cases.
+
+The Mage Abjurer's Otiluke Bind now arms the same damaging field and keeps
+its slow and air reach. Once armed, it catches hostile bosses and summons
+whose centers enter the field. Occupants can navigate the interior and
+attack. The rim limits escape by walking, charges, relocation and forced
+movement. A charge ends along its original lane. The cage releases enemies
+when it expires or is dispelled, and control-immune or steadfast enemies
+can escape. Allies can freely cross the rim.
+
+Sanctum Prison, the skill grand, adds 20u of radius and weakens trapped
+foes' outgoing attacks by 20%. This protects allies wherever they are
+standing. Projectiles and hostile fields use the modifier when the trapped
+enemy creates them. Binding Dominion still stretches enemy wind-ups on
+field ticks. One Sol 6.2 High review checked movement paths and Forge
+retention. The cage travels with the field payload when retained in Forge.
+
+The Sorcerer slice covers Meteor, the first starting special, and its
+Extinction grand. Meteor visibly travels as fractured rock with ember
+fragments. Its blast throws debris across the resolved impact footprint.
+Extinction adds ice shards to the impact and the existing sustained ice
+appears only when a freeze lands. Both share the same real charge,
+projectile and impact timing, including Spell Surge.
+
+The previous patch used 28 percentage points of the five-hour allowance
+and 5 weekly. This batch started at 44% and 5%. Next is the Sorcerer's
+Mirror Image and Arcane Phase and their linked grands, then Wild Magic
+and Draconic Bloodline before the remaining roster and encounter passes.
+
+Normal-zoom phone captures include
+[Sanctum Prison](images/otiluke-sanctum-boundary-phone.png),
+[Meteor](images/sorcerer-meteor-impact-phone.png), and
+[Extinction](images/sorcerer-extinction-impact-phone.png).

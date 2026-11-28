@@ -44,6 +44,7 @@ import { openInfernalAperture } from './infernalAperture';
 import { recordShadowReprise } from './shadowReprise';
 import { armWhisperRefrain } from './whisperRefrain';
 import { armRetouchEffects } from './skillRetouches';
+import { clipBoundDestination, prisonDamageFactor } from './otilukeBind';
 import { onMoonAbility } from './moonForm';
 import { dimensionDoor } from './dimensionDoor';
 import { isSteadfast } from './defense';
@@ -1596,6 +1597,8 @@ function zoneToImpact(
   cast?: import('../core/types').FieldTransplantCast,
 ): ProjectileImpact {
   return {
+    mageBind: z.mageBind,
+    prison: z.prison,
     fieldTransplantCast: z.zoneTransplant ? cast : undefined,
     kind: z.zoneKind,
     radius: z.radius,
@@ -1627,7 +1630,6 @@ function spawnComposedZone(
   transplant?: import('../core/types').FieldTransplantCast,
   font?: import('../core/types').FontSource,
   refuge?: import('../core/types').RefugeSource,
-  mageBind?: boolean,
 ): void {
   range = Math.min(range, Math.min(world.arena.w, world.arena.h) * 0.4);
   const centered = z.zoneKind === 'sanctuary' || z.zoneKind === 'consecration';
@@ -1636,7 +1638,8 @@ function spawnComposedZone(
     : clampToArena(world, vadd(p.pos, vscale(castAim, range)), z.radius);
   const arm = centered ? { armTime: 0, armFrom: p.pos } : zoneArm(p.pos, pos); // item 12
   spawnZone(world, {
-    mageBind,
+    mageBind: z.mageBind,
+    prison: z.prison,
     kind: z.zoneKind,
     pos,
     radius: z.radius,
@@ -1829,7 +1832,6 @@ function resolveComposedAbility(
           ab.fieldTransplantCast,
           reserveFont(world, p, ab),
           reserveRefuge(world, p, ab),
-          ab.visualStyle === 'mageBind' || undefined,
         );
       buffSelf();
       break;
@@ -1959,7 +1961,8 @@ function resolveGroundZone(world: World, p: Player, ab: PlayerAbilityDef): void 
   // caster to `pos` while the zone arms, so players read where it will land.
   const arm = centered ? { armTime: 0, armFrom: p.pos } : zoneArm(p.pos, pos);
   spawnZone(world, {
-    mageBind: ab.visualStyle === 'mageBind' || undefined,
+    mageBind: ab.bindCage,
+    prison: ab.prison,
     kind,
     pos,
     radius,
@@ -2079,13 +2082,20 @@ function spawnPlayerProjectile(
               p.charUpgradeIds?.includes('dr_gk_basic_b')
             ? { presentation: 'brambleSpear' as const }
             : {}),
+    ...(o.returningSource?.visualStyle === 'sorcererMeteor' && {
+      presentation: 'sorcererMeteor' as const,
+    }),
     impactStyle: earth
       ? 'druidEarth'
       : o.returningSource?.visualStyle === 'fireball'
         ? p.charUpgradeIds?.includes('mg_gk_a1_a') && o.castSlow
           ? 'mageSupernova'
           : 'fireball'
-        : undefined,
+        : o.returningSource?.visualStyle === 'sorcererMeteor'
+          ? o.freeze
+            ? 'sorcererExtinction'
+            : 'sorcererMeteor'
+          : undefined,
     guidance: o.returningSource?.guidanceCast,
     id: world.allocId(),
     kind,
@@ -2154,6 +2164,7 @@ function emitSkillArea(world: World, sourceId: number, color: number, area: Skil
 }
 
 export interface SpawnZoneOpts {
+  prison?: boolean;
   mageBind?: boolean;
   rally?: GroundZone['rally'];
   refuge?: import('../core/types').RefugeSource;
@@ -2204,6 +2215,7 @@ export interface SpawnZoneOpts {
 export function spawnZone(world: World, o: SpawnZoneOpts): void {
   const zone: GroundZone = {
     mageBind: o.mageBind,
+    prison: o.prison,
     revivalFont: o.revivalFont,
     refuge: o.refuge,
     rally: o.rally,
@@ -2416,7 +2428,11 @@ export function resolveBossAbility(
   // Boss offensive self-buffs (War Cry / Frenzy / Power of Night…) empower its
   // hits; twin bosses swing at a fraction of solo strength (dmgScale).
   const dmg =
-    ab.damage * world.bossDamageScalar() * (boss.dmgScale ?? 1) * buffMult(boss, 'damageDealt');
+    ab.damage *
+    world.bossDamageScalar() *
+    (boss.dmgScale ?? 1) *
+    buffMult(boss, 'damageDealt') *
+    prisonDamageFactor(world, boss);
   const alivePlayers = world.players.filter((p) => p.state === 'alive');
   let dealtToPlayers = 0;
 
@@ -2488,7 +2504,7 @@ export function resolveBossAbility(
       // path damage and its relocation end there), while still trampling low rubble.
       const chargeStop = firstObstacleStop(world, from, to, boss.radius, true);
       if (chargeStop) to = chargeStop;
-      to = clipBulwarkStep(world, boss, to).pos;
+      to = clipBoundDestination(world, boss, clipBulwarkStep(world, boss, to).pos);
       const halfWidth = (ab.width ?? 45) + boss.radius * 0.5;
       for (const p of alivePlayers) {
         if (pointInSegment(p.pos, from, to, halfWidth, p.radius)) {
@@ -2601,7 +2617,10 @@ export function resolveBossAbility(
           side: 'boss',
           ownerId: boss.id,
           damagePerTick:
-            (ab.zoneTickDamage ?? 12) * world.bossDamageScalar() * (boss.dmgScale ?? 1),
+            (ab.zoneTickDamage ?? 12) *
+            world.bossDamageScalar() *
+            (boss.dmgScale ?? 1) *
+            prisonDamageFactor(world, boss),
           healPerTick: 0,
           slowMult: ab.slowMult,
           slowDuration: ab.slowDuration,
@@ -2660,7 +2679,11 @@ export function beamTick(world: World, boss: Boss, ab: BossAbilityDef, action: B
     damagePlayer(
       world,
       target,
-      ab.damage * world.bossDamageScalar() * (boss.dmgScale ?? 1) * buffMult(boss, 'damageDealt'),
+      ab.damage *
+        world.bossDamageScalar() *
+        (boss.dmgScale ?? 1) *
+        buffMult(boss, 'damageDealt') *
+        prisonDamageFactor(world, boss),
       boss.pos,
     ),
   );
