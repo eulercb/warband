@@ -1456,7 +1456,7 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
     case 'controlDamage':
       return `+${pct(e.bonus * 100)} dmg vs slowed/rooted/stunned foes`;
     case 'prepareSurge':
-      return `prepare spell surge for ${s(e.duration)}`;
+      return `gain 1 spell surge (Sorcerer max 3) for ${s(e.duration)}`;
     case 'fortune':
       return `Fortune ${s(e.fortune.duration)} — next connecting direct cast affects each living foe it hits, delaying wind-ups ${n((e.fortune.castSlowMult - 1) * 100)}%, weakening damage ${n((1 - e.fortune.damageMult) * 100)}% for ${s(e.fortune.debuffDuration)}${e.fortune.markBonus ? `; next hit from a later cast +${n(e.fortune.markBonus * 100)}% damage` : ''}`;
     case 'maneuver':
@@ -1468,7 +1468,7 @@ function effectPhrase(e: EffectComponent, comp: AbilityComponents): string {
     case 'thoughtBreak':
       return 'one positive direct boss hit can break a wind-up or channel; 8s shared target recovery; no Surge required';
     case 'surgeStrike':
-      return `surge +20% dmg${(e.rider?.halfAngleDeg ?? 0) > 0 ? `, +${n(e.rider!.halfAngleDeg!)}° each side` : ''}${(e.rider?.radius ?? 0) > 0 ? `, +${n(e.rider!.radius!)}u burst radius` : ''}${e.rider?.pierce ? `, pierce ${n(e.rider.pierce)}` : ''}${e.rider?.spreadDeg != null ? `, fan at most ${n(e.rider.spreadDeg)}°` : ''}${e.rider?.castSlow ? `, wind-ups +${n((e.rider.castSlow - 1) * 100)}%` : ''}${e.rider?.interrupt ? ', one positive direct boss hit can break a wind-up/channel; 8s shared target recovery' : ''}`;
+      return `spend surge for +20/30/40% dmg${(e.rider?.halfAngleDeg ?? 0) > 0 ? `, +${n(e.rider!.halfAngleDeg!)}° each side` : ''}${(e.rider?.radius ?? 0) > 0 ? `, +${n(e.rider!.radius!)}u burst radius` : ''}${e.rider?.pierce ? `, pierce ${n(e.rider.pierce)}` : ''}${e.rider?.spreadDeg != null ? `, fan at most ${n(e.rider.spreadDeg)}°` : ''}${e.rider?.castSlow ? `, wind-ups +${n((e.rider.castSlow - 1) * 100)}%` : ''}${e.rider?.interrupt ? ', one positive direct boss hit can break a wind-up/channel; 8s shared target recovery' : ''}`;
     case 'prepareCrit':
       return `prepare next precision crit for ${s(e.duration)}`;
     case 'preparedRefund':

@@ -12,16 +12,24 @@ function activeCage(zone: GroundZone): boolean {
   return !!zone.mageBind && zone.remaining > 0 && (zone.armRemaining ?? 0) <= 0;
 }
 
-function canBind(enemy: Enemy): boolean {
+function canBind(enemy: Enemy, zone: GroundZone): boolean {
   return (
-    enemy.hp > 0 && !('charm' in enemy && enemy.charm) && !isCcImmune(enemy) && !isSteadfast(enemy)
+    enemy.hp > 0 &&
+    !('charm' in enemy && enemy.charm) &&
+    !isCcImmune(enemy) &&
+    (zone.prison || !isSteadfast(enemy))
   );
 }
 
 function containingCage(world: World, enemy: Enemy): GroundZone | undefined {
-  return world.groundZones.find(
-    (zone) => activeCage(zone) && dist(enemy.pos, zone.pos) <= zone.radius,
-  );
+  let base: GroundZone | undefined;
+  for (const zone of world.groundZones) {
+    if (!activeCage(zone) || dist(enemy.pos, zone.pos) > zone.radius || !canBind(enemy, zone))
+      continue;
+    if (zone.prison) return zone;
+    base ??= zone;
+  }
+  return base;
 }
 
 function clipCageExit(zone: GroundZone, destination: Vec2): Vec2 {
@@ -34,7 +42,7 @@ function clipCageExit(zone: GroundZone, destination: Vec2): Vec2 {
 export function recordBoundEnemies(world: World, captured: Map<Enemy, GroundZone>): void {
   if (!world.groundZones.some(activeCage)) return;
   for (const enemy of [...world.bosses, ...world.adds]) {
-    if (captured.has(enemy) || !canBind(enemy)) continue;
+    if (captured.has(enemy)) continue;
     const zone = containingCage(world, enemy);
     if (zone) captured.set(enemy, zone);
   }
@@ -42,7 +50,7 @@ export function recordBoundEnemies(world: World, captured: Map<Enemy, GroundZone
 
 export function enforceBoundEnemies(world: World, captured: Map<Enemy, GroundZone>): void {
   for (const [enemy, zone] of captured) {
-    if (world.groundZones.includes(zone) && activeCage(zone) && canBind(enemy))
+    if (world.groundZones.includes(zone) && activeCage(zone) && canBind(enemy, zone))
       enemy.pos = clipCageExit(zone, enemy.pos);
   }
 }
@@ -52,12 +60,12 @@ export function prisonDamageFactor(world: World, enemy: Enemy): number {
   const cage = world.groundZones.find(
     (zone) => zone.prison && activeCage(zone) && dist(enemy.pos, zone.pos) <= zone.radius,
   );
-  return cage && canBind(enemy) ? 0.8 : 1;
+  return cage && canBind(enemy, cage) ? 0.8 : 1;
 }
 
 export function clipBoundDestination(world: World, enemy: Enemy, to: Vec2): Vec2 {
   const cage = containingCage(world, enemy);
-  if (!cage || !canBind(enemy) || dist(cage.pos, to) <= cage.radius) return to;
+  if (!cage || dist(cage.pos, to) <= cage.radius) return to;
   const travel = sub(to, enemy.pos);
   const from = vadd(enemy.pos, travel);
   // Work back from the outside to recover the exit along the original lane.

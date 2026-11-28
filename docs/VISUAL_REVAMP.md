@@ -985,3 +985,46 @@ Normal-zoom phone captures include
 [Sanctum Prison](images/otiluke-sanctum-boundary-phone.png),
 [Meteor](images/sorcerer-meteor-impact-phone.png), and
 [Extinction](images/sorcerer-extinction-impact-phone.png).
+
+### Spell Surge salvos, Sorcerer defenses and Sanctum Prison
+
+Otiluke Bind's old root was removed when the boundary replaced it. A root
+stopped walking inside the field, while the cage allows enemies to
+maneuver and attack inside. The base field still respects Steadfast.
+Sanctum Prison, the Mage Abjurer skill grand, now contains and weakens
+Steadfast enemies. Control-immune enemies remain exempt. A pink double
+down-chevron on the individual foe marks the actual outgoing damage penalty.
+
+A Sorcerer preparer adds one Spell Surge stack and refreshes the shared
+timer up to the stronger existing or new duration. A spender reserves the
+bank when its cast starts. Up to three stacks give +20%, +30% or +40%
+combined damage and halve applicable wind-up. Other classes keep one stack.
+Existing control riders and the Draconic passive trigger once as before.
+A zone-bearing Forge projectile retains its single-zone delivery.
+
+Meteor, the Sorcerer's first special, forms a row of stones during its
+surged charge and launches them in parallel. Each stack adds a stone:
+from two at one stack to four at full Surge. Their damage is split across
+the salvo, so aiming wide volleys around cover and into small targets
+matters. An obstructed launch position folds back to the center lane.
+Extinction applies its freeze once per target in the salvo, and the first
+blast's freeze cannot grant its own later blasts a control bonus. The
+target's control bonus is evaluated at first contact. Sol 6.2 High reviewed
+the resource budget, Forge contracts and salvo hit interactions.
+
+Mirror Image, the Sorcerer's second starting special, splits the hands
+and shows one silhouette per actual mirror charge. A mirror shatters when
+it catches a direct hit. The Legion of Mirrors grand cues the actual
+allies who gain its shared ward. Arcane Phase, the third starting special,
+folds at departure and opens at arrival. Phase Shift cues its frontal
+guard at arrival. Chaos Crossing retains its separately marked casting
+origin when that interaction arms.
+
+Next is Wild Magic and Draconic Bloodline, then the remaining class kits
+before the combined arena and encounter revamp.
+
+Phone captures include [Meteor charge](images/surge-meteor-charge-phone.png),
+[the four launch lanes](images/surge-meteor-lanes-phone.png),
+[Mirror Image shatter](images/sorcerer-mirror-shatter-phone.png),
+[Phase Shift](images/sorcerer-phase-shift-phone.png), and
+[Sanctum Prison's weakness marker](images/sanctum-prison-weakness-phone.png).

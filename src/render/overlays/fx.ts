@@ -47,6 +47,10 @@ const AREA_FLASH_TTL = 0.45; // s — how long an ability's area cue lingers
 
 function areaFlashTtl(style: SkillArea['style']): number {
   switch (style) {
+    case 'phaseDepart':
+    case 'phaseArrive':
+    case 'phaseGuard':
+    case 'mirrorShatter':
     case 'doorDepart':
     case 'doorArrive':
       return 0.7;
@@ -384,6 +388,21 @@ export class Fx {
           });
           break;
         }
+        case 'mirrorShatter': {
+          this.spawnAreaFlash(
+            {
+              kind: 'circle',
+              style: 'mirrorShatter',
+              origin: e.pos,
+              angle: e.angle,
+              radius: 33,
+              range: 0,
+              halfAngle: 0,
+            },
+            0xebd5ff,
+          );
+          break;
+        }
         case 'phaseOrigin': {
           this.spawnFloater(e.from, 'CAST ORIGIN', 0xffdc89);
           for (const pos of [e.from, e.to])
@@ -429,6 +448,21 @@ export class Fx {
           break;
         }
         case 'blink': {
+          if (e.presentation === 'phase') {
+            const travel = torusSub(e.to, e.from);
+            const angle = Math.atan2(travel.y, travel.x);
+            const endpoint = (pos: Vec2, style: 'phaseDepart' | 'phaseArrive' | 'phaseGuard') =>
+              this.spawnAreaFlash(
+                { kind: 'circle', style, origin: pos, angle, radius: 34, range: 0, halfAngle: 0 },
+                0xeab6ff,
+              );
+            if (Math.hypot(travel.x, travel.y) > 1) {
+              endpoint(e.from, 'phaseDepart');
+              endpoint(e.to, 'phaseArrive');
+            }
+            if (e.warded) endpoint(e.to, 'phaseGuard');
+            break;
+          }
           if (e.presentation === 'door' || e.presentation === 'doorRelocation') {
             const travel = torusSub(e.to, e.from);
             if (Math.hypot(travel.x, travel.y) <= 1) break;
@@ -1007,6 +1041,59 @@ export class Fx {
         return;
       }
       const R = area.radius * s;
+      if (area.style === 'mirrorShatter') {
+        for (let i = 0; i < 7; i++) {
+          const heading = area.angle + (i - 3) * 0.36;
+          const dx = Math.cos(heading),
+            dy = Math.sin(heading);
+          const edge = R * (0.55 + t * 1.35);
+          const px = c.x + edge * dx,
+            py = c.y + edge * dy;
+          g.poly([
+            px + 6 * dx,
+            py + 6 * dy,
+            px + 4 * dy,
+            py - 4 * dx,
+            px - 5 * dx,
+            py - 5 * dy,
+            px - 2 * dy,
+            py + 2 * dx,
+          ]).fill({ color: i % 2 ? 0xe7f4ff : 0xb7a1f5, alpha: fade * 0.86 });
+        }
+        return;
+      }
+      if (
+        area.style === 'phaseDepart' ||
+        area.style === 'phaseArrive' ||
+        area.style === 'phaseGuard'
+      ) {
+        const arriving = area.style !== 'phaseDepart';
+        const guard = area.style === 'phaseGuard';
+        const dx = Math.cos(area.angle),
+          dy = Math.sin(area.angle);
+        const at = (along: number, across: number): [number, number] => [
+          c.x + R * (along * dx - across * dy),
+          c.y + R * (along * dy + across * dx),
+        ];
+        for (let i = -1; i <= 1; i++) {
+          const spread = arriving ? 0.28 + t * 0.42 : 0.62 - t * 0.31;
+          const across = i * spread;
+          const tip = (arriving ? 1 : -1) * (0.67 + t * 0.7);
+          g.poly([
+            ...at(tip, across),
+            ...at(0.1, across - 0.19),
+            ...at(-tip * 0.56, across),
+            ...at(0.1, across + 0.19),
+          ])
+            .fill({ color: guard ? 0x8ae2fd : 0xb285e8, alpha: fade * 0.43 })
+            .stroke({
+              color: guard ? 0xd8faff : 0xf0c1ff,
+              width: Math.max(1.3, s * 2.1),
+              alpha: fade * 0.82,
+            });
+        }
+        return;
+      }
       if (area.style === 'doorDepart' || area.style === 'doorArrive') {
         const arrival = area.style === 'doorArrive';
         const width = R * (arrival ? 0.36 + t * 0.38 : 0.9 - t * 0.68);

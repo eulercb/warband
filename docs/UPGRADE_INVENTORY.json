@@ -3995,7 +3995,8 @@
             { "path": "abilities.a2.name", "before": "Mirror Image", "after": "Field Dressing" },
             { "path": "abilities.a2.prepareSurge", "before": 8, "after": null },
             { "path": "abilities.a2.range", "before": null, "after": 400 },
-            { "path": "abilities.a2.rescueHealBonus", "before": null, "after": 0.3 }
+            { "path": "abilities.a2.rescueHealBonus", "before": null, "after": 0.3 },
+            { "path": "abilities.a2.visualStyle", "before": "sorcererMirror", "after": null }
           ],
           "atCap": [
             { "path": "abilities.a2.balanceDamageScale", "before": null, "after": 0.8 },
@@ -4012,7 +4013,8 @@
             { "path": "abilities.a2.name", "before": "Mirror Image", "after": "Field Dressing" },
             { "path": "abilities.a2.prepareSurge", "before": 8, "after": null },
             { "path": "abilities.a2.range", "before": null, "after": 400 },
-            { "path": "abilities.a2.rescueHealBonus", "before": null, "after": 0.3 }
+            { "path": "abilities.a2.rescueHealBonus", "before": null, "after": 0.3 },
+            { "path": "abilities.a2.visualStyle", "before": "sorcererMirror", "after": null }
           ]
         },
         {
@@ -4395,6 +4397,7 @@
             { "path": "abilities.a3.range", "before": 260, "after": 400 },
             { "path": "abilities.a3.slowDuration", "before": null, "after": 1 },
             { "path": "abilities.a3.slowMult", "before": null, "after": 0.7 },
+            { "path": "abilities.a3.visualStyle", "before": "sorcererPhase", "after": null },
             { "path": "abilities.a3.zoneDuration", "before": null, "after": 5 },
             { "path": "abilities.a3.zoneKind", "before": null, "after": "poison" },
             { "path": "abilities.a3.zoneTickDamage", "before": null, "after": 12 }
@@ -4412,6 +4415,7 @@
             { "path": "abilities.a3.range", "before": 260, "after": 400 },
             { "path": "abilities.a3.slowDuration", "before": null, "after": 1 },
             { "path": "abilities.a3.slowMult", "before": null, "after": 0.7 },
+            { "path": "abilities.a3.visualStyle", "before": "sorcererPhase", "after": null },
             { "path": "abilities.a3.zoneDuration", "before": null, "after": 5 },
             { "path": "abilities.a3.zoneKind", "before": null, "after": "poison" },
             { "path": "abilities.a3.zoneTickDamage", "before": null, "after": 12 }
@@ -11599,7 +11603,7 @@
       "graftId": null,
       "graftSource": null,
       "replaces": null,
-      "description": "Chaos Bolt can spend Surge for an extra bolt and +20% total damage. Wild strikes deal 15% more damage; Bend Luck weakens enemy damage by 25%; Wild Ward heals 20% more across a 10% wider area",
+      "description": "Chaos Bolt can spend Surge for one extra bolt per stack, sharing +20/30/40% total damage. Wild strikes deal 15% more damage; Bend Luck weakens enemy damage by 25%; Wild Ward heals 20% more across a 10% wider area",
       "disposition": "adjust",
       "rationale": "Review rare-choice role and stacking; a larger numeric bundle is not automatically a distinct route.",
       "pilotPriority": false,

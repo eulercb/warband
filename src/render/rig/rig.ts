@@ -1021,7 +1021,11 @@ export class CreatureRig {
       }
       if (this.mageGesture && !downed) {
         const beat = this.rangedRelease;
-        if (this.mageGesture === 'mageCold' || this.mageGesture === 'mageShield') {
+        if (this.mageGesture === 'sorcererMirror') {
+          const split = arm.side * R * beat * 1.66;
+          hand.x -= this.sin * split;
+          hand.y += this.cos * split - R * beat * 0.85;
+        } else if (this.mageGesture === 'mageCold' || this.mageGesture === 'mageShield') {
           hand.x += (this.cos * 1.5 - this.sin * arm.side * 0.64) * R * beat;
           hand.y += (this.sin * 1.5 + this.cos * arm.side * 0.64 - 0.95) * R * beat;
         } else if (arm.side === -1) {

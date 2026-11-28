@@ -3219,7 +3219,7 @@ export const SUBCLASS_GRANDS: CharUpgradeDef[] = [
     'so_wild_g_a',
     'Unbound Chaos',
     '🎲',
-    'Chaos Bolt can spend Surge for an extra bolt and +20% total damage. Wild strikes deal 15% more damage; Bend Luck weakens enemy damage by 25%; Wild Ward heals 20% more across a 10% wider area',
+    'Chaos Bolt can spend Surge for one extra bolt per stack, sharing +20/30/40% total damage. Wild strikes deal 15% more damage; Bend Luck weakens enemy damage by 25%; Wild Ward heals 20% more across a 10% wider area',
     (a) =>
       casterGrand(
         'projectile',

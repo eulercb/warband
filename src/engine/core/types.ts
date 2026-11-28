@@ -1030,6 +1030,7 @@ export interface GuidanceCast {
   activeTick: number;
 }
 export interface Projectile {
+  meteorSalvo?: { control: Map<EntityId, number>; freeze: Set<EntityId> };
   impactStyle?:
     'fireball' | 'druidEarth' | 'mageSupernova' | 'sorcererMeteor' | 'sorcererExtinction';
   presentation?:
@@ -1603,6 +1604,10 @@ export interface SkillArea {
     | 'druidBramble'
     | 'druidTransplant'
     | 'druidRoar'
+    | 'phaseDepart'
+    | 'phaseArrive'
+    | 'phaseGuard'
+    | 'mirrorShatter'
     | 'doorDepart'
     | 'doorArrive'
     | 'blinkDepart'
@@ -1677,6 +1682,7 @@ export type GameEvent =
   | { t: 'dodge'; id: EntityId; pos: Vec2 }
   | { t: 'fontRescue'; pos: Vec2 }
   | { t: 'reflection'; pos: Vec2 }
+  | { t: 'mirrorShatter'; pos: Vec2; angle: number }
   | { t: 'phaseOrigin'; from: Vec2; to: Vec2 }
   | { t: 'spellGuidance'; pos: Vec2 }
   | { t: 'silenceBreak'; pos: Vec2 }
@@ -1687,7 +1693,7 @@ export type GameEvent =
       id: EntityId;
       from: Vec2;
       to: Vec2;
-      presentation?: 'mage' | 'door' | 'doorRelocation';
+      presentation?: 'mage' | 'door' | 'doorRelocation' | 'phase';
       warded?: boolean;
     }
   | { t: 'telegraph'; pos: Vec2; shape: TelegraphKind }
@@ -1847,6 +1853,8 @@ export interface PlayerView {
   castSlot: ExtSlot | null;
   castTimer: number;
   sculpting?: boolean;
+  meteorCharge?: number;
+  meteorChargeAtOrigin?: boolean;
   /** The current cast's full duration (castTime × castMult) so the render can show an
    * accurate progress ring even under Focus; 0 when not casting. */
   castTimerMax: number;
@@ -1877,6 +1885,7 @@ export interface ForesightView {
 }
 
 export interface BossView {
+  prisonWeakened?: boolean;
   maneuver?: { ownerId: EntityId; dir: Vec2; remaining: number; phase: 'queued' | 'travel' };
   revealed?: ForesightView;
   forethought?: { remaining: number; abilityId?: string; preview?: ForesightView; index?: 1 | 2 };
@@ -1906,6 +1915,7 @@ export interface BossView {
 }
 
 export interface AddView {
+  prisonWeakened?: boolean;
   appearance?: 'skeleton';
   skeletonMotion?: { distance: number; swing: number; facing: number; moving: boolean };
   maneuver?: { ownerId: EntityId; dir: Vec2; remaining: number; phase: 'queued' | 'travel' };

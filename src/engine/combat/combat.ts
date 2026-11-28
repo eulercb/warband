@@ -1,3 +1,4 @@
+import { sub } from '../core/torus';
 import { payFaithWound } from './unyieldingFaith';
 import { rescueStrikeMultiplier } from './support';
 import { luckExposureMultiplier, onFortunateHit } from './sorcererLuck';
@@ -649,6 +650,14 @@ export function damagePlayer(sink: EventSink, target: Player, base: number, orig
     target.damageTakenMult;
   const blocked = blockFromFront(target, origin, incoming);
   const exposed = blocked ? 0 : mirrorDamage(target, origin, incoming);
+  if (origin && exposed > 0 && exposed < incoming) {
+    const approach = sub(origin, target.pos);
+    sink.events.push({
+      t: 'mirrorShatter',
+      pos: { ...target.pos },
+      angle: Math.atan2(approach.y, approach.x),
+    });
+  }
   const guarded = spendParry(target, exposed);
   if (blocked || guarded < exposed)
     sink.events.push({

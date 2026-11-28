@@ -143,6 +143,7 @@ export function beginSupportCast(world: World, p: Player, ab: PlayerAbilityDef):
       if (ally !== p) {
         applyBuff(ally, makeBuff('damageTaken', ward.mult, ward.duration, 'sharedWard'));
         if (ab.druidDelivery === 'roar') natureProtection(world, p, ally);
+        if (ab.visualStyle === 'sorcererMirror') supportCue(world, p, ally, 'protect');
       }
     }
   }

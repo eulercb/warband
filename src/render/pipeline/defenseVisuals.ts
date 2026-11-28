@@ -108,10 +108,26 @@ export function drawDefenseState(
       const a = angle + Math.PI + (i - (count - 1) / 2) * 0.65;
       const cx = x + Math.cos(a) * (r + 16),
         cy = y + Math.sin(a) * (r + 16);
-      g.ellipse(cx, cy + 3, 4, 6)
-        .fill({ color: 0xbcaaff, alpha: 0.18 })
-        .stroke({ color: 0xded3ff, width: 1.5, alpha: 0.7 });
-      g.circle(cx, cy - 5, 3).fill({ color: 0xded3ff, alpha: 0.5 });
+      const size = Math.max(7, r * 0.73);
+      g.poly([
+        cx,
+        cy - size,
+        cx + size * 0.54,
+        cy - size * 0.16,
+        cx + size * 0.62,
+        cy + size * 0.76,
+        cx,
+        cy + size * 0.41,
+        cx - size * 0.62,
+        cy + size * 0.76,
+        cx - size * 0.54,
+        cy - size * 0.16,
+      ])
+        .fill({ color: 0x996ecb, alpha: 0.52 })
+        .stroke({ color: 0xded3ff, width: 1.5, alpha: 0.85 });
+      g.moveTo(cx - size * 0.29, cy + size * 0.06)
+        .lineTo(cx + size * 0.26, cy - size * 0.19)
+        .stroke({ color: 0xf6e9ff, width: 1.25, alpha: 0.94 });
     }
   }
   if (p.buffs.some((b) => b.kind === 'steadfast' && b.remaining > 0)) {

@@ -68,6 +68,7 @@ import {
 } from './support';
 import {
   consumeSpellSurge,
+  METEOR_LANE_SPACING,
   consumeEvocation,
   prepareSpellSurge,
   controlledSpellMultiplier,
@@ -845,12 +846,15 @@ export function resolvePlayerAbility(
       const kind: ProjectileKind =
         (ab.impactRadius ?? 0) > 0 ? 'fireball' : projectileKindFor(p, slot);
       const maxRange = ab.maxRange ?? PROJECTILE_MAX_RANGE;
+      const salvo = meteorSalvo(ab);
       for (let i = 0; i < count; i++) {
         const t = count > 1 ? i / (count - 1) - 0.5 : 0; // -0.5..0.5
-        const a = aimAngle + t * spread;
+        const a = aimAngle + (salvo ? 0 : t * spread);
         const dir = fromAngle(a);
         spawnPlayerProjectile(world, p, kind, dir, {
           speed,
+          salvo,
+          lateral: salvo ? (i - (count - 1) / 2) * METEOR_LANE_SPACING : 0,
           returningSource: ab,
           companionCommand: ab.companionCommand,
           castAim: ab.flowAim ?? ab.palmSweepCast?.aim,
@@ -946,6 +950,10 @@ export function resolvePlayerAbility(
         id: p.id,
         from,
         to: { ...p.pos },
+        ...(ab.visualStyle === 'sorcererPhase' && {
+          presentation: 'phase' as const,
+          warded: !!ab.frontGuard,
+        }),
         ...(p.classId === 'mage' && {
           presentation:
             ab.swap && (from.x !== p.pos.x || from.y !== p.pos.y)
@@ -1772,11 +1780,14 @@ function resolveComposedAbility(
         zoneEff && zoneEff.kind === 'zone'
           ? zoneToImpact(zoneEff.zone, ab.fieldTransplantCast)
           : undefined;
+      const salvo = meteorSalvo(ab);
       for (let i = 0; i < count; i++) {
         const t = count > 1 ? i / (count - 1) - 0.5 : 0;
-        const a = aimAngle + t * spread;
+        const a = aimAngle + (salvo ? 0 : t * spread);
         spawnPlayerProjectile(world, p, kind, fromAngle(a), {
           speed,
+          salvo,
+          lateral: salvo ? (i - (count - 1) / 2) * METEOR_LANE_SPACING : 0,
           returningSource: ab,
           companionCommand: ab.companionCommand,
           castAim: ab.flowAim ?? ab.palmSweepCast?.aim,
@@ -1860,6 +1871,10 @@ function resolveComposedAbility(
           id: p.id,
           from,
           to: { ...p.pos },
+          ...(ab.visualStyle === 'sorcererPhase' && {
+            presentation: 'phase' as const,
+            warded: !!ab.frontGuard,
+          }),
           ...(p.classId === 'mage' && {
             presentation:
               ab.swap && (from.x !== p.pos.x || from.y !== p.pos.y)
@@ -2009,7 +2024,13 @@ function projectileKindFor(p: Player, slot: ExtSlot): ProjectileKind {
   return 'arrow';
 }
 
+function meteorSalvo(ab: PlayerAbilityDef): Projectile['meteorSalvo'] {
+  return ab.meteorSalvoCount ? { control: new Map(), freeze: new Set() } : undefined;
+}
+
 interface SpawnProjOpts {
+  salvo?: Projectile['meteorSalvo'];
+  lateral?: number;
   companionCommand?: import('../core/types').CompanionCommandCast;
   returningSource?: PlayerAbilityDef;
   castAim?: Vec2;
@@ -2059,9 +2080,17 @@ function spawnPlayerProjectile(
   dir: Vec2,
   o: SpawnProjOpts,
 ): void {
-  const origin = vadd(o.returningSource?.guidanceOrigin ?? p.pos, vscale(dir, p.radius + 4));
+  const start = o.returningSource?.guidanceOrigin ?? p.pos;
+  const muzzle = vadd(start, vscale(dir, p.radius + 4));
+  let origin = muzzle;
+  if (o.lateral) {
+    const offset = vadd(muzzle, { x: -dir.y * o.lateral, y: dir.x * o.lateral });
+    const cover = firstObstacleStop(world, start, offset, 10, false);
+    origin = cover ? muzzle : offset;
+  }
   const earth = o.returningSource?.druidDelivery === 'earth' && o.impactRadius > 0;
   const proj: Projectile = {
+    meteorSalvo: o.salvo,
     ...(earth
       ? { presentation: 'druidEarth' as const }
       : kind !== 'fireball' && o.returningSource?.basicPresentation === 'arcaneBolt'
