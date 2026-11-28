@@ -320,34 +320,34 @@ Spending Flow removes 2s from running dash and blink special cooldowns in your a
 
 ## sorcerer
 
-| Slot / stable ID | Ability      | Resolved unupgraded behavior                                                                                                                                     |
-| ---------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| basic            | Chaos Bolt   | 2× 12 dmg · 1s cooldown                                                                                                                                          |
-| a1               | Meteor       | 78 dmg · 110u blast · 0.75s wind-up · surge +1 projectile sharing +20% total dmg, half wind-up · 16s cooldown                                                    |
-| a2               | Mirror Image | 3 mirror images for 5s; each reduces one direct hit by 60%, then breaks; ground damage bypasses · prepare spell surge for 8s · +15% move · for 5s · 14s cooldown |
-| a3               | Arcane Phase | 260u blink · prepare spell surge for 8s · 0.2s i-frames · 6s cooldown                                                                                            |
+| Slot / stable ID | Ability      | Resolved unupgraded behavior                                                                                                                                                     |
+| ---------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| basic            | Chaos Bolt   | 2× 12 dmg · 1s cooldown                                                                                                                                                          |
+| a1               | Meteor       | 78 dmg · 110u blast · 0.75s wind-up · spend surge for +1 projectile per stack, sharing +20/30/40% total dmg, half wind-up · 16s cooldown                                         |
+| a2               | Mirror Image | 3 mirror images for 5s; each reduces one direct hit by 60%, then breaks; ground damage bypasses · gain 1 spell surge (Sorcerer max 3) for 8s · +15% move · for 5s · 14s cooldown |
+| a3               | Arcane Phase | 260u blink · gain 1 spell surge (Sorcerer max 3) for 8s · 0.2s i-frames · 6s cooldown                                                                                            |
 
 ### Draconic Bloodline
 
-Spending Spell Surge lifts you into flight for 2s, avoiding ground hazards while direct attacks still hit. While already flying, extend your longest flight by 1s instead (up to 9s remaining, never shortening longer flight). Once per 6s.
+Spending Surge grants 2s flight, +20% speed and a shield for 10% max HP (minimum 20) for 3s. While flying, extend flight by 1s, up to 9s. Once per 6s.
 
-| Stable ID          | Ability         | Resolved unupgraded behavior                                                                                                                      |
-| ------------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| so_draconic_breath | Dragon Breath   | 42 dmg · 240u reach · 84° arc · surge +20% dmg, half wind-up · 8s cooldown                                                                        |
-| so_draconic_wing   | Dragon Wings    | prepare spell surge for 8s · +40% move · for 7s · fly 7s · 12s cooldown                                                                           |
-| so_draconic_bolt   | Chromatic Bolt  | 60 dmg · 0.5s wind-up · surge +1 projectile sharing +20% total dmg, half wind-up · 8s cooldown                                                    |
-| so_draconic_scales | Draconic Scales | 22 dmg · 55 absorption for 6s to yourself; shared cap 50% max HP, strongest cast wins · 145u radius · surge +20% dmg, half wind-up · 14s cooldown |
+| Stable ID          | Ability         | Resolved unupgraded behavior                                                                                              |
+| ------------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| so_draconic_breath | Dragon Breath   | 42 dmg · 200u reach · 84° arc · spend surge for +20/30/40% dmg, +20° each side, enemy wind-ups +30% for 3s · 8s cooldown  |
+| so_draconic_wing   | Dragon Wings    | gain 1 spell surge (Sorcerer max 3) for 8s · +40% move · for 7s · fly 7s · 12s cooldown                                   |
+| so_draconic_bolt   | Chromatic Bolt  | 60 dmg · 0.5s wind-up · spend surge for +1 projectile per stack, sharing +20/30/40% total dmg, half wind-up · 8s cooldown |
+| so_draconic_scales | Draconic Scales | 22 dmg · 55 absorption for 6s to yourself · 145u radius · spend surge for +20/30/40% dmg · 14s cooldown                   |
 
 ### Wild Magic
 
-Three basic casts within 8s prepare Spell Surge for 8s, empowering your next heavy spell. Once per 8s; basics cannot build progress while Surge is held or the trigger is cooling down. No special delivery combination is required; native preparation does not spend the trigger.
+Preparing Surge readies a weave for 6s. Your next damaging direct hit refunds 2s to that utility’s cooldown; at its recovery limit, gain +20% speed for 2s instead. Once per 6s.
 
-| Stable ID     | Ability        | Resolved unupgraded behavior                                                                             |
-| ------------- | -------------- | -------------------------------------------------------------------------------------------------------- |
-| so_wild_surge | Chaos Surge    | 6× 12 dmg · surge +20% dmg, half wind-up · 7s cooldown                                                   |
-| so_wild_tides | Tides of Chaos | 40 dmg · 170u radius · surge +20% dmg, half wind-up · 8s cooldown                                        |
-| so_wild_bend  | Bend Luck      | 280u blink · prepare spell surge for 8s · 0.3s i-frames · 6s cooldown                                    |
-| so_wild_font  | Wild Ward      | 10/tick heal · 125u radius · slow to 65% for 1.2s · prepare spell surge for 8s · lasts 4s · 12s cooldown |
+| Stable ID     | Ability        | Resolved unupgraded behavior                                                                                                                                                                                     |
+| ------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| so_wild_surge | Chaos Surge    | 6× 12 dmg · spend surge for +20/30/40% dmg, pierce 1 extra foe, fan at most 28° · 7s cooldown                                                                                                                    |
+| so_wild_tides | Tides of Chaos | 40 dmg · 170u radius · spend surge for +20/30/40% dmg, +50u radius, enemy wind-ups +30% for 3s · 8s cooldown                                                                                                     |
+| so_wild_bend  | Bend Luck      | gain 1 spell surge (Sorcerer max 3) for 8s · Fortune 6s — next connecting direct cast affects each living foe it hits, delaying enemy wind-ups 40% and weakening their damage 15% for 3s · for 5s · 10s cooldown |
+| so_wild_font  | Wild Ward      | 10/tick heal · 125u radius · slow to 65% for 1.2s · gain 1 spell surge (Sorcerer max 3) for 8s · lasts 4s · 12s cooldown                                                                                         |
 
 ## warlock
 

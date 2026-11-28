@@ -486,12 +486,15 @@ it('Phase escapes first; the next guided cast launches and steers toward a live 
       ]),
     );
   press(true);
+  expect(w.serialize().players[0].meteorChargeAtOrigin).toBe(true);
   for (let i = 0; i < 100 && p.castTimer > 0; i++) press(false);
   expect(p.phaseOrigin).toBeUndefined();
   const c = p.guidance!,
     q = w.projectiles.find((q) => q.guidance === c)!;
   expect(c.origin).toEqual(departure);
-  expect(Math.abs(q.pos.y - departure.y)).toBeLessThan(5);
+  expect(
+    w.projectiles.filter((shot) => shot.guidance === c).map((shot) => shot.pos.y - departure.y),
+  ).toEqual([-11, 11]);
   expect(Math.atan2(q.vel.y, q.vel.x) - (q.spreadOffset ?? 0)).toBeCloseTo(0);
   press(false, { x: 900, y: 800 });
   expect(c.angle).toBeGreaterThan(0);

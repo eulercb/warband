@@ -134,8 +134,8 @@ describe('Sorcerer: prepare and commit one surge', () => {
     expect(p.buffs.some((b) => b.kind === 'spellSurge')).toBe(true);
     resolvePlayerAbility(w, p, 'a1', ZERO);
     expect(w.projectiles.at(-1)!.damage).toBeCloseTo(46.8);
-    const v = w.projectiles.at(-1)!.vel;
-    expect((Math.abs(Math.atan2(v.y, v.x)) * 180) / Math.PI).toBeCloseTo(2);
+    expect(w.projectiles.slice(-2).map((shot) => shot.vel.y)).toEqual([0, 0]);
+    expect(w.projectiles.slice(-2).map((shot) => shot.pos.y)).toEqual([389, 411]);
     expect(
       w.projectiles
         .slice(-2)
@@ -327,4 +327,59 @@ it('surged projectile upgrades share damage across the extra shot and zone paylo
   expect(w.projectiles).toHaveLength(1);
   expect(w.projectiles[0].damage).toBe(60);
   expect(w.projectiles[0].onImpact?.tickDamage).toBe(10);
+});
+
+it('banks up to three Surge stacks and reserves the full bank for a parallel Meteor salvo', () => {
+  const w = world('sorcerer');
+  const p = w.players[0];
+  w.obstacles = [];
+  w.boss!.pos.x = p.pos.x + 380;
+  w.boss!.decisionTimer = 100;
+  for (let i = 0; i < 4; i++) resolvePlayerAbility(w, p, 'a2', ZERO);
+  expect(p.buffs.find((b) => b.kind === 'spellSurge')).toMatchObject({ mult: 3, remaining: 8 });
+  expect(buffBadges(w.serialize().players[0].buffs).some((b) => b.label.includes('3/3'))).toBe(
+    true,
+  );
+  use(w, 'a1');
+  expect(p.castTimer).toBeCloseTo(0.375);
+  expect(w.serialize().players[0].meteorCharge).toBe(4);
+  expect(p.buffs.some((b) => b.kind === 'spellSurge')).toBe(false);
+  // Any new preparation belongs to the next spell, including if it arrives mid-wind-up.
+  resolvePlayerAbility(w, p, 'a2', ZERO);
+  for (let i = 0; i < 8; i++) w.step(0.05, new Map());
+  expect(w.projectiles).toHaveLength(4);
+  expect(w.projectiles.map((shot) => shot.pos.y)).toEqual([367, 389, 411, 433]);
+  expect(w.projectiles.every((shot) => shot.vel.y === 0)).toBe(true);
+  expect(w.projectiles.reduce((sum, shot) => sum + shot.damage, 0)).toBeCloseTo(78 * 1.4);
+  expect(p.buffs.find((b) => b.kind === 'spellSurge')?.mult).toBe(1);
+});
+
+it('uses one Extinction freeze per target and preserves the original control bonus across the salvo', () => {
+  const w = world('sorcerer');
+  const p = w.players[0];
+  w.obstacles = [];
+  w.boss!.pos.x = p.pos.x + 70;
+  w.boss!.decisionTimer = 100;
+  p.abilities!.a1.freeze = 0.8;
+  p.abilities!.a1.controlDamageBonus = 0.3;
+  p.abilities!.a1.impactRadius = 150;
+  for (let i = 0; i < 3; i++) resolvePlayerAbility(w, p, 'a2', ZERO);
+  resolvePlayerAbility(w, p, 'a1', ZERO);
+  for (let i = 0; i < 4; i++) w.step(0.05, new Map());
+  expect(10000 - w.boss!.hp).toBeCloseTo(78 * 1.4);
+  expect(w.boss!.stunDr?.load).toBeCloseTo(0.8);
+});
+
+it('spends two stacks through retained Forge delivery and folds only its blocked lane', () => {
+  const w = world('sorcerer');
+  const p = w.players[0];
+  const meteor = p.abilities!.a1;
+  p.abilities!.a1 = recompose(decompose(meteor), meteor);
+  w.obstacles = [{ id: w.allocId(), pos: { x: p.pos.x + 15, y: p.pos.y + 20 }, radius: 4 }];
+  resolvePlayerAbility(w, p, 'a2', ZERO);
+  resolvePlayerAbility(w, p, 'a2', ZERO);
+  expect(p.buffs.find((b) => b.kind === 'spellSurge')?.mult).toBe(2);
+  resolvePlayerAbility(w, p, 'a1', ZERO);
+  expect(w.projectiles.map((shot) => shot.pos.y)).toEqual([378, 400, 400]);
+  expect(w.projectiles.reduce((sum, shot) => sum + shot.damage, 0)).toBeCloseTo(78 * 1.3);
 });

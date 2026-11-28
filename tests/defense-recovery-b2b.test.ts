@@ -296,7 +296,7 @@ it('renders exactly one shield plate per charge, distinct immunity shell, finite
       100,
       12,
     );
-    expect(fills(0xded3ff)).toBe(count);
+    expect(fills(0x996ecb)).toBe(count);
   }
   for (const own of [false, true]) {
     g.clear();

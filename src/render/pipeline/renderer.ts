@@ -58,6 +58,7 @@ import { themeFor } from '../../engine/world/terrain';
 import { Rng } from '../../engine/core/math';
 import { Camera } from './camera';
 import { topBandFade, staggerOffset, rewardMarker, menuMarker } from './labelLayout';
+import { METEOR_LANE_SPACING } from '../../engine/combat/spellCombos';
 import { drawIceClasp, Fx } from '../overlays/fx';
 import { Balloons } from '../overlays/balloons';
 import {
@@ -296,16 +297,75 @@ export class Renderer {
     this.enemyStatusLayer.clear();
     for (const target of [...state.bosses, ...state.adds]) {
       if (target.hp <= 0) continue;
+      const at = this.camera.worldToScreen(target.pos);
+      const radius = 'monsterId' in target ? getMonster(target.monsterId).radius : ADD_RADIUS;
+      if (target.prisonWeakened) {
+        const px = at.x + Math.max(13, radius * this.camera.scale * 0.77);
+        const py = at.y + Math.max(11, radius * this.camera.scale * 0.58);
+        this.enemyStatusLayer
+          .circle(px, py, 8)
+          .fill({ color: 0x271428, alpha: 0.94 })
+          .stroke({ color: 0xf8afe1, width: 1.8 });
+        for (const dy of [-2, 2])
+          this.enemyStatusLayer
+            .moveTo(px - 4, py + dy - 2)
+            .lineTo(px, py + dy + 1)
+            .lineTo(px + 4, py + dy - 2)
+            .stroke({ color: 0xffddf3, width: 1.7, cap: 'round' });
+      }
       const freeze = target.buffs.find((buff) => buff.visual === 'ice' && buff.remaining > 0);
       if (!freeze) continue;
-      const radius = 'monsterId' in target ? getMonster(target.monsterId).radius : ADD_RADIUS;
       drawIceClasp(
         this.enemyStatusLayer,
-        this.camera.worldToScreen(target.pos),
+        at,
         Math.max(9, radius * this.camera.scale),
         1,
         0.78 * Math.min(1, 0.55 + freeze.remaining * 3),
       );
+    }
+    for (const player of state.players) {
+      const surge = player.buffs.find((b) => b.kind === 'spellSurge' && b.remaining > 0);
+      if (!surge || player.state !== 'alive') continue;
+      const at = this.camera.worldToScreen(player.pos);
+      const count = Math.min(3, Math.floor(surge.mult));
+      for (let i = 0; i < count; i++) {
+        const x = at.x + (i - (count - 1) / 2) * 9;
+        const y = at.y + 18;
+        this.enemyStatusLayer
+          .poly([x, y - 4, x + 3, y, x, y + 4, x - 3, y])
+          .fill({ color: 0xeed2ff, alpha: 0.87 })
+          .stroke({ color: 0xa360d9, width: 1 });
+      }
+    }
+    for (const player of state.players) {
+      if (!player.meteorCharge || player.castTimer <= 0) continue;
+      const origin = player.meteorChargeAtOrigin ? player.guidanceOrigin : undefined;
+      const at = this.camera.worldToScreen(origin?.pos ?? player.pos);
+      const aim = origin ? sub(origin.target, origin.pos) : player.aim;
+      const angle = Math.atan2(aim.y, aim.x);
+      const dx = Math.cos(angle),
+        dy = Math.sin(angle);
+      const charge = 1 - player.castTimer / player.castTimerMax;
+      const spacing = METEOR_LANE_SPACING * this.camera.scale;
+      for (let i = 0; i < player.meteorCharge; i++) {
+        const offset = (i - (player.meteorCharge - 1) / 2) * spacing;
+        const x = at.x + dx * spacing - dy * offset;
+        const y = at.y + dy * spacing + dx * offset - spacing * (0.25 + charge * 0.35);
+        const r = Math.max(3, spacing * (0.2 + charge * 0.19));
+        this.enemyStatusLayer
+          .poly([
+            x + r,
+            y - r * 0.35,
+            x + r * 0.42,
+            y + r,
+            x - r,
+            y + r * 0.28,
+            x - r * 0.67,
+            y - r,
+          ])
+          .fill({ color: 0x50364a, alpha: 0.9 })
+          .stroke({ color: 0xffba91, width: 1.7, alpha: 0.6 + charge * 0.4 });
+      }
     }
     for (const player of state.players) {
       if (!player.buffs.some((buff) => buff.visual === 'sculptedRetort' && buff.remaining > 0))

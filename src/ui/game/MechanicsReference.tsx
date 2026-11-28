@@ -25,9 +25,9 @@ export default function MechanicsReference() {
         apply. Earned alternatives stay available for free swaps between fights.
       </p>
       <p>
-        Surge empowers one eligible spell: +20% total damage, plus half wind-up when the spell has a
-        wind-up. Extra Surge projectiles share that damage rather than each dealing a full
-        duplicate. Some spells list an additional Surge effect.
+        Sorcerers bank up to three Spell Surge stacks. A preparer adds one stack and refreshes the
+        shared timer. Eligible spells spend the bank for +20%, +30% or +40% total damage and half
+        wind-up when applicable. Extra projectiles split that total. Other classes keep one stack.
       </p>
       <p>
         Whispered Doom spends a prepared Surge when its special starts. Its first successful direct

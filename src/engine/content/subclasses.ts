@@ -1209,7 +1209,7 @@ export const SUBCLASSES: Record<ClassId, SubclassDef[]> = {
           'so_draconic_bolt',
           'Chromatic Bolt',
           '🌈',
-          'Charge a heavy chromatic bolt for 60; surge forks it, sharing +20% total damage',
+          'Charge a heavy chromatic bolt for 60; Surge adds 1 bolt per stack, sharing +20/30/40% total damage',
           proj('Chromatic Bolt', 8, 60, {
             consumesSurge: true,
             surgeTwin: true,

@@ -185,7 +185,7 @@ function describe(
         glyph: '🔮',
         color: 0xc06cff,
         good: true,
-        label: 'Spell surge: next heavy spell empowered',
+        label: `Spell surge: next heavy spell empowered · ${Math.floor(mult)}/3 stacks`,
       };
     case 'wildWeave':
       return {

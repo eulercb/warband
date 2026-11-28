@@ -1,6 +1,9 @@
 import type { EventSink } from './combat';
 import { onSubclassSurge } from './subclassPassives';
 import { isBurstControl } from '../core/control';
+export const MAX_SURGE_STACKS = 3;
+export const METEOR_LANE_SPACING = 22;
+
 /** Shared authored spell interactions; copied skills retain their own behavior. */
 import type { Player, Boss, Add } from '../core/types';
 import type { PlayerAbilityDef } from '../content/classes';
@@ -23,7 +26,7 @@ export function consumeEvocation(p: Player, ab: PlayerAbilityDef): PlayerAbility
   return { ...ab, damage: ab.damage * 1.25, castTime: (ab.castTime ?? 0) * 0.5 };
 }
 
-/** Reserve the one-use surge at cast start; the resolved spell carries its boost. */
+/** Reserve all prepared stacks at cast start, even for a wind-up spell. */
 export function consumeSpellSurge(
   p: Player,
   ab: PlayerAbilityDef,
@@ -32,7 +35,8 @@ export function consumeSpellSurge(
   if (!ab.consumesSurge) return ab;
   const index = p.buffs.findIndex((b) => b.kind === 'spellSurge' && b.remaining > 0);
   if (index < 0) return ab;
-  p.buffs.splice(index, 1);
+  const [{ mult }] = p.buffs.splice(index, 1);
+  const stacks = Math.max(1, Math.min(MAX_SURGE_STACKS, Math.floor(mult)));
   onSubclassSurge(p, sink);
   const count = Math.max(1, ab.projCount ?? 1);
   // Zone-payload fusions keep their original delivery: extra shots must not duplicate zones.
@@ -71,11 +75,12 @@ export function consumeSpellSurge(
     ...(ab.surgeRider?.spreadDeg != null && ab.kind === 'projectile'
       ? { spreadDeg: Math.min(ab.spreadDeg ?? 0, ab.surgeRider.spreadDeg) }
       : {}),
-    damage: ab.damage * 1.2 * (twin ? count / (count + 1) : 1),
+    damage: ab.damage * ((110 + stacks * 10) / 100) * (twin ? count / (count + stacks) : 1),
     castTime: (ab.castTime ?? 0) * 0.5,
     ...(twin
       ? {
-          projCount: count + 1,
+          projCount: count + stacks,
+          ...(ab.visualStyle === 'sorcererMeteor' && { meteorSalvoCount: count + stacks }),
           spreadDeg: Math.max(4, Math.min(ab.spreadDeg ?? 0, ab.surgeRider?.spreadDeg ?? Infinity)),
         }
       : {}),
@@ -86,11 +91,18 @@ export function prepareSpellSurge(p: Player, ab: PlayerAbilityDef): void {
   if (!ab.prepareSurge) return;
   const buff = {
     kind: 'spellSurge' as const,
-    mult: 1.2,
+    mult: 1,
     remaining: ab.prepareSurge,
     source: 'spellSurge',
   };
   const index = p.buffs.findIndex((b) => b.kind === 'spellSurge');
   if (index < 0) p.buffs.push(buff);
-  else p.buffs[index] = { ...buff, remaining: Math.max(p.buffs[index].remaining, buff.remaining) };
+  else {
+    const old = p.buffs[index];
+    p.buffs[index] = {
+      ...buff,
+      mult: p.classId === 'sorcerer' ? Math.min(MAX_SURGE_STACKS, Math.floor(old.mult) + 1) : 1,
+      remaining: Math.max(old.remaining, buff.remaining),
+    };
+  }
 }

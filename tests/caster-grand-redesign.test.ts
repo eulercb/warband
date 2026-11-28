@@ -690,3 +690,36 @@ it('retains Sanctum Prison as a Forge projectile impact field', () => {
   expect(w.groundZones[0]).toMatchObject({ mageBind: true, prison: true });
   expect(prisonDamageFactor(w, w.boss!)).toBe(0.8);
 });
+
+it.each([false, true])(
+  'only Sanctum Prison holds Steadfast and exposes its weakness, grand=%s',
+  (grand) => {
+    const skill = 'mg_abjurer_bind';
+    const { w, p } = setup('mage', grand ? [`${skill}_g`] : [], [skill]);
+    resolvePlayerAbility(w, p, 'sub1', zero);
+    const cage = w.groundZones[0];
+    cage.armRemaining = 0;
+    const boss = w.boss!;
+    boss.pos = { ...cage.pos };
+    applyBuff(boss, makeBuff('steadfast', 0, 5, 'test'));
+    const outside = { x: cage.pos.x + cage.radius + 100, y: cage.pos.y };
+    expect(clipBoundDestination(w, boss, outside) !== outside).toBe(grand);
+    expect(w.serialize().bosses[0].prisonWeakened).toBe(grand || undefined);
+    applyBuff(boss, makeBuff('invuln', 0, 5, BOSS_INVULN_SOURCE));
+    expect(clipBoundDestination(w, boss, outside)).toBe(outside);
+    expect(w.serialize().bosses[0].prisonWeakened).toBeUndefined();
+  },
+);
+
+it('shows the actual Mirror shatter and guarded Arcane Phase on the cast recipients', () => {
+  const { w, p } = setup('sorcerer', ['so_gk_a3_b']);
+  resolvePlayerAbility(w, p, 'a2', zero);
+  expect(w.events.some((e) => e.t === 'mirrorShatter')).toBe(false);
+  damagePlayer(w, p, 20, w.boss!.pos);
+  expect(w.events.some((e) => e.t === 'mirrorShatter')).toBe(true);
+  resolvePlayerAbility(w, p, 'a3', zero);
+  expect(w.events.findLast((e) => e.t === 'blink')).toMatchObject({
+    presentation: 'phase',
+    warded: true,
+  });
+});

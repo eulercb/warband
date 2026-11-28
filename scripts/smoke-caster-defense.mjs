@@ -5,12 +5,12 @@ import { chromium } from 'playwright-core';
 const tests = [
   { classId: 'mage', name: 'Arcane Shield', text: /absorption.*yourself/, bubble: true },
   { classId: 'mage', name: 'Arcane Ward', text: /absorption.*yourself/, bubble: true },
-  { classId: 'sorcerer', name: 'Draconic Scales', text: /surge \+20% dmg/, bubble: true },
+  { classId: 'sorcerer', name: 'Draconic Scales', text: /surge.*\+20\/30\/40% dmg/, bubble: true },
   { classId: 'sorcerer', name: 'Dragon Wings', text: /fly 7s/, badge: /Airborne/ },
   {
     classId: 'sorcerer',
     name: 'Wild Ward',
-    text: /prepare spell surge/,
+    text: /gain 1 spell surge/,
     badge: /Spell surge:/,
   },
 

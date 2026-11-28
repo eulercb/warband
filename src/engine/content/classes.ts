@@ -65,7 +65,9 @@ export interface PlayerAbilityDef {
     | 'mageWard'
     | 'mageBind'
     | 'mageTransfer'
-    | 'sorcererMeteor';
+    | 'sorcererMeteor'
+    | 'sorcererMirror'
+    | 'sorcererPhase';
   druidDelivery?: import('../core/types').DruidDelivery;
   flurryLaneHalfWidth?: number;
   flurryBarrage?: boolean;
@@ -259,6 +261,8 @@ export interface PlayerAbilityDef {
   consumesSurge?: boolean;
   /** Surge adds one projectile, sharing its enhanced damage budget. */
   surgeTwin?: boolean;
+  /** Resolved Meteor cast only. */
+  meteorSalvoCount?: number;
   /** Bounded delivery/control changes reserved only when this cast spends Surge. */
   /** Standalone copied interruption; no Surge boost or cast-speed bonus. */
   /** Persistent relay of this burst's single origin; no extra damage event. */
@@ -1126,6 +1130,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a2: {
         slot: 'a2',
         name: 'Mirror Image',
+        visualStyle: 'sorcererMirror',
         prepareSurge: 8,
         kind: 'selfBuff',
         cooldown: 14,
@@ -1137,6 +1142,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       a3: {
         slot: 'a3',
         name: 'Arcane Phase',
+        visualStyle: 'sorcererPhase',
         prepareSurge: 8,
         kind: 'blink',
         cooldown: 6,
@@ -1559,10 +1565,15 @@ export function describeAbility(
     parts.push(
       'one positive direct boss hit can break its wind-up or channel; 8s shared target recovery; no Surge required',
     );
-  if (def.prepareSurge) parts.push(`prepare spell surge for ${s(def.prepareSurge)}`);
+  if (def.prepareSurge)
+    parts.push(`gain 1 spell surge (Sorcerer max 3) for ${s(def.prepareSurge)}`);
   if (def.consumesSurge) {
     const riders = def.surgeRider;
-    const text = [def.surgeTwin ? 'surge +1 projectile sharing +20% total dmg' : 'surge +20% dmg'];
+    const text = [
+      def.surgeTwin
+        ? 'spend surge for +1 projectile per stack, sharing +20/30/40% total dmg'
+        : 'spend surge for +20/30/40% dmg',
+    ];
     if ((def.castTime ?? 0) > 0) text.push('half wind-up');
     if (riders?.halfAngleDeg && def.kind === 'meleeCone')
       text.push(`+${n(riders.halfAngleDeg)}° each side`);

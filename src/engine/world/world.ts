@@ -1,3 +1,4 @@
+import { guidedSpell } from '../content/guidanceRules';
 import { weaponWindup } from '../content/weaponTiming';
 import { advanceMeleeSequences, type MeleeSequence } from '../combat/abilities';
 import { visitRhapsodyRallies } from '../combat/support';
@@ -1986,6 +1987,13 @@ export class World {
       return false;
     }
     let dealt = 0;
+    const control = (target: Boss | Add): number => {
+      const prior = proj.meteorSalvo?.control.get(target.id);
+      if (prior !== undefined) return prior;
+      const mult = controlledSpellMultiplier(target, proj.controlDamageBonus);
+      proj.meteorSalvo?.control.set(target.id, mult);
+      return mult;
+    };
     if (proj.impactRadius > 0) {
       // AoE on impact
       const center = proj.pos;
@@ -1996,7 +2004,7 @@ export class World {
             b.hp,
             this.applyProjDamageBoss(
               owner,
-              proj.damage * controlledSpellMultiplier(b, proj.controlDamageBonus),
+              proj.damage * control(b),
               b,
               owner
                 ? this.critRoll(
@@ -2015,15 +2023,9 @@ export class World {
           if (owner)
             dealt += Math.min(
               a.hp,
-              damageAdd(
-                this,
-                owner,
-                a,
-                proj.damage * controlledSpellMultiplier(a, proj.controlDamageBonus),
-                this.critRoll(owner, proj),
-              ),
+              damageAdd(this, owner, a, proj.damage * control(a), this.critRoll(owner, proj)),
             );
-          else a.hp -= proj.damage * controlledSpellMultiplier(a, proj.controlDamageBonus);
+          else a.hp -= proj.damage * control(a);
           this.applyProjRiders(a, proj);
         }
       }
@@ -2143,7 +2145,8 @@ export class World {
     if (proj.slowMult != null && proj.slowMult < 1) {
       applyBuff(target, makeBuff('moveSpeed', proj.slowMult, proj.slowDuration ?? 2, 'slow'));
     }
-    if (proj.freeze != null && proj.freeze > 0) {
+    if (proj.freeze != null && proj.freeze > 0 && !proj.meteorSalvo?.freeze.has(target.id)) {
+      proj.meteorSalvo?.freeze.add(target.id);
       applyStun(this, target, proj.freeze, 'freeze');
     }
     // item 9 — a forged cursed bolt stretches the target's wind-up on hit.
@@ -4420,6 +4423,10 @@ export class World {
       reviveProgress: p.reviveProgress,
       castSlot: p.castSlot,
       castTimer: p.castTimer,
+      ...(p.castAbility?.meteorSalvoCount && {
+        meteorCharge: p.castAbility.meteorSalvoCount,
+        meteorChargeAtOrigin: guidedSpell(p.castAbility),
+      }),
       ...(p.castAbility?.visualStyle === 'mageSculpt' && { sculpting: true }),
       castTimerMax: p.castTimerMax,
       drawingProjectile: p.castAbility?.kind === 'projectile' || undefined,
@@ -4477,6 +4484,7 @@ export class World {
         this.players.some((p) => p.id === this.tauntTargetId && p.state === 'alive' && p.hp > 0)
           ? { targetId: this.tauntTargetId, remaining: this.tauntTimer }
           : undefined,
+      prisonWeakened: prisonDamageFactor(this, b) < 1 || undefined,
       monsterId: b.monsterId,
       pos: { ...b.pos },
       facing: b.facing,
@@ -4509,6 +4517,7 @@ export class World {
       bosses: this.bosses.map((b) => this.bossView(b)),
       adds: this.adds.map((a) => ({
         id: a.id,
+        prisonWeakened: prisonDamageFactor(this, a) < 1 || undefined,
         appearance: a.appearance,
         skeletonMotion: a.skeletonMotion && { ...a.skeletonMotion },
         maneuver: a.maneuverMotion && {
